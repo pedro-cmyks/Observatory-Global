@@ -2,6 +2,8 @@
 
 import httpx
 import logging
+import json
+import time
 from typing import List, Dict, Any
 from datetime import datetime, timedelta
 
@@ -25,6 +27,8 @@ class WikiClient:
         Returns:
             List of dictionaries with title, source, and count
         """
+        start_time = time.time()
+
         try:
             # Map country code to Wikipedia project
             wiki_project = self._map_country_to_wiki(country)
@@ -36,8 +40,6 @@ class WikiClient:
             # API endpoint for top viewed articles
             url = f"{self.base_url}/metrics/pageviews/top/{wiki_project}/all-access/{date_str}"
 
-            logger.info(f"Fetching Wikipedia pageviews for {wiki_project}: {url}")
-
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(url)
                 response.raise_for_status()
@@ -45,6 +47,7 @@ class WikiClient:
 
                 results = []
                 articles = data.get("items", [{}])[0].get("articles", [])
+                total_views = 0
 
                 for article in articles[:10]:  # Top 10
                     title = article.get("article", "")
@@ -57,6 +60,26 @@ class WikiClient:
                             "source": "wikipedia",
                             "count": views // 1000,  # Normalize views
                         })
+                        total_views += views
+
+                response_time_ms = int((time.time() - start_time) * 1000)
+
+                # Structured logging
+                log_data = {
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "level": "INFO",
+                    "source": "wikipedia",
+                    "country": country,
+                    "language": wiki_project.split('.')[0],
+                    "wiki_project": wiki_project,
+                    "url": url,
+                    "response_time_ms": response_time_ms,
+                    "top_pages": len(results),
+                    "total_views": total_views,
+                    "cache_hit": False,
+                    "status": "success"
+                }
+                logger.info(json.dumps(log_data))
 
                 if results:
                     return results[:10]
@@ -64,7 +87,20 @@ class WikiClient:
                     return self._generate_wiki_fallback(country)
 
         except Exception as e:
-            logger.error(f"Error fetching Wikipedia data: {e}")
+            response_time_ms = int((time.time() - start_time) * 1000)
+
+            # Structured error logging
+            log_data = {
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "level": "ERROR",
+                "source": "wikipedia",
+                "country": country,
+                "response_time_ms": response_time_ms,
+                "error": str(e),
+                "status": "fallback"
+            }
+            logger.error(json.dumps(log_data))
+
             return self._generate_wiki_fallback(country)
 
     def _map_country_to_wiki(self, country: str) -> str:

@@ -1,0 +1,152 @@
+{
+  "country": "CO",
+  "generated_at": "2025-01-12T15:30:00Z",
+  "topics": [
+    {
+      "id": "topic-co1a2b3c",
+      "label": "Elecciones Presidenciales",
+      "count": 278,
+      "sample_titles": [
+        "Political Developments in CO",
+        "Elecciones Presidenciales",
+        "Reforma Política"
+      ],
+      "sources": [
+        "gdelt",
+        "trends"
+      ],
+      "confidence": 0.89
+    },
+    {
+      "id": "topic-co4d5e6f",
+      "label": "Acuerdo de Paz",
+      "count": 245,
+      "sample_titles": [
+        "Acuerdo de Paz",
+        "Proceso de Paz Colombia",
+        "International Relations CO"
+      ],
+      "sources": [
+        "gdelt",
+        "trends",
+        "wikipedia"
+      ],
+      "confidence": 0.87
+    },
+    {
+      "id": "topic-co7g8h9i",
+      "label": "Reforma Tributaria",
+      "count": 213,
+      "sample_titles": [
+        "Economic Indicators CO",
+        "Reforma Tributaria",
+        "Economía Colombiana"
+      ],
+      "sources": [
+        "gdelt",
+        "trends"
+      ],
+      "confidence": 0.84
+    },
+    {
+      "id": "topic-co0j1k2l",
+      "label": "Selección Colombia",
+      "count": 687,
+      "sample_titles": [
+        "Selección Colombia",
+        "Fútbol Colombia",
+        "Copa América"
+      ],
+      "sources": [
+        "trends",
+        "wikipedia"
+      ],
+      "confidence": 0.82
+    },
+    {
+      "id": "topic-co3m4n5o",
+      "label": "Bogotá",
+      "count": 534,
+      "sample_titles": [
+        "Bogotá",
+        "Notable Person CO"
+      ],
+      "sources": [
+        "wikipedia"
+      ],
+      "confidence": 0.76
+    },
+    {
+      "id": "topic-co6p7q8r",
+      "label": "Seguridad Pública",
+      "count": 189,
+      "sample_titles": [
+        "Public Safety CO",
+        "Seguridad en Colombia",
+        "Crimen Organizado"
+      ],
+      "sources": [
+        "gdelt",
+        "trends"
+      ],
+      "confidence": 0.74
+    },
+    {
+      "id": "topic-co9s0t1u",
+      "label": "Cambio Climático",
+      "count": 156,
+      "sample_titles": [
+        "Environmental News CO",
+        "Cambio Climático Colombia",
+        "Deforestación Amazonía"
+      ],
+      "sources": [
+        "gdelt",
+        "trends"
+      ],
+      "confidence": 0.71
+    },
+    {
+      "id": "topic-co2v3w4x",
+      "label": "Educación Colombia",
+      "count": 134,
+      "sample_titles": [
+        "Education Reforms CO",
+        "Educación Superior",
+        "Becas Colombia"
+      ],
+      "sources": [
+        "gdelt"
+      ],
+      "confidence": 0.69
+    },
+    {
+      "id": "topic-co5y6z7a",
+      "label": "Shakira",
+      "count": 812,
+      "sample_titles": [
+        "Shakira",
+        "Viral Content CO"
+      ],
+      "sources": [
+        "trends",
+        "wikipedia"
+      ],
+      "confidence": 0.67
+    },
+    {
+      "id": "topic-co8b9c0d",
+      "label": "Salud Pública",
+      "count": 98,
+      "sample_titles": [
+        "Health Updates CO",
+        "Sistema de Salud",
+        "Vacunación Colombia"
+      ],
+      "sources": [
+        "gdelt"
+      ],
+      "confidence": 0.65
+    }
+  ]
+}

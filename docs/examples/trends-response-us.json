@@ -1,0 +1,150 @@
+{
+  "country": "US",
+  "generated_at": "2025-01-12T15:30:00Z",
+  "topics": [
+    {
+      "id": "topic-a1b2c3d4",
+      "label": "Presidential Election Updates",
+      "count": 342,
+      "sample_titles": [
+        "Presidential Election Updates",
+        "Political Developments in US",
+        "Election Coverage 2024"
+      ],
+      "sources": [
+        "gdelt",
+        "trends",
+        "wikipedia"
+      ],
+      "confidence": 0.92
+    },
+    {
+      "id": "topic-e5f6g7h8",
+      "label": "Economic Indicators US",
+      "count": 287,
+      "sample_titles": [
+        "Economic Indicators US",
+        "Stock Market Analysis",
+        "GDP Growth Report"
+      ],
+      "sources": [
+        "gdelt",
+        "trends"
+      ],
+      "confidence": 0.88
+    },
+    {
+      "id": "topic-i9j0k1l2",
+      "label": "Donald Trump",
+      "count": 1245,
+      "sample_titles": [
+        "Donald Trump"
+      ],
+      "sources": [
+        "wikipedia"
+      ],
+      "confidence": 0.75
+    },
+    {
+      "id": "topic-m3n4o5p6",
+      "label": "Climate Change Policy",
+      "count": 198,
+      "sample_titles": [
+        "Climate Change Policy",
+        "Environmental News US",
+        "Green Energy Initiative"
+      ],
+      "sources": [
+        "gdelt",
+        "trends",
+        "wikipedia"
+      ],
+      "confidence": 0.85
+    },
+    {
+      "id": "topic-q7r8s9t0",
+      "label": "Technology Trends",
+      "count": 176,
+      "sample_titles": [
+        "Technology Trends US",
+        "AI Development News",
+        "Silicon Valley Updates"
+      ],
+      "sources": [
+        "gdelt",
+        "trends"
+      ],
+      "confidence": 0.81
+    },
+    {
+      "id": "topic-u1v2w3x4",
+      "label": "NFL Playoffs",
+      "count": 854,
+      "sample_titles": [
+        "Super Bowl",
+        "NFL Playoffs"
+      ],
+      "sources": [
+        "trends",
+        "wikipedia"
+      ],
+      "confidence": 0.79
+    },
+    {
+      "id": "topic-y5z6a7b8",
+      "label": "International Relations US",
+      "count": 145,
+      "sample_titles": [
+        "International Relations US",
+        "Foreign Policy News",
+        "Diplomatic Relations"
+      ],
+      "sources": [
+        "gdelt"
+      ],
+      "confidence": 0.77
+    },
+    {
+      "id": "topic-c9d0e1f2",
+      "label": "Healthcare Reform",
+      "count": 134,
+      "sample_titles": [
+        "Health Updates US",
+        "Healthcare Reform Bill",
+        "Medicare Changes"
+      ],
+      "sources": [
+        "gdelt",
+        "trends"
+      ],
+      "confidence": 0.73
+    },
+    {
+      "id": "topic-g3h4i5j6",
+      "label": "Taylor Swift",
+      "count": 923,
+      "sample_titles": [
+        "Taylor Swift"
+      ],
+      "sources": [
+        "trends",
+        "wikipedia"
+      ],
+      "confidence": 0.71
+    },
+    {
+      "id": "topic-k7l8m9n0",
+      "label": "Education Reforms US",
+      "count": 112,
+      "sample_titles": [
+        "Education Reforms US",
+        "Student Loan Forgiveness",
+        "School Policy Changes"
+      ],
+      "sources": [
+        "gdelt"
+      ],
+      "confidence": 0.68
+    }
+  ]
+}

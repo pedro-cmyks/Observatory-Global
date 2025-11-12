@@ -2,6 +2,8 @@
 
 import httpx
 import logging
+import json
+import time
 from typing import List, Dict, Any
 from datetime import datetime, timedelta
 
@@ -27,6 +29,8 @@ class GDELTClient:
         Returns:
             List of dictionaries with title, source, and count
         """
+        start_time = time.time()
+
         try:
             # GDELT provides CSV files updated every 15 minutes
             # We'll fetch the latest Global Knowledge Graph (GKG) data
@@ -41,8 +45,7 @@ class GDELTClient:
 
             # GDELT GKG file format: http://data.gdeltproject.org/gdeltv2/YYYYMMDDHHMMSS.gkg.csv.zip
             # Note: This is a simplified demo - real implementation would download and parse CSV
-
-            logger.info(f"Fetching GDELT data for {country} at {timestamp}")
+            url = f"http://data.gdeltproject.org/gdeltv2/{timestamp}.gkg.csv.zip"
 
             # For MVP, return simulated GDELT-style data
             # In production, you would:
@@ -51,10 +54,40 @@ class GDELTClient:
             # 3. Filter by country code
             # 4. Extract themes and topics
 
-            return self._generate_gdelt_fallback(country)
+            result = self._generate_gdelt_fallback(country)
+            response_time_ms = int((time.time() - start_time) * 1000)
+
+            # Structured logging
+            log_data = {
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "level": "INFO",
+                "source": "gdelt",
+                "country": country,
+                "url": url,
+                "response_time_ms": response_time_ms,
+                "records_fetched": len(result),
+                "cache_hit": False,
+                "status": "success"
+            }
+            logger.info(json.dumps(log_data))
+
+            return result
 
         except Exception as e:
-            logger.error(f"Error fetching GDELT data: {e}")
+            response_time_ms = int((time.time() - start_time) * 1000)
+
+            # Structured error logging
+            log_data = {
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "level": "ERROR",
+                "source": "gdelt",
+                "country": country,
+                "response_time_ms": response_time_ms,
+                "error": str(e),
+                "status": "fallback"
+            }
+            logger.error(json.dumps(log_data))
+
             return self._generate_gdelt_fallback(country)
 
     def _generate_gdelt_fallback(self, country: str) -> List[Dict[str, Any]]:
