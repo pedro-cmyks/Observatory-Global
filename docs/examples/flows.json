@@ -1,0 +1,240 @@
+{
+  "hotspots": [
+    {
+      "country": "US",
+      "intensity": 0.85,
+      "topic_count": 47,
+      "top_topics": [
+        {
+          "label": "election fraud claims",
+          "count": 234,
+          "confidence": 0.92
+        },
+        {
+          "label": "voting irregularities investigation",
+          "count": 189,
+          "confidence": 0.88
+        },
+        {
+          "label": "supreme court ruling",
+          "count": 156,
+          "confidence": 0.91
+        },
+        {
+          "label": "presidential campaign announcement",
+          "count": 142,
+          "confidence": 0.86
+        },
+        {
+          "label": "congressional hearing testimony",
+          "count": 128,
+          "confidence": 0.84
+        }
+      ]
+    },
+    {
+      "country": "CO",
+      "intensity": 0.72,
+      "topic_count": 38,
+      "top_topics": [
+        {
+          "label": "election fraud allegations",
+          "count": 187,
+          "confidence": 0.89
+        },
+        {
+          "label": "vote counting issues",
+          "count": 145,
+          "confidence": 0.85
+        },
+        {
+          "label": "constitutional reform debate",
+          "count": 98,
+          "confidence": 0.82
+        },
+        {
+          "label": "peace agreement signing",
+          "count": 87,
+          "confidence": 0.88
+        },
+        {
+          "label": "economic sanctions lifted",
+          "count": 76,
+          "confidence": 0.81
+        }
+      ]
+    },
+    {
+      "country": "BR",
+      "intensity": 0.68,
+      "topic_count": 35,
+      "top_topics": [
+        {
+          "label": "environmental protection legislation",
+          "count": 203,
+          "confidence": 0.93
+        },
+        {
+          "label": "amazon rainforest deforestation",
+          "count": 178,
+          "confidence": 0.91
+        },
+        {
+          "label": "presidential corruption investigation",
+          "count": 134,
+          "confidence": 0.87
+        },
+        {
+          "label": "carnival festival preparations",
+          "count": 112,
+          "confidence": 0.79
+        },
+        {
+          "label": "world cup qualification match",
+          "count": 98,
+          "confidence": 0.83
+        }
+      ]
+    },
+    {
+      "country": "MX",
+      "intensity": 0.61,
+      "topic_count": 29,
+      "top_topics": [
+        {
+          "label": "drug cartel violence escalation",
+          "count": 156,
+          "confidence": 0.90
+        },
+        {
+          "label": "border security measures",
+          "count": 134,
+          "confidence": 0.86
+        },
+        {
+          "label": "migration policy changes",
+          "count": 121,
+          "confidence": 0.84
+        },
+        {
+          "label": "trade agreement negotiations",
+          "count": 109,
+          "confidence": 0.82
+        },
+        {
+          "label": "presidential midterm elections",
+          "count": 95,
+          "confidence": 0.80
+        }
+      ]
+    },
+    {
+      "country": "AR",
+      "intensity": 0.54,
+      "topic_count": 24,
+      "top_topics": [
+        {
+          "label": "inflation crisis response",
+          "count": 178,
+          "confidence": 0.88
+        },
+        {
+          "label": "IMF loan renegotiation",
+          "count": 145,
+          "confidence": 0.85
+        },
+        {
+          "label": "agricultural export boom",
+          "count": 112,
+          "confidence": 0.81
+        },
+        {
+          "label": "copa america tournament",
+          "count": 98,
+          "confidence": 0.79
+        },
+        {
+          "label": "tango festival opening",
+          "count": 67,
+          "confidence": 0.76
+        }
+      ]
+    }
+  ],
+  "flows": [
+    {
+      "from_country": "US",
+      "to_country": "CO",
+      "heat": 0.72,
+      "similarity_score": 0.87,
+      "time_delta_hours": 3.2,
+      "shared_topics": [
+        "election fraud claims",
+        "voting irregularities",
+        "electoral transparency"
+      ]
+    },
+    {
+      "from_country": "US",
+      "to_country": "MX",
+      "heat": 0.65,
+      "similarity_score": 0.81,
+      "time_delta_hours": 4.5,
+      "shared_topics": [
+        "border security",
+        "migration policy",
+        "trade negotiations"
+      ]
+    },
+    {
+      "from_country": "CO",
+      "to_country": "BR",
+      "heat": 0.58,
+      "similarity_score": 0.76,
+      "time_delta_hours": 5.8,
+      "shared_topics": [
+        "presidential corruption",
+        "constitutional reform",
+        "peace agreement"
+      ]
+    },
+    {
+      "from_country": "BR",
+      "to_country": "AR",
+      "heat": 0.54,
+      "similarity_score": 0.71,
+      "time_delta_hours": 6.3,
+      "shared_topics": [
+        "economic crisis",
+        "IMF negotiations",
+        "agricultural exports"
+      ]
+    },
+    {
+      "from_country": "US",
+      "to_country": "BR",
+      "heat": 0.51,
+      "similarity_score": 0.68,
+      "time_delta_hours": 7.1,
+      "shared_topics": [
+        "environmental legislation",
+        "climate policy"
+      ]
+    }
+  ],
+  "metadata": {
+    "formula": "heat = similarity × exp(-Δt / 6h)",
+    "threshold": 0.5,
+    "time_window_hours": 24.0,
+    "total_flows_computed": 45,
+    "flows_returned": 5,
+    "countries_analyzed": [
+      "US",
+      "CO",
+      "BR",
+      "MX",
+      "AR"
+    ]
+  },
+  "generated_at": "2025-01-12T15:30:00Z"
+}

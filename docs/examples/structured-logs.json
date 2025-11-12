@@ -1,0 +1,130 @@
+{
+  "description": "Example structured log entries from the Observatory Global data pipeline",
+  "examples": [
+    {
+      "log_type": "wikipedia_success",
+      "entry": {
+        "timestamp": "2025-01-12T15:30:00Z",
+        "level": "INFO",
+        "source": "wikipedia",
+        "country": "US",
+        "language": "en",
+        "wiki_project": "en.wikipedia",
+        "url": "https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access/2025/01/11",
+        "response_time_ms": 234,
+        "top_pages": 10,
+        "total_views": 12500000,
+        "cache_hit": false,
+        "status": "success"
+      }
+    },
+    {
+      "log_type": "trends_success",
+      "entry": {
+        "timestamp": "2025-01-12T15:30:05Z",
+        "level": "INFO",
+        "source": "trends",
+        "country": "US",
+        "country_name": "united_states",
+        "response_time_ms": 1523,
+        "trends_fetched": 10,
+        "cache_hit": false,
+        "status": "success"
+      }
+    },
+    {
+      "log_type": "trends_fallback",
+      "entry": {
+        "timestamp": "2025-01-12T15:30:10Z",
+        "level": "WARNING",
+        "source": "trends",
+        "country": "CO",
+        "country_name": "colombia",
+        "response_time_ms": 2103,
+        "error": "429 Client Error: Too Many Requests",
+        "status": "fallback"
+      }
+    },
+    {
+      "log_type": "gdelt_success",
+      "entry": {
+        "timestamp": "2025-01-12T15:30:02Z",
+        "level": "INFO",
+        "source": "gdelt",
+        "country": "US",
+        "url": "http://data.gdeltproject.org/gdeltv2/20250112153000.gkg.csv.zip",
+        "response_time_ms": 12,
+        "records_fetched": 5,
+        "cache_hit": false,
+        "status": "success"
+      }
+    },
+    {
+      "log_type": "api_request_start",
+      "entry": {
+        "timestamp": "2025-01-12T15:30:00Z",
+        "level": "INFO",
+        "endpoint": "/v1/trends/top",
+        "country": "US",
+        "limit": 10,
+        "phase": "request_started"
+      }
+    },
+    {
+      "log_type": "api_request_complete",
+      "entry": {
+        "timestamp": "2025-01-12T15:30:05Z",
+        "level": "INFO",
+        "endpoint": "/v1/trends/top",
+        "country": "US",
+        "limit": 10,
+        "response_time_ms": 2456,
+        "nlp_processing_ms": 145,
+        "source_counts": {
+          "gdelt": 5,
+          "trends": 10,
+          "wikipedia": 10
+        },
+        "total_items_fetched": 25,
+        "topics_returned": 10,
+        "used_fallback": false,
+        "phase": "request_completed",
+        "status": "success"
+      }
+    },
+    {
+      "log_type": "api_request_error",
+      "entry": {
+        "timestamp": "2025-01-12T15:35:12Z",
+        "level": "ERROR",
+        "endpoint": "/v1/trends/top",
+        "country": "XX",
+        "limit": 10,
+        "response_time_ms": 1234,
+        "error": "Invalid country code: XX",
+        "phase": "request_failed",
+        "status": "error"
+      }
+    },
+    {
+      "log_type": "wikipedia_error",
+      "entry": {
+        "timestamp": "2025-01-12T15:40:00Z",
+        "level": "ERROR",
+        "source": "wikipedia",
+        "country": "FR",
+        "response_time_ms": 10045,
+        "error": "Timeout: Request took longer than 10 seconds",
+        "status": "fallback"
+      }
+    }
+  ],
+  "notes": [
+    "All timestamps are in ISO 8601 UTC format",
+    "response_time_ms measures end-to-end latency",
+    "cache_hit indicates if data was served from cache (future feature)",
+    "status field: 'success', 'fallback', or 'error'",
+    "source_counts shows items fetched from each data source",
+    "nlp_processing_ms measures time spent in clustering and topic extraction"
+  ]
+}

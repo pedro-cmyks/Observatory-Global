@@ -1,7 +1,10 @@
 """Google Trends client using pytrends."""
 
 import logging
+import json
+import time
 from typing import List, Dict, Any
+from datetime import datetime
 from pytrends.request import TrendReq
 
 logger = logging.getLogger(__name__)
@@ -23,17 +26,18 @@ class TrendsClient:
         Returns:
             List of dictionaries with title, source, and count
         """
+        start_time = time.time()
+        country_name = self._map_country_code(country)
+
         try:
             # Initialize pytrends (no authentication required)
             if self.pytrends is None:
                 self.pytrends = TrendReq(hl='en-US', tz=360)
 
-            logger.info(f"Fetching Google Trends data for {country}")
-
             # Fetch trending searches for the country
             # Note: trending_searches only works for certain countries
             try:
-                trending_df = self.pytrends.trending_searches(pn=self._map_country_code(country))
+                trending_df = self.pytrends.trending_searches(pn=country_name)
 
                 results = []
                 for idx, row in trending_df.iterrows():
@@ -45,17 +49,60 @@ class TrendsClient:
                         "count": 50 - (idx * 3),  # Simulated count
                     })
 
+                response_time_ms = int((time.time() - start_time) * 1000)
+
+                # Structured logging
+                log_data = {
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "level": "INFO",
+                    "source": "trends",
+                    "country": country,
+                    "country_name": country_name,
+                    "response_time_ms": response_time_ms,
+                    "trends_fetched": len(results),
+                    "cache_hit": False,
+                    "status": "success"
+                }
+                logger.info(json.dumps(log_data))
+
                 if results:
                     return results
                 else:
                     return self._generate_trends_fallback(country)
 
             except Exception as e:
-                logger.warning(f"Trending searches not available for {country}: {e}")
+                response_time_ms = int((time.time() - start_time) * 1000)
+
+                # Structured warning logging
+                log_data = {
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "level": "WARNING",
+                    "source": "trends",
+                    "country": country,
+                    "country_name": country_name,
+                    "response_time_ms": response_time_ms,
+                    "error": str(e),
+                    "status": "fallback"
+                }
+                logger.warning(json.dumps(log_data))
+
                 return self._generate_trends_fallback(country)
 
         except Exception as e:
-            logger.error(f"Error fetching Google Trends data: {e}")
+            response_time_ms = int((time.time() - start_time) * 1000)
+
+            # Structured error logging
+            log_data = {
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "level": "ERROR",
+                "source": "trends",
+                "country": country,
+                "response_time_ms": response_time_ms,
+                "error": str(e),
+                "status": "fallback"
+            }
+            logger.error(json.dumps(log_data))
+
             return self._generate_trends_fallback(country)
 
     def _map_country_code(self, country: str) -> str:
