@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { getTopTrends, healthCheck, Topic } from '../lib/api'
 import CountryPicker from '../components/CountryPicker'
 import TopicList from '../components/TopicList'
-import MapPlaceholder from '../components/MapPlaceholder'
+import MapContainer from '../components/map/MapContainer'
 
 const Home: React.FC = () => {
   const [country, setCountry] = useState('CO')
@@ -69,8 +69,10 @@ const Home: React.FC = () => {
 
       {/* Main Content */}
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
-        {/* Map Placeholder */}
-        <MapPlaceholder />
+        {/* Interactive Map */}
+        <div style={{ marginBottom: '2rem' }}>
+          <MapContainer />
+        </div>
 
         {/* Controls */}
         <div
