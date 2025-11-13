@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
 import { Layer, Source } from 'react-map-gl'
+// @ts-ignore - turf types exist but package.json exports issue
 import * as turf from '@turf/turf'
 import { useMapStore } from '../../store/mapStore'
 import { Flow } from '../../lib/mapTypes'

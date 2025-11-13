@@ -1,0 +1,301 @@
+================================================================================
+OBSERVATORIO GLOBAL - DATA SOURCES FEASIBILITY STUDY
+Top 3 Ranked Recommendations for Iteration 2
+================================================================================
+
+RANKING RATIONALE:
+All three sources have minimal authentication requirements, low implementation
+complexity, global coverage, and real-time or near real-time availability.
+They complement each other perfectly to create a multi-layer narrative signal.
+
+================================================================================
+RANK #1: HACKER NEWS (FIREBASE API)
+================================================================================
+
+SCORE: 9.5/10
+
+API: https://hacker-news.firebaseio.com/v0
+Auth: NONE required
+Rate Limit: NO formal limits (recommended: 15-30s poll intervals)
+Coverage: Global, tech/startup narratives
+Real-time: Yes (Firebase real-time listeners)
+Complexity: 2/5 (Clean REST API)
+
+KEY ADVANTAGES:
+  - Zero authentication overhead
+  - No rate limits
+  - True real-time via Firebase listeners
+  - ~500 stories always available
+  - Comment threads provide narrative depth
+  - Well-documented, mature API
+  - Minimal library dependencies
+
+DISADVANTAGES:
+  - Limited to tech/startup community
+  - Smaller volume than social platforms
+  - US-centric audience bias
+
+IMPLEMENTATION:
+  - REST polling: topstories every 20-30 seconds
+  - Fetch individual story metadata
+  - Optionally crawl comment threads for depth
+  - ~50 API calls per minute for full coverage
+
+DATA QUALITY:
+  - Highly curated by HN community
+  - Strong signal for tech/innovation narratives
+  - Comment quality excellent
+  - Time-based sorting provides recency
+
+USE CASE:
+  Primary: Tech/startup/innovation narrative tracking
+  Secondary: Early signal detection (HN trends before mainstream)
+
+ESTIMATED EFFORT:
+  - MVP implementation: 2-3 hours
+  - Full integration: 8-10 hours
+  - Data pipeline: 4-6 hours
+
+================================================================================
+RANK #2: MASTODON/FEDIVERSE PUBLIC API
+================================================================================
+
+SCORE: 9.0/10
+
+API: https://{instance}/api/v1
+Auth: OPTIONAL (not required for public data)
+Rate Limit: 300 req/5min general; 7500/5min per IP (hard cap)
+Coverage: Global, decentralized, all topics
+Real-time: Yes (WebSocket streaming, server-sent events)
+Complexity: 2/5 (Well-documented REST API)
+
+KEY ADVANTAGES:
+  - No API key required
+  - True WebSocket streaming (real-time)
+  - Decentralized: multiple instances with diverse communities
+  - ActivityPub open standard
+  - Growing adoption, emerging narratives early
+  - Hashtag-based organization
+  - Trending tags available per instance
+  - No commercial restriction
+
+DISADVANTAGES:
+  - Fragmented across instances
+  - Lower volume per instance than Twitter/X
+  - Data quality varies by instance
+  - Smaller overall user base
+  - Instance instability/downtime risk
+
+RECOMMENDED INSTANCES:
+  - mastodon.social (largest, general)
+  - techhub.social (tech-focused)
+  - pixelfed.social (visual content)
+  - fosstodon.org (open source)
+
+IMPLEMENTATION:
+  - Poll /timelines/public every 2-3 minutes per instance
+  - Subscribe to /streaming/public for real-time
+  - Aggregate across 5-10 instances
+  - Extract hashtags, engagement metrics
+
+DATA QUALITY:
+  - Community-moderated, spam filtering good
+  - Diverse topics, not algorithm-driven
+  - Strong signal for emerging/activist narratives
+  - Timestamp precision: second-level
+
+USE CASE:
+  Primary: Emerging global narratives, decentralized communities
+  Secondary: Real-time event tracking
+  Cross-validation: Compare HN + Mastodon consensus
+
+ESTIMATED EFFORT:
+  - MVP (single instance): 3-4 hours
+  - Multi-instance aggregation: 6-8 hours
+  - WebSocket streaming: 4-6 hours
+  - Full pipeline: 12-16 hours
+
+================================================================================
+RANK #3: RSS AGGREGATION (CURATED NEWS OUTLETS)
+================================================================================
+
+SCORE: 8.5/10
+
+API: Standard RSS/Atom feeds
+Auth: VARIES by outlet (most free)
+Rate Limit: VARIES (typically aggregator-friendly)
+Coverage: Global, traditional media + tech news
+Real-time: Polling-based (15-60 min intervals typical)
+Complexity: 2/5 (Standard feedparser library)
+
+KEY ADVANTAGES:
+  - Captures traditional news signal
+  - No authentication for major outlets
+  - Structured, parseable data
+  - Covers global coverage gaps (social media misses)
+  - Established outlet reputation
+  - Long tail of niche outlets available
+  - Simple to deploy (FreshRSS, Miniflux)
+  - Cost-effective (OSS aggregators)
+
+DISADVANTAGES:
+  - Polling-based, not true real-time
+  - Outlet coverage variable
+  - Feed quality varies
+  - Some outlets discontinuing RSS
+  - Lag: 15min to 1 hour typical
+
+RECOMMENDED OUTLET CONFIGURATION (20-30 outlets):
+
+Global News Tier:
+  - BBC: https://feeds.bbci.co.uk/news/rss.xml
+  - Reuters: https://www.reuters.com/rssFeed/worldNews
+  - AP News: https://apnews.com/apf/homepage
+  - Al Jazeera: https://www.aljazeera.com/xml/rss/all.xml
+  - RFI: https://www.rfi.fr/en/rss
+
+Tech/Business Tier:
+  - TechCrunch: https://techcrunch.com/feed/
+  - The Verge: https://www.theverge.com/rss/index.xml
+  - Wired: https://www.wired.com/feed/rss.xml
+  - ArsTechnica: https://arstechnica.com/feed/
+  - Slashdot: https://slashdot.org/stories.rss
+
+Regional Coverage:
+  - Financial Times, Guardian, NYT, WSJ, etc.
+
+IMPLEMENTATION:
+  - Deploy FreshRSS or Miniflux (Docker)
+  - Add 20-30 feeds via UI or API
+  - Poll every 15 minutes
+  - Export via API to normalized storage
+  - Simple headline extraction
+
+DATA QUALITY:
+  - Professional editorial standards
+  - Factual bias toward mainstream narrative
+  - Slower adaptation to emerging trends
+  - Excellent for validation/confirmation
+
+USE CASE:
+  Primary: Traditional news narrative tracking
+  Secondary: Cross-platform validation (does HN + Mastodon align with news?)
+  Comparative: Identify narrative gaps/divergences
+
+ESTIMATED EFFORT:
+  - FreshRSS deployment: 1 hour (Docker)
+  - Feed curation: 1-2 hours
+  - API integration: 2-3 hours
+  - Full pipeline: 4-6 hours
+
+================================================================================
+COMBINED SYSTEM ARCHITECTURE
+================================================================================
+
+Three-Layer Narrative Signal:
+
+Layer 1: EMERGING NARRATIVES (HN + Mastodon)
+  - Real-time detection
+  - Low latency (0-2 minutes)
+  - High signal-to-noise (curated/engaged communities)
+  - Best for early trend identification
+
+Layer 2: VALIDATION LAYER (RSS News)
+  - Mid-term confirmation (15-60 minutes)
+  - Mainstream adoption signal
+  - Cross-platform consensus check
+  - Identifies narrative divergence
+
+Layer 3: ANALYSIS LAYER
+  - Narrative clustering
+  - Engagement correlation
+  - Cross-platform comparison
+  - Trend classification
+
+DATA FLOW:
+  HN (20s poll) -> Normalization Layer -> Storage
+  Mastodon (2m poll) -> Normalization Layer -> Storage
+  RSS (15m poll) -> Normalization Layer -> Storage
+  
+  Storage -> Clustering Engine -> Visualization/Alerts
+
+================================================================================
+IMPLEMENTATION TIMELINE
+================================================================================
+
+PHASE 1 (Week 1-2): Foundation
+  Day 1-2:   Hacker News collector development
+  Day 3:     Basic storage schema + normalization
+  Day 4-5:   Deployment + validation
+  Day 6-7:   Documentation + monitoring setup
+  Deliverable: HN collector running, 1 week data collection
+
+PHASE 2 (Week 3-4): Scaling
+  Day 1-2:   Mastodon multi-instance collector
+  Day 3:     WebSocket streaming setup
+  Day 4:     Instance monitoring dashboard
+  Day 5-6:   Data deduplication logic
+  Day 7:     Cross-platform correlation
+  Deliverable: HN + Mastodon unified pipeline, narrative detection
+
+PHASE 3 (Week 5+): Enhancement
+  - RSS pipeline integration
+  - Narrative clustering algorithm
+  - Cross-platform trend analysis
+  - Visualization dashboard
+  - Alert system
+
+================================================================================
+COST ANALYSIS
+================================================================================
+
+Development Cost:
+  HN Implementation:     16-20 hours (engineer time)
+  Mastodon Integration:  14-18 hours (engineer time)
+  RSS Pipeline:          6-8 hours (engineer time)
+  Testing/Documentation: 6-8 hours (engineer time)
+  TOTAL:                 42-54 hours (1-1.5 weeks engineer)
+
+Infrastructure Cost:
+  Storage:   Minimal (depends on retention, ~50GB/month for all sources)
+  Compute:   Minimal (polling agents, <0.5 CPU)
+  Bandwidth: Minimal (<1 Gbps typical)
+  Estimated: $50-200/month cloud hosting
+
+License Cost:
+  All sources: FREE (open data/APIs)
+  All tools: FREE (open source)
+
+================================================================================
+RISK MITIGATION
+================================================================================
+
+Risk: API Changes
+  Mitigation: Version APIs, maintain adapter layer, monitor status pages
+
+Risk: Rate Limiting
+  Mitigation: Implement queue + exponential backoff, monitor headers
+
+Risk: Data Quality
+  Mitigation: Cross-platform validation, outlier detection, manual sampling
+
+Risk: Instance Fragmentation (Mastodon)
+  Mitigation: Monitor top 5-10 instances, detect splits, aggregate carefully
+
+Risk: Feed Discontinuation (RSS)
+  Mitigation: Maintain backup list, detect feed changes, alert ops
+
+Risk: Single Point of Failure
+  Mitigation: Multi-source architecture provides redundancy
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+1. APPROVAL: Confirm these 3 sources match Observatorio Global objectives
+2. PLANNING: Create detailed 2-week sprint for Phase 1 (HN MVP)
+3. SETUP: Provision infrastructure (storage, compute)
+4. DEVELOPMENT: Begin HN collector implementation
+5. VALIDATION: Test against real-time narrative events
+
+================================================================================

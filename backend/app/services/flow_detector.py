@@ -72,8 +72,9 @@ class FlowDetector:
             # Calculate cosine similarity matrix
             similarity_matrix = cosine_similarity(matrix_a, matrix_b)
 
-            # Return maximum similarity (best topic match)
+            # Return maximum similarity (best topic match), clamped to [0, 1]
             max_similarity = float(np.max(similarity_matrix))
+            max_similarity = min(1.0, max(0.0, max_similarity))  # Clamp to handle floating point errors
 
             logger.debug(
                 f"Similarity calculated: {max_similarity:.3f} "
