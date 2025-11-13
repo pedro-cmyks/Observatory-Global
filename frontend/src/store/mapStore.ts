@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { FlowsResponse, TimeWindow, CountryHotspot } from '../lib/mapTypes'
-import { mockFlowsData } from '../lib/mockMapData'
+import api from '../lib/api'
 
 interface MapState {
   // Data
@@ -84,17 +84,14 @@ export const useMapStore = create<MapState>((set, get) => ({
     set({ loading: true, error: null })
 
     try {
-      // TODO: Replace with real API call when backend is ready
-      // const response = await api.get('/v1/flows', {
-      //   params: { window: get().timeWindow }
-      // })
-      // const data = response.data
-
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
-      // Use mock data for now
-      const data = mockFlowsData
+      // Fetch real data from backend API
+      const response = await api.get('/v1/flows', {
+        params: {
+          time_window: get().timeWindow,
+          threshold: 0.5
+        }
+      })
+      const data = response.data
 
       set({
         flowsData: data,
