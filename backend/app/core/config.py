@@ -32,6 +32,12 @@ class Settings(BaseSettings):
 
     # Cache settings
     CACHE_TTL: int = 300  # 5 minutes
+    USE_CACHE: bool = True
+
+    # Flow detection settings
+    HEAT_HALFLIFE_HOURS: float = 6.0  # Time decay half-life
+    FLOW_THRESHOLD: float = 0.5  # Minimum heat score for flows
+    DRY_RUN_APIS: bool = False  # Mock external API calls for testing
 
     model_config = SettingsConfigDict(
         env_file=".env",

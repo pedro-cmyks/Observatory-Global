@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.logging import setup_logging
-from app.api.v1 import health, trends
+from app.api.v1 import health, trends, flows
 
 # Setup logging
 setup_logging()
@@ -30,6 +30,7 @@ app.add_middleware(
 # Include routers
 app.include_router(health.router, tags=["Health"])
 app.include_router(trends.router, prefix="/v1/trends", tags=["Trends"])
+app.include_router(flows.router, prefix="/v1/flows", tags=["Flows"])
 
 
 @app.on_event("startup")
