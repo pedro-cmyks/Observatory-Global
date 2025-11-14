@@ -11,30 +11,9 @@ import numpy as np
 from app.models.schemas import Topic
 from app.models.flows import Hotspot, Flow, TopicSummary
 from app.core.config import settings
+from app.core.country_metadata import COUNTRY_METADATA
 
 logger = logging.getLogger(__name__)
-
-
-# Country metadata: ISO code -> (name, latitude, longitude)
-COUNTRY_METADATA = {
-    'US': ('United States', 37.0902, -95.7129),
-    'CO': ('Colombia', 4.5709, -74.2973),
-    'BR': ('Brazil', -14.2350, -51.9253),
-    'MX': ('Mexico', 23.6345, -102.5528),
-    'AR': ('Argentina', -38.4161, -63.6167),
-    'GB': ('United Kingdom', 55.3781, -3.4360),
-    'FR': ('France', 46.2276, 2.2137),
-    'DE': ('Germany', 51.1657, 10.4515),
-    'ES': ('Spain', 40.4637, -3.7492),
-    'IT': ('Italy', 41.8719, 12.5674),
-    'RU': ('Russia', 61.5240, 105.3188),
-    'CN': ('China', 35.8617, 104.1954),
-    'IN': ('India', 20.5937, 78.9629),
-    'JP': ('Japan', 36.2048, 138.2529),
-    'AU': ('Australia', -25.2744, 133.7751),
-    'CA': ('Canada', 56.1304, -106.3468),
-    'ZA': ('South Africa', -30.5595, 22.9375),
-}
 
 
 class FlowDetector:

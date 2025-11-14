@@ -4,6 +4,7 @@ import h3
 import logging
 from typing import List, Dict, Any, Tuple
 from collections import defaultdict
+from app.core.country_metadata import get_country_coordinates
 
 logger = logging.getLogger(__name__)
 
@@ -15,27 +16,6 @@ class HexmapGenerator:
     Uses Uber's H3 spatial indexing system to convert country centroids
     into hexagonal tiles with smoothed intensity values.
     """
-
-    # Country centroids (from database seed data)
-    COUNTRY_CENTROIDS = {
-        'US': (37.0902, -95.7129),
-        'CO': (4.5709, -74.2973),
-        'BR': (-14.2350, -51.9253),
-        'MX': (23.6345, -102.5528),
-        'AR': (-38.4161, -63.6167),
-        'GB': (55.3781, -3.4360),
-        'FR': (46.2276, 2.2137),
-        'DE': (51.1657, 10.4515),
-        'ES': (40.4637, -3.7492),
-        'IT': (41.8719, 12.5674),
-        'JP': (36.2048, 138.2529),
-        'IN': (20.5937, 78.9629),
-        'AU': (-25.2744, 133.7751),
-        'CA': (56.1304, -106.3468),
-        'KR': (35.9078, 127.7669),
-        'CL': (-35.6751, -71.5430),
-        'PE': (-9.1900, -75.0152),
-    }
 
     # H3 resolution mapping based on zoom level
     ZOOM_TO_RESOLUTION = {
@@ -147,13 +127,12 @@ class HexmapGenerator:
             country = hotspot.get('country_code')
             intensity = hotspot.get('intensity', 0.0)
 
-            # Get country centroid
-            centroid = self.COUNTRY_CENTROIDS.get(country)
-            if not centroid:
+            # Get country centroid from centralized metadata
+            try:
+                lat, lng = get_country_coordinates(country)
+            except KeyError:
                 logger.warning(f"Unknown country code: {country}")
                 continue
-
-            lat, lng = centroid
 
             # Convert lat/lng to H3 index (H3 v4 API)
             try:

@@ -10,21 +10,14 @@ from datetime import datetime
 
 from app.services.hexmap_generator import HexmapGenerator
 from app.services.flow_detector import FlowDetector, parse_time_window
-from app.services.gdelt_client import GDELTClient
-from app.services.trends_client import TrendsClient
-from app.services.wiki_client import WikiClient
-from app.services.nlp import NLPProcessor
+from app.services.signals_service import get_signals_service
 from app.core.config import settings
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Initialize clients
+# Initialize services
 hexmap_generator = HexmapGenerator()
-gdelt_client = GDELTClient()
-trends_client = TrendsClient()
-wiki_client = WikiClient()
-nlp_processor = NLPProcessor()
 
 # Initialize Redis client
 try:
@@ -146,8 +139,9 @@ async def get_hexmap(
         if countries:
             country_list = [c.strip().upper() for c in countries.split(",") if c.strip()]
         else:
-            # Default countries
-            country_list = ["US", "CO", "BR", "MX", "AR", "GB", "FR", "DE", "ES", "IT"]
+            # Use SignalsService default countries (aligned with flows view)
+            signals_service = get_signals_service()
+            country_list = signals_service.DEFAULT_COUNTRIES
 
         if not country_list:
             raise HTTPException(status_code=400, detail="At least one country must be specified")
@@ -182,45 +176,15 @@ async def get_hexmap(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
-        # Fetch trends for all countries (same as flows endpoint)
-        trends_by_country = {}
-
-        for country in country_list:
-            try:
-                # Fetch data from all sources
-                all_items = []
-
-                # GDELT
-                try:
-                    gdelt_items = await gdelt_client.fetch_trending_topics(country)
-                    all_items.extend(gdelt_items)
-                except Exception as e:
-                    logger.warning(f"GDELT fetch failed for {country}: {e}")
-
-                # Google Trends
-                try:
-                    trends_items = await trends_client.fetch_trending_topics(country)
-                    all_items.extend(trends_items)
-                except Exception as e:
-                    logger.warning(f"Google Trends fetch failed for {country}: {e}")
-
-                # Wikipedia
-                try:
-                    wiki_items = await wiki_client.fetch_trending_topics(country)
-                    all_items.extend(wiki_items)
-                except Exception as e:
-                    logger.warning(f"Wikipedia fetch failed for {country}: {e}")
-
-                # Process topics with NLP
-                if all_items:
-                    topics = nlp_processor.process_and_extract_topics(all_items, limit=50)
-                    if topics:
-                        trends_by_country[country] = (topics, datetime.utcnow())
-                        logger.info(f"Fetched {len(topics)} topics for {country}")
-
-            except Exception as e:
-                logger.error(f"Error fetching trends for {country}: {e}", exc_info=True)
-                continue
+        # Fetch trending signals using unified service
+        # Note: SignalsService has its own cache (5-min TTL) for raw signals
+        # This endpoint also caches the final hexmap (after H3 conversion & k-ring smoothing)
+        signals_service = get_signals_service()
+        trends_by_country = await signals_service.fetch_trending_signals(
+            countries=country_list,
+            time_window=time_window,
+            use_cache=True,
+        )
 
         if not trends_by_country:
             raise HTTPException(
