@@ -75,6 +75,13 @@ export const useMapStore = create<MapState>((set, get) => ({
 
   setSelectedCountries: (countries) => {
     set({ selectedCountries: countries })
+    // Refresh data when country selection changes
+    const { viewMode } = get()
+    if (viewMode === 'classic') {
+      get().fetchFlowsData()
+    } else {
+      get().fetchHexmapData()
+    }
   },
 
   toggleCountry: (country) => {
@@ -83,6 +90,13 @@ export const useMapStore = create<MapState>((set, get) => ({
       ? selectedCountries.filter((c) => c !== country)
       : [...selectedCountries, country]
     set({ selectedCountries: newSelection })
+    // Refresh data when country selection changes
+    const { viewMode } = get()
+    if (viewMode === 'classic') {
+      get().fetchFlowsData()
+    } else {
+      get().fetchHexmapData()
+    }
   },
 
   setAutoRefresh: (enabled) => {
@@ -105,13 +119,21 @@ export const useMapStore = create<MapState>((set, get) => ({
     set({ loading: true, error: null })
 
     try {
+      const { selectedCountries, timeWindow } = get()
+
+      // Build query parameters
+      const params: any = {
+        time_window: timeWindow,
+        threshold: 0.5
+      }
+
+      // Only include countries parameter if specific countries are selected
+      if (selectedCountries.length > 0) {
+        params.countries = selectedCountries.join(',')
+      }
+
       // Fetch real data from backend API
-      const response = await api.get('/v1/flows', {
-        params: {
-          time_window: get().timeWindow,
-          threshold: 0.5
-        }
-      })
+      const response = await api.get('/v1/flows', { params })
       const data = response.data
 
       set({
@@ -132,14 +154,22 @@ export const useMapStore = create<MapState>((set, get) => ({
     set({ loading: true, error: null })
 
     try {
+      const { selectedCountries, timeWindow } = get()
+
+      // Build query parameters
+      const params: any = {
+        time_window: timeWindow,
+        zoom: 2, // Default zoom level
+        k_ring: 2 // Default smoothing
+      }
+
+      // Only include countries parameter if specific countries are selected
+      if (selectedCountries.length > 0) {
+        params.countries = selectedCountries.join(',')
+      }
+
       // Fetch hexmap data from backend API
-      const response = await api.get('/v1/hexmap', {
-        params: {
-          time_window: get().timeWindow,
-          zoom: 2, // Default zoom level
-          k_ring: 2 // Default smoothing
-        }
-      })
+      const response = await api.get('/v1/hexmap', { params })
       const data = response.data
 
       set({
