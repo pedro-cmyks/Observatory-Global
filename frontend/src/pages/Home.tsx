@@ -3,6 +3,7 @@ import { getTopTrends, healthCheck, Topic } from '../lib/api'
 import CountryPicker from '../components/CountryPicker'
 import TopicList from '../components/TopicList'
 import MapContainer from '../components/map/MapContainer'
+import ErrorBoundary from '../components/ErrorBoundary'
 
 const Home: React.FC = () => {
   const [country, setCountry] = useState('CO')
@@ -71,7 +72,9 @@ const Home: React.FC = () => {
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
         {/* Interactive Map */}
         <div style={{ marginBottom: '2rem' }}>
-          <MapContainer />
+          <ErrorBoundary>
+            <MapContainer />
+          </ErrorBoundary>
         </div>
 
         {/* Controls */}
