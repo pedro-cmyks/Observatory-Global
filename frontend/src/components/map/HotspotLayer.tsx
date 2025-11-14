@@ -24,6 +24,25 @@ const getSizeFromTopicCount = (count: number): number => {
 const HotspotMarker: React.FC<{ hotspot: CountryHotspot }> = ({ hotspot }) => {
   const { setSelectedHotspot, selectedCountries } = useMapStore()
 
+  // Validate coordinates before rendering
+  const hasValidCoordinates =
+    typeof hotspot.latitude === 'number' &&
+    typeof hotspot.longitude === 'number' &&
+    isFinite(hotspot.latitude) &&
+    isFinite(hotspot.longitude) &&
+    hotspot.latitude >= -90 &&
+    hotspot.latitude <= 90 &&
+    hotspot.longitude >= -180 &&
+    hotspot.longitude <= 180
+
+  if (!hasValidCoordinates) {
+    console.warn(`Invalid coordinates for hotspot ${hotspot.country_code}:`, {
+      lat: hotspot.latitude,
+      lng: hotspot.longitude,
+    })
+    return null
+  }
+
   const size = getSizeFromTopicCount(hotspot.topic_count)
   const color = getColorFromIntensity(hotspot.intensity)
 
