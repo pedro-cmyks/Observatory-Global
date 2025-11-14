@@ -237,7 +237,7 @@ async def get_hexmap(
 
         # Convert hotspots to hexmap format
         hotspot_data = [
-            {"country": h.country, "intensity": h.intensity}
+            {"country_code": h.country_code, "intensity": h.intensity}
             for h in hotspots
         ]
 

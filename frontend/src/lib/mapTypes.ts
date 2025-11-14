@@ -32,6 +32,28 @@ export interface FlowsResponse {
 
 export type TimeWindow = '1h' | '6h' | '12h' | '24h'
 
+export type ViewMode = 'classic' | 'heatmap'
+
+export interface HexCell {
+  h3_index: string
+  intensity: number // 0-1 scale
+}
+
+export interface HexmapMetadata {
+  resolution: number
+  k_ring: number
+  hex_count: number
+  countries_analyzed: string[]
+  cache_hit: boolean
+  time_window: string
+}
+
+export interface HexmapResponse {
+  hexes: HexCell[]
+  metadata: HexmapMetadata
+  generated_at: string
+}
+
 export interface MapFilters {
   timeWindow: TimeWindow
   countries: string[]

@@ -1,10 +1,11 @@
 import { create } from 'zustand'
-import { FlowsResponse, TimeWindow, CountryHotspot } from '../lib/mapTypes'
+import { FlowsResponse, HexmapResponse, TimeWindow, ViewMode, CountryHotspot } from '../lib/mapTypes'
 import api from '../lib/api'
 
 interface MapState {
   // Data
   flowsData: FlowsResponse | null
+  hexmapData: HexmapResponse | null
   loading: boolean
   error: string | null
   lastUpdate: Date | null
@@ -16,10 +17,12 @@ interface MapState {
   refreshInterval: number
 
   // UI State
+  viewMode: ViewMode
   selectedHotspot: CountryHotspot | null
   hoveredFlow: string | null // "FROM_TO" format
 
   // Actions
+  setViewMode: (mode: ViewMode) => void
   setTimeWindow: (window: TimeWindow) => void
   setSelectedCountries: (countries: string[]) => void
   toggleCountry: (country: string) => void
@@ -28,12 +31,14 @@ interface MapState {
   setSelectedHotspot: (hotspot: CountryHotspot | null) => void
   setHoveredFlow: (flow: string | null) => void
   fetchFlowsData: () => Promise<void>
+  fetchHexmapData: () => Promise<void>
   clearError: () => void
 }
 
 export const useMapStore = create<MapState>((set, get) => ({
   // Initial state
   flowsData: null,
+  hexmapData: null,
   loading: false,
   error: null,
   lastUpdate: null,
@@ -43,13 +48,29 @@ export const useMapStore = create<MapState>((set, get) => ({
   autoRefresh: true,
   refreshInterval: 5 * 60 * 1000, // 5 minutes
 
+  viewMode: 'classic',
   selectedHotspot: null,
   hoveredFlow: null,
 
   // Actions
+  setViewMode: (mode) => {
+    set({ viewMode: mode })
+    // Fetch appropriate data for the new mode
+    if (mode === 'classic') {
+      get().fetchFlowsData()
+    } else {
+      get().fetchHexmapData()
+    }
+  },
+
   setTimeWindow: (window) => {
     set({ timeWindow: window })
-    get().fetchFlowsData()
+    const { viewMode } = get()
+    if (viewMode === 'classic') {
+      get().fetchFlowsData()
+    } else {
+      get().fetchHexmapData()
+    }
   },
 
   setSelectedCountries: (countries) => {
@@ -102,6 +123,34 @@ export const useMapStore = create<MapState>((set, get) => ({
       console.error('Error fetching flows data:', err)
       set({
         error: err.message || 'Failed to fetch map data',
+        loading: false,
+      })
+    }
+  },
+
+  fetchHexmapData: async () => {
+    set({ loading: true, error: null })
+
+    try {
+      // Fetch hexmap data from backend API
+      const response = await api.get('/v1/hexmap', {
+        params: {
+          time_window: get().timeWindow,
+          zoom: 2, // Default zoom level
+          k_ring: 2 // Default smoothing
+        }
+      })
+      const data = response.data
+
+      set({
+        hexmapData: data,
+        loading: false,
+        lastUpdate: new Date(),
+      })
+    } catch (err: any) {
+      console.error('Error fetching hexmap data:', err)
+      set({
+        error: err.message || 'Failed to fetch hexmap data',
         loading: false,
       })
     }

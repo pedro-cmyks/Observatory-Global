@@ -75,7 +75,7 @@ class HexmapGenerator:
         Generate hexagonal heatmap from country hotspot data.
 
         Args:
-            hotspots: List of {country: str, intensity: float}
+            hotspots: List of {country_code: str, intensity: float}
             resolution: H3 resolution (if None, uses default)
             k_ring: K-ring radius for smoothing (0 = no smoothing)
             normalize: Whether to normalize intensities to [0, 1]
@@ -135,7 +135,7 @@ class HexmapGenerator:
         Future iterations can expand this to polyfill entire country geometries.
 
         Args:
-            hotspots: List of {country: str, intensity: float}
+            hotspots: List of {country_code: str, intensity: float}
             resolution: H3 resolution
 
         Returns:
@@ -144,7 +144,7 @@ class HexmapGenerator:
         hex_intensities = {}
 
         for hotspot in hotspots:
-            country = hotspot.get('country')
+            country = hotspot.get('country_code')
             intensity = hotspot.get('intensity', 0.0)
 
             # Get country centroid
