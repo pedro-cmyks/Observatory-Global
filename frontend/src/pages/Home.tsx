@@ -1,15 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { getTopTrends, healthCheck, Topic } from '../lib/api'
-import CountryPicker from '../components/CountryPicker'
-import TopicList from '../components/TopicList'
+import { healthCheck } from '../lib/api'
 import MapContainer from '../components/map/MapContainer'
+import HotspotsTable from '../components/map/HotspotsTable'
 import ErrorBoundary from '../components/ErrorBoundary'
 
 const Home: React.FC = () => {
-  const [country, setCountry] = useState('CO')
-  const [topics, setTopics] = useState<Topic[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [apiStatus, setApiStatus] = useState<'checking' | 'ok' | 'error'>('checking')
 
   // Check API health on mount
@@ -25,21 +20,6 @@ const Home: React.FC = () => {
     }
     checkHealth()
   }, [])
-
-  const loadTrends = async () => {
-    setLoading(true)
-    setError(null)
-
-    try {
-      const data = await getTopTrends(country, 10)
-      setTopics(data.topics)
-    } catch (err: any) {
-      console.error('Error loading trends:', err)
-      setError(err.message || 'Failed to load trends')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
@@ -77,7 +57,7 @@ const Home: React.FC = () => {
           </ErrorBoundary>
         </div>
 
-        {/* Controls */}
+        {/* Country Hotspots Table - Synchronized with Map */}
         <div
           style={{
             backgroundColor: 'white',
@@ -87,59 +67,8 @@ const Home: React.FC = () => {
             boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
           }}
         >
-          <h2 style={{ marginTop: 0, color: '#213547' }}>Explore Trends</h2>
-
-          <CountryPicker
-            selectedCountry={country}
-            onCountryChange={setCountry}
-            disabled={loading}
-          />
-
-          <button
-            onClick={loadTrends}
-            disabled={loading || apiStatus !== 'ok'}
-            style={{
-              padding: '0.75rem 2rem',
-              fontSize: '1rem',
-              fontWeight: 600,
-              backgroundColor: loading ? '#ccc' : '#646cff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {loading ? 'Loading...' : 'Load Trends'}
-          </button>
-
-          {error && (
-            <div
-              style={{
-                marginTop: '1rem',
-                padding: '1rem',
-                backgroundColor: '#fee',
-                border: '1px solid #fcc',
-                borderRadius: '8px',
-                color: '#c00',
-              }}
-            >
-              <strong>Error:</strong> {error}
-            </div>
-          )}
+          <HotspotsTable />
         </div>
-
-        {/* Topics */}
-        {topics.length > 0 && (
-          <div
-            style={{
-              backgroundColor: '#f9f9f9',
-              padding: '2rem',
-              borderRadius: '8px',
-            }}
-          >
-            <TopicList topics={topics} />
-          </div>
-        )}
       </main>
 
       {/* Footer */}
