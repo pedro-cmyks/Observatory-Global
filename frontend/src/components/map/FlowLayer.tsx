@@ -5,7 +5,31 @@ import * as turf from '@turf/turf'
 import { useMapStore } from '../../store/mapStore'
 import { Flow } from '../../lib/mapTypes'
 
+const validateCoordinates = (coords: number[] | undefined): coords is [number, number] => {
+  return (
+    Array.isArray(coords) &&
+    coords.length === 2 &&
+    typeof coords[0] === 'number' &&
+    typeof coords[1] === 'number' &&
+    isFinite(coords[0]) &&
+    isFinite(coords[1]) &&
+    coords[1] >= -90 &&
+    coords[1] <= 90 &&
+    coords[0] >= -180 &&
+    coords[0] <= 180
+  )
+}
+
 const createArcFeature = (flow: Flow) => {
+  // Validate coordinates before creating arc
+  if (!validateCoordinates(flow.from_coords) || !validateCoordinates(flow.to_coords)) {
+    console.warn(`Invalid coordinates for flow ${flow.from_country} -> ${flow.to_country}:`, {
+      from_coords: flow.from_coords,
+      to_coords: flow.to_coords,
+    })
+    return null
+  }
+
   const from = turf.point(flow.from_coords)
   const to = turf.point(flow.to_coords)
 
@@ -47,7 +71,7 @@ const FlowLayer: React.FC = () => {
       )
     }
 
-    const features = flows.map(createArcFeature)
+    const features = flows.map(createArcFeature).filter((f): f is NonNullable<typeof f> => f !== null)
 
     return {
       type: 'FeatureCollection' as const,

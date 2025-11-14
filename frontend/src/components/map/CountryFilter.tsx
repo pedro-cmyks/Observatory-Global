@@ -8,11 +8,17 @@ const CountryFilter: React.FC = () => {
   const countries = useMemo(() => {
     if (!flowsData?.hotspots) return []
     return flowsData.hotspots
+      .filter((h) => h.country_code && h.country_name) // Filter out invalid entries
       .map((h) => ({
         code: h.country_code,
         name: h.country_name,
       }))
-      .sort((a, b) => a.name.localeCompare(b.name))
+      .sort((a, b) => {
+        // Defensive sorting with null checks
+        const nameA = a.name || ''
+        const nameB = b.name || ''
+        return nameA.localeCompare(nameB)
+      })
   }, [flowsData])
 
   const handleSelectAll = () => {
