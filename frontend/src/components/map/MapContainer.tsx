@@ -3,6 +3,8 @@ import Map, { MapRef, NavigationControl } from 'react-map-gl'
 import { useMapStore } from '../../store/mapStore'
 import HotspotLayer from './HotspotLayer'
 import FlowLayer from './FlowLayer'
+import HexagonHeatmapLayer from './HexagonHeatmapLayer'
+import ViewModeToggle from './ViewModeToggle'
 import CountrySidebar from './CountrySidebar'
 import TimeWindowSelector from './TimeWindowSelector'
 import CountryFilter from './CountryFilter'
@@ -14,23 +16,40 @@ const MAPBOX_TOKEN = 'pk.eyJ1IjoicHZpbGxlZyIsImEiOiJjbWh3Nnptb28wNDB2Mm9weTFqdXZ
 
 const MapContainer: React.FC = () => {
   const mapRef = useRef<MapRef>(null)
-  const { fetchFlowsData, autoRefresh, refreshInterval } = useMapStore()
+  const { fetchFlowsData, fetchHexmapData, autoRefresh, refreshInterval, viewMode, setMapZoom } = useMapStore()
 
   // Initial data fetch
   useEffect(() => {
-    fetchFlowsData()
-  }, [fetchFlowsData])
+    if (viewMode === 'heatmap') {
+      fetchHexmapData()
+    } else {
+      fetchFlowsData()
+    }
+  }, [fetchFlowsData, fetchHexmapData, viewMode])
 
   // Auto-refresh
   useEffect(() => {
     if (!autoRefresh) return
 
     const interval = setInterval(() => {
-      fetchFlowsData()
+      if (viewMode === 'heatmap') {
+        fetchHexmapData()
+      } else {
+        fetchFlowsData()
+      }
     }, refreshInterval)
 
     return () => clearInterval(interval)
-  }, [autoRefresh, refreshInterval, fetchFlowsData])
+  }, [autoRefresh, refreshInterval, fetchFlowsData, fetchHexmapData, viewMode])
+
+  // Track zoom changes
+  const handleMoveEnd = () => {
+    if (mapRef.current) {
+      const map = mapRef.current.getMap()
+      const zoom = map.getZoom()
+      setMapZoom(zoom)
+    }
+  }
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '600px' }}>
@@ -45,11 +64,21 @@ const MapContainer: React.FC = () => {
         style={{ width: '100%', height: '100%' }}
         mapStyle="mapbox://styles/mapbox/dark-v11"
         mapboxAccessToken={MAPBOX_TOKEN}
+        onMoveEnd={handleMoveEnd}
       >
         <NavigationControl position="top-right" />
-        <FlowLayer />
-        <HotspotLayer />
+
+        {/* Conditional rendering based on view mode */}
+        {viewMode === 'classic' && (
+          <>
+            <FlowLayer />
+            <HotspotLayer />
+          </>
+        )}
       </Map>
+
+      {/* Hexagon Heatmap Layer (deck.gl overlay) */}
+      {viewMode === 'heatmap' && <HexagonHeatmapLayer />}
 
       {/* Controls - Top Left */}
       <div
@@ -63,6 +92,7 @@ const MapContainer: React.FC = () => {
           zIndex: 10,
         }}
       >
+        <ViewModeToggle />
         <TimeWindowSelector />
         <CountryFilter />
         <AutoRefreshControl />
