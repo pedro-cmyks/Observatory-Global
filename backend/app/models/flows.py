@@ -16,7 +16,10 @@ class TopicSummary(BaseModel):
 class Hotspot(BaseModel):
     """A country with high topic intensity."""
 
-    country: str = Field(..., description="ISO 3166-1 alpha-2 country code")
+    country_code: str = Field(..., description="ISO 3166-1 alpha-2 country code")
+    country_name: str = Field(..., description="Human-readable country name")
+    latitude: float = Field(..., description="Country centroid latitude", ge=-90.0, le=90.0)
+    longitude: float = Field(..., description="Country centroid longitude", ge=-180.0, le=180.0)
     intensity: float = Field(
         ...,
         description="Hotspot intensity weighted by volume, velocity, and confidence [0,1]",
@@ -24,6 +27,12 @@ class Hotspot(BaseModel):
         le=1.0,
     )
     topic_count: int = Field(..., description="Number of trending topics", ge=0)
+    confidence: float = Field(
+        ...,
+        description="Average confidence score of topics",
+        ge=0.0,
+        le=1.0,
+    )
     top_topics: List[TopicSummary] = Field(
         default_factory=list,
         description="Top topics contributing to the hotspot",
@@ -32,9 +41,13 @@ class Hotspot(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "country": "US",
+                "country_code": "US",
+                "country_name": "United States",
+                "latitude": 37.09,
+                "longitude": -95.71,
                 "intensity": 0.85,
                 "topic_count": 47,
+                "confidence": 0.89,
                 "top_topics": [
                     {"label": "election results", "count": 123, "confidence": 0.92},
                     {"label": "climate summit", "count": 89, "confidence": 0.88},
@@ -54,20 +67,32 @@ class Flow(BaseModel):
         ge=0.0,
         le=1.0,
     )
-    similarity_score: float = Field(
+    similarity: float = Field(
         ...,
         description="TF-IDF cosine similarity between topics [0,1]",
         ge=0.0,
         le=1.0,
     )
-    time_delta_hours: float = Field(
+    time_delta_minutes: float = Field(
         ...,
-        description="Time difference between topic appearances (hours)",
+        description="Time difference between topic appearances (minutes)",
         ge=0.0,
     )
     shared_topics: List[str] = Field(
         default_factory=list,
         description="Topics shared between countries",
+    )
+    from_coords: List[float] = Field(
+        ...,
+        description="Source country coordinates [longitude, latitude]",
+        min_length=2,
+        max_length=2,
+    )
+    to_coords: List[float] = Field(
+        ...,
+        description="Destination country coordinates [longitude, latitude]",
+        min_length=2,
+        max_length=2,
     )
 
     class Config:
@@ -76,9 +101,11 @@ class Flow(BaseModel):
                 "from_country": "US",
                 "to_country": "CO",
                 "heat": 0.72,
-                "similarity_score": 0.85,
-                "time_delta_hours": 3.0,
+                "similarity": 0.85,
+                "time_delta_minutes": 180.0,
                 "shared_topics": ["election fraud claims", "voting irregularities"],
+                "from_coords": [-95.71, 37.09],
+                "to_coords": [-74.30, 4.57],
             }
         }
 

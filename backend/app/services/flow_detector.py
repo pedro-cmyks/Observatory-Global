@@ -15,6 +15,28 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+# Country metadata: ISO code -> (name, latitude, longitude)
+COUNTRY_METADATA = {
+    'US': ('United States', 37.0902, -95.7129),
+    'CO': ('Colombia', 4.5709, -74.2973),
+    'BR': ('Brazil', -14.2350, -51.9253),
+    'MX': ('Mexico', 23.6345, -102.5528),
+    'AR': ('Argentina', -38.4161, -63.6167),
+    'GB': ('United Kingdom', 55.3781, -3.4360),
+    'FR': ('France', 46.2276, 2.2137),
+    'DE': ('Germany', 51.1657, 10.4515),
+    'ES': ('Spain', 40.4637, -3.7492),
+    'IT': ('Italy', 41.8719, 12.5674),
+    'RU': ('Russia', 61.5240, 105.3188),
+    'CN': ('China', 35.8617, 104.1954),
+    'IN': ('India', 20.5937, 78.9629),
+    'JP': ('Japan', 36.2048, 138.2529),
+    'AU': ('Australia', -25.2744, 133.7751),
+    'CA': ('Canada', 56.1304, -106.3468),
+    'ZA': ('South Africa', -30.5595, 22.9375),
+}
+
+
 class FlowDetector:
     """Detects information flows between countries using TF-IDF and time decay."""
 
@@ -209,6 +231,17 @@ class FlowDetector:
 
             intensity = self.calculate_hotspot_intensity(topics)
 
+            # Get country metadata
+            metadata = COUNTRY_METADATA.get(country)
+            if not metadata:
+                logger.warning(f"No metadata for country {country}, skipping")
+                continue
+
+            country_name, latitude, longitude = metadata
+
+            # Calculate average confidence
+            avg_confidence = sum(t.confidence for t in topics) / len(topics) if topics else 0.0
+
             # Get top 5 topics for hotspot display
             top_topics_sorted = sorted(topics, key=lambda t: t.count, reverse=True)[:5]
             top_topics = [
@@ -221,9 +254,13 @@ class FlowDetector:
             ]
 
             hotspot = Hotspot(
-                country=country,
+                country_code=country,
+                country_name=country_name,
+                latitude=latitude,
+                longitude=longitude,
                 intensity=intensity,
                 topic_count=len(topics),
+                confidence=avg_confidence,
                 top_topics=top_topics,
             )
             hotspots.append(hotspot)
@@ -277,13 +314,26 @@ class FlowDetector:
                 # In production, would use actual similarity matrix
                 shared_topics = self._find_shared_topics(labels_a, labels_b, limit=3)
 
+                # Get coordinates for both countries
+                from_metadata = COUNTRY_METADATA.get(from_country)
+                to_metadata = COUNTRY_METADATA.get(to_country)
+
+                if not from_metadata or not to_metadata:
+                    logger.warning(f"Missing metadata for flow {from_country} -> {to_country}, skipping")
+                    continue
+
+                from_coords = [from_metadata[2], from_metadata[1]]  # [lng, lat]
+                to_coords = [to_metadata[2], to_metadata[1]]  # [lng, lat]
+
                 flow = Flow(
                     from_country=from_country,
                     to_country=to_country,
                     heat=heat,
-                    similarity_score=similarity,
-                    time_delta_hours=time_delta,
+                    similarity=similarity,
+                    time_delta_minutes=time_delta * 60.0,  # Convert hours to minutes
                     shared_topics=shared_topics,
+                    from_coords=from_coords,
+                    to_coords=to_coords,
                 )
                 flows.append(flow)
 
