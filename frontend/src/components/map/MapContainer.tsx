@@ -1,8 +1,11 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import Map, { MapRef, NavigationControl } from 'react-map-gl'
+import type { ViewState } from 'react-map-gl'
 import { useMapStore } from '../../store/mapStore'
 import HotspotLayer from './HotspotLayer'
 import FlowLayer from './FlowLayer'
+import HexagonHeatmapLayer from './HexagonHeatmapLayer'
+import ViewModeToggle from './ViewModeToggle'
 import CountrySidebar from './CountrySidebar'
 import TimeWindowSelector from './TimeWindowSelector'
 import CountryFilter from './CountryFilter'
@@ -14,42 +17,71 @@ const MAPBOX_TOKEN = 'pk.eyJ1IjoicHZpbGxlZyIsImEiOiJjbWh3Nnptb28wNDB2Mm9weTFqdXZ
 
 const MapContainer: React.FC = () => {
   const mapRef = useRef<MapRef>(null)
-  const { fetchFlowsData, autoRefresh, refreshInterval } = useMapStore()
+  const { viewMode, fetchFlowsData, fetchHexmapData, autoRefresh, refreshInterval } = useMapStore()
+
+  // Track map view state for DeckGL overlay
+  const [viewState, setViewState] = useState<ViewState>({
+    longitude: 0,
+    latitude: 20,
+    zoom: 2,
+    pitch: 0,
+    bearing: 0,
+    padding: { top: 0, bottom: 0, left: 0, right: 0 },
+  })
+
+  // Fetch data based on current view mode
+  const fetchData = () => {
+    if (viewMode === 'classic') {
+      fetchFlowsData()
+    } else {
+      fetchHexmapData()
+    }
+  }
 
   // Initial data fetch
   useEffect(() => {
-    fetchFlowsData()
-  }, [fetchFlowsData])
+    fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode])
 
   // Auto-refresh
   useEffect(() => {
     if (!autoRefresh) return
 
     const interval = setInterval(() => {
-      fetchFlowsData()
+      fetchData()
     }, refreshInterval)
 
     return () => clearInterval(interval)
-  }, [autoRefresh, refreshInterval, fetchFlowsData])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRefresh, refreshInterval, viewMode])
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '600px' }}>
       {/* Map */}
       <Map
         ref={mapRef}
-        initialViewState={{
-          longitude: 0,
-          latitude: 20,
-          zoom: 2,
-        }}
+        {...viewState}
+        onMove={(evt) => setViewState(evt.viewState)}
         style={{ width: '100%', height: '100%' }}
         mapStyle="mapbox://styles/mapbox/dark-v11"
         mapboxAccessToken={MAPBOX_TOKEN}
       >
         <NavigationControl position="top-right" />
-        <FlowLayer />
-        <HotspotLayer />
+
+        {/* Classic View Layers */}
+        {viewMode === 'classic' && (
+          <>
+            <FlowLayer />
+            <HotspotLayer />
+          </>
+        )}
       </Map>
+
+      {/* Heatmap View Overlay (DeckGL) */}
+      {viewMode === 'heatmap' && (
+        <HexagonHeatmapLayer viewState={viewState} />
+      )}
 
       {/* Controls - Top Left */}
       <div
@@ -63,6 +95,7 @@ const MapContainer: React.FC = () => {
           zIndex: 10,
         }}
       >
+        <ViewModeToggle />
         <TimeWindowSelector />
         <CountryFilter />
         <AutoRefreshControl />

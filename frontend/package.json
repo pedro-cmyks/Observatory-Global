@@ -20,7 +20,11 @@
     "@turf/turf": "^6.5.0",
     "framer-motion": "^11.0.0",
     "zustand": "^4.5.0",
-    "date-fns": "^3.0.0"
+    "date-fns": "^3.0.0",
+    "deck.gl": "^8.9.0",
+    "@deck.gl/layers": "^8.9.0",
+    "@deck.gl/geo-layers": "^8.9.0",
+    "h3-js": "^4.1.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.48",
