@@ -35,6 +35,12 @@ const HexagonHeatmapLayer: React.FC<HexagonHeatmapLayerProps> = ({ viewState }) 
     // DEBUG: Log first few H3 indices
     console.log('Sample H3 indices:', hexmapData.hexes.slice(0, 3).map(h => h.h3_index))
 
+    // DEBUG: Test accessor functions
+    const testHex = hexmapData.hexes[0]
+    console.log('🔬 Testing accessor on first hex:', testHex)
+    console.log('  getHexagon result:', testHex.h3_index)
+    console.log('  getFillColor result:', testHex.intensity > 0.7 ? [255, 0, 0, 255] : [0, 255, 0, 255])
+
     const layer = new H3HexagonLayer({
       id: 'h3-hexagon-layer',
       data: hexmapData.hexes,
@@ -44,17 +50,28 @@ const HexagonHeatmapLayer: React.FC<HexagonHeatmapLayerProps> = ({ viewState }) 
       extruded: false,
       // Ensure proper coordinate system for globe wrapping
       coordinateSystem: 0, // COORDINATE_SYSTEM.LNGLAT
-      getHexagon: (d: HexCell) => d.h3_index,
+      getHexagon: (d: HexCell) => {
+        const hex = d.h3_index
+        // DEBUG: Log first few hexagon accesses
+        if (hexmapData.hexes.indexOf(d) < 3) {
+          console.log(`  Accessor called for hex ${hexmapData.hexes.indexOf(d)}: ${hex}`)
+        }
+        return hex
+      },
       getFillColor: (d: HexCell) => {
         // DEBUG: Use very bright, solid colors with full opacity for testing
         const intensity = d.intensity
-        if (intensity > 0.7) {
-          return [255, 0, 0, 255] // Bright red, full opacity
-        } else if (intensity > 0.4) {
-          return [255, 255, 0, 255] // Bright yellow, full opacity
-        } else {
-          return [0, 255, 0, 255] // Bright green, full opacity
+        const color = intensity > 0.7
+          ? [255, 0, 0, 255]  // Bright red, full opacity
+          : intensity > 0.4
+          ? [255, 255, 0, 255]  // Bright yellow, full opacity
+          : [0, 255, 0, 255]  // Bright green, full opacity
+
+        // DEBUG: Log first few color calculations
+        if (hexmapData.hexes.indexOf(d) < 3) {
+          console.log(`  Color for hex ${hexmapData.hexes.indexOf(d)} (intensity=${intensity}):`, color)
         }
+        return color
       },
       getElevation: 0,
       elevationScale: 0,
@@ -69,13 +86,37 @@ const HexagonHeatmapLayer: React.FC<HexagonHeatmapLayerProps> = ({ viewState }) 
     return [layer]
   }, [hexmapData])
 
-  // DEBUG: Log render
+  // DEBUG: Log render and check DOM
   useEffect(() => {
     console.log('🎨 DeckGL rendering with', layers.length, 'layers')
     if (layers.length > 0) {
       console.log('Layer IDs:', layers.map(l => l.id))
     }
+
+    // Check if DeckGL canvas exists in DOM
+    setTimeout(() => {
+      const deckCanvas = document.querySelector('canvas[id^="deckgl"]') as HTMLCanvasElement | null
+      console.log('🖼️ DeckGL canvas found:', !!deckCanvas)
+      if (deckCanvas) {
+        console.log('  Canvas dimensions:', {
+          width: deckCanvas.width,
+          height: deckCanvas.height,
+          style: deckCanvas.style.cssText
+        })
+      }
+    }, 100)
   }, [layers])
+
+  // DEBUG: Log viewState details
+  useEffect(() => {
+    console.log('📍 ViewState update:', {
+      longitude: viewState.longitude,
+      latitude: viewState.latitude,
+      zoom: viewState.zoom,
+      pitch: viewState.pitch,
+      bearing: viewState.bearing
+    })
+  }, [viewState])
 
   return (
     <>
@@ -99,6 +140,8 @@ const HexagonHeatmapLayer: React.FC<HexagonHeatmapLayerProps> = ({ viewState }) 
         Hexes: {hexmapData?.hexes?.length ?? 0}
         <br />
         Layers: {layers.length}
+        <br />
+        ViewState: {viewState.zoom.toFixed(1)} @ ({viewState.latitude.toFixed(1)}, {viewState.longitude.toFixed(1)})
       </div>
 
       <DeckGL
@@ -118,6 +161,8 @@ const HexagonHeatmapLayer: React.FC<HexagonHeatmapLayerProps> = ({ viewState }) 
           transform: 'translateZ(0)',
           willChange: 'transform',
           zIndex: 1000, // DEBUG: Force high z-index
+          // DEBUG: Add semi-transparent background to verify canvas is visible
+          backgroundColor: 'rgba(255, 0, 255, 0.2)', // Magenta tint
         }}
       />
     </>

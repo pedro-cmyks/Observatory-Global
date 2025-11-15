@@ -41,6 +41,29 @@ const MapContainer: React.FC = () => {
   // Initial data fetch
   useEffect(() => {
     fetchData()
+
+    // DEBUG: Pan to USA when switching to heatmap (hexagons are located there)
+    if (viewMode === 'heatmap') {
+      console.log('🗺️ Panning to USA where hexagons are located...')
+      setViewState({
+        longitude: -95,
+        latitude: 36,
+        zoom: 4,
+        pitch: 0,
+        bearing: 0,
+        padding: { top: 0, bottom: 0, left: 0, right: 0 },
+      })
+    } else {
+      // Reset to global view for classic mode
+      setViewState({
+        longitude: 0,
+        latitude: 20,
+        zoom: 2,
+        pitch: 0,
+        bearing: 0,
+        padding: { top: 0, bottom: 0, left: 0, right: 0 },
+      })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode])
 
