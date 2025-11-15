@@ -3,22 +3,27 @@ import { useEffect } from 'react'
 // @ts-ignore - deck.gl/mapbox types not available
 import { MapboxOverlay } from '@deck.gl/mapbox'
 
-export function DeckGLOverlay(props: any) {
+interface DeckGLOverlayProps {
+  layers: any[]
+}
+
+export function DeckGLOverlay({ layers }: DeckGLOverlayProps) {
   const overlay = useControl<any>(
     () => new MapboxOverlay({
       interleaved: true,
-      ...props
     })
   )
 
-  // Update props when they change
-  // useControl returns a wrapper with an 'implementation' property
+  // Update layers when they change
+  // Only depend on layers, not the entire props object
   useEffect(() => {
-    const impl = overlay?.implementation || overlay
+    if (!overlay) return
+
+    const impl = overlay.implementation || overlay
     if (impl && typeof impl.setProps === 'function') {
-      impl.setProps(props)
+      impl.setProps({ layers })
     }
-  }, [overlay, props])
+  }, [overlay, layers])
 
   return null
 }
