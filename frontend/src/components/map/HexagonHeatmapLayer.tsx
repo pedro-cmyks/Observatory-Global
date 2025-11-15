@@ -4,6 +4,8 @@ import { useMapStore } from '../../store/mapStore'
 import DeckGL from '@deck.gl/react'
 // @ts-ignore - deck.gl types not available
 import { H3HexagonLayer } from '@deck.gl/geo-layers'
+// @ts-ignore - deck.gl types not available
+import { ScatterplotLayer } from '@deck.gl/layers'
 import type { ViewState } from 'react-map-gl'
 import type { HexCell } from '../../lib/mapTypes'
 
@@ -40,6 +42,28 @@ const HexagonHeatmapLayer: React.FC<HexagonHeatmapLayerProps> = ({ viewState }) 
     console.log('🔬 Testing accessor on first hex:', testHex)
     console.log('  getHexagon result:', testHex.h3_index)
     console.log('  getFillColor result:', testHex.intensity > 0.7 ? [255, 0, 0, 255] : [0, 255, 0, 255])
+
+    // DEBUG: Try ScatterplotLayer instead to test if coordinates work
+    // Import h3-js dynamically
+    console.log('🧪 TESTING: Using ScatterplotLayer instead of H3HexagonLayer')
+
+    const testLayer = new ScatterplotLayer({
+      id: 'test-scatterplot',
+      data: hexmapData.hexes.slice(0, 10), // Just first 10 for testing
+      getPosition: (d: HexCell) => {
+        // We'll use approximate center of USA for now
+        const index = hexmapData.hexes.indexOf(d)
+        const lon = -95 + (Math.random() - 0.5) * 10
+        const lat = 36 + (Math.random() - 0.5) * 10
+        console.log(`Test point ${index}: [${lon}, ${lat}]`)
+        return [lon, lat]
+      },
+      getFillColor: [255, 0, 0, 255], // Bright red
+      getRadius: 50000, // 50km radius (very large, impossible to miss)
+      radiusMinPixels: 20, // At least 20 pixels
+      radiusMaxPixels: 100,
+      pickable: true,
+    })
 
     const layer = new H3HexagonLayer({
       id: 'h3-hexagon-layer',
@@ -83,7 +107,10 @@ const HexagonHeatmapLayer: React.FC<HexagonHeatmapLayerProps> = ({ viewState }) 
     })
 
     console.log('Layer created:', layer)
-    return [layer]
+    console.log('Test layer created:', testLayer)
+
+    // Return BOTH layers for testing
+    return [testLayer, layer]
   }, [hexmapData])
 
   // DEBUG: Log render and check DOM
