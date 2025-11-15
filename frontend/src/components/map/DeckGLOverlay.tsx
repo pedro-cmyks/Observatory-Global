@@ -7,16 +7,10 @@ interface DeckGLOverlayProps {
 }
 
 export function DeckGLOverlay(props: DeckGLOverlayProps) {
-  const overlay = useControl(() => new MapboxOverlay({
-    interleaved: true
-  }))
+  const overlay = useControl(() => new MapboxOverlay(props))
 
-  // Guard against calling setProps before overlay is ready
   if (overlay && overlay.setProps) {
-    overlay.setProps({
-      ...props,
-      interleaved: true
-    })
+    overlay.setProps(props)
   }
 
   return null
