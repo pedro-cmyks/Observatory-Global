@@ -97,7 +97,7 @@ const MapContainer: React.FC = () => {
     const testLayer = new ScatterplotLayer({
       id: 'test-scatterplot',
       data: hexmapData.hexes.slice(0, 10),
-      getPosition: (d: HexCell) => {
+      getPosition: (d: HexCell): [number, number] => {
         const index = hexmapData.hexes.indexOf(d)
         const lon = -95 + (Math.random() - 0.5) * 10
         const lat = 36 + (Math.random() - 0.5) * 10
@@ -120,7 +120,7 @@ const MapContainer: React.FC = () => {
       filled: true,
       extruded: false,
       getHexagon: (d: HexCell) => d.h3_index,
-      getFillColor: (d: HexCell) => {
+      getFillColor: (d: HexCell): [number, number, number, number] => {
         const intensity = d.intensity
         return intensity > 0.7
           ? [255, 0, 0, 255]

@@ -82,10 +82,10 @@ const HexagonHeatmapLayer: React.FC<HexagonHeatmapLayerProps> = ({ viewState }) 
         }
         return hex
       },
-      getFillColor: (d: HexCell) => {
+      getFillColor: (d: HexCell): [number, number, number, number] => {
         // DEBUG: Use very bright, solid colors with full opacity for testing
         const intensity = d.intensity
-        const color = intensity > 0.7
+        const color: [number, number, number, number] = intensity > 0.7
           ? [255, 0, 0, 255]  // Bright red, full opacity
           : intensity > 0.4
           ? [255, 255, 0, 255]  // Bright yellow, full opacity
@@ -187,7 +187,7 @@ const HexagonHeatmapLayer: React.FC<HexagonHeatmapLayerProps> = ({ viewState }) 
           // Ensure layer wraps with globe
           transform: 'translateZ(0)',
           willChange: 'transform',
-          zIndex: 1000, // DEBUG: Force high z-index
+          zIndex: '1000', // DEBUG: Force high z-index
           // DEBUG: Add semi-transparent background to verify canvas is visible
           backgroundColor: 'rgba(255, 0, 255, 0.2)', // Magenta tint
         }}
