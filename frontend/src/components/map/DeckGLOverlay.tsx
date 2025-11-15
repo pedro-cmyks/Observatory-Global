@@ -7,13 +7,16 @@ export function DeckGLOverlay(props: any) {
   const overlay = useControl<any>(
     () => new MapboxOverlay({
       interleaved: true,
+      ...props
     })
   )
 
   // Update props when they change
+  // useControl returns a wrapper with an 'implementation' property
   useEffect(() => {
-    if (overlay && overlay.setProps) {
-      overlay.setProps(props)
+    const impl = overlay?.implementation || overlay
+    if (impl && typeof impl.setProps === 'function') {
+      impl.setProps(props)
     }
   }, [overlay, props])
 
