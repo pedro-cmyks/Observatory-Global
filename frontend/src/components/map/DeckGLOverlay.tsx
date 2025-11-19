@@ -9,7 +9,12 @@ interface DeckGLOverlayProps {
 
 export function DeckGLOverlay({ layers, interleaved = true }: DeckGLOverlayProps) {
   const overlay = useControl<MapboxOverlay>(
-    () => new MapboxOverlay({ layers, interleaved }),
+    () => new MapboxOverlay({
+      layers,
+      interleaved,
+      // Use Mapbox's projection for proper globe support
+      // This ensures layers stay attached to the globe during pitch/yaw rotations
+    }),
     { position: 'top-left' }
   )
 

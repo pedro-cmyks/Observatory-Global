@@ -6,7 +6,8 @@ import HotspotLayer from './HotspotLayer'
 import FlowLayer from './FlowLayer'
 import { DeckGLOverlay } from './DeckGLOverlay'
 // @ts-ignore
-import { H3HexagonLayer } from '@deck.gl/geo-layers'
+import { HeatmapLayer } from '@deck.gl/aggregation-layers'
+import { cellToLatLng } from 'h3-js'
 import type { HexCell } from '../../lib/mapTypes'
 import ViewModeToggle from './ViewModeToggle'
 import CountrySidebar from './CountrySidebar'
@@ -65,35 +66,35 @@ const MapContainer: React.FC = () => {
       return []
     }
 
-    // H3 hexagon layer with intensity-based colors
-    const hexLayer = new H3HexagonLayer({
-      id: 'h3-hexagon-layer',
-      data: hexmapData.hexes,
-      pickable: true,
-      wireframe: false,
-      filled: true,
-      extruded: false,
-      getHexagon: (d: HexCell) => d.h3_index,
-      getFillColor: (d: HexCell): [number, number, number, number] => {
-        const intensity = d.intensity
-        // Color gradient: green (low) -> yellow (medium) -> red (high)
-        if (intensity > 0.7) {
-          return [255, 50, 50, 200] // Red
-        } else if (intensity > 0.4) {
-          return [255, 200, 50, 180] // Yellow/Orange
-        } else {
-          return [50, 200, 100, 160] // Green
-        }
-      },
-      getElevation: 0,
-      elevationScale: 0,
-      opacity: 0.8,
-      updateTriggers: {
-        getFillColor: [hexmapData],
-      },
+    // Convert H3 hexes to point data for HeatmapLayer
+    const pointData = hexmapData.hexes.map((hex: HexCell) => {
+      const [lat, lng] = cellToLatLng(hex.h3_index)
+      return {
+        position: [lng, lat] as [number, number],
+        weight: hex.intensity
+      }
     })
 
-    return [hexLayer]
+    // HeatmapLayer with smooth Gaussian gradients
+    const heatmapLayer = new HeatmapLayer({
+      id: 'heatmap-layer',
+      data: pointData,
+      getPosition: (d: { position: [number, number]; weight: number }) => d.position,
+      getWeight: (d: { position: [number, number]; weight: number }) => d.weight,
+      aggregation: 'SUM',
+      radiusPixels: 60,
+      intensity: 1,
+      threshold: 0.05,
+      // Color gradient: green (low) -> yellow -> orange -> red (high)
+      colorRange: [
+        [0, 255, 0, 100],      // Green (low intensity)
+        [255, 255, 0, 150],    // Yellow
+        [255, 165, 0, 180],    // Orange
+        [255, 0, 0, 220]       // Red (high intensity)
+      ],
+    })
+
+    return [heatmapLayer]
   }, [viewMode, hexmapData])
 
   return (
@@ -106,6 +107,7 @@ const MapContainer: React.FC = () => {
         style={{ width: '100%', height: '100%' }}
         mapStyle="mapbox://styles/mapbox/dark-v11"
         mapboxAccessToken={MAPBOX_TOKEN}
+        projection={{ name: 'globe' }}
       >
         <NavigationControl position="top-right" />
 
