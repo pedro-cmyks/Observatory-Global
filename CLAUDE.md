@@ -283,6 +283,245 @@ Use `gemini -p` when:
 
 ---
 
+## AI Model Coordination: Claude, Gemini, and Codex
+
+This project uses three AI models in coordination, each with distinct strengths. Understanding when to use each model maximizes efficiency and output quality.
+
+### Claude's Role: Orchestration and Reasoning
+
+Claude serves as the **orchestrator and system-level reasoning engine**.
+
+**Primary Responsibilities:**
+- High-level design, architecture, and planning
+- Multi-agent coordination and task sequencing
+- Narrative analysis and data interpretation
+- Schema design and technical decisions
+- Complex reasoning requiring deep context
+- Documentation and specification writing
+
+**When to Use Claude:**
+- Starting a session and planning work
+- Designing database schemas or API architectures
+- Analyzing narrative patterns or drift detection algorithms
+- Making technical decisions with tradeoffs
+- Coordinating multiple workstreams
+- Writing ADRs or architectural documents
+
+**Example Commands:**
+```bash
+# Claude Code CLI for orchestration
+claude "Review the handoff document and create today's plan"
+claude "Design the PostgreSQL schema for GDELT signals"
+claude "Analyze how drift detection should work across geographic regions"
+```
+
+---
+
+### Gemini's Role: Large-Context Analysis
+
+Gemini excels at **analyzing entire codebases** through its massive context window.
+
+**Primary Responsibilities:**
+- Repo-wide code analysis and auditing
+- Finding patterns across multiple files
+- Verifying feature implementations
+- Comparing files and checking consistency
+- Architecture verification and integrity checks
+- Identifying code smells or security issues
+
+**When to Use Gemini:**
+- Analyzing directories with 100+ KB of code
+- Checking if a feature exists across the codebase
+- Auditing for security patterns or anti-patterns
+- Understanding project-wide architecture
+- Comparing implementations across files
+- Verifying test coverage for modules
+
+**Example Commands:**
+```bash
+# Analyze entire backend
+gemini -p "@backend/ Summarize the API architecture and list all endpoints"
+
+# Check for implementation patterns
+gemini -p "@frontend/src/components/ Are all components using TypeScript properly? List any type errors"
+
+# Verify security measures
+gemini -p "@backend/app/api/ Check all endpoints for proper input validation and SQL injection protection"
+
+# Compare implementations
+gemini -p "@backend/app/services/gdelt_client.py @backend/app/services/signals_service.py How do these services interact? Are there any inconsistencies?"
+
+# Audit test coverage
+gemini -p "@backend/app/services/ @backend/tests/ Which services lack test coverage?"
+
+# Full project overview
+gemini --all_files -p "Give me a complete architecture overview of this project"
+```
+
+---
+
+### Codex's Role: Code Implementation
+
+Codex is optimized for **writing and refactoring code**.
+
+**Primary Responsibilities:**
+- Implementing endpoints, services, and components
+- Writing unit tests and integration tests
+- Refactoring existing code
+- Generating TypeScript types and interfaces
+- Applying patches and fixes to specific files
+- Building frontend and backend features
+
+**When to Use Codex:**
+- Implementing a new API endpoint
+- Writing tests for a service
+- Creating React components
+- Refactoring a module for performance
+- Generating Pydantic models or TypeScript interfaces
+- Fixing bugs in specific files
+
+**Example Commands:**
+```bash
+# Implement an endpoint
+codex "Implement GET /v1/narratives/topic endpoint in backend/app/api/v1/narratives.py following the existing patterns"
+
+# Write tests
+codex "Write unit tests for the gdelt_parser.py parse_v2_tone function"
+
+# Create TypeScript types
+codex "Create TypeScript interfaces in frontend/src/lib/types.ts matching the GDELTSignal Pydantic model"
+
+# Refactor for performance
+codex "Refactor the flow_detector.py to use numpy vectorization instead of nested loops"
+
+# Fix a specific bug
+codex "Fix the heatmap rendering issue in HexagonHeatmapLayer.tsx where hexagons are not appearing"
+```
+
+---
+
+### Combined Workflow
+
+The three models work together in a coordinated pipeline:
+
+```
+┌─────────────────────────────────────────────────────┐
+│                    WORKFLOW                          │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│  1. CLAUDE THINKS                                   │
+│     ├─ Review context and plan                      │
+│     ├─ Design architecture                          │
+│     └─ Coordinate agents                            │
+│                    ↓                                │
+│  2. GEMINI INSPECTS                                 │
+│     ├─ Analyze codebase                             │
+│     ├─ Verify implementations                       │
+│     └─ Check patterns                               │
+│                    ↓                                │
+│  3. CODEX IMPLEMENTS                                │
+│     ├─ Write code                                   │
+│     ├─ Create tests                                 │
+│     └─ Apply fixes                                  │
+│                                                     │
+│  ═══════════════════════════════════════════════   │
+│  All models can run in PARALLEL for independent    │
+│  tasks to maximize efficiency                       │
+└─────────────────────────────────────────────────────┘
+```
+
+**Example Combined Workflow:**
+
+```bash
+# Step 1: Claude plans the work
+claude "Design the schema for storing narrative clusters with drift scores"
+
+# Step 2: Gemini checks existing patterns
+gemini -p "@backend/app/models/ @backend/app/db/ Analyze existing database patterns and constraints"
+
+# Step 3: Codex implements
+codex "Create the narrative_clusters table migration following the patterns identified"
+
+# Parallel execution for independent tasks
+claude "Design visualization spec" &
+gemini -p "@frontend/ Check component structure" &
+codex "Implement the tooltip component" &
+wait
+```
+
+---
+
+### Quick Reference: When to Pick Each Model
+
+| Task Type | Model | Reason |
+|-----------|-------|--------|
+| Planning and coordination | **Claude** | Complex reasoning, context management |
+| Architecture design | **Claude** | Tradeoff analysis, system thinking |
+| Codebase-wide analysis | **Gemini** | Large context window |
+| "Does X exist in the code?" | **Gemini** | Full repo search |
+| Security/pattern audit | **Gemini** | Cross-file analysis |
+| Implement endpoint | **Codex** | Code generation |
+| Write tests | **Codex** | Implementation |
+| Refactor module | **Codex** | Code transformation |
+| Fix specific bug | **Codex** | Targeted edits |
+| Schema design | **Claude** | Domain expertise |
+| TypeScript types | **Codex** | Type generation |
+
+---
+
+### Concrete Examples by Task
+
+**Task: Add a new API endpoint for narrative topics**
+
+```bash
+# 1. Claude designs the API schema
+claude "Design the /v1/narratives/topic endpoint with request/response schemas"
+
+# 2. Gemini checks existing endpoint patterns
+gemini -p "@backend/app/api/v1/ Show me the pattern used for existing endpoints including error handling"
+
+# 3. Codex implements the endpoint
+codex "Implement /v1/narratives/topic in backend/app/api/v1/narratives.py using the designed schema and existing patterns"
+```
+
+**Task: Optimize database queries**
+
+```bash
+# 1. Gemini identifies slow queries
+gemini -p "@backend/app/services/ @backend/app/api/ Find all database queries and identify which ones might be slow"
+
+# 2. Claude designs optimization strategy
+claude "Design index strategy for the identified slow queries"
+
+# 3. Codex implements the indexes
+codex "Add the recommended indexes to the migration file"
+```
+
+**Task: Debug a rendering issue**
+
+```bash
+# 1. Gemini finds related code
+gemini -p "@frontend/src/components/map/ Show all code related to hexagon rendering"
+
+# 2. Claude analyzes the issue
+claude "Analyze why hexagons might not be rendering based on the code"
+
+# 3. Codex fixes the bug
+codex "Fix the hexagon rendering issue in HexagonHeatmapLayer.tsx"
+```
+
+**Task: Add test coverage**
+
+```bash
+# 1. Gemini identifies untested code
+gemini -p "@backend/app/services/ @backend/tests/ Which services have less than 80% test coverage?"
+
+# 2. Codex writes the tests
+codex "Write comprehensive tests for gdelt_parser.py covering all edge cases"
+```
+
+---
+
 ## Development Workflow
 
 ### Starting a Session
