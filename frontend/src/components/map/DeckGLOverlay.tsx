@@ -4,14 +4,16 @@ import { MapboxOverlay } from '@deck.gl/mapbox'
 
 interface DeckGLOverlayProps {
   layers: any[]
+  interleaved?: boolean
 }
 
-export function DeckGLOverlay(props: DeckGLOverlayProps) {
-  const overlay = useControl(() => new MapboxOverlay(props))
+export function DeckGLOverlay({ layers, interleaved = true }: DeckGLOverlayProps) {
+  const overlay = useControl<MapboxOverlay>(
+    () => new MapboxOverlay({ layers, interleaved }),
+    { position: 'top-left' }
+  )
 
-  if (overlay && overlay.setProps) {
-    overlay.setProps(props)
-  }
+  overlay.setProps({ layers })
 
   return null
 }
