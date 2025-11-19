@@ -7,8 +7,6 @@ import FlowLayer from './FlowLayer'
 import { DeckGLOverlay } from './DeckGLOverlay'
 // @ts-ignore
 import { H3HexagonLayer } from '@deck.gl/geo-layers'
-// @ts-ignore
-import { ScatterplotLayer } from '@deck.gl/layers'
 import type { HexCell } from '../../lib/mapTypes'
 import ViewModeToggle from './ViewModeToggle'
 import CountrySidebar from './CountrySidebar'
@@ -43,32 +41,9 @@ const MapContainer: React.FC = () => {
     }
   }
 
-  // Initial data fetch
+  // Fetch data when view mode changes
   useEffect(() => {
     fetchData()
-
-    // DEBUG: Pan to USA when switching to heatmap (hexagons are located there)
-    if (viewMode === 'heatmap') {
-      console.log('🗺️ Panning to USA where hexagons are located...')
-      setViewState({
-        longitude: -95,
-        latitude: 36,
-        zoom: 4,
-        pitch: 0,
-        bearing: 0,
-        padding: { top: 0, bottom: 0, left: 0, right: 0 },
-      })
-    } else {
-      // Reset to global view for classic mode
-      setViewState({
-        longitude: 0,
-        latitude: 20,
-        zoom: 2,
-        pitch: 0,
-        bearing: 0,
-        padding: { top: 0, bottom: 0, left: 0, right: 0 },
-      })
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode])
 
@@ -86,32 +61,11 @@ const MapContainer: React.FC = () => {
 
   // Create deck.gl layers for heatmap mode
   const deckLayers = useMemo(() => {
-    if (viewMode !== 'heatmap' || !hexmapData?.hexes) {
-      console.log('⚠️ No heatmap layers - mode:', viewMode, 'data:', !!hexmapData)
+    if (viewMode !== 'heatmap' || !hexmapData?.hexes || hexmapData.hexes.length === 0) {
       return []
     }
 
-    console.log('🎨 Creating deck.gl layers with', hexmapData.hexes.length, 'hexes')
-
-    // Test layer with circles
-    const testLayer = new ScatterplotLayer({
-      id: 'test-scatterplot',
-      data: hexmapData.hexes.slice(0, 10),
-      getPosition: (d: HexCell): [number, number] => {
-        const index = hexmapData.hexes.indexOf(d)
-        const lon = -95 + (Math.random() - 0.5) * 10
-        const lat = 36 + (Math.random() - 0.5) * 10
-        if (index < 3) console.log(`Test point ${index}: [${lon}, ${lat}]`)
-        return [lon, lat]
-      },
-      getFillColor: [255, 0, 0, 255],
-      getRadius: 50000,
-      radiusMinPixels: 20,
-      radiusMaxPixels: 100,
-      pickable: true,
-    })
-
-    // H3 hexagon layer
+    // H3 hexagon layer with intensity-based colors
     const hexLayer = new H3HexagonLayer({
       id: 'h3-hexagon-layer',
       data: hexmapData.hexes,
@@ -122,19 +76,24 @@ const MapContainer: React.FC = () => {
       getHexagon: (d: HexCell) => d.h3_index,
       getFillColor: (d: HexCell): [number, number, number, number] => {
         const intensity = d.intensity
-        return intensity > 0.7
-          ? [255, 0, 0, 255]
-          : intensity > 0.4
-          ? [255, 255, 0, 255]
-          : [0, 255, 0, 255]
+        // Color gradient: green (low) -> yellow (medium) -> red (high)
+        if (intensity > 0.7) {
+          return [255, 50, 50, 200] // Red
+        } else if (intensity > 0.4) {
+          return [255, 200, 50, 180] // Yellow/Orange
+        } else {
+          return [50, 200, 100, 160] // Green
+        }
       },
       getElevation: 0,
       elevationScale: 0,
-      opacity: 1.0,
+      opacity: 0.8,
+      updateTriggers: {
+        getFillColor: [hexmapData],
+      },
     })
 
-    console.log('✅ Layers created:', [testLayer.id, hexLayer.id])
-    return [testLayer, hexLayer]
+    return [hexLayer]
   }, [viewMode, hexmapData])
 
   return (
