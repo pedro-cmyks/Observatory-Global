@@ -46,7 +46,7 @@ Version: 1.0.0
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterator, List, Optional, Dict, Tuple, Any
 from pathlib import Path
 
@@ -445,7 +445,8 @@ class GDELTParser:
             raise GKGDateParseError(f"Invalid date format: '{date_str}' (expected 14 digits)")
 
         try:
-            return datetime.strptime(date_str, "%Y%m%d%H%M%S")
+            dt = datetime.strptime(date_str, "%Y%m%d%H%M%S")
+            return dt.replace(tzinfo=timezone.utc)
         except ValueError as e:
             raise GKGDateParseError(f"Cannot parse date '{date_str}': {e}")
 
