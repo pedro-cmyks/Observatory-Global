@@ -6,8 +6,7 @@ import HotspotLayer from './HotspotLayer'
 import FlowLayer from './FlowLayer'
 import { DeckGLOverlay } from './DeckGLOverlay'
 // @ts-ignore
-import { HeatmapLayer } from '@deck.gl/aggregation-layers'
-import { cellToLatLng } from 'h3-js'
+import { H3HexagonLayer } from '@deck.gl/geo-layers'
 import type { HexCell } from '../../lib/mapTypes'
 import ViewModeToggle from './ViewModeToggle'
 import CountrySidebar from './CountrySidebar'
@@ -66,35 +65,42 @@ const MapContainer: React.FC = () => {
       return []
     }
 
-    // Convert H3 hexes to point data for HeatmapLayer
-    const pointData = hexmapData.hexes.map((hex: HexCell) => {
-      const [lat, lng] = cellToLatLng(hex.h3_index)
-      return {
-        position: [lng, lat] as [number, number],
-        weight: hex.intensity
+    // Color interpolation function: intensity (0-1) -> RGBA
+    // Gradient: Green (low) -> Yellow -> Orange -> Red (high)
+    const getColor = (intensity: number): [number, number, number, number] => {
+      if (intensity < 0.33) {
+        // Green to Yellow
+        const t = intensity / 0.33
+        return [Math.round(255 * t), 255, 0, 180]
+      } else if (intensity < 0.66) {
+        // Yellow to Orange
+        const t = (intensity - 0.33) / 0.33
+        return [255, Math.round(255 - 90 * t), 0, 200]
+      } else {
+        // Orange to Red
+        const t = (intensity - 0.66) / 0.34
+        return [255, Math.round(165 - 165 * t), 0, 220]
       }
+    }
+
+    // H3HexagonLayer - specifically designed for H3 hex rendering
+    // Known issue: Hexes render on slightly smaller sphere than base globe
+    // See: https://github.com/repo/issues/XX for tracking
+    const hexLayer = new H3HexagonLayer({
+      id: 'heatmap-hex-layer',
+      data: hexmapData.hexes,
+      pickable: true,
+      filled: true,
+      extruded: false,
+      getHexagon: (d: HexCell) => d.h3_index,
+      getFillColor: (d: HexCell) => getColor(d.intensity),
+      getLineColor: [255, 255, 255, 80],
+      lineWidthMinPixels: 1,
+      // Enable high precision for globe projection
+      highPrecision: true,
     })
 
-    // HeatmapLayer with smooth Gaussian gradients
-    const heatmapLayer = new HeatmapLayer({
-      id: 'heatmap-layer',
-      data: pointData,
-      getPosition: (d: { position: [number, number]; weight: number }) => d.position,
-      getWeight: (d: { position: [number, number]; weight: number }) => d.weight,
-      aggregation: 'SUM',
-      radiusPixels: 60,
-      intensity: 1,
-      threshold: 0.05,
-      // Color gradient: green (low) -> yellow -> orange -> red (high)
-      colorRange: [
-        [0, 255, 0, 100],      // Green (low intensity)
-        [255, 255, 0, 150],    // Yellow
-        [255, 165, 0, 180],    // Orange
-        [255, 0, 0, 220]       // Red (high intensity)
-      ],
-    })
-
-    return [heatmapLayer]
+    return [hexLayer]
   }, [viewMode, hexmapData])
 
   return (
@@ -120,7 +126,7 @@ const MapContainer: React.FC = () => {
         )}
 
         {/* Heatmap View - DeckGL Overlay (properly integrated) */}
-        {viewMode === 'heatmap' && deckLayers.length > 0 && (
+        {viewMode === 'heatmap' && (
           <DeckGLOverlay layers={deckLayers} />
         )}
       </Map>
