@@ -10,6 +10,19 @@ export interface CountryHotspot {
     label: string
     count: number
   }>
+  // Sentiment and theme fields (added in Priority 3)
+  dominant_sentiment?: string // "very_negative" | "negative" | "neutral" | "positive" | "very_positive"
+  avg_sentiment_score?: number // -100 to +100
+  theme_distribution?: { [theme: string]: number } // e.g., {"Economic Inflation": 156, "Protests": 120}
+  signals?: Array<{
+    signal_id: string
+    timestamp: string
+    themes: string[]
+    theme_labels: string[]
+    theme_counts: { [theme: string]: number }
+    sentiment_label: string
+    sentiment_score: number
+  }>
 }
 
 export interface Flow {

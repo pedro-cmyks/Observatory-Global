@@ -17,6 +17,46 @@ const CountrySidebar: React.FC = () => {
     return 'High'
   }
 
+  const getSentimentConfig = (sentimentLabel: string, sentimentScore: number) => {
+    const configs = {
+      very_negative: {
+        color: '#ef4444',
+        bgColor: '#fee2e2',
+        emoji: '😰',
+        label: 'Very Negative',
+      },
+      negative: {
+        color: '#f97316',
+        bgColor: '#ffedd5',
+        emoji: '😟',
+        label: 'Negative',
+      },
+      neutral: {
+        color: '#6b7280',
+        bgColor: '#f3f4f6',
+        emoji: '😐',
+        label: 'Neutral',
+      },
+      positive: {
+        color: '#10b981',
+        bgColor: '#d1fae5',
+        emoji: '🙂',
+        label: 'Positive',
+      },
+      very_positive: {
+        color: '#3b82f6',
+        bgColor: '#dbeafe',
+        emoji: '😊',
+        label: 'Very Positive',
+      },
+    }
+
+    const config = configs[sentimentLabel as keyof typeof configs] || configs.neutral
+    const scoreStr = sentimentScore > 0 ? `+${sentimentScore.toFixed(1)}` : sentimentScore.toFixed(1)
+
+    return { ...config, scoreStr }
+  }
+
   return (
     <AnimatePresence>
       {selectedHotspot && (
@@ -178,6 +218,137 @@ const CountrySidebar: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Sentiment Badge */}
+              {selectedHotspot.dominant_sentiment && (
+                <div style={{ marginBottom: '2rem' }}>
+                  {(() => {
+                    const { color, bgColor, emoji, label, scoreStr } = getSentimentConfig(
+                      selectedHotspot.dominant_sentiment,
+                      selectedHotspot.avg_sentiment_score || 0
+                    )
+                    return (
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: '0.5rem 0.75rem',
+                          backgroundColor: bgColor,
+                          borderRadius: '0.5rem',
+                          border: `1px solid ${color}`,
+                        }}
+                      >
+                        <span style={{ fontSize: '1.25rem' }}>{emoji}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>
+                            Sentiment
+                          </span>
+                          <span style={{ fontSize: '0.875rem', color, fontWeight: 600 }}>
+                            {label} ({scoreStr})
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
+
+              {/* Why is this heating up? */}
+              {selectedHotspot.theme_distribution &&
+                Object.keys(selectedHotspot.theme_distribution).length > 0 && (
+                  <div
+                    style={{
+                      marginBottom: '2rem',
+                      padding: '1rem',
+                      backgroundColor: '#f9fafb',
+                      borderRadius: '0.5rem',
+                    }}
+                  >
+                    <h4
+                      style={{
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        color: '#111827',
+                        marginBottom: '0.75rem',
+                        margin: '0 0 0.75rem 0',
+                      }}
+                    >
+                      🔥 Why is this heating up?
+                    </h4>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {/* Top 3 themes */}
+                      {Object.entries(selectedHotspot.theme_distribution)
+                        .sort(([, countA], [, countB]) => countB - countA)
+                        .slice(0, 3)
+                        .map(([theme, count]) => (
+                          <div
+                            key={theme}
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '0.5rem',
+                              backgroundColor: 'white',
+                              borderRadius: '0.375rem',
+                              border: '1px solid #e5e7eb',
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: '0.875rem',
+                                color: '#374151',
+                                fontWeight: 500,
+                              }}
+                            >
+                              {theme}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: '0.75rem',
+                                color: '#6b7280',
+                                backgroundColor: '#f3f4f6',
+                                padding: '0.125rem 0.5rem',
+                                borderRadius: '0.25rem',
+                                fontWeight: 600,
+                              }}
+                            >
+                              {count} mentions
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+
+                    {/* Sentiment context */}
+                    {selectedHotspot.avg_sentiment_score !== undefined &&
+                      selectedHotspot.avg_sentiment_score !== 0 && (
+                        <p
+                          style={{
+                            marginTop: '0.75rem',
+                            margin: '0.75rem 0 0 0',
+                            fontSize: '0.8125rem',
+                            color: '#6b7280',
+                            fontStyle: 'italic',
+                            lineHeight: '1.4',
+                          }}
+                        >
+                          Coverage is predominantly{' '}
+                          <strong
+                            style={{
+                              color:
+                                selectedHotspot.avg_sentiment_score < 0 ? '#ef4444' : '#10b981',
+                            }}
+                          >
+                            {selectedHotspot.avg_sentiment_score < 0 ? 'negative' : 'positive'}
+                          </strong>{' '}
+                          (
+                          {selectedHotspot.avg_sentiment_score > 0 ? '+' : ''}
+                          {selectedHotspot.avg_sentiment_score.toFixed(1)} sentiment score)
+                        </p>
+                      )}
+                  </div>
+                )}
 
               {/* Top Topics */}
               <div>
