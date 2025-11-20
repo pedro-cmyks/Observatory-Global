@@ -9,7 +9,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
 from app.models.schemas import Topic
-from app.models.flows import Hotspot, Flow, TopicSummary
+from app.models.flows import Hotspot, Flow, TopicSummary, GDELTSignalSummary
 from app.models.gdelt_schemas import GDELTSignal
 from app.core.config import settings
 from app.core.country_metadata import COUNTRY_METADATA
@@ -205,6 +205,42 @@ class FlowDetector:
 
         return min(avg_intensity, 1.0)
 
+    def _build_signal_summaries(self, signals: List[GDELTSignal]) -> List[GDELTSignalSummary]:
+        """Convert full GDELTSignals to lightweight summaries for API response."""
+        return [
+            GDELTSignalSummary(
+                signal_id=s.signal_id,
+                timestamp=s.timestamp,
+                themes=s.themes,
+                theme_labels=s.theme_labels,
+                theme_counts=s.theme_counts,
+                primary_theme=s.primary_theme,
+                sentiment_label=s.sentiment_label,
+                sentiment_score=s.tone.overall,
+                country_code=s.primary_location.country_code,
+                location_name=s.primary_location.location_name
+            )
+            for s in signals
+        ]
+
+    def _calculate_dominant_sentiment(self, signals: List[GDELTSignal]) -> str:
+        """Find most common sentiment_label across signals."""
+        if not signals:
+            return "neutral"
+
+        from collections import Counter
+        sentiment_counts = Counter(s.sentiment_label for s in signals)
+        return sentiment_counts.most_common(1)[0][0]
+
+    def _aggregate_theme_distribution(self, signals: List[GDELTSignal]) -> Dict[str, int]:
+        """Aggregate theme counts across all signals using human-readable labels."""
+        theme_dist: Dict[str, int] = {}
+        for signal in signals:
+            for label, theme_code in zip(signal.theme_labels, signal.themes):
+                # Use human-readable label as key
+                theme_dist[label] = theme_dist.get(label, 0) + signal.theme_counts.get(theme_code, 0)
+        return theme_dist
+
     def detect_flows(
         self,
         trends_by_country: Dict[str, Tuple[List[Topic], datetime]],
@@ -238,9 +274,24 @@ class FlowDetector:
 
             # Use signal-based intensity if available, otherwise fall back to topic-based
             if signals_by_country and country in signals_by_country:
-                intensity = self.calculate_intensity_from_signals(signals_by_country[country])
+                signals = signals_by_country[country]
+                intensity = self.calculate_intensity_from_signals(signals)
+
+                # NEW: Build signal summaries
+                signal_summaries = self._build_signal_summaries(signals)
+
+                # NEW: Calculate sentiment aggregations
+                dominant_sentiment = self._calculate_dominant_sentiment(signals)
+                avg_sentiment = sum(s.tone.overall for s in signals) / len(signals)
+
+                # NEW: Aggregate theme distribution
+                theme_distribution = self._aggregate_theme_distribution(signals)
             else:
                 intensity = self.calculate_hotspot_intensity(topics)
+                signal_summaries = []
+                dominant_sentiment = "neutral"
+                avg_sentiment = 0.0
+                theme_distribution = {}
 
             # Get country metadata
             metadata = COUNTRY_METADATA.get(country)
@@ -273,6 +324,11 @@ class FlowDetector:
                 topic_count=len(topics),
                 confidence=avg_confidence,
                 top_topics=top_topics,
+                # NEW FIELDS
+                signals=signal_summaries,
+                dominant_sentiment=dominant_sentiment,
+                avg_sentiment_score=avg_sentiment,
+                theme_distribution=theme_distribution
             )
             hotspots.append(hotspot)
 

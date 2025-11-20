@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 
 class TopicSummary(BaseModel):
@@ -11,6 +11,46 @@ class TopicSummary(BaseModel):
     label: str = Field(..., description="Topic label")
     count: int = Field(..., description="Topic count/frequency", ge=0)
     confidence: float = Field(..., description="Topic confidence score", ge=0.0, le=1.0)
+
+
+class GDELTSignalSummary(BaseModel):
+    """
+    Lightweight summary of GDELT signal for Hotspot display.
+
+    Preserves essential narrative context without full signal payload.
+    """
+    signal_id: str = Field(..., description="GKGRECORDID")
+    timestamp: datetime = Field(..., description="When signal was captured")
+
+    # Thematic context (preserve ALL themes, not just primary)
+    themes: List[str] = Field(..., description="All GDELT theme codes")
+    theme_labels: List[str] = Field(..., description="Human-readable theme names")
+    theme_counts: Dict[str, int] = Field(..., description="Mention frequency per theme")
+    primary_theme: str = Field(..., description="Most mentioned theme")
+
+    # Sentiment context
+    sentiment_label: str = Field(..., description="very_negative | negative | neutral | positive | very_positive")
+    sentiment_score: float = Field(..., ge=-100, le=100, description="Tone score")
+
+    # Geographic precision
+    country_code: str = Field(..., description="ISO country code")
+    location_name: Optional[str] = Field(None, description="City/region if available")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "signal_id": "20250119120000-T52",
+                "timestamp": "2025-01-19T12:00:00Z",
+                "themes": ["ECON_INFLATION", "PROTEST", "TAX_FNCACT"],
+                "theme_labels": ["Economic Inflation", "Protests", "Financial Crisis"],
+                "theme_counts": {"ECON_INFLATION": 52, "PROTEST": 34, "TAX_FNCACT": 18},
+                "primary_theme": "ECON_INFLATION",
+                "sentiment_label": "negative",
+                "sentiment_score": -8.5,
+                "country_code": "AR",
+                "location_name": "Buenos Aires"
+            }
+        }
 
 
 class Hotspot(BaseModel):
@@ -36,6 +76,29 @@ class Hotspot(BaseModel):
     top_topics: List[TopicSummary] = Field(
         default_factory=list,
         description="Top topics contributing to the hotspot",
+    )
+
+    # NEW FIELDS - Preserve signal context
+    signals: List[GDELTSignalSummary] = Field(
+        default_factory=list,
+        description="Full signal summaries with narrative context"
+    )
+
+    dominant_sentiment: str = Field(
+        default="neutral",
+        description="Most common sentiment_label across signals"
+    )
+
+    avg_sentiment_score: float = Field(
+        default=0.0,
+        ge=-100.0,
+        le=100.0,
+        description="Average tone score across all signals"
+    )
+
+    theme_distribution: Dict[str, int] = Field(
+        default_factory=dict,
+        description="Aggregated theme counts across all signals (e.g., {'Terrorism': 120, 'Protests': 85})"
     )
 
     class Config:
