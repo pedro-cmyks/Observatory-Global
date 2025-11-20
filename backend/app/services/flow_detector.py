@@ -10,6 +10,7 @@ import numpy as np
 
 from app.models.schemas import Topic
 from app.models.flows import Hotspot, Flow, TopicSummary
+from app.models.gdelt_schemas import GDELTSignal
 from app.core.config import settings
 from app.core.country_metadata import COUNTRY_METADATA
 
@@ -179,10 +180,36 @@ class FlowDetector:
 
         return min(intensity, 1.0)
 
+    def calculate_intensity_from_signals(self, signals: List[GDELTSignal]) -> float:
+        """
+        Calculate hotspot intensity using pre-computed GDELT signal intensities.
+
+        This method uses the actual signal data instead of derived Topic counts,
+        providing more accurate and varied intensity scores.
+
+        Args:
+            signals: List of GDELT signals for a country
+
+        Returns:
+            Average intensity score [0, 1]
+        """
+        if not signals:
+            return 0.0
+
+        # Use pre-computed intensity from signals (already normalized 0-1)
+        avg_intensity = sum(s.intensity for s in signals) / len(signals)
+
+        logger.debug(
+            f"Signal-based intensity: {avg_intensity:.3f} from {len(signals)} signals"
+        )
+
+        return min(avg_intensity, 1.0)
+
     def detect_flows(
         self,
         trends_by_country: Dict[str, Tuple[List[Topic], datetime]],
         time_window_hours: float = 24.0,
+        signals_by_country: Optional[Dict[str, List[GDELTSignal]]] = None,
     ) -> Tuple[List[Hotspot], List[Flow], Dict]:
         """
         Detect flows between countries based on trending topics.
@@ -190,6 +217,7 @@ class FlowDetector:
         Args:
             trends_by_country: Dict mapping country code to (topics, timestamp)
             time_window_hours: Maximum time window for flow detection (default: 24h)
+            signals_by_country: Optional dict of original GDELT signals for intensity calculation
 
         Returns:
             Tuple of (hotspots, flows, metadata)
@@ -208,7 +236,11 @@ class FlowDetector:
             if not topics:
                 continue
 
-            intensity = self.calculate_hotspot_intensity(topics)
+            # Use signal-based intensity if available, otherwise fall back to topic-based
+            if signals_by_country and country in signals_by_country:
+                intensity = self.calculate_intensity_from_signals(signals_by_country[country])
+            else:
+                intensity = self.calculate_hotspot_intensity(topics)
 
             # Get country metadata
             metadata = COUNTRY_METADATA.get(country)
