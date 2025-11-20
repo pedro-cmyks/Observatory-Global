@@ -437,8 +437,7 @@ class GDELTParser:
         Raises:
             GKGDateParseError: If format is invalid
         """
-        # TODO: Implement actual parsing
-        # Placeholder implementation
+        # Production implementation: Parse YYYYMMDDHHMMSS format
         date_str = date_str.strip()
 
         if not date_str or len(date_str) != 14:
@@ -471,8 +470,7 @@ class GDELTParser:
         Returns:
             List of theme code strings, empty list if no themes
         """
-        # TODO: Implement actual parsing
-        # Placeholder implementation
+        # Production implementation: Parse semicolon-separated themes
         if not themes_str or not themes_str.strip():
             return []
 
@@ -501,8 +499,7 @@ class GDELTParser:
         Returns:
             GKGTone object with parsed values
         """
-        # TODO: Implement actual parsing
-        # Placeholder implementation
+        # Production implementation: Parse 7-value comma-separated tone metrics
         if not tone_str or not tone_str.strip():
             return GKGTone()
 
