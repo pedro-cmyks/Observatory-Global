@@ -180,15 +180,85 @@ The project uses a multi-agent architecture where each agent has specific expert
 
 ---
 
+## AI Model Coordination: Claude, Gemini, and Codex
+
+This project uses three AI models in coordination, each with distinct strengths. Understanding when to use each model maximizes efficiency and output quality.
+
+### Claude's Role: Orchestration and Reasoning
+
+Claude serves as the **orchestrator and system-level reasoning engine**.
+
+**Primary Responsibilities:**
+- High-level design, architecture, and planning
+- Multi-agent coordination and task sequencing
+- Narrative analysis and data interpretation
+- Schema design and technical decisions
+- Complex reasoning requiring deep context
+- Documentation and specification writing
+- **Automatic delegation** to Gemini and Codex when appropriate
+
+**When to Use Claude:**
+- Starting a session and planning work
+- Designing database schemas or API architectures
+- Analyzing narrative patterns or drift detection algorithms
+- Making technical decisions with tradeoffs
+- Coordinating multiple workstreams
+- Writing ADRs or architectural documents
+
+**Automatic Delegation Rules:**
+
+Claude should automatically:
+1. **Delegate to Gemini** when large multi-file context is needed
+2. **Delegate to Codex** when code generation or execution is required
+3. **Keep reasoning centralized** within Claude
+4. **Combine outputs** from Gemini + Codex into coherent plans
+
+**Orchestration Workflow:**
+```
+1. Claude analyzes the goal
+2. If large multi-file context needed → Claude triggers Gemini CLI
+3. Claude receives Gemini's output and reasons about it
+4. If code generation/execution needed → Claude triggers Codex CLI
+5. Claude merges all results and produces high-level reasoning
+```
+
+**Example Commands:**
+```bash
+# Claude Code CLI for orchestration
+claude "Review the handoff document and create today's plan"
+claude "Design the PostgreSQL schema for GDELT signals"
+claude "Analyze how drift detection should work across geographic regions"
+```
+
+---
+
 ## Using Gemini CLI for Large Codebase Analysis
 
-When analyzing large codebases or multiple files that might exceed context limits, use the Gemini CLI with its massive context window. Use `gemini -p` to leverage Google Gemini's large context capacity.
+Gemini CLI leverages Google Gemini's massive context window for analyzing large codebases or multiple files that would exceed Claude's context limits.
 
-### File and Directory Inclusion Syntax
+### Purpose
 
-Use the `@` syntax to include files and directories in your Gemini prompts. The paths should be relative to WHERE you run the gemini command:
+Use Gemini CLI when:
+- Analyzing large codebases or multiple files that exceed context limits
+- Reviewing or comparing full directories
+- Scanning for patterns across many files
+- Verifying complex implementations scattered across the codebase
+- Loading hundreds of files at once
+- Performing static read-only analysis requiring massive context
 
-#### Examples
+### Syntax
+
+Use `gemini -p` for non-interactive mode with prompts:
+
+```bash
+gemini -p "<prompt here>"
+```
+
+### File and Directory Inclusion
+
+Use the `@` syntax to include files and directories. Paths are relative to your current working directory:
+
+#### Basic Examples
 
 **Single file analysis:**
 ```bash
@@ -215,7 +285,7 @@ gemini -p "@src/ @tests/ Analyze test coverage for the source code"
 gemini -p "@./ Give me an overview of this entire project"
 ```
 
-**Or use --all_files flag:**
+**All files automatically:**
 ```bash
 gemini --all_files -p "Analyze the project structure and dependencies"
 ```
@@ -262,16 +332,22 @@ gemini -p "@src/ @api/ Are SQL injection protections implemented? Show how user 
 gemini -p "@src/payment/ @tests/ Is the payment processing module fully tested? List all test cases"
 ```
 
-### When to Use Gemini CLI
+### When to Use Gemini
 
-Use `gemini -p` when:
 - Analyzing entire codebases or large directories
 - Comparing multiple large files
-- Need to understand project-wide patterns or architecture
-- Current context window is insufficient for the task
+- Understanding project-wide patterns or architecture
+- Context window is insufficient for the task
 - Working with files totaling more than 100KB
 - Verifying if specific features, patterns, or security measures are implemented
-- Checking for the presence of certain coding patterns across the entire codebase
+- Checking for coding patterns across the entire codebase
+
+### When NOT to Use Gemini
+
+- **Generating new code** (use Codex instead)
+- **Executing commands** (use Codex instead)
+- **Small context tasks** that fit in Claude's window
+- **Code refactoring or implementation** (use Codex instead)
 
 ### Important Notes
 
@@ -283,124 +359,111 @@ Use `gemini -p` when:
 
 ---
 
-## AI Model Coordination: Claude, Gemini, and Codex
+## Using Codex CLI for Code Generation and Execution
 
-This project uses three AI models in coordination, each with distinct strengths. Understanding when to use each model maximizes efficiency and output quality.
+Codex CLI is optimized for heavy code generation, refactoring, and execution tasks. It specializes in writing and modifying code with high quality output.
 
-### Claude's Role: Orchestration and Reasoning
+### Purpose
 
-Claude serves as the **orchestrator and system-level reasoning engine**.
+Use Codex CLI when:
+- Generating large code modules or full files
+- Performing refactors across many files
+- Generating test suites or documentation
+- Scaffolding entire features or microservices
+- Executing code or commands
+- Running project automation tasks (formatters, linters, migrations)
+- Transforming files requiring "write access"
 
-**Primary Responsibilities:**
-- High-level design, architecture, and planning
-- Multi-agent coordination and task sequencing
-- Narrative analysis and data interpretation
-- Schema design and technical decisions
-- Complex reasoning requiring deep context
-- Documentation and specification writing
+### Syntax
 
-**When to Use Claude:**
-- Starting a session and planning work
-- Designing database schemas or API architectures
-- Analyzing narrative patterns or drift detection algorithms
-- Making technical decisions with tradeoffs
-- Coordinating multiple workstreams
-- Writing ADRs or architectural documents
+Use `codex -p` for prompting:
 
-**Example Commands:**
 ```bash
-# Claude Code CLI for orchestration
-claude "Review the handoff document and create today's plan"
-claude "Design the PostgreSQL schema for GDELT signals"
-claude "Analyze how drift detection should work across geographic regions"
+codex -p "<prompt here>"
 ```
 
----
+Codex also supports the `@file` and `@directory/` syntax for including context.
 
-### Gemini's Role: Large-Context Analysis
+### Code Generation Examples
 
-Gemini excels at **analyzing entire codebases** through its massive context window.
-
-**Primary Responsibilities:**
-- Repo-wide code analysis and auditing
-- Finding patterns across multiple files
-- Verifying feature implementations
-- Comparing files and checking consistency
-- Architecture verification and integrity checks
-- Identifying code smells or security issues
-
-**When to Use Gemini:**
-- Analyzing directories with 100+ KB of code
-- Checking if a feature exists across the codebase
-- Auditing for security patterns or anti-patterns
-- Understanding project-wide architecture
-- Comparing implementations across files
-- Verifying test coverage for modules
-
-**Example Commands:**
+**Implement an endpoint:**
 ```bash
-# Analyze entire backend
-gemini -p "@backend/ Summarize the API architecture and list all endpoints"
-
-# Check for implementation patterns
-gemini -p "@frontend/src/components/ Are all components using TypeScript properly? List any type errors"
-
-# Verify security measures
-gemini -p "@backend/app/api/ Check all endpoints for proper input validation and SQL injection protection"
-
-# Compare implementations
-gemini -p "@backend/app/services/gdelt_client.py @backend/app/services/signals_service.py How do these services interact? Are there any inconsistencies?"
-
-# Audit test coverage
-gemini -p "@backend/app/services/ @backend/tests/ Which services lack test coverage?"
-
-# Full project overview
-gemini --all_files -p "Give me a complete architecture overview of this project"
-```
-
----
-
-### Codex's Role: Code Implementation
-
-Codex is optimized for **writing and refactoring code**.
-
-**Primary Responsibilities:**
-- Implementing endpoints, services, and components
-- Writing unit tests and integration tests
-- Refactoring existing code
-- Generating TypeScript types and interfaces
-- Applying patches and fixes to specific files
-- Building frontend and backend features
-
-**When to Use Codex:**
-- Implementing a new API endpoint
-- Writing tests for a service
-- Creating React components
-- Refactoring a module for performance
-- Generating Pydantic models or TypeScript interfaces
-- Fixing bugs in specific files
-
-**Example Commands:**
-```bash
-# Implement an endpoint
 codex "Implement GET /v1/narratives/topic endpoint in backend/app/api/v1/narratives.py following the existing patterns"
+```
 
-# Write tests
+**Write tests:**
+```bash
 codex "Write unit tests for the gdelt_parser.py parse_v2_tone function"
+```
 
-# Create TypeScript types
+**Create TypeScript types:**
+```bash
 codex "Create TypeScript interfaces in frontend/src/lib/types.ts matching the GDELTSignal Pydantic model"
+```
 
-# Refactor for performance
+**Refactor for performance:**
+```bash
 codex "Refactor the flow_detector.py to use numpy vectorization instead of nested loops"
+```
 
-# Fix a specific bug
+**Fix a specific bug:**
+```bash
 codex "Fix the heatmap rendering issue in HexagonHeatmapLayer.tsx where hexagons are not appearing"
 ```
 
+### File Context Examples
+
+**Generate tests with context:**
+```bash
+codex -p "@backend/ Generate a complete test suite for all services"
+```
+
+**Refactor with file context:**
+```bash
+codex -p "@src/ Refactor all API handlers to use dependency injection"
+```
+
+**Create new module:**
+```bash
+codex -p "@app/ Create a new logging module and integrate it"
+```
+
+**Full CRUD generation:**
+```bash
+codex -p "@./ Build a full CRUD module for the User entity"
+```
+
+### Execution Examples
+
+Run commands directly through Codex:
+
+```bash
+codex run tests
+codex run "npm install"
+codex run "pytest -q"
+codex -p "@scripts/ Execute the migration scripts and show output"
+```
+
+### When to Use Codex
+
+- Implementing new API endpoints
+- Writing tests for services
+- Creating React components
+- Refactoring modules for performance
+- Generating Pydantic models or TypeScript interfaces
+- Fixing bugs in specific files
+- Running project commands
+
+### When NOT to Use Codex
+
+- **Analyzing very large contexts** (use Gemini instead)
+- **Deep reasoning or cross-file orchestration** (Claude handles this)
+- **Verifying architecture or patterns** (use Gemini instead)
+- **Planning and decision-making** (use Claude instead)
+
 ---
 
-### Combined Workflow
+## Combined Workflow
 
 The three models work together in a coordinated pipeline:
 
@@ -451,7 +514,7 @@ wait
 
 ---
 
-### Quick Reference: When to Pick Each Model
+## Quick Reference: When to Pick Each Model
 
 | Task Type | Model | Reason |
 |-----------|-------|--------|
@@ -466,10 +529,11 @@ wait
 | Fix specific bug | **Codex** | Targeted edits |
 | Schema design | **Claude** | Domain expertise |
 | TypeScript types | **Codex** | Type generation |
+| Execute commands | **Codex** | Command execution |
 
 ---
 
-### Concrete Examples by Task
+## Concrete Examples by Task
 
 **Task: Add a new API endpoint for narrative topics**
 
