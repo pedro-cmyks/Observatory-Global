@@ -542,14 +542,19 @@ class GDELTParser:
             4 = World City (e.g., "London, England, United Kingdom")
             5 = World State/Province (e.g., "Ontario, Canada")
 
+        Edge Cases Handled:
+            - Empty or whitespace-only strings return []
+            - Malformed blocks (< 7 fields) are logged and skipped
+            - Empty numeric fields default to 0.0/0
+            - Invalid numbers log debug message and skip block
+            - Empty coordinate fields (e.g., "0#0") default to 0.0
+
         Args:
             locations_str: Raw locations string from column
 
         Returns:
             List of GKGLocation objects, empty list if no locations
         """
-        # TODO: Implement actual parsing
-        # Placeholder implementation
         if not locations_str or not locations_str.strip():
             return []
 
@@ -562,22 +567,73 @@ class GDELTParser:
                 continue
 
             parts = block.split('#')
+
+            # Require minimum 7 fields for basic location data
             if len(parts) < 7:
+                logger.debug(f"Malformed location block (expected >=7 fields, got {len(parts)}): {block}")
                 continue
 
             try:
+                # Parse location type (required)
+                location_type = int(parts[0]) if parts[0] else 0
+                if location_type < 1 or location_type > 5:
+                    logger.debug(f"Invalid location_type {location_type}, skipping: {block}")
+                    continue
+
+                # Parse full name (required)
+                full_name = parts[1].strip()
+                if not full_name:
+                    logger.debug(f"Empty full_name, skipping: {block}")
+                    continue
+
+                # Parse country code (required)
+                country_code = parts[2].strip()
+                if not country_code:
+                    logger.debug(f"Empty country_code, skipping: {block}")
+                    continue
+
+                # Parse optional/numeric fields with defaults
+                adm1_code = parts[3].strip() if len(parts) > 3 else ""
+                adm2_code = parts[4].strip() if len(parts) > 4 else ""
+
+                # Handle empty coordinate fields (common in GDELT)
+                lat_str = parts[5].strip() if len(parts) > 5 else ""
+                lon_str = parts[6].strip() if len(parts) > 6 else ""
+
+                latitude = float(lat_str) if lat_str else 0.0
+                longitude = float(lon_str) if lon_str else 0.0
+
+                # Validate coordinate ranges
+                if latitude < -90.0 or latitude > 90.0:
+                    logger.debug(f"Invalid latitude {latitude}, defaulting to 0.0: {block}")
+                    latitude = 0.0
+                if longitude < -180.0 or longitude > 180.0:
+                    logger.debug(f"Invalid longitude {longitude}, defaulting to 0.0: {block}")
+                    longitude = 0.0
+
+                feature_id = parts[7].strip() if len(parts) > 7 else ""
+
+                # Parse char_offset if present
+                char_offset = 0
+                if len(parts) > 8 and parts[8].strip():
+                    try:
+                        char_offset = int(parts[8])
+                    except ValueError:
+                        logger.debug(f"Invalid char_offset '{parts[8]}', using 0: {block}")
+
                 location = GKGLocation(
-                    location_type=int(parts[0]) if parts[0] else 0,
-                    full_name=parts[1],
-                    country_code=parts[2],
-                    adm1_code=parts[3] if len(parts) > 3 else "",
-                    adm2_code=parts[4] if len(parts) > 4 else "",
-                    latitude=float(parts[5]) if len(parts) > 5 and parts[5] else 0.0,
-                    longitude=float(parts[6]) if len(parts) > 6 and parts[6] else 0.0,
-                    feature_id=parts[7] if len(parts) > 7 else "",
-                    char_offset=int(parts[8]) if len(parts) > 8 and parts[8] else 0
+                    location_type=location_type,
+                    full_name=full_name,
+                    country_code=country_code,
+                    adm1_code=adm1_code,
+                    adm2_code=adm2_code,
+                    latitude=latitude,
+                    longitude=longitude,
+                    feature_id=feature_id,
+                    char_offset=char_offset
                 )
                 locations.append(location)
+
             except (ValueError, IndexError) as e:
                 logger.debug(f"Error parsing location block '{block}': {e}")
                 continue
@@ -602,14 +658,20 @@ class GDELTParser:
             - CRISISLEX_T03_DEAD: Crisis deaths
             - CRISISLEX_T02_INJURED: Crisis injuries
 
+        Edge Cases Handled:
+            - Empty or whitespace-only strings return []
+            - Malformed blocks (< 2 fields) are logged and skipped
+            - Empty count numbers default to 0
+            - Invalid numbers log debug message and skip block
+            - Embedded location parsing failures are graceful (location=None)
+            - Duplicate count types are NOT aggregated (kept separate for context)
+
         Args:
             counts_str: Raw counts string from column
 
         Returns:
             List of GKGCount objects, empty list if no counts
         """
-        # TODO: Implement actual parsing
-        # Placeholder implementation
         if not counts_str or not counts_str.strip():
             return []
 
@@ -622,28 +684,74 @@ class GDELTParser:
                 continue
 
             parts = block.split('#')
+
+            # Require minimum 2 fields (count_type and number)
             if len(parts) < 2:
+                logger.debug(f"Malformed count block (expected >=2 fields, got {len(parts)}): {block}")
                 continue
 
             try:
-                count_type = parts[0]
-                number = int(parts[1]) if parts[1] else 0
-                object_type = parts[2] if len(parts) > 2 else ""
+                # Parse count type (required)
+                count_type = parts[0].strip()
+                if not count_type:
+                    logger.debug(f"Empty count_type, skipping: {block}")
+                    continue
 
-                # Parse embedded location if present
+                # Parse number (required)
+                number_str = parts[1].strip()
+                if not number_str:
+                    logger.debug(f"Empty count number, skipping: {block}")
+                    continue
+
+                try:
+                    number = int(number_str)
+                except ValueError:
+                    logger.debug(f"Invalid count number '{number_str}', skipping: {block}")
+                    continue
+
+                # Parse object type (optional)
+                object_type = parts[2].strip() if len(parts) > 2 else ""
+
+                # Parse embedded location if present (fields 3-9)
                 location = None
                 if len(parts) >= 10:
                     try:
-                        location = GKGLocation(
-                            location_type=int(parts[3]) if parts[3] else 0,
-                            full_name=parts[4] if len(parts) > 4 else "",
-                            country_code=parts[5] if len(parts) > 5 else "",
-                            adm1_code=parts[6] if len(parts) > 6 else "",
-                            latitude=float(parts[7]) if len(parts) > 7 and parts[7] else 0.0,
-                            longitude=float(parts[8]) if len(parts) > 8 and parts[8] else 0.0,
-                            feature_id=parts[9] if len(parts) > 9 else ""
-                        )
-                    except (ValueError, IndexError):
+                        # Location type
+                        loc_type_str = parts[3].strip() if parts[3] else ""
+                        loc_type = int(loc_type_str) if loc_type_str else 0
+
+                        # Location name
+                        loc_name = parts[4].strip() if len(parts) > 4 else ""
+
+                        # Country code
+                        loc_country = parts[5].strip() if len(parts) > 5 else ""
+
+                        # ADM1 code
+                        loc_adm1 = parts[6].strip() if len(parts) > 6 else ""
+
+                        # Coordinates
+                        lat_str = parts[7].strip() if len(parts) > 7 else ""
+                        lon_str = parts[8].strip() if len(parts) > 8 else ""
+
+                        loc_lat = float(lat_str) if lat_str else 0.0
+                        loc_lon = float(lon_str) if lon_str else 0.0
+
+                        # Feature ID
+                        loc_feature = parts[9].strip() if len(parts) > 9 else ""
+
+                        # Only create location if we have minimum data
+                        if loc_name or loc_country:
+                            location = GKGLocation(
+                                location_type=loc_type,
+                                full_name=loc_name,
+                                country_code=loc_country,
+                                adm1_code=loc_adm1,
+                                latitude=loc_lat,
+                                longitude=loc_lon,
+                                feature_id=loc_feature
+                            )
+                    except (ValueError, IndexError) as e:
+                        logger.debug(f"Error parsing embedded location in count block: {e}")
                         location = None
 
                 count = GKGCount(
@@ -653,6 +761,7 @@ class GDELTParser:
                     location=location
                 )
                 counts.append(count)
+
             except (ValueError, IndexError) as e:
                 logger.debug(f"Error parsing count block '{block}': {e}")
                 continue
