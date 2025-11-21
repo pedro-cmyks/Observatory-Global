@@ -115,6 +115,26 @@ async def get_flows(
             signals_by_country=signals_only
         )
 
+        # Detect data source type (placeholder vs real GDELT)
+        # Check if signals are from placeholder generator by examining source attribution
+        # Note: gdelt_signals_by_country.values() returns tuples of (signals_list, timestamp)
+        all_signals = [
+            signal for signals_list, _ in gdelt_signals_by_country.values()
+            for signal in signals_list
+        ]
+        is_placeholder = all(
+            signal.sources.gdelt_placeholder
+            for signal in all_signals
+        ) if all_signals else False
+
+        # Add data quality metadata
+        metadata_dict["data_source"] = "placeholder" if is_placeholder else "real_gdelt"
+        metadata_dict["data_quality"] = "dev_placeholder" if is_placeholder else "production"
+        metadata_dict["placeholder_reason"] = (
+            "Using placeholder data - GDELT download unavailable or disabled"
+            if is_placeholder else None
+        )
+
         # Build response
         metadata = FlowsMetadata(**metadata_dict)
 
