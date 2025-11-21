@@ -125,9 +125,9 @@ const MapContainer: React.FC = () => {
           </>
         )}
 
-        {/* Heatmap View - DeckGL Overlay (properly integrated) */}
+        {/* Heatmap View - DeckGL Overlay with interleaved rendering for globe projection */}
         {viewMode === 'heatmap' && (
-          <DeckGLOverlay layers={deckLayers} />
+          <DeckGLOverlay layers={deckLayers} interleaved={true} />
         )}
       </Map>
 
