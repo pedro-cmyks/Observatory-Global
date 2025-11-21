@@ -18,6 +18,7 @@ class GDELTSignalSummary(BaseModel):
     Lightweight summary of GDELT signal for Hotspot display.
 
     Preserves essential narrative context without full signal payload.
+    **Phase 3.5 Enhancement:** Now includes actor data (persons, organizations, outlets)
     """
     signal_id: str = Field(..., description="GKGRECORDID")
     timestamp: datetime = Field(..., description="When signal was captured")
@@ -36,6 +37,11 @@ class GDELTSignalSummary(BaseModel):
     country_code: str = Field(..., description="ISO country code")
     location_name: Optional[str] = Field(None, description="City/region if available")
 
+    # **NEW: Actor context (Phase 3.5 - Narrative Intelligence Enhancement)**
+    persons: Optional[List[str]] = Field(default=None, description="Key persons mentioned (V2Persons)")
+    organizations: Optional[List[str]] = Field(default=None, description="Key organizations mentioned (V2Organizations)")
+    source_outlet: Optional[str] = Field(default=None, description="News outlet (e.g., 'reuters.com', 'bbc.com')")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -48,7 +54,10 @@ class GDELTSignalSummary(BaseModel):
                 "sentiment_label": "negative",
                 "sentiment_score": -8.5,
                 "country_code": "AR",
-                "location_name": "Buenos Aires"
+                "location_name": "Buenos Aires",
+                "persons": ["Javier Milei", "Sergio Massa"],
+                "organizations": ["Central Bank of Argentina", "IMF"],
+                "source_outlet": "reuters.com"
             }
         }
 
@@ -99,6 +108,20 @@ class Hotspot(BaseModel):
     theme_distribution: Dict[str, int] = Field(
         default_factory=dict,
         description="Aggregated theme counts across all signals (e.g., {'Terrorism': 120, 'Protests': 85})"
+    )
+
+    # **NEW: Source diversity metrics (Phase 3.5)**
+    source_count: int = Field(
+        default=0,
+        ge=0,
+        description="Number of unique news outlets covering this hotspot"
+    )
+
+    source_diversity: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Source diversity ratio: unique_outlets / total_signals (0=concentrated, 1=highly diverse)"
     )
 
     class Config:
@@ -185,6 +208,20 @@ class FlowsMetadata(BaseModel):
     total_flows_computed: int = Field(..., description="Total flows computed before filtering")
     flows_returned: int = Field(..., description="Flows returned after threshold filter")
     countries_analyzed: List[str] = Field(..., description="Countries included in analysis")
+
+    # **NEW: Data quality indicators (Phase 3.5)**
+    data_source: str = Field(
+        default="real_gdelt",
+        description="Data source type: 'real_gdelt' | 'placeholder' | 'mixed'"
+    )
+    data_quality: str = Field(
+        default="production",
+        description="Quality tier: 'production' | 'dev_placeholder' | 'test'"
+    )
+    placeholder_reason: Optional[str] = Field(
+        default=None,
+        description="Explanation if using placeholder data (e.g., 'GDELT download unavailable')"
+    )
 
 
 class FlowsResponse(BaseModel):

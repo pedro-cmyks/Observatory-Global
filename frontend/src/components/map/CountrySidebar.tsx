@@ -219,6 +219,76 @@ const CountrySidebar: React.FC = () => {
                 </div>
               </div>
 
+              {/* Source Diversity - Phase 3.5 */}
+              {selectedHotspot.source_count !== undefined && selectedHotspot.source_count > 0 && (
+                <div
+                  style={{
+                    marginBottom: '2rem',
+                    padding: '1rem',
+                    backgroundColor: '#fefce8',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #fde047',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '0.5rem',
+                    }}
+                  >
+                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#713f12' }}>
+                      📰 Source Diversity
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '1.25rem',
+                        fontWeight: 700,
+                        color: '#854d0e',
+                      }}
+                    >
+                      {selectedHotspot.source_count} {selectedHotspot.source_count === 1 ? 'outlet' : 'outlets'}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '8px',
+                      backgroundColor: '#fef3c7',
+                      borderRadius: '4px',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(selectedHotspot.source_diversity || 0) * 100}%` }}
+                      transition={{ duration: 0.5 }}
+                      style={{
+                        height: '100%',
+                        backgroundColor: '#ca8a04',
+                      }}
+                    />
+                  </div>
+                  <p
+                    style={{
+                      marginTop: '0.5rem',
+                      margin: '0.5rem 0 0 0',
+                      fontSize: '0.75rem',
+                      color: '#92400e',
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    {selectedHotspot.source_diversity && selectedHotspot.source_diversity > 0.7
+                      ? 'Highly diverse coverage from multiple independent sources'
+                      : selectedHotspot.source_diversity && selectedHotspot.source_diversity > 0.3
+                      ? 'Moderate source diversity'
+                      : 'Coverage concentrated in few outlets'}
+                  </p>
+                </div>
+              )}
+
+
               {/* Sentiment Badge */}
               {selectedHotspot.dominant_sentiment && (
                 <div style={{ marginBottom: '2rem' }}>
@@ -253,6 +323,144 @@ const CountrySidebar: React.FC = () => {
                   })()}
                 </div>
               )}
+
+              {/* Key Actors - Phase 3.5 */}
+              {selectedHotspot.signals && selectedHotspot.signals.length > 0 && (() => {
+                // Aggregate actors across all signals
+                const allPersons = new Set<string>()
+                const allOrgs = new Set<string>()
+                const allOutlets = new Set<string>()
+
+                selectedHotspot.signals.forEach((signal) => {
+                  signal.persons?.forEach((p) => allPersons.add(p))
+                  signal.organizations?.forEach((o) => allOrgs.add(o))
+                  if (signal.source_outlet) allOutlets.add(signal.source_outlet)
+                })
+
+                const hasActorData = allPersons.size > 0 || allOrgs.size > 0 || allOutlets.size > 0
+
+                if (!hasActorData) return null
+
+                return (
+                  <div
+                    style={{
+                      marginBottom: '2rem',
+                      padding: '1rem',
+                      backgroundColor: '#f0f9ff',
+                      borderRadius: '0.5rem',
+                      border: '1px solid #bae6fd',
+                    }}
+                  >
+                    <h4
+                      style={{
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        color: '#111827',
+                        marginBottom: '0.75rem',
+                        margin: '0 0 0.75rem 0',
+                      }}
+                    >
+                      👥 Who&apos;s Involved?
+                    </h4>
+
+                    {/* Key People */}
+                    {allPersons.size > 0 && (
+                      <div style={{ marginBottom: allOrgs.size > 0 || allOutlets.size > 0 ? '0.75rem' : '0' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.375rem', fontWeight: 600 }}>
+                          KEY PEOPLE
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                          {Array.from(allPersons).slice(0, 5).map((person) => (
+                            <span
+                              key={person}
+                              style={{
+                                fontSize: '0.8125rem',
+                                color: '#1e40af',
+                                backgroundColor: 'white',
+                                padding: '0.25rem 0.5rem',
+                                borderRadius: '0.25rem',
+                                border: '1px solid #bae6fd',
+                                fontWeight: 500,
+                              }}
+                            >
+                              {person}
+                            </span>
+                          ))}
+                          {allPersons.size > 5 && (
+                            <span style={{ fontSize: '0.8125rem', color: '#6b7280', alignSelf: 'center' }}>
+                              +{allPersons.size - 5} more
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Key Organizations */}
+                    {allOrgs.size > 0 && (
+                      <div style={{ marginBottom: allOutlets.size > 0 ? '0.75rem' : '0' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.375rem', fontWeight: 600 }}>
+                          KEY ORGANIZATIONS
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                          {Array.from(allOrgs).slice(0, 5).map((org) => (
+                            <span
+                              key={org}
+                              style={{
+                                fontSize: '0.8125rem',
+                                color: '#7c3aed',
+                                backgroundColor: 'white',
+                                padding: '0.25rem 0.5rem',
+                                borderRadius: '0.25rem',
+                                border: '1px solid #ddd6fe',
+                                fontWeight: 500,
+                              }}
+                            >
+                              {org}
+                            </span>
+                          ))}
+                          {allOrgs.size > 5 && (
+                            <span style={{ fontSize: '0.8125rem', color: '#6b7280', alignSelf: 'center' }}>
+                              +{allOrgs.size - 5} more
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* News Outlets */}
+                    {allOutlets.size > 0 && (
+                      <div>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.375rem', fontWeight: 600 }}>
+                          NEWS OUTLETS
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                          {Array.from(allOutlets).slice(0, 5).map((outlet) => (
+                            <span
+                              key={outlet}
+                              style={{
+                                fontSize: '0.8125rem',
+                                color: '#059669',
+                                backgroundColor: 'white',
+                                padding: '0.25rem 0.5rem',
+                                borderRadius: '0.25rem',
+                                border: '1px solid #d1fae5',
+                                fontWeight: 500,
+                              }}
+                            >
+                              {outlet}
+                            </span>
+                          ))}
+                          {allOutlets.size > 5 && (
+                            <span style={{ fontSize: '0.8125rem', color: '#6b7280', alignSelf: 'center' }}>
+                              +{allOutlets.size - 5} more
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
 
               {/* Why is this heating up? */}
               {selectedHotspot.theme_distribution &&

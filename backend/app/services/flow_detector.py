@@ -4,9 +4,16 @@ import math
 import logging
 from typing import List, Dict, Tuple, Optional
 from datetime import datetime, timedelta
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
+
+# TEMPORARY: Make sklearn/numpy optional due to Python 3.13 compatibility issues
+try:
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity
+    import numpy as np
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    SKLEARN_AVAILABLE = False
+    logger.warning("sklearn/numpy not available - using fallback similarity calculation")
 
 from app.models.schemas import Topic
 from app.models.flows import Hotspot, Flow, TopicSummary, GDELTSignalSummary
@@ -51,6 +58,16 @@ class FlowDetector:
         """
         if not topics_a or not topics_b:
             return 0.0
+
+        # TEMPORARY: Fallback when sklearn not available
+        if not SKLEARN_AVAILABLE:
+            # Simple word overlap similarity
+            words_a = set(" ".join(topics_a).lower().split())
+            words_b = set(" ".join(topics_b).lower().split())
+            if not words_a or not words_b:
+                return 0.0
+            overlap = len(words_a & words_b)
+            return min(1.0, overlap / min(len(words_a), len(words_b)))
 
         try:
             # Combine all topics for vectorization
@@ -218,7 +235,11 @@ class FlowDetector:
                 sentiment_label=s.sentiment_label,
                 sentiment_score=s.tone.overall,
                 country_code=s.primary_location.country_code,
-                location_name=s.primary_location.location_name
+                location_name=s.primary_location.location_name,
+                # Phase 3.5: Actor data
+                persons=s.persons,
+                organizations=s.organizations,
+                source_outlet=s.source_outlet
             )
             for s in signals
         ]
@@ -240,6 +261,45 @@ class FlowDetector:
                 # Use human-readable label as key
                 theme_dist[label] = theme_dist.get(label, 0) + signal.theme_counts.get(theme_code, 0)
         return theme_dist
+
+    def _calculate_source_diversity(self, signals: List[GDELTSignal]) -> tuple[int, float]:
+        """
+        Calculate source diversity metrics.
+
+        Args:
+            signals: List of GDELT signals
+
+        Returns:
+            Tuple of (source_count, source_diversity_ratio)
+            - source_count: Number of unique news outlets
+            - source_diversity_ratio: unique_outlets / total_signals [0, 1]
+              0 = all signals from same outlet (concentrated)
+              1 = every signal from different outlet (highly diverse)
+        """
+        if not signals:
+            return (0, 0.0)
+
+        # Count unique outlets (filter out None values)
+        unique_outlets = set()
+        for signal in signals:
+            if signal.source_outlet:
+                unique_outlets.add(signal.source_outlet)
+
+        source_count = len(unique_outlets)
+
+        # Calculate diversity ratio
+        # If no outlets are available, diversity is 0
+        if source_count == 0:
+            diversity_ratio = 0.0
+        else:
+            diversity_ratio = min(source_count / len(signals), 1.0)
+
+        logger.debug(
+            f"Source diversity: {source_count} unique outlets across {len(signals)} signals "
+            f"(diversity ratio: {diversity_ratio:.3f})"
+        )
+
+        return (source_count, diversity_ratio)
 
     def detect_flows(
         self,
@@ -286,12 +346,17 @@ class FlowDetector:
 
                 # NEW: Aggregate theme distribution
                 theme_distribution = self._aggregate_theme_distribution(signals)
+
+                # NEW: Calculate source diversity (Phase 3.5)
+                source_count, source_diversity = self._calculate_source_diversity(signals)
             else:
                 intensity = self.calculate_hotspot_intensity(topics)
                 signal_summaries = []
                 dominant_sentiment = "neutral"
                 avg_sentiment = 0.0
                 theme_distribution = {}
+                source_count = 0
+                source_diversity = 0.0
 
             # Get country metadata
             metadata = COUNTRY_METADATA.get(country)
@@ -328,7 +393,10 @@ class FlowDetector:
                 signals=signal_summaries,
                 dominant_sentiment=dominant_sentiment,
                 avg_sentiment_score=avg_sentiment,
-                theme_distribution=theme_distribution
+                theme_distribution=theme_distribution,
+                # Phase 3.5: Source diversity
+                source_count=source_count,
+                source_diversity=source_diversity
             )
             hotspots.append(hotspot)
 

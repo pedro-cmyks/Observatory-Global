@@ -11,7 +11,8 @@ from app.models.schemas import TrendsResponse
 from app.services.gdelt_client import GDELTClient
 from app.services.trends_client import TrendsClient
 from app.services.wiki_client import WikiClient
-from app.services.nlp import NLPProcessor
+# TEMPORARY: Disabled due to sklearn/numpy hanging on Python 3.13
+# from app.services.nlp import NLPProcessor
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -20,7 +21,9 @@ logger = logging.getLogger(__name__)
 gdelt_client = GDELTClient()
 trends_client = TrendsClient()
 wiki_client = WikiClient()
-nlp_processor = NLPProcessor()
+# TEMPORARY: NLPProcessor disabled
+# nlp_processor = NLPProcessor()
+nlp_processor = None
 
 
 @router.get("/top", response_model=TrendsResponse)

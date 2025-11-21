@@ -20,7 +20,8 @@ import redis
 from app.services.gdelt_client import GDELTClient
 from app.services.trends_client import TrendsClient
 from app.services.wiki_client import WikiClient
-from app.services.nlp import NLPProcessor
+# TEMPORARY: Disabled due to sklearn/numpy hanging on Python 3.13
+# from app.services.nlp import NLPProcessor
 from app.models.schemas import Topic
 from app.models.gdelt_schemas import GDELTSignal
 from app.core.config import settings
@@ -46,17 +47,44 @@ class SignalsService:
     """
 
     # Unified default countries for all views
+    # Expanded to support global narrative tracking (30 countries)
     DEFAULT_COUNTRIES = [
+        # Americas
         "US",  # United States
-        "CO",  # Colombia
-        "BR",  # Brazil
+        "CA",  # Canada
         "MX",  # Mexico
+        "BR",  # Brazil
+        "CO",  # Colombia
         "AR",  # Argentina
+        # Europe
         "GB",  # United Kingdom
         "FR",  # France
         "DE",  # Germany
         "ES",  # Spain
         "IT",  # Italy
+        "NL",  # Netherlands
+        "BE",  # Belgium
+        "SE",  # Sweden
+        "NO",  # Norway
+        "PL",  # Poland
+        "CH",  # Switzerland
+        "AT",  # Austria
+        # Asia-Pacific
+        "CN",  # China
+        "JP",  # Japan
+        "IN",  # India
+        "KR",  # South Korea
+        "AU",  # Australia
+        # Middle East & Africa
+        "IL",  # Israel
+        "SA",  # Saudi Arabia
+        "TR",  # Turkey
+        "EG",  # Egypt
+        "ZA",  # South Africa
+        "NG",  # Nigeria
+        # Eastern Europe
+        "RU",  # Russia
+        "UA",  # Ukraine
     ]
 
     CACHE_TTL_SECONDS = 300  # 5 minutes
@@ -66,7 +94,9 @@ class SignalsService:
         self.gdelt_client = GDELTClient()
         self.trends_client = TrendsClient()
         self.wiki_client = WikiClient()
-        self.nlp_processor = NLPProcessor()
+        # TEMPORARY: NLPProcessor disabled due to sklearn/numpy import hang on Python 3.13
+        # self.nlp_processor = NLPProcessor()
+        self.nlp_processor = None
 
         # Initialize Redis for caching
         try:
@@ -360,9 +390,10 @@ class SignalsService:
 
         try:
             # Serialize data for caching
+            # CRITICAL: Use model_dump() to preserve ALL fields including Phase 3.5 fields (persons, organizations, source_outlet)
             cache_data = {}
             for country, (signals, timestamp) in signals_by_country.items():
-                signals_data = [signal.dict() for signal in signals]
+                signals_data = [signal.model_dump() for signal in signals]
                 cache_data[country] = (signals_data, timestamp.isoformat())
 
             # Store in Redis with TTL

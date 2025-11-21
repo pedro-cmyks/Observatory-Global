@@ -307,10 +307,10 @@ class GDELTPlaceholderGenerator:
             intensity=intensity,
             sentiment_label=self._compute_sentiment_label(tone.overall),
             geographic_precision=self._compute_geo_precision(location.location_type),
-            persons=None,  # Tier 2
-            organizations=None,  # Tier 2
+            persons=self._generate_persons(country, bundle),
+            organizations=self._generate_organizations(country, bundle),
             source_url=None,  # Tier 2
-            source_outlet=None,  # Tier 2
+            source_outlet=self._generate_outlet(country),
             sources=sources,
             confidence=sources.confidence_score(),
             url_hash=url_hash,
@@ -464,6 +464,7 @@ class GDELTPlaceholderGenerator:
             gdelt=True,  # Always true for placeholders
             google_trends=random.random() < 0.7,  # 70% chance
             wikipedia=random.random() < 0.5,  # 50% chance
+            gdelt_placeholder=True,  # Mark as placeholder data
         )
 
     def _compute_sentiment_label(self, tone: float) -> str:
@@ -487,6 +488,153 @@ class GDELTPlaceholderGenerator:
             return "state"
         else:
             return "city"
+
+    def _generate_persons(self, country: str, bundle: dict) -> List[str]:
+        """Generate realistic key people for country and theme."""
+        # Country-specific political/public figures
+        PERSONS_BY_COUNTRY = {
+            "US": ["Joe Biden", "Donald Trump", "Kamala Harris", "Ron DeSantis", "Mike Johnson", "Chuck Schumer"],
+            "BR": ["Lula da Silva", "Jair Bolsonaro", "Alexandre de Moraes", "Arthur Lira"],
+            "MX": ["Andrés Manuel López Obrador", "Claudia Sheinbaum", "Xóchitl Gálvez"],
+            "AR": ["Javier Milei", "Sergio Massa", "Alberto Fernández", "Cristina Kirchner"],
+            "CO": ["Gustavo Petro", "Álvaro Uribe", "Iván Duque"],
+            "FR": ["Emmanuel Macron", "Marine Le Pen", "Élisabeth Borne", "Jordan Bardella"],
+            "GB": ["Rishi Sunak", "Keir Starmer", "Boris Johnson", "Sadiq Khan"],
+            "DE": ["Olaf Scholz", "Friedrich Merz", "Annalena Baerbock", "Robert Habeck"],
+            "ES": ["Pedro Sánchez", "Alberto Núñez Feijóo", "Yolanda Díaz"],
+            "IT": ["Giorgia Meloni", "Sergio Mattarella", "Elly Schlein"],
+            "CN": ["Xi Jinping", "Li Qiang", "Wang Yi", "Qin Gang"],
+            "RU": ["Vladimir Putin", "Sergei Lavrov", "Dmitry Medvedev", "Yevgeny Prigozhin"],
+            "JP": ["Fumio Kishida", "Yoshimasa Hayashi", "Taro Kono"],
+            "IN": ["Narendra Modi", "Rahul Gandhi", "Amit Shah"],
+            "ZA": ["Cyril Ramaphosa", "Julius Malema", "John Steenhuisen"],
+            "AU": ["Anthony Albanese", "Peter Dutton", "Penny Wong"],
+            "CA": ["Justin Trudeau", "Pierre Poilievre", "Jagmeet Singh"],
+            "KR": ["Yoon Suk Yeol", "Lee Jae-myung"],
+            "IL": ["Benjamin Netanyahu", "Yoav Gallant", "Benny Gantz"],
+            "UA": ["Volodymyr Zelenskyy", "Valerii Zaluzhnyi"],
+            "SA": ["Mohammed bin Salman", "Faisal bin Farhan"],
+            "EG": ["Abdel Fattah el-Sisi"],
+            "NG": ["Bola Tinubu"],
+            "TR": ["Recep Tayyip Erdoğan", "Kemal Kılıçdaroğlu"],
+            "PL": ["Donald Tusk", "Andrzej Duda"],
+            "SE": ["Ulf Kristersson", "Magdalena Andersson"],
+            "NL": ["Mark Rutte", "Geert Wilders"],
+            "BE": ["Alexander De Croo"],
+            "CH": ["Alain Berset"],
+            "AT": ["Karl Nehammer"],
+            "NO": ["Jonas Gahr Støre"],
+        }
+
+        persons = PERSONS_BY_COUNTRY.get(country, ["Political Leader", "Government Official", "Public Figure"])
+        # Return 1-3 random persons
+        count = random.randint(1, 3)
+        return random.sample(persons, min(count, len(persons)))
+
+    def _generate_organizations(self, country: str, bundle: dict) -> List[str]:
+        """Generate realistic organizations for country and theme."""
+        # Get bundle name for theme-specific organizations
+        bundle_name = None
+        for name, b in self.bundles.items():
+            if b == bundle:
+                bundle_name = name
+                break
+
+        # Theme-specific organizations (based on bundle categories)
+        ORGS_BY_BUNDLE = {
+            "conflict_escalation": ["United Nations", "NATO", "Red Cross", "Amnesty International", "Human Rights Watch"],
+            "terrorism_response": ["Interpol", "FBI", "Europol", "Counter-Terrorism Committee"],
+            "economic_crisis_contagion": ["World Bank", "IMF", "Federal Reserve", "European Central Bank", "G20"],
+            "labor_unrest": ["International Labour Organization", "AFL-CIO", "European Trade Union", "Workers Union"],
+            "trade_tensions": ["WTO", "World Trade Organization", "Chamber of Commerce", "Export-Import Bank"],
+            "election_cycle": ["Electoral Commission", "Supreme Court", "Parliament", "Congress", "Senate"],
+            "corruption_scandal": ["Transparency International", "Anti-Corruption Bureau", "Department of Justice", "Supreme Court"],
+            "diplomatic_breakthrough": ["United Nations", "State Department", "Foreign Ministry", "Diplomatic Corps"],
+            "climate_emergency": ["IPCC", "Greenpeace", "World Wildlife Fund", "Environmental Protection Agency"],
+            "environmental_policy": ["EPA", "Ministry of Environment", "Green Party", "Climate Council"],
+            "migration_crisis": ["UNHCR", "International Organization for Migration", "Border Agency", "Immigration Department"],
+            "social_justice_movement": ["ACLU", "Human Rights Campaign", "Civil Rights Organization", "Justice Department"],
+            "tech_regulation": ["FTC", "EU Commission", "Competition Authority", "Tech Industry Association"],
+            "space_achievement": ["NASA", "ESA", "SpaceX", "Roscosmos", "ISRO"],
+            "public_health_emergency": ["WHO", "CDC", "Ministry of Health", "Red Cross", "Health Department"],
+        }
+
+        # Country-specific organizations
+        ORGS_BY_COUNTRY = {
+            "US": ["Department of State", "Pentagon", "Congress", "FBI", "CIA", "Federal Reserve"],
+            "BR": ["Petrobras", "Brazilian Congress", "Central Bank of Brazil", "Supreme Federal Court"],
+            "MX": ["AMLO Administration", "Mexican Senate", "Bank of Mexico", "PEMEX"],
+            "AR": ["Argentine Congress", "Central Bank of Argentina", "Supreme Court"],
+            "CO": ["Colombian Army", "Congress of Colombia", "Constitutional Court"],
+            "CN": ["Communist Party", "State Council", "People's Bank of China", "National People's Congress"],
+            "RU": ["Kremlin", "State Duma", "Russian Military", "Gazprom"],
+            "GB": ["Parliament", "Bank of England", "BBC", "MI6", "NHS"],
+            "FR": ["National Assembly", "Ministry of Interior", "Élysée Palace"],
+            "DE": ["Bundestag", "Bundesbank", "Constitutional Court"],
+            "JP": ["Diet of Japan", "Bank of Japan", "Self-Defense Forces"],
+            "IN": ["Parliament of India", "Reserve Bank of India", "Supreme Court of India"],
+            "IL": ["Knesset", "IDF", "Mossad", "Bank of Israel"],
+            "UA": ["Verkhovna Rada", "Armed Forces of Ukraine", "National Bank of Ukraine"],
+            "AU": ["Parliament of Australia", "Reserve Bank of Australia"],
+            "CA": ["Parliament of Canada", "Bank of Canada", "RCMP"],
+        }
+
+        orgs = []
+
+        # Add theme-specific organizations
+        if bundle_name and bundle_name in ORGS_BY_BUNDLE:
+            orgs.extend(ORGS_BY_BUNDLE[bundle_name])
+
+        # Add country-specific organizations
+        if country in ORGS_BY_COUNTRY:
+            orgs.extend(ORGS_BY_COUNTRY[country])
+
+        # Fallback if no matches
+        if not orgs:
+            orgs = ["Government", "Parliament", "Ministry", "National Assembly"]
+
+        # Return 1-3 random organizations
+        count = random.randint(1, 3)
+        return random.sample(orgs, min(count, len(orgs)))
+
+    def _generate_outlet(self, country: str) -> str:
+        """Generate realistic news outlet for country."""
+        OUTLETS_BY_COUNTRY = {
+            "US": ["nytimes.com", "washingtonpost.com", "cnn.com", "foxnews.com", "reuters.com", "apnews.com", "nbcnews.com"],
+            "GB": ["bbc.com", "theguardian.com", "telegraph.co.uk", "reuters.com", "independent.co.uk", "ft.com"],
+            "FR": ["lemonde.fr", "lefigaro.fr", "france24.com", "liberation.fr", "leparisien.fr"],
+            "DE": ["dw.com", "spiegel.de", "faz.net", "sueddeutsche.de", "welt.de"],
+            "BR": ["globo.com", "folha.uol.com.br", "estadao.com.br", "uol.com.br", "band.uol.com.br"],
+            "MX": ["eluniversal.com.mx", "jornada.com.mx", "reforma.com", "milenio.com", "excelsior.com.mx"],
+            "AR": ["lanacion.com.ar", "clarin.com", "pagina12.com.ar", "infobae.com", "ambito.com"],
+            "CO": ["eltiempo.com", "elespectador.com", "semana.com", "rcnradio.com"],
+            "CN": ["xinhua.net", "chinadaily.com.cn", "globaltimes.cn", "peopledaily.com.cn"],
+            "RU": ["tass.com", "rt.com", "ria.ru", "interfax.ru", "kommersant.ru"],
+            "JP": ["asahi.com", "nikkei.com", "japantimes.co.jp", "mainichi.jp", "yomiuri.co.jp"],
+            "IN": ["timesofindia.indiatimes.com", "hindustantimes.com", "thehindu.com", "indianexpress.com"],
+            "ES": ["elpais.com", "elmundo.es", "abc.es", "lavanguardia.com"],
+            "IT": ["corriere.it", "repubblica.it", "lastampa.it", "ilsole24ore.com"],
+            "AU": ["abc.net.au", "smh.com.au", "theaustralian.com.au", "news.com.au"],
+            "CA": ["cbc.ca", "theglobeandmail.com", "nationalpost.com", "ctvnews.ca"],
+            "ZA": ["news24.com", "iol.co.za", "timeslive.co.za"],
+            "KR": ["koreatimes.co.kr", "koreaherald.com", "yonhapnews.co.kr"],
+            "IL": ["haaretz.com", "jpost.com", "timesofisrael.com"],
+            "UA": ["kyivpost.com", "pravda.com.ua", "unian.net"],
+            "SA": ["arabnews.com", "spa.gov.sa"],
+            "EG": ["ahram.org.eg", "egypttoday.com"],
+            "NG": ["punchng.com", "vanguardngr.com", "thenationonlineng.net"],
+            "TR": ["hurriyetdailynews.com", "dailysabah.com", "aa.com.tr"],
+            "PL": ["tvn24.pl", "polsatnews.pl", "onet.pl"],
+            "SE": ["dn.se", "svd.se", "aftonbladet.se"],
+            "NL": ["nos.nl", "nu.nl", "telegraaf.nl"],
+            "BE": ["vrt.be", "standaard.be", "lesoir.be"],
+            "CH": ["swissinfo.ch", "nzz.ch"],
+            "AT": ["derstandard.at", "kurier.at"],
+            "NO": ["nrk.no", "vg.no", "aftenposten.no"],
+        }
+
+        outlets = OUTLETS_BY_COUNTRY.get(country, ["news.local", "national-press.com", "media-outlet.com"])
+        return random.choice(outlets)
 
 
 # ===== SINGLETON INSTANCE =====

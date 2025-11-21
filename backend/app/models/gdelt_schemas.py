@@ -138,14 +138,21 @@ class SourceAttribution(BaseModel):
     - gdelt=True, trends=True, wiki=True: confidence = 1.0 (all sources)
     - gdelt=True, trends=False, wiki=False: confidence = 0.7 (GDELT only)
     - gdelt=False, trends=True, wiki=True: confidence = 0.3 (no authoritative source)
+    - gdelt_placeholder=True: confidence = 0.5 (placeholder data for testing)
     """
 
     gdelt: bool = Field(default=False, description="GDELT GKG data present")
     google_trends: bool = Field(default=False, description="Google Trends data present")
     wikipedia: bool = Field(default=False, description="Wikipedia data present")
+    gdelt_placeholder: bool = Field(default=False, description="Placeholder/synthetic GDELT data (for development)")
 
     def confidence_score(self) -> float:
         """Calculate confidence based on source availability."""
+        # If using placeholder data, return lower confidence
+        if self.gdelt_placeholder:
+            return 0.5  # Placeholder data gets fixed 50% confidence
+
+        # Real data scoring
         score = 0.0
         if self.gdelt:
             score += 0.7  # GDELT is primary/authoritative
