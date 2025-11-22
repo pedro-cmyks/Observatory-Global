@@ -119,36 +119,6 @@ const MapContainer: React.FC = () => {
       >
         <NavigationControl position="top-right" />
 
-        {/* Simple Markers - Only visible in Classic Mode */}
-        {viewMode === 'classic' && flowsData?.hotspots?.map((hotspot, idx) => (
-          <Marker
-            key={idx}
-            longitude={hotspot.longitude}
-            latitude={hotspot.latitude}
-            anchor="center"
-            onClick={() => {
-              console.log('Marker clicked:', hotspot)
-              setSelectedHotspot(hotspot)
-              // Note: Hover tooltips will auto-clear when mouse moves
-            }}
-          >
-            <div
-              style={{
-                width: '20px',
-                height: '20px',
-                borderRadius: '50%',
-                backgroundColor: hotspot.intensity > 0.6 ? 'rgb(239, 68, 68)' :
-                  hotspot.intensity > 0.3 ? 'rgb(251, 191, 36)' :
-                    'rgb(59, 130, 246)',
-                border: '2px solid white',
-                cursor: 'pointer',
-                opacity: 0.9
-              }}
-              title={`${hotspot.country_name} (${hotspot.country_code})`}
-            />
-          </Marker>
-        ))}
-
         {/* Unified Radar View Architecture */}
 
         {/* All layers are now managed by DeckGLOverlay */}

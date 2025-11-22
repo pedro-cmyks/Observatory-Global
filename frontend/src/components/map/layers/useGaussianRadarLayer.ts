@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMapStore } from '../../../store/mapStore'
 // @ts-ignore - deck.gl types not available
-import { HeatmapLayer } from '@deck.gl/aggregation-layers'
+import { ScatterplotLayer } from '@deck.gl/layers'
 
 export const useGaussianHeatmapLayer = () => {
     const { flowsData, selectedCountries } = useMapStore()
@@ -17,42 +17,42 @@ export const useGaussianHeatmapLayer = () => {
             ? flowsData.hotspots.filter(h => selectedCountries.includes(h.country_code))
             : flowsData.hotspots
 
-        // Transform to points that HeatmapLayer expects
-        const heatmapData = data.flatMap(hotspot => {
-            // Create multiple points per hotspot for better gaussian effect
-            const baseWeight = hotspot.intensity * hotspot.topic_count
-            return [{
-                position: [hotspot.longitude, hotspot.latitude],
-                weight: baseWeight
-            }]
-        })
+        console.log('[useGaussianRadarLayer] Creating gaussian field with', data.length, 'hotspots')
 
-        console.log('[useGaussianRadarLayer] Creating heatmap with', heatmapData.length, 'points')
-
-        return new HeatmapLayer({
-            id: 'gaussian-heatmap-layer',
-            data: heatmapData,
+        // FIX: HeatmapLayer doesn't work with globe projection
+        // Using ScatterplotLayer with large radius + low opacity for gaussian effect
+        return new ScatterplotLayer({
+            id: 'gaussian-radar-layer',
+            data: data,
             visible: true,
             pickable: true,
 
-            // RADAR PARAMETERS - Weather-style visualization
-            radiusPixels: 200,    // Massive gaussian blur for field effect
-            intensity: 4,         // Higher intensity to make sparse points glow
-            threshold: 0.01,      // Show even very faint signals
-
-            // Weather radar color scheme: Cold (blue) → Hot (red)
-            colorRange: [
-                [0, 0, 128, 80],       // Deep blue (very cold)
-                [0, 128, 255, 140],    // Cyan (cold)
-                [0, 255, 128, 180],    // Green (moderate)
-                [255, 255, 0, 220],    // Yellow (warm)
-                [255, 128, 0, 240],    // Orange (hot)
-                [255, 0, 0, 255]       // Red (very hot)
-            ],
+            // RADAR PARAMETERS - Large blurred circles for field effect
+            radiusScale: 1,
+            radiusMinPixels: 80,   // Large minimum for gaussian field
+            radiusMaxPixels: 300,  // Massive for storm effect
+            lineWidthMinPixels: 0,
+            opacity: 0.4,          // Low opacity for layering effect
+            filled: true,
+            stroked: false,
 
             // Data accessors
-            getPosition: (d: any) => d.position,
-            getWeight: (d: any) => d.weight,
+            getPosition: (d: any) => [d.longitude, d.latitude],
+            getRadius: (d: any) => {
+                // Larger radius for higher intensity hotspots
+                const baseRadius = 100
+                const intensityBonus = d.intensity * 200 // 0-200 bonus
+                return baseRadius + intensityBonus
+            },
+            getFillColor: (d: any) => {
+                // Weather radar color scheme based on intensity
+                const intensity = d.intensity
+                if (intensity < 0.2) return [0, 0, 128, 100]       // Deep blue (very cold)
+                if (intensity < 0.4) return [0, 128, 255, 140]     // Cyan (cold)
+                if (intensity < 0.6) return [0, 255, 128, 180]     // Green (moderate)
+                if (intensity < 0.8) return [255, 255, 0, 220]     // Yellow (warm)
+                return [255, 0, 0, 255]                            // Red (very hot)
+            },
 
             // Interaction
             onHover: (info: any) => {
@@ -62,7 +62,8 @@ export const useGaussianHeatmapLayer = () => {
 
             updateTriggers: {
                 getPosition: [flowsData],
-                getWeight: [flowsData]
+                getRadius: [flowsData],
+                getFillColor: [flowsData]
             }
         })
     }, [flowsData, selectedCountries])

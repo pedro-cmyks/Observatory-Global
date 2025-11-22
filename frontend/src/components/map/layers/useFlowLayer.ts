@@ -33,20 +33,22 @@ export const useFlowLayer = () => {
             // CRITICAL: Use pixel-based width for zoom-independence
             widthUnits: 'pixels',     // Width in screen pixels, not meters
             widthScale: 1,            // No additional scaling
-            widthMinPixels: 12,       // Minimum 12px for global visibility
-            widthMaxPixels: 40,       // Cap at 40px
+            widthMinPixels: 18,       // Increased from 12 for better global visibility
+            widthMaxPixels: 50,       // Increased cap
 
             // WINDS - THICK lines visible at GLOBAL scale
-            getWidth: (d: Flow) => Math.max(15, d.heat * 30), // 15-30px for global visibility
+            getWidth: (d: Flow) => Math.max(20, d.heat * 40), // Increased from 15/30 to 20/40
             getSourcePosition: (d: Flow) => d.from_coords,
             getTargetPosition: (d: Flow) => d.to_coords,
 
             // Bright gradient showing direction: Blue (source) → Red (target)
-            getSourceColor: [100, 200, 255, 255],  // Bright cyan (origin)
-            getTargetColor: [255, 100, 100, 255],  // Bright red (destination)
+            // Increased opacity for better visibility
+            getSourceColor: [100, 200, 255, 220],  // Bright cyan (origin) - increased alpha
+            getTargetColor: [255, 100, 100, 220],  // Bright red (destination) - increased alpha
 
-            getHeight: 1.5,          // Much higher arc (1.5x radius) to avoid clipping into globe
-            greatCircle: true,       // Follow Earth's curvature
+            // FIX: Remove getHeight - let greatCircle handle arc elevation naturally
+            // The getHeight parameter was causing z-ordering issues with globe projection
+            greatCircle: true,       // Follow Earth's curvature (handles elevation automatically)
 
             updateTriggers: {
                 getWidth: [flowsData],
