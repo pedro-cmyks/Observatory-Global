@@ -14,14 +14,13 @@ Architecture Decision:
 import logging
 import json
 from typing import Dict, List, Tuple, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 import redis
 
 from app.services.gdelt_client import GDELTClient
 from app.services.trends_client import TrendsClient
 from app.services.wiki_client import WikiClient
-# TEMPORARY: Disabled due to sklearn/numpy hanging on Python 3.13
-# from app.services.nlp import NLPProcessor
+
 from app.models.schemas import Topic
 from app.models.gdelt_schemas import GDELTSignal
 from app.core.config import settings
@@ -94,8 +93,7 @@ class SignalsService:
         self.gdelt_client = GDELTClient()
         self.trends_client = TrendsClient()
         self.wiki_client = WikiClient()
-        # TEMPORARY: NLPProcessor disabled due to sklearn/numpy import hang on Python 3.13
-        # self.nlp_processor = NLPProcessor()
+        # NLP Processor disabled (Python 3.13 compatibility)
         self.nlp_processor = None
 
         # Initialize Redis for caching
@@ -112,6 +110,15 @@ class SignalsService:
             logger.warning(f"SignalsService: Redis unavailable, caching disabled: {e}")
             self.redis_client = None
             self.redis_available = False
+
+        # Initialize Persistence Repository
+        try:
+            from app.db.repositories.signals import SignalsRepository
+            self.repository = SignalsRepository()
+            logger.info("SignalsService: Persistence repository initialized")
+        except Exception as e:
+            logger.error(f"SignalsService: Failed to initialize persistence repository: {e}")
+            self.repository = None
 
     async def fetch_gdelt_signals(
         self,
@@ -158,16 +165,40 @@ class SignalsService:
         logger.info(f"SignalsService: Fetching fresh GDELT data for {len(countries)} countries")
         signals_by_country = {}
 
+        # Strategy:
+        # 1. Try to fetch from Real GDELT (API/Files)
+        # 2. If that fails, try to fetch from our Database (Historical/Recent)
+        # 3. If that fails, use Placeholder (handled by GDELTClient fallback)
+
         for country in countries:
             try:
                 # Fetch GDELT signals (already fully structured)
+                # This client handles the "Real GDELT vs Placeholder" logic internally
                 signals = await self.gdelt_client.fetch_gdelt_signals(country, count=10)
 
                 if signals:
                     signals_by_country[country] = (signals, datetime.utcnow())
                     logger.info(f"SignalsService: Fetched {len(signals)} GDELT signals for {country}")
                 else:
-                    logger.warning(f"SignalsService: No GDELT signals for {country}")
+                    # If GDELT client returns nothing (unlikely with placeholder), try DB
+                    if self.repository:
+                        logger.info(f"SignalsService: GDELT client empty for {country}, trying DB")
+                        # Calculate time window
+                        end_time = datetime.utcnow()
+                        # Simple parsing of "6h" -> 6 hours
+                        hours = int(time_window.replace("h", "")) if "h" in time_window else 24
+                        start_time = end_time - timedelta(hours=hours)
+                        
+                        db_signals_dict = await self.repository.get_signals([country], start_time, end_time)
+                        db_signals = db_signals_dict.get(country, [])
+                        
+                        if db_signals:
+                            signals_by_country[country] = (db_signals, datetime.utcnow())
+                            logger.info(f"SignalsService: Fetched {len(db_signals)} signals from DB for {country}")
+                        else:
+                            logger.warning(f"SignalsService: No signals in DB for {country}")
+                    else:
+                        logger.warning(f"SignalsService: No GDELT signals for {country}")
 
             except Exception as e:
                 logger.error(f"SignalsService: Error fetching GDELT signals for {country}: {e}")
@@ -176,6 +207,21 @@ class SignalsService:
         # Cache result if data was fetched
         if use_cache and self.redis_available and signals_by_country:
             await self._save_to_cache_gdelt(cache_key, signals_by_country)
+
+        # Persist to Database (Fire and Forget / Async)
+        if self.repository and signals_by_country:
+            try:
+                all_signals = []
+                for _, (signals, _) in signals_by_country.items():
+                    all_signals.extend(signals)
+                
+                if all_signals:
+                    # In a real async app, we might want to background this task
+                    # For now, we await it (it's synchronous inside but wrapped in async def)
+                    saved_count = await self.repository.save_signals(all_signals)
+                    logger.info(f"SignalsService: Persisted {saved_count} signals to database")
+            except Exception as e:
+                logger.error(f"SignalsService: Error persisting signals: {e}")
 
         logger.info(f"SignalsService: Returning GDELT data for {len(signals_by_country)} countries")
         return signals_by_country
@@ -253,7 +299,7 @@ class SignalsService:
                     logger.warning(f"SignalsService: Wikipedia fetch failed for {country}: {e}")
 
                 # Process with NLP to extract topics
-                if all_items:
+                if all_items and self.nlp_processor:
                     topics = self.nlp_processor.process_and_extract_topics(
                         all_items,
                         limit=50
@@ -263,6 +309,11 @@ class SignalsService:
                         logger.info(f"SignalsService: Processed {len(topics)} topics for {country}")
                     else:
                         logger.warning(f"SignalsService: NLP returned no topics for {country}")
+                elif all_items:
+                     # Fallback if NLP is disabled: Convert raw items to basic topics
+                     # This is a simplified fallback to prevent crashing
+                     logger.warning(f"SignalsService: NLP disabled, skipping topic extraction for {country}")
+                     # In a real scenario, we might want a simple adapter here, but for now just log
                 else:
                     logger.warning(f"SignalsService: No items fetched for {country}")
 

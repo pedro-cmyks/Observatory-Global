@@ -37,15 +37,31 @@ COUNTRY_METADATA: Dict[str, Tuple[str, float, float]] = {
     'ES': ('Spain', 40.4637, -3.7492),
     'IT': ('Italy', 41.8719, 12.5674),
     'RU': ('Russia', 61.5240, 105.3188),
+    'NL': ('Netherlands', 52.1326, 5.2913),
+    'BE': ('Belgium', 50.5039, 4.4699),
+    'SE': ('Sweden', 60.1282, 18.6435),
+    'NO': ('Norway', 60.4720, 8.4689),
+    'PL': ('Poland', 51.9194, 19.1451),
+    'CH': ('Switzerland', 46.8182, 8.2275),
+    'AT': ('Austria', 47.5162, 14.5501),
+    'UA': ('Ukraine', 48.3794, 31.1656),
 
     # Asia-Pacific
     'CN': ('China', 35.8617, 104.1954),
     'IN': ('India', 20.5937, 78.9629),
     'JP': ('Japan', 36.2048, 138.2529),
     'AU': ('Australia', -25.2744, 133.7751),
+    'KR': ('South Korea', 35.9078, 127.7669),
+
+    # Middle East
+    'IL': ('Israel', 31.0461, 34.8516),
+    'SA': ('Saudi Arabia', 23.8859, 45.0792),
+    'TR': ('Turkey', 38.9637, 35.2433),
 
     # Africa
     'ZA': ('South Africa', -30.5595, 22.9375),
+    'EG': ('Egypt', 26.8206, 30.8025),
+    'NG': ('Nigeria', 9.0820, 8.6753),
 }
 
 

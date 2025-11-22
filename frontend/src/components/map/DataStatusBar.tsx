@@ -5,7 +5,7 @@ import { formatDistanceToNow } from 'date-fns'
 type HealthStatus = 'healthy' | 'degraded' | 'down'
 
 const DataStatusBar: React.FC = () => {
-  const { lastUpdate, loading, error, fetchFlowsData, fetchHexmapData, viewMode, flowsData, hexmapData } = useMapStore()
+  const { lastUpdate, loading, error, fetchFlowsData, viewMode, flowsData } = useMapStore()
   const [healthStatus, setHealthStatus] = useState<HealthStatus>('healthy')
   const [showErrorDetails, setShowErrorDetails] = useState(false)
 
@@ -14,7 +14,7 @@ const DataStatusBar: React.FC = () => {
     const checkHealth = () => {
       if (error) {
         // Check if we have any data despite the error
-        const hasData = (viewMode === 'classic' && flowsData) || (viewMode === 'heatmap' && hexmapData)
+        const hasData = !!flowsData
         setHealthStatus(hasData ? 'degraded' : 'down')
       } else if (loading) {
         setHealthStatus('degraded')
@@ -24,7 +24,7 @@ const DataStatusBar: React.FC = () => {
     }
 
     checkHealth()
-  }, [error, loading, viewMode, flowsData, hexmapData])
+  }, [error, loading, viewMode, flowsData])
 
   const getStatusIcon = (status: HealthStatus) => {
     switch (status) {
@@ -49,11 +49,7 @@ const DataStatusBar: React.FC = () => {
   }
 
   const handleRetry = () => {
-    if (viewMode === 'classic') {
-      fetchFlowsData()
-    } else {
-      fetchHexmapData()
-    }
+    fetchFlowsData()
   }
 
   const getErrorDetails = () => {
@@ -65,14 +61,14 @@ const DataStatusBar: React.FC = () => {
 
     return {
       type: is404 ? '404 Not Found' : is500 ? 'Server Error' : isNetworkError ? 'Network Error' : 'Error',
-      endpoint: viewMode === 'classic' ? '/v1/flows' : '/v1/hexmap',
+      endpoint: '/v1/flows',
       suggestion: is404
         ? 'Endpoint not available. Backend may need updating.'
         : is500
-        ? 'Backend service error. Please try again.'
-        : isNetworkError
-        ? 'Cannot connect to backend. Check if services are running.'
-        : 'An unexpected error occurred.',
+          ? 'Backend service error. Please try again.'
+          : isNetworkError
+            ? 'Cannot connect to backend. Check if services are running.'
+            : 'An unexpected error occurred.',
     }
   }
 
@@ -112,14 +108,14 @@ const DataStatusBar: React.FC = () => {
 
           {loading && (
             <div style={{ opacity: 0.8 }}>
-              Loading {viewMode} data...
+              Loading data...
             </div>
           )}
 
           {error && (
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <div style={{ color: '#ff6b6b', cursor: 'pointer' }} onClick={() => setShowErrorDetails(!showErrorDetails)}>
-                {errorDetails?.type}: {viewMode === 'classic' ? 'Flows' : 'Hexmap'} endpoint
+                {errorDetails?.type}: Flows endpoint
                 <span style={{ marginLeft: '0.5rem' }}>{showErrorDetails ? '▲' : '▼'}</span>
               </div>
               <button

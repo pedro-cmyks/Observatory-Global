@@ -20,7 +20,6 @@
     "date-fns": "^3.0.0",
     "deck.gl": "^9.2.2",
     "framer-motion": "^11.0.0",
-    "h3-js": "^4.1.0",
     "mapbox-gl": "^3.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

@@ -28,7 +28,7 @@ async def get_flows(
         description="Comma-separated list of ISO country codes (e.g., 'US,CO,BR'). If not specified, uses default countries.",
     ),
     threshold: float = Query(
-        0.5,
+        0.3,
         description="Minimum heat threshold for flows [0, 1]",
         ge=0.0,
         le=1.0,
@@ -157,14 +157,3 @@ async def get_flows(
     except Exception as e:
         logger.error(f"Error detecting flows: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error detecting flows: {str(e)}")
-
-
-def _generate_fallback_data(country: str) -> list:
-    """Generate fallback data when all sources fail."""
-    return [
-        {"title": f"Breaking News in {country}", "source": "fallback", "count": 100},
-        {"title": f"Economic Updates {country}", "source": "fallback", "count": 85},
-        {"title": f"Political Developments {country}", "source": "fallback", "count": 72},
-        {"title": f"Technology Trends {country}", "source": "fallback", "count": 68},
-        {"title": f"Sports Highlights {country}", "source": "fallback", "count": 55},
-    ]

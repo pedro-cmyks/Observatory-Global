@@ -4,7 +4,7 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 ## Project Overview
 
-Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from multiple data sources (GDELT, Reddit, Mastodon, etc.), normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
+Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
 ## Specialized Agents
 
@@ -103,7 +103,7 @@ The project uses a multi-agent architecture where each agent has specific expert
 **Core Expertise**:
 - **Narrative Mutation Types**: Framing shifts, emphasis mutations, omissions, amplifications, minimizations, attribution flips
 - **Drift Detection**: Geographic drift scores, temporal sentiment trajectories, cross-platform divergence
-- **Source Family Analysis**: GDELT, Reddit, Mastodon, HN coverage patterns, biases, and reliability
+- **Source Family Analysis**: GDELT, Google Trends, and Wikipedia coverage patterns, biases, and reliability
 - **Geopolitical Context**: State media flags, echo chamber detection, information deserts, polarization thresholds
 - **Visualization Design**: Geographic heatmaps, cluster views, temporal timelines, narrative flow diagrams
 

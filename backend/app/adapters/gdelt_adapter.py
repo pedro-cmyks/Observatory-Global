@@ -121,14 +121,43 @@ def normalize_theme_label(theme_code: str) -> str:
     # Simple normalization: remove prefix, replace underscores, title case
     # More sophisticated mapping can be added later
 
+    # Explicit mappings for common cryptic codes
+    THEME_MAPPINGS = {
+        "FNCACT": "Functional Actor",
+        "ETHNICITY": "Ethnicity",
+        "EPU_POLICY": "Policy Uncertainty",
+        "EPU_POLICY_CONGRESS": "Congress Policy",
+        "EPU_ECONOMY": "Economic Uncertainty",
+        "CRISISLEX_T11_UPDATESSYMPATHY": "Sympathy Updates",
+        "CRISISLEX_C07_SAFETY": "Safety Concerns",
+        "USPEC_POLITICS_GENERAL1": "General Politics",
+        "GENERAL_GOVERNMENT": "Government",
+        "MEDIA_MSM": "Mainstream Media",
+        "EDUCATION": "Education",
+        "MEDICAL": "Medical",
+        "SECURITY_SERVICES": "Security Services",
+        "MILITARY": "Military",
+        "LEADER": "Leadership",
+        "TAX_FNCACT": "Functional Actor", # Handle full code too just in case
+    }
+
+    # Check explicit mapping first (full code)
+    if theme_code in THEME_MAPPINGS:
+        return THEME_MAPPINGS[theme_code]
+
     # Remove common prefixes
-    for prefix in ["WB_", "TAX_", "ECON_", "ENV_", "UNGP_", "CRISISLEX_"]:
-        if theme_code.startswith(prefix):
-            theme_code = theme_code[len(prefix):]
+    clean_code = theme_code
+    for prefix in ["WB_", "TAX_", "ECON_", "ENV_", "UNGP_", "CRISISLEX_", "USPEC_"]:
+        if clean_code.startswith(prefix):
+            clean_code = clean_code[len(prefix):]
             break
+    
+    # Check explicit mapping for cleaned code
+    if clean_code in THEME_MAPPINGS:
+        return THEME_MAPPINGS[clean_code]
 
     # Replace underscores with spaces and title case
-    label = theme_code.replace("_", " ").title()
+    label = clean_code.replace("_", " ").title()
 
     # Handle numeric codes (e.g., "632 Women In Politics" → "Women In Politics")
     parts = label.split()

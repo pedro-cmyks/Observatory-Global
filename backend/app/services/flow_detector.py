@@ -30,14 +30,14 @@ class FlowDetector:
     def __init__(
         self,
         heat_halflife_hours: float = 6.0,
-        flow_threshold: float = 0.5,
+        flow_threshold: float = 0.3,  # Lowered from 0.5 to show more flows
     ):
         """
         Initialize flow detector.
 
         Args:
             heat_halflife_hours: Half-life for exponential decay (default: 6 hours)
-            flow_threshold: Minimum heat score to include flow (default: 0.5)
+            flow_threshold: Minimum heat score to include flow (default: 0.3, lowered for visibility)
         """
         self.heat_halflife_hours = heat_halflife_hours
         self.flow_threshold = flow_threshold

@@ -1,18 +1,14 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
-import Map, { MapRef, NavigationControl } from 'react-map-gl'
+import Map, { MapRef, NavigationControl, Marker } from 'react-map-gl'
 import type { ViewState } from 'react-map-gl'
 import { useMapStore } from '../../store/mapStore'
-import HotspotLayer from './HotspotLayer'
-import FlowLayer from './FlowLayer'
+import { useGaussianHeatmapLayer } from './layers/useGaussianRadarLayer'
+import { useNodeLayer } from './layers/useNodeLayer'
+import { useFlowLayer } from './layers/useFlowLayer'
 import { DeckGLOverlay } from './DeckGLOverlay'
-// @ts-ignore
-import { H3HexagonLayer } from '@deck.gl/geo-layers'
-import type { HexCell } from '../../lib/mapTypes'
-import ViewModeToggle from './ViewModeToggle'
-import CountrySidebar from './CountrySidebar'
-import TimeWindowSelector from './TimeWindowSelector'
-import CountryFilter from './CountryFilter'
-import AutoRefreshControl from './AutoRefreshControl'
+import MapTooltip from './MapTooltip'
+import MapControlBar from './MapControlBar'
+import CountrySidebar from '../sidebar/CountrySidebar'
 import DataStatusBar from './DataStatusBar'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
@@ -20,9 +16,17 @@ const MAPBOX_TOKEN = 'pk.eyJ1IjoicHZpbGxlZyIsImEiOiJjbWh3Nnptb28wNDB2Mm9weTFqdXZ
 
 const MapContainer: React.FC = () => {
   const mapRef = useRef<MapRef>(null)
-  const { viewMode, fetchFlowsData, fetchHexmapData, hexmapData, autoRefresh, refreshInterval } = useMapStore()
+  const { viewMode, fetchFlowsData, autoRefresh, refreshInterval, flowsData, setSelectedHotspot } = useMapStore()
 
-  // Track map view state for DeckGL overlay
+  // Deck.gl Layer Hooks
+  const { layer: heatmapLayer, hoverInfo: heatmapHover } = useGaussianHeatmapLayer()
+  const { layer: nodeLayer, hoverInfo: nodeHover } = useNodeLayer()
+  const { layer: flowLayer } = useFlowLayer()
+
+  // Unified Hover Info
+  const hoverInfo = heatmapHover || nodeHover
+
+  // Track map view state
   const [viewState, setViewState] = useState<ViewState>({
     longitude: 0,
     latitude: 20,
@@ -33,12 +37,9 @@ const MapContainer: React.FC = () => {
   })
 
   // Fetch data based on current view mode
+  // Always fetch flows data because Gaussian Heatmap now depends on it (hotspots)
   const fetchData = () => {
-    if (viewMode === 'classic') {
-      fetchFlowsData()
-    } else {
-      fetchHexmapData()
-    }
+    fetchFlowsData()
   }
 
   // Fetch data when view mode changes
@@ -59,51 +60,53 @@ const MapContainer: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefresh, refreshInterval, viewMode])
 
-  // Create deck.gl layers for heatmap mode
+  // Prepare DeckGL layers based on view mode
   const deckLayers = useMemo(() => {
-    if (viewMode !== 'heatmap' || !hexmapData?.hexes || hexmapData.hexes.length === 0) {
-      return []
-    }
+    const layers = []
 
-    // Color interpolation function: intensity (0-1) -> RGBA
-    // Gradient: Green (low) -> Yellow -> Orange -> Red (high)
-    const getColor = (intensity: number): [number, number, number, number] => {
-      if (intensity < 0.33) {
-        // Green to Yellow
-        const t = intensity / 0.33
-        return [Math.round(255 * t), 255, 0, 180]
-      } else if (intensity < 0.66) {
-        // Yellow to Orange
-        const t = (intensity - 0.33) / 0.33
-        return [255, Math.round(255 - 90 * t), 0, 200]
-      } else {
-        // Orange to Red
-        const t = (intensity - 0.66) / 0.34
-        return [255, Math.round(165 - 165 * t), 0, 220]
-      }
-    }
-
-    // H3HexagonLayer - specifically designed for H3 hex rendering
-    const hexLayer = new H3HexagonLayer({
-      id: 'heatmap-hex-layer',
-      data: hexmapData.hexes,
-      pickable: true,
-      filled: true,
-      extruded: false,
-      coverage: 0.9,  // Expand visual size to 90% of hex boundary for better visibility
-      getHexagon: (d: HexCell) => d.h3_index,
-      getFillColor: (d: HexCell) => getColor(d.intensity),
-      getLineColor: [255, 255, 255, 80],
-      lineWidthMinPixels: 1,
-      // Enable high precision for globe projection
-      highPrecision: true,
+    console.log('[MapContainer] View mode:', viewMode)
+    console.log('[MapContainer] Layer availability:', {
+      flowLayer: !!flowLayer,
+      heatmapLayer: !!heatmapLayer,
+      nodeLayer: !!nodeLayer
     })
 
-    return [hexLayer]
-  }, [viewMode, hexmapData])
+    // DEBUG: Add a test text layer that's ALWAYS visible
+    // @ts-ignore
+    if (window.deck && window.deck.TextLayer) {
+      // @ts-ignore
+      layers.push(new window.deck.TextLayer({
+        id: 'test-layer',
+        data: [{ position: [0, 0], text: 'DATA LAYER LOADED' }],
+        getPosition: (d: any) => d.position,
+        getText: (d: any) => d.text,
+        getSize: 32,
+        getColor: [255, 0, 0],
+      }))
+    }
+
+    // Always show flows (Winds) in both modes
+    if (flowLayer) {
+      layers.push(flowLayer)
+      console.log('[MapContainer] Added flowLayer')
+    }
+
+    if (viewMode === 'heatmap' && heatmapLayer) {
+      layers.push(heatmapLayer)
+      console.log('[MapContainer] Added heatmapLayer')
+    }
+
+    if (viewMode === 'classic' && nodeLayer) {
+      layers.push(nodeLayer)
+      console.log('[MapContainer] Added nodeLayer')
+    }
+
+    console.log('[MapContainer] Total layers:', layers.length)
+    return layers
+  }, [viewMode, heatmapLayer, nodeLayer, flowLayer])
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '600px' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100vh', overflow: 'hidden' }}>
       {/* Map */}
       <Map
         ref={mapRef}
@@ -116,37 +119,52 @@ const MapContainer: React.FC = () => {
       >
         <NavigationControl position="top-right" />
 
-        {/* Classic View Layers */}
-        {viewMode === 'classic' && (
-          <>
-            <FlowLayer />
-            <HotspotLayer />
-          </>
+        {/* Simple Markers - Only visible in Classic Mode */}
+        {viewMode === 'classic' && flowsData?.hotspots?.map((hotspot, idx) => (
+          <Marker
+            key={idx}
+            longitude={hotspot.longitude}
+            latitude={hotspot.latitude}
+            anchor="center"
+            onClick={() => {
+              console.log('Marker clicked:', hotspot)
+              setSelectedHotspot(hotspot)
+              // Note: Hover tooltips will auto-clear when mouse moves
+            }}
+          >
+            <div
+              style={{
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                backgroundColor: hotspot.intensity > 0.6 ? 'rgb(239, 68, 68)' :
+                  hotspot.intensity > 0.3 ? 'rgb(251, 191, 36)' :
+                    'rgb(59, 130, 246)',
+                border: '2px solid white',
+                cursor: 'pointer',
+                opacity: 0.9
+              }}
+              title={`${hotspot.country_name} (${hotspot.country_code})`}
+            />
+          </Marker>
+        ))}
+
+        {/* Unified Radar View Architecture */}
+
+        {/* All layers are now managed by DeckGLOverlay */}
+        {deckLayers.length > 0 && (
+          <DeckGLOverlay layers={deckLayers} />
         )}
 
-        {/* Heatmap View - DeckGL Overlay with interleaved rendering for globe projection */}
-        {viewMode === 'heatmap' && (
-          <DeckGLOverlay layers={deckLayers} interleaved={true} />
-        )}
       </Map>
 
-      {/* Controls - Top Left */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '1rem',
-          left: '1rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.5rem',
-          zIndex: 10,
-        }}
-      >
-        <ViewModeToggle />
-        <TimeWindowSelector />
-        <CountryFilter />
-        <AutoRefreshControl />
-      </div>
+      {/* Unified Tooltip */}
+      {hoverInfo && hoverInfo.object && (
+        <MapTooltip info={hoverInfo} />
+      )}
+
+      {/* Top Control Bar */}
+      <MapControlBar />
 
       {/* Country Sidebar */}
       <CountrySidebar />
@@ -158,3 +176,5 @@ const MapContainer: React.FC = () => {
 }
 
 export default MapContainer
+
+// Forced HMR update for Phase 3 UI changes

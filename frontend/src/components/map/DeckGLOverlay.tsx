@@ -1,20 +1,26 @@
 import { useControl } from 'react-map-gl'
-// @ts-ignore - deck.gl/mapbox types not available
-import { MapboxOverlay as DeckOverlay } from '@deck.gl/mapbox'
+// @ts-ignore
+import { MapboxOverlay } from '@deck.gl/mapbox'
 
 interface DeckGLOverlayProps {
   layers: any[]
-  interleaved?: boolean
 }
 
 export function DeckGLOverlay(props: DeckGLOverlayProps) {
-  // Use the pattern from deck.gl/mapbox documentation
-  // Pass all props to constructor, including layers and interleaved
-  const overlay = useControl<DeckOverlay>(
-    () => new DeckOverlay(props)
-  )
+  console.log('[DeckGLOverlay] Render with layers:', props.layers.length)
 
-  overlay.setProps(props)
+  const overlay = useControl<any>(() => {
+    console.log('[DeckGLOverlay] Initializing MapboxOverlay with interleaved: true')
+    return new MapboxOverlay({
+      interleaved: true // Critical for Globe projection alignment
+    })
+  })
+
+  // Update layer configuration
+  overlay.setProps({
+    ...props,
+    interleaved: true
+  })
 
   return null
 }
