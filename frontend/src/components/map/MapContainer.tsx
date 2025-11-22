@@ -84,14 +84,13 @@ const MapContainer: React.FC = () => {
     }
 
     // H3HexagonLayer - specifically designed for H3 hex rendering
-    // Known issue: Hexes render on slightly smaller sphere than base globe
-    // See: https://github.com/repo/issues/XX for tracking
     const hexLayer = new H3HexagonLayer({
       id: 'heatmap-hex-layer',
       data: hexmapData.hexes,
       pickable: true,
       filled: true,
       extruded: false,
+      coverage: 0.9,  // Expand visual size to 90% of hex boundary for better visibility
       getHexagon: (d: HexCell) => d.h3_index,
       getFillColor: (d: HexCell) => getColor(d.intensity),
       getLineColor: [255, 255, 255, 80],

@@ -183,8 +183,8 @@ def convert_gkg_to_signals(record) -> List[GDELTSignal]:
             locations_list.append(
                 GDELTLocation(
                     country_code=loc.country_code,
-                    country_name=loc.country_name,
-                    location_name=loc.location_name,
+                    country_name=loc.full_name,  # GKGLocation.full_name contains country name
+                    location_name=loc.full_name,  # GKGLocation.full_name contains location name
                     latitude=loc.latitude,
                     longitude=loc.longitude,
                     location_type=loc.location_type,
@@ -216,7 +216,7 @@ def convert_gkg_to_signals(record) -> List[GDELTSignal]:
 
     # === Convert Tone ===
     tone = GDELTTone(
-        overall=record.tone.overall,
+        overall=record.tone.tone,  # GKGTone.tone contains overall sentiment score
         positive_pct=record.tone.positive_pct,
         negative_pct=record.tone.negative_pct,
         polarity=record.tone.polarity,

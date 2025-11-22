@@ -8,11 +8,13 @@ interface DeckGLOverlayProps {
 }
 
 export function DeckGLOverlay(props: DeckGLOverlayProps) {
-  // Use the exact pattern from deck.gl documentation
-  // Pass interleaved option to DeckOverlay constructor for proper compositing with Mapbox
+  // Use the pattern from deck.gl/mapbox documentation
+  // Pass all props to constructor, including layers and interleaved
   const overlay = useControl<DeckOverlay>(
-    () => new DeckOverlay({ interleaved: props.interleaved ?? false })
+    () => new DeckOverlay(props)
   )
+
   overlay.setProps(props)
+
   return null
 }
