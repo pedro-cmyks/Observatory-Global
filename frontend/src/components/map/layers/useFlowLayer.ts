@@ -23,6 +23,12 @@ export const useFlowLayer = () => {
         }
 
         console.log('[useFlowLayer] Rendering', flows.length, 'flows with GLOBAL-SCALE visibility')
+        console.log('[useFlowLayer] Sample flow heat values:', flows.slice(0, 3).map(f => ({
+            from: f.from_country,
+            to: f.to_country,
+            heat: f.heat,
+            width: Math.max(20, f.heat * 40)
+        })))
 
         return new ArcLayer({
             id: 'flow-layer',
@@ -33,18 +39,18 @@ export const useFlowLayer = () => {
             // CRITICAL: Use pixel-based width for zoom-independence
             widthUnits: 'pixels',     // Width in screen pixels, not meters
             widthScale: 1,            // No additional scaling
-            widthMinPixels: 18,       // Increased from 12 for better global visibility
-            widthMaxPixels: 50,       // Increased cap
+            widthMinPixels: 25,       // Increased for maximum global visibility
+            widthMaxPixels: 60,       // Increased cap for prominence
 
-            // WINDS - THICK lines visible at GLOBAL scale
-            getWidth: (d: Flow) => Math.max(20, d.heat * 40), // Increased from 15/30 to 20/40
+            // WINDS - VERY THICK lines visible at GLOBAL scale
+            getWidth: (d: Flow) => Math.max(25, d.heat * 50), // Increased to 25-50px range
             getSourcePosition: (d: Flow) => d.from_coords,
             getTargetPosition: (d: Flow) => d.to_coords,
 
-            // Bright gradient showing direction: Blue (source) → Red (target)
-            // Increased opacity for better visibility
-            getSourceColor: [100, 200, 255, 220],  // Bright cyan (origin) - increased alpha
-            getTargetColor: [255, 100, 100, 220],  // Bright red (destination) - increased alpha
+            // Very bright gradient showing direction: Cyan (source) → Red (target)
+            // Maximum opacity for visibility
+            getSourceColor: [80, 200, 255, 240],   // Bright cyan (origin) - very high alpha
+            getTargetColor: [255, 80, 80, 240],    // Bright red (destination) - very high alpha
 
             // FIX: Remove getHeight - let greatCircle handle arc elevation naturally
             // The getHeight parameter was causing z-ordering issues with globe projection

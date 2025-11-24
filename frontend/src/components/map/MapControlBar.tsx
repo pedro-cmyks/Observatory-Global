@@ -1,8 +1,8 @@
 import React from 'react'
 import ViewModeToggle from './controls/ViewModeToggle'
 import TimeWindowSelector from './controls/TimeWindowSelector'
-import CountryFilter from './controls/CountryFilter'
 import AutoRefreshControl from './controls/AutoRefreshControl'
+import LayerToggleControl from './controls/LayerToggleControl'
 
 const MapControlBar: React.FC = () => {
     return (
@@ -42,15 +42,15 @@ const MapControlBar: React.FC = () => {
 
             <div style={{ width: '1px', height: '24px', backgroundColor: 'rgba(255,255,255,0.2)' }} />
 
+            <LayerToggleControl />
+
+            <div style={{ width: '1px', height: '24px', backgroundColor: 'rgba(255,255,255,0.2)' }} />
+
             <ViewModeToggle />
 
             <div style={{ width: '1px', height: '24px', backgroundColor: 'rgba(255,255,255,0.2)' }} />
 
             <TimeWindowSelector />
-
-            <div style={{ width: '1px', height: '24px', backgroundColor: 'rgba(255,255,255,0.2)' }} />
-
-            <CountryFilter />
 
             <div style={{ width: '1px', height: '24px', backgroundColor: 'rgba(255,255,255,0.2)' }} />
 

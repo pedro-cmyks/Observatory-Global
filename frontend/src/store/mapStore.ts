@@ -12,6 +12,13 @@ interface MapState {
   // View state
   viewMode: ViewMode
 
+  // Layer visibility toggles
+  layersVisible: {
+    heatmap: boolean
+    flows: boolean
+    markers: boolean
+  }
+
   // Filters
   timeWindow: TimeWindow
   selectedCountries: string[]
@@ -30,6 +37,7 @@ interface MapState {
   setSelectedHotspot: (hotspot: CountryHotspot | null) => void
   setAutoRefresh: (enabled: boolean) => void
   setRefreshInterval: (interval: number) => void
+  toggleLayer: (layer: 'heatmap' | 'flows' | 'markers') => void
   clearError: () => void
 }
 
@@ -40,6 +48,13 @@ export const useMapStore = create<MapState>((set, get) => ({
   loading: false,
   error: null,
   viewMode: 'classic',
+
+  // Layer visibility - all enabled by default for unified radar view
+  layersVisible: {
+    heatmap: true,
+    flows: true,
+    markers: true,
+  },
 
   // Initial Filters
   timeWindow: '24h',
@@ -69,9 +84,17 @@ export const useMapStore = create<MapState>((set, get) => ({
       })
     } catch (error: any) {
       console.error('[mapStore] Failed to fetch flows data:', error)
+      console.warn('[mapStore] Falling back to mock data for development')
+
+      // Import mock data dynamically
+      const { generateMockFlowsData } = await import('../lib/mockData')
+      const mockData = generateMockFlowsData()
+
       set({
-        error: error.message || 'Failed to fetch data',
+        flowsData: mockData,
+        lastUpdate: new Date(),
         loading: false,
+        error: 'Using mock data - backend unavailable',
       })
     }
   },
@@ -100,6 +123,16 @@ export const useMapStore = create<MapState>((set, get) => ({
   setAutoRefresh: (enabled) => set({ autoRefresh: enabled }),
 
   setRefreshInterval: (interval) => set({ refreshInterval: interval }),
+
+  toggleLayer: (layer) => {
+    const { layersVisible } = get()
+    set({
+      layersVisible: {
+        ...layersVisible,
+        [layer]: !layersVisible[layer],
+      },
+    })
+  },
 
   clearError: () => set({ error: null }),
 }))

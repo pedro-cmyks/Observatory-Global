@@ -20,27 +20,28 @@ export const useNodeLayer = () => {
         return new ScatterplotLayer({
             id: 'node-layer',
             data: data,
-            visible: true, // Explicitly set visible
+            visible: true,
             pickable: true,
-            opacity: 0.9,
+            opacity: 0.95,          // Increased opacity
             stroked: true,
             filled: true,
             radiusScale: 1,
-            radiusMinPixels: 20,
-            radiusMaxPixels: 60,
-            lineWidthMinPixels: 2,
+            radiusMinPixels: 25,    // Increased from 20
+            radiusMaxPixels: 70,    // Increased from 60
+            lineWidthMinPixels: 3,  // Thicker stroke
             getPosition: (d: CountryHotspot) => {
                 const pos: [number, number] = [d.longitude, d.latitude]
                 console.log(`Node ${d.country_code} at:`, pos)
                 return pos
             },
-            getRadius: (d: CountryHotspot) => 20 + (d.topic_count * 3),
+            getRadius: (d: CountryHotspot) => 25 + (d.topic_count * 3),  // Increased base
             getFillColor: (d: CountryHotspot) => {
-                if (d.intensity < 0.3) return [59, 130, 246, 230]
-                if (d.intensity < 0.6) return [251, 191, 36, 230]
-                return [239, 68, 68, 230]
+                // More saturated colors
+                if (d.intensity < 0.3) return [70, 140, 255, 240]    // Brighter blue
+                if (d.intensity < 0.6) return [255, 200, 50, 240]    // Brighter yellow
+                return [255, 60, 60, 240]                             // Brighter red
             },
-            getLineColor: [255, 255, 255, 180],
+            getLineColor: [255, 255, 255, 200],  // Slightly more opaque stroke
             onHover: (info: any) => {
                 setHoverInfo(info)
                 return true

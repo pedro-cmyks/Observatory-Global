@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
-import Map, { MapRef, NavigationControl, Marker } from 'react-map-gl'
+import Map, { MapRef, NavigationControl } from 'react-map-gl'
 import type { ViewState } from 'react-map-gl'
 import { useMapStore } from '../../store/mapStore'
 import { useGaussianHeatmapLayer } from './layers/useGaussianRadarLayer'
@@ -12,16 +12,49 @@ import CountrySidebar from '../sidebar/CountrySidebar'
 import DataStatusBar from './DataStatusBar'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
-const MAPBOX_TOKEN = 'pk.eyJ1IjoicHZpbGxlZyIsImEiOiJjbWh3Nnptb28wNDB2Mm9weTFqdXZqM3VyIn0.ZnybOXNNDKL1HJFuklpyGg'
+const MAPBOX_TOKEN = 'pk.eyJ1IjoicHZpbGxlZ2ciOiJjbWh3Nnptb28wNDB2Mm9weTFqdXZqM3VyIn0.ZnybOXNNDKL1HJFuklpyGg'
 
-const MapContainer: React.FC = () => {
-  const mapRef = useRef<MapRef>(null)
-  const { viewMode, fetchFlowsData, autoRefresh, refreshInterval, flowsData, setSelectedHotspot } = useMapStore()
+const MapContainer = () => {
+  const { viewMode, fetchFlowsData, autoRefresh, refreshInterval, flowsData, layersVisible } = useMapStore()
 
   // Deck.gl Layer Hooks
   const { layer: heatmapLayer, hoverInfo: heatmapHover } = useGaussianHeatmapLayer()
   const { layer: nodeLayer, hoverInfo: nodeHover } = useNodeLayer()
   const { layer: flowLayer } = useFlowLayer()
+
+  // Prepare DeckGL layers - conditionally based on layer toggles
+  const layers = useMemo(() => {
+    const activeLayers = []
+
+    console.log('[MapContainer] Building layers:', {
+      hasFlowLayer: !!flowLayer,
+      hasHeatmapLayer: !!heatmapLayer,
+      hasNodeLayer: !!nodeLayer,
+      layersVisible,
+      viewMode
+    })
+
+    // Add layers based on visibility toggles
+    if (flowLayer && layersVisible.flows) {
+      console.log('[MapContainer] Adding flow layer')
+      activeLayers.push(flowLayer)
+    }
+
+    if (heatmapLayer && layersVisible.heatmap) {
+      console.log('[MapContainer] Adding heatmap layer')
+      activeLayers.push(heatmapLayer)
+    }
+
+    if (nodeLayer && layersVisible.markers) {
+      console.log('[MapContainer] Adding node layer')
+      activeLayers.push(nodeLayer)
+    }
+
+    console.log('[MapContainer] Total active layers:', activeLayers.length)
+    return activeLayers
+  }, [heatmapLayer, nodeLayer, flowLayer, layersVisible, viewMode])
+
+  const mapRef = useRef<MapRef>(null)
 
   // Unified Hover Info
   const hoverInfo = heatmapHover || nodeHover
@@ -33,8 +66,28 @@ const MapContainer: React.FC = () => {
     zoom: 2,
     pitch: 0,
     bearing: 0,
-    padding: { top: 0, bottom: 0, left: 0, right: 0 },
   })
+
+  // CRITICAL: Load data immediately on mount
+  useEffect(() => {
+    console.log('[MapContainer] Component mounted - fetching initial data')
+    fetchFlowsData()
+  }, []) // Empty deps = run once on mount
+
+  // DEBUG: Log when data changes
+  useEffect(() => {
+    if (flowsData) {
+      console.log('[MapContainer] Data loaded:', {
+        hotspots: flowsData.hotspots?.length || 0,
+        flows: flowsData.flows?.length || 0,
+        metadata: flowsData.metadata
+      })
+      // @ts-ignore
+      window.DEBUG_FLOWS_DATA = flowsData
+    } else {
+      console.log('[MapContainer] No data yet')
+    }
+  }, [flowsData])
 
   // Fetch data based on current view mode
   // Always fetch flows data because Gaussian Heatmap now depends on it (hotspots)
@@ -60,50 +113,6 @@ const MapContainer: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefresh, refreshInterval, viewMode])
 
-  // Prepare DeckGL layers based on view mode
-  const deckLayers = useMemo(() => {
-    const layers = []
-
-    console.log('[MapContainer] View mode:', viewMode)
-    console.log('[MapContainer] Layer availability:', {
-      flowLayer: !!flowLayer,
-      heatmapLayer: !!heatmapLayer,
-      nodeLayer: !!nodeLayer
-    })
-
-    // DEBUG: Add a test text layer that's ALWAYS visible
-    // @ts-ignore
-    if (window.deck && window.deck.TextLayer) {
-      // @ts-ignore
-      layers.push(new window.deck.TextLayer({
-        id: 'test-layer',
-        data: [{ position: [0, 0], text: 'DATA LAYER LOADED' }],
-        getPosition: (d: any) => d.position,
-        getText: (d: any) => d.text,
-        getSize: 32,
-        getColor: [255, 0, 0],
-      }))
-    }
-
-    // Always show flows (Winds) in both modes
-    if (flowLayer) {
-      layers.push(flowLayer)
-      console.log('[MapContainer] Added flowLayer')
-    }
-
-    if (viewMode === 'heatmap' && heatmapLayer) {
-      layers.push(heatmapLayer)
-      console.log('[MapContainer] Added heatmapLayer')
-    }
-
-    if (viewMode === 'classic' && nodeLayer) {
-      layers.push(nodeLayer)
-      console.log('[MapContainer] Added nodeLayer')
-    }
-
-    console.log('[MapContainer] Total layers:', layers.length)
-    return layers
-  }, [viewMode, heatmapLayer, nodeLayer, flowLayer])
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh', overflow: 'hidden' }}>
@@ -122,8 +131,8 @@ const MapContainer: React.FC = () => {
         {/* Unified Radar View Architecture */}
 
         {/* All layers are now managed by DeckGLOverlay */}
-        {deckLayers.length > 0 && (
-          <DeckGLOverlay layers={deckLayers} />
+        {layers.length > 0 && (
+          <DeckGLOverlay layers={layers} />
         )}
 
       </Map>

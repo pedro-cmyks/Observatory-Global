@@ -10,6 +10,13 @@ export default defineConfig({
     watch: {
       usePolling: true,
     },
+    proxy: {
+      '/v1': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   preview: {
     host: '0.0.0.0',

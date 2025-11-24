@@ -47,8 +47,9 @@ Single source of truth for the application state.
 *   **Controls**: Floating over the map (Top-Left).
 
 ### 3. Map Architecture (`components/map/MapContainer.tsx`)
-*   **Base**: `react-map-gl` with Globe projection.
+*   **Base**: `react-map-gl` with Mercator projection (standard Web Mercator EPSG:3857).
 *   **Overlay**: Single `DeckGLOverlay` managing all visualization layers.
+*   **Note**: Globe projection was removed to fix coordinate system mismatch with deck.gl layers. See ADR-0004 for details.
 *   **Layers**:
     *   `useGaussianRadarLayer`: HeatmapLayer (Radar View).
     *   `useFlowLayer`: ArcLayer (Unified "Winds").

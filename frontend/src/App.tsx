@@ -1,10 +1,10 @@
 import { BrowserRouter as Router } from 'react-router-dom'
-import Home from './pages/Home'
+import GlobalObservatory from './components/GlobalObservatory/GlobalObservatory'
 
 function App() {
   return (
     <Router>
-      <Home />
+      <GlobalObservatory />
     </Router>
   )
 }
