@@ -34,7 +34,7 @@ Due to a persistent stale process on port `5173`, the application is now running
     -   **Controls**: Floating glassmorphism bar (Bottom-Center).
     -   **Visibility**: 
         -   Reset `index.css` to remove default Vite constraints.
-        -   **Forced Inline Styles**: Applied `bottom: 2rem`, `left: 50%`, `transform: translateX(-50%)`, and `zIndex: 1000` to `RadarControls` to bypass any Tailwind/CSS conflicts.
+        -   **Forced Fixed Positioning**: Applied `position: fixed`, `bottom: 2rem`, `left: 50%`, `transform: translateX(-50%)`, and `zIndex: 9999` to `RadarControls`. This ensures the controls are always on top of the viewport, regardless of the map's stacking context.
         -   Explicitly set `zIndex: 0` on the map container.
     -   **Toggles**: Clean icon-based toggles for Heatmap, Flows, Nodes.
     -   **Time**: Segmented control for 1h/6h/12h/24h.

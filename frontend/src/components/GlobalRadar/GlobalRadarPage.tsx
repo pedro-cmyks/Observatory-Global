@@ -6,17 +6,25 @@ import RadarControls from './RadarControls';
 import RadarSidebar from './RadarSidebar';
 
 const GlobalRadarPage: React.FC = () => {
-    const { fetchData } = useRadarStore();
+    const fetchData = useRadarStore((state) => state.fetchData);
+    const selectedNode = useRadarStore((state) => state.selectedNode);
+
+    console.log('🔵 GlobalRadarPage RENDER - selectedNode:', selectedNode);
 
     useEffect(() => {
+        console.log('🔵 GlobalRadarPage MOUNTED');
         fetchData();
     }, [fetchData]);
 
+    useEffect(() => {
+        console.log('🔵 GlobalRadarPage: selectedNode changed to:', selectedNode);
+    }, [selectedNode]);
+
     return (
         <ErrorBoundary>
-            <div className="w-screen h-screen bg-black text-white overflow-hidden relative">
+            <div className="w-screen h-screen bg-black text-white overflow-hidden relative" style={{ isolation: 'isolate' }}>
                 {/* Header */}
-                <div className="absolute top-6 left-8 z-50 pointer-events-none">
+                <div className="absolute top-6 left-8 pointer-events-none" style={{ zIndex: 100 }}>
                     <div className="flex flex-col pointer-events-auto">
                         <div className="text-2xl font-bold tracking-wider text-white drop-shadow-md">
                             🌍 OBSERVATORY GLOBAL
@@ -32,10 +40,10 @@ const GlobalRadarPage: React.FC = () => {
                     <RadarMap />
                 </div>
 
-                {/* Controls */}
+                {/* Controls - Using portal-like positioning to ensure visibility */}
                 <RadarControls />
 
-                {/* Sidebar */}
+                {/* Sidebar - Must be outside map container for proper z-index */}
                 <RadarSidebar />
             </div>
         </ErrorBoundary>

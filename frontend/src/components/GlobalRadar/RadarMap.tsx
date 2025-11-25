@@ -22,17 +22,33 @@ const INITIAL_VIEW_STATE: MapViewState = {
 const RadarMap: React.FC = () => {
     const { data, activeLayers } = useRadarStore();
 
+    console.log('RadarMap rendering with:', {
+        nodesCount: data.nodes.length,
+        flowsCount: data.flows.length,
+        heatmapPointsCount: data.heatmapPoints.length,
+        activeLayers
+    });
+
     const layers = [
-        // Heatmap Layer
+        // Heatmap Layer (uses dispersed points for regional field effect)
         activeLayers.heatmap && new HeatmapLayer({
             id: 'heatmap-layer',
-            data: data.nodes,
-            getPosition: (d: any) => [d.lon, d.lat],
-            getWeight: (d: any) => d.intensity,
-            radiusPixels: 60,
-            intensity: 1,
-            threshold: 0.05,
-            opacity: 0.6,
+            data: data.heatmapPoints,
+            getPosition: (d: any) => d.position,
+            getWeight: (d: any) => d.weight,
+            radiusPixels: 180,  // Very large radius for persistent regional blobs even at close zoom
+            intensity: 1.0,
+            threshold: 0.02,
+            opacity: 0.7,
+            colorRange: [
+                [0, 0, 255, 25],      // Deep blue (cool/low)
+                [0, 255, 255, 50],    // Cyan
+                [0, 255, 0, 100],     // Green
+                [255, 255, 0, 150],   // Yellow
+                [255, 128, 0, 200],   // Orange
+                [255, 0, 0, 255]      // Red (hot/high)
+            ],
+            pickable: false  // Heatmap shouldn't intercept clicks
         }),
 
         // Flows Layer
@@ -50,27 +66,32 @@ const RadarMap: React.FC = () => {
             getSourceColor: [0, 255, 255, 180], // Cyan
             getTargetColor: [255, 0, 255, 180], // Magenta
             getWidth: 2,
+            pickable: false  // Flows shouldn't intercept node clicks
         }),
 
-        // Nodes Layer
+        // Nodes Layer (must be last to be on top for clicks)
         activeLayers.nodes && new ScatterplotLayer({
             id: 'node-layer',
             data: data.nodes,
             getPosition: (d: any) => [d.lon, d.lat],
-            getFillColor: (d: any) => d.sentiment > 0 ? [0, 255, 100] : [255, 50, 50],
-            getRadius: (d: any) => 500000 * d.intensity, // Scale by intensity
-            radiusMinPixels: 5,
-            radiusMaxPixels: 30,
+            getFillColor: (d: any) => d.sentiment > 0 ? [0, 255, 100, 150] : [255, 50, 50, 150],
+            getRadius: (d: any) => 300000 * d.intensity, // Further reduced
+            radiusMinPixels: 4,   // Smaller minimum
+            radiusMaxPixels: 14,  // Much smaller maximum
             pickable: true,
-            onClick: (info) => {
+            onClick: (info, event) => {
+                console.log('🔴 NODE CLICK EVENT FIRED:', info.object);
                 if (info.object) {
-                    useRadarStore.getState().selectNode(info.object);
+                    const store = useRadarStore.getState();
+                    console.log('🔴 Calling selectNode with:', info.object);
+                    store.selectNode(info.object);
+                    console.log('🔴 Store selectedNode after click:', store.selectedNode);
                 }
             },
             autoHighlight: true,
-            highlightColor: [255, 255, 255, 255],
+            highlightColor: [255, 255, 255, 200],
         })
-    ];
+    ].filter(Boolean);
 
     return (
         <DeckGL
@@ -98,7 +119,7 @@ const RadarMap: React.FC = () => {
                 mapStyle="mapbox://styles/mapbox/dark-v11"
                 reuseMaps
                 preventStyleDiffing={true}
-                projection="mercator"
+                projection={{ name: 'mercator' }}
             />
         </DeckGL>
     );
