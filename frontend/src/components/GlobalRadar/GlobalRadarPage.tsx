@@ -28,7 +28,7 @@ const GlobalRadarPage: React.FC = () => {
                 </div>
 
                 {/* Map Container */}
-                <div className="absolute inset-0 z-0 bg-gray-900">
+                <div className="absolute inset-0 bg-gray-900" style={{ zIndex: 0 }}>
                     <RadarMap />
                 </div>
 

@@ -32,7 +32,7 @@ Due to a persistent stale process on port `5173`, the application is now running
 2.  **New UI Design ("Control Deck")**:
     -   **Header**: Floating "OBSERVATORY GLOBAL" title (Top-Left).
     -   **Controls**: Floating glassmorphism bar (Bottom-Center).
-    -   **Visibility**: Increased z-index to ensure controls float *above* the map canvas.
+    -   **Visibility**: Increased z-index to `100` and reset `index.css` to remove default Vite constraints (padding, max-width) that were hiding the controls.
     -   **Toggles**: Clean icon-based toggles for Heatmap, Flows, Nodes.
     -   **Time**: Segmented control for 1h/6h/12h/24h.
 
