@@ -94,22 +94,29 @@ export const useRadarStore = create<RadarState>((set, get) => ({
     fetchData: async () => {
         set({ isLoading: true });
         try {
-            const { timeWindow } = get();
-            // Map timeWindow to backend parameter if needed, or pass directly
-            // Assuming backend accepts '1h', '24h' etc or needs conversion.
-            // Based on previous knowledge, backend might expect '1h', '24h'.
+            // TEMPORARY: Use mock data to ensure UI rendering while backend is fixed
+            const useMockData = true;
 
+            if (useMockData) {
+                console.log('Using mock data for Radar visualization');
+                const { nodes, flows } = generatePlaceholderData();
+                // Simulate network delay
+                await new Promise(resolve => setTimeout(resolve, 500));
+                set({
+                    data: { nodes, flows },
+                    isLoading: false
+                });
+                return;
+            }
+
+            const { timeWindow } = get();
             const response = await fetch(`http://localhost:8000/v1/flows?time_window=${timeWindow}`);
             if (!response.ok) throw new Error('Failed to fetch data');
 
             const data = await response.json();
 
-            // Transform backend data to our format if necessary
-            // Backend returns { flows: [], hotspots: [] } usually
-            // We need to map 'hotspots' to 'nodes'
-
             const nodes: NodeData[] = (data.hotspots || []).map((h: any) => ({
-                id: h.country_code || h.id, // Fallback
+                id: h.country_code || h.id,
                 name: h.country_name || h.name,
                 lat: h.loc ? h.loc[0] : 0,
                 lon: h.loc ? h.loc[1] : 0,
@@ -130,8 +137,12 @@ export const useRadarStore = create<RadarState>((set, get) => ({
             });
         } catch (error) {
             console.error('Error fetching radar data:', error);
-            // Fallback to placeholder on error for now, or just empty
-            set({ isLoading: false });
+            // Fallback to placeholder on error
+            const { nodes, flows } = generatePlaceholderData();
+            set({
+                data: { nodes, flows },
+                isLoading: false
+            });
         }
     },
 }));

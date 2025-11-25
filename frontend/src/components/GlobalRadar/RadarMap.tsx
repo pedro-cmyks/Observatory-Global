@@ -9,7 +9,7 @@ import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 // Mapbox Token (should be in env, but using hardcoded for now as per previous context if needed, 
 // but better to assume it's in the environment or passed down. 
 // I'll check if there's a common config file, but for now I'll assume import.meta.env.VITE_MAPBOX_TOKEN)
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || 'pk.eyJ1IjoicGVkcm8tY215a3MiLCJhIjoiY20zbW55b3F4MDJ2ZTJrcXdwM3Z2aTR2diJ9.YyM2j5q5f5q5f5q5f5q5f5'; // Fallback to known token if env missing
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || 'pk.eyJ1IjoicHZpbGxlZyIsImEiOiJjbWh3Nnptb28wNDB2Mm9weTFqdXZqM3VyIn0.ZnybOXNNDKL1HJFuklpyGg';
 
 const INITIAL_VIEW_STATE: MapViewState = {
     longitude: 0,

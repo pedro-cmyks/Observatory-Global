@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import ErrorBoundary from '../ErrorBoundary';
 import { useRadarStore } from '../../store/radarStore';
 import RadarMap from './RadarMap';
 import RadarControls from './RadarControls';
@@ -12,30 +13,32 @@ const GlobalRadarPage: React.FC = () => {
     }, [fetchData]);
 
     return (
-        <div className="w-screen h-screen bg-black text-white overflow-hidden relative">
-            {/* Header */}
-            <div className="absolute top-0 left-0 w-full z-50 p-4 pointer-events-none">
-                <div className="flex items-center gap-3 pointer-events-auto">
-                    <div className="text-2xl font-bold tracking-wider">
-                        🌍 OBSERVATORY GLOBAL
-                    </div>
-                    <div className="text-xs text-gray-400 uppercase tracking-widest border-l border-gray-700 pl-3">
-                        Global Narrative Radar
+        <ErrorBoundary>
+            <div className="w-screen h-screen bg-black text-white overflow-hidden relative">
+                {/* Header */}
+                <div className="absolute top-6 left-8 z-50 pointer-events-none">
+                    <div className="flex flex-col pointer-events-auto">
+                        <div className="text-2xl font-bold tracking-wider text-white drop-shadow-md">
+                            🌍 OBSERVATORY GLOBAL
+                        </div>
+                        <div className="text-xs text-blue-400 uppercase tracking-[0.2em] mt-1 font-medium">
+                            Live Narrative Radar
+                        </div>
                     </div>
                 </div>
+
+                {/* Map Container */}
+                <div className="absolute inset-0 z-0 bg-gray-900">
+                    <RadarMap />
+                </div>
+
+                {/* Controls */}
+                <RadarControls />
+
+                {/* Sidebar */}
+                <RadarSidebar />
             </div>
-
-            {/* Map Container */}
-            <div className="absolute inset-0 z-0 bg-gray-900">
-                <RadarMap />
-            </div>
-
-            {/* Controls */}
-            <RadarControls />
-
-            {/* Sidebar */}
-            <RadarSidebar />
-        </div>
+        </ErrorBoundary>
     );
 };
 

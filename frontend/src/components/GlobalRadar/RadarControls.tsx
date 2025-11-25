@@ -11,67 +11,78 @@ const RadarControls: React.FC = () => {
     } = useRadarStore();
 
     return (
-        <div className="absolute top-20 left-4 z-40 flex flex-col gap-4">
-            {/* Layer Controls */}
-            <div className="bg-black/80 backdrop-blur border border-gray-800 p-4 rounded-lg min-w-[200px]">
-                <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2">
-                    <span>Layers</span>
-                    {isLoading && <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>}
-                </h3>
-                <div className="space-y-2">
-                    <label className="flex items-center gap-2 cursor-pointer hover:text-blue-400 transition-colors">
-                        <input
-                            type="checkbox"
-                            checked={activeLayers.heatmap}
-                            onChange={() => toggleLayer('heatmap')}
-                            className="rounded border-gray-700 bg-gray-900 text-blue-500 focus:ring-blue-500 focus:ring-offset-black"
-                        />
-                        <span className="text-sm">Radar Heatmap</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer hover:text-blue-400 transition-colors">
-                        <input
-                            type="checkbox"
-                            checked={activeLayers.flows}
-                            onChange={() => toggleLayer('flows')}
-                            className="rounded border-gray-700 bg-gray-900 text-blue-500 focus:ring-blue-500 focus:ring-offset-black"
-                        />
-                        <span className="text-sm">Information Flows</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer hover:text-blue-400 transition-colors">
-                        <input
-                            type="checkbox"
-                            checked={activeLayers.nodes}
-                            onChange={() => toggleLayer('nodes')}
-                            className="rounded border-gray-700 bg-gray-900 text-blue-500 focus:ring-blue-500 focus:ring-offset-black"
-                        />
-                        <span className="text-sm">Nodes / Centroids</span>
-                    </label>
-                </div>
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-40 flex items-center gap-6 bg-black/60 backdrop-blur-md border border-gray-700/50 px-6 py-3 rounded-full shadow-2xl">
+
+            {/* Time Window Segmented Control */}
+            <div className="flex items-center bg-gray-900/50 rounded-full p-1 border border-gray-800">
+                {(['1h', '6h', '12h', '24h'] as const).map((window) => (
+                    <button
+                        key={window}
+                        onClick={() => setTimeWindow(window)}
+                        className={`
+                            px-4 py-1.5 text-xs font-medium rounded-full transition-all duration-200
+                            ${timeWindow === window
+                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40'
+                                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                            }
+                        `}
+                    >
+                        {window}
+                    </button>
+                ))}
             </div>
 
-            {/* Time Window Controls */}
-            <div className="bg-black/80 backdrop-blur border border-gray-800 p-4 rounded-lg min-w-[200px]">
-                <h3 className="text-xs font-bold text-gray-400 uppercase mb-3">Time Window</h3>
-                <div className="grid grid-cols-2 gap-2">
-                    {(['1h', '6h', '12h', '24h'] as const).map((window) => (
-                        <button
-                            key={window}
-                            onClick={() => setTimeWindow(window)}
-                            className={`
-                px-3 py-1.5 text-xs font-medium rounded transition-all
-                ${timeWindow === window
-                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
-                                    : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white'
-                                }
-              `}
-                        >
-                            {window}
-                        </button>
-                    ))}
-                </div>
+            {/* Vertical Separator */}
+            <div className="w-px h-8 bg-gray-700/50"></div>
+
+            {/* Layer Toggles */}
+            <div className="flex items-center gap-4">
+                <LayerToggle
+                    label="Heatmap"
+                    active={activeLayers.heatmap}
+                    onClick={() => toggleLayer('heatmap')}
+                    color="text-pink-500"
+                />
+                <LayerToggle
+                    label="Flows"
+                    active={activeLayers.flows}
+                    onClick={() => toggleLayer('flows')}
+                    color="text-cyan-400"
+                />
+                <LayerToggle
+                    label="Nodes"
+                    active={activeLayers.nodes}
+                    onClick={() => toggleLayer('nodes')}
+                    color="text-green-400"
+                />
             </div>
+
+            {isLoading && (
+                <div className="absolute -top-3 right-0 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+            )}
         </div>
     );
 };
+
+const LayerToggle: React.FC<{
+    label: string;
+    active: boolean;
+    onClick: () => void;
+    color: string;
+}> = ({ label, active, onClick, color }) => (
+    <button
+        onClick={onClick}
+        className={`
+            flex items-center gap-2 text-xs font-medium transition-all duration-200
+            ${active ? 'text-white' : 'text-gray-500 hover:text-gray-300'}
+        `}
+    >
+        <div className={`
+            w-2 h-2 rounded-full shadow-[0_0_8px_currentColor] transition-all duration-300
+            ${active ? `bg-current ${color}` : 'bg-gray-600 shadow-none'}
+        `}></div>
+        {label}
+    </button>
+);
 
 export default RadarControls;
