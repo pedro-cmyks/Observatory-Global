@@ -26,11 +26,13 @@ Due to a persistent stale process on port `5173`, the application is now running
 1.  **Map Rendering**:
     -   **Token**: Updated Mapbox token to valid user-provided key.
     -   **CSS**: Imported `mapbox-gl.css` in `main.tsx`.
+    -   **Projection**: Enforced `mercator` projection in `RadarMap.tsx` to ensure all layers (nodes, flows) stay "glued" to the map surface, resolving clipping/floating issues.
     -   **Data**: Enabled temporary mock data in `radarStore.ts` to guarantee nodes appear while backend connectivity is verified.
 
 2.  **New UI Design ("Control Deck")**:
     -   **Header**: Floating "OBSERVATORY GLOBAL" title (Top-Left).
     -   **Controls**: Floating glassmorphism bar (Bottom-Center).
+    -   **Visibility**: Increased z-index to ensure controls float *above* the map canvas.
     -   **Toggles**: Clean icon-based toggles for Heatmap, Flows, Nodes.
     -   **Time**: Segmented control for 1h/6h/12h/24h.
 
@@ -40,9 +42,9 @@ Due to a persistent stale process on port `5173`, the application is now running
 
 ### 📸 Verification
 The new UI features:
--   **Map**: Dark basemap visible.
+-   **Map**: Dark basemap visible (Flat Mercator).
 -   **Nodes**: Green/Red circles representing narrative hotspots.
--   **Controls**: Functional bottom bar.
+-   **Controls**: Functional bottom bar visible.
 
 ### ⚠️ Note on Data
 Currently using **Mock Data** (`useMockData = true` in `radarStore.ts`) to ensure the UI can be developed and verified independently of the backend state. This should be switched off once the backend API is fully stable.
