@@ -12,9 +12,9 @@ const RadarControls: React.FC = () => {
 
     return (
         <div
-            className="absolute flex items-center gap-6 bg-black/60 backdrop-blur-md border border-gray-700/50 px-6 py-3 rounded-full shadow-2xl"
+            className="fixed flex items-center gap-6 bg-black/80 backdrop-blur-xl border border-gray-700/50 px-6 py-3 rounded-full shadow-2xl"
             style={{
-                zIndex: 1000,
+                zIndex: 9999,
                 bottom: '2rem',
                 left: '50%',
                 transform: 'translateX(-50%)'

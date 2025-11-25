@@ -32,7 +32,10 @@ Due to a persistent stale process on port `5173`, the application is now running
 2.  **New UI Design ("Control Deck")**:
     -   **Header**: Floating "OBSERVATORY GLOBAL" title (Top-Left).
     -   **Controls**: Floating glassmorphism bar (Bottom-Center).
-    -   **Visibility**: Increased z-index to `100` and reset `index.css` to remove default Vite constraints (padding, max-width) that were hiding the controls.
+    -   **Visibility**: 
+        -   Reset `index.css` to remove default Vite constraints.
+        -   **Forced Inline Styles**: Applied `bottom: 2rem`, `left: 50%`, `transform: translateX(-50%)`, and `zIndex: 1000` to `RadarControls` to bypass any Tailwind/CSS conflicts.
+        -   Explicitly set `zIndex: 0` on the map container.
     -   **Toggles**: Clean icon-based toggles for Heatmap, Flows, Nodes.
     -   **Time**: Segmented control for 1h/6h/12h/24h.
 
@@ -44,7 +47,7 @@ Due to a persistent stale process on port `5173`, the application is now running
 The new UI features:
 -   **Map**: Dark basemap visible (Flat Mercator).
 -   **Nodes**: Green/Red circles representing narrative hotspots.
--   **Controls**: Functional bottom bar visible.
+-   **Controls**: Functional bottom bar visible and clickable.
 
 ### ⚠️ Note on Data
 Currently using **Mock Data** (`useMockData = true` in `radarStore.ts`) to ensure the UI can be developed and verified independently of the backend state. This should be switched off once the backend API is fully stable.
