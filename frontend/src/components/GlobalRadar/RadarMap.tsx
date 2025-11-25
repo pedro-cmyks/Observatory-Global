@@ -98,6 +98,7 @@ const RadarMap: React.FC = () => {
                 mapStyle="mapbox://styles/mapbox/dark-v11"
                 reuseMaps
                 preventStyleDiffing={true}
+                projection="mercator"
             />
         </DeckGL>
     );

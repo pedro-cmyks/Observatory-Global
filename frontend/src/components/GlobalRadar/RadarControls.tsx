@@ -11,7 +11,7 @@ const RadarControls: React.FC = () => {
     } = useRadarStore();
 
     return (
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-40 flex items-center gap-6 bg-black/60 backdrop-blur-md border border-gray-700/50 px-6 py-3 rounded-full shadow-2xl">
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-6 bg-black/60 backdrop-blur-md border border-gray-700/50 px-6 py-3 rounded-full shadow-2xl">
 
             {/* Time Window Segmented Control */}
             <div className="flex items-center bg-gray-900/50 rounded-full p-1 border border-gray-800">
