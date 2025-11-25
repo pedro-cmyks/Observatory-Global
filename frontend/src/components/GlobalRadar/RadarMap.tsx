@@ -21,6 +21,7 @@ const INITIAL_VIEW_STATE: MapViewState = {
 
 const RadarMap: React.FC = () => {
     const { data, activeLayers } = useRadarStore();
+    const [glError, setGlError] = React.useState<string | null>(null);
 
     console.log('RadarMap rendering with:', {
         nodesCount: data.nodes.length,
@@ -28,6 +29,16 @@ const RadarMap: React.FC = () => {
         heatmapPointsCount: data.heatmapPoints.length,
         activeLayers
     });
+
+    // Safari WebGL compatibility check
+    React.useEffect(() => {
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        if (!gl) {
+            console.error('WebGL not supported in this browser');
+            setGlError('WebGL is required but not supported in your browser');
+        }
+    }, []);
 
     const layers = [
         // Heatmap Layer (uses dispersed points for regional field effect)
@@ -93,6 +104,30 @@ const RadarMap: React.FC = () => {
         })
     ].filter(Boolean);
 
+    if (glError) {
+        return (
+            <div style={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#1a1a1a',
+                color: '#fff',
+                padding: '2rem',
+                textAlign: 'center'
+            }}>
+                <div>
+                    <h3 style={{ marginBottom: '1rem', color: '#ef4444' }}>Map Rendering Error</h3>
+                    <p>{glError}</p>
+                    <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#999' }}>
+                        Please try using a different browser (Chrome, Firefox, Edge)
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <DeckGL
             initialViewState={INITIAL_VIEW_STATE}
@@ -113,13 +148,33 @@ const RadarMap: React.FC = () => {
             }}
             layers={layers}
             style={{ width: '100%', height: '100%' }}
+            parameters={{
+                // Safari WebGL compatibility settings
+                depthTest: true,
+                blend: true,
+                blendFunc: ['SRC_ALPHA', 'ONE_MINUS_SRC_ALPHA', 'ONE', 'ONE_MINUS_SRC_ALPHA'],
+                blendEquation: ['FUNC_ADD', 'FUNC_ADD']
+            }}
+            onWebGLInitialized={(gl) => {
+                console.log('WebGL initialized successfully', gl);
+            }}
+            onError={(error) => {
+                console.error('DeckGL error:', error);
+                setGlError(`Rendering error: ${error.message}`);
+            }}
         >
             <Map
                 mapboxAccessToken={MAPBOX_TOKEN}
                 mapStyle="mapbox://styles/mapbox/dark-v11"
-                reuseMaps
-                preventStyleDiffing={true}
-                projection={{ name: 'mercator' }}
+                reuseMaps={false}
+                preventStyleDiffing={false}
+                projection={{ name: 'mercator' } as any}
+                attributionControl={false}
+                style={{
+                    width: '100%',
+                    height: '100%',
+                    position: 'absolute'
+                }}
             />
         </DeckGL>
     );
