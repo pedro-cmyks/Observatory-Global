@@ -1,14 +1,12 @@
 import { BrowserRouter as Router } from 'react-router-dom'
-import GlobalObservatory from './components/GlobalObservatory/GlobalObservatory'
+import GlobalRadarPage from './components/GlobalRadar/GlobalRadarPage'
 
 function App() {
   return (
     <Router>
-      <GlobalObservatory />
+      <GlobalRadarPage />
     </Router>
   )
 }
 
 export default App
-
-// Forced reload for Frontend Rebuild
