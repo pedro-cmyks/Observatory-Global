@@ -2,34 +2,43 @@
 
 ## Status: FIXED ✅
 
-The "Global Information Radar" UI has been successfully rebuilt and fixed. The blank page issue and legacy UI regressions have been resolved.
+The "Global Information Radar" UI has been successfully rebuilt and fixed. The blank page issue (caused by missing Tailwind CSS configuration) and legacy UI regressions have been resolved.
 
 ### 🚀 How to Run (Critical)
 
-Due to a persistent stale process on port `5173`, the application is now running on **port 5175**.
+The application runs on **port 5176** (port 5175 is in use).
 
 1.  **Stop any existing servers**:
     ```bash
     # In frontend directory
     Ctrl+C
     ```
-2.  **Start the server on port 5175**:
+2.  **Start the server**:
     ```bash
     cd frontend
-    npm run dev -- --port 5175
+    npm run dev
+    # Vite will automatically select an available port (5176 currently)
     ```
 3.  **Open in Browser**:
-    [http://localhost:5175](http://localhost:5175)
+    [http://localhost:5176](http://localhost:5176)
 
 ### 🛠️ Fixes Implemented
 
-1.  **Map Rendering**:
+1.  **Tailwind CSS Configuration** (2025-11-24 23:00):
+    -   **Root Cause**: Blank page was caused by missing Tailwind CSS configuration files
+    -   **Files Created**:
+        -   `tailwind.config.js` - Configures content paths for all `.tsx` and `.ts` files
+        -   `postcss.config.js` - Enables PostCSS processing of Tailwind directives
+    -   **Dependencies Installed**: `tailwindcss`, `autoprefixer`, `postcss`
+    -   **Result**: All Tailwind classes in UI components now render correctly
+
+2.  **Map Rendering**:
     -   **Token**: Updated Mapbox token to valid user-provided key.
     -   **CSS**: Imported `mapbox-gl.css` in `main.tsx`.
     -   **Projection**: Enforced `mercator` projection in `RadarMap.tsx` to ensure all layers (nodes, flows) stay "glued" to the map surface, resolving clipping/floating issues.
     -   **Data**: Enabled temporary mock data in `radarStore.ts` to guarantee nodes appear while backend connectivity is verified.
 
-2.  **New UI Design ("Control Deck")**:
+3.  **New UI Design ("Control Deck")**:
     -   **Header**: Floating "OBSERVATORY GLOBAL" title (Top-Left).
     -   **Controls**: Floating glassmorphism bar (Bottom-Center).
     -   **Visibility**: 
@@ -39,7 +48,7 @@ Due to a persistent stale process on port `5173`, the application is now running
     -   **Toggles**: Clean icon-based toggles for Heatmap, Flows, Nodes.
     -   **Time**: Segmented control for 1h/6h/12h/24h.
 
-3.  **Architecture**:
+4.  **Architecture**:
     -   **Single Entry Point**: `GlobalRadarPage.tsx`
     -   **Error Boundary**: Added to prevent white screens.
 
