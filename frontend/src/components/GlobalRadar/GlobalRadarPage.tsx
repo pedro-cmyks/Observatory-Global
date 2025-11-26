@@ -46,8 +46,7 @@ const GlobalRadarPage: React.FC = () => {
                         top: 0,
                         left: 0,
                         overflow: 'hidden',
-                        WebkitTransform: 'translateZ(0)', // Force GPU acceleration in Safari
-                        transform: 'translateZ(0)'
+                        overflow: 'hidden'
                     }}
                 >
                     <RadarMap />

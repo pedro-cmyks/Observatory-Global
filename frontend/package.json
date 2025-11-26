@@ -15,6 +15,7 @@
     "@deck.gl/layers": "^9.2.2",
     "@deck.gl/mapbox": "^9.2.2",
     "@deck.gl/react": "^9.2.2",
+    "@tailwindcss/postcss": "^4.1.17",
     "@turf/turf": "^6.5.0",
     "axios": "^1.6.5",
     "date-fns": "^3.0.0",

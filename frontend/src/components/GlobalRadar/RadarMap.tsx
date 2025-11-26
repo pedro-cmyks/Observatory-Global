@@ -149,11 +149,8 @@ const RadarMap: React.FC = () => {
             layers={layers}
             style={{ width: '100%', height: '100%' }}
             parameters={{
-                // Safari WebGL compatibility settings
-                depthTest: true,
-                blend: true,
-                blendFunc: ['SRC_ALPHA', 'ONE_MINUS_SRC_ALPHA', 'ONE', 'ONE_MINUS_SRC_ALPHA'],
-                blendEquation: ['FUNC_ADD', 'FUNC_ADD']
+                depthTest: false, // Disable depth test for transparency to work better in 2D
+                blend: true
             }}
             onWebGLInitialized={(gl) => {
                 console.log('WebGL initialized successfully', gl);
