@@ -68,15 +68,17 @@ const RadarMap: React.FC = () => {
             data: data.flows,
             getSourcePosition: (d: any) => {
                 const node = data.nodes.find(n => n.id === d.source);
+                if (!node) console.warn('Missing source node for flow:', d.source);
                 return node ? [node.lon, node.lat] : [0, 0];
             },
             getTargetPosition: (d: any) => {
                 const node = data.nodes.find(n => n.id === d.target);
+                if (!node) console.warn('Missing target node for flow:', d.target);
                 return node ? [node.lon, node.lat] : [0, 0];
             },
-            getSourceColor: [0, 255, 255, 180], // Cyan
-            getTargetColor: [255, 0, 255, 180], // Magenta
-            getWidth: 2,
+            getSourceColor: [0, 255, 255, 255], // Cyan, full opacity
+            getTargetColor: [255, 0, 255, 255], // Magenta, full opacity
+            getWidth: 6, // Much thicker
             pickable: false  // Flows shouldn't intercept node clicks
         }),
 
@@ -90,7 +92,7 @@ const RadarMap: React.FC = () => {
             radiusMinPixels: 4,   // Smaller minimum
             radiusMaxPixels: 14,  // Much smaller maximum
             pickable: true,
-            onClick: (info, event) => {
+            onClick: (info) => {
                 console.log('🔴 NODE CLICK EVENT FIRED:', info.object);
                 if (info.object) {
                     const store = useRadarStore.getState();
@@ -151,7 +153,7 @@ const RadarMap: React.FC = () => {
             parameters={{
                 depthTest: false, // Disable depth test for transparency to work better in 2D
                 blend: true
-            }}
+            } as any}
             onWebGLInitialized={(gl) => {
                 console.log('WebGL initialized successfully', gl);
             }}
@@ -164,7 +166,6 @@ const RadarMap: React.FC = () => {
                 mapboxAccessToken={MAPBOX_TOKEN}
                 mapStyle="mapbox://styles/mapbox/dark-v11"
                 reuseMaps={false}
-                preventStyleDiffing={false}
                 projection={{ name: 'mercator' } as any}
                 attributionControl={false}
                 style={{

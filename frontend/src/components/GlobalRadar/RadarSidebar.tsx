@@ -12,189 +12,233 @@ const RadarSidebar: React.FC = () => {
 
     return (
         <div
-            className="fixed top-0 right-0 h-screen w-96 overflow-y-auto transition-transform duration-300 ease-in-out"
+            className="fixed top-0 right-0 h-screen w-96 overflow-y-auto transition-transform duration-300 ease-in-out font-sans"
             style={{
                 zIndex: 10000,
                 pointerEvents: isOpen ? 'auto' : 'none',
                 transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
-                background: 'linear-gradient(to left, rgba(0, 0, 0, 0.95), rgba(10, 10, 15, 0.92))',
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-                borderLeft: '1px solid rgba(75, 85, 99, 0.3)',
+                background: '#0f172a', // Solid dark slate background
+                borderLeft: '1px solid #1e293b',
                 boxShadow: '-4px 0 24px rgba(0, 0, 0, 0.5)'
             }}
         >
             {/* Close Button */}
             {isOpen && (
                 <button
-                    onClick={() => {
-                        console.log('🟢 SIDEBAR: Close button clicked');
-                        selectNode(null);
-                    }}
-                    className="absolute top-4 right-4 z-50 group"
-                    style={{
-                        background: 'rgba(55, 65, 81, 0.4)',
-                        borderRadius: '50%',
-                        padding: '8px',
-                        border: '1px solid rgba(156, 163, 175, 0.2)',
-                        transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(75, 85, 99, 0.6)';
-                        e.currentTarget.style.borderColor = 'rgba(156, 163, 175, 0.4)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'rgba(55, 65, 81, 0.4)';
-                        e.currentTarget.style.borderColor = 'rgba(156, 163, 175, 0.2)';
-                    }}
+                    onClick={() => selectNode(null)}
+                    className="absolute top-4 right-4 z-50 p-2 rounded-full hover:bg-gray-800 transition-colors text-gray-400 hover:text-white"
+                    aria-label="Close sidebar"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={2.5}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             )}
 
             {selectedNode && (
-                <div className="p-6 pt-16" style={{ background: 'rgba(0, 0, 0, 0.2)' }}>
+                <div className="p-6 pt-16">
                     {/* Header */}
-                    <div className="mb-6 pb-5" style={{ borderBottom: '1px solid rgba(75, 85, 99, 0.3)' }}>
-                        <h2 className="text-2xl font-bold mb-4 text-white" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>{selectedNode.name}</h2>
-                        <div className="grid grid-cols-2 gap-3 text-xs">
-                            <div style={{
-                                background: 'rgba(30, 58, 138, 0.3)',
-                                border: '1px solid rgba(59, 130, 246, 0.4)',
-                                borderRadius: '6px',
-                                padding: '12px',
-                                backdropFilter: 'blur(10px)'
-                            }}>
-                                <div className="text-blue-300 uppercase tracking-wider mb-1 font-semibold" style={{ fontSize: '9px' }}>Intensity</div>
-                                <div className="text-blue-200 font-bold text-lg">{(selectedNode.intensity * 100).toFixed(0)}%</div>
+                    <div className="mb-8">
+                        <div className="text-[10px] font-medium text-blue-400 tracking-widest uppercase mb-2">
+                            Signal Intelligence • {selectedNode.id}
+                        </div>
+                        <h2 className="text-3xl font-bold text-white mb-6 leading-tight">
+                            {selectedNode.name}
+                        </h2>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Intensity Card */}
+                            <div className="bg-slate-900 rounded p-4 border border-slate-800">
+                                <div className="text-slate-400 text-[10px] uppercase tracking-wider font-semibold mb-1">Intensity</div>
+                                <div className="text-2xl font-bold text-white">
+                                    {(selectedNode.intensity * 100).toFixed(0)}<span className="text-sm text-slate-500 ml-1">%</span>
+                                </div>
+                                <div className="w-full bg-slate-800 h-1 mt-3 rounded-full overflow-hidden">
+                                    <div className="bg-blue-500 h-full rounded-full" style={{ width: `${selectedNode.intensity * 100}%` }}></div>
+                                </div>
                             </div>
-                            <div style={{
-                                background: selectedNode.sentiment > 0
-                                    ? 'rgba(6, 78, 59, 0.3)'
-                                    : 'rgba(127, 29, 29, 0.3)',
-                                border: selectedNode.sentiment > 0
-                                    ? '1px solid rgba(34, 197, 94, 0.4)'
-                                    : '1px solid rgba(239, 68, 68, 0.4)',
-                                borderRadius: '6px',
-                                padding: '12px',
-                                backdropFilter: 'blur(10px)'
-                            }}>
-                                <div className={`uppercase tracking-wider mb-1 font-semibold ${selectedNode.sentiment > 0 ? 'text-green-300' : 'text-red-300'}`} style={{ fontSize: '9px' }}>Sentiment</div>
-                                <div className={`font-bold text-lg ${selectedNode.sentiment > 0 ? 'text-green-200' : 'text-red-200'}`}>
+
+                            {/* Sentiment Card */}
+                            <div className="bg-slate-900 rounded p-4 border border-slate-800">
+                                <div className="text-slate-400 text-[10px] uppercase tracking-wider font-semibold mb-1">Sentiment</div>
+                                <div className={`text-2xl font-bold ${selectedNode.sentiment >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                                    }`}>
                                     {selectedNode.sentiment > 0 ? '+' : ''}{selectedNode.sentiment.toFixed(2)}
                                 </div>
+                                <div className="w-full bg-slate-800 h-1 mt-3 rounded-full overflow-hidden">
+                                    <div className={`h-full rounded-full ${selectedNode.sentiment >= 0 ? 'bg-emerald-500' : 'bg-rose-500'
+                                        }`} style={{ width: `${Math.abs(selectedNode.sentiment) * 100}%` }}></div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Themes */}
-                    <div className="mb-6 p-4" style={{
-                        background: 'rgba(17, 24, 39, 0.4)',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(55, 65, 81, 0.3)'
-                    }}>
-                        <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Dominant Themes</h3>
-                        <div className="flex flex-wrap gap-2">
-                            {selectedNode.themes.map((theme) => (
-                                <span key={theme} style={{
-                                    padding: '6px 10px',
-                                    borderRadius: '4px',
-                                    background: 'rgba(55, 65, 81, 0.5)',
-                                    color: 'rgb(209, 213, 219)',
-                                    fontSize: '11px',
-                                    border: '1px solid rgba(75, 85, 99, 0.4)',
-                                    fontWeight: 500
-                                }}>
-                                    {theme}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Intelligence Metrics */}
-                    <div className="space-y-5">
+                    <div className="space-y-8">
                         {/* Volume Metrics */}
-                        <div className="p-4" style={{
-                            background: 'rgba(17, 24, 39, 0.4)',
-                            borderRadius: '8px',
-                            border: '1px solid rgba(55, 65, 81, 0.3)'
-                        }}>
-                            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Volume Metrics</h3>
-                            <div className="space-y-2 text-xs">
-                                <div className="flex justify-between items-center py-1">
-                                    <span className="text-gray-300">Total Mentions</span>
-                                    <span className="text-white font-semibold">{Math.round(selectedNode.intensity * 12547)}</span>
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+                                Volume Metrics
+                            </h3>
+                            <div className="bg-slate-900/50 rounded border border-slate-800 p-4 grid grid-cols-2 gap-4">
+                                <div>
+                                    <div className="text-[10px] text-slate-500 mb-1">Total Mentions</div>
+                                    <div className="text-lg font-mono text-slate-200">
+                                        {(selectedNode.intensity * 15000).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    </div>
                                 </div>
-                                <div className="flex justify-between items-center py-1">
-                                    <span className="text-gray-300">Unique Sources</span>
-                                    <span className="text-white font-semibold">{Math.round(selectedNode.intensity * 342)}</span>
-                                </div>
-                                <div className="flex justify-between items-center py-1">
-                                    <span className="text-gray-300">Velocity (per hour)</span>
-                                    <span className="text-cyan-300 font-semibold">+{Math.round(selectedNode.intensity * 87)}</span>
+                                <div>
+                                    <div className="text-[10px] text-slate-500 mb-1">Active Sources</div>
+                                    <div className="text-lg font-mono text-slate-200">
+                                        {selectedNode.sourceCount || Math.round(selectedNode.intensity * 200)}
+                                    </div>
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Dominant Themes */}
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+                                Dominant Themes
+                            </h3>
+                            {selectedNode.topThemes && selectedNode.topThemes.length > 0 ? (
+                                <div className="space-y-3">
+                                    {selectedNode.topThemes.map((theme, idx) => (
+                                        <div key={idx} className="flex items-center justify-between text-sm">
+                                            <span className="text-slate-300">{theme.label}</span>
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-purple-500 rounded-full"
+                                                        style={{ width: `${Math.min((theme.count / (selectedNode.topThemes![0].count || 1)) * 100, 100)}%` }}
+                                                    ></div>
+                                                </div>
+                                                <span className="text-slate-500 font-mono text-xs w-6 text-right">{theme.count}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex flex-wrap gap-2">
+                                    {selectedNode.themes.map((theme) => (
+                                        <span key={theme} className="px-2 py-1 rounded bg-slate-800 text-slate-300 text-xs">
+                                            {theme}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Key Actors */}
-                        <div className="p-4" style={{
-                            background: 'rgba(17, 24, 39, 0.4)',
-                            borderRadius: '8px',
-                            border: '1px solid rgba(55, 65, 81, 0.3)'
-                        }}>
-                            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Key Actors</h3>
-                            <div className="space-y-1.5 text-xs">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400" style={{ boxShadow: '0 0 4px rgba(96, 165, 250, 0.6)' }}></div>
-                                    <span className="text-gray-200">Government Officials (42%)</span>
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+                                Key Actors
+                            </h3>
+                            {selectedNode.keyActors && selectedNode.keyActors.length > 0 ? (
+                                <div className="grid grid-cols-1 gap-2">
+                                    {selectedNode.keyActors.map((actor, idx) => (
+                                        <div key={idx} className="flex items-center justify-between py-2 border-b border-slate-800/50 last:border-0">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-5 h-5 rounded bg-slate-800 flex items-center justify-center text-[10px] text-slate-400 font-bold">
+                                                    {actor.name.charAt(0)}
+                                                </div>
+                                                <span className="text-slate-300 text-sm">{actor.name}</span>
+                                            </div>
+                                            <span className="text-slate-500 font-mono text-xs">{actor.count}</span>
+                                        </div>
+                                    ))}
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-purple-400" style={{ boxShadow: '0 0 4px rgba(192, 132, 252, 0.6)' }}></div>
-                                    <span className="text-gray-200">Media Outlets (28%)</span>
+                            ) : (
+                                <div className="text-xs text-slate-500 italic">No key actors identified</div>
+                            )}
+                        </div>
+
+                        {/* Source Intelligence */}
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+                                Source Intelligence
+                            </h3>
+
+                            <div className="bg-slate-900/50 rounded border border-slate-800 p-4">
+                                {/* Diversity Meter */}
+                                <div className="mb-4">
+                                    <div className="flex justify-between items-end mb-2">
+                                        <span className="text-[10px] text-slate-500">Diversity Score</span>
+                                        <span className={`text-xs font-bold font-mono ${selectedNode.sourceDiversity > 0.7 ? 'text-emerald-400' :
+                                                selectedNode.sourceDiversity > 0.4 ? 'text-yellow-400' : 'text-red-400'
+                                            }`}>
+                                            {(selectedNode.sourceDiversity * 100).toFixed(0)}/100
+                                        </span>
+                                    </div>
+                                    <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full ${selectedNode.sourceDiversity > 0.7 ? 'bg-emerald-500' :
+                                                    selectedNode.sourceDiversity > 0.4 ? 'bg-yellow-500' : 'bg-red-500'
+                                                }`}
+                                            style={{ width: `${selectedNode.sourceDiversity * 100}%` }}
+                                        ></div>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-green-400" style={{ boxShadow: '0 0 4px rgba(74, 222, 128, 0.6)' }}></div>
-                                    <span className="text-gray-200">International Orgs (18%)</span>
-                                </div>
-                                <div className="text-[10px] text-gray-500 mt-2 italic">Placeholder data - GDELT integration pending</div>
+
+                                {/* Top Sources */}
+                                {selectedNode.topSources && selectedNode.topSources.length > 0 && (
+                                    <div>
+                                        <div className="text-[10px] text-slate-500 mb-2">Top Outlets</div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {selectedNode.topSources.map((source, idx) => (
+                                                <a
+                                                    key={idx}
+                                                    href={`https://${source}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-[10px] px-2 py-1 rounded bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+                                                >
+                                                    {source}
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
-                        {/* Source Diversity */}
-                        <div className="p-4" style={{
-                            background: 'rgba(17, 24, 39, 0.4)',
-                            borderRadius: '8px',
-                            border: '1px solid rgba(55, 65, 81, 0.3)'
-                        }}>
-                            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Source Diversity</h3>
-                            <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(31, 41, 55, 0.6)' }}>
-                                <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500" style={{
-                                    width: `${selectedNode.intensity * 75}%`,
-                                    boxShadow: '0 0 8px rgba(147, 51, 234, 0.5)'
-                                }}></div>
+                        {/* Timeline */}
+                        <div className="pt-2">
+                            <div className="flex items-center justify-between mb-2">
+                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                    Activity Timeline
+                                </h3>
+                                <div className="bg-red-500/10 text-red-400 text-[9px] px-1.5 py-0.5 rounded flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                                    LIVE (15m)
+                                </div>
                             </div>
-                            <div className="flex justify-between text-[10px] text-gray-400 mt-2">
-                                <span>Echo Chamber</span>
-                                <span>High Diversity</span>
-                            </div>
-                        </div>
 
-                        {/* Timeline Placeholder */}
-                        <div className="p-4" style={{
-                            background: 'rgba(17, 24, 39, 0.4)',
-                            borderRadius: '8px',
-                            border: '1px solid rgba(55, 65, 81, 0.3)'
-                        }}>
-                            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Activity Timeline</h3>
-                            <div className="p-4 text-center" style={{
-                                background: 'rgba(0, 0, 0, 0.3)',
-                                borderRadius: '6px',
-                                border: '1px solid rgba(55, 65, 81, 0.2)'
-                            }}>
-                                <div className="text-xs text-gray-400 mb-2">Sparkline visualization</div>
-                                <div className="text-[10px] text-gray-500 italic">Coming soon: 24h intensity graph</div>
+                            <div className="h-16 border-b border-l border-slate-800 relative bg-gradient-to-t from-slate-900/50 to-transparent">
+                                {/* Sparkline */}
+                                <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+                                    <path
+                                        d="M0,50 Q10,45 20,48 T40,40 T60,35 T80,45 T100,30 T120,38 T140,25 T160,35 T180,20 T200,40 T220,25 T240,35 T260,15 T280,30 T300,20"
+                                        fill="none"
+                                        stroke="#3b82f6"
+                                        strokeWidth="2"
+                                        strokeOpacity="0.5"
+                                    />
+                                    <path
+                                        d="M0,50 Q10,45 20,48 T40,40 T60,35 T80,45 T100,30 T120,38 T140,25 T160,35 T180,20 T200,40 T220,25 T240,35 T260,15 T280,30 T300,20 V64 H0 Z"
+                                        fill="url(#gradient)"
+                                        opacity="0.1"
+                                    />
+                                    <defs>
+                                        <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" stopColor="#3b82f6" />
+                                            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                            </div>
+                            <div className="flex justify-between text-[9px] text-slate-600 mt-1 font-mono">
+                                <span>-24h</span>
+                                <span>Now</span>
                             </div>
                         </div>
                     </div>

@@ -124,6 +124,7 @@ class SignalsService:
         self,
         countries: Optional[List[str]] = None,
         time_window: str = "6h",
+        query: Optional[str] = None,
         use_cache: bool = True,
     ) -> Dict[str, Tuple[List[GDELTSignal], datetime]]:
         """
@@ -152,7 +153,7 @@ class SignalsService:
             countries = self.DEFAULT_COUNTRIES
 
         # Build cache key based on parameters
-        cache_key = self._build_cache_key_gdelt(countries, time_window)
+        cache_key = self._build_cache_key_gdelt(countries, time_window, query)
 
         # Check cache first
         if use_cache and self.redis_available:
@@ -162,7 +163,7 @@ class SignalsService:
                 return cached_data
 
         # Cache miss - fetch fresh GDELT data
-        logger.info(f"SignalsService: Fetching fresh GDELT data for {len(countries)} countries")
+        logger.info(f"SignalsService: Fetching fresh GDELT data for {len(countries)} countries (query='{query}')")
         signals_by_country = {}
 
         # Strategy:
@@ -174,7 +175,32 @@ class SignalsService:
             try:
                 # Fetch GDELT signals (already fully structured)
                 # This client handles the "Real GDELT vs Placeholder" logic internally
-                signals = await self.gdelt_client.fetch_gdelt_signals(country, count=10)
+                signals = await self.gdelt_client.fetch_gdelt_signals(country, count=100) # Increased count for better filtering
+
+                # Apply Query Filtering (In-Memory)
+                if query and signals:
+                    query_lower = query.lower()
+                    filtered_signals = []
+                    for signal in signals:
+                        # Check themes
+                        if any(query_lower in t.lower() for t in signal.theme_labels):
+                            filtered_signals.append(signal)
+                            continue
+                        # Check actors (persons)
+                        if signal.persons and any(query_lower in p.lower() for p in signal.persons):
+                            filtered_signals.append(signal)
+                            continue
+                        # Check organizations
+                        if signal.organizations and any(query_lower in o.lower() for o in signal.organizations):
+                            filtered_signals.append(signal)
+                            continue
+                        # Check source outlet
+                        if signal.source_outlet and query_lower in signal.source_outlet.lower():
+                            filtered_signals.append(signal)
+                            continue
+                    
+                    signals = filtered_signals
+                    logger.debug(f"SignalsService: Filtered {country} signals by '{query}': {len(signals)} remaining")
 
                 if signals:
                     signals_by_country[country] = (signals, datetime.utcnow())
@@ -394,15 +420,16 @@ class SignalsService:
 
     # ===== GDELT-SPECIFIC CACHE METHODS =====
 
-    def _build_cache_key_gdelt(self, countries: List[str], time_window: str) -> str:
+    def _build_cache_key_gdelt(self, countries: List[str], time_window: str, query: Optional[str] = None) -> str:
         """
         Build consistent cache key for GDELT signal data.
 
-        Format: gdelt:tw{time_window}:c{sorted_countries}
-        Example: gdelt:tw6h:cAR,BR,CO,MX,US
+        Format: gdelt:tw{time_window}:q{query}:c{sorted_countries}
+        Example: gdelt:tw6h:qTesla:cAR,BR,CO,MX,US
         """
         sorted_countries = ','.join(sorted(countries))
-        return f"gdelt:tw{time_window}:c{sorted_countries}"
+        query_part = f":q{query}" if query else ""
+        return f"gdelt:tw{time_window}{query_part}:c{sorted_countries}"
 
     async def _get_from_cache_gdelt(self, cache_key: str) -> Optional[Dict[str, Tuple[List[GDELTSignal], datetime]]]:
         """Retrieve cached GDELT signal data from Redis."""

@@ -30,7 +30,7 @@ class FlowDetector:
     def __init__(
         self,
         heat_halflife_hours: float = 6.0,
-        flow_threshold: float = 0.3,  # Lowered from 0.5 to show more flows
+        flow_threshold: float = 0.1,  # Lowered to 0.1 to show more flows
     ):
         """
         Initialize flow detector.

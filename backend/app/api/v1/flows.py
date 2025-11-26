@@ -33,6 +33,10 @@ async def get_flows(
         ge=0.0,
         le=1.0,
     ),
+    query: Optional[str] = Query(
+        None,
+        description="Filter signals by topic, entity, or keyword (e.g., 'Climate', 'Tesla')",
+    ),
 ) -> FlowsResponse:
     """
     Detect information flows between countries.
@@ -89,6 +93,7 @@ async def get_flows(
         gdelt_signals_by_country = await signals_service.fetch_gdelt_signals(
             countries=country_list,
             time_window=time_window,
+            query=query,
             use_cache=True,
         )
 

@@ -11,7 +11,7 @@ services:
       - redis_data:/data
     command: redis-server --appendonly yes
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,7 +29,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U observatory"]
+      test: [ "CMD-SHELL", "pg_isready -U observatory" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -54,13 +54,13 @@ services:
       - MAPBOX_TOKEN=${MAPBOX_TOKEN:-}
       - API_BASE_URL=${API_BASE_URL:-http://localhost:8000}
     ports:
-      - "8000:8000"
+      - "8080:8000"
     depends_on:
       redis:
         condition: service_healthy
-    volumes:
-      - ../backend/app:/app/app
-    restart: unless-stopped
+    # volumes:
+    #   - ../backend/app:/app/app
+    restart: no
 
   # Frontend web application
   web:
@@ -79,6 +79,7 @@ services:
 volumes:
   redis_data:
   postgres_data:
+
 
 networks:
   default:
