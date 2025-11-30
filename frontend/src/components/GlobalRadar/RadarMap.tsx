@@ -40,6 +40,31 @@ const RadarMap: React.FC = () => {
         }
     }, []);
 
+    // Helper for sentiment color gradient
+    const getSentimentColor = (sentiment: number): [number, number, number, number] => {
+        // Normalize sentiment from -1..1 to 0..1
+        const t = (Math.max(-1, Math.min(1, sentiment)) + 1) / 2;
+
+        // Red (0, 255, 255) -> Yellow (255, 255, 0) -> Green (0, 255, 0)
+        let r, g, b;
+
+        if (t < 0.5) {
+            // Red to Yellow
+            const p = t * 2; // 0..1
+            r = 255;
+            g = Math.round(255 * p);
+            b = 0;
+        } else {
+            // Yellow to Green
+            const p = (t - 0.5) * 2; // 0..1
+            r = Math.round(255 * (1 - p));
+            g = 255;
+            b = 0;
+        }
+
+        return [r, g, b, 180]; // Increased opacity slightly
+    };
+
     const layers = [
         // Heatmap Layer (uses dispersed points for regional field effect)
         activeLayers.heatmap && new HeatmapLayer({
@@ -76,9 +101,9 @@ const RadarMap: React.FC = () => {
                 if (!node) console.warn('Missing target node for flow:', d.target);
                 return node ? [node.lon, node.lat] : [0, 0];
             },
-            getSourceColor: [0, 255, 255, 255], // Cyan, full opacity
-            getTargetColor: [255, 0, 255, 255], // Magenta, full opacity
-            getWidth: 6, // Much thicker
+            getSourceColor: [0, 255, 255, 100], // Cyan, semi-transparent
+            getTargetColor: [255, 0, 255, 100], // Magenta, semi-transparent
+            getWidth: (d: any) => Math.max(1, (d.value || 1) * 2), // Proportional width
             pickable: false  // Flows shouldn't intercept node clicks
         }),
 
@@ -87,10 +112,10 @@ const RadarMap: React.FC = () => {
             id: 'node-layer',
             data: data.nodes,
             getPosition: (d: any) => [d.lon, d.lat],
-            getFillColor: (d: any) => d.sentiment > 0 ? [0, 255, 100, 150] : [255, 50, 50, 150],
+            getFillColor: (d: any) => getSentimentColor(d.sentiment),
             getRadius: (d: any) => 300000 * d.intensity, // Further reduced
             radiusMinPixels: 4,   // Smaller minimum
-            radiusMaxPixels: 14,  // Much smaller maximum
+            radiusMaxPixels: 20,  // Increased max slightly for better visibility
             pickable: true,
             onClick: (info) => {
                 console.log('🔴 NODE CLICK EVENT FIRED:', info.object);
@@ -139,7 +164,7 @@ const RadarMap: React.FC = () => {
           <div style="background: rgba(0,0,0,0.8); color: white; padding: 8px; border-radius: 4px; font-size: 12px;">
             <div style="font-weight: bold; margin-bottom: 4px;">${object.name || object.source}</div>
             ${object.intensity ? `<div>Intensity: ${(object.intensity * 100).toFixed(0)}%</div>` : ''}
-            ${object.sentiment ? `<div>Sentiment: ${object.sentiment}</div>` : ''}
+            ${object.sentiment ? `<div>Sentiment: ${Number(object.sentiment).toFixed(2)}</div>` : ''}
             ${object.value ? `<div>Flow: ${object.value}</div>` : ''}
           </div>
         `,

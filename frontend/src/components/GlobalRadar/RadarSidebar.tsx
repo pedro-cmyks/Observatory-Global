@@ -1,5 +1,6 @@
 import React from 'react';
 import { useRadarStore } from '../../store/radarStore';
+import { getThemeLabel } from '../../lib/themeLabels';
 
 const RadarSidebar: React.FC = () => {
     const selectedNode = useRadarStore((state) => state.selectedNode);
@@ -104,7 +105,7 @@ const RadarSidebar: React.FC = () => {
                                 <div className="space-y-3">
                                     {selectedNode.topThemes.map((theme, idx) => (
                                         <div key={idx} className="flex items-center justify-between text-sm">
-                                            <span className="text-slate-300">{theme.label}</span>
+                                            <span className="text-slate-300">{getThemeLabel(theme.label)}</span>
                                             <div className="flex items-center gap-3">
                                                 <div className="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
                                                     <div
@@ -164,7 +165,7 @@ const RadarSidebar: React.FC = () => {
                                     <div className="flex justify-between items-end mb-2">
                                         <span className="text-[10px] text-slate-500">Diversity Score</span>
                                         <span className={`text-xs font-bold font-mono ${selectedNode.sourceDiversity > 0.7 ? 'text-emerald-400' :
-                                                selectedNode.sourceDiversity > 0.4 ? 'text-yellow-400' : 'text-red-400'
+                                            selectedNode.sourceDiversity > 0.4 ? 'text-yellow-400' : 'text-red-400'
                                             }`}>
                                             {(selectedNode.sourceDiversity * 100).toFixed(0)}/100
                                         </span>
@@ -172,7 +173,7 @@ const RadarSidebar: React.FC = () => {
                                     <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
                                         <div
                                             className={`h-full rounded-full ${selectedNode.sourceDiversity > 0.7 ? 'bg-emerald-500' :
-                                                    selectedNode.sourceDiversity > 0.4 ? 'bg-yellow-500' : 'bg-red-500'
+                                                selectedNode.sourceDiversity > 0.4 ? 'bg-yellow-500' : 'bg-red-500'
                                                 }`}
                                             style={{ width: `${selectedNode.sourceDiversity * 100}%` }}
                                         ></div>
@@ -201,46 +202,7 @@ const RadarSidebar: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Timeline */}
-                        <div className="pt-2">
-                            <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    Activity Timeline
-                                </h3>
-                                <div className="bg-red-500/10 text-red-400 text-[9px] px-1.5 py-0.5 rounded flex items-center gap-1.5">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                                    LIVE (15m)
-                                </div>
-                            </div>
 
-                            <div className="h-16 border-b border-l border-slate-800 relative bg-gradient-to-t from-slate-900/50 to-transparent">
-                                {/* Sparkline */}
-                                <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-                                    <path
-                                        d="M0,50 Q10,45 20,48 T40,40 T60,35 T80,45 T100,30 T120,38 T140,25 T160,35 T180,20 T200,40 T220,25 T240,35 T260,15 T280,30 T300,20"
-                                        fill="none"
-                                        stroke="#3b82f6"
-                                        strokeWidth="2"
-                                        strokeOpacity="0.5"
-                                    />
-                                    <path
-                                        d="M0,50 Q10,45 20,48 T40,40 T60,35 T80,45 T100,30 T120,38 T140,25 T160,35 T180,20 T200,40 T220,25 T240,35 T260,15 T280,30 T300,20 V64 H0 Z"
-                                        fill="url(#gradient)"
-                                        opacity="0.1"
-                                    />
-                                    <defs>
-                                        <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                            <stop offset="0%" stopColor="#3b82f6" />
-                                            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-                                        </linearGradient>
-                                    </defs>
-                                </svg>
-                            </div>
-                            <div className="flex justify-between text-[9px] text-slate-600 mt-1 font-mono">
-                                <span>-24h</span>
-                                <span>Now</span>
-                            </div>
-                        </div>
                     </div>
                 </div>
             )}
