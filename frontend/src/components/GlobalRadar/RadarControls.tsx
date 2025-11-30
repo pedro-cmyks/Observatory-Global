@@ -29,7 +29,7 @@ const RadarControls: React.FC = () => {
 
             {/* Time Window Segmented Control */}
             <div className="flex items-center bg-gray-900/80 rounded-full p-0.5 border border-gray-800/50">
-                {(['1h', '6h', '12h', '24h'] as const).map((window) => (
+                {(['1h', '6h', '12h', '24h', 'all'] as const).map((window) => (
                     <button
                         key={window}
                         onClick={() => setTimeWindow(window)}

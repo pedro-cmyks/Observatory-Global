@@ -28,7 +28,7 @@ export interface HeatmapPoint {
 
 interface RadarState {
     // UI State
-    timeWindow: '1h' | '6h' | '12h' | '24h';
+    timeWindow: '1h' | '6h' | '12h' | '24h' | 'all';
     activeLayers: {
         heatmap: boolean;
         flows: boolean;
@@ -48,7 +48,7 @@ interface RadarState {
     isLoading: boolean;
 
     // Actions
-    setTimeWindow: (window: '1h' | '6h' | '12h' | '24h') => void;
+    setTimeWindow: (window: '1h' | '6h' | '12h' | '24h' | 'all') => void;
     toggleLayer: (layer: 'heatmap' | 'flows' | 'nodes') => void;
     selectNode: (node: NodeData | null) => void;
     setHoveredNode: (node: NodeData | null) => void;
@@ -134,7 +134,7 @@ const generateHeatmapPoints = (nodes: NodeData[]): HeatmapPoint[] => {
 };
 
 // Placeholder data generator with time window awareness
-const generatePlaceholderData = (timeWindow: '1h' | '6h' | '12h' | '24h') => {
+const generatePlaceholderData = (timeWindow: '1h' | '6h' | '12h' | '24h' | 'all') => {
     // All possible nodes with base intensity
     const allNodes: NodeData[] = [
         { id: 'US', name: 'United States', lat: 37.0902, lon: -95.7129, intensity: 0.9, sentiment: -0.2, themes: ['Politics', 'Economy'], sourceCount: 150, sourceDiversity: 0.8, topSources: ['cnn.com', 'nytimes.com', 'foxnews.com'], keyActors: [{ name: 'Joe Biden', count: 45 }, { name: 'Congress', count: 30 }], topThemes: [{ label: 'Politics', count: 120 }, { label: 'Economy', count: 95 }] },
@@ -234,7 +234,7 @@ export const useRadarStore = create<RadarState>((set, get) => ({
     data: { nodes: [], flows: [], heatmapPoints: [] },
     isLoading: false,
 
-    setTimeWindow: (window: '1h' | '6h' | '12h' | '24h') => {
+    setTimeWindow: (window: '1h' | '6h' | '12h' | '24h' | 'all') => {
         set({ timeWindow: window });
         get().fetchData();
     },
