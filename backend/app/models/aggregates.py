@@ -19,7 +19,6 @@ class ThemeAggregation1h(Base):
     hour_bucket = Column(DateTime, index=True)
     country_code = Column(String, index=True)
     theme_code = Column(String, index=True)
-    theme_label = Column(String, nullable=True)
     signal_count = Column(Integer, default=0)
     avg_tone = Column(Float, nullable=True)
     total_theme_mentions = Column(Integer, default=0)

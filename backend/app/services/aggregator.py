@@ -49,7 +49,6 @@ def run_aggregation():
                 hour_bucket=row.hour_bucket,
                 country_code=row.country_code,
                 theme_code=row.theme_code,
-                theme_label=row.theme_code, # Placeholder
                 signal_count=row.signal_count,
                 avg_tone=row.avg_tone,
                 total_theme_mentions=row.total_theme_mentions
