@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.logging import setup_logging
-from app.api.v1 import health, trends, flows, hexmap, heatmap, nodes
+from app.api.v1 import health, trends, flows, hexmap, heatmap, nodes, search
 
 # Setup logging
 setup_logging()
@@ -34,6 +34,7 @@ app.include_router(flows.router, prefix="/v1/flows", tags=["Flows"])
 app.include_router(hexmap.router, prefix="/v1/hexmap", tags=["Hexmap"])
 app.include_router(heatmap.router, prefix="/v1/heatmap", tags=["Heatmap"])
 app.include_router(nodes.router, prefix="/v1/nodes", tags=["Nodes"])
+app.include_router(search.router, prefix="/v1/search", tags=["Search"])
 
 
 @app.on_event("startup")

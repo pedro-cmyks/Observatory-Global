@@ -2,6 +2,18 @@ import React from 'react';
 import { useRadarStore } from '../../store/radarStore';
 import { getThemeLabel } from '../../lib/themeLabels';
 
+// Format numbers with commas
+const formatNumber = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+
+// Filter out place names that appear as actors
+const EXCLUDED_ACTORS = [
+    'united states', 'los angeles', 'new york', 'washington', 'california',
+    'san francisco', 'chicago', 'houston', 'philadelphia', 'phoenix',
+    'san diego', 'san antonio', 'dallas', 'san jose', 'austin',
+    'united kingdom', 'london', 'paris', 'berlin', 'tokyo', 'beijing',
+    'moscow', 'delhi', 'sydney', 'toronto', 'vancouver', 'montreal'
+];
+
 const RadarSidebar: React.FC = () => {
     const selectedNode = useRadarStore((state) => state.selectedNode);
     const selectNode = useRadarStore((state) => state.selectNode);
@@ -80,17 +92,17 @@ const RadarSidebar: React.FC = () => {
                             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
                                 Volume Metrics
                             </h3>
-                            <div className="bg-slate-900/50 rounded border border-slate-800 p-4 grid grid-cols-2 gap-4">
+                            <div className="bg-slate-900/50 rounded border border-slate-800 p-4 space-y-4">
                                 <div>
-                                    <div className="text-[10px] text-slate-500 mb-1">Total Mentions</div>
-                                    <div className="text-lg font-mono text-slate-200">
-                                        {(selectedNode.intensity * 15000).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Total Mentions</div>
+                                    <div className="text-xl font-bold text-slate-200">
+                                        {formatNumber(selectedNode.intensity * 15000)}
                                     </div>
                                 </div>
-                                <div>
-                                    <div className="text-[10px] text-slate-500 mb-1">Active Sources</div>
-                                    <div className="text-lg font-mono text-slate-200">
-                                        {selectedNode.sourceCount || Math.round(selectedNode.intensity * 200)}
+                                <div className="border-t border-slate-800 pt-4">
+                                    <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Active Sources</div>
+                                    <div className="text-xl font-bold text-slate-200">
+                                        {formatNumber(selectedNode.sourceCount || Math.round(selectedNode.intensity * 200))}
                                     </div>
                                 </div>
                             </div>
@@ -136,17 +148,20 @@ const RadarSidebar: React.FC = () => {
                             </h3>
                             {selectedNode.keyActors && selectedNode.keyActors.length > 0 ? (
                                 <div className="grid grid-cols-1 gap-2">
-                                    {selectedNode.keyActors.map((actor, idx) => (
-                                        <div key={idx} className="flex items-center justify-between py-2 border-b border-slate-800/50 last:border-0">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-5 h-5 rounded bg-slate-800 flex items-center justify-center text-[10px] text-slate-400 font-bold">
-                                                    {actor.name.charAt(0)}
+                                    {selectedNode.keyActors
+                                        .filter(actor => !EXCLUDED_ACTORS.includes(actor.name.toLowerCase()))
+                                        .slice(0, 8)
+                                        .map((actor, idx) => (
+                                            <div key={idx} className="flex items-center justify-between py-2 px-3 rounded hover:bg-slate-800/50 transition-colors border-b border-slate-800/30 last:border-0">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-[10px] text-white font-bold">
+                                                        {actor.name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <span className="text-slate-200 text-sm font-medium">{actor.name}</span>
                                                 </div>
-                                                <span className="text-slate-300 text-sm">{actor.name}</span>
+                                                <span className="text-slate-400 font-mono text-xs bg-slate-800 px-2 py-1 rounded">{formatNumber(actor.count)}</span>
                                             </div>
-                                            <span className="text-slate-500 font-mono text-xs">{actor.count}</span>
-                                        </div>
-                                    ))}
+                                        ))}
                                 </div>
                             ) : (
                                 <div className="text-xs text-slate-500 italic">No key actors identified</div>
