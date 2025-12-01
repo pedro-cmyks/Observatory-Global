@@ -208,20 +208,21 @@ function App() {
 
   // Deck.gl layers
   const layers = [
-    // Heatmap layer (bottom) - adjusted for all time windows
+    // Heatmap layer with better settings for country-based clouds
     showHeatmap && new HeatmapLayer({
       id: 'heatmap',
       data: heatmapPoints,
       getPosition: (d: HeatmapPoint) => [d.lon, d.lat],
       getWeight: (d: HeatmapPoint) => d.weight,
-      radiusPixels: 80,
-      intensity: 2,
-      threshold: 0.03,
+      radiusPixels: 60,
+      intensity: 1.5,
+      threshold: 0.05,
       colorRange: [
-        [255, 255, 178, 0],
-        [254, 204, 92, 80],
-        [253, 141, 60, 150],
-        [240, 59, 32, 200],
+        [255, 255, 200, 0],
+        [255, 237, 160, 100],
+        [254, 178, 76, 180],
+        [253, 141, 60, 220],
+        [240, 59, 32, 255],
         [189, 0, 38, 255]
       ],
       aggregation: 'SUM'
