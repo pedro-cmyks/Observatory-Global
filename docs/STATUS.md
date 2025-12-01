@@ -1,8 +1,48 @@
 # Project Status
 
 ## Current State
-**Sprint**: UI/UX Polish (Week 2)
-**Status**: Active / Verification
+**Version**: v2.0.0 (Clean Architecture)
+**Status**: Production Ready
+**Last Update**: 2025-11-30
+
+## Major Milestone: V2 Clean Architecture Complete ✅
+
+**Completed**: 2025-11-29
+
+### Architecture Improvements
+- **V2 Clean Architecture**: Complete separation from v1 codebase
+- **Database Schema**: Migrated to v2 schema
+  - `signals_v2` - GDELT signal storage
+  - `countries_v2` - Country reference data
+  - `country_hourly_v2` - Aggregated country metrics
+- **Data Migration**: Successfully migrated 19,322 signals across 214 countries
+- **Backend**: New `main_v2.py` API running without Docker dependencies
+- **Frontend**: New `frontend-v2` with Deck.gl + MapLibre integration
+
+### Production Readiness
+- ✅ Database schema migrated and validated
+- ✅ API endpoints tested and functional
+- ✅ Frontend visualization working with real data
+- ✅ Ingestion pipeline operational
+- ✅ Documentation comprehensive and current
+
+## Recent Accomplishments (2025-11-30)
+
+### Repository Maintenance
+- **README**: Comprehensive documentation overhaul
+  - Professional project description
+  - Quick start guide with Docker commands
+  - API endpoint documentation table
+  - Project structure diagram
+- **License**: Added MIT LICENSE file
+- **Git Hygiene**:
+  - Closed resolved issues (#24, #25)
+  - Pruned 8 local and 14 remote stale branches
+  - Updated .gitignore for log files
+- **Architecture Docs**: Added ARCHITECTURE.md documentation
+
+## Sprint: Post-V2 Polish
+**Status**: Active
 
 ## Working Features
 - **Data Ingestion**: GDELT 2.0 GKG ingestion working (Signals, Themes, Locations, Persons, Organizations).
