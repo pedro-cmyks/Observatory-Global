@@ -6,14 +6,16 @@ interface SearchResult {
     themes: { theme: string; country: string; count: number }[]
     sources: { source: string; country: string; count: number }[]
     countries: { code: string; name: string }[]
+    persons: { person: string; country: string; count: number }[]
 }
 
 interface SearchBarProps {
     onThemeSelect: (theme: string, country?: string) => void
     onCountrySelect: (code: string) => void
+    onSourceSelect: (source: string) => void
 }
 
-export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
+export function SearchBar({ onThemeSelect, onCountrySelect, onSourceSelect }: SearchBarProps) {
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<SearchResult | null>(null)
     const [isOpen, setIsOpen] = useState(false)
@@ -56,6 +58,15 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
         setIsOpen(false)
         setQuery('')
     }
+
+    const handlePersonClick = (person: string, country?: string) => {
+        // Assuming there might be an onPersonSelect prop, or we can reuse onThemeSelect if person is treated as a theme
+        // For now, let's just close the search and clear query.
+        // If a specific action is needed for persons, a new prop `onPersonSelect` would be ideal.
+        console.log(`Selected person: ${person} in ${country || 'any country'}`);
+        setIsOpen(false);
+        setQuery('');
+    };
 
     return (
         <div className="search-container">
@@ -115,6 +126,11 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
                                 <div
                                     key={`${s.source}-${i}`}
                                     className="search-item"
+                                    onClick={() => {
+                                        onSourceSelect(s.source)
+                                        setIsOpen(false)
+                                        setQuery('')
+                                    }}
                                 >
                                     <span className="search-item-icon">🔗</span>
                                     <span>{s.source}</span>
@@ -124,7 +140,24 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
                         </div>
                     )}
 
-                    {results.themes.length === 0 && results.countries.length === 0 && results.sources.length === 0 && (
+                    {results.persons && results.persons.length > 0 && (
+                        <div className="search-section">
+                            <h4>People</h4>
+                            {results.persons.slice(0, 5).map((p, i) => (
+                                <div
+                                    key={`${p.person}-${i}`}
+                                    className="search-item"
+                                    onClick={() => handlePersonClick(p.person, p.country)}
+                                >
+                                    <span className="search-item-icon">👤</span>
+                                    <span style={{ textTransform: 'capitalize' }}>{p.person.toLowerCase()}</span>
+                                    <span className="search-item-meta">{p.country} • {p.count}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {results.themes.length === 0 && results.countries.length === 0 && results.sources.length === 0 && (!results.persons || results.persons.length === 0) && (
                         <div className="search-empty">No results found</div>
                     )}
                 </div>

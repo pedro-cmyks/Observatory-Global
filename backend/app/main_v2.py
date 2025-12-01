@@ -98,7 +98,7 @@ async def search(
     q: str = Query(..., min_length=2, description="Search query"),
     hours: int = Query(168, ge=1, le=720)
 ):
-    """Search across themes, countries, and sources."""
+    """Search across themes, countries, sources, and persons."""
     query = q.lower().strip()
     
     async with app.state.pool.acquire() as conn:
@@ -138,11 +138,26 @@ async def search(
             LIMIT 10
         """, f'%{query}%')
         
+        # Search in persons
+        person_results = await conn.fetch("""
+            SELECT 
+                unnest(persons) as person,
+                country_code,
+                COUNT(*) as count
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '%s hours'
+            AND LOWER(array_to_string(persons, ' ')) LIKE $1
+            GROUP BY person, country_code
+            ORDER BY count DESC
+            LIMIT 10
+        """ % hours, f'%{query}%')
+        
         return {
             "query": q,
             "themes": [{"theme": r['theme'], "country": r['country_code'], "count": int(r['count'])} for r in theme_results],
             "sources": [{"source": r['source_name'], "country": r['country_code'], "count": int(r['count'])} for r in source_results],
-            "countries": [{"code": r['code'], "name": r['name']} for r in country_results]
+            "countries": [{"code": r['code'], "name": r['name']} for r in country_results],
+            "persons": [{"person": r['person'], "country": r['country_code'], "count": int(r['count'])} for r in person_results]
         }
 
 @app.get("/api/v2/theme/{theme_code}")
