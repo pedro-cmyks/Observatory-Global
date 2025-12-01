@@ -66,7 +66,7 @@ async def get_nodes(hours: int = Query(24, ge=1, le=168, description="Hours of d
         if not rows:
             return {"nodes": [], "count": 0, "hours": hours}
         
-        max_signals = max(r['total_signals'] for r in rows)
+        max_signals = max(float(r['total_signals']) for r in rows)
         
         nodes = []
         for row in rows:
