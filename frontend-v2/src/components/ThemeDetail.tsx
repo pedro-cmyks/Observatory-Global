@@ -37,16 +37,33 @@ export function ThemeDetail({ theme, country, hours, onClose }: ThemeDetailProps
         const fetchData = async () => {
             setLoading(true)
             try {
-                const url = `http://localhost:8000/api/v2/theme/${encodeURIComponent(theme)}?hours=${hours}${country ? `&country_code=${country}` : ''}`
+                // Construct URL using URLSearchParams for better handling of query parameters
+                const params = new URLSearchParams({
+                    hours: hours.toString()
+                });
+                if (country) {
+                    params.append('country_code', country);
+                }
+                const url = `http://localhost:8000/api/v2/theme/${encodeURIComponent(theme)}?${params.toString()}`;
+
 const res = await fetch(url)
+// Check for HTTP errors
+if (!res.ok) {
+    throw new Error(`HTTP error! status: ${res.status}`);
+}
 const data = await res.json()
 setSignals(data.signals || [])
 setTimeline(data.timeline || [])
 setTotal(data.total || 0)
             } catch (error) {
     console.error('Failed to fetch theme details:', error)
+    // Optionally, set signals/timeline/total to empty or default values on error
+    setSignals([]);
+    setTimeline([]);
+    setTotal(0);
+} finally {
+    setLoading(false)
 }
-setLoading(false)
         }
 fetchData()
     }, [theme, country, hours])
