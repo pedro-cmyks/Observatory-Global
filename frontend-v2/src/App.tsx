@@ -310,8 +310,8 @@ function App() {
         ))}
         <span className="separator">|</span>
         <button
-          className={showGlow ? 'active' : ''}
-          onClick={() => setShowGlow(!showGlow)}
+          className={showHeatmap ? 'active' : ''}
+          onClick={() => setShowHeatmap(!showHeatmap)}
         >
           GLOW
         </button>
