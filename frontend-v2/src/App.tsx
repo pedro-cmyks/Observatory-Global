@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback } from 'react'
 import Map from 'react-map-gl/maplibre'
 import { DeckGL } from '@deck.gl/react'
 import { ScatterplotLayer, ArcLayer } from '@deck.gl/layers'
-import { HeatmapLayer } from '@deck.gl/aggregation-layers'
-import { scaleLinear } from 'd3-scale'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import './App.css'
 import { getThemeLabel } from './lib/themeLabels'
@@ -19,11 +17,7 @@ interface Node {
   signalCount: number
 }
 
-interface HeatmapPoint {
-  lat: number
-  lon: number
-  weight: number
-}
+
 
 interface Flow {
   source: [number, number]
@@ -41,16 +35,23 @@ interface CountryDetail {
   sources: { name: string; count: number }[]
 }
 
-// Sentiment to color scale (red = negative, yellow = neutral, green = positive)
+// Improved sentiment color with better visibility
 const sentimentColor = (sentiment: number): [number, number, number, number] => {
-  const scale = scaleLinear<string>()
-    .domain([-1, 0, 1])
-    .range(['#ff4444', '#ffff44', '#44ff44'])
-  const hex = scale(sentiment)
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return [r, g, b, 200]
+  // Clamp sentiment to -1 to 1 range
+  const s = Math.max(-1, Math.min(1, sentiment))
+
+  if (s > 0.1) {
+    // Positive: Green
+    const intensity = Math.min(1, s * 2)
+    return [50, Math.floor(200 + intensity * 55), 80, 220]
+  } else if (s < -0.1) {
+    // Negative: Red/Orange
+    const intensity = Math.min(1, Math.abs(s) * 2)
+    return [Math.floor(200 + intensity * 55), Math.floor(80 - intensity * 30), 50, 220]
+  } else {
+    // Neutral: Yellow/Amber
+    return [250, 200, 50, 220]
+  }
 }
 
 // Country names mapping
@@ -149,7 +150,6 @@ const INITIAL_VIEW = {
 function App() {
   // State
   const [nodes, setNodes] = useState<Node[]>([])
-  const [heatmapPoints, setHeatmapPoints] = useState<HeatmapPoint[]>([])
   const [flows, setFlows] = useState<Flow[]>([])
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
   const [timeWindow, setTimeWindow] = useState(24)
@@ -165,18 +165,15 @@ function App() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const [nodesRes, heatmapRes, flowsRes] = await Promise.all([
+      const [nodesRes, flowsRes] = await Promise.all([
         fetch(`http://localhost:8000/api/v2/nodes?hours=${timeWindow}`),
-        fetch(`http://localhost:8000/api/v2/heatmap?hours=${timeWindow}`),
         fetch(`http://localhost:8000/api/v2/flows?hours=${timeWindow}`)
       ])
 
       const nodesData = await nodesRes.json()
-      const heatmapData = await heatmapRes.json()
       const flowsData = await flowsRes.json()
 
       setNodes(nodesData.nodes || [])
-      setHeatmapPoints(heatmapData.points || [])
       setFlows(flowsData.flows || [])
     } catch (error) {
       console.error('Failed to fetch data:', error)
@@ -206,29 +203,9 @@ function App() {
     return () => clearInterval(interval)
   }, [fetchData])
 
-  // Deck.gl layers
+  // Deck.gl layers - NO MORE HEATMAP
   const layers = [
-    // Heatmap layer with better settings for country-based clouds
-    showHeatmap && new HeatmapLayer({
-      id: 'heatmap',
-      data: heatmapPoints,
-      getPosition: (d: HeatmapPoint) => [d.lon, d.lat],
-      getWeight: (d: HeatmapPoint) => d.weight,
-      radiusPixels: 60,
-      intensity: 1.5,
-      threshold: 0.05,
-      colorRange: [
-        [255, 255, 200, 0],
-        [255, 237, 160, 100],
-        [254, 178, 76, 180],
-        [253, 141, 60, 220],
-        [240, 59, 32, 255],
-        [189, 0, 38, 255]
-      ],
-      aggregation: 'SUM'
-    }),
-
-    // Flow arcs (middle)
+    // Flow arcs (bottom layer)
     showFlows && new ArcLayer({
       id: 'flows',
       data: flows,
@@ -240,23 +217,73 @@ function App() {
       greatCircle: true
     }),
 
-    // Country nodes (top)
-    showNodes && new ScatterplotLayer({
-      id: 'nodes',
+    // Outer glow layer (creates halo effect)
+    showHeatmap && new ScatterplotLayer({
+      id: 'nodes-glow-outer',
+      data: nodes,
+      getPosition: (d: Node) => [d.lon, d.lat],
+      getRadius: (d: Node) => Math.sqrt(d.signalCount) * 800,
+      getFillColor: (d: Node) => {
+        const color = sentimentColor(d.sentiment)
+        return [color[0], color[1], color[2], 30]
+      },
+      radiusMinPixels: 20,
+      radiusMaxPixels: 100,
+      pickable: false
+    }),
+
+    // Middle glow layer
+    showHeatmap && new ScatterplotLayer({
+      id: 'nodes-glow-middle',
       data: nodes,
       getPosition: (d: Node) => [d.lon, d.lat],
       getRadius: (d: Node) => Math.sqrt(d.signalCount) * 500,
+      getFillColor: (d: Node) => {
+        const color = sentimentColor(d.sentiment)
+        return [color[0], color[1], color[2], 60]
+      },
+      radiusMinPixels: 15,
+      radiusMaxPixels: 70,
+      pickable: false
+    }),
+
+    // Inner glow layer
+    showHeatmap && new ScatterplotLayer({
+      id: 'nodes-glow-inner',
+      data: nodes,
+      getPosition: (d: Node) => [d.lon, d.lat],
+      getRadius: (d: Node) => Math.sqrt(d.signalCount) * 300,
+      getFillColor: (d: Node) => {
+        const color = sentimentColor(d.sentiment)
+        return [color[0], color[1], color[2], 100]
+      },
+      radiusMinPixels: 10,
+      radiusMaxPixels: 50,
+      pickable: false
+    }),
+
+    // Core node (solid, pickable)
+    showNodes && new ScatterplotLayer({
+      id: 'nodes-core',
+      data: nodes,
+      getPosition: (d: Node) => [d.lon, d.lat],
+      getRadius: (d: Node) => Math.sqrt(d.signalCount) * 150,
       getFillColor: (d: Node) => sentimentColor(d.sentiment),
-      getLineColor: [255, 255, 255, 100],
+      getLineColor: [255, 255, 255, 200],
       lineWidthMinPixels: 1,
+      stroked: true,
       pickable: true,
       onClick: ({ object }: { object: Node }) => {
         if (object) {
           fetchCountryDetail(object.id)
         }
       },
-      radiusMinPixels: 8,
-      radiusMaxPixels: 50
+      radiusMinPixels: 6,
+      radiusMaxPixels: 30,
+      transitions: {
+        getRadius: 300,
+        getFillColor: 300
+      }
     })
   ].filter(Boolean)
 
@@ -266,7 +293,7 @@ function App() {
       <header className="header">
         <h1>🌐 OBSERVATORY GLOBAL</h1>
         <div className="stats">
-          {loading ? 'Loading...' : `${nodes.length} countries • ${heatmapPoints.length} signals`}
+          {loading ? 'Loading...' : `${nodes.length} countries • ${nodes.reduce((sum, n) => sum + n.signalCount, 0).toLocaleString()} signals`}
         </div>
       </header>
 
@@ -283,10 +310,10 @@ function App() {
         ))}
         <span className="separator">|</span>
         <button
-          className={showHeatmap ? 'active' : ''}
-          onClick={() => setShowHeatmap(!showHeatmap)}
+          className={showGlow ? 'active' : ''}
+          onClick={() => setShowGlow(!showGlow)}
         >
-          HEAT
+          GLOW
         </button>
         <button
           className={showFlows ? 'active' : ''}

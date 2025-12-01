@@ -86,72 +86,12 @@ async def get_nodes(hours: int = Query(24, ge=1, le=168, description="Hours of d
 
 @app.get("/api/v2/heatmap")
 async def get_heatmap(hours: int = Query(24, ge=1, le=168)):
-    """Generate heatmap from country aggregates + real coordinates where available."""
-    import random
-    
-    async with app.state.pool.acquire() as conn:
-        points = []
-        
-        # Part 1: Country-based heat clouds
-        country_data = await conn.fetch("""
-            SELECT 
-                h.country_code,
-                c.latitude,
-                c.longitude,
-                SUM(h.signal_count) as total_signals,
-                AVG(h.avg_sentiment) as sentiment
-            FROM country_hourly_v2 h
-            JOIN countries_v2 c ON h.country_code = c.code
-            WHERE h.hour > NOW() - INTERVAL '%s hours'
-            AND c.latitude IS NOT NULL
-            GROUP BY h.country_code, c.latitude, c.longitude
-        """ % hours)
-        
-        for row in country_data:
-            lat = float(row['latitude'])
-            lon = float(row['longitude'])
-            signals = int(row['total_signals'])
-            sentiment = float(row['sentiment'] or 0)
-            
-            # Generate cloud of points around country center
-            # More signals = more points = bigger heat cloud
-            num_points = min(30, max(3, signals // 200))
-            spread = 2.5  # degrees of spread
-            
-            for _ in range(num_points):
-                points.append({
-                    "lat": lat + random.gauss(0, spread / 2),
-                    "lon": lon + random.gauss(0, spread / 2),
-                    "weight": 1 + (signals / 2000)
-                })
-        
-        # Part 2: Add real coordinates that are valid (on land, not ocean)
-        # Only include points that are within reasonable bounds of their country
-        real_coords = await conn.fetch("""
-            SELECT s.latitude, s.longitude, s.sentiment, s.country_code, c.latitude as country_lat, c.longitude as country_lon
-            FROM signals_v2 s
-            JOIN countries_v2 c ON s.country_code = c.code
-            WHERE s.timestamp > NOW() - INTERVAL '%s hours'
-            AND s.latitude IS NOT NULL
-            AND s.longitude IS NOT NULL
-            -- Only include if within 20 degrees of country centroid (rough validation)
-            AND ABS(s.latitude - c.latitude) < 20
-            AND ABS(s.longitude - c.longitude) < 30
-            LIMIT 2000
-        """ % hours)
-        
-        for row in real_coords:
-            points.append({
-                "lat": float(row['latitude']),
-                "lon": float(row['longitude']),
-                "weight": 1.5 + abs(float(row['sentiment'] or 0)) / 5
-            })
-        
-        return {
-            "points": points,
-            "count": len(points),
-            "hours": hours
-        }
+    """Deprecated - heatmap data now comes from nodes with glow effect."""
+    return {
+        "points": [],
+        "count": 0,
+        "message": "Heatmap deprecated, use nodes with glow effect"
+    }
 
 @app.get("/api/v2/flows")
 async def get_flows(hours: int = Query(24, ge=1, le=168)):
