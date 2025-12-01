@@ -6,6 +6,7 @@ import { HeatmapLayer } from '@deck.gl/aggregation-layers'
 import { scaleLinear } from 'd3-scale'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import './App.css'
+import { getThemeLabel } from './lib/themeLabels'
 
 // Types
 interface Node {
@@ -50,6 +51,90 @@ const sentimentColor = (sentiment: number): [number, number, number, number] => 
   const g = parseInt(hex.slice(3, 5), 16)
   const b = parseInt(hex.slice(5, 7), 16)
   return [r, g, b, 200]
+}
+
+// Country names mapping
+const countryNames: Record<string, string> = {
+  'US': 'United States', 'UK': 'United Kingdom', 'GB': 'United Kingdom',
+  'CA': 'Canada', 'AU': 'Australia', 'DE': 'Germany', 'FR': 'France',
+  'JP': 'Japan', 'CN': 'China', 'IN': 'India', 'BR': 'Brazil',
+  'MX': 'Mexico', 'RU': 'Russia', 'ZA': 'South Africa', 'NG': 'Nigeria',
+  'EG': 'Egypt', 'SA': 'Saudi Arabia', 'AE': 'UAE', 'IL': 'Israel',
+  'TR': 'Turkey', 'PK': 'Pakistan', 'ID': 'Indonesia', 'PH': 'Philippines',
+  'VN': 'Vietnam', 'TH': 'Thailand', 'MY': 'Malaysia', 'SG': 'Singapore',
+  'KR': 'South Korea', 'NZ': 'New Zealand', 'AR': 'Argentina', 'CL': 'Chile',
+  'CO': 'Colombia', 'PE': 'Peru', 'VE': 'Venezuela', 'IT': 'Italy',
+  'ES': 'Spain', 'PT': 'Portugal', 'NL': 'Netherlands', 'BE': 'Belgium',
+  'CH': 'Switzerland', 'AT': 'Austria', 'PL': 'Poland', 'SE': 'Sweden',
+  'NO': 'Norway', 'DK': 'Denmark', 'FI': 'Finland', 'IE': 'Ireland',
+  'GR': 'Greece', 'UA': 'Ukraine', 'RO': 'Romania', 'CZ': 'Czech Republic',
+  'HU': 'Hungary', 'IS': 'Iceland', 'AS': 'American Samoa', 'EI': 'Ireland'
+}
+
+function getCountryName(code: string): string {
+  return countryNames[code] || code
+}
+
+// Country flag emoji from code
+function getCountryFlag(code: string): string {
+  const codePoints = code
+    .toUpperCase()
+    .split('')
+    .map(char => 127397 + char.charCodeAt(0))
+  return String.fromCodePoint(...codePoints)
+}
+
+// Generate narrative summary
+function generateNarrative(country: CountryDetail): string {
+  const sentiment = country.sentiment
+  const signals = country.totalSignals
+  const topTheme = country.themes[0]?.name || ''
+
+  let moodWord = sentiment > 0.1 ? 'positive' :
+    sentiment < -0.1 ? 'negative' : 'neutral'
+
+  let volumeWord = signals > 1000 ? 'high' :
+    signals > 100 ? 'moderate' : 'low'
+
+  const themeLabel = getThemeLabel(topTheme)
+
+  return `${volumeWord.charAt(0).toUpperCase() + volumeWord.slice(1)} news activity with ${moodWord} sentiment. Coverage is dominated by ${themeLabel.toLowerCase()} topics.`
+}
+
+// Sentiment color
+function getSentimentColor(sentiment: number): string {
+  if (sentiment > 0.1) return '#4ade80'  // Green
+  if (sentiment < -0.1) return '#f87171' // Red
+  return '#fbbf24' // Yellow
+}
+
+// Sentiment label
+function getSentimentLabel(sentiment: number): string {
+  if (sentiment > 0.2) return 'Very Positive'
+  if (sentiment > 0.1) return 'Positive'
+  if (sentiment > -0.1) return 'Neutral'
+  if (sentiment > -0.2) return 'Negative'
+  return 'Very Negative'
+}
+
+// Theme icons
+function getThemeIcon(theme: string): string {
+  const upper = theme.toUpperCase()
+  if (upper.includes('ECONOMY') || upper.includes('ECON')) return '💰'
+  if (upper.includes('GOVERNMENT') || upper.includes('GOV')) return '🏛️'
+  if (upper.includes('MILITARY') || upper.includes('WAR')) return '⚔️'
+  if (upper.includes('HEALTH') || upper.includes('DISEASE')) return '🏥'
+  if (upper.includes('ENVIRONMENT') || upper.includes('CLIMATE')) return '🌍'
+  if (upper.includes('TECH') || upper.includes('CYBER')) return '💻'
+  if (upper.includes('CRIME') || upper.includes('ARREST')) return '🚨'
+  if (upper.includes('PROTEST') || upper.includes('UNREST')) return '✊'
+  if (upper.includes('ELECTION') || upper.includes('VOTE')) return '🗳️'
+  if (upper.includes('ENERGY') || upper.includes('OIL')) return '⚡'
+  if (upper.includes('FOREST') || upper.includes('OCEAN')) return '🌊'
+  if (upper.includes('ETHNICITY') || upper.includes('LANGUAGE')) return '🗣️'
+  if (upper.includes('POLICY')) return '📋'
+  if (upper.includes('JOB') || upper.includes('EMPLOY')) return '💼'
+  return '📰'
 }
 
 // Initial map view
@@ -123,22 +208,23 @@ function App() {
 
   // Deck.gl layers
   const layers = [
-    // Heatmap layer (bottom)
+    // Heatmap layer (bottom) - adjusted for all time windows
     showHeatmap && new HeatmapLayer({
       id: 'heatmap',
       data: heatmapPoints,
       getPosition: (d: HeatmapPoint) => [d.lon, d.lat],
       getWeight: (d: HeatmapPoint) => d.weight,
-      radiusPixels: 60,
-      intensity: 1,
-      threshold: 0.1,
+      radiusPixels: 80,
+      intensity: 2,
+      threshold: 0.03,
       colorRange: [
-        [255, 255, 178, 50],
-        [254, 204, 92, 100],
+        [255, 255, 178, 0],
+        [254, 204, 92, 80],
         [253, 141, 60, 150],
         [240, 59, 32, 200],
         [189, 0, 38, 255]
-      ]
+      ],
+      aggregation: 'SUM'
     }),
 
     // Flow arcs (middle)
@@ -229,47 +315,78 @@ function App() {
         />
       </DeckGL>
 
-      {/* Sidebar */}
+      {/* Narrative Sidebar */}
       {selectedCountry && (
         <aside className="sidebar">
           <button className="close" onClick={() => setSelectedCountry(null)}>×</button>
 
-          <h2>{selectedCountry.countryCode}</h2>
-
-          <div className="metric">
-            <span className="label">Signals</span>
-            <span className="value">{selectedCountry.totalSignals.toLocaleString()}</span>
+          {/* Country Header with Flag */}
+          <div className="country-header">
+            <span className="country-flag">{getCountryFlag(selectedCountry.countryCode)}</span>
+            <div>
+              <h2>{getCountryName(selectedCountry.countryCode)}</h2>
+              <span className="country-code">{selectedCountry.countryCode}</span>
+            </div>
           </div>
 
-          <div className="metric">
-            <span className="label">Sentiment</span>
-            <span className="value" style={{
-              color: selectedCountry.sentiment > 0 ? '#44ff44' :
-                selectedCountry.sentiment < 0 ? '#ff4444' : '#ffff44'
-            }}>
-              {selectedCountry.sentiment.toFixed(2)}
-            </span>
+          {/* Narrative Summary */}
+          <div className="narrative-box">
+            <p className="narrative">
+              {generateNarrative(selectedCountry)}
+            </p>
           </div>
 
-          <h3>Top Themes</h3>
-          <ul className="themes">
-            {selectedCountry.themes.slice(0, 5).map(t => (
-              <li key={t.name}>
-                <span>{t.name}</span>
-                <span>{t.count}</span>
-              </li>
-            ))}
-          </ul>
+          {/* Key Metrics */}
+          <div className="metrics-row">
+            <div className="metric">
+              <span className="metric-value">{selectedCountry.totalSignals.toLocaleString()}</span>
+              <span className="metric-label">Signals</span>
+            </div>
+            <div className="metric">
+              <span className="metric-value sentiment" style={{
+                color: getSentimentColor(selectedCountry.sentiment)
+              }}>
+                {getSentimentLabel(selectedCountry.sentiment)}
+              </span>
+              <span className="metric-label">Mood</span>
+            </div>
+          </div>
 
-          <h3>Sources</h3>
-          <ul className="sources">
-            {selectedCountry.sources.slice(0, 3).map(s => (
-              <li key={s.name}>
-                <span>{s.name}</span>
-                <span>{s.count}</span>
-              </li>
-            ))}
-          </ul>
+          {/* Dominant Narratives */}
+          <div className="section">
+            <h3>📰 DOMINANT NARRATIVES</h3>
+            <div className="theme-chips">
+              {selectedCountry.themes.slice(0, 5).map((t, i) => (
+                <div key={t.name} className="theme-chip" style={{
+                  opacity: 1 - (i * 0.15)
+                }}>
+                  <span className="theme-icon">{getThemeIcon(t.name)}</span>
+                  <span className="theme-label">{getThemeLabel(t.name)}</span>
+                  <span className="theme-count">{t.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Source Diversity */}
+          <div className="section">
+            <h3>🔗 SOURCE DIVERSITY</h3>
+            <div className="source-bar">
+              <div className="source-fill" style={{
+                width: `${Math.min(100, selectedCountry.sources.length * 20)}%`
+              }} />
+            </div>
+            <p className="source-summary">
+              {selectedCountry.sources.length} unique sources
+              {selectedCountry.sources.length < 3 ? ' (low diversity ⚠️)' :
+                selectedCountry.sources.length > 10 ? ' (high diversity ✓)' : ''}
+            </p>
+            <div className="source-list">
+              {selectedCountry.sources.slice(0, 3).map(s => (
+                <span key={s.name} className="source-tag">{s.name}</span>
+              ))}
+            </div>
+          </div>
         </aside>
       )}
     </div>

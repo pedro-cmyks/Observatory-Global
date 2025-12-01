@@ -86,7 +86,10 @@ async def get_nodes(hours: int = Query(24, ge=1, le=168, description="Hours of d
 
 @app.get("/api/v2/heatmap")
 async def get_heatmap(hours: int = Query(24, ge=1, le=168)):
-    """Get individual signal points for heatmap layer (GPU filtered)."""
+    """Get signal points for heatmap layer (GPU filtered)."""
+    # More points for shorter windows to ensure visibility
+    limit = 10000 if hours <= 24 else 5000
+    
     async with app.state.pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT latitude, longitude, sentiment
@@ -94,15 +97,15 @@ async def get_heatmap(hours: int = Query(24, ge=1, le=168)):
             WHERE timestamp > NOW() - INTERVAL '%s hours'
             AND latitude IS NOT NULL 
             AND longitude IS NOT NULL
-            LIMIT 5000
-        """ % hours)
+            LIMIT %s
+        """ % (hours, limit))
         
         return {
             "points": [
                 {
                     "lat": float(r['latitude']),
                     "lon": float(r['longitude']),
-                    "weight": 1 + abs(float(r['sentiment'] or 0)) / 10
+                    "weight": 1 + abs(float(r['sentiment'] or 0)) / 5
                 }
                 for r in rows
             ],
