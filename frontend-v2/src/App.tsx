@@ -5,6 +5,8 @@ import { ScatterplotLayer, ArcLayer } from '@deck.gl/layers'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import './App.css'
 import { getThemeLabel } from './lib/themeLabels'
+import { SearchBar } from './components/SearchBar'
+import { ThemeDetail } from './components/ThemeDetail'
 
 // Types
 interface Node {
@@ -152,6 +154,7 @@ function App() {
   const [nodes, setNodes] = useState<Node[]>([])
   const [flows, setFlows] = useState<Flow[]>([])
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
+  const [selectedTheme, setSelectedTheme] = useState<{ theme: string, country?: string } | null>(null)
   const [timeWindow, setTimeWindow] = useState(24)
   const [loading, setLoading] = useState(true)
   const [viewState, setViewState] = useState(INITIAL_VIEW)
@@ -189,6 +192,17 @@ function App() {
       setSelectedCountry(data)
     } catch (error) {
       console.error('Failed to fetch country detail:', error)
+    }
+  }
+
+  // Theme selection handlers
+  const handleThemeSelect = (theme: string, country?: string) => {
+    setSelectedTheme({ theme, country })
+  }
+
+  const handleThemeClick = (themeName: string) => {
+    if (selectedCountry) {
+      setSelectedTheme({ theme: themeName, country: selectedCountry.countryCode })
     }
   }
 
@@ -292,6 +306,10 @@ function App() {
       {/* Header */}
       <header className="header">
         <h1>🌐 OBSERVATORY GLOBAL</h1>
+        <SearchBar
+          onThemeSelect={handleThemeSelect}
+          onCountrySelect={(code) => fetchCountryDetail(code)}
+        />
         <div className="stats">
           {loading ? 'Loading...' : `${nodes.length} countries • ${nodes.reduce((sum, n) => sum + n.signalCount, 0).toLocaleString()} signals`}
         </div>
@@ -385,9 +403,14 @@ function App() {
             <h3>📰 DOMINANT NARRATIVES</h3>
             <div className="theme-chips">
               {selectedCountry.themes.slice(0, 5).map((t, i) => (
-                <div key={t.name} className="theme-chip" style={{
-                  opacity: 1 - (i * 0.15)
-                }}>
+                <div
+                  key={t.name}
+                  className="theme-chip clickable"
+                  style={{
+                    opacity: 1 - (i * 0.15)
+                  }}
+                  onClick={() => handleThemeClick(t.name)}
+                >
                   <span className="theme-icon">{getThemeIcon(t.name)}</span>
                   <span className="theme-label">{getThemeLabel(t.name)}</span>
                   <span className="theme-count">{t.count}</span>
@@ -416,6 +439,16 @@ function App() {
             </div>
           </div>
         </aside>
+      )}
+
+      {/* Theme Detail Modal */}
+      {selectedTheme && (
+        <ThemeDetail
+          theme={selectedTheme.theme}
+          country={selectedTheme.country}
+          hours={timeWindow}
+          onClose={() => setSelectedTheme(null)}
+        />
       )}
     </div>
   )

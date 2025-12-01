@@ -19,23 +19,31 @@
   top: 0;
   left: 0;
   right: 0;
-  z-index: 10;
-  padding: 16px 24px;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), transparent);
+  height: 80px;
+  background: rgba(10, 10, 10, 0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  z-index: 10;
+  gap: 24px;
 }
 
 .header h1 {
   font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 2px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: 1px;
+  white-space: nowrap;
 }
 
 .header .stats {
-  font-size: 12px;
+  font-size: 13px;
   color: #888;
+  white-space: nowrap;
+  margin-left: auto;
 }
 
 /* Controls */
@@ -220,7 +228,16 @@
   padding: 10px 12px;
   background: rgba(255, 255, 255, 0.03);
   border-radius: 8px;
-  transition: background 0.2s;
+  transition: all 0.2s;
+}
+
+.theme-chip.clickable {
+  cursor: pointer;
+}
+
+.theme-chip.clickable:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateX(4px);
 }
 
 .theme-chip:hover {

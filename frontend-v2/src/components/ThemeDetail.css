@@ -1,0 +1,167 @@
+.theme-detail-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px;
+    overflow-y: auto;
+}
+
+.theme-detail-panel {
+    background: rgba(15, 15, 20, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 600px;
+    padding: 24px;
+    position: relative;
+    backdrop-filter: blur(20px);
+}
+
+.theme-detail-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: transparent;
+    color: white;
+    font-size: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.theme-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.theme-detail-icon {
+    font-size: 36px;
+}
+
+.theme-detail-header h2 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.theme-detail-meta {
+    margin: 4px 0 0 0;
+    color: #888;
+    font-size: 13px;
+}
+
+.theme-detail-loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+/* Timeline */
+.theme-timeline {
+    margin-bottom: 24px;
+}
+
+.theme-timeline h3 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #666;
+    margin: 0 0 12px 0;
+}
+
+.timeline-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.timeline-bar {
+    flex: 1;
+    min-width: 4px;
+    border-radius: 2px;
+    transition: height 0.3s;
+}
+
+/* Signals */
+.theme-signals h3 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #666;
+    margin: 0 0 12px 0;
+}
+
+.signals-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.signal-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 14px;
+}
+
+.signal-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.signal-source {
+    font-weight: 600;
+    color: #ddd;
+}
+
+.signal-time {
+    font-size: 12px;
+    color: #666;
+}
+
+.signal-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.signal-country {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.signal-sentiment {
+    font-weight: 600;
+}
+
+.signal-persons {
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 8px;
+}
+
+.signal-link {
+    font-size: 12px;
+    color: #60a5fa;
+    text-decoration: none;
+}
+
+.signal-link:hover {
+    text-decoration: underline;
+}

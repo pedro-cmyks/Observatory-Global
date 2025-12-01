@@ -93,6 +93,189 @@ async def get_heatmap(hours: int = Query(24, ge=1, le=168)):
         "message": "Heatmap deprecated, use nodes with glow effect"
     }
 
+@app.get("/api/v2/search")
+async def search(
+    q: str = Query(..., min_length=2, description="Search query"),
+    hours: int = Query(168, ge=1, le=720)
+):
+    """Search across themes, countries, and sources."""
+    query = q.lower().strip()
+    
+    async with app.state.pool.acquire() as conn:
+        # Search in themes
+        theme_results = await conn.fetch("""
+            SELECT 
+                unnest(themes) as theme,
+                country_code,
+                COUNT(*) as count
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '%s hours'
+            AND LOWER(array_to_string(themes, ' ')) LIKE $1
+            GROUP BY theme, country_code
+            ORDER BY count DESC
+            LIMIT 20
+        """ % hours, f'%{query}%')
+        
+        # Search in sources
+        source_results = await conn.fetch("""
+            SELECT 
+                source_name,
+                country_code,
+                COUNT(*) as count
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '%s hours'
+            AND LOWER(source_name) LIKE $1
+            GROUP BY source_name, country_code
+            ORDER BY count DESC
+            LIMIT 10
+        """ % hours, f'%{query}%')
+        
+        # Search countries by name
+        country_results = await conn.fetch("""
+            SELECT code, name, latitude, longitude
+            FROM countries_v2
+            WHERE LOWER(name) LIKE $1 OR LOWER(code) LIKE $1
+            LIMIT 10
+        """, f'%{query}%')
+        
+        return {
+            "query": q,
+            "themes": [{"theme": r['theme'], "country": r['country_code'], "count": int(r['count'])} for r in theme_results],
+            "sources": [{"source": r['source_name'], "country": r['country_code'], "count": int(r['count'])} for r in source_results],
+            "countries": [{"code": r['code'], "name": r['name']} for r in country_results]
+        }
+
+@app.get("/api/v2/theme/{theme_code}")
+async def get_theme_details(
+    theme_code: str,
+    country_code: str = Query(None, description="Filter by country"),
+    hours: int = Query(24, ge=1, le=168)
+):
+    """Get detailed signals for a specific theme."""
+    async with app.state.pool.acquire() as conn:
+        # Base query
+        query = """
+            SELECT 
+                timestamp,
+                country_code,
+                source_name,
+                source_url,
+                sentiment,
+                themes,
+                persons
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '%s hours'
+            AND $1 = ANY(themes)
+        """ % hours
+        
+        params = [theme_code.upper()]
+        
+        if country_code:
+            query += " AND country_code = $2"
+            params.append(country_code.upper())
+        
+        query += " ORDER BY timestamp DESC LIMIT 50"
+        
+        rows = await conn.fetch(query, *params)
+        
+        # Get timeline data (hourly counts)
+        timeline_query = """
+            SELECT 
+                date_trunc('hour', timestamp) as hour,
+                COUNT(*) as count,
+                AVG(sentiment) as avg_sentiment
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '%s hours'
+            AND $1 = ANY(themes)
+        """ % hours
+        
+        if country_code:
+            timeline_query += " AND country_code = $2"
+            
+        timeline_query += " GROUP BY hour ORDER BY hour"
+        
+        timeline = await conn.fetch(timeline_query, *params)
+        
+        return {
+            "theme": theme_code,
+            "country": country_code,
+            "total": len(rows),
+            "signals": [
+                {
+                    "timestamp": r['timestamp'].isoformat(),
+                    "country": r['country_code'],
+                    "source": r['source_name'],
+                    "url": r['source_url'],
+                    "sentiment": float(r['sentiment'] or 0),
+                    "otherThemes": [t for t in (r['themes'] or []) if t != theme_code.upper()][:3],
+                    "persons": (r['persons'] or [])[:3]
+                }
+                for r in rows
+            ],
+            "timeline": [
+                {
+                    "hour": t['hour'].isoformat(),
+                    "count": int(t['count']),
+                    "sentiment": float(t['avg_sentiment'] or 0)
+                }
+                for t in timeline
+            ]
+        }
+
+@app.get("/api/v2/signals")
+async def get_signals(
+    country_code: str = Query(None),
+    theme: str = Query(None),
+    hours: int = Query(24, ge=1, le=168),
+    limit: int = Query(50, ge=1, le=200)
+):
+    """Get raw signals with filters."""
+    async with app.state.pool.acquire() as conn:
+        conditions = ["timestamp > NOW() - INTERVAL '%s hours'" % hours]
+        params = []
+        param_count = 0
+        
+        if country_code:
+            param_count += 1
+            conditions.append(f"country_code = ${param_count}")
+            params.append(country_code.upper())
+        
+        if theme:
+            param_count += 1
+            conditions.append(f"${param_count} = ANY(themes)")
+            params.append(theme.upper())
+        
+        where_clause = " AND ".join(conditions)
+        
+        rows = await conn.fetch(f"""
+            SELECT 
+                timestamp,
+                country_code,
+                source_name,
+                source_url,
+                sentiment,
+                themes
+            FROM signals_v2
+            WHERE {where_clause}
+            ORDER BY timestamp DESC
+            LIMIT {limit}
+        """, *params)
+        
+        return {
+            "count": len(rows),
+            "signals": [
+                {
+                    "timestamp": r['timestamp'].isoformat(),
+                    "country": r['country_code'],
+                    "source": r['source_name'],
+                    "url": r['source_url'],
+                    "sentiment": float(r['sentiment'] or 0),
+                    "themes": r['themes'] or []
+                }
+                for r in rows
+            ]
+        }
+
 @app.get("/api/v2/flows")
 async def get_flows(hours: int = Query(24, ge=1, le=168)):
     """Get information flows between top countries."""
