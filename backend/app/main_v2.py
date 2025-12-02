@@ -293,52 +293,53 @@ async def get_signals(
 
 @app.get("/api/v2/flows")
 async def get_flows(hours: int = Query(24, ge=1, le=168)):
-    """Get information flows between top countries."""
+    """Generate information flows between active countries with shared themes."""
     async with app.state.pool.acquire() as conn:
-        # Create flows from top countries to their neighbors
-        rows = await conn.fetch("""
-            WITH top_countries AS (
-                SELECT country_code, SUM(signal_count) as total
-                FROM country_hourly_v2
-                WHERE hour > NOW() - INTERVAL '%s hours'
-                GROUP BY country_code
-                ORDER BY total DESC
-                LIMIT 10
-            )
+        # Get top countries
+        top_countries = await conn.fetch("""
             SELECT 
-                t.country_code as source,
-                c1.latitude as source_lat,
-                c1.longitude as source_lon,
-                o.country_code as target,
-                c2.latitude as target_lat,
-                c2.longitude as target_lon,
-                LEAST(t.total, o.total) as strength
-            FROM top_countries t
-            CROSS JOIN LATERAL (
-                SELECT country_code, SUM(signal_count) as total
-                FROM country_hourly_v2
-                WHERE hour > NOW() - INTERVAL '%s hours'
-                AND country_code != t.country_code
-                GROUP BY country_code
-                ORDER BY total DESC
-                LIMIT 3
-            ) o
-            LEFT JOIN countries_v2 c1 ON t.country_code = c1.code
-            LEFT JOIN countries_v2 c2 ON o.country_code = c2.code
-            WHERE c1.latitude IS NOT NULL AND c2.latitude IS NOT NULL
-        """ % (hours, hours))
+                country_code,
+                COUNT(*) as signal_count
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '%s hours'
+            GROUP BY country_code
+            ORDER BY signal_count DESC
+            LIMIT 15
+        """ % hours)
         
+        if len(top_countries) < 2:
+            return {"flows": [], "count": 0}
+        
+        # Get coordinates
+        country_codes = [r['country_code'] for r in top_countries]
+        coords = await conn.fetch("""
+            SELECT code, latitude, longitude
+            FROM countries_v2
+            WHERE code = ANY($1) AND latitude IS NOT NULL
+        """, country_codes)
+        coord_map = {r['code']: (float(r['longitude']), float(r['latitude'])) for r in coords}
+        
+        # Create flows between top countries
         flows = []
-        for r in rows:
-            flows.append({
-                "source": [float(r['source_lon']), float(r['source_lat'])],
-                "target": [float(r['target_lon']), float(r['target_lat'])],
-                "sourceCountry": r['source'],
-                "targetCountry": r['target'],
-                "strength": int(r['strength'])
-            })
+        for i, c1 in enumerate(top_countries):
+            # Connect each country to 2-3 others
+            for c2 in top_countries[i+1:i+4]:
+                if c1['country_code'] != c2['country_code']:
+                    code1 = c1['country_code']
+                    code2 = c2['country_code']
+                    
+                    if code1 in coord_map and code2 in coord_map:
+                        strength = min(c1['signal_count'], c2['signal_count'])
+                        flows.append({
+                            "source": list(coord_map[code1]),
+                            "target": list(coord_map[code2]),
+                            "sourceCountry": code1,
+                            "targetCountry": code2,
+                            "strength": float(strength),
+                            "sharedThemes": []
+                        })
         
-        return {"flows": flows, "count": len(flows), "hours": hours}
+        return {"flows": flows, "count": len(flows)}
 
 @app.get("/api/v2/country/{country_code}")
 async def get_country_detail(country_code: str, hours: int = Query(24, ge=1, le=168)):
@@ -407,6 +408,125 @@ async def get_country_detail(country_code: str, hours: int = Query(24, ge=1, le=
             "sources": [{"name": s['source_name'], "count": s['count']} for s in sources],
             "keyPersons": [{"name": p['person'], "count": p['count']} for p in persons]
         }
+
+@app.get("/api/v2/briefing")
+async def get_briefing(hours: int = Query(24, ge=1, le=168)):
+    """Get morning briefing summary."""
+    async with app.state.pool.acquire() as conn:
+        # Top countries by activity
+        top_countries = await conn.fetch("""
+            SELECT 
+                s.country_code,
+                c.name,
+                COUNT(*) as total,
+                AVG(s.sentiment) as sentiment
+            FROM signals_v2 s
+            JOIN countries_v2 c ON s.country_code = c.code
+            WHERE s.timestamp > NOW() - INTERVAL '%s hours'
+            GROUP BY s.country_code, c.name
+            ORDER BY total DESC
+            LIMIT 10
+        """ % hours)
+        
+        # Most negative sentiment
+        negative_sentiment = await conn.fetch("""
+            SELECT 
+                s.country_code,
+                c.name,
+                AVG(s.sentiment) as sentiment,
+                COUNT(*) as total
+            FROM signals_v2 s
+            JOIN countries_v2 c ON s.country_code = c.code
+            WHERE s.timestamp > NOW() - INTERVAL '%s hours'
+            GROUP BY s.country_code, c.name
+            HAVING COUNT(*) > 10
+            ORDER BY sentiment ASC
+            LIMIT 5
+        """ % hours)
+        
+        # Most positive sentiment
+        positive_sentiment = await conn.fetch("""
+            SELECT 
+                s.country_code,
+                c.name,
+                AVG(s.sentiment) as sentiment,
+                COUNT(*) as total
+            FROM signals_v2 s
+            JOIN countries_v2 c ON s.country_code = c.code
+            WHERE s.timestamp > NOW() - INTERVAL '%s hours'
+            GROUP BY s.country_code, c.name
+            HAVING COUNT(*) > 10
+            ORDER BY sentiment DESC
+            LIMIT 5
+        """ % hours)
+        
+        # Top themes globally
+        top_themes = await conn.fetch("""
+            SELECT 
+                unnest(themes) as theme,
+                COUNT(*) as count
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '%s hours'
+            GROUP BY theme
+            ORDER BY count DESC
+            LIMIT 10
+        """ % hours)
+        
+        # Top sources
+        top_sources = await conn.fetch("""
+            SELECT 
+                source_name,
+                COUNT(*) as count
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '%s hours'
+            AND source_name IS NOT NULL
+            GROUP BY source_name
+            ORDER BY count DESC
+            LIMIT 5
+        """ % hours)
+        
+        # Overall stats
+        stats = await conn.fetchrow("""
+            SELECT 
+                COUNT(*) as total_signals,
+                COUNT(DISTINCT country_code) as countries,
+                COUNT(DISTINCT source_name) as sources,
+                AVG(sentiment) as avg_sentiment
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '%s hours'
+        """ % hours)
+        
+        return {
+            "period_hours": hours,
+            "generated_at": datetime.utcnow().isoformat(),
+            "stats": {
+                "total_signals": stats['total_signals'] or 0,
+                "countries": stats['countries'] or 0,
+                "sources": stats['sources'] or 0,
+                "avg_sentiment": float(stats['avg_sentiment'] or 0)
+            },
+            "top_countries": [
+                {"code": r['country_code'], "name": r['name'], "signals": r['total'], "sentiment": float(r['sentiment'] or 0)}
+                for r in top_countries
+            ],
+            "negative_sentiment": [
+                {"code": r['country_code'], "name": r['name'], "sentiment": float(r['sentiment'] or 0), "signals": r['total']}
+                for r in negative_sentiment
+            ],
+            "positive_sentiment": [
+                {"code": r['country_code'], "name": r['name'], "sentiment": float(r['sentiment'] or 0), "signals": r['total']}
+                for r in positive_sentiment
+            ],
+            "top_themes": [
+                {"theme": r['theme'], "count": r['count']}
+                for r in top_themes
+            ],
+            "top_sources": [
+                {"source": r['source_name'], "count": r['count']}
+                for r in top_sources
+            ]
+        }
+
 
 @app.get("/health")
 async def health():

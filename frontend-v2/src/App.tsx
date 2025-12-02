@@ -7,6 +7,7 @@ import './App.css'
 import { getThemeLabel } from './lib/themeLabels'
 import { SearchBar } from './components/SearchBar'
 import { ThemeDetail } from './components/ThemeDetail'
+import { Briefing } from './components/Briefing'
 
 // Types
 interface Node {
@@ -155,6 +156,7 @@ function App() {
   const [flows, setFlows] = useState<Flow[]>([])
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
   const [selectedTheme, setSelectedTheme] = useState<{ theme: string, country?: string } | null>(null)
+  const [showBriefing, setShowBriefing] = useState(false)
   const [timeWindow, setTimeWindow] = useState(24)
   const [loading, setLoading] = useState(true)
   const [viewState, setViewState] = useState(INITIAL_VIEW)
@@ -310,6 +312,9 @@ function App() {
           onThemeSelect={handleThemeSelect}
           onCountrySelect={(code) => fetchCountryDetail(code)}
         />
+        <button className="briefing-btn" onClick={() => setShowBriefing(true)}>
+          📋 Briefing
+        </button>
         <div className="stats">
           {loading ? 'Loading...' : `${nodes.length} countries • ${nodes.reduce((sum, n) => sum + n.signalCount, 0).toLocaleString()} signals`}
         </div>
@@ -448,6 +453,16 @@ function App() {
           country={selectedTheme.country}
           hours={timeWindow}
           onClose={() => setSelectedTheme(null)}
+        />
+      )}
+
+      {/* Briefing Modal */}
+      {showBriefing && (
+        <Briefing
+          hours={timeWindow}
+          onClose={() => setShowBriefing(false)}
+          onCountrySelect={(code) => { fetchCountryDetail(code); setShowBriefing(false) }}
+          onThemeSelect={(theme) => { setSelectedTheme({ theme }); setShowBriefing(false) }}
         />
       )}
     </div>
