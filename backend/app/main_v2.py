@@ -211,6 +211,32 @@ async def get_theme_details(
         
         timeline = await conn.fetch(timeline_query, *params)
         
+        # Country breakdown - which countries discuss this theme most
+        country_breakdown = await conn.fetch("""
+            SELECT 
+                country_code,
+                COUNT(*) as count,
+                AVG(sentiment) as avg_sentiment
+            FROM signals_v2
+            WHERE $1 = ANY(themes)
+            AND timestamp > NOW() - INTERVAL '%s hours'
+            GROUP BY country_code
+            ORDER BY count DESC
+            LIMIT 10
+        """ % hours, theme_code.upper())
+        
+        # Related themes (co-occurrence)
+        related_themes = await conn.fetch("""
+            SELECT unnest(themes) as theme, COUNT(*) as count
+            FROM signals_v2
+            WHERE $1 = ANY(themes)
+            AND timestamp > NOW() - INTERVAL '%s hours'
+            GROUP BY theme
+            HAVING unnest(themes) != $1
+            ORDER BY count DESC
+            LIMIT 5
+        """ % hours, theme_code.upper(), theme_code.upper())
+        
         return {
             "theme": theme_code,
             "country": country_code,
@@ -234,6 +260,21 @@ async def get_theme_details(
                     "sentiment": float(t['avg_sentiment'] or 0)
                 }
                 for t in timeline
+            ],
+            "country_breakdown": [
+                {
+                    "code": r['country_code'],
+                    "count": int(r['count']),
+                    "sentiment": float(r['avg_sentiment'] or 0)
+                }
+                for r in country_breakdown
+            ],
+            "related_themes": [
+                {
+                    "theme": r['theme'],
+                    "count": int(r['count'])
+                }
+                for r in related_themes
             ]
         }
 
@@ -383,7 +424,7 @@ async def get_country_detail(country_code: str, hours: int = Query(24, ge=1, le=
             AND source_name IS NOT NULL
             GROUP BY source_name
             ORDER BY count DESC
-            LIMIT 5
+            LIMIT 20
         """ % hours, country_code)
         
         # Key persons

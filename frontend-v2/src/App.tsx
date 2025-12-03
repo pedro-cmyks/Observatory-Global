@@ -438,7 +438,7 @@ function App() {
                 selectedCountry.sources.length > 10 ? ' (high diversity ✓)' : ''}
             </p>
             <div className="source-list">
-              {selectedCountry.sources.slice(0, 3).map(s => (
+              {selectedCountry.sources.slice(0, 10).map(s => (
                 <span key={s.name} className="source-tag">{s.name}</span>
               ))}
             </div>
