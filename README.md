@@ -1,122 +1,103 @@
-# 🌐 Observatory Global
+# Observatory Global 🌐
 
-A real-time global narrative intelligence platform that visualizes worldwide information flows using GDELT (Global Database of Events, Language, and Tone) data.
-
-## What it does
-
-Observatory Global monitors global news in real-time and visualizes:
-- **Heatmap**: Geographic intensity of news coverage
-- **Flows**: Information connections between countries (who's talking about whom)
-- **Nodes**: Country-level aggregations with sentiment analysis
+Real-time global narrative intelligence platform. Visualize what the world is talking about.
 
 ## Features
 
-- 🗺️ Interactive global map with multiple visualization layers
-- 📊 Real-time data ingestion from GDELT (every 15 minutes)
-- 🔍 Time-window filtering (1h, 6h, 12h, 24h, all)
-- 📈 Sentiment analysis per country
-- 🌡️ Heatmap showing news activity hotspots
-
-## Tech Stack
-
-- **Frontend**: React, TypeScript, Mapbox GL, Deck.gl
-- **Backend**: Python, FastAPI
-- **Database**: PostgreSQL
-- **Cache**: Redis
-- **Infrastructure**: Docker, Docker Compose
+- **Global Heatmap**: 52+ countries with real-time news activity
+- **Sentiment Analysis**: Color-coded mood (red=negative, yellow=neutral, green=positive)
+- **Information Flows**: Connections between countries discussing similar themes
+- **Theme Drill-down**: Explore what's being said about specific topics
+- **Morning Briefing**: Daily summary of global narratives
+- **Search**: Find themes, countries, and sources
 
 ## Quick Start
 
 ### Prerequisites
 - Docker & Docker Compose
-- Git
+- Node.js 18+
+- Python 3.10+
 
-### Installation
+### Setup
 
-1. Clone the repository:
 ```bash
-git clone https://github.com/pedro-cmyks/Observatory-Global.git
-cd Observatory-Global
+# Clone repository
+git clone https://github.com/pedro-cmyk/ObservatorioGlobal.git
+cd ObservatorioGlobal
+
+# Start database
+docker-compose up -d observatory-db
+
+# Backend (in one terminal)
+cd backend
+pip install -r requirements.txt
+uvicorn app.main_v2:app --host 0.0.0.0 --port 8000 --reload
+
+# Frontend (in another terminal)
+cd frontend-v2
+npm install
+npm run dev
+
+# Start ingestion (in another terminal)
+./infra/auto_ingest_v2.sh
 ```
 
-2. Start the services:
-```bash
-cd infra
-docker-compose up -d
+Open http://localhost:3000
+
+## Architecture
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   GDELT     │────▶│  Ingestion  │────▶│ PostgreSQL  │
+│   GKG API   │     │  (Python)   │     │ TimescaleDB │
+└─────────────┘     └─────────────┘     └──────┬──────┘
+                                               │
+                    ┌─────────────┐     ┌──────▼──────┐
+                    │   React     │◀────│   FastAPI   │
+                    │   Deck.gl   │     │   Backend   │
+                    └─────────────┘     └─────────────┘
 ```
 
-3. Run initial data ingestion:
-```bash
-docker-compose exec api python -m app.services.gdelt_ingest
-docker-compose exec api python -m app.services.aggregator
-```
+## Data Source
 
-4. Open the application:
-- Frontend: http://localhost:5173
-- API: http://localhost:8080
-- API Docs: http://localhost:8080/docs
+- **GDELT GKG** (Global Knowledge Graph): Real-time news from 200+ sources
+- Updates every 15 minutes
+- Coverage: 100+ languages, 190+ countries
 
-### Automatic Data Collection
+## Known Limitations
 
-To continuously collect data every 15 minutes:
-```bash
-cd infra
-nohup bash -c './auto_ingest.sh' > ingestion.log 2>&1 &
-disown
-```
-
-## Project Structure
-```
-Observatory-Global/
-├── backend/           # Python FastAPI backend
-│   ├── app/
-│   │   ├── api/v1/    # API endpoints (nodes, flows, heatmap)
-│   │   ├── services/  # Business logic (GDELT ingestion, aggregation)
-│   │   ├── models/    # Database models
-│   │   └── db/        # Database configuration
-├── frontend/          # React TypeScript frontend
-│   ├── src/
-│   │   ├── components/  # UI components
-│   │   ├── store/       # Zustand state management
-│   │   └── lib/         # Utilities
-├── infra/             # Docker and infrastructure
-│   └── docker-compose.yml
-└── docs/              # Documentation
-```
-
-## API Endpoints
-
-| Endpoint | Description |
-|----------|-------------|
-| `GET /v1/nodes?time_window=24h` | Country nodes with intensity and sentiment |
-| `GET /v1/flows?time_window=24h` | Information flows between countries |
-| `GET /v1/heatmap?time_window=24h` | Geographic heatmap points |
-| `GET /v1/health` | API health check |
-
-## Current Limitations
-
-- Data ingestion processes one GDELT file at a time (~15 min of data)
-- Country coverage depends on GDELT's geographic tagging
-- Heatmap currently uses country centroids (city-level precision in development)
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Country-level data | ✅ 100% | All signals have country code |
+| Themes | ✅ 100% | Full GDELT taxonomy |
+| Sentiment | ✅ 100% | GDELT tone analysis |
+| Precise coordinates | ⚠️ 0.02% | Most signals lack lat/lon |
+| Person names | ⚠️ 4.9% | GDELT limitation |
 
 ## Roadmap
 
-- [ ] Search functionality (by topic, country, keyword)
-- [ ] Anomaly detection (vs historical baseline)
-- [ ] City-level heatmap precision
-- [ ] Data retention and archival system
-- [ ] Multiple data source integration
+### Phase 1: MVP ✅
+- [x] Real-time ingestion
+- [x] Country visualization
+- [x] Theme-based flows
+- [x] Search functionality
+- [x] Briefing dashboard
+
+### Phase 2: Enhanced Context
+- [ ] Article titles/summaries
+- [ ] AI-generated theme summaries
+- [ ] Additional data sources (NewsAPI, RSS)
+
+### Phase 3: Advanced Features
+- [ ] Time-lapse animation
+- [ ] Custom alerts
+- [ ] User accounts
+- [ ] API access
 
 ## Contributing
 
-Contributions are welcome! Please read the contributing guidelines before submitting PRs.
+Pull requests welcome. For major changes, open an issue first.
 
 ## License
 
-MIT License - see LICENSE file for details.
-
-## Acknowledgments
-
-- [GDELT Project](https://www.gdeltproject.org/) for the global event data
-- [Mapbox](https://www.mapbox.com/) for mapping infrastructure
-- [Deck.gl](https://deck.gl/) for data visualization layers
+MIT
