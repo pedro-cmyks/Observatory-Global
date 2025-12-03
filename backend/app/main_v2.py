@@ -338,80 +338,87 @@ async def get_flows(hours: int = Query(24, ge=1, le=168)):
     Calculate flows based on theme co-occurrence between countries.
     Two countries are connected if they share significant theme overlap.
     """
-    async with app.state.pool.acquire() as conn:
-        # Get theme vectors for each country
-        country_themes = await conn.fetch("""
-            WITH theme_counts AS (
+    try:
+        async with app.state.pool.acquire() as conn:
+            # Get theme vectors for each country
+            country_themes = await conn.fetch("""
+                WITH theme_counts AS (
+                    SELECT 
+                        country_code,
+                        unnest(themes) as theme,
+                        COUNT(*) as cnt
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - INTERVAL '%s hours'
+                    AND themes IS NOT NULL AND array_length(themes, 1) > 0
+                    GROUP BY country_code, theme
+                    HAVING COUNT(*) >= 2
+                )
                 SELECT 
                     country_code,
-                    unnest(themes) as theme,
-                    COUNT(*) as cnt
-                FROM signals_v2
-                WHERE timestamp > NOW() - INTERVAL '%s hours'
-                AND themes IS NOT NULL AND array_length(themes, 1) > 0
-                GROUP BY country_code, theme
-                HAVING COUNT(*) >= 2
-            )
-            SELECT 
-                country_code,
-                array_agg(theme ORDER BY cnt DESC) as themes,
-                SUM(cnt) as total
-            FROM theme_counts
-            GROUP BY country_code
-            HAVING SUM(cnt) >= 5
-        """ % hours)
-        
-        # Get coordinates
-        coords = {r['code']: (float(r['longitude']), float(r['latitude'])) 
-                  for r in await conn.fetch(
-                      "SELECT code, latitude, longitude FROM countries_v2 WHERE latitude IS NOT NULL"
-                  )}
-        
-        flows = []
-        countries = list(country_themes)
-        
-        # Calculate Jaccard similarity between all pairs
-        for i in range(len(countries)):
-            for j in range(i + 1, len(countries)):
-                c1, c2 = countries[i], countries[j]
-                code1, code2 = c1['country_code'], c2['country_code']
-                
-                if code1 not in coords or code2 not in coords:
-                    continue
-                
-                # Get top themes for each
-                themes1 = set(c1['themes'][:30])
-                themes2 = set(c2['themes'][:30])
-                
-                # Jaccard similarity
-                intersection = themes1 & themes2
-                union = themes1 | themes2
-                
-                if len(union) == 0:
-                    continue
+                    array_agg(theme ORDER BY cnt DESC) as themes,
+                    SUM(cnt) as total
+                FROM theme_counts
+                GROUP BY country_code
+                HAVING SUM(cnt) >= 5
+            """ % hours)
+            
+            # Get coordinates
+            coords = {r['code']: (float(r['longitude']), float(r['latitude'])) 
+                      for r in await conn.fetch(
+                          "SELECT code, latitude, longitude FROM countries_v2 WHERE latitude IS NOT NULL"
+                      )}
+            
+            flows = []
+            countries = list(country_themes)
+            
+            # Calculate Jaccard similarity between all pairs
+            for i in range(len(countries)):
+                for j in range(i + 1, len(countries)):
+                    c1, c2 = countries[i], countries[j]
+                    code1, code2 = c1['country_code'], c2['country_code']
                     
-                similarity = len(intersection) / len(union)
-                
-                # Only create flow if significant overlap (>20% themes shared)
-                if similarity >= 0.2 and len(intersection) >= 3:
-                    # Strength based on similarity AND volume
-                    strength = similarity * min(c1['total'], c2['total']) / 10
+                    if code1 not in coords or code2 not in coords:
+                        continue
                     
-                    flows.append({
-                        "source": list(coords[code1]),
-                        "target": list(coords[code2]),
-                        "sourceCountry": code1,
-                        "targetCountry": code2,
-                        "strength": round(strength, 2),
-                        "similarity": round(similarity, 3),
-                        "sharedThemes": list(intersection)[:5],
-                        "sharedCount": len(intersection)
-                    })
-        
-        # Sort by strength and return top flows
-        flows.sort(key=lambda x: x['strength'], reverse=True)
-        
-        return {"flows": flows[:100], "total": len(flows)}
+                    # Get top themes for each
+                    themes1 = set(c1['themes'][:30])
+                    themes2 = set(c2['themes'][:30])
+                    
+                    # Jaccard similarity
+                    intersection = themes1 & themes2
+                    union = themes1 | themes2
+                    
+                    if len(union) == 0:
+                        continue
+                        
+                    similarity = len(intersection) / len(union)
+                    
+                    # Only create flow if significant overlap (>20% themes shared)
+                    if similarity >= 0.2 and len(intersection) >= 3:
+                        # Strength based on similarity AND volume
+                        strength = similarity * min(int(c1['total']), int(c2['total'])) / 10
+                        
+                        flows.append({
+                            "source": list(coords[code1]),
+                            "target": list(coords[code2]),
+                            "sourceCountry": code1,
+                            "targetCountry": code2,
+                            "strength": round(strength, 2),
+                            "similarity": round(similarity, 3),
+                            "sharedThemes": list(intersection)[:5],
+                            "sharedCount": len(intersection)
+                        })
+            
+            # Sort by strength and return top flows
+            flows.sort(key=lambda x: x['strength'], reverse=True)
+            
+            return {"flows": flows[:100], "total": len(flows)}
+    except Exception as e:
+        # Log error but don't crash - return empty flows
+        print(f"Error in flows endpoint: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"flows": [], "total": 0, "error": str(e)}
 
 @app.get("/api/v2/country/{country_code}")
 async def get_country_detail(country_code: str, hours: int = Query(24, ge=1, le=168)):
