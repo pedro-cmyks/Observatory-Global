@@ -166,116 +166,165 @@ async def get_theme_details(
     country_code: str = Query(None, description="Filter by country"),
     hours: int = Query(24, ge=1, le=168)
 ):
-    """Get detailed signals for a specific theme."""
-    async with app.state.pool.acquire() as conn:
-        # Base query
-        query = """
-            SELECT 
-                timestamp,
-                country_code,
-                source_name,
-                source_url,
-                sentiment,
-                themes,
-                persons
-            FROM signals_v2
-            WHERE timestamp > NOW() - INTERVAL '%s hours'
-            AND $1 = ANY(themes)
-        """ % hours
-        
-        params = [theme_code.upper()]
-        
-        if country_code:
-            query += " AND country_code = $2"
-            params.append(country_code.upper())
-        
-        query += " ORDER BY timestamp DESC LIMIT 200"
-        
-        rows = await conn.fetch(query, *params)
-        
-        # Get timeline data (hourly counts)
-        timeline_query = """
-            SELECT 
-                date_trunc('hour', timestamp) as hour,
-                COUNT(*) as count,
-                AVG(sentiment) as avg_sentiment
-            FROM signals_v2
-            WHERE timestamp > NOW() - INTERVAL '%s hours'
-            AND $1 = ANY(themes)
-        """ % hours
-        
-        if country_code:
-            timeline_query += " AND country_code = $2"
+    """Get detailed information about a theme including rich context."""
+    try:
+        async with app.state.pool.acquire() as conn:
+            # Build WHERE clause based on filters
+            where_conditions = [
+                "$1 = ANY(themes)",
+                f"timestamp > NOW() - INTERVAL '{hours} hours'"
+            ]
+            params = [theme_code.upper()]
             
-        timeline_query += " GROUP BY hour ORDER BY hour"
-        
-        timeline = await conn.fetch(timeline_query, *params)
-        
-        # Country breakdown - which countries discuss this theme most
-        country_breakdown = await conn.fetch("""
-            SELECT 
-                country_code,
-                COUNT(*) as count,
-                AVG(sentiment) as avg_sentiment
-            FROM signals_v2
-            WHERE $1 = ANY(themes)
-            AND timestamp > NOW() - INTERVAL '%s hours'
-            GROUP BY country_code
-            ORDER BY count DESC
-            LIMIT 10
-        """ % hours, theme_code.upper())
-        
-        # Related themes (co-occurrence)
-        related_themes = await conn.fetch("""
-            SELECT unnest(themes) as theme, COUNT(*) as count
-            FROM signals_v2
-            WHERE $1 = ANY(themes)
-            AND timestamp > NOW() - INTERVAL '%s hours'
-            GROUP BY theme
-            HAVING unnest(themes) != $1
-            ORDER BY count DESC
-            LIMIT 20
-        """ % hours, theme_code.upper(), theme_code.upper())
-        
+            if country_code:
+                where_conditions.append("country_code = $2")
+                params.append(country_code.upper())
+            
+            where_clause = " AND ".join(where_conditions)
+            
+            # Get signals
+            signals = await conn.fetch(f"""
+                SELECT 
+                    timestamp,
+                    country_code,
+                    source_name,
+                    source_url,
+                    sentiment,
+                    themes,
+                    persons
+                FROM signals_v2
+                WHERE {where_clause}
+                ORDER BY timestamp DESC
+                LIMIT 200
+            """, *params)
+            
+            # Get timeline
+            timeline = await conn.fetch(f"""
+                SELECT 
+                    date_trunc('hour', timestamp) as hour,
+                    COUNT(*) as count,
+                    AVG(sentiment) as avg_sentiment
+                FROM signals_v2
+                WHERE {where_clause}
+                GROUP BY hour
+                ORDER BY hour
+            """, *params)
+            
+            # Get country breakdown
+            country_breakdown = await conn.fetch(f"""
+                SELECT 
+                    country_code,
+                    COUNT(*) as count,
+                    AVG(sentiment) as avg_sentiment
+                FROM signals_v2
+                WHERE $1 = ANY(themes)
+                AND timestamp > NOW() - INTERVAL '{hours} hours'
+                GROUP BY country_code
+                ORDER BY count DESC
+                LIMIT 15
+            """, theme_code.upper())
+            
+            # Get related themes (co-occurrence)
+            related_themes_data = await conn.fetch(f"""
+                SELECT 
+                    unnest(themes) as related_theme,
+                    COUNT(*) as count
+                FROM signals_v2
+                WHERE $1 = ANY(themes)
+                AND timestamp > NOW() - INTERVAL '{hours} hours'
+                GROUP BY related_theme
+                ORDER BY count DESC
+                LIMIT 20
+            """, theme_code.upper())
+            
+            # Filter out current theme from related
+            related_themes = [
+                {"theme": r['related_theme'], "count": int(r['count'])}
+                for r in related_themes_data
+                if r['related_theme'].upper() != theme_code.upper()
+            ][:10]
+            
+            # Get top sources
+            top_sources = await conn.fetch(f"""
+                SELECT 
+                    source_name,
+                    COUNT(*) as count,
+                    AVG(sentiment) as avg_sentiment
+                FROM signals_v2
+                WHERE {where_clause}
+                AND source_name IS NOT NULL
+                GROUP BY source_name
+                ORDER BY count DESC
+                LIMIT 10
+            """, *params)
+            
+            # Calculate summary stats
+            total = len(signals)
+            avg_sentiment = sum(float(s['sentiment'] or 0) for s in signals) / total if total > 0 else 0
+            
+            # Get unique persons mentioned
+            all_persons = []
+            for s in signals:
+                if s['persons']:
+                    all_persons.extend(s['persons'])
+            person_counts = {}
+            for p in all_persons:
+                person_counts[p] = person_counts.get(p, 0) + 1
+            top_persons = [
+                {"name": p[0], "count": p[1]}
+                for p in sorted(person_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+            ]
+            
+            return {
+                "theme": theme_code,
+                "country": country_code,
+                "hours": hours,
+                "total": total,
+                "avgSentiment": round(avg_sentiment, 3),
+                "signals": [
+                    {
+                        "timestamp": r['timestamp'].isoformat(),
+                        "country": r['country_code'],
+                        "source": r['source_name'],
+                        "url": r['source_url'],
+                        "sentiment": float(r['sentiment'] or 0),
+                        "otherThemes": [t for t in (r['themes'] or []) if t.upper() != theme_code.upper()][:5],
+                        "persons": (r['persons'] or [])[:5]
+                    }
+                    for r in signals
+                ],
+                "countryBreakdown": [
+                    {"code": r['country_code'], "count": int(r['count']), "sentiment": float(r['avg_sentiment'] or 0)}
+                    for r in country_breakdown
+                ],
+                "relatedThemes": related_themes,
+                "topSources": [
+                    {"name": r['source_name'], "count": int(r['count']), "sentiment": float(r['avg_sentiment'] or 0)}
+                    for r in top_sources
+                ],
+                "topPersons": top_persons,
+                "timeline": [
+                    {"hour": t['hour'].isoformat(), "count": int(t['count']), "sentiment": float(t['avg_sentiment'] or 0)}
+                    for t in timeline
+                ]
+            }
+    except Exception as e:
+        print(f"Error in theme endpoint: {e}")
+        import traceback
+        traceback.print_exc()
         return {
             "theme": theme_code,
             "country": country_code,
-            "total": len(rows),
-            "signals": [
-                {
-                    "timestamp": r['timestamp'].isoformat(),
-                    "country": r['country_code'],
-                    "source": r['source_name'],
-                    "url": r['source_url'],
-                    "sentiment": float(r['sentiment'] or 0),
-                    "otherThemes": [t for t in (r['themes'] or []) if t != theme_code.upper()][:3],
-                    "persons": (r['persons'] or [])[:3]
-                }
-                for r in rows
-            ],
-            "timeline": [
-                {
-                    "hour": t['hour'].isoformat(),
-                    "count": int(t['count']),
-                    "sentiment": float(t['avg_sentiment'] or 0)
-                }
-                for t in timeline
-            ],
-            "country_breakdown": [
-                {
-                    "code": r['country_code'],
-                    "count": int(r['count']),
-                    "sentiment": float(r['avg_sentiment'] or 0)
-                }
-                for r in country_breakdown
-            ],
-            "related_themes": [
-                {
-                    "theme": r['theme'],
-                    "count": int(r['count'])
-                }
-                for r in related_themes
-            ]
+            "hours": hours,
+            "total": 0,
+            "avgSentiment": 0,
+            "signals": [],
+            "countryBreakdown": [],
+            "relatedThemes": [],
+            "topSources": [],
+            "topPersons": [],
+            "timeline": [],
+            "error": str(e)
         }
 
 @app.get("/api/v2/signals")
