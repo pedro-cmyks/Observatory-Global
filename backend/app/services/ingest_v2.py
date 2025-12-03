@@ -170,22 +170,22 @@ async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
     return inserted
 
 async def update_countries(pool: asyncpg.Pool):
-    """Update countries_v2 with any new countries from signals."""
+    """
+    Add new countries from signals, but NEVER overwrite existing coordinates.
+    Manual coordinates in countries_v2 are authoritative.
+    """
     async with pool.acquire() as conn:
         await conn.execute("""
             INSERT INTO countries_v2 (code, name, latitude, longitude)
-            SELECT DISTINCT ON (country_code)
+            SELECT DISTINCT
                 country_code,
                 country_code,
-                AVG(latitude),
-                AVG(longitude)
+                NULL,
+                NULL
             FROM signals_v2
             WHERE country_code IS NOT NULL
-            AND latitude IS NOT NULL
-            GROUP BY country_code
-            ON CONFLICT (code) DO UPDATE SET
-                latitude = EXCLUDED.latitude,
-                longitude = EXCLUDED.longitude
+            AND country_code NOT IN (SELECT code FROM countries_v2)
+            ON CONFLICT (code) DO NOTHING
         """)
 
 async def refresh_aggregates(pool: asyncpg.Pool):

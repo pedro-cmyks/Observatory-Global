@@ -189,7 +189,7 @@ async def get_theme_details(
             query += " AND country_code = $2"
             params.append(country_code.upper())
         
-        query += " ORDER BY timestamp DESC LIMIT 50"
+        query += " ORDER BY timestamp DESC LIMIT 200"
         
         rows = await conn.fetch(query, *params)
         
@@ -234,7 +234,7 @@ async def get_theme_details(
             GROUP BY theme
             HAVING unnest(themes) != $1
             ORDER BY count DESC
-            LIMIT 5
+            LIMIT 20
         """ % hours, theme_code.upper(), theme_code.upper())
         
         return {
@@ -334,53 +334,84 @@ async def get_signals(
 
 @app.get("/api/v2/flows")
 async def get_flows(hours: int = Query(24, ge=1, le=168)):
-    """Generate information flows between active countries with shared themes."""
+    """
+    Calculate flows based on theme co-occurrence between countries.
+    Two countries are connected if they share significant theme overlap.
+    """
     async with app.state.pool.acquire() as conn:
-        # Get top countries
-        top_countries = await conn.fetch("""
+        # Get theme vectors for each country
+        country_themes = await conn.fetch("""
+            WITH theme_counts AS (
+                SELECT 
+                    country_code,
+                    unnest(themes) as theme,
+                    COUNT(*) as cnt
+                FROM signals_v2
+                WHERE timestamp > NOW() - INTERVAL '%s hours'
+                AND themes IS NOT NULL AND array_length(themes, 1) > 0
+                GROUP BY country_code, theme
+                HAVING COUNT(*) >= 2
+            )
             SELECT 
                 country_code,
-                COUNT(*) as signal_count
-            FROM signals_v2
-            WHERE timestamp > NOW() - INTERVAL '%s hours'
+                array_agg(theme ORDER BY cnt DESC) as themes,
+                SUM(cnt) as total
+            FROM theme_counts
             GROUP BY country_code
-            ORDER BY signal_count DESC
-            LIMIT 15
+            HAVING SUM(cnt) >= 5
         """ % hours)
         
-        if len(top_countries) < 2:
-            return {"flows": [], "count": 0}
-        
         # Get coordinates
-        country_codes = [r['country_code'] for r in top_countries]
-        coords = await conn.fetch("""
-            SELECT code, latitude, longitude
-            FROM countries_v2
-            WHERE code = ANY($1) AND latitude IS NOT NULL
-        """, country_codes)
-        coord_map = {r['code']: (float(r['longitude']), float(r['latitude'])) for r in coords}
+        coords = {r['code']: (float(r['longitude']), float(r['latitude'])) 
+                  for r in await conn.fetch(
+                      "SELECT code, latitude, longitude FROM countries_v2 WHERE latitude IS NOT NULL"
+                  )}
         
-        # Create flows between top countries
         flows = []
-        for i, c1 in enumerate(top_countries):
-            # Connect each country to 2-3 others
-            for c2 in top_countries[i+1:i+4]:
-                if c1['country_code'] != c2['country_code']:
-                    code1 = c1['country_code']
-                    code2 = c2['country_code']
-                    
-                    if code1 in coord_map and code2 in coord_map:
-                        strength = min(c1['signal_count'], c2['signal_count'])
-                        flows.append({
-                            "source": list(coord_map[code1]),
-                            "target": list(coord_map[code2]),
-                            "sourceCountry": code1,
-                            "targetCountry": code2,
-                            "strength": float(strength),
-                            "sharedThemes": []
-                        })
+        countries = list(country_themes)
         
-        return {"flows": flows, "count": len(flows)}
+        # Calculate Jaccard similarity between all pairs
+        for i in range(len(countries)):
+            for j in range(i + 1, len(countries)):
+                c1, c2 = countries[i], countries[j]
+                code1, code2 = c1['country_code'], c2['country_code']
+                
+                if code1 not in coords or code2 not in coords:
+                    continue
+                
+                # Get top themes for each
+                themes1 = set(c1['themes'][:30])
+                themes2 = set(c2['themes'][:30])
+                
+                # Jaccard similarity
+                intersection = themes1 & themes2
+                union = themes1 | themes2
+                
+                if len(union) == 0:
+                    continue
+                    
+                similarity = len(intersection) / len(union)
+                
+                # Only create flow if significant overlap (>20% themes shared)
+                if similarity >= 0.2 and len(intersection) >= 3:
+                    # Strength based on similarity AND volume
+                    strength = similarity * min(c1['total'], c2['total']) / 10
+                    
+                    flows.append({
+                        "source": list(coords[code1]),
+                        "target": list(coords[code2]),
+                        "sourceCountry": code1,
+                        "targetCountry": code2,
+                        "strength": round(strength, 2),
+                        "similarity": round(similarity, 3),
+                        "sharedThemes": list(intersection)[:5],
+                        "sharedCount": len(intersection)
+                    })
+        
+        # Sort by strength and return top flows
+        flows.sort(key=lambda x: x['strength'], reverse=True)
+        
+        return {"flows": flows[:100], "total": len(flows)}
 
 @app.get("/api/v2/country/{country_code}")
 async def get_country_detail(country_code: str, hours: int = Query(24, ge=1, le=168)):
@@ -482,7 +513,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=168)):
             GROUP BY s.country_code, c.name
             HAVING COUNT(*) > 10
             ORDER BY sentiment ASC
-            LIMIT 5
+            LIMIT 10
         """ % hours)
         
         # Most positive sentiment
@@ -498,7 +529,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=168)):
             GROUP BY s.country_code, c.name
             HAVING COUNT(*) > 10
             ORDER BY sentiment DESC
-            LIMIT 5
+            LIMIT 10
         """ % hours)
         
         # Top themes globally
