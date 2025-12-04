@@ -2,6 +2,7 @@
 GDELT Ingestion for V2 Schema
 Fetches latest GDELT data and inserts into signals_v2 table
 V3: Now includes crisis classification
+V3.1: Converts FIPS country codes to ISO 3166-1 alpha-2
 """
 import asyncio
 import aiohttp
@@ -24,6 +25,7 @@ from app.config.crisis_themes import (
     calculate_severity,
     get_event_type
 )
+from app.services.country_codes import fips_to_iso
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://observatory:changeme@localhost:5432/observatory")
 
@@ -98,7 +100,9 @@ def parse_gkg_row(row: list) -> Optional[dict]:
         for loc in locations.split(';'):
             parts = loc.split('#')
             if len(parts) >= 6:
-                country_code = parts[2][:2] if parts[2] else None
+                # Extract FIPS code and convert to ISO
+                country_code_fips = parts[2][:2] if parts[2] else None
+                country_code = fips_to_iso(country_code_fips)  # Convert FIPS→ISO
                 try:
                     lat = float(parts[4]) if parts[4] else None
                     lon = float(parts[5]) if parts[5] else None
