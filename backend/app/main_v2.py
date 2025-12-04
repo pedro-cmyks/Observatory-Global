@@ -381,6 +381,152 @@ async def get_signals(
             ]
         }
 
+@app.get("/api/v3/crisis/signals")
+async def get_crisis_signals(
+    hours: int = Query(24, ge=1, le=168),
+    country: str = Query(None),
+    severity: str = Query(None),
+    event_type: str = Query(None),
+    limit: int = Query(100, ge=1, le=500)
+):
+    """Get crisis-related signals only with filtering options."""
+    async with app.state.pool.acquire() as conn:
+        conditions = [
+            "is_crisis = TRUE",
+            f"timestamp > NOW() - INTERVAL '{hours} hours'"
+        ]
+        params = []
+        
+        if country:
+            params.append(country.upper())
+            conditions.append(f"country_code = ${len(params)}")
+        
+        if severity:
+            params.append(severity.lower())
+            conditions.append(f"severity = ${len(params)}")
+        
+        if event_type:
+            params.append(event_type.lower())
+            conditions.append(f"event_type = ${len(params)}")
+        
+        where_clause = " AND ".join(conditions)
+        
+        rows = await conn.fetch(f"""
+            SELECT 
+                id, timestamp, country_code, sentiment,
+                source_name, source_url, crisis_themes,
+                severity, event_type, crisis_score
+            FROM signals_v2
+            WHERE {where_clause}
+            ORDER BY 
+                CASE severity 
+                    WHEN 'critical' THEN 1 
+                    WHEN 'high' THEN 2 
+                    WHEN 'medium' THEN 3 
+                    ELSE 4 
+                END,
+                timestamp DESC
+            LIMIT {limit}
+        """, *params)
+        
+        return {
+            "signals": [
+                {
+                    **dict(r),
+                    "timestamp": r['timestamp'].isoformat(),
+                }
+                for r in rows
+            ],
+            "count": len(rows),
+            "filters": {
+                "hours": hours, 
+                "country": country, 
+                "severity": severity,
+                "event_type": event_type
+            }
+        }
+
+@app.get("/api/v3/crisis/summary")
+async def get_crisis_summary(hours: int = Query(24, ge=1, le=168)):
+    """Get summary statistics for crisis signals."""
+    async with app.state.pool.acquire() as conn:
+        # Overall stats
+        stats = await conn.fetchrow(f"""
+            SELECT 
+                COUNT(*) as total_signals,
+                COUNT(*) FILTER (WHERE is_crisis) as crisis_signals,
+                COUNT(DISTINCT country_code) FILTER (WHERE is_crisis) as countries_affected,
+                COUNT(DISTINCT source_name) FILTER (WHERE is_crisis) as sources_reporting,
+                AVG(crisis_score) FILTER (WHERE is_crisis) as avg_crisis_score
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+        """)
+        
+        # By severity
+        by_severity = await conn.fetch(f"""
+            SELECT severity, COUNT(*) as count, AVG(sentiment) as avg_sentiment
+            FROM signals_v2
+            WHERE is_crisis = TRUE AND timestamp > NOW() - INTERVAL '{hours} hours'
+            GROUP BY severity
+            ORDER BY 
+                CASE severity 
+                    WHEN 'critical' THEN 1 
+                    WHEN 'high' THEN 2 
+                    WHEN 'medium' THEN 3 
+                    ELSE 4 
+                END
+        """)
+        
+        # By event type
+        by_type = await conn.fetch(f"""
+            SELECT event_type, COUNT(*) as count, AVG(sentiment) as avg_sentiment
+            FROM signals_v2
+            WHERE is_crisis = TRUE AND timestamp > NOW() - INTERVAL '{hours} hours'
+            GROUP BY event_type
+            ORDER BY count DESC
+        """)
+        
+        # Top countries with crises
+        top_countries = await conn.fetch(f"""
+            SELECT 
+                country_code, 
+                COUNT(*) as count, 
+                AVG(crisis_score) as avg_score,
+                AVG(sentiment) as avg_sentiment
+            FROM signals_v2
+            WHERE is_crisis = TRUE AND timestamp > NOW() - INTERVAL '{hours} hours'
+            GROUP BY country_code
+            ORDER BY count DESC
+            LIMIT 10
+        """)
+        
+        return {
+            "period_hours": hours,
+            "totals": dict(stats),
+            "by_severity": [
+                {
+                    **dict(r), 
+                    "avg_sentiment": float(r['avg_sentiment'] or 0)
+                } 
+                for r in by_severity
+            ],
+            "by_event_type": [
+                {
+                    **dict(r),
+                    "avg_sentiment": float(r['avg_sentiment'] or 0)
+                }
+                for r in by_type
+            ],
+            "top_countries": [
+                {
+                    **dict(r), 
+                    "avg_score": float(r['avg_score'] or 0),
+                    "avg_sentiment": float(r['avg_sentiment'] or 0)
+                }
+                for r in top_countries
+            ]
+        }
+
 @app.get("/api/v2/flows")
 async def get_flows(hours: int = Query(24, ge=1, le=168)):
     """

@@ -1,6 +1,7 @@
 """
 GDELT Ingestion for V2 Schema
 Fetches latest GDELT data and inserts into signals_v2 table
+V3: Now includes crisis classification
 """
 import asyncio
 import aiohttp
@@ -11,6 +12,18 @@ import csv
 from datetime import datetime, timezone
 from typing import Optional
 import os
+import sys
+
+# Add parent directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app.config.crisis_themes import (
+    is_crisis_theme,
+    get_crisis_themes,
+    calculate_crisis_score,
+    calculate_severity,
+    get_event_type
+)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://observatory:changeme@localhost:5432/observatory")
 
@@ -127,6 +140,13 @@ def parse_gkg_row(row: list) -> Optional[dict]:
         except:
             pass
     
+    # Crisis classification
+    crisis_themes = get_crisis_themes(themes)
+    is_crisis = len(crisis_themes) > 0
+    crisis_score = calculate_crisis_score(themes) if is_crisis else 0.0
+    severity = calculate_severity(themes) if is_crisis else 'low'
+    event_type = get_event_type(themes) if is_crisis else 'other'
+    
     return {
         'timestamp': timestamp,
         'country_code': country_code.upper(),
@@ -136,7 +156,13 @@ def parse_gkg_row(row: list) -> Optional[dict]:
         'source_url': source_url,
         'source_name': source_name,
         'themes': themes,
-        'persons': persons
+        'persons': persons,
+        # Crisis classification fields
+        'is_crisis': is_crisis,
+        'crisis_score': crisis_score,
+        'crisis_themes': crisis_themes,
+        'severity': severity,
+        'event_type': event_type
     }
 
 async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
@@ -149,8 +175,12 @@ async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
         for signal in signals:
             try:
                 await conn.execute("""
-                    INSERT INTO signals_v2 (timestamp, country_code, latitude, longitude, sentiment, source_url, source_name, themes, persons)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    INSERT INTO signals_v2 (
+                        timestamp, country_code, latitude, longitude, sentiment, 
+                        source_url, source_name, themes, persons,
+                        is_crisis, crisis_score, crisis_themes, severity, event_type
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                     ON CONFLICT DO NOTHING
                 """, 
                     signal['timestamp'],
@@ -161,7 +191,12 @@ async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                     signal['source_url'],
                     signal['source_name'],
                     signal['themes'],
-                    signal['persons']
+                    signal['persons'],
+                    signal['is_crisis'],
+                    signal['crisis_score'],
+                    signal['crisis_themes'],
+                    signal['severity'],
+                    signal['event_type']
                 )
                 inserted += 1
             except Exception as e:
