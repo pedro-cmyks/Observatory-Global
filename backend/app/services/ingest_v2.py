@@ -215,8 +215,8 @@ async def update_countries(pool: asyncpg.Pool):
             SELECT DISTINCT
                 country_code,
                 country_code,
-                NULL,
-                NULL
+                NULL::numeric,
+                NULL::numeric
             FROM signals_v2
             WHERE country_code IS NOT NULL
             AND country_code NOT IN (SELECT code FROM countries_v2)
