@@ -289,9 +289,9 @@ function App() {
       lineWidthMinPixels: 1,
       stroked: true,
       pickable: true,
-      onClick: ({ object }: { object: Node }) => {
-        if (object) {
-          fetchCountryDetail(object.id)
+      onClick: (info: { object?: Node }) => {
+        if (info.object) {
+          fetchCountryDetail(info.object.id)
         }
       },
       radiusMinPixels: 6,
@@ -311,6 +311,7 @@ function App() {
         <SearchBar
           onThemeSelect={handleThemeSelect}
           onCountrySelect={(code) => fetchCountryDetail(code)}
+          onSourceSelect={(source) => console.log('Source selected:', source)}
         />
         <button className="briefing-btn" onClick={() => setShowBriefing(true)}>
           📋 Briefing
@@ -355,7 +356,7 @@ function App() {
       {/* Map */}
       <DeckGL
         viewState={viewState}
-        onViewStateChange={({ viewState }) => setViewState(viewState)}
+        onViewStateChange={({ viewState: vs }) => vs && setViewState(vs as typeof INITIAL_VIEW)}
         controller={true}
         layers={layers}
         getTooltip={({ object }) => object && `${object.name}: ${object.signalCount} signals`}

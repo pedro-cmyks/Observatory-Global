@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { IndicatorTooltip, VolumeIndicator } from './IndicatorTooltip';
 import './CountryBrief.css';
 
-interface ThemeChange {
-    theme: string;
-    change: number;
-    direction: 'up' | 'down';
-    count: number;
-}
+// ThemeChange interface reserved for future use
+// interface ThemeChange {
+//     theme: string;
+//     change: number;
+//     direction: 'up' | 'down';
+//     count: number;
+// }
 
 interface Story {
     title: string;
@@ -34,6 +35,7 @@ interface Indicators {
         level: string;
         tooltip: string;
     };
+    error?: string;
 }
 
 interface BriefData {
@@ -219,7 +221,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             </p>
 
             {/* Trust Indicators */}
-            {indicators && !indicators.error && (
+            {indicators && !(indicators as Indicators & { error?: string }).error && (
                 <section className="brief-section">
                     <h3>Trust Indicators</h3>
                     <div className="indicators-stack">
