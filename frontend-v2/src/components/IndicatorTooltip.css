@@ -1,0 +1,136 @@
+/* IndicatorTooltip.css - Styles for trust indicator components */
+
+:root {
+  --indicator-good: #22c55e;
+  --indicator-warning: #eab308;
+  --indicator-warning-high: #f97316;
+  --indicator-danger: #ef4444;
+  --indicator-blue: #3b82f6;
+  --indicator-neutral: #6b7280;
+  --indicator-muted: #9ca3af;
+}
+
+.indicator-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  position: relative;
+}
+
+.indicator-label {
+  color: #9ca3af;
+}
+
+.indicator-score {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-weight: 600;
+}
+
+.indicator-zscore {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.indicator-help {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: #374151;
+  border: none;
+  color: #9ca3af;
+  font-size: 0.625rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.indicator-help:hover,
+.indicator-help:focus {
+  background: #4b5563;
+  color: #f3f4f6;
+  outline: none;
+}
+
+.indicator-tooltip {
+  position: absolute;
+  z-index: 50;
+  bottom: calc(100% + 0.5rem);
+  left: 0;
+  min-width: 20rem;
+  max-width: 24rem;
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  padding: 0;
+  overflow: hidden;
+}
+
+.tooltip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: #111827;
+  border-bottom: 1px solid #374151;
+}
+
+.tooltip-title {
+  font-weight: 600;
+  color: #f3f4f6;
+}
+
+.tooltip-score {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.tooltip-content {
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  color: #d1d5db;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.tooltip-content p {
+  margin: 0 0 0.5rem 0;
+}
+
+.tooltip-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Animation */
+@keyframes tooltip-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.indicator-tooltip {
+  animation: tooltip-fade-in 0.15s ease-out;
+}
+
+/* Indicator row for stacking multiple indicators */
+.indicators-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.indicators-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
