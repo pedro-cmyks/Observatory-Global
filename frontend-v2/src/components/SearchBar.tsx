@@ -29,7 +29,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onSourceSelect }: Se
 
         setLoading(true)
         try {
-            const res = await fetch(`http://localhost:8000/api/v2/search?q=${encodeURIComponent(q)}&hours=168`)
+            const res = await fetch(`/api/v2/search?q=${encodeURIComponent(q)}&hours=168`)
             const data = await res.json()
             setResults(data)
             setIsOpen(true)

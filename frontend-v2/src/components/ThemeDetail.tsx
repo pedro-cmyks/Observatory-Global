@@ -42,7 +42,7 @@ export function ThemeDetail({ theme, country, hours, onClose }: ThemeDetailProps
             try {
                 const params = new URLSearchParams({ hours: hours.toString() })
                 if (country) params.append('country_code', country)
-                const url = `http://localhost:8000/api/v2/theme/${encodeURIComponent(theme)}?${params.toString()}`
+                const url = `/api/v2/theme/${encodeURIComponent(theme)}?${params.toString()}`
 
                 const res = await fetch(url)
                 if (!res.ok) throw new Error(`HTTP ${res.status}`)

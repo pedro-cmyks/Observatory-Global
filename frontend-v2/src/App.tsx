@@ -171,8 +171,8 @@ function App() {
     setLoading(true)
     try {
       const [nodesRes, flowsRes] = await Promise.all([
-        fetch(`http://localhost:8000/api/v2/nodes?hours=${timeWindow}`),
-        fetch(`http://localhost:8000/api/v2/flows?hours=${timeWindow}`)
+        fetch(`/api/v2/nodes?hours=${timeWindow}`),
+        fetch(`/api/v2/flows?hours=${timeWindow}`)
       ])
 
       const nodesData = await nodesRes.json()
@@ -189,7 +189,7 @@ function App() {
   // Fetch country detail
   const fetchCountryDetail = async (countryCode: string) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/v2/country/${countryCode}?hours=${timeWindow}`)
+      const res = await fetch(`/api/v2/country/${countryCode}?hours=${timeWindow}`)
       const data = await res.json()
       setSelectedCountry(data)
     } catch (error) {
