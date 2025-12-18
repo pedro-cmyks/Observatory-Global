@@ -61,3 +61,13 @@ collection.log
 
 # GDELT Data Cache
 data/
+
+# Development runtime files
+.dev-pids
+logs/
+evidence/
+
+# Virtual environment packages (keep .venv dir structure but ignore packages)
+backend/.venv/lib/
+backend/.venv/include/
+backend/.venv/share/

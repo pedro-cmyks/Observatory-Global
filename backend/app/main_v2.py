@@ -55,36 +55,89 @@ async def shutdown():
     await app.state.pool.close()
 
 @app.get("/api/v2/nodes")
-async def get_nodes(hours: int = Query(24, ge=1, le=168, description="Hours of data (1-168)")):
-    """Get country nodes with aggregated stats from materialized view."""
+async def get_nodes(
+    hours: int = Query(24, ge=1, le=168, description="Hours of data (1-168)"),
+    focus_type: Optional[str] = Query(None, description="Focus type: theme, person, country, source"),
+    focus_value: Optional[str] = Query(None, description="Value to focus on")
+):
+    """Get country nodes with aggregated stats. Supports focus filtering."""
     async with app.state.pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT 
-                h.country_code,
-                c.name,
-                c.latitude,
-                c.longitude,
-                SUM(h.signal_count) as total_signals,
-                AVG(h.avg_sentiment) as sentiment,
-                MAX(h.max_sentiment) as max_sentiment,
-                MIN(h.min_sentiment) as min_sentiment,
-                SUM(h.unique_sources) as unique_sources
-            FROM country_hourly_v2 h
-            LEFT JOIN countries_v2 c ON h.country_code = c.code
-            WHERE h.hour > NOW() - INTERVAL '%s hours'
-            GROUP BY h.country_code, c.name, c.latitude, c.longitude
-            HAVING SUM(h.signal_count) > 0
-            ORDER BY total_signals DESC
-        """ % hours)
+        
+        # If focus is active, query signals_v2 directly with filtering
+        if focus_type and focus_value:
+            # Build focus filter based on type
+            if focus_type == "theme":
+                focus_filter = "$1 = ANY(themes)"
+                filter_value = focus_value.upper()
+            elif focus_type == "person":
+                focus_filter = "EXISTS (SELECT 1 FROM unnest(persons) p WHERE LOWER(p) LIKE LOWER($1))"
+                filter_value = f"%{focus_value}%"
+            elif focus_type == "country":
+                focus_filter = "country_code = $1"
+                filter_value = focus_value.upper()
+            elif focus_type == "source":
+                focus_filter = "LOWER(source_name) LIKE LOWER($1)"
+                filter_value = f"%{focus_value}%"
+            else:
+                return {"nodes": [], "count": 0, "hours": hours, "error": f"Unknown focus_type: {focus_type}"}
+            
+            # Query signals_v2 with focus filter
+            rows = await conn.fetch(f"""
+                WITH filtered AS (
+                    SELECT 
+                        country_code,
+                        sentiment,
+                        source_name
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+                      AND {focus_filter}
+                )
+                SELECT 
+                    f.country_code,
+                    c.name,
+                    c.latitude,
+                    c.longitude,
+                    COUNT(*) as total_signals,
+                    AVG(f.sentiment) as sentiment,
+                    COUNT(DISTINCT f.source_name) as unique_sources
+                FROM filtered f
+                LEFT JOIN countries_v2 c ON f.country_code = c.code
+                GROUP BY f.country_code, c.name, c.latitude, c.longitude
+                HAVING COUNT(*) > 0
+                ORDER BY total_signals DESC
+            """, filter_value)
+        else:
+            # Use materialized view for unfiltered queries (faster)
+            rows = await conn.fetch("""
+                SELECT 
+                    h.country_code,
+                    c.name,
+                    c.latitude,
+                    c.longitude,
+                    SUM(h.signal_count) as total_signals,
+                    AVG(h.avg_sentiment) as sentiment,
+                    MAX(h.max_sentiment) as max_sentiment,
+                    MIN(h.min_sentiment) as min_sentiment,
+                    SUM(h.unique_sources) as unique_sources
+                FROM country_hourly_v2 h
+                LEFT JOIN countries_v2 c ON h.country_code = c.code
+                WHERE h.hour > NOW() - INTERVAL '%s hours'
+                GROUP BY h.country_code, c.name, c.latitude, c.longitude
+                HAVING SUM(h.signal_count) > 0
+                ORDER BY total_signals DESC
+            """ % hours)
         
         if not rows:
-            return {"nodes": [], "count": 0, "hours": hours}
+            return {"nodes": [], "count": 0, "hours": hours, "focus_type": focus_type, "focus_value": focus_value}
         
         max_signals = max(float(r['total_signals']) for r in rows)
         
         nodes = []
+        total_signals = 0
         for row in rows:
             if row['latitude'] and row['longitude']:
+                signal_count = int(row['total_signals'])
+                total_signals += signal_count
                 nodes.append({
                     "id": row['country_code'],
                     "name": row['name'] or row['country_code'],
@@ -92,11 +145,108 @@ async def get_nodes(hours: int = Query(24, ge=1, le=168, description="Hours of d
                     "lon": float(row['longitude']),
                     "intensity": float(row['total_signals']) / max_signals,
                     "sentiment": float(row['sentiment'] or 0) / 10,  # Normalize to -1 to 1
-                    "signalCount": int(row['total_signals']),
+                    "signalCount": signal_count,
                     "sourceCount": int(row['unique_sources'] or 0)
                 })
         
-        return {"nodes": nodes, "count": len(nodes), "hours": hours}
+        return {
+            "nodes": nodes,
+            "count": len(nodes),
+            "totalSignals": total_signals,
+            "hours": hours,
+            "focus_type": focus_type,
+            "focus_value": focus_value,
+            "is_filtered": focus_type is not None
+        }
+
+@app.get("/api/v2/anomalies")
+async def get_anomalies(
+    hours: int = Query(24, ge=1, le=168),
+    limit: int = Query(10, ge=1, le=20)
+):
+    """
+    Return top anomalous countries (activity significantly above baseline).
+    Uses country_baseline_stats table for 7-day rolling baseline.
+    """
+    try:
+        async with app.state.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                WITH current_counts AS (
+                    SELECT 
+                        country_code,
+                        COUNT(*) as signal_count
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - ($1::int * INTERVAL '1 hour')
+                    AND country_code IS NOT NULL
+                    GROUP BY country_code
+                    HAVING COUNT(*) >= 10
+                )
+                SELECT 
+                    c.country_code,
+                    c.signal_count,
+                    COALESCE(b.avg_daily_signals, 50) as baseline_avg,
+                    ROUND((c.signal_count::numeric / NULLIF(COALESCE(b.avg_daily_signals, 50) / 24 * $1, 0)), 2) as multiplier,
+                    ROUND(((c.signal_count - COALESCE(b.avg_daily_signals, 50) / 24 * $1) / 
+                           NULLIF(COALESCE(b.stddev_daily_signals, 25) / 24 * $1, 0))::numeric, 2) as zscore
+                FROM current_counts c
+                LEFT JOIN country_baseline_stats b ON c.country_code = b.country_code
+                WHERE (c.signal_count::numeric / NULLIF(COALESCE(b.avg_daily_signals, 50) / 24 * $1, 0)) > 1.2
+                ORDER BY zscore DESC NULLS LAST
+                LIMIT $2
+            """, hours, limit)
+            
+            def classify_anomaly(multiplier, zscore):
+                if multiplier is None or zscore is None:
+                    return "normal"
+                if zscore > 3 and multiplier > 2:
+                    return "critical"
+                if zscore > 2:
+                    return "elevated"
+                if zscore > 1:
+                    return "notable"
+                return "normal"
+            
+            anomalies = []
+            for row in rows:
+                multiplier = float(row['multiplier']) if row['multiplier'] else 0
+                zscore = float(row['zscore']) if row['zscore'] else 0
+                level = classify_anomaly(multiplier, zscore)
+                
+                anomalies.append({
+                    "country_code": row['country_code'],
+                    "current_count": row['signal_count'],
+                    "baseline_avg": float(row['baseline_avg']),
+                    "multiplier": multiplier,
+                    "zscore": zscore,
+                    "level": level
+                })
+            
+            # Determine overall severity
+            critical_count = sum(1 for a in anomalies if a["level"] == "critical")
+            elevated_count = sum(1 for a in anomalies if a["level"] == "elevated")
+            
+            overall = "normal"
+            if critical_count > 0:
+                overall = "critical"
+            elif elevated_count > 0:
+                overall = "elevated"
+            elif len(anomalies) > 0:
+                overall = "notable"
+            
+            return {
+                "anomalies": anomalies,
+                "overall_severity": overall,
+                "meta": {
+                    "time_window_hours": hours,
+                    "baseline_window_days": 7,
+                    "generated_at": datetime.utcnow().isoformat()
+                }
+            }
+    except Exception as e:
+        print(f"Error in anomalies endpoint: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"anomalies": [], "overall_severity": "normal", "error": str(e)}
 
 @app.get("/api/v2/heatmap")
 async def get_heatmap(hours: int = Query(24, ge=1, le=168)):
@@ -172,6 +322,139 @@ async def search(
             "sources": [{"source": r['source_name'], "country": r['country_code'], "count": int(r['count'])} for r in source_results],
             "countries": [{"code": r['code'], "name": r['name']} for r in country_results],
             "persons": [{"person": r['person'], "country": r['country_code'], "count": int(r['count'])} for r in person_results]
+        }
+
+@app.get("/api/v2/focus")
+async def get_focus_data(
+    focus_type: str = Query(..., description="Type: theme, person, country, source"),
+    value: str = Query(..., description="Value to focus on"),
+    hours: int = Query(24, ge=1, le=168)
+):
+    """
+    Get filtered data for Focus Mode.
+    Returns nodes, related topics, and top sources matching the focus.
+    """
+    async with app.state.pool.acquire() as conn:
+        # Build WHERE clause based on focus type
+        if focus_type == "theme":
+            focus_filter = "$1 = ANY(themes)"
+            filter_value = value.upper()
+        elif focus_type == "person":
+            focus_filter = "EXISTS (SELECT 1 FROM unnest(persons) p WHERE LOWER(p) LIKE LOWER($1))"
+            filter_value = f"%{value}%"
+        elif focus_type == "country":
+            focus_filter = "country_code = $1"
+            filter_value = value.upper()
+        elif focus_type == "source":
+            focus_filter = "LOWER(source_name) LIKE LOWER($1)"
+            filter_value = f"%{value}%"
+        else:
+            return {"error": f"Unknown focus type: {focus_type}"}
+        
+        # 1. Get nodes (countries) with signal counts
+        nodes = await conn.fetch(f"""
+            SELECT 
+                country_code,
+                COUNT(*) as signal_count,
+                ROUND(AVG(sentiment)::numeric, 2) as avg_sentiment,
+                COUNT(DISTINCT source_name) as unique_sources
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+              AND {focus_filter}
+            GROUP BY country_code
+            ORDER BY signal_count DESC
+        """, filter_value)
+        
+        # 2. Get related topics (co-occurring themes)
+        related = await conn.fetch(f"""
+            SELECT 
+                unnest(themes) as topic,
+                COUNT(*) as count
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+              AND {focus_filter}
+            GROUP BY topic
+            ORDER BY count DESC
+            LIMIT 15
+        """, filter_value)
+        
+        # Filter out the focus value itself if it's a theme
+        related_topics = [
+            {"topic": r['topic'], "count": int(r['count'])}
+            for r in related
+            if r['topic'].upper() != value.upper()
+        ][:10]
+        
+        # 3. Get top sources
+        sources = await conn.fetch(f"""
+            SELECT 
+                source_name,
+                COUNT(*) as count,
+                ROUND(AVG(sentiment)::numeric, 2) as avg_sentiment
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+              AND {focus_filter}
+              AND source_name IS NOT NULL
+            GROUP BY source_name
+            ORDER BY count DESC
+            LIMIT 10
+        """, filter_value)
+        
+        # 4. Get recent headlines (deduped by title prefix)
+        headlines = await conn.fetch(f"""
+            SELECT DISTINCT ON (LEFT(source_url, 100))
+                source_url,
+                source_name,
+                timestamp
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+              AND {focus_filter}
+              AND source_url IS NOT NULL
+            ORDER BY LEFT(source_url, 100), timestamp DESC
+            LIMIT 10
+        """, filter_value)
+        
+        # Calculate totals
+        total_signals = sum(int(n['signal_count']) for n in nodes)
+        total_countries = len(nodes)
+        
+        return {
+            "focus": {
+                "type": focus_type,
+                "value": value,
+                "hours": hours
+            },
+            "summary": {
+                "total_signals": total_signals,
+                "total_countries": total_countries,
+                "generated_at": datetime.utcnow().isoformat()
+            },
+            "nodes": [
+                {
+                    "country_code": r['country_code'],
+                    "signal_count": int(r['signal_count']),
+                    "avg_sentiment": float(r['avg_sentiment'] or 0),
+                    "unique_sources": int(r['unique_sources'])
+                }
+                for r in nodes
+            ],
+            "related_topics": related_topics,
+            "top_sources": [
+                {
+                    "source": r['source_name'],
+                    "count": int(r['count']),
+                    "avg_sentiment": float(r['avg_sentiment'] or 0)
+                }
+                for r in sources
+            ],
+            "headlines": [
+                {
+                    "url": r['source_url'],
+                    "source": r['source_name'],
+                    "time": r['timestamp'].isoformat() if r['timestamp'] else None
+                }
+                for r in headlines
+            ]
         }
 
 @app.get("/api/v2/theme/{theme_code}")
@@ -542,34 +825,79 @@ async def get_crisis_summary(hours: int = Query(24, ge=1, le=168)):
         }
 
 @app.get("/api/v2/flows")
-async def get_flows(hours: int = Query(24, ge=1, le=168)):
+async def get_flows(
+    hours: int = Query(24, ge=1, le=168),
+    focus_type: Optional[str] = Query(None, description="Focus type: theme, person, country, source"),
+    focus_value: Optional[str] = Query(None, description="Value to focus on")
+):
     """
     Calculate flows based on theme co-occurrence between countries.
     Two countries are connected if they share significant theme overlap.
+    Supports focus filtering to show flows only for focused signals.
     """
     try:
         async with app.state.pool.acquire() as conn:
+            # Build focus filter if provided
+            focus_filter = ""
+            filter_value = None
+            if focus_type and focus_value:
+                if focus_type == "theme":
+                    focus_filter = "AND $1 = ANY(themes)"
+                    filter_value = focus_value.upper()
+                elif focus_type == "person":
+                    focus_filter = "AND EXISTS (SELECT 1 FROM unnest(persons) p WHERE LOWER(p) LIKE LOWER($1))"
+                    filter_value = f"%{focus_value}%"
+                elif focus_type == "country":
+                    focus_filter = "AND country_code = $1"
+                    filter_value = focus_value.upper()
+                elif focus_type == "source":
+                    focus_filter = "AND LOWER(source_name) LIKE LOWER($1)"
+                    filter_value = f"%{focus_value}%"
+            
             # Get theme vectors for each country
-            country_themes = await conn.fetch("""
-                WITH theme_counts AS (
+            if filter_value:
+                country_themes = await conn.fetch(f"""
+                    WITH theme_counts AS (
+                        SELECT 
+                            country_code,
+                            unnest(themes) as theme,
+                            COUNT(*) as cnt
+                        FROM signals_v2
+                        WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+                        AND themes IS NOT NULL AND array_length(themes, 1) > 0
+                        {focus_filter}
+                        GROUP BY country_code, theme
+                        HAVING COUNT(*) >= 2
+                    )
                     SELECT 
                         country_code,
-                        unnest(themes) as theme,
-                        COUNT(*) as cnt
-                    FROM signals_v2
-                    WHERE timestamp > NOW() - INTERVAL '%s hours'
-                    AND themes IS NOT NULL AND array_length(themes, 1) > 0
-                    GROUP BY country_code, theme
-                    HAVING COUNT(*) >= 2
-                )
-                SELECT 
-                    country_code,
-                    array_agg(theme ORDER BY cnt DESC) as themes,
-                    SUM(cnt) as total
-                FROM theme_counts
-                GROUP BY country_code
-                HAVING SUM(cnt) >= 5
-            """ % hours)
+                        array_agg(theme ORDER BY cnt DESC) as themes,
+                        SUM(cnt) as total
+                    FROM theme_counts
+                    GROUP BY country_code
+                    HAVING SUM(cnt) >= 3
+                """, filter_value)
+            else:
+                country_themes = await conn.fetch("""
+                    WITH theme_counts AS (
+                        SELECT 
+                            country_code,
+                            unnest(themes) as theme,
+                            COUNT(*) as cnt
+                        FROM signals_v2
+                        WHERE timestamp > NOW() - INTERVAL '%s hours'
+                        AND themes IS NOT NULL AND array_length(themes, 1) > 0
+                        GROUP BY country_code, theme
+                        HAVING COUNT(*) >= 2
+                    )
+                    SELECT 
+                        country_code,
+                        array_agg(theme ORDER BY cnt DESC) as themes,
+                        SUM(cnt) as total
+                    FROM theme_counts
+                    GROUP BY country_code
+                    HAVING SUM(cnt) >= 5
+                """ % hours)
             
             # Get coordinates
             coords = {r['code']: (float(r['longitude']), float(r['latitude'])) 

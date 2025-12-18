@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import Map from 'react-map-gl/maplibre'
 import { DeckGL } from '@deck.gl/react'
 import { ScatterplotLayer, ArcLayer } from '@deck.gl/layers'
@@ -8,6 +8,18 @@ import { getThemeLabel } from './lib/themeLabels'
 import { SearchBar } from './components/SearchBar'
 import { ThemeDetail } from './components/ThemeDetail'
 import { Briefing } from './components/Briefing'
+import { DevBanner } from './components/DevBanner'
+import { FocusProvider, useFocus } from './contexts/FocusContext'
+import { FocusDataProvider, useFocusData } from './contexts/FocusDataContext'
+import { FocusIndicator } from './components/FocusIndicator'
+import { FocusSummaryPanel } from './components/FocusSummaryPanel'
+import { Legend } from './components/Legend'
+import { MapTooltip, type TooltipData } from './components/MapTooltip'
+import { CrisisProvider } from './contexts/CrisisContext'
+import { CrisisOverlay } from './components/CrisisOverlay'
+import { CrisisToggle } from './components/CrisisToggle'
+import { CrisisDashboard } from './components/CrisisDashboard'
+
 
 // Types
 interface Node {
@@ -150,41 +162,22 @@ const INITIAL_VIEW = {
   bearing: 0
 }
 
-function App() {
+function AppContent() {
   // State
-  const [nodes, setNodes] = useState<Node[]>([])
-  const [flows, setFlows] = useState<Flow[]>([])
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
   const [selectedTheme, setSelectedTheme] = useState<{ theme: string, country?: string } | null>(null)
   const [showBriefing, setShowBriefing] = useState(false)
   const [timeWindow, setTimeWindow] = useState(24)
-  const [loading, setLoading] = useState(true)
   const [viewState, setViewState] = useState(INITIAL_VIEW)
+  const [tooltip, setTooltip] = useState<TooltipData | null>(null)
+
+  // Focus hook for click-to-focus
+  const { setFocus } = useFocus()
 
   // Layer visibility
   const [showHeatmap, setShowHeatmap] = useState(true)
   const [showNodes, setShowNodes] = useState(true)
   const [showFlows, setShowFlows] = useState(true)
-
-  // Fetch data
-  const fetchData = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [nodesRes, flowsRes] = await Promise.all([
-        fetch(`/api/v2/nodes?hours=${timeWindow}`),
-        fetch(`/api/v2/flows?hours=${timeWindow}`)
-      ])
-
-      const nodesData = await nodesRes.json()
-      const flowsData = await flowsRes.json()
-
-      setNodes(nodesData.nodes || [])
-      setFlows(flowsData.flows || [])
-    } catch (error) {
-      console.error('Failed to fetch data:', error)
-    }
-    setLoading(false)
-  }, [timeWindow])
 
   // Fetch country detail
   const fetchCountryDetail = async (countryCode: string) => {
@@ -208,16 +201,19 @@ function App() {
     }
   }
 
-  // Initial fetch and refresh on time window change
+  // Focus-aware data from provider - auto-refetches when focus changes
+  const { nodes, flows, loading, meta, refetch, setTimeWindow: setFocusTimeWindow } = useFocusData()
+
+  // Sync time window with focus provider
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    setFocusTimeWindow(timeWindow)
+  }, [timeWindow, setFocusTimeWindow])
 
   // Auto-refresh every 5 minutes
   useEffect(() => {
-    const interval = setInterval(fetchData, 5 * 60 * 1000)
+    const interval = setInterval(refetch, 5 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [fetchData])
+  }, [refetch])
 
   // Deck.gl layers - NO MORE HEATMAP
   const layers = [
@@ -230,7 +226,15 @@ function App() {
       getSourceColor: [0, 255, 255, 180],
       getTargetColor: [255, 0, 255, 180],
       getWidth: (d: Flow) => Math.max(1, Math.log(d.strength) * 2),
-      greatCircle: true
+      greatCircle: true,
+      pickable: true,
+      onHover: (info: { object?: Flow; x: number; y: number }) => {
+        if (info.object) {
+          setTooltip({ type: 'flow', x: info.x, y: info.y, data: info.object })
+        } else {
+          setTooltip(null)
+        }
+      }
     }),
 
     // Outer glow layer (creates halo effect)
@@ -289,9 +293,17 @@ function App() {
       lineWidthMinPixels: 1,
       stroked: true,
       pickable: true,
+      onHover: (info: { object?: Node; x: number; y: number }) => {
+        if (info.object) {
+          setTooltip({ type: 'node', x: info.x, y: info.y, data: info.object })
+        } else {
+          setTooltip(null)
+        }
+      },
       onClick: (info: { object?: Node }) => {
         if (info.object) {
           fetchCountryDetail(info.object.id)
+          setFocus('country', info.object.id, info.object.name || info.object.id)
         }
       },
       radiusMinPixels: 6,
@@ -305,14 +317,19 @@ function App() {
 
   return (
     <div className="app">
+      {/* Crisis Mode Overlay */}
+      <CrisisOverlay />
+
       {/* Header */}
       <header className="header">
         <h1>🌐 OBSERVATORY GLOBAL</h1>
+        <FocusIndicator />
         <SearchBar
           onThemeSelect={handleThemeSelect}
           onCountrySelect={(code) => fetchCountryDetail(code)}
           onSourceSelect={(source) => console.log('Source selected:', source)}
         />
+        <CrisisToggle />
         <button className="briefing-btn" onClick={() => setShowBriefing(true)}>
           📋 Briefing
         </button>
@@ -466,7 +483,35 @@ function App() {
           onThemeSelect={(theme) => { setSelectedTheme({ theme }); setShowBriefing(false) }}
         />
       )}
+
+      {/* Focus Summary Panel */}
+      <FocusSummaryPanel />
+
+      {/* Legend */}
+      <Legend />
+
+      {/* Hover Tooltip */}
+      <MapTooltip tooltip={tooltip} />
+
+      {/* Crisis Dashboard */}
+      <CrisisDashboard />
+
+      {/* Dev Banner */}
+      <DevBanner />
     </div>
+  )
+}
+
+// Main App with providers
+function App() {
+  return (
+    <FocusProvider>
+      <FocusDataProvider>
+        <CrisisProvider>
+          <AppContent />
+        </CrisisProvider>
+      </FocusDataProvider>
+    </FocusProvider>
   )
 }
 

@@ -9,6 +9,10 @@ export const themeLabels: Record<string, string> = {
     'WB_434_TRANSPORT': 'Transportation',
     'WB_2810_CLIMATE_CHANGE': 'Climate Change',
     'WB_1637_URBAN_DEVELOPMENT': 'Urban Development',
+    'WB_696_PUBLIC_SECTOR_MANAGEMENT': 'Public Sector',
+    'WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE': 'Conflict & Violence',
+    'WB_678_DIGITAL_GOVERNMENT': 'Digital Government',
+    'WB_133_INFORMATION_AND_COMMUNICATION_TECHNOLOGIES': 'Technology & Communications',
 
     // EPU codes
     'EPU_POLICY': 'Economic Policy',
@@ -22,6 +26,8 @@ export const themeLabels: Record<string, string> = {
     'CRISISLEX_C01_RESOURCE': 'Resource Crisis',
     'CRISISLEX_C02_DISASTER': 'Natural Disaster',
     'CRISISLEX_C03_DISEASE': 'Disease Outbreak',
+    'CRISISLEX_T11_UPDATESSYMPATHY': 'Crisis Updates',
+    'CRISISLEX_C07_SAFETY': 'Public Safety',
 
     // Environment codes
     'UNGP_FORESTS_RIVERS_OCEANS': 'Environment',
@@ -36,6 +42,9 @@ export const themeLabels: Record<string, string> = {
     'TAX_ETHNICITY_CHINESE': 'Chinese Culture',
     'TAX_ETHNICITY_INDIAN': 'Indian Culture',
     'TAX_WORLDLANGUAGES': 'Languages',
+    'TAX_ECON_PRICE': 'Pricing & Markets',
+    'TAX_FNCACT_PRESIDENT': 'Presidential Actions',
+    'TAX_FNCACT_GOVERNMENT': 'Government Actions',
 
     // US Politics codes
     'USPEC_POLITICS_GENERAL1': 'US Politics',
@@ -48,6 +57,10 @@ export const themeLabels: Record<string, string> = {
     'GENERAL_HEALTH': 'Health',
     'GENERAL_ECONOMY': 'Economy',
     'GENERAL_MILITARY': 'Military',
+    'LEADER': 'Leadership',
+    'MEDICAL': 'Medical',
+    'EDUCATION': 'Education',
+    'MANMADE_DISASTER_IMPLIED': 'Man-Made Disaster',
 
     // Media codes
     'MEDIA_MSM': 'Mainstream Media',

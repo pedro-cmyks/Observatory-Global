@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getThemeLabel } from '../lib/themeLabels'
+import { useFocus } from '../contexts/FocusContext'
 import './SearchBar.css'
 
 interface SearchResult {
@@ -20,6 +21,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onSourceSelect }: Se
     const [results, setResults] = useState<SearchResult | null>(null)
     const [isOpen, setIsOpen] = useState(false)
     const [loading, setLoading] = useState(false)
+    const { setFocus } = useFocus()
 
     const search = useCallback(async (q: string) => {
         if (q.length < 2) {
@@ -48,25 +50,26 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onSourceSelect }: Se
     }, [query, search])
 
     const handleThemeClick = (theme: string, country?: string) => {
+        setFocus('theme', theme, getThemeLabel(theme))
         onThemeSelect(theme, country)
         setIsOpen(false)
         setQuery('')
     }
 
-    const handleCountryClick = (code: string) => {
+    const handleCountryClick = (code: string, name: string) => {
+        setFocus('country', code, name)
         onCountrySelect(code)
         setIsOpen(false)
         setQuery('')
     }
 
     const handlePersonClick = (person: string, country?: string) => {
-        // Assuming there might be an onPersonSelect prop, or we can reuse onThemeSelect if person is treated as a theme
-        // For now, let's just close the search and clear query.
-        // If a specific action is needed for persons, a new prop `onPersonSelect` would be ideal.
-        console.log(`Selected person: ${person} in ${country || 'any country'}`);
-        setIsOpen(false);
-        setQuery('');
-    };
+        setFocus('person', person, person)
+        // For now, persons trigger theme-like behavior
+        console.log(`Selected person: ${person} in ${country || 'any country'}`)
+        setIsOpen(false)
+        setQuery('')
+    }
 
     return (
         <div className="search-container">
@@ -92,7 +95,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onSourceSelect }: Se
                                 <div
                                     key={c.code}
                                     className="search-item"
-                                    onClick={() => handleCountryClick(c.code)}
+                                    onClick={() => handleCountryClick(c.code, c.name)}
                                 >
                                     <span className="search-item-icon">🌍</span>
                                     <span>{c.name}</span>
@@ -127,6 +130,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onSourceSelect }: Se
                                     key={`${s.source}-${i}`}
                                     className="search-item"
                                     onClick={() => {
+                                        setFocus('source', s.source, s.source)
                                         onSourceSelect(s.source)
                                         setIsOpen(false)
                                         setQuery('')

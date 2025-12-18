@@ -49,9 +49,18 @@ QUALITY_ALLOWLIST: Set[str] = {
     "japantimes.co.jp",
 }
 
-# Known problematic sources - content farms, known misinformation
-# Keep this minimal and evidence-based
-QUALITY_DENYLIST: Set[str] = set()  # Empty set - add domains as needed
+# Known aggregators - these syndicate content from other sources
+# Adding to denylist to lower quality score (not block)
+QUALITY_DENYLIST: Set[str] = {
+    "yahoo.com",
+    "msn.com",
+    "flipboard.com",
+    "biztoc.com",
+    "smartnews.com",
+    "feedly.com",
+    "news.google.com",
+    "apple.news",
+}
 
 
 def calculate_source_quality(domains: List[str]) -> Dict[str, Any]:

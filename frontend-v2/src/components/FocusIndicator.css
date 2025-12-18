@@ -1,0 +1,69 @@
+.focus-indicator {
+    position: fixed;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+    border: 1px solid #3d7ab8;
+    border-radius: 24px;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+.focus-icon {
+    font-size: 16px;
+}
+
+.focus-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.focus-type {
+    font-size: 10px;
+    color: #8bb8e0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.focus-value {
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.focus-clear {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #fff;
+    margin-left: 8px;
+    transition: background 0.2s;
+}
+
+.focus-clear:hover {
+    background: rgba(255, 255, 255, 0.2);
+}

@@ -1,0 +1,156 @@
+.focus-summary-panel {
+    position: fixed;
+    right: 20px;
+    top: 120px;
+    width: 300px;
+    max-height: calc(100vh - 150px);
+    background: linear-gradient(180deg, #0a1628 0%, #0d1f3c 100%);
+    border: 1px solid #1e3a5f;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    z-index: 900;
+}
+
+.focus-summary-header {
+    padding: 16px;
+    border-bottom: 1px solid #1e3a5f;
+    background: rgba(30, 58, 95, 0.3);
+}
+
+.focus-summary-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.focus-summary-header h3 {
+    margin: 0;
+    font-size: 12px;
+    color: #8bb8e0;
+    letter-spacing: 0.5px;
+}
+
+.focus-clear-btn {
+    background: transparent;
+    border: 1px solid #3d7ab8;
+    border-radius: 4px;
+    padding: 4px 8px;
+    color: #6ba3d6;
+    cursor: pointer;
+    font-size: 11px;
+}
+
+.focus-clear-btn:hover {
+    background: rgba(59, 130, 246, 0.2);
+}
+
+.focus-summary-title {
+    margin: 8px 0 0;
+    font-size: 18px;
+    color: #fff;
+}
+
+.focus-summary-loading {
+    margin-top: 8px;
+    color: #6ba3d6;
+    font-size: 12px;
+}
+
+.focus-summary-stats {
+    margin-top: 8px;
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: #6ba3d6;
+}
+
+.focus-summary-stats strong {
+    color: #4ade80;
+}
+
+.focus-summary-content {
+    overflow-y: auto;
+    max-height: calc(100vh - 280px);
+    padding: 16px;
+}
+
+.focus-section {
+    margin-bottom: 20px;
+}
+
+.focus-section h4 {
+    font-size: 11px;
+    color: #6ba3d6;
+    text-transform: uppercase;
+    margin: 0 0 8px;
+    letter-spacing: 0.5px;
+}
+
+.focus-topics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.focus-topic-chip {
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 12px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: #93c5fd;
+    cursor: pointer;
+}
+
+.focus-topic-chip:hover {
+    background: rgba(59, 130, 246, 0.3);
+}
+
+.focus-topic-count {
+    margin-left: 4px;
+    opacity: 0.6;
+}
+
+.focus-source-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.focus-source-row:last-child {
+    border-bottom: none;
+}
+
+.focus-source-name {
+    font-size: 12px;
+    color: #e2e8f0;
+}
+
+.focus-source-count {
+    font-size: 11px;
+    color: #6ba3d6;
+}
+
+.focus-headline-link {
+    display: block;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    text-decoration: none;
+    color: inherit;
+}
+
+.focus-headline-link:last-child {
+    border-bottom: none;
+}
+
+.focus-headline-link:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.focus-headline-source {
+    font-size: 10px;
+    color: #6ba3d6;
+}
