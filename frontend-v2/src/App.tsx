@@ -1,24 +1,35 @@
-import { useState, useEffect } from 'react'
-import Map from 'react-map-gl/maplibre'
+import React, { useState, useEffect, useMemo } from 'react'
+import MapGL from 'react-map-gl/maplibre'
 import { DeckGL } from '@deck.gl/react'
 import { ScatterplotLayer, ArcLayer } from '@deck.gl/layers'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import './App.css'
-import { getThemeLabel } from './lib/themeLabels'
+import { calculateNodeRadius, getThemedArcColors, getIntensityColor } from './lib/mapUtils'
+import { createTerminatorLayer } from './layers/TerminatorLayer'
+import { useCrisis } from './contexts/CrisisContext'
+import { useTheme } from './contexts/ThemeContext'
 import { SearchBar } from './components/SearchBar'
-import { ThemeDetail } from './components/ThemeDetail'
 import { Briefing } from './components/Briefing'
-import { DevBanner } from './components/DevBanner'
+import { ThemeDetail } from './components/ThemeDetail'
+import { CountryBrief } from './components/CountryBrief'
 import { FocusProvider, useFocus } from './contexts/FocusContext'
 import { FocusDataProvider, useFocusData } from './contexts/FocusDataContext'
 import { FocusIndicator } from './components/FocusIndicator'
-import { FocusSummaryPanel } from './components/FocusSummaryPanel'
-import { Legend } from './components/Legend'
 import { MapTooltip, type TooltipData } from './components/MapTooltip'
 import { CrisisProvider } from './contexts/CrisisContext'
 import { CrisisOverlay } from './components/CrisisOverlay'
 import { CrisisToggle } from './components/CrisisToggle'
-import { CrisisDashboard } from './components/CrisisDashboard'
+import { SettingsPanel } from './components/SettingsPanel'
+import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
+import { Globe, ClipboardList } from 'lucide-react'
+
+// Terminal Panels
+import { SignalStream } from './components/SignalStream'
+import { NarrativeThreadsPlaceholder } from './components/NarrativeThreadsPlaceholder'
+import { CorrelationMatrixPlaceholder } from './components/CorrelationMatrixPlaceholder'
+import { AnomalyPanel } from './components/AnomalyPanel'
+import { SourceIntegrityPanel } from './components/SourceIntegrityPanel'
+
 
 
 // Types
@@ -50,108 +61,8 @@ interface CountryDetail {
   sources: { name: string; count: number }[]
 }
 
-// Improved sentiment color with better visibility
-const sentimentColor = (sentiment: number): [number, number, number, number] => {
-  // Clamp sentiment to -1 to 1 range
-  const s = Math.max(-1, Math.min(1, sentiment))
-
-  if (s > 0.1) {
-    // Positive: Green
-    const intensity = Math.min(1, s * 2)
-    return [50, Math.floor(200 + intensity * 55), 80, 220]
-  } else if (s < -0.1) {
-    // Negative: Red/Orange
-    const intensity = Math.min(1, Math.abs(s) * 2)
-    return [Math.floor(200 + intensity * 55), Math.floor(80 - intensity * 30), 50, 220]
-  } else {
-    // Neutral: Yellow/Amber
-    return [250, 200, 50, 220]
-  }
-}
-
-// Country names mapping
-const countryNames: Record<string, string> = {
-  'US': 'United States', 'UK': 'United Kingdom', 'GB': 'United Kingdom',
-  'CA': 'Canada', 'AU': 'Australia', 'DE': 'Germany', 'FR': 'France',
-  'JP': 'Japan', 'CN': 'China', 'IN': 'India', 'BR': 'Brazil',
-  'MX': 'Mexico', 'RU': 'Russia', 'ZA': 'South Africa', 'NG': 'Nigeria',
-  'EG': 'Egypt', 'SA': 'Saudi Arabia', 'AE': 'UAE', 'IL': 'Israel',
-  'TR': 'Turkey', 'PK': 'Pakistan', 'ID': 'Indonesia', 'PH': 'Philippines',
-  'VN': 'Vietnam', 'TH': 'Thailand', 'MY': 'Malaysia', 'SG': 'Singapore',
-  'KR': 'South Korea', 'NZ': 'New Zealand', 'AR': 'Argentina', 'CL': 'Chile',
-  'CO': 'Colombia', 'PE': 'Peru', 'VE': 'Venezuela', 'IT': 'Italy',
-  'ES': 'Spain', 'PT': 'Portugal', 'NL': 'Netherlands', 'BE': 'Belgium',
-  'CH': 'Switzerland', 'AT': 'Austria', 'PL': 'Poland', 'SE': 'Sweden',
-  'NO': 'Norway', 'DK': 'Denmark', 'FI': 'Finland', 'IE': 'Ireland',
-  'GR': 'Greece', 'UA': 'Ukraine', 'RO': 'Romania', 'CZ': 'Czech Republic',
-  'HU': 'Hungary', 'IS': 'Iceland', 'AS': 'American Samoa', 'EI': 'Ireland'
-}
-
-function getCountryName(code: string): string {
-  return countryNames[code] || code
-}
-
-// Country flag emoji from code
-function getCountryFlag(code: string): string {
-  const codePoints = code
-    .toUpperCase()
-    .split('')
-    .map(char => 127397 + char.charCodeAt(0))
-  return String.fromCodePoint(...codePoints)
-}
-
-// Generate narrative summary
-function generateNarrative(country: CountryDetail): string {
-  const sentiment = country.sentiment
-  const signals = country.totalSignals
-  const topTheme = country.themes[0]?.name || ''
-
-  let moodWord = sentiment > 0.1 ? 'positive' :
-    sentiment < -0.1 ? 'negative' : 'neutral'
-
-  let volumeWord = signals > 1000 ? 'high' :
-    signals > 100 ? 'moderate' : 'low'
-
-  const themeLabel = getThemeLabel(topTheme)
-
-  return `${volumeWord.charAt(0).toUpperCase() + volumeWord.slice(1)} news activity with ${moodWord} sentiment. Coverage is dominated by ${themeLabel.toLowerCase()} topics.`
-}
-
-// Sentiment color
-function getSentimentColor(sentiment: number): string {
-  if (sentiment > 0.1) return '#4ade80'  // Green
-  if (sentiment < -0.1) return '#f87171' // Red
-  return '#fbbf24' // Yellow
-}
-
-// Sentiment label
-function getSentimentLabel(sentiment: number): string {
-  if (sentiment > 0.2) return 'Very Positive'
-  if (sentiment > 0.1) return 'Positive'
-  if (sentiment > -0.1) return 'Neutral'
-  if (sentiment > -0.2) return 'Negative'
-  return 'Very Negative'
-}
-
-// Theme icons
-function getThemeIcon(theme: string): string {
-  const upper = theme.toUpperCase()
-  if (upper.includes('ECONOMY') || upper.includes('ECON')) return '💰'
-  if (upper.includes('GOVERNMENT') || upper.includes('GOV')) return '🏛️'
-  if (upper.includes('MILITARY') || upper.includes('WAR')) return '⚔️'
-  if (upper.includes('HEALTH') || upper.includes('DISEASE')) return '🏥'
-  if (upper.includes('ENVIRONMENT') || upper.includes('CLIMATE')) return '🌍'
-  if (upper.includes('TECH') || upper.includes('CYBER')) return '💻'
-  if (upper.includes('CRIME') || upper.includes('ARREST')) return '🚨'
-  if (upper.includes('PROTEST') || upper.includes('UNREST')) return '✊'
-  if (upper.includes('ELECTION') || upper.includes('VOTE')) return '🗳️'
-  if (upper.includes('ENERGY') || upper.includes('OIL')) return '⚡'
-  if (upper.includes('FOREST') || upper.includes('OCEAN')) return '🌊'
-  if (upper.includes('ETHNICITY') || upper.includes('LANGUAGE')) return '🗣️'
-  if (upper.includes('POLICY')) return '📋'
-  if (upper.includes('JOB') || upper.includes('EMPLOY')) return '💼'
-  return '📰'
-}
+// removed sentimentColor
+// removed generateNarrative et al.
 
 // Initial map view
 const INITIAL_VIEW = {
@@ -162,27 +73,67 @@ const INITIAL_VIEW = {
   bearing: 0
 }
 
+// Error boundary to prevent Deck.gl/WebGL crashes from black-screening the entire app
+interface MapErrorBoundaryState { hasError: boolean }
+class MapErrorBoundary extends React.Component<{ children: React.ReactNode }, MapErrorBoundaryState> {
+  state: MapErrorBoundaryState = { hasError: false }
+  static getDerivedStateFromError(): MapErrorBoundaryState { return { hasError: true } }
+  componentDidCatch(error: Error) { console.error('[MapErrorBoundary]', error) }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: '100%', height: '100%',
+          background: '#0a0a0a', color: '#ef4444', fontSize: '12px',
+          fontFamily: 'monospace', flexDirection: 'column', gap: '8px'
+        }}>
+          <span>⚠ MAP RENDER ERROR</span>
+          <button
+            onClick={() => this.setState({ hasError: false })}
+            style={{ padding: '4px 12px', background: '#1e293b', border: '1px solid #334155', color: '#94a3b8', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}
+          >
+            Retry
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 function AppContent() {
   // State
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
   const [selectedTheme, setSelectedTheme] = useState<{ theme: string, country?: string } | null>(null)
   const [showBriefing, setShowBriefing] = useState(false)
-  const [timeWindow, setTimeWindow] = useState(24)
+  // const [timeWindow, setTimeWindow] = useState(24) // Replaced by context
   const [viewState, setViewState] = useState(INITIAL_VIEW)
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
 
   // Focus hook for click-to-focus
   const { setFocus } = useFocus()
 
+  // Theme for layer styling
+  const { themeId } = useTheme()
+
   // Layer visibility
   const [showHeatmap, setShowHeatmap] = useState(true)
   const [showNodes, setShowNodes] = useState(true)
+
+  // Map readiness gate — prevents DeckGL from crashing before WebGL context is ready
+  const [mapReady, setMapReady] = useState(false)
+
+  // Settings toggles
+  const [showTerminator, setShowTerminator] = useState(false)
+  const [sizeBoost, setSizeBoost] = useState(false)
   const [showFlows, setShowFlows] = useState(true)
 
   // Fetch country detail
   const fetchCountryDetail = async (countryCode: string) => {
     try {
-      const res = await fetch(`/api/v2/country/${countryCode}?hours=${timeWindow}`)
+      const hours = timeRangeToHours(timeRange)
+      const res = await fetch(`/api/v2/country/${countryCode}?hours=${hours}`)
       const data = await res.json()
       setSelectedCountry(data)
     } catch (error) {
@@ -195,19 +146,25 @@ function AppContent() {
     setSelectedTheme({ theme, country })
   }
 
-  const handleThemeClick = (themeName: string) => {
-    if (selectedCountry) {
-      setSelectedTheme({ theme: themeName, country: selectedCountry.countryCode })
-    }
-  }
+  // Focus-aware data from provider - auto-refetches when focus/range changes
+  const { nodes, flows, loading, refetch, timeRange, setTimeRange } = useFocusData()
 
-  // Focus-aware data from provider - auto-refetches when focus changes
-  const { nodes, flows, loading, meta, refetch, setTimeWindow: setFocusTimeWindow } = useFocusData()
-
-  // Sync time window with focus provider
+  // Modal Stack Logic (Escape key)
   useEffect(() => {
-    setFocusTimeWindow(timeWindow)
-  }, [timeWindow, setFocusTimeWindow])
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showBriefing) {
+          setShowBriefing(false)
+        } else if (selectedTheme) {
+          setSelectedTheme(null)
+        } else if (selectedCountry) {
+          setSelectedCountry(null)
+        }
+      }
+    }
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [showBriefing, selectedTheme, selectedCountry])
 
   // Auto-refresh every 5 minutes
   useEffect(() => {
@@ -215,16 +172,50 @@ function AppContent() {
     return () => clearInterval(interval)
   }, [refetch])
 
+  // Zoom-adaptive flow limiting to reduce visual clutter
+  const visibleFlows = useMemo(() => {
+    const zoom = viewState?.zoom ?? 1.5
+    const maxFlows = zoom < 2 ? 25 : zoom < 4 ? 40 : 60
+    return [...flows]
+      .sort((a, b) => (b.strength || 0) - (a.strength || 0))
+      .slice(0, maxFlows)
+  }, [flows, viewState?.zoom])
+
+  // Get crisis state for terminator auto-hide and anomalies
+  const { enabled: crisisEnabled, anomalies } = useCrisis()
+
+  // Merge anomaly data into nodes for coloring and pulse — capped at 100
+  const enhancedNodes = useMemo(() => {
+    const anomalyMap = new Map(anomalies.map((a: any) => [a.country_code, a]))
+    return nodes.slice(0, 100).map(n => {
+      const anomaly = anomalyMap.get(n.id)
+      return {
+        ...n,
+        anomalyMultiplier: anomaly ? anomaly.multiplier : 1,
+        isAnomaly: !!anomaly
+      }
+    })
+  }, [nodes, anomalies])
+
+  // Terminator layer (shows day/night boundary)
+  const terminatorLayer = createTerminatorLayer({
+    visible: showTerminator && !crisisEnabled,
+    opacity: 0.5,
+  })
+
   // Deck.gl layers - NO MORE HEATMAP
   const layers = [
-    // Flow arcs (bottom layer)
+    // Terminator layer (bottommost)
+    terminatorLayer,
+
+    // Flow arcs (bottom layer) - using zoom-limited flows with THEME-AWARE COLORS
     showFlows && new ArcLayer({
       id: 'flows',
-      data: flows,
+      data: visibleFlows,
       getSourcePosition: (d: Flow) => d.source,
       getTargetPosition: (d: Flow) => d.target,
-      getSourceColor: [0, 255, 255, 180],
-      getTargetColor: [255, 0, 255, 180],
+      getSourceColor: (d: Flow) => getThemedArcColors(themeId, d.strength).source,
+      getTargetColor: (d: Flow) => getThemedArcColors(themeId, d.strength).target,
       getWidth: (d: Flow) => Math.max(1, Math.log(d.strength) * 2),
       greatCircle: true,
       pickable: true,
@@ -234,61 +225,85 @@ function AppContent() {
         } else {
           setTooltip(null)
         }
-      }
+      },
+      updateTriggers: {
+        getSourceColor: [themeId],
+        getTargetColor: [themeId],
+        data: [timeRange]
+      },
     }),
 
     // Outer glow layer (creates halo effect)
     showHeatmap && new ScatterplotLayer({
       id: 'nodes-glow-outer',
-      data: nodes,
-      getPosition: (d: Node) => [d.lon, d.lat],
-      getRadius: (d: Node) => Math.sqrt(d.signalCount) * 800,
-      getFillColor: (d: Node) => {
-        const color = sentimentColor(d.sentiment)
+      data: enhancedNodes,
+      getPosition: (d: any) => [d.lon, d.lat],
+      getRadius: (d: any) => calculateNodeRadius(d.signalCount, sizeBoost) * 5,
+      getFillColor: (d: any) => {
+        const color = getIntensityColor(d.anomalyMultiplier, d.sentiment)
         return [color[0], color[1], color[2], 30]
       },
       radiusMinPixels: 20,
-      radiusMaxPixels: 100,
-      pickable: false
+      radiusMaxPixels: 200,
+      pickable: false,
+      updateTriggers: { getRadius: [sizeBoost], getFillColor: [anomalies] },
     }),
 
     // Middle glow layer
     showHeatmap && new ScatterplotLayer({
       id: 'nodes-glow-middle',
-      data: nodes,
-      getPosition: (d: Node) => [d.lon, d.lat],
-      getRadius: (d: Node) => Math.sqrt(d.signalCount) * 500,
-      getFillColor: (d: Node) => {
-        const color = sentimentColor(d.sentiment)
+      data: enhancedNodes,
+      getPosition: (d: any) => [d.lon, d.lat],
+      getRadius: (d: any) => calculateNodeRadius(d.signalCount, sizeBoost) * 3,
+      getFillColor: (d: any) => {
+        const color = getIntensityColor(d.anomalyMultiplier, d.sentiment)
         return [color[0], color[1], color[2], 60]
       },
       radiusMinPixels: 15,
-      radiusMaxPixels: 70,
-      pickable: false
+      radiusMaxPixels: 140,
+      pickable: false,
+      updateTriggers: { getRadius: [sizeBoost], getFillColor: [anomalies] },
     }),
 
     // Inner glow layer
     showHeatmap && new ScatterplotLayer({
       id: 'nodes-glow-inner',
-      data: nodes,
-      getPosition: (d: Node) => [d.lon, d.lat],
-      getRadius: (d: Node) => Math.sqrt(d.signalCount) * 300,
-      getFillColor: (d: Node) => {
-        const color = sentimentColor(d.sentiment)
+      data: enhancedNodes,
+      getPosition: (d: any) => [d.lon, d.lat],
+      getRadius: (d: any) => calculateNodeRadius(d.signalCount, sizeBoost) * 2,
+      getFillColor: (d: any) => {
+        const color = getIntensityColor(d.anomalyMultiplier, d.sentiment)
         return [color[0], color[1], color[2], 100]
       },
       radiusMinPixels: 10,
-      radiusMaxPixels: 50,
-      pickable: false
+      radiusMaxPixels: 100,
+      pickable: false,
+      updateTriggers: { getRadius: [sizeBoost], getFillColor: [anomalies] },
+    }),
+
+    // Anomaly Pulse Ring
+    new ScatterplotLayer({
+      id: 'nodes-anomaly-pulse',
+      data: enhancedNodes.filter((n: any) => n.isAnomaly),
+      getPosition: (d: any) => [d.lon, d.lat],
+      getRadius: (d: any) => calculateNodeRadius(d.signalCount, sizeBoost) * 1.5,
+      getFillColor: [239, 68, 68, 0], // Transparent fill
+      getLineColor: [239, 68, 68, 255], // Solid red stroke
+      lineWidthMinPixels: 2,
+      stroked: true,
+      pickable: false,
+      updateTriggers: {
+        getRadius: [sizeBoost],
+      },
     }),
 
     // Core node (solid, pickable)
     showNodes && new ScatterplotLayer({
       id: 'nodes-core',
-      data: nodes,
-      getPosition: (d: Node) => [d.lon, d.lat],
-      getRadius: (d: Node) => Math.sqrt(d.signalCount) * 150,
-      getFillColor: (d: Node) => sentimentColor(d.sentiment),
+      data: enhancedNodes,
+      getPosition: (d: any) => [d.lon, d.lat],
+      getRadius: (d: any) => calculateNodeRadius(d.signalCount, sizeBoost),
+      getFillColor: (d: any) => getIntensityColor(d.anomalyMultiplier, d.sentiment),
       getLineColor: [255, 255, 255, 200],
       lineWidthMinPixels: 1,
       stroked: true,
@@ -307,7 +322,11 @@ function AppContent() {
         }
       },
       radiusMinPixels: 6,
-      radiusMaxPixels: 30,
+      radiusMaxPixels: 60,
+      updateTriggers: {
+        getRadius: [sizeBoost],
+        getFillColor: [anomalies]
+      },
       transitions: {
         getRadius: 300,
         getFillColor: 300
@@ -315,189 +334,184 @@ function AppContent() {
     })
   ].filter(Boolean)
 
+  // Total signals for stats
+  const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
+
   return (
     <div className="app">
       {/* Crisis Mode Overlay */}
       <CrisisOverlay />
 
-      {/* Header */}
-      <header className="header">
-        <h1>🌐 OBSERVATORY GLOBAL</h1>
-        <FocusIndicator />
-        <SearchBar
-          onThemeSelect={handleThemeSelect}
-          onCountrySelect={(code) => fetchCountryDetail(code)}
-          onSourceSelect={(source) => console.log('Source selected:', source)}
-        />
-        <CrisisToggle />
-        <button className="briefing-btn" onClick={() => setShowBriefing(true)}>
-          📋 Briefing
-        </button>
-        <div className="stats">
-          {loading ? 'Loading...' : `${nodes.length} countries • ${nodes.reduce((sum, n) => sum + n.signalCount, 0).toLocaleString()} signals`}
+      {/* Command Bar */}
+      <header className="command-bar">
+        <div className="command-bar-left">
+          <h1 className="brand"><Globe size={16} /> OBS.GLOBAL</h1>
+          <FocusIndicator />
+        </div>
+        <div className="command-bar-center">
+          <SearchBar
+            onThemeSelect={handleThemeSelect}
+            onCountrySelect={(code) => fetchCountryDetail(code)}
+            onSourceSelect={(source) => setFocus('source', source, source)}
+          />
+          <div className="time-controls">
+            {TIME_RANGE_OPTIONS.map(range => (
+              <button
+                key={range}
+                className={`time-btn ${timeRange === range ? 'active' : ''}`}
+                onClick={() => setTimeRange(range)}
+              >
+                {TIME_RANGE_LABELS[range]}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="command-bar-right">
+          <div className="stats">
+            {loading ? '...' : `${nodes.length} ctry • ${totalSignals.toLocaleString()} sig`}
+          </div>
+          <CrisisToggle />
+          <button className="cmd-btn" onClick={() => {
+            setShowBriefing(true)
+            setSelectedTheme(null)
+          }}>
+            <ClipboardList size={13} /> BRIEF
+          </button>
+          <SettingsPanel
+            showTerminator={showTerminator}
+            onToggleTerminator={setShowTerminator}
+            sizeBoost={sizeBoost}
+            onToggleSizeBoost={setSizeBoost}
+          />
         </div>
       </header>
 
-      {/* Time controls */}
-      <div className="controls">
-        {[1, 6, 12, 24, 48, 168].map(hours => (
-          <button
-            key={hours}
-            className={timeWindow === hours ? 'active' : ''}
-            onClick={() => setTimeWindow(hours)}
-          >
-            {hours < 24 ? `${hours}H` : hours === 24 ? '24H' : hours === 48 ? '2D' : '1W'}
-          </button>
-        ))}
-        <span className="separator">|</span>
-        <button
-          className={showHeatmap ? 'active' : ''}
-          onClick={() => setShowHeatmap(!showHeatmap)}
-        >
-          GLOW
-        </button>
-        <button
-          className={showFlows ? 'active' : ''}
-          onClick={() => setShowFlows(!showFlows)}
-        >
-          FLOW
-        </button>
-        <button
-          className={showNodes ? 'active' : ''}
-          onClick={() => setShowNodes(!showNodes)}
-        >
-          NODES
-        </button>
+      <div className="terminal-layout">
+        {/* Panel 1: GLOBAL RADAR */}
+        <div className="terminal-panel radar">
+          <div className="panel-header">
+            <span>GLOBAL RADAR</span>
+            <div className="panel-header-controls">
+              <button
+                className={`layer-btn ${showHeatmap ? 'active' : ''}`}
+                onClick={() => setShowHeatmap(!showHeatmap)}
+              >
+                GLOW
+              </button>
+              <button
+                className={`layer-btn ${showFlows ? 'active' : ''}`}
+                onClick={() => setShowFlows(!showFlows)}
+              >
+                FLOW
+              </button>
+              <button
+                className={`layer-btn ${showNodes ? 'active' : ''}`}
+                onClick={() => setShowNodes(!showNodes)}
+              >
+                NODES
+              </button>
+            </div>
+          </div>
+          <div className="panel-content">
+            <MapErrorBoundary>
+              <DeckGL
+                viewState={viewState}
+                onViewStateChange={({ viewState: vs }) => vs && setViewState(vs as typeof INITIAL_VIEW)}
+                controller={true}
+                layers={mapReady ? layers : []}
+                getTooltip={({ object }) => object && `${object.name}: ${object.signalCount} signals`}
+              >
+                <MapGL
+                  mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+                  attributionControl={false}
+                  onLoad={() => setMapReady(true)}
+                />
+              </DeckGL>
+            </MapErrorBoundary>
+          </div>
+        </div>
+
+        {/* Panel 2: SIGNAL STREAM */}
+        <div className="terminal-panel stream">
+          <div className="panel-header">SIGNAL STREAM</div>
+          <div className="panel-content">
+            <SignalStream />
+          </div>
+        </div>
+
+        {/* Panel 3: NARRATIVE THREADS */}
+        <div className="terminal-panel threads">
+          <div className="panel-header">NARRATIVE THREADS</div>
+          <div className="panel-content">
+            <NarrativeThreadsPlaceholder />
+          </div>
+        </div>
+
+        {/* Panel 4: CORRELATION MATRIX */}
+        <div className="terminal-panel matrix">
+          <div className="panel-header">CORRELATION MATRIX</div>
+          <div className="panel-content">
+            <CorrelationMatrixPlaceholder />
+          </div>
+        </div>
+
+        {/* Panel 5: ANOMALY ALERT */}
+        <div className="terminal-panel anomaly">
+          <div className="panel-header">ANOMALY ALERT</div>
+          <div className="panel-content">
+            <AnomalyPanel />
+          </div>
+        </div>
+
+        {/* Panel 6: SOURCE INTEGRITY */}
+        <div className="terminal-panel integrity">
+          <div className="panel-header">SOURCE INTEGRITY</div>
+          <div className="panel-content">
+            <SourceIntegrityPanel />
+          </div>
+        </div>
       </div>
-
-      {/* Map */}
-      <DeckGL
-        viewState={viewState}
-        onViewStateChange={({ viewState: vs }) => vs && setViewState(vs as typeof INITIAL_VIEW)}
-        controller={true}
-        layers={layers}
-        getTooltip={({ object }) => object && `${object.name}: ${object.signalCount} signals`}
-      >
-        <Map
-          mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
-          attributionControl={false}
-        />
-      </DeckGL>
-
-      {/* Narrative Sidebar */}
-      {selectedCountry && (
-        <aside className="sidebar">
-          <button className="close" onClick={() => setSelectedCountry(null)}>×</button>
-
-          {/* Country Header with Flag */}
-          <div className="country-header">
-            <span className="country-flag">{getCountryFlag(selectedCountry.countryCode)}</span>
-            <div>
-              <h2>{getCountryName(selectedCountry.countryCode)}</h2>
-              <span className="country-code">{selectedCountry.countryCode}</span>
-            </div>
-          </div>
-
-          {/* Narrative Summary */}
-          <div className="narrative-box">
-            <p className="narrative">
-              {generateNarrative(selectedCountry)}
-            </p>
-          </div>
-
-          {/* Key Metrics */}
-          <div className="metrics-row">
-            <div className="metric">
-              <span className="metric-value">{selectedCountry.totalSignals.toLocaleString()}</span>
-              <span className="metric-label">Signals</span>
-            </div>
-            <div className="metric">
-              <span className="metric-value sentiment" style={{
-                color: getSentimentColor(selectedCountry.sentiment)
-              }}>
-                {getSentimentLabel(selectedCountry.sentiment)}
-              </span>
-              <span className="metric-label">Mood</span>
-            </div>
-          </div>
-
-          {/* Dominant Narratives */}
-          <div className="section">
-            <h3>📰 DOMINANT NARRATIVES</h3>
-            <div className="theme-chips">
-              {selectedCountry.themes.slice(0, 5).map((t, i) => (
-                <div
-                  key={t.name}
-                  className="theme-chip clickable"
-                  style={{
-                    opacity: 1 - (i * 0.15)
-                  }}
-                  onClick={() => handleThemeClick(t.name)}
-                >
-                  <span className="theme-icon">{getThemeIcon(t.name)}</span>
-                  <span className="theme-label">{getThemeLabel(t.name)}</span>
-                  <span className="theme-count">{t.count}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Source Diversity */}
-          <div className="section">
-            <h3>🔗 SOURCE DIVERSITY</h3>
-            <div className="source-bar">
-              <div className="source-fill" style={{
-                width: `${Math.min(100, selectedCountry.sources.length * 20)}%`
-              }} />
-            </div>
-            <p className="source-summary">
-              {selectedCountry.sources.length} unique sources
-              {selectedCountry.sources.length < 3 ? ' (low diversity ⚠️)' :
-                selectedCountry.sources.length > 10 ? ' (high diversity ✓)' : ''}
-            </p>
-            <div className="source-list">
-              {selectedCountry.sources.slice(0, 10).map(s => (
-                <span key={s.name} className="source-tag">{s.name}</span>
-              ))}
-            </div>
-          </div>
-        </aside>
-      )}
-
-      {/* Theme Detail Modal */}
-      {selectedTheme && (
-        <ThemeDetail
-          theme={selectedTheme.theme}
-          country={selectedTheme.country}
-          hours={timeWindow}
-          onClose={() => setSelectedTheme(null)}
-        />
-      )}
-
-      {/* Briefing Modal */}
-      {showBriefing && (
-        <Briefing
-          hours={timeWindow}
-          onClose={() => setShowBriefing(false)}
-          onCountrySelect={(code) => { fetchCountryDetail(code); setShowBriefing(false) }}
-          onThemeSelect={(theme) => { setSelectedTheme({ theme }); setShowBriefing(false) }}
-        />
-      )}
-
-      {/* Focus Summary Panel */}
-      <FocusSummaryPanel />
-
-      {/* Legend */}
-      <Legend />
 
       {/* Hover Tooltip */}
       <MapTooltip tooltip={tooltip} />
 
-      {/* Crisis Dashboard */}
-      <CrisisDashboard />
+      {/* Briefing Modal */}
+      {showBriefing && (
+        <Briefing
+          hours={timeRangeToHours(timeRange)}
+          onClose={() => setShowBriefing(false)}
+          onCountrySelect={(code) => {
+            fetchCountryDetail(code)
+            setShowBriefing(false)
+          }}
+          onThemeSelect={(theme) => {
+            handleThemeSelect(theme)
+            setShowBriefing(false)
+          }}
+        />
+      )}
 
-      {/* Dev Banner */}
-      <DevBanner />
+      {/* Theme Detail Overlay */}
+      {selectedTheme && (
+        <ThemeDetail
+          theme={selectedTheme.theme}
+          country={selectedTheme.country}
+          hours={timeRangeToHours(timeRange)}
+          onClose={() => setSelectedTheme(null)}
+          onThemeSelect={(theme) => handleThemeSelect(theme)}
+        />
+      )}
+
+      {/* Country Brief Slide-over */}
+      {selectedCountry && (
+        <CountryBrief
+          countryCode={selectedCountry.countryCode}
+          countryName={selectedCountry.countryCode}
+          timeWindow={timeRangeToHours(timeRange)}
+          onClose={() => setSelectedCountry(null)}
+          onThemeSelect={(theme) => handleThemeSelect(theme)}
+        />
+      )}
     </div>
   )
 }

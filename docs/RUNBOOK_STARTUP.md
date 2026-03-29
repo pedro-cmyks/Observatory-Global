@@ -105,3 +105,64 @@ curl -s http://localhost:8000/health | jq .
 ```bash
 ./scripts/stop-dev.sh
 ```
+
+---
+
+## Weekend/Long-Running Ingestion
+
+### Prerequisites
+- Backend venv set up: `backend/.venv/`
+- PostgreSQL running
+- Sufficient disk space for logs
+
+### Using the Ingestion Runner CLI
+
+**IMPORTANT:** Always run from project root with the venv activated:
+
+```bash
+cd /Users/pedro/Desktop/PEDRO/Cursos/ObservatorioGlobal
+source backend/.venv/bin/activate
+```
+
+**Start ingestion:**
+```bash
+python3 -m backend.app.services.ingest_runner start
+```
+This will:
+- Start ingestion loop (every 15 min)
+- Activate caffeinate (Mac won't sleep)
+- Log to `logs/ingestion_YYYYMMDD_HHMM.log`
+- Save PIDs to `.run/` for clean stop
+
+**Check status:**
+```bash
+python3 -m backend.app.services.ingest_runner status
+```
+
+**Tail logs:**
+```bash
+python3 -m backend.app.services.ingest_runner tail
+```
+
+**Stop ingestion:**
+```bash
+python3 -m backend.app.services.ingest_runner stop
+```
+
+### Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `ModuleNotFoundError: aiohttp` | Running outside venv | Run: `source backend/.venv/bin/activate` first |
+| `python: command not found` | macOS uses python3 | Use `python3` not `python` |
+| Ingestion stops silently | Mac went to sleep | The runner uses caffeinate automatically |
+| "field larger than field limit" | Large GDELT fields | Fixed in V3.2 with 10MB limit |
+
+### Manual One-Time Run (for testing)
+
+```bash
+source backend/.venv/bin/activate
+python3 -m backend.app.services.ingest_v2
+```
+
+

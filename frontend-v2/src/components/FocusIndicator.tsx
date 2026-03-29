@@ -1,13 +1,6 @@
 import { useFocus } from '../contexts/FocusContext'
 import './FocusIndicator.css'
 
-const typeIcons: Record<string, string> = {
-    theme: '🏷️',
-    person: '👤',
-    country: '🌍',
-    source: '📰'
-}
-
 const typeLabels: Record<string, string> = {
     theme: 'Theme',
     person: 'Person',
@@ -22,8 +15,19 @@ export function FocusIndicator() {
 
     return (
         <div className="focus-indicator">
-            <span className="focus-icon">
-                {typeIcons[focus.type]}
+            <span className="focus-icon" style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '24px',
+                height: '24px',
+                borderRadius: '4px',
+                background: 'var(--color-accent-primary)',
+                color: 'var(--color-bg-primary)',
+                fontSize: '10px',
+                fontWeight: 'bold'
+            }}>
+                {focus.type.charAt(0).toUpperCase()}
             </span>
             <div className="focus-content">
                 <span className="focus-type">
@@ -38,8 +42,9 @@ export function FocusIndicator() {
                 onClick={clearFocus}
                 title="Clear focus"
             >
-                ✕
+                ×
             </button>
         </div>
     )
 }
+

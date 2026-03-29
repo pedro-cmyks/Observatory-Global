@@ -16,12 +16,17 @@ export const CrisisDashboard: React.FC = () => {
         normal: '#94a3b8'
     }
 
-    const levelIcons: Record<string, string> = {
-        critical: '🔴',
-        elevated: '🟠',
-        notable: '🟡',
-        normal: '⚪'
-    }
+    // Severity indicator as CSS circle
+    const severityIndicator = (level: string) => (
+        <span style={{
+            display: 'inline-block',
+            width: '10px',
+            height: '10px',
+            borderRadius: '50%',
+            background: levelColors[level],
+            marginRight: '4px'
+        }} />
+    );
 
     return (
         <div
@@ -45,7 +50,13 @@ export const CrisisDashboard: React.FC = () => {
                 background: `${levelColors[overallSeverity]}10`
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '18px' }}>🚨</span>
+                    <span style={{
+                        width: '12px',
+                        height: '12px',
+                        borderRadius: '50%',
+                        background: '#ef4444',
+                        boxShadow: '0 0 8px #ef4444'
+                    }} />
                     <h3 style={{ margin: 0, fontSize: '14px', color: levelColors[overallSeverity], textTransform: 'uppercase' }}>
                         Crisis Dashboard
                     </h3>
@@ -78,13 +89,13 @@ export const CrisisDashboard: React.FC = () => {
                             >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span style={{ fontWeight: 'bold', color: '#fff' }}>
-                                        {levelIcons[a.level]} {a.country_code}
+                                        {severityIndicator(a.level)} {a.country_name || a.country_code} <span style={{ opacity: 0.7, fontSize: '0.9em' }}>({a.country_code})</span>
                                     </span>
-                                    <span style={{ fontSize: '12px', color: levelColors[a.level] }}>
+                                    <span style={{ fontSize: '12px', color: levelColors[a.level] }} title="Multiplier: Signal count relative to 7-day baseline">
                                         {a.multiplier?.toFixed(1)}× normal
                                     </span>
                                 </div>
-                                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
+                                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }} title="Z-Score: Standard deviations from mean">
                                     {a.current_count.toLocaleString()} signals (z: {a.zscore?.toFixed(1)})
                                 </div>
                                 <button

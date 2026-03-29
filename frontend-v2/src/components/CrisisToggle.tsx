@@ -21,7 +21,13 @@ export const CrisisToggle: React.FC = () => {
                 transition: 'all 0.2s'
             }}
         >
-            <span>{enabled ? '🚨' : '📊'}</span>
+            <span style={{
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                background: enabled ? '#ef4444' : '#94a3b8',
+                boxShadow: enabled ? '0 0 6px #ef4444' : 'none'
+            }} />
             <span>Crisis {enabled ? 'ON' : 'OFF'}</span>
             {enabled && overallSeverity !== 'normal' && (
                 <span style={{

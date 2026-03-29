@@ -18,6 +18,7 @@
     "d3-scale": "^4.0.2",
     "d3-scale-chromatic": "^3.1.0",
     "deck.gl": "^9.2.2",
+    "lucide-react": "^0.562.0",
     "maplibre-gl": "^5.13.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

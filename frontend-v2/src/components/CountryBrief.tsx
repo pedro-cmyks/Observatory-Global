@@ -60,13 +60,9 @@ interface CountryBriefProps {
 }
 
 // Country flag emoji from code
+// Country flag wrapper
 const getCountryFlag = (code: string): string => {
-    if (!code || code.length !== 2) return '🌍';
-    const codePoints = code
-        .toUpperCase()
-        .split('')
-        .map(char => 127397 + char.charCodeAt(0));
-    return String.fromCodePoint(...codePoints);
+    return code;
 };
 
 // Sentiment color
@@ -198,7 +194,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     <button className="close-button" onClick={onClose}>✕</button>
                 </div>
                 <div className="brief-error">
-                    <p>⚠️ {error || 'No data available'}</p>
+                    <p>Error: {error || 'No data available'}</p>
                 </div>
             </div>
         );
@@ -265,7 +261,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     </span>
                 </div>
                 <p className="sentiment-warning">
-                    ⚠️ Sentiment analysis is noisy and should be interpreted cautiously.
+                    Sentiment analysis is noisy and should be interpreted cautiously.
                 </p>
             </section>
 

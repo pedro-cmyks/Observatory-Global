@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import type { TimeRange } from '../lib/timeRanges'
 
 export type FocusType = 'theme' | 'person' | 'country' | 'source' | null
+export type LockedBy = 'radar' | 'stream' | 'matrix' | 'anomaly' | null
 
 export interface FocusState {
     type: FocusType
@@ -8,42 +10,94 @@ export interface FocusState {
     label: string | null
 }
 
+export interface GlobalFilter {
+    country: string | null
+    theme: string | null
+    timeRange: TimeRange
+    lockedBy: LockedBy
+}
+
 interface FocusContextValue {
+    // New GlobalFilter state
+    filter: GlobalFilter
+    setCountry: (country: string | null, source?: LockedBy) => void
+    setTheme: (theme: string | null, source?: LockedBy) => void
+    setTimeRange: (range: TimeRange) => void
+    clearFilter: () => void
+    
+    // Legacy / backwards compatible
     focus: FocusState
     setFocus: (type: FocusType, value: string, label?: string) => void
     clearFocus: () => void
     isActive: boolean
 }
 
-const defaultFocus: FocusState = {
-    type: null,
-    value: null,
-    label: null
+const defaultFilter: GlobalFilter = {
+    country: null,
+    theme: null,
+    timeRange: '3m',
+    lockedBy: null
 }
 
 const FocusContext = createContext<FocusContextValue | undefined>(undefined)
 
 export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [focus, setFocusState] = useState<FocusState>(defaultFocus)
+    const [filter, setFilter] = useState<GlobalFilter>(defaultFilter)
 
-    const setFocus = useCallback((type: FocusType, value: string, label?: string) => {
-        setFocusState({
-            type,
-            value,
-            label: label || value
-        })
-        console.log(`[Focus] Set: ${type} = ${value}`)
+    const setCountry = useCallback((country: string | null, source: LockedBy = null) => {
+        setFilter(prev => ({ 
+            ...prev, 
+            country, 
+            lockedBy: country ? source : prev.theme ? prev.lockedBy : null 
+        }))
+        console.log(`[GlobalFilter] Set country=${country} by ${source || 'unknown'}`)
     }, [])
 
-    const clearFocus = useCallback(() => {
-        setFocusState(defaultFocus)
-        console.log('[Focus] Cleared')
+    const setTheme = useCallback((theme: string | null, source: LockedBy = null) => {
+        setFilter(prev => ({ 
+            ...prev, 
+            theme, 
+            lockedBy: theme ? source : prev.country ? prev.lockedBy : null 
+        }))
+        console.log(`[GlobalFilter] Set theme=${theme} by ${source || 'unknown'}`)
     }, [])
 
-    const isActive = focus.type !== null && focus.value !== null
+    const setTimeRange = useCallback((timeRange: TimeRange) => {
+        setFilter(prev => ({ ...prev, timeRange }))
+        console.log(`[GlobalFilter] Set timeRange=${timeRange}`)
+    }, [])
+
+    const clearFilter = useCallback(() => {
+        setFilter(prev => ({ ...prev, country: null, theme: null, lockedBy: null }))
+        console.log('[GlobalFilter] Cleared')
+    }, [])
+
+    // Legacy API mappings
+    const focus: FocusState = {
+        type: filter.country ? 'country' : filter.theme ? 'theme' : null,
+        value: filter.country || filter.theme,
+        label: filter.country || filter.theme
+    }
+
+    const setFocus = useCallback((type: FocusType, value: string, _label?: string) => {
+        if (type === 'country') {
+            setCountry(value)
+        } else if (type === 'theme') {
+            setTheme(value)
+        } else {
+            // Unhandled focus types just clear the filter for now
+            clearFilter()
+        }
+    }, [setCountry, setTheme, clearFilter])
+
+    const clearFocus = clearFilter
+    const isActive = filter.country !== null || filter.theme !== null
 
     return (
-        <FocusContext.Provider value={{ focus, setFocus, clearFocus, isActive }}>
+        <FocusContext.Provider value={{ 
+            filter, setCountry, setTheme, setTimeRange, clearFilter,
+            focus, setFocus, clearFocus, isActive 
+        }}>
             {children}
         </FocusContext.Provider>
     )

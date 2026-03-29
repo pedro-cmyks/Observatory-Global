@@ -3,17 +3,29 @@ GDELT Ingestion for V2 Schema
 Fetches latest GDELT data and inserts into signals_v2 table
 V3: Now includes crisis classification
 V3.1: Converts FIPS country codes to ISO 3166-1 alpha-2
+V3.2: Fixed CSV field size limit for GDELT GKG large fields
 """
+import csv
+import sys
+
+# CRITICAL: Increase CSV field size limit for GDELT GKG files
+# GDELT V2Themes/V2Persons columns can exceed 200KB
+# Must be set BEFORE any csv.reader() calls
+csv.field_size_limit(10 * 1024 * 1024)  # 10MB
+
 import asyncio
 import aiohttp
 import asyncpg
 import zipfile
 import io
-import csv
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 import os
-import sys
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -27,15 +39,16 @@ from app.config.crisis_themes import (
 )
 from app.services.country_codes import fips_to_iso
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://observatory:changeme@localhost:5432/observatory")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://observatory:changeme@localhost:5432/observatory?sslmode=disable")
 
 # GDELT GKG (Global Knowledge Graph) URL
 GDELT_LAST_UPDATE_URL = "http://data.gdeltproject.org/gdeltv2/lastupdate.txt"
+GDELT_TRANS_UPDATE_URL = "http://data.gdeltproject.org/gdeltv2/lastupdate-translation.txt"
 
-async def fetch_latest_gdelt_url() -> Optional[str]:
+async def fetch_latest_gdelt_url(update_url: str = GDELT_LAST_UPDATE_URL) -> Optional[str]:
     """Get the URL of the latest GDELT GKG file."""
     async with aiohttp.ClientSession() as session:
-        async with session.get(GDELT_LAST_UPDATE_URL) as resp:
+        async with session.get(update_url) as resp:
             if resp.status != 200:
                 print(f"Failed to fetch GDELT update list: {resp.status}")
                 return None
@@ -48,30 +61,40 @@ async def fetch_latest_gdelt_url() -> Optional[str]:
     return None
 
 async def download_and_parse_gkg(url: str) -> list[dict]:
-    """Download and parse GDELT GKG file."""
+    """Download and parse GDELT GKG file with resilient error handling."""
     signals = []
+    skipped = 0
     
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as resp:
             if resp.status != 200:
-                print(f"Failed to download {url}: {resp.status}")
+                logger.error(f"Failed to download {url}: {resp.status}")
                 return signals
             
             data = await resp.read()
             
     # Unzip and parse
-    with zipfile.ZipFile(io.BytesIO(data)) as zf:
-        for filename in zf.namelist():
-            if filename.endswith('.csv'):
-                with zf.open(filename) as f:
-                    reader = csv.reader(io.TextIOWrapper(f, encoding='utf-8', errors='replace'), delimiter='\t')
-                    for row in reader:
-                        try:
-                            signal = parse_gkg_row(row)
-                            if signal:
-                                signals.append(signal)
-                        except Exception as e:
-                            continue
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            for filename in zf.namelist():
+                if filename.endswith('.csv'):
+                    with zf.open(filename) as f:
+                        reader = csv.reader(io.TextIOWrapper(f, encoding='utf-8', errors='replace'), delimiter='\t')
+                        for line_num, row in enumerate(reader, start=1):
+                            try:
+                                signal = parse_gkg_row(row)
+                                if signal:
+                                    signals.append(signal)
+                            except Exception as e:
+                                skipped += 1
+                                if skipped <= 5:  # Log first 5 errors only
+                                    logger.warning(f"Skipped line {line_num} in {filename}: {type(e).__name__}: {str(e)[:100]}")
+                                continue  # CRITICAL: Continue, don't crash
+    except Exception as e:
+        logger.error(f"Failed to process zip file from {url}: {e}")
+    
+    if skipped > 0:
+        logger.info(f"Processed {url}: {len(signals)} signals, {skipped} skipped")
     
     return signals
 
@@ -89,6 +112,18 @@ def parse_gkg_row(row: list) -> Optional[dict]:
     
     source_url = row[4] if len(row) > 4 else None
     source_name = row[3] if len(row) > 3 else None
+    
+    headline = None
+    if source_url:
+        import urllib.parse
+        try:
+            path = urllib.parse.urlparse(source_url).path
+            slug = path.strip('/').split('/')[-1]
+            if slug and len(slug) >= 5 and ('-' in slug or '_' in slug):
+                slug = slug.replace('.html', '').replace('.htm', '').replace('.php', '')
+                headline = slug.replace('-', ' ').replace('_', ' ').title()
+        except:
+            pass
     
     # Locations (V2ENHANCEDLOCATIONS - field 10)
     locations = row[10] if len(row) > 10 else ""
@@ -159,6 +194,7 @@ def parse_gkg_row(row: list) -> Optional[dict]:
         'sentiment': sentiment,
         'source_url': source_url,
         'source_name': source_name,
+        'headline': headline,
         'themes': themes,
         'persons': persons,
         # Crisis classification fields
@@ -181,10 +217,10 @@ async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                 await conn.execute("""
                     INSERT INTO signals_v2 (
                         timestamp, country_code, latitude, longitude, sentiment, 
-                        source_url, source_name, themes, persons,
+                        source_url, source_name, headline, themes, persons,
                         is_crisis, crisis_score, crisis_themes, severity, event_type
                     )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
                     ON CONFLICT DO NOTHING
                 """, 
                     signal['timestamp'],
@@ -194,6 +230,7 @@ async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                     signal['sentiment'],
                     signal['source_url'],
                     signal['source_name'],
+                    signal['headline'],
                     signal['themes'],
                     signal['persons'],
                     signal['is_crisis'],
@@ -240,20 +277,22 @@ async def run_ingestion():
     
     try:
         # Fetch latest GDELT URL
-        url = await fetch_latest_gdelt_url()
-        if not url:
-            print("Could not find GDELT update URL")
-            return
+        url = await fetch_latest_gdelt_url(GDELT_LAST_UPDATE_URL)
+        if url:
+            print(f"Downloading: {url}")
+            signals = await download_and_parse_gkg(url)
+            print(f"Parsed {len(signals)} eng signals")
+            inserted = await insert_signals(pool, signals)
+            print(f"Inserted {inserted} new eng signals")
         
-        print(f"Downloading: {url}")
-        
-        # Download and parse
-        signals = await download_and_parse_gkg(url)
-        print(f"Parsed {len(signals)} signals")
-        
-        # Insert
-        inserted = await insert_signals(pool, signals)
-        print(f"Inserted {inserted} new signals")
+        # Fetch Translingual GDELT URL
+        trans_url = await fetch_latest_gdelt_url(GDELT_TRANS_UPDATE_URL)
+        if trans_url:
+            print(f"Downloading Translingual: {trans_url}")
+            trans_signals = await download_and_parse_gkg(trans_url)
+            print(f"Parsed {len(trans_signals)} translingual signals")
+            inserted_trans = await insert_signals(pool, trans_signals)
+            print(f"Inserted {inserted_trans} new translingual signals")
         
         # Update countries
         await update_countries(pool)

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getThemeLabel } from '../lib/themeLabels'
 import { useFocus } from '../contexts/FocusContext'
+import { Search } from 'lucide-react'
 import './SearchBar.css'
 
 interface SearchResult {
@@ -74,7 +75,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onSourceSelect }: Se
     return (
         <div className="search-container">
             <div className="search-input-wrapper">
-                <span className="search-icon">🔍</span>
+                <span className="search-icon"><Search size={16} /></span>
                 <input
                     type="text"
                     className="search-input"
@@ -97,7 +98,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onSourceSelect }: Se
                                     className="search-item"
                                     onClick={() => handleCountryClick(c.code, c.name)}
                                 >
-                                    <span className="search-item-icon">🌍</span>
+                                    <span className="search-item-icon" style={{ background: 'var(--color-accent-primary)', padding: '2px 4px', borderRadius: '3px', fontSize: '8px' }}>CTY</span>
                                     <span>{c.name}</span>
                                     <span className="search-item-code">{c.code}</span>
                                 </div>
@@ -114,7 +115,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onSourceSelect }: Se
                                     className="search-item"
                                     onClick={() => handleThemeClick(t.theme, t.country)}
                                 >
-                                    <span className="search-item-icon">📰</span>
+                                    <span className="search-item-icon" style={{ background: 'var(--color-accent-secondary)', padding: '2px 4px', borderRadius: '3px', fontSize: '8px' }}>SRC</span>
                                     <span>{getThemeLabel(t.theme)}</span>
                                     <span className="search-item-meta">{t.country} • {t.count}</span>
                                 </div>

@@ -1,3 +1,10 @@
+import React from 'react';
+import {
+    Briefcase, Landmark, Swords, Stethoscope, Laptop, Siren,
+    HandMetal, Vote, Zap, Waves, Languages, FileText, User, Newspaper,
+    Leaf, Users
+} from 'lucide-react';
+
 export const themeLabels: Record<string, string> = {
     // World Bank codes
     'WB_621_HEALTH_NUTRITION_AND_POPULATION': 'Health & Nutrition',
@@ -135,27 +142,26 @@ export function getThemeLabel(code: string): string {
         .join(' ')
 }
 
-// Export getThemeIcon function that was duplicated in ThemeDetail
-export function getThemeIcon(theme: string): string {
+// Theme icon function - returns Lucide icon component
+export function getThemeIcon(theme: string): React.ReactNode {
     const upper = theme.toUpperCase()
-    if (upper.includes('ECONOMY') || upper.includes('ECON')) return '💰'
-    if (upper.includes('GOVERNMENT') || upper.includes('GOV')) return '🏛️'
-    if (upper.includes('MILITARY') || upper.includes('WAR') || upper.includes('CONFLICT')) return '⚔️'
-    if (upper.includes('HEALTH') || upper.includes('DISEASE') || upper.includes('NUTRITION')) return '🏥'
-    if (upper.includes('ENVIRONMENT') || upper.includes('CLIMATE') || upper.includes('FOREST')) return '🌍'
-    if (upper.includes('TECH') || upper.includes('CYBER')) return '💻'
-    if (upper.includes('CRIME') || upper.includes('ARREST')) return '🚨'
-    if (upper.includes('PROTEST') || upper.includes('UNREST')) return '✊'
-    if (upper.includes('ELECTION') || upper.includes('VOTE')) return '🗳️'
-    if (upper.includes('ENERGY') || upper.includes('OIL')) return '⚡'
-    if (upper.includes('TRANSPORT')) return '🚗'
-    if (upper.includes('CRISIS')) return '🔴'
-    if (upper.includes('HOLIDAY')) return '🎉'
-    if (upper.includes('ETHNICITY') || upper.includes('LANGUAGE')) return '🗣️'
-    if (upper.includes('POLICY')) return '📋'
-    if (upper.includes('JOB') || upper.includes('EMPLOY')) return '💼'
-    if (upper.includes('EDUCATION')) return '📚'
-    if (upper.includes('WATER')) return '💧'
-    if (upper.includes('AGRICULTURE') || upper.includes('FOOD')) return '🌾'
-    return '📰'
+    const size = 14;
+
+    if (upper.includes('ECONOMY') || upper.includes('ECON') || upper.includes('TRADE') || upper.includes('MARKET')) return <Briefcase size={size} />
+    if (upper.includes('GOVERNMENT') || upper.includes('GOV') || upper.includes('POLICY')) return <Landmark size={size} />
+    if (upper.includes('MILITARY') || upper.includes('WAR') || upper.includes('SECURITY')) return <Swords size={size} />
+    if (upper.includes('HEALTH') || upper.includes('DISEASE') || upper.includes('MEDICAL')) return <Stethoscope size={size} />
+    if (upper.includes('ENVIRONMENT') || upper.includes('CLIMATE') || upper.includes('NATURE')) return <Leaf size={size} />
+    if (upper.includes('TECH') || upper.includes('CYBER') || upper.includes('DIGITAL')) return <Laptop size={size} />
+    if (upper.includes('CRIME') || upper.includes('ARREST') || upper.includes('LAW')) return <Siren size={size} />
+    if (upper.includes('PROTEST') || upper.includes('UNREST') || upper.includes('SOCIAL')) return <HandMetal size={size} />
+    if (upper.includes('ELECTION') || upper.includes('VOTE')) return <Vote size={size} />
+    if (upper.includes('ENERGY') || upper.includes('OIL') || upper.includes('POWER')) return <Zap size={size} />
+    if (upper.includes('FOREST') || upper.includes('OCEAN') || upper.includes('WATER')) return <Waves size={size} />
+    if (upper.includes('ETHNICITY') || upper.includes('LANGUAGE') || upper.includes('CULTURE')) return <Languages size={size} />
+    if (upper.includes('JOB') || upper.includes('EMPLOY') || upper.includes('LABOR')) return <Users size={size} />
+    if (upper.includes('EDUCATION') || upper.includes('SCHOOL')) return <FileText size={size} />
+    if (upper.includes('LEADER') || upper.includes('PRESIDENT')) return <User size={size} />
+
+    return <Newspaper size={size} />
 }

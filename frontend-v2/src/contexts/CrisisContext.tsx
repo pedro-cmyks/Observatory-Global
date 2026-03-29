@@ -1,7 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { useFocus } from './FocusContext'
+import { timeRangeToHours } from '../lib/timeRanges'
 
 interface AnomalyData {
     country_code: string
+    country_name?: string
     current_count: number
     multiplier: number
     zscore: number
@@ -33,12 +36,14 @@ export const CrisisProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const [overallSeverity, setOverallSeverity] = useState<'normal' | 'notable' | 'elevated' | 'critical'>('normal')
     const [loading, setLoading] = useState(false)
 
-    const fetchAnomalies = useCallback(async () => {
-        if (!enabled) return
+    // Use global time range for anomaly queries
+    const { filter } = useFocus()
+    const hours = Math.min(timeRangeToHours(filter.timeRange), 168) // Anomaly endpoint caps at 168h
 
+    const fetchAnomalies = useCallback(async () => {
         setLoading(true)
         try {
-            const res = await fetch('/api/v2/anomalies?hours=24&limit=10')
+            const res = await fetch(`/api/v2/anomalies?hours=${hours}&limit=10`)
             if (res.ok) {
                 const data = await res.json()
                 setAnomalies(data.anomalies || [])
@@ -49,15 +54,13 @@ export const CrisisProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         } finally {
             setLoading(false)
         }
-    }, [enabled])
+    }, [enabled, hours])
 
     useEffect(() => {
         fetchAnomalies()
-        if (enabled) {
-            const interval = setInterval(fetchAnomalies, 5 * 60 * 1000)
-            return () => clearInterval(interval)
-        }
-    }, [enabled, fetchAnomalies])
+        const interval = setInterval(fetchAnomalies, 5 * 60 * 1000)
+        return () => clearInterval(interval)
+    }, [fetchAnomalies])
 
     const toggleCrisis = useCallback(() => {
         setEnabled(prev => {

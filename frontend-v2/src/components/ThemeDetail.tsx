@@ -28,9 +28,10 @@ interface ThemeDetailProps {
     country?: string
     hours: number
     onClose: () => void
+    onThemeSelect?: (theme: string) => void
 }
 
-export function ThemeDetail({ theme, country, hours, onClose }: ThemeDetailProps) {
+export function ThemeDetail({ theme, country, hours, onClose, onThemeSelect }: ThemeDetailProps) {
     const [data, setData] = useState<ThemeData | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -111,7 +112,7 @@ export function ThemeDetail({ theme, country, hours, onClose }: ThemeDetailProps
                         {/* Timeline */}
                         {data.timeline.length > 0 && (
                             <div className="theme-section">
-                                <h3>📊 Activity Timeline</h3>
+                                <h3>Activity Timeline</h3>
                                 <div className="timeline-chart">
                                     {data.timeline.map((t, i) => (
                                         <div
@@ -125,18 +126,42 @@ export function ThemeDetail({ theme, country, hours, onClose }: ThemeDetailProps
                                         />
                                     ))}
                                 </div>
+                                <div style={{ display: 'flex', gap: '12px', fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '8px', justifyContent: 'center' }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#4ade80' }}></span> Positive</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#fbbf24' }}></span> Neutral</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#f87171' }}></span> Negative</span>
+                                </div>
                             </div>
                         )}
 
                         {/* Related Themes */}
                         {data.relatedThemes.length > 0 && (
                             <div className="theme-section">
-                                <h3>🔗 Related Topics</h3>
+                                <h3>Related Topics</h3>
                                 <div className="related-chips">
                                     {data.relatedThemes.slice(0, 6).map(t => (
-                                        <span key={t.theme} className="related-chip">
+                                        <button
+                                            key={t.theme}
+                                            className="related-chip"
+                                            onClick={() => onThemeSelect?.(t.theme)}
+                                            style={{
+                                                background: 'var(--color-bg-secondary)',
+                                                border: '1px solid var(--color-border-subtle)',
+                                                borderRadius: '16px',
+                                                padding: '4px 12px',
+                                                fontSize: '11px',
+                                                color: 'var(--color-text-primary)',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                transition: 'all 0.2s',
+                                                marginBottom: '4px',
+                                                marginRight: '4px'
+                                            }}
+                                        >
                                             {getThemeIcon(t.theme)} {getThemeLabel(t.theme)} ({t.count})
-                                        </span>
+                                        </button>
                                     ))}
                                 </div>
                             </div>
@@ -145,7 +170,7 @@ export function ThemeDetail({ theme, country, hours, onClose }: ThemeDetailProps
                         {/* Top Persons */}
                         {data.topPersons.length > 0 && (
                             <div className="theme-section">
-                                <h3>👤 People Mentioned</h3>
+                                <h3>People Mentioned</h3>
                                 <div className="person-list">
                                     {data.topPersons.slice(0, 5).map(p => (
                                         <span key={p.name} className="person-tag">
@@ -159,7 +184,7 @@ export function ThemeDetail({ theme, country, hours, onClose }: ThemeDetailProps
                         {/* Top Sources */}
                         {data.topSources.length > 0 && (
                             <div className="theme-section">
-                                <h3>📰 Top Sources</h3>
+                                <h3>Top Sources</h3>
                                 <div className="source-list">
                                     {data.topSources.map(s => (
                                         <div key={s.name} className="source-item">
@@ -176,7 +201,7 @@ export function ThemeDetail({ theme, country, hours, onClose }: ThemeDetailProps
 
                         {/* Recent Coverage */}
                         <div className="theme-section">
-                            <h3>📋 Recent Coverage ({data.signals.length})</h3>
+                            <h3>Recent Coverage ({data.signals.length})</h3>
                             <div className="signals-list">
                                 {data.signals.slice(0, 20).map((s, i) => (
                                     <div key={i} className="signal-item">
@@ -191,7 +216,7 @@ export function ThemeDetail({ theme, country, hours, onClose }: ThemeDetailProps
                                             </span>
                                         </div>
                                         {s.persons.length > 0 && (
-                                            <div className="signal-persons">👤 {s.persons.join(', ')}</div>
+                                            <div className="signal-persons">Person: {s.persons.join(', ')}</div>
                                         )}
                                         {s.url && (
                                             <a href={s.url} target="_blank" rel="noopener noreferrer" className="signal-link">

@@ -36,7 +36,15 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect }: Bri
             .finally(() => setLoading(false))
     }, [hours])
 
-    const getSentimentEmoji = (s: number) => s > 0.1 ? '🟢' : s < -0.1 ? '🔴' : '🟡'
+    const getSentimentIndicator = (s: number) => (
+        <span style={{
+            display: 'inline-block',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: s > 0.1 ? '#4ade80' : s < -0.1 ? '#f87171' : '#fbbf24'
+        }} />
+    );
 
     if (loading) return (
         <div className="briefing-overlay" onClick={onClose}>
@@ -54,7 +62,7 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect }: Bri
                 <button className="briefing-close" onClick={onClose}>×</button>
 
                 <div className="briefing-header">
-                    <span className="briefing-icon">🌅</span>
+                    <span className="briefing-icon" style={{ fontSize: '14px', color: 'var(--color-accent-primary)' }}>BRIEF</span>
                     <div>
                         <h2>Global Briefing</h2>
                         <p className="briefing-time">Last {hours} hours</p>
@@ -86,13 +94,13 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect }: Bri
                 </div>
 
                 <div className="briefing-section">
-                    <h3>📈 Most Active</h3>
+                    <h3>Most Active</h3>
                     <div className="country-list">
                         {data.top_countries.slice(0, 5).map(c => (
                             <div key={c.code} className="country-item" onClick={() => { onCountrySelect(c.code); onClose() }}>
                                 <span>{c.name}</span>
                                 <span className="country-signals">{c.signals.toLocaleString()}</span>
-                                <span>{getSentimentEmoji(c.sentiment)}</span>
+                                <span>{getSentimentIndicator(c.sentiment)}</span>
                             </div>
                         ))}
                     </div>
@@ -100,7 +108,7 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect }: Bri
 
                 <div className="briefing-section two-col">
                     <div>
-                        <h3>🔴 Most Negative</h3>
+                        <h3>Most Negative</h3>
                         {data.negative_sentiment.slice(0, 3).map(c => (
                             <div key={c.code} className="country-item small" onClick={() => { onCountrySelect(c.code); onClose() }}>
                                 <span>{c.name}</span>
@@ -109,7 +117,7 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect }: Bri
                         ))}
                     </div>
                     <div>
-                        <h3>🟢 Most Positive</h3>
+                        <h3>Most Positive</h3>
                         {data.positive_sentiment.slice(0, 3).map(c => (
                             <div key={c.code} className="country-item small" onClick={() => { onCountrySelect(c.code); onClose() }}>
                                 <span>{c.name}</span>
@@ -120,7 +128,7 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect }: Bri
                 </div>
 
                 <div className="briefing-section">
-                    <h3>📰 Top Themes</h3>
+                    <h3>Top Themes</h3>
                     <div className="theme-chips">
                         {data.top_themes.slice(0, 6).map(t => (
                             <div key={t.theme} className="theme-chip" onClick={() => { onThemeSelect(t.theme); onClose() }}>
@@ -133,7 +141,7 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect }: Bri
                 </div>
 
                 <div className="briefing-section">
-                    <h3>🔗 Top Sources</h3>
+                    <h3>Top Sources</h3>
                     <div className="source-tags">
                         {data.top_sources.map(s => (
                             <span key={s.source} className="source-tag">{s.source} ({s.count})</span>

@@ -6,6 +6,7 @@
  */
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useFocus } from './FocusContext'
+import { type TimeRange, timeRangeToHours } from '../lib/timeRanges'
 
 // Types
 export interface NodeData {
@@ -55,6 +56,9 @@ interface FocusDataState {
 }
 
 interface FocusDataContextValue extends FocusDataState {
+    timeRange: TimeRange
+    setTimeRange: (range: TimeRange) => void
+    // Deprecated: for backward compatibility
     timeWindow: number
     setTimeWindow: (hours: number) => void
     refetch: () => void
@@ -78,16 +82,16 @@ const defaultState: FocusDataState = {
 const FocusDataContext = createContext<FocusDataContextValue | undefined>(undefined)
 
 export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { focus, isActive } = useFocus()
-    const [timeWindow, setTimeWindow] = useState(24)
+    const { focus, filter, isActive, setTimeRange: setGlobalTimeRange } = useFocus()
+    const timeRange = filter.timeRange
     const [state, setState] = useState<FocusDataState>(defaultState)
 
     const fetchData = useCallback(async () => {
         setState(prev => ({ ...prev, loading: true, error: null }))
 
         try {
-            // Build base params
-            const baseParams = new URLSearchParams({ hours: timeWindow.toString() })
+            // Build base params - use range for new API
+            const baseParams = new URLSearchParams({ range: timeRange })
 
             // Add focus params if active
             if (isActive && focus.type && focus.value) {
@@ -118,7 +122,7 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                     const summaryParams = new URLSearchParams({
                         focus_type: focus.type,
                         focus_value: focus.value,
-                        hours: timeWindow.toString()
+                        hours: timeRangeToHours(timeRange).toString()
                     })
                     const summaryRes = await fetch(`/api/v2/focus?${summaryParams}`)
                     if (summaryRes.ok) {
@@ -129,8 +133,16 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 }
             }
 
+            // Safe render: cap nodes at 150 to prevent Deck.gl crashes
+            const MAX_NODES = 150
+            let safeNodes = nodesData.nodes || []
+            if (safeNodes.length > MAX_NODES) {
+                console.warn(`[FocusDataProvider] Node count ${safeNodes.length} exceeds ${MAX_NODES}, slicing to prevent render issues`)
+                safeNodes = safeNodes.slice(0, MAX_NODES)
+            }
+
             setState({
-                nodes: nodesData.nodes || [],
+                nodes: safeNodes,
                 flows: flowsData.flows || [],
                 summary: summaryData,
                 meta: {
@@ -150,16 +162,27 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 error: err instanceof Error ? err.message : 'Unknown error'
             }))
         }
-    }, [focus.type, focus.value, isActive, timeWindow])
+    }, [focus.type, focus.value, isActive, timeRange])
 
-    // Refetch when focus or time window changes
+    // Refetch when focus or time range changes
     useEffect(() => {
         fetchData()
     }, [fetchData])
 
+    // Backward compatibility: convert hours to range
+    const setTimeWindow = useCallback((hours: number) => {
+        if (hours <= 24) setGlobalTimeRange('24h')
+        else if (hours <= 168) setGlobalTimeRange('1w')
+        else if (hours <= 720) setGlobalTimeRange('1m')
+        else if (hours <= 2160) setGlobalTimeRange('3m')
+        else setGlobalTimeRange('record')
+    }, [setGlobalTimeRange])
+
     const value: FocusDataContextValue = {
         ...state,
-        timeWindow,
+        timeRange,
+        setTimeRange: setGlobalTimeRange,
+        timeWindow: timeRangeToHours(timeRange),
         setTimeWindow,
         refetch: fetchData
     }
@@ -178,3 +201,4 @@ export const useFocusData = (): FocusDataContextValue => {
     }
     return context
 }
+

@@ -13,95 +13,120 @@
   overflow: hidden;
 }
 
-/* Header */
-.header {
+/* ============================================================
+   COMMAND BAR — Compact 48px top strip
+   ============================================================ */
+.command-bar {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 80px;
-  background: rgba(10, 10, 10, 0.95);
+  height: 48px;
+  background: rgba(8, 8, 12, 0.98);
   backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 32px;
-  z-index: 10;
-  gap: 24px;
+  padding: 0 16px;
+  z-index: 100;
+  gap: 12px;
 }
 
-.header h1 {
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0;
-  letter-spacing: 1px;
-  white-space: nowrap;
-}
-
-.header .stats {
-  font-size: 13px;
-  color: #888;
-  white-space: nowrap;
-  margin-left: auto;
-}
-
-.briefing-btn {
-  padding: 6px 12px;
-  background: rgba(99, 102, 241, 0.2);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: 6px;
-  color: white;
-  font-size: 12px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.briefing-btn:hover {
-  background: rgba(99, 102, 241, 0.3);
-}
-
-
-/* Controls */
-.controls {
-  position: absolute;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
+.command-bar-left {
   display: flex;
-  gap: 4px;
-  background: rgba(0, 0, 0, 0.7);
-  padding: 8px;
-  border-radius: 8px;
-  backdrop-filter: blur(10px);
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
-.controls button {
-  padding: 8px 16px;
+.command-bar-left .brand {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #e2e8f0;
+}
+
+.command-bar-center {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+}
+
+.command-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.command-bar-right .stats {
+  font-size: 11px;
+  color: #64748b;
+  white-space: nowrap;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* Time Range Controls in Command Bar */
+.time-controls {
+  display: flex;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.time-btn {
+  padding: 4px 10px;
   border: none;
   background: transparent;
-  color: #666;
-  font-size: 12px;
+  color: #64748b;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.15s;
+  letter-spacing: 0.5px;
+}
+
+.time-btn:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.time-btn.active {
+  color: #fff;
+  background: rgba(99, 102, 241, 0.4);
+}
+
+/* Command Bar Buttons */
+.cmd-btn {
+  padding: 5px 10px;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.25);
   border-radius: 4px;
-  transition: all 0.2s;
+  color: #a5b4fc;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.5px;
 }
 
-.controls button:hover {
+.cmd-btn:hover {
+  background: rgba(99, 102, 241, 0.25);
   color: #fff;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.controls button.active {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.controls .separator {
-  color: #333;
-  padding: 8px 4px;
 }
 
 /* Sidebar */
@@ -316,4 +341,114 @@
 .maplibregl-map {
   position: absolute !important;
   inset: 0;
+}
+
+/* Bloomberg Terminal - CSS Grid */
+.terminal-layout {
+  display: grid;
+  grid-template-areas:
+    "radar stream threads"
+    "radar stream matrix"
+    "integrity anomaly anomaly";
+  grid-template-columns: 35% 35% 30%;
+  grid-template-rows: 40% 40% 20%;
+  height: calc(100vh - 48px);
+  width: 100vw;
+  margin-top: 48px;
+  gap: 4px;
+  background: #060608;
+  padding: 4px;
+}
+
+.terminal-panel {
+  background: rgba(12, 14, 18, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.terminal-panel.radar { grid-area: radar; }
+.terminal-panel.stream { grid-area: stream; }
+.terminal-panel.threads { grid-area: threads; }
+.terminal-panel.matrix { grid-area: matrix; }
+.terminal-panel.anomaly { grid-area: anomaly; }
+.terminal-panel.integrity { grid-area: integrity; }
+
+.panel-header {
+  height: 28px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  flex-shrink: 0;
+}
+
+.panel-header-controls {
+  display: flex;
+  gap: 2px;
+}
+
+.layer-btn {
+  padding: 2px 6px;
+  border: none;
+  background: transparent;
+  color: #475569;
+  font-size: 9px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.15s;
+  letter-spacing: 0.5px;
+}
+
+.layer-btn:hover {
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.layer-btn.active {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.panel-content {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.panel-content .maplibregl-map {
+  position: absolute !important;
+  inset: 0;
+}
+
+/* Country Brief Sidebar Positioning */
+.country-brief {
+  position: fixed !important;
+  top: 48px;
+  right: 0;
+  width: 360px;
+  height: calc(100vh - 48px);
+  z-index: 200;
+  background: rgba(10, 12, 16, 0.98);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-y: auto;
+  animation: slideInRight 0.2s ease-out;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }

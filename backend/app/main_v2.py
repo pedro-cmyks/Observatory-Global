@@ -5,6 +5,13 @@ NO Docker orchestration
 NO custom aggregation code
 Direct async PostgreSQL queries to v2 schema
 Hot-reload enabled with uvicorn --reload
+
+SCHEMA SAFETY / TABLE MAPPINGS:
+- /api/v2/trends, /api/v2/compare -> use signals_country_hourly, signals_theme_hourly, signals_source_hourly
+- /api/v2/nodes (extended range)  -> uses country_daily_v2
+- /api/v2/nodes (short range)     -> uses country_hourly_v2
+- /api/v2/anomalies               -> uses country_baseline_stats
+(Note: These tables DO exist in the live DB and are populated)
 """
 
 from fastapi import FastAPI, Query, HTTPException
@@ -54,14 +61,260 @@ async def shutdown():
     """Close connection pool on shutdown."""
     await app.state.pool.close()
 
+@app.get("/api/v2/stats")
+async def get_system_stats():
+    """
+    System-wide database statistics.
+    Shows total signals, time range, and ingestion health.
+    """
+    async with app.state.pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT 
+                COUNT(*) AS total_signals,
+                MIN(timestamp) AS oldest_signal,
+                MAX(timestamp) AS newest_signal,
+                COUNT(*) FILTER (WHERE timestamp > NOW() - INTERVAL '1 hour') AS signals_1h,
+                COUNT(*) FILTER (WHERE timestamp > NOW() - INTERVAL '24 hours') AS signals_24h,
+                COUNT(*) FILTER (WHERE timestamp > NOW() - INTERVAL '7 days') AS signals_7d,
+                COUNT(DISTINCT country_code) AS unique_countries,
+                COUNT(DISTINCT source_name) AS unique_sources
+            FROM signals_v2
+        """)
+        
+        # Check recent ingestion health
+        recent = await conn.fetchval("""
+            SELECT COUNT(*) FROM signals_v2 
+            WHERE timestamp > NOW() - INTERVAL '2 hours'
+        """)
+        
+        ingestion_status = "healthy" if recent > 100 else "stalled" if recent == 0 else "low"
+        
+        return {
+            "database": {
+                "total_signals": row['total_signals'],
+                "signals_1h": row['signals_1h'],
+                "signals_24h": row['signals_24h'],
+                "signals_7d": row['signals_7d'],
+                "unique_countries": row['unique_countries'],
+                "unique_sources": row['unique_sources'],
+                "oldest_signal": row['oldest_signal'].isoformat() if row['oldest_signal'] else None,
+                "newest_signal": row['newest_signal'].isoformat() if row['newest_signal'] else None
+            },
+            "ingestion": {
+                "status": ingestion_status,
+                "signals_last_2h": recent
+            },
+            "retention": {
+                "policy": "90 days raw (configurable)",
+                "note": "Check data_lifecycle_config table for settings"
+            }
+        }
+
+
+@app.get("/api/v2/trends")
+async def get_trends(
+    entity_type: str = Query(..., description="Type: country, theme, source, or global"),
+    entity_value: Optional[str] = Query(None, description="Value for the entity type"),
+    days: int = Query(7, ge=1, le=90, description="Days of history"),
+    bucket: str = Query("1d", description="Bucket size: 1h or 1d")
+):
+    """
+    Return time series trend data from pre-computed hourly aggregates.
+    Much faster than querying raw signals for historical analysis.
+    """
+    async with app.state.pool.acquire() as conn:
+        # Force daily bucket for longer ranges
+        if bucket == "1h" and days > 7:
+            bucket = "1d"
+        
+        bucket_interval = "hour" if bucket == "1h" else "day"
+        
+        if entity_type == "global":
+            rows = await conn.fetch(f"""
+                SELECT 
+                    date_trunc('{bucket_interval}', bucket) AS time_bucket,
+                    SUM(signal_count) AS signal_count,
+                    ROUND(AVG(avg_sentiment)::numeric, 2) AS avg_sentiment,
+                    SUM(unique_sources) AS unique_sources
+                FROM signals_country_hourly
+                WHERE bucket > NOW() - ($1 * INTERVAL '1 day')
+                GROUP BY 1
+                ORDER BY 1 ASC
+            """, days)
+            
+        elif entity_type == "country":
+            if not entity_value:
+                return {"error": "entity_value required for country trends"}
+            rows = await conn.fetch(f"""
+                SELECT 
+                    date_trunc('{bucket_interval}', bucket) AS time_bucket,
+                    SUM(signal_count) AS signal_count,
+                    ROUND(AVG(avg_sentiment)::numeric, 2) AS avg_sentiment,
+                    SUM(unique_sources) AS unique_sources
+                FROM signals_country_hourly
+                WHERE country_code = $1
+                  AND bucket > NOW() - ($2 * INTERVAL '1 day')
+                GROUP BY 1
+                ORDER BY 1 ASC
+            """, entity_value.upper(), days)
+            
+        elif entity_type == "theme":
+            if not entity_value:
+                return {"error": "entity_value required for theme trends"}
+            rows = await conn.fetch(f"""
+                SELECT 
+                    date_trunc('{bucket_interval}', bucket) AS time_bucket,
+                    SUM(signal_count) AS signal_count,
+                    ROUND(AVG(avg_sentiment)::numeric, 2) AS avg_sentiment
+                FROM signals_theme_hourly
+                WHERE theme ILIKE $1
+                  AND bucket > NOW() - ($2 * INTERVAL '1 day')
+                GROUP BY 1
+                ORDER BY 1 ASC
+            """, f"%{entity_value}%", days)
+            
+        elif entity_type == "source":
+            if not entity_value:
+                return {"error": "entity_value required for source trends"}
+            rows = await conn.fetch(f"""
+                SELECT 
+                    date_trunc('{bucket_interval}', bucket) AS time_bucket,
+                    SUM(signal_count) AS signal_count,
+                    ROUND(AVG(avg_sentiment)::numeric, 2) AS avg_sentiment
+                FROM signals_source_hourly
+                WHERE source_name ILIKE $1
+                  AND bucket > NOW() - ($2 * INTERVAL '1 day')
+                GROUP BY 1
+                ORDER BY 1 ASC
+            """, f"%{entity_value}%", days)
+        else:
+            return {"error": f"Unknown entity_type: {entity_type}"}
+        
+        data_points = [
+            {
+                "time": row['time_bucket'].isoformat() if row['time_bucket'] else None,
+                "signal_count": row['signal_count'] or 0,
+                "avg_sentiment": float(row['avg_sentiment']) if row['avg_sentiment'] else 0,
+                "unique_sources": row.get('unique_sources')
+            }
+            for row in rows
+        ]
+        
+        return {
+            "entity": {"type": entity_type, "value": entity_value},
+            "window": {"days": days, "bucket": bucket},
+            "data": data_points,
+            "meta": {"points": len(data_points)}
+        }
+
+
+@app.get("/api/v2/compare")
+async def compare_periods(
+    entity_type: str = Query(..., description="Type: country, theme, or global"),
+    entity_value: Optional[str] = Query(None, description="Value for entity"),
+    window: str = Query("24h", description="Window size: 24h, 7d, etc"),
+    baseline: str = Query("previous", description="Baseline: previous or Nd_ago")
+):
+    """
+    Compare two time periods for trend analysis.
+    Returns signal count, sentiment, and percent change.
+    """
+    from datetime import timedelta
+    
+    async with app.state.pool.acquire() as conn:
+        # Parse window
+        if window.endswith('h'):
+            hours = int(window[:-1])
+        elif window.endswith('d'):
+            hours = int(window[:-1]) * 24
+        else:
+            hours = 24
+        
+        # Calculate time ranges using raw SQL
+        if entity_type == "global":
+            query = """
+                SELECT 
+                    SUM(signal_count) AS signals,
+                    AVG(avg_sentiment) AS sentiment
+                FROM signals_country_hourly
+                WHERE bucket >= NOW() - ($1 * INTERVAL '1 hour')
+                  AND bucket < NOW() - ($2 * INTERVAL '1 hour')
+            """
+            result_a = await conn.fetchrow(query, hours, 0)
+            result_b = await conn.fetchrow(query, hours * 2, hours)
+            
+        elif entity_type == "country":
+            query = """
+                SELECT 
+                    SUM(signal_count) AS signals,
+                    AVG(avg_sentiment) AS sentiment
+                FROM signals_country_hourly
+                WHERE country_code = $1
+                  AND bucket >= NOW() - ($2 * INTERVAL '1 hour')
+                  AND bucket < NOW() - ($3 * INTERVAL '1 hour')
+            """
+            result_a = await conn.fetchrow(query, entity_value.upper(), hours, 0)
+            result_b = await conn.fetchrow(query, entity_value.upper(), hours * 2, hours)
+            
+        elif entity_type == "theme":
+            query = """
+                SELECT 
+                    SUM(signal_count) AS signals,
+                    AVG(avg_sentiment) AS sentiment
+                FROM signals_theme_hourly
+                WHERE theme ILIKE $1
+                  AND bucket >= NOW() - ($2 * INTERVAL '1 hour')
+                  AND bucket < NOW() - ($3 * INTERVAL '1 hour')
+            """
+            result_a = await conn.fetchrow(query, f"%{entity_value}%", hours, 0)
+            result_b = await conn.fetchrow(query, f"%{entity_value}%", hours * 2, hours)
+        else:
+            return {"error": f"Unknown entity_type: {entity_type}"}
+        
+        signals_a = result_a['signals'] or 0 if result_a else 0
+        signals_b = result_b['signals'] or 0 if result_b else 0
+        tone_a = float(result_a['sentiment']) if result_a and result_a['sentiment'] else 0
+        tone_b = float(result_b['sentiment']) if result_b and result_b['sentiment'] else 0
+        
+        signals_delta = signals_a - signals_b
+        signals_pct = ((signals_a - signals_b) / signals_b * 100) if signals_b > 0 else 0
+        
+        return {
+            "entity": {"type": entity_type, "value": entity_value},
+            "period_a": {"label": f"Last {window}", "signals": signals_a, "avg_sentiment": round(tone_a, 2)},
+            "period_b": {"label": f"Previous {window}", "signals": signals_b, "avg_sentiment": round(tone_b, 2)},
+            "delta": {
+                "signals": signals_delta,
+                "signals_pct": round(signals_pct, 1),
+                "sentiment": round(tone_a - tone_b, 2)
+            }
+        }
+
 @app.get("/api/v2/nodes")
 async def get_nodes(
-    hours: int = Query(24, ge=1, le=168, description="Hours of data (1-168)"),
+    hours: int = Query(24, ge=1, le=168, description="Hours of data (1-168) - ignored if range is set"),
+    range: Optional[str] = Query(None, description="Time range: 24h, 1w, 1m, 3m, record"),
     focus_type: Optional[str] = Query(None, description="Focus type: theme, person, country, source"),
-    focus_value: Optional[str] = Query(None, description="Value to focus on")
+    focus_value: Optional[str] = Query(None, description="Value to focus on"),
+    limit: int = Query(100, ge=1, le=200, description="Max nodes to return (1-200, capped at 100 by default)")
 ):
-    """Get country nodes with aggregated stats. Supports focus filtering."""
+    """Get country nodes with aggregated stats. Supports focus filtering and extended time ranges."""
     async with app.state.pool.acquire() as conn:
+        
+        # Parse range parameter (takes precedence over hours)
+        use_daily_rollup = False
+        effective_hours = hours
+        if range:
+            range_map = {
+                "24h": 24,
+                "1w": 168,
+                "1m": 720,    # 30 days
+                "3m": 2160,   # 90 days
+                "record": 8760  # ~1 year, will use all data
+            }
+            effective_hours = range_map.get(range, hours)
+            # Use daily rollup for ranges > 168 hours (1 week)
+            use_daily_rollup = effective_hours > 168
         
         # If focus is active, query signals_v2 directly with filtering
         if focus_type and focus_value:
@@ -79,20 +332,23 @@ async def get_nodes(
                 focus_filter = "LOWER(source_name) LIKE LOWER($1)"
                 filter_value = f"%{focus_value}%"
             else:
-                return {"nodes": [], "count": 0, "hours": hours, "error": f"Unknown focus_type: {focus_type}"}
+                return {"nodes": [], "count": 0, "hours": effective_hours, "error": f"Unknown focus_type: {focus_type}"}
             
-            # Query signals_v2 with focus filter
+            # Query signals_v2 with focus filter (limit to 168 hours for focus queries)
+            query_hours = min(effective_hours, 168)
+            # Enforce server-side cap of 100 nodes
+            effective_limit = min(limit, 100)
             rows = await conn.fetch(f"""
                 WITH filtered AS (
-                    SELECT 
+                    SELECT
                         country_code,
                         sentiment,
                         source_name
                     FROM signals_v2
-                    WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+                    WHERE timestamp > NOW() - INTERVAL '{query_hours} hours'
                       AND {focus_filter}
                 )
-                SELECT 
+                SELECT
                     f.country_code,
                     c.name,
                     c.latitude,
@@ -105,11 +361,38 @@ async def get_nodes(
                 GROUP BY f.country_code, c.name, c.latitude, c.longitude
                 HAVING COUNT(*) > 0
                 ORDER BY total_signals DESC
+                LIMIT {effective_limit}
             """, filter_value)
-        else:
-            # Use materialized view for unfiltered queries (faster)
+        elif use_daily_rollup:
+            # Use daily rollup for extended ranges (1m, 3m, record)
+            days = effective_hours // 24
+            # Enforce server-side cap of 100 nodes
+            effective_limit = min(limit, 100)
             rows = await conn.fetch("""
-                SELECT 
+                SELECT
+                    d.country_code,
+                    c.name,
+                    c.latitude,
+                    c.longitude,
+                    SUM(d.signal_count) as total_signals,
+                    AVG(d.avg_sentiment) as sentiment,
+                    MAX(d.max_sentiment) as max_sentiment,
+                    MIN(d.min_sentiment) as min_sentiment,
+                    SUM(d.unique_sources) as unique_sources
+                FROM country_daily_v2 d
+                LEFT JOIN countries_v2 c ON d.country_code = c.code
+                WHERE d.day > CURRENT_DATE - INTERVAL '%s days'
+                GROUP BY d.country_code, c.name, c.latitude, c.longitude
+                HAVING SUM(d.signal_count) > 0
+                ORDER BY total_signals DESC
+                LIMIT %s
+            """ % (days, effective_limit))
+        else:
+            # Use hourly materialized view for short ranges (faster)
+            # Enforce server-side cap of 100 nodes
+            effective_limit = min(limit, 100)
+            rows = await conn.fetch("""
+                SELECT
                     h.country_code,
                     c.name,
                     c.latitude,
@@ -125,10 +408,11 @@ async def get_nodes(
                 GROUP BY h.country_code, c.name, c.latitude, c.longitude
                 HAVING SUM(h.signal_count) > 0
                 ORDER BY total_signals DESC
-            """ % hours)
+                LIMIT %s
+            """ % (effective_hours, effective_limit))
         
         if not rows:
-            return {"nodes": [], "count": 0, "hours": hours, "focus_type": focus_type, "focus_value": focus_value}
+            return {"nodes": [], "count": 0, "hours": effective_hours, "range": range, "focus_type": focus_type, "focus_value": focus_value}
         
         max_signals = max(float(r['total_signals']) for r in rows)
         
@@ -153,10 +437,12 @@ async def get_nodes(
             "nodes": nodes,
             "count": len(nodes),
             "totalSignals": total_signals,
-            "hours": hours,
+            "hours": effective_hours,
+            "range": range,
             "focus_type": focus_type,
             "focus_value": focus_value,
-            "is_filtered": focus_type is not None
+            "is_filtered": focus_type is not None,
+            "source": "daily_rollup" if use_daily_rollup else "hourly_rollup"
         }
 
 @app.get("/api/v2/anomalies")
@@ -183,6 +469,7 @@ async def get_anomalies(
                 )
                 SELECT 
                     c.country_code,
+                    co.name as country_name,
                     c.signal_count,
                     COALESCE(b.avg_daily_signals, 50) as baseline_avg,
                     ROUND((c.signal_count::numeric / NULLIF(COALESCE(b.avg_daily_signals, 50) / 24 * $1, 0)), 2) as multiplier,
@@ -190,6 +477,7 @@ async def get_anomalies(
                            NULLIF(COALESCE(b.stddev_daily_signals, 25) / 24 * $1, 0))::numeric, 2) as zscore
                 FROM current_counts c
                 LEFT JOIN country_baseline_stats b ON c.country_code = b.country_code
+                LEFT JOIN countries_v2 co ON c.country_code = co.code
                 WHERE (c.signal_count::numeric / NULLIF(COALESCE(b.avg_daily_signals, 50) / 24 * $1, 0)) > 1.2
                 ORDER BY zscore DESC NULLS LAST
                 LIMIT $2
@@ -214,6 +502,7 @@ async def get_anomalies(
                 
                 anomalies.append({
                     "country_code": row['country_code'],
+                    "country_name": row['country_name'] or row['country_code'],
                     "current_count": row['signal_count'],
                     "baseline_avg": float(row['baseline_avg']),
                     "multiplier": multiplier,
@@ -629,14 +918,20 @@ async def get_signals(
     country_code: str = Query(None),
     theme: str = Query(None),
     hours: int = Query(24, ge=1, le=168),
-    limit: int = Query(50, ge=1, le=200)
+    since: Optional[datetime] = Query(None, description="Fetch signals since this timestamp"),
+    limit: int = Query(50, ge=1, le=500)
 ):
-    """Get raw signals with filters."""
+    """Get raw signals with filters and velocity calculation."""
     async with app.state.pool.acquire() as conn:
         conditions = ["timestamp > NOW() - INTERVAL '%s hours'" % hours]
         params = []
         param_count = 0
         
+        if since:
+            param_count += 1
+            conditions.append(f"timestamp > ${param_count}")
+            params.append(since)
+            
         if country_code:
             param_count += 1
             conditions.append(f"country_code = ${param_count}")
@@ -651,10 +946,12 @@ async def get_signals(
         
         rows = await conn.fetch(f"""
             SELECT 
+                id,
                 timestamp,
                 country_code,
                 source_name,
                 source_url,
+                headline,
                 sentiment,
                 themes
             FROM signals_v2
@@ -663,14 +960,36 @@ async def get_signals(
             LIMIT {limit}
         """, *params)
         
+        # Calculate velocity
+        vel_last = await conn.fetchval(f"""
+            SELECT COUNT(*) FROM signals_v2 
+            WHERE {where_clause} AND timestamp > NOW() - INTERVAL '1 minute'
+        """, *params)
+        
+        vel_prev = await conn.fetchval(f"""
+            SELECT COUNT(*) FROM signals_v2 
+            WHERE {where_clause} AND timestamp > NOW() - INTERVAL '2 minutes' AND timestamp <= NOW() - INTERVAL '1 minute'
+        """, *params)
+        
+        velocity = vel_last or 0
+        velocity_delta = (vel_last or 0) - (vel_prev or 0)
+        velocity_pct = ((vel_last or 0) - (vel_prev or 0)) / (vel_prev or 1) * 100
+        
         return {
             "count": len(rows),
+            "velocity": {
+                "signals_per_minute": velocity,
+                "delta": velocity_delta,
+                "percentage_change": round(velocity_pct, 1)
+            },
             "signals": [
                 {
+                    "id": r['id'],
                     "timestamp": r['timestamp'].isoformat(),
                     "country": r['country_code'],
                     "source": r['source_name'],
                     "url": r['source_url'],
+                    "headline": r['headline'],
                     "sentiment": float(r['sentiment'] or 0),
                     "themes": r['themes'] or []
                 }
@@ -826,7 +1145,8 @@ async def get_crisis_summary(hours: int = Query(24, ge=1, le=168)):
 
 @app.get("/api/v2/flows")
 async def get_flows(
-    hours: int = Query(24, ge=1, le=168),
+    hours: int = Query(24, ge=1, le=168, description="Hours (ignored if range set)"),
+    range: Optional[str] = Query(None, description="Time range: 24h, 1w, 1m, 3m, record"),
     focus_type: Optional[str] = Query(None, description="Focus type: theme, person, country, source"),
     focus_value: Optional[str] = Query(None, description="Value to focus on")
 ):
@@ -837,6 +1157,19 @@ async def get_flows(
     """
     try:
         async with app.state.pool.acquire() as conn:
+            # Parse range parameter (takes precedence over hours)
+            effective_hours = hours
+            if range:
+                range_map = {
+                    "1h": 1, "6h": 6, "12h": 12, # Future proofing
+                    "24h": 24,
+                    "1w": 168,
+                    "1m": 720,    # 30 days
+                    "3m": 2160,   # 90 days
+                    "record": 8760  # ~1 year
+                }
+                effective_hours = range_map.get(range, hours)
+
             # Build focus filter if provided
             focus_filter = ""
             filter_value = None
@@ -863,7 +1196,7 @@ async def get_flows(
                             unnest(themes) as theme,
                             COUNT(*) as cnt
                         FROM signals_v2
-                        WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+                        WHERE timestamp > NOW() - INTERVAL '{effective_hours} hours'
                         AND themes IS NOT NULL AND array_length(themes, 1) > 0
                         {focus_filter}
                         GROUP BY country_code, theme
@@ -897,7 +1230,7 @@ async def get_flows(
                     FROM theme_counts
                     GROUP BY country_code
                     HAVING SUM(cnt) >= 5
-                """ % hours)
+                """ % effective_hours)
             
             # Get coordinates
             coords = {r['code']: (float(r['longitude']), float(r['latitude'])) 
@@ -1192,7 +1525,7 @@ async def get_quality_denylist():
 @app.get("/api/indicators/country/{country_code}")
 async def get_country_indicators(
     country_code: str,
-    hours: int = Query(default=24, ge=1, le=168)
+    hours: int = Query(default=720, ge=1, le=8760)
 ):
     """
     Get all trust indicators for a country in a time window.
