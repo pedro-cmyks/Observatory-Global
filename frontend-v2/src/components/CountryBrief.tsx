@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { IndicatorTooltip, VolumeIndicator } from './IndicatorTooltip';
 import './CountryBrief.css';
+import { getThemeLabel } from '../lib/themeLabels';
 
 // ThemeChange interface reserved for future use
 // interface ThemeChange {
@@ -127,13 +128,21 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 let topStories: Story[] = [];
                 if (signalsRes.ok) {
                     const signals = await signalsRes.json();
-                    topStories = (signals.signals || []).map((s: any) => ({
-                        title: s.themes?.[0] || 'News from ' + s.source,
-                        url: s.url,
-                        source: s.source,
-                        timestamp: s.timestamp,
-                        sentiment: s.sentiment
-                    }));
+                    topStories = (signals.signals || [])
+                        .filter((s: any) => s.url)
+                        .map((s: any) => {
+                            const rawTheme = s.themes?.[0] || '';
+                            const label = rawTheme ? getThemeLabel(rawTheme) : '';
+                            // If the label is identical to the raw code, it's unmapped — omit it
+                            const title = (label && label !== rawTheme) ? label : '';
+                            return {
+                                title,
+                                url: s.url,
+                                source: s.source,
+                                timestamp: s.timestamp,
+                                sentiment: s.sentiment
+                            };
+                        });
                 }
 
                 // Determine sentiment trend (simplified - would need historical data)
@@ -276,7 +285,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                             onClick={() => onThemeSelect?.(theme.name)}
                             title={`Click to explore ${theme.name}`}
                         >
-                            <span className="theme-name">{theme.name}</span>
+                            <span className="theme-name">{getThemeLabel(theme.name)}</span>
                             <span className="theme-count">{theme.count}</span>
                         </button>
                     ))}
@@ -309,7 +318,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                 rel="noopener noreferrer"
                                 className="story-item"
                             >
-                                <p className="story-title">{story.title}</p>
+                                {story.title && <p className="story-title">{story.title}</p>}
                                 <p className="story-meta">
                                     {story.source} • {new Date(story.timestamp).toLocaleTimeString()}
                                 </p>

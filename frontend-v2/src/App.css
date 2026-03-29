@@ -7,8 +7,8 @@
 .app {
   width: 100vw;
   height: 100vh;
-  background: #0a0a0a;
-  font-family: 'Inter', -apple-system, sans-serif;
+  background: var(--color-bg-primary, #0c0f18);
+  font-family: var(--font-sans, 'Inter', -apple-system, sans-serif);
   color: white;
   overflow: hidden;
 }
@@ -48,7 +48,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #e2e8f0;
+  color: var(--color-text-primary, #e2e8f0);
 }
 
 .command-bar-center {
@@ -69,7 +69,7 @@
 
 .command-bar-right .stats {
   font-size: 11px;
-  color: #64748b;
+  color: var(--color-text-muted, #64748b);
   white-space: nowrap;
   font-weight: 500;
   letter-spacing: 0.5px;
@@ -88,7 +88,7 @@
   padding: 4px 10px;
   border: none;
   background: transparent;
-  color: #64748b;
+  color: var(--color-text-muted, #64748b);
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -185,7 +185,7 @@
 
 .country-code {
   font-size: 12px;
-  color: #666;
+  color: var(--color-text-muted, #64748b);
   letter-spacing: 2px;
 }
 
@@ -201,7 +201,7 @@
 .narrative {
   font-size: 14px;
   line-height: 1.6;
-  color: #ddd;
+  color: var(--color-text-primary, #e2e8f0);
   margin: 0;
 }
 
@@ -233,7 +233,7 @@
 
 .metric-label {
   font-size: 10px;
-  color: #666;
+  color: var(--color-text-muted, #64748b);
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-top: 4px;
@@ -249,10 +249,40 @@
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 2px;
-  color: #555;
+  color: var(--color-text-muted, #64748b);
   margin-bottom: 12px;
   padding-bottom: 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Panel Error Boundary Fallbacks */
+.panel {
+  display: flex;
+  flex-direction: column;
+}
+
+/* CRISIS MODE SUBTLE STYLING overrides */
+.app.crisis-mode .command-bar {
+  background-color: rgba(30, 0, 0, 0.95);
+  border-bottom: 1px solid rgba(220, 38, 38, 0.4);
+}
+
+.app.crisis-mode .panel,
+.app.crisis-mode .map-panel {
+  border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+.crisis-button-pulse {
+  animation: crisis-btn-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+}
+
+@keyframes crisis-btn-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0);
+  }
 }
 
 /* Theme Chips */
@@ -292,12 +322,12 @@
 .theme-label {
   flex: 1;
   font-size: 13px;
-  color: #ccc;
+  color: var(--color-text-secondary, #94a3b8);
 }
 
 .theme-count {
   font-size: 12px;
-  color: #666;
+  color: var(--color-text-muted, #64748b);
   font-weight: 600;
 }
 
@@ -319,7 +349,7 @@
 
 .source-summary {
   font-size: 12px;
-  color: #888;
+  color: var(--color-text-secondary, #94a3b8);
   margin: 0 0 12px 0;
 }
 
@@ -334,7 +364,7 @@
   padding: 4px 8px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 4px;
-  color: #aaa;
+  color: var(--color-text-secondary, #94a3b8);
 }
 
 /* Map container */
@@ -356,7 +386,7 @@
   width: 100vw;
   margin-top: 48px;
   gap: 4px;
-  background: #060608;
+  background: var(--color-bg-primary, #0c0f18);
   padding: 4px;
 }
 
@@ -371,27 +401,68 @@
   min-height: 0;
 }
 
-.terminal-panel.radar { grid-area: radar; }
+/* PRIMARY — Globe: immersive, borderless feel */
+.terminal-panel.radar {
+  grid-area: radar;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+  box-shadow: 0 0 30px rgba(59, 130, 246, 0.04);
+}
+
+/* SECONDARY — Signal Stream, Narrative Threads */
 .terminal-panel.stream { grid-area: stream; }
 .terminal-panel.threads { grid-area: threads; }
-.terminal-panel.matrix { grid-area: matrix; }
-.terminal-panel.anomaly { grid-area: anomaly; }
-.terminal-panel.integrity { grid-area: integrity; }
 
+/* PLACEHOLDER */
+.terminal-panel.matrix { grid-area: matrix; }
+
+/* TERTIARY — Anomaly, Source Integrity: recessive */
+.terminal-panel.anomaly {
+  grid-area: anomaly;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  background: rgba(10, 12, 16, 0.95);
+}
+.terminal-panel.integrity {
+  grid-area: integrity;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  background: rgba(10, 12, 16, 0.95);
+}
+
+/* Panel headers — tiered hierarchy */
 .panel-header {
   height: 28px;
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.025);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 10px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--color-text-muted, #64748b);
   text-transform: uppercase;
-  letter-spacing: 1.2px;
+  letter-spacing: 0.8px;
   flex-shrink: 0;
+}
+
+/* PRIMARY: Globe — minimal header, map is the content */
+.terminal-panel.radar .panel-header {
+  height: 24px;
+  background: transparent;
+  border-bottom: none;
+  font-size: 10px;
+  color: rgba(100, 116, 139, 0.5);
+  letter-spacing: 1px;
+}
+
+/* TERTIARY: Anomaly, Integrity, Matrix — quieter headers */
+.terminal-panel.anomaly .panel-header,
+.terminal-panel.integrity .panel-header,
+.terminal-panel.matrix .panel-header {
+  font-size: 10px;
+  color: rgba(100, 116, 139, 0.6);
+  letter-spacing: 0.6px;
+  background: rgba(255, 255, 255, 0.015);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .panel-header-controls {
@@ -403,7 +474,7 @@
   padding: 2px 6px;
   border: none;
   background: transparent;
-  color: #475569;
+  color: var(--color-text-muted, #475569);
   font-size: 9px;
   font-weight: 600;
   cursor: pointer;

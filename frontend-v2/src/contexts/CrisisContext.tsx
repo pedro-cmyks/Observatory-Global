@@ -43,11 +43,30 @@ export const CrisisProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const fetchAnomalies = useCallback(async () => {
         setLoading(true)
         try {
-            const res = await fetch(`/api/v2/anomalies?hours=${hours}&limit=10`)
+            const res = await fetch(`/api/v2/anomalies?hours=${hours}&limit=20`)
             if (res.ok) {
                 const data = await res.json()
-                setAnomalies(data.anomalies || [])
-                setOverallSeverity(data.overall_severity || 'normal')
+                const raw: AnomalyData[] = data.anomalies || []
+
+                // Filter out statistical noise: require meaningful signal volume
+                // and genuine multiplier above baseline (not tiny countries with baseline ~1)
+                const meaningful = raw.filter(a =>
+                    a.current_count > 10 && a.multiplier > 5
+                )
+
+                // Recalculate severity from filtered set
+                const severity: CrisisState['overallSeverity'] = meaningful.length === 0
+                    ? 'normal'
+                    : meaningful.some(a => a.multiplier > 50)
+                        ? 'critical'
+                        : meaningful.some(a => a.multiplier > 20)
+                            ? 'elevated'
+                            : meaningful.some(a => a.multiplier > 10)
+                                ? 'notable'
+                                : 'normal'
+
+                setAnomalies(meaningful)
+                setOverallSeverity(severity)
             }
         } catch (e) {
             console.error('[CrisisContext] Fetch error:', e)

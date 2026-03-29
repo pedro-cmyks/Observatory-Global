@@ -79,34 +79,37 @@ export const SourceIntegrityPanel: React.FC = () => {
     return (
         <div className="source-panel-container">
             <div className="source-header">
-                <div>INFORISK: {filter.country ? filter.country : filter.theme ? filter.theme : 'GLOBAL AGGREGATE'}</div>
+                <div>SOURCE HEALTH: {filter.country ? filter.country : filter.theme ? filter.theme : 'GLOBAL AGGREGATE'}</div>
                 {isLoading && <div className="loading-spinner" />}
             </div>
 
             <div className="source-content">
                 <div className="metrics-grid">
                     <div className="metric-box">
-                        <div className="metric-label">DIVERSITY IDX</div>
-                        <div className={`metric-value ${diversityScore > 70 ? 'good' : diversityScore > 40 ? 'warn' : 'bad'}`}>
+                        <div className="metric-label">SOURCE DIVERSITY</div>
+                        <div className={`metric-value ${diversityScore >= 80 ? 'good' : diversityScore >= 50 ? 'warn' : 'bad'}`}>
                             {totalSignals === 0 ? '--' : diversityScore.toFixed(0)}
                         </div>
+                        <div className="metric-subtitle">how many different sources</div>
                     </div>
                     <div className="metric-box">
-                        <div className="metric-label">QUALITY SCORE</div>
-                        <div className={`metric-value ${qualityScore > 70 ? 'good' : qualityScore > 40 ? 'warn' : 'bad'}`}>
+                        <div className="metric-label">SOURCE QUALITY</div>
+                        <div className={`metric-value ${qualityScore >= 80 ? 'good' : qualityScore >= 50 ? 'warn' : 'bad'}`}>
                             {totalSignals === 0 ? '--' : qualityScore.toFixed(0)}
                         </div>
+                        <div className="metric-subtitle">reliability of active sources</div>
                     </div>
                     <div className="metric-box">
-                        <div className="metric-label">CONCENTRATION</div>
-                        <div className="metric-value">
+                        <div className="metric-label">TOP SOURCE SHARE</div>
+                        <div className={`metric-value ${concentration < 20 ? 'good' : concentration <= 40 ? 'warn' : 'bad'}`}>
                             {totalSignals === 0 ? '--' : `${concentration.toFixed(1)}%`}
                         </div>
+                        <div className="metric-subtitle">% of signals from single source</div>
                     </div>
                 </div>
 
                 <div className="distribution-section">
-                    <div className="section-title">TOP SOURCES BY VOLUME</div>
+                    <div className="section-title">MOST ACTIVE SOURCES</div>
                     <div className="bar-chart">
                         {topSources.length === 0 ? (
                             <div className="empty-state">No source data available</div>

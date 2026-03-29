@@ -49,9 +49,11 @@ export interface FocusDataMeta {
 interface FocusDataState {
     nodes: NodeData[]
     flows: FlowData[]
+    unfilteredFlows?: FlowData[]
     summary: FocusSummary | null
     meta: FocusDataMeta
     loading: boolean
+    isRefetching: boolean
     error: string | null
 }
 
@@ -73,9 +75,11 @@ const defaultMeta: FocusDataMeta = {
 const defaultState: FocusDataState = {
     nodes: [],
     flows: [],
+    unfilteredFlows: [],
     summary: null,
     meta: defaultMeta,
     loading: true,
+    isRefetching: false,
     error: null
 }
 
@@ -87,7 +91,7 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
     const [state, setState] = useState<FocusDataState>(defaultState)
 
     const fetchData = useCallback(async () => {
-        setState(prev => ({ ...prev, loading: true, error: null }))
+        setState(prev => ({ ...prev, loading: prev.nodes.length === 0, isRefetching: true, error: null }))
 
         try {
             // Build base params - use range for new API
@@ -141,9 +145,11 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 safeNodes = safeNodes.slice(0, MAX_NODES)
             }
 
-            setState({
+            setState(prev => ({
+                ...prev,
                 nodes: safeNodes,
                 flows: flowsData.flows || [],
+                unfilteredFlows: (!isActive) ? (flowsData.flows || []) : prev.unfilteredFlows,
                 summary: summaryData,
                 meta: {
                     totalCountries: nodesData.count || nodesData.nodes?.length || 0,
@@ -151,14 +157,16 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                     isFiltered: nodesData.is_filtered || false
                 },
                 loading: false,
+                isRefetching: false,
                 error: null
-            })
+            }))
 
         } catch (err) {
             console.error('[FocusDataProvider] Fetch error:', err)
             setState(prev => ({
                 ...prev,
                 loading: false,
+                isRefetching: false,
                 error: err instanceof Error ? err.message : 'Unknown error'
             }))
         }

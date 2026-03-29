@@ -17,9 +17,9 @@ interface Signal {
 }
 
 interface Velocity {
-    signals_per_minute: number
-    delta: number
-    percentage_change: number
+    signals_per_minute: number | string
+    delta: number | string
+    percentage_change: number | string
 }
 
 // Helper to determine sentiment color
@@ -33,6 +33,36 @@ const getSentimentClass = (sentiment: number) => {
 const formatTime = (ts: string) => {
     const d = new Date(ts)
     return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })
+}
+
+// Filter out malformed GDELT document IDs and garbage headlines
+const isValidHeadline = (title: string | null): boolean => {
+    if (!title) return false
+    // Filter out hex-looking strings (GDELT document IDs)
+    if (/^[A-Fa-f0-9\s\-]{20,}$/.test(title)) return false
+    // Filter out titles starting with "Article" followed by hex
+    if (/^Article\s+[A-Fa-f0-9]/i.test(title)) return false
+    // Filter out titles that are just numbers/codes
+    if (/^[\d\s\-_]{10,}$/.test(title)) return false
+    // Must have at least 3 real words
+    const words = title.split(' ').filter(w => w.length > 2)
+    return words.length >= 3
+}
+
+// Headline-based noise filter: deprioritize sports, entertainment, celebrity content
+const NOISE_HEADLINE_PATTERNS = [
+    /\b(NFL|NBA|MLB|NHL|FIFA|UFC|ESPN|MLS|PGA|NASCAR|Premier League|Champions League|World Series|Super Bowl|March Madness)\b/i,
+    /\b(touchdown|home run|batting average|playoff|halftime|quarterback|pitcher|goalkeeper|slam dunk|free throw)\b/i,
+    /\b(injury rehab|game recap|season preview|draft pick|free agent|trade deadline|spring training)\b/i,
+    /\b(Mahomes|LeBron|Brady|Kardashian|Swift|Bieber|Beyonce|Drake)\b/i,
+    /\b(Oscar|Grammy|Emmy|Tony Award|Billboard|box office|blockbuster|streaming debut)\b/i,
+    /\b(celebrity|Hollywood|red carpet|paparazzi|reality show|talent show)\b/i,
+    /\b(horoscope|zodiac|astrology|daily crossword|recipe of the day)\b/i,
+]
+
+const isGeopoliticallyRelevant = (signal: Signal): boolean => {
+    if (!signal.headline) return true
+    return !NOISE_HEADLINE_PATTERNS.some(re => re.test(signal.headline!))
 }
 
 export const SignalStream: React.FC = () => {
@@ -62,12 +92,35 @@ export const SignalStream: React.FC = () => {
                 const data = await res.json()
                 if (!isMounted) return
 
-                setSignals(data.signals || [])
-                setVelocity(data.velocity || null)
+                const fetchedSignals = data.signals || []
+                setSignals(fetchedSignals)
                 
-                if (data.signals && data.signals.length > 0) {
+                if (fetchedSignals.length > 0) {
+                    const now = new Date(fetchedSignals[0].timestamp).getTime()
+                    const last60s = fetchedSignals.filter((s: Signal) => now - new Date(s.timestamp).getTime() <= 60000).length
+                    const prev60s = fetchedSignals.filter((s: Signal) => {
+                        const age = now - new Date(s.timestamp).getTime()
+                        return age > 60000 && age <= 120000
+                    }).length
+                    
+                    const total2mins = fetchedSignals.filter((s: Signal) => now - new Date(s.timestamp).getTime() <= 120000).length
+                    
+                    if (total2mins < 2) {
+                        setVelocity({ signals_per_minute: '--', delta: '--', percentage_change: '--' })
+                    } else {
+                        const delta = last60s - prev60s
+                        const pct = prev60s > 0 ? (delta / prev60s) * 100 : 0
+                        setVelocity({
+                            signals_per_minute: last60s,
+                            delta: delta,
+                            percentage_change: pct
+                        })
+                    }
+                    
                     // Update latest timestamp
-                    latestTimestampRef.current = data.signals[0].timestamp
+                    latestTimestampRef.current = fetchedSignals[0].timestamp
+                } else {
+                    setVelocity({ signals_per_minute: '--', delta: '--', percentage_change: '--' })
                 }
             } catch (e) {
                 console.error('[SignalStream] Init fetch error', e)
@@ -142,10 +195,16 @@ export const SignalStream: React.FC = () => {
             {velocity && (
                 <div className="velocity-banner">
                     <span className="velocity-label">VELOCITY: </span>
-                    <span className="velocity-value">{velocity.signals_per_minute} sig/min</span>
-                    <span className={`velocity-delta ${velocity.delta >= 0 ? 'up' : 'down'}`}>
-                        {velocity.delta >= 0 ? '▲' : '▼'} {velocity.percentage_change >= 0 ? '+' : ''}{velocity.percentage_change}%
+                    <span className="velocity-value">
+                        {velocity.signals_per_minute === 0 && signals.length > 0 
+                            ? `~${signals.length} signals in view` 
+                            : `${velocity.signals_per_minute} ${velocity.signals_per_minute === '--' ? '' : 'sig/min'}`}
                     </span>
+                    {velocity.delta !== '--' && velocity.signals_per_minute !== 0 && (
+                        <span className={`velocity-delta ${Number(velocity.delta) >= 0 ? 'up' : 'down'}`}>
+                            {Number(velocity.delta) >= 0 ? '▲' : '▼'} {Number(velocity.percentage_change) >= 0 ? '+' : ''}{Number(velocity.percentage_change).toFixed(1)}%
+                        </span>
+                    )}
                 </div>
             )}
 
@@ -159,7 +218,7 @@ export const SignalStream: React.FC = () => {
                 {signals.length === 0 ? (
                     <div className="empty-state">No signals found</div>
                 ) : (
-                    signals.map(sig => (
+                    signals.filter(sig => isValidHeadline(sig.headline)).filter(isGeopoliticallyRelevant).map(sig => (
                         <div key={sig.id} className="signal-row">
                             <div className="signal-meta">
                                 <span className="time">{formatTime(sig.timestamp)}</span>

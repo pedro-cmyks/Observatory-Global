@@ -34,49 +34,49 @@ services:
       timeout: 5s
       retries: 5
 
-  # Backend API
-  api:
-    build:
-      context: ../backend
-      dockerfile: Dockerfile
-    container_name: observatory-api
-    environment:
-      - APP_ENV=${APP_ENV:-development}
-      - APP_PORT=${APP_PORT:-8000}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_DB=${POSTGRES_DB:-observatory}
-      - POSTGRES_USER=${POSTGRES_USER:-observatory}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
-      - GDELT_BASE=${GDELT_BASE:-http://data.gdeltproject.org/gdeltv2}
-      - MAPBOX_TOKEN=${MAPBOX_TOKEN:-}
-      - API_BASE_URL=${API_BASE_URL:-http://localhost:8000}
-    ports:
-      - "8080:8000"
-    depends_on:
-      redis:
-        condition: service_healthy
-    volumes:
-      - ../backend/app:/app/app
-    restart: no
-
-  # Frontend web application
-  web:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
-    container_name: observatory-web
-    environment:
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
-    ports:
-      - "5173:5173"
-    volumes:
-      - ../frontend/src:/app/src
-    depends_on:
-      - api
-    restart: unless-stopped
+#   # Backend API
+#   api:
+#     build:
+#       context: ../backend
+#       dockerfile: Dockerfile
+#     container_name: observatory-api
+#     environment:
+#       - APP_ENV=${APP_ENV:-development}
+#       - APP_PORT=${APP_PORT:-8000}
+#       - REDIS_HOST=redis
+#       - REDIS_PORT=6379
+#       - POSTGRES_HOST=postgres
+#       - POSTGRES_PORT=5432
+#       - POSTGRES_DB=${POSTGRES_DB:-observatory}
+#       - POSTGRES_USER=${POSTGRES_USER:-observatory}
+#       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+#       - GDELT_BASE=${GDELT_BASE:-http://data.gdeltproject.org/gdeltv2}
+#       - MAPBOX_TOKEN=${MAPBOX_TOKEN:-}
+#       - API_BASE_URL=${API_BASE_URL:-http://localhost:8000}
+#     ports:
+#       - "8080:8000"
+#     depends_on:
+#       redis:
+#         condition: service_healthy
+#     volumes:
+#       - ../backend/app:/app/app
+#     restart: no
+# 
+#   # Frontend web application
+#   web:
+#     build:
+#       context: ../frontend
+#       dockerfile: Dockerfile
+#     container_name: observatory-web
+#     environment:
+#       - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
+#     ports:
+#       - "5173:5173"
+#     volumes:
+#       - ../frontend/src:/app/src
+#     depends_on:
+#       - api
+#     restart: unless-stopped
 
 volumes:
   redis_data:

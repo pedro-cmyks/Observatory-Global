@@ -6,6 +6,7 @@ export const CrisisToggle: React.FC = () => {
 
     return (
         <button
+            className={enabled ? 'crisis-button-pulse' : ''}
             onClick={toggleCrisis}
             style={{
                 display: 'flex',

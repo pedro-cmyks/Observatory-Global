@@ -17,7 +17,7 @@ SCHEMA SAFETY / TABLE MAPPINGS:
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import asyncpg
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 import os
 import sys
@@ -292,8 +292,8 @@ async def compare_periods(
 
 @app.get("/api/v2/nodes")
 async def get_nodes(
-    hours: int = Query(24, ge=1, le=168, description="Hours of data (1-168) - ignored if range is set"),
-    range: Optional[str] = Query(None, description="Time range: 24h, 1w, 1m, 3m, record"),
+    hours: int = Query(24, ge=1, le=8760, description="Hours of data (1-168) - ignored if range is set"),
+    time_range: Optional[str] = Query(None, alias="range", description="Time range: 24h, 1w, 1m, 3m, record"),
     focus_type: Optional[str] = Query(None, description="Focus type: theme, person, country, source"),
     focus_value: Optional[str] = Query(None, description="Value to focus on"),
     limit: int = Query(100, ge=1, le=200, description="Max nodes to return (1-200, capped at 100 by default)")
@@ -304,7 +304,7 @@ async def get_nodes(
         # Parse range parameter (takes precedence over hours)
         use_daily_rollup = False
         effective_hours = hours
-        if range:
+        if time_range:
             range_map = {
                 "24h": 24,
                 "1w": 168,
@@ -312,7 +312,7 @@ async def get_nodes(
                 "3m": 2160,   # 90 days
                 "record": 8760  # ~1 year, will use all data
             }
-            effective_hours = range_map.get(range, hours)
+            effective_hours = range_map.get(time_range, hours)
             # Use daily rollup for ranges > 168 hours (1 week)
             use_daily_rollup = effective_hours > 168
         
@@ -412,7 +412,7 @@ async def get_nodes(
             """ % (effective_hours, effective_limit))
         
         if not rows:
-            return {"nodes": [], "count": 0, "hours": effective_hours, "range": range, "focus_type": focus_type, "focus_value": focus_value}
+            return {"nodes": [], "count": 0, "hours": effective_hours, "range": time_range, "focus_type": focus_type, "focus_value": focus_value}
         
         max_signals = max(float(r['total_signals']) for r in rows)
         
@@ -438,7 +438,7 @@ async def get_nodes(
             "count": len(nodes),
             "totalSignals": total_signals,
             "hours": effective_hours,
-            "range": range,
+            "range": time_range,
             "focus_type": focus_type,
             "focus_value": focus_value,
             "is_filtered": focus_type is not None,
@@ -447,7 +447,7 @@ async def get_nodes(
 
 @app.get("/api/v2/anomalies")
 async def get_anomalies(
-    hours: int = Query(24, ge=1, le=168),
+    hours: int = Query(24, ge=1, le=8760),
     limit: int = Query(10, ge=1, le=20)
 ):
     """
@@ -538,7 +538,7 @@ async def get_anomalies(
         return {"anomalies": [], "overall_severity": "normal", "error": str(e)}
 
 @app.get("/api/v2/heatmap")
-async def get_heatmap(hours: int = Query(24, ge=1, le=168)):
+async def get_heatmap(hours: int = Query(24, ge=1, le=8760)):
     """Deprecated - heatmap data now comes from nodes with glow effect."""
     return {
         "points": [],
@@ -617,7 +617,7 @@ async def search(
 async def get_focus_data(
     focus_type: str = Query(..., description="Type: theme, person, country, source"),
     value: str = Query(..., description="Value to focus on"),
-    hours: int = Query(24, ge=1, le=168)
+    hours: int = Query(24, ge=1, le=8760)
 ):
     """
     Get filtered data for Focus Mode.
@@ -750,7 +750,7 @@ async def get_focus_data(
 async def get_theme_details(
     theme_code: str,
     country_code: str = Query(None, description="Filter by country"),
-    hours: int = Query(24, ge=1, le=168)
+    hours: int = Query(24, ge=1, le=8760)
 ):
     """Get detailed information about a theme including rich context."""
     try:
@@ -917,7 +917,7 @@ async def get_theme_details(
 async def get_signals(
     country_code: str = Query(None),
     theme: str = Query(None),
-    hours: int = Query(24, ge=1, le=168),
+    hours: int = Query(24, ge=1, le=8760),
     since: Optional[datetime] = Query(None, description="Fetch signals since this timestamp"),
     limit: int = Query(50, ge=1, le=500)
 ):
@@ -999,7 +999,7 @@ async def get_signals(
 
 @app.get("/api/v3/crisis/signals")
 async def get_crisis_signals(
-    hours: int = Query(24, ge=1, le=168),
+    hours: int = Query(24, ge=1, le=8760),
     country: str = Query(None),
     severity: str = Query(None),
     event_type: str = Query(None),
@@ -1063,7 +1063,7 @@ async def get_crisis_signals(
         }
 
 @app.get("/api/v3/crisis/summary")
-async def get_crisis_summary(hours: int = Query(24, ge=1, le=168)):
+async def get_crisis_summary(hours: int = Query(24, ge=1, le=8760)):
     """Get summary statistics for crisis signals."""
     async with app.state.pool.acquire() as conn:
         # Overall stats
@@ -1145,8 +1145,8 @@ async def get_crisis_summary(hours: int = Query(24, ge=1, le=168)):
 
 @app.get("/api/v2/flows")
 async def get_flows(
-    hours: int = Query(24, ge=1, le=168, description="Hours (ignored if range set)"),
-    range: Optional[str] = Query(None, description="Time range: 24h, 1w, 1m, 3m, record"),
+    hours: int = Query(24, ge=1, le=8760, description="Hours (ignored if range set)"),
+    time_range: Optional[str] = Query(None, alias="range", description="Time range: 24h, 1w, 1m, 3m, record"),
     focus_type: Optional[str] = Query(None, description="Focus type: theme, person, country, source"),
     focus_value: Optional[str] = Query(None, description="Value to focus on")
 ):
@@ -1159,7 +1159,7 @@ async def get_flows(
         async with app.state.pool.acquire() as conn:
             # Parse range parameter (takes precedence over hours)
             effective_hours = hours
-            if range:
+            if time_range:
                 range_map = {
                     "1h": 1, "6h": 6, "12h": 12, # Future proofing
                     "24h": 24,
@@ -1168,7 +1168,7 @@ async def get_flows(
                     "3m": 2160,   # 90 days
                     "record": 8760  # ~1 year
                 }
-                effective_hours = range_map.get(range, hours)
+                effective_hours = range_map.get(time_range, hours)
 
             # Build focus filter if provided
             focus_filter = ""
@@ -1291,7 +1291,7 @@ async def get_flows(
         return {"flows": [], "total": 0, "error": str(e)}
 
 @app.get("/api/v2/country/{country_code}")
-async def get_country_detail(country_code: str, hours: int = Query(24, ge=1, le=168)):
+async def get_country_detail(country_code: str, hours: int = Query(24, ge=1, le=8760)):
     """Get detailed information for a specific country."""
     country_code = country_code.upper()
     
@@ -1347,8 +1347,15 @@ async def get_country_detail(country_code: str, hours: int = Query(24, ge=1, le=
             LIMIT 10
         """ % hours, country_code)
         
+        # Determine country name
+        country_record = await conn.fetchrow(
+            "SELECT name FROM countries_v2 WHERE code = $1", country_code
+        )
+        country_name = country_record['name'] if country_record else country_code
+        
         return {
             "countryCode": country_code,
+            "name": country_name,
             "totalSignals": int(stats['total_signals'] or 0),
             "sentiment": float(stats['sentiment'] or 0) / 10,
             "maxSentiment": float(stats['max_sentiment'] or 0) / 10,
@@ -1359,7 +1366,7 @@ async def get_country_detail(country_code: str, hours: int = Query(24, ge=1, le=
         }
 
 @app.get("/api/v2/briefing")
-async def get_briefing(hours: int = Query(24, ge=1, le=168)):
+async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
     """Get morning briefing summary."""
     async with app.state.pool.acquire() as conn:
         # Top countries by activity
@@ -1683,6 +1690,270 @@ async def health():
             "error_count_last_15m": 0
         }
 
+
+@app.get("/api/v2/narratives")
+async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Query(5, ge=1, le=20)):
+    """Get top narrative threads with spread and velocity data."""
+    from app.core.gdelt_taxonomy import get_theme_label
+    import traceback
+    
+    try:
+        async with app.state.pool.acquire() as conn:
+            # Count total active countries in this window for spread_pct denominator
+            total_active = await conn.fetchval("""
+                SELECT COUNT(DISTINCT country_code)
+                FROM signals_v2
+                WHERE timestamp > NOW() - INTERVAL '%s hours'
+            """ % hours)
+            total_active = max(total_active or 1, 1)
+            
+            # Get top N themes by signal count
+            top_themes = await conn.fetch("""
+                SELECT 
+                    unnest(themes) as theme,
+                    COUNT(*) as signal_count,
+                    COUNT(DISTINCT country_code) as country_count,
+                    COUNT(DISTINCT source_name) as source_count,
+                    MIN(timestamp) as first_seen
+                FROM signals_v2
+                WHERE timestamp > NOW() - INTERVAL '%s hours'
+                AND themes IS NOT NULL
+                GROUP BY theme
+                ORDER BY signal_count DESC
+                LIMIT %s
+            """ % (hours, limit))
+            
+            narratives = []
+            for t in top_themes:
+                theme_code = t['theme']
+                
+                # Velocity: last hour vs previous hour
+                last_hour = await conn.fetchval("""
+                    SELECT COUNT(*)
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - INTERVAL '1 hour'
+                    AND themes IS NOT NULL
+                    AND $1 = ANY(themes)
+                """, theme_code)
+                last_hour = last_hour or 0
+                
+                prev_hour = await conn.fetchval("""
+                    SELECT COUNT(*)
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - INTERVAL '2 hours'
+                    AND timestamp <= NOW() - INTERVAL '1 hour'
+                    AND themes IS NOT NULL
+                    AND $1 = ANY(themes)
+                """, theme_code)
+                prev_hour = prev_hour or 0
+                
+                # Determine trend
+                if prev_hour > 0 and last_hour > prev_hour * 1.2:
+                    trend = "accelerating"
+                elif prev_hour > 0 and last_hour < prev_hour * 0.8:
+                    trend = "fading"
+                else:
+                    trend = "stable"
+                
+                # Hourly timeline (last 24 data points or less)
+                timeline_hours = min(hours, 24)
+                timeline = await conn.fetch("""
+                    SELECT 
+                        date_trunc('hour', timestamp) as hour,
+                        COUNT(*) as count
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - INTERVAL '%s hours'
+                    AND themes IS NOT NULL
+                    AND $1 = ANY(themes)
+                    GROUP BY hour
+                    ORDER BY hour ASC
+                """ % timeline_hours, theme_code)
+                
+                hourly_timeline = [
+                    {"hour": r['hour'].strftime('%H:%M'), "count": int(r['count'])}
+                    for r in timeline
+                ]
+                
+                # Top 3 countries
+                top_countries_rows = await conn.fetch("""
+                    SELECT country_code, COUNT(*) as cnt
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - INTERVAL '%s hours'
+                    AND themes IS NOT NULL
+                    AND $1 = ANY(themes)
+                    GROUP BY country_code
+                    ORDER BY cnt DESC
+                    LIMIT 3
+                """ % hours, theme_code)
+                top_countries = [r['country_code'] for r in top_countries_rows]
+                
+                spread_pct = round((t['country_count'] / total_active) * 100, 1)
+                
+                narratives.append({
+                    "theme_code": theme_code,
+                    "label": get_theme_label(theme_code),
+                    "signal_count": int(t['signal_count']),
+                    "country_count": int(t['country_count']),
+                    "source_count": int(t['source_count']),
+                    "first_seen": t['first_seen'].isoformat() if t['first_seen'] else None,
+                    "velocity": int(last_hour),
+                    "trend": trend,
+                    "spread_pct": spread_pct,
+                    "hourly_timeline": hourly_timeline,
+                    "top_countries": top_countries
+                })
+            
+            return {
+                "narratives": narratives,
+                "hours": hours,
+                "total_active_countries": int(total_active),
+                "generated_at": datetime.now(timezone.utc).isoformat()
+            }
+    except Exception as e:
+        traceback.print_exc()
+        return {"narratives": [], "hours": hours, "error": str(e)}
+
+@app.get("/api/v2/correlation")
+async def get_correlation(
+    mode: str = Query("country", description="mode: 'country' or 'theme'"),
+    hours: int = Query(24, ge=1, le=8760),
+    limit: int = Query(12, ge=2, le=30)
+):
+    """Get N*N correlation matrix (Jaccard similarity) for countries or themes."""
+    from app.core.gdelt_taxonomy import get_theme_label
+    import traceback
+    
+    try:
+        async with app.state.pool.acquire() as conn:
+            if mode == "theme":
+                # 1. Top themes by signal count
+                top_themes = await conn.fetch("""
+                    SELECT unnest(themes) as theme, COUNT(*) as cnt
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - INTERVAL '%s hours'
+                    AND themes IS NOT NULL
+                    GROUP BY theme
+                    ORDER BY cnt DESC
+                    LIMIT %s
+                """ % (hours, limit))
+                
+                theme_codes = [r['theme'] for r in top_themes]
+                theme_counts = {r['theme']: r['cnt'] for r in top_themes}
+                
+                if not theme_codes:
+                    return {"mode": mode, "entities": [], "entity_names": {}, "matrix": [], "hours": hours}
+                
+                # 2. Get exact intersection counts via LATERAL-like self cross
+                intersections = await conn.fetch("""
+                    SELECT t1.theme as theme1, t2.theme as theme2, COUNT(*) as intersection_count
+                    FROM signals_v2 s, unnest(s.themes) as t1(theme), unnest(s.themes) as t2(theme)
+                    WHERE s.timestamp > NOW() - INTERVAL '%s hours'
+                    AND t1.theme = ANY($1) AND t2.theme = ANY($1)
+                    GROUP BY t1.theme, t2.theme
+                """ % hours, theme_codes)
+                
+                intersect_map = {}
+                for r in intersections:
+                    t1, t2 = r['theme1'], r['theme2']
+                    if t1 not in intersect_map: intersect_map[t1] = {}
+                    intersect_map[t1][t2] = r['intersection_count']
+                
+                # 3. Build Matrix
+                N = len(theme_codes)
+                matrix = [[0.0 for _ in range(N)] for _ in range(N)]
+                entity_names = {t: get_theme_label(t) for t in theme_codes}
+                
+                for i in range(N):
+                    t1 = theme_codes[i]
+                    c1 = theme_counts[t1]
+                    for j in range(i, N):
+                        t2 = theme_codes[j]
+                        if i == j:
+                            matrix[i][j] = 1.0
+                        else:
+                            c2 = theme_counts[t2]
+                            int_cnt = intersect_map.get(t1, {}).get(t2, 0)
+                            union = c1 + c2 - int_cnt
+                            jaccard = round((int_cnt / union) if union > 0 else 0.0, 3)
+                            matrix[i][j] = jaccard
+                            matrix[j][i] = jaccard
+                
+                return {
+                    "mode": mode,
+                    "entities": theme_codes,
+                    "entity_names": entity_names,
+                    "matrix": matrix,
+                    "hours": hours
+                }
+                
+            else: # mode == "country"
+                # 1. Top countries by signal count
+                top_countries = await conn.fetch("""
+                    SELECT country_code, COUNT(*) as cnt
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - INTERVAL '%s hours'
+                    GROUP BY country_code
+                    ORDER BY cnt DESC
+                    LIMIT %s
+                """ % (hours, limit))
+                
+                country_codes = [r['country_code'] for r in top_countries]
+                
+                if not country_codes:
+                    return {"mode": mode, "entities": [], "entity_names": {}, "matrix": [], "hours": hours}
+                
+                # Resolve proper names
+                names_res = await conn.fetch("""
+                    SELECT code, name FROM countries_v2 WHERE code = ANY($1)
+                """, country_codes)
+                entity_names = {r['code']: (r['name'] or r['code']) for r in names_res}
+                for code in country_codes:
+                    if code not in entity_names:
+                        entity_names[code] = code
+                
+                # 2. Get themes per country
+                country_themes_rows = await conn.fetch("""
+                    SELECT country_code, unnest(themes) as theme
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - INTERVAL '%s hours'
+                    AND country_code = ANY($1)
+                    AND themes IS NOT NULL
+                """ % hours, country_codes)
+                
+                country_themes = {c: set() for c in country_codes}
+                for r in country_themes_rows:
+                    country_themes[r['country_code']].add(r['theme'])
+                
+                # 3. Build Matrix
+                N = len(country_codes)
+                matrix = [[0.0 for _ in range(N)] for _ in range(N)]
+                
+                for i in range(N):
+                    c1 = country_codes[i]
+                    t1_set = country_themes[c1]
+                    for j in range(i, N):
+                        c2 = country_codes[j]
+                        if i == j:
+                            matrix[i][j] = 1.0
+                        else:
+                            t2_set = country_themes[c2]
+                            intersection = t1_set & t2_set
+                            union = t1_set | t2_set
+                            jaccard = round((len(intersection) / len(union)) if len(union) > 0 else 0.0, 3)
+                            matrix[i][j] = jaccard
+                            matrix[j][i] = jaccard
+                
+                return {
+                    "mode": mode,
+                    "entities": country_codes,
+                    "entity_names": entity_names,
+                    "matrix": matrix,
+                    "hours": hours
+                }
+                
+    except Exception as e:
+        traceback.print_exc()
+        return {"mode": mode, "error": str(e)}
 
 @app.get("/")
 async def root():

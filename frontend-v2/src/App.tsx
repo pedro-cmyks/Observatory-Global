@@ -2,9 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react'
 import MapGL from 'react-map-gl/maplibre'
 import { DeckGL } from '@deck.gl/react'
 import { ScatterplotLayer, ArcLayer } from '@deck.gl/layers'
+import { HeatmapLayer } from '@deck.gl/aggregation-layers'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import './App.css'
-import { calculateNodeRadius, getThemedArcColors, getIntensityColor } from './lib/mapUtils'
+import { calculateNodeRadius, getThemedArcColors } from './lib/mapUtils'
 import { createTerminatorLayer } from './layers/TerminatorLayer'
 import { useCrisis } from './contexts/CrisisContext'
 import { useTheme } from './contexts/ThemeContext'
@@ -17,18 +18,17 @@ import { FocusDataProvider, useFocusData } from './contexts/FocusDataContext'
 import { FocusIndicator } from './components/FocusIndicator'
 import { MapTooltip, type TooltipData } from './components/MapTooltip'
 import { CrisisProvider } from './contexts/CrisisContext'
-import { CrisisOverlay } from './components/CrisisOverlay'
-import { CrisisToggle } from './components/CrisisToggle'
 import { SettingsPanel } from './components/SettingsPanel'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
 import { Globe, ClipboardList } from 'lucide-react'
 
 // Terminal Panels
 import { SignalStream } from './components/SignalStream'
-import { NarrativeThreadsPlaceholder } from './components/NarrativeThreadsPlaceholder'
-import { CorrelationMatrixPlaceholder } from './components/CorrelationMatrixPlaceholder'
+import { NarrativeThreads } from './components/NarrativeThreads'
+import { CorrelationMatrix } from './components/CorrelationMatrix'
 import { AnomalyPanel } from './components/AnomalyPanel'
 import { SourceIntegrityPanel } from './components/SourceIntegrityPanel'
+import { PanelErrorBoundary } from './components/PanelErrorBoundary'
 
 
 
@@ -55,6 +55,7 @@ interface Flow {
 
 interface CountryDetail {
   countryCode: string
+  name?: string
   totalSignals: number
   sentiment: number
   themes: { name: string; count: number }[]
@@ -105,6 +106,7 @@ class MapErrorBoundary extends React.Component<{ children: React.ReactNode }, Ma
 function AppContent() {
   // State
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null)
   const [selectedTheme, setSelectedTheme] = useState<{ theme: string, country?: string } | null>(null)
   const [showBriefing, setShowBriefing] = useState(false)
   // const [timeWindow, setTimeWindow] = useState(24) // Replaced by context
@@ -127,7 +129,7 @@ function AppContent() {
   // Settings toggles
   const [showTerminator, setShowTerminator] = useState(false)
   const [sizeBoost, setSizeBoost] = useState(false)
-  const [showFlows, setShowFlows] = useState(true)
+  const [showFlows, setShowFlows] = useState(false)
 
   // Fetch country detail
   const fetchCountryDetail = async (countryCode: string) => {
@@ -141,13 +143,20 @@ function AppContent() {
     }
   }
 
+  // Click handlers
+  const handleCountryClick = (countryCode: string) => {
+    setSelectedCountryCode(countryCode)
+    setShowFlows(true)
+    fetchCountryDetail(countryCode)
+  }
+
   // Theme selection handlers
   const handleThemeSelect = (theme: string, country?: string) => {
     setSelectedTheme({ theme, country })
   }
 
   // Focus-aware data from provider - auto-refetches when focus/range changes
-  const { nodes, flows, loading, refetch, timeRange, setTimeRange } = useFocusData()
+  const { nodes, flows, unfilteredFlows, loading, refetch, timeRange, setTimeRange } = useFocusData()
 
   // Modal Stack Logic (Escape key)
   useEffect(() => {
@@ -157,8 +166,10 @@ function AppContent() {
           setShowBriefing(false)
         } else if (selectedTheme) {
           setSelectedTheme(null)
-        } else if (selectedCountry) {
+        } else if (selectedCountry || selectedCountryCode) {
           setSelectedCountry(null)
+          setSelectedCountryCode(null)
+          setShowFlows(false)
         }
       }
     }
@@ -174,12 +185,25 @@ function AppContent() {
 
   // Zoom-adaptive flow limiting to reduce visual clutter
   const visibleFlows = useMemo(() => {
+    // Determine the base set of flows:
+    // If we have a country selected, use the unfiltered map-level flows to ensure
+    // we see all connections for that country, even if nodes are focus-filtered.
+    let baseFlows = selectedCountryCode ? (unfilteredFlows || flows) : flows;
+    let filteredFlows = [...baseFlows];
+
+    if (selectedCountryCode) {
+      filteredFlows = filteredFlows.filter(f => 
+        f.sourceCountry === selectedCountryCode || 
+        f.targetCountry === selectedCountryCode
+      );
+    }
+
     const zoom = viewState?.zoom ?? 1.5
     const maxFlows = zoom < 2 ? 25 : zoom < 4 ? 40 : 60
-    return [...flows]
+    return filteredFlows
       .sort((a, b) => (b.strength || 0) - (a.strength || 0))
       .slice(0, maxFlows)
-  }, [flows, viewState?.zoom])
+  }, [flows, unfilteredFlows, viewState?.zoom, selectedCountryCode])
 
   // Get crisis state for terminator auto-hide and anomalies
   const { enabled: crisisEnabled, anomalies } = useCrisis()
@@ -208,15 +232,40 @@ function AppContent() {
     // Terminator layer (bottommost)
     terminatorLayer,
 
+    // God view heatmap layer
+    showHeatmap && new HeatmapLayer({
+      id: 'signal-heatmap',
+      data: enhancedNodes,
+      getPosition: (d: any) => [d.lon, d.lat],
+      getWeight: (d: any) => Math.log(Math.log(d.signalCount + 2) + 1),
+      radiusPixels: 140,
+      intensity: 0.8,
+      threshold: 0.05,
+      colorRange: [
+        [10, 10, 40, 0],          // transparent
+        [20, 30, 80, 80],         // deep blue (very quiet)
+        [30, 60, 120, 140],       // medium blue (low activity)
+        [60, 100, 140, 170],      // blue-teal (moderate-low)
+        [180, 130, 40, 200],      // warm gold (elevated)
+        [210, 70, 20, 220],       // burnt orange (high)
+        [230, 30, 10, 240],       // red-orange (critical)
+      ],
+      visible: showHeatmap,
+      updateTriggers: {
+        getWeight: [timeRange],
+      }
+    }),
+
     // Flow arcs (bottom layer) - using zoom-limited flows with THEME-AWARE COLORS
-    showFlows && new ArcLayer({
+    (showFlows || !!selectedCountryCode) && new ArcLayer({
       id: 'flows',
       data: visibleFlows,
       getSourcePosition: (d: Flow) => d.source,
       getTargetPosition: (d: Flow) => d.target,
       getSourceColor: (d: Flow) => getThemedArcColors(themeId, d.strength).source,
       getTargetColor: (d: Flow) => getThemedArcColors(themeId, d.strength).target,
-      getWidth: (d: Flow) => Math.max(1, Math.log(d.strength) * 2),
+      getWidth: () => 1.5,
+      opacity: 0.4,
       greatCircle: true,
       pickable: true,
       onHover: (info: { object?: Flow; x: number; y: number }) => {
@@ -233,53 +282,7 @@ function AppContent() {
       },
     }),
 
-    // Outer glow layer (creates halo effect)
-    showHeatmap && new ScatterplotLayer({
-      id: 'nodes-glow-outer',
-      data: enhancedNodes,
-      getPosition: (d: any) => [d.lon, d.lat],
-      getRadius: (d: any) => calculateNodeRadius(d.signalCount, sizeBoost) * 5,
-      getFillColor: (d: any) => {
-        const color = getIntensityColor(d.anomalyMultiplier, d.sentiment)
-        return [color[0], color[1], color[2], 30]
-      },
-      radiusMinPixels: 20,
-      radiusMaxPixels: 200,
-      pickable: false,
-      updateTriggers: { getRadius: [sizeBoost], getFillColor: [anomalies] },
-    }),
-
-    // Middle glow layer
-    showHeatmap && new ScatterplotLayer({
-      id: 'nodes-glow-middle',
-      data: enhancedNodes,
-      getPosition: (d: any) => [d.lon, d.lat],
-      getRadius: (d: any) => calculateNodeRadius(d.signalCount, sizeBoost) * 3,
-      getFillColor: (d: any) => {
-        const color = getIntensityColor(d.anomalyMultiplier, d.sentiment)
-        return [color[0], color[1], color[2], 60]
-      },
-      radiusMinPixels: 15,
-      radiusMaxPixels: 140,
-      pickable: false,
-      updateTriggers: { getRadius: [sizeBoost], getFillColor: [anomalies] },
-    }),
-
-    // Inner glow layer
-    showHeatmap && new ScatterplotLayer({
-      id: 'nodes-glow-inner',
-      data: enhancedNodes,
-      getPosition: (d: any) => [d.lon, d.lat],
-      getRadius: (d: any) => calculateNodeRadius(d.signalCount, sizeBoost) * 2,
-      getFillColor: (d: any) => {
-        const color = getIntensityColor(d.anomalyMultiplier, d.sentiment)
-        return [color[0], color[1], color[2], 100]
-      },
-      radiusMinPixels: 10,
-      radiusMaxPixels: 100,
-      pickable: false,
-      updateTriggers: { getRadius: [sizeBoost], getFillColor: [anomalies] },
-    }),
+    // Glow layers removed per visual clarity update
 
     // Anomaly Pulse Ring
     new ScatterplotLayer({
@@ -303,9 +306,9 @@ function AppContent() {
       data: enhancedNodes,
       getPosition: (d: any) => [d.lon, d.lat],
       getRadius: (d: any) => calculateNodeRadius(d.signalCount, sizeBoost),
-      getFillColor: (d: any) => getIntensityColor(d.anomalyMultiplier, d.sentiment),
-      getLineColor: [255, 255, 255, 200],
-      lineWidthMinPixels: 1,
+      getFillColor: () => [220, 230, 255, 220],
+      getLineColor: [255, 255, 255, 180],
+      lineWidthMinPixels: 1.5,
       stroked: true,
       pickable: true,
       onHover: (info: { object?: Node; x: number; y: number }) => {
@@ -317,19 +320,17 @@ function AppContent() {
       },
       onClick: (info: { object?: Node }) => {
         if (info.object) {
-          fetchCountryDetail(info.object.id)
+          handleCountryClick(info.object.id)
           setFocus('country', info.object.id, info.object.name || info.object.id)
         }
       },
-      radiusMinPixels: 6,
-      radiusMaxPixels: 60,
+      radiusMinPixels: 4,
+      radiusMaxPixels: 14,
       updateTriggers: {
-        getRadius: [sizeBoost],
-        getFillColor: [anomalies]
+        getRadius: [sizeBoost]
       },
       transitions: {
-        getRadius: 300,
-        getFillColor: 300
+        getRadius: 300
       }
     })
   ].filter(Boolean)
@@ -338,20 +339,17 @@ function AppContent() {
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
 
   return (
-    <div className="app">
-      {/* Crisis Mode Overlay */}
-      <CrisisOverlay />
-
+    <div className={`app ${crisisEnabled ? 'crisis-mode' : ''}`}>
       {/* Command Bar */}
       <header className="command-bar">
         <div className="command-bar-left">
-          <h1 className="brand"><Globe size={16} /> OBS.GLOBAL</h1>
+          <h1 className="brand"><Globe size={16} /> ATLAS</h1>
           <FocusIndicator />
         </div>
         <div className="command-bar-center">
           <SearchBar
             onThemeSelect={handleThemeSelect}
-            onCountrySelect={(code) => fetchCountryDetail(code)}
+            onCountrySelect={(code) => handleCountryClick(code)}
             onSourceSelect={(source) => setFocus('source', source, source)}
           />
           <div className="time-controls">
@@ -370,7 +368,7 @@ function AppContent() {
           <div className="stats">
             {loading ? '...' : `${nodes.length} ctry • ${totalSignals.toLocaleString()} sig`}
           </div>
-          <CrisisToggle />
+          {/* <CrisisToggle /> - Hidden per visual clarity update */}
           <button className="cmd-btn" onClick={() => {
             setShowBriefing(true)
             setSelectedTheme(null)
@@ -390,7 +388,7 @@ function AppContent() {
         {/* Panel 1: GLOBAL RADAR */}
         <div className="terminal-panel radar">
           <div className="panel-header">
-            <span>GLOBAL RADAR</span>
+            <span>GLOBE</span>
             <div className="panel-header-controls">
               <button
                 className={`layer-btn ${showHeatmap ? 'active' : ''}`}
@@ -419,7 +417,16 @@ function AppContent() {
                 onViewStateChange={({ viewState: vs }) => vs && setViewState(vs as typeof INITIAL_VIEW)}
                 controller={true}
                 layers={mapReady ? layers : []}
-                getTooltip={({ object }) => object && `${object.name}: ${object.signalCount} signals`}
+                getTooltip={({ object }) => {
+                  if (!object) return null
+                  if (selectedCountryCode) {
+                    const isConnected = visibleFlows.some(f => f.sourceCountry === object.id || f.targetCountry === object.id)
+                    if (isConnected && object.id !== selectedCountryCode) {
+                      return `${object.name} — click to explore`
+                    }
+                  }
+                  return `${object.name}: ${object.signalCount} signals`
+                }}
               >
                 <MapGL
                   mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
@@ -435,7 +442,9 @@ function AppContent() {
         <div className="terminal-panel stream">
           <div className="panel-header">SIGNAL STREAM</div>
           <div className="panel-content">
-            <SignalStream />
+            <PanelErrorBoundary panelName="SIGNAL STREAM">
+              <SignalStream />
+            </PanelErrorBoundary>
           </div>
         </div>
 
@@ -443,7 +452,9 @@ function AppContent() {
         <div className="terminal-panel threads">
           <div className="panel-header">NARRATIVE THREADS</div>
           <div className="panel-content">
-            <NarrativeThreadsPlaceholder />
+            <PanelErrorBoundary panelName="NARRATIVE THREADS">
+              <NarrativeThreads />
+            </PanelErrorBoundary>
           </div>
         </div>
 
@@ -451,7 +462,9 @@ function AppContent() {
         <div className="terminal-panel matrix">
           <div className="panel-header">CORRELATION MATRIX</div>
           <div className="panel-content">
-            <CorrelationMatrixPlaceholder />
+            <PanelErrorBoundary panelName="CORRELATION MATRIX">
+              <CorrelationMatrix />
+            </PanelErrorBoundary>
           </div>
         </div>
 
@@ -459,7 +472,9 @@ function AppContent() {
         <div className="terminal-panel anomaly">
           <div className="panel-header">ANOMALY ALERT</div>
           <div className="panel-content">
-            <AnomalyPanel />
+            <PanelErrorBoundary panelName="ANOMALY ALERT">
+              <AnomalyPanel />
+            </PanelErrorBoundary>
           </div>
         </div>
 
@@ -467,7 +482,9 @@ function AppContent() {
         <div className="terminal-panel integrity">
           <div className="panel-header">SOURCE INTEGRITY</div>
           <div className="panel-content">
-            <SourceIntegrityPanel />
+            <PanelErrorBoundary panelName="SOURCE INTEGRITY">
+              <SourceIntegrityPanel />
+            </PanelErrorBoundary>
           </div>
         </div>
       </div>
@@ -506,9 +523,13 @@ function AppContent() {
       {selectedCountry && (
         <CountryBrief
           countryCode={selectedCountry.countryCode}
-          countryName={selectedCountry.countryCode}
+          countryName={selectedCountry.name || selectedCountry.countryCode}
           timeWindow={timeRangeToHours(timeRange)}
-          onClose={() => setSelectedCountry(null)}
+          onClose={() => {
+            setSelectedCountry(null)
+            setSelectedCountryCode(null)
+            setShowFlows(false)
+          }}
           onThemeSelect={(theme) => handleThemeSelect(theme)}
         />
       )}
