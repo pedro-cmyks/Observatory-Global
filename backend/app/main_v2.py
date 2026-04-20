@@ -21,9 +21,24 @@ from datetime import datetime, timezone
 from typing import Optional
 import os
 import sys
+import httpx
+import asyncio
+import time
 
 # Add parent directory to path for indicator imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from urllib.parse import urlparse
+
+def extract_domain(source_url: str) -> str:
+    if not source_url:
+        return "Unknown"
+    try:
+        parsed = urlparse(source_url if source_url.startswith('http') else f'http://{source_url}')
+        domain = parsed.netloc or parsed.path
+        return domain.replace('www.', '').split('/')[0] or source_url[:30]
+    except:
+        return source_url[:30]
 
 # Import indicator modules
 try:
@@ -742,7 +757,7 @@ async def get_focus_data(
             "related_topics": related_topics,
             "top_sources": [
                 {
-                    "source": r['source_name'],
+                    "source": extract_domain(r['source_name']),
                     "count": int(r['count']),
                     "avg_sentiment": float(r['avg_sentiment'] or 0)
                 }
@@ -872,7 +887,62 @@ async def get_theme_details(
                 {"name": p[0], "count": p[1]}
                 for p in sorted(person_counts.items(), key=lambda x: x[1], reverse=True)[:10]
             ]
-            
+
+            # --- Country Framing: how different countries cover the same theme ---
+            framing_rows = await conn.fetch(f"""
+                SELECT
+                    s.country_code,
+                    co.name as country_name,
+                    COUNT(*) as signal_count,
+                    ROUND(AVG(s.sentiment)::numeric, 2) as avg_sentiment
+                FROM signals_v2 s
+                LEFT JOIN countries_v2 co ON s.country_code = co.code
+                WHERE $1 = ANY(s.themes)
+                  AND s.timestamp > NOW() - INTERVAL '{hours} hours'
+                  AND s.country_code IS NOT NULL
+                GROUP BY s.country_code, co.name
+                ORDER BY signal_count DESC
+                LIMIT 6
+            """, theme_code.upper())
+
+            country_framing = []
+            for fr in framing_rows:
+                cc = fr['country_code']
+                # Get top 3 co-occurring sub-themes for this country
+                sub_rows = await conn.fetch(f"""
+                    SELECT sub_theme, COUNT(*) as cnt
+                    FROM (
+                        SELECT unnest(themes) as sub_theme
+                        FROM signals_v2
+                        WHERE $1 = ANY(themes)
+                          AND country_code = $2
+                          AND timestamp > NOW() - INTERVAL '{hours} hours'
+                    ) t
+                    WHERE sub_theme != $1
+                    GROUP BY sub_theme
+                    ORDER BY cnt DESC
+                    LIMIT 3
+                """, theme_code.upper(), cc)
+
+                avg_s = float(fr['avg_sentiment'] or 0)
+                if avg_s > 0.5:
+                    sentiment_label = "positive"
+                elif avg_s > -0.5:
+                    sentiment_label = "neutral"
+                elif avg_s > -2.0:
+                    sentiment_label = "negative"
+                else:
+                    sentiment_label = "very_negative"
+
+                country_framing.append({
+                    "country_code": cc,
+                    "country_name": fr['country_name'] or cc,
+                    "signal_count": int(fr['signal_count']),
+                    "avg_sentiment": avg_s,
+                    "top_sub_themes": [r['sub_theme'] for r in sub_rows],
+                    "sentiment_label": sentiment_label
+                })
+
             return {
                 "theme": theme_code,
                 "country": country_code,
@@ -897,14 +967,15 @@ async def get_theme_details(
                 ],
                 "relatedThemes": related_themes,
                 "topSources": [
-                    {"name": r['source_name'], "count": int(r['count']), "sentiment": float(r['avg_sentiment'] or 0)}
+                    {"name": extract_domain(r['source_name']), "count": int(r['count']), "sentiment": float(r['avg_sentiment'] or 0)}
                     for r in top_sources
                 ],
                 "topPersons": top_persons,
                 "timeline": [
                     {"hour": t['hour'].isoformat(), "count": int(t['count']), "sentiment": float(t['avg_sentiment'] or 0)}
                     for t in timeline
-                ]
+                ],
+                "countryFraming": country_framing
             }
     except Exception as e:
         print(f"Error in theme endpoint: {e}")
@@ -922,6 +993,7 @@ async def get_theme_details(
             "topSources": [],
             "topPersons": [],
             "timeline": [],
+            "countryFraming": [],
             "error": str(e)
         }
 
@@ -1490,7 +1562,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 for r in top_themes
             ],
             "top_sources": [
-                {"source": r['source_name'], "count": r['count']}
+                {"source": extract_domain(r['source_name']), "count": r['count']}
                 for r in top_sources
             ]
         }
@@ -1564,7 +1636,7 @@ async def get_country_indicators(
             AND source_name IS NOT NULL
         """ % hours, country_code.upper())
         
-        domains = [r['source_name'] for r in source_rows]
+        domains = [extract_domain(r['source_name']) for r in source_rows]
         
         if not domains:
             return {
@@ -1982,3 +2054,79 @@ async def root():
         },
         "docs": "/docs"
     }
+
+# Global cache for aircraft tracking (60 second TTL)
+AIRCRAFT_CACHE = {
+    "timestamp": 0,
+    "data": []
+}
+
+@app.get("/api/v2/aircraft")
+async def get_aircraft_positions():
+    """
+    Proxy to OpenSky Network for live aircraft positions.
+    Limits to top 2000 aircraft sorted by altitude.
+    Uses a 60-second limit on polls, with 30m graceful degradation on failure.
+    """
+    global AIRCRAFT_CACHE
+    current_time = time.time()
+    
+    # Poll OpenSky max once every 60 seconds
+    if current_time - AIRCRAFT_CACHE["timestamp"] < 60 and AIRCRAFT_CACHE["data"]:
+        age_mins = round((current_time - AIRCRAFT_CACHE["timestamp"]) / 60)
+        return {"aircraft": AIRCRAFT_CACHE["data"], "cached": True, "cache_age_minutes": age_mins}
+        
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get("https://opensky-network.org/api/states/all", timeout=5.0)
+            if resp.status_code != 200:
+                raise Exception(f"OpenSky API failed with status {resp.status_code}")
+                
+            data = resp.json()
+            states = data.get("states", [])
+            
+            aircraft_list = []
+            for state in states:
+                # State format: [0: icao24, 1: callsign, 2: origin_country, 5: longitude, 6: latitude, 
+                # 7: baro_altitude, 8: on_ground, 10: true_track]
+                lon = state[5]
+                lat = state[6]
+                on_ground = state[8]
+                alt = state[7]
+                
+                # Filter ground aircraft and invalid positions
+                if on_ground or lon is None or lat is None or alt is None:
+                    continue
+                    
+                aircraft_list.append({
+                    "icao24": state[0],
+                    "callsign": state[1].strip() if state[1] else "Unknown",
+                    "origin_country": state[2],
+                    "longitude": lon,
+                    "latitude": lat,
+                    "baro_altitude": alt,
+                    "true_track": state[10]
+                })
+            
+            # Sort by altitude descending and limit to top 2000
+            aircraft_list.sort(key=lambda x: x["baro_altitude"], reverse=True)
+            top_aircraft = aircraft_list[:2000]
+            
+            AIRCRAFT_CACHE["timestamp"] = current_time
+            AIRCRAFT_CACHE["data"] = top_aircraft
+            return {"aircraft": top_aircraft, "cached": False, "message": "Live"}
+            
+    except Exception as e:
+        # On error, fallback to cache if it's less than 30 mins old
+        cache_age_seconds = current_time - AIRCRAFT_CACHE["timestamp"]
+        if AIRCRAFT_CACHE["data"] and cache_age_seconds < 1800:
+            age_mins = round(cache_age_seconds / 60)
+            return {
+                "aircraft": AIRCRAFT_CACHE["data"], 
+                "cached": True, 
+                "cache_age_minutes": age_mins,
+                "message": f"Using cached data ({age_mins}m old) due to API error"
+            }
+            
+        # Empty cache or >30 mins old: clean fallback empty array, no fake data
+        return {"aircraft": [], "cached": False, "message": "Aircraft data temporarily unavailable"}

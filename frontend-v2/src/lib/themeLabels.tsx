@@ -103,43 +103,62 @@ export const themeLabels: Record<string, string> = {
 export function getThemeLabel(code: string): string {
     if (!code) return 'Unknown'
 
-    // Direct match
     const upper = code.toUpperCase()
+    
+    // Check explicit mapping first
     if (themeLabels[upper]) return themeLabels[upper]
     if (themeLabels[code]) return themeLabels[code]
 
-    // Try removing prefixes and cleaning
+    // Pattern-based fallback
+    if (upper.startsWith('WORLDLANGUAGES_')) {
+        return upper.replace('WORLDLANGUAGES_', '') + ' Media' // Already title-cased later
+    }
+    
     let cleaned = upper
-        .replace(/^WB_\d+_/, '')           // Remove "WB_621_"
-        .replace(/^EPU_/, '')               // Remove "EPU_"
-        .replace(/^TAX_/, '')               // Remove "TAX_"
-        .replace(/^SOC_/, '')               // Remove "SOC_"
-        .replace(/^USPEC_/, 'US ')          // "USPEC_" → "US "
-        .replace(/^CRISISLEX_/, '')         // Remove "CRISISLEX_"
-        .replace(/^UNGP_/, '')              // Remove "UNGP_"
-        .replace(/^GENERAL_/, '')           // Remove "GENERAL_"
-        .replace(/^MEDIA/, '')              // Remove "MEDIA"
-        .replace(/^ENV_/, '')               // Remove "ENV_"
-        .replace(/^ECON_/, 'Economic ')     // "ECON_" → "Economic "
-        .replace(/^GOV_/, 'Government ')    // "GOV_" → "Government "
-        .replace(/^TECH_/, 'Technology ')   // "TECH_" → "Technology "
-        .replace(/^ENERGY_/, 'Energy ')     // "ENERGY_" → "Energy "
+
+    if (cleaned.startsWith('TAX_FNCACT_')) {
+        cleaned = cleaned.replace('TAX_FNCACT_', '') + ' (Official)'
+    } else if (cleaned.startsWith('TAX_ETHNICITY_')) {
+        cleaned = cleaned.replace('TAX_ETHNICITY_', '') + ' Ethnicity'
+    } else if (cleaned.startsWith('WB_')) {
+        // e.g. WB_2432_FRAGILITY_CO -> remove digits
+        cleaned = cleaned.replace(/WB_\d+_/, 'World Bank: ')
+        cleaned = cleaned.replace('WB_', 'World Bank: ')
+    } else if (cleaned.startsWith('UNGP_')) {
+        cleaned = cleaned.replace('UNGP_', 'UN: ')
+    } else if (cleaned.startsWith('EPU_')) {
+        cleaned = cleaned.replace('EPU_', 'Economic Policy: ')
+    } else if (cleaned.startsWith('USPEC_')) {
+        cleaned = cleaned.replace('USPEC_', 'Policy: ')
+    } else {
+        cleaned = cleaned
+            .replace(/^TAX_/, '')               // Remove "TAX_"
+            .replace(/^SOC_/, '')               // Remove "SOC_"
+            .replace(/^CRISISLEX_/, '')         // Remove "CRISISLEX_"
+            .replace(/^GENERAL_/, '')           // Remove "GENERAL_"
+            .replace(/^MEDIA/, '')              // Remove "MEDIA"
+            .replace(/^ENV_/, '')               // Remove "ENV_"
+            .replace(/^ECON_/, 'Economic: ')
+            .replace(/^GOV_/, 'Government: ')
+            .replace(/^TECH_/, 'Technology: ')
+            .replace(/^ENERGY_/, 'Energy: ')
+    }
+
+    cleaned = cleaned
         .replace(/_AND_/g, ' & ')           // "_AND_" → " & "
         .replace(/_/g, ' ')                 // Underscores → spaces
-        .replace(/(\d+)/g, '')              // Remove numbers
         .replace(/\s+/g, ' ')               // Multiple spaces → single
         .trim()
 
-    // If very short or empty, return original
-    if (cleaned.length < 3) return code
-
-    // Title case
+    // Title case (preserve Acronyms at start if needed, but simple toLowerCase works for now)
     return cleaned
         .toLowerCase()
         .split(' ')
         .filter(w => w.length > 0)
         .map(w => w.charAt(0).toUpperCase() + w.slice(1))
         .join(' ')
+        .replace('Un: ', 'UN: ')
+        .replace('Us: ', 'US: ')
 }
 
 // Theme icon function - returns Lucide icon component

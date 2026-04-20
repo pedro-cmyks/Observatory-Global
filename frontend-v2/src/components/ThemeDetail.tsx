@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
+import { useFocus } from '../contexts/FocusContext'
 import './ThemeDetail.css'
 
 interface ThemeData {
@@ -21,6 +22,14 @@ interface ThemeData {
     topSources: Array<{ name: string; count: number; sentiment: number }>
     topPersons: Array<{ name: string; count: number }>
     timeline: Array<{ hour: string; count: number; sentiment: number }>
+    countryFraming?: Array<{
+        country_code: string
+        country_name: string
+        signal_count: number
+        avg_sentiment: number
+        top_sub_themes: string[]
+        sentiment_label: string
+    }>
 }
 
 interface ThemeDetailProps {
@@ -35,6 +44,7 @@ export function ThemeDetail({ theme, country, hours, onClose, onThemeSelect }: T
     const [data, setData] = useState<ThemeData | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const { setCountry } = useFocus()
 
     useEffect(() => {
         const fetchData = async () => {
@@ -65,6 +75,26 @@ export function ThemeDetail({ theme, country, hours, onClose, onThemeSelect }: T
     const formatTime = (iso: string) => {
         const d = new Date(iso)
         return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    }
+
+    // Country code to flag emoji
+    const getFlag = (code: string): string => {
+        if (!code || code.length !== 2) return '🌐'
+        const codePoints = code.toUpperCase().split('').map(c => 0x1F1E6 + c.charCodeAt(0) - 65)
+        return String.fromCodePoint(...codePoints)
+    }
+
+    // Sentiment bar color for framing cards
+    const getFramingSentimentColor = (s: number): string => {
+        if (s > 0.5) return '#4ade80'
+        if (s > -0.5) return '#94a3b8'
+        if (s > -2.0) return '#f59e0b'
+        return '#ef4444'
+    }
+
+    // Sentiment bar width (normalized to 0-100 from -10 to +10 scale)
+    const getSentimentBarWidth = (s: number): number => {
+        return Math.min(100, Math.max(5, ((s + 10) / 20) * 100))
     }
 
     return (
@@ -108,6 +138,52 @@ export function ThemeDetail({ theme, country, hours, onClose, onThemeSelect }: T
                                 <span className="theme-stat-label">Sources</span>
                             </div>
                         </div>
+
+                        {/* HOW IT'S COVERED — Framing Analysis */}
+                        {data.countryFraming && data.countryFraming.length > 0 && (
+                            <div className="theme-section framing-section">
+                                <h3>How It's Covered</h3>
+                                <p className="framing-subtitle">How different countries frame this topic</p>
+                                <div className="framing-grid">
+                                    {data.countryFraming.map(cf => (
+                                        <div
+                                            key={cf.country_code}
+                                            className="framing-card"
+                                            onClick={() => {
+                                                setCountry(cf.country_code, 'stream')
+                                            }}
+                                        >
+                                            <div className="framing-card-header">
+                                                <span className="framing-flag">{getFlag(cf.country_code)}</span>
+                                                <span className="framing-country-name">{cf.country_name}</span>
+                                            </div>
+                                            <div className="framing-stats">
+                                                <span className="framing-signal-count">{cf.signal_count.toLocaleString()} signals</span>
+                                                <span className="framing-tone" style={{ color: getFramingSentimentColor(cf.avg_sentiment) }}>
+                                                    {cf.avg_sentiment > 0 ? '+' : ''}{cf.avg_sentiment.toFixed(1)} tone
+                                                </span>
+                                            </div>
+                                            <div className="framing-sentiment-bar">
+                                                <div
+                                                    className="framing-sentiment-fill"
+                                                    style={{
+                                                        width: `${getSentimentBarWidth(cf.avg_sentiment)}%`,
+                                                        backgroundColor: getFramingSentimentColor(cf.avg_sentiment)
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="framing-sub-themes">
+                                                {cf.top_sub_themes.map(st => (
+                                                    <span key={st} className="framing-chip">
+                                                        {getThemeIcon(st)} {getThemeLabel(st)}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Timeline */}
                         {data.timeline.length > 0 && (
@@ -227,6 +303,7 @@ export function ThemeDetail({ theme, country, hours, onClose, onThemeSelect }: T
                                 ))}
                             </div>
                         </div>
+
                     </>
                 )}
             </div>

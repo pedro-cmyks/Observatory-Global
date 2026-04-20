@@ -98,7 +98,7 @@ class MapErrorBoundary extends React.Component<{ children: React.ReactNode }, Ma
 function buildLayers({
   enhancedNodes, visibleFlows, showNodes, showFlows,
   isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator,
-  selectedCountryCode, timeRange
+  selectedCountryCode, timeRange, showAircraft, aircraftData
 }: any) {
   const terminatorLayer = createTerminatorLayer({
     visible: showTerminator && !crisisEnabled,
@@ -111,6 +111,19 @@ function buildLayers({
 
     // Country heat fill + blur is handled by MapLibre native layers (not deck.gl)
     // See handleMapLoad() and useEffect for feature-state updates
+
+    // Aircraft Layer
+    showAircraft && new ScatterplotLayer({
+      id: `aircraft-${isGlobe ? 'globe' : 'flat'}`,
+      data: aircraftData,
+      getPosition: (d: any) => [d.longitude, d.latitude, d.baro_altitude || 0],
+      getFillColor: [255, 200, 50, 200],
+      getRadius: 2,
+      radiusUnits: 'pixels',
+      radiusMinPixels: 2,
+      radiusMaxPixels: 4,
+      pickable: true,
+    }),
 
     // Flow arcs
     (showFlows || !!selectedCountryCode) && new ArcLayer({
@@ -200,7 +213,14 @@ function AppContent() {
   }
 
   // Focus hook for click-to-focus
-  const { setFocus } = useFocus()
+  const { setFocus, focus } = useFocus()
+
+  // Sync Global Focus to CountrySlide-over
+  useEffect(() => {
+    if (focus.type === 'country' && focus.value && focus.value !== selectedCountryCode) {
+      handleCountryClick(focus.value)
+    }
+  }, [focus.type, focus.value, selectedCountryCode])
 
   // Theme for layer styling
   const { themeId } = useTheme()
@@ -208,6 +228,28 @@ function AppContent() {
   // Layer visibility
   const [showHeatmap, setShowHeatmap] = useState(true)
   const [showNodes, setShowNodes] = useState(true)
+  const [showAircraft, setShowAircraft] = useState(false)
+  const [aircraftData, setAircraftData] = useState([])
+
+  // Fetch Aircraft data
+  useEffect(() => {
+    if (!showAircraft) return
+    const fetchAircraft = async () => {
+      try {
+        const res = await fetch('/api/v2/aircraft')
+        if (res.ok) {
+          const data = await res.json()
+          setAircraftData(data.aircraft || [])
+        }
+      } catch (err) {
+        console.error('Failed to fetch aircraft:', err)
+        setAircraftData([])
+      }
+    }
+    fetchAircraft()
+    const interval = setInterval(fetchAircraft, 15000)
+    return () => clearInterval(interval)
+  }, [showAircraft])
 
   // Map readiness gate — prevents DeckGL from crashing before WebGL context is ready
   const [mapReady, setMapReady] = useState(false)
@@ -376,11 +418,11 @@ function AppContent() {
     const builtLayers = buildLayers({
       enhancedNodes, visibleFlows, showNodes, showFlows,
       isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator,
-      selectedCountryCode, timeRange
+      selectedCountryCode, timeRange, showAircraft, aircraftData
     })
     console.log('[DEBUG] buildLayers output count:', builtLayers.length, { mapReady, enhancedNodesCount: enhancedNodes.length })
     return builtLayers
-  }, [enhancedNodes, visibleFlows, showNodes, showFlows, isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator, selectedCountryCode, timeRange])
+  }, [enhancedNodes, visibleFlows, showNodes, showFlows, isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator, selectedCountryCode, timeRange, showAircraft, aircraftData])
 
   // Total signals for stats
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
@@ -462,6 +504,12 @@ function AppContent() {
               >
                 NODES
               </button>
+              <button
+                className={`layer-btn ${showAircraft ? 'active' : ''}`}
+                onClick={() => setShowAircraft(!showAircraft)}
+              >
+                PLANE
+              </button>
             </div>
           </div>
           <div className="panel-content">
@@ -491,7 +539,7 @@ function AppContent() {
                   map.addSource('country-heat', {
                     type: 'geojson',
                     data: '/data/countries.geojson',
-                    promoteId: 'ISO3166-1-Alpha-2'
+                    promoteId: 'ISO_A2'
                   })
 
                   // Layer 1: Country shape fill
@@ -556,6 +604,9 @@ function AppContent() {
                     map.on('sourcedata', onSourceData)
                   }
 
+                  // Fallback: if sourcedata event doesn't fire within 3s, force ready
+                  setTimeout(() => setHeatSourceReady(true), 3000)
+
                   setMapReady(true)
                 }}
               >
@@ -566,6 +617,11 @@ function AppContent() {
                     if (!object) return null
                     if (layer?.id?.startsWith('flows')) return null
                     if (layer?.id?.startsWith('nodes-core')) return null
+                    if (layer?.id?.startsWith('aircraft')) {
+                      const altFt = object.baro_altitude ? Math.round(object.baro_altitude / 0.3048) : 0
+                      const hdg = object.true_track !== null ? `HDG: ${Math.round(object.true_track)}°` : ''
+                      return `Flight ${object.callsign} (${object.origin_country})\nAlt: ${object.baro_altitude || 0}m / ${altFt}ft\n${hdg}`
+                    }
                     if (selectedCountryCode) {
                       const isConnected = visibleFlows.some(f => f.sourceCountry === object.id || f.targetCountry === object.id)
                       if (isConnected && object.id !== selectedCountryCode) {

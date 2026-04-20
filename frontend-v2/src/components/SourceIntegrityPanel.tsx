@@ -60,8 +60,8 @@ export const SourceIntegrityPanel: React.FC = () => {
     } else if (globalData) {
         totalSignals = globalData.stats.total_signals
         uniqueSources = globalData.stats.sources
-        // Note: API returns source_name for /briefing, but source for /focus
-        topSources = globalData.top_sources.map(s => ({ name: (s as any).source_name || s.source_name, count: s.count }))
+        // Note: API might return `source` instead of `source_name`
+        topSources = globalData.top_sources.map(s => ({ name: (s as any).source_name || (s as any).source, count: s.count }))
     }
 
     const concentration = totalSignals > 0 && topSources.length > 0
@@ -75,6 +75,8 @@ export const SourceIntegrityPanel: React.FC = () => {
 
     // Quality proxy: inverse of concentration (highly concentrated = lower quality/higher bias risk)
     const qualityScore = Math.max(0, 100 - concentration * 1.5)
+
+
 
     return (
         <div className="source-panel-container">
@@ -118,7 +120,9 @@ export const SourceIntegrityPanel: React.FC = () => {
                                 const pct = (s.count / totalSignals) * 100
                                 return (
                                     <div key={idx} className="bar-row">
-                                        <div className="source-name">{s.name}</div>
+                                        <div className="source-name" title={s.name || 'Unknown'}>
+                                            {(s.name || 'Unknown').length > 30 ? (s.name || '').substring(0, 30) + '...' : (s.name || 'Unknown')}
+                                        </div>
                                         <div className="bar-track">
                                             <div className="bar-fill" style={{ width: `${pct}%` }}></div>
                                         </div>
