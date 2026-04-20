@@ -296,7 +296,8 @@ async def get_nodes(
     time_range: Optional[str] = Query(None, alias="range", description="Time range: 24h, 1w, 1m, 3m, record"),
     focus_type: Optional[str] = Query(None, description="Focus type: theme, person, country, source"),
     focus_value: Optional[str] = Query(None, description="Value to focus on"),
-    limit: int = Query(100, ge=1, le=200, description="Max nodes to return (1-200, capped at 100 by default)")
+    limit: int = Query(80, ge=1, le=200, description="Max nodes to return"),
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to return")
 ):
     """Get country nodes with aggregated stats. Supports focus filtering and extended time ranges."""
     async with app.state.pool.acquire() as conn:
@@ -336,8 +337,8 @@ async def get_nodes(
             
             # Query signals_v2 with focus filter (limit to 168 hours for focus queries)
             query_hours = min(effective_hours, 168)
-            # Enforce server-side cap of 100 nodes
-            effective_limit = min(limit, 100)
+            # Enforce server-side cap
+            effective_limit = min(limit, 80)
             rows = await conn.fetch(f"""
                 WITH filtered AS (
                     SELECT
@@ -366,8 +367,8 @@ async def get_nodes(
         elif use_daily_rollup:
             # Use daily rollup for extended ranges (1m, 3m, record)
             days = effective_hours // 24
-            # Enforce server-side cap of 100 nodes
-            effective_limit = min(limit, 100)
+            # Enforce server-side cap
+            effective_limit = min(limit, 80)
             rows = await conn.fetch("""
                 SELECT
                     d.country_code,
@@ -389,8 +390,8 @@ async def get_nodes(
             """ % (days, effective_limit))
         else:
             # Use hourly materialized view for short ranges (faster)
-            # Enforce server-side cap of 100 nodes
-            effective_limit = min(limit, 100)
+            # Enforce server-side cap
+            effective_limit = min(limit, 80)
             rows = await conn.fetch("""
                 SELECT
                     h.country_code,
@@ -432,7 +433,18 @@ async def get_nodes(
                     "signalCount": signal_count,
                     "sourceCount": int(row['unique_sources'] or 0)
                 })
-        
+        # Sort by total_signals DESC and slice top 80 to guarantee no bloated payloads
+        nodes.sort(key=lambda x: x["signalCount"], reverse=True)
+        if len(nodes) > 80:
+            nodes = nodes[:80]
+            
+        allowed_fields = None
+        if fields:
+            allowed_fields = set(f.strip() for f in fields.split(','))
+            
+        if allowed_fields:
+            nodes = [{k: v for k, v in n.items() if k in allowed_fields} for n in nodes]
+
         return {
             "nodes": nodes,
             "count": len(nodes),

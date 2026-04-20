@@ -523,3 +523,17 @@
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
+
+/* Globe Vignette Overlay */
+.globe-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 55%,
+    rgba(10, 15, 26, 0.35) 78%,
+    rgba(10, 15, 26, 0.75) 100%
+  );
+}

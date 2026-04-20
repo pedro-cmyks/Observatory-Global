@@ -4,7 +4,7 @@
  * Prevents double-fetch by having WorldMap and FocusSummaryPanel
  * consume the same state from this provider.
  */
-import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { useFocus } from './FocusContext'
 import { type TimeRange, timeRangeToHours } from '../lib/timeRanges'
 
@@ -89,6 +89,7 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
     const { focus, filter, isActive, setTimeRange: setGlobalTimeRange } = useFocus()
     const timeRange = filter.timeRange
     const [state, setState] = useState<FocusDataState>(defaultState)
+    const previousFlows = useRef<FlowData[]>([])
 
     const fetchData = useCallback(async () => {
         setState(prev => ({ ...prev, loading: prev.nodes.length === 0, isRefetching: true, error: null }))
@@ -96,6 +97,12 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
         try {
             // Build base params - use range for new API
             const baseParams = new URLSearchParams({ range: timeRange })
+            
+            // Add explicit fields filter for payload reduction
+            baseParams.set('fields', 'id,name,lat,lon,signalCount,sentiment,intensity')
+
+            // Fetch nodes first, but preserve flows during the await
+            setState(prev => ({ ...prev, flows: previousFlows.current }))
 
             // Add focus params if active
             if (isActive && focus.type && focus.value) {
@@ -103,20 +110,20 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 baseParams.set('focus_value', focus.value)
             }
 
-            // Fetch nodes and flows in parallel
-            const [nodesRes, flowsRes] = await Promise.all([
-                fetch(`/api/v2/nodes?${baseParams}`),
-                fetch(`/api/v2/flows?${baseParams}`)
-            ])
-
-            if (!nodesRes.ok) {
-                throw new Error(`Nodes fetch failed: ${nodesRes.status}`)
-            }
-            if (!flowsRes.ok) {
-                throw new Error(`Flows fetch failed: ${flowsRes.status}`)
-            }
-
+            // Fetch nodes first
+            const nodesRes = await fetch(`/api/v2/nodes?${baseParams}`)
+            if (!nodesRes.ok) throw new Error(`Nodes fetch failed: ${nodesRes.status}`)
             const nodesData = await nodesRes.json()
+
+            // 200ms stagger to prevent bandwidth choking
+            await new Promise(r => setTimeout(r, 200))
+
+            // Fetch flows after stagger (removing fields param as it's for nodes)
+            const flowsParams = new URLSearchParams(baseParams.toString())
+            flowsParams.delete('fields')
+            
+            const flowsRes = await fetch(`/api/v2/flows?${flowsParams}`)
+            if (!flowsRes.ok) throw new Error(`Flows fetch failed: ${flowsRes.status}`)
             const flowsData = await flowsRes.json()
 
             // Fetch summary only when focused
@@ -145,11 +152,14 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 safeNodes = safeNodes.slice(0, MAX_NODES)
             }
 
+            const newFlows = flowsData.flows || []
+            previousFlows.current = newFlows
+
             setState(prev => ({
                 ...prev,
                 nodes: safeNodes,
-                flows: flowsData.flows || [],
-                unfilteredFlows: (!isActive) ? (flowsData.flows || []) : prev.unfilteredFlows,
+                flows: newFlows,
+                unfilteredFlows: (!isActive) ? newFlows : prev.unfilteredFlows,
                 summary: summaryData,
                 meta: {
                     totalCountries: nodesData.count || nodesData.nodes?.length || 0,
@@ -172,9 +182,20 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
         }
     }, [focus.type, focus.value, isActive, timeRange])
 
-    // Refetch when focus or time range changes
+    // Use a native debounce to prevent rapid-click API thrashing
+    const fetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
     useEffect(() => {
-        fetchData()
+        if (fetchTimeoutRef.current) {
+            clearTimeout(fetchTimeoutRef.current)
+        }
+        fetchTimeoutRef.current = setTimeout(() => {
+            fetchData()
+        }, 300)
+        
+        return () => {
+            if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current)
+        }
     }, [fetchData])
 
     // Backward compatibility: convert hours to range

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 import type { TimeRange } from '../lib/timeRanges'
 
 export type FocusType = 'theme' | 'person' | 'country' | 'source' | null
@@ -35,13 +35,19 @@ interface FocusContextValue {
 const defaultFilter: GlobalFilter = {
     country: null,
     theme: null,
-    timeRange: '3m',
+    timeRange: '24h',
     lockedBy: null
 }
 
 const FocusContext = createContext<FocusContextValue | undefined>(undefined)
 
 export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+    // Force clear any old stuck local storage keys just in case
+    useEffect(() => {
+        localStorage.removeItem('atlas-time-range')
+        localStorage.removeItem('timeRange')
+    }, [])
+
     const [filter, setFilter] = useState<GlobalFilter>(defaultFilter)
 
     const setCountry = useCallback((country: string | null, source: LockedBy = null) => {

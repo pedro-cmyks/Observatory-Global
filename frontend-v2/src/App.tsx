@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import MapGL from 'react-map-gl/maplibre'
-import { DeckGL } from '@deck.gl/react'
+import type { MapRef } from 'react-map-gl/maplibre'
+import { DeckGLOverlay } from './components/DeckGLOverlay'
 import { ScatterplotLayer, ArcLayer } from '@deck.gl/layers'
-import { HeatmapLayer } from '@deck.gl/aggregation-layers'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import './App.css'
 import { calculateNodeRadius, getThemedArcColors } from './lib/mapUtils'
@@ -32,16 +32,7 @@ import { PanelErrorBoundary } from './components/PanelErrorBoundary'
 
 
 
-// Types
-interface Node {
-  id: string
-  name: string
-  lat: number
-  lon: number
-  intensity: number
-  sentiment: number
-  signalCount: number
-}
+
 
 
 
@@ -103,6 +94,82 @@ class MapErrorBoundary extends React.Component<{ children: React.ReactNode }, Ma
   }
 }
 
+// Extracted layer building function to prevent re-renders breaking Layer IDs
+function buildLayers({
+  enhancedNodes, visibleFlows, showNodes, showFlows,
+  isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator,
+  selectedCountryCode, timeRange
+}: any) {
+  const terminatorLayer = createTerminatorLayer({
+    visible: showTerminator && !crisisEnabled,
+    opacity: 0.5,
+  })
+
+  return [
+    // Terminator layer (bottommost)
+    terminatorLayer,
+
+    // Country heat fill + blur is handled by MapLibre native layers (not deck.gl)
+    // See handleMapLoad() and useEffect for feature-state updates
+
+    // Flow arcs
+    (showFlows || !!selectedCountryCode) && new ArcLayer({
+      id: `flows-${isGlobe ? 'globe' : 'flat'}`,
+      data: visibleFlows,
+      getSourcePosition: (d: Flow) => d.source,
+      getTargetPosition: (d: Flow) => d.target,
+      getSourceColor: (d: Flow) => getThemedArcColors(themeId, d.strength).source,
+      getTargetColor: (d: Flow) => getThemedArcColors(themeId, d.strength).target,
+      getWidth: () => 1.5,
+      opacity: 0.4,
+      greatCircle: true,
+      pickable: true,
+      updateTriggers: {
+        getSourceColor: [themeId],
+        getTargetColor: [themeId],
+        data: [timeRange]
+      },
+    }),
+
+    // Anomaly Pulse Ring
+    new ScatterplotLayer({
+      id: `nodes-anomaly-pulse-${isGlobe ? 'globe' : 'flat'}`,
+      data: enhancedNodes.filter((n: any) => n.isAnomaly),
+      getPosition: (d: any) => [d.lon, d.lat],
+      getRadius: (d: any) => calculateNodeRadius(d.signalCount, sizeBoost) * 1.5,
+      getFillColor: [239, 68, 68, 0],
+      getLineColor: [239, 68, 68, 255],
+      lineWidthMinPixels: 2,
+      stroked: true,
+      pickable: false,
+      updateTriggers: {
+        getRadius: [sizeBoost],
+      },
+    }),
+
+    // Core node (solid, pickable)
+    showNodes && new ScatterplotLayer({
+      id: `nodes-core-${isGlobe ? 'globe' : 'flat'}`,
+      data: enhancedNodes,
+      getPosition: (d: any) => [d.lon, d.lat],
+      getRadius: (d: any) => calculateNodeRadius(d.signalCount, sizeBoost),
+      getFillColor: () => [220, 230, 255, 220],
+      getLineColor: [255, 255, 255, 180],
+      lineWidthMinPixels: 1.5,
+      stroked: true,
+      pickable: true,
+      radiusMinPixels: 4,
+      radiusMaxPixels: 14,
+      updateTriggers: {
+        getRadius: [sizeBoost]
+      },
+      transitions: {
+        getRadius: 300
+      }
+    })
+  ].filter(Boolean)
+}
+
 function AppContent() {
   // State
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
@@ -112,6 +179,25 @@ function AppContent() {
   // const [timeWindow, setTimeWindow] = useState(24) // Replaced by context
   const [viewState, setViewState] = useState(INITIAL_VIEW)
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
+
+  // Globe mapping
+  const mapRef = useRef<MapRef>(null)
+  const [isGlobe, setIsGlobe] = useState(() => localStorage.getItem('atlas-globe-mode') === 'true')
+  const hasAutoFocused = useRef(false)
+
+  const toggleGlobe = () => {
+    const next = !isGlobe
+    setIsGlobe(next)
+    
+    // Smoothly adjust view state for the mode
+    setViewState(prev => ({
+      ...prev,
+      zoom: next ? 1.8 : 1.5,
+      pitch: next ? 15 : 0
+    }))
+    
+    localStorage.setItem('atlas-globe-mode', String(next))
+  }
 
   // Focus hook for click-to-focus
   const { setFocus } = useFocus()
@@ -125,6 +211,8 @@ function AppContent() {
 
   // Map readiness gate — prevents DeckGL from crashing before WebGL context is ready
   const [mapReady, setMapReady] = useState(false)
+  // Tracks when the 13MB GeoJSON source has actually finished loading
+  const [heatSourceReady, setHeatSourceReady] = useState(false)
 
   // Settings toggles
   const [showTerminator, setShowTerminator] = useState(false)
@@ -157,6 +245,20 @@ function AppContent() {
 
   // Focus-aware data from provider - auto-refetches when focus/range changes
   const { nodes, flows, unfilteredFlows, loading, refetch, timeRange, setTimeRange } = useFocusData()
+
+  // Auto-focus on hottest region at load
+  useEffect(() => {
+    if (nodes.length > 0 && !hasAutoFocused.current && mapReady) {
+      hasAutoFocused.current = true
+      const hottest = nodes.reduce((max, n) => (n.signalCount > max.signalCount ? n : max), nodes[0])
+      mapRef.current?.getMap()?.flyTo({
+        center: [hottest.lon, hottest.lat],
+        zoom: 2.5,
+        duration: 2500,
+        essential: true
+      })
+    }
+  }, [nodes, mapReady])
 
   // Modal Stack Logic (Escape key)
   useEffect(() => {
@@ -221,119 +323,62 @@ function AppContent() {
     })
   }, [nodes, anomalies])
 
-  // Terminator layer (shows day/night boundary)
-  const terminatorLayer = createTerminatorLayer({
-    visible: showTerminator && !crisisEnabled,
-    opacity: 0.5,
-  })
+  // Track which countries have heat state set (for cleanup on data change)
+  const prevHeatCountries = useRef<Set<string>>(new Set())
 
-  // Deck.gl layers - NO MORE HEATMAP
-  const layers = [
-    // Terminator layer (bottommost)
-    terminatorLayer,
+  // Update MapLibre native country heat feature-states when node data changes
+  // Must wait for heatSourceReady (GeoJSON downloaded), not just mapReady
+  useEffect(() => {
+    const map = mapRef.current?.getMap()
+    if (!map || !heatSourceReady || enhancedNodes.length === 0) return
 
-    // God view heatmap layer
-    showHeatmap && new HeatmapLayer({
-      id: 'signal-heatmap',
-      data: enhancedNodes,
-      getPosition: (d: any) => [d.lon, d.lat],
-      getWeight: (d: any) => Math.log(Math.log(d.signalCount + 2) + 1),
-      radiusPixels: 140,
-      intensity: 0.8,
-      threshold: 0.05,
-      colorRange: [
-        [10, 10, 40, 0],          // transparent
-        [20, 30, 80, 80],         // deep blue (very quiet)
-        [30, 60, 120, 140],       // medium blue (low activity)
-        [60, 100, 140, 170],      // blue-teal (moderate-low)
-        [180, 130, 40, 200],      // warm gold (elevated)
-        [210, 70, 20, 220],       // burnt orange (high)
-        [230, 30, 10, 240],       // red-orange (critical)
-      ],
-      visible: showHeatmap,
-      updateTriggers: {
-        getWeight: [timeRange],
-      }
-    }),
+    const currentCodes = new Set<string>()
+    const maxSignals = Math.max(...enhancedNodes.map(n => n.signalCount), 1)
 
-    // Flow arcs (bottom layer) - using zoom-limited flows with THEME-AWARE COLORS
-    (showFlows || !!selectedCountryCode) && new ArcLayer({
-      id: 'flows',
-      data: visibleFlows,
-      getSourcePosition: (d: Flow) => d.source,
-      getTargetPosition: (d: Flow) => d.target,
-      getSourceColor: (d: Flow) => getThemedArcColors(themeId, d.strength).source,
-      getTargetColor: (d: Flow) => getThemedArcColors(themeId, d.strength).target,
-      getWidth: () => 1.5,
-      opacity: 0.4,
-      greatCircle: true,
-      pickable: true,
-      onHover: (info: { object?: Flow; x: number; y: number }) => {
-        if (info.object) {
-          setTooltip({ type: 'flow', x: info.x, y: info.y, data: info.object })
-        } else {
-          setTooltip(null)
-        }
-      },
-      updateTriggers: {
-        getSourceColor: [themeId],
-        getTargetColor: [themeId],
-        data: [timeRange]
-      },
-    }),
+    enhancedNodes.forEach(node => {
+      // Log-normalized intensity: spreads the scale so mid-range countries are visible
+      const intensity = Math.min(Math.log(node.signalCount + 1) / Math.log(maxSignals + 1), 1)
+      map.setFeatureState(
+        { source: 'country-heat', id: node.id },
+        { intensity }
+      )
+      currentCodes.add(node.id)
+    })
 
-    // Glow layers removed per visual clarity update
-
-    // Anomaly Pulse Ring
-    new ScatterplotLayer({
-      id: 'nodes-anomaly-pulse',
-      data: enhancedNodes.filter((n: any) => n.isAnomaly),
-      getPosition: (d: any) => [d.lon, d.lat],
-      getRadius: (d: any) => calculateNodeRadius(d.signalCount, sizeBoost) * 1.5,
-      getFillColor: [239, 68, 68, 0], // Transparent fill
-      getLineColor: [239, 68, 68, 255], // Solid red stroke
-      lineWidthMinPixels: 2,
-      stroked: true,
-      pickable: false,
-      updateTriggers: {
-        getRadius: [sizeBoost],
-      },
-    }),
-
-    // Core node (solid, pickable)
-    showNodes && new ScatterplotLayer({
-      id: 'nodes-core',
-      data: enhancedNodes,
-      getPosition: (d: any) => [d.lon, d.lat],
-      getRadius: (d: any) => calculateNodeRadius(d.signalCount, sizeBoost),
-      getFillColor: () => [220, 230, 255, 220],
-      getLineColor: [255, 255, 255, 180],
-      lineWidthMinPixels: 1.5,
-      stroked: true,
-      pickable: true,
-      onHover: (info: { object?: Node; x: number; y: number }) => {
-        if (info.object) {
-          setTooltip({ type: 'node', x: info.x, y: info.y, data: info.object })
-        } else {
-          setTooltip(null)
-        }
-      },
-      onClick: (info: { object?: Node }) => {
-        if (info.object) {
-          handleCountryClick(info.object.id)
-          setFocus('country', info.object.id, info.object.name || info.object.id)
-        }
-      },
-      radiusMinPixels: 4,
-      radiusMaxPixels: 14,
-      updateTriggers: {
-        getRadius: [sizeBoost]
-      },
-      transitions: {
-        getRadius: 300
+    // Clear countries no longer in the data
+    prevHeatCountries.current.forEach(code => {
+      if (!currentCodes.has(code)) {
+        map.setFeatureState(
+          { source: 'country-heat', id: code },
+          { intensity: 0 }
+        )
       }
     })
-  ].filter(Boolean)
+
+    prevHeatCountries.current = currentCodes
+  }, [enhancedNodes, heatSourceReady])
+
+  // Toggle country heat layer visibility when GLOW button is pressed
+  useEffect(() => {
+    const map = mapRef.current?.getMap()
+    if (!map || !mapReady) return
+    const vis = showHeatmap ? 'visible' : 'none'
+    if (map.getLayer('country-heat-fill')) {
+      map.setLayoutProperty('country-heat-fill', 'visibility', vis)
+    }
+    if (map.getLayer('country-heat-glow')) {
+      map.setLayoutProperty('country-heat-glow', 'visibility', vis)
+    }
+  }, [showHeatmap, mapReady])
+
+  // Memoize completely stabilized array block to crush Globe re-render flicker
+  const layers = useMemo(() => {
+    return buildLayers({
+      enhancedNodes, visibleFlows, showNodes, showFlows,
+      isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator,
+      selectedCountryCode, timeRange
+    })
+  }, [enhancedNodes, visibleFlows, showNodes, showFlows, isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator, selectedCountryCode, timeRange])
 
   // Total signals for stats
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
@@ -391,6 +436,13 @@ function AppContent() {
             <span>GLOBE</span>
             <div className="panel-header-controls">
               <button
+                className={`layer-btn ${isGlobe ? 'active' : ''}`}
+                onClick={toggleGlobe}
+                title={isGlobe ? 'Switch to flat map' : 'Switch to 3D globe'}
+              >
+                3D
+              </button>
+              <button
                 className={`layer-btn ${showHeatmap ? 'active' : ''}`}
                 onClick={() => setShowHeatmap(!showHeatmap)}
               >
@@ -412,28 +464,138 @@ function AppContent() {
           </div>
           <div className="panel-content">
             <MapErrorBoundary>
-              <DeckGL
-                viewState={viewState}
-                onViewStateChange={({ viewState: vs }) => vs && setViewState(vs as typeof INITIAL_VIEW)}
-                controller={true}
-                layers={mapReady ? layers : []}
-                getTooltip={({ object }) => {
-                  if (!object) return null
-                  if (selectedCountryCode) {
-                    const isConnected = visibleFlows.some(f => f.sourceCountry === object.id || f.targetCountry === object.id)
-                    if (isConnected && object.id !== selectedCountryCode) {
-                      return `${object.name} — click to explore`
+              <MapGL
+                ref={mapRef}
+                mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+                attributionControl={false}
+                projection={isGlobe ? 'globe' : 'mercator'}
+                {...viewState}
+                onMove={evt => setViewState(evt.viewState as any)}
+                onLoad={(e) => {
+                  const map = e.target
+
+                  // Atmosphere
+                  ;(map as any).setFog({
+                    'color': 'rgba(10, 15, 26, 0.8)',
+                    'horizon-blend': 0.08,
+                    'high-color': '#1a3050',
+                    'space-color': '#050510',
+                    'star-intensity': 0.15
+                  })
+
+                  // Country heat source — loads GeoJSON once, colors driven by feature-state
+                  map.addSource('country-heat', {
+                    type: 'geojson',
+                    data: '/data/countries.geojson',
+                    promoteId: 'ISO3166-1-Alpha-2'
+                  })
+
+                  // Layer 1: Country shape fill — France looks like France
+                  // No beforeId — let MapLibre place naturally; interleaved deck.gl handles its own z-order
+                  map.addLayer({
+                    id: 'country-heat-fill',
+                    type: 'fill',
+                    source: 'country-heat',
+                    paint: {
+                      'fill-color': [
+                        'interpolate', ['linear'],
+                        ['coalesce', ['feature-state', 'intensity'], 0],
+                        0,    'rgba(0, 0, 0, 0)',
+                        0.05, 'rgba(15, 30, 90, 50)',
+                        0.15, 'rgba(30, 55, 130, 80)',
+                        0.35, 'rgba(170, 110, 30, 120)',
+                        0.6,  'rgba(215, 70, 15, 160)',
+                        1.0,  'rgba(235, 35, 10, 200)'
+                      ],
+                      'fill-opacity': 0.75
+                    }
+                  })
+
+                  // Layer 2: Border glow — wide blurred line bleeds heat beyond borders
+                  map.addLayer({
+                    id: 'country-heat-glow',
+                    type: 'line',
+                    source: 'country-heat',
+                    paint: {
+                      'line-color': [
+                        'interpolate', ['linear'],
+                        ['coalesce', ['feature-state', 'intensity'], 0],
+                        0,    'rgba(0, 0, 0, 0)',
+                        0.05, 'rgba(20, 35, 100, 40)',
+                        0.15, 'rgba(35, 60, 140, 70)',
+                        0.35, 'rgba(190, 120, 30, 100)',
+                        0.6,  'rgba(225, 75, 15, 135)',
+                        1.0,  'rgba(245, 45, 10, 170)'
+                      ],
+                      'line-width': [
+                        'interpolate', ['linear'],
+                        ['coalesce', ['feature-state', 'intensity'], 0],
+                        0,   0,
+                        0.05, 2,
+                        0.5,  6,
+                        1.0,  10
+                      ],
+                      'line-blur': 4,
+                      'line-opacity': 0.7
+                    }
+                  })
+
+                  // Listen for GeoJSON source to finish downloading (13MB file)
+                  const onSourceData = (e: any) => {
+                    if (e.sourceId === 'country-heat' && e.isSourceLoaded) {
+                      setHeatSourceReady(true)
+                      map.off('sourcedata', onSourceData)
                     }
                   }
-                  return `${object.name}: ${object.signalCount} signals`
+                  if (map.isSourceLoaded('country-heat')) {
+                    setHeatSourceReady(true)
+                  } else {
+                    map.on('sourcedata', onSourceData)
+                  }
+
+                  setMapReady(true)
                 }}
               >
-                <MapGL
-                  mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
-                  attributionControl={false}
-                  onLoad={() => setMapReady(true)}
+                <DeckGLOverlay
+                  layers={mapReady ? layers : []}
+                  interleaved={true}
+                  getTooltip={({ object, layer }) => {
+                    if (!object) return null
+                    // Identify layer type dynamically to map correct tooltip structure
+                    if (layer?.id?.startsWith('flows')) {
+                      return null // The original logic sets state Tooltip instead of returning. But returning triggers standard deck.gl tooltip if not careful, so we set custom state instead:
+                    }
+                    if (layer?.id?.startsWith('nodes-core')) {
+                      return null
+                    }
+                    if (selectedCountryCode) {
+                      const isConnected = visibleFlows.some(f => f.sourceCountry === object.id || f.targetCountry === object.id)
+                      if (isConnected && object.id !== selectedCountryCode) {
+                        return `${object.name} — click to explore`
+                      }
+                    }
+                    return `${object.name}: ${object.signalCount} signals`
+                  }}
+                  onHover={(info: any) => {
+                    if (!info.object) {
+                      setTooltip(null)
+                      return
+                    }
+                    if (info.layer?.id?.startsWith('nodes-core')) {
+                      setTooltip({ type: 'node', x: info.x, y: info.y, data: info.object })
+                    } else if (info.layer?.id?.startsWith('flows')) {
+                      setTooltip({ type: 'flow', x: info.x, y: info.y, data: info.object })
+                    }
+                  }}
+                  onClick={({ object, layer }: any) => {
+                    if (layer?.id?.startsWith('nodes-core') && object) {
+                      handleCountryClick(object.id)
+                      setFocus('country', object.id, object.name || object.id)
+                    }
+                  }}
                 />
-              </DeckGL>
+              </MapGL>
+              <div className="globe-vignette" />
             </MapErrorBoundary>
           </div>
         </div>
