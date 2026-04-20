@@ -1,103 +1,88 @@
-# Observatory Global 🌐
+# Atlas
 
-Real-time global narrative intelligence platform. Visualize what the world is talking about.
+> See how information travels the world.
 
-## Features
+<!-- Screenshot coming soon — a dark globe view with glowing country nodes and narrative flow arcs -->
 
-- **Global Heatmap**: 52+ countries with real-time news activity
-- **Sentiment Analysis**: Color-coded mood (red=negative, yellow=neutral, green=positive)
-- **Information Flows**: Connections between countries discussing similar themes
-- **Theme Drill-down**: Explore what's being said about specific topics
-- **Morning Briefing**: Daily summary of global narratives
-- **Search**: Find themes, countries, and sources
+## What is Atlas?
 
-## Quick Start
+Atlas is a real-time global narrative intelligence platform. It shows how information moves geographically — which countries are talking about the same topics, how stories travel between regions, and how the same event gets framed differently across the world.
+
+It is not a news aggregator. It has no editorial bias. It is a tool for curious people who want to understand the world without relying on an algorithm to decide what matters.
+
+## What it does
+
+- **Live signal stream** — real-time news signals from 50+ countries via GDELT, updated every 15 minutes
+- **Global narrative map** — countries glow with signal intensity. Click any country to see what it's talking about
+- **Narrative threads** — track how topics spread geographically over time. When did it start? Which countries picked it up? Is it accelerating or fading?
+- **Correlation matrix** — which countries are discussing the same topics right now? Country-by-country and theme-by-theme views
+- **Framing analysis** — the same topic covered differently by different countries. How does Iran cover the Strait of Hormuz vs the US?
+- **Anomaly detection** — countries with unusual activity spikes vs their 7-day baseline
+- **Source integrity** — how diverse and concentrated are the information sources for any country or topic?
+
+## Tech stack
+
+| Layer | Technology |
+|-------|-----------|
+| Backend | Python 3.11 + FastAPI + PostgreSQL |
+| Frontend | React 19 + TypeScript + Vite |
+| Map | MapLibre GL JS + Deck.gl |
+| Data | GDELT Project (free, global, 15-min updates) |
+| Infra | Docker (PostgreSQL + Redis) |
+
+## Running locally
 
 ### Prerequisites
+
 - Docker & Docker Compose
+- Python 3.11+
 - Node.js 18+
-- Python 3.10+
 
 ### Setup
 
 ```bash
-# Clone repository
-git clone https://github.com/pedro-cmyk/ObservatorioGlobal.git
-cd ObservatorioGlobal
+# 1. Start the database and Redis
+cd infra
+docker compose up -d
+cd ..
 
-# Start database
-docker-compose up -d observatory-db
-
-# Backend (in one terminal)
+# 2. Backend
 cd backend
-pip install -r requirements.txt
+pip install -e ".[dev]"
 uvicorn app.main_v2:app --host 0.0.0.0 --port 8000 --reload
 
-# Frontend (in another terminal)
+# 3. Frontend (in a new terminal)
 cd frontend-v2
 npm install
 npm run dev
 
-# Start ingestion (in another terminal)
+# 4. Start data ingestion (in a new terminal)
 ./infra/auto_ingest_v2.sh
 ```
 
-Open http://localhost:3000
+Frontend runs at `http://localhost:3000`, backend at `http://localhost:8000`.
 
-## Architecture
+### Environment variables
+
+Copy `.env.example` to `.env` in the backend directory (if available), or set:
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   GDELT     │────▶│  Ingestion  │────▶│ PostgreSQL  │
-│   GKG API   │     │  (Python)   │     │ TimescaleDB │
-└─────────────┘     └─────────────┘     └──────┬──────┘
-                                               │
-                    ┌─────────────┐     ┌──────▼──────┐
-                    │   React     │◀────│   FastAPI   │
-                    │   Deck.gl   │     │   Backend   │
-                    └─────────────┘     └─────────────┘
+POSTGRES_DB=observatory
+POSTGRES_USER=observatory
+POSTGRES_PASSWORD=changeme
+REDIS_URL=redis://localhost:6379
 ```
 
-## Data Source
+## Project status
 
-- **GDELT GKG** (Global Knowledge Graph): Real-time news from 200+ sources
-- Updates every 15 minutes
-- Coverage: 100+ languages, 190+ countries
+Active development. The six-panel narrative intelligence terminal is complete. Current work: 3D globe visualization, additional data source layers, and drift detection algorithms.
 
-## Known Limitations
+## Inspiration
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Country-level data | ✅ 100% | All signals have country code |
-| Themes | ✅ 100% | Full GDELT taxonomy |
-| Sentiment | ✅ 100% | GDELT tone analysis |
-| Precise coordinates | ⚠️ 0.02% | Most signals lack lat/lon |
-| Person names | ⚠️ 4.9% | GDELT limitation |
+Built out of curiosity during a period of global uncertainty — too much information, too many conflicting narratives, no clear view of how stories actually travel across the world.
 
-## Roadmap
+The question was simple: can you build something that lets you *see* how information moves, without anyone telling you what to think about it?
 
-### Phase 1: MVP ✅
-- [x] Real-time ingestion
-- [x] Country visualization
-- [x] Theme-based flows
-- [x] Search functionality
-- [x] Briefing dashboard
+---
 
-### Phase 2: Enhanced Context
-- [ ] Article titles/summaries
-- [ ] AI-generated theme summaries
-- [ ] Additional data sources (NewsAPI, RSS)
-
-### Phase 3: Advanced Features
-- [ ] Time-lapse animation
-- [ ] Custom alerts
-- [ ] User accounts
-- [ ] API access
-
-## Contributing
-
-Pull requests welcome. For major changes, open an issue first.
-
-## License
-
-MIT
+Built with [GDELT](https://www.gdeltproject.org/) · [MapLibre](https://maplibre.org/) · [Deck.gl](https://deck.gl/) · [FastAPI](https://fastapi.tiangolo.com/)

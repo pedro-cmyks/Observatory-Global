@@ -26,6 +26,7 @@ htmlcov/
 *.log
 .env
 venv/
+.venv/
 env/
 ENV/
 
