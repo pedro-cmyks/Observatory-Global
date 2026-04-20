@@ -19,6 +19,7 @@ It is not a news aggregator. It has no editorial bias. It is a tool for curious 
 - **Framing analysis** — the same topic covered differently by different countries. How does Iran cover the Strait of Hormuz vs the US?
 - **Anomaly detection** — countries with unusual activity spikes vs their 7-day baseline
 - **Source integrity** — how diverse and concentrated are the information sources for any country or topic?
+- **Live aircraft tracking** — real-time flight positions via OpenSky Network. Toggle the PLANE layer on the globe
 
 ## Tech stack
 
