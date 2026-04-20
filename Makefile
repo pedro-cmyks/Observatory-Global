@@ -36,7 +36,7 @@ install-backend: ## Install Python dependencies
 
 install-frontend: ## Install Node.js dependencies
 	@echo "$(BLUE)Installing frontend dependencies...$(NC)"
-	cd frontend && npm install
+	cd frontend-v2 && npm install
 	@echo "$(GREEN)✓ Frontend dependencies installed$(NC)"
 
 install: install-backend install-frontend ## Install all dependencies
@@ -48,7 +48,7 @@ up: ## Start all services (docker compose up)
 	cd infra && docker compose up --build -d
 	@echo "$(GREEN)✓ Services started!$(NC)"
 	@echo "$(YELLOW)Backend:  http://localhost:8000$(NC)"
-	@echo "$(YELLOW)Frontend: http://localhost:5173$(NC)"
+	@echo "$(YELLOW)Frontend: http://localhost:3000$(NC)"
 	@echo "$(YELLOW)Redis:    localhost:6379$(NC)"
 	@echo "$(YELLOW)Postgres: localhost:5432$(NC)"
 
@@ -80,10 +80,10 @@ ps: ## Show running services
 ##@ Development
 
 dev-backend: ## Run backend in dev mode (hot reload)
-	cd backend && poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	cd backend && poetry run uvicorn app.main_v2:app --reload --host 0.0.0.0 --port 8000
 
 dev-frontend: ## Run frontend in dev mode (hot reload)
-	cd frontend && npm run dev
+	cd frontend-v2 && npm run dev
 
 shell-backend: ## Open shell in backend container
 	cd infra && docker compose exec backend /bin/bash
@@ -110,7 +110,7 @@ test-backend-fast: ## Run backend tests without coverage (faster)
 
 test-frontend: ## Run frontend tests
 	@echo "$(BLUE)Running frontend tests...$(NC)"
-	cd frontend && npm run test
+	cd frontend-v2 && npm run test
 	@echo "$(GREEN)✓ Frontend tests complete$(NC)"
 
 test-watch: ## Run tests in watch mode
@@ -128,7 +128,7 @@ lint-backend: ## Lint backend code
 
 lint-frontend: ## Lint frontend code
 	@echo "$(BLUE)Linting frontend...$(NC)"
-	cd frontend && npm run lint
+	cd frontend-v2 && npm run lint
 	@echo "$(GREEN)✓ Frontend linting complete$(NC)"
 
 format: format-backend format-frontend ## Format all code
@@ -141,13 +141,13 @@ format-backend: ## Format backend code with black
 
 format-frontend: ## Format frontend code with prettier
 	@echo "$(BLUE)Formatting frontend...$(NC)"
-	cd frontend && npm run format
+	cd frontend-v2 && npm run format
 	@echo "$(GREEN)✓ Frontend formatted$(NC)"
 
 type-check: ## Run type checking
 	@echo "$(BLUE)Type checking...$(NC)"
 	cd backend && poetry run mypy app/
-	cd frontend && npm run type-check
+	cd frontend-v2 && npm run type-check
 	@echo "$(GREEN)✓ Type checking complete$(NC)"
 
 ##@ Database
@@ -197,7 +197,7 @@ status: ## Check status of all services
 	@curl -s http://localhost:8000/health | jq '.' || echo "$(RED)✗ Backend not responding$(NC)"
 	@echo ""
 	@echo "$(YELLOW)Frontend:$(NC)"
-	@curl -s -o /dev/null -w "%{http_code}" http://localhost:5173 > /dev/null && echo "$(GREEN)✓ Frontend is up$(NC)" || echo "$(RED)✗ Frontend not responding$(NC)"
+	@curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 > /dev/null && echo "$(GREEN)✓ Frontend is up$(NC)" || echo "$(RED)✗ Frontend not responding$(NC)"
 	@echo ""
 	@echo "$(YELLOW)Redis:$(NC)"
 	@cd infra && docker compose exec redis redis-cli ping > /dev/null && echo "$(GREEN)✓ Redis is up$(NC)" || echo "$(RED)✗ Redis not responding$(NC)"

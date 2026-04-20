@@ -25,7 +25,7 @@ The new implementation uses a single `GlobalRadarPage` with a dedicated `radarSt
 cd frontend
 npm run dev
 ```
-Open `http://localhost:5173`.
+Open `http://localhost:3000`.
 
 ### 2. Visual Check
 - [ ] **Map Loads**: You should see a dark map (Mercator).

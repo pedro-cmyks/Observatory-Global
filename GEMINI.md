@@ -24,7 +24,7 @@ The project includes a comprehensive `Makefile` that simplifies common developme
     make up
     ```
     This command builds the Docker images and starts the backend, frontend, Redis, and PostgreSQL services.
-    *   Frontend is available at `http://localhost:5173`
+    *   Frontend is available at `http://localhost:3000`
     *   Backend is available at `http://localhost:8000`
 
 *   **Stop all services:**

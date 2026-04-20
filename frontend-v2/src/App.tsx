@@ -373,11 +373,13 @@ function AppContent() {
 
   // Memoize completely stabilized array block to crush Globe re-render flicker
   const layers = useMemo(() => {
-    return buildLayers({
+    const builtLayers = buildLayers({
       enhancedNodes, visibleFlows, showNodes, showFlows,
       isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator,
       selectedCountryCode, timeRange
     })
+    console.log('[DEBUG] buildLayers output count:', builtLayers.length, { mapReady, enhancedNodesCount: enhancedNodes.length })
+    return builtLayers
   }, [enhancedNodes, visibleFlows, showNodes, showFlows, isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator, selectedCountryCode, timeRange])
 
   // Total signals for stats
@@ -475,13 +477,15 @@ function AppContent() {
                   const map = e.target
 
                   // Atmosphere
-                  ;(map as any).setFog({
-                    'color': 'rgba(10, 15, 26, 0.8)',
-                    'horizon-blend': 0.08,
-                    'high-color': '#1a3050',
-                    'space-color': '#050510',
-                    'star-intensity': 0.15
-                  })
+                  if (typeof (map as any).setFog === 'function') {
+                    ;(map as any).setFog({
+                      'color': 'rgba(10, 15, 26, 0.8)',
+                      'horizon-blend': 0.08,
+                      'high-color': '#1a3050',
+                      'space-color': '#050510',
+                      'star-intensity': 0.15
+                    })
+                  }
 
                   // Country heat source — loads GeoJSON once, colors driven by feature-state
                   map.addSource('country-heat', {
@@ -490,8 +494,7 @@ function AppContent() {
                     promoteId: 'ISO3166-1-Alpha-2'
                   })
 
-                  // Layer 1: Country shape fill — France looks like France
-                  // No beforeId — let MapLibre place naturally; interleaved deck.gl handles its own z-order
+                  // Layer 1: Country shape fill
                   map.addLayer({
                     id: 'country-heat-fill',
                     type: 'fill',
@@ -540,7 +543,7 @@ function AppContent() {
                     }
                   })
 
-                  // Listen for GeoJSON source to finish downloading (13MB file)
+                  // Listen for GeoJSON source to finish downloading
                   const onSourceData = (e: any) => {
                     if (e.sourceId === 'country-heat' && e.isSourceLoaded) {
                       setHeatSourceReady(true)
@@ -557,17 +560,12 @@ function AppContent() {
                 }}
               >
                 <DeckGLOverlay
-                  layers={mapReady ? layers : []}
                   interleaved={true}
+                  layers={layers}
                   getTooltip={({ object, layer }) => {
                     if (!object) return null
-                    // Identify layer type dynamically to map correct tooltip structure
-                    if (layer?.id?.startsWith('flows')) {
-                      return null // The original logic sets state Tooltip instead of returning. But returning triggers standard deck.gl tooltip if not careful, so we set custom state instead:
-                    }
-                    if (layer?.id?.startsWith('nodes-core')) {
-                      return null
-                    }
+                    if (layer?.id?.startsWith('flows')) return null
+                    if (layer?.id?.startsWith('nodes-core')) return null
                     if (selectedCountryCode) {
                       const isConnected = visibleFlows.some(f => f.sourceCountry === object.id || f.targetCountry === object.id)
                       if (isConnected && object.id !== selectedCountryCode) {

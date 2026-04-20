@@ -115,7 +115,7 @@ Replaces the static map placeholder with a fully interactive Mapbox GL visualiza
 
 ### Manual Testing Steps
 1. Run `cd infra && docker compose up --build`
-2. Open http://localhost:5173
+2. Open http://localhost:3000
 3. Scroll to map section
 4. Test interactions:
    - ✅ Change time window (1h, 6h, 12h, 24h)
