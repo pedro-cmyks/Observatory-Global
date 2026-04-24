@@ -13,6 +13,7 @@ export interface FocusState {
 export interface GlobalFilter {
     country: string | null
     theme: string | null
+    person: string | null
     timeRange: TimeRange
     lockedBy: LockedBy
 }
@@ -22,6 +23,7 @@ interface FocusContextValue {
     filter: GlobalFilter
     setCountry: (country: string | null, source?: LockedBy) => void
     setTheme: (theme: string | null, source?: LockedBy) => void
+    setPerson: (person: string | null) => void
     setTimeRange: (range: TimeRange) => void
     clearFilter: () => void
     // Map fly hint: set a country code to trigger a map flyTo
@@ -38,6 +40,7 @@ interface FocusContextValue {
 const defaultFilter: GlobalFilter = {
     country: null,
     theme: null,
+    person: null,
     timeRange: '24h',
     lockedBy: null
 }
@@ -77,16 +80,21 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         console.log(`[GlobalFilter] Set timeRange=${timeRange}`)
     }, [])
 
+    const setPerson = useCallback((person: string | null) => {
+        setFilter(prev => ({ ...prev, person, country: null, theme: null, lockedBy: null }))
+        console.log(`[GlobalFilter] Set person=${person}`)
+    }, [])
+
     const clearFilter = useCallback(() => {
-        setFilter(prev => ({ ...prev, country: null, theme: null, lockedBy: null }))
+        setFilter(prev => ({ ...prev, country: null, theme: null, person: null, lockedBy: null }))
         console.log('[GlobalFilter] Cleared')
     }, [])
 
     // Legacy API mappings
     const focus: FocusState = {
-        type: filter.country ? 'country' : filter.theme ? 'theme' : null,
-        value: filter.country || filter.theme,
-        label: filter.country || filter.theme
+        type: filter.person ? 'person' : filter.country ? 'country' : filter.theme ? 'theme' : null,
+        value: filter.person || filter.country || filter.theme,
+        label: filter.person || filter.country || filter.theme
     }
 
     const setFocus = useCallback((type: FocusType, value: string, _label?: string) => {
@@ -94,18 +102,19 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             setCountry(value)
         } else if (type === 'theme') {
             setTheme(value)
+        } else if (type === 'person') {
+            setPerson(value)
         } else {
-            // Unhandled focus types just clear the filter for now
             clearFilter()
         }
-    }, [setCountry, setTheme, clearFilter])
+    }, [setCountry, setTheme, setPerson, clearFilter])
 
     const clearFocus = clearFilter
-    const isActive = filter.country !== null || filter.theme !== null
+    const isActive = filter.country !== null || filter.theme !== null || filter.person !== null
 
     return (
         <FocusContext.Provider value={{
-            filter, setCountry, setTheme, setTimeRange, clearFilter,
+            filter, setCountry, setTheme, setPerson, setTimeRange, clearFilter,
             mapFlyCountry, setMapFlyCountry,
             focus, setFocus, clearFocus, isActive
         }}>

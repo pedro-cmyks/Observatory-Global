@@ -1,5 +1,37 @@
 # Atlas — Session Log
 
+## 2026-04-24 (session 2)
+
+### Added
+- **EntityPanel component** — right panel for person/keyword search results. Shows: trust indicators (source diversity, countries, global sentiment), coverage by country (bar chart colored by sentiment), related themes (clickable chips → ThemeDetail), top sources with sentiment, recent headlines. Opens automatically when `focus.type === 'person'`.
+- **Keyword search fully connected** — SearchBar now triggers map fly + correct panel for all result types:
+  - Country result → fly + CountryBrief
+  - Theme result → fly to top country + ThemeDetail + arcs
+  - Person result → fly to top country + EntityPanel (person-filtered map)
+- **FocusContext: person as first-class focus type** — added `person: string | null` to `GlobalFilter`, `setPerson()` method, `focus.type` now returns `'person'`. Previously `setFocus('person',...)` called `clearFilter()` silently.
+- **Search endpoint enriched** — themes and persons now return `total_signals` + `top_countries [{code, name, count}]` (needed for map fly). TAX_* and WORLDLANGUAGES_* themes excluded from results. Redis cache 2 min.
+- **Search dropdown redesigned** — country tag (blue), person tag (violet), signal count + top country codes in meta. ESC closes, × button clears.
+
+### Fixed
+- `setFocus('person', ...)` was silently calling `clearFilter()` — EntityPanel never rendered
+- Country click inside EntityPanel now calls `clearFocus()` first so CountryBrief can take over
+- Theme search was matching GDELT taxonomy codes (TAX_WORLDFISH_TRUMPETER for "trump") — filtered
+
+### Known issues / Roadmap
+- AI insight: account needs Anthropic credits (key is loaded, auth works)
+- Person click inside CountryBrief/ThemeDetail pill → still no action (separate from search)
+- Aircraft: still amber dots, needs intelligence-value filter (military/diplomatic callsigns)
+- Maritime vessels: AISStream Phase 3C, not started
+- Globe 3D: deferred
+
+### Next session
+- Sort/rank for article coverage in ThemeDetail (currently timestamp, consider relevance)
+- Hosting: move off local Mac → Fly.io (backend) + Vercel (frontend)
+- Aircraft intel layer: filter by military/diplomatic callsigns (ADSBExchange)
+- Maritime layer design + implementation
+
+---
+
 ## 2026-04-24
 
 ### Added

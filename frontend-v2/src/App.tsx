@@ -20,6 +20,7 @@ import { MapTooltip, type TooltipData } from './components/MapTooltip'
 import { CrisisProvider } from './contexts/CrisisContext'
 import { SettingsPanel } from './components/SettingsPanel'
 import { CountryThemePanel } from './components/CountryThemePanel'
+import { EntityPanel } from './components/EntityPanel'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
 import { Globe, ClipboardList, HelpCircle } from 'lucide-react'
 
@@ -508,8 +509,7 @@ function AppContent() {
         <div className="command-bar-center">
           <SearchBar
             onThemeSelect={handleThemeSelect}
-            onCountrySelect={(code) => handleCountryClick(code)}
-            onSourceSelect={(source) => setFocus('source', source, source)}
+            onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
           />
           <div className="time-controls">
             {TIME_RANGE_OPTIONS.map(range => (
@@ -865,8 +865,21 @@ function AppContent() {
         />
       )}
 
-      {/* Right panel: CountryThemePanel when theme active with a country, else CountryBrief */}
-      {selectedTheme && rightPanelThemeCountry ? (
+      {/* Right panel priority: EntityPanel > CountryThemePanel > CountryBrief */}
+      {focus.type === 'person' && focus.value ? (
+        <EntityPanel
+          focusType="person"
+          focusValue={focus.value}
+          timeRange={timeRange}
+          onClose={() => {
+            clearFocus()
+            setSelectedCountry(null)
+            setSelectedCountryCode(null)
+          }}
+          onThemeSelect={(theme) => handleThemeSelect(theme)}
+          onCountrySelect={(code) => { clearFocus(); handleCountryClick(code); setMapFlyCountry(code) }}
+        />
+      ) : selectedTheme && rightPanelThemeCountry ? (
         <CountryThemePanel
           theme={selectedTheme.theme}
           countryCode={rightPanelThemeCountry.code}

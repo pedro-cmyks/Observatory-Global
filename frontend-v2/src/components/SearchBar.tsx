@@ -1,169 +1,183 @@
-import { useState, useEffect, useCallback } from 'react'
-import { getThemeLabel } from '../lib/themeLabels'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { useFocus } from '../contexts/FocusContext'
 import { Search } from 'lucide-react'
 import './SearchBar.css'
 
+interface TopCountry {
+    code: string
+    name: string
+    count: number
+}
+
+interface ThemeResult {
+    theme: string
+    total_signals: number
+    top_countries: TopCountry[]
+}
+
+interface PersonResult {
+    person: string
+    total_signals: number
+    top_countries: TopCountry[]
+}
+
+interface CountryResult {
+    code: string
+    name: string
+}
+
 interface SearchResult {
-    themes: { theme: string; country: string; count: number }[]
-    sources: { source: string; country: string; count: number }[]
-    countries: { code: string; name: string }[]
-    persons: { person: string; country: string; count: number }[]
+    themes: ThemeResult[]
+    persons: PersonResult[]
+    countries: CountryResult[]
 }
 
 interface SearchBarProps {
-    onThemeSelect: (theme: string, country?: string) => void
+    onThemeSelect: (theme: string, countryCode?: string, countryName?: string) => void
     onCountrySelect: (code: string) => void
-    onSourceSelect: (source: string) => void
 }
 
-export function SearchBar({ onThemeSelect, onCountrySelect, onSourceSelect }: SearchBarProps) {
+export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<SearchResult | null>(null)
     const [isOpen, setIsOpen] = useState(false)
     const [loading, setLoading] = useState(false)
-    const { setFocus } = useFocus()
+    const inputRef = useRef<HTMLInputElement>(null)
+    const { setFocus, setMapFlyCountry } = useFocus()
 
-    const search = useCallback(async (q: string) => {
+    const doSearch = useCallback(async (q: string) => {
         if (q.length < 2) {
             setResults(null)
+            setIsOpen(false)
             return
         }
-
         setLoading(true)
         try {
             const res = await fetch(`/api/v2/search?q=${encodeURIComponent(q)}&hours=168`)
-            const data = await res.json()
-            setResults(data)
-            setIsOpen(true)
-        } catch (error) {
-            console.error('Search failed:', error)
+            if (res.ok) {
+                const data = await res.json()
+                setResults(data)
+                setIsOpen(true)
+            }
+        } catch {
+            // silent
+        } finally {
+            setLoading(false)
         }
-        setLoading(false)
     }, [])
 
-    // Debounced search
     useEffect(() => {
-        const timer = setTimeout(() => {
-            if (query) search(query)
-        }, 300)
-        return () => clearTimeout(timer)
-    }, [query, search])
+        const t = setTimeout(() => { if (query) doSearch(query) }, 300)
+        return () => clearTimeout(t)
+    }, [query, doSearch])
 
-    const handleThemeClick = (theme: string, country?: string) => {
-        setFocus('theme', theme, getThemeLabel(theme))
-        onThemeSelect(theme, country)
+    const close = () => {
         setIsOpen(false)
         setQuery('')
+        setResults(null)
     }
 
-    const handleCountryClick = (code: string, name: string) => {
-        setFocus('country', code, name)
-        onCountrySelect(code)
-        setIsOpen(false)
-        setQuery('')
+    const handleThemeClick = (t: ThemeResult) => {
+        const top = t.top_countries[0]
+        setFocus('theme', t.theme, getThemeLabel(t.theme))
+        onThemeSelect(t.theme)
+        if (top) setMapFlyCountry(top.code)
+        close()
     }
 
-    const handlePersonClick = (person: string, country?: string) => {
-        setFocus('person', person, person)
-        // For now, persons trigger theme-like behavior
-        console.log(`Selected person: ${person} in ${country || 'any country'}`)
-        setIsOpen(false)
-        setQuery('')
+    const handlePersonClick = (p: PersonResult) => {
+        const top = p.top_countries[0]
+        setFocus('person', p.person, p.person)
+        if (top) setMapFlyCountry(top.code)
+        // EntityPanel opens via focus.type === 'person' in App.tsx — no CountryBrief
+        close()
     }
+
+    const handleCountryClick = (c: CountryResult) => {
+        setFocus('country', c.code, c.name)
+        setMapFlyCountry(c.code)
+        onCountrySelect(c.code)
+        close()
+    }
+
+    const hasResults = results && (
+        results.themes.length > 0 ||
+        results.persons.length > 0 ||
+        results.countries.length > 0
+    )
 
     return (
-        <div className="search-container">
+        <div className="search-container" onKeyDown={(e) => e.key === 'Escape' && close()}>
             <div className="search-input-wrapper">
-                <span className="search-icon"><Search size={16} /></span>
+                <span className="search-icon"><Search size={14} /></span>
                 <input
+                    ref={inputRef}
                     type="text"
                     className="search-input"
-                    placeholder="Search themes, countries, sources..."
+                    placeholder="Search topics, countries, people..."
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => results && setIsOpen(true)}
                 />
-                {loading && <span className="search-loading">...</span>}
+                {loading && <span className="search-loading">·</span>}
+                {query && !loading && (
+                    <button className="search-clear" onClick={close}>×</button>
+                )}
             </div>
 
-            {isOpen && results && (
+            {isOpen && (
                 <div className="search-dropdown">
-                    {results.countries.length > 0 && (
+                    {results?.countries && results.countries.length > 0 && (
                         <div className="search-section">
-                            <h4>Countries</h4>
+                            <div className="search-section-label">Countries</div>
                             {results.countries.map(c => (
-                                <div
-                                    key={c.code}
-                                    className="search-item"
-                                    onClick={() => handleCountryClick(c.code, c.name)}
-                                >
-                                    <span className="search-item-icon" style={{ background: 'var(--color-accent-primary)', padding: '2px 4px', borderRadius: '3px', fontSize: '8px' }}>CTY</span>
-                                    <span>{c.name}</span>
-                                    <span className="search-item-code">{c.code}</span>
+                                <div key={c.code} className="search-item" onClick={() => handleCountryClick(c)}>
+                                    <span className="search-item-tag country-tag">{c.code}</span>
+                                    <span className="search-item-name">{c.name}</span>
                                 </div>
                             ))}
                         </div>
                     )}
 
-                    {results.themes.length > 0 && (
+                    {results?.themes && results.themes.length > 0 && (
                         <div className="search-section">
-                            <h4>Themes</h4>
-                            {results.themes.slice(0, 8).map((t, i) => (
-                                <div
-                                    key={`${t.theme}-${t.country}-${i}`}
-                                    className="search-item"
-                                    onClick={() => handleThemeClick(t.theme, t.country)}
-                                >
-                                    <span className="search-item-icon" style={{ background: 'var(--color-accent-secondary)', padding: '2px 4px', borderRadius: '3px', fontSize: '8px' }}>SRC</span>
-                                    <span>{getThemeLabel(t.theme)}</span>
-                                    <span className="search-item-meta">{t.country} • {t.count}</span>
+                            <div className="search-section-label">Themes</div>
+                            {results.themes.map((t) => (
+                                <div key={t.theme} className="search-item" onClick={() => handleThemeClick(t)}>
+                                    <span className="search-item-icon">{getThemeIcon(t.theme)}</span>
+                                    <span className="search-item-name">{getThemeLabel(t.theme)}</span>
+                                    <span className="search-item-meta">
+                                        {t.total_signals.toLocaleString()} sig
+                                        {t.top_countries[0] && ` · ${t.top_countries[0].code}`}
+                                        {t.top_countries[1] && ` ${t.top_countries[1].code}`}
+                                        {t.top_countries[2] && ` ${t.top_countries[2].code}`}
+                                    </span>
                                 </div>
                             ))}
                         </div>
                     )}
 
-                    {results.sources.length > 0 && (
+                    {results?.persons && results.persons.length > 0 && (
                         <div className="search-section">
-                            <h4>Sources</h4>
-                            {results.sources.slice(0, 5).map((s, i) => (
-                                <div
-                                    key={`${s.source}-${i}`}
-                                    className="search-item"
-                                    onClick={() => {
-                                        setFocus('source', s.source, s.source)
-                                        onSourceSelect(s.source)
-                                        setIsOpen(false)
-                                        setQuery('')
-                                    }}
-                                >
-                                    <span className="search-item-icon">🔗</span>
-                                    <span>{s.source}</span>
-                                    <span className="search-item-meta">{s.count} signals</span>
+                            <div className="search-section-label">People</div>
+                            {results.persons.map((p) => (
+                                <div key={p.person} className="search-item" onClick={() => handlePersonClick(p)}>
+                                    <span className="search-item-tag person-tag">P</span>
+                                    <span className="search-item-name" style={{ textTransform: 'capitalize' }}>
+                                        {p.person.toLowerCase()}
+                                    </span>
+                                    <span className="search-item-meta">
+                                        {p.total_signals.toLocaleString()} sig
+                                        {p.top_countries[0] && ` · ${p.top_countries[0].code}`}
+                                    </span>
                                 </div>
                             ))}
                         </div>
                     )}
 
-                    {results.persons && results.persons.length > 0 && (
-                        <div className="search-section">
-                            <h4>People</h4>
-                            {results.persons.slice(0, 5).map((p, i) => (
-                                <div
-                                    key={`${p.person}-${i}`}
-                                    className="search-item"
-                                    onClick={() => handlePersonClick(p.person, p.country)}
-                                >
-                                    <span className="search-item-icon">👤</span>
-                                    <span style={{ textTransform: 'capitalize' }}>{p.person.toLowerCase()}</span>
-                                    <span className="search-item-meta">{p.country} • {p.count}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {results.themes.length === 0 && results.countries.length === 0 && results.sources.length === 0 && (!results.persons || results.persons.length === 0) && (
-                        <div className="search-empty">No results found</div>
+                    {!hasResults && !loading && (
+                        <div className="search-empty">No results for "{query}"</div>
                     )}
                 </div>
             )}

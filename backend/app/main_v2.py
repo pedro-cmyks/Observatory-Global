@@ -598,67 +598,135 @@ async def search(
     q: str = Query(..., min_length=2, description="Search query"),
     hours: int = Query(168, ge=1, le=720)
 ):
-    """Search across themes, countries, sources, and persons."""
+    """Search across themes, countries, and persons. Returns top_countries per result for map fly-to."""
     query = q.lower().strip()
-    
+    cache_key = f"search:{query}:{hours}"
+    if app.state.redis:
+        try:
+            cached = await app.state.redis.get(cache_key)
+            if cached:
+                return json.loads(cached)
+        except Exception:
+            pass
+
     async with app.state.pool.acquire() as conn:
-        # Search in themes
-        theme_results = await conn.fetch("""
-            SELECT 
-                unnest(themes) as theme,
-                country_code,
-                COUNT(*) as count
-            FROM signals_v2
-            WHERE timestamp > NOW() - INTERVAL '%s hours'
-            AND LOWER(array_to_string(themes, ' ')) LIKE $1
-            GROUP BY theme, country_code
-            ORDER BY count DESC
-            LIMIT 20
+        # Themes — grouped with top 3 countries each
+        # Exclude pure taxonomy prefixes (TAX_WORLDFISH, TAX_WORLDLANGUAGES, etc.) that
+        # match on biological/language names and produce misleading results
+        theme_rows = await conn.fetch("""
+            WITH matches AS (
+                SELECT unnest(themes) as theme, country_code, COUNT(*) as cnt
+                FROM signals_v2
+                WHERE timestamp > NOW() - INTERVAL '%s hours'
+                  AND LOWER(array_to_string(themes, ' ')) LIKE $1
+                GROUP BY theme, country_code
+                HAVING COUNT(*) >= 2
+            ),
+            filtered AS (
+                SELECT * FROM matches
+                WHERE theme NOT LIKE 'TAX_%%'
+                  AND theme NOT LIKE 'WORLDLANGUAGES_%%'
+            ),
+            totals AS (
+                SELECT theme, SUM(cnt) as total_signals
+                FROM filtered GROUP BY theme
+                ORDER BY total_signals DESC LIMIT 10
+            ),
+            ranked AS (
+                SELECT m.theme, m.country_code, m.cnt,
+                       ROW_NUMBER() OVER (PARTITION BY m.theme ORDER BY m.cnt DESC) as rn
+                FROM filtered m JOIN totals t ON t.theme = m.theme
+            )
+            SELECT
+                t.theme,
+                t.total_signals,
+                array_agg(r.country_code ORDER BY r.rn) FILTER (WHERE r.rn <= 3) as top_codes,
+                array_agg(r.cnt::int ORDER BY r.rn)     FILTER (WHERE r.rn <= 3) as top_counts,
+                array_agg(COALESCE(c.name, r.country_code) ORDER BY r.rn) FILTER (WHERE r.rn <= 3) as top_names
+            FROM totals t
+            JOIN ranked r ON r.theme = t.theme AND r.rn <= 3
+            LEFT JOIN countries_v2 c ON c.code = r.country_code
+            GROUP BY t.theme, t.total_signals
+            ORDER BY t.total_signals DESC
         """ % hours, f'%{query}%')
-        
-        # Search in sources
-        source_results = await conn.fetch("""
-            SELECT 
-                source_name,
-                country_code,
-                COUNT(*) as count
-            FROM signals_v2
-            WHERE timestamp > NOW() - INTERVAL '%s hours'
-            AND LOWER(source_name) LIKE $1
-            GROUP BY source_name, country_code
-            ORDER BY count DESC
-            LIMIT 10
+
+        # Persons — same grouping pattern
+        person_rows = await conn.fetch("""
+            WITH matches AS (
+                SELECT unnest(persons) as person, country_code, COUNT(*) as cnt
+                FROM signals_v2
+                WHERE timestamp > NOW() - INTERVAL '%s hours'
+                  AND persons IS NOT NULL AND array_length(persons, 1) > 0
+                  AND LOWER(array_to_string(persons, ' ')) LIKE $1
+                GROUP BY person, country_code
+                HAVING COUNT(*) >= 2
+            ),
+            totals AS (
+                SELECT person, SUM(cnt) as total_signals
+                FROM matches GROUP BY person
+                ORDER BY total_signals DESC LIMIT 8
+            ),
+            ranked AS (
+                SELECT m.person, m.country_code, m.cnt,
+                       ROW_NUMBER() OVER (PARTITION BY m.person ORDER BY m.cnt DESC) as rn
+                FROM matches m JOIN totals t ON t.person = m.person
+            )
+            SELECT
+                t.person,
+                t.total_signals,
+                array_agg(r.country_code ORDER BY r.rn) FILTER (WHERE r.rn <= 3) as top_codes,
+                array_agg(r.cnt::int ORDER BY r.rn)     FILTER (WHERE r.rn <= 3) as top_counts,
+                array_agg(COALESCE(c.name, r.country_code) ORDER BY r.rn) FILTER (WHERE r.rn <= 3) as top_names
+            FROM totals t
+            JOIN ranked r ON r.person = t.person AND r.rn <= 3
+            LEFT JOIN countries_v2 c ON c.code = r.country_code
+            GROUP BY t.person, t.total_signals
+            ORDER BY t.total_signals DESC
         """ % hours, f'%{query}%')
-        
-        # Search countries by name
-        country_results = await conn.fetch("""
-            SELECT code, name, latitude, longitude
-            FROM countries_v2
+
+        # Countries — simple name/code match
+        country_rows = await conn.fetch("""
+            SELECT code, name FROM countries_v2
             WHERE LOWER(name) LIKE $1 OR LOWER(code) LIKE $1
-            LIMIT 10
+            LIMIT 8
         """, f'%{query}%')
-        
-        # Search in persons
-        person_results = await conn.fetch("""
-            SELECT 
-                unnest(persons) as person,
-                country_code,
-                COUNT(*) as count
-            FROM signals_v2
-            WHERE timestamp > NOW() - INTERVAL '%s hours'
-            AND LOWER(array_to_string(persons, ' ')) LIKE $1
-            GROUP BY person, country_code
-            ORDER BY count DESC
-            LIMIT 10
-        """ % hours, f'%{query}%')
-        
-        return {
+
+        def build_top_countries(codes, names, counts):
+            if not codes:
+                return []
+            return [
+                {"code": codes[i], "name": names[i], "count": counts[i]}
+                for i in range(len(codes))
+            ]
+
+        result = {
             "query": q,
-            "themes": [{"theme": r['theme'], "country": r['country_code'], "count": int(r['count'])} for r in theme_results],
-            "sources": [{"source": r['source_name'], "country": r['country_code'], "count": int(r['count'])} for r in source_results],
-            "countries": [{"code": r['code'], "name": r['name']} for r in country_results],
-            "persons": [{"person": r['person'], "country": r['country_code'], "count": int(r['count'])} for r in person_results]
+            "themes": [
+                {
+                    "theme": r['theme'],
+                    "total_signals": int(r['total_signals']),
+                    "top_countries": build_top_countries(r['top_codes'], r['top_names'], r['top_counts'])
+                }
+                for r in theme_rows
+            ],
+            "persons": [
+                {
+                    "person": r['person'],
+                    "total_signals": int(r['total_signals']),
+                    "top_countries": build_top_countries(r['top_codes'], r['top_names'], r['top_counts'])
+                }
+                for r in person_rows
+            ],
+            "countries": [{"code": r['code'], "name": r['name']} for r in country_rows],
         }
+
+    if app.state.redis:
+        try:
+            await app.state.redis.setex(cache_key, 120, json.dumps(result))
+        except Exception:
+            pass
+
+    return result
 
 @app.get("/api/v2/focus")
 async def get_focus_data(
