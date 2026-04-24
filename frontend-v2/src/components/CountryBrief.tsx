@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { IndicatorTooltip, VolumeIndicator } from './IndicatorTooltip';
+import { useCrisis } from '../contexts/CrisisContext';
 import './CountryBrief.css';
 import { getThemeLabel } from '../lib/themeLabels';
 
@@ -89,6 +90,8 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
     onClose,
     onThemeSelect
 }) => {
+    const { anomalies } = useCrisis()
+    const anomaly = anomalies.find((a: any) => a.country_code === countryCode) ?? null
     const [data, setData] = useState<BriefData | null>(null);
     const [indicators, setIndicators] = useState<Indicators | null>(null);
     const [loading, setLoading] = useState(true);
@@ -225,6 +228,14 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 Executive Brief • Last {timeWindow}h • {data.signal_count.toLocaleString()} signals
             </p>
 
+            {anomaly && (
+                <div className="anomaly-badge">
+                    <span className="anomaly-badge-icon">▲</span>
+                    <span>{anomaly.multiplier.toFixed(0)}× above 7-day baseline</span>
+                    <span className="anomaly-badge-level">{anomaly.level?.toUpperCase()}</span>
+                </div>
+            )}
+
             {/* Trust Indicators */}
             {indicators && !(indicators as Indicators & { error?: string }).error && (
                 <section className="brief-section">
@@ -278,13 +289,17 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             <section className="brief-section">
                 <h3>Top Themes</h3>
                 <div className="theme-list">
-                    {data.top_themes.slice(0, 8).map((theme, i) => (
+                    {data.top_themes
+                        .filter(t => !t.name.startsWith('WORLDLANGUAGES_') && !t.name.startsWith('TAX_WORLDLANGUAGES_'))
+                        .slice(0, 8)
+                        .map((theme, i) => (
                         <button
                             key={i}
-                            className="theme-chip"
+                            className={`theme-chip${anomaly && i === 0 ? ' anomaly-spike' : ''}`}
                             onClick={() => onThemeSelect?.(theme.name)}
                             title={`Click to explore ${theme.name}`}
                         >
+                            {anomaly && i === 0 && <span className="spike-bars">▂▄▇</span>}
                             <span className="theme-name">{getThemeLabel(theme.name)}</span>
                             <span className="theme-count">{theme.count}</span>
                         </button>

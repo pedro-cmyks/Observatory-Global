@@ -429,13 +429,13 @@
 
 /* Panel headers — tiered hierarchy */
 .panel-header {
-  height: 28px;
+  min-height: 32px;
   background: rgba(255, 255, 255, 0.025);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 10px;
+  padding: 4px 10px;
   font-size: 11px;
   font-weight: 600;
   color: var(--color-text-muted, #64748b);
@@ -446,7 +446,8 @@
 
 /* PRIMARY: Globe — minimal header, map is the content */
 .terminal-panel.radar .panel-header {
-  height: 24px;
+  min-height: 28px;
+  height: auto;
   background: transparent;
   border-bottom: none;
   font-size: 10px;
@@ -493,6 +494,10 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
+.layer-btn.layer-btn-error {
+  color: #f59e0b;
+}
+
 .panel-content {
   flex: 1;
   position: relative;
@@ -524,6 +529,79 @@
   to { transform: translateX(0); opacity: 1; }
 }
 
+/* Panel title wrapper for subtitle layout */
+.panel-header-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.panel-subtitle {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.25);
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.05em;
+  font-weight: 400;
+  text-transform: lowercase;
+  line-height: 1;
+}
+
+/* Welcome card — appears on first load, bottom-left of globe */
+.welcome-card {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  background: rgba(15, 20, 30, 0.92);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 10px 16px;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: fadeInCard 0.5s ease;
+}
+
+.welcome-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: var(--font-mono, monospace);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.welcome-action {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  font-family: var(--font-mono, monospace);
+}
+
+.welcome-card:hover .welcome-action {
+  color: #1D9E75;
+}
+
+.welcome-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.25);
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+.welcome-close:hover {
+  color: rgba(255,255,255,0.6);
+}
+
+@keyframes fadeInCard {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* Globe Vignette Overlay */
 .globe-vignette {
   position: absolute;
@@ -536,4 +614,50 @@
     rgba(10, 15, 26, 0.35) 78%,
     rgba(10, 15, 26, 0.75) 100%
   );
+}
+/* ── HELP MODE ────────────────────────────────────────── */
+.help-mode {
+  cursor: help;
+}
+.help-mode button,
+.help-mode a,
+.help-mode input {
+  cursor: help;
+}
+
+.help-mode [data-help] {
+  position: relative;
+}
+.help-mode [data-help]:hover::after {
+  content: attr(data-help);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 15, 26, 0.97);
+  border: 1px solid var(--color-accent-primary, #3b82f6);
+  color: #e2e8f0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  max-width: 260px;
+  width: max-content;
+  z-index: 9999;
+  pointer-events: none;
+  white-space: pre-wrap;
+  text-align: left;
+  font-family: var(--font-mono, monospace);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+.help-mode [data-help]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--color-accent-primary, #3b82f6);
+  z-index: 9999;
+  pointer-events: none;
 }

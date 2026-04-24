@@ -87,9 +87,6 @@ export const MapTooltip: React.FC<MapTooltipProps> = ({ tooltip }) => {
                             {(data.sentiment ?? data.avg_tone ?? 0) > 0 ? '+' : ''}{(data.sentiment ?? data.avg_tone ?? 0).toFixed(2)}
                         </strong>
                     </div>
-                    <div style={{ fontSize: '12px', color: '#e2e8f0', marginBottom: '4px' }}>
-                        Sources: <strong>{data.sourceCount ?? data.unique_sources ?? 'N/A'}</strong>
-                    </div>
                     {(data.anomalyMultiplier ?? data.anomaly_multiplier) != null &&
                         (data.anomalyMultiplier ?? data.anomaly_multiplier) > 1.2 && (
                             <div style={{ fontSize: '12px', color: '#fbbf24', marginTop: '4px' }}>

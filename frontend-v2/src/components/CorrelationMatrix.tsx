@@ -2,6 +2,14 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { timeRangeToHours } from '../lib/timeRanges'
+import { getThemeLabel } from '../lib/themeLabels'
+
+function matrixAbbrev(label: string): string {
+    const words = label.replace(/[:\-]/g, ' ').split(/\s+/).filter(w => w.length > 1)
+    if (words.length === 0) return '?'
+    if (words.length === 1) return words[0].slice(0, 4)
+    return words.map(w => w[0].toUpperCase()).join('').slice(0, 4)
+}
 import './CorrelationMatrix.css'
 
 interface CorrelationData {
@@ -86,16 +94,26 @@ export const CorrelationMatrix: React.FC = () => {
         setTooltipData(null)
     }
 
+    // Normalize to actual data range so small variance becomes visible
+    let normalizeScore = (_s: number) => 0
+    if (data && data.matrix.length > 0) {
+        const offDiag = data.matrix.flatMap((row, r) => row.filter((_, c) => r !== c))
+        const dataMin = Math.min(...offDiag)
+        const dataMax = Math.max(...offDiag)
+        const range = dataMax - dataMin || 1
+        normalizeScore = (s: number) => Math.pow((s - dataMin) / range, 0.6)
+    }
+
     return (
         <div className="correlation-matrix-container">
             <div className="matrix-controls">
-                <button 
+                <button
                     className={`matrix-toggle ${mode === 'country' ? 'active' : ''}`}
                     onClick={() => setMode('country')}
                 >
                     [Country × Country]
                 </button>
-                <button 
+                <button
                     className={`matrix-toggle ${mode === 'theme' ? 'active' : ''}`}
                     onClick={() => setMode('theme')}
                 >
@@ -111,53 +129,70 @@ export const CorrelationMatrix: React.FC = () => {
                         ))}
                     </div>
                 ) : data && data.matrix.length > 0 ? (
-                    <div 
+                    <div
                         className={`matrix-grid ${hoverCoords ? 'hover-active' : ''}`}
-                        style={{ 
+                        style={{
                             gridTemplateColumns: `auto repeat(${data.entities.length}, 24px)`,
-                            gridTemplateRows: `60px repeat(${data.entities.length}, 24px)`
+                            gridTemplateRows: `${mode === 'theme' ? 40 : 60}px repeat(${data.entities.length}, 24px)`
                         }}
                         onMouseLeave={handleMouseLeave}
                     >
                         {/* Empty top-left corner */}
                         <div></div>
-                        
+
                         {/* Column Headers */}
-                        {data.entities.map((e, idx) => (
-                            <div 
-                                key={`col-${idx}`} 
-                                className={`matrix-col-header ${hoverCoords && hoverCoords[1] === idx ? 'highlight' : ''}`}
-                                title={data.entity_names[e]}
-                            >
-                                {e.length > 4 ? e.substring(0, 4) : e}
-                            </div>
-                        ))}
+                        {data.entities.map((e, idx) => {
+                            const fullLabel = mode === 'theme' ? getThemeLabel(e) : (data.entity_names[e] || e)
+                            const label = mode === 'theme' ? matrixAbbrev(fullLabel) : e
+                            return (
+                                <div
+                                    key={`col-${idx}`}
+                                    className={`matrix-col-header ${mode === 'theme' ? 'theme-mode' : ''} ${hoverCoords && hoverCoords[1] === idx ? 'highlight' : ''}`}
+                                    title={fullLabel}
+                                >
+                                    {label}
+                                </div>
+                            )
+                        })}
 
                         {/* Rows */}
-                        {data.entities.map((rowEntity, rowIdx) => (
+                        {data.entities.map((rowEntity, rowIdx) => {
+                            const rowLabel = mode === 'theme'
+                                ? getThemeLabel(rowEntity).slice(0, 8)
+                                : rowEntity
+                            const rowFullLabel = mode === 'theme' ? getThemeLabel(rowEntity) : (data.entity_names[rowEntity] || rowEntity)
+                            return (
                             <React.Fragment key={`row-${rowIdx}`}>
                                 {/* Row Header */}
-                                <div 
+                                <div
                                     className={`matrix-row-header ${hoverCoords && hoverCoords[0] === rowIdx ? 'highlight' : ''}`}
-                                    title={data.entity_names[rowEntity]}
+                                    title={rowFullLabel}
                                 >
-                                    {rowEntity.length > 4 ? rowEntity.substring(0, 4) : rowEntity}
+                                    {rowLabel}
                                 </div>
-                                
+
                                 {/* Cells */}
-                                {data.matrix[rowIdx].map((score, colIdx) => (
-                                    <div 
-                                        key={`cell-${rowIdx}-${colIdx}`}
-                                        className={`matrix-cell ${rowIdx === colIdx ? 'diagonal' : ''}`}
-                                        style={rowIdx !== colIdx ? { backgroundColor: `rgba(29, 158, 117, ${score})` } : {}}
-                                        onMouseEnter={(e) => handleMouseEnter(rowIdx, colIdx, e)}
-                                        onClick={() => handleCellClick(rowIdx, colIdx)}
-                                    >
-                                        {/* Optional: could show text value inside if it fits */}
-                                    </div>
-                                ))}
+                                {data.matrix[rowIdx].map((score, colIdx) => {
+                                    const norm = normalizeScore(score)
+                                    const bg = rowIdx !== colIdx
+                                        ? norm < 0.15
+                                            ? `rgba(29, 158, 117, ${(norm * 0.6).toFixed(3)})`
+                                            : norm < 0.5
+                                                ? `rgba(56, 189, 148, ${norm.toFixed(3)})`
+                                                : `rgba(74, 222, 128, ${norm.toFixed(3)})`
+                                        : undefined
+                                    return (
+                                        <div
+                                            key={`cell-${rowIdx}-${colIdx}`}
+                                            className={`matrix-cell ${rowIdx === colIdx ? 'diagonal' : ''}`}
+                                            style={bg ? { backgroundColor: bg } : {}}
+                                            onMouseEnter={(e) => handleMouseEnter(rowIdx, colIdx, e)}
+                                            onClick={() => handleCellClick(rowIdx, colIdx)}
+                                        />
+                                    )
+                                })}
                             </React.Fragment>
-                        ))}
+                        )})}
                     </div>
                 ) : (
                     <div className="matrix-error">Correlation data unavailable</div>

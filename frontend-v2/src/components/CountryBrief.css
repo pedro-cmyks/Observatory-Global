@@ -279,3 +279,50 @@
         border-left: none;
     }
 }
+/* Anomaly badge */
+.anomaly-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 12px 0;
+    padding: 6px 10px;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: 4px;
+    font-size: 11px;
+    color: #ef4444;
+    font-family: var(--font-mono, monospace);
+}
+.anomaly-badge-icon {
+    animation: pulse-icon 1.2s ease-in-out infinite;
+}
+.anomaly-badge-level {
+    margin-left: auto;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    opacity: 0.8;
+}
+@keyframes pulse-icon {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* Anomaly spike theme chip */
+.theme-chip.anomaly-spike {
+    border-color: rgba(239, 68, 68, 0.5);
+    background: rgba(239, 68, 68, 0.08);
+    color: #ef4444;
+}
+.theme-chip.anomaly-spike .theme-name {
+    color: #ef4444;
+}
+.spike-bars {
+    font-size: 9px;
+    letter-spacing: -1px;
+    animation: spike-pulse 1.5s ease-in-out infinite;
+    opacity: 0.9;
+}
+@keyframes spike-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}

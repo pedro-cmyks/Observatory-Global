@@ -68,7 +68,7 @@ const timeAgo = (isoString: string | null): string => {
 export const NarrativeThreads: React.FC = () => {
     const [narratives, setNarratives] = useState<Narrative[]>([])
     const [loading, setLoading] = useState(true)
-    const { filter, setFocus } = useFocus()
+    const { filter, setFocus, setMapFlyCountry } = useFocus()
     const { timeRange } = useFocusData()
 
     // Cap narrative queries to 24h — at longer windows, all themes converge to 85-90% spread
@@ -98,6 +98,9 @@ export const NarrativeThreads: React.FC = () => {
 
     const handleClick = (n: Narrative) => {
         setFocus('theme', n.theme_code, getThemeLabel(n.theme_code))
+        if (n.top_countries.length > 0) {
+            setMapFlyCountry(n.top_countries[0])
+        }
     }
 
     // Loading skeleton

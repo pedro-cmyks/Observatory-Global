@@ -19,8 +19,9 @@ import { FocusIndicator } from './components/FocusIndicator'
 import { MapTooltip, type TooltipData } from './components/MapTooltip'
 import { CrisisProvider } from './contexts/CrisisContext'
 import { SettingsPanel } from './components/SettingsPanel'
+import { CountryThemePanel } from './components/CountryThemePanel'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
-import { Globe, ClipboardList } from 'lucide-react'
+import { Globe, ClipboardList, HelpCircle } from 'lucide-react'
 
 // Terminal Panels
 import { SignalStream } from './components/SignalStream'
@@ -96,9 +97,9 @@ class MapErrorBoundary extends React.Component<{ children: React.ReactNode }, Ma
 
 // Extracted layer building function to prevent re-renders breaking Layer IDs
 function buildLayers({
-  enhancedNodes, visibleFlows, showNodes, showFlows,
+  enhancedNodes, visibleFlows, showFlows,
   isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator,
-  selectedCountryCode, timeRange, showAircraft, aircraftData
+  selectedCountryCode, timeRange, showAircraft, aircraftData, themeFocused
 }: any) {
   const terminatorLayer = createTerminatorLayer({
     visible: showTerminator && !crisisEnabled,
@@ -126,7 +127,7 @@ function buildLayers({
     }),
 
     // Flow arcs
-    (showFlows || !!selectedCountryCode) && new ArcLayer({
+    (showFlows || !!selectedCountryCode || themeFocused) && new ArcLayer({
       id: `flows-${isGlobe ? 'globe' : 'flat'}`,
       data: visibleFlows,
       getSourcePosition: (d: Flow) => d.source,
@@ -160,34 +161,37 @@ function buildLayers({
       },
     }),
 
-    // Core node (solid, pickable)
-    showNodes && new ScatterplotLayer({
-      id: `nodes-core-${isGlobe ? 'globe' : 'flat'}`,
-      data: enhancedNodes,
-      getPosition: (d: any) => [d.lon, d.lat],
-      getRadius: (d: any) => calculateNodeRadius(d.signalCount, sizeBoost),
-      getFillColor: () => [220, 230, 255, 220],
-      getLineColor: [255, 255, 255, 180],
-      lineWidthMinPixels: 1.5,
-      stroked: true,
-      pickable: true,
-      radiusMinPixels: 4,
-      radiusMaxPixels: 14,
-      updateTriggers: {
-        getRadius: [sizeBoost]
-      },
-      transitions: {
-        getRadius: 300
-      }
-    })
+    // Node dots removed — country territory click via Mapbox fill layer handles selection
   ].filter(Boolean)
+}
+
+// Static coordinate fallback for countries that may not appear in live signals
+const COUNTRY_COORDS: Record<string, [number, number]> = {
+  AF:[65,33],AL:[20,41],DZ:[3,28],AO:[18,-12],AR:[-64,-34],AM:[45,40],AU:[133,-27],AT:[14,47],
+  AZ:[47,40],BH:[50,26],BD:[90,24],BY:[28,53],BE:[4,51],BO:[-65,-17],BA:[18,44],BW:[24,-22],
+  BR:[-51,-14],BG:[25,43],KH:[105,12],CM:[12,6],CA:[-96,60],CL:[-71,-30],CN:[105,35],
+  CO:[-74,4],CD:[24,-3],CG:[15,-1],CR:[-84,10],HR:[16,45],CU:[-80,22],CY:[33,35],CZ:[16,50],
+  DK:[10,56],DO:[-70,19],EC:[-77,-2],EG:[30,27],ET:[40,8],FI:[27,64],FR:[2,46],GA:[12,-1],
+  GE:[44,42],DE:[10,51],GH:[-1,8],GR:[22,39],GT:[-90,15],HT:[-72,19],HN:[-87,15],HU:[19,47],
+  IN:[78,21],ID:[118,-2],IR:[53,32],IQ:[44,33],IE:[-8,53],IL:[35,31],IT:[12,42],JP:[138,36],
+  JO:[37,31],KZ:[67,48],KE:[38,-1],KW:[47,29],LB:[36,34],LY:[17,27],LT:[24,56],MA:[-7,32],
+  MX:[-102,24],MD:[29,47],MN:[105,46],MZ:[35,-18],MM:[96,17],NP:[84,28],NL:[5,52],NZ:[174,-41],
+  NI:[-85,13],NG:[8,10],KP:[127,40],NO:[10,62],PK:[70,30],PA:[-80,9],PY:[-58,-23],PE:[-76,-10],
+  PH:[122,13],PL:[20,52],PT:[-8,39],QA:[51,25],RO:[25,46],RU:[100,60],SA:[45,24],
+  SN:[-14,14],RS:[21,44],SG:[104,1],SK:[19,49],SI:[15,46],SO:[46,6],ZA:[25,-29],KR:[128,36],
+  SS:[30,7],ES:[-4,40],LK:[81,7],SD:[30,15],SE:[18,62],CH:[8,47],SY:[38,35],TW:[121,24],
+  TZ:[35,-6],TH:[101,15],TN:[9,34],TR:[35,39],UG:[32,1],UA:[32,49],AE:[54,24],
+  GB:[-2,54],US:[-98,39],UY:[-56,-33],VE:[-66,8],VN:[108,14],YE:[48,15],ZM:[28,-14],
+  ZW:[30,-20],XK:[21,42],ME:[19,42],PS:[35,32],BY:[28,53],KV:[21,42],RI:[118,-2],
+  RB:[21,44],SW:[18,62],EI:[-8,53],
 }
 
 function AppContent() {
   // State
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
   const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null)
-  const [selectedTheme, setSelectedTheme] = useState<{ theme: string, country?: string } | null>(null)
+  const [selectedTheme, setSelectedTheme] = useState<{ theme: string, originCountry?: string, originCountryName?: string } | null>(null)
+  const [rightPanelThemeCountry, setRightPanelThemeCountry] = useState<{ code: string, name: string } | null>(null)
   const [showBriefing, setShowBriefing] = useState(false)
   // const [timeWindow, setTimeWindow] = useState(24) // Replaced by context
   const [viewState, setViewState] = useState(INITIAL_VIEW)
@@ -197,6 +201,17 @@ function AppContent() {
   const mapRef = useRef<MapRef>(null)
   const [isGlobe, setIsGlobe] = useState(() => localStorage.getItem('atlas-globe-mode') === 'true')
   const hasAutoFocused = useRef(false)
+
+  const [helpMode, setHelpMode] = useState(false)
+
+  const [showWelcome, setShowWelcome] = useState(
+    () => sessionStorage.getItem('atlas-welcome-seen') !== 'true'
+  )
+  const dismissWelcome = (openBrief = false) => {
+    setShowWelcome(false)
+    sessionStorage.setItem('atlas-welcome-seen', 'true')
+    if (openBrief) setShowBriefing(true)
+  }
 
   const toggleGlobe = () => {
     const next = !isGlobe
@@ -213,12 +228,21 @@ function AppContent() {
   }
 
   // Focus hook for click-to-focus
-  const { setFocus, focus } = useFocus()
+  const { setFocus, focus, clearFocus, filter, setTheme, mapFlyCountry, setMapFlyCountry } = useFocus()
 
-  // Sync Global Focus to CountrySlide-over
+  // Sync Global Focus to CountrySlide-over + fly to country
   useEffect(() => {
     if (focus.type === 'country' && focus.value && focus.value !== selectedCountryCode) {
       handleCountryClick(focus.value)
+      const node = nodes.find(n => n.id === focus.value)
+      if (node && mapReady) {
+        mapRef.current?.getMap()?.flyTo({
+          center: [node.lon, node.lat],
+          zoom: 3,
+          duration: 2000,
+          essential: true
+        })
+      }
     }
   }, [focus.type, focus.value, selectedCountryCode])
 
@@ -227,27 +251,32 @@ function AppContent() {
 
   // Layer visibility
   const [showHeatmap, setShowHeatmap] = useState(true)
-  const [showNodes, setShowNodes] = useState(true)
   const [showAircraft, setShowAircraft] = useState(false)
   const [aircraftData, setAircraftData] = useState([])
+  const [aircraftError, setAircraftError] = useState(false)
 
   // Fetch Aircraft data
   useEffect(() => {
-    if (!showAircraft) return
+    if (!showAircraft) { setAircraftError(false); return }
     const fetchAircraft = async () => {
       try {
         const res = await fetch('/api/v2/aircraft')
         if (res.ok) {
           const data = await res.json()
-          setAircraftData(data.aircraft || [])
+          const aircraft = data.aircraft || []
+          setAircraftData(aircraft)
+          setAircraftError(aircraft.length === 0)
+        } else {
+          setAircraftError(true)
         }
       } catch (err) {
         console.error('Failed to fetch aircraft:', err)
         setAircraftData([])
+        setAircraftError(true)
       }
     }
     fetchAircraft()
-    const interval = setInterval(fetchAircraft, 15000)
+    const interval = setInterval(fetchAircraft, 60000)
     return () => clearInterval(interval)
   }, [showAircraft])
 
@@ -281,8 +310,13 @@ function AppContent() {
   }
 
   // Theme selection handlers
-  const handleThemeSelect = (theme: string, country?: string) => {
-    setSelectedTheme({ theme, country })
+  const handleThemeSelect = (theme: string, countryCode?: string, countryName?: string) => {
+    setSelectedTheme({ theme, originCountry: countryCode, originCountryName: countryName })
+    if (countryCode && countryName) {
+      setRightPanelThemeCountry({ code: countryCode, name: countryName })
+    } else {
+      setRightPanelThemeCountry(null)
+    }
   }
 
   // Focus-aware data from provider - auto-refetches when focus/range changes
@@ -302,6 +336,40 @@ function AppContent() {
     }
   }, [nodes, mapReady])
 
+  // Fly to top country when theme clicked in NarrativeThreads
+  useEffect(() => {
+    if (!mapFlyCountry || !mapReady) return
+    const node = nodes.find(n => n.id === mapFlyCountry)
+    const coord = node ? [node.lon, node.lat] : COUNTRY_COORDS[mapFlyCountry.toUpperCase()] ?? null
+    if (coord) {
+      mapRef.current?.getMap()?.flyTo({
+        center: coord as [number, number],
+        zoom: node ? 3 : 4,
+        duration: 2000,
+        essential: true
+      })
+    }
+    setMapFlyCountry(null)
+  }, [mapFlyCountry, mapReady])
+
+  // Open ThemeDetail when theme is focused via FocusContext (e.g. NarrativeThreads click)
+  useEffect(() => {
+    if (filter.theme && (!selectedTheme || selectedTheme.theme !== filter.theme)) {
+      setSelectedTheme({ theme: filter.theme })
+      setRightPanelThemeCountry(null)
+    }
+  }, [filter.theme])
+
+  // Close CountryBrief when country focus is cleared externally (pill X button)
+  useEffect(() => {
+    if (!filter.country && selectedCountryCode) {
+      setSelectedCountry(null)
+      setSelectedCountryCode(null)
+      setShowFlows(false)
+      setRightPanelThemeCountry(null)
+    }
+  }, [filter.country])
+
   // Modal Stack Logic (Escape key)
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -310,10 +378,12 @@ function AppContent() {
           setShowBriefing(false)
         } else if (selectedTheme) {
           setSelectedTheme(null)
+          setTheme(null)
         } else if (selectedCountry || selectedCountryCode) {
           setSelectedCountry(null)
           setSelectedCountryCode(null)
           setShowFlows(false)
+          clearFocus()
         }
       }
     }
@@ -416,19 +486,19 @@ function AppContent() {
   // Memoize completely stabilized array block to crush Globe re-render flicker
   const layers = useMemo(() => {
     const builtLayers = buildLayers({
-      enhancedNodes, visibleFlows, showNodes, showFlows,
+      enhancedNodes, visibleFlows, showFlows,
       isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator,
-      selectedCountryCode, timeRange, showAircraft, aircraftData
+      selectedCountryCode, timeRange, showAircraft, aircraftData,
+      themeFocused: !!filter.theme
     })
-    console.log('[DEBUG] buildLayers output count:', builtLayers.length, { mapReady, enhancedNodesCount: enhancedNodes.length })
     return builtLayers
-  }, [enhancedNodes, visibleFlows, showNodes, showFlows, isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator, selectedCountryCode, timeRange, showAircraft, aircraftData])
+  }, [enhancedNodes, visibleFlows, showFlows, isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator, selectedCountryCode, timeRange, showAircraft, aircraftData, filter.theme])
 
   // Total signals for stats
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
 
   return (
-    <div className={`app ${crisisEnabled ? 'crisis-mode' : ''}`}>
+    <div className={`app ${crisisEnabled ? 'crisis-mode' : ''}${helpMode ? ' help-mode' : ''}`}>
       {/* Command Bar */}
       <header className="command-bar">
         <div className="command-bar-left">
@@ -464,6 +534,13 @@ function AppContent() {
           }}>
             <ClipboardList size={13} /> BRIEF
           </button>
+          <button
+            className={`cmd-btn${helpMode ? ' active' : ''}`}
+            onClick={() => setHelpMode(h => !h)}
+            title={helpMode ? 'Exit help mode' : 'Help mode — hover elements to learn what they do'}
+          >
+            <HelpCircle size={13} /> ?
+          </button>
           <SettingsPanel
             showTerminator={showTerminator}
             onToggleTerminator={setShowTerminator}
@@ -477,7 +554,10 @@ function AppContent() {
         {/* Panel 1: GLOBAL RADAR */}
         <div className="terminal-panel radar">
           <div className="panel-header">
-            <span>GLOBE</span>
+            <div className="panel-header-title-wrap">
+              <span>GLOBE</span>
+              <span className="panel-subtitle">narrative activity by country</span>
+            </div>
             <div className="panel-header-controls">
               <button
                 className={`layer-btn ${isGlobe ? 'active' : ''}`}
@@ -499,20 +579,15 @@ function AppContent() {
                 FLOW
               </button>
               <button
-                className={`layer-btn ${showNodes ? 'active' : ''}`}
-                onClick={() => setShowNodes(!showNodes)}
-              >
-                NODES
-              </button>
-              <button
-                className={`layer-btn ${showAircraft ? 'active' : ''}`}
+                className={`layer-btn ${showAircraft ? 'active' : ''} ${showAircraft && aircraftError ? 'layer-btn-error' : ''}`}
                 onClick={() => setShowAircraft(!showAircraft)}
+                title={showAircraft && aircraftError ? 'No aircraft data available' : undefined}
               >
-                PLANE
+                PLANE {showAircraft && aircraftError && '⚠'}
               </button>
             </div>
           </div>
-          <div className="panel-content">
+          <div className="panel-content" onClick={() => showWelcome && dismissWelcome()}>
             <MapErrorBoundary>
               <MapGL
                 ref={mapRef}
@@ -607,6 +682,29 @@ function AppContent() {
                   // Fallback: if sourcedata event doesn't fire within 3s, force ready
                   setTimeout(() => setHeatSourceReady(true), 3000)
 
+                  // Country territory click — ISO_A2 → GDELT/FIPS mapping for mismatches
+                  const ISO_TO_GDELT: Record<string, string> = {
+                    CN: 'CH', ID: 'RI', RS: 'RB', XK: 'KV', MK: 'MK',
+                    CD: 'CG', CG: 'CF', TZ: 'TZ', KR: 'KS', KP: 'KN',
+                    PS: 'GZ', EI: 'EI',
+                  }
+                  map.on('click', 'country-heat-fill', (e: any) => {
+                    if (!e.features?.length) return
+                    const props = e.features[0].properties
+                    const iso = props?.ISO_A2 || props?.ISO_A2_EH || ''
+                    if (!iso || iso === '-99') return
+                    const gdelt = ISO_TO_GDELT[iso] || iso
+                    handleCountryClick(gdelt)
+                    setFocus('country', gdelt, props?.NAME || gdelt)
+                    setMapFlyCountry(gdelt)
+                  })
+                  map.on('mouseenter', 'country-heat-fill', () => {
+                    map.getCanvas().style.cursor = 'pointer'
+                  })
+                  map.on('mouseleave', 'country-heat-fill', () => {
+                    map.getCanvas().style.cursor = ''
+                  })
+
                   setMapReady(true)
                 }}
               >
@@ -616,47 +714,52 @@ function AppContent() {
                   getTooltip={({ object, layer }) => {
                     if (!object) return null
                     if (layer?.id?.startsWith('flows')) return null
-                    if (layer?.id?.startsWith('nodes-core')) return null
                     if (layer?.id?.startsWith('aircraft')) {
                       const altFt = object.baro_altitude ? Math.round(object.baro_altitude / 0.3048) : 0
                       const hdg = object.true_track !== null ? `HDG: ${Math.round(object.true_track)}°` : ''
                       return `Flight ${object.callsign} (${object.origin_country})\nAlt: ${object.baro_altitude || 0}m / ${altFt}ft\n${hdg}`
                     }
-                    if (selectedCountryCode) {
-                      const isConnected = visibleFlows.some(f => f.sourceCountry === object.id || f.targetCountry === object.id)
-                      if (isConnected && object.id !== selectedCountryCode) {
-                        return `${object.name} — click to explore`
-                      }
-                    }
-                    return `${object.name}: ${object.signalCount} signals`
+                    return null
                   }}
                   onHover={(info: any) => {
                     if (!info.object) {
                       setTooltip(null)
                       return
                     }
-                    if (info.layer?.id?.startsWith('nodes-core')) {
-                      setTooltip({ type: 'node', x: info.x, y: info.y, data: info.object })
-                    } else if (info.layer?.id?.startsWith('flows')) {
+                    if (info.layer?.id?.startsWith('flows')) {
                       setTooltip({ type: 'flow', x: info.x, y: info.y, data: info.object })
                     }
                   }}
-                  onClick={({ object, layer }: any) => {
-                    if (layer?.id?.startsWith('nodes-core') && object) {
-                      handleCountryClick(object.id)
-                      setFocus('country', object.id, object.name || object.id)
-                    }
-                  }}
+                  onClick={(_info: any) => { /* country clicks handled by Mapbox fill layer */ }}
                 />
               </MapGL>
               <div className="globe-vignette" />
+              {showWelcome && (
+                <div className="welcome-card" onClick={(e) => {
+                  e.stopPropagation()
+                  dismissWelcome(true)
+                }}>
+                  <span className="welcome-label">Last 24 hours</span>
+                  <span className="welcome-action">See what's happening →</span>
+                  <button
+                    className="welcome-close"
+                    onClick={(e) => { e.stopPropagation(); dismissWelcome() }}
+                    title="Dismiss"
+                  >×</button>
+                </div>
+              )}
             </MapErrorBoundary>
           </div>
         </div>
 
         {/* Panel 2: SIGNAL STREAM */}
         <div className="terminal-panel stream">
-          <div className="panel-header">SIGNAL STREAM</div>
+          <div className="panel-header">
+            <div className="panel-header-title-wrap">
+              <span>SIGNAL STREAM</span>
+              <span className="panel-subtitle">live signals, last 15 min</span>
+            </div>
+          </div>
           <div className="panel-content">
             <PanelErrorBoundary panelName="SIGNAL STREAM">
               <SignalStream />
@@ -666,7 +769,12 @@ function AppContent() {
 
         {/* Panel 3: NARRATIVE THREADS */}
         <div className="terminal-panel threads">
-          <div className="panel-header">NARRATIVE THREADS</div>
+          <div className="panel-header">
+            <div className="panel-header-title-wrap">
+              <span>NARRATIVE THREADS</span>
+              <span className="panel-subtitle">how topics spread over time</span>
+            </div>
+          </div>
           <div className="panel-content">
             <PanelErrorBoundary panelName="NARRATIVE THREADS">
               <NarrativeThreads />
@@ -676,7 +784,12 @@ function AppContent() {
 
         {/* Panel 4: CORRELATION MATRIX */}
         <div className="terminal-panel matrix">
-          <div className="panel-header">CORRELATION MATRIX</div>
+          <div className="panel-header">
+            <div className="panel-header-title-wrap">
+              <span>CORRELATION MATRIX</span>
+              <span className="panel-subtitle">which countries share narratives</span>
+            </div>
+          </div>
           <div className="panel-content">
             <PanelErrorBoundary panelName="CORRELATION MATRIX">
               <CorrelationMatrix />
@@ -686,7 +799,12 @@ function AppContent() {
 
         {/* Panel 5: ANOMALY ALERT */}
         <div className="terminal-panel anomaly">
-          <div className="panel-header">ANOMALY ALERT</div>
+          <div className="panel-header">
+            <div className="panel-header-title-wrap">
+              <span>ANOMALY ALERT</span>
+              <span className="panel-subtitle">unusual activity vs 7-day baseline</span>
+            </div>
+          </div>
           <div className="panel-content">
             <PanelErrorBoundary panelName="ANOMALY ALERT">
               <AnomalyPanel />
@@ -696,7 +814,12 @@ function AppContent() {
 
         {/* Panel 6: SOURCE INTEGRITY */}
         <div className="terminal-panel integrity">
-          <div className="panel-header">SOURCE INTEGRITY</div>
+          <div className="panel-header">
+            <div className="panel-header-title-wrap">
+              <span>SOURCE INTEGRITY</span>
+              <span className="panel-subtitle">diversity of information sources</span>
+            </div>
+          </div>
           <div className="panel-content">
             <PanelErrorBoundary panelName="SOURCE INTEGRITY">
               <SourceIntegrityPanel />
@@ -724,19 +847,42 @@ function AppContent() {
         />
       )}
 
-      {/* Theme Detail Overlay */}
+      {/* Theme Detail — global center overlay */}
       {selectedTheme && (
         <ThemeDetail
           theme={selectedTheme.theme}
-          country={selectedTheme.country}
+          originCountry={selectedTheme.originCountry}
+          originCountryName={selectedTheme.originCountryName}
           hours={timeRangeToHours(timeRange)}
-          onClose={() => setSelectedTheme(null)}
+          hasRightPanel={!!rightPanelThemeCountry}
+          onClose={() => {
+            setSelectedTheme(null)
+            setRightPanelThemeCountry(null)
+            if (filter.theme) setTheme(null)
+          }}
           onThemeSelect={(theme) => handleThemeSelect(theme)}
+          onCountryCardClick={(code, name) => setRightPanelThemeCountry({ code, name })}
         />
       )}
 
-      {/* Country Brief Slide-over */}
-      {selectedCountry && (
+      {/* Right panel: CountryThemePanel when theme active with a country, else CountryBrief */}
+      {selectedTheme && rightPanelThemeCountry ? (
+        <CountryThemePanel
+          theme={selectedTheme.theme}
+          countryCode={rightPanelThemeCountry.code}
+          countryName={rightPanelThemeCountry.name}
+          hours={timeRangeToHours(timeRange)}
+          onClose={() => {
+            setSelectedTheme(null)
+            setRightPanelThemeCountry(null)
+            if (filter.theme) setTheme(null)
+          }}
+          onBackToCountry={selectedCountry ? () => setRightPanelThemeCountry(null) : undefined}
+          onThemeSelect={(theme) => {
+            handleThemeSelect(theme, rightPanelThemeCountry.code, rightPanelThemeCountry.name)
+          }}
+        />
+      ) : selectedCountry && (
         <CountryBrief
           countryCode={selectedCountry.countryCode}
           countryName={selectedCountry.name || selectedCountry.countryCode}
@@ -745,8 +891,12 @@ function AppContent() {
             setSelectedCountry(null)
             setSelectedCountryCode(null)
             setShowFlows(false)
+            clearFocus()
           }}
-          onThemeSelect={(theme) => handleThemeSelect(theme)}
+          onThemeSelect={(theme) => {
+            handleThemeSelect(theme, selectedCountry.countryCode, selectedCountry.name || selectedCountry.countryCode)
+            setMapFlyCountry(selectedCountry.countryCode)
+          }}
         />
       )}
     </div>

@@ -1,0 +1,40 @@
+const COUNTRY_NAMES: Record<string, string> = {
+    AF: 'Afghanistan', AL: 'Albania', DZ: 'Algeria', AO: 'Angola', AR: 'Argentina',
+    AM: 'Armenia', AU: 'Australia', AT: 'Austria', AZ: 'Azerbaijan', BH: 'Bahrain',
+    BD: 'Bangladesh', BY: 'Belarus', BE: 'Belgium', BZ: 'Belize', BJ: 'Benin',
+    BO: 'Bolivia', BA: 'Bosnia & Herz.', BW: 'Botswana', BR: 'Brazil', BN: 'Brunei',
+    BG: 'Bulgaria', BF: 'Burkina Faso', BI: 'Burundi', KH: 'Cambodia', CM: 'Cameroon',
+    CA: 'Canada', CF: 'C. African Rep.', TD: 'Chad', CL: 'Chile', CN: 'China',
+    CO: 'Colombia', CG: 'Congo', CD: 'DR Congo', CR: 'Costa Rica', HR: 'Croatia',
+    CU: 'Cuba', CY: 'Cyprus', CZ: 'Czech Rep.', DK: 'Denmark', DO: 'Dominican Rep.',
+    EC: 'Ecuador', EG: 'Egypt', SV: 'El Salvador', ER: 'Eritrea', EE: 'Estonia',
+    ET: 'Ethiopia', FI: 'Finland', FR: 'France', GA: 'Gabon', GE: 'Georgia',
+    DE: 'Germany', GH: 'Ghana', GR: 'Greece', GT: 'Guatemala', GN: 'Guinea',
+    HT: 'Haiti', HN: 'Honduras', HK: 'Hong Kong', HU: 'Hungary', IN: 'India',
+    ID: 'Indonesia', IR: 'Iran', IQ: 'Iraq', IE: 'Ireland', IL: 'Israel',
+    IT: 'Italy', JM: 'Jamaica', JP: 'Japan', JO: 'Jordan', KZ: 'Kazakhstan',
+    KE: 'Kenya', KW: 'Kuwait', KG: 'Kyrgyzstan', LA: 'Laos', LV: 'Latvia',
+    LB: 'Lebanon', LY: 'Libya', LT: 'Lithuania', LU: 'Luxembourg', MK: 'N. Macedonia',
+    MG: 'Madagascar', MW: 'Malawi', MY: 'Malaysia', ML: 'Mali', MT: 'Malta',
+    MR: 'Mauritania', MX: 'Mexico', MD: 'Moldova', MN: 'Mongolia', MA: 'Morocco',
+    MZ: 'Mozambique', MM: 'Myanmar', NA: 'Namibia', NP: 'Nepal', NL: 'Netherlands',
+    NZ: 'New Zealand', NI: 'Nicaragua', NE: 'Niger', NG: 'Nigeria', KP: 'North Korea',
+    NO: 'Norway', OM: 'Oman', PK: 'Pakistan', PA: 'Panama', PG: 'Papua New Guinea',
+    PY: 'Paraguay', PE: 'Peru', PH: 'Philippines', PL: 'Poland', PT: 'Portugal',
+    QA: 'Qatar', RO: 'Romania', RU: 'Russia', RW: 'Rwanda', SA: 'Saudi Arabia',
+    SN: 'Senegal', RS: 'Serbia', SL: 'Sierra Leone', SG: 'Singapore', SK: 'Slovakia',
+    SI: 'Slovenia', SO: 'Somalia', ZA: 'South Africa', KR: 'South Korea', SS: 'South Sudan',
+    ES: 'Spain', LK: 'Sri Lanka', SD: 'Sudan', SE: 'Sweden', CH: 'Switzerland',
+    SY: 'Syria', TW: 'Taiwan', TJ: 'Tajikistan', TZ: 'Tanzania', TH: 'Thailand',
+    TG: 'Togo', TN: 'Tunisia', TR: 'Turkey', TM: 'Turkmenistan', UG: 'Uganda',
+    UA: 'Ukraine', AE: 'UAE', GB: 'United Kingdom', US: 'United States', UY: 'Uruguay',
+    UZ: 'Uzbekistan', VE: 'Venezuela', VN: 'Vietnam', YE: 'Yemen', ZM: 'Zambia',
+    ZW: 'Zimbabwe', XK: 'Kosovo', ME: 'Montenegro', CW: 'Curaçao', PS: 'Palestine',
+    // GDELT/FIPS codes that differ from ISO
+    VQ: 'Virgin Islands', EI: 'Ireland', GM: 'Gambia', SW: 'Sweden',
+}
+
+export function resolveCountryName(code: string, apiName?: string): string {
+    if (apiName && apiName !== code && apiName.length > 2) return apiName
+    return COUNTRY_NAMES[code?.toUpperCase()] || code
+}

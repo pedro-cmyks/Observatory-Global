@@ -1,9 +1,9 @@
 # Project Status
 
 ## Current State
-**Version**: v3.0.0 (Intelligence Layer)
-**Status**: Development - Feature Complete
-**Last Update**: 2025-12-18
+**Version**: v3.1.0 (Intelligence Layer + AI Insight)
+**Status**: Development - Active
+**Last Update**: 2026-04-23
 
 ## Major Milestone: V3 Intel Layer Implementation ✅
 
@@ -76,6 +76,7 @@
 - `/api/v2/briefing` - Morning briefing summary
 - `/api/v2/search` - Full-text search
 - `/api/indicators/tooltips` - Trust indicator explanations
+- `/api/v2/theme/{theme_code}/insight` - AI meta-summary of coverage framing (Claude Haiku, Redis 15 min, requires `ANTHROPIC_API_KEY`)
 
 ### Frontend Components
 - **Core Visualization**: Deck.gl + MapLibre with interactive nodes and flows
@@ -90,6 +91,27 @@
 - Anomaly baseline tracking with 7-day rolling window
 - Source quality scoring with aggregator filtering
 
+## Recent Accomplishments (2026-04-23)
+
+### AI Coverage Insight (new)
+- Endpoint `GET /api/v2/theme/{theme_code}/insight` generates a 2–3 sentence meta-summary of HOW a topic is covered across sources.
+- Uses Claude Haiku (`claude-haiku-4-5`); optional Ollama fallback via `INSIGHT_PROVIDER=ollama`.
+- Redis cached 15 minutes. Graceful no-op when `ANTHROPIC_API_KEY` is absent.
+- `anthropic>=0.40.0` added to `backend/pyproject.toml`.
+- New env vars documented in `.env.example`: `ANTHROPIC_API_KEY`, `INSIGHT_PROVIDER`, `OLLAMA_HOST`, `OLLAMA_MODEL`.
+
+### UX / Focus Fixes (frontend-v2)
+- `FocusContext`: added `mapFlyCountry` / `setMapFlyCountry()` for cross-component fly-to hints.
+- `App.tsx`: 4 new sync effects covering map fly-to from Correlation Matrix, NarrativeThreads hint, ThemeDetail auto-open on filter change, and CountryBrief auto-close on country clear.
+- Fixed CountryBrief re-open bug; ESC and close callbacks now consistently call `clearFocus()`.
+- ArcLayer renders on theme focus; `filter.theme` added to layers `useMemo` deps.
+
+### ThemeDetail Polish
+- People Mentioned → individual pill buttons (clickable).
+- Related Topics → 2-column grid.
+- Top Sources → click-to-filter Recent Coverage section.
+- AI insight block appears async (pulse animation while loading).
+
 ## Known Issues
 - **Issue #23**: Hexmap layer renders on smaller sphere than Mapbox globe (open since 2025-11-20)
   - Status: Low priority, does not affect v3 intel layer functionality
@@ -97,11 +119,12 @@
 
 ## Next Steps
 
-### Immediate (Current Session)
-1. Review v3 intel layer functionality end-to-end
-2. Consider creating PR to merge v3-intel-layer into main branch
-3. Update README.md with v3 features
-4. Close issue #23 or document as known limitation
+### Immediate (Next Session)
+1. UX first-minute experience: auto-focus, welcome card
+2. Maritime vessel layer — AISStream Phase 3C
+3. Aircraft icon — replace dot with real plane shape
+4. Consider wiring AI insight to CountryBrief and Briefing panel
+5. Increase GDELT theme code coverage in manual label dictionary
 
 ### Future Enhancements
 1. Add unit tests for Focus and Crisis contexts

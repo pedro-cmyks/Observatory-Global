@@ -99,66 +99,44 @@ export const themeLabels: Record<string, string> = {
     'ENERGY_RENEWABLE': 'Renewable Energy'
 }
 
-// Improve the fallback function
 export function getThemeLabel(code: string): string {
     if (!code) return 'Unknown'
 
     const upper = code.toUpperCase()
-    
+
     // Check explicit mapping first
     if (themeLabels[upper]) return themeLabels[upper]
     if (themeLabels[code]) return themeLabels[code]
 
-    // Pattern-based fallback
-    if (upper.startsWith('WORLDLANGUAGES_')) {
-        return upper.replace('WORLDLANGUAGES_', '') + ' Media' // Already title-cased later
-    }
-    
-    let cleaned = upper
-
-    if (cleaned.startsWith('TAX_FNCACT_')) {
-        cleaned = cleaned.replace('TAX_FNCACT_', '') + ' (Official)'
-    } else if (cleaned.startsWith('TAX_ETHNICITY_')) {
-        cleaned = cleaned.replace('TAX_ETHNICITY_', '') + ' Ethnicity'
-    } else if (cleaned.startsWith('WB_')) {
-        // e.g. WB_2432_FRAGILITY_CO -> remove digits
-        cleaned = cleaned.replace(/WB_\d+_/, 'World Bank: ')
-        cleaned = cleaned.replace('WB_', 'World Bank: ')
-    } else if (cleaned.startsWith('UNGP_')) {
-        cleaned = cleaned.replace('UNGP_', 'UN: ')
-    } else if (cleaned.startsWith('EPU_')) {
-        cleaned = cleaned.replace('EPU_', 'Economic Policy: ')
-    } else if (cleaned.startsWith('USPEC_')) {
-        cleaned = cleaned.replace('USPEC_', 'Policy: ')
-    } else {
-        cleaned = cleaned
-            .replace(/^TAX_/, '')               // Remove "TAX_"
-            .replace(/^SOC_/, '')               // Remove "SOC_"
-            .replace(/^CRISISLEX_/, '')         // Remove "CRISISLEX_"
-            .replace(/^GENERAL_/, '')           // Remove "GENERAL_"
-            .replace(/^MEDIA/, '')              // Remove "MEDIA"
-            .replace(/^ENV_/, '')               // Remove "ENV_"
-            .replace(/^ECON_/, 'Economic: ')
-            .replace(/^GOV_/, 'Government: ')
-            .replace(/^TECH_/, 'Technology: ')
-            .replace(/^ENERGY_/, 'Energy: ')
-    }
-
-    cleaned = cleaned
-        .replace(/_AND_/g, ' & ')           // "_AND_" → " & "
-        .replace(/_/g, ' ')                 // Underscores → spaces
-        .replace(/\s+/g, ' ')               // Multiple spaces → single
-        .trim()
-
-    // Title case (preserve Acronyms at start if needed, but simple toLowerCase works for now)
-    return cleaned
+    // Clean up common GDELT prefixes
+    return code
+        .replace(/^WB_\d+_/, 'World Bank: ')
+        .replace(/^WB_/, 'World Bank: ')
+        .replace(/^UNGP_/, 'UN: ')
+        .replace(/^TAX_FNCACT_/, '')
+        .replace(/^TAX_ETHNICITY_/, 'Ethnicity: ')
+        .replace(/^TAX_WORLDLANGUAGES_/, 'Language: ')
+        .replace(/^WORLDLANGUAGES_/, 'Language: ')
+        .replace(/^TAX_/, '')
+        .replace(/^EPU_/, 'Policy: ')
+        .replace(/^CRISISLEX_/, 'Crisis: ')
+        .replace(/^USPEC_/, '')
+        .replace(/^SOC_/, '')
+        .replace(/^GENERAL_/, '')
+        .replace(/^MEDIA_?/, '')
+        .replace(/^ENV_/, '')
+        .replace(/^ECON_/, 'Economic: ')
+        .replace(/^GOV_/, 'Government: ')
+        .replace(/^TECH_/, 'Technology: ')
+        .replace(/^ENERGY_/, 'Energy: ')
+        .replace(/_AND_/g, ' & ')
+        .replace(/_/g, ' ')
+        .replace(/\s+/g, ' ')
         .toLowerCase()
-        .split(' ')
-        .filter(w => w.length > 0)
-        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(' ')
+        .replace(/\b\w/g, c => c.toUpperCase())
         .replace('Un: ', 'UN: ')
         .replace('Us: ', 'US: ')
+        .trim()
 }
 
 // Theme icon function - returns Lucide icon component

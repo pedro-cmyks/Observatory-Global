@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
+import { resolveCountryName } from '../lib/countryNames'
 import './Briefing.css'
 
 interface BriefingData {
@@ -111,7 +112,7 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect }: Bri
                         <h3>Most Negative</h3>
                         {data.negative_sentiment.slice(0, 3).map(c => (
                             <div key={c.code} className="country-item small" onClick={() => { onCountrySelect(c.code); onClose() }}>
-                                <span>{c.name}</span>
+                                <span>{resolveCountryName(c.code, c.name)}</span>
                                 <span className="negative">{c.sentiment.toFixed(2)}</span>
                             </div>
                         ))}
@@ -120,7 +121,7 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect }: Bri
                         <h3>Most Positive</h3>
                         {data.positive_sentiment.slice(0, 3).map(c => (
                             <div key={c.code} className="country-item small" onClick={() => { onCountrySelect(c.code); onClose() }}>
-                                <span>{c.name}</span>
+                                <span>{resolveCountryName(c.code, c.name)}</span>
                                 <span className="positive">+{c.sentiment.toFixed(2)}</span>
                             </div>
                         ))}

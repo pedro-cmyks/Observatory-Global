@@ -24,10 +24,11 @@ const resolveCountryName = (code: string, apiName?: string): string => {
 
 export const AnomalyPanel: React.FC = () => {
     const { anomalies, overallSeverity, loading } = useCrisis()
-    const { setCountry } = useFocus()
+    const { setFocus, setMapFlyCountry } = useFocus()
 
     const handleAnomalyClick = (countryCode: string) => {
-        setCountry(countryCode, 'anomaly')
+        setFocus('country', countryCode)
+        setMapFlyCountry(countryCode)
     }
 
     return (

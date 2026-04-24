@@ -24,7 +24,10 @@ interface FocusContextValue {
     setTheme: (theme: string | null, source?: LockedBy) => void
     setTimeRange: (range: TimeRange) => void
     clearFilter: () => void
-    
+    // Map fly hint: set a country code to trigger a map flyTo
+    mapFlyCountry: string | null
+    setMapFlyCountry: (code: string | null) => void
+
     // Legacy / backwards compatible
     focus: FocusState
     setFocus: (type: FocusType, value: string, label?: string) => void
@@ -49,6 +52,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }, [])
 
     const [filter, setFilter] = useState<GlobalFilter>(defaultFilter)
+    const [mapFlyCountry, setMapFlyCountry] = useState<string | null>(null)
 
     const setCountry = useCallback((country: string | null, source: LockedBy = null) => {
         setFilter(prev => ({ 
@@ -100,9 +104,10 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const isActive = filter.country !== null || filter.theme !== null
 
     return (
-        <FocusContext.Provider value={{ 
+        <FocusContext.Provider value={{
             filter, setCountry, setTheme, setTimeRange, clearFilter,
-            focus, setFocus, clearFocus, isActive 
+            mapFlyCountry, setMapFlyCountry,
+            focus, setFocus, clearFocus, isActive
         }}>
             {children}
         </FocusContext.Provider>

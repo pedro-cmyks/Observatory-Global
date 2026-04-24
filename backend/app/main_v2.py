@@ -24,6 +24,13 @@ import sys
 import httpx
 import asyncio
 import time
+import json
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
+except ImportError:
+    pass
 
 # Add parent directory to path for indicator imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -64,6 +71,7 @@ app.add_middleware(
 )
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://observatory:changeme@localhost:5432/observatory")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 @app.on_event("startup")
 async def startup():
@@ -71,10 +79,22 @@ async def startup():
     app.state.pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10)
     print(f"✅ Connected to database: {DATABASE_URL.split('@')[1]}")
 
+    # Optional Redis connection for caching
+    try:
+        import redis.asyncio as aioredis
+        app.state.redis = await aioredis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
+        await app.state.redis.ping()
+        print(f"✅ Connected to Redis: {REDIS_URL}")
+    except Exception as e:
+        print(f"⚠️  Redis unavailable (caching disabled): {e}")
+        app.state.redis = None
+
 @app.on_event("shutdown")
 async def shutdown():
     """Close connection pool on shutdown."""
     await app.state.pool.close()
+    if hasattr(app.state, "redis") and app.state.redis:
+        await app.state.redis.close()
 
 @app.get("/api/v2/stats")
 async def get_system_stats():
@@ -996,6 +1016,251 @@ async def get_theme_details(
             "countryFraming": [],
             "error": str(e)
         }
+
+
+def _clean_theme_label(theme_code: str) -> str:
+    """Convert theme code like WB_475_DIGITAL_GOVERNMENT to 'Digital Government'."""
+    label = theme_code.upper()
+    # Strip known prefixes
+    for prefix in ("WB_", "TAX_", "GDELT_"):
+        if label.startswith(prefix):
+            # Also strip the numeric segment that follows e.g. WB_475_
+            parts = label.split("_", 2)
+            label = parts[-1] if len(parts) >= 2 else label
+            break
+    # Remove any remaining leading numeric segment (e.g. "475_DIGITAL" → "DIGITAL")
+    parts = label.split("_", 1)
+    if parts[0].isdigit() and len(parts) == 2:
+        label = parts[1]
+    return label.replace("_", " ").title()
+
+
+@app.get("/api/v2/theme/{theme_code}/insight")
+async def get_theme_insight(
+    theme_code: str,
+    hours: int = Query(24, ge=1, le=8760),
+):
+    """
+    Generate a 2-3 sentence AI meta-summary of HOW a topic is covered across
+    global media. Describes observable coverage patterns only — never editorialises
+    about the topic itself.
+
+    Results are cached in Redis for 15 minutes (900 seconds).
+    Falls back gracefully when ANTHROPIC_API_KEY is not set or the LLM call fails.
+    """
+    import math
+
+    cache_key = f"insight:{theme_code.upper()}:{hours}"
+    generated_at = datetime.now(timezone.utc).isoformat()
+
+    # --- Cache check ---
+    if hasattr(app.state, "redis") and app.state.redis:
+        try:
+            cached_raw = await app.state.redis.get(cache_key)
+            if cached_raw:
+                cached_data = json.loads(cached_raw)
+                cached_data["cached"] = True
+                return cached_data
+        except Exception:
+            pass  # Redis hiccup — proceed without cache
+
+    # --- Lightweight DB queries ---
+    tc = theme_code.upper()
+    try:
+        async with app.state.pool.acquire() as conn:
+            # Aggregate stats
+            stats_row = await conn.fetchrow(
+                f"""
+                SELECT
+                    COUNT(*)                          AS total_signals,
+                    COUNT(DISTINCT country_code)      AS country_count,
+                    COUNT(DISTINCT source_name)       AS source_count,
+                    AVG(sentiment)                    AS global_sentiment
+                FROM signals_v2
+                WHERE $1 = ANY(themes)
+                  AND timestamp > NOW() - INTERVAL '{hours} hours'
+                """,
+                tc,
+            )
+
+            # Top 5 countries by volume
+            country_rows = await conn.fetch(
+                f"""
+                SELECT country_code, COUNT(*) AS cnt, AVG(sentiment) AS avg_sent
+                FROM signals_v2
+                WHERE $1 = ANY(themes)
+                  AND timestamp > NOW() - INTERVAL '{hours} hours'
+                GROUP BY country_code
+                ORDER BY cnt DESC
+                LIMIT 5
+                """,
+                tc,
+            )
+
+            # Volume trend: last 6h vs previous 6h
+            trend_row = await conn.fetchrow(
+                """
+                SELECT
+                    SUM(CASE WHEN timestamp > NOW() - INTERVAL '6 hours' THEN 1 ELSE 0 END)          AS recent,
+                    SUM(CASE WHEN timestamp BETWEEN NOW() - INTERVAL '12 hours'
+                                             AND NOW() - INTERVAL '6 hours'  THEN 1 ELSE 0 END)     AS previous
+                FROM signals_v2
+                WHERE $1 = ANY(themes)
+                  AND timestamp > NOW() - INTERVAL '12 hours'
+                """,
+                tc,
+            )
+    except Exception as db_err:
+        return {
+            "theme": theme_code.upper(),
+            "insight": None,
+            "error": "db_error",
+            "detail": str(db_err),
+            "data_points": {},
+            "generated_at": generated_at,
+        }
+
+    total_signals = int(stats_row["total_signals"] or 0)
+    country_count = int(stats_row["country_count"] or 0)
+    source_count = int(stats_row["source_count"] or 0)
+    global_sentiment = float(stats_row["global_sentiment"] or 0.0)
+
+    data_points = {
+        "total_signals": total_signals,
+        "country_count": country_count,
+        "source_count": source_count,
+    }
+
+    # Format top countries string
+    top_countries_parts = []
+    for r in country_rows:
+        cc = r["country_code"] or "??"
+        cnt = int(r["cnt"])
+        avg_s = float(r["avg_sent"] or 0.0)
+        top_countries_parts.append(f"{cc} ({cnt} signals, {avg_s:+.1f} tone)")
+    top_countries_formatted = ", ".join(top_countries_parts) if top_countries_parts else "N/A"
+
+    # Trend description
+    recent = int(trend_row["recent"] or 0)
+    previous = int(trend_row["previous"] or 0)
+    if previous == 0:
+        trend_description = "accelerating (no data in previous 6h)" if recent > 0 else "no recent activity"
+    else:
+        ratio = recent / previous
+        if ratio >= 1.5:
+            trend_description = f"accelerating ({ratio:.1f}x vs previous 6h)"
+        elif ratio <= 0.5:
+            trend_description = f"declining ({ratio:.1f}x vs previous 6h)"
+        else:
+            trend_description = "stable"
+
+    # --- LLM call ---
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    insight_provider = os.getenv("INSIGHT_PROVIDER", "anthropic").lower()
+    theme_label = _clean_theme_label(theme_code)
+
+    user_prompt = (
+        f'Coverage data for topic "{theme_label}" over the last {hours} hours:\n'
+        f"- Total signals: {total_signals}\n"
+        f"- Countries reporting: {country_count}\n"
+        f"- Unique sources: {source_count}\n"
+        f"- Global average sentiment: {global_sentiment:+.1f}\n"
+        f"- Top countries by volume: {top_countries_formatted}\n"
+        f"- Volume trend: {trend_description}\n\n"
+        "Write a 2-3 sentence coverage pattern summary. "
+        "Describe concentration, divergence, and trends only."
+    )
+
+    system_prompt = (
+        "You analyze media coverage PATTERNS only — never the topic itself.\n"
+        "You describe how topics are covered across global media ecosystems using only "
+        "observable, statistical language.\n"
+        "Never editorialize. Never say a topic \"is important\" or take any position on it.\n"
+        "Focus exclusively on: geographic concentration, sentiment divergence between regions, "
+        "volume trends, source diversity.\n"
+        "Output exactly 2-3 sentences. Be specific and data-driven."
+    )
+
+    insight_text: Optional[str] = None
+
+    # Ollama fallback path (optional, environment-controlled)
+    if insight_provider == "ollama":
+        ollama_host = os.getenv("OLLAMA_HOST")
+        if ollama_host:
+            try:
+                ollama_model = os.getenv("OLLAMA_MODEL", "llama3.2")
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    resp = await client.post(
+                        f"{ollama_host.rstrip('/')}/api/chat",
+                        json={
+                            "model": ollama_model,
+                            "stream": False,
+                            "messages": [
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": user_prompt},
+                            ],
+                        },
+                    )
+                    resp.raise_for_status()
+                    insight_text = resp.json()["message"]["content"].strip()
+            except Exception as ollama_err:
+                print(f"[insight] Ollama call failed: {ollama_err}")
+
+    # Anthropic (Claude Haiku) — primary path
+    if insight_text is None and anthropic_key:
+        try:
+            import anthropic
+
+            async_client = anthropic.AsyncAnthropic(api_key=anthropic_key)
+            response = await async_client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=256,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_prompt}],
+            )
+            insight_text = next(
+                (block.text for block in response.content if block.type == "text"),
+                None,
+            )
+        except Exception as llm_err:
+            err_msg = str(llm_err)
+            print(f"[insight] Claude Haiku call failed: {err_msg}")
+            error_code = "insight_no_credits" if "credit balance" in err_msg.lower() else "insight_unavailable"
+            return {
+                "theme": theme_code.upper(),
+                "insight": None,
+                "error": error_code,
+                "data_points": data_points,
+                "generated_at": generated_at,
+            }
+
+    if insight_text is None:
+        # API key missing or provider skipped — return graceful fallback
+        return {
+            "theme": theme_code.upper(),
+            "insight": None,
+            "error": "insight_unavailable",
+            "data_points": data_points,
+            "generated_at": generated_at,
+        }
+
+    result = {
+        "theme": theme_code.upper(),
+        "insight": insight_text,
+        "data_points": data_points,
+        "cached": False,
+        "generated_at": generated_at,
+    }
+
+    # --- Cache the result ---
+    if hasattr(app.state, "redis") and app.state.redis:
+        try:
+            await app.state.redis.setex(cache_key, 900, json.dumps(result))
+        except Exception:
+            pass  # Best-effort caching
+
+    return result
+
 
 @app.get("/api/v2/signals")
 async def get_signals(
@@ -2055,78 +2320,149 @@ async def root():
         "docs": "/docs"
     }
 
+# =============================================================================
+# AIRCRAFT TRACKING (OpenSky Network – OAuth2 client_credentials)
+# =============================================================================
+
 # Global cache for aircraft tracking (60 second TTL)
-AIRCRAFT_CACHE = {
+AIRCRAFT_CACHE: dict = {
     "timestamp": 0,
     "data": []
 }
+
+# OAuth2 token cache (tokens last ~30 min; we refresh at 25 min)
+_OPENSKY_TOKEN_CACHE: dict = {
+    "access_token": "",
+    "expires_at": 0
+}
+
+OPENSKY_CLIENT_ID = os.getenv("OPENSKY_CLIENT_ID", "")
+OPENSKY_CLIENT_SECRET = os.getenv("OPENSKY_CLIENT_SECRET", "")
+OPENSKY_TOKEN_URL = "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token"
+OPENSKY_API_URL = "https://opensky-network.org/api/states/all"
+
+
+async def _get_opensky_token() -> str | None:
+    """
+    Exchange client_id / client_secret for a Bearer token via
+    the OAuth2 client_credentials grant. Caches the token for 25 min.
+    Returns None when credentials are not configured.
+    """
+    if not OPENSKY_CLIENT_ID or not OPENSKY_CLIENT_SECRET:
+        return None
+
+    now = time.time()
+    if _OPENSKY_TOKEN_CACHE["access_token"] and now < _OPENSKY_TOKEN_CACHE["expires_at"]:
+        return _OPENSKY_TOKEN_CACHE["access_token"]
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            OPENSKY_TOKEN_URL,
+            data={
+                "grant_type": "client_credentials",
+                "client_id": OPENSKY_CLIENT_ID,
+                "client_secret": OPENSKY_CLIENT_SECRET,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=10.0,
+        )
+        if resp.status_code != 200:
+            print(f"[OpenSky] Token exchange failed: {resp.status_code} – {resp.text[:300]}")
+            return None
+
+        body = resp.json()
+        token = body.get("access_token", "")
+        expires_in = body.get("expires_in", 1800)  # default 30 min
+        _OPENSKY_TOKEN_CACHE["access_token"] = token
+        _OPENSKY_TOKEN_CACHE["expires_at"] = now + expires_in - 300  # refresh 5 min early
+        print(f"[OpenSky] Got token, expires in {expires_in}s")
+        return token
+
 
 @app.get("/api/v2/aircraft")
 async def get_aircraft_positions():
     """
     Proxy to OpenSky Network for live aircraft positions.
+    Uses OAuth2 Bearer tokens (client_credentials grant).
     Limits to top 2000 aircraft sorted by altitude.
-    Uses a 60-second limit on polls, with 30m graceful degradation on failure.
+    Polls at most once every 60 seconds; falls back to cache up to 30 min old.
+    Never returns fake/simulated data.
     """
     global AIRCRAFT_CACHE
     current_time = time.time()
-    
-    # Poll OpenSky max once every 60 seconds
+
+    # ── Rate-limit: max one poll every 60 s ──────────────────────────────
     if current_time - AIRCRAFT_CACHE["timestamp"] < 60 and AIRCRAFT_CACHE["data"]:
-        age_mins = round((current_time - AIRCRAFT_CACHE["timestamp"]) / 60)
-        return {"aircraft": AIRCRAFT_CACHE["data"], "cached": True, "cache_age_minutes": age_mins}
-        
+        age_mins = round((current_time - AIRCRAFT_CACHE["timestamp"]) / 60, 1)
+        return {
+            "aircraft": AIRCRAFT_CACHE["data"],
+            "cached": True,
+            "cache_age_minutes": age_mins,
+        }
+
     try:
+        # Get OAuth2 token (or None for anonymous)
+        token = await _get_opensky_token()
+        headers: dict = {}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+
         async with httpx.AsyncClient() as client:
-            resp = await client.get("https://opensky-network.org/api/states/all", timeout=5.0)
+            resp = await client.get(
+                OPENSKY_API_URL,
+                headers=headers,
+                timeout=15.0,
+            )
             if resp.status_code != 200:
-                raise Exception(f"OpenSky API failed with status {resp.status_code}")
-                
+                raise Exception(f"OpenSky API returned {resp.status_code}: {resp.text[:200]}")
+
             data = resp.json()
             states = data.get("states", [])
-            
+
             aircraft_list = []
             for state in states:
-                # State format: [0: icao24, 1: callsign, 2: origin_country, 5: longitude, 6: latitude, 
-                # 7: baro_altitude, 8: on_ground, 10: true_track]
+                # State vector indices: 0=icao24, 1=callsign, 2=origin_country,
+                # 5=longitude, 6=latitude, 7=baro_altitude, 8=on_ground, 10=true_track
                 lon = state[5]
                 lat = state[6]
                 on_ground = state[8]
                 alt = state[7]
-                
-                # Filter ground aircraft and invalid positions
+
+                # Skip ground aircraft and invalid positions
                 if on_ground or lon is None or lat is None or alt is None:
                     continue
-                    
+
                 aircraft_list.append({
                     "icao24": state[0],
-                    "callsign": state[1].strip() if state[1] else "Unknown",
+                    "callsign": (state[1] or "").strip() or "Unknown",
                     "origin_country": state[2],
                     "longitude": lon,
                     "latitude": lat,
                     "baro_altitude": alt,
-                    "true_track": state[10]
+                    "true_track": state[10],
                 })
-            
-            # Sort by altitude descending and limit to top 2000
+
+            # Top 2000 by altitude
             aircraft_list.sort(key=lambda x: x["baro_altitude"], reverse=True)
             top_aircraft = aircraft_list[:2000]
-            
+
             AIRCRAFT_CACHE["timestamp"] = current_time
             AIRCRAFT_CACHE["data"] = top_aircraft
+            print(f"[OpenSky] Fetched {len(top_aircraft)} aircraft (of {len(aircraft_list)} airborne)")
             return {"aircraft": top_aircraft, "cached": False, "message": "Live"}
-            
+
     except Exception as e:
-        # On error, fallback to cache if it's less than 30 mins old
+        print(f"[OpenSky] Error: {e}")
+        # Graceful degradation: serve stale cache up to 30 min
         cache_age_seconds = current_time - AIRCRAFT_CACHE["timestamp"]
         if AIRCRAFT_CACHE["data"] and cache_age_seconds < 1800:
-            age_mins = round(cache_age_seconds / 60)
+            age_mins = round(cache_age_seconds / 60, 1)
             return {
-                "aircraft": AIRCRAFT_CACHE["data"], 
-                "cached": True, 
+                "aircraft": AIRCRAFT_CACHE["data"],
+                "cached": True,
                 "cache_age_minutes": age_mins,
-                "message": f"Using cached data ({age_mins}m old) due to API error"
+                "message": f"Using cached data ({age_mins}m old) – API error: {e}",
             }
-            
-        # Empty cache or >30 mins old: clean fallback empty array, no fake data
-        return {"aircraft": [], "cached": False, "message": "Aircraft data temporarily unavailable"}
+
+        # No usable cache – return empty, never fake data
+        return {"aircraft": [], "cached": False, "message": f"Aircraft data temporarily unavailable: {e}"}
