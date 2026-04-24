@@ -1,0 +1,21 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://atlas-api.fly.dev/api/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "https://atlas-api.fly.dev/health"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" }
+      ]
+    }
+  ]
+}
