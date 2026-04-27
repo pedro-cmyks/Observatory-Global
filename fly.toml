@@ -1,7 +1,7 @@
 # Fly.io configuration for Atlas backend
 # Deploy from repo root: fly deploy --config fly.toml
 
-app = "atlas-api"
+app = "atlas-api-pedro"
 primary_region = "iad"  # Washington DC — closest to GDELT servers
 
 [build]

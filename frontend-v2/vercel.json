@@ -2,11 +2,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://atlas-api.fly.dev/api/:path*"
+      "destination": "https://atlas-api-pedro.fly.dev/api/:path*"
     },
     {
       "source": "/health",
-      "destination": "https://atlas-api.fly.dev/health"
+      "destination": "https://atlas-api-pedro.fly.dev/health"
     }
   ],
   "headers": [
