@@ -31,6 +31,7 @@ primary_region = "iad"  # Washington DC — closest to GDELT servers
 
 [checks]
   [checks.health]
+    type = "http"
     grace_period = "30s"
     interval = "60s"
     method = "GET"
