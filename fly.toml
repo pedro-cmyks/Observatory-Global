@@ -5,8 +5,7 @@ app = "atlas-api-pedro"
 primary_region = "iad"  # Washington DC — closest to GDELT servers
 
 [build]
-  dockerfile = "backend/Dockerfile"
-  build_target = ""
+  dockerfile = "Dockerfile"
 
 [env]
   PORT = "8000"
