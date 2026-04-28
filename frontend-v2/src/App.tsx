@@ -236,6 +236,7 @@ function AppContent() {
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
   const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null)
   const [selectedTheme, setSelectedTheme] = useState<{ theme: string, originCountry?: string, originCountryName?: string } | null>(null)
+  const [selectedChokepoint, setSelectedChokepoint] = useState<Chokepoint | null>(null)
   const [rightPanelThemeCountry, setRightPanelThemeCountry] = useState<{ code: string, name: string } | null>(null)
   const [showBriefing, setShowBriefing] = useState(false)
   // const [timeWindow, setTimeWindow] = useState(24) // Replaced by context
@@ -870,7 +871,7 @@ function AppContent() {
                     if (!info.object || !info.layer) return
                     if (info.layer.id?.startsWith('chokepoint-zones')) {
                       const cp = info.object as Chokepoint
-                      setFocus('country', cp.primaryCountry, cp.name)
+                      setSelectedChokepoint(prev => prev?.id === cp.id ? null : cp)
                       setMapFlyCountry(cp.primaryCountry)
                     }
                   }}
@@ -1069,6 +1070,56 @@ function AppContent() {
           }}
         />
       )}
+
+      {/* Chokepoint card — compact floating panel, appears near bottom-left of map */}
+      {selectedChokepoint && (() => {
+        const cp = selectedChokepoint
+        const count = chokepointCounts[cp.id] || 0
+        const isoToFlag = (code: string) => {
+          if (!code || code.length !== 2) return '🌐'
+          return String.fromCodePoint(...code.toUpperCase().split('').map(c => 0x1F1E6 + c.charCodeAt(0) - 65))
+        }
+        return (
+          <div style={{
+            position: 'fixed', bottom: 80, left: 16, zIndex: 300,
+            background: 'rgba(10,12,20,0.97)', border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 12, padding: '14px 16px', width: 260,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: '#e2e8f0' }}>{cp.name}</div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{cp.description}</div>
+              </div>
+              <button onClick={() => setSelectedChokepoint(null)}
+                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0, marginLeft: 8 }}>×</button>
+            </div>
+            {count > 0 && (
+              <div style={{ fontSize: 12, color: '#2dd4bf', marginBottom: 10, fontFamily: 'var(--font-mono)' }}>
+                {count} vessels in range
+              </div>
+            )}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {cp.countries.map(code => (
+                <button key={code}
+                  onClick={() => { handleCountryClick(code); setMapFlyCountry(code) }}
+                  style={{
+                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
+                    color: '#e2e8f0', fontSize: 12, fontFamily: 'var(--font-mono)',
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(29,158,117,0.2)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                >
+                  {isoToFlag(code)} {code}
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
