@@ -89,6 +89,9 @@ async def startup():
         print(f"⚠️  Redis unavailable (caching disabled): {e}")
         app.state.redis = None
 
+    # AISStream background task for maritime vessel tracking
+    asyncio.create_task(_aisstream_background())
+
 @app.on_event("shutdown")
 async def shutdown():
     """Close connection pool on shutdown."""
@@ -2565,3 +2568,145 @@ async def get_aircraft_positions():
 
         # No usable cache – return empty, never fake data
         return {"aircraft": [], "cached": False, "message": f"Aircraft data temporarily unavailable: {e}"}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Maritime vessel tracking via AISStream WebSocket
+# ─────────────────────────────────────────────────────────────────────────────
+
+AISSTREAM_API_KEY = os.getenv("AISSTREAM_API_KEY", "")
+
+# Vessels keyed by MMSI; entries expire after 10 minutes of no update
+VESSEL_CACHE: dict = {
+    "vessels": {},
+    "last_cleanup": 0.0,
+    "connected": False,
+}
+
+# Bounding boxes for geopolitically significant maritime chokepoints
+# Format: [[min_lat, min_lon], [max_lat, max_lon]]
+CHOKEPOINT_BBOXES = [
+    [[25.8, 55.8], [27.2, 57.5]],    # Strait of Hormuz
+    [[40.5, 28.5], [41.5, 29.8]],    # Bosphorus
+    [[11.0, 42.0], [14.0, 45.0]],    # Bab-el-Mandeb (Red Sea south)
+    [[29.5, 31.8], [31.5, 33.0]],    # Suez Canal
+    [[1.0, 99.5],  [5.5, 104.5]],    # Strait of Malacca
+    [[22.0, 119.0],[26.5, 122.0]],   # Taiwan Strait
+    [[8.0, -81.0], [10.0, -79.0]],   # Panama Canal
+    [[-35.5, 17.5],[-32.0, 20.5]],   # Cape of Good Hope
+    [[50.0, -2.5], [52.0, 2.5]],     # English Channel
+    [[3.0, 109.0], [10.0, 117.0]],   # South China Sea core
+]
+
+# Nav status codes we treat as "underway"
+_UNDERWAY_STATUS = {0, 8, 15}
+
+async def _aisstream_background():
+    """
+    Persistent WebSocket connection to AISStream.io for vessel positions near
+    geopolitical chokepoints. Runs as a background asyncio task.
+    Gracefully does nothing when AISSTREAM_API_KEY is not set.
+    """
+    import aiohttp
+
+    if not AISSTREAM_API_KEY:
+        print("[AISStream] No API key set — vessel layer disabled (set AISSTREAM_API_KEY)")
+        return
+
+    RETRY_DELAY = 30
+    while True:
+        try:
+            VESSEL_CACHE["connected"] = False
+            async with aiohttp.ClientSession() as session:
+                async with session.ws_connect(
+                    "wss://stream.aisstream.io/v0/stream",
+                    heartbeat=30,
+                    receive_timeout=120,
+                ) as ws:
+                    await ws.send_json({
+                        "APIKey": AISSTREAM_API_KEY,
+                        "BoundingBoxes": CHOKEPOINT_BBOXES,
+                        "FilterMessageTypes": ["PositionReport"],
+                    })
+                    VESSEL_CACHE["connected"] = True
+                    print("[AISStream] Connected — streaming vessel positions for chokepoints")
+
+                    async for msg in ws:
+                        if msg.type == aiohttp.WSMsgType.TEXT:
+                            try:
+                                data = json.loads(msg.data)
+                            except Exception:
+                                continue
+
+                            if data.get("MessageType") != "PositionReport":
+                                continue
+
+                            meta = data.get("MetaData", {})
+                            pos = data.get("Message", {}).get("PositionReport", {})
+
+                            mmsi = str(meta.get("MMSI") or "")
+                            lat = meta.get("latitude")
+                            lon = meta.get("longitude")
+                            if not mmsi or lat is None or lon is None:
+                                continue
+
+                            nav_status = pos.get("NavigationalStatus", 15)
+                            speed = float(pos.get("Sog") or 0)
+
+                            # Skip moored / at anchor with speed < 0.5 kn
+                            if nav_status not in _UNDERWAY_STATUS and speed < 0.5:
+                                continue
+
+                            VESSEL_CACHE["vessels"][mmsi] = {
+                                "mmsi": mmsi,
+                                "name": (meta.get("ShipName") or "").strip() or "Unknown",
+                                "latitude": lat,
+                                "longitude": lon,
+                                "speed": round(speed, 1),
+                                "heading": pos.get("TrueHeading") or pos.get("Cog") or 0,
+                                "nav_status": nav_status,
+                                "ts": time.time(),
+                            }
+
+                            # Periodic cleanup: drop entries > 10 min old
+                            now = time.time()
+                            if now - VESSEL_CACHE["last_cleanup"] > 300:
+                                VESSEL_CACHE["vessels"] = {
+                                    k: v for k, v in VESSEL_CACHE["vessels"].items()
+                                    if now - v["ts"] < 600
+                                }
+                                VESSEL_CACHE["last_cleanup"] = now
+                                print(f"[AISStream] {len(VESSEL_CACHE['vessels'])} active vessels")
+
+                        elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
+                            break
+
+        except Exception as e:
+            VESSEL_CACHE["connected"] = False
+            print(f"[AISStream] Connection error: {e} — retrying in {RETRY_DELAY}s")
+
+        await asyncio.sleep(RETRY_DELAY)
+
+
+@app.get("/api/v2/vessels")
+async def get_vessels():
+    """
+    Return current vessel positions near geopolitical chokepoints.
+    Data comes from the AISStream WebSocket background task.
+    Returns empty list (not fake data) when API key is not configured.
+    """
+    if not AISSTREAM_API_KEY:
+        return {
+            "vessels": [],
+            "count": 0,
+            "connected": False,
+            "message": "Vessel tracking not configured (AISSTREAM_API_KEY not set)",
+        }
+
+    vessels = list(VESSEL_CACHE["vessels"].values())
+    return {
+        "vessels": vessels,
+        "count": len(vessels),
+        "connected": VESSEL_CACHE["connected"],
+        "message": "Live" if VESSEL_CACHE["connected"] else "Connecting...",
+    }

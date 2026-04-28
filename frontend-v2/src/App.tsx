@@ -100,7 +100,8 @@ class MapErrorBoundary extends React.Component<{ children: React.ReactNode }, Ma
 function buildLayers({
   enhancedNodes, visibleFlows, showFlows,
   isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator,
-  selectedCountryCode, timeRange, showAircraft, aircraftData, themeFocused
+  selectedCountryCode, timeRange, showAircraft, aircraftData,
+  showVessels, vesselData, themeFocused
 }: any) {
   const terminatorLayer = createTerminatorLayer({
     visible: showTerminator && !crisisEnabled,
@@ -124,6 +125,19 @@ function buildLayers({
       radiusUnits: 'pixels',
       radiusMinPixels: 2,
       radiusMaxPixels: 4,
+      pickable: true,
+    }),
+
+    // Vessel Layer — maritime traffic near geopolitical chokepoints
+    showVessels && new ScatterplotLayer({
+      id: `vessels-${isGlobe ? 'globe' : 'flat'}`,
+      data: vesselData,
+      getPosition: (d: any) => [d.longitude, d.latitude, 0],
+      getFillColor: (d: any) => d.speed > 10 ? [0, 220, 200, 220] : [0, 180, 160, 160],
+      getRadius: 3,
+      radiusUnits: 'pixels',
+      radiusMinPixels: 2,
+      radiusMaxPixels: 6,
       pickable: true,
     }),
 
@@ -255,6 +269,9 @@ function AppContent() {
   const [showAircraft, setShowAircraft] = useState(false)
   const [aircraftData, setAircraftData] = useState([])
   const [aircraftError, setAircraftError] = useState(false)
+  const [showVessels, setShowVessels] = useState(false)
+  const [vesselData, setVesselData] = useState([])
+  const [vesselConnected, setVesselConnected] = useState(false)
 
   // Fetch Aircraft data
   useEffect(() => {
@@ -280,6 +297,26 @@ function AppContent() {
     const interval = setInterval(fetchAircraft, 60000)
     return () => clearInterval(interval)
   }, [showAircraft])
+
+  // Fetch vessel positions (30s poll — backend streams from AISStream)
+  useEffect(() => {
+    if (!showVessels) { setVesselData([]); return }
+    const fetchVessels = async () => {
+      try {
+        const res = await fetch('/api/v2/vessels')
+        if (res.ok) {
+          const data = await res.json()
+          setVesselData(data.vessels || [])
+          setVesselConnected(!!data.connected)
+        }
+      } catch (err) {
+        console.error('Failed to fetch vessels:', err)
+      }
+    }
+    fetchVessels()
+    const interval = setInterval(fetchVessels, 30000)
+    return () => clearInterval(interval)
+  }, [showVessels])
 
   // Map readiness gate — prevents DeckGL from crashing before WebGL context is ready
   const [mapReady, setMapReady] = useState(false)
@@ -495,10 +532,11 @@ function AppContent() {
       enhancedNodes, visibleFlows, showFlows,
       isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator,
       selectedCountryCode, timeRange, showAircraft, aircraftData,
+      showVessels, vesselData,
       themeFocused: !!filter.theme
     })
     return builtLayers
-  }, [enhancedNodes, visibleFlows, showFlows, isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator, selectedCountryCode, timeRange, showAircraft, aircraftData, filter.theme])
+  }, [enhancedNodes, visibleFlows, showFlows, isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator, selectedCountryCode, timeRange, showAircraft, aircraftData, showVessels, vesselData, filter.theme])
 
   // Total signals for stats
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
@@ -589,6 +627,13 @@ function AppContent() {
                 title={showAircraft && aircraftError ? 'No aircraft data available' : undefined}
               >
                 PLANE {showAircraft && aircraftError && '⚠'}
+              </button>
+              <button
+                className={`layer-btn ${showVessels ? 'active' : ''}`}
+                onClick={() => setShowVessels(!showVessels)}
+                title={showVessels ? `${vesselData.length} vessels — chokepoints${vesselConnected ? ' (live)' : ' (connecting...)'}` : 'Show vessels near chokepoints'}
+              >
+                SHIPS {showVessels && !vesselConnected && '⏳'}
               </button>
             </div>
           </div>
@@ -723,6 +768,11 @@ function AppContent() {
                       const altFt = object.baro_altitude ? Math.round(object.baro_altitude / 0.3048) : 0
                       const hdg = object.true_track !== null ? `HDG: ${Math.round(object.true_track)}°` : ''
                       return `Flight ${object.callsign} (${object.origin_country})\nAlt: ${object.baro_altitude || 0}m / ${altFt}ft\n${hdg}`
+                    }
+                    if (layer?.id?.startsWith('vessels')) {
+                      const spd = object.speed != null ? `${object.speed} kn` : '—'
+                      const hdg = object.heading ? `HDG: ${Math.round(object.heading)}°` : ''
+                      return `${object.name} (MMSI ${object.mmsi})\nSpeed: ${spd}  ${hdg}`
                     }
                     return null
                   }}
