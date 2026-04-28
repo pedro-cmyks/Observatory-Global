@@ -28,6 +28,7 @@ interface BriefingProps {
 export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect }: BriefingProps) {
     const [data, setData] = useState<BriefingData | null>(null)
     const [loading, setLoading] = useState(true)
+    const [insight, setInsight] = useState<string | null>(null)
 
     useEffect(() => {
         fetch(`/api/v2/briefing?hours=${hours}`)
@@ -35,6 +36,11 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect }: Bri
             .then(setData)
             .catch(console.error)
             .finally(() => setLoading(false))
+
+        fetch(`/api/v2/briefing/insight?hours=${hours}`)
+            .then(res => res.json())
+            .then(d => { if (d.insight) setInsight(d.insight) })
+            .catch(() => {})
     }, [hours])
 
     const getSentimentIndicator = (s: number) => (
@@ -69,6 +75,19 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect }: Bri
                         <p className="briefing-time">Last {hours} hours</p>
                     </div>
                 </div>
+
+                {insight && (
+                    <p style={{
+                        fontSize: '12.5px', lineHeight: '1.65',
+                        color: 'rgba(255,255,255,0.75)',
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+                        borderLeft: '2px solid #1D9E75',
+                        paddingLeft: '12px',
+                        margin: '0 0 16px 0'
+                    }}>
+                        {insight}
+                    </p>
+                )}
 
                 <div className="briefing-stats">
                     <div className="stat-card">

@@ -22,7 +22,7 @@ import { SettingsPanel } from './components/SettingsPanel'
 import { CountryThemePanel } from './components/CountryThemePanel'
 import { EntityPanel } from './components/EntityPanel'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
-import { Globe, ClipboardList, HelpCircle } from 'lucide-react'
+import { Globe, ClipboardList } from 'lucide-react'
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
 
 // Terminal Panels
@@ -33,6 +33,7 @@ import { AnomalyPanel } from './components/AnomalyPanel'
 import { SourceIntegrityPanel } from './components/SourceIntegrityPanel'
 import { PanelErrorBoundary } from './components/PanelErrorBoundary'
 import { ChokepointPanel } from './components/ChokepointPanel'
+import { AtlasLoader } from './components/AtlasLoader'
 
 
 
@@ -67,6 +68,48 @@ const INITIAL_VIEW = {
   zoom: 1.5,
   pitch: 0,
   bearing: 0
+}
+
+// Clickable info badge that shows a styled popup explaining what each panel does
+function InfoBadge({ text }: { text: string }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <span ref={ref} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(o => !o) }}
+        style={{
+          background: 'none', border: '1px solid rgba(100,116,139,0.35)',
+          borderRadius: '50%', width: '14px', height: '14px',
+          cursor: 'pointer', padding: 0, color: '#64748b',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '9px', lineHeight: 1, flexShrink: 0
+        }}
+        title="What does this panel show?"
+      >?</button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: '18px', left: '50%', transform: 'translateX(-50%)',
+          width: '230px', background: '#1a2332', border: '1px solid rgba(100,116,139,0.3)',
+          borderRadius: '6px', padding: '10px 12px', fontSize: '11px', color: '#94a3b8',
+          lineHeight: '1.6', zIndex: 9999, boxShadow: '0 8px 24px rgba(0,0,0,0.7)',
+          pointerEvents: 'auto'
+        }}>
+          {text}
+        </div>
+      )}
+    </span>
+  )
 }
 
 // Error boundary to prevent Deck.gl/WebGL crashes from black-screening the entire app
@@ -247,9 +290,8 @@ function AppContent() {
   const [viewState, setViewState] = useState(INITIAL_VIEW)
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
 
-  // Globe mapping
   const mapRef = useRef<MapRef>(null)
-  const isGlobe = localStorage.getItem('atlas-globe-mode') === 'true'
+  const isGlobe = false
   const hasAutoFocused = useRef(false)
   
   const [showWelcome, setShowWelcome] = useState(
@@ -598,8 +640,19 @@ function AppContent() {
   // Total signals for stats
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
 
+  // Show loader until data arrives, max 6 seconds
+  const [appReady, setAppReady] = useState(false)
+  useEffect(() => {
+    if (nodes.length > 0) setAppReady(true)
+  }, [nodes.length])
+  useEffect(() => {
+    const t = setTimeout(() => setAppReady(true), 6000)
+    return () => clearTimeout(t)
+  }, [])
+
   return (
     <div className={`app ${crisisEnabled ? 'crisis-mode' : ''}`}>
+      <AtlasLoader visible={!appReady} />
       {/* Command Bar */}
       <header className="command-bar">
         <div className="command-bar-left">
@@ -649,9 +702,7 @@ function AppContent() {
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 GLOBE
-                <span title="Visualizes narrative activity geographically. Glowing areas show higher media volume. Lines represent information flows between countries. Ships/Planes show live real-world assets.">
-                  <HelpCircle size={11} color="#64748b" style={{ cursor: 'help' }} />
-                </span>
+                <InfoBadge text="Narrative activity by country. Glowing areas show higher media volume. FLOW lines show information pathways between countries. PLANE and SHIPS show live real-world assets at strategic locations." />
               </span>
               <span className="panel-subtitle">narrative activity by country</span>
             </div>
@@ -902,9 +953,7 @@ function AppContent() {
           let panelTitle = <>
             <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               SIGNAL STREAM
-              <span title="Real-time chronological feed of media signals. Filters dynamically when you click a country or narrative. Geopolitical signals are prioritized at the top.">
-                <HelpCircle size={11} color="#64748b" style={{ cursor: 'help' }} />
-              </span>
+              <InfoBadge text="Live feed of individual media signals from GDELT. Each row is a news article mentioning a geopolitical event. Click a country code or theme tag to filter the stream. Geopolitical signals appear first." />
             </span>
             <span className="panel-subtitle">live signals, last 15 min</span>
           </>
@@ -980,9 +1029,7 @@ function AppContent() {
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 NARRATIVE THREADS
-                <span title="Displays the top geopolitical topics currently trending globally. Shows average sentiment polarity (green/red dot) and the top key persons mentioned.">
-                  <HelpCircle size={11} color="#64748b" style={{ cursor: 'help' }} />
-                </span>
+                <InfoBadge text="Top geopolitical topics trending globally right now. Each thread shows signal volume, country spread, sentiment trend, and the key people being mentioned. Click any thread to open a full topic breakdown." />
               </span>
               <span className="panel-subtitle">how topics spread over time</span>
             </div>
@@ -1000,9 +1047,7 @@ function AppContent() {
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 CORRELATION MATRIX
-                <span title="Shows co-occurrence of narratives between countries. Brighter green cells indicate stronger shared focus on a specific topic between two nations.">
-                  <HelpCircle size={11} color="#64748b" style={{ cursor: 'help' }} />
-                </span>
+                <InfoBadge text="Shows how strongly pairs of countries share the same narratives. Brighter green = stronger co-coverage of the same topic. Switch between Country×Country and Theme×Theme views." />
               </span>
               <span className="panel-subtitle">which countries share narratives</span>
             </div>
@@ -1020,9 +1065,7 @@ function AppContent() {
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 ANOMALY ALERT
-                <span title="Detects statistical volume spikes (z-score anomalies) comparing current activity against a 7-day rolling baseline for each country.">
-                  <HelpCircle size={11} color="#64748b" style={{ cursor: 'help' }} />
-                </span>
+                <InfoBadge text="Detects statistical spikes in media volume. A country or theme is flagged when its current signal count is significantly above its 7-day rolling baseline (z-score threshold). Also tracks global theme-level surges." />
               </span>
               <span className="panel-subtitle">unusual activity vs 7-day baseline</span>
             </div>
@@ -1040,9 +1083,7 @@ function AppContent() {
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 SOURCE INTEGRITY
-                <span title="Monitors the quality and diversity of the data sources. High source share indicates potential bias from a single outlet. Evaluated against known allowlists and tabloid lists.">
-                  <HelpCircle size={11} color="#64748b" style={{ cursor: 'help' }} />
-                </span>
+                <InfoBadge text="Monitors quality and diversity of active data sources. High Top Source Share means one outlet is dominating the feed (potential bias). Quality score is based on allowlisted vs unknown sources." />
               </span>
               <span className="panel-subtitle">diversity of information sources</span>
             </div>
@@ -1064,10 +1105,22 @@ function AppContent() {
           hours={timeRangeToHours(timeRange)}
           onClose={() => setShowBriefing(false)}
           onCountrySelect={(code) => {
-            fetchCountryDetail(code)
+            setSelectedTheme(null)
+            setRightPanelThemeCountry(null)
+            setSelectedChokepoint(null)
+            setPrevStreamCtx(null)
+            clearFocus()
+            handleCountryClick(code)
+            setMapFlyCountry(code)
             setShowBriefing(false)
           }}
           onThemeSelect={(theme) => {
+            setSelectedCountry(null)
+            setSelectedCountryCode(null)
+            setShowFlows(false)
+            setSelectedChokepoint(null)
+            setPrevStreamCtx(null)
+            clearFocus()
             handleThemeSelect(theme)
             setShowBriefing(false)
           }}

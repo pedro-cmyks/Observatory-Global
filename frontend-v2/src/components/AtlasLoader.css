@@ -1,0 +1,126 @@
+.atlas-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #080b12;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.7s ease, visibility 0.7s ease;
+    opacity: 1;
+    visibility: visible;
+}
+
+.atlas-loader--hiding {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.atlas-loader-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+/* ── Globe SVG ── */
+.atlas-globe-wrap {
+    width: 120px;
+    height: 120px;
+    position: relative;
+}
+
+.atlas-globe-svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* Spinning meridians give the globe feel */
+.atlas-meridian {
+    transform-origin: 60px 60px;
+}
+
+.atlas-meridian-1 {
+    animation: spinMeridian 3s linear infinite;
+}
+
+.atlas-meridian-2 {
+    animation: spinMeridian 4.5s linear infinite reverse;
+}
+
+@keyframes spinMeridian {
+    from { transform: rotateY(0deg); }
+    to   { transform: rotateY(360deg); }
+}
+
+/* The sweeping scanner arc */
+.atlas-sweep {
+    transform-origin: 60px 60px;
+    animation: sweepArc 2.4s ease-in-out infinite;
+}
+
+@keyframes sweepArc {
+    0%   { transform: rotate(0deg);   opacity: 0.9; }
+    50%  { transform: rotate(180deg); opacity: 0.4; }
+    100% { transform: rotate(360deg); opacity: 0.9; }
+}
+
+/* Dot that travels with the sweep */
+.atlas-dot {
+    transform-origin: 60px 60px;
+    animation: sweepArc 2.4s ease-in-out infinite;
+}
+
+/* Outer ring draws itself in */
+.atlas-ring-draw {
+    animation: drawRing 1.8s ease-out forwards;
+}
+
+@keyframes drawRing {
+    from { stroke-dashoffset: 326; opacity: 0.3; }
+    to   { stroke-dashoffset: 0;   opacity: 1; }
+}
+
+/* ── Brand text ── */
+.atlas-loader-brand {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 6px;
+    color: #e2e8f0;
+    animation: fadeUp 0.6s ease-out 0.3s both;
+}
+
+.atlas-loader-sub {
+    font-size: 11px;
+    color: rgba(100, 116, 139, 0.8);
+    letter-spacing: 1px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    animation: fadeUp 0.6s ease-out 0.5s both;
+}
+
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Scanning dots ── */
+.atlas-dots {
+    display: flex;
+    gap: 6px;
+    animation: fadeUp 0.6s ease-out 0.7s both;
+}
+
+.atlas-dot-pulse {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #1D9E75;
+    animation: dotPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+    0%, 100% { opacity: 0.2; transform: scale(0.8); }
+    50%       { opacity: 1;   transform: scale(1.2); }
+}

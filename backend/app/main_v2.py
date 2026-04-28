@@ -2039,6 +2039,95 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         }
 
 
+@app.get("/api/v2/briefing/insight")
+async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
+    """AI meta-summary of the global news landscape for the current time window."""
+    cache_key = f"briefing_insight:{hours}"
+    generated_at = datetime.now(timezone.utc).isoformat()
+
+    if hasattr(app.state, "redis") and app.state.redis:
+        try:
+            cached_raw = await app.state.redis.get(cache_key)
+            if cached_raw:
+                data = json.loads(cached_raw)
+                data["cached"] = True
+                return data
+        except Exception:
+            pass
+
+    try:
+        async with app.state.pool.acquire() as conn:
+            stats = await conn.fetchrow(f"""
+                SELECT COUNT(*) as total, COUNT(DISTINCT country_code) as countries,
+                       AVG(sentiment) as avg_sent
+                FROM signals_v2 WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+            """)
+            top_themes = await conn.fetch(f"""
+                SELECT unnest(themes) as theme, COUNT(*) as cnt
+                FROM signals_v2 WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+                GROUP BY theme ORDER BY cnt DESC LIMIT 5
+            """)
+            top_countries = await conn.fetch(f"""
+                SELECT s.country_code, co.name, COUNT(*) as cnt, AVG(s.sentiment) as avg_s
+                FROM signals_v2 s LEFT JOIN countries_v2 co ON s.country_code = co.code
+                WHERE s.timestamp > NOW() - INTERVAL '{hours} hours'
+                GROUP BY s.country_code, co.name ORDER BY cnt DESC LIMIT 5
+            """)
+    except Exception as e:
+        return {"insight": None, "error": "db_error", "generated_at": generated_at}
+
+    total = int(stats["total"] or 0)
+    countries = int(stats["countries"] or 0)
+    avg_sent = float(stats["avg_sent"] or 0)
+    themes_str = ", ".join([_clean_theme_label(r["theme"]) for r in top_themes])
+    countries_str = ", ".join([
+        f"{r['name'] or r['country_code']} ({int(r['cnt'])} signals, {float(r['avg_s'] or 0):+.1f})"
+        for r in top_countries
+    ])
+
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    if not anthropic_key:
+        return {"insight": None, "error": "insight_unavailable", "generated_at": generated_at}
+
+    user_prompt = (
+        f"Summarize the global information landscape over the last {hours} hours.\n"
+        f"- Total coverage: {total:,} articles across {countries} countries\n"
+        f"- Global sentiment: {avg_sent:+.1f} (negative = concern/crisis, positive = stability/progress)\n"
+        f"- Dominant topics: {themes_str}\n"
+        f"- Most-covered countries (with their tone): {countries_str}\n\n"
+        "Write 2-3 sentences describing what the world's media is focused on right now, "
+        "what emotional tenor dominates, and any notable geographic patterns in coverage."
+    )
+    system_prompt = (
+        "You are an intelligence analyst giving a morning media briefing. "
+        "Describe what the world's press is covering and how, using the data provided. "
+        "Be concise, neutral, and analytical. No markdown, no bullet points — flowing prose only."
+    )
+
+    try:
+        import anthropic as _anthropic
+        client = _anthropic.AsyncAnthropic(api_key=anthropic_key)
+        response = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=200,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+        insight_text = next((b.text for b in response.content if b.type == "text"), None)
+    except Exception as e:
+        err = str(e)
+        code = "insight_no_credits" if "credit balance" in err.lower() else "insight_unavailable"
+        return {"insight": None, "error": code, "generated_at": generated_at}
+
+    result = {"insight": insight_text, "generated_at": generated_at, "cached": False}
+    if hasattr(app.state, "redis") and app.state.redis:
+        try:
+            await app.state.redis.setex(cache_key, 1800, json.dumps(result))
+        except Exception:
+            pass
+    return result
+
+
 # =============================================================================
 # TRUST INDICATORS API (v3)
 # =============================================================================

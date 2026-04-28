@@ -39,12 +39,16 @@ const formatTime = (ts: string) => {
 // Filter out malformed GDELT document IDs and garbage headlines
 const isValidHeadline = (title: string | null): boolean => {
     if (!title) return false
+    // Filter out GDELT document ID prefix pattern like "26061264.Title Here"
+    if (/^\d{6,}\./.test(title)) return false
     // Filter out hex-looking strings (GDELT document IDs)
     if (/^[A-Fa-f0-9\s\-]{20,}$/.test(title)) return false
     // Filter out titles starting with "Article" followed by hex
     if (/^Article\s+[A-Fa-f0-9]/i.test(title)) return false
     // Filter out titles that are just numbers/codes
     if (/^[\d\s\-_]{10,}$/.test(title)) return false
+    // Filter out stock ticker / company holding patterns
+    if (/\bHolding[s]?\s+In\s+Company\b/i.test(title)) return false
     // Must have at least 3 real words
     const words = title.split(' ').filter(w => w.length > 2)
     return words.length >= 3
@@ -268,20 +272,17 @@ export const SignalStream: React.FC = () => {
                             
                             if (!isValid) {
                                 return (
-                                    <div key={sig.id} className={`signal-row priority-${getSignalPriority(sig)} compact-mode`}>
-                                        <div className="signal-meta" style={{ minWidth: 'auto', paddingRight: '12px' }}>
-                                            <span 
-                                                className="country-chip clickable" 
+                                    <div key={sig.id} className={`signal-row compact-mode`}>
+                                        <div className="signal-main" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                            <span
+                                                className="country-chip clickable"
                                                 onClick={(e) => handleCountryClick(e, sig.country || '')}
                                             >
                                                 {sig.country || 'GLO'}
                                             </span>
                                             <span className={`sentiment-indicator ${getSentimentClass(sig.sentiment)}`} />
-                                        </div>
-                                        <div className="signal-main" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                            <span className={`source ${getSourceClass(sig.source)}`} style={{ margin: 0 }}>{sig.source}</span>
-                                            <span style={{ color: '#64748b', fontSize: '10px' }}>•</span>
-                                            <div className="themes" style={{ marginTop: 0 }}>
+                                            <span className={`source ${getSourceClass(sig.source)}`}>{sig.source}</span>
+                                            <div className="themes">
                                                 {sig.themes.slice(0, 3).map(t => (
                                                     <span
                                                         key={t}

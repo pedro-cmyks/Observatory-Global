@@ -180,9 +180,18 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
                                     Analyzing coverage patterns…
                                 </div>
                             )}
-                            {insight && (
-                                <p className="theme-insight-text">{insight}</p>
-                            )}
+                            {insight && (() => {
+                                const paragraphs = insight
+                                    .split('\n')
+                                    .map(l => l.replace(/^#{1,3}\s*/, '').trim())
+                                    .join('\n')
+                                    .split(/\n{2,}/)
+                                    .map(p => p.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim())
+                                    .filter(p => p.length > 0)
+                                return paragraphs.map((p, i) => (
+                                    <p key={i} className="theme-insight-text">{p}</p>
+                                ))
+                            })()}
                             {insightFailed && !insightLoading && !insight && (
                                 <p className="theme-insight-unavailable">
                                     {insightError === 'insight_unavailable'

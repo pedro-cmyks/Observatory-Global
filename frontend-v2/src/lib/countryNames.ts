@@ -32,6 +32,18 @@ const COUNTRY_NAMES: Record<string, string> = {
     ZW: 'Zimbabwe', XK: 'Kosovo', ME: 'Montenegro', CW: 'Curaçao', PS: 'Palestine',
     // GDELT/FIPS codes that differ from ISO
     VQ: 'Virgin Islands', EI: 'Ireland', GM: 'Gambia', SW: 'Sweden',
+    // Territories and regions commonly in GDELT data
+    GZ: 'Gaza Strip', LS: 'Lesotho', SC: 'Seychelles', AC: 'Ascension Island',
+    WB: 'West Bank', CG: 'Congo', KN: 'North Korea', KS: 'South Korea',
+    MV: 'Maldives', BT: 'Bhutan', TL: 'East Timor', GQ: 'Eq. Guinea',
+    ST: 'São Tomé', CV: 'Cape Verde', DJ: 'Djibouti', KM: 'Comoros',
+    PW: 'Palau', FM: 'Micronesia', MH: 'Marshall Islands', NR: 'Nauru',
+    TV: 'Tuvalu', TO: 'Tonga', WS: 'Samoa', FJ: 'Fiji',
+    SB: 'Solomon Islands', VU: 'Vanuatu', CK: 'Cook Islands',
+    GI: 'Gibraltar', FO: 'Faroe Islands', GL: 'Greenland',
+    BB: 'Barbados', BS: 'Bahamas', GD: 'Grenada', LC: 'Saint Lucia',
+    VC: 'St. Vincent', KN: 'St. Kitts', AG: 'Antigua', DM: 'Dominica',
+    TT: 'Trinidad', SR: 'Suriname', GY: 'Guyana',
 }
 
 export function resolveCountryName(code: string, apiName?: string): string {
