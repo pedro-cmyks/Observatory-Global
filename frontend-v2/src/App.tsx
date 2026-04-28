@@ -924,7 +924,7 @@ function AppContent() {
                 originCountry={selectedTheme.originCountry}
                 originCountryName={selectedTheme.originCountryName}
                 hours={timeRangeToHours(timeRange)}
-                hasRightPanel={!!rightPanelThemeCountry}
+
                 onClose={() => {
                   setSelectedTheme(null)
                   setRightPanelThemeCountry(null)

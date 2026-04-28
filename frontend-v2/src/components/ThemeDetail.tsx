@@ -36,13 +36,13 @@ interface ThemeDetailProps {
     originCountry?: string
     originCountryName?: string
     hours: number
-    hasRightPanel?: boolean
+
     onClose: () => void
     onThemeSelect?: (theme: string) => void
     onCountryCardClick?: (code: string, name: string) => void
 }
 
-export function ThemeDetail({ theme, originCountry, originCountryName, hours, hasRightPanel, onClose, onThemeSelect, onCountryCardClick }: ThemeDetailProps) {
+export function ThemeDetail({ theme, originCountry, originCountryName, hours, onClose, onThemeSelect, onCountryCardClick }: ThemeDetailProps) {
     const [data, setData] = useState<ThemeData | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
