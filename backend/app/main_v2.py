@@ -2581,6 +2581,8 @@ VESSEL_CACHE: dict = {
     "vessels": {},
     "last_cleanup": 0.0,
     "connected": False,
+    "msgs_received": 0,
+    "msgs_filtered": 0,
 }
 
 # Bounding boxes for geopolitically significant maritime chokepoints
@@ -2633,12 +2635,20 @@ async def _aisstream_background():
 
                     async for msg in ws:
                         if msg.type == aiohttp.WSMsgType.TEXT:
+                            VESSEL_CACHE["msgs_received"] += 1
+
                             try:
                                 data = json.loads(msg.data)
                             except Exception:
                                 continue
 
-                            if data.get("MessageType") != "PositionReport":
+                            # Log first 3 raw messages to diagnose format
+                            if VESSEL_CACHE["msgs_received"] <= 3:
+                                print(f"[AISStream] raw msg #{VESSEL_CACHE['msgs_received']}: {msg.data[:300]}")
+
+                            msg_type = data.get("MessageType") or data.get("message_type") or ""
+                            if msg_type != "PositionReport":
+                                VESSEL_CACHE["msgs_filtered"] += 1
                                 continue
 
                             meta = data.get("MetaData", {})
@@ -2648,14 +2658,11 @@ async def _aisstream_background():
                             lat = meta.get("latitude")
                             lon = meta.get("longitude")
                             if not mmsi or lat is None or lon is None:
+                                VESSEL_CACHE["msgs_filtered"] += 1
                                 continue
 
                             nav_status = pos.get("NavigationalStatus", 15)
                             speed = float(pos.get("Sog") or 0)
-
-                            # Skip moored / at anchor with speed < 0.5 kn
-                            if nav_status not in _UNDERWAY_STATUS and speed < 0.5:
-                                continue
 
                             VESSEL_CACHE["vessels"][mmsi] = {
                                 "mmsi": mmsi,
@@ -2670,13 +2677,13 @@ async def _aisstream_background():
 
                             # Periodic cleanup: drop entries > 10 min old
                             now = time.time()
-                            if now - VESSEL_CACHE["last_cleanup"] > 300:
+                            if now - VESSEL_CACHE["last_cleanup"] > 120:
                                 VESSEL_CACHE["vessels"] = {
                                     k: v for k, v in VESSEL_CACHE["vessels"].items()
                                     if now - v["ts"] < 600
                                 }
                                 VESSEL_CACHE["last_cleanup"] = now
-                                print(f"[AISStream] {len(VESSEL_CACHE['vessels'])} active vessels")
+                                print(f"[AISStream] vessels={len(VESSEL_CACHE['vessels'])} msgs_rcvd={VESSEL_CACHE['msgs_received']} filtered={VESSEL_CACHE['msgs_filtered']}")
 
                         elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
                             break
@@ -2708,5 +2715,7 @@ async def get_vessels():
         "vessels": vessels,
         "count": len(vessels),
         "connected": VESSEL_CACHE["connected"],
+        "msgs_received": VESSEL_CACHE["msgs_received"],
+        "msgs_filtered": VESSEL_CACHE["msgs_filtered"],
         "message": "Live" if VESSEL_CACHE["connected"] else "Connecting...",
     }
