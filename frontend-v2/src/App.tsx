@@ -23,7 +23,7 @@ import { CountryThemePanel } from './components/CountryThemePanel'
 import { EntityPanel } from './components/EntityPanel'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
 import { Globe, ClipboardList, HelpCircle } from 'lucide-react'
-import { CHOKEPOINTS, COUNTRY_CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
+import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
 
 // Terminal Panels
 import { SignalStream } from './components/SignalStream'
@@ -102,7 +102,7 @@ function buildLayers({
   enhancedNodes, visibleFlows, showFlows,
   isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator,
   selectedCountryCode, timeRange, showAircraft, aircraftData,
-  showVessels, vesselData, activeChokepoints, chokepointCounts, themeFocused
+  showVessels, vesselData, activeChokepoints, themeFocused
 }: any) {
   const terminatorLayer = createTerminatorLayer({
     visible: showTerminator && !crisisEnabled,
@@ -601,11 +601,11 @@ function AppContent() {
       selectedCountryCode, timeRange,
       showAircraft, aircraftData: filteredAircraftData,
       showVessels, vesselData,
-      activeChokepoints, chokepointCounts,
+      activeChokepoints,
       themeFocused: !!filter.theme
     })
     return builtLayers
-  }, [enhancedNodes, visibleFlows, showFlows, isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator, selectedCountryCode, timeRange, showAircraft, filteredAircraftData, showVessels, vesselData, activeChokepoints, chokepointCounts, filter.theme])
+  }, [enhancedNodes, visibleFlows, showFlows, isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator, selectedCountryCode, timeRange, showAircraft, filteredAircraftData, showVessels, vesselData, activeChokepoints, filter.theme])
 
   // Total signals for stats
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
@@ -870,7 +870,7 @@ function AppContent() {
                     if (!info.object || !info.layer) return
                     if (info.layer.id?.startsWith('chokepoint-zones')) {
                       const cp = info.object as Chokepoint
-                      setCountry(cp.primaryCountry, 'radar')
+                      setFocus('country', cp.primaryCountry, cp.name)
                       setMapFlyCountry(cp.primaryCountry)
                     }
                   }}
