@@ -124,6 +124,7 @@ export function Landing() {
                     <a href="#how">How it works</a>
                     <a href="#panels">What you see</a>
                     <a href="#data">Data</a>
+                    <a href="#support" className="lp-nav-support">Support</a>
                 </div>
                 <button className="lp-nav-cta" onClick={() => navigate('/app')}>
                     Open Atlas →
@@ -232,29 +233,39 @@ export function Landing() {
 
             {/* ── Data ── */}
             <section className="lp-section lp-section--dark" id="data">
-                <div className="lp-section-inner lp-data-inner">
-                    <div>
-                        <div className="lp-section-tag">The data</div>
-                        <h2>GDELT — the world's<br />largest open news dataset.</h2>
-                        <p className="lp-body">
-                            Atlas is powered by the Global Database of Events, Language, and Tone (GDELT),
-                            which monitors news media in over 100 languages from every country on Earth,
-                            updated every 15 minutes. Over 65,000 sources are monitored continuously.
-                        </p>
-                        <p className="lp-body">
-                            Atlas normalizes this raw signal into readable intelligence: sentiment scores,
-                            theme classification, person extraction, and geographic attribution — all aggregated
-                            and visualized without human editorial intervention.
-                        </p>
+                <div className="lp-section-inner">
+                    <div className="lp-section-tag">The data</div>
+                    <h2>Four open sources.<br />One coherent signal.</h2>
+                    <p className="lp-body">
+                        Atlas crosses multiple public datasets to give you the full picture — not just
+                        what media covers, but what people search, what they read, and where conflict is actually happening.
+                    </p>
+                    <div className="lp-sources-grid">
+                        <div className="lp-source-card">
+                            <div className="lp-source-name">GDELT 2.0</div>
+                            <div className="lp-source-desc">65,000+ news sources in 100+ languages. Updated every 15 minutes. The backbone of Atlas.</div>
+                            <div className="lp-source-badge">Media coverage</div>
+                        </div>
+                        <div className="lp-source-card">
+                            <div className="lp-source-name">Google Trends</div>
+                            <div className="lp-source-desc">What people are searching for, by country. Captures public attention before media catches up.</div>
+                            <div className="lp-source-badge">Public interest</div>
+                        </div>
+                        <div className="lp-source-card">
+                            <div className="lp-source-name">Wikipedia</div>
+                            <div className="lp-source-desc">Top-read articles by country and language. Wikipedia spikes often precede news events.</div>
+                            <div className="lp-source-badge">What people read</div>
+                        </div>
+                        <div className="lp-source-card">
+                            <div className="lp-source-name">ACLED</div>
+                            <div className="lp-source-desc">Armed Conflict Location & Event Data — the gold standard for tracking conflict events globally.</div>
+                            <div className="lp-source-badge">Conflict events</div>
+                        </div>
                     </div>
-                    <div className="lp-data-badges">
-                        <div className="lp-badge">GDELT 2.0</div>
-                        <div className="lp-badge">100+ languages</div>
-                        <div className="lp-badge">65K sources</div>
-                        <div className="lp-badge">15-min refresh</div>
-                        <div className="lp-badge">Open data</div>
-                        <div className="lp-badge">No paywall</div>
-                    </div>
+                    <p className="lp-body lp-body--muted">
+                        All sources are open datasets. Atlas normalizes them into a unified signal without
+                        human editorial intervention.
+                    </p>
                 </div>
             </section>
 
@@ -280,6 +291,50 @@ export function Landing() {
                 </div>
             </section>
 
+            {/* ── Support ── */}
+            <section className="lp-section lp-section--dark" id="support">
+                <div className="lp-section-inner lp-support-inner">
+                    <div className="lp-support-left">
+                        <div className="lp-section-tag">Keep Atlas free</div>
+                        <h2>Atlas is free.<br />Help keep it that way.</h2>
+                        <p className="lp-body">
+                            Atlas has no ads, no paywalls, and no tracking. Like Wikipedia, it exists
+                            because people believe open information is worth protecting.
+                        </p>
+                        <p className="lp-body">
+                            Running the real-time data pipeline costs real money. If Atlas is useful to
+                            you — for your work, your research, or just to understand the world better —
+                            consider supporting it. Every contribution keeps the servers on and the data fresh.
+                        </p>
+                        <div className="lp-support-actions">
+                            <a href="https://ko-fi.com" target="_blank" rel="noopener noreferrer" className="lp-btn-support">
+                                Support Atlas
+                            </a>
+                            <span className="lp-support-note">One-time or recurring · No account needed</span>
+                        </div>
+                    </div>
+                    <div className="lp-support-right">
+                        <div className="lp-support-stat">
+                            <span className="lp-support-num">278K+</span>
+                            <span className="lp-support-label">signals processed today</span>
+                        </div>
+                        <div className="lp-support-stat">
+                            <span className="lp-support-num">15 min</span>
+                            <span className="lp-support-label">refresh cycle, 24/7</span>
+                        </div>
+                        <div className="lp-support-stat">
+                            <span className="lp-support-num">4</span>
+                            <span className="lp-support-label">live data sources</span>
+                        </div>
+                        <p className="lp-support-tagline">
+                            "The goal is to remain free and open, like Wikipedia.
+                            Future premium data sources may unlock a Pro tier —
+                            but the core intelligence will always be public."
+                        </p>
+                    </div>
+                </div>
+            </section>
+
             {/* ── CTA ── */}
             <section className="lp-cta">
                 <h2>Start with the overview.</h2>
@@ -294,10 +349,14 @@ export function Landing() {
             <footer className="lp-footer">
                 <span className="lp-footer-brand">ATLAS</span>
                 <div className="lp-footer-links">
-                    <span>Powered by GDELT</span>
+                    <span>GDELT · Google Trends · Wikipedia · ACLED</span>
                     <span>·</span>
                     <a href="https://github.com/pedro-cmyks/Observatory-Global" target="_blank" rel="noopener noreferrer">
                         GitHub
+                    </a>
+                    <span>·</span>
+                    <a href="https://ko-fi.com" target="_blank" rel="noopener noreferrer">
+                        Support
                     </a>
                 </div>
             </footer>
