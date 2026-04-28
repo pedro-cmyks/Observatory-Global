@@ -516,7 +516,7 @@
 }
 
 /* Country Brief Sidebar Positioning */
-.country-brief {
+.country-brief:not(.country-brief--inline) {
   position: fixed !important;
   top: 48px;
   right: 0;

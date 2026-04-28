@@ -896,26 +896,32 @@ function AppContent() {
           </div>
         </div>
 
-        {/* Panel 2: SIGNAL STREAM — swaps to country/person/chokepoint detail */}
+        {/* Panel 2: SIGNAL STREAM — the intel hub, swaps based on active context */}
         {(() => {
-          const isCountry = !!selectedCountry
           const isPerson = focus.type === 'person' && !!focus.value
-          const isChokepoint = !!selectedChokepoint
+          const isCountry = !!selectedCountry && !isPerson
+          const isTheme = !!selectedTheme && !isPerson && !isCountry
+          const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme
           const isoToFlag = (code: string) => code?.length === 2
             ? String.fromCodePoint(...code.toUpperCase().split('').map(c => 0x1F1E6 + c.charCodeAt(0) - 65))
             : '🌐'
+          const closeAll = () => { setSelectedTheme(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); clearFocus(); if (filter.theme) setTheme(null) }
           let panelTitle = <><span>SIGNAL STREAM</span><span className="panel-subtitle">live signals, last 15 min</span></>
+          if (isTheme) panelTitle = <>
+            <button className="drill-back-btn" onClick={closeAll} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
+            <span style={{ color: '#94a3b8' }}>{selectedTheme!.theme.replace(/_/g, ' ').slice(0, 26)}</span>
+          </>
           if (isCountry) panelTitle = <>
-            <button className="drill-back-btn" onClick={() => { setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); clearFocus() }} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
-            <span style={{ color: '#94a3b8' }}>{selectedCountry.name || selectedCountry.countryCode}</span>
+            <button className="drill-back-btn" onClick={closeAll} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
+            <span style={{ color: '#94a3b8' }}>{selectedCountry!.name || selectedCountry!.countryCode}</span>
           </>
           if (isPerson) panelTitle = <>
-            <button className="drill-back-btn" onClick={() => { clearFocus(); setSelectedCountry(null); setSelectedCountryCode(null) }} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
+            <button className="drill-back-btn" onClick={closeAll} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
             <span style={{ color: '#a78bfa' }}>{focus.value}</span>
           </>
-          if (isChokepoint && !isCountry && !isPerson) panelTitle = <>
+          if (isChokepoint) panelTitle = <>
             <button className="drill-back-btn" onClick={() => setSelectedChokepoint(null)} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
-            <span style={{ color: '#2dd4bf' }}>{selectedChokepoint.name}</span>
+            <span style={{ color: '#2dd4bf' }}>{selectedChokepoint!.name}</span>
           </>
           return (
             <div className="terminal-panel stream">
@@ -924,44 +930,44 @@ function AppContent() {
               </div>
               <div className="panel-content">
                 {isPerson ? (
-                  <EntityPanel
-                    inline
-                    focusType="person"
-                    focusValue={focus.value!}
-                    timeRange={timeRange}
-                    onClose={() => { clearFocus(); setSelectedCountry(null); setSelectedCountryCode(null) }}
+                  <EntityPanel inline focusType="person" focusValue={focus.value!} timeRange={timeRange}
+                    onClose={closeAll}
                     onThemeSelect={(theme) => handleThemeSelect(theme)}
                     onCountrySelect={(code) => { clearFocus(); handleCountryClick(code); setMapFlyCountry(code) }}
                   />
                 ) : isCountry ? (
-                  <CountryBrief
-                    inline
+                  <CountryBrief inline
                     countryCode={selectedCountry!.countryCode}
                     countryName={selectedCountry!.name || selectedCountry!.countryCode}
                     timeWindow={timeRangeToHours(timeRange)}
-                    onClose={() => { setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); clearFocus() }}
+                    onClose={closeAll}
                     onThemeSelect={(theme) => { handleThemeSelect(theme, selectedCountry!.countryCode, selectedCountry!.name || selectedCountry!.countryCode); setMapFlyCountry(selectedCountry!.countryCode) }}
+                  />
+                ) : isTheme ? (
+                  <ThemeDetail
+                    theme={selectedTheme!.theme}
+                    originCountry={selectedTheme!.originCountry}
+                    originCountryName={selectedTheme!.originCountryName}
+                    hours={timeRangeToHours(timeRange)}
+                    onClose={closeAll}
+                    onThemeSelect={(theme) => handleThemeSelect(theme)}
+                    onCountryCardClick={(code, name) => { handleCountryClick(code); setMapFlyCountry(code); setRightPanelThemeCountry({ code, name }) }}
                   />
                 ) : isChokepoint ? (
                   <div style={{ padding: '16px 20px', overflow: 'auto', height: '100%' }}>
-                    <div style={{ marginBottom: 12 }}>
-                      <div style={{ fontWeight: 700, fontSize: 15, color: '#e2e8f0', marginBottom: 4 }}>{selectedChokepoint.name}</div>
-                      <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>{selectedChokepoint.description}</div>
-                      {(chokepointCounts[selectedChokepoint.id] || 0) > 0 && (
-                        <div style={{ fontSize: 12, color: '#2dd4bf', marginTop: 8, fontFamily: 'var(--font-mono)' }}>
-                          {chokepointCounts[selectedChokepoint.id]} vessels in range
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 11, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Countries involved</div>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: '#e2e8f0', marginBottom: 4 }}>{selectedChokepoint!.name}</div>
+                    <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6, marginBottom: 12 }}>{selectedChokepoint!.description}</div>
+                    {(chokepointCounts[selectedChokepoint!.id] || 0) > 0 && (
+                      <div style={{ fontSize: 12, color: '#2dd4bf', marginBottom: 16, fontFamily: 'var(--font-mono)' }}>
+                        {chokepointCounts[selectedChokepoint!.id]} vessels in range
+                      </div>
+                    )}
+                    <div style={{ fontSize: 11, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Countries involved</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      {selectedChokepoint.countries.map(code => (
-                        <button key={code}
-                          onClick={() => { handleCountryClick(code); setMapFlyCountry(code) }}
+                      {selectedChokepoint!.countries.map(code => (
+                        <button key={code} onClick={() => { handleCountryClick(code); setMapFlyCountry(code) }}
                           style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', color: '#e2e8f0', fontSize: 13, fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: 6 }}
-                        >
-                          {isoToFlag(code)} {code}
-                        </button>
+                        >{isoToFlag(code)} {code}</button>
                       ))}
                     </div>
                   </div>
@@ -975,39 +981,18 @@ function AppContent() {
           )
         })()}
 
-        {/* Panel 3: NARRATIVE THREADS — swaps to ThemeDetail when theme selected */}
+        {/* Panel 3: NARRATIVE THREADS — always visible, reactive to focus context */}
         <div className="terminal-panel threads">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
-              {selectedTheme ? (
-                <>
-                  <button className="drill-back-btn" onClick={() => { setSelectedTheme(null); setRightPanelThemeCountry(null); if (filter.theme) setTheme(null) }} style={{ fontSize: 13, marginRight: 6 }}>← THREADS</button>
-                  <span style={{ color: '#94a3b8', fontSize: 12 }}>{selectedTheme.theme.replace(/_/g, ' ').slice(0, 22)}</span>
-                </>
-              ) : (
-                <>
-                  <span>NARRATIVE THREADS</span>
-                  <span className="panel-subtitle">how topics spread over time</span>
-                </>
-              )}
+              <span>NARRATIVE THREADS</span>
+              <span className="panel-subtitle">how topics spread over time</span>
             </div>
           </div>
           <div className="panel-content">
-            {selectedTheme ? (
-              <ThemeDetail
-                theme={selectedTheme.theme}
-                originCountry={selectedTheme.originCountry}
-                originCountryName={selectedTheme.originCountryName}
-                hours={timeRangeToHours(timeRange)}
-                onClose={() => { setSelectedTheme(null); setRightPanelThemeCountry(null); if (filter.theme) setTheme(null) }}
-                onThemeSelect={(theme) => handleThemeSelect(theme)}
-                onCountryCardClick={(code, name) => { handleCountryClick(code); setMapFlyCountry(code); setRightPanelThemeCountry({ code, name }) }}
-              />
-            ) : (
-              <PanelErrorBoundary panelName="NARRATIVE THREADS">
-                <NarrativeThreads />
-              </PanelErrorBoundary>
-            )}
+            <PanelErrorBoundary panelName="NARRATIVE THREADS">
+              <NarrativeThreads />
+            </PanelErrorBoundary>
           </div>
         </div>
 
