@@ -236,6 +236,61 @@
     font-size: 13px;
 }
 
+/* ========== Public Attention Signals ========== */
+.attention-signals-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.attention-signal-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+
+.attention-signal-icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.attention-signal-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #cbd5e1;
+    margin-bottom: 6px;
+    letter-spacing: 0.3px;
+}
+
+.attention-signal-detail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.trending-keyword {
+    font-size: 10px;
+    color: #818cf8;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+
+.wiki-article {
+    font-size: 10px;
+    color: #2dd4bf;
+    background: rgba(20, 184, 166, 0.1);
+    border: 1px solid rgba(20, 184, 166, 0.2);
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+
 /* ========== Framing Analysis: HOW IT'S COVERED ========== */
 .framing-section {
     margin-top: 28px;

@@ -129,6 +129,30 @@
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
 
+/* Attention badges — public interest indicators */
+.attention-badge {
+    font-size: 9px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    cursor: default;
+}
+
+.attention-badge.search {
+    background: rgba(99, 102, 241, 0.12);
+    color: #818cf8;
+    border: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+.attention-badge.wiki {
+    background: rgba(20, 184, 166, 0.12);
+    color: #2dd4bf;
+    border: 1px solid rgba(20, 184, 166, 0.15);
+}
+
 .narrative-age {
     font-style: italic;
 }

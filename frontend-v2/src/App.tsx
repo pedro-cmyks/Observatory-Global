@@ -147,7 +147,7 @@ function buildLayers({
   enhancedNodes, visibleFlows, showFlows,
   isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator,
   selectedCountryCode, timeRange, showAircraft, aircraftData,
-  showVessels, vesselData, activeChokepoints, themeFocused
+  showVessels, vesselData, activeChokepoints, themeFocused, acledConflicts
 }: any) {
   const terminatorLayer = createTerminatorLayer({
     visible: showTerminator && !crisisEnabled,
@@ -249,6 +249,30 @@ function buildLayers({
       updateTriggers: {
         getRadius: [sizeBoost],
       },
+    }),
+
+    // ACLED Conflicts Layer — Renders intense 'X' or 'Pulse' at conflict sites
+    acledConflicts && acledConflicts.length > 0 && new ScatterplotLayer({
+      id: `acled-conflicts-${isGlobe ? 'globe' : 'flat'}`,
+      data: acledConflicts,
+      getPosition: (d: any) => [d.location.longitude, d.location.latitude],
+      // Intensity based on fatalities
+      getRadius: (d: any) => Math.min(Math.max(4, Math.sqrt(d.fatalities || 1) * 3), 15) * sizeBoost,
+      getFillColor: (d: any) => {
+        // Red for battles/explosions, Orange for riots
+        if (d.type.includes('Battle') || d.type.includes('Explosion')) return [239, 68, 68, 220]
+        if (d.type.includes('Riot') || d.type.includes('Protest')) return [249, 115, 22, 200]
+        return [234, 179, 8, 180] // Yellow for other
+      },
+      getLineColor: [255, 255, 255, 80],
+      stroked: true,
+      lineWidthMinPixels: 1,
+      radiusUnits: 'pixels',
+      radiusMinPixels: 4,
+      pickable: true,
+      updateTriggers: {
+        getRadius: [sizeBoost]
+      }
     }),
 
     // Node dots removed — country territory click via Mapbox fill layer handles selection
@@ -617,12 +641,12 @@ function AppContent() {
   useEffect(() => {
     const map = mapRef.current?.getMap()
     if (!map || !mapReady) return
-    const vis = showHeatmap ? 'visible' : 'none'
+
     if (map.getLayer('country-heat-fill')) {
-      map.setLayoutProperty('country-heat-fill', 'visibility', vis)
+      map.setPaintProperty('country-heat-fill', 'fill-opacity', showHeatmap ? 0.3 : 0)
     }
     if (map.getLayer('country-heat-glow')) {
-      map.setLayoutProperty('country-heat-glow', 'visibility', vis)
+      map.setLayoutProperty('country-heat-glow', 'visibility', showHeatmap ? 'visible' : 'none')
     }
   }, [showHeatmap, mapReady])
 
@@ -635,10 +659,11 @@ function AppContent() {
       showAircraft, aircraftData: filteredAircraftData,
       showVessels, vesselData,
       activeChokepoints,
-      themeFocused: !!filter.theme
+      themeFocused: !!filter.theme,
+      acledConflicts
     })
     return builtLayers
-  }, [enhancedNodes, visibleFlows, showFlows, isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator, selectedCountryCode, timeRange, showAircraft, filteredAircraftData, showVessels, vesselData, activeChokepoints, filter.theme])
+  }, [enhancedNodes, visibleFlows, showFlows, isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator, selectedCountryCode, timeRange, showAircraft, filteredAircraftData, showVessels, vesselData, activeChokepoints, filter.theme, acledConflicts])
 
   // Total signals for stats
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
@@ -792,13 +817,13 @@ function AppContent() {
                         'interpolate', ['linear'],
                         ['coalesce', ['feature-state', 'intensity'], 0],
                         0,    'rgba(0, 0, 0, 0)',
-                        0.05, 'rgba(15, 30, 90, 50)',
-                        0.15, 'rgba(30, 55, 130, 80)',
-                        0.35, 'rgba(170, 110, 30, 120)',
-                        0.6,  'rgba(215, 70, 15, 160)',
-                        1.0,  'rgba(235, 35, 10, 200)'
+                        0.05, 'rgba(15, 30, 90, 30)',
+                        0.15, 'rgba(30, 55, 130, 50)',
+                        0.35, 'rgba(170, 110, 30, 80)',
+                        0.6,  'rgba(215, 70, 15, 110)',
+                        1.0,  'rgba(235, 35, 10, 140)'
                       ],
-                      'fill-opacity': 0.75
+                      'fill-opacity': 0.45
                     }
                   })
 
@@ -812,11 +837,11 @@ function AppContent() {
                         'interpolate', ['linear'],
                         ['coalesce', ['feature-state', 'intensity'], 0],
                         0,    'rgba(0, 0, 0, 0)',
-                        0.05, 'rgba(20, 35, 100, 40)',
-                        0.15, 'rgba(35, 60, 140, 70)',
-                        0.35, 'rgba(190, 120, 30, 100)',
-                        0.6,  'rgba(225, 75, 15, 135)',
-                        1.0,  'rgba(245, 45, 10, 170)'
+                        0.05, 'rgba(20, 35, 100, 20)',
+                        0.15, 'rgba(35, 60, 140, 40)',
+                        0.35, 'rgba(190, 120, 30, 60)',
+                        0.6,  'rgba(225, 75, 15, 90)',
+                        1.0,  'rgba(245, 45, 10, 120)'
                       ],
                       'line-width': [
                         'interpolate', ['linear'],
@@ -1013,6 +1038,10 @@ function AppContent() {
                     onClose={closeAll}
                     onThemeSelect={(theme) => handleThemeSelect(theme)}
                     onCountryCardClick={(code, name) => { setMapFlyCountry(code); setRightPanelThemeCountry({ code, name }) }}
+                    onPersonClick={(name) => {
+                      setFocus('person', name, name)
+                      setMapFlyCountry(null)
+                    }}
                   />
                 ) : isChokepoint ? (
                   <ChokepointPanel

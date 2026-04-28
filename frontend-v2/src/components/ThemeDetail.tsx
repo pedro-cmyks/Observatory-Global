@@ -40,9 +40,10 @@ interface ThemeDetailProps {
     onClose: () => void
     onThemeSelect?: (theme: string) => void
     onCountryCardClick?: (code: string, name: string) => void
+    onPersonClick?: (name: string) => void
 }
 
-export function ThemeDetail({ theme, originCountry, originCountryName, hours, onClose, onThemeSelect, onCountryCardClick }: ThemeDetailProps) {
+export function ThemeDetail({ theme, originCountry, originCountryName, hours, onClose, onThemeSelect, onCountryCardClick, onPersonClick }: ThemeDetailProps) {
     const [data, setData] = useState<ThemeData | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -52,6 +53,10 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
     const [selectedSource, setSelectedSource] = useState<string | null>(null)
     const [drillCountry, setDrillCountry] = useState<string | null>(null)
     const [drillCountryName, setDrillCountryName] = useState<string | null>(null)
+
+    // Public attention signals
+    const [trendMatch, setTrendMatch] = useState<{ has_public_interest: boolean; matches: Array<{keyword: string; country_code: string}> } | null>(null)
+    const [wikiMatch, setWikiMatch] = useState<{ has_wiki_activity: boolean; matches: Array<{title: string; views: number}>, total_views: number } | null>(null)
 
     // Reset drill state when theme changes
     useEffect(() => {
@@ -83,6 +88,20 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
         }
         fetchData()
     }, [theme, hours, drillCountry])
+
+    // Fetch public attention signals (trends + wiki)
+    useEffect(() => {
+        if (!theme) return
+        const encoded = encodeURIComponent(theme)
+        fetch(`/api/v2/trends/match?theme=${encoded}&hours=${hours}`)
+            .then(r => r.json().catch(() => null))
+            .then(d => { if (d) setTrendMatch(d) })
+            .catch(() => {})
+        fetch(`/api/v2/wiki/match?theme=${encoded}&days=1`)
+            .then(r => r.json().catch(() => null))
+            .then(d => { if (d) setWikiMatch(d) })
+            .catch(() => {})
+    }, [theme, hours])
 
     const [insightError, setInsightError] = useState<string | null>(null)
 
@@ -224,6 +243,43 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
                                 <span className="theme-stat-label">Sources</span>
                             </div>
                         </div>
+
+                        {/* PUBLIC ATTENTION — Trends & Wiki cross-reference */}
+                        {(trendMatch?.has_public_interest || wikiMatch?.has_wiki_activity) && (
+                            <div className="theme-section">
+                                <div className="theme-section-title">PUBLIC ATTENTION</div>
+                                <div className="attention-signals-row">
+                                    {trendMatch?.has_public_interest && (
+                                        <div className="attention-signal-card">
+                                            <span className="attention-signal-icon">🔍</span>
+                                            <div>
+                                                <div className="attention-signal-label">People are searching for this</div>
+                                                <div className="attention-signal-detail">
+                                                    {trendMatch.matches.slice(0, 3).map((m, i) => (
+                                                        <span key={i} className="trending-keyword">{m.keyword}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {wikiMatch?.has_wiki_activity && (
+                                        <div className="attention-signal-card">
+                                            <span className="attention-signal-icon">📖</span>
+                                            <div>
+                                                <div className="attention-signal-label">
+                                                    Wikipedia spike — {(wikiMatch.total_views || 0).toLocaleString()} views
+                                                </div>
+                                                <div className="attention-signal-detail">
+                                                    {wikiMatch.matches.slice(0, 3).map((m, i) => (
+                                                        <span key={i} className="wiki-article">{m.title}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* HOW IT'S COVERED — Framing Analysis (hidden when drilled into a country) */}
                         {!drillCountry && data.countryFraming && data.countryFraming.length > 0 && (() => {
@@ -377,7 +433,8 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
                                         <span
                                             key={p.name}
                                             className="person-pill"
-                                            title={`${p.count} mentions in this topic`}
+                                            title={`${p.count} mentions — click to filter`}
+                                            onClick={() => onPersonClick?.(p.name)}
                                         >
                                             {p.name}
                                             <span className="person-pill-count">{p.count}</span>

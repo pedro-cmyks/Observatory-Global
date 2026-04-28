@@ -113,9 +113,24 @@ def parse_gkg_row(row: list) -> Optional[dict]:
     source_url = row[4] if len(row) > 4 else None
     source_name = row[3] if len(row) > 3 else None
     
+    import re as _re
+    import urllib.parse
+
     headline = None
-    if source_url:
-        import urllib.parse
+
+    # Try V2EXTRASXML (col 26) for real article title first
+    extras_xml = row[26] if len(row) > 26 else ''
+    if extras_xml:
+        m = _re.search(r'<PAGE_TITLE>(.+?)</PAGE_TITLE>', extras_xml)
+        if m:
+            candidate = m.group(1).strip()
+            # Basic validation: at least 4 words, no GDELT doc IDs
+            words = candidate.split()
+            if len(words) >= 4 and not _re.match(r'^\d{6,}', candidate):
+                headline = candidate
+
+    # Fall back to URL slug if no title found
+    if not headline and source_url:
         try:
             path = urllib.parse.urlparse(source_url).path
             slug = path.strip('/').split('/')[-1]

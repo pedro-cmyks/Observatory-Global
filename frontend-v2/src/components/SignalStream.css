@@ -221,3 +221,72 @@
     color: var(--color-text-muted, #64748b);
     font-size: 12px;
 }
+
+/* ==========================================================================
+   Event Cards (GDELT Events)
+   ========================================================================== */
+.event-card {
+    background: rgba(15, 23, 42, 0.4);
+    border-left: 3px solid rgba(255, 255, 255, 0.1);
+}
+
+.event-card:hover {
+    background: rgba(30, 41, 59, 0.6);
+}
+
+.event-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.event-icon {
+    font-size: 14px;
+}
+
+.event-label {
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    flex: 1;
+}
+
+.event-actors {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.event-actor {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.event-actor.source {
+    color: #e2e8f0;
+}
+
+.event-actor.target {
+    color: #cbd5e1;
+}
+
+.event-arrow {
+    color: #64748b;
+    font-size: 12px;
+}
+
+.event-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    color: #64748b;
+    font-family: var(--font-mono, monospace);
+}

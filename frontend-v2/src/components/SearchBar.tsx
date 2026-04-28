@@ -149,9 +149,12 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
                                     <span className="search-item-name">{getThemeLabel(t.theme)}</span>
                                     <span className="search-item-meta">
                                         {t.total_signals.toLocaleString()} sig
-                                        {t.top_countries[0] && ` · ${t.top_countries[0].code}`}
-                                        {t.top_countries[1] && ` ${t.top_countries[1].code}`}
-                                        {t.top_countries[2] && ` ${t.top_countries[2].code}`}
+                                        {t.top_countries.slice(0, 3).map((c, i) => {
+                                            const flag = c.code.length === 2
+                                                ? String.fromCodePoint(...c.code.toUpperCase().split('').map(ch => 0x1F1E6 + ch.charCodeAt(0) - 65))
+                                                : '🌐'
+                                            return <span key={c.code}>{i === 0 ? ' · ' : ' '}{flag} {c.name}</span>
+                                        })}
                                     </span>
                                 </div>
                             ))}
@@ -169,7 +172,12 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
                                     </span>
                                     <span className="search-item-meta">
                                         {p.total_signals.toLocaleString()} sig
-                                        {p.top_countries[0] && ` · ${p.top_countries[0].code}`}
+                                        {p.top_countries.slice(0, 3).map((c, i) => {
+                                            const flag = c.code.length === 2
+                                                ? String.fromCodePoint(...c.code.toUpperCase().split('').map(ch => 0x1F1E6 + ch.charCodeAt(0) - 65))
+                                                : '🌐'
+                                            return <span key={c.code}>{i === 0 ? ' · ' : ' '}{flag} {c.name}</span>
+                                        })}
                                     </span>
                                 </div>
                             ))}

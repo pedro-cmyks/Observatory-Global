@@ -17,6 +17,26 @@ interface Signal {
     persons: string[]
 }
 
+interface GeopoliticalEvent {
+    type: 'event'
+    id: number
+    timestamp: string
+    action: {
+        code: string
+        label: string
+        quad_class: number
+        quad_label: string
+        goldstein_scale: number | null
+        is_root: boolean
+    }
+    actor1: { name: string, country_code: string } | null
+    actor2: { name: string, country_code: string } | null
+    location: { name: string, country_code: string, latitude: number, longitude: number }
+    meta: { mentions: number, avg_tone: number, source_url: string }
+}
+
+type StreamItem = (Signal & { type: 'signal' }) | GeopoliticalEvent
+
 interface Velocity {
     signals_per_minute: number | string
     delta: number | string
@@ -49,8 +69,12 @@ const isValidHeadline = (title: string | null): boolean => {
     if (/^[\d\s\-_]{10,}$/.test(title)) return false
     // Filter out stock ticker / company holding patterns
     if (/\bHolding[s]?\s+In\s+Company\b/i.test(title)) return false
+    // Reject if >30% of words are alphanumeric codes (product IDs, tickers)
+    const allWords = title.split(' ')
+    const codeWords = allWords.filter(w => /^[A-Z0-9]{4,}$/.test(w))
+    if (allWords.length > 0 && codeWords.length / allWords.length > 0.3) return false
     // Must have at least 3 real words
-    const words = title.split(' ').filter(w => w.length > 2)
+    const words = allWords.filter(w => w.length > 2)
     return words.length >= 3
 }
 
@@ -63,6 +87,12 @@ const NOISE_HEADLINE_PATTERNS = [
     /\b(Oscar|Grammy|Emmy|Tony Award|Billboard|box office|blockbuster|streaming debut|red carpet|paparazzi|reality show|talent show)\b/i,
     /\b(horoscope|zodiac|astrology|daily crossword|recipe of the day|wedding trends|adizero|exact time you crave)\b/i,
     /\b(shopping guide|best deals|black friday|cyber monday|gift guide|discount code)\b/i,
+    // Product / lifestyle / food
+    /\b(wedding trend|destination wedding|bridal|wedding dress)\b/i,
+    /\b(recipe|best restaurant|food craving|crave food|meal prep|grocery)\b/i,
+    /\b(adizero|yeezy|air max|ultraboost|running shoe|sneaker release)\b/i,
+    /\b(earn per share|stock tip|portfolio tip|dividend yield|market cap today)\b/i,
+    /\b(horoscope|zodiac sign|birth chart|mercury retrograde)\b/i,
 ]
 
 const isGeopoliticallyRelevant = (signal: Signal): boolean => {
@@ -85,7 +115,7 @@ const getSignalPriority = (signal: Signal): number => {
 export const SignalStream: React.FC = () => {
     const { filter, setTheme, setCountry, setPerson } = useFocus()
     const { timeRange } = useFocusData()
-    const [signals, setSignals] = useState<Signal[]>([])
+    const [items, setItems] = useState<StreamItem[]>([])
     const [velocity, setVelocity] = useState<Velocity | null>(null)
     const [allowlist, setAllowlist] = useState<string[]>([])
     const [isHovered, setIsHovered] = useState(false)
@@ -125,24 +155,40 @@ export const SignalStream: React.FC = () => {
                 if (filter.theme) params.append('theme', filter.theme)
                 if (filter.person) params.append('person', filter.person)
 
-                const res = await fetch(`/api/v2/signals?${params.toString()}`)
-                if (!res.ok) return
+                const [sigRes, evtRes] = await Promise.all([
+                    fetch(`/api/v2/signals?${params.toString()}`),
+                    fetch(`/api/v2/events?${params.toString()}`)
+                ])
+                
+                let fetchedSignals: StreamItem[] = []
+                if (sigRes.ok) {
+                    const data = await sigRes.json()
+                    fetchedSignals = (data.signals || []).map((s: Signal) => ({ ...s, type: 'signal' }))
+                }
+                
+                let fetchedEvents: StreamItem[] = []
+                if (evtRes.ok) {
+                    const data = await evtRes.json()
+                    fetchedEvents = (data.events || []).map((e: any) => ({ ...e, type: 'event' }))
+                }
 
-                const data = await res.json()
                 if (!isMounted) return
 
-                const fetchedSignals = data.signals || []
-                setSignals(fetchedSignals)
+                const allItems = [...fetchedSignals, ...fetchedEvents].sort(
+                    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                )
+
+                setItems(allItems)
 
                 if (fetchedSignals.length > 0) {
                     const now = new Date(fetchedSignals[0].timestamp).getTime()
-                    const last60s = fetchedSignals.filter((s: Signal) => now - new Date(s.timestamp).getTime() <= 60000).length
-                    const prev60s = fetchedSignals.filter((s: Signal) => {
+                    const last60s = fetchedSignals.filter((s: StreamItem) => now - new Date(s.timestamp).getTime() <= 60000).length
+                    const prev60s = fetchedSignals.filter((s: StreamItem) => {
                         const age = now - new Date(s.timestamp).getTime()
                         return age > 60000 && age <= 120000
                     }).length
 
-                    const total2mins = fetchedSignals.filter((s: Signal) => now - new Date(s.timestamp).getTime() <= 120000).length
+                    const total2mins = fetchedSignals.filter((s: StreamItem) => now - new Date(s.timestamp).getTime() <= 120000).length
 
                     if (total2mins < 2) {
                         setVelocity({ signals_per_minute: '--', delta: '--', percentage_change: '--' })
@@ -187,19 +233,38 @@ export const SignalStream: React.FC = () => {
                 if (filter.person) params.append('person', filter.person)
                 if (latestTimestampRef.current) params.append('since', latestTimestampRef.current)
 
-                const res = await fetch(`/api/v2/signals?${params.toString()}`)
-                if (!res.ok) return
+                const [sigRes, evtRes] = await Promise.all([
+                    fetch(`/api/v2/signals?${params.toString()}`),
+                    fetch(`/api/v2/events?${params.toString()}`)
+                ])
 
-                const data = await res.json()
+                let newSignals: StreamItem[] = []
+                let newVelocity = null
+                if (sigRes.ok) {
+                    const data = await sigRes.json()
+                    newSignals = (data.signals || []).map((s: Signal) => ({ ...s, type: 'signal' }))
+                    newVelocity = data.velocity || null
+                }
+                
+                let newEvents: StreamItem[] = []
+                if (evtRes.ok) {
+                    const data = await evtRes.json()
+                    newEvents = (data.events || []).map((e: any) => ({ ...e, type: 'event' }))
+                }
+
                 if (!isMounted) return
 
-                setVelocity(data.velocity || null)
+                if (newVelocity) setVelocity(newVelocity)
 
-                if (data.signals && data.signals.length > 0) {
-                    latestTimestampRef.current = data.signals[0].timestamp
-                    setSignals(prev => {
-                        const merged = [...data.signals, ...prev]
-                        const unique = merged.filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i)
+                const newItems = [...newSignals, ...newEvents]
+                
+                if (newItems.length > 0) {
+                    newItems.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                    latestTimestampRef.current = newItems[0].timestamp
+                    setItems(prev => {
+                        const merged = [...newItems, ...prev]
+                        // Unique by type + id
+                        const unique = merged.filter((v, i, a) => a.findIndex(t => (t.type === v.type && t.id === v.id)) === i)
                         return unique.slice(0, 100)
                     })
                 }
@@ -237,8 +302,8 @@ export const SignalStream: React.FC = () => {
                 <div className="velocity-banner">
                     <span className="velocity-label">VELOCITY: </span>
                     <span className="velocity-value">
-                        {velocity.signals_per_minute === 0 && signals.length > 0 
-                            ? `~${signals.length} signals in view` 
+                        {velocity.signals_per_minute === 0 && items.length > 0 
+                            ? `~${items.length} items in view` 
                             : `${velocity.signals_per_minute} ${velocity.signals_per_minute === '--' ? '' : 'sig/min'}`}
                     </span>
                     {velocity.delta !== '--' && velocity.signals_per_minute !== 0 && (
@@ -256,23 +321,68 @@ export const SignalStream: React.FC = () => {
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
             >
-                {signals.length === 0 ? (
-                    <div className="empty-state">No signals found</div>
+                {items.length === 0 ? (
+                    <div className="empty-state">No signals or events found</div>
                 ) : (
-                    signals
-                        .filter(isGeopoliticallyRelevant)
+                    items
+                        .filter(item => item.type === 'event' || isGeopoliticallyRelevant(item as Signal))
                         .sort((a, b) => {
-                            const pA = getSignalPriority(a)
-                            const pB = getSignalPriority(b)
+                            // prioritize events and high-priority signals
+                            const pA = a.type === 'event' ? 0 : getSignalPriority(a as Signal)
+                            const pB = b.type === 'event' ? 0 : getSignalPriority(b as Signal)
                             if (pA !== pB) return pA - pB
                             return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
                         })
-                        .map(sig => {
+                        .map(item => {
+                            if (item.type === 'event') {
+                                const evt = item as GeopoliticalEvent
+                                const quadColor = evt.action.quad_class === 1 || evt.action.quad_class === 2 ? '#4ade80' : '#ef4444'
+                                return (
+                                    <div key={`evt-${evt.id}`} className="signal-row event-card">
+                                        <div className="event-header">
+                                            <span className="event-icon" style={{color: quadColor}}>
+                                                {evt.action.quad_class === 1 || evt.action.quad_class === 2 ? '🤝' : '⚠️'}
+                                            </span>
+                                            <span className="event-label" style={{color: quadColor}}>{evt.action.label}</span>
+                                            <span className="signal-time">{formatTime(evt.timestamp)}</span>
+                                        </div>
+                                        <div className="event-actors">
+                                            {evt.actor1 && (
+                                                <span className="event-actor source">
+                                                    {evt.actor1.country_code ? `[${evt.actor1.country_code}] ` : ''}
+                                                    {evt.actor1.name || 'Unknown'}
+                                                </span>
+                                            )}
+                                            {evt.actor2 && (
+                                                <>
+                                                    <span className="event-arrow">→</span>
+                                                    <span className="event-actor target">
+                                                        {evt.actor2.country_code ? `[${evt.actor2.country_code}] ` : ''}
+                                                        {evt.actor2.name || 'Unknown'}
+                                                    </span>
+                                                </>
+                                            )}
+                                        </div>
+                                        <div className="event-meta">
+                                            <span>📍 {evt.location.country_code || 'GLO'} {evt.location.name ? `· ${evt.location.name}` : ''}</span>
+                                            {evt.action.goldstein_scale !== null && (
+                                                <span>· Goldstein: {evt.action.goldstein_scale > 0 ? '+' : ''}{evt.action.goldstein_scale}</span>
+                                            )}
+                                            {evt.meta.source_url && (
+                                                <span>· <a href={evt.meta.source_url} target="_blank" rel="noopener noreferrer" className="signal-link">Source</a></span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )
+                            }
+
+                            // Render Signal
+                            const sig = item as Signal & { type: 'signal' }
                             const isValid = isValidHeadline(sig.headline)
                             
                             if (!isValid) {
                                 return (
-                                    <div key={sig.id} className={`signal-row compact-mode`}>
+                                    <div key={`sig-${sig.id}`} className={`signal-row compact-mode`}>
                                         <div className="signal-main" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                             <span
                                                 className="country-chip clickable"

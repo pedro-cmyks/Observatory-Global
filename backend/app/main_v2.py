@@ -2334,6 +2334,351 @@ async def health():
             "error_count_last_15m": 0
         }
 
+# =============================================================================
+# GOOGLE TRENDS API
+# =============================================================================
+
+@app.get("/api/v2/trends/search")
+async def get_trending_searches(
+    country_code: Optional[str] = Query(None, description="ISO 2-letter country code"),
+    hours: int = Query(24, ge=1, le=168),
+    limit: int = Query(20, ge=1, le=50)
+):
+    """Get trending Google searches for a country or globally."""
+    try:
+        async with app.state.pool.acquire() as conn:
+            if country_code:
+                rows = await conn.fetch("""
+                    SELECT keyword, rank, approximate_volume, timestamp, country_code
+                    FROM trends_v2
+                    WHERE country_code = $1
+                    AND timestamp > NOW() - INTERVAL '%s hours'
+                    ORDER BY timestamp DESC, rank ASC
+                    LIMIT %s
+                """ % (hours, limit), country_code.upper())
+            else:
+                # Global: group by keyword, count how many countries have it
+                rows = await conn.fetch("""
+                    SELECT keyword, MIN(rank) as rank, COUNT(DISTINCT country_code) as country_count,
+                           MAX(timestamp) as timestamp
+                    FROM trends_v2
+                    WHERE timestamp > NOW() - INTERVAL '%s hours'
+                    GROUP BY keyword
+                    ORDER BY country_count DESC, rank ASC
+                    LIMIT %s
+                """ % (hours, limit))
+
+            return {
+                "trending": [
+                    {
+                        "keyword": r['keyword'],
+                        "rank": r['rank'],
+                        "country_code": r.get('country_code'),
+                        "country_count": r.get('country_count'),
+                        "timestamp": r['timestamp'].isoformat() if r['timestamp'] else None,
+                    }
+                    for r in rows
+                ],
+                "country_code": country_code,
+                "hours": hours,
+                "generated_at": datetime.now(timezone.utc).isoformat()
+            }
+    except Exception as e:
+        return {"trending": [], "error": str(e)}
+
+
+@app.get("/api/v2/trends/match")
+async def get_trends_theme_match(
+    theme: str = Query(..., description="GDELT theme code to check against trending searches"),
+    hours: int = Query(24, ge=1, le=168)
+):
+    """Check if a GDELT theme matches any current Google trending searches.
+    Returns matching keywords and their countries — useful for 'public interest' badges.
+    """
+    from app.core.gdelt_taxonomy import get_theme_label
+
+    label = get_theme_label(theme).lower()
+    # Extract meaningful words from theme label (skip short words)
+    theme_words = [w for w in label.split() if len(w) > 3]
+
+    if not theme_words:
+        return {"matches": [], "theme": theme, "has_public_interest": False}
+
+    try:
+        async with app.state.pool.acquire() as conn:
+            # Build ILIKE conditions for each theme word
+            conditions = " OR ".join([f"LOWER(keyword) LIKE '%' || ${i+1} || '%'" for i in range(len(theme_words))])
+            query = f"""
+                SELECT keyword, country_code, rank, timestamp
+                FROM trends_v2
+                WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+                AND ({conditions})
+                ORDER BY rank ASC
+                LIMIT 10
+            """
+            rows = await conn.fetch(query, *theme_words)
+
+            matches = [
+                {
+                    "keyword": r['keyword'],
+                    "country_code": r['country_code'],
+                    "rank": r['rank'],
+                }
+                for r in rows
+            ]
+
+            return {
+                "matches": matches,
+                "theme": theme,
+                "theme_label": get_theme_label(theme),
+                "has_public_interest": len(matches) > 0,
+                "country_count": len(set(m['country_code'] for m in matches)),
+            }
+    except Exception as e:
+        return {"matches": [], "theme": theme, "has_public_interest": False, "error": str(e)}
+
+
+# =============================================================================
+# WIKIPEDIA PAGEVIEWS API
+# =============================================================================
+
+@app.get("/api/v2/wiki/top")
+async def get_wiki_top_articles(
+    country_code: Optional[str] = Query(None, description="ISO 2-letter country code"),
+    days: int = Query(1, ge=1, le=7),
+    limit: int = Query(15, ge=1, le=50)
+):
+    """Get top Wikipedia articles by pageviews for a country or globally."""
+    try:
+        async with app.state.pool.acquire() as conn:
+            if country_code:
+                rows = await conn.fetch("""
+                    SELECT article_title, views, rank, language, fetch_date
+                    FROM wiki_pageviews_v2
+                    WHERE country_code = $1
+                    AND fetch_date >= CURRENT_DATE - $2
+                    ORDER BY views DESC
+                    LIMIT $3
+                """, country_code.upper(), days, limit)
+            else:
+                # Global aggregate: sum views across all countries
+                rows = await conn.fetch("""
+                    SELECT article_title, SUM(views) as views, MIN(rank) as rank,
+                           COUNT(DISTINCT country_code) as country_count
+                    FROM wiki_pageviews_v2
+                    WHERE fetch_date >= CURRENT_DATE - $1
+                    GROUP BY article_title
+                    ORDER BY views DESC
+                    LIMIT $2
+                """, days, limit)
+
+            return {
+                "articles": [
+                    {
+                        "title": r['article_title'],
+                        "views": r['views'],
+                        "rank": r['rank'],
+                        "language": r.get('language'),
+                        "country_count": r.get('country_count'),
+                    }
+                    for r in rows
+                ],
+                "country_code": country_code,
+                "days": days,
+                "generated_at": datetime.now(timezone.utc).isoformat()
+            }
+    except Exception as e:
+        return {"articles": [], "error": str(e)}
+
+
+@app.get("/api/v2/wiki/match")
+async def get_wiki_theme_match(
+    theme: str = Query(..., description="GDELT theme code to check against Wikipedia activity"),
+    days: int = Query(1, ge=1, le=7)
+):
+    """Check if a GDELT theme matches any spiking Wikipedia articles.
+    Returns matching articles and view counts — useful for 'wiki activity' badges.
+    """
+    from app.core.gdelt_taxonomy import get_theme_label
+
+    label = get_theme_label(theme).lower()
+    theme_words = [w for w in label.split() if len(w) > 3]
+
+    if not theme_words:
+        return {"matches": [], "theme": theme, "has_wiki_activity": False}
+
+    try:
+        async with app.state.pool.acquire() as conn:
+            conditions = " OR ".join([f"LOWER(article_title) LIKE '%' || ${i+1} || '%'" for i in range(len(theme_words))])
+            query = f"""
+                SELECT article_title, SUM(views) as views, COUNT(DISTINCT country_code) as country_count
+                FROM wiki_pageviews_v2
+                WHERE fetch_date >= CURRENT_DATE - {days}
+                AND ({conditions})
+                GROUP BY article_title
+                ORDER BY views DESC
+                LIMIT 5
+            """
+            rows = await conn.fetch(query, *theme_words)
+
+            matches = [
+                {
+                    "title": r['article_title'],
+                    "views": r['views'],
+                    "country_count": r['country_count'],
+                }
+                for r in rows
+            ]
+
+            return {
+                "matches": matches,
+                "theme": theme,
+                "theme_label": get_theme_label(theme),
+                "has_wiki_activity": len(matches) > 0,
+                "total_views": sum(m['views'] for m in matches),
+            }
+    except Exception as e:
+        return {"matches": [], "theme": theme, "has_wiki_activity": False, "error": str(e)}
+
+
+# =============================================================================
+# GDELT EVENTS API
+# =============================================================================
+
+@app.get("/api/v2/events")
+async def get_events(
+    country_code: Optional[str] = Query(None, description="Filter by action country code"),
+    hours: int = Query(24, ge=1, le=168),
+    limit: int = Query(50, ge=1, le=200)
+):
+    """Get recent structured geopolitical events (CAMEO)."""
+    from app.core.cameo_taxonomy import get_cameo_label, get_quad_class_label
+
+    try:
+        async with app.state.pool.acquire() as conn:
+            if country_code:
+                query = """
+                    SELECT * FROM events_v2
+                    WHERE action_country_code = $1
+                    AND timestamp > NOW() - INTERVAL '%s hours'
+                    ORDER BY timestamp DESC
+                    LIMIT %s
+                """ % (hours, limit)
+                rows = await conn.fetch(query, country_code.upper())
+            else:
+                query = """
+                    SELECT * FROM events_v2
+                    WHERE timestamp > NOW() - INTERVAL '%s hours'
+                    ORDER BY timestamp DESC
+                    LIMIT %s
+                """ % (hours, limit)
+                rows = await conn.fetch(query)
+
+            events = []
+            for r in rows:
+                events.append({
+                    "id": r['global_event_id'],
+                    "timestamp": r['timestamp'].isoformat() if r['timestamp'] else None,
+                    "action": {
+                        "code": r['event_code'],
+                        "label": get_cameo_label(r['event_code']),
+                        "quad_class": r['quad_class'],
+                        "quad_label": get_quad_class_label(r['quad_class']),
+                        "goldstein_scale": float(r['goldstein_scale']) if r['goldstein_scale'] else None,
+                        "is_root": r['is_root_event']
+                    },
+                    "actor1": {
+                        "name": r['actor1_name'],
+                        "country_code": r['actor1_country_code']
+                    } if r['actor1_name'] or r['actor1_country_code'] else None,
+                    "actor2": {
+                        "name": r['actor2_name'],
+                        "country_code": r['actor2_country_code']
+                    } if r['actor2_name'] or r['actor2_country_code'] else None,
+                    "location": {
+                        "name": r['action_location_name'],
+                        "country_code": r['action_country_code'],
+                        "latitude": float(r['latitude']) if r['latitude'] else None,
+                        "longitude": float(r['longitude']) if r['longitude'] else None
+                    },
+                    "meta": {
+                        "mentions": r['num_mentions'],
+                        "avg_tone": float(r['avg_tone']) if r['avg_tone'] else None,
+                        "source_url": r['source_url']
+                    }
+                })
+
+            return {
+                "events": events,
+                "country_code": country_code,
+                "hours": hours,
+                "generated_at": datetime.now(timezone.utc).isoformat()
+            }
+    except Exception as e:
+        return {"events": [], "error": str(e)}
+
+
+# =============================================================================
+# ACLED CONFLICT API
+# =============================================================================
+
+@app.get("/api/v2/acled")
+async def get_acled_conflicts(
+    country: Optional[str] = Query(None, description="Filter by country name"),
+    days: int = Query(3, ge=1, le=30),
+    limit: int = Query(500, ge=1, le=5000)
+):
+    """Get recent conflict events from ACLED."""
+    try:
+        async with app.state.pool.acquire() as conn:
+            if country:
+                query = """
+                    SELECT * FROM acled_conflicts_v2
+                    WHERE country ILIKE $1
+                    AND event_date >= CURRENT_DATE - $2
+                    ORDER BY event_date DESC
+                    LIMIT $3
+                """
+                rows = await conn.fetch(query, f"%{country}%", days, limit)
+            else:
+                query = """
+                    SELECT * FROM acled_conflicts_v2
+                    WHERE event_date >= CURRENT_DATE - $1
+                    ORDER BY event_date DESC
+                    LIMIT $2
+                """
+                rows = await conn.fetch(query, days, limit)
+
+            conflicts = []
+            for r in rows:
+                conflicts.append({
+                    "id": r['event_id_cnty'],
+                    "date": r['event_date'].isoformat() if r['event_date'] else None,
+                    "type": r['event_type'],
+                    "sub_type": r['sub_event_type'],
+                    "actors": {
+                        "actor1": r['actor1'],
+                        "actor2": r['actor2']
+                    },
+                    "location": {
+                        "country": r['country'],
+                        "region": r['region'],
+                        "name": r['location'],
+                        "latitude": float(r['latitude']) if r['latitude'] else None,
+                        "longitude": float(r['longitude']) if r['longitude'] else None
+                    },
+                    "fatalities": r['fatalities'],
+                    "notes": r['notes'],
+                    "source": r['source']
+                })
+
+            return {
+                "conflicts": conflicts,
+                "count": len(conflicts),
+                "generated_at": datetime.now(timezone.utc).isoformat()
+            }
+    except Exception as e:
+        return {"conflicts": [], "error": str(e)}
 
 @app.get("/api/v2/narratives")
 async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Query(5, ge=1, le=20)):
@@ -2448,6 +2793,44 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                 
                 spread_pct = round((t['country_count'] / total_active) * 100, 1)
                 
+                # Cross-reference with Google Trends
+                has_public_interest = False
+                trending_keywords = []
+                try:
+                    label_lower = get_theme_label(theme_code).lower()
+                    tw = [w for w in label_lower.split() if len(w) > 3]
+                    if tw:
+                        conds = " OR ".join([f"LOWER(keyword) LIKE '%' || ${i+1} || '%'" for i in range(len(tw))])
+                        tq = f"""
+                            SELECT DISTINCT keyword FROM trends_v2
+                            WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+                            AND ({conds})
+                            LIMIT 3
+                        """
+                        trend_rows = await conn.fetch(tq, *tw)
+                        trending_keywords = [r['keyword'] for r in trend_rows]
+                        has_public_interest = len(trending_keywords) > 0
+                except Exception:
+                    pass
+
+                # Cross-reference with Wikipedia
+                has_wiki_activity = False
+                wiki_views = 0
+                try:
+                    if tw:
+                        wconds = " OR ".join([f"LOWER(article_title) LIKE '%' || ${i+1} || '%'" for i in range(len(tw))])
+                        wq = f"""
+                            SELECT SUM(views) as total_views FROM wiki_pageviews_v2
+                            WHERE fetch_date >= CURRENT_DATE - 1
+                            AND ({wconds})
+                        """
+                        wrow = await conn.fetchrow(wq, *tw)
+                        if wrow and wrow['total_views']:
+                            wiki_views = int(wrow['total_views'])
+                            has_wiki_activity = wiki_views > 0
+                except Exception:
+                    pass
+
                 narratives.append({
                     "theme_code": theme_code,
                     "label": get_theme_label(theme_code),
@@ -2461,7 +2844,12 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                     "avg_sentiment": round(float(t['avg_sentiment'] or 0), 2),
                     "top_persons": top_persons,
                     "hourly_timeline": hourly_timeline,
-                    "top_countries": top_countries
+                    "top_countries": top_countries,
+                    # Enrichment: public attention signals
+                    "has_public_interest": has_public_interest,
+                    "trending_keywords": trending_keywords,
+                    "has_wiki_activity": has_wiki_activity,
+                    "wiki_views": wiki_views,
                 })
             
             return {

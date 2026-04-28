@@ -1,6 +1,7 @@
 import React from 'react'
 import { useCrisis } from '../contexts/CrisisContext'
 import { useFocus } from '../contexts/FocusContext'
+import { useFocusData } from '../contexts/FocusDataContext'
 import './AnomalyPanel.css'
 
 // Country code → name fallback for unresolved GDELT codes
@@ -25,6 +26,7 @@ const resolveCountryName = (code: string, apiName?: string): string => {
 export const AnomalyPanel: React.FC = () => {
     const { anomalies, nearMisses, themeAnomalies, meta, overallSeverity, loading } = useCrisis()
     const { setFocus, setMapFlyCountry } = useFocus()
+    const { acledConflicts } = useFocusData()
 
     const handleAnomalyClick = (countryCode: string) => {
         setFocus('country', countryCode)
@@ -115,6 +117,32 @@ export const AnomalyPanel: React.FC = () => {
                                 </div>
                                 <div className="metrics">
                                     <span className="multiplier">{a.multiplier.toFixed(1)}× norm</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {acledConflicts && acledConflicts.length > 0 && (
+                <div className="theme-anomaly-section">
+                    <div className="theme-anomaly-header" style={{
+                        fontSize: '9px', fontWeight: 'bold', color: '#64748b', letterSpacing: '0.05em', 
+                        marginTop: '12px', marginBottom: '8px', paddingLeft: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px'
+                    }}>RECENT KINETIC CONFLICTS (ACLED)</div>
+                    <div className="anomaly-list">
+                        {acledConflicts.slice(0, 15).map(c => (
+                            <div 
+                                key={c.id} 
+                                className="anomaly-row level-critical clickable"
+                                onClick={() => handleAnomalyClick(c.location.country)}
+                            >
+                                <div className="level-badge" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+                                    {c.fatalities > 0 ? `${c.fatalities} KIA` : 'WARN'}
+                                </div>
+                                <div className="country-info">
+                                    <span className="country-name" style={{ fontSize: '11px' }}>{c.location.country} - {c.type}</span>
+                                    <span style={{ fontSize: '9px', color: '#64748b', display: 'block', marginTop: '2px' }}>{c.location.name}</span>
                                 </div>
                             </div>
                         ))}

@@ -21,13 +21,9 @@ export const SourceIntegrityPanel: React.FC = () => {
     const [globalData, setGlobalData] = useState<GlobalBriefing | null>(null)
     const [loading, setLoading] = useState(false)
 
-    // Fetch global briefing if not locked to anything
+    // Fetch global briefing always, ignoring filters
     useEffect(() => {
         let isMounted = true
-        if (filter.country || filter.theme) {
-            setGlobalData(null)
-            return
-        }
 
         const fetchGlobal = async () => {
             setLoading(true)
@@ -45,19 +41,15 @@ export const SourceIntegrityPanel: React.FC = () => {
         fetchGlobal()
 
         return () => { isMounted = false }
-    }, [filter.country, filter.theme, timeRange])
+    }, [timeRange])
 
     // Compute metrics
-    const isLoading = focusLoading || loading
+    const isLoading = loading
     let totalSignals = 0
     let uniqueSources = 0
     let topSources: Array<{ name: string; count: number }> = []
 
-    if (summary) {
-        totalSignals = summary.stats.total_signals
-        uniqueSources = summary.stats.unique_sources
-        topSources = summary.top_sources.map(s => ({ name: s.source, count: s.count }))
-    } else if (globalData) {
+    if (globalData) {
         totalSignals = globalData.stats.total_signals
         uniqueSources = globalData.stats.sources
         // Note: API might return `source` instead of `source_name`
@@ -81,7 +73,7 @@ export const SourceIntegrityPanel: React.FC = () => {
     return (
         <div className="source-panel-container">
             <div className="source-header">
-                <div>SOURCE HEALTH: {filter.country ? filter.country : filter.theme ? filter.theme : 'GLOBAL AGGREGATE'}</div>
+                <div>SOURCE HEALTH: GLOBAL AGGREGATE</div>
                 {isLoading && <div className="loading-spinner" />}
             </div>
 

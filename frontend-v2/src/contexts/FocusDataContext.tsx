@@ -46,10 +46,23 @@ export interface FocusDataMeta {
     isFiltered: boolean
 }
 
+export interface AcledConflict {
+    id: string
+    date: string
+    type: string
+    sub_type: string
+    actors: { actor1: string | null, actor2: string | null }
+    location: { country: string, region: string, name: string, latitude: number, longitude: number }
+    fatalities: number
+    notes: string
+    source: string
+}
+
 interface FocusDataState {
     nodes: NodeData[]
     flows: FlowData[]
     unfilteredFlows?: FlowData[]
+    acledConflicts: AcledConflict[]
     summary: FocusSummary | null
     meta: FocusDataMeta
     loading: boolean
@@ -76,6 +89,7 @@ const defaultState: FocusDataState = {
     nodes: [],
     flows: [],
     unfilteredFlows: [],
+    acledConflicts: [],
     summary: null,
     meta: defaultMeta,
     loading: true,
@@ -144,6 +158,29 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 }
             }
 
+            // Fetch ACLED conflicts in parallel with flows
+            let acledData: AcledConflict[] = []
+            try {
+                // Determine days for ACLED fetch (max 30)
+                const hours = timeRangeToHours(timeRange)
+                const days = Math.max(1, Math.min(30, Math.ceil(hours / 24)))
+                
+                const acledParams = new URLSearchParams()
+                acledParams.append('days', days.toString())
+                acledParams.append('limit', '500')
+                if (isActive && focus.type === 'country' && focus.value) {
+                    acledParams.append('country', focus.value)
+                }
+
+                const acledRes = await fetch(`/api/v2/acled?${acledParams}`)
+                if (acledRes.ok) {
+                    const data = await acledRes.json()
+                    acledData = data.conflicts || []
+                }
+            } catch (e) {
+                console.warn('[FocusDataProvider] ACLED fetch failed:', e)
+            }
+
             // Safe render: cap nodes at 150 to prevent Deck.gl crashes
             const MAX_NODES = 150
             let safeNodes = nodesData.nodes || []
@@ -160,6 +197,7 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 nodes: safeNodes,
                 flows: newFlows,
                 unfilteredFlows: (!isActive) ? newFlows : prev.unfilteredFlows,
+                acledConflicts: acledData,
                 summary: summaryData,
                 meta: {
                     totalCountries: nodesData.count || nodesData.nodes?.length || 0,

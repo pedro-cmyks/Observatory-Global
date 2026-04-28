@@ -24,6 +24,11 @@ interface Narrative {
     top_persons: string[]
     hourly_timeline: TimelinePoint[]
     top_countries: string[]
+    // Enrichment: public attention signals
+    has_public_interest?: boolean
+    trending_keywords?: string[]
+    has_wiki_activity?: boolean
+    wiki_views?: number
 }
 
 // Sparkline SVG component
@@ -159,7 +164,7 @@ export const NarrativeThreads: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Row 2: Countries, Persons + age */}
+                        {/* Row 2: Countries, Persons, attention badges + age */}
                         <div className="narrative-detail">
                             <div className="narrative-entities">
                                 {n.top_countries.map(c => (
@@ -168,6 +173,16 @@ export const NarrativeThreads: React.FC = () => {
                                 {n.top_persons.map(p => (
                                     <span key={p} className="person-pip">{p}</span>
                                 ))}
+                                {n.has_public_interest && (
+                                    <span className="attention-badge search" title={`Trending searches: ${(n.trending_keywords || []).join(', ')}`}>
+                                        🔍 Searched
+                                    </span>
+                                )}
+                                {n.has_wiki_activity && (
+                                    <span className="attention-badge wiki" title={`${(n.wiki_views || 0).toLocaleString()} Wikipedia views`}>
+                                        📖 {n.wiki_views && n.wiki_views > 1000 ? `${Math.round(n.wiki_views / 1000)}K` : ''}
+                                    </span>
+                                )}
                             </div>
                             <span className="narrative-age">{timeAgo(n.first_seen)}</span>
                         </div>
