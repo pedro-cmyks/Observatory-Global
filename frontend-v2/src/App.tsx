@@ -239,6 +239,9 @@ function AppContent() {
   const [selectedTheme, setSelectedTheme] = useState<{ theme: string, originCountry?: string, originCountryName?: string } | null>(null)
   const [selectedChokepoint, setSelectedChokepoint] = useState<Chokepoint | null>(null)
   const [rightPanelThemeCountry, setRightPanelThemeCountry] = useState<{ code: string, name: string } | null>(null)
+  // One-level back navigation for the stream panel
+  type PrevCtx = { type: 'chokepoint'; cp: Chokepoint } | { type: 'theme'; theme: string; originCountry?: string; originCountryName?: string }
+  const [prevStreamCtx, setPrevStreamCtx] = useState<PrevCtx | null>(null)
   const [showBriefing, setShowBriefing] = useState(false)
   // const [timeWindow, setTimeWindow] = useState(24) // Replaced by context
   const [viewState, setViewState] = useState(INITIAL_VIEW)
@@ -902,18 +905,37 @@ function AppContent() {
           const isCountry = !!selectedCountry && !isPerson
           const isTheme = !!selectedTheme && !isPerson && !isCountry
           const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme
-          const closeAll = () => { setSelectedTheme(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); clearFocus(); if (filter.theme) setTheme(null) }
+          const closeAll = () => { setSelectedTheme(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null) }
+          // Smart back: one step up, not all the way to stream
+          const handleStreamBack = () => {
+            if (prevStreamCtx?.type === 'chokepoint') {
+              setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); clearFocus()
+              setPrevStreamCtx(null)
+              // selectedChokepoint still set → ChokepointPanel reappears
+            } else if (prevStreamCtx?.type === 'theme') {
+              setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); clearFocus()
+              setSelectedTheme({ theme: prevStreamCtx.theme, originCountry: prevStreamCtx.originCountry, originCountryName: prevStreamCtx.originCountryName })
+              setPrevStreamCtx(null)
+            } else {
+              closeAll()
+            }
+          }
+          const backLabel = prevStreamCtx?.type === 'chokepoint'
+            ? `← ${prevStreamCtx.cp.name}`
+            : prevStreamCtx?.type === 'theme'
+            ? `← ${prevStreamCtx.theme.replace(/_/g, ' ').slice(0, 20)}`
+            : '← STREAM'
           let panelTitle = <><span>SIGNAL STREAM</span><span className="panel-subtitle">live signals, last 15 min</span></>
           if (isTheme) panelTitle = <>
-            <button className="drill-back-btn" onClick={closeAll} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
+            <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
             <span style={{ color: '#94a3b8' }}>{selectedTheme!.theme.replace(/_/g, ' ').slice(0, 26)}</span>
           </>
           if (isCountry) panelTitle = <>
-            <button className="drill-back-btn" onClick={closeAll} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
+            <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>{backLabel}</button>
             <span style={{ color: '#94a3b8' }}>{selectedCountry!.name || selectedCountry!.countryCode}</span>
           </>
           if (isPerson) panelTitle = <>
-            <button className="drill-back-btn" onClick={closeAll} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
+            <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
             <span style={{ color: '#a78bfa' }}>{focus.value}</span>
           </>
           if (isChokepoint) panelTitle = <>
@@ -937,7 +959,7 @@ function AppContent() {
                     countryCode={selectedCountry!.countryCode}
                     countryName={selectedCountry!.name || selectedCountry!.countryCode}
                     timeWindow={timeRangeToHours(timeRange)}
-                    onClose={closeAll}
+                    onClose={handleStreamBack}
                     onThemeSelect={(theme) => { handleThemeSelect(theme, selectedCountry!.countryCode, selectedCountry!.name || selectedCountry!.countryCode); setMapFlyCountry(selectedCountry!.countryCode) }}
                   />
                 ) : isTheme ? (
@@ -955,7 +977,10 @@ function AppContent() {
                     chokepoint={selectedChokepoint!}
                     vesselCount={chokepointCounts[selectedChokepoint!.id] || 0}
                     hours={timeRangeToHours(timeRange)}
-                    onCountryClick={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
+                    onCountryClick={(code) => {
+                      setPrevStreamCtx({ type: 'chokepoint', cp: selectedChokepoint! })
+                      handleCountryClick(code); setMapFlyCountry(code)
+                    }}
                   />
                 ) : (
                   <PanelErrorBoundary panelName="SIGNAL STREAM">
@@ -1057,7 +1082,14 @@ function AppContent() {
           countryName={rightPanelThemeCountry.name}
           hours={timeRangeToHours(timeRange)}
           onClose={() => setRightPanelThemeCountry(null)}
-          onBackToCountry={() => setRightPanelThemeCountry(null)}
+          onBackToCountry={() => {
+            if (rightPanelThemeCountry && selectedTheme) {
+              setPrevStreamCtx({ type: 'theme', theme: selectedTheme.theme, originCountry: selectedTheme.originCountry, originCountryName: selectedTheme.originCountryName })
+              handleCountryClick(rightPanelThemeCountry.code)
+              setMapFlyCountry(rightPanelThemeCountry.code)
+              setRightPanelThemeCountry(null)
+            }
+          }}
           onThemeSelect={(theme) => { handleThemeSelect(theme, rightPanelThemeCountry.code, rightPanelThemeCountry.name) }}
         />
       )}
