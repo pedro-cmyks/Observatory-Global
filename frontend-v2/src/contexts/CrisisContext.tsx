@@ -11,6 +11,14 @@ interface AnomalyData {
     level: 'normal' | 'notable' | 'elevated' | 'critical'
 }
 
+interface ThemeAnomalyData {
+    theme: string
+    current_count: number
+    baseline_avg: number
+    multiplier: number
+    zscore: number
+}
+
 interface MetaData {
     active_countries: number
     total_signals_24h: number
@@ -21,6 +29,7 @@ interface CrisisState {
     enabled: boolean
     anomalies: AnomalyData[]
     nearMisses: AnomalyData[]
+    themeAnomalies: ThemeAnomalyData[]
     meta: MetaData | null
     overallSeverity: 'normal' | 'notable' | 'elevated' | 'critical'
     loading: boolean
@@ -42,6 +51,7 @@ export const CrisisProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     })
     const [anomalies, setAnomalies] = useState<AnomalyData[]>([])
     const [nearMisses, setNearMisses] = useState<AnomalyData[]>([])
+    const [themeAnomalies, setThemeAnomalies] = useState<ThemeAnomalyData[]>([])
     const [meta, setMeta] = useState<MetaData | null>(null)
     const [overallSeverity, setOverallSeverity] = useState<'normal' | 'notable' | 'elevated' | 'critical'>('normal')
     const [loading, setLoading] = useState(false)
@@ -79,6 +89,13 @@ export const CrisisProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 setMeta(data.meta || null)
                 setOverallSeverity(severity)
             }
+
+            // Fetch theme anomalies
+            const themeRes = await fetch(`/api/v2/anomalies/themes?hours=${hours}&limit=5`)
+            if (themeRes.ok) {
+                const themeData = await themeRes.json()
+                setThemeAnomalies(themeData.theme_anomalies || [])
+            }
         } catch (e) {
             console.error('[CrisisContext] Fetch error:', e)
         } finally {
@@ -105,6 +122,7 @@ export const CrisisProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             enabled,
             anomalies,
             nearMisses,
+            themeAnomalies,
             meta,
             overallSeverity,
             loading,

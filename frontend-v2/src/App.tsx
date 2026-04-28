@@ -249,11 +249,9 @@ function AppContent() {
 
   // Globe mapping
   const mapRef = useRef<MapRef>(null)
-  const [isGlobe, setIsGlobe] = useState(() => localStorage.getItem('atlas-globe-mode') === 'true')
+  const isGlobe = localStorage.getItem('atlas-globe-mode') === 'true'
   const hasAutoFocused = useRef(false)
-
-  const [helpMode, setHelpMode] = useState(false)
-
+  
   const [showWelcome, setShowWelcome] = useState(
     () => sessionStorage.getItem('atlas-welcome-seen') !== 'true'
   )
@@ -262,21 +260,6 @@ function AppContent() {
     sessionStorage.setItem('atlas-welcome-seen', 'true')
     if (openBrief) setShowBriefing(true)
   }
-
-  const toggleGlobe = () => {
-    const next = !isGlobe
-    setIsGlobe(next)
-    
-    // Smoothly adjust view state for the mode
-    setViewState(prev => ({
-      ...prev,
-      zoom: next ? 1.8 : 1.5,
-      pitch: next ? 15 : 0
-    }))
-    
-    localStorage.setItem('atlas-globe-mode', String(next))
-  }
-
   // Focus hook for click-to-focus
   const { setFocus, focus, clearFocus, filter, setTheme, mapFlyCountry, setMapFlyCountry } = useFocus()
 
@@ -616,7 +599,7 @@ function AppContent() {
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
 
   return (
-    <div className={`app ${crisisEnabled ? 'crisis-mode' : ''}${helpMode ? ' help-mode' : ''}`}>
+    <div className={`app ${crisisEnabled ? 'crisis-mode' : ''}`}>
       {/* Command Bar */}
       <header className="command-bar">
         <div className="command-bar-left">
@@ -650,13 +633,6 @@ function AppContent() {
           }}>
             <ClipboardList size={13} /> BRIEF
           </button>
-          <button
-            className={`cmd-btn${helpMode ? ' active' : ''}`}
-            onClick={() => setHelpMode(h => !h)}
-            title={helpMode ? 'Exit help mode' : 'Help mode — hover elements to learn what they do'}
-          >
-            <HelpCircle size={13} /> ?
-          </button>
           <SettingsPanel
             showTerminator={showTerminator}
             onToggleTerminator={setShowTerminator}
@@ -671,17 +647,15 @@ function AppContent() {
         <div className="terminal-panel radar">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
-              <span>GLOBE</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                GLOBE
+                <span title="Visualizes narrative activity geographically. Glowing areas show higher media volume. Lines represent information flows between countries. Ships/Planes show live real-world assets.">
+                  <HelpCircle size={11} color="#64748b" style={{ cursor: 'help' }} />
+                </span>
+              </span>
               <span className="panel-subtitle">narrative activity by country</span>
             </div>
             <div className="panel-header-controls">
-              <button
-                className={`layer-btn ${isGlobe ? 'active' : ''}`}
-                onClick={toggleGlobe}
-                title={isGlobe ? 'Switch to flat map' : 'Switch to 3D globe'}
-              >
-                3D
-              </button>
               <button
                 className={`layer-btn ${showHeatmap ? 'active' : ''}`}
                 onClick={() => setShowHeatmap(!showHeatmap)}
@@ -925,7 +899,15 @@ function AppContent() {
             : prevStreamCtx?.type === 'theme'
             ? `← ${prevStreamCtx.theme.replace(/_/g, ' ').slice(0, 20)}`
             : '← STREAM'
-          let panelTitle = <><span>SIGNAL STREAM</span><span className="panel-subtitle">live signals, last 15 min</span></>
+          let panelTitle = <>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              SIGNAL STREAM
+              <span title="Real-time chronological feed of media signals. Filters dynamically when you click a country or narrative. Geopolitical signals are prioritized at the top.">
+                <HelpCircle size={11} color="#64748b" style={{ cursor: 'help' }} />
+              </span>
+            </span>
+            <span className="panel-subtitle">live signals, last 15 min</span>
+          </>
           if (isTheme) panelTitle = <>
             <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
             <span style={{ color: '#94a3b8' }}>{selectedTheme!.theme.replace(/_/g, ' ').slice(0, 26)}</span>
@@ -996,7 +978,12 @@ function AppContent() {
         <div className="terminal-panel threads">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
-              <span>NARRATIVE THREADS</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                NARRATIVE THREADS
+                <span title="Displays the top geopolitical topics currently trending globally. Shows average sentiment polarity (green/red dot) and the top key persons mentioned.">
+                  <HelpCircle size={11} color="#64748b" style={{ cursor: 'help' }} />
+                </span>
+              </span>
               <span className="panel-subtitle">how topics spread over time</span>
             </div>
           </div>
@@ -1011,7 +998,12 @@ function AppContent() {
         <div className="terminal-panel matrix">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
-              <span>CORRELATION MATRIX</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                CORRELATION MATRIX
+                <span title="Shows co-occurrence of narratives between countries. Brighter green cells indicate stronger shared focus on a specific topic between two nations.">
+                  <HelpCircle size={11} color="#64748b" style={{ cursor: 'help' }} />
+                </span>
+              </span>
               <span className="panel-subtitle">which countries share narratives</span>
             </div>
           </div>
@@ -1026,7 +1018,12 @@ function AppContent() {
         <div className="terminal-panel anomaly">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
-              <span>ANOMALY ALERT</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                ANOMALY ALERT
+                <span title="Detects statistical volume spikes (z-score anomalies) comparing current activity against a 7-day rolling baseline for each country.">
+                  <HelpCircle size={11} color="#64748b" style={{ cursor: 'help' }} />
+                </span>
+              </span>
               <span className="panel-subtitle">unusual activity vs 7-day baseline</span>
             </div>
           </div>
@@ -1041,7 +1038,12 @@ function AppContent() {
         <div className="terminal-panel integrity">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
-              <span>SOURCE INTEGRITY</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                SOURCE INTEGRITY
+                <span title="Monitors the quality and diversity of the data sources. High source share indicates potential bias from a single outlet. Evaluated against known allowlists and tabloid lists.">
+                  <HelpCircle size={11} color="#64748b" style={{ cursor: 'help' }} />
+                </span>
+              </span>
               <span className="panel-subtitle">diversity of information sources</span>
             </div>
           </div>

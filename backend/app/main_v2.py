@@ -642,6 +642,71 @@ async def get_anomalies(
         traceback.print_exc()
         return {"anomalies": [], "overall_severity": "normal", "error": str(e)}
 
+@app.get("/api/v2/anomalies/themes")
+async def get_theme_anomalies(
+    hours: int = Query(24, ge=1, le=8760),
+    limit: int = Query(5, ge=1, le=20)
+):
+    """
+    Return top anomalous themes globally based on volume spikes.
+    Compares current signals against theme_daily_v2 7-day rolling baseline.
+    """
+    try:
+        async with app.state.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                WITH current_window AS (
+                    SELECT unnest(themes) as theme, COUNT(*) as signal_count
+                    FROM signals_v2 
+                    WHERE timestamp > NOW() - ($1::int * INTERVAL '1 hour')
+                    GROUP BY 1
+                    HAVING COUNT(*) >= 10
+                ),
+                baseline AS (
+                    SELECT theme_code, AVG(signal_count) as avg_daily, STDDEV(signal_count) as stddev_daily
+                    FROM theme_daily_v2 
+                    WHERE day > CURRENT_DATE - INTERVAL '7 days'
+                    GROUP BY 1
+                )
+                SELECT 
+                    c.theme, 
+                    c.signal_count, 
+                    b.avg_daily as baseline_avg,
+                    ROUND((c.signal_count::numeric / NULLIF(b.avg_daily / 24.0 * $1, 0)), 2) as multiplier,
+                    ROUND(((c.signal_count - b.avg_daily / 24.0 * $1) /
+                           NULLIF(COALESCE(b.stddev_daily, b.avg_daily * 0.3) / 24.0 * $1, 0))::numeric, 2) as zscore
+                FROM current_window c 
+                JOIN baseline b ON c.theme = b.theme_code
+                WHERE ((c.signal_count - b.avg_daily / 24.0 * $1) / NULLIF(COALESCE(b.stddev_daily, b.avg_daily * 0.3) / 24.0 * $1, 0)) > 1.5
+                ORDER BY zscore DESC NULLS LAST 
+                LIMIT $2
+            """, hours, limit)
+            
+            anomalies = []
+            for row in rows:
+                multiplier = float(row['multiplier']) if row['multiplier'] else 0
+                zscore = float(row['zscore']) if row['zscore'] else 0
+                
+                anomalies.append({
+                    "theme": row['theme'],
+                    "current_count": int(row['signal_count']),
+                    "baseline_avg": round(float(row['baseline_avg']), 1),
+                    "multiplier": multiplier,
+                    "zscore": zscore
+                })
+            
+            return {
+                "theme_anomalies": anomalies,
+                "meta": {
+                    "time_window_hours": hours,
+                    "baseline_window_days": 7,
+                    "generated_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+    except Exception as e:
+        print(f"Error in theme anomalies endpoint: {e}")
+        return {"theme_anomalies": [], "error": str(e)}
+
+
 @app.get("/api/v2/heatmap")
 async def get_heatmap(hours: int = Query(24, ge=1, le=8760)):
     """Deprecated - heatmap data now comes from nodes with glow effect."""

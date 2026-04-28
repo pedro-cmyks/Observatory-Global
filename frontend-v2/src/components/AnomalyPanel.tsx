@@ -23,7 +23,7 @@ const resolveCountryName = (code: string, apiName?: string): string => {
 }
 
 export const AnomalyPanel: React.FC = () => {
-    const { anomalies, nearMisses, meta, overallSeverity, loading } = useCrisis()
+    const { anomalies, nearMisses, themeAnomalies, meta, overallSeverity, loading } = useCrisis()
     const { setFocus, setMapFlyCountry } = useFocus()
 
     const handleAnomalyClick = (countryCode: string) => {
@@ -95,6 +95,32 @@ export const AnomalyPanel: React.FC = () => {
                     ))
                 )}
             </div>
+
+            {themeAnomalies && themeAnomalies.length > 0 && (
+                <div className="theme-anomaly-section">
+                    <div className="theme-anomaly-header" style={{
+                        fontSize: '9px', fontWeight: 'bold', color: '#64748b', letterSpacing: '0.05em', 
+                        marginTop: '12px', marginBottom: '8px', paddingLeft: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px'
+                    }}>THEME SPIKES</div>
+                    <div className="anomaly-list">
+                        {themeAnomalies.map(a => (
+                            <div 
+                                key={a.theme} 
+                                className="anomaly-row level-elevated clickable"
+                                onClick={() => setFocus('theme', a.theme)}
+                            >
+                                <div className="level-badge" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>SPIKE</div>
+                                <div className="country-info">
+                                    <span className="country-name" style={{ textTransform: 'uppercase' }}>{a.theme.replace(/_/g, ' ')}</span>
+                                </div>
+                                <div className="metrics">
+                                    <span className="multiplier">{a.multiplier.toFixed(1)}× norm</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

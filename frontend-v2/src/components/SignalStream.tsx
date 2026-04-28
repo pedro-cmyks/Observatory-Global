@@ -256,7 +256,6 @@ export const SignalStream: React.FC = () => {
                     <div className="empty-state">No signals found</div>
                 ) : (
                     signals
-                        .filter(sig => isValidHeadline(sig.headline))
                         .filter(isGeopoliticallyRelevant)
                         .sort((a, b) => {
                             const pA = getSignalPriority(a)
@@ -264,51 +263,86 @@ export const SignalStream: React.FC = () => {
                             if (pA !== pB) return pA - pB
                             return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
                         })
-                        .map(sig => (
-                        <div key={sig.id} className={`signal-row priority-${getSignalPriority(sig)}`}>
-                            <div className="signal-meta">
-                                <span className="time">{formatTime(sig.timestamp)}</span>
-                                <span 
-                                    className="country-chip clickable" 
-                                    onClick={(e) => handleCountryClick(e, sig.country || '')}
-                                >
-                                    {sig.country || 'GLO'}
-                                </span>
-                                <span className={`sentiment-indicator ${getSentimentClass(sig.sentiment)}`} />
-                            </div>
+                        .map(sig => {
+                            const isValid = isValidHeadline(sig.headline)
                             
-                            <div className="signal-main">
-                                <div className="headline">
-                                    <a href={sig.url} target="_blank" rel="noreferrer">
-                                        {sig.headline || `Signal from ${sig.source}`}
-                                    </a>
-                                </div>
-                                <div className="signal-footer">
-                                    <span className={`source ${getSourceClass(sig.source)}`}>{sig.source}</span>
-                                    <div className="themes">
-                                        {sig.themes.slice(0, 3).map(t => (
-                                            <span
-                                                key={t}
-                                                className="theme-tag clickable"
-                                                onClick={(e) => handleThemeClick(e, t)}
+                            if (!isValid) {
+                                return (
+                                    <div key={sig.id} className={`signal-row priority-${getSignalPriority(sig)} compact-mode`}>
+                                        <div className="signal-meta" style={{ minWidth: 'auto', paddingRight: '12px' }}>
+                                            <span 
+                                                className="country-chip clickable" 
+                                                onClick={(e) => handleCountryClick(e, sig.country || '')}
                                             >
-                                                {getThemeIcon(t)} {getThemeLabel(t)}
+                                                {sig.country || 'GLO'}
                                             </span>
-                                        ))}
-                                        {sig.persons?.slice(0, 2).map(p => (
-                                            <span
-                                                key={p}
-                                                className="person-tag clickable"
-                                                onClick={(e) => handlePersonClick(e, p)}
-                                            >
-                                                {p}
-                                            </span>
-                                        ))}
+                                            <span className={`sentiment-indicator ${getSentimentClass(sig.sentiment)}`} />
+                                        </div>
+                                        <div className="signal-main" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                            <span className={`source ${getSourceClass(sig.source)}`} style={{ margin: 0 }}>{sig.source}</span>
+                                            <span style={{ color: '#64748b', fontSize: '10px' }}>•</span>
+                                            <div className="themes" style={{ marginTop: 0 }}>
+                                                {sig.themes.slice(0, 3).map(t => (
+                                                    <span
+                                                        key={t}
+                                                        className="theme-tag clickable"
+                                                        onClick={(e) => handleThemeClick(e, t)}
+                                                    >
+                                                        {getThemeIcon(t)} {getThemeLabel(t)}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            }
+                            
+                            return (
+                                <div key={sig.id} className={`signal-row priority-${getSignalPriority(sig)}`}>
+                                    <div className="signal-meta">
+                                        <span className="time">{formatTime(sig.timestamp)}</span>
+                                        <span 
+                                            className="country-chip clickable" 
+                                            onClick={(e) => handleCountryClick(e, sig.country || '')}
+                                        >
+                                            {sig.country || 'GLO'}
+                                        </span>
+                                        <span className={`sentiment-indicator ${getSentimentClass(sig.sentiment)}`} />
+                                    </div>
+                                    
+                                    <div className="signal-main">
+                                        <div className="headline">
+                                            <a href={sig.url} target="_blank" rel="noreferrer">
+                                                {sig.headline || `Signal from ${sig.source}`}
+                                            </a>
+                                        </div>
+                                        <div className="signal-footer">
+                                            <span className={`source ${getSourceClass(sig.source)}`}>{sig.source}</span>
+                                            <div className="themes">
+                                                {sig.themes.slice(0, 3).map(t => (
+                                                    <span
+                                                        key={t}
+                                                        className="theme-tag clickable"
+                                                        onClick={(e) => handleThemeClick(e, t)}
+                                                    >
+                                                        {getThemeIcon(t)} {getThemeLabel(t)}
+                                                    </span>
+                                                ))}
+                                                {sig.persons?.slice(0, 2).map(p => (
+                                                    <span
+                                                        key={p}
+                                                        className="person-tag clickable"
+                                                        onClick={(e) => handlePersonClick(e, p)}
+                                                    >
+                                                        {p}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    ))
+                            )
+                        })
                 )}
             </div>
         </div>
