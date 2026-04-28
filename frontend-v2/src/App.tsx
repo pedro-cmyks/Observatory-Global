@@ -15,7 +15,7 @@ import { ThemeDetail } from './components/ThemeDetail'
 import { CountryBrief } from './components/CountryBrief'
 import { FocusProvider, useFocus } from './contexts/FocusContext'
 import { FocusDataProvider, useFocusData } from './contexts/FocusDataContext'
-import { FocusIndicator } from './components/FocusIndicator'
+
 import { MapTooltip, type TooltipData } from './components/MapTooltip'
 import { CrisisProvider } from './contexts/CrisisContext'
 import { SettingsPanel } from './components/SettingsPanel'
@@ -32,6 +32,7 @@ import { CorrelationMatrix } from './components/CorrelationMatrix'
 import { AnomalyPanel } from './components/AnomalyPanel'
 import { SourceIntegrityPanel } from './components/SourceIntegrityPanel'
 import { PanelErrorBoundary } from './components/PanelErrorBoundary'
+import { ChokepointPanel } from './components/ChokepointPanel'
 
 
 
@@ -617,7 +618,6 @@ function AppContent() {
       <header className="command-bar">
         <div className="command-bar-left">
           <h1 className="brand"><Globe size={16} /> ATLAS</h1>
-          <FocusIndicator />
         </div>
         <div className="command-bar-center">
           <SearchBar
@@ -902,9 +902,6 @@ function AppContent() {
           const isCountry = !!selectedCountry && !isPerson
           const isTheme = !!selectedTheme && !isPerson && !isCountry
           const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme
-          const isoToFlag = (code: string) => code?.length === 2
-            ? String.fromCodePoint(...code.toUpperCase().split('').map(c => 0x1F1E6 + c.charCodeAt(0) - 65))
-            : '🌐'
           const closeAll = () => { setSelectedTheme(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); clearFocus(); if (filter.theme) setTheme(null) }
           let panelTitle = <><span>SIGNAL STREAM</span><span className="panel-subtitle">live signals, last 15 min</span></>
           if (isTheme) panelTitle = <>
@@ -951,26 +948,15 @@ function AppContent() {
                     hours={timeRangeToHours(timeRange)}
                     onClose={closeAll}
                     onThemeSelect={(theme) => handleThemeSelect(theme)}
-                    onCountryCardClick={(code, name) => { handleCountryClick(code); setMapFlyCountry(code); setRightPanelThemeCountry({ code, name }) }}
+                    onCountryCardClick={(code, name) => { setMapFlyCountry(code); setRightPanelThemeCountry({ code, name }) }}
                   />
                 ) : isChokepoint ? (
-                  <div style={{ padding: '16px 20px', overflow: 'auto', height: '100%' }}>
-                    <div style={{ fontWeight: 700, fontSize: 15, color: '#e2e8f0', marginBottom: 4 }}>{selectedChokepoint!.name}</div>
-                    <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6, marginBottom: 12 }}>{selectedChokepoint!.description}</div>
-                    {(chokepointCounts[selectedChokepoint!.id] || 0) > 0 && (
-                      <div style={{ fontSize: 12, color: '#2dd4bf', marginBottom: 16, fontFamily: 'var(--font-mono)' }}>
-                        {chokepointCounts[selectedChokepoint!.id]} vessels in range
-                      </div>
-                    )}
-                    <div style={{ fontSize: 11, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Countries involved</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      {selectedChokepoint!.countries.map(code => (
-                        <button key={code} onClick={() => { handleCountryClick(code); setMapFlyCountry(code) }}
-                          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', color: '#e2e8f0', fontSize: 13, fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: 6 }}
-                        >{isoToFlag(code)} {code}</button>
-                      ))}
-                    </div>
-                  </div>
+                  <ChokepointPanel
+                    chokepoint={selectedChokepoint!}
+                    vesselCount={chokepointCounts[selectedChokepoint!.id] || 0}
+                    hours={timeRangeToHours(timeRange)}
+                    onCountryClick={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
+                  />
                 ) : (
                   <PanelErrorBoundary panelName="SIGNAL STREAM">
                     <SignalStream />
@@ -1070,8 +1056,8 @@ function AppContent() {
           countryCode={rightPanelThemeCountry.code}
           countryName={rightPanelThemeCountry.name}
           hours={timeRangeToHours(timeRange)}
-          onClose={() => { setSelectedTheme(null); setRightPanelThemeCountry(null); if (filter.theme) setTheme(null) }}
-          onBackToCountry={selectedCountry ? () => setRightPanelThemeCountry(null) : undefined}
+          onClose={() => setRightPanelThemeCountry(null)}
+          onBackToCountry={() => setRightPanelThemeCountry(null)}
           onThemeSelect={(theme) => { handleThemeSelect(theme, rightPanelThemeCountry.code, rightPanelThemeCountry.name) }}
         />
       )}
