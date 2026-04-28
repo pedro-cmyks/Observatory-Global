@@ -14,6 +14,7 @@ interface Signal {
     headline: string | null
     sentiment: number
     themes: string[]
+    persons: string[]
 }
 
 interface Velocity {
@@ -66,7 +67,7 @@ const isGeopoliticallyRelevant = (signal: Signal): boolean => {
 }
 
 export const SignalStream: React.FC = () => {
-    const { filter, setTheme, setCountry } = useFocus()
+    const { filter, setTheme, setCountry, setPerson } = useFocus()
     const { timeRange } = useFocusData()
     const [signals, setSignals] = useState<Signal[]>([])
     const [velocity, setVelocity] = useState<Velocity | null>(null)
@@ -85,6 +86,7 @@ export const SignalStream: React.FC = () => {
                 params.append('hours', timeRangeToHours(timeRange).toString())
                 if (filter.country) params.append('country_code', filter.country)
                 if (filter.theme) params.append('theme', filter.theme)
+                if (filter.person) params.append('person', filter.person)
 
                 const res = await fetch(`/api/v2/signals?${params.toString()}`)
                 if (!res.ok) return
@@ -94,7 +96,7 @@ export const SignalStream: React.FC = () => {
 
                 const fetchedSignals = data.signals || []
                 setSignals(fetchedSignals)
-                
+
                 if (fetchedSignals.length > 0) {
                     const now = new Date(fetchedSignals[0].timestamp).getTime()
                     const last60s = fetchedSignals.filter((s: Signal) => now - new Date(s.timestamp).getTime() <= 60000).length
@@ -102,9 +104,9 @@ export const SignalStream: React.FC = () => {
                         const age = now - new Date(s.timestamp).getTime()
                         return age > 60000 && age <= 120000
                     }).length
-                    
+
                     const total2mins = fetchedSignals.filter((s: Signal) => now - new Date(s.timestamp).getTime() <= 120000).length
-                    
+
                     if (total2mins < 2) {
                         setVelocity({ signals_per_minute: '--', delta: '--', percentage_change: '--' })
                     } else {
@@ -116,8 +118,7 @@ export const SignalStream: React.FC = () => {
                             percentage_change: pct
                         })
                     }
-                    
-                    // Update latest timestamp
+
                     latestTimestampRef.current = fetchedSignals[0].timestamp
                 } else {
                     setVelocity({ signals_per_minute: '--', delta: '--', percentage_change: '--' })
@@ -127,12 +128,11 @@ export const SignalStream: React.FC = () => {
             }
         }
 
-        // Reset latest timestamp when time range changes
         latestTimestampRef.current = null
         fetchInitial()
 
         return () => { isMounted = false }
-    }, [filter.country, filter.theme, timeRange])
+    }, [filter.country, filter.theme, filter.person, timeRange])
 
     // Poll for new signals
     useEffect(() => {
@@ -147,6 +147,7 @@ export const SignalStream: React.FC = () => {
                 params.append('hours', timeRangeToHours(timeRange).toString())
                 if (filter.country) params.append('country_code', filter.country)
                 if (filter.theme) params.append('theme', filter.theme)
+                if (filter.person) params.append('person', filter.person)
                 if (latestTimestampRef.current) params.append('since', latestTimestampRef.current)
 
                 const res = await fetch(`/api/v2/signals?${params.toString()}`)
@@ -160,9 +161,7 @@ export const SignalStream: React.FC = () => {
                 if (data.signals && data.signals.length > 0) {
                     latestTimestampRef.current = data.signals[0].timestamp
                     setSignals(prev => {
-                        // Prepend new signals and keep max 100
                         const merged = [...data.signals, ...prev]
-                        // Simple deduplication in case of exact same timestamp
                         const unique = merged.filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i)
                         return unique.slice(0, 100)
                     })
@@ -177,7 +176,7 @@ export const SignalStream: React.FC = () => {
             isMounted = false
             clearInterval(interval)
         }
-    }, [filter.country, filter.theme, isHovered, timeRange])
+    }, [filter.country, filter.theme, filter.person, isHovered, timeRange])
 
     const handleThemeClick = (e: React.MouseEvent, theme: string) => {
         e.stopPropagation()
@@ -187,6 +186,11 @@ export const SignalStream: React.FC = () => {
     const handleCountryClick = (e: React.MouseEvent, country: string) => {
         e.stopPropagation()
         setCountry(country, 'stream')
+    }
+
+    const handlePersonClick = (e: React.MouseEvent, person: string) => {
+        e.stopPropagation()
+        setPerson(person)
     }
 
     return (
@@ -241,12 +245,21 @@ export const SignalStream: React.FC = () => {
                                     <span className="source">{sig.source}</span>
                                     <div className="themes">
                                         {sig.themes.slice(0, 3).map(t => (
-                                            <span 
-                                                key={t} 
+                                            <span
+                                                key={t}
                                                 className="theme-tag clickable"
                                                 onClick={(e) => handleThemeClick(e, t)}
                                             >
                                                 {getThemeIcon(t)} {getThemeLabel(t)}
+                                            </span>
+                                        ))}
+                                        {sig.persons?.slice(0, 2).map(p => (
+                                            <span
+                                                key={p}
+                                                className="person-tag clickable"
+                                                onClick={(e) => handlePersonClick(e, p)}
+                                            >
+                                                {p}
                                             </span>
                                         ))}
                                     </div>

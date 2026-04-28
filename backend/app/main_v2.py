@@ -504,28 +504,50 @@ async def get_anomalies(
     try:
         async with app.state.pool.acquire() as conn:
             rows = await conn.fetch("""
-                WITH current_counts AS (
-                    SELECT 
+                WITH current_window AS (
+                    SELECT
                         country_code,
                         COUNT(*) as signal_count
                     FROM signals_v2
                     WHERE timestamp > NOW() - ($1::int * INTERVAL '1 hour')
                     AND country_code IS NOT NULL
                     GROUP BY country_code
-                    HAVING COUNT(*) >= 10
+                    HAVING COUNT(*) >= 5
+                ),
+                daily_history AS (
+                    SELECT
+                        country_code,
+                        DATE_TRUNC('day', timestamp) as day,
+                        COUNT(*) as daily_count
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - INTERVAL '8 days'
+                    AND timestamp <= NOW() - ($1::int * INTERVAL '1 hour')
+                    AND country_code IS NOT NULL
+                    GROUP BY country_code, DATE_TRUNC('day', timestamp)
+                ),
+                baseline AS (
+                    SELECT
+                        country_code,
+                        COUNT(*) as days_observed,
+                        AVG(daily_count) as avg_daily,
+                        STDDEV(daily_count) as stddev_daily
+                    FROM daily_history
+                    GROUP BY country_code
+                    HAVING COUNT(*) >= 3
                 )
-                SELECT 
+                SELECT
                     c.country_code,
                     co.name as country_name,
                     c.signal_count,
-                    COALESCE(b.avg_daily_signals, 50) as baseline_avg,
-                    ROUND((c.signal_count::numeric / NULLIF(COALESCE(b.avg_daily_signals, 50) / 24 * $1, 0)), 2) as multiplier,
-                    ROUND(((c.signal_count - COALESCE(b.avg_daily_signals, 50) / 24 * $1) / 
-                           NULLIF(COALESCE(b.stddev_daily_signals, 25) / 24 * $1, 0))::numeric, 2) as zscore
-                FROM current_counts c
-                LEFT JOIN country_baseline_stats b ON c.country_code = b.country_code
+                    b.avg_daily as baseline_avg,
+                    b.days_observed,
+                    ROUND((c.signal_count::numeric / NULLIF(b.avg_daily / 24.0 * $1, 0)), 2) as multiplier,
+                    ROUND(((c.signal_count - b.avg_daily / 24.0 * $1) /
+                           NULLIF(COALESCE(b.stddev_daily, b.avg_daily * 0.3) / 24.0 * $1, 0))::numeric, 2) as zscore
+                FROM current_window c
+                JOIN baseline b ON c.country_code = b.country_code
                 LEFT JOIN countries_v2 co ON c.country_code = co.code
-                WHERE (c.signal_count::numeric / NULLIF(COALESCE(b.avg_daily_signals, 50) / 24 * $1, 0)) > 1.2
+                WHERE (c.signal_count::numeric / NULLIF(b.avg_daily / 24.0 * $1, 0)) > 1.5
                 ORDER BY zscore DESC NULLS LAST
                 LIMIT $2
             """, hours, limit)
@@ -533,25 +555,26 @@ async def get_anomalies(
             def classify_anomaly(multiplier, zscore):
                 if multiplier is None or zscore is None:
                     return "normal"
-                if zscore > 3 and multiplier > 2:
+                if zscore > 4 and multiplier > 3:
                     return "critical"
-                if zscore > 2:
+                if zscore > 2.5 or multiplier > 2:
                     return "elevated"
-                if zscore > 1:
+                if zscore > 1.5:
                     return "notable"
                 return "normal"
-            
+
             anomalies = []
             for row in rows:
                 multiplier = float(row['multiplier']) if row['multiplier'] else 0
                 zscore = float(row['zscore']) if row['zscore'] else 0
                 level = classify_anomaly(multiplier, zscore)
-                
+
                 anomalies.append({
                     "country_code": row['country_code'],
                     "country_name": row['country_name'] or row['country_code'],
-                    "current_count": row['signal_count'],
-                    "baseline_avg": float(row['baseline_avg']),
+                    "current_count": int(row['signal_count']),
+                    "baseline_avg": round(float(row['baseline_avg']), 1),
+                    "days_observed": int(row['days_observed']),
                     "multiplier": multiplier,
                     "zscore": zscore,
                     "level": level
@@ -1334,6 +1357,7 @@ async def get_theme_insight(
 async def get_signals(
     country_code: str = Query(None),
     theme: str = Query(None),
+    person: str = Query(None),
     hours: int = Query(24, ge=1, le=8760),
     since: Optional[datetime] = Query(None, description="Fetch signals since this timestamp"),
     limit: int = Query(50, ge=1, le=500)
@@ -1343,26 +1367,31 @@ async def get_signals(
         conditions = ["timestamp > NOW() - INTERVAL '%s hours'" % hours]
         params = []
         param_count = 0
-        
+
         if since:
             param_count += 1
             conditions.append(f"timestamp > ${param_count}")
             params.append(since)
-            
+
         if country_code:
             param_count += 1
             conditions.append(f"country_code = ${param_count}")
             params.append(country_code.upper())
-        
+
         if theme:
             param_count += 1
             conditions.append(f"${param_count} = ANY(themes)")
             params.append(theme.upper())
+
+        if person:
+            param_count += 1
+            conditions.append(f"EXISTS (SELECT 1 FROM unnest(persons) p WHERE LOWER(p) LIKE LOWER(${param_count}))")
+            params.append(f"%{person}%")
         
         where_clause = " AND ".join(conditions)
         
         rows = await conn.fetch(f"""
-            SELECT 
+            SELECT
                 id,
                 timestamp,
                 country_code,
@@ -1370,7 +1399,8 @@ async def get_signals(
                 source_url,
                 headline,
                 sentiment,
-                themes
+                themes,
+                persons
             FROM signals_v2
             WHERE {where_clause}
             ORDER BY timestamp DESC
@@ -1408,7 +1438,8 @@ async def get_signals(
                     "url": r['source_url'],
                     "headline": r['headline'],
                     "sentiment": float(r['sentiment'] or 0),
-                    "themes": r['themes'] or []
+                    "themes": r['themes'] or [],
+                    "persons": (r['persons'] or [])[:3]
                 }
                 for r in rows
             ]

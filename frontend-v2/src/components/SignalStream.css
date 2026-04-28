@@ -171,6 +171,19 @@
     background: rgba(56, 189, 248, 0.2);
 }
 
+.person-tag {
+    font-size: 10px;
+    padding: 2px 6px;
+    background: rgba(167, 139, 250, 0.1);
+    color: #a78bfa;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.person-tag.clickable:hover {
+    background: rgba(167, 139, 250, 0.2);
+}
+
 .empty-state {
     padding: 24px;
     text-align: center;
