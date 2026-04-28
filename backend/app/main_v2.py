@@ -533,7 +533,7 @@ async def get_anomalies(
                         STDDEV(daily_count) as stddev_daily
                     FROM daily_history
                     GROUP BY country_code
-                    HAVING COUNT(*) >= 3
+                    HAVING COUNT(*) >= 1
                 )
                 SELECT
                     c.country_code,
