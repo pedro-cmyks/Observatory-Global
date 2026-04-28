@@ -1,28 +1,17 @@
 .theme-detail-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.7);
-    z-index: 100;
+    height: 100%;
     display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 40px;
-    overflow-y: auto;
-}
-.theme-detail-overlay.has-right-panel {
-    padding-right: 420px;
-    justify-content: flex-end;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .theme-detail-panel {
-    background: rgba(15, 15, 20, 0.98);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    width: 100%;
-    max-width: 600px;
-    padding: 24px;
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
     position: relative;
-    backdrop-filter: blur(20px);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
 }
 
 .theme-detail-close {
@@ -42,17 +31,19 @@
 .theme-detail-header {
     display: flex;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 24px;
+    gap: 12px;
+    margin-bottom: 16px;
 }
 
 .theme-detail-icon {
-    font-size: 36px;
+    font-size: 24px;
+    flex-shrink: 0;
 }
 
 .theme-detail-header h2 {
     margin: 0;
-    font-size: 24px;
+    font-size: 16px;
+    line-height: 1.3;
 }
 
 .theme-detail-meta {
@@ -161,9 +152,11 @@
 .signals-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    max-height: 400px;
+    gap: 8px;
+    max-height: 220px;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
 }
 
 .signal-item {
@@ -321,14 +314,8 @@
 
 .framing-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-}
-
-@media (max-width: 580px) {
-    .framing-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
 }
 
 .framing-card {

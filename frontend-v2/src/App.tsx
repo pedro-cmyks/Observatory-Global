@@ -895,18 +895,48 @@ function AppContent() {
           </div>
         </div>
 
-        {/* Panel 2: SIGNAL STREAM */}
+        {/* Panel 2: SIGNAL STREAM / THEME DETAIL */}
         <div className="terminal-panel stream">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
-              <span>SIGNAL STREAM</span>
-              <span className="panel-subtitle">live signals, last 15 min</span>
+              {selectedTheme ? (
+                <>
+                  <button
+                    className="drill-back-btn"
+                    onClick={() => { setSelectedTheme(null); setRightPanelThemeCountry(null); if (filter.theme) setTheme(null) }}
+                    style={{ fontSize: 13, marginRight: 6 }}
+                  >← STREAM</button>
+                  <span style={{ color: '#94a3b8' }}>{selectedTheme.theme.replace(/_/g, ' ').slice(0, 28)}</span>
+                </>
+              ) : (
+                <>
+                  <span>SIGNAL STREAM</span>
+                  <span className="panel-subtitle">live signals, last 15 min</span>
+                </>
+              )}
             </div>
           </div>
           <div className="panel-content">
-            <PanelErrorBoundary panelName="SIGNAL STREAM">
-              <SignalStream />
-            </PanelErrorBoundary>
+            {selectedTheme ? (
+              <ThemeDetail
+                theme={selectedTheme.theme}
+                originCountry={selectedTheme.originCountry}
+                originCountryName={selectedTheme.originCountryName}
+                hours={timeRangeToHours(timeRange)}
+                hasRightPanel={!!rightPanelThemeCountry}
+                onClose={() => {
+                  setSelectedTheme(null)
+                  setRightPanelThemeCountry(null)
+                  if (filter.theme) setTheme(null)
+                }}
+                onThemeSelect={(theme) => handleThemeSelect(theme)}
+                onCountryCardClick={(code, name) => setRightPanelThemeCountry({ code, name })}
+              />
+            ) : (
+              <PanelErrorBoundary panelName="SIGNAL STREAM">
+                <SignalStream />
+              </PanelErrorBoundary>
+            )}
           </div>
         </div>
 
@@ -990,23 +1020,7 @@ function AppContent() {
         />
       )}
 
-      {/* Theme Detail — global center overlay */}
-      {selectedTheme && (
-        <ThemeDetail
-          theme={selectedTheme.theme}
-          originCountry={selectedTheme.originCountry}
-          originCountryName={selectedTheme.originCountryName}
-          hours={timeRangeToHours(timeRange)}
-          hasRightPanel={!!rightPanelThemeCountry}
-          onClose={() => {
-            setSelectedTheme(null)
-            setRightPanelThemeCountry(null)
-            if (filter.theme) setTheme(null)
-          }}
-          onThemeSelect={(theme) => handleThemeSelect(theme)}
-          onCountryCardClick={(code, name) => setRightPanelThemeCountry({ code, name })}
-        />
-      )}
+      {/* ThemeDetail renders inside the stream panel — see stream panel below */}
 
       {/* Right panel priority: EntityPanel > CountryThemePanel > CountryBrief */}
       {focus.type === 'person' && focus.value ? (

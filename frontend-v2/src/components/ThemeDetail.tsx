@@ -137,9 +137,10 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, ha
     }
 
     return (
-        <div className={`theme-detail-overlay${hasRightPanel ? ' has-right-panel' : ''}`} onClick={onClose}>
-            <div className="theme-detail-panel" onClick={e => e.stopPropagation()}>
-                <button className="theme-detail-close" onClick={onClose}>×</button>
+        <div className="theme-detail-overlay">
+            <div className="theme-detail-panel">
+                <button className="theme-detail-close" onClick={onClose} style={{ display: 'none' }} />
+
 
                 <div className="theme-detail-header">
                     <span className="theme-detail-icon">{getThemeIcon(theme)}</span>
