@@ -1286,25 +1286,24 @@ async def get_theme_insight(
     theme_label = _clean_theme_label(theme_code)
 
     user_prompt = (
-        f'Coverage data for topic "{theme_label}" over the last {hours} hours:\n'
-        f"- Total signals: {total_signals}\n"
-        f"- Countries reporting: {country_count}\n"
-        f"- Unique sources: {source_count}\n"
-        f"- Global average sentiment: {global_sentiment:+.1f}\n"
-        f"- Top countries by volume: {top_countries_formatted}\n"
-        f"- Volume trend: {trend_description}\n\n"
-        "Write a 2-3 sentence coverage pattern summary. "
-        "Describe concentration, divergence, and trends only."
+        f'Analyze the global media coverage for the topic "{theme_label}" over the last {hours} hours.\n\n'
+        f"Data points to weave into your summary:\n"
+        f"- Total volume: {total_signals} articles across {country_count} countries.\n"
+        f"- Number of distinct sources: {source_count}\n"
+        f"- Overall global tone (sentiment): {global_sentiment:+.1f} (where negative is bad/pessimistic, positive is good/optimistic)\n"
+        f"- Key countries driving the coverage (with their specific tone): {top_countries_formatted}\n"
+        f"- Current momentum: {trend_description}\n\n"
+        "Write your 2-3 sentence summary now."
     )
 
     system_prompt = (
-        "You analyze media coverage PATTERNS only — never the topic itself.\n"
-        "You describe how topics are covered across global media ecosystems using only "
-        "observable, statistical language.\n"
-        "Never editorialize. Never say a topic \"is important\" or take any position on it.\n"
-        "Focus exclusively on: geographic concentration, sentiment divergence between regions, "
-        "volume trends, source diversity.\n"
-        "Output exactly 2-3 sentences. Be specific and data-driven."
+        "You are an intelligence analyst summarizing global media trends.\n"
+        "Your goal is to provide a clear, concise, and highly readable summary of how a topic is being covered globally.\n"
+        "Rules:\n"
+        "1. Never use raw database taxonomy names (e.g., if the topic is 'Crisislex Crisislexrec', translate it naturally to 'crisis events' or 'emergencies').\n"
+        "2. Do not write like a robot listing statistics. Weave the data (countries, sentiment, volume) into a fluid, human-readable narrative.\n"
+        "3. Highlight interesting contrasts (e.g., if sentiment is negative in Russia but positive in the US, mention the regional split naturally).\n"
+        "4. Keep it exactly 2-3 sentences. Be insightful, engaging, and professional."
     )
 
     insight_text: Optional[str] = None
