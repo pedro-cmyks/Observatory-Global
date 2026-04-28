@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import MapGL from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
 import { DeckGLOverlay } from './components/DeckGLOverlay'
@@ -276,6 +277,8 @@ const COUNTRY_COORDS: Record<string, [number, number]> = {
 }
 
 function AppContent() {
+  const navigate = useNavigate()
+
   // State
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
   const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null)
@@ -640,13 +643,21 @@ function AppContent() {
   // Total signals for stats
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
 
-  // Show loader until data arrives, max 6 seconds
+  // Prefetch briefing data so the modal opens instantly
+  const [prefetchedBriefing, setPrefetchedBriefing] = useState<any>(null)
+  const [prefetchedInsight, setPrefetchedInsight] = useState<string | null>(null)
+  useEffect(() => {
+    fetch('/api/v2/briefing?hours=24').then(r => r.json()).then(setPrefetchedBriefing).catch(() => {})
+    fetch('/api/v2/briefing/insight?hours=24').then(r => r.json()).then(d => { if (d.insight) setPrefetchedInsight(d.insight) }).catch(() => {})
+  }, [])
+
+  // Show loader until nodes AND map are ready; hard cap at 10s
   const [appReady, setAppReady] = useState(false)
   useEffect(() => {
-    if (nodes.length > 0) setAppReady(true)
-  }, [nodes.length])
+    if (!loading && nodes.length > 0 && mapReady) setAppReady(true)
+  }, [loading, nodes.length, mapReady])
   useEffect(() => {
-    const t = setTimeout(() => setAppReady(true), 6000)
+    const t = setTimeout(() => setAppReady(true), 10000)
     return () => clearTimeout(t)
   }, [])
 
@@ -656,7 +667,7 @@ function AppContent() {
       {/* Command Bar */}
       <header className="command-bar">
         <div className="command-bar-left">
-          <h1 className="brand"><Globe size={16} /> ATLAS</h1>
+          <h1 className="brand" onClick={() => navigate('/')} style={{ cursor: 'pointer' }} title="Back to home"><Globe size={16} /> ATLAS</h1>
         </div>
         <div className="command-bar-center">
           <SearchBar
@@ -1103,6 +1114,8 @@ function AppContent() {
       {showBriefing && (
         <Briefing
           hours={timeRangeToHours(timeRange)}
+          prefetchedData={prefetchedBriefing}
+          prefetchedInsight={prefetchedInsight}
           onClose={() => setShowBriefing(false)}
           onCountrySelect={(code) => {
             setSelectedTheme(null)

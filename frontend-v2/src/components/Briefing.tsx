@@ -23,14 +23,17 @@ interface BriefingProps {
     onClose: () => void
     onCountrySelect: (code: string) => void
     onThemeSelect: (theme: string) => void
+    prefetchedData?: BriefingData | null
+    prefetchedInsight?: string | null
 }
 
-export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect }: BriefingProps) {
-    const [data, setData] = useState<BriefingData | null>(null)
-    const [loading, setLoading] = useState(true)
-    const [insight, setInsight] = useState<string | null>(null)
+export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect, prefetchedData, prefetchedInsight }: BriefingProps) {
+    const [data, setData] = useState<BriefingData | null>(prefetchedData ?? null)
+    const [loading, setLoading] = useState(!prefetchedData)
+    const [insight, setInsight] = useState<string | null>(prefetchedInsight ?? null)
 
     useEffect(() => {
+        if (prefetchedData) return
         fetch(`/api/v2/briefing?hours=${hours}`)
             .then(res => res.json())
             .then(setData)
@@ -41,7 +44,7 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect }: Bri
             .then(res => res.json())
             .then(d => { if (d.insight) setInsight(d.insight) })
             .catch(() => {})
-    }, [hours])
+    }, [hours, prefetchedData])
 
     const getSentimentIndicator = (s: number) => (
         <span style={{

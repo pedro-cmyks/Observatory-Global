@@ -7,6 +7,10 @@
     {
       "source": "/health",
       "destination": "https://atlas-api-pedro.fly.dev/health"
+    },
+    {
+      "source": "/((?!api|health).*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
