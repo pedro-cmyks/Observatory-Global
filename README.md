@@ -2,7 +2,7 @@
 
 > See how information travels the world.
 
-<!-- Screenshot coming soon — a dark globe view with glowing country nodes and narrative flow arcs -->
+![Atlas screenshot showing global narrative map with signal stream and narrative threads](https://raw.githubusercontent.com/pedro-cmyks/ObservatorioGlobal/main/docs/screenshot.png)
 
 ## What is Atlas?
 
@@ -16,7 +16,7 @@ It is not a news aggregator. It has no editorial bias. It is a tool for curious 
 - **Global narrative map** — countries glow with signal intensity. Click any country to see what it's talking about
 - **Narrative threads** — track how topics spread geographically over time. When did it start? Which countries picked it up? Is it accelerating or fading?
 - **Correlation matrix** — which countries are discussing the same topics right now? Country-by-country and theme-by-theme views
-- **Framing analysis** — the same topic covered differently by different countries. How does Iran cover the Strait of Hormuz vs the US?
+- **Framing analysis** — the same topic covered differently by different countries
 - **Anomaly detection** — countries with unusual activity spikes vs their 7-day baseline
 - **Source integrity** — how diverse and concentrated are the information sources for any country or topic?
 - **Live aircraft tracking** — real-time flight positions via OpenSky Network. Toggle the PLANE layer on the globe
@@ -25,11 +25,13 @@ It is not a news aggregator. It has no editorial bias. It is a tool for curious 
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Python 3.11 + FastAPI + PostgreSQL |
+| Backend | Python 3.11 + FastAPI |
+| Database | PostgreSQL (Supabase in production) |
+| Cache | Redis |
 | Frontend | React 19 + TypeScript + Vite |
 | Map | MapLibre GL JS + Deck.gl |
 | Data | GDELT Project (free, global, 15-min updates) |
-| Infra | Docker (PostgreSQL + Redis) |
+| Hosting | Fly.io (backend) + Vercel (frontend) |
 
 ## Running locally
 
@@ -42,7 +44,7 @@ It is not a news aggregator. It has no editorial bias. It is a tool for curious 
 ### Setup
 
 ```bash
-# 1. Start the database and Redis
+# 1. Start PostgreSQL and Redis
 cd infra
 docker compose up -d
 cd ..
@@ -52,12 +54,12 @@ cd backend
 pip install -e ".[dev]"
 uvicorn app.main_v2:app --host 0.0.0.0 --port 8000 --reload
 
-# 3. Frontend (in a new terminal)
+# 3. Frontend (new terminal)
 cd frontend-v2
 npm install
 npm run dev
 
-# 4. Start data ingestion (in a new terminal)
+# 4. Start data ingestion (new terminal)
 ./infra/auto_ingest_v2.sh
 ```
 
@@ -65,18 +67,16 @@ Frontend runs at `http://localhost:3000`, backend at `http://localhost:8000`.
 
 ### Environment variables
 
-Copy `.env.example` to `.env` in the backend directory (if available), or set:
+Copy `.env.example` to `.env`, then set at minimum:
 
 ```
-POSTGRES_DB=observatory
-POSTGRES_USER=observatory
-POSTGRES_PASSWORD=changeme
+DATABASE_URL=postgresql://observatory:changeme@localhost:5432/observatory
 REDIS_URL=redis://localhost:6379
 ```
 
 ## Project status
 
-Active development. The six-panel narrative intelligence terminal is complete. Current work: 3D globe visualization, additional data source layers, and drift detection algorithms.
+Active development. The six-panel narrative intelligence terminal is live. Current work: 3D globe visualization, additional data source layers, and drift detection algorithms.
 
 ## Inspiration
 

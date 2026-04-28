@@ -62,6 +62,7 @@ collection.log
 
 # GDELT Data Cache
 data/
+!frontend-v2/public/data/
 
 # Development runtime files
 .dev-pids
