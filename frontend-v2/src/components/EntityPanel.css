@@ -16,6 +16,17 @@
     font-size: 12px;
 }
 
+/* Inline variant — fills a grid panel cell */
+.entity-panel--inline {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    height: auto;
+    border-left: none;
+    box-shadow: none;
+    z-index: 1;
+}
+
 /* Header */
 .entity-header {
     display: flex;

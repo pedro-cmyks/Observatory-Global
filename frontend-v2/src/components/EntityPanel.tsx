@@ -26,6 +26,7 @@ interface EntityPanelProps {
     onClose: () => void
     onThemeSelect?: (theme: string) => void
     onCountrySelect?: (code: string) => void
+    inline?: boolean
 }
 
 function sentimentColor(s: number): string {
@@ -47,7 +48,8 @@ function formatCount(n: number): string {
     return String(n)
 }
 
-export function EntityPanel({ focusType, focusValue, timeRange, onClose, onThemeSelect, onCountrySelect }: EntityPanelProps) {
+export function EntityPanel({ focusType, focusValue, timeRange, onClose, onThemeSelect, onCountrySelect, inline }: EntityPanelProps) {
+    const cls = `entity-panel${inline ? ' entity-panel--inline' : ''}`
     const [data, setData] = useState<FocusData | null>(null)
     const [loading, setLoading] = useState(true)
     const hours = timeRangeToHours(timeRange)
@@ -80,7 +82,7 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
     const topNodes = data?.nodes?.slice(0, 10) ?? []
 
     return (
-        <div className="entity-panel">
+        <div className={cls}>
             {/* Header */}
             <div className="entity-header">
                 <div className="entity-header-meta">

@@ -16,6 +16,17 @@
     box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
 }
 
+/* Inline variant — fills a grid panel cell instead of floating fixed */
+.country-brief--inline {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    height: auto;
+    border-left: none;
+    box-shadow: none;
+    z-index: 1;
+}
+
 .brief-header {
     display: flex;
     justify-content: space-between;

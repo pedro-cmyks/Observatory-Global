@@ -59,6 +59,7 @@ interface CountryBriefProps {
     timeWindow: number; // hours
     onClose: () => void;
     onThemeSelect?: (theme: string) => void;
+    inline?: boolean;
 }
 
 // Country flag emoji from code
@@ -88,8 +89,10 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
     countryName,
     timeWindow,
     onClose,
-    onThemeSelect
+    onThemeSelect,
+    inline
 }) => {
+    const cls = `country-brief${inline ? ' country-brief--inline' : ''}`
     const { anomalies } = useCrisis()
     const anomaly = anomalies.find((a: any) => a.country_code === countryCode) ?? null
     const [data, setData] = useState<BriefData | null>(null);
@@ -179,7 +182,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 
     if (loading) {
         return (
-            <div className="country-brief">
+            <div className={cls}>
                 <div className="brief-header">
                     <div className="brief-title">
                         <span className="country-flag">{getCountryFlag(countryCode)}</span>
@@ -197,7 +200,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 
     if (error || !data) {
         return (
-            <div className="country-brief">
+            <div className={cls}>
                 <div className="brief-header">
                     <div className="brief-title">
                         <span className="country-flag">{getCountryFlag(countryCode)}</span>
@@ -213,7 +216,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
     }
 
     return (
-        <div className="country-brief">
+        <div className={cls}>
             <div className="brief-header">
                 <div className="brief-title">
                     <span className="country-flag">{getCountryFlag(countryCode)}</span>
