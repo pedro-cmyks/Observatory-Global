@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react'
-import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { timeRangeToHours } from '../lib/timeRanges'
 import './SourceIntegrityPanel.css'
@@ -16,8 +15,7 @@ interface GlobalBriefing {
 }
 
 export const SourceIntegrityPanel: React.FC = () => {
-    const { filter } = useFocus()
-    const { summary, timeRange, loading: focusLoading } = useFocusData()
+    const { timeRange } = useFocusData()
     const [globalData, setGlobalData] = useState<GlobalBriefing | null>(null)
     const [loading, setLoading] = useState(false)
 

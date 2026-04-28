@@ -482,7 +482,7 @@ function AppContent() {
   }
 
   // Focus-aware data from provider - auto-refetches when focus/range changes
-  const { nodes, flows, unfilteredFlows, loading, refetch, timeRange, setTimeRange } = useFocusData()
+  const { nodes, flows, unfilteredFlows, acledConflicts, loading, refetch, timeRange, setTimeRange } = useFocusData()
 
   // Auto-focus on hottest region at load
   useEffect(() => {
