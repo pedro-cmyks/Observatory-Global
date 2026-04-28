@@ -2622,16 +2622,16 @@ async def _aisstream_background():
             async with aiohttp.ClientSession() as session:
                 async with session.ws_connect(
                     "wss://stream.aisstream.io/v0/stream",
-                    heartbeat=30,
-                    receive_timeout=120,
+                    # No heartbeat — AISStream manages its own ping/pong
                 ) as ws:
-                    await ws.send_json({
+                    sub = json.dumps({
                         "APIKey": AISSTREAM_API_KEY,
                         "BoundingBoxes": CHOKEPOINT_BBOXES,
                         "FilterMessageTypes": ["PositionReport"],
                     })
+                    await ws.send_str(sub)
                     VESSEL_CACHE["connected"] = True
-                    print("[AISStream] Connected — streaming vessel positions for chokepoints")
+                    print(f"[AISStream] Connected, subscription sent ({len(CHOKEPOINT_BBOXES)} bboxes)")
 
                     async for msg in ws:
                         if msg.type == aiohttp.WSMsgType.TEXT:
