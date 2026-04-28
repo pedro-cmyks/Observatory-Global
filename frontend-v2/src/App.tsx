@@ -23,6 +23,7 @@ import { CountryThemePanel } from './components/CountryThemePanel'
 import { EntityPanel } from './components/EntityPanel'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
 import { Globe, ClipboardList, HelpCircle } from 'lucide-react'
+import { CHOKEPOINTS, COUNTRY_CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
 
 // Terminal Panels
 import { SignalStream } from './components/SignalStream'
@@ -101,29 +102,58 @@ function buildLayers({
   enhancedNodes, visibleFlows, showFlows,
   isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator,
   selectedCountryCode, timeRange, showAircraft, aircraftData,
-  showVessels, vesselData, themeFocused
+  showVessels, vesselData, activeChokepoints, chokepointCounts, themeFocused
 }: any) {
   const terminatorLayer = createTerminatorLayer({
     visible: showTerminator && !crisisEnabled,
     opacity: 0.5,
   })
 
+  const hasActiveCp = activeChokepoints.length > 0
+
   return [
     // Terminator layer (bottommost)
     terminatorLayer,
 
-    // Country heat fill + blur is handled by MapLibre native layers (not deck.gl)
-    // See handleMapLoad() and useEffect for feature-state updates
+    // Chokepoint zones — geographic rings at strategic straits
+    showVessels && new ScatterplotLayer({
+      id: `chokepoint-zones-${isGlobe ? 'globe' : 'flat'}`,
+      data: CHOKEPOINTS,
+      getPosition: (d: Chokepoint) => [d.lon, d.lat],
+      getRadius: (d: Chokepoint) => d.radiusKm * 1000,
+      radiusUnits: 'meters',
+      getFillColor: (d: Chokepoint) => {
+        if (activeChokepoints.includes(d.id)) return [0, 220, 200, 18]
+        return hasActiveCp ? [80, 80, 80, 6] : [0, 180, 160, 10]
+      },
+      getLineColor: (d: Chokepoint) => {
+        if (activeChokepoints.includes(d.id)) return [0, 255, 210, 160]
+        return hasActiveCp ? [80, 80, 80, 20] : [0, 180, 160, 45]
+      },
+      stroked: true,
+      lineWidthMinPixels: 1,
+      lineWidthMaxPixels: 2,
+      pickable: true,
+      updateTriggers: {
+        getFillColor: [activeChokepoints],
+        getLineColor: [activeChokepoints],
+      },
+    }),
 
-    // Aircraft Layer
+    // Aircraft Layer — altitude-coded; filtered to focused country or cruise-only globally
     showAircraft && new ScatterplotLayer({
       id: `aircraft-${isGlobe ? 'globe' : 'flat'}`,
       data: aircraftData,
       getPosition: (d: any) => [d.longitude, d.latitude, d.baro_altitude || 0],
-      getFillColor: [255, 200, 50, 200],
-      getRadius: 2,
+      getFillColor: (d: any) => {
+        const alt = d.baro_altitude || 0
+        if (alt > 10000) return [255, 255, 255, 200]  // cruise: white
+        if (alt > 5000)  return [255, 210, 80,  180]  // mid: amber
+        return                  [255, 140, 40,  160]  // low: orange
+      },
+      getRadius: (d: any) => (d.baro_altitude || 0) > 10000 ? 2 : 3,
       radiusUnits: 'pixels',
-      radiusMinPixels: 2,
+      radiusMinPixels: 1,
       radiusMaxPixels: 4,
       pickable: true,
     }),
@@ -133,11 +163,11 @@ function buildLayers({
       id: `vessels-${isGlobe ? 'globe' : 'flat'}`,
       data: vesselData,
       getPosition: (d: any) => [d.longitude, d.latitude, 0],
-      getFillColor: (d: any) => d.speed > 10 ? [0, 220, 200, 220] : [0, 180, 160, 160],
-      getRadius: 3,
+      getFillColor: (d: any) => d.speed > 10 ? [0, 220, 200, 230] : [0, 180, 160, 150],
+      getRadius: (d: any) => d.speed > 14 ? 4 : 3,
       radiusUnits: 'pixels',
       radiusMinPixels: 2,
-      radiusMaxPixels: 6,
+      radiusMaxPixels: 5,
       pickable: true,
     }),
 
@@ -317,6 +347,43 @@ function AppContent() {
     const interval = setInterval(fetchVessels, 30000)
     return () => clearInterval(interval)
   }, [showVessels])
+
+  // Auto-enable SHIPS when focused country has strategically relevant chokepoints
+  useEffect(() => {
+    if (!filter.country) return
+    const relevant = getCountryChokepoints(filter.country)
+    if (relevant.length > 0 && !showVessels) {
+      setShowVessels(true)
+    }
+  }, [filter.country])
+
+  // Active chokepoints: those associated with the currently focused country
+  const activeChokepoints = useMemo(
+    () => getCountryChokepoints(filter.country),
+    [filter.country]
+  )
+
+  // Vessel counts per chokepoint, computed from live vessel positions
+  const chokepointCounts = useMemo(
+    () => getChokepointVesselCounts(vesselData),
+    [vesselData]
+  )
+
+  // Aircraft filtered by context:
+  // - No focus: cruise altitude only (>9000m) — shows global air corridors
+  // - Country focused: all aircraft within 700km of that country's centroid
+  const filteredAircraftData = useMemo(() => {
+    if (!showAircraft || !aircraftData.length) return []
+    if (!filter.country) {
+      return aircraftData.filter((a: any) => (a.baro_altitude || 0) > 9000)
+    }
+    const coords = COUNTRY_COORDS[filter.country]
+    if (!coords) return aircraftData.filter((a: any) => (a.baro_altitude || 0) > 9000)
+    const [cLon, cLat] = coords
+    return aircraftData.filter(
+      (a: any) => haversineKm(cLat, cLon, a.latitude, a.longitude) < 700
+    )
+  }, [aircraftData, filter.country, showAircraft])
 
   // Map readiness gate — prevents DeckGL from crashing before WebGL context is ready
   const [mapReady, setMapReady] = useState(false)
@@ -531,12 +598,14 @@ function AppContent() {
     const builtLayers = buildLayers({
       enhancedNodes, visibleFlows, showFlows,
       isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator,
-      selectedCountryCode, timeRange, showAircraft, aircraftData,
+      selectedCountryCode, timeRange,
+      showAircraft, aircraftData: filteredAircraftData,
       showVessels, vesselData,
+      activeChokepoints, chokepointCounts,
       themeFocused: !!filter.theme
     })
     return builtLayers
-  }, [enhancedNodes, visibleFlows, showFlows, isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator, selectedCountryCode, timeRange, showAircraft, aircraftData, showVessels, vesselData, filter.theme])
+  }, [enhancedNodes, visibleFlows, showFlows, isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator, selectedCountryCode, timeRange, showAircraft, filteredAircraftData, showVessels, vesselData, activeChokepoints, chokepointCounts, filter.theme])
 
   // Total signals for stats
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
@@ -629,11 +698,17 @@ function AppContent() {
                 PLANE {showAircraft && aircraftError && '⚠'}
               </button>
               <button
-                className={`layer-btn ${showVessels ? 'active' : ''}`}
+                className={`layer-btn ${showVessels ? 'active' : ''} ${activeChokepoints.length > 0 && !showVessels ? 'layer-btn-hint' : ''}`}
                 onClick={() => setShowVessels(!showVessels)}
-                title={showVessels ? `${vesselData.length} vessels — chokepoints${vesselConnected ? ' (live)' : ' (connecting...)'}` : 'Show vessels near chokepoints'}
+                title={
+                  showVessels
+                    ? `${vesselData.length} vessels at chokepoints${vesselConnected ? ' · live' : ' · connecting...'}`
+                    : activeChokepoints.length > 0
+                      ? `${activeChokepoints.length} relevant chokepoint(s) for this country`
+                      : 'Show vessels near strategic chokepoints'
+                }
               >
-                SHIPS {showVessels && !vesselConnected && '⏳'}
+                SHIPS{showVessels && vesselData.length > 0 ? ` ${vesselData.length}` : ''}{showVessels && !vesselConnected ? ' ⏳' : ''}
               </button>
             </div>
           </div>
@@ -764,15 +839,21 @@ function AppContent() {
                   getTooltip={({ object, layer }) => {
                     if (!object) return null
                     if (layer?.id?.startsWith('flows')) return null
+                    if (layer?.id?.startsWith('chokepoint-zones')) {
+                      const cp = object as Chokepoint
+                      const count = chokepointCounts[cp.id] || 0
+                      const active = activeChokepoints.includes(cp.id)
+                      return `${cp.name}${active ? ' ◈' : ''}\n${count > 0 ? `${count} vessels tracked` : 'No vessels tracked yet'}\n${cp.description}`
+                    }
                     if (layer?.id?.startsWith('aircraft')) {
                       const altFt = object.baro_altitude ? Math.round(object.baro_altitude / 0.3048) : 0
                       const hdg = object.true_track !== null ? `HDG: ${Math.round(object.true_track)}°` : ''
-                      return `Flight ${object.callsign} (${object.origin_country})\nAlt: ${object.baro_altitude || 0}m / ${altFt}ft\n${hdg}`
+                      return `${object.callsign || 'Unknown'} (${object.origin_country})\nAlt: ${(object.baro_altitude || 0).toLocaleString()}m / ${altFt.toLocaleString()}ft\n${hdg}`
                     }
                     if (layer?.id?.startsWith('vessels')) {
                       const spd = object.speed != null ? `${object.speed} kn` : '—'
-                      const hdg = object.heading ? `HDG: ${Math.round(object.heading)}°` : ''
-                      return `${object.name} (MMSI ${object.mmsi})\nSpeed: ${spd}  ${hdg}`
+                      const hdg = object.heading && object.heading < 360 ? `  HDG: ${Math.round(object.heading)}°` : ''
+                      return `${object.name}\nMMSI ${object.mmsi}  ·  ${spd}${hdg}`
                     }
                     return null
                   }}
@@ -785,7 +866,14 @@ function AppContent() {
                       setTooltip({ type: 'flow', x: info.x, y: info.y, data: info.object })
                     }
                   }}
-                  onClick={(_info: any) => { /* country clicks handled by Mapbox fill layer */ }}
+                  onClick={(info: any) => {
+                    if (!info.object || !info.layer) return
+                    if (info.layer.id?.startsWith('chokepoint-zones')) {
+                      const cp = info.object as Chokepoint
+                      setCountry(cp.primaryCountry, 'radar')
+                      setMapFlyCountry(cp.primaryCountry)
+                    }
+                  }}
                 />
               </MapGL>
               <div className="globe-vignette" />

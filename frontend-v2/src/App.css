@@ -498,6 +498,11 @@
   color: #f59e0b;
 }
 
+.layer-btn.layer-btn-hint {
+  color: #2dd4bf;
+  opacity: 0.7;
+}
+
 .panel-content {
   flex: 1;
   position: relative;
