@@ -2513,7 +2513,7 @@ async def get_wiki_theme_match(
             query = f"""
                 SELECT article_title, SUM(views) as views, COUNT(DISTINCT country_code) as country_count
                 FROM wiki_pageviews_v2
-                WHERE fetch_date >= CURRENT_DATE - {days}
+                WHERE fetch_date >= CURRENT_DATE - ('{days} days')::INTERVAL
                 AND ({conditions})
                 GROUP BY article_title
                 ORDER BY views DESC
@@ -2635,19 +2635,19 @@ async def get_acled_conflicts(
                 query = """
                     SELECT * FROM acled_conflicts_v2
                     WHERE country ILIKE $1
-                    AND event_date >= CURRENT_DATE - $2
+                    AND event_date >= CURRENT_DATE - ($2 || ' days')::INTERVAL
                     ORDER BY event_date DESC
                     LIMIT $3
                 """
-                rows = await conn.fetch(query, f"%{country}%", days, limit)
+                rows = await conn.fetch(query, f"%{country}%", str(days), limit)
             else:
                 query = """
                     SELECT * FROM acled_conflicts_v2
-                    WHERE event_date >= CURRENT_DATE - $1
+                    WHERE event_date >= CURRENT_DATE - ($1 || ' days')::INTERVAL
                     ORDER BY event_date DESC
                     LIMIT $2
                 """
-                rows = await conn.fetch(query, days, limit)
+                rows = await conn.fetch(query, str(days), limit)
 
             conflicts = []
             for r in rows:

@@ -11,8 +11,9 @@ CREATE TABLE IF NOT EXISTS trends_v2 (
     keyword TEXT NOT NULL,
     rank INTEGER,                        -- Position in trending list (1 = hottest)
     approximate_volume INTEGER DEFAULT 0, -- Relative search volume if available
-    -- Dedup: one entry per keyword per country per hour bucket
-    UNIQUE(country_code, keyword, (date_trunc('hour', timestamp)))
+    -- Dedup key (hour bucket enforced by unique index below)
+    hour_bucket TIMESTAMPTZ GENERATED ALWAYS AS (date_trunc('hour', timestamp)) STORED,
+    UNIQUE(country_code, keyword, hour_bucket)
 );
 
 -- Indexes for common queries
