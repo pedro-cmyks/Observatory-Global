@@ -226,9 +226,6 @@ def start_docker(state: dict) -> bool:
     print(r("\n  ERROR") + d("  PostgreSQL no respondió a tiempo"))
     return False
 
-    print(y("iniciando…") + d("  pueden tardar unos segundos más"))
-    return True
-
 
 def stop_docker(state: dict) -> bool:
     if not state["available"] or not state["running"]:

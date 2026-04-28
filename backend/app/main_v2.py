@@ -44,7 +44,7 @@ def extract_domain(source_url: str) -> str:
         parsed = urlparse(source_url if source_url.startswith('http') else f'http://{source_url}')
         domain = parsed.netloc or parsed.path
         return domain.replace('www.', '').split('/')[0] or source_url[:30]
-    except:
+    except (ValueError, AttributeError):
         return source_url[:30]
 
 # Import indicator modules
@@ -90,7 +90,7 @@ async def startup():
         app.state.redis = None
 
     # AISStream background task for maritime vessel tracking
-    asyncio.create_task(_aisstream_background())
+    app.state.aisstream_task = asyncio.create_task(_aisstream_background())
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -334,10 +334,16 @@ async def get_nodes(
     time_range: Optional[str] = Query(None, alias="range", description="Time range: 24h, 1w, 1m, 3m, record"),
     focus_type: Optional[str] = Query(None, description="Focus type: theme, person, country, source"),
     focus_value: Optional[str] = Query(None, description="Value to focus on"),
+    countries: Optional[str] = Query(None, description="Comma-separated country codes to filter (e.g. IR,AE,OM)"),
     limit: int = Query(80, ge=1, le=200, description="Max nodes to return"),
     fields: Optional[str] = Query(None, description="Comma-separated list of fields to return")
 ):
-    """Get country nodes with aggregated stats. Supports focus filtering and extended time ranges."""
+    """Get country nodes with aggregated stats. Supports focus filtering, country filtering, and extended time ranges."""
+    # Parse countries filter into a set for post-query filtering
+    country_filter_set = None
+    if countries:
+        country_filter_set = set(c.strip().upper() for c in countries.split(',') if c.strip())
+
     async with app.state.pool.acquire() as conn:
         
         # Parse range parameter (takes precedence over hours)
@@ -452,7 +458,13 @@ async def get_nodes(
         
         if not rows:
             return {"nodes": [], "count": 0, "hours": effective_hours, "range": time_range, "focus_type": focus_type, "focus_value": focus_value}
-        
+
+        # Apply countries filter if provided (post-query for compatibility with all query paths)
+        if country_filter_set:
+            rows = [r for r in rows if r['country_code'] in country_filter_set]
+            if not rows:
+                return {"nodes": [], "count": 0, "hours": effective_hours, "range": time_range, "countries": countries}
+
         max_signals = max(float(r['total_signals']) for r in rows)
         
         nodes = []
@@ -601,7 +613,7 @@ async def get_anomalies(
                 "meta": {
                     "time_window_hours": hours,
                     "baseline_window_days": 7,
-                    "generated_at": datetime.utcnow().isoformat()
+                    "generated_at": datetime.now(timezone.utc).isoformat()
                 }
             }
     except Exception as e:
@@ -857,7 +869,7 @@ async def get_focus_data(
             "summary": {
                 "total_signals": total_signals,
                 "total_countries": total_countries,
-                "generated_at": datetime.utcnow().isoformat()
+                "generated_at": datetime.now(timezone.utc).isoformat()
             },
             "nodes": [
                 {
@@ -1359,6 +1371,7 @@ async def get_theme_insight(
 @app.get("/api/v2/signals")
 async def get_signals(
     country_code: str = Query(None),
+    countries: Optional[str] = Query(None, description="Comma-separated country codes (e.g. IR,AE,OM)"),
     theme: str = Query(None),
     person: str = Query(None),
     hours: int = Query(24, ge=1, le=8760),
@@ -1380,6 +1393,13 @@ async def get_signals(
             param_count += 1
             conditions.append(f"country_code = ${param_count}")
             params.append(country_code.upper())
+
+        if countries and not country_code:
+            codes = [c.strip().upper() for c in countries.split(',') if c.strip()]
+            if codes:
+                param_count += 1
+                conditions.append(f"country_code = ANY(${param_count})")
+                params.append(codes)
 
         if theme:
             param_count += 1
@@ -1905,7 +1925,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         
         return {
             "period_hours": hours,
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "stats": {
                 "total_signals": stats['total_signals'] or 0,
                 "countries": stats['countries'] or 0,
@@ -2105,7 +2125,7 @@ async def health():
             # Calculate lag
             ingest_lag_minutes = None
             if last_ingest_ts:
-                ingest_lag_minutes = (datetime.utcnow() - last_ingest_ts.replace(tzinfo=None)).total_seconds() / 60
+                ingest_lag_minutes = (datetime.now(timezone.utc) - last_ingest_ts.replace(tzinfo=timezone.utc)).total_seconds() / 60
             
             # Determine status
             # Healthy: DB OK and ingestion within 30 minutes
@@ -2121,7 +2141,7 @@ async def health():
             return {
                 "status": status,
                 "db_ok": db_ok,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "last_ingest_ts": last_ingest_ts.isoformat() if last_ingest_ts else None,
                 "ingest_lag_minutes": round(ingest_lag_minutes, 1) if ingest_lag_minutes else None,
                 "rows_ingested_last_15m": rows_ingested_last_15m,
@@ -2132,7 +2152,7 @@ async def health():
         return {
             "status": "error",
             "db_ok": False,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "message": str(e),
             "last_ingest_ts": None,
             "ingest_lag_minutes": None,

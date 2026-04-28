@@ -73,3 +73,9 @@ evidence/
 backend/.venv/lib/
 backend/.venv/include/
 backend/.venv/share/
+
+# Runtime PID and state files
+.run/
+.atlas/
+.claude/
+.mcp.json
