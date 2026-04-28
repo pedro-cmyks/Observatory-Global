@@ -446,11 +446,16 @@ function AppContent() {
     if (!map || !heatSourceReady || enhancedNodes.length === 0) return
 
     const currentCodes = new Set<string>()
-    const maxSignals = Math.max(...enhancedNodes.map(n => n.signalCount), 1)
+    const counts = enhancedNodes.map(n => n.signalCount)
+    const logMin = Math.log(Math.min(...counts) + 1)
+    const logMax = Math.log(Math.max(...counts, 1) + 1)
+    const logRange = Math.max(logMax - logMin, 0.001)
 
     enhancedNodes.forEach(node => {
-      // Log-normalized intensity: spreads the scale so mid-range countries are visible
-      const intensity = Math.min(Math.log(node.signalCount + 1) / Math.log(maxSignals + 1), 1)
+      // Range-normalized: lowest active country = 0.15, highest = 1.0
+      // Ensures all 36+ countries show visible color regardless of volume gap
+      const normalized = (Math.log(node.signalCount + 1) - logMin) / logRange
+      const intensity = 0.15 + normalized * 0.85
       map.setFeatureState(
         { source: 'country-heat', id: node.id },
         { intensity }
