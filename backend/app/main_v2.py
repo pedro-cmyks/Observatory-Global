@@ -2634,21 +2634,25 @@ async def _aisstream_background():
                     print(f"[AISStream] Connected, subscription sent ({len(CHOKEPOINT_BBOXES)} bboxes)")
 
                     async for msg in ws:
-                        if msg.type == aiohttp.WSMsgType.TEXT:
+                        # Log first 5 messages of ANY type for diagnosis
+                        total = VESSEL_CACHE["msgs_received"] + VESSEL_CACHE["msgs_filtered"]
+                        if total < 5:
+                            print(f"[AISStream] msg type={msg.type} data={str(msg.data)[:200]}")
+
+                        if msg.type in (aiohttp.WSMsgType.TEXT, aiohttp.WSMsgType.BINARY):
                             VESSEL_CACHE["msgs_received"] += 1
+                            raw = msg.data if msg.type == aiohttp.WSMsgType.TEXT else msg.data.decode("utf-8", errors="replace")
 
                             try:
-                                data = json.loads(msg.data)
+                                data = json.loads(raw)
                             except Exception:
                                 continue
-
-                            # Log first 3 raw messages to diagnose format
-                            if VESSEL_CACHE["msgs_received"] <= 3:
-                                print(f"[AISStream] raw msg #{VESSEL_CACHE['msgs_received']}: {msg.data[:300]}")
 
                             msg_type = data.get("MessageType") or data.get("message_type") or ""
                             if msg_type != "PositionReport":
                                 VESSEL_CACHE["msgs_filtered"] += 1
+                                if VESSEL_CACHE["msgs_filtered"] <= 3:
+                                    print(f"[AISStream] non-position msg type={msg_type!r} keys={list(data.keys())}")
                                 continue
 
                             meta = data.get("MetaData", {})
