@@ -562,10 +562,18 @@ async def get_anomalies(
                 FROM current_window c
                 JOIN baseline b ON c.country_code = b.country_code
                 LEFT JOIN countries_v2 co ON c.country_code = co.code
-                WHERE (c.signal_count::numeric / NULLIF(b.avg_daily / 24.0 * $1, 0)) > 1.5
                 ORDER BY zscore DESC NULLS LAST
                 LIMIT $2
-            """, hours, limit)
+            """, hours, limit * 2)
+            
+            # Fetch total system stats for calm state display
+            total_stats = await conn.fetchrow("""
+                SELECT 
+                    COUNT(DISTINCT country_code) as active_countries,
+                    COUNT(*) as total_signals
+                FROM signals_v2 
+                WHERE timestamp > NOW() - INTERVAL '24 hours'
+            """)
             
             def classify_anomaly(multiplier, zscore):
                 if multiplier is None or zscore is None:
@@ -574,17 +582,19 @@ async def get_anomalies(
                     return "critical"
                 if zscore > 2.5 or multiplier > 2:
                     return "elevated"
-                if zscore > 1.5:
+                if zscore > 1.5 and multiplier > 1.5:
                     return "notable"
                 return "normal"
 
             anomalies = []
+            near_misses = []
+            
             for row in rows:
                 multiplier = float(row['multiplier']) if row['multiplier'] else 0
                 zscore = float(row['zscore']) if row['zscore'] else 0
                 level = classify_anomaly(multiplier, zscore)
 
-                anomalies.append({
+                item = {
                     "country_code": row['country_code'],
                     "country_name": row['country_name'] or row['country_code'],
                     "current_count": int(row['signal_count']),
@@ -593,7 +603,14 @@ async def get_anomalies(
                     "multiplier": multiplier,
                     "zscore": zscore,
                     "level": level
-                })
+                }
+                
+                if level != "normal":
+                    if len(anomalies) < limit:
+                        anomalies.append(item)
+                else:
+                    if multiplier > 1.0 and len(near_misses) < 3:
+                        near_misses.append(item)
             
             # Determine overall severity
             critical_count = sum(1 for a in anomalies if a["level"] == "critical")
@@ -609,11 +626,14 @@ async def get_anomalies(
             
             return {
                 "anomalies": anomalies,
+                "near_misses": near_misses,
                 "overall_severity": overall,
                 "meta": {
                     "time_window_hours": hours,
                     "baseline_window_days": 7,
-                    "generated_at": datetime.now(timezone.utc).isoformat()
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                    "active_countries": int(total_stats['active_countries']) if total_stats else 0,
+                    "total_signals_24h": int(total_stats['total_signals']) if total_stats else 0
                 }
             }
     except Exception as e:
@@ -2185,7 +2205,8 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                     COUNT(*) as signal_count,
                     COUNT(DISTINCT country_code) as country_count,
                     COUNT(DISTINCT source_name) as source_count,
-                    MIN(timestamp) as first_seen
+                    MIN(timestamp) as first_seen,
+                    AVG(sentiment) as avg_sentiment
                 FROM signals_v2
                 WHERE timestamp > NOW() - INTERVAL '%s hours'
                 AND themes IS NOT NULL
@@ -2258,6 +2279,20 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                 """ % hours, theme_code)
                 top_countries = [r['country_code'] for r in top_countries_rows]
                 
+                # Top 3 persons
+                top_persons_rows = await conn.fetch("""
+                    SELECT unnest(persons) as person, COUNT(*) as cnt
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - INTERVAL '%s hours'
+                    AND themes IS NOT NULL
+                    AND $1 = ANY(themes)
+                    AND persons IS NOT NULL
+                    GROUP BY person
+                    ORDER BY cnt DESC
+                    LIMIT 3
+                """ % hours, theme_code)
+                top_persons = [r['person'] for r in top_persons_rows if r['person']]
+                
                 spread_pct = round((t['country_count'] / total_active) * 100, 1)
                 
                 narratives.append({
@@ -2270,6 +2305,8 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                     "velocity": int(last_hour),
                     "trend": trend,
                     "spread_pct": spread_pct,
+                    "avg_sentiment": round(float(t['avg_sentiment'] or 0), 2),
+                    "top_persons": top_persons,
                     "hourly_timeline": hourly_timeline,
                     "top_countries": top_countries
                 })

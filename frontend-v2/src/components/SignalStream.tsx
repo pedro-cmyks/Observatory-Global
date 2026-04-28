@@ -55,10 +55,10 @@ const NOISE_HEADLINE_PATTERNS = [
     /\b(NFL|NBA|MLB|NHL|FIFA|UFC|ESPN|MLS|PGA|NASCAR|Premier League|Champions League|World Series|Super Bowl|March Madness)\b/i,
     /\b(touchdown|home run|batting average|playoff|halftime|quarterback|pitcher|goalkeeper|slam dunk|free throw)\b/i,
     /\b(injury rehab|game recap|season preview|draft pick|free agent|trade deadline|spring training)\b/i,
-    /\b(Mahomes|LeBron|Brady|Kardashian|Swift|Bieber|Beyonce|Drake)\b/i,
-    /\b(Oscar|Grammy|Emmy|Tony Award|Billboard|box office|blockbuster|streaming debut)\b/i,
-    /\b(celebrity|Hollywood|red carpet|paparazzi|reality show|talent show)\b/i,
-    /\b(horoscope|zodiac|astrology|daily crossword|recipe of the day)\b/i,
+    /\b(Mahomes|LeBron|Brady|Kardashian|Swift|Bieber|Beyonce|Drake|Taylor Swift)\b/i,
+    /\b(Oscar|Grammy|Emmy|Tony Award|Billboard|box office|blockbuster|streaming debut|red carpet|paparazzi|reality show|talent show)\b/i,
+    /\b(horoscope|zodiac|astrology|daily crossword|recipe of the day|wedding trends|adizero|exact time you crave)\b/i,
+    /\b(shopping guide|best deals|black friday|cyber monday|gift guide|discount code)\b/i,
 ]
 
 const isGeopoliticallyRelevant = (signal: Signal): boolean => {
@@ -66,14 +66,47 @@ const isGeopoliticallyRelevant = (signal: Signal): boolean => {
     return !NOISE_HEADLINE_PATTERNS.some(re => re.test(signal.headline!))
 }
 
+const HIGH_PRIORITY_THEMES = [
+    'WB_CONFLICT', 'CRISISLEX_CRISISLEXREC', 'EPU_POLICY', 'GOV_INTERGOVERNMENTAL', 
+    'WB_MILITARY', 'SOC_PROTEST', 'TAX_FNCACT', 'ARMEDCONFLICT', 'TERRORISM'
+]
+
+const getSignalPriority = (signal: Signal): number => {
+    // Priority 1 (highest): Has high priority geopolitical themes
+    if (signal.themes.some(t => HIGH_PRIORITY_THEMES.some(hpt => t.includes(hpt)))) return 1
+    // Priority 2: Normal news
+    return 2
+}
+
 export const SignalStream: React.FC = () => {
     const { filter, setTheme, setCountry, setPerson } = useFocus()
     const { timeRange } = useFocusData()
     const [signals, setSignals] = useState<Signal[]>([])
     const [velocity, setVelocity] = useState<Velocity | null>(null)
+    const [allowlist, setAllowlist] = useState<string[]>([])
     const [isHovered, setIsHovered] = useState(false)
     const listRef = useRef<HTMLDivElement>(null)
     const latestTimestampRef = useRef<string | null>(null)
+
+    // Fetch allowlist once
+    useEffect(() => {
+        fetch('/api/indicators/allowlist')
+            .then(r => r.ok ? r.json() : [])
+            .then(data => {
+                if (data.allowlist && Array.isArray(data.allowlist)) {
+                    setAllowlist(data.allowlist)
+                }
+            })
+            .catch(e => console.error('Error fetching allowlist', e))
+    }, [])
+
+    const getSourceClass = (source: string) => {
+        if (!source) return ''
+        const s = source.toLowerCase()
+        if (allowlist.some(a => s.includes(a.toLowerCase()))) return 'source-trusted'
+        if (s.includes('yahoo') || s.includes('msn') || s.includes('aol') || s.includes('newsbreak')) return 'source-tabloid'
+        return ''
+    }
 
     // Fetch initial signals when filter or timeRange changes
     useEffect(() => {
@@ -222,8 +255,17 @@ export const SignalStream: React.FC = () => {
                 {signals.length === 0 ? (
                     <div className="empty-state">No signals found</div>
                 ) : (
-                    signals.filter(sig => isValidHeadline(sig.headline)).filter(isGeopoliticallyRelevant).map(sig => (
-                        <div key={sig.id} className="signal-row">
+                    signals
+                        .filter(sig => isValidHeadline(sig.headline))
+                        .filter(isGeopoliticallyRelevant)
+                        .sort((a, b) => {
+                            const pA = getSignalPriority(a)
+                            const pB = getSignalPriority(b)
+                            if (pA !== pB) return pA - pB
+                            return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                        })
+                        .map(sig => (
+                        <div key={sig.id} className={`signal-row priority-${getSignalPriority(sig)}`}>
                             <div className="signal-meta">
                                 <span className="time">{formatTime(sig.timestamp)}</span>
                                 <span 
@@ -242,7 +284,7 @@ export const SignalStream: React.FC = () => {
                                     </a>
                                 </div>
                                 <div className="signal-footer">
-                                    <span className="source">{sig.source}</span>
+                                    <span className={`source ${getSourceClass(sig.source)}`}>{sig.source}</span>
                                     <div className="themes">
                                         {sig.themes.slice(0, 3).map(t => (
                                             <span

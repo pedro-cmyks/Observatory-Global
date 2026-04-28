@@ -11,9 +11,17 @@ interface AnomalyData {
     level: 'normal' | 'notable' | 'elevated' | 'critical'
 }
 
+interface MetaData {
+    active_countries: number
+    total_signals_24h: number
+    generated_at: string
+}
+
 interface CrisisState {
     enabled: boolean
     anomalies: AnomalyData[]
+    nearMisses: AnomalyData[]
+    meta: MetaData | null
     overallSeverity: 'normal' | 'notable' | 'elevated' | 'critical'
     loading: boolean
 }
@@ -33,6 +41,8 @@ export const CrisisProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         return stored === 'true'
     })
     const [anomalies, setAnomalies] = useState<AnomalyData[]>([])
+    const [nearMisses, setNearMisses] = useState<AnomalyData[]>([])
+    const [meta, setMeta] = useState<MetaData | null>(null)
     const [overallSeverity, setOverallSeverity] = useState<'normal' | 'notable' | 'elevated' | 'critical'>('normal')
     const [loading, setLoading] = useState(false)
 
@@ -49,23 +59,24 @@ export const CrisisProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 const raw: AnomalyData[] = data.anomalies || []
 
                 // Filter out statistical noise: require meaningful signal volume
-                // and genuine multiplier above baseline (not tiny countries with baseline ~1)
                 const meaningful = raw.filter(a =>
-                    a.current_count > 10 && a.multiplier > 5
+                    a.current_count > 10 && a.multiplier > 2.0
                 )
 
                 // Recalculate severity from filtered set
                 const severity: CrisisState['overallSeverity'] = meaningful.length === 0
                     ? 'normal'
-                    : meaningful.some(a => a.multiplier > 50)
+                    : meaningful.some(a => a.multiplier > 10)
                         ? 'critical'
-                        : meaningful.some(a => a.multiplier > 20)
+                        : meaningful.some(a => a.multiplier > 5)
                             ? 'elevated'
-                            : meaningful.some(a => a.multiplier > 10)
+                            : meaningful.some(a => a.multiplier > 2.5)
                                 ? 'notable'
                                 : 'normal'
 
                 setAnomalies(meaningful)
+                setNearMisses(data.near_misses || [])
+                setMeta(data.meta || null)
                 setOverallSeverity(severity)
             }
         } catch (e) {
@@ -93,6 +104,8 @@ export const CrisisProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         <CrisisContext.Provider value={{
             enabled,
             anomalies,
+            nearMisses,
+            meta,
             overallSeverity,
             loading,
             toggleCrisis,

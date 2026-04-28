@@ -2,14 +2,14 @@ import React from 'react';
 import Map from 'react-map-gl';
 import DeckGL from '@deck.gl/react';
 import { MapViewState } from '@deck.gl/core';
-import { useRadarStore } from '../../store/radarStore';
+import { useRadarStore, AircraftData } from '../../store/radarStore';
 import { ScatterplotLayer, ArcLayer } from '@deck.gl/layers';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 
 // Mapbox Token (should be in env, but using hardcoded for now as per previous context if needed, 
 // but better to assume it's in the environment or passed down. 
 // I'll check if there's a common config file, but for now I'll assume import.meta.env.VITE_MAPBOX_TOKEN)
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || 'pk.eyJ1IjoicHZpbGxlZyIsImEiOiJjbWh3Nnptb28wNDB2Mm9weTFqdXZqM3VyIn0.ZnybOXNNDKL1HJFuklpyGg';
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
 
 const INITIAL_VIEW_STATE: MapViewState = {
     longitude: 0,
@@ -20,15 +20,23 @@ const INITIAL_VIEW_STATE: MapViewState = {
 };
 
 const RadarMap: React.FC = () => {
-    const { data, activeLayers } = useRadarStore();
+    const { data, activeLayers, aircraftData } = useRadarStore();
+    const startAircraftPolling = useRadarStore((s) => s.startAircraftPolling);
     const [glError, setGlError] = React.useState<string | null>(null);
 
     console.log('RadarMap rendering with:', {
         nodesCount: data.nodes.length,
         flowsCount: data.flows.length,
         heatmapPointsCount: data.heatmapPoints.length,
+        aircraftCount: aircraftData.length,
         activeLayers
     });
+
+    // Start aircraft polling on mount
+    React.useEffect(() => {
+        const stop = startAircraftPolling();
+        return stop;
+    }, [startAircraftPolling]);
 
     // Safari WebGL compatibility check
     React.useEffect(() => {
@@ -128,7 +136,24 @@ const RadarMap: React.FC = () => {
             },
             autoHighlight: true,
             highlightColor: [255, 255, 255, 200],
-        })
+        }),
+
+        // Aircraft Layer – small amber dots sized by altitude
+        activeLayers.aircraft && aircraftData.length > 0 && new ScatterplotLayer<AircraftData>({
+            id: 'aircraft-layer',
+            data: aircraftData,
+            getPosition: (d) => [d.longitude, d.latitude],
+            getFillColor: [255, 191, 0, 200],   // amber
+            getLineColor: [255, 255, 255, 120],
+            getRadius: (d) => Math.max(2, (d.baro_altitude || 0) / 400),
+            radiusMinPixels: 2,
+            radiusMaxPixels: 6,
+            lineWidthMinPixels: 0.5,
+            stroked: true,
+            pickable: true,
+            autoHighlight: true,
+            highlightColor: [255, 255, 100, 255],
+        }),
     ].filter(Boolean);
 
     if (glError) {
@@ -159,8 +184,27 @@ const RadarMap: React.FC = () => {
         <DeckGL
             initialViewState={INITIAL_VIEW_STATE}
             controller={true}
-            getTooltip={({ object }) => object && {
-                html: `
+            getTooltip={({ object }) => {
+                if (!object) return null;
+                // Aircraft tooltip
+                if ('callsign' in object) {
+                    const ac = object as AircraftData;
+                    return {
+                        html: `
+              <div style="background: rgba(0,0,0,0.85); color: white; padding: 8px 12px; border-radius: 6px; font-size: 12px; border: 1px solid rgba(255,191,0,0.4);">
+                <div style="font-weight: bold; margin-bottom: 4px; color: #ffbf00;">✈ ${ac.callsign}</div>
+                <div>Country: ${ac.origin_country}</div>
+                <div>Altitude: ${Math.round(ac.baro_altitude).toLocaleString()} m</div>
+                ${ac.true_track != null ? `<div>Heading: ${Math.round(ac.true_track)}°</div>` : ''}
+                <div style="font-size: 10px; color: #888; margin-top: 2px;">${ac.icao24}</div>
+              </div>
+            `,
+                        style: { backgroundColor: 'transparent', fontSize: '0.8em' }
+                    };
+                }
+                // Default node/flow tooltip
+                return {
+                    html: `
           <div style="background: rgba(0,0,0,0.8); color: white; padding: 8px; border-radius: 4px; font-size: 12px;">
             <div style="font-weight: bold; margin-bottom: 4px;">${object.name || object.source}</div>
             ${object.intensity ? `<div>Intensity: ${(object.intensity * 100).toFixed(0)}%</div>` : ''}
@@ -168,10 +212,8 @@ const RadarMap: React.FC = () => {
             ${object.value ? `<div>Flow: ${object.value}</div>` : ''}
           </div>
         `,
-                style: {
-                    backgroundColor: 'transparent',
-                    fontSize: '0.8em'
-                }
+                    style: { backgroundColor: 'transparent', fontSize: '0.8em' }
+                };
             }}
             layers={layers}
             style={{ width: '100%', height: '100%' }}

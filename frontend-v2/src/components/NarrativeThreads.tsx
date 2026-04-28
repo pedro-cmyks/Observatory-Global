@@ -20,6 +20,8 @@ interface Narrative {
     velocity: number
     trend: 'accelerating' | 'stable' | 'fading'
     spread_pct: number
+    avg_sentiment: number
+    top_persons: string[]
     hourly_timeline: TimelinePoint[]
     top_countries: string[]
 }
@@ -148,6 +150,7 @@ export const NarrativeThreads: React.FC = () => {
                         {/* Row 1: Label + stats */}
                         <div className="narrative-header">
                             <div className="narrative-label">
+                                <span className={`sentiment-dot ${n.avg_sentiment > 0.1 ? 'pos' : n.avg_sentiment < -0.1 ? 'neg' : 'neu'}`} />
                                 <span className={`trend-arrow ${n.trend}`}>{trendArrow}</span>
                                 <span>{getThemeLabel(n.theme_code)}</span>
                             </div>
@@ -156,11 +159,14 @@ export const NarrativeThreads: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Row 2: Countries + age */}
+                        {/* Row 2: Countries, Persons + age */}
                         <div className="narrative-detail">
-                            <div className="narrative-countries">
+                            <div className="narrative-entities">
                                 {n.top_countries.map(c => (
                                     <span key={c} className="country-pip">{c}</span>
+                                ))}
+                                {n.top_persons.map(p => (
+                                    <span key={p} className="person-pip">{p}</span>
                                 ))}
                             </div>
                             <span className="narrative-age">{timeAgo(n.first_seen)}</span>

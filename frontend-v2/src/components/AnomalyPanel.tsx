@@ -23,7 +23,7 @@ const resolveCountryName = (code: string, apiName?: string): string => {
 }
 
 export const AnomalyPanel: React.FC = () => {
-    const { anomalies, overallSeverity, loading } = useCrisis()
+    const { anomalies, nearMisses, meta, overallSeverity, loading } = useCrisis()
     const { setFocus, setMapFlyCountry } = useFocus()
 
     const handleAnomalyClick = (countryCode: string) => {
@@ -40,10 +40,43 @@ export const AnomalyPanel: React.FC = () => {
             <div className="anomaly-description">Countries with unusual signal spikes vs 7-day baseline</div>
 
             <div className="anomaly-list">
-                {loading && anomalies.length === 0 ? (
+                {loading && anomalies.length === 0 && nearMisses.length === 0 ? (
                     <div className="empty-state">Scanning metrics...</div>
                 ) : anomalies.length === 0 ? (
-                    <div className="empty-state">No anomalies detected in the last 24h</div>
+                    <div className="calm-state">
+                        <div className="calm-state-message">No anomalies detected in the last 24h</div>
+                        {meta && (
+                            <div className="calm-state-stats">
+                                <div className="stat-item">
+                                    <span className="stat-value">{meta.active_countries}</span>
+                                    <span className="stat-label">countries</span>
+                                </div>
+                                <div className="stat-item">
+                                    <span className="stat-value">{(meta.total_signals_24h / 1000).toFixed(1)}k</span>
+                                    <span className="stat-label">signals/24h</span>
+                                </div>
+                            </div>
+                        )}
+                        {nearMisses.length > 0 && (
+                            <div className="near-misses">
+                                <div className="near-misses-header">TOP MOVERS (BELOW THRESHOLD)</div>
+                                {nearMisses.map(a => (
+                                    <div 
+                                        key={a.country_code} 
+                                        className={`anomaly-row level-nearmiss clickable`}
+                                        onClick={() => handleAnomalyClick(a.country_code)}
+                                    >
+                                        <div className="country-info">
+                                            <span className="country-name">{resolveCountryName(a.country_code, a.country_name)}</span>
+                                        </div>
+                                        <div className="metrics">
+                                            <span className="multiplier">{a.multiplier.toFixed(1)}× norm</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 ) : (
                     anomalies.map(a => (
                         <div 

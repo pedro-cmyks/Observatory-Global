@@ -69,6 +69,11 @@
     background: rgba(255, 255, 255, 0.05);
 }
 
+.signal-row.priority-1 {
+    border-left-color: rgba(56, 189, 248, 0.5);
+    background: linear-gradient(90deg, rgba(56, 189, 248, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+}
+
 .signal-meta {
     display: flex;
     flex-direction: column;
@@ -140,6 +145,19 @@
     color: var(--color-text-secondary, #94a3b8);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    padding: 2px 4px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.source.source-trusted {
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.1);
+}
+
+.source.source-tabloid {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.1);
 }
 
 .themes {

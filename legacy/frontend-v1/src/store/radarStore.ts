@@ -1,5 +1,15 @@
 import { create } from 'zustand';
 
+export interface AircraftData {
+    icao24: string;
+    callsign: string;
+    origin_country: string;
+    longitude: number;
+    latitude: number;
+    baro_altitude: number;
+    true_track: number | null;
+}
+
 export interface NodeData {
     id: string;
     name: string;
@@ -33,6 +43,7 @@ interface RadarState {
         heatmap: boolean;
         flows: boolean;
         nodes: boolean;
+        aircraft: boolean;
     };
     selectedNode: NodeData | null;
     hoveredNode: NodeData | null;
@@ -45,16 +56,19 @@ interface RadarState {
         flows: FlowData[];
         heatmapPoints: HeatmapPoint[];
     };
+    aircraftData: AircraftData[];
     isLoading: boolean;
 
     // Actions
     setTimeWindow: (window: '1h' | '6h' | '12h' | '24h' | 'all') => void;
-    toggleLayer: (layer: 'heatmap' | 'flows' | 'nodes') => void;
+    toggleLayer: (layer: 'heatmap' | 'flows' | 'nodes' | 'aircraft') => void;
     selectNode: (node: NodeData | null) => void;
     setHoveredNode: (node: NodeData | null) => void;
     setTopicFilter: (topic: string | null) => void;
     setSearchQuery: (query: string) => void;
     fetchData: () => Promise<void>;
+    fetchAircraft: () => Promise<void>;
+    startAircraftPolling: () => () => void;
 }
 
 // Major cities per country for realistic distribution (not just centroids)
@@ -226,12 +240,14 @@ export const useRadarStore = create<RadarState>((set, get) => ({
         heatmap: true,
         flows: true,
         nodes: true,
+        aircraft: true,
     },
     selectedNode: null,
     hoveredNode: null,
     topicFilter: null,
     searchQuery: '', // Added
     data: { nodes: [], flows: [], heatmapPoints: [] },
+    aircraftData: [],
     isLoading: false,
 
     setTimeWindow: (window: '1h' | '6h' | '12h' | '24h' | 'all') => {
@@ -366,5 +382,28 @@ export const useRadarStore = create<RadarState>((set, get) => ({
                 isLoading: false
             });
         }
+    },
+
+    fetchAircraft: async () => {
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const resp = await fetch(`${apiUrl}/api/v2/aircraft`);
+            if (!resp.ok) throw new Error(`Aircraft API ${resp.status}`);
+            const json = await resp.json();
+            const aircraft: AircraftData[] = json.aircraft || [];
+            console.log(`[Aircraft] Loaded ${aircraft.length} planes (cached=${json.cached}, msg=${json.message})`);
+            set({ aircraftData: aircraft });
+        } catch (err) {
+            console.error('[Aircraft] Fetch failed:', err);
+            // Keep existing data on error (graceful degradation)
+        }
+    },
+
+    startAircraftPolling: () => {
+        // Initial fetch
+        get().fetchAircraft();
+        // Poll every 65s (backend caches for 60s, so slight offset avoids hammering)
+        const id = setInterval(() => get().fetchAircraft(), 65_000);
+        return () => clearInterval(id);
     },
 }));

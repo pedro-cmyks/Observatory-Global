@@ -69,6 +69,12 @@ const RadarControls: React.FC = () => {
                     onClick={() => toggleLayer('nodes')}
                     color="text-green-400"
                 />
+                <LayerToggle
+                    label="Planes"
+                    active={activeLayers.aircraft}
+                    onClick={() => toggleLayer('aircraft')}
+                    color="text-amber-400"
+                />
             </div>
         </div>
     );
