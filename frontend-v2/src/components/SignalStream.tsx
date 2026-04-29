@@ -364,8 +364,8 @@ export const SignalStream: React.FC = () => {
                             return isGeopoliticallyRelevant(item as Signal)
                         })
                         .sort((a, b) => {
-                            const pA = getSignalPriority(a as Signal)
-                            const pB = getSignalPriority(b as Signal)
+                            const pA = a.type === 'event' ? 2 : getSignalPriority(a as Signal)
+                            const pB = b.type === 'event' ? 2 : getSignalPriority(b as Signal)
                             if (pA !== pB) return pA - pB
                             return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
                         })
