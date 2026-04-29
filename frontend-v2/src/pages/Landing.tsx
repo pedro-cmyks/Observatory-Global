@@ -124,6 +124,7 @@ export function Landing() {
                     <a href="#how">How it works</a>
                     <a href="#panels">What you see</a>
                     <a href="#data">Data</a>
+                    <a onClick={() => navigate('/docs')} style={{ cursor: 'pointer' }}>Docs</a>
                     <a href="#support" className="lp-nav-support">Support</a>
                 </div>
                 <button className="lp-nav-cta" onClick={() => navigate('/app')}>
