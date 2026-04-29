@@ -2682,9 +2682,18 @@ async def get_acled_conflicts(
 
 @app.get("/api/v2/narratives")
 async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Query(5, ge=1, le=20)):
-    """Get top narrative threads. Uses 3 DB queries instead of N*7."""
+    """Get top narrative threads. Cached 5 min in Redis."""
     from app.core.gdelt_taxonomy import get_theme_label
     import traceback, json as _json
+
+    cache_key = f"narratives:{hours}:{limit}"
+    if hasattr(app.state, "redis") and app.state.redis:
+        try:
+            cached = await app.state.redis.get(cache_key)
+            if cached:
+                return _json.loads(cached)
+        except Exception:
+            pass
 
     try:
         async with app.state.pool.acquire() as conn:
@@ -2837,12 +2846,18 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                     "wiki_views": 0,
                 })
 
-            return {
+            result = {
                 "narratives": narratives,
                 "hours": hours,
                 "total_active_countries": total_active,
                 "generated_at": datetime.now(timezone.utc).isoformat()
             }
+            if hasattr(app.state, "redis") and app.state.redis:
+                try:
+                    await app.state.redis.setex(cache_key, 300, _json.dumps(result))
+                except Exception:
+                    pass
+            return result
     except Exception as e:
         traceback.print_exc()
         return {"narratives": [], "hours": hours, "error": str(e)}
