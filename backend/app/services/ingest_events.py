@@ -54,23 +54,20 @@ async def download_and_parse_events(url: str) -> list[dict]:
                 # Need to specify types or use low_memory=False
                 df = pd.read_csv(f, sep='\t', header=None, low_memory=False)
                 
-                # We need columns:
-                # 0: GlobalEventID
-                # 57: DATEADDED (YYYYMMDDHHMMSS)
-                # 5: Actor1Code, 6: Actor1Name, 7: Actor1CountryCode
-                # 15: Actor2Code, 16: Actor2Name, 17: Actor2CountryCode
-                # 26: IsRootEvent, 27: EventCode, 28: EventBaseCode, 29: EventRootCode
-                # 30: QuadClass, 31: GoldsteinScale
-                # 32: NumMentions, 33: NumSources, 34: NumArticles, 35: AvgTone
-                # 51: ActionGeo_FullName, 52: ActionGeo_CountryCode (FIPS)
-                # 54: ActionGeo_Lat, 55: ActionGeo_Long
-                # 58: SOURCEURL
-                
-                if len(df.columns) < 59:
+                # GDELT Events 2.0 — 0-indexed column map:
+                # 0:GLOBALEVENTID  1:SQLDATE  5-14:Actor1  15-24:Actor2
+                # 25:IsRootEvent  26:EventCode  27:EventBaseCode  28:EventRootCode
+                # 29:QuadClass  30:GoldsteinScale  31:NumMentions  32:NumSources
+                # 33:NumArticles  34:AvgTone  35-42:Actor1Geo  43-50:Actor2Geo
+                # 51:ActionGeo_Type  52:ActionGeo_FullName  53:ActionGeo_CountryCode
+                # 54:ActionGeo_ADM1Code  55:ActionGeo_ADM2Code
+                # 56:ActionGeo_Lat  57:ActionGeo_Long  58:ActionGeo_FeatureID
+                # 59:DATEADDED  60:SOURCEURL
+
+                if len(df.columns) < 61:
                     logger.error("Events CSV has fewer columns than expected")
                     return []
 
-                # Convert DATEADDED
                 def parse_date(d):
                     try:
                         s = str(int(d))
@@ -79,45 +76,49 @@ async def download_and_parse_events(url: str) -> list[dict]:
                         return datetime.now(timezone.utc)
 
                 for _, row in df.iterrows():
-                    # Map FIPS to ISO for geographic countries
-                    fips_action_country = str(row[52]).strip() if pd.notna(row[52]) else None
+                    fips_action_country = str(row[53]).strip() if pd.notna(row[53]) else None
                     action_country = fips_to_iso(fips_action_country) if fips_action_country else None
 
-                    # Actor countries are typically 3-letter codes in GDELT, we store as-is
                     actor1_country = str(row[7]).strip() if pd.notna(row[7]) else None
                     actor2_country = str(row[17]).strip() if pd.notna(row[17]) else None
 
-                    # Goldstein scale
-                    goldstein = float(row[31]) if pd.notna(row[31]) else None
-                    avg_tone = float(row[35]) if pd.notna(row[35]) else None
-                    
-                    # Lat / Lon
-                    lat = float(row[54]) if pd.notna(row[54]) else None
-                    lon = float(row[55]) if pd.notna(row[55]) else None
+                    try:
+                        goldstein = float(row[30]) if pd.notna(row[30]) else None
+                    except (ValueError, TypeError):
+                        goldstein = None
+                    try:
+                        avg_tone = float(row[34]) if pd.notna(row[34]) else None
+                    except (ValueError, TypeError):
+                        avg_tone = None
+                    try:
+                        lat = float(row[56]) if pd.notna(row[56]) else None
+                        lon = float(row[57]) if pd.notna(row[57]) else None
+                    except (ValueError, TypeError):
+                        lat, lon = None, None
 
                     results.append({
                         "global_event_id": int(row[0]),
-                        "timestamp": parse_date(row[57]),
+                        "timestamp": parse_date(row[59]),
                         "actor1_code": str(row[5]).strip() if pd.notna(row[5]) else None,
                         "actor1_name": str(row[6]).strip() if pd.notna(row[6]) else None,
                         "actor1_country_code": actor1_country,
                         "actor2_code": str(row[15]).strip() if pd.notna(row[15]) else None,
                         "actor2_name": str(row[16]).strip() if pd.notna(row[16]) else None,
                         "actor2_country_code": actor2_country,
-                        "is_root_event": bool(int(row[26])) if pd.notna(row[26]) else False,
-                        "event_code": str(row[27]).strip() if pd.notna(row[27]) else "000",
-                        "event_root_code": str(row[29]).strip() if pd.notna(row[29]) else None,
-                        "quad_class": int(row[30]) if pd.notna(row[30]) else None,
+                        "is_root_event": bool(int(row[25])) if pd.notna(row[25]) else False,
+                        "event_code": str(row[26]).strip() if pd.notna(row[26]) else "000",
+                        "event_root_code": str(row[28]).strip() if pd.notna(row[28]) else None,
+                        "quad_class": int(row[29]) if pd.notna(row[29]) else None,
                         "goldstein_scale": goldstein,
                         "action_country_code": action_country,
-                        "action_location_name": str(row[51]).strip() if pd.notna(row[51]) else None,
+                        "action_location_name": str(row[52]).strip() if pd.notna(row[52]) else None,
                         "latitude": lat,
                         "longitude": lon,
-                        "num_mentions": int(row[32]) if pd.notna(row[32]) else 0,
-                        "num_sources": int(row[33]) if pd.notna(row[33]) else 0,
-                        "num_articles": int(row[34]) if pd.notna(row[34]) else 0,
+                        "num_mentions": int(row[31]) if pd.notna(row[31]) else 0,
+                        "num_sources": int(row[32]) if pd.notna(row[32]) else 0,
+                        "num_articles": int(row[33]) if pd.notna(row[33]) else 0,
                         "avg_tone": avg_tone,
-                        "source_url": str(row[58]).strip() if pd.notna(row[58]) else None,
+                        "source_url": str(row[60]).strip() if pd.notna(row[60]) else None,
                     })
 
         logger.info(f"[Events] Parsed {len(results)} events")

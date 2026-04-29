@@ -534,6 +534,7 @@ async def get_anomalies(
     """
     try:
         async with app.state.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 8000")
             # Use country_hourly_v2 materialized view for both current window and baseline
             # This avoids scanning raw signals_v2 (which has 240K+ rows/day)
             rows = await conn.fetch("""
@@ -669,6 +670,7 @@ async def get_theme_anomalies(
     """
     try:
         async with app.state.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 8000")
             rows = await conn.fetch("""
                 WITH current_window AS (
                     SELECT unnest(themes) as theme, COUNT(*) as signal_count
@@ -678,7 +680,7 @@ async def get_theme_anomalies(
                     HAVING COUNT(*) >= 10
                 ),
                 baseline AS (
-                    SELECT theme_code, AVG(signal_count) as avg_daily, STDDEV(signal_count) as stddev_daily
+                    SELECT theme, AVG(signal_count) as avg_daily, STDDEV(signal_count) as stddev_daily
                     FROM theme_daily_v2
                     WHERE day > CURRENT_DATE - INTERVAL '7 days'
                     GROUP BY 1
@@ -691,7 +693,7 @@ async def get_theme_anomalies(
                     ROUND(((c.signal_count - b.avg_daily / 24.0 * $1) /
                            NULLIF(COALESCE(b.stddev_daily, b.avg_daily * 0.3) / 24.0 * $1, 0))::numeric, 2) as zscore
                 FROM current_window c
-                JOIN baseline b ON c.theme = b.theme_code
+                JOIN baseline b ON c.theme = b.theme
                 WHERE ((c.signal_count - b.avg_daily / 24.0 * $1) / NULLIF(COALESCE(b.stddev_daily, b.avg_daily * 0.3) / 24.0 * $1, 0)) > 1.5
                 ORDER BY zscore DESC NULLS LAST
                 LIMIT $2
@@ -2502,7 +2504,7 @@ async def get_wiki_top_articles(
                     SELECT article_title, views, rank, language, fetch_date
                     FROM wiki_pageviews_v2
                     WHERE country_code = $1
-                    AND fetch_date >= CURRENT_DATE - $2
+                    AND fetch_date >= CURRENT_DATE - $2::int
                     ORDER BY views DESC
                     LIMIT $3
                 """, country_code.upper(), days, limit)
@@ -2512,7 +2514,7 @@ async def get_wiki_top_articles(
                     SELECT article_title, SUM(views) as views, MIN(rank) as rank,
                            COUNT(DISTINCT country_code) as country_count
                     FROM wiki_pageviews_v2
-                    WHERE fetch_date >= CURRENT_DATE - $1
+                    WHERE fetch_date >= CURRENT_DATE - $1::int
                     GROUP BY article_title
                     ORDER BY views DESC
                     LIMIT $2

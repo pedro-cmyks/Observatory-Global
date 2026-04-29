@@ -28,12 +28,15 @@ interface BriefingProps {
 }
 
 export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect, prefetchedData, prefetchedInsight }: BriefingProps) {
-    const [data, setData] = useState<BriefingData | null>(prefetchedData ?? null)
-    const [loading, setLoading] = useState(!prefetchedData)
-    const [insight, setInsight] = useState<string | null>(prefetchedInsight ?? null)
+    // prefetchedData is always 24h — only use it when hours matches, otherwise fetch fresh
+    const canUsePrefetch = prefetchedData && hours === 24
+    const [data, setData] = useState<BriefingData | null>(canUsePrefetch ? prefetchedData : null)
+    const [loading, setLoading] = useState(!canUsePrefetch)
+    const [insight, setInsight] = useState<string | null>(canUsePrefetch ? (prefetchedInsight ?? null) : null)
 
     useEffect(() => {
-        if (prefetchedData) return
+        if (canUsePrefetch) return
+        setLoading(true)
         fetch(`/api/v2/briefing?hours=${hours}`)
             .then(res => res.json())
             .then(setData)
@@ -44,7 +47,7 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect, prefe
             .then(res => res.json())
             .then(d => { if (d.insight) setInsight(d.insight) })
             .catch(() => {})
-    }, [hours, prefetchedData])
+    }, [hours])
 
     const getSentimentIndicator = (s: number) => (
         <span style={{
@@ -121,7 +124,7 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect, prefe
                     <div className="country-list">
                         {data.top_countries.slice(0, 5).map(c => (
                             <div key={c.code} className="country-item" onClick={() => { onCountrySelect(c.code); onClose() }}>
-                                <span>{c.name}</span>
+                                <span>{resolveCountryName(c.code, c.name)}</span>
                                 <span className="country-signals">{c.signals.toLocaleString()}</span>
                                 <span>{getSentimentIndicator(c.sentiment)}</span>
                             </div>
