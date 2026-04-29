@@ -98,7 +98,7 @@ async def run_trends_ingestion():
     """Main trends ingestion function."""
     logger.info(f"[{datetime.now()}] Starting Google Trends ingestion...")
 
-    pool = await asyncpg.create_pool(DATABASE_URL)
+    pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=2)
 
     try:
         all_trends = []

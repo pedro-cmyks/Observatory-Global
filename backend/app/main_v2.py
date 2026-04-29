@@ -76,7 +76,7 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 @app.on_event("startup")
 async def startup():
     """Create async connection pool on startup."""
-    app.state.pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10)
+    app.state.pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=5)
     print(f"✅ Connected to database: {DATABASE_URL.split('@')[1]}")
 
     # Optional Redis connection for caching

@@ -172,7 +172,7 @@ async def run_events_ingestion():
     """Main GDELT Events ingestion function."""
     logger.info(f"[{datetime.now()}] Starting GDELT Events ingestion...")
 
-    pool = await asyncpg.create_pool(DATABASE_URL)
+    pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=2)
     
     try:
         url = await fetch_latest_events_url()
