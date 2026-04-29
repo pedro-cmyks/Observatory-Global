@@ -3134,6 +3134,54 @@ async def root():
 # AIRCRAFT TRACKING (OpenSky Network – OAuth2 client_credentials)
 # =============================================================================
 
+# Aircraft callsign classification
+# Military: known NATO/country prefixes; Government: VIP/state flights
+_MIL_PREFIXES = {
+    # US military
+    "RCH", "PAT", "REACH", "DUKE", "VALOR", "ZEUS", "TOPCAT",
+    "VENUS", "NAVY", "USAF", "ARMY",
+    # UK
+    "RAF", "RRR",
+    # Germany
+    "GAF", "GAFMED",
+    # France
+    "FAF", "CTM",
+    # Israel
+    "IAF",
+    # NATO
+    "NATO", "NATOEX",
+    # Russia
+    "RFF",
+    # Other common military
+    "MAGMA", "COBRA", "VIPER", "GHOST",
+}
+_GOV_PREFIXES = {"SAM", "AF1", "AF2", "EXEC", "VENUS0", "SPAR", "CAPS", "IRON"}
+_ICAO24_MIL_RANGES = {
+    # US DoD range AE0000–AFFFFF (partial)
+    "ae", "af",
+    # UK military 43
+    "43",
+}
+
+def _classify_aircraft(callsign: str, icao24: str) -> str:
+    cs = callsign.upper().strip()
+    prefix4 = cs[:4]
+    prefix3 = cs[:3]
+    prefix2 = cs[:2]
+    if prefix3 in _MIL_PREFIXES or prefix4 in _MIL_PREFIXES or prefix2 in _MIL_PREFIXES:
+        return "military"
+    if prefix3 in _GOV_PREFIXES or prefix4 in _GOV_PREFIXES:
+        return "government"
+    # ICAO24 hex range heuristic
+    if icao24[:2].lower() in _ICAO24_MIL_RANGES:
+        return "military"
+    # Commercial: typical 3-letter ICAO airline code followed by digits
+    import re as _re
+    if _re.match(r'^[A-Z]{2,3}\d', cs):
+        return "commercial"
+    return "private"
+
+
 # Global cache for aircraft tracking (60 second TTL)
 AIRCRAFT_CACHE: dict = {
     "timestamp": 0,
@@ -3242,14 +3290,16 @@ async def get_aircraft_positions():
                 if on_ground or lon is None or lat is None or alt is None:
                     continue
 
+                callsign = (state[1] or "").strip() or "Unknown"
                 aircraft_list.append({
                     "icao24": state[0],
-                    "callsign": (state[1] or "").strip() or "Unknown",
+                    "callsign": callsign,
                     "origin_country": state[2],
                     "longitude": lon,
                     "latitude": lat,
                     "baro_altitude": alt,
                     "true_track": state[10],
+                    "category": _classify_aircraft(callsign, state[0] or ""),
                 })
 
             # Top 2000 by altitude
