@@ -132,13 +132,19 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
             // 200ms stagger to prevent bandwidth choking
             await new Promise(r => setTimeout(r, 200))
 
-            // Fetch flows after stagger (removing fields param as it's for nodes)
+            // Fetch flows with 12s timeout — if backend cache is cold, return empty gracefully
             const flowsParams = new URLSearchParams(baseParams.toString())
             flowsParams.delete('fields')
-            
-            const flowsRes = await fetch(`/api/v2/flows?${flowsParams}`)
-            if (!flowsRes.ok) throw new Error(`Flows fetch failed: ${flowsRes.status}`)
-            const flowsData = await flowsRes.json()
+            let flowsData: { flows: FlowData[] } = { flows: [] }
+            try {
+                const flowsCtrl = new AbortController()
+                const flowsTimer = setTimeout(() => flowsCtrl.abort(), 12000)
+                const flowsRes = await fetch(`/api/v2/flows?${flowsParams}`, { signal: flowsCtrl.signal })
+                clearTimeout(flowsTimer)
+                if (flowsRes.ok) flowsData = await flowsRes.json()
+            } catch {
+                // Timeout or network error — render map without flows
+            }
 
             // Fetch summary only when focused
             let summaryData: FocusSummary | null = null

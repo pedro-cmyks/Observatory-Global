@@ -31,14 +31,30 @@ async def main():
         try:
             log.info("GDELT cycle %d start %s", gdelt_cycle, datetime.utcnow().isoformat())
             await run_ingestion()
-            
+
             # Now run events ingestion right after GKG
             from app.services.ingest_events import run_events_ingestion
             await run_events_ingestion()
-            
+
             log.info("GDELT cycle complete.")
         except Exception:
             log.exception("GDELT ingestion cycle failed — continuing")
+
+        # ── Cache warming: hit slow endpoints so Redis is always pre-warmed ──
+        try:
+            import httpx
+            async with httpx.AsyncClient(base_url="http://localhost:8000", timeout=180.0) as client:
+                for path in [
+                    "/api/v2/flows?range=24h",
+                    "/api/v2/narratives?hours=24&limit=5",
+                ]:
+                    try:
+                        r = await client.get(path)
+                        log.info("Cache warmed %s → HTTP %s", path, r.status_code)
+                    except Exception as e:
+                        log.warning("Cache warm failed %s: %s", path, e)
+        except Exception:
+            log.exception("Cache warming failed — continuing")
 
         # ── Google Trends: every 2nd cycle (~30 min) ──
         if gdelt_cycle % 2 == 0:

@@ -2725,6 +2725,7 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
 
     try:
         async with app.state.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 0")
             timeline_hours = min(hours, 24)
 
             # Single CTE: top themes + velocity + timeline + countries
