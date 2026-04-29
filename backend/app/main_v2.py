@@ -2682,185 +2682,171 @@ async def get_acled_conflicts(
 
 @app.get("/api/v2/narratives")
 async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Query(5, ge=1, le=20)):
-    """Get top narrative threads with spread and velocity data."""
+    """Get top narrative threads. Uses 3 DB queries instead of N*7."""
     from app.core.gdelt_taxonomy import get_theme_label
-    import traceback
-    
+    import traceback, json as _json
+
     try:
         async with app.state.pool.acquire() as conn:
-            # Count total active countries in this window for spread_pct denominator
-            total_active = await conn.fetchval("""
-                SELECT COUNT(DISTINCT country_code)
-                FROM signals_v2
-                WHERE timestamp > NOW() - INTERVAL '%s hours'
-            """ % hours)
-            total_active = max(total_active or 1, 1)
-            
-            # Get top N themes by signal count
-            top_themes = await conn.fetch("""
-                SELECT 
-                    unnest(themes) as theme,
-                    COUNT(*) as signal_count,
-                    COUNT(DISTINCT country_code) as country_count,
-                    COUNT(DISTINCT source_name) as source_count,
-                    MIN(timestamp) as first_seen,
-                    AVG(sentiment) as avg_sentiment
-                FROM signals_v2
-                WHERE timestamp > NOW() - INTERVAL '%s hours'
-                AND themes IS NOT NULL
-                GROUP BY theme
-                ORDER BY signal_count DESC
-                LIMIT %s
-            """ % (hours, limit))
-            
+            timeline_hours = min(hours, 24)
+
+            # Single CTE: top themes + velocity + timeline + countries
+            rows = await conn.fetch("""
+                WITH
+                top_themes AS (
+                    SELECT
+                        unnest(themes) AS theme,
+                        COUNT(*) AS signal_count,
+                        COUNT(DISTINCT country_code) AS country_count,
+                        COUNT(DISTINCT source_name) AS source_count,
+                        MIN(timestamp) AS first_seen,
+                        AVG(sentiment) AS avg_sentiment
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - ($1 || ' hours')::INTERVAL
+                      AND themes IS NOT NULL
+                    GROUP BY theme
+                    ORDER BY signal_count DESC
+                    LIMIT $2
+                ),
+                total_active AS (
+                    SELECT COUNT(DISTINCT country_code) AS cnt
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - ($1 || ' hours')::INTERVAL
+                ),
+                theme_list AS (SELECT ARRAY_AGG(theme) AS arr FROM top_themes),
+                filtered AS (
+                    SELECT country_code, themes, timestamp
+                    FROM signals_v2, theme_list
+                    WHERE timestamp > NOW() - ($1 || ' hours')::INTERVAL
+                      AND themes IS NOT NULL
+                      AND themes && theme_list.arr
+                ),
+                velocity AS (
+                    SELECT
+                        unnest(themes) AS theme,
+                        COUNT(*) FILTER (WHERE timestamp > NOW() - INTERVAL '1 hour') AS last_hour,
+                        COUNT(*) FILTER (WHERE timestamp <= NOW() - INTERVAL '1 hour'
+                                          AND timestamp > NOW() - INTERVAL '2 hours') AS prev_hour
+                    FROM filtered
+                    GROUP BY 1
+                ),
+                tl_base AS (
+                    SELECT unnest(themes) AS theme, date_trunc('hour', timestamp) AS hour, COUNT(*) AS cnt
+                    FROM filtered
+                    WHERE timestamp > NOW() - ($3 || ' hours')::INTERVAL
+                    GROUP BY 1, 2
+                ),
+                timeline AS (
+                    SELECT theme,
+                        JSON_AGG(JSON_BUILD_OBJECT('hour', TO_CHAR(hour, 'HH24:MI'), 'count', cnt)
+                                 ORDER BY hour) AS tl
+                    FROM tl_base GROUP BY theme
+                ),
+                ctry_base AS (
+                    SELECT unnest(themes) AS theme, country_code, COUNT(*) AS cnt
+                    FROM filtered GROUP BY 1, 2
+                ),
+                top_ctry AS (
+                    SELECT theme, ARRAY_AGG(country_code ORDER BY cnt DESC) AS countries
+                    FROM (
+                        SELECT *, ROW_NUMBER() OVER (PARTITION BY theme ORDER BY cnt DESC) AS rn
+                        FROM ctry_base
+                    ) r WHERE rn <= 3
+                    GROUP BY theme
+                )
+                SELECT
+                    t.theme, t.signal_count, t.country_count, t.source_count,
+                    t.first_seen, t.avg_sentiment,
+                    (SELECT cnt FROM total_active) AS total_active,
+                    COALESCE(v.last_hour, 0) AS last_hour,
+                    COALESCE(v.prev_hour, 0) AS prev_hour,
+                    COALESCE(tc.countries, '{}') AS top_countries,
+                    COALESCE(tl.tl::text, '[]') AS hourly_timeline
+                FROM top_themes t
+                LEFT JOIN velocity v ON v.theme = t.theme
+                LEFT JOIN top_ctry tc ON tc.theme = t.theme
+                LEFT JOIN timeline tl ON tl.theme = t.theme
+                ORDER BY t.signal_count DESC
+            """, str(hours), limit, str(timeline_hours))
+
+            if not rows:
+                return {"narratives": [], "hours": hours,
+                        "total_active_countries": 0,
+                        "generated_at": datetime.now(timezone.utc).isoformat()}
+
+            total_active = max(int(rows[0]["total_active"] or 1), 1)
+            theme_codes = [r["theme"] for r in rows]
+
+            # Single query for top persons across all themes
+            persons_map: dict = {tc: [] for tc in theme_codes}
+            try:
+                p_rows = await conn.fetch("""
+                    SELECT theme, ARRAY_AGG(person ORDER BY cnt DESC) AS persons
+                    FROM (
+                        SELECT unnest(themes) AS theme, unnest(persons) AS person, COUNT(*) AS cnt
+                        FROM signals_v2
+                        WHERE timestamp > NOW() - ($1 || ' hours')::INTERVAL
+                          AND themes IS NOT NULL AND persons IS NOT NULL
+                          AND themes && $2
+                        GROUP BY 1, 2
+                    ) sub
+                    WHERE person IS NOT NULL AND person != ''
+                      AND theme = ANY($2)
+                    GROUP BY theme
+                """, str(hours), theme_codes)
+                for pr in p_rows:
+                    persons_map[pr["theme"]] = (pr["persons"] or [])[:3]
+            except Exception:
+                pass
+
             narratives = []
-            for t in top_themes:
-                theme_code = t['theme']
-                
-                # Velocity: last hour vs previous hour
-                last_hour = await conn.fetchval("""
-                    SELECT COUNT(*)
-                    FROM signals_v2
-                    WHERE timestamp > NOW() - INTERVAL '1 hour'
-                    AND themes IS NOT NULL
-                    AND $1 = ANY(themes)
-                """, theme_code)
-                last_hour = last_hour or 0
-                
-                prev_hour = await conn.fetchval("""
-                    SELECT COUNT(*)
-                    FROM signals_v2
-                    WHERE timestamp > NOW() - INTERVAL '2 hours'
-                    AND timestamp <= NOW() - INTERVAL '1 hour'
-                    AND themes IS NOT NULL
-                    AND $1 = ANY(themes)
-                """, theme_code)
-                prev_hour = prev_hour or 0
-                
-                # Determine trend
-                if prev_hour > 0 and last_hour > prev_hour * 1.2:
+            for r in rows:
+                tc = r["theme"]
+                last_h = int(r["last_hour"] or 0)
+                prev_h = int(r["prev_hour"] or 0)
+                if prev_h > 0 and last_h > prev_h * 1.2:
                     trend = "accelerating"
-                elif prev_hour > 0 and last_hour < prev_hour * 0.8:
+                elif prev_h > 0 and last_h < prev_h * 0.8:
                     trend = "fading"
                 else:
                     trend = "stable"
-                
-                # Hourly timeline (last 24 data points or less)
-                timeline_hours = min(hours, 24)
-                timeline = await conn.fetch("""
-                    SELECT 
-                        date_trunc('hour', timestamp) as hour,
-                        COUNT(*) as count
-                    FROM signals_v2
-                    WHERE timestamp > NOW() - INTERVAL '%s hours'
-                    AND themes IS NOT NULL
-                    AND $1 = ANY(themes)
-                    GROUP BY hour
-                    ORDER BY hour ASC
-                """ % timeline_hours, theme_code)
-                
-                hourly_timeline = [
-                    {"hour": r['hour'].strftime('%H:%M'), "count": int(r['count'])}
-                    for r in timeline
-                ]
-                
-                # Top 3 countries
-                top_countries_rows = await conn.fetch("""
-                    SELECT country_code, COUNT(*) as cnt
-                    FROM signals_v2
-                    WHERE timestamp > NOW() - INTERVAL '%s hours'
-                    AND themes IS NOT NULL
-                    AND $1 = ANY(themes)
-                    GROUP BY country_code
-                    ORDER BY cnt DESC
-                    LIMIT 3
-                """ % hours, theme_code)
-                top_countries = [r['country_code'] for r in top_countries_rows]
-                
-                # Top 3 persons
-                top_persons_rows = await conn.fetch("""
-                    SELECT unnest(persons) as person, COUNT(*) as cnt
-                    FROM signals_v2
-                    WHERE timestamp > NOW() - INTERVAL '%s hours'
-                    AND themes IS NOT NULL
-                    AND $1 = ANY(themes)
-                    AND persons IS NOT NULL
-                    GROUP BY person
-                    ORDER BY cnt DESC
-                    LIMIT 3
-                """ % hours, theme_code)
-                top_persons = [r['person'] for r in top_persons_rows if r['person']]
-                
-                spread_pct = round((t['country_count'] / total_active) * 100, 1)
-                
-                # Cross-reference with Google Trends
-                has_public_interest = False
-                trending_keywords = []
-                try:
-                    label_lower = get_theme_label(theme_code).lower()
-                    tw = [w for w in label_lower.split() if len(w) > 3]
-                    if tw:
-                        conds = " OR ".join([f"LOWER(keyword) LIKE '%' || ${i+1} || '%'" for i in range(len(tw))])
-                        tq = f"""
-                            SELECT DISTINCT keyword FROM trends_v2
-                            WHERE timestamp > NOW() - INTERVAL '{hours} hours'
-                            AND ({conds})
-                            LIMIT 3
-                        """
-                        trend_rows = await conn.fetch(tq, *tw)
-                        trending_keywords = [r['keyword'] for r in trend_rows]
-                        has_public_interest = len(trending_keywords) > 0
-                except Exception:
-                    pass
 
-                # Cross-reference with Wikipedia
-                has_wiki_activity = False
-                wiki_views = 0
+                tl_raw = r["hourly_timeline"]
                 try:
-                    if tw:
-                        wconds = " OR ".join([f"LOWER(article_title) LIKE '%' || ${i+1} || '%'" for i in range(len(tw))])
-                        wq = f"""
-                            SELECT SUM(views) as total_views FROM wiki_pageviews_v2
-                            WHERE fetch_date >= CURRENT_DATE - 1
-                            AND ({wconds})
-                        """
-                        wrow = await conn.fetchrow(wq, *tw)
-                        if wrow and wrow['total_views']:
-                            wiki_views = int(wrow['total_views'])
-                            has_wiki_activity = wiki_views > 0
+                    hourly_timeline = _json.loads(tl_raw) if isinstance(tl_raw, str) else tl_raw
                 except Exception:
-                    pass
+                    hourly_timeline = []
 
                 narratives.append({
-                    "theme_code": theme_code,
-                    "label": get_theme_label(theme_code),
-                    "signal_count": int(t['signal_count']),
-                    "country_count": int(t['country_count']),
-                    "source_count": int(t['source_count']),
-                    "first_seen": t['first_seen'].isoformat() if t['first_seen'] else None,
-                    "velocity": int(last_hour),
+                    "theme_code": tc,
+                    "label": get_theme_label(tc),
+                    "signal_count": int(r["signal_count"]),
+                    "country_count": int(r["country_count"]),
+                    "source_count": int(r["source_count"]),
+                    "first_seen": r["first_seen"].isoformat() if r["first_seen"] else None,
+                    "velocity": last_h,
                     "trend": trend,
-                    "spread_pct": spread_pct,
-                    "avg_sentiment": round(float(t['avg_sentiment'] or 0), 2),
-                    "top_persons": top_persons,
-                    "hourly_timeline": hourly_timeline,
-                    "top_countries": top_countries,
-                    # Enrichment: public attention signals
-                    "has_public_interest": has_public_interest,
-                    "trending_keywords": trending_keywords,
-                    "has_wiki_activity": has_wiki_activity,
-                    "wiki_views": wiki_views,
+                    "spread_pct": round((int(r["country_count"]) / total_active) * 100, 1),
+                    "avg_sentiment": round(float(r["avg_sentiment"] or 0), 2),
+                    "top_persons": persons_map.get(tc, []),
+                    "hourly_timeline": hourly_timeline or [],
+                    "top_countries": list(r["top_countries"] or []),
+                    "has_public_interest": False,
+                    "trending_keywords": [],
+                    "has_wiki_activity": False,
+                    "wiki_views": 0,
                 })
-            
+
             return {
                 "narratives": narratives,
                 "hours": hours,
-                "total_active_countries": int(total_active),
+                "total_active_countries": total_active,
                 "generated_at": datetime.now(timezone.utc).isoformat()
             }
     except Exception as e:
         traceback.print_exc()
         return {"narratives": [], "hours": hours, "error": str(e)}
+
 
 @app.get("/api/v2/correlation")
 async def get_correlation(

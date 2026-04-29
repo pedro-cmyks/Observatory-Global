@@ -11,6 +11,9 @@ primary_region = "iad"  # Washington DC — closest to GDELT servers
   PORT = "8000"
   INGEST_INTERVAL_SECONDS = "900"
 
+[deploy]
+  strategy = "immediate"
+
 [http_service]
   internal_port = 8000
   force_https = true
