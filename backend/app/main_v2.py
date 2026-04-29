@@ -2766,8 +2766,9 @@ async def get_conflict_markers(
         async with app.state.pool.acquire() as conn:
             await conn.execute("SET statement_timeout = 8000")
 
-            # Try ACLED first
-            acled_count = await conn.fetchval("SELECT COUNT(*) FROM acled_conflicts_v2 WHERE event_date >= CURRENT_DATE - $1", days)
+            # Try ACLED first (cast days to int to avoid asyncpg int8 vs int4 mismatch)
+            acled_count = await conn.fetchval(
+                "SELECT COUNT(*) FROM acled_conflicts_v2 WHERE event_date >= CURRENT_DATE - $1::int", days)
 
             if acled_count and acled_count > 0:
                 rows = await conn.fetch("""
@@ -2775,7 +2776,7 @@ async def get_conflict_markers(
                            actor1, actor2, country, region, location,
                            latitude, longitude, fatalities, notes, source
                     FROM acled_conflicts_v2
-                    WHERE event_date >= CURRENT_DATE - $1
+                    WHERE event_date >= CURRENT_DATE - $1::int
                     ORDER BY event_date DESC
                     LIMIT $2
                 """, days, limit)
