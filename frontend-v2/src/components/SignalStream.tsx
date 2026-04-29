@@ -56,8 +56,21 @@ const extractDomain = (url: string): string => {
 // Clean CAMEO actor name: title-case, drop generic codes
 const cleanActorName = (name: string, countryCode: string | null): string => {
     if (!name) return countryCode || '?'
-    // Title-case the name
     return name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
+}
+
+// Generic/noisy CAMEO actor names that add no intelligence value
+const GENERIC_ACTORS = new Set([
+    'WORKER', 'WORKERS', 'SETTLEMENT', 'COMPANY', 'RETIRED',
+    'INDIVIDUAL', 'CITIZEN', 'CIVILIAN', 'PERSON', 'MAN', 'WOMAN',
+    'TOYOTA', 'VEHICLE', 'EXECUTIVE', 'OFFICIAL', 'MEMBER', 'LEADER',
+    'SPOKESPERSON', 'REPRESENTATIVE', 'ACTIVIST', 'PROTESTER',
+])
+
+const isUsefulActor = (name: string | null): boolean => {
+    if (!name) return false
+    const upper = name.toUpperCase().trim()
+    return upper.length > 2 && !GENERIC_ACTORS.has(upper)
 }
 
 // Helper to determine sentiment color
@@ -342,53 +355,51 @@ export const SignalStream: React.FC = () => {
                     <div className="empty-state">No signals or events found</div>
                 ) : (
                     items
-                        .filter(item => item.type === 'event' || isGeopoliticallyRelevant(item as Signal))
+                        .filter(item => {
+                            if (item.type === 'event') {
+                                // Only show events with at least one meaningful actor
+                                const evt = item as GeopoliticalEvent
+                                return isUsefulActor(evt.actor1?.name ?? null) || isUsefulActor(evt.actor2?.name ?? null)
+                            }
+                            return isGeopoliticallyRelevant(item as Signal)
+                        })
                         .sort((a, b) => {
-                            // prioritize events and high-priority signals
-                            const pA = a.type === 'event' ? 0 : getSignalPriority(a as Signal)
-                            const pB = b.type === 'event' ? 0 : getSignalPriority(b as Signal)
+                            const pA = getSignalPriority(a as Signal)
+                            const pB = getSignalPriority(b as Signal)
                             if (pA !== pB) return pA - pB
                             return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
                         })
                         .map(item => {
                             if (item.type === 'event') {
                                 const evt = item as GeopoliticalEvent
-                                const quadColor = evt.action.quad_class === 1 || evt.action.quad_class === 2 ? '#4ade80' : '#ef4444'
-                                const sourceDomain = evt.meta.source_url ? extractDomain(evt.meta.source_url) : ''
+                                const isBad = evt.action.quad_class >= 3
+                                const actor1 = isUsefulActor(evt.actor1?.name ?? null) ? cleanActorName(evt.actor1!.name, evt.actor1!.country_code) : null
+                                const actor2 = isUsefulActor(evt.actor2?.name ?? null) ? cleanActorName(evt.actor2!.name, evt.actor2!.country_code) : null
+                                const loc = evt.location.country_code || ''
                                 return (
-                                    <div key={`evt-${evt.id}`} className="signal-row event-card">
-                                        <div className="event-header">
-                                            <span className="event-quad" style={{color: quadColor, fontWeight: 700, fontSize: '9px', letterSpacing: '0.04em'}}>
-                                                {evt.action.quad_class === 1 ? 'COOP' : evt.action.quad_class === 2 ? 'VERBAL' : evt.action.quad_class === 3 ? 'DEMAND' : 'CONFLICT'}
-                                            </span>
-                                            <span className="event-label" style={{color: quadColor}}>{evt.action.label}</span>
-                                            <span className="signal-time">{formatTime(evt.timestamp)}</span>
+                                    <div key={`evt-${evt.id}`} className="signal-row event-row-compact">
+                                        <div className="signal-meta">
+                                            <span className="time">{formatTime(evt.timestamp)}</span>
+                                            <span className="country-chip">{loc || 'GLO'}</span>
+                                            <span className={`sentiment-indicator ${isBad ? 'negative' : 'positive'}`} />
                                         </div>
-                                        <div className="event-actors">
-                                            {evt.actor1 && (
-                                                <span className="event-actor source">
-                                                    {cleanActorName(evt.actor1.name, evt.actor1.country_code)}
+                                        <div className="signal-main">
+                                            <div className="headline" style={{ color: '#94a3b8' }}>
+                                                {actor1 && actor2 ? `${actor1} → ${actor2}: ${evt.action.label}` :
+                                                 actor1 ? `${actor1}: ${evt.action.label}` :
+                                                 evt.action.label}
+                                            </div>
+                                            <div className="signal-footer">
+                                                <span className="source" style={{ color: '#475569', fontSize: '10px' }}>
+                                                    {evt.action.quad_class === 1 ? 'Verbal Coop' : evt.action.quad_class === 2 ? 'Material Coop' : evt.action.quad_class === 3 ? 'Demand' : 'Conflict'}
+                                                    {evt.action.goldstein_scale !== null ? ` · ${evt.action.goldstein_scale > 0 ? '+' : ''}${evt.action.goldstein_scale}` : ''}
                                                 </span>
-                                            )}
-                                            {evt.actor2 && (
-                                                <>
-                                                    <span className="event-arrow">→</span>
-                                                    <span className="event-actor target">
-                                                        {cleanActorName(evt.actor2.name, evt.actor2.country_code)}
-                                                    </span>
-                                                </>
-                                            )}
-                                        </div>
-                                        <div className="event-meta">
-                                            <span>{evt.location.country_code || 'GLO'}{evt.location.name ? ` · ${evt.location.name.split(',')[0]}` : ''}</span>
-                                            {evt.action.goldstein_scale !== null && (
-                                                <span className={evt.action.goldstein_scale >= 0 ? 'positive' : 'negative'}>
-                                                    {evt.action.goldstein_scale > 0 ? '+' : ''}{evt.action.goldstein_scale}
-                                                </span>
-                                            )}
-                                            {sourceDomain && (
-                                                <a href={evt.meta.source_url} target="_blank" rel="noopener noreferrer" className="signal-link">{sourceDomain}</a>
-                                            )}
+                                                {evt.meta.source_url && (
+                                                    <a href={evt.meta.source_url} target="_blank" rel="noopener noreferrer" className="signal-link">
+                                                        {extractDomain(evt.meta.source_url)}
+                                                    </a>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 )
