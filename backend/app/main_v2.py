@@ -2314,8 +2314,8 @@ async def health():
             # Use materialized view only — instant, no full-table scan of signals_v2
             result = await conn.fetchrow("""
                 SELECT
-                    MAX(bucket_hour) as last_ts,
-                    SUM(signal_count) FILTER (WHERE bucket_hour >= NOW() - INTERVAL '1 hour') as rows_15m,
+                    MAX(hour) as last_ts,
+                    SUM(signal_count) FILTER (WHERE hour >= NOW() - INTERVAL '1 hour') as rows_15m,
                     SUM(signal_count) as total_signals
                 FROM country_hourly_v2
             """)
