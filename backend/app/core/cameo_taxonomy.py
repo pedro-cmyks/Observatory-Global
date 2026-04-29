@@ -197,10 +197,18 @@ QUAD_CLASSES = {
 }
 
 def get_cameo_label(code: str) -> str:
-    """Return a human-readable action label for a CAMEO code."""
-    # Sometimes codes are parsed as ints and lack leading zeros
+    """Return a human-readable action label for a CAMEO code.
+    Falls back to shorter prefix codes when 4-digit sub-codes aren't in the table.
+    """
     code_str = str(code).zfill(3)
-    return CAMEO_EVENT_CODES.get(code_str, f"Action {code_str}")
+    if code_str in CAMEO_EVENT_CODES:
+        return CAMEO_EVENT_CODES[code_str]
+    # Try progressively shorter prefixes (4→3→2 digits)
+    for length in (3, 2):
+        prefix = code_str[:length]
+        if prefix in CAMEO_EVENT_CODES:
+            return CAMEO_EVENT_CODES[prefix]
+    return f"Action {code_str}"
 
 def get_quad_class_label(quad: int) -> str:
     """Return the label for a CAMEO quad class."""
