@@ -129,10 +129,30 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
             if (!nodesRes.ok) throw new Error(`Nodes fetch failed: ${nodesRes.status}`)
             const nodesData = await nodesRes.json()
 
-            // 200ms stagger to prevent bandwidth choking
+            // Safe render: cap nodes at 150 to prevent Deck.gl crashes
+            const MAX_NODES = 150
+            let safeNodes = nodesData.nodes || []
+            if (safeNodes.length > MAX_NODES) {
+                safeNodes = safeNodes.slice(0, MAX_NODES)
+            }
+
+            // Render globe immediately after nodes — don't wait for flows/acled
+            setState(prev => ({
+                ...prev,
+                nodes: safeNodes,
+                meta: {
+                    totalCountries: nodesData.count || nodesData.nodes?.length || 0,
+                    totalSignals: nodesData.totalSignals || 0,
+                    isFiltered: nodesData.is_filtered || false
+                },
+                loading: false,
+                error: null
+            }))
+
+            // 200ms stagger before secondary fetches
             await new Promise(r => setTimeout(r, 200))
 
-            // Fetch flows with 12s timeout — if backend cache is cold, return empty gracefully
+            // Fetch flows with 12s timeout — render map without flows if slow
             const flowsParams = new URLSearchParams(baseParams.toString())
             flowsParams.delete('fields')
             let flowsData: { flows: FlowData[] } = { flows: [] }
@@ -143,7 +163,7 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 clearTimeout(flowsTimer)
                 if (flowsRes.ok) flowsData = await flowsRes.json()
             } catch {
-                // Timeout or network error — render map without flows
+                // Timeout or network error — map already visible without flows
             }
 
             // Fetch summary only when focused
@@ -164,13 +184,12 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 }
             }
 
-            // Fetch ACLED conflicts in parallel with flows
+            // Fetch ACLED conflicts
             let acledData: AcledConflict[] = []
             try {
-                // Determine days for ACLED fetch (max 30)
                 const hours = timeRangeToHours(timeRange)
                 const days = Math.max(1, Math.min(30, Math.ceil(hours / 24)))
-                
+
                 const acledParams = new URLSearchParams()
                 acledParams.append('days', days.toString())
                 acledParams.append('limit', '500')
@@ -187,32 +206,17 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 console.warn('[FocusDataProvider] ACLED fetch failed:', e)
             }
 
-            // Safe render: cap nodes at 150 to prevent Deck.gl crashes
-            const MAX_NODES = 150
-            let safeNodes = nodesData.nodes || []
-            if (safeNodes.length > MAX_NODES) {
-                console.warn(`[FocusDataProvider] Node count ${safeNodes.length} exceeds ${MAX_NODES}, slicing to prevent render issues`)
-                safeNodes = safeNodes.slice(0, MAX_NODES)
-            }
-
             const newFlows = flowsData.flows || []
             previousFlows.current = newFlows
 
+            // Update flows/acled without re-hiding the globe
             setState(prev => ({
                 ...prev,
-                nodes: safeNodes,
                 flows: newFlows,
                 unfilteredFlows: (!isActive) ? newFlows : prev.unfilteredFlows,
                 acledConflicts: acledData,
                 summary: summaryData,
-                meta: {
-                    totalCountries: nodesData.count || nodesData.nodes?.length || 0,
-                    totalSignals: nodesData.totalSignals || 0,
-                    isFiltered: nodesData.is_filtered || false
-                },
-                loading: false,
-                isRefetching: false,
-                error: null
+                isRefetching: false
             }))
 
         } catch (err) {

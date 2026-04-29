@@ -117,8 +117,9 @@ async def get_system_stats():
     Shows total signals, time range, and ingestion health.
     """
     async with app.state.pool.acquire() as conn:
+        await conn.execute("SET statement_timeout = 5000")
         row = await conn.fetchrow("""
-            SELECT 
+            SELECT
                 COUNT(*) AS total_signals,
                 MIN(timestamp) AS oldest_signal,
                 MAX(timestamp) AS newest_signal,
@@ -357,7 +358,7 @@ async def get_nodes(
 
     try:
         async with app.state.pool.acquire() as conn:
-            await conn.execute("SET statement_timeout = 0")
+            await conn.execute("SET statement_timeout = 10000")
 
             # Parse range parameter (takes precedence over hours)
             use_daily_rollup = False
@@ -533,6 +534,7 @@ async def get_anomalies(
     """
     try:
         async with app.state.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 8000")
             rows = await conn.fetch("""
                 WITH current_window AS (
                     SELECT
@@ -668,10 +670,11 @@ async def get_theme_anomalies(
     """
     try:
         async with app.state.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 8000")
             rows = await conn.fetch("""
                 WITH current_window AS (
                     SELECT unnest(themes) as theme, COUNT(*) as signal_count
-                    FROM signals_v2 
+                    FROM signals_v2
                     WHERE timestamp > NOW() - ($1::int * INTERVAL '1 hour')
                     GROUP BY 1
                     HAVING COUNT(*) >= 10
@@ -1479,7 +1482,7 @@ async def get_signals(
 ):
     """Get raw signals with filters and velocity calculation."""
     async with app.state.pool.acquire() as conn:
-        await conn.execute("SET statement_timeout = 0")
+        await conn.execute("SET statement_timeout = 10000")
         conditions = ["timestamp > NOW() - INTERVAL '%s hours'" % hours]
         params = []
         param_count = 0
@@ -1960,6 +1963,7 @@ async def get_country_detail(country_code: str, hours: int = Query(24, ge=1, le=
 async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
     """Get morning briefing summary."""
     async with app.state.pool.acquire() as conn:
+        await conn.execute("SET statement_timeout = 8000")
         # Top countries by activity
         top_countries = await conn.fetch("""
             SELECT 
@@ -2310,7 +2314,8 @@ async def health():
         - error_count_last_15m: placeholder for error tracking
     """
     try:
-        async with app.state.pool.acquire() as conn:
+        async with app.state.pool.acquire(timeout=5) as conn:
+            await conn.execute("SET statement_timeout = 5000")
             db_ok = True
             try:
                 await conn.fetchval("SELECT 1")
@@ -2352,6 +2357,18 @@ async def health():
                 "total_signals": total_signals,
                 "error_count_last_15m": 0
             }
+    except asyncio.TimeoutError:
+        return {
+            "status": "degraded",
+            "db_ok": True,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "message": "pool busy",
+            "last_ingest_ts": None,
+            "ingest_lag_minutes": None,
+            "rows_ingested_last_15m": 0,
+            "total_signals": 0,
+            "error_count_last_15m": 0
+        }
     except Exception as e:
         return {
             "status": "error",
@@ -2730,6 +2747,8 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
         async with app.state.pool.acquire() as conn:
             await conn.execute("SET statement_timeout = 20000")
             timeline_hours = min(hours, 24)
+            # Cap the unnest scan to 6h — mirrors flows pattern, prevents timeout on large windows
+            query_hours = min(hours, 6)
 
             # Single CTE: top themes + velocity + timeline + countries
             rows = await conn.fetch("""
@@ -2808,7 +2827,7 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                 LEFT JOIN top_ctry tc ON tc.theme = t.theme
                 LEFT JOIN timeline tl ON tl.theme = t.theme
                 ORDER BY t.signal_count DESC
-            """, str(hours), limit, str(timeline_hours))
+            """, str(query_hours), limit, str(timeline_hours))
 
             if not rows:
                 return {"narratives": [], "hours": hours,
@@ -2834,7 +2853,7 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                     WHERE person IS NOT NULL AND person != ''
                       AND theme = ANY($2)
                     GROUP BY theme
-                """, str(hours), theme_codes)
+                """, str(query_hours), theme_codes)
                 for pr in p_rows:
                     persons_map[pr["theme"]] = (pr["persons"] or [])[:3]
             except Exception:
