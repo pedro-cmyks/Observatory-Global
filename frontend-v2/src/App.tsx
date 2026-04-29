@@ -920,6 +920,14 @@ function AppContent() {
                       const hdg = object.heading && object.heading < 360 ? `  HDG: ${Math.round(object.heading)}°` : ''
                       return `${object.name}\nMMSI ${object.mmsi}  ·  ${spd}${hdg}`
                     }
+                    if (layer?.id?.startsWith('acled-conflicts')) {
+                      const c = object as any
+                      const loc = [c.location?.name, c.location?.country].filter(Boolean).join(', ')
+                      const actors = [c.actors?.actor1, c.actors?.actor2].filter(Boolean).join(' vs ')
+                      const fatText = c.fatalities > 0 ? `  ·  ${c.fatalities} fatalities` : ''
+                      const src = c.source === 'gdelt_events' ? ' (GDELT)' : ' (ACLED)'
+                      return `${c.type}${src}\n${loc}${fatText}${actors ? `\n${actors}` : ''}\nClick to open country`
+                    }
                     return null
                   }}
                   onHover={(info: any) => {
@@ -937,6 +945,15 @@ function AppContent() {
                       const cp = info.object as Chokepoint
                       setSelectedChokepoint(prev => prev?.id === cp.id ? null : cp)
                       setMapFlyCountry(cp.primaryCountry)
+                    }
+                    if (info.layer.id?.startsWith('acled-conflicts')) {
+                      const c = info.object as any
+                      const code = c.location?.country
+                      if (code) {
+                        handleCountryClick(code)
+                        setFocus('country', code, c.location?.country)
+                        setMapFlyCountry(code)
+                      }
                     }
                   }}
                 />

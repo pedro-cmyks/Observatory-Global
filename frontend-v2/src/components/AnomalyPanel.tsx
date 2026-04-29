@@ -5,6 +5,13 @@ import { useFocusData } from '../contexts/FocusDataContext'
 import { resolveCountryName } from '../lib/countryNames'
 import './AnomalyPanel.css'
 
+const SEVERITY_COLORS: Record<string, string> = {
+    critical: '#ef4444',
+    elevated: '#f97316',
+    notable:  '#fbbf24',
+    normal:   '#4ade80',
+}
+
 export const AnomalyPanel: React.FC = () => {
     const { anomalies, nearMisses, themeAnomalies, meta, overallSeverity, loading } = useCrisis()
     const { setFocus, setMapFlyCountry } = useFocus()
@@ -12,7 +19,7 @@ export const AnomalyPanel: React.FC = () => {
     const [trendingSearches, setTrendingSearches] = useState<{ keyword: string; country_count: number }[]>([])
 
     useEffect(() => {
-        fetch('/api/v2/trends?hours=24&limit=10')
+        fetch('/api/v2/trends/search?hours=24&limit=10')
             .then(r => r.ok ? r.json() : null)
             .then(d => { if (d?.trending) setTrendingSearches(d.trending) })
             .catch(() => {})
@@ -23,121 +30,95 @@ export const AnomalyPanel: React.FC = () => {
         setMapFlyCountry(countryCode)
     }
 
+    const severityColor = SEVERITY_COLORS[overallSeverity] ?? '#4ade80'
+
     return (
-        <div className={`anomaly-panel-container severity-${overallSeverity}`}>
-            <div className={`severity-header ${overallSeverity}`}>
-                <span className="pulse-dot"></span>
-                SYSTEM STATUS: {overallSeverity.toUpperCase()}
+        <div className="anomaly-panel-container">
+            {/* Status badge */}
+            <div className="ap-status-bar">
+                <span className="ap-pulse" style={{ background: severityColor, boxShadow: `0 0 6px ${severityColor}` }} />
+                <span className="ap-status-label" style={{ color: severityColor }}>
+                    {overallSeverity.toUpperCase()}
+                </span>
+                {meta && (
+                    <span className="ap-meta">
+                        {meta.active_countries} countries · {(meta.total_signals_24h / 1000).toFixed(1)}k signals
+                    </span>
+                )}
             </div>
 
             <div className="anomaly-body-grid">
-                {/* ── Left column: Geo alerts ── */}
+                {/* ── Left: Geo alerts ── */}
                 <div className="anomaly-col">
                     <div className="col-label">GEO ALERTS</div>
-                    <div className="anomaly-list col-scroll">
-                        {loading && anomalies.length === 0 && nearMisses.length === 0 ? (
-                            <div className="empty-state">Scanning...</div>
+                    <div className="col-scroll">
+                        {loading && anomalies.length === 0 ? (
+                            <div className="ap-empty">Scanning…</div>
+                        ) : anomalies.length === 0 && nearMisses.length === 0 ? (
+                            <div className="ap-empty">No anomalies</div>
                         ) : anomalies.length === 0 ? (
                             <>
-                                <div className="calm-state-message" style={{ fontSize: '10px', color: '#64748b', padding: '8px 0', textAlign: 'center' }}>
-                                    No anomalies detected
-                                </div>
-                                {meta && (
-                                    <div className="calm-state-stats">
-                                        <div className="stat-item">
-                                            <span className="stat-value">{meta.active_countries}</span>
-                                            <span className="stat-label">countries</span>
-                                        </div>
-                                        <div className="stat-item">
-                                            <span className="stat-value">{(meta.total_signals_24h / 1000).toFixed(1)}k</span>
-                                            <span className="stat-label">signals</span>
-                                        </div>
+                                <div className="ap-empty ap-empty--sm">No critical spikes</div>
+                                {nearMisses.map(a => (
+                                    <div key={a.country_code} className="ap-row ap-row--mover clickable"
+                                        onClick={() => handleAnomalyClick(a.country_code)}>
+                                        <span className="ap-country">{resolveCountryName(a.country_code, a.country_name)}</span>
+                                        <span className="ap-mult">{a.multiplier.toFixed(1)}×</span>
                                     </div>
-                                )}
-                                {nearMisses.length > 0 && (
-                                    <div className="near-misses">
-                                        <div className="near-misses-header">TOP MOVERS</div>
-                                        {nearMisses.map(a => (
-                                            <div
-                                                key={a.country_code}
-                                                className="anomaly-row level-nearmiss clickable"
-                                                onClick={() => handleAnomalyClick(a.country_code)}
-                                            >
-                                                <div className="country-info">
-                                                    <span className="country-name">{resolveCountryName(a.country_code, a.country_name)}</span>
-                                                </div>
-                                                <div className="metrics">
-                                                    <span className="multiplier">{a.multiplier.toFixed(1)}×</span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                ))}
                             </>
                         ) : (
                             anomalies.map(a => (
-                                <div
-                                    key={a.country_code}
-                                    className={`anomaly-row level-${a.level} clickable`}
-                                    onClick={() => handleAnomalyClick(a.country_code)}
-                                >
-                                    <div className="level-badge">{a.level.substring(0, 4).toUpperCase()}</div>
-                                    <div className="country-info">
-                                        <span className="country-name">{resolveCountryName(a.country_code, a.country_name)}</span>
-                                    </div>
-                                    <div className="metrics">
-                                        <span className="multiplier">{a.multiplier.toFixed(1)}×</span>
-                                    </div>
+                                <div key={a.country_code}
+                                    className={`ap-row ap-row--${a.level} clickable`}
+                                    onClick={() => handleAnomalyClick(a.country_code)}>
+                                    <span className="ap-badge">{a.level.slice(0, 4).toUpperCase()}</span>
+                                    <span className="ap-country">{resolveCountryName(a.country_code, a.country_name)}</span>
+                                    <span className="ap-mult">{a.multiplier.toFixed(1)}×</span>
                                 </div>
                             ))
                         )}
                     </div>
 
+                    {/* Conflict events */}
                     {acledConflicts && acledConflicts.length > 0 && (
-                        <div className="col-sub-section">
-                            <div className="col-label" style={{ color: '#ef4444' }}>KINETIC (ACLED)</div>
-                            <div className="anomaly-list col-scroll-short">
-                                {acledConflicts.slice(0, 10).map(c => (
-                                    <div
-                                        key={c.id}
-                                        className="anomaly-row level-critical clickable"
-                                        onClick={() => handleAnomalyClick(c.location.country)}
-                                    >
-                                        <div className="level-badge" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
-                                            {c.fatalities > 0 ? `${c.fatalities}` : '!'}
+                        <div className="ap-sub">
+                            <div className="col-label" style={{ color: '#f87171' }}>CONFLICT EVENTS</div>
+                            <div className="col-scroll-short">
+                                {acledConflicts.slice(0, 8).map(c => {
+                                    const loc = c.location?.name || c.location?.country || '?'
+                                    const src = c.source === 'gdelt_events' ? 'G' : 'A'
+                                    return (
+                                        <div key={c.id} className="ap-row ap-row--conflict clickable"
+                                            onClick={() => handleAnomalyClick(c.location.country)}>
+                                            <span className="ap-src-tag" style={{ color: src === 'A' ? '#f87171' : '#fb923c' }}>{src}</span>
+                                            <span className="ap-conflict-info">
+                                                <span className="ap-conflict-loc">{loc}</span>
+                                                <span className="ap-conflict-type">{c.type?.replace('Use conventional military force', 'Military force').slice(0, 30)}</span>
+                                            </span>
+                                            {c.fatalities > 0 && <span className="ap-fatalities">{c.fatalities}†</span>}
                                         </div>
-                                        <div className="country-info">
-                                            <span className="country-name" style={{ fontSize: '10px' }}>{c.location.country}</span>
-                                            <span style={{ fontSize: '9px', color: '#64748b' }}>{c.type}</span>
-                                        </div>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* ── Right column: Intelligence feeds ── */}
+                {/* ── Right: Intelligence feeds ── */}
                 <div className="anomaly-col col-right-border">
                     {themeAnomalies && themeAnomalies.length > 0 && (
                         <>
                             <div className="col-label">THEME SPIKES</div>
-                            <div className="anomaly-list col-scroll-short">
+                            <div className="col-scroll-short">
                                 {themeAnomalies.map(a => (
-                                    <div
-                                        key={a.theme}
-                                        className="anomaly-row level-elevated clickable"
-                                        onClick={() => setFocus('theme', a.theme)}
-                                    >
-                                        <div className="level-badge" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>↑</div>
-                                        <div className="country-info">
-                                            <span className="country-name" style={{ textTransform: 'uppercase', fontSize: '10px' }}>
-                                                {a.theme.replace(/_/g, ' ')}
-                                            </span>
-                                        </div>
-                                        <div className="metrics">
-                                            <span className="multiplier">{a.multiplier.toFixed(1)}×</span>
-                                        </div>
+                                    <div key={a.theme} className="ap-row ap-row--theme clickable"
+                                        onClick={() => setFocus('theme', a.theme)}>
+                                        <span className="ap-badge" style={{ color: '#f59e0b' }}>↑</span>
+                                        <span className="ap-country" style={{ textTransform: 'uppercase' }}>
+                                            {a.theme.replace(/_/g, ' ').slice(0, 20)}
+                                        </span>
+                                        <span className="ap-mult">{a.multiplier.toFixed(1)}×</span>
                                     </div>
                                 ))}
                             </div>
@@ -145,23 +126,19 @@ export const AnomalyPanel: React.FC = () => {
                     )}
 
                     <div className="col-label" style={{ marginTop: themeAnomalies?.length ? '8px' : 0 }}>
-                        TRENDING (GOOGLE)
+                        TRENDING
                     </div>
-                    <div className="anomaly-list col-scroll">
+                    <div className="col-scroll">
                         {trendingSearches.length === 0 ? (
-                            <div className="empty-state" style={{ padding: '12px 4px' }}>No data yet</div>
+                            <div className="ap-empty">No data yet</div>
                         ) : (
                             trendingSearches.map((t, i) => (
-                                <div key={i} className="anomaly-row level-nearmiss" style={{ cursor: 'default' }}>
-                                    <div className="level-badge" style={{ color: '#60a5fa', minWidth: '18px' }}>
-                                        {i + 1}
-                                    </div>
-                                    <div className="country-info">
-                                        <span className="country-name" style={{ textTransform: 'none', fontSize: '11px' }}>{t.keyword}</span>
-                                        {t.country_count > 1 && (
-                                            <span style={{ fontSize: '9px', color: '#60a5fa' }}>{t.country_count} countries</span>
-                                        )}
-                                    </div>
+                                <div key={i} className="ap-row ap-row--trend">
+                                    <span className="ap-rank">#{i + 1}</span>
+                                    <span className="ap-keyword">{t.keyword}</span>
+                                    {t.country_count > 1 && (
+                                        <span className="ap-ctry-count">{t.country_count}</span>
+                                    )}
                                 </div>
                             ))
                         )}
