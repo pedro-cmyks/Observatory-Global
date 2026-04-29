@@ -3360,6 +3360,7 @@ AIRCRAFT_CACHE: dict = {
     "timestamp": 0,
     "data": []
 }
+_OPENSKY_RETRY_AFTER: float = 0  # epoch seconds; don't retry OpenSky until this time
 
 # OAuth2 token cache (tokens last ~30 min; we refresh at 25 min)
 _OPENSKY_TOKEN_CACHE: dict = {
@@ -3419,11 +3420,11 @@ async def get_aircraft_positions():
     Polls at most once every 60 seconds; falls back to cache up to 30 min old.
     Never returns fake/simulated data.
     """
-    global AIRCRAFT_CACHE
+    global AIRCRAFT_CACHE, _OPENSKY_RETRY_AFTER
     current_time = time.time()
 
-    # ── Rate-limit: max one poll every 60 s ──────────────────────────────
-    if current_time - AIRCRAFT_CACHE["timestamp"] < 60 and AIRCRAFT_CACHE["data"]:
+    # ── Rate-limit: max one poll every 60 s, or until backoff expires ──
+    if (current_time < _OPENSKY_RETRY_AFTER or current_time - AIRCRAFT_CACHE["timestamp"] < 60) and AIRCRAFT_CACHE["data"]:
         age_mins = round((current_time - AIRCRAFT_CACHE["timestamp"]) / 60, 1)
         return {
             "aircraft": AIRCRAFT_CACHE["data"],
@@ -3486,6 +3487,8 @@ async def get_aircraft_positions():
 
     except Exception as e:
         print(f"[OpenSky] Error: {e}")
+        # Back off 5 minutes on any error so we stop hammering OpenSky
+        _OPENSKY_RETRY_AFTER = current_time + 300
         # Graceful degradation: serve stale cache up to 30 min
         cache_age_seconds = current_time - AIRCRAFT_CACHE["timestamp"]
         if AIRCRAFT_CACHE["data"] and cache_age_seconds < 1800:
