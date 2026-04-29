@@ -2316,7 +2316,7 @@ async def health():
             await conn.execute("SET statement_timeout = 5000")
             db_ok = True
             try:
-                await conn.fetchval("SELECT 1")
+                await conn.fetchval("SELECT 1", timeout=3.0)
             except Exception:
                 db_ok = False
 

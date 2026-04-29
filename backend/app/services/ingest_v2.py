@@ -280,11 +280,21 @@ async def update_countries(pool: asyncpg.Pool):
             ON CONFLICT (code) DO NOTHING
         """)
 
+_last_matview_refresh: Optional[datetime] = None
+
 async def refresh_aggregates(pool: asyncpg.Pool):
-    """Refresh the materialized view — disable statement_timeout for this long-running op."""
+    """Refresh the materialized view — throttled to once per 28 minutes to reduce CPU spikes."""
+    global _last_matview_refresh
+    now = datetime.now(timezone.utc)
+    if _last_matview_refresh is not None:
+        minutes_since = (now - _last_matview_refresh).total_seconds() / 60
+        if minutes_since < 28:
+            print(f"Skipping matview refresh — last refresh was {minutes_since:.1f}m ago")
+            return
+
     async with pool.acquire() as conn:
-        await conn.execute("SET statement_timeout = 0")
         await conn.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY country_hourly_v2")
+    _last_matview_refresh = now
 
 async def run_ingestion():
     """Main ingestion function."""
