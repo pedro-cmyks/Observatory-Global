@@ -3142,6 +3142,241 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
         return {"narratives": [], "hours": hours, "error": str(e)}
 
 
+@app.get("/api/v2/concepts")
+async def list_concepts():
+    """Return all investigative concepts available for search."""
+    from app.core.gdelt_taxonomy import get_all_concepts
+    return {"concepts": get_all_concepts()}
+
+
+@app.get("/api/v2/concept/{slug}")
+async def get_concept_narratives(
+    slug: str,
+    hours: int = Query(24, ge=1, le=168),
+    region: str | None = Query(None, description="2-letter region hint, e.g. AF for Africa"),
+):
+    """
+    Aggregate narrative signals for an investigative concept (e.g. 'blood-diamonds').
+    Returns per-country signal count, tone, dominant frame, and top sources for the
+    bundle of GDELT themes that compose the concept.
+    """
+    from app.core.gdelt_taxonomy import get_concept, get_theme_label
+    import json as _json, traceback
+
+    concept = get_concept(slug)
+    if not concept:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"Concept '{slug}' not found")
+
+    themes = concept["themes"]
+    cache_key = f"concept:{slug}:{hours}:{region or 'all'}"
+
+    if hasattr(app.state, "redis") and app.state.redis:
+        try:
+            cached = await app.state.redis.get(cache_key)
+            if cached:
+                return _json.loads(cached)
+        except Exception:
+            pass
+
+    try:
+        async with app.state.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 15000")
+
+            # Per-country breakdown: signal count, avg tone, top themes within concept bundle
+            rows = await conn.fetch("""
+                SELECT
+                    country_code,
+                    COUNT(*)                          AS signal_count,
+                    AVG(sentiment)                    AS avg_sentiment,
+                    array_agg(DISTINCT source ORDER BY source LIMIT 5) AS top_sources,
+                    (
+                        SELECT t
+                        FROM unnest(array_agg(themes)) AS arr(themes_arr),
+                             unnest(themes_arr) AS t
+                        WHERE t = ANY($1::text[])
+                        GROUP BY t
+                        ORDER BY COUNT(*) DESC
+                        LIMIT 1
+                    ) AS dominant_theme
+                FROM signals_v2
+                WHERE timestamp > NOW() - ($2 || ' hours')::INTERVAL
+                  AND themes IS NOT NULL
+                  AND themes && $1::text[]
+                GROUP BY country_code
+                ORDER BY signal_count DESC
+                LIMIT 50
+            """, themes, str(hours))
+
+            # Global totals
+            totals = await conn.fetchrow("""
+                SELECT
+                    COUNT(*)                              AS total_signals,
+                    COUNT(DISTINCT country_code)          AS total_countries,
+                    COUNT(DISTINCT source)                AS total_sources,
+                    AVG(sentiment)                        AS avg_sentiment,
+                    MIN(timestamp)                        AS first_seen,
+                    MAX(timestamp)                        AS last_seen
+                FROM signals_v2
+                WHERE timestamp > NOW() - ($2 || ' hours')::INTERVAL
+                  AND themes IS NOT NULL
+                  AND themes && $1::text[]
+            """, themes, str(hours))
+
+            countries = []
+            for r in rows:
+                dominant_label = get_theme_label(r["dominant_theme"]) if r["dominant_theme"] else None
+                countries.append({
+                    "country_code": r["country_code"],
+                    "signal_count": r["signal_count"],
+                    "avg_sentiment": round(float(r["avg_sentiment"] or 0), 3),
+                    "dominant_frame": dominant_label,
+                    "top_sources": list(r["top_sources"] or [])[:3],
+                })
+
+            result = {
+                "slug": slug,
+                "label": concept["label"],
+                "description": concept["description"],
+                "themes": themes,
+                "related_concepts": concept.get("related_concepts", []),
+                "hours": hours,
+                "total_signals": totals["total_signals"] or 0,
+                "total_countries": totals["total_countries"] or 0,
+                "avg_sentiment": round(float(totals["avg_sentiment"] or 0), 3),
+                "first_seen": totals["first_seen"].isoformat() if totals["first_seen"] else None,
+                "countries": countries,
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+            if hasattr(app.state, "redis") and app.state.redis:
+                try:
+                    await app.state.redis.setex(cache_key, 300, _json.dumps(result, default=str))
+                except Exception:
+                    pass
+
+            return result
+
+    except Exception as e:
+        traceback.print_exc()
+        return {"slug": slug, "error": str(e), "countries": []}
+
+
+@app.get("/api/v2/theme/{theme_code}/spikes")
+async def get_theme_spikes(
+    theme_code: str,
+    hours: int = Query(24, ge=1, le=168),
+    limit: int = Query(3, ge=1, le=10),
+):
+    """
+    Return the top spike moments for a theme in the last N hours.
+    Each spike includes the hour, signal count, % delta from prior hour,
+    and the single article that contributed most (trigger event).
+    Used to annotate NarrativeThreads sparklines.
+    """
+    import json as _json, traceback
+
+    cache_key = f"spikes:{theme_code}:{hours}:{limit}"
+    if hasattr(app.state, "redis") and app.state.redis:
+        try:
+            cached = await app.state.redis.get(cache_key)
+            if cached:
+                return _json.loads(cached)
+        except Exception:
+            pass
+
+    try:
+        async with app.state.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 10000")
+
+            # Hourly counts for this theme
+            hourly = await conn.fetch("""
+                SELECT
+                    date_trunc('hour', timestamp) AS hour,
+                    COUNT(*)                       AS count
+                FROM signals_v2
+                WHERE timestamp > NOW() - ($2 || ' hours')::INTERVAL
+                  AND themes IS NOT NULL
+                  AND $1 = ANY(themes)
+                GROUP BY 1
+                ORDER BY 1
+            """, theme_code, str(hours))
+
+            if len(hourly) < 2:
+                return {"theme_code": theme_code, "spikes": []}
+
+            # Compute delta vs previous hour; rank by absolute delta
+            rows_with_delta = []
+            for i in range(1, len(hourly)):
+                prev = hourly[i - 1]["count"]
+                curr = hourly[i]["count"]
+                if prev > 0:
+                    delta_pct = round((curr - prev) / prev * 100, 1)
+                else:
+                    delta_pct = 100.0 if curr > 0 else 0.0
+                rows_with_delta.append({
+                    "hour": hourly[i]["hour"],
+                    "count": curr,
+                    "prev_count": prev,
+                    "delta_pct": delta_pct,
+                })
+
+            # Top spikes by absolute delta_pct (only positive — accelerating moments)
+            top_spikes = sorted(
+                [r for r in rows_with_delta if r["delta_pct"] > 0],
+                key=lambda r: r["delta_pct"],
+                reverse=True,
+            )[:limit]
+
+            # For each spike hour, find the single article with the most mentions
+            # as a proxy for the trigger event
+            spikes = []
+            for spike in top_spikes:
+                trigger = await conn.fetchrow("""
+                    SELECT url, source, country_code, sentiment
+                    FROM signals_v2
+                    WHERE timestamp >= $1
+                      AND timestamp < $1 + INTERVAL '1 hour'
+                      AND themes IS NOT NULL
+                      AND $2 = ANY(themes)
+                      AND url IS NOT NULL
+                    ORDER BY timestamp ASC
+                    LIMIT 1
+                """, spike["hour"], theme_code)
+
+                spikes.append({
+                    "hour": spike["hour"].isoformat(),
+                    "count": spike["count"],
+                    "prev_count": spike["prev_count"],
+                    "delta_pct": spike["delta_pct"],
+                    "trigger": {
+                        "url": trigger["url"],
+                        "source": trigger["source"],
+                        "country_code": trigger["country_code"],
+                        "sentiment": round(float(trigger["sentiment"] or 0), 3),
+                    } if trigger else None,
+                })
+
+            result = {
+                "theme_code": theme_code,
+                "hours": hours,
+                "spikes": spikes,
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+            if hasattr(app.state, "redis") and app.state.redis:
+                try:
+                    await app.state.redis.setex(cache_key, 300, _json.dumps(result, default=str))
+                except Exception:
+                    pass
+
+            return result
+
+    except Exception as e:
+        traceback.print_exc()
+        return {"theme_code": theme_code, "spikes": [], "error": str(e)}
+
+
 @app.get("/api/v2/correlation")
 async def get_correlation(
     mode: str = Query("country", description="mode: 'country' or 'theme'"),

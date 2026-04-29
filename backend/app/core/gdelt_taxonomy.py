@@ -449,13 +449,152 @@ def get_all_categories() -> List[str]:
     return list(THEME_CATEGORIES.keys())
 
 
+# ===== INVESTIGATIVE CONCEPT MAP =====
+# Maps human investigative concepts to GDELT theme bundles.
+# Used by /api/v2/concept/{slug} to power free-text investigation entry points.
+# Each concept has a slug, label, description, and a list of GDELT theme codes
+# that together represent the concept's signal footprint.
+
+CONCEPT_MAP: Dict[str, dict] = {
+    "blood-diamonds": {
+        "label": "Blood Diamonds",
+        "description": "Conflict minerals — gemstones funding armed groups, illicit trade routes, sanctions evasion",
+        "themes": ["ARMEDCONFLICT", "KILL", "CRIME", "ECON_TRADE", "WB_507_ENERGY_AND_EXTRACTIVES", "SEIZE"],
+        "related_concepts": ["cobalt-mining", "arms-trafficking"],
+    },
+    "cobalt-mining": {
+        "label": "Cobalt Mining",
+        "description": "DRC and Central Africa cobalt extraction, child labor, EV supply chain, human rights",
+        "themes": ["WB_507_ENERGY_AND_EXTRACTIVES", "LABOR", "WB_HUMAN_RIGHTS", "ECON_TRADE", "ARMEDCONFLICT"],
+        "related_concepts": ["blood-diamonds", "climate-minerals"],
+    },
+    "arms-trafficking": {
+        "label": "Arms Trafficking",
+        "description": "Illicit weapons trade, smuggling networks, embargo violations, proxy wars",
+        "themes": ["ARMEDCONFLICT", "SEIZE", "CRIME", "MILITARY", "TAX_TERROR"],
+        "related_concepts": ["blood-diamonds", "drug-trafficking"],
+    },
+    "drug-trafficking": {
+        "label": "Drug Trafficking",
+        "description": "Narco-trafficking networks, cartel violence, drug interdiction, money laundering",
+        "themes": ["CRIME", "ARREST", "KILL", "TAX_TERROR", "ECON_TRADE"],
+        "related_concepts": ["arms-trafficking", "money-laundering"],
+    },
+    "money-laundering": {
+        "label": "Money Laundering",
+        "description": "Financial crime, shell companies, offshore accounts, sanctions evasion",
+        "themes": ["CRIME", "TAX_FNCACT", "ECON_TRADE", "ARREST", "WB_ANTI_CORRUPTION"],
+        "related_concepts": ["drug-trafficking", "corruption"],
+    },
+    "corruption": {
+        "label": "Corruption",
+        "description": "Bribery, embezzlement, state capture, procurement fraud, kleptocracy",
+        "themes": ["WB_ANTI_CORRUPTION", "WB_GOVERNANCE", "CRIME", "ARREST", "PROTEST"],
+        "related_concepts": ["money-laundering", "sanctions"],
+    },
+    "sanctions": {
+        "label": "Sanctions & Embargoes",
+        "description": "International sanctions, asset freezes, trade restrictions, compliance",
+        "themes": ["ECON_TRADE", "MILITARY", "SEIZE", "WB_TRADE_POLICY", "WB_GOVERNANCE"],
+        "related_concepts": ["arms-trafficking", "corruption"],
+    },
+    "refugee-crisis": {
+        "label": "Refugee Crisis",
+        "description": "Forced displacement, asylum seekers, border crossings, humanitarian corridors",
+        "themes": ["MIGRATION", "WB_HUMAN_RIGHTS", "ARMEDCONFLICT", "DISASTER", "WB_GOVERNANCE"],
+        "related_concepts": ["armed-conflict", "humanitarian-aid"],
+    },
+    "humanitarian-aid": {
+        "label": "Humanitarian Aid",
+        "description": "Emergency relief, food security, aid access, NGO operations, blockades",
+        "themes": ["DISASTER", "WB_HUMAN_RIGHTS", "HEALTH", "ARMEDCONFLICT", "UNGP_DISASTER"],
+        "related_concepts": ["refugee-crisis", "food-security"],
+    },
+    "food-security": {
+        "label": "Food Security",
+        "description": "Famine, food price crises, agricultural collapse, supply chain disruption",
+        "themes": ["AGRICULTURE", "DISASTER", "ECON_INFLATION", "WB_1637_AGRICULTURE_AND_FOOD", "UNGP_DISASTER"],
+        "related_concepts": ["humanitarian-aid", "climate-crisis"],
+    },
+    "climate-crisis": {
+        "label": "Climate Crisis",
+        "description": "Extreme weather, climate migration, emissions, energy transition, IPCC",
+        "themes": ["WB_2810_CLIMATE_CHANGE", "DISASTER", "ENERGY", "AGRICULTURE", "MIGRATION"],
+        "related_concepts": ["food-security", "climate-minerals"],
+    },
+    "climate-minerals": {
+        "label": "Critical Minerals",
+        "description": "Lithium, cobalt, rare earths — energy transition supply chains and geopolitics",
+        "themes": ["WB_507_ENERGY_AND_EXTRACTIVES", "ECON_TRADE", "WB_TRADE_POLICY", "ARMEDCONFLICT"],
+        "related_concepts": ["cobalt-mining", "climate-crisis"],
+    },
+    "disinformation": {
+        "label": "Disinformation & Propaganda",
+        "description": "Information warfare, state media manipulation, fake news, influence operations",
+        "themes": ["MEDIA_MSM", "CYBERATTACK", "MILITARY", "WB_GOVERNANCE", "TAX_TERROR"],
+        "related_concepts": ["cyber-warfare", "elections"],
+    },
+    "cyber-warfare": {
+        "label": "Cyber Warfare",
+        "description": "State-sponsored hacking, critical infrastructure attacks, espionage, ransomware",
+        "themes": ["CYBERATTACK", "MILITARY", "WB_GOVERNANCE", "TAX_TERROR", "TECHNOLOGY"],
+        "related_concepts": ["disinformation", "sanctions"],
+    },
+    "elections": {
+        "label": "Electoral Integrity",
+        "description": "Election interference, voter suppression, disputed results, democratic backsliding",
+        "themes": ["ELECTIONS", "PROTEST", "WB_GOVERNANCE", "MEDIA_MSM", "DISINFORMATION"],
+        "related_concepts": ["disinformation", "corruption"],
+    },
+    "war-crimes": {
+        "label": "War Crimes & Atrocities",
+        "description": "Civilian targeting, chemical weapons, genocide, ICC prosecutions",
+        "themes": ["ARMEDCONFLICT", "KILL", "WB_HUMAN_RIGHTS", "CRISISLEX_C03_DEAD_WOUNDED", "WB_GOVERNANCE"],
+        "related_concepts": ["refugee-crisis", "sanctions"],
+    },
+    "nuclear-threat": {
+        "label": "Nuclear Threat",
+        "description": "Nuclear weapons programs, proliferation, deterrence, IAEA inspections",
+        "themes": ["MILITARY", "TAX_TERROR", "ECON_TRADE", "WB_GOVERNANCE", "ARMEDCONFLICT"],
+        "related_concepts": ["arms-trafficking", "sanctions"],
+    },
+}
+
+
+def get_concept(slug: str) -> dict | None:
+    """Return concept definition by slug, or None if not found."""
+    return CONCEPT_MAP.get(slug)
+
+
+def search_concepts(query: str) -> list[dict]:
+    """Search concepts by label or description. Returns list of {slug, ...concept} dicts."""
+    q = query.lower()
+    results = []
+    for slug, concept in CONCEPT_MAP.items():
+        if (q in concept["label"].lower() or
+                q in concept["description"].lower() or
+                any(q in t.lower() for t in concept["themes"])):
+            results.append({"slug": slug, **concept})
+    return results
+
+
+def get_all_concepts() -> list[dict]:
+    """Return all concepts as a list of {slug, label, description} dicts."""
+    return [{"slug": s, "label": c["label"], "description": c["description"]}
+            for s, c in CONCEPT_MAP.items()]
+
+
 __all__ = [
     "THEME_TAXONOMY",
     "THEME_CATEGORIES",
+    "CONCEPT_MAP",
     "get_theme_label",
     "get_theme_category",
     "get_themes_by_category",
     "search_themes",
     "get_all_theme_codes",
     "get_all_categories",
+    "get_concept",
+    "search_concepts",
+    "get_all_concepts",
 ]
