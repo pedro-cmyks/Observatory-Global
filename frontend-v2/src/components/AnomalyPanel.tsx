@@ -3,6 +3,7 @@ import { useCrisis } from '../contexts/CrisisContext'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { resolveCountryName } from '../lib/countryNames'
+import { getThemeLabel } from '../lib/themeLabels'
 import './AnomalyPanel.css'
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -115,8 +116,8 @@ export const AnomalyPanel: React.FC = () => {
                                     <div key={a.theme} className="ap-row ap-row--theme clickable"
                                         onClick={() => setFocus('theme', a.theme)}>
                                         <span className="ap-badge" style={{ color: '#f59e0b' }}>↑</span>
-                                        <span className="ap-country" style={{ textTransform: 'uppercase' }}>
-                                            {a.theme.replace(/_/g, ' ').slice(0, 20)}
+                                        <span className="ap-country" title={a.theme}>
+                                            {getThemeLabel(a.theme).slice(0, 24)}
                                         </span>
                                         <span className="ap-mult">{a.multiplier.toFixed(1)}×</span>
                                     </div>

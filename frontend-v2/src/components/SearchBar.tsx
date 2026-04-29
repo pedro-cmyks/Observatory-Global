@@ -27,10 +27,18 @@ interface CountryResult {
     name: string
 }
 
+interface ConceptResult {
+    slug: string
+    label: string
+    description: string
+    themes: string[]
+}
+
 interface SearchResult {
     themes: ThemeResult[]
     persons: PersonResult[]
     countries: CountryResult[]
+    concepts?: ConceptResult[]
 }
 
 interface SearchBarProps {
@@ -54,12 +62,17 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
         }
         setLoading(true)
         try {
-            const res = await fetch(`/api/v2/search?q=${encodeURIComponent(q)}&hours=168`)
-            if (res.ok) {
-                const data = await res.json()
-                setResults(data)
-                setIsOpen(true)
+            const [mainRes, conceptsRes] = await Promise.all([
+                fetch(`/api/v2/search?q=${encodeURIComponent(q)}&hours=168`),
+                fetch(`/api/v2/concepts/search?q=${encodeURIComponent(q)}&limit=4`),
+            ])
+            const data: SearchResult = mainRes.ok ? await mainRes.json() : { themes: [], persons: [], countries: [] }
+            if (conceptsRes.ok) {
+                const conceptData = await conceptsRes.json()
+                data.concepts = conceptData.concepts || []
             }
+            setResults(data)
+            setIsOpen(true)
         } catch {
             // silent
         } finally {
@@ -101,10 +114,21 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
         close()
     }
 
+    const handleConceptClick = (c: ConceptResult) => {
+        // Open the primary theme of the concept bundle as a proxy view
+        const primaryTheme = c.themes[0]
+        if (primaryTheme) {
+            setFocus('theme', primaryTheme, c.label)
+            onThemeSelect(primaryTheme)
+        }
+        close()
+    }
+
     const hasResults = results && (
         results.themes.length > 0 ||
         results.persons.length > 0 ||
-        results.countries.length > 0
+        results.countries.length > 0 ||
+        (results.concepts?.length ?? 0) > 0
     )
 
     return (
@@ -135,6 +159,19 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
                                 <div key={c.code} className="search-item" onClick={() => handleCountryClick(c)}>
                                     <span className="search-item-tag country-tag">{c.code}</span>
                                     <span className="search-item-name">{c.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {results?.concepts && results.concepts.length > 0 && (
+                        <div className="search-section">
+                            <div className="search-section-label">Investigations</div>
+                            {results.concepts.map(c => (
+                                <div key={c.slug} className="search-item search-item--concept" onClick={() => handleConceptClick(c)}>
+                                    <span className="search-item-tag concept-tag">INV</span>
+                                    <span className="search-item-name">{c.label}</span>
+                                    <span className="search-item-meta search-item-meta--desc">{c.description.slice(0, 60)}…</span>
                                 </div>
                             ))}
                         </div>

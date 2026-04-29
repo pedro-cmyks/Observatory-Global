@@ -143,6 +143,26 @@
     border: 1px solid rgba(167, 139, 250, 0.25);
 }
 
+.concept-tag {
+    background: rgba(251, 191, 36, 0.12);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+.search-item--concept {
+    flex-wrap: wrap;
+    gap: 2px;
+}
+
+.search-item-meta--desc {
+    width: 100%;
+    white-space: normal;
+    font-size: 10px;
+    color: #4a5568;
+    padding-left: 2px;
+    line-height: 1.4;
+}
+
 .search-item-name {
     flex: 1;
     font-size: 12px;

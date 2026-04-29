@@ -9,7 +9,9 @@ Based on GDELT_SCHEMA_ANALYSIS.md lines 240-287 and real GDELT GKG taxonomy.
 Top 50 most common themes (covers ~85% of real GDELT data)
 """
 
-from typing import Dict, List
+import difflib
+import re
+from typing import Dict, List, Optional
 
 # ===== TOP 50 MOST COMMON GDELT THEMES =====
 # Each theme is a dict with: code, label, category, description, aliases
@@ -21,14 +23,20 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "label": "Terrorism",
         "category": "security",
         "description": "Terrorist activities, extremism, and related security threats",
-        "aliases": ["terror", "terrorism", "extremism", "terrorist attacks"]
+        "aliases": [
+            "terror", "terrorism", "extremism", "terrorist attacks",
+            "terrorismo", "terrorista", "extremismo", "atentado"
+        ]
     },
     "ARMEDCONFLICT": {
         "code": "ARMEDCONFLICT",
         "label": "Armed Conflict",
         "category": "security",
         "description": "Military conflicts, warfare, armed clashes",
-        "aliases": ["war", "conflict", "military", "warfare", "combat"]
+        "aliases": [
+            "war", "conflict", "military", "warfare", "combat",
+            "guerra", "conflicto", "conflicto armado", "combate", "enfrentamiento"
+        ]
     },
     "CRISISLEX_C03_DEAD_WOUNDED": {
         "code": "CRISISLEX_C03_DEAD_WOUNDED",
@@ -42,14 +50,20 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "label": "Violence",
         "category": "security",
         "description": "Acts of violence, attacks, and violent incidents",
-        "aliases": ["violence", "attacks", "violent incidents"]
+        "aliases": [
+            "violence", "attacks", "violent incidents",
+            "violencia", "ataque", "ataques"
+        ]
     },
     "CRIME": {
         "code": "CRIME",
         "label": "Crime & Law Enforcement",
         "category": "security",
         "description": "Criminal activities and law enforcement responses",
-        "aliases": ["crime", "criminal", "law enforcement", "police"]
+        "aliases": [
+            "crime", "criminal", "law enforcement", "police",
+            "crimen", "delito", "policía", "policia", "delincuencia"
+        ]
     },
     "ARREST": {
         "code": "ARREST",
@@ -63,14 +77,20 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "label": "Killings",
         "category": "security",
         "description": "Killings and homicides",
-        "aliases": ["killing", "murder", "homicide", "death"]
+        "aliases": [
+            "killing", "murder", "homicide", "death",
+            "asesinato", "homicidio", "muerte", "matanza", "femicidio", "feminicidio"
+        ]
     },
     "MILITARY": {
         "code": "MILITARY",
         "label": "Military Affairs",
         "category": "security",
         "description": "Military operations, defense policy, armed forces",
-        "aliases": ["military", "defense", "armed forces", "troops", "army"]
+        "aliases": [
+            "military", "defense", "armed forces", "troops", "army",
+            "militar", "ejército", "ejercito", "fuerzas armadas", "tropas", "defensa"
+        ]
     },
     "SEIZE": {
         "code": "SEIZE",
@@ -100,14 +120,20 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "label": "Inflation",
         "category": "economy",
         "description": "Inflation rates, price increases, cost of living",
-        "aliases": ["inflation", "prices", "cost of living", "price increases"]
+        "aliases": [
+            "inflation", "prices", "cost of living", "price increases",
+            "inflación", "inflacion", "precios", "costo de vida", "encarecimiento"
+        ]
     },
     "ECON_TRADE": {
         "code": "ECON_TRADE",
         "label": "International Trade",
         "category": "economy",
         "description": "Trade agreements, exports, imports, tariffs",
-        "aliases": ["trade", "exports", "imports", "tariffs", "trade deals"]
+        "aliases": [
+            "trade", "exports", "imports", "tariffs", "trade deals",
+            "comercio", "exportaciones", "importaciones", "aranceles", "tratado comercial"
+        ]
     },
     "ECON_BANKRUPTCY": {
         "code": "ECON_BANKRUPTCY",
@@ -165,28 +191,40 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "label": "Elections",
         "category": "politics",
         "description": "Elections, voting, electoral processes",
-        "aliases": ["election", "voting", "ballot", "electoral", "polls"]
+        "aliases": [
+            "election", "voting", "ballot", "electoral", "polls",
+            "elecciones", "eleccion", "elección", "votación", "votacion", "comicios", "urnas"
+        ]
     },
     "GOVERNMENT": {
         "code": "GOVERNMENT",
         "label": "Government Actions",
         "category": "politics",
         "description": "Government policies, decisions, and actions",
-        "aliases": ["government", "policy", "legislation", "law"]
+        "aliases": [
+            "government", "policy", "legislation", "law",
+            "gobierno", "política", "politica", "ley", "legislación", "legislacion"
+        ]
     },
     "PROTEST": {
         "code": "PROTEST",
         "label": "Protests & Demonstrations",
         "category": "politics",
         "description": "Public protests, demonstrations, civil unrest",
-        "aliases": ["protest", "demonstration", "rally", "civil unrest", "activism"]
+        "aliases": [
+            "protest", "demonstration", "rally", "civil unrest", "activism",
+            "protesta", "manifestación", "manifestacion", "marcha", "disturbios", "movilización"
+        ]
     },
     "CORRUPTION": {
         "code": "CORRUPTION",
         "label": "Corruption",
         "category": "politics",
         "description": "Political corruption, bribery, fraud",
-        "aliases": ["corruption", "bribery", "fraud", "graft", "embezzlement"]
+        "aliases": [
+            "corruption", "bribery", "fraud", "graft", "embezzlement",
+            "corrupción", "corrupcion", "soborno", "fraude", "malversación", "malversacion"
+        ]
     },
     "TAX_DIPLOMACY": {
         "code": "TAX_DIPLOMACY",
@@ -237,7 +275,10 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "label": "Climate Change",
         "category": "environment",
         "description": "Climate change, global warming, environmental policy",
-        "aliases": ["climate change", "global warming", "climate crisis", "climate policy"]
+        "aliases": [
+            "climate change", "global warming", "climate crisis", "climate policy", "environment",
+            "cambio climático", "cambio climatico", "calentamiento global", "crisis climática", "medio ambiente", "ambiente"
+        ]
     },
     "ENV_FORESTS": {
         "code": "ENV_FORESTS",
@@ -274,7 +315,10 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "label": "Public Health",
         "category": "health",
         "description": "Public health issues, healthcare, disease outbreaks",
-        "aliases": ["health", "healthcare", "medical", "disease", "pandemic"]
+        "aliases": [
+            "health", "healthcare", "medical", "disease", "pandemic",
+            "salud", "sanidad", "médico", "medico", "enfermedad", "pandemia", "epidemia"
+        ]
     },
     "EDUCATION": {
         "code": "EDUCATION",
@@ -295,7 +339,10 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "label": "Migration & Refugees",
         "category": "social",
         "description": "Migration, refugees, asylum, immigration",
-        "aliases": ["migration", "refugees", "asylum", "immigration", "migrants"]
+        "aliases": [
+            "migration", "refugees", "asylum", "immigration", "migrants",
+            "migración", "migracion", "refugiados", "asilo", "inmigración", "inmigracion", "migrantes"
+        ]
     },
     "RELIGION": {
         "code": "RELIGION",
@@ -415,28 +462,91 @@ def get_themes_by_category(category: str) -> List[str]:
     return THEME_CATEGORIES.get(category, [])
 
 
-def search_themes(query: str, limit: int = 10) -> List[dict]:
-    """Search themes by label, code, or alias."""
-    query_lower = query.lower()
-    matches = []
+def _normalize(s: str) -> str:
+    """Lowercase + strip Spanish/Latin diacritics + collapse whitespace.
+
+    Used to make search robust to accents ("inflación" → "inflacion") and to typing
+    variations. Stdlib only — uses NFKD decomposition via unicodedata.
+    """
+    import unicodedata
+    s = unicodedata.normalize("NFKD", s.lower())
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def _tokenize(s: str) -> List[str]:
+    """Split a normalized string into alphanumeric tokens, dropping length-1 noise."""
+    return [t for t in re.split(r"[^a-z0-9]+", _normalize(s)) if len(t) > 1]
+
+
+def _fuzzy_token_score(query_tokens: List[str], target_tokens: List[str]) -> float:
+    """Score how well query tokens match target tokens.
+
+    For each query token, find its best fuzzy match in target tokens using
+    difflib's SequenceMatcher ratio. Average across query tokens. Tokens shorter
+    than 3 chars require exact match (avoids "el" matching everything).
+
+    Returns 0.0..1.0. >=0.75 is a strong signal; >=0.6 is a weak hit; <0.6 is noise.
+    """
+    if not query_tokens or not target_tokens:
+        return 0.0
+    target_set = set(target_tokens)
+    total = 0.0
+    for qt in query_tokens:
+        if len(qt) < 3:
+            total += 1.0 if qt in target_set else 0.0
+            continue
+        # Substring match is a perfect hit (handles "viol" → "violence")
+        if any(qt in tt or tt in qt for tt in target_tokens):
+            total += 1.0
+            continue
+        # Otherwise fuzzy ratio against best target token (handles typos)
+        best = max(
+            (difflib.SequenceMatcher(None, qt, tt).ratio() for tt in target_tokens),
+            default=0.0,
+        )
+        total += best
+    return total / len(query_tokens)
+
+
+def search_themes(query: str, limit: int = 10, min_score: float = 0.6) -> List[dict]:
+    """Search themes by label, code, or alias with typo + accent tolerance.
+
+    Pipeline:
+      1. Exact code match → top result.
+      2. Tokenize query, score against (label + aliases) tokens for each theme.
+      3. Return themes scoring above min_score, sorted descending.
+
+    Handles: typos ("viollence"), accents ("inflación"), Spanish ("diamantes"),
+    multi-word compounds ("blood diamonds" → matches via token overlap).
+    """
+    if not query or not query.strip():
+        return []
+
+    q_norm = _normalize(query)
+    q_tokens = _tokenize(query)
+    if not q_tokens:
+        return []
+
+    scored: List[tuple[float, dict]] = []
 
     for theme_code, theme in THEME_TAXONOMY.items():
         # Exact code match (highest priority)
-        if theme_code.lower() == query_lower:
-            matches.insert(0, theme)
+        if theme_code.lower() == q_norm:
+            scored.append((10.0, theme))
             continue
 
-        # Label match
-        if query_lower in theme["label"].lower():
-            matches.append(theme)
-            continue
+        # Build target token bag: label + aliases
+        target_tokens = _tokenize(theme["label"])
+        for alias in theme["aliases"]:
+            target_tokens.extend(_tokenize(alias))
 
-        # Alias match
-        if any(query_lower in alias.lower() for alias in theme["aliases"]):
-            matches.append(theme)
-            continue
+        score = _fuzzy_token_score(q_tokens, target_tokens)
+        if score >= min_score:
+            scored.append((score, theme))
 
-    return matches[:limit]
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [t for _, t in scored[:limit]]
 
 
 def get_all_theme_codes() -> List[str]:
@@ -558,6 +668,42 @@ CONCEPT_MAP: Dict[str, dict] = {
         "themes": ["MILITARY", "TAX_TERROR", "ECON_TRADE", "WB_GOVERNANCE", "ARMEDCONFLICT"],
         "related_concepts": ["arms-trafficking", "sanctions"],
     },
+    "human-trafficking": {
+        "label": "Human Trafficking",
+        "description": "Modern slavery, forced labor, sex trafficking, smuggling networks, exploitation",
+        "themes": ["CRIME", "ARREST", "WB_HUMAN_RIGHTS", "MIGRATION", "LABOR"],
+        "related_concepts": ["arms-trafficking", "drug-trafficking", "refugee-crisis"],
+    },
+    "femicide": {
+        "label": "Femicide & Gender Violence",
+        "description": "Killings of women, gender-based violence, domestic violence, impunity",
+        "themes": ["KILL", "CRISISLEX_C06_VIOLENCE", "WB_HUMAN_RIGHTS", "CRIME", "WB_632_WOMEN_IN_POLITICS"],
+        "related_concepts": ["human-trafficking", "state-repression"],
+    },
+    "genocide": {
+        "label": "Genocide & Mass Atrocities",
+        "description": "Ethnic cleansing, mass killings, crimes against humanity, ICC referrals",
+        "themes": ["KILL", "ARMEDCONFLICT", "WB_HUMAN_RIGHTS", "CRISISLEX_C03_DEAD_WOUNDED", "MIGRATION"],
+        "related_concepts": ["war-crimes", "refugee-crisis"],
+    },
+    "press-freedom": {
+        "label": "Press Freedom",
+        "description": "Journalist safety, media censorship, attacks on press, legal harassment of reporters",
+        "themes": ["MEDIA_MSM", "WB_HUMAN_RIGHTS", "WB_GOVERNANCE", "ARREST", "KILL"],
+        "related_concepts": ["disinformation", "state-repression"],
+    },
+    "pandemic-disease": {
+        "label": "Pandemic & Disease Outbreaks",
+        "description": "Epidemic outbreaks, vaccine access, public health emergencies, WHO response",
+        "themes": ["HEALTH", "UNGP_DISASTER", "DISASTER_RESPONSE", "WB_GOVERNANCE", "ECON_TRADE"],
+        "related_concepts": ["humanitarian-aid", "climate-crisis"],
+    },
+    "state-repression": {
+        "label": "State Repression",
+        "description": "Authoritarian crackdowns, political prisoners, mass arrests, dissent suppression",
+        "themes": ["ARREST", "PROTEST", "WB_HUMAN_RIGHTS", "WB_GOVERNANCE", "MILITARY"],
+        "related_concepts": ["press-freedom", "femicide", "corruption"],
+    },
 }
 
 
@@ -566,16 +712,70 @@ def get_concept(slug: str) -> dict | None:
     return CONCEPT_MAP.get(slug)
 
 
-def search_concepts(query: str) -> list[dict]:
-    """Search concepts by label or description. Returns list of {slug, ...concept} dicts."""
-    q = query.lower()
-    results = []
+def search_concepts(query: str, limit: int = 10, min_score: float = 0.7) -> list[dict]:
+    """Search concepts by label, description, slug, or theme codes with fuzzy matching.
+
+    Concepts are editorial frames, so we score generously (lower threshold than themes)
+    and weight label hits above description hits. Slug is also tokenized (handles
+    "blood diamonds" → "blood-diamonds" by matching tokens).
+
+    Returns list of {slug, ...concept, _score} sorted by relevance.
+    """
+    if not query or not query.strip():
+        return []
+
+    q_norm = _normalize(query)
+    q_tokens = _tokenize(query)
+    if not q_tokens:
+        return []
+
+    scored: list[tuple[float, dict]] = []
+
     for slug, concept in CONCEPT_MAP.items():
-        if (q in concept["label"].lower() or
-                q in concept["description"].lower() or
-                any(q in t.lower() for t in concept["themes"])):
-            results.append({"slug": slug, **concept})
-    return results
+        # Exact slug match → top
+        if slug == q_norm or slug.replace("-", " ") == q_norm:
+            scored.append((10.0, {"slug": slug, **concept}))
+            continue
+
+        label_tokens = _tokenize(concept["label"]) + _tokenize(slug.replace("-", " "))
+        desc_tokens = _tokenize(concept["description"])
+        # Theme codes contribute too — "KILL" search hits "femicide", "genocide" concepts
+        theme_tokens = []
+        for code in concept["themes"]:
+            theme_tokens.extend(_tokenize(code.replace("_", " ")))
+
+        label_score = _fuzzy_token_score(q_tokens, label_tokens)
+        desc_score = _fuzzy_token_score(q_tokens, desc_tokens)
+        theme_score = _fuzzy_token_score(q_tokens, theme_tokens)
+
+        # Weighted: label is the editorial frame, description is supporting, themes are weakest
+        score = max(label_score, 0.7 * desc_score, 0.5 * theme_score)
+        if score >= min_score:
+            scored.append((score, {"slug": slug, **concept}))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [c for _, c in scored[:limit]]
+
+
+def find_closest_concepts(query: str, limit: int = 3) -> list[dict]:
+    """Return up to `limit` closest concepts as 'did you mean' suggestions.
+
+    Used when a query yields no concept hits AND no theme hits. We compute a
+    weaker fuzzy match (no min_score floor) so we always have something to suggest.
+    """
+    if not query or not query.strip():
+        return []
+    q_tokens = _tokenize(query)
+    if not q_tokens:
+        return []
+
+    scored: list[tuple[float, dict]] = []
+    for slug, concept in CONCEPT_MAP.items():
+        label_tokens = _tokenize(concept["label"]) + _tokenize(slug.replace("-", " "))
+        score = _fuzzy_token_score(q_tokens, label_tokens)
+        scored.append((score, {"slug": slug, "label": concept["label"], "description": concept["description"]}))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [c for s, c in scored[:limit] if s > 0.0]
 
 
 def get_all_concepts() -> list[dict]:
@@ -596,5 +796,6 @@ __all__ = [
     "get_all_categories",
     "get_concept",
     "search_concepts",
+    "find_closest_concepts",
     "get_all_concepts",
 ]

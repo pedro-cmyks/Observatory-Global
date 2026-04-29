@@ -3149,6 +3149,65 @@ async def list_concepts():
     return {"concepts": get_all_concepts()}
 
 
+@app.get("/api/v2/concepts/search")
+async def search_concepts_endpoint(
+    q: str = Query(..., min_length=1, description="Free-text query (English or Spanish, typos OK)"),
+    limit: int = Query(10, ge=1, le=25),
+):
+    """Hybrid investigative search.
+
+    Pipeline (tries each step until something hits):
+      1. Fuzzy concept match — curated investigative frames (blood-diamonds, femicide, ...).
+      2. Fuzzy theme match — falls back to GDELT themes if no concept matches.
+      3. "Did you mean" — suggest closest concepts when nothing matched.
+
+    Always returns a usable response: concepts, themes, suggestions, or all three.
+    Stdlib-only (difflib + unicodedata). No new pip deps. No LLM calls.
+    """
+    from app.core.gdelt_taxonomy import (
+        search_concepts as _search_concepts,
+        search_themes as _search_themes,
+        find_closest_concepts,
+    )
+
+    concepts = _search_concepts(q, limit=limit)
+    # Only run theme fallback when no concepts hit — avoids noisy secondary matches
+    # ("femicide" should NOT also surface "Inflation" as a theme suggestion)
+    themes = _search_themes(q, limit=limit) if not concepts else []
+    suggestions = []
+    if not concepts and not themes:
+        suggestions = find_closest_concepts(q, limit=3)
+
+    # Trim payload — frontend doesn't need every field, just enough to render result rows
+    concept_results = [
+        {
+            "slug": c["slug"],
+            "label": c["label"],
+            "description": c["description"],
+            "themes": c["themes"],
+            "related_concepts": c.get("related_concepts", []),
+        }
+        for c in concepts
+    ]
+    theme_results = [
+        {
+            "code": t["code"],
+            "label": t["label"],
+            "category": t["category"],
+            "description": t["description"],
+        }
+        for t in themes
+    ]
+
+    return {
+        "query": q,
+        "concepts": concept_results,
+        "themes": theme_results,
+        "suggestions": suggestions,
+        "result_count": len(concept_results) + len(theme_results),
+    }
+
+
 @app.get("/api/v2/concept/{slug}")
 async def get_concept_narratives(
     slug: str,
