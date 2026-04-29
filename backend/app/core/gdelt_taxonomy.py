@@ -24,8 +24,20 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "category": "security",
         "description": "Terrorist activities, extremism, and related security threats",
         "aliases": [
-            "terror", "terrorism", "extremism", "terrorist attacks",
-            "terrorismo", "terrorista", "extremismo", "atentado"
+            # EN
+            "terror", "terrorism", "extremism", "terrorist attacks", "jihadism", "bombing",
+            # ES
+            "terrorismo", "terrorista", "extremismo", "atentado", "yihadismo",
+            # FR
+            "terrorisme", "attentat", "extrémisme", "extremisme",
+            # PT
+            "terrorismo", "extremismo", "atentado terrorista",
+            # AR romanized
+            "irhab", "mutatarrif",
+            # DE
+            "terrorismus", "anschlag",
+            # RU romanized
+            "terrorizm", "ekstremizm",
         ]
     },
     "ARMEDCONFLICT": {
@@ -34,8 +46,20 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "category": "security",
         "description": "Military conflicts, warfare, armed clashes",
         "aliases": [
-            "war", "conflict", "military", "warfare", "combat",
-            "guerra", "conflicto", "conflicto armado", "combate", "enfrentamiento"
+            # EN
+            "war", "conflict", "warfare", "combat", "armed conflict", "battle", "fighting",
+            # ES
+            "guerra", "conflicto", "conflicto armado", "combate", "enfrentamiento", "batalla",
+            # FR
+            "guerre", "conflit", "conflit armé", "combat", "bataille",
+            # PT
+            "guerra", "conflito", "conflito armado", "combate", "batalha",
+            # AR romanized
+            "harb", "niza", "qital", "mujahadat",
+            # DE
+            "krieg", "konflikt", "kampf", "bewaffneter konflikt",
+            # RU romanized
+            "voyna", "konflikt", "boyevye deystviya",
         ]
     },
     "CRISISLEX_C03_DEAD_WOUNDED": {
@@ -43,7 +67,21 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "label": "Casualties",
         "category": "security",
         "description": "Deaths and injuries from conflicts or disasters",
-        "aliases": ["casualties", "deaths", "wounded", "fatalities", "injuries"]
+        "aliases": [
+            "casualties", "deaths", "wounded", "fatalities", "injuries", "dead", "victims",
+            # ES
+            "muertos", "heridos", "víctimas", "victimas", "bajas", "fallecidos",
+            # FR
+            "morts", "blessés", "blesses", "victimes", "décès", "deces",
+            # PT
+            "mortos", "feridos", "vítimas", "vitimas", "baixas",
+            # AR romanized
+            "qatla", "jariha", "dahaya",
+            # DE
+            "tote", "verwundete", "opfer",
+            # RU romanized
+            "zhertvy", "pogibshie", "ranenyye",
+        ]
     },
     "CRISISLEX_C06_VIOLENCE": {
         "code": "CRISISLEX_C06_VIOLENCE",
@@ -51,8 +89,20 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "category": "security",
         "description": "Acts of violence, attacks, and violent incidents",
         "aliases": [
-            "violence", "attacks", "violent incidents",
-            "violencia", "ataque", "ataques"
+            # EN
+            "violence", "attacks", "violent incidents", "assault", "brutality",
+            # ES
+            "violencia", "ataque", "ataques", "agresión", "agresion", "brutalidad",
+            # FR
+            "violence", "attaque", "brutalité", "brutalite", "agression",
+            # PT
+            "violência", "violencia", "ataque", "agressão", "agressao",
+            # AR romanized
+            "unf", "amal unfi", "itidaq",
+            # DE
+            "gewalt", "angriff", "brutalität",
+            # RU romanized
+            "nasiliye", "napadenie", "zhestokost",
         ]
     },
     "CRIME": {
@@ -61,8 +111,20 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "category": "security",
         "description": "Criminal activities and law enforcement responses",
         "aliases": [
-            "crime", "criminal", "law enforcement", "police",
-            "crimen", "delito", "policía", "policia", "delincuencia"
+            # EN
+            "crime", "criminal", "law enforcement", "police", "gang", "organized crime",
+            # ES
+            "crimen", "delito", "policía", "policia", "delincuencia", "banda", "crimen organizado",
+            # FR
+            "crime", "criminel", "police", "délinquance", "delinquance", "bande organisée",
+            # PT
+            "crime", "criminoso", "polícia", "policia", "delinquência", "gangue",
+            # AR romanized
+            "jarima", "mujrim", "shurta", "bultis",
+            # DE
+            "kriminalität", "verbrechen", "polizei", "organisierte kriminalität",
+            # RU romanized
+            "prestupnost", "prestupnik", "politsiya", "organizovannaya prestupnost",
         ]
     },
     "ARREST": {
@@ -70,16 +132,43 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "label": "Arrests",
         "category": "security",
         "description": "Law enforcement arrests and detentions",
-        "aliases": ["arrest", "detention", "custody"]
+        "aliases": [
+            # EN
+            "arrest", "detention", "custody", "imprisoned", "jailed", "detained",
+            # ES
+            "arresto", "detención", "detencion", "preso", "encarcelado", "detenido",
+            # FR
+            "arrestation", "détention", "detention", "emprisonné", "emprisonne",
+            # PT
+            "prisão", "prisao", "detenção", "detencao", "preso", "detido",
+            # AR romanized
+            "iqtiqal", "ihtijaz", "qabz",
+            # DE
+            "verhaftung", "festnahme", "inhaftierung",
+            # RU romanized
+            "arest", "zaderzhaniye", "zaklyucheniye",
+        ]
     },
     "KILL": {
         "code": "KILL",
         "label": "Killings",
         "category": "security",
-        "description": "Killings and homicides",
+        "description": "Deliberate killings: murder, targeted assassination, political violence",
         "aliases": [
-            "killing", "murder", "homicide", "death",
-            "asesinato", "homicidio", "muerte", "matanza", "femicidio", "feminicidio"
+            # EN
+            "killing", "murder", "homicide", "assassination", "executed", "shot dead", "lynching",
+            # ES
+            "asesinato", "homicidio", "muerte", "matanza", "femicidio", "feminicidio", "ejecutado", "linchamiento",
+            # FR
+            "meurtre", "homicide", "assassinat", "exécution", "tué",
+            # PT
+            "assassinato", "homicídio", "homicidio", "execução", "morte violenta", "feminicídio",
+            # AR romanized
+            "qatl", "ightiyyal", "ijdaam",
+            # DE
+            "mord", "tötung", "ermordung", "hinrichtung",
+            # RU romanized
+            "ubiystvo", "ubiystvo", "kazn", "likvidatsiya",
         ]
     },
     "MILITARY": {
@@ -88,8 +177,20 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "category": "security",
         "description": "Military operations, defense policy, armed forces",
         "aliases": [
-            "military", "defense", "armed forces", "troops", "army",
-            "militar", "ejército", "ejercito", "fuerzas armadas", "tropas", "defensa"
+            # EN
+            "military", "defense", "armed forces", "troops", "army", "navy", "air force", "soldier",
+            # ES
+            "militar", "ejército", "ejercito", "fuerzas armadas", "tropas", "defensa", "soldado",
+            # FR
+            "militaire", "armée", "armee", "forces armées", "soldats", "défense",
+            # PT
+            "militar", "exército", "exercito", "forças armadas", "soldado", "defesa",
+            # AR romanized
+            "jaysh", "askar", "quwwat musallaha", "difa",
+            # DE
+            "militär", "streitkräfte", "armee", "soldat", "verteidigung",
+            # RU romanized
+            "armiya", "voyennyye", "voyska", "soldat", "oborona",
         ]
     },
     "SEIZE": {
@@ -192,8 +293,20 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "category": "politics",
         "description": "Elections, voting, electoral processes",
         "aliases": [
-            "election", "voting", "ballot", "electoral", "polls",
-            "elecciones", "eleccion", "elección", "votación", "votacion", "comicios", "urnas"
+            # EN
+            "election", "voting", "ballot", "electoral", "polls", "vote",
+            # ES
+            "elecciones", "eleccion", "elección", "votación", "votacion", "comicios", "urnas", "voto",
+            # FR
+            "élection", "election", "scrutin", "vote", "suffrage",
+            # PT
+            "eleição", "eleicao", "eleições", "eleicoes", "votação", "voto", "pleito",
+            # AR romanized
+            "intikhabat", "tasawit", "iqtirac",
+            # DE
+            "wahl", "abstimmung", "wahlrecht",
+            # RU romanized
+            "vybory", "golosovaniye", "izbiratelnyy",
         ]
     },
     "GOVERNMENT": {
@@ -202,8 +315,20 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "category": "politics",
         "description": "Government policies, decisions, and actions",
         "aliases": [
-            "government", "policy", "legislation", "law",
-            "gobierno", "política", "politica", "ley", "legislación", "legislacion"
+            # EN
+            "government", "policy", "legislation", "law", "state", "regime", "administration",
+            # ES
+            "gobierno", "política", "politica", "ley", "legislación", "legislacion", "estado", "régimen",
+            # FR
+            "gouvernement", "politique", "loi", "état", "etat", "régime", "regime",
+            # PT
+            "governo", "política", "lei", "estado", "regime", "administração",
+            # AR romanized
+            "hukuma", "siyasa", "qanun", "dawla", "nizam",
+            # DE
+            "regierung", "politik", "gesetz", "staat", "regime",
+            # RU romanized
+            "pravitelstvo", "politika", "zakon", "gosudarstvo", "rezhim",
         ]
     },
     "PROTEST": {
@@ -212,8 +337,20 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "category": "politics",
         "description": "Public protests, demonstrations, civil unrest",
         "aliases": [
-            "protest", "demonstration", "rally", "civil unrest", "activism",
-            "protesta", "manifestación", "manifestacion", "marcha", "disturbios", "movilización"
+            # EN
+            "protest", "demonstration", "rally", "civil unrest", "uprising", "riot", "strike",
+            # ES
+            "protesta", "manifestación", "manifestacion", "marcha", "disturbios", "levantamiento", "huelga",
+            # FR
+            "manifestation", "protestation", "émeute", "emeute", "soulèvement", "grève", "greve",
+            # PT
+            "protesto", "manifestação", "manifestacao", "greve", "levante", "distúrbio",
+            # AR romanized
+            "ihtijaj", "muzahara", "intifada", "thawra",
+            # DE
+            "protest", "demonstration", "aufstand", "unruhen",
+            # RU romanized
+            "protest", "demonstratsiya", "bunt", "vosstaniye",
         ]
     },
     "CORRUPTION": {
@@ -222,8 +359,20 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "category": "politics",
         "description": "Political corruption, bribery, fraud",
         "aliases": [
-            "corruption", "bribery", "fraud", "graft", "embezzlement",
-            "corrupción", "corrupcion", "soborno", "fraude", "malversación", "malversacion"
+            # EN
+            "corruption", "bribery", "fraud", "graft", "embezzlement", "money laundering", "kickback",
+            # ES
+            "corrupción", "corrupcion", "soborno", "fraude", "malversación", "malversacion", "lavado de dinero",
+            # FR
+            "corruption", "pot-de-vin", "fraude", "détournement", "detournement", "blanchiment",
+            # PT
+            "corrupção", "corrupcao", "suborno", "fraude", "desvio", "lavagem de dinheiro",
+            # AR romanized
+            "fasad", "rishwa", "ghasil amwal",
+            # DE
+            "korruption", "bestechung", "betrug", "unterschlagung",
+            # RU romanized
+            "korruptsiya", "vzyatka", "moshennichestvo",
         ]
     },
     "TAX_DIPLOMACY": {
@@ -231,7 +380,22 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "label": "Diplomacy",
         "category": "politics",
         "description": "Diplomatic relations, negotiations, international cooperation",
-        "aliases": ["diplomacy", "diplomatic", "negotiations", "foreign relations"]
+        "aliases": [
+            # EN
+            "diplomacy", "diplomatic", "negotiations", "foreign relations", "embassy", "summit",
+            # ES
+            "diplomacia", "diplomático", "negociaciones", "relaciones exteriores", "embajada", "cumbre",
+            # FR
+            "diplomatie", "diplomatique", "négociations", "negociations", "ambassade", "sommet",
+            # PT
+            "diplomacia", "diplomático", "negociações", "relações exteriores", "embaixada", "cúpula",
+            # AR romanized
+            "diplomasiya", "mufawadat", "sifara",
+            # DE
+            "diplomatie", "verhandlungen", "auswärtige beziehungen", "botschaft",
+            # RU romanized
+            "diplomatiya", "peregovory", "inostrannye otnosheniya",
+        ]
     },
     "WB_632_WOMEN_IN_POLITICS": {
         "code": "WB_632_WOMEN_IN_POLITICS",
@@ -276,8 +440,20 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "category": "environment",
         "description": "Climate change, global warming, environmental policy",
         "aliases": [
-            "climate change", "global warming", "climate crisis", "climate policy", "environment",
-            "cambio climático", "cambio climatico", "calentamiento global", "crisis climática", "medio ambiente", "ambiente"
+            # EN
+            "climate change", "global warming", "climate crisis", "climate policy", "environment", "greenhouse",
+            # ES
+            "cambio climático", "cambio climatico", "calentamiento global", "crisis climática", "medio ambiente", "ambiente",
+            # FR
+            "changement climatique", "réchauffement climatique", "crise climatique", "environnement",
+            # PT
+            "mudança climática", "aquecimento global", "crise climática", "meio ambiente",
+            # AR romanized
+            "taghyir al-munakh", "ihtibas harari", "biya",
+            # DE
+            "klimawandel", "klimakrise", "erderwärmung", "umwelt",
+            # RU romanized
+            "izmenenie klimata", "globalnoye potepleniye", "klimaticheskiy krizis",
         ]
     },
     "ENV_FORESTS": {
@@ -285,7 +461,15 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "label": "Deforestation & Forests",
         "category": "environment",
         "description": "Forests, deforestation, conservation",
-        "aliases": ["forests", "deforestation", "rainforest", "conservation"]
+        "aliases": [
+            "forests", "deforestation", "rainforest", "conservation", "amazon",
+            # ES
+            "bosque", "deforestación", "selva", "amazonia",
+            # FR
+            "forêt", "deforestation", "déforestation",
+            # PT
+            "floresta", "desmatamento", "amazônia",
+        ]
     },
     "ENV_POLLUTION": {
         "code": "ENV_POLLUTION",
@@ -316,8 +500,20 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "category": "health",
         "description": "Public health issues, healthcare, disease outbreaks",
         "aliases": [
-            "health", "healthcare", "medical", "disease", "pandemic",
-            "salud", "sanidad", "médico", "medico", "enfermedad", "pandemia", "epidemia"
+            # EN
+            "health", "healthcare", "medical", "disease", "pandemic", "epidemic", "virus", "hospital",
+            # ES
+            "salud", "sanidad", "médico", "medico", "enfermedad", "pandemia", "epidemia", "virus", "hospital",
+            # FR
+            "santé", "sante", "médical", "medical", "maladie", "pandémie", "pandemie", "épidémie", "hôpital",
+            # PT
+            "saúde", "saude", "médico", "doença", "pandemia", "epidemia", "hospital",
+            # AR romanized
+            "sihha", "marida", "waba", "taun", "mustashfa",
+            # DE
+            "gesundheit", "medizin", "krankheit", "pandemie", "krankenhaus",
+            # RU romanized
+            "zdorovye", "meditsina", "bolezn", "pandemiya", "bolnitsa",
         ]
     },
     "EDUCATION": {
@@ -325,14 +521,39 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "label": "Education",
         "category": "social",
         "description": "Education policy, schools, universities",
-        "aliases": ["education", "schools", "university", "students", "learning"]
+        "aliases": [
+            "education", "schools", "university", "students", "learning",
+            # ES
+            "educación", "educacion", "escuela", "universidad", "estudiantes",
+            # FR
+            "éducation", "education", "école", "ecole", "université", "universite",
+            # PT
+            "educação", "escola", "universidade", "estudantes",
+            # DE
+            "bildung", "schule", "universität",
+        ]
     },
     "HUMAN_RIGHTS": {
         "code": "HUMAN_RIGHTS",
         "label": "Human Rights",
         "category": "social",
         "description": "Human rights issues, civil liberties, freedoms",
-        "aliases": ["human rights", "civil liberties", "freedoms", "rights"]
+        "aliases": [
+            # EN
+            "human rights", "civil liberties", "freedoms", "rights", "torture", "disappearances", "impunity",
+            # ES
+            "derechos humanos", "libertades civiles", "derechos", "tortura", "desapariciones", "impunidad",
+            # FR
+            "droits de l'homme", "droits humains", "libertés civiles", "torture", "impunité",
+            # PT
+            "direitos humanos", "liberdades civis", "direitos", "tortura", "impunidade",
+            # AR romanized
+            "huquq al-insan", "hurriya", "tadib",
+            # DE
+            "menschenrechte", "bürgerrechte", "folter", "straflosigkeit",
+            # RU romanized
+            "prava cheloveka", "grazhdanskiye svobody", "pytki",
+        ]
     },
     "MIGRATION": {
         "code": "MIGRATION",
@@ -340,8 +561,20 @@ THEME_TAXONOMY: Dict[str, dict] = {
         "category": "social",
         "description": "Migration, refugees, asylum, immigration",
         "aliases": [
-            "migration", "refugees", "asylum", "immigration", "migrants",
-            "migración", "migracion", "refugiados", "asilo", "inmigración", "inmigracion", "migrantes"
+            # EN
+            "migration", "refugees", "asylum", "immigration", "migrants", "displaced", "deportation",
+            # ES
+            "migración", "migracion", "refugiados", "asilo", "inmigración", "inmigracion", "migrantes", "desplazados",
+            # FR
+            "migration", "réfugiés", "refugies", "asile", "immigration", "migrants", "déplacés", "deplaces",
+            # PT
+            "migração", "refugiados", "asilo", "imigração", "migrantes", "deslocados",
+            # AR romanized
+            "hijra", "lajiin", "lahijun", "tahjir",
+            # DE
+            "migration", "flüchtlinge", "asyl", "einwanderung", "migranten",
+            # RU romanized
+            "migratsiya", "bezhentsy", "ubezhishche", "immigratsiya",
         ]
     },
     "RELIGION": {
