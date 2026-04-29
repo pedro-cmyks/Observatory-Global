@@ -143,13 +143,23 @@ export const NarrativeThreads: React.FC = () => {
             )}
             {narratives.map(n => {
                 const isFocused = filter.theme === n.theme_code
+                // Dim conditions:
+                //  - a theme is locked AND it's not this row → dim
+                //  - a country is locked AND this thread doesn't cover that country → dim
+                const dimByTheme = !!filter.theme && filter.theme !== n.theme_code
+                const dimByCountry = !!filter.country && !n.top_countries.includes(filter.country)
+                const isDimmed = dimByTheme || dimByCountry
                 const trendArrow = n.trend === 'accelerating' ? '▲' : n.trend === 'fading' ? '▼' : '→'
                 const spreadClass = n.spread_pct < 30 ? 'low' : n.spread_pct < 60 ? 'mid' : 'high'
+                // Plain-language hover hint — falls back to label when no description is available.
+                // Using native title attribute so it works without any new component plumbing.
+                const rowHint = `${getThemeLabel(n.theme_code)} — ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries. Click to open the topic breakdown.`
 
                 return (
                     <div
                         key={n.theme_code}
-                        className={`narrative-row ${isFocused ? 'focused' : ''}`}
+                        className={`narrative-row ${isFocused ? 'focused' : ''} ${isDimmed ? 'dimmed' : ''}`}
+                        title={rowHint}
                         onClick={() => handleClick(n)}
                     >
                         {/* Row 1: Label + stats */}

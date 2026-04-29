@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import MapGL from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
 import { DeckGLOverlay } from './components/DeckGLOverlay'
@@ -302,6 +302,10 @@ const COUNTRY_COORDS: Record<string, [number, number]> = {
 
 function AppContent() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  // Track whether we've hydrated from URL yet — we only want to do this once per mount
+  // before user interactions take over.
+  const hasHydratedFromUrl = useRef(false)
 
   // State
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
@@ -474,6 +478,7 @@ function AppContent() {
   // Theme selection handlers
   const handleThemeSelect = (theme: string, countryCode?: string, countryName?: string) => {
     setSelectedTheme({ theme, originCountry: countryCode, originCountryName: countryName })
+    setTheme(theme)  // sync FocusContext so NarrativeThreads highlights the active theme
     if (countryCode && countryName) {
       setRightPanelThemeCountry({ code: countryCode, name: countryName })
     } else {
@@ -483,6 +488,41 @@ function AppContent() {
 
   // Focus-aware data from provider - auto-refetches when focus/range changes
   const { nodes, flows, unfilteredFlows, acledConflicts, loading, refetch, timeRange, setTimeRange } = useFocusData()
+
+  // ---- URL <-> state sync (Investigation-as-URL) ----
+  // Hydrate filter + timeRange from URL once on mount.
+  useEffect(() => {
+    if (hasHydratedFromUrl.current) return
+    hasHydratedFromUrl.current = true
+    const urlTheme = searchParams.get('theme')
+    const urlCountry = searchParams.get('country')
+    const urlWindow = searchParams.get('window')
+    if (urlWindow && (TIME_RANGE_OPTIONS as readonly string[]).includes(urlWindow)) {
+      setTimeRange(urlWindow as any)
+    }
+    if (urlCountry) {
+      handleCountryClick(urlCountry)
+      setFocus('country', urlCountry, urlCountry)
+      setMapFlyCountry(urlCountry)
+    }
+    if (urlTheme) {
+      // setSelectedTheme is driven by the existing filter.theme effect below
+      setTheme(urlTheme)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Write filter + timeRange back to URL whenever they change.
+  // Use replace (not push) to avoid back-button spam — every click would otherwise
+  // create a new history entry.
+  useEffect(() => {
+    if (!hasHydratedFromUrl.current) return
+    const next = new URLSearchParams()
+    if (filter.theme) next.set('theme', filter.theme)
+    if (filter.country) next.set('country', filter.country)
+    if (timeRange && timeRange !== '24h') next.set('window', timeRange)
+    setSearchParams(next, { replace: true })
+  }, [filter.theme, filter.country, timeRange, setSearchParams])
 
   // Auto-focus on hottest region at load
   useEffect(() => {

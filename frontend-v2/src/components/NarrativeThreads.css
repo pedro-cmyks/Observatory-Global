@@ -37,6 +37,16 @@
     background: rgba(96, 165, 250, 0.06);
 }
 
+/* Dimmed when another thread is the active focus, or when a country focus
+   excludes this thread. Hover restores full opacity so it's still discoverable. */
+.narrative-row.dimmed {
+    opacity: 0.38;
+    transition: opacity 0.18s;
+}
+.narrative-row.dimmed:hover {
+    opacity: 0.85;
+}
+
 /* Header line: theme label + signal/country counts */
 .narrative-header {
     display: flex;

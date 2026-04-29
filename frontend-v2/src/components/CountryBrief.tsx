@@ -18,6 +18,7 @@ interface Story {
     source: string;
     timestamp: string;
     sentiment: number;
+    themeCode: string;
 }
 
 interface Indicators {
@@ -137,16 +138,21 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     topStories = (signals.signals || [])
                         .filter((s: any) => s.url)
                         .map((s: any) => {
-                            const rawTheme = s.themes?.[0] || '';
-                            const label = rawTheme ? getThemeLabel(rawTheme) : '';
+                            const themes: string[] = Array.isArray(s.themes) ? s.themes : [];
+                            // Pick first non-language theme so badges link to real narrative threads
+                            const primaryTheme = themes.find(
+                                (t: string) => t && !t.startsWith('WORLDLANGUAGES_') && !t.startsWith('TAX_WORLDLANGUAGES_')
+                            ) || themes[0] || '';
+                            const label = primaryTheme ? getThemeLabel(primaryTheme) : '';
                             // If the label is identical to the raw code, it's unmapped — omit it
-                            const title = (label && label !== rawTheme) ? label : '';
+                            const title = (label && label !== primaryTheme) ? label : '';
                             return {
                                 title,
                                 url: s.url,
                                 source: s.source,
                                 timestamp: s.timestamp,
-                                sentiment: s.sentiment
+                                sentiment: s.sentiment,
+                                themeCode: primaryTheme
                             };
                         });
                 }
@@ -336,6 +342,19 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                 rel="noopener noreferrer"
                                 className="story-item"
                             >
+                                {story.themeCode && (
+                                    <span
+                                        className="story-theme-badge"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            onThemeSelect?.(story.themeCode);
+                                        }}
+                                        title={`Activate narrative thread: ${getThemeLabel(story.themeCode)}`}
+                                    >
+                                        {getThemeLabel(story.themeCode)}
+                                    </span>
+                                )}
                                 {story.title && <p className="story-title">{story.title}</p>}
                                 <p className="story-meta">
                                     {story.source} • {new Date(story.timestamp).toLocaleTimeString()}
