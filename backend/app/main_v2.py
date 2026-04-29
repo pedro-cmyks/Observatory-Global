@@ -2310,18 +2310,21 @@ async def health():
             except Exception:
                 db_ok = False
             
-            # Get ingestion metrics
+            # Get ingestion metrics — use fast path to avoid full-table COUNT(*)
             result = await conn.fetchrow("""
-                SELECT 
+                SELECT
                     MAX(timestamp) as last_ts,
-                    COUNT(*) FILTER (WHERE timestamp > NOW() - INTERVAL '15 minutes') as rows_15m,
-                    COUNT(*) as total_signals
+                    COUNT(*) FILTER (WHERE timestamp > NOW() - INTERVAL '15 minutes') as rows_15m
                 FROM signals_v2
+                WHERE timestamp > NOW() - INTERVAL '24 hours'
             """)
+            total_signals_row = await conn.fetchval(
+                "SELECT SUM(signal_count)::bigint FROM country_hourly_v2"
+            )
             
             last_ingest_ts = result['last_ts'] if result else None
             rows_ingested_last_15m = result['rows_15m'] if result else 0
-            total_signals = result['total_signals'] if result else 0
+            total_signals = int(total_signals_row or 0)
             
             # Calculate lag
             ingest_lag_minutes = None
