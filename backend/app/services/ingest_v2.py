@@ -334,6 +334,33 @@ async def run_ingestion():
             print("Refreshed aggregates")
         except Exception as e:
             print(f"refresh_aggregates failed: {e}")
+
+        # Update theme_hourly_v2 pre-aggregation (enables fast narratives for any window)
+        try:
+            async with pool.acquire() as conn:
+                await conn.execute("""
+                    INSERT INTO theme_hourly_v2
+                        (hour, theme, signal_count, country_count, source_count, avg_sentiment)
+                    SELECT
+                        date_trunc('hour', timestamp) AS hour,
+                        unnest(themes)                AS theme,
+                        COUNT(*)                      AS signal_count,
+                        COUNT(DISTINCT country_code)  AS country_count,
+                        COUNT(DISTINCT source_name)   AS source_count,
+                        AVG(sentiment)                AS avg_sentiment
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - INTERVAL '2 hours'
+                      AND themes IS NOT NULL
+                    GROUP BY 1, 2
+                    ON CONFLICT (hour, theme) DO UPDATE SET
+                        signal_count  = EXCLUDED.signal_count,
+                        country_count = EXCLUDED.country_count,
+                        source_count  = EXCLUDED.source_count,
+                        avg_sentiment = EXCLUDED.avg_sentiment
+                """)
+            print("Updated theme_hourly_v2")
+        except Exception as e:
+            print(f"theme_hourly_v2 update failed (non-fatal): {e}")
         
         # Stats
         async with pool.acquire() as conn:

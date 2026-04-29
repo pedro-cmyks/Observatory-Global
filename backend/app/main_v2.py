@@ -2747,38 +2747,44 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
         async with app.state.pool.acquire() as conn:
             await conn.execute("SET statement_timeout = 20000")
             timeline_hours = min(hours, 24)
-            query_hours = min(hours, 6)
 
-            # Single CTE: top themes + velocity + timeline + countries
+            # Phase 1: Get top themes from pre-aggregated table (instant, any window)
+            top_rows = await conn.fetch("""
+                SELECT
+                    theme,
+                    SUM(signal_count)   AS signal_count,
+                    SUM(country_count)  AS country_count,
+                    SUM(source_count)   AS source_count,
+                    AVG(avg_sentiment)  AS avg_sentiment
+                FROM theme_hourly_v2
+                WHERE hour > NOW() - ($1 || ' hours')::INTERVAL
+                GROUP BY theme
+                ORDER BY signal_count DESC
+                LIMIT $2
+            """, str(hours), limit)
+
+            if not top_rows:
+                return {"narratives": [], "hours": hours,
+                        "total_active_countries": 0,
+                        "generated_at": datetime.now(timezone.utc).isoformat()}
+
+            top_themes = [r["theme"] for r in top_rows]
+
+            # Phase 2: Velocity + timeline + countries — scoped to top themes only
+            # GIN index on signals_v2.themes makes this fast even at 24h
             rows = await conn.fetch("""
                 WITH
-                top_themes AS (
-                    SELECT
-                        unnest(themes) AS theme,
-                        COUNT(*) AS signal_count,
-                        COUNT(DISTINCT country_code) AS country_count,
-                        COUNT(DISTINCT source_name) AS source_count,
-                        MIN(timestamp) AS first_seen,
-                        AVG(sentiment) AS avg_sentiment
-                    FROM signals_v2
-                    WHERE timestamp > NOW() - ($1 || ' hours')::INTERVAL
-                      AND themes IS NOT NULL
-                    GROUP BY theme
-                    ORDER BY signal_count DESC
-                    LIMIT $2
-                ),
                 total_active AS (
                     SELECT COUNT(DISTINCT country_code) AS cnt
                     FROM signals_v2
-                    WHERE timestamp > NOW() - ($1 || ' hours')::INTERVAL
+                    WHERE timestamp > NOW() - ($2 || ' hours')::INTERVAL
                 ),
-                theme_list AS (SELECT ARRAY_AGG(theme) AS arr FROM top_themes),
                 filtered AS (
                     SELECT country_code, themes, timestamp
-                    FROM signals_v2, theme_list
-                    WHERE timestamp > NOW() - ($1 || ' hours')::INTERVAL
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - ($2 || ' hours')::INTERVAL
                       AND themes IS NOT NULL
-                      AND themes && theme_list.arr
+                      AND themes && $1::text[]
                 ),
                 velocity AS (
                     SELECT
@@ -2799,7 +2805,7 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                     SELECT theme,
                         JSON_AGG(JSON_BUILD_OBJECT('hour', TO_CHAR(hour, 'HH24:MI'), 'count', cnt)
                                  ORDER BY hour) AS tl
-                    FROM tl_base GROUP BY theme
+                    FROM tl_base WHERE theme = ANY($1::text[]) GROUP BY theme
                 ),
                 ctry_base AS (
                     SELECT unnest(themes) AS theme, country_code, COUNT(*) AS cnt
@@ -2809,34 +2815,36 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                     SELECT theme, ARRAY_AGG(country_code ORDER BY cnt DESC) AS countries
                     FROM (
                         SELECT *, ROW_NUMBER() OVER (PARTITION BY theme ORDER BY cnt DESC) AS rn
-                        FROM ctry_base
+                        FROM ctry_base WHERE theme = ANY($1::text[])
                     ) r WHERE rn <= 3
                     GROUP BY theme
+                ),
+                first_seen AS (
+                    SELECT unnest(themes) AS theme, MIN(timestamp) AS first_seen
+                    FROM filtered GROUP BY 1
                 )
                 SELECT
-                    t.theme, t.signal_count, t.country_count, t.source_count,
-                    t.first_seen, t.avg_sentiment,
                     (SELECT cnt FROM total_active) AS total_active,
-                    COALESCE(v.last_hour, 0) AS last_hour,
-                    COALESCE(v.prev_hour, 0) AS prev_hour,
+                    v.theme,
+                    COALESCE(v.last_hour, 0)   AS last_hour,
+                    COALESCE(v.prev_hour, 0)   AS prev_hour,
                     COALESCE(tc.countries, '{}') AS top_countries,
-                    COALESCE(tl.tl::text, '[]') AS hourly_timeline
-                FROM top_themes t
-                LEFT JOIN velocity v ON v.theme = t.theme
-                LEFT JOIN top_ctry tc ON tc.theme = t.theme
-                LEFT JOIN timeline tl ON tl.theme = t.theme
-                ORDER BY t.signal_count DESC
-            """, str(query_hours), limit, str(timeline_hours))
+                    COALESCE(tl.tl::text, '[]') AS hourly_timeline,
+                    fs.first_seen
+                FROM (SELECT DISTINCT unnest($1::text[]) AS theme) base
+                LEFT JOIN velocity v    ON v.theme = base.theme
+                LEFT JOIN top_ctry tc   ON tc.theme = base.theme
+                LEFT JOIN timeline tl   ON tl.theme = base.theme
+                LEFT JOIN first_seen fs ON fs.theme = base.theme
+            """, top_themes, str(hours), str(timeline_hours))
 
-            if not rows:
-                return {"narratives": [], "hours": hours,
-                        "total_active_countries": 0,
-                        "generated_at": datetime.now(timezone.utc).isoformat()}
+            total_active = max(int((rows[0]["total_active"] if rows else None) or 1), 1)
 
-            total_active = max(int(rows[0]["total_active"] or 1), 1)
-            theme_codes = [r["theme"] for r in rows]
+            # Merge: top_rows has counts, rows has velocity/timeline/countries
+            detail_by_theme = {r["theme"]: r for r in rows}
+            theme_codes = [r["theme"] for r in top_rows]
 
-            # Single query for top persons across all themes
+            # Top persons — scoped to top themes, GIN-indexed lookup
             persons_map: dict = {tc: [] for tc in theme_codes}
             try:
                 p_rows = await conn.fetch("""
@@ -2852,17 +2860,18 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                     WHERE person IS NOT NULL AND person != ''
                       AND theme = ANY($2)
                     GROUP BY theme
-                """, str(query_hours), theme_codes)
+                """, str(min(hours, 6)), theme_codes)
                 for pr in p_rows:
                     persons_map[pr["theme"]] = (pr["persons"] or [])[:3]
             except Exception:
                 pass
 
             narratives = []
-            for r in rows:
-                tc = r["theme"]
-                last_h = int(r["last_hour"] or 0)
-                prev_h = int(r["prev_hour"] or 0)
+            for tr in top_rows:
+                tc = tr["theme"]
+                det = detail_by_theme.get(tc, {})
+                last_h = int((det.get("last_hour") or 0))
+                prev_h = int((det.get("prev_hour") or 0))
                 if prev_h > 0 and last_h > prev_h * 1.2:
                     trend = "accelerating"
                 elif prev_h > 0 and last_h < prev_h * 0.8:
@@ -2870,26 +2879,28 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                 else:
                     trend = "stable"
 
-                tl_raw = r["hourly_timeline"]
+                tl_raw = det.get("hourly_timeline", "[]")
                 try:
                     hourly_timeline = _json.loads(tl_raw) if isinstance(tl_raw, str) else tl_raw
                 except Exception:
                     hourly_timeline = []
 
+                first_seen_val = det.get("first_seen")
+
                 narratives.append({
                     "theme_code": tc,
                     "label": get_theme_label(tc),
-                    "signal_count": int(r["signal_count"]),
-                    "country_count": int(r["country_count"]),
-                    "source_count": int(r["source_count"]),
-                    "first_seen": r["first_seen"].isoformat() if r["first_seen"] else None,
+                    "signal_count": int(tr["signal_count"]),
+                    "country_count": int(tr["country_count"]),
+                    "source_count": int(tr["source_count"]),
+                    "first_seen": first_seen_val.isoformat() if first_seen_val else None,
                     "velocity": last_h,
                     "trend": trend,
-                    "spread_pct": round((int(r["country_count"]) / total_active) * 100, 1),
-                    "avg_sentiment": round(float(r["avg_sentiment"] or 0), 2),
+                    "spread_pct": round((int(tr["country_count"]) / total_active) * 100, 1),
+                    "avg_sentiment": round(float(tr["avg_sentiment"] or 0), 2),
                     "top_persons": persons_map.get(tc, []),
                     "hourly_timeline": hourly_timeline or [],
-                    "top_countries": list(r["top_countries"] or []),
+                    "top_countries": list((det.get("top_countries") or [])),
                     "has_public_interest": False,
                     "trending_keywords": [],
                     "has_wiki_activity": False,
