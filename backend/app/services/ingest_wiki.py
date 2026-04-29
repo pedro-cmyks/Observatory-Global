@@ -134,7 +134,7 @@ async def run_wiki_ingestion():
     """Main Wikipedia pageviews ingestion function."""
     logger.info(f"[{datetime.now()}] Starting Wikipedia pageviews ingestion...")
 
-    pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=2)
+    pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=1)
 
     try:
         # Deduplicate by project — don't fetch en.wikipedia twice for US and GB

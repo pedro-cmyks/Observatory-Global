@@ -128,7 +128,7 @@ async def run_acled_ingestion():
     """Main ACLED ingestion function."""
     logger.info(f"[{datetime.now()}] Starting ACLED ingestion...")
 
-    pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=2)
+    pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=1)
     
     try:
         events = await fetch_recent_acled_events(days_back=3)
