@@ -78,7 +78,7 @@ async def startup():
     """Create async connection pool on startup, with retry for connection saturation."""
     for attempt in range(10):
         try:
-            app.state.pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=3)
+            app.state.pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=5)
             print(f"✅ Connected to database: {DATABASE_URL.split('@')[1]}")
             break
         except Exception as e:
@@ -355,169 +355,172 @@ async def get_nodes(
     if countries:
         country_filter_set = set(c.strip().upper() for c in countries.split(',') if c.strip())
 
-    async with app.state.pool.acquire() as conn:
-        await conn.execute("SET statement_timeout = 0")
+    try:
+        async with app.state.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 0")
 
-        # Parse range parameter (takes precedence over hours)
-        use_daily_rollup = False
-        effective_hours = hours
-        if time_range:
-            range_map = {
-                "24h": 24,
-                "1w": 168,
-                "1m": 720,    # 30 days
-                "3m": 2160,   # 90 days
-                "record": 8760  # ~1 year, will use all data
-            }
-            effective_hours = range_map.get(time_range, hours)
-            # Use daily rollup for ranges > 168 hours (1 week)
-            use_daily_rollup = effective_hours > 168
-        
-        # If focus is active, query signals_v2 directly with filtering
-        if focus_type and focus_value:
-            # Build focus filter based on type
-            if focus_type == "theme":
-                focus_filter = "$1 = ANY(themes)"
-                filter_value = focus_value.upper()
-            elif focus_type == "person":
-                focus_filter = "EXISTS (SELECT 1 FROM unnest(persons) p WHERE LOWER(p) LIKE LOWER($1))"
-                filter_value = f"%{focus_value}%"
-            elif focus_type == "country":
-                focus_filter = "country_code = $1"
-                filter_value = focus_value.upper()
-            elif focus_type == "source":
-                focus_filter = "LOWER(source_name) LIKE LOWER($1)"
-                filter_value = f"%{focus_value}%"
-            else:
-                return {"nodes": [], "count": 0, "hours": effective_hours, "error": f"Unknown focus_type: {focus_type}"}
-            
-            # Query signals_v2 with focus filter (limit to 168 hours for focus queries)
-            query_hours = min(effective_hours, 168)
-            # Enforce server-side cap
-            effective_limit = min(limit, 80)
-            rows = await conn.fetch(f"""
-                WITH filtered AS (
+            # Parse range parameter (takes precedence over hours)
+            use_daily_rollup = False
+            effective_hours = hours
+            if time_range:
+                range_map = {
+                    "24h": 24,
+                    "1w": 168,
+                    "1m": 720,    # 30 days
+                    "3m": 2160,   # 90 days
+                    "record": 8760  # ~1 year, will use all data
+                }
+                effective_hours = range_map.get(time_range, hours)
+                # Use daily rollup for ranges > 168 hours (1 week)
+                use_daily_rollup = effective_hours > 168
+
+            # If focus is active, query signals_v2 directly with filtering
+            if focus_type and focus_value:
+                # Build focus filter based on type
+                if focus_type == "theme":
+                    focus_filter = "$1 = ANY(themes)"
+                    filter_value = focus_value.upper()
+                elif focus_type == "person":
+                    focus_filter = "EXISTS (SELECT 1 FROM unnest(persons) p WHERE LOWER(p) LIKE LOWER($1))"
+                    filter_value = f"%{focus_value}%"
+                elif focus_type == "country":
+                    focus_filter = "country_code = $1"
+                    filter_value = focus_value.upper()
+                elif focus_type == "source":
+                    focus_filter = "LOWER(source_name) LIKE LOWER($1)"
+                    filter_value = f"%{focus_value}%"
+                else:
+                    return {"nodes": [], "count": 0, "hours": effective_hours, "error": f"Unknown focus_type: {focus_type}"}
+
+                # Query signals_v2 with focus filter (limit to 168 hours for focus queries)
+                query_hours = min(effective_hours, 168)
+                # Enforce server-side cap
+                effective_limit = min(limit, 80)
+                rows = await conn.fetch(f"""
+                    WITH filtered AS (
+                        SELECT
+                            country_code,
+                            sentiment,
+                            source_name
+                        FROM signals_v2
+                        WHERE timestamp > NOW() - INTERVAL '{query_hours} hours'
+                          AND {focus_filter}
+                    )
                     SELECT
-                        country_code,
-                        sentiment,
-                        source_name
-                    FROM signals_v2
-                    WHERE timestamp > NOW() - INTERVAL '{query_hours} hours'
-                      AND {focus_filter}
-                )
-                SELECT
-                    f.country_code,
-                    c.name,
-                    c.latitude,
-                    c.longitude,
-                    COUNT(*) as total_signals,
-                    AVG(f.sentiment) as sentiment,
-                    COUNT(DISTINCT f.source_name) as unique_sources
-                FROM filtered f
-                LEFT JOIN countries_v2 c ON f.country_code = c.code
-                GROUP BY f.country_code, c.name, c.latitude, c.longitude
-                HAVING COUNT(*) > 0
-                ORDER BY total_signals DESC
-                LIMIT {effective_limit}
-            """, filter_value)
-        elif use_daily_rollup:
-            # Use daily rollup for extended ranges (1m, 3m, record)
-            days = effective_hours // 24
-            # Enforce server-side cap
-            effective_limit = min(limit, 80)
-            rows = await conn.fetch("""
-                SELECT
-                    d.country_code,
-                    c.name,
-                    c.latitude,
-                    c.longitude,
-                    SUM(d.signal_count) as total_signals,
-                    AVG(d.avg_sentiment) as sentiment,
-                    MAX(d.max_sentiment) as max_sentiment,
-                    MIN(d.min_sentiment) as min_sentiment,
-                    SUM(d.unique_sources) as unique_sources
-                FROM country_daily_v2 d
-                LEFT JOIN countries_v2 c ON d.country_code = c.code
-                WHERE d.day > CURRENT_DATE - INTERVAL '%s days'
-                GROUP BY d.country_code, c.name, c.latitude, c.longitude
-                HAVING SUM(d.signal_count) > 0
-                ORDER BY total_signals DESC
-                LIMIT %s
-            """ % (days, effective_limit))
-        else:
-            # Use hourly materialized view for short ranges (faster)
-            # Enforce server-side cap
-            effective_limit = min(limit, 80)
-            rows = await conn.fetch("""
-                SELECT
-                    h.country_code,
-                    c.name,
-                    c.latitude,
-                    c.longitude,
-                    SUM(h.signal_count) as total_signals,
-                    AVG(h.avg_sentiment) as sentiment,
-                    MAX(h.max_sentiment) as max_sentiment,
-                    MIN(h.min_sentiment) as min_sentiment,
-                    SUM(h.unique_sources) as unique_sources
-                FROM country_hourly_v2 h
-                LEFT JOIN countries_v2 c ON h.country_code = c.code
-                WHERE h.hour > NOW() - INTERVAL '%s hours'
-                GROUP BY h.country_code, c.name, c.latitude, c.longitude
-                HAVING SUM(h.signal_count) > 0
-                ORDER BY total_signals DESC
-                LIMIT %s
-            """ % (effective_hours, effective_limit))
-        
-        if not rows:
-            return {"nodes": [], "count": 0, "hours": effective_hours, "range": time_range, "focus_type": focus_type, "focus_value": focus_value}
+                        f.country_code,
+                        c.name,
+                        c.latitude,
+                        c.longitude,
+                        COUNT(*) as total_signals,
+                        AVG(f.sentiment) as sentiment,
+                        COUNT(DISTINCT f.source_name) as unique_sources
+                    FROM filtered f
+                    LEFT JOIN countries_v2 c ON f.country_code = c.code
+                    GROUP BY f.country_code, c.name, c.latitude, c.longitude
+                    HAVING COUNT(*) > 0
+                    ORDER BY total_signals DESC
+                    LIMIT {effective_limit}
+                """, filter_value)
+            elif use_daily_rollup:
+                # Use daily rollup for extended ranges (1m, 3m, record)
+                days = effective_hours // 24
+                # Enforce server-side cap
+                effective_limit = min(limit, 80)
+                rows = await conn.fetch("""
+                    SELECT
+                        d.country_code,
+                        c.name,
+                        c.latitude,
+                        c.longitude,
+                        SUM(d.signal_count) as total_signals,
+                        AVG(d.avg_sentiment) as sentiment,
+                        MAX(d.max_sentiment) as max_sentiment,
+                        MIN(d.min_sentiment) as min_sentiment,
+                        SUM(d.unique_sources) as unique_sources
+                    FROM country_daily_v2 d
+                    LEFT JOIN countries_v2 c ON d.country_code = c.code
+                    WHERE d.day > CURRENT_DATE - INTERVAL '%s days'
+                    GROUP BY d.country_code, c.name, c.latitude, c.longitude
+                    HAVING SUM(d.signal_count) > 0
+                    ORDER BY total_signals DESC
+                    LIMIT %s
+                """ % (days, effective_limit))
+            else:
+                # Use hourly materialized view for short ranges (faster)
+                # Enforce server-side cap
+                effective_limit = min(limit, 80)
+                rows = await conn.fetch("""
+                    SELECT
+                        h.country_code,
+                        c.name,
+                        c.latitude,
+                        c.longitude,
+                        SUM(h.signal_count) as total_signals,
+                        AVG(h.avg_sentiment) as sentiment,
+                        MAX(h.max_sentiment) as max_sentiment,
+                        MIN(h.min_sentiment) as min_sentiment,
+                        SUM(h.unique_sources) as unique_sources
+                    FROM country_hourly_v2 h
+                    LEFT JOIN countries_v2 c ON h.country_code = c.code
+                    WHERE h.hour > NOW() - INTERVAL '%s hours'
+                    GROUP BY h.country_code, c.name, c.latitude, c.longitude
+                    HAVING SUM(h.signal_count) > 0
+                    ORDER BY total_signals DESC
+                    LIMIT %s
+                """ % (effective_hours, effective_limit))
 
-        # Apply countries filter if provided (post-query for compatibility with all query paths)
-        if country_filter_set:
-            rows = [r for r in rows if r['country_code'] in country_filter_set]
             if not rows:
-                return {"nodes": [], "count": 0, "hours": effective_hours, "range": time_range, "countries": countries}
+                return {"nodes": [], "count": 0, "hours": effective_hours, "range": time_range, "focus_type": focus_type, "focus_value": focus_value}
 
-        max_signals = max(float(r['total_signals']) for r in rows)
-        
-        nodes = []
-        total_signals = 0
-        for row in rows:
-            if row['latitude'] and row['longitude']:
-                signal_count = int(row['total_signals'])
-                total_signals += signal_count
-                nodes.append({
-                    "id": row['country_code'],
-                    "name": row['name'] or row['country_code'],
-                    "lat": float(row['latitude']),
-                    "lon": float(row['longitude']),
-                    "intensity": float(row['total_signals']) / max_signals,
-                    "sentiment": float(row['sentiment'] or 0) / 10,  # Normalize to -1 to 1
-                    "signalCount": signal_count,
-                    "sourceCount": int(row['unique_sources'] or 0)
-                })
-        # Sort by total_signals DESC and slice top 80 to guarantee no bloated payloads
-        nodes.sort(key=lambda x: x["signalCount"], reverse=True)
-        if len(nodes) > 80:
-            nodes = nodes[:80]
-            
-        allowed_fields = None
-        if fields:
-            allowed_fields = set(f.strip() for f in fields.split(','))
-            
-        if allowed_fields:
-            nodes = [{k: v for k, v in n.items() if k in allowed_fields} for n in nodes]
+            # Apply countries filter if provided (post-query for compatibility with all query paths)
+            if country_filter_set:
+                rows = [r for r in rows if r['country_code'] in country_filter_set]
+                if not rows:
+                    return {"nodes": [], "count": 0, "hours": effective_hours, "range": time_range, "countries": countries}
 
-        return {
-            "nodes": nodes,
-            "count": len(nodes),
-            "totalSignals": total_signals,
-            "hours": effective_hours,
-            "range": time_range,
-            "focus_type": focus_type,
-            "focus_value": focus_value,
-            "is_filtered": focus_type is not None,
-            "source": "daily_rollup" if use_daily_rollup else "hourly_rollup"
-        }
+            max_signals = max(float(r['total_signals']) for r in rows)
+
+            nodes = []
+            total_signals = 0
+            for row in rows:
+                if row['latitude'] and row['longitude']:
+                    signal_count = int(row['total_signals'])
+                    total_signals += signal_count
+                    nodes.append({
+                        "id": row['country_code'],
+                        "name": row['name'] or row['country_code'],
+                        "lat": float(row['latitude']),
+                        "lon": float(row['longitude']),
+                        "intensity": float(row['total_signals']) / max_signals,
+                        "sentiment": float(row['sentiment'] or 0) / 10,  # Normalize to -1 to 1
+                        "signalCount": signal_count,
+                        "sourceCount": int(row['unique_sources'] or 0)
+                    })
+            # Sort by total_signals DESC and slice top 80 to guarantee no bloated payloads
+            nodes.sort(key=lambda x: x["signalCount"], reverse=True)
+            if len(nodes) > 80:
+                nodes = nodes[:80]
+
+            allowed_fields = None
+            if fields:
+                allowed_fields = set(f.strip() for f in fields.split(','))
+
+            if allowed_fields:
+                nodes = [{k: v for k, v in n.items() if k in allowed_fields} for n in nodes]
+
+            return {
+                "nodes": nodes,
+                "count": len(nodes),
+                "totalSignals": total_signals,
+                "hours": effective_hours,
+                "range": time_range,
+                "focus_type": focus_type,
+                "focus_value": focus_value,
+                "is_filtered": focus_type is not None,
+                "source": "daily_rollup" if use_daily_rollup else "hourly_rollup"
+            }
+    except Exception as e:
+        return {"nodes": [], "count": 0, "error": str(e), "hours": hours}
 
 @app.get("/api/v2/anomalies")
 async def get_anomalies(
