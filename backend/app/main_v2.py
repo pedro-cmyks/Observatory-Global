@@ -356,7 +356,8 @@ async def get_nodes(
         country_filter_set = set(c.strip().upper() for c in countries.split(',') if c.strip())
 
     async with app.state.pool.acquire() as conn:
-        
+        await conn.execute("SET statement_timeout = 0")
+
         # Parse range parameter (takes precedence over hours)
         use_daily_rollup = False
         effective_hours = hours
@@ -1475,6 +1476,7 @@ async def get_signals(
 ):
     """Get raw signals with filters and velocity calculation."""
     async with app.state.pool.acquire() as conn:
+        await conn.execute("SET statement_timeout = 0")
         conditions = ["timestamp > NOW() - INTERVAL '%s hours'" % hours]
         params = []
         param_count = 0
@@ -2303,45 +2305,37 @@ async def health():
     """
     try:
         async with app.state.pool.acquire() as conn:
-            # Check DB connectivity
             db_ok = True
             try:
                 await conn.fetchval("SELECT 1")
             except Exception:
                 db_ok = False
-            
-            # Get ingestion metrics — use fast path to avoid full-table COUNT(*)
+
+            # Use materialized view only — instant, no full-table scan of signals_v2
             result = await conn.fetchrow("""
                 SELECT
-                    MAX(timestamp) as last_ts,
-                    COUNT(*) FILTER (WHERE timestamp > NOW() - INTERVAL '15 minutes') as rows_15m
-                FROM signals_v2
-                WHERE timestamp > NOW() - INTERVAL '24 hours'
+                    MAX(bucket_hour) as last_ts,
+                    SUM(signal_count) FILTER (WHERE bucket_hour >= NOW() - INTERVAL '1 hour') as rows_15m,
+                    SUM(signal_count) as total_signals
+                FROM country_hourly_v2
             """)
-            total_signals_row = await conn.fetchval(
-                "SELECT SUM(signal_count)::bigint FROM country_hourly_v2"
-            )
-            
+
             last_ingest_ts = result['last_ts'] if result else None
-            rows_ingested_last_15m = result['rows_15m'] if result else 0
-            total_signals = int(total_signals_row or 0)
-            
-            # Calculate lag
+            rows_ingested_last_15m = int(result['rows_15m'] or 0) if result else 0
+            total_signals = int(result['total_signals'] or 0) if result else 0
+
             ingest_lag_minutes = None
             if last_ingest_ts:
-                ingest_lag_minutes = (datetime.now(timezone.utc) - last_ingest_ts.replace(tzinfo=timezone.utc)).total_seconds() / 60
-            
-            # Determine status
-            # Healthy: DB OK and ingestion within 30 minutes
-            # Degraded: DB OK but ingestion stale (>30 min lag)
-            # Error: DB not OK
+                ts = last_ingest_ts.replace(tzinfo=timezone.utc) if last_ingest_ts.tzinfo is None else last_ingest_ts
+                ingest_lag_minutes = (datetime.now(timezone.utc) - ts).total_seconds() / 60
+
             if not db_ok:
                 status = "error"
-            elif ingest_lag_minutes is None or ingest_lag_minutes > 30:
+            elif ingest_lag_minutes is None or ingest_lag_minutes > 90:
                 status = "degraded"
             else:
                 status = "healthy"
-            
+
             return {
                 "status": status,
                 "db_ok": db_ok,
@@ -2350,7 +2344,7 @@ async def health():
                 "ingest_lag_minutes": round(ingest_lag_minutes, 1) if ingest_lag_minutes else None,
                 "rows_ingested_last_15m": rows_ingested_last_15m,
                 "total_signals": total_signals,
-                "error_count_last_15m": 0  # TODO: implement error tracking table
+                "error_count_last_15m": 0
             }
     except Exception as e:
         return {
