@@ -2679,6 +2679,7 @@ async def get_acled_conflicts(
     """Get recent conflict events from ACLED."""
     try:
         async with app.state.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 8000")
             if country:
                 query = """
                     SELECT * FROM acled_conflicts_v2
@@ -2866,6 +2867,50 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
             except Exception:
                 pass
 
+            # Batch enrich with Trends + Wiki flags (non-fatal if tables empty)
+            trends_flags: dict = {tc: False for tc in theme_codes}
+            wiki_flags: dict = {tc: False for tc in theme_codes}
+            try:
+                theme_word_map: dict = {}
+                for tc in theme_codes:
+                    label = get_theme_label(tc).lower()
+                    words = [w for w in label.split() if len(w) > 3]
+                    if words:
+                        theme_word_map[tc] = words
+
+                if theme_word_map:
+                    all_words = list({w for ws in theme_word_map.values() for w in ws})
+
+                    trend_rows = await conn.fetch("""
+                        SELECT DISTINCT LOWER(keyword) AS kw
+                        FROM trends_v2
+                        WHERE timestamp > NOW() - INTERVAL '48 hours'
+                          AND LOWER(keyword) LIKE ANY(
+                              SELECT '%' || w || '%' FROM unnest($1::text[]) w
+                          )
+                        LIMIT 100
+                    """, all_words)
+                    matched_kws = {r["kw"] for r in trend_rows}
+                    for tc, words in theme_word_map.items():
+                        if any(any(w in kw for kw in matched_kws) for w in words):
+                            trends_flags[tc] = True
+
+                    wiki_rows = await conn.fetch("""
+                        SELECT DISTINCT LOWER(article_title) AS title
+                        FROM wiki_pageviews_v2
+                        WHERE fetch_date >= CURRENT_DATE - 3
+                          AND LOWER(article_title) LIKE ANY(
+                              SELECT '%' || w || '%' FROM unnest($1::text[]) w
+                          )
+                        LIMIT 100
+                    """, all_words)
+                    matched_titles = {r["title"] for r in wiki_rows}
+                    for tc, words in theme_word_map.items():
+                        if any(any(w in title for title in matched_titles) for w in words):
+                            wiki_flags[tc] = True
+            except Exception:
+                pass
+
             narratives = []
             for tr in top_rows:
                 tc = tr["theme"]
@@ -2901,9 +2946,9 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                     "top_persons": persons_map.get(tc, []),
                     "hourly_timeline": hourly_timeline or [],
                     "top_countries": list((det.get("top_countries") or [])),
-                    "has_public_interest": False,
+                    "has_public_interest": trends_flags.get(tc, False),
                     "trending_keywords": [],
-                    "has_wiki_activity": False,
+                    "has_wiki_activity": wiki_flags.get(tc, False),
                     "wiki_views": 0,
                 })
 

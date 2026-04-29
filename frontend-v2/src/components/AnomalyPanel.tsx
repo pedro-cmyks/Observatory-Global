@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useCrisis } from '../contexts/CrisisContext'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
@@ -9,6 +9,14 @@ export const AnomalyPanel: React.FC = () => {
     const { anomalies, nearMisses, themeAnomalies, meta, overallSeverity, loading } = useCrisis()
     const { setFocus, setMapFlyCountry } = useFocus()
     const { acledConflicts } = useFocusData()
+    const [trendingSearches, setTrendingSearches] = useState<{ keyword: string; country_count: number }[]>([])
+
+    useEffect(() => {
+        fetch('/api/v2/trends?hours=24&limit=8')
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (d?.trending) setTrendingSearches(d.trending) })
+            .catch(() => {})
+    }, [])
 
     const handleAnomalyClick = (countryCode: string) => {
         setFocus('country', countryCode)
@@ -109,13 +117,13 @@ export const AnomalyPanel: React.FC = () => {
             {acledConflicts && acledConflicts.length > 0 && (
                 <div className="theme-anomaly-section">
                     <div className="theme-anomaly-header" style={{
-                        fontSize: '9px', fontWeight: 'bold', color: '#64748b', letterSpacing: '0.05em', 
+                        fontSize: '9px', fontWeight: 'bold', color: '#64748b', letterSpacing: '0.05em',
                         marginTop: '12px', marginBottom: '8px', paddingLeft: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px'
                     }}>RECENT KINETIC CONFLICTS (ACLED)</div>
                     <div className="anomaly-list">
                         {acledConflicts.slice(0, 15).map(c => (
-                            <div 
-                                key={c.id} 
+                            <div
+                                key={c.id}
                                 className="anomaly-row level-critical clickable"
                                 onClick={() => handleAnomalyClick(c.location.country)}
                             >
@@ -126,6 +134,32 @@ export const AnomalyPanel: React.FC = () => {
                                     <span className="country-name" style={{ fontSize: '11px' }}>{c.location.country} - {c.type}</span>
                                     <span style={{ fontSize: '9px', color: '#64748b', display: 'block', marginTop: '2px' }}>{c.location.name}</span>
                                 </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {trendingSearches.length > 0 && (
+                <div className="theme-anomaly-section">
+                    <div className="theme-anomaly-header" style={{
+                        fontSize: '9px', fontWeight: 'bold', color: '#64748b', letterSpacing: '0.05em',
+                        marginTop: '12px', marginBottom: '8px', paddingLeft: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px'
+                    }}>TRENDING SEARCHES (GOOGLE)</div>
+                    <div className="anomaly-list">
+                        {trendingSearches.map((t, i) => (
+                            <div key={i} className="anomaly-row level-nearmiss" style={{ cursor: 'default' }}>
+                                <div className="level-badge" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', minWidth: '28px', textAlign: 'center' }}>
+                                    #{i + 1}
+                                </div>
+                                <div className="country-info">
+                                    <span className="country-name" style={{ textTransform: 'none' }}>{t.keyword}</span>
+                                </div>
+                                {t.country_count > 1 && (
+                                    <div className="metrics">
+                                        <span className="multiplier" style={{ color: '#60a5fa' }}>{t.country_count} countries</span>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
