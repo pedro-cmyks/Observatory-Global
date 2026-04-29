@@ -421,7 +421,7 @@ async def get_nodes(
                     HAVING COUNT(*) > 0
                     ORDER BY total_signals DESC
                     LIMIT {effective_limit}
-                """, filter_value)
+                """, filter_value, timeout=10.0)
             elif use_daily_rollup:
                 # Use daily rollup for extended ranges (1m, 3m, record)
                 days = effective_hours // 24
@@ -445,7 +445,7 @@ async def get_nodes(
                     HAVING SUM(d.signal_count) > 0
                     ORDER BY total_signals DESC
                     LIMIT %s
-                """ % (days, effective_limit))
+                """ % (days, effective_limit), timeout=10.0)
             else:
                 # Use hourly materialized view for short ranges (faster)
                 # Enforce server-side cap
@@ -468,7 +468,7 @@ async def get_nodes(
                     HAVING SUM(h.signal_count) > 0
                     ORDER BY total_signals DESC
                     LIMIT %s
-                """ % (effective_hours, effective_limit))
+                """ % (effective_hours, effective_limit), timeout=10.0)
 
             if not rows:
                 return {"nodes": [], "count": 0, "hours": effective_hours, "range": time_range, "focus_type": focus_type, "focus_value": focus_value}
@@ -534,28 +534,27 @@ async def get_anomalies(
     """
     try:
         async with app.state.pool.acquire() as conn:
-            await conn.execute("SET statement_timeout = 8000")
+            # Use country_hourly_v2 materialized view for both current window and baseline
+            # This avoids scanning raw signals_v2 (which has 240K+ rows/day)
             rows = await conn.fetch("""
                 WITH current_window AS (
                     SELECT
                         country_code,
-                        COUNT(*) as signal_count
-                    FROM signals_v2
-                    WHERE timestamp > NOW() - ($1::int * INTERVAL '1 hour')
-                    AND country_code IS NOT NULL
+                        SUM(signal_count) as signal_count
+                    FROM country_hourly_v2
+                    WHERE hour > NOW() - ($1::int * INTERVAL '1 hour')
                     GROUP BY country_code
-                    HAVING COUNT(*) >= 5
+                    HAVING SUM(signal_count) >= 5
                 ),
                 daily_history AS (
                     SELECT
                         country_code,
-                        DATE_TRUNC('day', timestamp) as day,
-                        COUNT(*) as daily_count
-                    FROM signals_v2
-                    WHERE timestamp > NOW() - INTERVAL '8 days'
-                    AND timestamp <= NOW() - ($1::int * INTERVAL '1 hour')
-                    AND country_code IS NOT NULL
-                    GROUP BY country_code, DATE_TRUNC('day', timestamp)
+                        DATE_TRUNC('day', hour) as day,
+                        SUM(signal_count) as daily_count
+                    FROM country_hourly_v2
+                    WHERE hour > NOW() - INTERVAL '8 days'
+                    AND hour <= NOW() - ($1::int * INTERVAL '1 hour')
+                    GROUP BY country_code, DATE_TRUNC('day', hour)
                 ),
                 baseline AS (
                     SELECT
@@ -581,16 +580,16 @@ async def get_anomalies(
                 LEFT JOIN countries_v2 co ON c.country_code = co.code
                 ORDER BY zscore DESC NULLS LAST
                 LIMIT $2
-            """, hours, limit * 2)
-            
-            # Fetch total system stats for calm state display
+            """, hours, limit * 2, timeout=8.0)
+
+            # Fetch total system stats using materialized view
             total_stats = await conn.fetchrow("""
-                SELECT 
+                SELECT
                     COUNT(DISTINCT country_code) as active_countries,
-                    COUNT(*) as total_signals
-                FROM signals_v2 
-                WHERE timestamp > NOW() - INTERVAL '24 hours'
-            """)
+                    SUM(signal_count) as total_signals
+                FROM country_hourly_v2
+                WHERE hour > NOW() - INTERVAL '24 hours'
+            """, timeout=5.0)
             
             def classify_anomaly(multiplier, zscore):
                 if multiplier is None or zscore is None:
@@ -670,7 +669,6 @@ async def get_theme_anomalies(
     """
     try:
         async with app.state.pool.acquire() as conn:
-            await conn.execute("SET statement_timeout = 8000")
             rows = await conn.fetch("""
                 WITH current_window AS (
                     SELECT unnest(themes) as theme, COUNT(*) as signal_count
@@ -681,23 +679,23 @@ async def get_theme_anomalies(
                 ),
                 baseline AS (
                     SELECT theme_code, AVG(signal_count) as avg_daily, STDDEV(signal_count) as stddev_daily
-                    FROM theme_daily_v2 
+                    FROM theme_daily_v2
                     WHERE day > CURRENT_DATE - INTERVAL '7 days'
                     GROUP BY 1
                 )
-                SELECT 
-                    c.theme, 
-                    c.signal_count, 
+                SELECT
+                    c.theme,
+                    c.signal_count,
                     b.avg_daily as baseline_avg,
                     ROUND((c.signal_count::numeric / NULLIF(b.avg_daily / 24.0 * $1, 0)), 2) as multiplier,
                     ROUND(((c.signal_count - b.avg_daily / 24.0 * $1) /
                            NULLIF(COALESCE(b.stddev_daily, b.avg_daily * 0.3) / 24.0 * $1, 0))::numeric, 2) as zscore
-                FROM current_window c 
+                FROM current_window c
                 JOIN baseline b ON c.theme = b.theme_code
                 WHERE ((c.signal_count - b.avg_daily / 24.0 * $1) / NULLIF(COALESCE(b.stddev_daily, b.avg_daily * 0.3) / 24.0 * $1, 0)) > 1.5
-                ORDER BY zscore DESC NULLS LAST 
+                ORDER BY zscore DESC NULLS LAST
                 LIMIT $2
-            """, hours, limit)
+            """, hours, limit, timeout=8.0)
             
             anomalies = []
             for row in rows:
@@ -1531,18 +1529,18 @@ async def get_signals(
             WHERE {where_clause}
             ORDER BY timestamp DESC
             LIMIT {limit}
-        """, *params)
-        
+        """, *params, timeout=8.0)
+
         # Calculate velocity
         vel_last = await conn.fetchval(f"""
-            SELECT COUNT(*) FROM signals_v2 
+            SELECT COUNT(*) FROM signals_v2
             WHERE {where_clause} AND timestamp > NOW() - INTERVAL '1 minute'
-        """, *params)
-        
+        """, *params, timeout=5.0)
+
         vel_prev = await conn.fetchval(f"""
-            SELECT COUNT(*) FROM signals_v2 
+            SELECT COUNT(*) FROM signals_v2
             WHERE {where_clause} AND timestamp > NOW() - INTERVAL '2 minutes' AND timestamp <= NOW() - INTERVAL '1 minute'
-        """, *params)
+        """, *params, timeout=5.0)
         
         velocity = vel_last or 0
         velocity_delta = (vel_last or 0) - (vel_prev or 0)
@@ -2329,7 +2327,7 @@ async def health():
                     SUM(signal_count) FILTER (WHERE hour >= NOW() - INTERVAL '1 hour') as rows_15m,
                     SUM(signal_count) as total_signals
                 FROM country_hourly_v2
-            """)
+            """, timeout=5.0)
 
             last_ingest_ts = result['last_ts'] if result else None
             rows_ingested_last_15m = int(result['rows_15m'] or 0) if result else 0
