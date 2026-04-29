@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-echo "Starting ingestion loop..."
-python -m app.services.ingest_loop &
+echo "Starting ingestion loop (30s delay to let app pool connect first)..."
+(sleep 30 && python -m app.services.ingest_loop) &
 INGEST_PID=$!
 echo "Ingestion PID: $INGEST_PID"
 

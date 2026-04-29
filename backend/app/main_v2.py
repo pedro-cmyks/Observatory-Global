@@ -75,9 +75,20 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 @app.on_event("startup")
 async def startup():
-    """Create async connection pool on startup."""
-    app.state.pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=3)
-    print(f"✅ Connected to database: {DATABASE_URL.split('@')[1]}")
+    """Create async connection pool on startup, with retry for connection saturation."""
+    for attempt in range(10):
+        try:
+            app.state.pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=3)
+            print(f"✅ Connected to database: {DATABASE_URL.split('@')[1]}")
+            break
+        except Exception as e:
+            if attempt < 9:
+                wait = (attempt + 1) * 5
+                print(f"⚠️  DB connect attempt {attempt+1} failed ({e}), retrying in {wait}s...")
+                await asyncio.sleep(wait)
+            else:
+                print(f"❌ DB connect failed after 10 attempts: {e}")
+                raise
 
     # Optional Redis connection for caching
     try:
