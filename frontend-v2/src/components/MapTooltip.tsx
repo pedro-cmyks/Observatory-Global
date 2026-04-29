@@ -90,7 +90,7 @@ export const MapTooltip: React.FC<MapTooltipProps> = ({ tooltip }) => {
                     {(data.anomalyMultiplier ?? data.anomaly_multiplier) != null &&
                         (data.anomalyMultiplier ?? data.anomaly_multiplier) > 1.2 && (
                             <div style={{ fontSize: '12px', color: '#fbbf24', marginTop: '4px' }}>
-                                ⚠️ {(data.anomalyMultiplier ?? data.anomaly_multiplier).toFixed(1)}× normal
+                                {(data.anomalyMultiplier ?? data.anomaly_multiplier).toFixed(1)}× normal
                             </div>
                         )}
                     <div style={{ fontSize: '10px', color: '#6ba3d6', marginTop: '8px', fontStyle: 'italic' }}>

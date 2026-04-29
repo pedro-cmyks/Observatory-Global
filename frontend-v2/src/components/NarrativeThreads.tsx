@@ -155,12 +155,14 @@ export const NarrativeThreads: React.FC = () => {
                         {/* Row 1: Label + stats */}
                         <div className="narrative-header">
                             <div className="narrative-label">
-                                <span className={`sentiment-dot ${n.avg_sentiment > 0.1 ? 'pos' : n.avg_sentiment < -0.1 ? 'neg' : 'neu'}`} />
+                                <span className={`sentiment-dot ${n.avg_sentiment > 0.1 ? 'pos' : n.avg_sentiment < -0.1 ? 'neg' : 'neu'}`} title={`Avg sentiment: ${n.avg_sentiment > 0.1 ? 'positive (supportive framing)' : n.avg_sentiment < -0.1 ? 'negative (critical or conflict framing)' : 'neutral'}`} />
                                 <span className={`trend-arrow ${n.trend}`}>{trendArrow}</span>
                                 <span>{getThemeLabel(n.theme_code)}</span>
                             </div>
                             <div className="narrative-stats">
-                                {n.signal_count.toLocaleString()} sig · {n.country_count} ctry
+                                <span title="Total media signals (articles, posts) mentioning this topic in the selected time window">{n.signal_count.toLocaleString()} sig</span>
+                                {' · '}
+                                <span title="Number of distinct countries where this topic is being covered">{n.country_count} ctry</span>
                             </div>
                         </div>
 
@@ -175,12 +177,12 @@ export const NarrativeThreads: React.FC = () => {
                                 ))}
                                 {n.has_public_interest && (
                                     <span className="attention-badge search" title={`Trending searches: ${(n.trending_keywords || []).join(', ')}`}>
-                                        🔍 Searched
+                                        SEARCH
                                     </span>
                                 )}
                                 {n.has_wiki_activity && (
                                     <span className="attention-badge wiki" title={`${(n.wiki_views || 0).toLocaleString()} Wikipedia views`}>
-                                        📖 {n.wiki_views && n.wiki_views > 1000 ? `${Math.round(n.wiki_views / 1000)}K` : ''}
+                                        WIKI {n.wiki_views && n.wiki_views > 1000 ? `${Math.round(n.wiki_views / 1000)}K` : ''}
                                     </span>
                                 )}
                             </div>
@@ -189,20 +191,22 @@ export const NarrativeThreads: React.FC = () => {
 
                         {/* Row 3: Spread bar + trend */}
                         <div className="spread-row">
-                            <div className="spread-track">
+                            <div className="spread-track" title="Geographic spread: how widely this topic is covered across countries. 100% = present in every country we track">
                                 <div
                                     className={`spread-fill ${spreadClass}`}
                                     style={{ width: `${Math.min(n.spread_pct, 100)}%` }}
                                 />
                             </div>
-                            <span className="spread-label">{n.spread_pct}%</span>
-                            <span className={`trend-label ${n.trend}`}>
+                            <span className="spread-label" title="Geographic spread: percentage of tracked countries covering this topic">{n.spread_pct}%</span>
+                            <span className={`trend-label ${n.trend}`} title="Trend over the last few hours: Accelerating = signal volume growing, Fading = volume declining, Stable = consistent">
                                 {n.trend === 'accelerating' ? '▲ Accelerating' : n.trend === 'fading' ? '▼ Fading' : '→ Stable'}
                             </span>
                         </div>
 
                         {/* Row 4: Sparkline */}
-                        <Sparkline data={n.hourly_timeline} trend={n.trend} />
+                        <div title="Signal volume over time — each point is one hour. Rising line = growing coverage, falling = cooling off.">
+                            <Sparkline data={n.hourly_timeline} trend={n.trend} />
+                        </div>
                     </div>
                 )
             })}

@@ -224,21 +224,21 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
 
                         {/* Summary Stats */}
                         <div className="theme-stats-row">
-                            <div className="theme-stat">
+                            <div className="theme-stat" title="Total media signals (articles, posts) mentioning this topic in the selected time window">
                                 <span className="theme-stat-value">{data.total}</span>
                                 <span className="theme-stat-label">Signals</span>
                             </div>
-                            <div className="theme-stat">
+                            <div className="theme-stat" title="Average GDELT tone score across all signals. Scale −10 to +10: negative = topic framed critically or with conflict, positive = framed supportively. Scores rarely exceed ±3 in normal news.">
                                 <span className="theme-stat-value" style={{ color: getSentimentColor(data.avgSentiment) }}>
                                     {data.avgSentiment > 0 ? '+' : ''}{data.avgSentiment.toFixed(2)}
                                 </span>
                                 <span className="theme-stat-label">Avg Sentiment</span>
                             </div>
-                            <div className="theme-stat">
+                            <div className="theme-stat" title="Number of distinct countries where media sources are covering this topic">
                                 <span className="theme-stat-value">{data.countryBreakdown.length}</span>
                                 <span className="theme-stat-label">Countries</span>
                             </div>
-                            <div className="theme-stat">
+                            <div className="theme-stat" title="Number of distinct media outlets (news sites, blogs, feeds) contributing signals">
                                 <span className="theme-stat-value">{data.topSources.length}</span>
                                 <span className="theme-stat-label">Sources</span>
                             </div>
@@ -251,7 +251,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
                                 <div className="attention-signals-row">
                                     {trendMatch?.has_public_interest && (
                                         <div className="attention-signal-card">
-                                            <span className="attention-signal-icon">🔍</span>
+                                            <span className="attention-signal-icon">SEARCH</span>
                                             <div>
                                                 <div className="attention-signal-label">People are searching for this</div>
                                                 <div className="attention-signal-detail">
@@ -264,7 +264,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
                                     )}
                                     {wikiMatch?.has_wiki_activity && (
                                         <div className="attention-signal-card">
-                                            <span className="attention-signal-icon">📖</span>
+                                            <span className="attention-signal-icon">WIKI</span>
                                             <div>
                                                 <div className="attention-signal-label">
                                                     Wikipedia spike — {(wikiMatch.total_views || 0).toLocaleString()} views
@@ -342,15 +342,15 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
                                                         <span className="framing-country-name">{cf.country_name}</span>
                                                     </div>
                                                     <div className="framing-stats">
-                                                        <span className="framing-signal-count">
+                                                        <span className="framing-signal-count" title="Number of signals from this country · its share of total global coverage for this topic">
                                                             {cf.signal_count.toLocaleString()} sig
                                                             <span className="framing-share"> · {sharePct}%</span>
                                                         </span>
-                                                        <span className="framing-tone" style={{ color: getFramingSentimentColor(cf.avg_sentiment) }}>
+                                                        <span className="framing-tone" title="Average GDELT tone: how this country's media frames the topic. −10 = very critical, 0 = neutral, +10 = very supportive." style={{ color: getFramingSentimentColor(cf.avg_sentiment) }}>
                                                             {cf.avg_sentiment > 0 ? '+' : ''}{cf.avg_sentiment.toFixed(1)} tone
                                                         </span>
                                                     </div>
-                                                    <div className="framing-sentiment-bar">
+                                                    <div className="framing-sentiment-bar" title="Tone bar: left = negative, center = neutral, right = positive">
                                                         <div
                                                             className="framing-sentiment-fill"
                                                             style={{

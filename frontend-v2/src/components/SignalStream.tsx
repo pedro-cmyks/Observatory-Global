@@ -358,8 +358,8 @@ export const SignalStream: React.FC = () => {
                                 return (
                                     <div key={`evt-${evt.id}`} className="signal-row event-card">
                                         <div className="event-header">
-                                            <span className="event-icon" style={{color: quadColor}}>
-                                                {evt.action.quad_class === 1 || evt.action.quad_class === 2 ? '🤝' : '⚠️'}
+                                            <span className="event-quad" style={{color: quadColor, fontWeight: 700, fontSize: '9px', letterSpacing: '0.04em'}}>
+                                                {evt.action.quad_class === 1 ? 'COOP' : evt.action.quad_class === 2 ? 'VERBAL' : evt.action.quad_class === 3 ? 'DEMAND' : 'CONFLICT'}
                                             </span>
                                             <span className="event-label" style={{color: quadColor}}>{evt.action.label}</span>
                                             <span className="signal-time">{formatTime(evt.timestamp)}</span>
@@ -380,7 +380,7 @@ export const SignalStream: React.FC = () => {
                                             )}
                                         </div>
                                         <div className="event-meta">
-                                            <span>📍 {evt.location.country_code || 'GLO'}{evt.location.name ? ` · ${evt.location.name.split(',')[0]}` : ''}</span>
+                                            <span>{evt.location.country_code || 'GLO'}{evt.location.name ? ` · ${evt.location.name.split(',')[0]}` : ''}</span>
                                             {evt.action.goldstein_scale !== null && (
                                                 <span className={evt.action.goldstein_scale >= 0 ? 'positive' : 'negative'}>
                                                     {evt.action.goldstein_scale > 0 ? '+' : ''}{evt.action.goldstein_scale}
