@@ -43,6 +43,23 @@ interface Velocity {
     percentage_change: number | string
 }
 
+// Extract readable domain from a URL
+const extractDomain = (url: string): string => {
+    try {
+        const host = new URL(url).hostname.replace(/^www\./, '')
+        return host.split('.').slice(-2).join('.')
+    } catch {
+        return ''
+    }
+}
+
+// Clean CAMEO actor name: title-case, drop generic codes
+const cleanActorName = (name: string, countryCode: string | null): string => {
+    if (!name) return countryCode || '?'
+    // Title-case the name
+    return name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
+}
+
 // Helper to determine sentiment color
 const getSentimentClass = (sentiment: number) => {
     if (sentiment > 0.1) return 'positive'
@@ -337,6 +354,7 @@ export const SignalStream: React.FC = () => {
                             if (item.type === 'event') {
                                 const evt = item as GeopoliticalEvent
                                 const quadColor = evt.action.quad_class === 1 || evt.action.quad_class === 2 ? '#4ade80' : '#ef4444'
+                                const sourceDomain = evt.meta.source_url ? extractDomain(evt.meta.source_url) : ''
                                 return (
                                     <div key={`evt-${evt.id}`} className="signal-row event-card">
                                         <div className="event-header">
@@ -349,27 +367,27 @@ export const SignalStream: React.FC = () => {
                                         <div className="event-actors">
                                             {evt.actor1 && (
                                                 <span className="event-actor source">
-                                                    {evt.actor1.country_code ? `[${evt.actor1.country_code}] ` : ''}
-                                                    {evt.actor1.name || 'Unknown'}
+                                                    {cleanActorName(evt.actor1.name, evt.actor1.country_code)}
                                                 </span>
                                             )}
                                             {evt.actor2 && (
                                                 <>
                                                     <span className="event-arrow">→</span>
                                                     <span className="event-actor target">
-                                                        {evt.actor2.country_code ? `[${evt.actor2.country_code}] ` : ''}
-                                                        {evt.actor2.name || 'Unknown'}
+                                                        {cleanActorName(evt.actor2.name, evt.actor2.country_code)}
                                                     </span>
                                                 </>
                                             )}
                                         </div>
                                         <div className="event-meta">
-                                            <span>📍 {evt.location.country_code || 'GLO'} {evt.location.name ? `· ${evt.location.name}` : ''}</span>
+                                            <span>📍 {evt.location.country_code || 'GLO'}{evt.location.name ? ` · ${evt.location.name.split(',')[0]}` : ''}</span>
                                             {evt.action.goldstein_scale !== null && (
-                                                <span>· Goldstein: {evt.action.goldstein_scale > 0 ? '+' : ''}{evt.action.goldstein_scale}</span>
+                                                <span className={evt.action.goldstein_scale >= 0 ? 'positive' : 'negative'}>
+                                                    {evt.action.goldstein_scale > 0 ? '+' : ''}{evt.action.goldstein_scale}
+                                                </span>
                                             )}
-                                            {evt.meta.source_url && (
-                                                <span>· <a href={evt.meta.source_url} target="_blank" rel="noopener noreferrer" className="signal-link">Source</a></span>
+                                            {sourceDomain && (
+                                                <a href={evt.meta.source_url} target="_blank" rel="noopener noreferrer" className="signal-link">{sourceDomain}</a>
                                             )}
                                         </div>
                                     </div>

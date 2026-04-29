@@ -2747,8 +2747,7 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
         async with app.state.pool.acquire() as conn:
             await conn.execute("SET statement_timeout = 20000")
             timeline_hours = min(hours, 24)
-            # Cap the unnest scan to 6h — mirrors flows pattern, prevents timeout on large windows
-            query_hours = min(hours, 6)
+            query_hours = min(hours, 24)
 
             # Single CTE: top themes + velocity + timeline + countries
             rows = await conn.fetch("""

@@ -44,6 +44,13 @@ const COUNTRY_NAMES: Record<string, string> = {
     BB: 'Barbados', BS: 'Bahamas', GD: 'Grenada', LC: 'Saint Lucia',
     VC: 'St. Vincent', AG: 'Antigua', DM: 'Dominica',
     TT: 'Trinidad', SR: 'Suriname', GY: 'Guyana',
+    // GDELT/FIPS-specific codes (no duplicates with above)
+    CJ: 'Cayman Islands', RQ: 'Puerto Rico',
+    WE: 'West Bank', YM: 'Yemen', RI: 'Indonesia', RB: 'Serbia',
+    AN: 'Antilles', RE: 'Réunion', PM: 'St. Pierre', BQ: 'Bonaire',
+    SX: 'Sint Maarten', AW: 'Aruba', TC: 'Turks & Caicos',
+    BM: 'Bermuda', VI: 'Virgin Islands', GU: 'Guam',
+    MP: 'N. Mariana Is.', UM: 'U.S. Minor Is.',
 }
 
 export function resolveCountryName(code: string, apiName?: string): string {
