@@ -52,10 +52,13 @@ export interface AcledConflict {
     type: string
     sub_type: string
     actors: { actor1: string | null, actor2: string | null }
-    location: { country: string, region: string, name: string, latitude: number, longitude: number }
+    location: { country: string, region?: string, name: string, latitude: number | null, longitude: number | null }
     fatalities: number
-    notes: string
+    notes?: string
     source: string
+    severity?: string
+    goldstein?: number
+    mentions?: number
 }
 
 interface FocusDataState {
@@ -184,26 +187,19 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 }
             }
 
-            // Fetch ACLED conflicts
+            // Fetch conflict markers (ACLED if configured, GDELT Events fallback)
             let acledData: AcledConflict[] = []
             try {
                 const hours = timeRangeToHours(timeRange)
                 const days = Math.max(1, Math.min(30, Math.ceil(hours / 24)))
-
-                const acledParams = new URLSearchParams()
-                acledParams.append('days', days.toString())
-                acledParams.append('limit', '500')
-                if (isActive && focus.type === 'country' && focus.value) {
-                    acledParams.append('country', focus.value)
-                }
-
-                const acledRes = await fetch(`/api/v2/acled?${acledParams}`)
-                if (acledRes.ok) {
-                    const data = await acledRes.json()
-                    acledData = data.conflicts || []
+                const markersParams = new URLSearchParams({ days: days.toString(), limit: '500' })
+                const markersRes = await fetch(`/api/v2/conflict-markers?${markersParams}`)
+                if (markersRes.ok) {
+                    const data = await markersRes.json()
+                    acledData = data.markers || []
                 }
             } catch (e) {
-                console.warn('[FocusDataProvider] ACLED fetch failed:', e)
+                console.warn('[FocusDataProvider] Conflict markers fetch failed:', e)
             }
 
             const newFlows = flowsData.flows || []

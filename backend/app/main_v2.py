@@ -2666,6 +2666,178 @@ async def get_events(
         return {"events": [], "error": str(e)}
 
 
+@app.get("/api/v2/events/clusters")
+async def get_event_clusters(
+    hours: int = Query(24, ge=1, le=168),
+    quad_class: Optional[int] = Query(None, description="Filter: 1=Verbal Coop 2=Material Coop 3=Verbal Conflict 4=Material Conflict"),
+    limit: int = Query(20, ge=1, le=50)
+):
+    """
+    Cluster GDELT Events by country + quad_class for the given window.
+    Returns the hottest conflict/cooperation clusters with actor pairs,
+    Goldstein score, and event type breakdown.
+    """
+    from app.core.cameo_taxonomy import get_cameo_label, get_quad_class_label
+
+    try:
+        async with app.state.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 10000")
+
+            quad_filter = "AND quad_class = $2" if quad_class else ""
+            params = [str(hours)]
+            if quad_class:
+                params.append(quad_class)
+
+            rows = await conn.fetch(f"""
+                SELECT
+                    action_country_code                             AS country,
+                    quad_class,
+                    COUNT(*)                                        AS event_count,
+                    ROUND(AVG(goldstein_scale)::numeric, 2)        AS avg_goldstein,
+                    SUM(num_mentions)                               AS total_mentions,
+                    MIN(timestamp)                                  AS first_seen,
+                    MAX(timestamp)                                  AS last_seen,
+                    AVG(latitude)                                   AS center_lat,
+                    AVG(longitude)                                  AS center_lon,
+                    ARRAY_AGG(DISTINCT event_root_code)
+                        FILTER (WHERE event_root_code IS NOT NULL)  AS root_codes,
+                    -- Top actor pair by co-occurrence count
+                    MODE() WITHIN GROUP (ORDER BY actor1_country_code) AS top_actor1,
+                    MODE() WITHIN GROUP (ORDER BY actor2_country_code) AS top_actor2
+                FROM events_v2
+                WHERE timestamp > NOW() - ($1 || ' hours')::INTERVAL
+                  AND action_country_code IS NOT NULL
+                  {quad_filter}
+                GROUP BY action_country_code, quad_class
+                HAVING COUNT(*) >= 3
+                ORDER BY event_count DESC, avg_goldstein ASC
+                LIMIT {limit}
+            """, *params)
+
+            clusters = []
+            for r in rows:
+                root_labels = [get_cameo_label(c) for c in (r["root_codes"] or []) if c]
+                clusters.append({
+                    "country": r["country"],
+                    "quad_class": r["quad_class"],
+                    "quad_label": get_quad_class_label(r["quad_class"]),
+                    "event_count": int(r["event_count"]),
+                    "avg_goldstein": float(r["avg_goldstein"] or 0),
+                    "total_mentions": int(r["total_mentions"] or 0),
+                    "first_seen": r["first_seen"].isoformat() if r["first_seen"] else None,
+                    "last_seen": r["last_seen"].isoformat() if r["last_seen"] else None,
+                    "center": {
+                        "lat": float(r["center_lat"]) if r["center_lat"] else None,
+                        "lon": float(r["center_lon"]) if r["center_lon"] else None,
+                    },
+                    "event_types": root_labels[:5],
+                    "top_actors": {
+                        "actor1_country": r["top_actor1"],
+                        "actor2_country": r["top_actor2"],
+                    },
+                    # Intensity 0–1 for frontend sizing: Goldstein -10 → 1.0, 0 → 0.5, +10 → 0.0
+                    "intensity": round(max(0, min(1, (0 - float(r["avg_goldstein"] or 0)) / 10 + 0.5)), 2),
+                })
+
+            return {
+                "clusters": clusters,
+                "hours": hours,
+                "total": len(clusters),
+                "generated_at": datetime.now(timezone.utc).isoformat()
+            }
+    except Exception as e:
+        return {"clusters": [], "error": str(e)}
+
+
+@app.get("/api/v2/conflict-markers")
+async def get_conflict_markers(
+    days: int = Query(3, ge=1, le=30),
+    limit: int = Query(200, ge=1, le=2000)
+):
+    """
+    Returns conflict markers for the map.
+    Priority: ACLED verified events (if configured).
+    Fallback: GDELT Events quad_class=4 (Material Conflict) with Goldstein < -3.
+    Frontend can render both the same way.
+    """
+    from app.services.ingest_acled import ACLED_API_KEY
+
+    try:
+        async with app.state.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 8000")
+
+            # Try ACLED first
+            acled_count = await conn.fetchval("SELECT COUNT(*) FROM acled_conflicts_v2 WHERE event_date >= CURRENT_DATE - $1", days)
+
+            if acled_count and acled_count > 0:
+                rows = await conn.fetch("""
+                    SELECT event_id_cnty, event_date, event_type, sub_event_type,
+                           actor1, actor2, country, region, location,
+                           latitude, longitude, fatalities, notes, source
+                    FROM acled_conflicts_v2
+                    WHERE event_date >= CURRENT_DATE - $1
+                    ORDER BY event_date DESC
+                    LIMIT $2
+                """, days, limit)
+                markers = [{
+                    "id": r["event_id_cnty"],
+                    "source": "acled",
+                    "date": r["event_date"].isoformat() if r["event_date"] else None,
+                    "type": r["event_type"],
+                    "sub_type": r["sub_event_type"],
+                    "actors": {"actor1": r["actor1"], "actor2": r["actor2"]},
+                    "location": {
+                        "country": r["country"], "name": r["location"],
+                        "latitude": float(r["latitude"]) if r["latitude"] else None,
+                        "longitude": float(r["longitude"]) if r["longitude"] else None,
+                    },
+                    "fatalities": r["fatalities"] or 0,
+                    "severity": "verified",
+                } for r in rows]
+                return {"markers": markers, "source": "acled", "count": len(markers)}
+
+            # Fallback: GDELT Events Material Conflict (quad_class=4, Goldstein < -3)
+            rows = await conn.fetch("""
+                SELECT global_event_id, timestamp, event_code, event_root_code,
+                       actor1_name, actor1_country_code, actor2_name, actor2_country_code,
+                       action_country_code, action_location_name,
+                       latitude, longitude, goldstein_scale, num_mentions, avg_tone
+                FROM events_v2
+                WHERE timestamp > NOW() - ($1 || ' days')::INTERVAL
+                  AND quad_class = 4
+                  AND goldstein_scale < -3
+                  AND latitude IS NOT NULL AND longitude IS NOT NULL
+                ORDER BY timestamp DESC, num_mentions DESC
+                LIMIT $2
+            """, str(days), limit)
+
+            from app.core.cameo_taxonomy import get_cameo_label
+            markers = [{
+                "id": str(r["global_event_id"]),
+                "source": "gdelt_events",
+                "date": r["timestamp"].isoformat() if r["timestamp"] else None,
+                "type": get_cameo_label(r["event_code"]),
+                "sub_type": r["event_root_code"],
+                "actors": {
+                    "actor1": r["actor1_name"] or r["actor1_country_code"],
+                    "actor2": r["actor2_name"] or r["actor2_country_code"],
+                },
+                "location": {
+                    "country": r["action_country_code"], "name": r["action_location_name"],
+                    "latitude": float(r["latitude"]) if r["latitude"] else None,
+                    "longitude": float(r["longitude"]) if r["longitude"] else None,
+                },
+                "fatalities": 0,
+                "severity": "inferred",
+                "goldstein": float(r["goldstein_scale"]) if r["goldstein_scale"] else None,
+                "mentions": r["num_mentions"] or 0,
+            } for r in rows]
+            return {"markers": markers, "source": "gdelt_events_fallback", "count": len(markers)}
+
+    except Exception as e:
+        return {"markers": [], "error": str(e)}
+
+
 # =============================================================================
 # ACLED CONFLICT API
 # =============================================================================

@@ -251,10 +251,10 @@ function buildLayers({
       },
     }),
 
-    // ACLED Conflicts Layer — Renders intense 'X' or 'Pulse' at conflict sites
+    // Conflict Markers Layer — ACLED or GDELT Events fallback
     acledConflicts && acledConflicts.length > 0 && new ScatterplotLayer({
       id: `acled-conflicts-${isGlobe ? 'globe' : 'flat'}`,
-      data: acledConflicts,
+      data: acledConflicts.filter((d: any) => d.location.latitude != null && d.location.longitude != null),
       getPosition: (d: any) => [d.location.longitude, d.location.latitude],
       // Intensity based on fatalities
       getRadius: (d: any) => Math.min(Math.max(4, Math.sqrt(d.fatalities || 1) * 3), 15) * sizeBoost,
