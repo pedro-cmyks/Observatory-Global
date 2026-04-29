@@ -3423,14 +3423,17 @@ async def get_aircraft_positions():
     global AIRCRAFT_CACHE, _OPENSKY_RETRY_AFTER
     current_time = time.time()
 
-    # ── Rate-limit: max one poll every 60 s, or until backoff expires ──
-    if (current_time < _OPENSKY_RETRY_AFTER or current_time - AIRCRAFT_CACHE["timestamp"] < 60) and AIRCRAFT_CACHE["data"]:
+    # ── Hard backoff: don't hit OpenSky until retry window expires ──────
+    if current_time < _OPENSKY_RETRY_AFTER:
+        if AIRCRAFT_CACHE["data"]:
+            age_mins = round((current_time - AIRCRAFT_CACHE["timestamp"]) / 60, 1)
+            return {"aircraft": AIRCRAFT_CACHE["data"], "cached": True, "cache_age_minutes": age_mins}
+        return {"aircraft": [], "cached": False, "message": "Aircraft data temporarily unavailable (rate limited)"}
+
+    # ── Soft rate-limit: max one poll every 60 s ─────────────────────
+    if current_time - AIRCRAFT_CACHE["timestamp"] < 60 and AIRCRAFT_CACHE["data"]:
         age_mins = round((current_time - AIRCRAFT_CACHE["timestamp"]) / 60, 1)
-        return {
-            "aircraft": AIRCRAFT_CACHE["data"],
-            "cached": True,
-            "cache_age_minutes": age_mins,
-        }
+        return {"aircraft": AIRCRAFT_CACHE["data"], "cached": True, "cache_age_minutes": age_mins}
 
     try:
         # Get OAuth2 token (or None for anonymous)
