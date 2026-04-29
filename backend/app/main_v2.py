@@ -1735,7 +1735,8 @@ async def get_flows(
 
     try:
         async with app.state.pool.acquire() as conn:
-            await conn.execute("SET statement_timeout = 0")
+            # 20s cap: slow unnest query must not hold connections indefinitely
+            await conn.execute("SET statement_timeout = 20000")
             # Parse range parameter (takes precedence over hours)
             effective_hours = hours
             if time_range:
@@ -1748,6 +1749,8 @@ async def get_flows(
                     "record": 8760  # ~1 year
                 }
                 effective_hours = range_map.get(time_range, hours)
+            # Cap the scan window for the unnest query: 6h max prevents full-table scans
+            query_hours = min(effective_hours, 6)
 
             # Build focus filter if provided
             focus_filter = ""
@@ -1766,22 +1769,22 @@ async def get_flows(
                     focus_filter = "AND LOWER(source_name) LIKE LOWER($1)"
                     filter_value = f"%{focus_value}%"
             
-            # Get theme vectors for each country
+            # Get theme vectors for each country (capped at 6h to prevent full-table scans)
             if filter_value:
                 country_themes = await conn.fetch(f"""
                     WITH theme_counts AS (
-                        SELECT 
+                        SELECT
                             country_code,
                             unnest(themes) as theme,
                             COUNT(*) as cnt
                         FROM signals_v2
-                        WHERE timestamp > NOW() - INTERVAL '{effective_hours} hours'
+                        WHERE timestamp > NOW() - INTERVAL '{query_hours} hours'
                         AND themes IS NOT NULL AND array_length(themes, 1) > 0
                         {focus_filter}
                         GROUP BY country_code, theme
                         HAVING COUNT(*) >= 2
                     )
-                    SELECT 
+                    SELECT
                         country_code,
                         array_agg(theme ORDER BY cnt DESC) as themes,
                         SUM(cnt) as total
@@ -1792,7 +1795,7 @@ async def get_flows(
             else:
                 country_themes = await conn.fetch("""
                     WITH theme_counts AS (
-                        SELECT 
+                        SELECT
                             country_code,
                             unnest(themes) as theme,
                             COUNT(*) as cnt
@@ -1802,14 +1805,14 @@ async def get_flows(
                         GROUP BY country_code, theme
                         HAVING COUNT(*) >= 2
                     )
-                    SELECT 
+                    SELECT
                         country_code,
                         array_agg(theme ORDER BY cnt DESC) as themes,
                         SUM(cnt) as total
                     FROM theme_counts
                     GROUP BY country_code
                     HAVING SUM(cnt) >= 5
-                """ % effective_hours)
+                """ % query_hours)
             
             # Get coordinates
             coords = {r['code']: (float(r['longitude']), float(r['latitude'])) 
@@ -2722,7 +2725,7 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
 
     try:
         async with app.state.pool.acquire() as conn:
-            await conn.execute("SET statement_timeout = 0")
+            await conn.execute("SET statement_timeout = 20000")
             timeline_hours = min(hours, 24)
 
             # Single CTE: top themes + velocity + timeline + countries
@@ -2901,6 +2904,9 @@ async def get_correlation(
     
     try:
         async with app.state.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 20000")
+            # Cap the scan window to prevent full-table scans
+            hours = min(hours, 6)
             if mode == "theme":
                 # 1. Top themes by signal count
                 top_themes = await conn.fetch("""
