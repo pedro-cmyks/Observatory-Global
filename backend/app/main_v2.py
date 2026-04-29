@@ -1710,8 +1710,19 @@ async def get_flows(
     Two countries are connected if they share significant theme overlap.
     Supports focus filtering to show flows only for focused signals.
     """
+    import json as _json
+    cache_key = f"flows:{time_range or hours}:{focus_type}:{focus_value}"
+    if hasattr(app.state, "redis") and app.state.redis:
+        try:
+            cached = await app.state.redis.get(cache_key)
+            if cached:
+                return _json.loads(cached)
+        except Exception:
+            pass
+
     try:
         async with app.state.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 0")
             # Parse range parameter (takes precedence over hours)
             effective_hours = hours
             if time_range:
@@ -1836,8 +1847,14 @@ async def get_flows(
             
             # Sort by strength and return top flows
             flows.sort(key=lambda x: x['strength'], reverse=True)
-            
-            return {"flows": flows[:100], "total": len(flows)}
+
+            result = {"flows": flows[:100], "total": len(flows)}
+            if hasattr(app.state, "redis") and app.state.redis:
+                try:
+                    await app.state.redis.setex(cache_key, 300, _json.dumps(result))
+                except Exception:
+                    pass
+            return result
     except Exception as e:
         # Log error but don't crash - return empty flows
         print(f"Error in flows endpoint: {e}")

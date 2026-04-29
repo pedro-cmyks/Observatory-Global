@@ -263,7 +263,7 @@ async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
 async def update_countries(pool: asyncpg.Pool):
     """
     Add new countries from signals, but NEVER overwrite existing coordinates.
-    Manual coordinates in countries_v2 are authoritative.
+    Only looks at the last 2 hours of signals to avoid scanning the full table.
     """
     async with pool.acquire() as conn:
         await conn.execute("""
@@ -275,13 +275,15 @@ async def update_countries(pool: asyncpg.Pool):
                 NULL::numeric
             FROM signals_v2
             WHERE country_code IS NOT NULL
-            AND country_code NOT IN (SELECT code FROM countries_v2)
+              AND timestamp > NOW() - INTERVAL '2 hours'
+              AND country_code NOT IN (SELECT code FROM countries_v2)
             ON CONFLICT (code) DO NOTHING
         """)
 
 async def refresh_aggregates(pool: asyncpg.Pool):
-    """Refresh the materialized view."""
+    """Refresh the materialized view — disable statement_timeout for this long-running op."""
     async with pool.acquire() as conn:
+        await conn.execute("SET statement_timeout = 0")
         await conn.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY country_hourly_v2")
 
 async def run_ingestion():
@@ -309,13 +311,19 @@ async def run_ingestion():
             inserted_trans = await insert_signals(pool, trans_signals)
             print(f"Inserted {inserted_trans} new translingual signals")
         
-        # Update countries
-        await update_countries(pool)
-        print("Updated countries")
-        
-        # Refresh aggregates
-        await refresh_aggregates(pool)
-        print("Refreshed aggregates")
+        # Update countries (non-fatal if it fails)
+        try:
+            await update_countries(pool)
+            print("Updated countries")
+        except Exception as e:
+            print(f"update_countries failed (non-fatal): {e}")
+
+        # Refresh aggregates (always run regardless of update_countries outcome)
+        try:
+            await refresh_aggregates(pool)
+            print("Refreshed aggregates")
+        except Exception as e:
+            print(f"refresh_aggregates failed: {e}")
         
         # Stats
         async with pool.acquire() as conn:
