@@ -272,7 +272,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 
             {/* Sentiment */}
             <section className="brief-section">
-                <h3>Sentiment Overview</h3>
+                <h3>Sentiment Overview <span className="sentiment-info-icon" title="Average sentiment measures how positively or negatively media sources frame coverage of this country. Scores range from -10 (very negative framing) to +10 (very positive framing). Negative scores mean reporting tends to be alarming, critical, or conflict-focused. Positive scores mean coverage is favorable, optimistic, or supportive. This reflects media tone, not whether the news is objectively good or bad.">?</span></h3>
                 <div className="sentiment-display">
                     <span
                         className="sentiment-value"

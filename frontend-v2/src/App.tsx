@@ -29,6 +29,8 @@ import { EntityPanel } from './components/EntityPanel'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
 import { Globe, ClipboardList } from 'lucide-react'
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
+import { resolveCountryName } from './lib/countryNames'
+import { getThemeLabel } from './lib/themeLabels'
 
 // Terminal Panels
 import { SignalStream } from './components/SignalStream'
@@ -356,7 +358,7 @@ function AppContent() {
     if (openBrief) setShowBriefing(true)
   }
   // Focus hook for click-to-focus
-  const { setFocus, focus, clearFocus, filter, setTheme, mapFlyCountry, setMapFlyCountry } = useFocus()
+  const { setFocus, focus, clearFocus, filter, setTheme, setCountry, setPerson, clearFilter, mapFlyCountry, setMapFlyCountry } = useFocus()
 
   // Sync Global Focus to CountrySlide-over + fly to country
   useEffect(() => {
@@ -788,6 +790,26 @@ function AppContent() {
             onThemeSelect={handleThemeSelect}
             onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
           />
+          {(filter.theme || filter.country || filter.person) && (
+            <div className="active-filters">
+              {filter.theme && (
+                <button className="filter-chip" onClick={() => { setTheme(null) }} title="Remove theme filter">
+                  {getThemeLabel(filter.theme)} <span className="filter-chip-x">×</span>
+                </button>
+              )}
+              {filter.country && (
+                <button className="filter-chip filter-chip--geo" onClick={() => setCountry(null)} title="Remove country filter">
+                  in {resolveCountryName(filter.country)} <span className="filter-chip-x">×</span>
+                </button>
+              )}
+              {filter.person && (
+                <button className="filter-chip filter-chip--person" onClick={() => setPerson(null)} title="Remove person filter">
+                  {filter.person.toLowerCase()} <span className="filter-chip-x">×</span>
+                </button>
+              )}
+              <button className="filter-chip filter-chip--clear" onClick={clearFilter}>Clear</button>
+            </div>
+          )}
           <div className="time-controls">
             {TIME_RANGE_OPTIONS.map(range => (
               <button

@@ -141,6 +141,59 @@
   color: rgba(255, 255, 255, 0.7);
 }
 
+/* Active filter chips — shown inline in command bar when filters are applied */
+.active-filters {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.filter-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.filter-chip:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.filter-chip--geo {
+  border-color: rgba(99, 179, 237, 0.35);
+  background: rgba(99, 179, 237, 0.1);
+  color: #63b3ed;
+}
+.filter-chip--geo:hover { background: rgba(99, 179, 237, 0.18); }
+.filter-chip--person {
+  border-color: rgba(167, 139, 250, 0.35);
+  background: rgba(167, 139, 250, 0.1);
+  color: #a78bfa;
+}
+.filter-chip--person:hover { background: rgba(167, 139, 250, 0.18); }
+.filter-chip--clear {
+  border-color: transparent;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.3);
+  padding: 3px 4px;
+}
+.filter-chip--clear:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+.filter-chip-x {
+  opacity: 0.6;
+  font-size: 12px;
+  line-height: 1;
+}
+
 /* Sidebar */
 .sidebar {
   position: absolute;

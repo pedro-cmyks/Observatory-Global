@@ -1386,7 +1386,8 @@ async def get_theme_insight(
         "1. Never use raw database taxonomy names (e.g., if the topic is 'Crisislex Crisislexrec', translate it naturally to 'crisis events' or 'emergencies').\n"
         "2. Do not write like a robot listing statistics. Weave the data (countries, sentiment, volume) into a fluid, human-readable narrative.\n"
         "3. Highlight interesting contrasts (e.g., if sentiment is negative in Russia but positive in the US, mention the regional split naturally).\n"
-        "4. Keep it exactly 2-3 sentences. Be insightful, engaging, and professional."
+        "4. Keep it exactly 2-3 sentences. Be insightful, engaging, and professional.\n"
+        "5. Never use em-dashes (—) or en-dashes. Rephrase with commas or separate sentences."
     )
 
     insight_text: Optional[str] = None

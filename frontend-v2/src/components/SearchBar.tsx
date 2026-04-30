@@ -4,6 +4,108 @@ import { useFocus } from '../contexts/FocusContext'
 import { Search } from 'lucide-react'
 import './SearchBar.css'
 
+// Sorted longest-first so multi-word country names match before single-word substrings
+const COUNTRY_ALIASES: [string, string, string][] = [
+  // [alias (lowercase), code, display name]
+  ['united states', 'US', 'United States'],
+  ['estados unidos', 'US', 'United States'],
+  ['united kingdom', 'GB', 'United Kingdom'],
+  ['reino unido', 'GB', 'United Kingdom'],
+  ['south africa', 'ZA', 'South Africa'],
+  ['sudáfrica', 'ZA', 'South Africa'], ['sudafrica', 'ZA', 'South Africa'],
+  ['south korea', 'KR', 'South Korea'], ['corea del sur', 'KR', 'South Korea'],
+  ['north korea', 'KP', 'North Korea'], ['corea del norte', 'KP', 'North Korea'],
+  ['saudi arabia', 'SA', 'Saudi Arabia'], ['arabia saudita', 'SA', 'Saudi Arabia'],
+  ['new zealand', 'NZ', 'New Zealand'], ['nueva zelanda', 'NZ', 'New Zealand'],
+  ['costa rica', 'CR', 'Costa Rica'],
+  ['el salvador', 'SV', 'El Salvador'],
+  ['sri lanka', 'LK', 'Sri Lanka'],
+  ['puerto rico', 'PR', 'Puerto Rico'],
+  ['dominican republic', 'DO', 'Dominican Rep.'],
+  ['república dominicana', 'DO', 'Dominican Rep.'],
+  ['colombia', 'CO', 'Colombia'],
+  ['brazil', 'BR', 'Brazil'], ['brasil', 'BR', 'Brazil'],
+  ['mexico', 'MX', 'Mexico'], ['méxico', 'MX', 'Mexico'],
+  ['argentina', 'AR', 'Argentina'],
+  ['venezuela', 'VE', 'Venezuela'],
+  ['peru', 'PE', 'Peru'], ['perú', 'PE', 'Peru'],
+  ['chile', 'CL', 'Chile'],
+  ['ecuador', 'EC', 'Ecuador'],
+  ['bolivia', 'BO', 'Bolivia'],
+  ['uruguay', 'UY', 'Uruguay'],
+  ['paraguay', 'PY', 'Paraguay'],
+  ['panama', 'PA', 'Panama'], ['panamá', 'PA', 'Panama'],
+  ['cuba', 'CU', 'Cuba'], ['haiti', 'HT', 'Haiti'], ['haití', 'HT', 'Haiti'],
+  ['russia', 'RU', 'Russia'], ['rusia', 'RU', 'Russia'],
+  ['china', 'CN', 'China'],
+  ['india', 'IN', 'India'],
+  ['germany', 'DE', 'Germany'], ['alemania', 'DE', 'Germany'],
+  ['france', 'FR', 'France'], ['francia', 'FR', 'France'],
+  ['spain', 'ES', 'Spain'], ['españa', 'ES', 'Spain'],
+  ['italy', 'IT', 'Italy'], ['italia', 'IT', 'Italy'],
+  ['japan', 'JP', 'Japan'], ['japón', 'JP', 'Japan'], ['japon', 'JP', 'Japan'],
+  ['israel', 'IL', 'Israel'],
+  ['iran', 'IR', 'Iran'], ['irán', 'IR', 'Iran'],
+  ['ukraine', 'UA', 'Ukraine'], ['ucrania', 'UA', 'Ukraine'],
+  ['turkey', 'TR', 'Turkey'], ['turquía', 'TR', 'Turkey'], ['turquia', 'TR', 'Turkey'],
+  ['pakistan', 'PK', 'Pakistan'], ['pakistán', 'PK', 'Pakistan'],
+  ['indonesia', 'ID', 'Indonesia'],
+  ['canada', 'CA', 'Canada'], ['canadá', 'CA', 'Canada'],
+  ['australia', 'AU', 'Australia'],
+  ['nigeria', 'NG', 'Nigeria'],
+  ['ghana', 'GH', 'Ghana'],
+  ['kenya', 'KE', 'Kenya'], ['kenia', 'KE', 'Kenya'],
+  ['ethiopia', 'ET', 'Ethiopia'], ['etiopía', 'ET', 'Ethiopia'],
+  ['egypt', 'EG', 'Egypt'], ['egipto', 'EG', 'Egypt'],
+  ['angola', 'AO', 'Angola'],
+  ['sudan', 'SD', 'Sudan'], ['sudán', 'SD', 'Sudan'],
+  ['congo', 'CD', 'DR Congo'],
+  ['myanmar', 'MM', 'Myanmar'],
+  ['syria', 'SY', 'Syria'], ['siria', 'SY', 'Syria'],
+  ['poland', 'PL', 'Poland'], ['polonia', 'PL', 'Poland'],
+  ['netherlands', 'NL', 'Netherlands'], ['holanda', 'NL', 'Netherlands'],
+  ['sweden', 'SE', 'Sweden'], ['suecia', 'SE', 'Sweden'],
+  ['norway', 'NO', 'Norway'], ['noruega', 'NO', 'Norway'],
+  ['denmark', 'DK', 'Denmark'], ['dinamarca', 'DK', 'Denmark'],
+  ['finland', 'FI', 'Finland'], ['finlandia', 'FI', 'Finland'],
+  ['portugal', 'PT', 'Portugal'],
+  ['greece', 'GR', 'Greece'], ['grecia', 'GR', 'Greece'],
+  ['romania', 'RO', 'Romania'], ['rumania', 'RO', 'Romania'],
+  ['afghanistan', 'AF', 'Afghanistan'], ['afganistán', 'AF', 'Afghanistan'],
+  ['ethiopia', 'ET', 'Ethiopia'],
+  ['somalia', 'SO', 'Somalia'],
+  ['libya', 'LY', 'Libya'], ['libia', 'LY', 'Libya'],
+  ['yemen', 'YE', 'Yemen'],
+  ['iraq', 'IQ', 'Iraq'], ['irak', 'IQ', 'Iraq'],
+  ['taiwan', 'TW', 'Taiwan'],
+  ['vietnam', 'VN', 'Vietnam'],
+  ['philippines', 'PH', 'Philippines'], ['filipinas', 'PH', 'Philippines'],
+  ['malaysia', 'MY', 'Malaysia'], ['malasia', 'MY', 'Malaysia'],
+  ['thailand', 'TH', 'Thailand'], ['tailandia', 'TH', 'Thailand'],
+  ['bangladesh', 'BD', 'Bangladesh'],
+]
+
+interface ParsedQuery {
+  topic: string
+  countryCode: string | null
+  countryDisplay: string | null
+}
+
+function parseCompoundQuery(q: string): ParsedQuery {
+  const lower = q.toLowerCase()
+  for (const [alias, code, display] of COUNTRY_ALIASES) {
+    if (lower.includes(alias)) {
+      const topic = q
+        .replace(new RegExp(`\\b(en|in|de|del|sobre|from|about)\\s+${alias}\\b`, 'i'), '')
+        .replace(new RegExp(`\\b${alias}\\b`, 'gi'), '')
+        .replace(/[,\s]+/g, ' ')
+        .trim()
+      return { topic: topic.length >= 2 ? topic : q, countryCode: code, countryDisplay: display }
+    }
+  }
+  return { topic: q, countryCode: null, countryDisplay: null }
+}
+
 interface TopCountry {
     code: string
     name: string
@@ -49,22 +151,27 @@ interface SearchBarProps {
 export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<SearchResult | null>(null)
+    const [parsedQuery, setParsedQuery] = useState<ParsedQuery>({ topic: '', countryCode: null, countryDisplay: null })
     const [isOpen, setIsOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
-    const { setFocus, setMapFlyCountry } = useFocus()
+    const { setFocus, setMapFlyCountry, setCountry, setTheme } = useFocus()
 
     const doSearch = useCallback(async (q: string) => {
         if (q.length < 2) {
             setResults(null)
             setIsOpen(false)
+            setParsedQuery({ topic: q, countryCode: null, countryDisplay: null })
             return
         }
+        const parsed = parseCompoundQuery(q)
+        setParsedQuery(parsed)
+        const searchQ = parsed.topic.length >= 2 ? parsed.topic : q
         setLoading(true)
         try {
             const [mainRes, conceptsRes] = await Promise.all([
-                fetch(`/api/v2/search?q=${encodeURIComponent(q)}&hours=168`),
-                fetch(`/api/v2/concepts/search?q=${encodeURIComponent(q)}&limit=4`),
+                fetch(`/api/v2/search?q=${encodeURIComponent(searchQ)}&hours=168`),
+                fetch(`/api/v2/concepts/search?q=${encodeURIComponent(searchQ)}&limit=4`),
             ])
             const data: SearchResult = mainRes.ok ? await mainRes.json() : { themes: [], persons: [], countries: [] }
             if (conceptsRes.ok) {
@@ -89,21 +196,25 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
         setIsOpen(false)
         setQuery('')
         setResults(null)
+        setParsedQuery({ topic: '', countryCode: null, countryDisplay: null })
     }
 
     const handleThemeClick = (t: ThemeResult) => {
-        const top = t.top_countries[0]
-        setFocus('theme', t.theme, getThemeLabel(t.theme))
+        if (parsedQuery.countryCode) {
+            setCountry(parsedQuery.countryCode)
+            setTheme(t.theme)
+            setMapFlyCountry(parsedQuery.countryCode)
+        } else {
+            setFocus('theme', t.theme, getThemeLabel(t.theme))
+            if (t.top_countries[0]) setMapFlyCountry(t.top_countries[0].code)
+        }
         onThemeSelect(t.theme)
-        if (top) setMapFlyCountry(top.code)
         close()
     }
 
     const handlePersonClick = (p: PersonResult) => {
-        const top = p.top_countries[0]
         setFocus('person', p.person, p.person)
-        if (top) setMapFlyCountry(top.code)
-        // EntityPanel opens via focus.type === 'person' in App.tsx — no CountryBrief
+        if (p.top_countries[0]) setMapFlyCountry(p.top_countries[0].code)
         close()
     }
 
@@ -115,10 +226,15 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
     }
 
     const handleConceptClick = (c: ConceptResult) => {
-        // Open the primary theme of the concept bundle as a proxy view
         const primaryTheme = c.themes[0]
         if (primaryTheme) {
-            setFocus('theme', primaryTheme, c.label)
+            if (parsedQuery.countryCode) {
+                setCountry(parsedQuery.countryCode)
+                setTheme(primaryTheme)
+                setMapFlyCountry(parsedQuery.countryCode)
+            } else {
+                setFocus('theme', primaryTheme, c.label)
+            }
             onThemeSelect(primaryTheme)
         }
         close()
@@ -131,6 +247,10 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
         (results.concepts?.length ?? 0) > 0
     )
 
+    const countryBadge = parsedQuery.countryDisplay
+        ? <span className="search-country-badge">in {parsedQuery.countryDisplay}</span>
+        : null
+
     return (
         <div className="search-container" onKeyDown={(e) => e.key === 'Escape' && close()}>
             <div className="search-input-wrapper">
@@ -139,7 +259,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
                     ref={inputRef}
                     type="text"
                     className="search-input"
-                    placeholder="Search topics, countries, people..."
+                    placeholder="Search topics, countries, people... try 'elections Colombia'"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => results && setIsOpen(true)}
@@ -152,7 +272,14 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
 
             {isOpen && (
                 <div className="search-dropdown">
-                    {results?.countries && results.countries.length > 0 && (
+                    {parsedQuery.countryDisplay && (
+                        <div className="search-context-banner">
+                            Filtering to: <strong>{parsedQuery.countryDisplay}</strong>
+                            <span className="search-context-hint"> · results scoped to this country</span>
+                        </div>
+                    )}
+
+                    {results?.countries && results.countries.length > 0 && !parsedQuery.countryCode && (
                         <div className="search-section">
                             <div className="search-section-label">Countries</div>
                             {results.countries.map(c => (
@@ -171,6 +298,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
                                 <div key={c.slug} className="search-item search-item--concept" onClick={() => handleConceptClick(c)}>
                                     <span className="search-item-tag concept-tag">INV</span>
                                     <span className="search-item-name">{c.label}</span>
+                                    {countryBadge}
                                     <span className="search-item-meta search-item-meta--desc">{c.description.slice(0, 60)}…</span>
                                 </div>
                             ))}
@@ -184,9 +312,10 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
                                 <div key={t.theme} className="search-item" onClick={() => handleThemeClick(t)}>
                                     <span className="search-item-icon">{getThemeIcon(t.theme)}</span>
                                     <span className="search-item-name">{getThemeLabel(t.theme)}</span>
+                                    {countryBadge}
                                     <span className="search-item-meta">
                                         {t.total_signals.toLocaleString()} sig
-                                        {t.top_countries.slice(0, 3).map((c, i) => {
+                                        {!parsedQuery.countryCode && t.top_countries.slice(0, 3).map((c, i) => {
                                             const flag = c.code.length === 2
                                                 ? String.fromCodePoint(...c.code.toUpperCase().split('').map(ch => 0x1F1E6 + ch.charCodeAt(0) - 65))
                                                 : '🌐'
@@ -222,7 +351,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
                     )}
 
                     {!hasResults && !loading && (
-                        <div className="search-empty">No results for "{query}"</div>
+                        <div className="search-empty">No results for "{parsedQuery.topic}"</div>
                     )}
                 </div>
             )}

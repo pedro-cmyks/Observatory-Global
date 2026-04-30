@@ -185,3 +185,26 @@
     color: #4a5568;
     font-size: 12px;
 }
+
+/* Compound query context */
+.search-context-banner {
+    padding: 8px 12px 6px;
+    font-size: 11px;
+    color: #63b3ed;
+    border-bottom: 1px solid rgba(99, 179, 237, 0.15);
+    background: rgba(99, 179, 237, 0.05);
+}
+.search-context-hint {
+    color: #4a5568;
+}
+
+.search-country-badge {
+    font-size: 10px;
+    color: #63b3ed;
+    background: rgba(99, 179, 237, 0.12);
+    border: 1px solid rgba(99, 179, 237, 0.25);
+    border-radius: 3px;
+    padding: 1px 5px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}

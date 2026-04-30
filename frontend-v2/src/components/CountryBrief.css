@@ -88,6 +88,30 @@
     color: #9ca3af;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.sentiment-info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    color: #6b7280;
+    font-size: 9px;
+    font-weight: 700;
+    cursor: help;
+    text-transform: none;
+    letter-spacing: 0;
+    flex-shrink: 0;
+}
+.sentiment-info-icon:hover {
+    background: rgba(255,255,255,0.2);
+    color: #d1d5db;
 }
 
 /* Indicators */
