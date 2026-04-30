@@ -293,10 +293,10 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
 
                     {results?.concepts && results.concepts.length > 0 && (
                         <div className="search-section">
-                            <div className="search-section-label">Investigations</div>
+                            <div className="search-section-label">Concepts</div>
                             {results.concepts.map(c => (
                                 <div key={c.slug} className="search-item search-item--concept" onClick={() => handleConceptClick(c)}>
-                                    <span className="search-item-tag concept-tag">INV</span>
+                                    <span className="search-item-tag concept-tag">CON</span>
                                     <span className="search-item-name">{c.label}</span>
                                     {countryBadge}
                                     <span className="search-item-meta search-item-meta--desc">{c.description.slice(0, 60)}…</span>

@@ -332,9 +332,9 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             {/* Top Stories / Recent Signals */}
             {data.top_stories && data.top_stories.length > 0 && (
                 <section className="brief-section">
-                    <h3>Recent Coverage</h3>
+                    <h3>Recent Coverage <span style={{ fontWeight: 400, textTransform: 'none', fontSize: '9px', opacity: 0.5 }}>click theme to explore</span></h3>
                     <div className="story-list">
-                        {data.top_stories.slice(0, 5).map((story, i) => (
+                        {data.top_stories.filter(s => s.title).slice(0, 5).map((story, i) => (
                             <a
                                 key={i}
                                 href={story.url}
@@ -350,14 +350,13 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                             e.stopPropagation();
                                             onThemeSelect?.(story.themeCode);
                                         }}
-                                        title={`Activate narrative thread: ${getThemeLabel(story.themeCode)}`}
+                                        title={`Open narrative thread: ${getThemeLabel(story.themeCode)}`}
                                     >
                                         {getThemeLabel(story.themeCode)}
                                     </span>
                                 )}
-                                {story.title && <p className="story-title">{story.title}</p>}
                                 <p className="story-meta">
-                                    {story.source} • {new Date(story.timestamp).toLocaleTimeString()}
+                                    {story.source} · {new Date(story.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </p>
                             </a>
                         ))}

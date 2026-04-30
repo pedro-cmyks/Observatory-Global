@@ -262,6 +262,14 @@
     font-style: italic;
 }
 
+.narrative-country-filter-notice {
+    padding: 4px 12px;
+    font-size: 9px;
+    color: #63b3ed;
+    border-bottom: 1px solid rgba(99, 179, 237, 0.1);
+    letter-spacing: 0.3px;
+}
+
 /* Empty state */
 .narrative-empty {
     padding: 24px 16px;

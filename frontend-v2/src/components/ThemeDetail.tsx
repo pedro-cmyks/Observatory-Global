@@ -35,6 +35,8 @@ interface ThemeDetailProps {
     theme: string
     originCountry?: string
     originCountryName?: string
+    /** When set, automatically applies a country filter to the theme data fetch (compound search) */
+    initialDrillCountry?: string
     hours: number
 
     onClose: () => void
@@ -43,7 +45,7 @@ interface ThemeDetailProps {
     onPersonClick?: (name: string) => void
 }
 
-export function ThemeDetail({ theme, originCountry, originCountryName, hours, onClose, onThemeSelect, onCountryCardClick, onPersonClick }: ThemeDetailProps) {
+export function ThemeDetail({ theme, originCountry, originCountryName, initialDrillCountry, hours, onClose, onThemeSelect, onCountryCardClick, onPersonClick }: ThemeDetailProps) {
     const [data, setData] = useState<ThemeData | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -51,8 +53,10 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
     const [insightLoading, setInsightLoading] = useState(false)
     const [insightFailed, setInsightFailed] = useState(false)
     const [selectedSource, setSelectedSource] = useState<string | null>(null)
-    const [drillCountry, setDrillCountry] = useState<string | null>(null)
-    const [drillCountryName, setDrillCountryName] = useState<string | null>(null)
+    const [drillCountry, setDrillCountry] = useState<string | null>(initialDrillCountry || null)
+    const [drillCountryName, setDrillCountryName] = useState<string | null>(
+        initialDrillCountry ? (originCountryName || initialDrillCountry) : null
+    )
 
     // Public attention signals
     const [trendMatch, setTrendMatch] = useState<{ has_public_interest: boolean; matches: Array<{keyword: string; country_code: string}> } | null>(null)

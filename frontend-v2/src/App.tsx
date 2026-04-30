@@ -1100,7 +1100,10 @@ function AppContent() {
         {/* Panel 2: SIGNAL STREAM — the intel hub, swaps based on active context */}
         {(() => {
           const isPerson = focus.type === 'person' && !!focus.value
-          const isCountry = !!selectedCountry && !isPerson
+          // Compound: theme + country active together (from search like "elections Colombia")
+          // ThemeDetail wins — it shows topic filtered to that country
+          const isCompound = !!selectedTheme && !!filter.country
+          const isCountry = !!selectedCountry && !isPerson && !isCompound
           const isTheme = !!selectedTheme && !isPerson && !isCountry
           const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme
           const closeAll = () => { setSelectedTheme(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null) }
@@ -1133,6 +1136,11 @@ function AppContent() {
           if (isTheme) panelTitle = <>
             <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
             <span style={{ color: '#94a3b8' }}>{selectedTheme!.theme.replace(/_/g, ' ').slice(0, 26)}</span>
+            {isCompound && filter.country && (
+              <span style={{ color: '#63b3ed', fontSize: 11, marginLeft: 6, opacity: 0.85 }}>
+                · in {resolveCountryName(filter.country)}
+              </span>
+            )}
           </>
           if (isCountry) panelTitle = <>
             <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>{backLabel}</button>
@@ -1169,8 +1177,9 @@ function AppContent() {
                 ) : isTheme ? (
                   <ThemeDetail
                     theme={selectedTheme!.theme}
-                    originCountry={selectedTheme!.originCountry}
-                    originCountryName={selectedTheme!.originCountryName}
+                    originCountry={selectedTheme!.originCountry || (isCompound ? filter.country || undefined : undefined)}
+                    originCountryName={selectedTheme!.originCountryName || (isCompound ? resolveCountryName(filter.country || '') : undefined)}
+                    initialDrillCountry={isCompound ? filter.country || undefined : undefined}
                     hours={timeRangeToHours(timeRange)}
                     onClose={closeAll}
                     onThemeSelect={(theme) => handleThemeSelect(theme)}
@@ -1206,7 +1215,7 @@ function AppContent() {
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 NARRATIVE THREADS
-                <InfoBadge text="Top geopolitical topics trending globally right now. Each thread shows signal volume, country spread, sentiment trend, and the key people being mentioned. Click any thread to open a full topic breakdown." />
+                <InfoBadge text="Top geopolitical topics trending globally right now. The colored dot on each thread shows media tone: red = negative/alarming framing, blue = neutral, green = positive. The ▲▼→ arrow shows if coverage is growing, shrinking, or stable. Click any thread to open a full breakdown." />
               </span>
               <span className="panel-subtitle">how topics spread over time</span>
             </div>

@@ -82,9 +82,12 @@ export const NarrativeThreads: React.FC = () => {
     const cappedHours = Math.min(timeRangeToHours(timeRange), 24)
     const isCapped = timeRangeToHours(timeRange) > 24
 
+    // When a country is active, fetch more threads so we can filter client-side
+    const fetchLimit = filter.country ? 20 : 5
+
     const fetchNarratives = useCallback(async () => {
         try {
-            const res = await fetch(`/api/v2/narratives?hours=${cappedHours}&limit=5`)
+            const res = await fetch(`/api/v2/narratives?hours=${cappedHours}&limit=${fetchLimit}`)
             if (!res.ok) return
             const data = await res.json()
             setNarratives(data.narratives || [])
@@ -93,15 +96,20 @@ export const NarrativeThreads: React.FC = () => {
         } finally {
             setLoading(false)
         }
-    }, [cappedHours])
+    }, [cappedHours, fetchLimit])
 
-    // Initial fetch + 5-minute interval
+    // Initial fetch + 5-minute interval; re-fetch when country changes
     useEffect(() => {
         setLoading(true)
         fetchNarratives()
         const interval = setInterval(fetchNarratives, 5 * 60 * 1000)
         return () => clearInterval(interval)
     }, [fetchNarratives])
+
+    // When country is active, show only threads that include that country
+    const displayedNarratives = filter.country
+        ? narratives.filter(n => n.top_countries.includes(filter.country!)).slice(0, 5)
+        : narratives
 
     const handleClick = (n: Narrative) => {
         setFocus('theme', n.theme_code, getThemeLabel(n.theme_code))
@@ -134,14 +142,27 @@ export const NarrativeThreads: React.FC = () => {
         )
     }
 
+    if (displayedNarratives.length === 0 && filter.country) {
+        return (
+            <div className="narrative-threads-container">
+                <div className="narrative-empty">No top narrative threads found for {filter.country} in this window</div>
+            </div>
+        )
+    }
+
     return (
         <div className="narrative-threads-container">
-            {isCapped && (
+            {filter.country && (
+                <div className="narrative-country-filter-notice">
+                    Showing narratives active in {filter.country}
+                </div>
+            )}
+            {isCapped && !filter.country && (
                 <div className="narrative-cap-notice">
                     Showing last 24h — narratives are most meaningful at shorter windows
                 </div>
             )}
-            {narratives.map(n => {
+            {displayedNarratives.map(n => {
                 const isFocused = filter.theme === n.theme_code
                 // Dim conditions:
                 //  - a theme is locked AND it's not this row → dim
