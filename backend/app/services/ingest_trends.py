@@ -99,7 +99,7 @@ async def insert_trends(pool: asyncpg.Pool, trends: list[dict]) -> int:
                 await conn.execute("""
                     INSERT INTO trends_v2 (timestamp, country_code, keyword, rank, approximate_volume)
                     VALUES ($1, $2, $3, $4, $5)
-                    ON CONFLICT (country_code, keyword, hour_bucket) DO UPDATE
+                    ON CONFLICT ON CONSTRAINT trends_v2_country_code_keyword_hour_bucket_key DO UPDATE
                         SET rank = EXCLUDED.rank,
                             approximate_volume = GREATEST(trends_v2.approximate_volume, EXCLUDED.approximate_volume)
                 """,
@@ -111,7 +111,7 @@ async def insert_trends(pool: asyncpg.Pool, trends: list[dict]) -> int:
                 )
                 inserted += 1
             except Exception as e:
-                logger.debug(f"[Trends] Insert skip: {e}")
+                logger.warning(f"[Trends] Insert failed for {t.get('country_code')}/{t.get('keyword')}: {e}")
                 continue
 
     return inserted
