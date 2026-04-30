@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import ReactGridLayout, { useContainerWidth } from 'react-grid-layout'
+import type { LayoutItem } from 'react-grid-layout'
+import 'react-grid-layout/css/styles.css'
+import 'react-resizable/css/styles.css'
 import MapGL from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
 import { DeckGLOverlay } from './components/DeckGLOverlay'
@@ -298,6 +302,24 @@ const COUNTRY_COORDS: Record<string, [number, number]> = {
   GB:[-2,54],US:[-98,39],UY:[-56,-33],VE:[-66,8],VN:[108,14],YE:[48,15],ZM:[28,-14],
   ZW:[30,-20],XK:[21,42],ME:[19,42],PS:[35,32],KV:[21,42],RI:[118,-2],
   RB:[21,44],SW:[18,62],EI:[-8,53],
+}
+
+const LAYOUT_KEY = 'atlas-layout-v1'
+
+const DEFAULT_LAYOUT: LayoutItem[] = [
+  { i: 'radar',     x: 0,  y: 0,  w: 8,  h: 20, minW: 4, minH: 8 },
+  { i: 'stream',    x: 8,  y: 0,  w: 8,  h: 20, minW: 4, minH: 8 },
+  { i: 'threads',   x: 16, y: 0,  w: 8,  h: 10, minW: 3, minH: 6 },
+  { i: 'matrix',    x: 16, y: 10, w: 8,  h: 10, minW: 3, minH: 6 },
+  { i: 'anomaly',   x: 8,  y: 20, w: 16, h: 8,  minW: 4, minH: 4 },
+  { i: 'integrity', x: 0,  y: 20, w: 8,  h: 8,  minW: 3, minH: 4 },
+]
+
+function loadSavedLayout(): LayoutItem[] {
+  try {
+    const s = localStorage.getItem(LAYOUT_KEY)
+    return s ? JSON.parse(s) : DEFAULT_LAYOUT
+  } catch { return DEFAULT_LAYOUT }
 }
 
 function AppContent() {
@@ -708,6 +730,33 @@ function AppContent() {
   // Total signals for stats
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
 
+  // Draggable grid layout
+  const [gridLayout, setGridLayout] = useState<LayoutItem[]>(loadSavedLayout)
+  const { width: gridWidth, containerRef: gridContainerRef } = useContainerWidth({ initialWidth: 1280 })
+  const handleLayoutChange = (l: readonly LayoutItem[]) => {
+    setGridLayout([...l])
+    localStorage.setItem(LAYOUT_KEY, JSON.stringify(l))
+  }
+  const resetLayout = () => {
+    localStorage.removeItem(LAYOUT_KEY)
+    setGridLayout([...DEFAULT_LAYOUT])
+  }
+
+  // Auto-fit rowHeight so the default layout fills exactly the viewport at any screen size.
+  // Formula: totalRows * rowHeight + (totalRows-1) * marginY + 2 * paddingY = viewportH - 48
+  const GRID_ROWS = 28   // max(y + h) across DEFAULT_LAYOUT
+  const GRID_MARGIN_Y = 8
+  const GRID_PADDING_Y = 12
+  const [viewportH, setViewportH] = useState(window.innerHeight)
+  useEffect(() => {
+    const onResize = () => setViewportH(window.innerHeight)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  const rowHeight = Math.max(20, Math.floor(
+    (viewportH - 48 - GRID_PADDING_Y * 2 - GRID_MARGIN_Y * (GRID_ROWS - 1)) / GRID_ROWS
+  ))
+
   // Prefetch briefing data so the modal opens instantly
   const [prefetchedBriefing, setPrefetchedBriefing] = useState<any>(null)
   const [prefetchedInsight, setPrefetchedInsight] = useState<string | null>(null)
@@ -762,6 +811,7 @@ function AppContent() {
           }}>
             <ClipboardList size={13} /> BRIEF
           </button>
+          <button className="cmd-btn cmd-btn--reset" onClick={resetLayout} title="Reset panel layout to defaults">⊞</button>
           <SettingsPanel
             showTerminator={showTerminator}
             onToggleTerminator={setShowTerminator}
@@ -771,9 +821,17 @@ function AppContent() {
         </div>
       </header>
 
-      <div className="terminal-layout">
+      <div ref={gridContainerRef} className="terminal-layout-container">
+        <ReactGridLayout
+          width={gridWidth}
+          layout={gridLayout}
+          gridConfig={{ cols: 24, rowHeight, margin: [8, GRID_MARGIN_Y], containerPadding: [16, GRID_PADDING_Y] }}
+          dragConfig={{ handle: '.panel-header' }}
+          onLayoutChange={handleLayoutChange}
+          className="terminal-layout-rgl"
+        >
         {/* Panel 1: GLOBAL RADAR */}
-        <div className="terminal-panel radar">
+        <div key="radar" className="terminal-panel radar">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1067,7 +1125,7 @@ function AppContent() {
             <span style={{ color: '#2dd4bf' }}>{selectedChokepoint!.name}</span>
           </>
           return (
-            <div className="terminal-panel stream">
+            <div key="stream" className="terminal-panel stream">
               <div className="panel-header">
                 <div className="panel-header-title-wrap">{panelTitle}</div>
               </div>
@@ -1121,7 +1179,7 @@ function AppContent() {
         })()}
 
         {/* Panel 3: NARRATIVE THREADS — always visible, reactive to focus context */}
-        <div className="terminal-panel threads">
+        <div key="threads" className="terminal-panel threads">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1139,7 +1197,7 @@ function AppContent() {
         </div>
 
         {/* Panel 4: CORRELATION MATRIX */}
-        <div className="terminal-panel matrix">
+        <div key="matrix" className="terminal-panel matrix">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1157,7 +1215,7 @@ function AppContent() {
         </div>
 
         {/* Panel 5: ANOMALY ALERT */}
-        <div className="terminal-panel anomaly">
+        <div key="anomaly" className="terminal-panel anomaly">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1175,7 +1233,7 @@ function AppContent() {
         </div>
 
         {/* Panel 6: SOURCE INTEGRITY */}
-        <div className="terminal-panel integrity">
+        <div key="integrity" className="terminal-panel integrity">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1191,6 +1249,7 @@ function AppContent() {
             </PanelErrorBoundary>
           </div>
         </div>
+        </ReactGridLayout>
       </div>
 
       {/* Hover Tooltip */}

@@ -130,6 +130,14 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
     const getSentimentColor = (s: number) =>
         s > 0.1 ? '#4ade80' : s < -0.1 ? '#f87171' : '#fbbf24'
 
+    const sentimentWord = (s: number): string => {
+        if (s > 2) return 'Very positive'
+        if (s > 0.5) return 'Slightly positive'
+        if (s > -0.5) return 'Neutral'
+        if (s > -2) return 'Mostly negative'
+        return 'Very negative'
+    }
+
     const formatTime = (iso: string) => {
         const d = new Date(iso)
         return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -360,7 +368,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
                                                         />
                                                     </div>
                                                     <div className="framing-sub-themes">
-                                                        {cf.top_sub_themes.map(st => (
+                                                        {cf.top_sub_themes
+                                                            .filter(st => !st.startsWith('WORLDLANGUAGES_') && !st.startsWith('TAX_WORLDLANGUAGES_'))
+                                                            .map(st => (
                                                             <span key={st} className="framing-chip">
                                                                 {getThemeIcon(st)} {getThemeLabel(st)}
                                                             </span>
@@ -454,17 +464,81 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
                                             key={s.name}
                                             className={`source-item ${selectedSource === s.name ? 'source-active' : ''}`}
                                             onClick={() => setSelectedSource(selectedSource === s.name ? null : s.name)}
+                                            title={`Avg tone ${s.sentiment > 0 ? '+' : ''}${s.sentiment.toFixed(2)} · click to see articles`}
                                         >
                                             <span className="source-name">{s.name}</span>
                                             <span className="source-count">{s.count}</span>
                                             <span className="source-sentiment" style={{ color: getSentimentColor(s.sentiment) }}>
-                                                {s.sentiment > 0 ? '+' : ''}{s.sentiment.toFixed(2)}
+                                                {sentimentWord(s.sentiment)}
+                                            </span>
+                                            <span className="source-see-articles">
+                                                {selectedSource === s.name ? '▴' : '▾'}
                                             </span>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         )}
+
+                        {/* Source Intelligence Block — shown when a source is selected */}
+                        {selectedSource && (() => {
+                            const srcSigs = data.signals.filter(s => s.source === selectedSource)
+                            if (srcSigs.length === 0) return null
+
+                            // Top co-occurring themes from this source's signals
+                            const themeFreq: Record<string, number> = {}
+                            for (const sig of srcSigs) {
+                                for (const t of sig.otherThemes) {
+                                    if (!t.startsWith('WORLDLANGUAGES_') && !t.startsWith('TAX_WORLDLANGUAGES_')) {
+                                        themeFreq[t] = (themeFreq[t] || 0) + 1
+                                    }
+                                }
+                            }
+                            const topThemes = Object.entries(themeFreq).sort((a, b) => b[1] - a[1]).slice(0, 4)
+
+                            // Country breakdown
+                            const countryFreq: Record<string, number> = {}
+                            for (const sig of srcSigs) {
+                                countryFreq[sig.country] = (countryFreq[sig.country] || 0) + 1
+                            }
+                            const topCountries = Object.entries(countryFreq).sort((a, b) => b[1] - a[1]).slice(0, 3)
+
+                            const avgSent = srcSigs.reduce((sum, s) => sum + s.sentiment, 0) / srcSigs.length
+
+                            return (
+                                <div className="source-intel-block">
+                                    <div className="source-intel-header">
+                                        <span className="source-intel-name">{selectedSource}</span>
+                                        <span className="source-intel-label"> covers this topic as:</span>
+                                    </div>
+                                    {topThemes.length > 0 && (
+                                        <div className="source-intel-themes">
+                                            {topThemes.map(([t, count]) => (
+                                                <span key={t} className="source-intel-chip">
+                                                    {getThemeLabel(t)}
+                                                    <span className="source-intel-chip-count">{count}</span>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <div className="source-intel-meta">
+                                        <span style={{ color: getSentimentColor(avgSent) }}>
+                                            {sentimentWord(avgSent)}
+                                        </span>
+                                        {topCountries.length > 0 && (
+                                            <>
+                                                <span className="source-intel-dot">·</span>
+                                                <span className="source-intel-countries">
+                                                    {topCountries.map(([code, cnt], i) => (
+                                                        <span key={code}>{i > 0 ? ', ' : ''}{code} ({cnt})</span>
+                                                    ))}
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            )
+                        })()}
 
                         {/* Recent Coverage */}
                         <div className="theme-section">

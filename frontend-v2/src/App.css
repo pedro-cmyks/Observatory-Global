@@ -129,6 +129,18 @@
   color: #fff;
 }
 
+.cmd-btn--reset {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 14px;
+  padding: 4px 8px;
+}
+.cmd-btn--reset:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
+
 /* Sidebar */
 .sidebar {
   position: absolute;
@@ -373,7 +385,44 @@
   inset: 0;
 }
 
-/* Bloomberg Terminal - CSS Grid */
+/* Draggable grid container */
+.terminal-layout-container {
+  height: calc(100vh - 48px);
+  width: 100%;
+  max-width: 1920px;
+  margin: 48px auto 0;
+  background: var(--color-bg-primary, #0c0f18);
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Full-bleed background behind the centered container on ultrawide */
+.app::after {
+  content: '';
+  position: fixed;
+  inset: 48px 0 0 0;
+  background: var(--color-bg-primary, #0c0f18);
+  z-index: -1;
+}
+
+.terminal-layout-rgl {
+  min-height: calc(100vh - 48px);
+}
+
+/* react-grid-layout resize handle styling */
+.react-resizable-handle {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.terminal-panel:hover .react-resizable-handle {
+  opacity: 0.5;
+}
+.react-resizable-handle::after {
+  border-color: rgba(99, 179, 237, 0.5) !important;
+}
+
+/* Legacy — kept for any remaining references */
 .terminal-layout {
   display: grid;
   grid-template-areas:
@@ -431,10 +480,13 @@
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 3px;
   overflow: hidden;
-  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  /* react-grid-layout sets position/size via inline style */
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* PRIMARY — Globe: immersive, borderless feel */
@@ -478,6 +530,12 @@
   text-transform: uppercase;
   letter-spacing: 0.8px;
   flex-shrink: 0;
+  cursor: grab;
+  user-select: none;
+}
+
+.panel-header:active {
+  cursor: grabbing;
 }
 
 /* PRIMARY: Globe — minimal header, map is the content */

@@ -689,3 +689,76 @@
     color: var(--color-text-muted, #64748b);
     font-size: 10px;
 }
+
+/* ─── Source see-articles toggle ─── */
+.source-see-articles {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.25);
+    margin-left: 4px;
+    flex-shrink: 0;
+}
+.source-active .source-see-articles {
+    color: #1D9E75;
+}
+
+/* ─── Source Intelligence Block ─── */
+.source-intel-block {
+    background: rgba(29, 158, 117, 0.06);
+    border: 1px solid rgba(29, 158, 117, 0.2);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    font-size: 11px;
+}
+
+.source-intel-header {
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.source-intel-name {
+    color: #1D9E75;
+    font-weight: 600;
+}
+
+.source-intel-label {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.source-intel-themes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.source-intel-chip {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    padding: 2px 7px;
+    color: #cbd5e0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.source-intel-chip-count {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 10px;
+}
+
+.source-intel-meta {
+    color: rgba(255, 255, 255, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.source-intel-dot {
+    color: rgba(255, 255, 255, 0.2);
+}
+
+.source-intel-countries {
+    color: rgba(255, 255, 255, 0.35);
+}

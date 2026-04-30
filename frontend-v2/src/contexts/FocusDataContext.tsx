@@ -175,7 +175,7 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 try {
                     const summaryParams = new URLSearchParams({
                         focus_type: focus.type,
-                        focus_value: focus.value,
+                        value: focus.value,
                         hours: timeRangeToHours(timeRange).toString()
                     })
                     const summaryRes = await fetch(`/api/v2/focus?${summaryParams}`)
