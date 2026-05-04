@@ -171,7 +171,7 @@ export function Landing() {
                 </RevealSection>
 
                 {/* ── Support (early — easy to find) ── */}
-                <RevealSection id="support" className="">
+                <RevealSection id="support" className="scroll-mt-24">
                     <div className="relative overflow-hidden rounded-xl border border-primary/40 bg-gradient-to-r from-bg-surface via-bg-surface to-emerald-950/30 p-8 flex flex-col md:flex-row items-center justify-between gap-6">
                         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none" />
                         <div className="flex flex-col gap-2 z-10">
@@ -197,7 +197,7 @@ export function Landing() {
                 </RevealSection>
 
                 {/* ── Features ── */}
-                <RevealSection id="features" className="flex flex-col gap-gutter">
+                <RevealSection id="features" className="flex flex-col gap-gutter scroll-mt-24">
                     <div className="flex flex-col gap-stack-sm max-w-2xl">
                         <span className="font-technical-label text-technical-label text-primary uppercase tracking-widest">What you see</span>
                         <h2 className="font-headline-md text-headline-md text-text-primary">Six intelligence panels,<br />one coherent picture.</h2>
@@ -216,7 +216,7 @@ export function Landing() {
                 </RevealSection>
 
                 {/* ── Data sources ── */}
-                <RevealSection id="data" className="flex flex-col gap-gutter">
+                <RevealSection id="data" className="flex flex-col gap-gutter scroll-mt-24">
                     <div className="flex flex-col gap-stack-sm max-w-2xl">
                         <span className="font-technical-label text-technical-label text-primary uppercase tracking-widest">The data</span>
                         <h2 className="font-headline-md text-headline-md text-text-primary">Six open sources.<br />One coherent signal.</h2>
