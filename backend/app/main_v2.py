@@ -2334,13 +2334,13 @@ async def health():
             ingest_result = await conn.fetchrow("""
                 SELECT
                     MAX(timestamp) as last_ts,
-                    COUNT(*) FILTER (WHERE timestamp > NOW() - INTERVAL '15 minutes') as rows_15m
+                    COUNT(*) FILTER (WHERE timestamp > NOW() - INTERVAL '30 minutes') as rows_30m
                 FROM signals_v2
                 WHERE timestamp > NOW() - INTERVAL '2 hours'
             """, timeout=5.0)
 
             last_ingest_ts = ingest_result['last_ts'] if ingest_result else None
-            rows_ingested_last_15m = int(ingest_result['rows_15m'] or 0) if ingest_result else 0
+            rows_ingested_last_15m = int(ingest_result['rows_30m'] or 0) if ingest_result else 0
 
             ingest_lag_minutes = None
             if last_ingest_ts:
