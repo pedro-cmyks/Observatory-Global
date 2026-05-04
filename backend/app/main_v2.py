@@ -2323,18 +2323,24 @@ async def health():
             except Exception:
                 db_ok = False
 
-            # Use materialized view only — instant, no full-table scan of signals_v2
-            result = await conn.fetchrow("""
-                SELECT
-                    MAX(hour) as last_ts,
-                    SUM(signal_count) FILTER (WHERE hour >= NOW() - INTERVAL '1 hour') as rows_15m,
-                    SUM(signal_count) as total_signals
+            # Total signals from materialized view (instant)
+            view_result = await conn.fetchrow("""
+                SELECT SUM(signal_count) as total_signals
                 FROM country_hourly_v2
             """, timeout=5.0)
+            total_signals = int(view_result['total_signals'] or 0) if view_result else 0
 
-            last_ingest_ts = result['last_ts'] if result else None
-            rows_ingested_last_15m = int(result['rows_15m'] or 0) if result else 0
-            total_signals = int(result['total_signals'] or 0) if result else 0
+            # Actual last insert time and recent count from signals_v2 index (O(1) on timestamp idx)
+            ingest_result = await conn.fetchrow("""
+                SELECT
+                    MAX(timestamp) as last_ts,
+                    COUNT(*) FILTER (WHERE timestamp > NOW() - INTERVAL '15 minutes') as rows_15m
+                FROM signals_v2
+                WHERE timestamp > NOW() - INTERVAL '2 hours'
+            """, timeout=5.0)
+
+            last_ingest_ts = ingest_result['last_ts'] if ingest_result else None
+            rows_ingested_last_15m = int(ingest_result['rows_15m'] or 0) if ingest_result else 0
 
             ingest_lag_minutes = None
             if last_ingest_ts:
