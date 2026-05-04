@@ -15,8 +15,9 @@ const SEVERITY_COLORS: Record<string, string> = {
 
 export const AnomalyPanel: React.FC = () => {
     const { anomalies, nearMisses, themeAnomalies, meta, overallSeverity, loading } = useCrisis()
-    const { setFocus, setMapFlyCountry } = useFocus()
+    const { filter, setFocus, setMapFlyCountry } = useFocus()
     const { acledConflicts } = useFocusData()
+    const activeCountry = filter.country
     const [trendingSearches, setTrendingSearches] = useState<{ keyword: string; country_count: number }[]>([])
 
     useEffect(() => {
@@ -30,6 +31,16 @@ export const AnomalyPanel: React.FC = () => {
         setFocus('country', countryCode)
         setMapFlyCountry(countryCode)
     }
+
+    // When a country is active, filter conflicts to that country only.
+    // ACLED uses full names, GDELT uses 2-letter codes — match both.
+    const visibleConflicts = activeCountry
+        ? acledConflicts.filter(c => {
+            const loc = c.location.country || ''
+            const name = resolveCountryName(activeCountry).toLowerCase()
+            return loc === activeCountry || loc.toLowerCase() === name
+        })
+        : acledConflicts
 
     const severityColor = SEVERITY_COLORS[overallSeverity] ?? '#4ade80'
 
@@ -61,7 +72,8 @@ export const AnomalyPanel: React.FC = () => {
                             <>
                                 <div className="ap-empty ap-empty--sm">No critical spikes</div>
                                 {nearMisses.map(a => (
-                                    <div key={a.country_code} className="ap-row ap-row--mover clickable"
+                                    <div key={a.country_code}
+                                        className={`ap-row ap-row--mover clickable${a.country_code === activeCountry ? ' ap-row--selected' : ''}`}
                                         onClick={() => handleAnomalyClick(a.country_code)}>
                                         <span className="ap-country">{resolveCountryName(a.country_code, a.country_name)}</span>
                                         <span className="ap-mult">{a.multiplier.toFixed(1)}×</span>
@@ -71,7 +83,7 @@ export const AnomalyPanel: React.FC = () => {
                         ) : (
                             anomalies.map(a => (
                                 <div key={a.country_code}
-                                    className={`ap-row ap-row--${a.level} clickable`}
+                                    className={`ap-row ap-row--${a.level} clickable${a.country_code === activeCountry ? ' ap-row--selected' : ''}`}
                                     onClick={() => handleAnomalyClick(a.country_code)}>
                                     <span className="ap-badge">{a.level.slice(0, 4).toUpperCase()}</span>
                                     <span className="ap-country">{resolveCountryName(a.country_code, a.country_name)}</span>
@@ -81,12 +93,14 @@ export const AnomalyPanel: React.FC = () => {
                         )}
                     </div>
 
-                    {/* Conflict events */}
-                    {acledConflicts && acledConflicts.length > 0 && (
+                    {/* Conflict events — filtered to active country when one is selected */}
+                    {visibleConflicts && visibleConflicts.length > 0 && (
                         <div className="ap-sub">
-                            <div className="col-label" style={{ color: '#f87171' }}>CONFLICT EVENTS</div>
+                            <div className="col-label" style={{ color: '#f87171' }}>
+                                {activeCountry ? `CONFLICTS · ${resolveCountryName(activeCountry)}` : 'CONFLICT EVENTS'}
+                            </div>
                             <div className="col-scroll-short">
-                                {acledConflicts.slice(0, 8).map(c => {
+                                {visibleConflicts.slice(0, 8).map(c => {
                                     const loc = c.location?.name || c.location?.country || '?'
                                     const src = c.source === 'gdelt_events' ? 'G' : 'A'
                                     return (
