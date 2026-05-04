@@ -238,7 +238,7 @@ async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                         is_crisis, crisis_score, crisis_themes, severity, event_type
                     )
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-                    ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO NOTHING
+                    ON CONFLICT DO NOTHING
                 """,
                     signal['timestamp'],
                     signal['country_code'],
