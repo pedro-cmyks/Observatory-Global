@@ -79,9 +79,18 @@
     background: #080c12;
 }
 
-.docs-sidebar::-webkit-scrollbar { width: 3px; }
-.docs-sidebar::-webkit-scrollbar-track { background: transparent; }
-.docs-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 2px; }
+.docs-sidebar::-webkit-scrollbar {
+    width: 3px;
+}
+
+.docs-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.docs-sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 2px;
+}
 
 .docs-nav-section {
     margin-bottom: 20px;
@@ -225,11 +234,30 @@
     letter-spacing: 0.08em;
 }
 
-.badge-gdelt { background: rgba(56,189,248,0.12); color: #38bdf8; }
-.badge-events { background: rgba(167,139,250,0.12); color: #a78bfa; }
-.badge-trends { background: rgba(74,222,128,0.12); color: #4ade80; }
-.badge-wiki { background: rgba(251,191,36,0.12); color: #fbbf24; }
-.badge-acled { background: rgba(239,68,68,0.12); color: #ef4444; }
+.badge-gdelt {
+    background: rgba(56, 189, 248, 0.12);
+    color: #38bdf8;
+}
+
+.badge-events {
+    background: rgba(167, 139, 250, 0.12);
+    color: #a78bfa;
+}
+
+.badge-trends {
+    background: rgba(74, 222, 128, 0.12);
+    color: #4ade80;
+}
+
+.badge-wiki {
+    background: rgba(251, 191, 36, 0.12);
+    color: #fbbf24;
+}
+
+.badge-acled {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
 
 .docs-source-title {
     font-size: 13px;
@@ -273,10 +301,12 @@
     align-items: flex-start;
     gap: 16px;
     padding: 16px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.docs-pipeline-step:last-child { border-bottom: none; }
+.docs-pipeline-step:last-child {
+    border-bottom: none;
+}
 
 .docs-pipeline-num {
     font-family: 'JetBrains Mono', monospace;
@@ -317,11 +347,25 @@
     white-space: pre;
 }
 
-.docs-code .kw { color: #a78bfa; }
-.docs-code .str { color: #4ade80; }
-.docs-code .num { color: #fbbf24; }
-.docs-code .cm { color: #475569; }
-.docs-code .fn { color: #38bdf8; }
+.docs-code .kw {
+    color: #a78bfa;
+}
+
+.docs-code .str {
+    color: #4ade80;
+}
+
+.docs-code .num {
+    color: #fbbf24;
+}
+
+.docs-code .cm {
+    color: #475569;
+}
+
+.docs-code .fn {
+    color: #38bdf8;
+}
 
 /* ── Formula block ── */
 .docs-formula {
@@ -362,17 +406,19 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: #475569;
-    border-bottom: 1px solid rgba(255,255,255,0.07);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .docs-table td {
     padding: 10px 12px;
     color: #94a3b8;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     vertical-align: top;
 }
 
-.docs-table tr:last-child td { border-bottom: none; }
+.docs-table tr:last-child td {
+    border-bottom: none;
+}
 
 .docs-table td:first-child {
     font-family: 'JetBrains Mono', monospace;
@@ -399,14 +445,14 @@
 /* ── Divider ── */
 .docs-divider {
     border: none;
-    border-top: 1px solid rgba(255,255,255,0.05);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
     margin: 48px 0;
 }
 
 /* ── API endpoint ── */
 .docs-endpoint {
     margin: 20px 0;
-    border: 1px solid rgba(255,255,255,0.07);
+    border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 8px;
     overflow: hidden;
 }
@@ -416,8 +462,8 @@
     align-items: center;
     gap: 12px;
     padding: 10px 16px;
-    background: rgba(255,255,255,0.03);
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .docs-method {
@@ -426,7 +472,7 @@
     font-weight: 700;
     padding: 2px 6px;
     border-radius: 3px;
-    background: rgba(74,222,128,0.12);
+    background: rgba(74, 222, 128, 0.12);
     color: #4ade80;
     letter-spacing: 0.04em;
 }
@@ -446,7 +492,16 @@
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
-    .docs-sidebar { display: none; }
-    .docs-main { margin-left: 0; padding: 24px 20px 80px; }
-    .docs-source-grid { grid-template-columns: 1fr; }
+    .docs-sidebar {
+        display: none;
+    }
+
+    .docs-main {
+        margin-left: 0;
+        padding: 24px 20px 80px;
+    }
+
+    .docs-source-grid {
+        grid-template-columns: 1fr;
+    }
 }

@@ -1,364 +1,316 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Landing.css'
 
-// Animated globe SVG — same meridian style as the loader
-function GlobeHero() {
+const FILL_0 = { fontVariationSettings: "'FILL' 0" }
+
+const SIGNAL_DOTS = [
+    { top: '22%', left: '18%', delay: '0s' },
+    { top: '38%', left: '78%', delay: '0.6s' },
+    { top: '58%', left: '25%', delay: '1.2s' },
+    { top: '70%', left: '65%', delay: '0.3s' },
+    { top: '30%', left: '55%', delay: '1.8s' },
+    { top: '15%', left: '42%', delay: '0.9s' },
+    { top: '80%', left: '45%', delay: '1.5s' },
+    { top: '50%', left: '88%', delay: '0.4s' },
+]
+
+function BentoCard({ icon, title, text }: { icon: string; title: string; text: string }) {
     return (
-        <div className="lp-globe-wrap" aria-hidden="true">
-            <svg viewBox="0 0 280 280" className="lp-globe-svg">
-                <defs>
-                    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stopColor="#1D9E75" stopOpacity="0.12" />
-                        <stop offset="100%" stopColor="#1D9E75" stopOpacity="0" />
-                    </radialGradient>
-                </defs>
-                {/* Background glow */}
-                <circle cx="140" cy="140" r="130" fill="url(#glow)" />
-                {/* Outer ring */}
-                <circle cx="140" cy="140" r="118" fill="none" stroke="rgba(29,158,117,0.18)" strokeWidth="1" />
-                {/* Latitude rings */}
-                {[30, 55, 80, 105, 118].map((r, i) => (
-                    <circle key={i} cx="140" cy="140" r={r}
-                        fill="none" stroke="rgba(29,158,117,0.08)" strokeWidth="0.8" />
-                ))}
-                {/* Vertical meridians */}
-                {[0, 45, 90, 135].map((deg, i) => (
-                    <line key={i}
-                        x1={140 + 118 * Math.cos(deg * Math.PI / 180)}
-                        y1={140 + 118 * Math.sin(deg * Math.PI / 180)}
-                        x2={140 - 118 * Math.cos(deg * Math.PI / 180)}
-                        y2={140 - 118 * Math.sin(deg * Math.PI / 180)}
-                        stroke="rgba(29,158,117,0.07)" strokeWidth="0.8"
-                    />
-                ))}
-                {/* Spinning meridian ring */}
-                <ellipse cx="140" cy="140" rx="118" ry="42"
-                    fill="none" stroke="rgba(29,158,117,0.35)" strokeWidth="1"
-                    className="lp-spin-meridian" />
-                {/* Second meridian counter-rotating */}
-                <ellipse cx="140" cy="140" rx="118" ry="70"
-                    fill="none" stroke="rgba(29,158,117,0.2)" strokeWidth="0.8"
-                    className="lp-spin-meridian-2" />
-                {/* Sweeping scanner line */}
-                <path d="M 140 22 A 118 118 0 0 1 140 258"
-                    fill="none" stroke="rgba(29,158,117,0.6)" strokeWidth="1.5"
-                    className="lp-sweep" />
-                {/* Animated dots representing signals */}
-                {[
-                    { cx: 178, cy: 98 },
-                    { cx: 110, cy: 155 },
-                    { cx: 195, cy: 170 },
-                    { cx: 88, cy: 115 },
-                    { cx: 158, cy: 195 },
-                    { cx: 125, cy: 85 },
-                    { cx: 210, cy: 135 },
-                    { cx: 70, cy: 158 },
-                ].map((d, i) => (
-                    <circle key={i} cx={d.cx} cy={d.cy} r="3"
-                        fill="#1D9E75" opacity="0"
-                        className="lp-signal-dot"
-                        style={{ animationDelay: `${i * 0.4}s` }}
-                    />
-                ))}
-                {/* Outer ring draw-in */}
-                <circle cx="140" cy="140" r="118"
-                    fill="none" stroke="#1D9E75" strokeWidth="1.5"
-                    strokeDasharray="741" strokeDashoffset="741"
-                    className="lp-ring-draw" />
-            </svg>
+        <div className="lp-card-hover bg-bg-surface border border-border-subtle rounded-xl p-8 backdrop-blur-md relative overflow-hidden flex flex-col gap-stack-sm min-h-[220px]">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full blur-xl pointer-events-none" />
+            <span className="material-symbols-outlined text-primary text-3xl mb-2" style={FILL_0}>{icon}</span>
+            <h3 className="font-body-strong text-body-strong text-text-primary text-lg">{title}</h3>
+            <p className="font-body-main text-body-main text-text-secondary text-sm mt-auto">{text}</p>
         </div>
     )
 }
 
-// Animated counter for stats
-function AnimatedStat({ value, label, suffix = '' }: { value: string; label: string; suffix?: string }) {
-    return (
-        <div className="lp-stat">
-            <span className="lp-stat-value">{value}{suffix}</span>
-            <span className="lp-stat-label">{label}</span>
-        </div>
-    )
+function useReveal() {
+    const ref = useRef<HTMLElement>(null)
+    useEffect(() => {
+        const el = ref.current
+        if (!el) return
+        const obs = new IntersectionObserver(
+            ([entry]) => { if (entry.isIntersecting) { el.classList.add('lp-visible'); obs.disconnect() } },
+            { threshold: 0.1 }
+        )
+        obs.observe(el)
+        return () => obs.disconnect()
+    }, [])
+    return ref
 }
 
-// Panel preview card
-function PanelCard({ icon, title, desc }: { icon: string; title: string; desc: string }) {
+function RevealSection({
+    children,
+    className = '',
+    id,
+}: {
+    children: React.ReactNode
+    className?: string
+    id?: string
+}) {
+    const ref = useReveal()
     return (
-        <div className="lp-panel-card">
-            <span className="lp-panel-icon">{icon}</span>
-            <h4>{title}</h4>
-            <p>{desc}</p>
-        </div>
-    )
-}
-
-// Step in the how-to section
-function Step({ n, title, desc }: { n: number; title: string; desc: string }) {
-    return (
-        <div className="lp-step">
-            <div className="lp-step-n">{n}</div>
-            <div>
-                <h4>{title}</h4>
-                <p>{desc}</p>
-            </div>
-        </div>
+        <section ref={ref} id={id} className={`lp-reveal ${className}`}>
+            {children}
+        </section>
     )
 }
 
 export function Landing() {
     const navigate = useNavigate()
-    const [scrolled, setScrolled] = useState(false)
-
-    useEffect(() => {
-        const handler = () => setScrolled(window.scrollY > 20)
-        window.addEventListener('scroll', handler)
-        return () => window.removeEventListener('scroll', handler)
-    }, [])
 
     return (
-        <div className="lp-root">
+        <div className="dark min-h-screen lp-bg text-on-surface font-body-main antialiased selection:bg-primary selection:text-on-primary">
+
             {/* ── Nav ── */}
-            <nav className={`lp-nav ${scrolled ? 'lp-nav--scrolled' : ''}`}>
-                <span className="lp-nav-brand">ATLAS</span>
-                <div className="lp-nav-links">
-                    <a href="#how">How it works</a>
-                    <a href="#panels">What you see</a>
-                    <a href="#data">Data</a>
-                    <a onClick={() => navigate('/docs')} style={{ cursor: 'pointer' }}>Docs</a>
-                    <a href="#support" className="lp-nav-support">Support</a>
+            <nav className="fixed top-0 w-full z-50 bg-slate-950/80 backdrop-blur-xl border-b border-emerald-500/20 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+                <div className="flex justify-between items-center px-12 h-20 max-w-7xl mx-auto w-full">
+                    <div className="flex items-center gap-12">
+                        <a href="/" className="text-2xl font-black tracking-tighter text-emerald-500 drop-shadow-[0_0_8px_rgba(29,158,117,0.5)] font-['Outfit']">
+                            ATLAS
+                        </a>
+                        <div className="hidden md:flex items-center gap-8">
+                            <a href="#features" className="text-emerald-400 border-b border-emerald-500 font-bold px-1 py-2 font-nav-link text-nav-link">
+                                Features
+                            </a>
+                            <a href="#data" className="text-slate-400 hover:text-emerald-300 transition-colors py-2 font-nav-link text-nav-link">
+                                Data Sources
+                            </a>
+                            <a href="#support" className="text-slate-400 hover:text-emerald-300 transition-colors py-2 font-nav-link text-nav-link">
+                                Support
+                            </a>
+                            <button
+                                onClick={() => navigate('/docs')}
+                                className="lp-nav-text-btn text-slate-400 hover:text-emerald-300 transition-colors py-2 font-nav-link text-nav-link"
+                            >
+                                Docs
+                            </button>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => navigate('/app')}
+                        className="lp-btn-pulse bg-primary text-on-primary px-6 py-2 rounded font-body-strong text-body-strong transition-all"
+                    >
+                        Open Atlas
+                    </button>
                 </div>
-                <button className="lp-nav-cta" onClick={() => navigate('/app')}>
-                    Open Atlas →
-                </button>
             </nav>
 
-            {/* ── Hero ── */}
-            <section className="lp-hero">
-                <div className="lp-hero-text">
-                    <p className="lp-eyebrow">Global Media Intelligence</p>
-                    <h1 className="lp-headline">
-                        The news,<br />
-                        before you read it.
-                    </h1>
-                    <p className="lp-subhead">
-                        See how 200+ countries cover the same world — simultaneously,
-                        without editorial filter. Understand the coverage before you
-                        form an opinion.
-                    </p>
-                    <div className="lp-hero-actions">
-                        <button className="lp-btn-primary" onClick={() => navigate('/app')}>
-                            Open Atlas
-                        </button>
-                        <a href="#how" className="lp-btn-ghost">See how it works ↓</a>
-                    </div>
-                </div>
-                <GlobeHero />
-            </section>
+            <main className="pt-32 pb-20 px-8 max-w-7xl mx-auto w-full flex flex-col gap-section">
 
-            {/* ── Stats bar ── */}
-            <div className="lp-stats-bar">
-                <AnimatedStat value="200+" label="Countries tracked" />
-                <div className="lp-stat-divider" />
-                <AnimatedStat value="65K+" label="Global sources" />
-                <div className="lp-stat-divider" />
-                <AnimatedStat value="15" label="Minute refresh" suffix=" min" />
-                <div className="lp-stat-divider" />
-                <AnimatedStat value="100+" label="Languages" />
-            </div>
-
-            {/* ── What is it ── */}
-            <section className="lp-section" id="how">
-                <div className="lp-section-inner">
-                    <div className="lp-section-tag">What Atlas is</div>
-                    <h2>Not a news reader.<br />A coverage map.</h2>
-                    <p className="lp-body">
-                        Most news tools show you <em>what happened</em>. Atlas shows you <em>how it's being covered</em> —
-                        which countries are paying attention, what tone they're using, and whether coverage is
-                        accelerating or fading. You see the information landscape before you engage with individual articles.
-                    </p>
-                    <p className="lp-body">
-                        The goal is impartiality by design. Instead of one editorial voice telling you what matters,
-                        Atlas surfaces the raw signal across thousands of sources simultaneously. You form your own picture first —
-                        then go read.
-                    </p>
-                    <div className="lp-quote">
-                        "A decentralized way to see the news — you open Atlas,
-                        understand the landscape, then go find the reporting."
-                    </div>
-                </div>
-            </section>
-
-            {/* ── How to use it ── */}
-            <section className="lp-section lp-section--dark" id="how-to">
-                <div className="lp-section-inner">
-                    <div className="lp-section-tag">How to use it</div>
-                    <h2>Three minutes to global context.</h2>
-                    <div className="lp-steps">
-                        <Step n={1}
-                            title="Read the globe"
-                            desc="Glowing regions show where media attention is concentrated right now. Brighter = more coverage. Click any country to see what it's reporting on and with what emotional tone."
-                        />
-                        <Step n={2}
-                            title="Follow a narrative"
-                            desc="Narrative Threads shows the dominant global stories. Click one to see how different countries frame it — the same event can look very different in Russian, Indian, or British media."
-                        />
-                        <Step n={3}
-                            title="Find the signal"
-                            desc="The Signal Stream shows individual articles in real time, prioritizing geopolitical content. Filter by country or topic to trace where a story is breaking."
-                        />
-                    </div>
-                </div>
-            </section>
-
-            {/* ── Panels ── */}
-            <section className="lp-section" id="panels">
-                <div className="lp-section-inner">
-                    <div className="lp-section-tag">What you see</div>
-                    <h2>Six intelligence panels,<br />one coherent picture.</h2>
-                    <div className="lp-panels-grid">
-                        <PanelCard icon="🌍" title="Globe"
-                            desc="Live heatmap of narrative activity by country. Flows show information pathways. Ships and aircraft track strategic assets at chokepoints." />
-                        <PanelCard icon="📡" title="Signal Stream"
-                            desc="Real-time feed of individual media signals from GDELT. Geopolitical content is prioritized. Click any tag to filter the entire view." />
-                        <PanelCard icon="🧵" title="Narrative Threads"
-                            desc="Top global topics ranked by coverage volume, with sentiment trend, country spread, and the key people being mentioned in each narrative." />
-                        <PanelCard icon="⬛" title="Correlation Matrix"
-                            desc="Shows which countries share narrative focus. Bright cells mean two nations are reporting heavily on the same topic simultaneously." />
-                        <PanelCard icon="⚠️" title="Anomaly Alert"
-                            desc="Statistical detection of unusual spikes in coverage — when a country or theme suddenly receives far more attention than its 7-day baseline." />
-                        <PanelCard icon="🔍" title="Source Integrity"
-                            desc="Monitors the diversity and quality of active sources. High concentration in a single outlet is flagged as a potential bias signal." />
-                    </div>
-                </div>
-            </section>
-
-            {/* ── Data ── */}
-            <section className="lp-section lp-section--dark" id="data">
-                <div className="lp-section-inner">
-                    <div className="lp-section-tag">The data</div>
-                    <h2>Four open sources.<br />One coherent signal.</h2>
-                    <p className="lp-body">
-                        Atlas crosses multiple public datasets to give you the full picture — not just
-                        what media covers, but what people search, what they read, and where conflict is actually happening.
-                    </p>
-                    <div className="lp-sources-grid">
-                        <div className="lp-source-card">
-                            <div className="lp-source-name">GDELT 2.0</div>
-                            <div className="lp-source-desc">65,000+ news sources in 100+ languages. Updated every 15 minutes. The backbone of Atlas.</div>
-                            <div className="lp-source-badge">Media coverage</div>
-                        </div>
-                        <div className="lp-source-card">
-                            <div className="lp-source-name">Google Trends</div>
-                            <div className="lp-source-desc">What people are searching for, by country. Captures public attention before media catches up.</div>
-                            <div className="lp-source-badge">Public interest</div>
-                        </div>
-                        <div className="lp-source-card">
-                            <div className="lp-source-name">Wikipedia</div>
-                            <div className="lp-source-desc">Top-read articles by country and language. Wikipedia spikes often precede news events.</div>
-                            <div className="lp-source-badge">What people read</div>
-                        </div>
-                        <div className="lp-source-card">
-                            <div className="lp-source-name">ACLED</div>
-                            <div className="lp-source-desc">Armed Conflict Location & Event Data — the gold standard for tracking conflict events globally.</div>
-                            <div className="lp-source-badge">Conflict events</div>
+                {/* ── Hero ── */}
+                <section className="relative isolate min-h-[680px] flex flex-col items-center justify-center text-center overflow-hidden">
+                    {/* Radar visual */}
+                    <div className="absolute inset-0 -z-10 flex items-center justify-center pointer-events-none" aria-hidden="true">
+                        {SIGNAL_DOTS.map((d, i) => (
+                            <span
+                                key={i}
+                                className="lp-signal-dot"
+                                style={{ top: d.top, left: d.left, animationDelay: d.delay }}
+                            />
+                        ))}
+                        <div className="relative w-[600px] h-[600px]">
+                            <div className="absolute inset-0 border border-emerald-500/30 rounded-full" />
+                            <div className="absolute inset-[90px] border border-emerald-500/20 rounded-full" />
+                            <div className="absolute inset-[170px] border border-emerald-500/15 rounded-full" />
+                            <div className="lp-radar-sweep" />
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-primary rounded-full shadow-[0_0_20px_rgba(104,219,174,0.9)]" />
                         </div>
                     </div>
-                    <p className="lp-body lp-body--muted">
-                        All sources are open datasets. Atlas normalizes them into a unified signal without
-                        human editorial intervention.
-                    </p>
-                </div>
-            </section>
 
-            {/* ── Who it's for ── */}
-            <section className="lp-section">
-                <div className="lp-section-inner lp-audience-inner">
-                    <div className="lp-section-tag">Who it's for</div>
-                    <h2>Built for the curious.<br />Useful for everyone.</h2>
-                    <div className="lp-audience-grid">
-                        <div className="lp-audience-card">
-                            <span>Journalists</span>
-                            <p>See how your story is covered globally before you file. Understand the international angle instantly.</p>
+                    <div className="lp-hero-content z-10 max-w-4xl flex flex-col items-center gap-component">
+                        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-border-subtle bg-bg-surface/80 backdrop-blur-md">
+                            <span className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(104,219,174,0.7)] animate-pulse" />
+                            <span className="font-technical-label text-technical-label text-primary uppercase tracking-widest">Live Data</span>
                         </div>
-                        <div className="lp-audience-card">
-                            <span>Researchers</span>
-                            <p>Track narrative patterns, sentiment shifts, and coverage anomalies across time and geography.</p>
-                        </div>
-                        <div className="lp-audience-card">
-                            <span>Curious readers</span>
-                            <p>Start your news day with a global overview instead of a single outlet's editorial priority.</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
 
-            {/* ── Support ── */}
-            <section className="lp-section lp-section--dark" id="support">
-                <div className="lp-section-inner lp-support-inner">
-                    <div className="lp-support-left">
-                        <div className="lp-section-tag">Keep Atlas free</div>
-                        <h2>Atlas is free.<br />Help keep it that way.</h2>
-                        <p className="lp-body">
-                            Atlas has no ads, no paywalls, and no tracking. Like Wikipedia, it exists
-                            because people believe open information is worth protecting.
+                        <h1 className="font-display-xl text-display-xl text-text-primary leading-tight">
+                            The news,<br />before you read it.
+                        </h1>
+
+                        <p className="font-body-main text-body-main text-text-secondary max-w-xl text-lg">
+                            See how 200+ countries cover the same world — simultaneously, without editorial filter.
+                            Understand the coverage before you form an opinion.
                         </p>
-                        <p className="lp-body">
-                            Running the real-time data pipeline costs real money. If Atlas is useful to
-                            you — for your work, your research, or just to understand the world better —
-                            consider supporting it. Every contribution keeps the servers on and the data fresh.
-                        </p>
-                        <div className="lp-support-actions">
-                            <a href="https://ko-fi.com" target="_blank" rel="noopener noreferrer" className="lp-btn-support">
-                                Support Atlas
+
+                        <div className="flex gap-4 mt-4">
+                            <button
+                                onClick={() => navigate('/app')}
+                                className="lp-btn-pulse bg-primary text-on-primary px-10 py-4 rounded font-body-strong text-body-strong transition-all flex items-center gap-2"
+                            >
+                                Open Atlas
+                                <span className="material-symbols-outlined" style={FILL_0}>arrow_forward</span>
+                            </button>
+                            <a
+                                href="#features"
+                                className="px-10 py-4 rounded border border-border-subtle text-text-secondary hover:border-primary/60 hover:text-text-primary transition-all font-body-strong text-body-strong"
+                            >
+                                See how it works
                             </a>
-                            <span className="lp-support-note">One-time or recurring · No account needed</span>
                         </div>
                     </div>
-                    <div className="lp-support-right">
-                        <div className="lp-support-stat">
-                            <span className="lp-support-num">278K+</span>
-                            <span className="lp-support-label">signals processed today</span>
+                </section>
+
+                {/* ── Stats ── */}
+                <RevealSection className="flex justify-center">
+                    <div className="flex flex-wrap justify-center gap-0 bg-bg-surface border border-border-subtle rounded-xl overflow-hidden backdrop-blur-md divide-x divide-border-subtle">
+                        {[
+                            { value: '65,000+', label: 'Sources' },
+                            { value: '15 min',  label: 'Refresh cycle' },
+                            { value: '100+',    label: 'Languages' },
+                            { value: '6',       label: 'Live data sources' },
+                        ].map(({ value, label }) => (
+                            <div key={label} className="flex flex-col items-center px-10 py-6">
+                                <span className="lp-stat-num font-headline-md text-headline-md text-primary">{value}</span>
+                                <span className="font-technical-label text-technical-label text-text-secondary uppercase mt-1">{label}</span>
+                            </div>
+                        ))}
+                    </div>
+                </RevealSection>
+
+                {/* ── Support (early — easy to find) ── */}
+                <RevealSection id="support" className="">
+                    <div className="relative overflow-hidden rounded-xl border border-primary/40 bg-gradient-to-r from-bg-surface via-bg-surface to-emerald-950/30 p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none" />
+                        <div className="flex flex-col gap-2 z-10">
+                            <span className="font-technical-label text-technical-label text-primary uppercase tracking-widest">Keep Atlas free</span>
+                            <p className="font-headline-md text-headline-md text-text-primary">Atlas is free. Help keep it that way.</p>
+                            <p className="font-body-main text-body-main text-text-secondary max-w-lg">
+                                No ads, no paywalls, no tracking. The real-time data pipeline runs 24/7 at real cost.
+                                If Atlas is useful to you, consider supporting it.
+                            </p>
                         </div>
-                        <div className="lp-support-stat">
-                            <span className="lp-support-num">15 min</span>
-                            <span className="lp-support-label">refresh cycle, 24/7</span>
+                        <div className="flex flex-col items-center gap-2 z-10 shrink-0">
+                            <a
+                                href="https://ko-fi.com/observatoryglobalatlas"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="lp-btn-pulse bg-primary text-on-primary px-10 py-3.5 rounded font-body-strong text-body-strong transition-all whitespace-nowrap"
+                            >
+                                Support Atlas on Ko-fi
+                            </a>
+                            <span className="font-technical-label text-technical-label text-text-secondary">One-time or recurring · No account needed</span>
                         </div>
-                        <div className="lp-support-stat">
-                            <span className="lp-support-num">4</span>
-                            <span className="lp-support-label">live data sources</span>
-                        </div>
-                        <p className="lp-support-tagline">
-                            "The goal is to remain free and open, like Wikipedia.
-                            Future premium data sources may unlock a Pro tier —
-                            but the core intelligence will always be public."
+                    </div>
+                </RevealSection>
+
+                {/* ── Features ── */}
+                <RevealSection id="features" className="flex flex-col gap-gutter">
+                    <div className="flex flex-col gap-stack-sm max-w-2xl">
+                        <span className="font-technical-label text-technical-label text-primary uppercase tracking-widest">What you see</span>
+                        <h2 className="font-headline-md text-headline-md text-text-primary">Six intelligence panels,<br />one coherent picture.</h2>
+                        <p className="font-body-main text-body-main text-text-secondary">
+                            Every panel answers a different question about the global information landscape.
                         </p>
                     </div>
-                </div>
-            </section>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-component">
+                        <BentoCard icon="public"   title="Globe"              text="Live heatmap of narrative activity by country. Flows show information pathways between nations." />
+                        <BentoCard icon="stream"   title="Signal Stream"      text="Real-time feed of individual media signals from GDELT. Click any tag to filter the entire view." />
+                        <BentoCard icon="list"     title="Narrative Threads"  text="Top global topics ranked by coverage volume, with sentiment trend and country spread." />
+                        <BentoCard icon="grid_on"  title="Correlation Matrix" text="Shows which countries share narrative focus. Bright cells mean two nations report heavily on the same topic." />
+                        <BentoCard icon="warning"  title="Anomaly Alert"      text="Statistical detection of unusual spikes in coverage — when a topic suddenly gets far more attention than its 7-day baseline." />
+                        <BentoCard icon="verified" title="Source Integrity"   text="Monitors the diversity and quality of active sources. High concentration in a single outlet is flagged as a bias signal." />
+                    </div>
+                </RevealSection>
 
-            {/* ── CTA ── */}
-            <section className="lp-cta">
-                <h2>Start with the overview.</h2>
-                <p>See what the world's media is covering right now.</p>
-                <button className="lp-btn-primary lp-btn-large" onClick={() => navigate('/app')}>
-                    Open Atlas →
-                </button>
-                <p className="lp-cta-note">Free · No account required · Updated every 15 minutes</p>
-            </section>
+                {/* ── Data sources ── */}
+                <RevealSection id="data" className="flex flex-col gap-gutter">
+                    <div className="flex flex-col gap-stack-sm max-w-2xl">
+                        <span className="font-technical-label text-technical-label text-primary uppercase tracking-widest">The data</span>
+                        <h2 className="font-headline-md text-headline-md text-text-primary">Six open sources.<br />One coherent signal.</h2>
+                        <p className="font-body-main text-body-main text-text-secondary">
+                            All sources are open datasets. Atlas normalizes them into a unified signal without human editorial intervention.
+                        </p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-component">
+                        {[
+                            { name: 'GDELT 2.0',      badge: 'Media coverage',   desc: '65,000+ news sources in 100+ languages, updated every 15 minutes. The backbone of Atlas.' },
+                            { name: 'Google Trends',   badge: 'Public interest',  desc: 'What people are searching for, by country. Captures public attention before media catches up.' },
+                            { name: 'Wikipedia',       badge: 'What people read', desc: 'Top-read articles by country and language. Wikipedia spikes often precede news events.' },
+                            { name: 'ACLED',           badge: 'Conflict events',  desc: 'Armed Conflict Location & Event Data — the gold standard for tracking conflict events globally.' },
+                            { name: 'ADS-B Exchange',  badge: 'Live aircraft',    desc: 'Real-time military and civilian aircraft positions worldwide via ADS-B transponder data.' },
+                            { name: 'AISStream',       badge: 'Live vessels',     desc: 'Live ship positions at global chokepoints — Suez, Hormuz, Panama, Malacca — updated continuously.' },
+                        ].map(({ name, badge, desc }) => (
+                            <div key={name} className="lp-card-hover bg-bg-surface border border-border-subtle rounded-xl p-6 flex flex-col gap-stack-sm">
+                                <div className="flex items-center justify-between">
+                                    <span className="font-body-strong text-body-strong text-text-primary">{name}</span>
+                                    <span className="font-technical-label text-technical-label text-primary border border-border-subtle rounded-full px-3 py-1 uppercase text-[10px] tracking-wider">{badge}</span>
+                                </div>
+                                <p className="font-body-main text-body-main text-text-secondary">{desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </RevealSection>
+
+                {/* ── Audience ── */}
+                <RevealSection className="">
+                    <div className="lp-card-hover bg-bg-surface border border-border-subtle rounded-xl p-10 backdrop-blur-md">
+                        <div className="flex flex-col gap-stack-sm mb-8">
+                            <span className="font-technical-label text-technical-label text-primary uppercase tracking-widest">Who it's for</span>
+                            <h2 className="font-headline-md text-headline-md text-text-primary">Built for the curious.<br />Useful for everyone.</h2>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-component">
+                            {[
+                                { who: 'Journalists',     desc: 'See how your story is covered globally before you file. Understand the international angle instantly.' },
+                                { who: 'Researchers',     desc: 'Track narrative patterns, sentiment shifts, and coverage anomalies across time and geography.' },
+                                { who: 'Curious readers', desc: "Start your news day with a global overview instead of a single outlet's editorial priority." },
+                            ].map(({ who, desc }) => (
+                                <div key={who} className="flex flex-col gap-stack-sm border-l border-border-subtle pl-6">
+                                    <span className="font-body-strong text-body-strong text-primary">{who}</span>
+                                    <p className="font-body-main text-body-main text-text-secondary">{desc}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </RevealSection>
+
+                {/* ── Support (bottom — repeat for those who scrolled) ── */}
+                <RevealSection className="">
+                    <div className="bg-bg-surface border border-primary/25 rounded-xl p-10 text-center flex flex-col items-center gap-4 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
+                        <p className="font-body-main text-body-main text-text-secondary max-w-xl text-base z-10">
+                            Atlas runs 24/7 on open data. 1.3M+ signals indexed, 6 live sources, no ads.
+                        </p>
+                        <div className="flex gap-12 pt-4 border-t border-border-subtle w-full justify-center z-10">
+                            {[
+                                { value: '1.3M+', label: 'signals indexed' },
+                                { value: '15 min', label: 'refresh, 24/7' },
+                                { value: '6', label: 'live sources' },
+                            ].map(({ value, label }) => (
+                                <div key={label} className="flex flex-col items-center">
+                                    <span className="lp-stat-num font-headline-md text-headline-md text-primary">{value}</span>
+                                    <span className="font-technical-label text-technical-label text-text-secondary">{label}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </RevealSection>
+
+            </main>
 
             {/* ── Footer ── */}
-            <footer className="lp-footer">
-                <span className="lp-footer-brand">ATLAS</span>
-                <div className="lp-footer-links">
-                    <span>GDELT · Google Trends · Wikipedia · ACLED</span>
-                    <span>·</span>
-                    <a href="https://github.com/pedro-cmyks/Observatory-Global" target="_blank" rel="noopener noreferrer">
-                        GitHub
-                    </a>
-                    <span>·</span>
-                    <a href="https://ko-fi.com" target="_blank" rel="noopener noreferrer">
-                        Support
-                    </a>
+            <footer className="bg-slate-950 w-full py-14 border-t border-emerald-500/10">
+                <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center px-8 gap-6">
+                    <span className="text-emerald-500/70 font-['Space_Grotesk'] uppercase text-[11px] tracking-widest">
+                        ATLAS · Observatory Global · Free & Open
+                    </span>
+                    <div className="flex flex-wrap gap-6 justify-center">
+                        {[
+                            { label: 'GDELT',         href: 'https://gdeltproject.org' },
+                            { label: 'Google Trends', href: 'https://trends.google.com' },
+                            { label: 'Wikipedia',     href: 'https://wikipedia.org' },
+                            { label: 'ACLED',         href: 'https://acleddata.com' },
+                            { label: 'GitHub',        href: 'https://github.com' },
+                            { label: 'Support',       href: 'https://ko-fi.com/observatoryglobalatlas' },
+                        ].map(({ label, href }) => (
+                            <a key={label} href={href} target="_blank" rel="noopener noreferrer"
+                                className="text-slate-500 hover:text-emerald-400 transition-colors font-['Space_Grotesk'] uppercase text-[11px] tracking-widest">
+                                {label}
+                            </a>
+                        ))}
+                    </div>
                 </div>
             </footer>
         </div>

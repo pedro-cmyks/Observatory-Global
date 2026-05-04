@@ -250,7 +250,7 @@ export function Docs() {
                     <h3>GDELT GKG — Field Mapping</h3>
                     <p>
                         Each GKG record is a news article. Atlas extracts the following fields from the V2 GKG
-                        tab-separated format and normalizes them into <code style={{fontFamily:'monospace',color:'#38bdf8'}}>signals_v2</code>:
+                        tab-separated format and normalizes them into <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>signals_v2</code>:
                     </p>
                     <table className="docs-table">
                         <thead><tr><th>GKG Field</th><th>Column Index</th><th>Atlas Field</th><th>Notes</th></tr></thead>
@@ -278,7 +278,7 @@ export function Docs() {
                     </p>
                     <div className="docs-code">
                         <span className="cm">// Example CAMEO codes in events_v2</span>
-{`
+                        {`
 "14"    → Protest
 "145"   → Protest violently
 "19"    → Fight
@@ -297,7 +297,7 @@ export function Docs() {
                 <section className="docs-section" id="google-trends">
                     <h3>Google Trends — Public Interest Signal</h3>
                     <p>
-                        Google Trends data is ingested via the <code style={{fontFamily:'monospace',color:'#38bdf8'}}>pytrends</code> library
+                        Google Trends data is ingested via the <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>pytrends</code> library
                         every 30 minutes across 50+ country codes. Each record stores the keyword, its rank,
                         approximate search volume, and the country. The Anomaly Panel's right column shows the
                         top globally-trending keywords (ranked by how many countries searched for the same term).
@@ -305,7 +305,7 @@ export function Docs() {
                     <p>
                         At the narrative thread level, Atlas performs a semantic match: it extracts meaningful
                         words from each GDELT theme label and checks whether any match trending keywords
-                        via partial string overlap. A match sets <code style={{fontFamily:'monospace',color:'#4ade80'}}>has_public_interest: true</code> and
+                        via partial string overlap. A match sets <code style={{ fontFamily: 'monospace', color: '#4ade80' }}>has_public_interest: true</code> and
                         displays the SEARCH badge on that thread.
                     </p>
                 </section>
@@ -329,7 +329,7 @@ export function Docs() {
                     <h3>ACLED — Kinetic Ground Truth</h3>
                     <p>
                         ACLED is unique among Atlas's sources: it is human-verified. Every event in
-                        <code style={{fontFamily:'monospace',color:'#38bdf8'}}> acled_conflicts_v2</code> has been reviewed by
+                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}> acled_conflicts_v2</code> has been reviewed by
                         regional analysts. This makes it the most reliable signal for ground-truth conflict
                         activity, but also the smallest dataset and the one requiring API credentials.
                     </p>
@@ -339,10 +339,10 @@ export function Docs() {
                     </p>
                     <div className="docs-callout">
                         <strong>Note:</strong> ACLED requires a free API key from{' '}
-                        <span style={{color:'#38bdf8'}}>acleddata.com</span>. Without credentials,
-                        the <code style={{fontFamily:'monospace'}}>ingest_acled</code> service skips silently.
-                        Set <code style={{fontFamily:'monospace'}}>ACLED_API_KEY</code> and{' '}
-                        <code style={{fontFamily:'monospace'}}>ACLED_EMAIL</code> in your environment to activate it.
+                        <span style={{ color: '#38bdf8' }}>acleddata.com</span>. Without credentials,
+                        the <code style={{ fontFamily: 'monospace' }}>ingest_acled</code> service skips silently.
+                        Set <code style={{ fontFamily: 'monospace' }}>ACLED_API_KEY</code> and{' '}
+                        <code style={{ fontFamily: 'monospace' }}>ACLED_EMAIL</code> in your environment to activate it.
                     </div>
                 </section>
 
@@ -387,10 +387,10 @@ export function Docs() {
                             <div className="docs-pipeline-step-body">
                                 <h4>Insert into signals_v2</h4>
                                 <p>
-                                    Parsed signals are batch-inserted with <code style={{fontFamily:'monospace',color:'#38bdf8'}}>ON CONFLICT DO NOTHING</code> (deduplication
-                                    by source_url + timestamp). The <code style={{fontFamily:'monospace',color:'#38bdf8'}}>themes</code> column
-                                    stores a PostgreSQL <code style={{fontFamily:'monospace'}}>text[]</code> array with a GIN index
-                                    enabling sub-millisecond <code style={{fontFamily:'monospace'}}>&&</code> (array overlap) queries.
+                                    Parsed signals are batch-inserted with <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>ON CONFLICT DO NOTHING</code> (deduplication
+                                    by source_url + timestamp). The <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>themes</code> column
+                                    stores a PostgreSQL <code style={{ fontFamily: 'monospace' }}>text[]</code> array with a GIN index
+                                    enabling sub-millisecond <code style={{ fontFamily: 'monospace' }}>&&</code> (array overlap) queries.
                                 </p>
                             </div>
                         </div>
@@ -400,18 +400,18 @@ export function Docs() {
                                 <h4>Pre-aggregate into theme_hourly_v2</h4>
                                 <p>
                                     After each ingest, the last 2 hours of signals are aggregated into
-                                    <code style={{fontFamily:'monospace',color:'#38bdf8'}}> theme_hourly_v2</code> — one row per (hour, theme) with
+                                    <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}> theme_hourly_v2</code> — one row per (hour, theme) with
                                     signal_count, country_count, source_count, and avg_sentiment.
                                     This table is the backbone of the Narrative Threads endpoint:
                                     it makes any time window query (1h, 24h, 7d) instant by avoiding
-                                    a full <code style={{fontFamily:'monospace'}}>unnest(themes)</code> scan on 300K+ rows.
+                                    a full <code style={{ fontFamily: 'monospace' }}>unnest(themes)</code> scan on 300K+ rows.
                                 </p>
                             </div>
                         </div>
                     </div>
                     <h3>Database schema overview</h3>
                     <div className="docs-code">
-{`signals_v2          Raw article-level signals (GIN index on themes[])
+                        {`signals_v2          Raw article-level signals (GIN index on themes[])
 theme_hourly_v2     Pre-aggregated (hour, theme) counts — powers Narrative Threads
 country_hourly_v2   Materialized view: per-country hourly signal counts + sentiment
 events_v2           GDELT CAMEO actor→action→actor events
@@ -439,7 +439,7 @@ countries_v2        Country centroids and metadata`}
                     </p>
                     <h3>Phase 1 — Theme ranking (from pre-aggregated table)</h3>
                     <div className="docs-code">
-{`SELECT theme,
+                        {`SELECT theme,
        SUM(signal_count)  AS signal_count,
        SUM(country_count) AS country_count,
        AVG(avg_sentiment) AS avg_sentiment
@@ -450,16 +450,16 @@ ORDER BY signal_count DESC
 LIMIT 5`}
                     </div>
                     <p>
-                        This query reads only <code style={{fontFamily:'monospace',color:'#38bdf8'}}>theme_hourly_v2</code> —
+                        This query reads only <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>theme_hourly_v2</code> —
                         a small pre-aggregated table with ~50K rows — rather than scanning
-                        the full <code style={{fontFamily:'monospace'}}>signals_v2</code> table.
+                        the full <code style={{ fontFamily: 'monospace' }}>signals_v2</code> table.
                         Response time: typically under 50ms.
                     </p>
                     <h3>Phase 2 — Velocity, timeline, countries (GIN-indexed lookup)</h3>
                     <p>
-                        Once the top 5 themes are known, a second query scopes into <code style={{fontFamily:'monospace'}}>signals_v2</code>
-                        using the GIN index on the <code style={{fontFamily:'monospace'}}>themes</code> column. Because it uses
-                        <code style={{fontFamily:'monospace'}}> themes && $top_themes::text[]</code> (array overlap), PostgreSQL
+                        Once the top 5 themes are known, a second query scopes into <code style={{ fontFamily: 'monospace' }}>signals_v2</code>
+                        using the GIN index on the <code style={{ fontFamily: 'monospace' }}>themes</code> column. Because it uses
+                        <code style={{ fontFamily: 'monospace' }}> themes && $top_themes::text[]</code> (array overlap), PostgreSQL
                         uses the GIN index to fetch only rows containing at least one of the top 5 themes —
                         a fraction of the full table.
                     </p>
@@ -511,7 +511,7 @@ LIMIT 5`}
                             <div className="docs-pipeline-step-body">
                                 <h4>Theme label word extraction</h4>
                                 <p>
-                                    The GDELT theme code (e.g. <code style={{fontFamily:'monospace',color:'#38bdf8'}}>ECON_INFLATION</code>) is
+                                    The GDELT theme code (e.g. <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>ECON_INFLATION</code>) is
                                     resolved to a human label ("Inflation"). Words longer than 3 characters
                                     are extracted as search terms.
                                 </p>
@@ -525,7 +525,7 @@ LIMIT 5`}
                                     A single query fetches all trending keywords from the last 48 hours
                                     that partially match any of the extracted words. The result set is
                                     checked for each theme: if any of its words appears in a trending
-                                    keyword, <code style={{fontFamily:'monospace',color:'#4ade80'}}>has_public_interest</code> is set to true.
+                                    keyword, <code style={{ fontFamily: 'monospace', color: '#4ade80' }}>has_public_interest</code> is set to true.
                                 </p>
                             </div>
                         </div>
@@ -534,9 +534,9 @@ LIMIT 5`}
                             <div className="docs-pipeline-step-body">
                                 <h4>Batch Wikipedia query</h4>
                                 <p>
-                                    Same pattern against <code style={{fontFamily:'monospace',color:'#38bdf8'}}>wiki_pageviews_v2</code>
+                                    Same pattern against <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>wiki_pageviews_v2</code>
                                     for the last 3 days. Article titles that partially match the theme
-                                    words trigger <code style={{fontFamily:'monospace',color:'#fbbf24'}}>has_wiki_activity</code> true.
+                                    words trigger <code style={{ fontFamily: 'monospace', color: '#fbbf24' }}>has_wiki_activity</code> true.
                                 </p>
                             </div>
                         </div>
@@ -661,7 +661,7 @@ Severity is derived from the max-weight crisis theme present:
                     <div className="docs-section-eyebrow">Endpoints</div>
                     <h2>API Reference</h2>
                     <p className="docs-lead">
-                        The Atlas backend exposes a REST API at <code style={{fontFamily:'monospace',color:'#38bdf8'}}>atlas-api-pedro.fly.dev</code>.
+                        The Atlas backend exposes a REST API at <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>atlas-api-pedro.fly.dev</code>.
                         All endpoints return JSON and support CORS for the frontend domain.
                     </p>
 
@@ -673,9 +673,9 @@ Severity is derived from the max-weight crisis theme present:
                         <div className="docs-endpoint-body">
                             Top narrative threads for the given time window. Cached 5 minutes in Redis.
                             <br /><br />
-                            <strong style={{color:'#e2e8f0'}}>Params:</strong>{' '}
-                            <code style={{fontFamily:'monospace',color:'#38bdf8'}}>hours</code> (1–8760, default 24),{' '}
-                            <code style={{fontFamily:'monospace',color:'#38bdf8'}}>limit</code> (1–20, default 5)
+                            <strong style={{ color: '#e2e8f0' }}>Params:</strong>{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>hours</code> (1–8760, default 24),{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>limit</code> (1–20, default 5)
                         </div>
                     </div>
 
@@ -688,9 +688,9 @@ Severity is derived from the max-weight crisis theme present:
                             Country-level signal aggregates: total signals, sentiment, top themes, lat/lon.
                             Powers the map globe heatmap.
                             <br /><br />
-                            <strong style={{color:'#e2e8f0'}}>Params:</strong>{' '}
-                            <code style={{fontFamily:'monospace',color:'#38bdf8'}}>range</code> (1h / 6h / 24h / 7d / 30d),{' '}
-                            <code style={{fontFamily:'monospace',color:'#38bdf8'}}>country</code> (optional ISO code)
+                            <strong style={{ color: '#e2e8f0' }}>Params:</strong>{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>range</code> (1h / 6h / 24h / 7d / 30d),{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>country</code> (optional ISO code)
                         </div>
                     </div>
 
@@ -703,11 +703,11 @@ Severity is derived from the max-weight crisis theme present:
                             Individual article-level signals for the Signal Stream panel.
                             Optionally filtered by country or theme.
                             <br /><br />
-                            <strong style={{color:'#e2e8f0'}}>Params:</strong>{' '}
-                            <code style={{fontFamily:'monospace',color:'#38bdf8'}}>limit</code>,{' '}
-                            <code style={{fontFamily:'monospace',color:'#38bdf8'}}>hours</code>,{' '}
-                            <code style={{fontFamily:'monospace',color:'#38bdf8'}}>country</code>,{' '}
-                            <code style={{fontFamily:'monospace',color:'#38bdf8'}}>theme</code>
+                            <strong style={{ color: '#e2e8f0' }}>Params:</strong>{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>limit</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>hours</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>country</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>theme</code>
                         </div>
                     </div>
 
@@ -767,7 +767,7 @@ Severity is derived from the max-weight crisis theme present:
                         </div>
                     </div>
 
-                    <div className="docs-callout" style={{marginTop: '32px'}}>
+                    <div className="docs-callout" style={{ marginTop: '32px' }}>
                         <strong>All endpoints</strong> run with a statement_timeout between 5–20 seconds.
                         On timeout, endpoints return empty arrays rather than erroring — the dashboard
                         degrades gracefully and retries on the next auto-refresh cycle.
