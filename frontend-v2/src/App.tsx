@@ -793,17 +793,17 @@ function AppContent() {
           {(filter.theme || filter.country || filter.person) && (
             <div className="active-filters">
               {filter.theme && (
-                <button className="filter-chip" onClick={() => { setTheme(null) }} title="Remove theme filter">
+                <button className="filter-chip" onClick={() => { setTheme(null) }} data-tip="Remove theme filter">
                   {getThemeLabel(filter.theme)} <span className="filter-chip-x">×</span>
                 </button>
               )}
               {filter.country && (
-                <button className="filter-chip filter-chip--geo" onClick={() => setCountry(null)} title="Remove country filter">
+                <button className="filter-chip filter-chip--geo" onClick={() => setCountry(null)} data-tip="Remove country filter">
                   in {resolveCountryName(filter.country)} <span className="filter-chip-x">×</span>
                 </button>
               )}
               {filter.person && (
-                <button className="filter-chip filter-chip--person" onClick={() => setPerson(null)} title="Remove person filter">
+                <button className="filter-chip filter-chip--person" onClick={() => setPerson(null)} data-tip="Remove person filter">
                   {filter.person.toLowerCase()} <span className="filter-chip-x">×</span>
                 </button>
               )}
@@ -833,7 +833,7 @@ function AppContent() {
           }}>
             <ClipboardList size={13} /> BRIEF
           </button>
-          <button className="cmd-btn cmd-btn--reset" onClick={resetLayout} title="Reset panel layout to defaults">⊞</button>
+          <button className="cmd-btn cmd-btn--reset" onClick={resetLayout} data-tip="Reset panel layout to defaults">⊞</button>
           <SettingsPanel
             showTerminator={showTerminator}
             onToggleTerminator={setShowTerminator}
