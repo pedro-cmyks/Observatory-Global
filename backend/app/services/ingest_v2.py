@@ -221,23 +221,25 @@ def parse_gkg_row(row: list) -> Optional[dict]:
     }
 
 async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
-    """Insert signals into database."""
+    """Insert signals into database. Returns count of newly inserted rows."""
     if not signals:
         return 0
-    
+
     inserted = 0
+    skipped_dup = 0
+    failed = 0
     async with pool.acquire() as conn:
         for signal in signals:
             try:
-                await conn.execute("""
+                result = await conn.execute("""
                     INSERT INTO signals_v2 (
-                        timestamp, country_code, latitude, longitude, sentiment, 
+                        timestamp, country_code, latitude, longitude, sentiment,
                         source_url, source_name, headline, themes, persons,
                         is_crisis, crisis_score, crisis_themes, severity, event_type
                     )
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-                    ON CONFLICT DO NOTHING
-                """, 
+                    ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO NOTHING
+                """,
                     signal['timestamp'],
                     signal['country_code'],
                     signal['latitude'],
@@ -254,10 +256,18 @@ async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                     signal['severity'],
                     signal['event_type']
                 )
-                inserted += 1
+                # asyncpg returns "INSERT 0 N" — N=0 means conflict (dup)
+                if result == "INSERT 0 1":
+                    inserted += 1
+                else:
+                    skipped_dup += 1
             except Exception as e:
-                continue
-    
+                failed += 1
+                if failed <= 3:
+                    logger.warning("Insert failed: %s: %s", type(e).__name__, str(e)[:120])
+
+    logger.info("insert_signals: %d parsed → %d inserted, %d dup-skipped, %d errors",
+                len(signals), inserted, skipped_dup, failed)
     return inserted
 
 async def update_countries(pool: asyncpg.Pool):
@@ -298,28 +308,28 @@ async def refresh_aggregates(pool: asyncpg.Pool):
 
 async def run_ingestion():
     """Main ingestion function."""
-    print(f"[{datetime.now()}] Starting GDELT ingestion...")
-    
+    logger.info("GDELT ingestion cycle starting")
+
     pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=1)
-    
+
     try:
         # Fetch latest GDELT URL
         url = await fetch_latest_gdelt_url(GDELT_LAST_UPDATE_URL)
         if url:
-            print(f"Downloading: {url}")
+            logger.info("Downloading English GKG: %s", url.split('/')[-1])
             signals = await download_and_parse_gkg(url)
-            print(f"Parsed {len(signals)} eng signals")
+            logger.info("Parsed %d English signals from GKG", len(signals))
             inserted = await insert_signals(pool, signals)
-            print(f"Inserted {inserted} new eng signals")
-        
+            logger.info("English GKG: %d new signals inserted", inserted)
+
         # Fetch Translingual GDELT URL
         trans_url = await fetch_latest_gdelt_url(GDELT_TRANS_UPDATE_URL)
         if trans_url:
-            print(f"Downloading Translingual: {trans_url}")
+            logger.info("Downloading Translingual GKG: %s", trans_url.split('/')[-1])
             trans_signals = await download_and_parse_gkg(trans_url)
-            print(f"Parsed {len(trans_signals)} translingual signals")
+            logger.info("Parsed %d translingual signals from GKG", len(trans_signals))
             inserted_trans = await insert_signals(pool, trans_signals)
-            print(f"Inserted {inserted_trans} new translingual signals")
+            logger.info("Translingual GKG: %d new signals inserted", inserted_trans)
         
         # Update countries (non-fatal if it fails)
         try:
@@ -364,13 +374,16 @@ async def run_ingestion():
         
         # Stats
         async with pool.acquire() as conn:
-            count = await conn.fetchval("SELECT COUNT(*) FROM signals_v2")
-            print(f"Total signals in database: {count}")
-        
+            total = await conn.fetchval("SELECT COUNT(*) FROM signals_v2")
+            last_1h = await conn.fetchval(
+                "SELECT COUNT(*) FROM signals_v2 WHERE timestamp > NOW() - INTERVAL '1 hour'"
+            )
+            logger.info("DB totals — total: %d, last 1h: %d", total, last_1h)
+
     finally:
         await pool.close()
-    
-    print(f"[{datetime.now()}] Ingestion complete!")
+
+    logger.info("GDELT ingestion cycle complete")
 
 if __name__ == "__main__":
     asyncio.run(run_ingestion())
