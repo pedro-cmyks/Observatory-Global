@@ -236,21 +236,21 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
 
                         {/* Summary Stats */}
                         <div className="theme-stats-row">
-                            <div className="theme-stat" title="Total media signals (articles, posts) mentioning this topic in the selected time window">
+                            <div className="theme-stat" data-tip="Total media signals (articles, posts) mentioning this topic in the selected time window">
                                 <span className="theme-stat-value">{data.total}</span>
                                 <span className="theme-stat-label">Signals</span>
                             </div>
-                            <div className="theme-stat" title="Average GDELT tone score across all signals. Scale −10 to +10: negative = topic framed critically or with conflict, positive = framed supportively. Scores rarely exceed ±3 in normal news.">
+                            <div className="theme-stat" data-tip="Avg GDELT tone: −10 to +10. Negative = topic framed critically or with conflict, positive = framed supportively. Scores rarely exceed ±3 in normal news.">
                                 <span className="theme-stat-value" style={{ color: getSentimentColor(data.avgSentiment) }}>
                                     {data.avgSentiment > 0 ? '+' : ''}{data.avgSentiment.toFixed(2)}
                                 </span>
                                 <span className="theme-stat-label">Avg Sentiment</span>
                             </div>
-                            <div className="theme-stat" title="Number of distinct countries where media sources are covering this topic">
+                            <div className="theme-stat" data-tip="Number of distinct countries where media sources are covering this topic">
                                 <span className="theme-stat-value">{data.countryBreakdown.length}</span>
                                 <span className="theme-stat-label">Countries</span>
                             </div>
-                            <div className="theme-stat" title="Number of distinct media outlets (news sites, blogs, feeds) contributing signals">
+                            <div className="theme-stat" data-tip="Number of distinct media outlets (news sites, blogs, feeds) contributing signals">
                                 <span className="theme-stat-value">{data.topSources.length}</span>
                                 <span className="theme-stat-label">Sources</span>
                             </div>
@@ -330,7 +330,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                                         <span className="framing-scope">
                                             top {data.countryFraming.length} of {data.countryBreakdown.length} countries by volume
                                         </span>
-                                        <span className="framing-info-btn" title="Each card shows how a country's media covers this topic. Sentiment (tone) ranges from −10 to +10 on the GDELT scale — negative means the topic is framed critically, positive means supportively. Sub-themes show which related topics co-occur most in that country's coverage. Click any card to see that country's panel.">?</span>
+                                        <span className="framing-info-btn" data-tip="Each card shows how a country's media covers this topic. Tone −10 to +10: negative = framed critically, positive = framed supportively. Sub-themes co-occur most in that country's coverage. Click any card to see that country's signals.">?</span>
                                     </div>
                                     <div className="framing-grid">
                                         {framing.map((cf, idx) => {
@@ -346,7 +346,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                                                         ? onCountryCardClick(cf.country_code, cf.country_name)
                                                         : (setDrillCountry(cf.country_code), setDrillCountryName(cf.country_name))
                                                     }
-                                                    title={`See ${cf.country_name}'s coverage in the side panel`}
+                                                    data-tip={`See ${cf.country_name}'s coverage`}
                                                 >
                                                     <div className="framing-card-header">
                                                         <span className="framing-rank">#{(cf as any).volumeRank ?? idx + 1}</span>
@@ -354,15 +354,15 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                                                         <span className="framing-country-name">{cf.country_name}</span>
                                                     </div>
                                                     <div className="framing-stats">
-                                                        <span className="framing-signal-count" title="Number of signals from this country · its share of total global coverage for this topic">
+                                                        <span className="framing-signal-count" data-tip="Signals from this country · share of total global coverage for this topic">
                                                             {cf.signal_count.toLocaleString()} sig
                                                             <span className="framing-share"> · {sharePct}%</span>
                                                         </span>
-                                                        <span className="framing-tone" title="Average GDELT tone: how this country's media frames the topic. −10 = very critical, 0 = neutral, +10 = very supportive." style={{ color: getFramingSentimentColor(cf.avg_sentiment) }}>
+                                                        <span className="framing-tone" data-tip="Avg GDELT tone: how this country's media frames the topic. −10 = very critical, 0 = neutral, +10 = very supportive." style={{ color: getFramingSentimentColor(cf.avg_sentiment) }}>
                                                             {cf.avg_sentiment > 0 ? '+' : ''}{cf.avg_sentiment.toFixed(1)} tone
                                                         </span>
                                                     </div>
-                                                    <div className="framing-sentiment-bar" title="Tone bar: left = negative, center = neutral, right = positive">
+                                                    <div className="framing-sentiment-bar" data-tip="Tone bar: left = negative, center = neutral, right = positive">
                                                         <div
                                                             className="framing-sentiment-fill"
                                                             style={{
@@ -406,7 +406,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                                                 height: `${Math.max(10, (t.count / Math.max(...data.timeline.map(x => x.count))) * 100)}%`,
                                                 backgroundColor: getSentimentColor(t.sentiment)
                                             }}
-                                            title={`${formatTime(t.hour)}: ${t.count} signals`}
+                                            data-tip={`${formatTime(t.hour)}: ${t.count} signals`}
                                         />
                                     ))}
                                 </div>
@@ -447,7 +447,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                                         <span
                                             key={p.name}
                                             className="person-pill"
-                                            title={`${p.count} mentions — click to filter`}
+                                            data-tip={`${p.count} mentions — click to filter signals`}
                                             onClick={() => onPersonClick?.(p.name)}
                                         >
                                             {p.name}
@@ -468,7 +468,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                                             key={s.name}
                                             className={`source-item ${selectedSource === s.name ? 'source-active' : ''}`}
                                             onClick={() => setSelectedSource(selectedSource === s.name ? null : s.name)}
-                                            title={`Avg tone ${s.sentiment > 0 ? '+' : ''}${s.sentiment.toFixed(2)} · click to see articles`}
+                                            data-tip={`Avg tone ${s.sentiment > 0 ? '+' : ''}${s.sentiment.toFixed(2)} · click to filter articles by this source`}
                                         >
                                             <span className="source-name">{s.name}</span>
                                             <span className="source-count">{s.count}</span>

@@ -272,7 +272,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 
             {/* Sentiment */}
             <section className="brief-section">
-                <h3>Sentiment Overview <span className="sentiment-info-icon" title="Average sentiment measures how positively or negatively media sources frame coverage of this country. Scores range from -10 (very negative framing) to +10 (very positive framing). Negative scores mean reporting tends to be alarming, critical, or conflict-focused. Positive scores mean coverage is favorable, optimistic, or supportive. This reflects media tone, not whether the news is objectively good or bad.">?</span></h3>
+                <h3>Sentiment Overview <span className="sentiment-info-icon" data-tip="Scores range from −10 to +10. Negative = reporting is alarming, critical, or conflict-focused. Positive = coverage is favorable or optimistic. This reflects media tone, not whether the news is objectively good or bad.">?</span></h3>
                 <div className="sentiment-display">
                     <span
                         className="sentiment-value"
@@ -306,7 +306,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                             key={i}
                             className={`theme-chip${anomaly && i === 0 ? ' anomaly-spike' : ''}`}
                             onClick={() => onThemeSelect?.(theme.name)}
-                            title={`Click to explore ${theme.name}`}
+                            data-tip={`Click to open ${getThemeLabel(theme.name)} narrative thread`}
                         >
                             {anomaly && i === 0 && <span className="spike-bars">▂▄▇</span>}
                             <span className="theme-name">{getThemeLabel(theme.name)}</span>
@@ -350,7 +350,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                             e.stopPropagation();
                                             onThemeSelect?.(story.themeCode);
                                         }}
-                                        title={`Open narrative thread: ${getThemeLabel(story.themeCode)}`}
+                                        data-tip={`Open narrative thread: ${getThemeLabel(story.themeCode)}`}
                                     >
                                         {getThemeLabel(story.themeCode)}
                                     </span>

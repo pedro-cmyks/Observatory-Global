@@ -4,6 +4,54 @@
   box-sizing: border-box;
 }
 
+/* ============================================================
+   FAST TOOLTIP SYSTEM — [data-tip] attribute
+   Shows instantly (no browser delay) via CSS ::before pseudo-element.
+   Usage: <span data-tip="Explanation text">label</span>
+   Use .tip-below on elements near the top of a panel.
+   Use .tip-left on elements near the right edge.
+   ============================================================ */
+[data-tip] {
+  position: relative;
+}
+[data-tip]::before {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(8, 11, 20, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  font-size: 10px;
+  line-height: 1.5;
+  padding: 5px 9px;
+  border-radius: 4px;
+  width: max-content;
+  max-width: 240px;
+  z-index: 10000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 80ms ease;
+  font-family: var(--font-sans, system-ui);
+  font-weight: 400;
+  text-align: left;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  white-space: normal;
+}
+[data-tip]:hover::before {
+  opacity: 1;
+}
+[data-tip].tip-below::before {
+  bottom: auto;
+  top: calc(100% + 6px);
+}
+[data-tip].tip-left::before {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
 .app {
   width: 100vw;
   height: 100vh;
