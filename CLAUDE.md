@@ -1,5 +1,7 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+Last updated: 2026-05-05 (session 4 — intelligence improvements)
+
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
 ## Project Overview
@@ -132,20 +134,21 @@ The project uses a multi-agent architecture where each agent has specific expert
 
 ### Backend Flow Engineer
 
-**Purpose**: Implements and modifies the flows API, health endpoints, and trends endpoints in the Python/FastAPI backend.
+**Purpose**: Implements and modifies the flows API, health endpoints, trends endpoints, and intelligence enrichment endpoints in the Python/FastAPI backend.
 
 **When to Call**:
-- Implementing API endpoints (GET /v1/flows, /v1/health, /v1/trends)
+- Implementing API endpoints (all under `/api/v2/...`; crisis endpoints under `/api/v3/...`)
 - Implementing caching strategies with Redis
-- Writing database migrations for PostgreSQL
+- Writing database migrations for PostgreSQL (raw `.sql` files in `backend/migrations/`)
 - Calculating heat formulas and similarity scores
 - Writing tests for backend functionality
+- Adding new data source integrations (ACLED, OpenSky, AISStream)
 
 **Interaction with Backend Tasks**:
-- Implements endpoints following Pydantic model patterns
-- Creates database migrations with proper indexes
+- Implements endpoints following Pydantic model patterns in `app/models/`
+- Creates database migrations run via Supabase SQL editor (NOT alembic)
 - Implements caching with key patterns from DataSignalArchitect
-- Writes unit and integration tests
+- Writes unit and integration tests in `backend/tests/`
 
 ---
 
@@ -170,13 +173,20 @@ The project uses a multi-agent architecture where each agent has specific expert
 
 ### Frontend Map Engineer
 
-**Purpose**: Implements interactive map visualizations using React and Mapbox GL.
+**Purpose**: Implements interactive map visualizations using React, MapLibre GL, and DeckGL v9.
 
 **When to Call**:
-- Adding circle markers/hotspots to maps
-- Creating animated flow lines between countries
-- Building map-related UI components (filters, sidebars)
-- Handling real-time data updates with auto-refresh
+- Adding circle markers/hotspots to maps (ScatterplotLayer)
+- Creating animated flow lines between countries (ArcLayer)
+- Building map-related UI components (filters, sidebars, chokepoint panels)
+- Handling real-time data updates with auto-refresh (aircraft 15s poll, vessels 30s poll)
+- Implementing custom DeckGL layers (e.g. TerminatorLayer)
+
+**Critical Rules for Frontend:**
+- Use **Vanilla CSS** for all dashboard components. CSS custom properties come from `ThemeContext`.
+- **Tailwind CSS** is installed but used **exclusively for `Landing.tsx`** (the public marketing page). Do NOT add Tailwind classes to dashboard components.
+- Use `data-tip="text"` for tooltips on any element — NEVER use native `title=` attributes.
+- Components live in `frontend-v2/src/components/`. Current count: **43 components**.
 
 ---
 
@@ -388,7 +398,7 @@ Codex also supports the `@file` and `@directory/` syntax for including context.
 
 **Implement an endpoint:**
 ```bash
-codex "Implement GET /v1/narratives/topic endpoint in backend/app/api/v1/narratives.py following the existing patterns"
+codex "Implement GET /api/v2/narratives/topic endpoint in backend/app/main_v2.py following the existing endpoint patterns"
 ```
 
 **Write tests:**
@@ -539,13 +549,13 @@ wait
 
 ```bash
 # 1. Claude designs the API schema
-claude "Design the /v1/narratives/topic endpoint with request/response schemas"
+claude "Design the /api/v2/narratives/topic endpoint with request/response schemas"
 
 # 2. Gemini checks existing endpoint patterns
-gemini -p "@backend/app/api/v1/ Show me the pattern used for existing endpoints including error handling"
+gemini -p "@backend/app/main_v2.py Show me the pattern used for existing endpoints including error handling"
 
 # 3. Codex implements the endpoint
-codex "Implement /v1/narratives/topic in backend/app/api/v1/narratives.py using the designed schema and existing patterns"
+codex "Implement /api/v2/narratives/topic in backend/app/main_v2.py using the designed schema and existing patterns"
 ```
 
 **Task: Optimize database queries**
@@ -624,3 +634,29 @@ codex "Write comprehensive tests for gdelt_parser.py covering all edge cases"
 - [ ] ADR exists for non-trivial decisions
 - [ ] Documentation updated
 - [ ] Handoff notes complete
+
+---
+
+## Current Technical State (as of session 4)
+
+### New API Endpoints
+- `GET /api/v2/search/unified?q=&hours=` — **preferred search endpoint**. Merges taxonomy search (aliases, typos, multilingual), concept search (investigative frames), region matching, and live DB signal search into one response. Taxonomy-matched themes get priority over DB-only hits. Cached 2 min in Redis.
+
+### New Components
+- `CompareBar.tsx` — inline temporal comparison widget showing period-over-period signal volume and sentiment delta. Integrated into ThemeDetail after stats row.
+
+### New Hooks
+- `useUrlSync.ts` — bidirectional sync between FocusContext filter state and URL search params. Enables shareable links: `/app?theme=ARMEDCONFLICT&country=CO&time=1w`.
+
+### FocusContext Changes
+- `GlobalFilter` now includes `concept: ConceptFilter | null` and `region: RegionFilter | null`
+- New setters: `setConcept()` (multi-theme expansion), `setRegion()` (multi-country expansion)
+- Concept filter activates all associated GDELT themes, not just the primary one
+
+### Backend: gdelt_taxonomy.py
+- `REGION_MAP` — 6 regions (Africa, Middle East, Latin America, Europe, Asia-Pacific, North America) with ISO country codes and multilingual aliases (EN/ES/FR/PT/DE/AR)
+- `match_region()` — fuzzy region matching function
+- `get_all_regions()` — returns region list for UI
+
+### GitHub Issues Status
+Phase 1 (#26–29) and Phase 2A (#31) and Phase 3A (#30) — all closed. Remaining open: #32–38.
