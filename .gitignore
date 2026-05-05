@@ -79,3 +79,4 @@ backend/.venv/share/
 .atlas/
 .claude/
 .mcp.json
+.superpowers/

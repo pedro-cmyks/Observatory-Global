@@ -56,7 +56,7 @@ export const SourceIntegrityPanel: React.FC = () => {
     if (summary) {
         totalSignals = summary.stats.total_signals
         uniqueSources = summary.stats.unique_sources
-        topSources = summary.top_sources.map((s: any) => ({ name: s.source, count: s.count }))
+        topSources = summary.top_sources.map(s => ({ name: s.source, count: s.count }))
     } else if (globalData) {
         totalSignals = globalData.stats.total_signals
         uniqueSources = globalData.stats.sources
@@ -69,7 +69,7 @@ export const SourceIntegrityPanel: React.FC = () => {
         : 0
 
     // Approximate diversity score (0-100)
-    const diversityScore = totalSignals > 0 
+    const diversityScore = totalSignals > 0
         ? Math.min(100, Math.round((uniqueSources / Math.sqrt(totalSignals)) * 50))
         : 0
 
@@ -133,7 +133,7 @@ export const SourceIntegrityPanel: React.FC = () => {
                         )}
                     </div>
                 </div>
-                
+
                 <div className="footer-stats">
                     Active Sources: <span className="highlight">{uniqueSources.toLocaleString()}</span> networks
                 </div>
