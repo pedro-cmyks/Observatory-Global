@@ -974,15 +974,15 @@ function AppContent() {
                 </div>
               )}
             </MapErrorBoundary>
+            {showMapHint && (
+              <div className="map-hint" onClick={() => {
+                setShowMapHint(false);
+                sessionStorage.setItem('atlas-map-hinted', 'true');
+              }}>
+                ↑ click any country to explore
+              </div>
+            )}
           </div>
-          {showMapHint && (
-            <div className="map-hint" onClick={() => {
-              setShowMapHint(false);
-              sessionStorage.setItem('atlas-map-hinted', 'true');
-            }}>
-              ↑ click any country to explore
-            </div>
-          )}
         </div>
 
         {/* Panel 2: SIGNAL STREAM — the intel hub, swaps based on active context */}

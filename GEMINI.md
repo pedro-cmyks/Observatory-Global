@@ -1,6 +1,6 @@
 # GEMINI Code Assistant Context — Observatory Global (Atlas)
 
-Last updated: 2026-05-05 (session 4 — intelligence improvements)
+Last updated: 2026-05-05 (session 5 — first-user experience)
 
 This document gives the Gemini AI assistant the current, accurate context for the Observatory Global project. Treat this as the source of truth for deployment topology, architecture, and conventions.
 
@@ -31,7 +31,7 @@ This document gives the Gemini AI assistant the current, accurate context for th
 frontend-v2/          ← ACTIVE React 19 + Vite + TypeScript frontend (use this)
   src/
     pages/            ← Landing.tsx  Landing.css  Docs.tsx  Docs.css
-    components/       ← 45 components (see full list below)
+    components/       ← 29 .tsx components (see full list below)
     contexts/         ← FocusContext, FocusDataContext, CrisisContext, ThemeContext
     hooks/            ← useFocusData.ts, useUrlSync.ts
     layers/           ← TerminatorLayer.ts (custom DeckGL day/night terminator)
@@ -40,6 +40,8 @@ frontend-v2/          ← ACTIVE React 19 + Vite + TypeScript frontend (use this
     App.tsx           ← main dashboard: all state, layout, routing logic
     App.css           ← global dashboard styles + [data-tip] tooltip system
     main.tsx          ← React Router v7 setup
+  public/
+    assets/           ← Atlas hero PNGs (6 images, used by Landing.tsx)
   tailwind.config.js  ← Tailwind v3 (used ONLY by Landing.tsx — rest of app uses Vanilla CSS)
   package.json
 
@@ -71,14 +73,19 @@ backend/
   start.sh             ← Watchdog loop + uvicorn launcher (Fly.io entrypoint)
   migrations/          ← Raw SQL files (007 applied = most recent)
 
+docs/
+  superpowers/
+    specs/            ← UX/feature specs (e.g. 2026-05-05-atlas-first-user-experience-design.md)
+    plans/            ← Implementation plans (e.g. 2026-05-05-atlas-first-user-experience.md)
+
 stitch_atlas_landing_experience_redesign/   ← Design assets from Google Stitch
   DESIGN.md           ← Design system tokens (exported from Stitch)
   code.html           ← Stitch-generated HTML reference
   screen.png          ← Stitch screen screenshot
 ```
 
-### Frontend Component List (45 total)
-`AnomalyPanel`, `AtlasLoader`, `Briefing`, `ChokepointPanel`, `CompareBar`, `CorrelationMatrix`, `CorrelationMatrixPlaceholder`, `CountryBrief`, `CountryThemePanel`, `CrisisDashboard`, `CrisisToggle`, `DeckGLOverlay`, `DevBanner`, `EntityPanel`, `FocusIndicator`, `FocusSummaryPanel`, `IndicatorTooltip`, `Legend`, `MapTooltip`, `NarrativeThreads`, `NarrativeThreadsPlaceholder`, `PanelErrorBoundary`, `SearchBar`, `SettingsPanel`, `SignalStream`, `SourceIntegrityPanel`, `ThemeDetail`, `ThemeSelector`
+### Frontend Component List (29 .tsx files)
+`AnomalyPanel`, `AtlasLoader`, `Briefing`, `ChokepointPanel`, `CompareBar`, `CorrelationMatrix`, `CorrelationMatrixPlaceholder`, `CountryBrief`, `CountryThemePanel`, `CrisisDashboard`, `CrisisToggle`, `DeckGLOverlay`, `DevBanner`, `DiscoveryPanel`, `EntityPanel`, `FocusIndicator`, `FocusSummaryPanel`, `IndicatorTooltip`, `Legend`, `MapTooltip`, `NarrativeThreads`, `NarrativeThreadsPlaceholder`, `PanelErrorBoundary`, `SearchBar`, `SettingsPanel`, `SignalStream`, `SourceIntegrityPanel`, `ThemeDetail`, `ThemeSelector`
 
 ---
 
@@ -219,6 +226,10 @@ Stitch project: **Atlas Landing Experience Redesign**
 18. **Unified search**: `/api/v2/search/unified` merges taxonomy search (aliases, typos, multilingual), concept search (investigative frames), region matching, and live DB signal search into one response. Taxonomy-matched themes get priority over DB-only hits. Cached 2 min in Redis.
 19. **CompareBar**: `CompareBar.tsx` shows period-over-period signal and sentiment delta inside ThemeDetail. Uses existing `/api/v2/compare` endpoint.
 20. **URL state sync**: `useUrlSync.ts` hook bidirectionally syncs `FocusContext.filter` with URL search params. Enables shareable links: `/app?theme=ARMEDCONFLICT&country=CO&time=1w`. Hydrates filter from URL on mount, pushes changes on filter update.
+21. **DiscoveryPanel (session 5)**: Blank-state default for the stream column. Shows top 5 GDELT narratives as explorable cards with trend arrows (accelerating/fading/stable), signal counts, and top countries. Fetches `GET /api/v2/narratives?hours=24&limit=5`, auto-refreshes every 5 minutes. `SignalStream` is no longer the default view — it is shown only when explicitly triggered.
+22. **Stream panel state machine**: Right column renders based on which state is truthy first: `isPerson → isCompound(theme+country) → isCountry → isTheme → isChokepoint → DiscoveryPanel`. The title switches between "WHAT'S HAPPENING" (blank state) and "SIGNAL STREAM" (active filter).
+23. **Map hint**: `.map-hint` element in App.css + animation. Appears 2 seconds after `mapReady` for first-time users. Dismissed on any map interaction; `sessionStorage` prevents it from reappearing within the same browser session.
+24. **ingest_v2.py ON CONFLICT status**: Restored to `ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO NOTHING` (requires migration 007's unique index). Committed. Awaiting `fly deploy` to take effect on the running instance.
 
 ---
 
@@ -231,12 +242,17 @@ cd backend && poetry run uvicorn app.main_v2:app --reload --port 8000
 # Frontend local dev
 cd frontend-v2 && npm run dev
 
+# Frontend build verification (REQUIRED before every push — not just tsc --noEmit)
+cd frontend-v2 && npm run build
+
 # Fly.io deploy (backend)
 fly deploy
 
 # Check ingestion health
 curl atlas-api-pedro.fly.dev/health
 ```
+
+**Build rule:** Always run `npm run build`, not just `tsc --noEmit`. Vite uses `tsc -b` (project references), which is stricter and catches errors (e.g. TS6133 unused imports) that bare `tsc --noEmit` misses. A passing `tsc --noEmit` does NOT guarantee a passing Vercel build.
 
 ---
 

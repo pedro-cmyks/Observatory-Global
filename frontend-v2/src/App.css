@@ -869,7 +869,7 @@
 /* ── Map affordance hint ────────────────────────────────────────────────── */
 .map-hint {
   position: absolute;
-  bottom: 48px;
+  bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(15, 20, 30, 0.85);

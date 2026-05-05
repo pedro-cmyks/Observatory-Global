@@ -185,8 +185,13 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
         setLoading(true)
         try {
             const res = await fetch(`/api/v2/search/unified?q=${encodeURIComponent(searchQ)}&hours=168`)
-            const data: SearchResult = res.ok ? await res.json() : { themes: [], persons: [], countries: [] }
-            setResults(data)
+            if (res.ok) {
+                setResults(await res.json())
+            } else {
+                // Fallback to basic search if unified endpoint not available yet
+                const fallback = await fetch(`/api/v2/search?q=${encodeURIComponent(searchQ)}&hours=168`)
+                setResults(fallback.ok ? await fallback.json() : { themes: [], persons: [], countries: [] })
+            }
             setIsOpen(true)
         } catch {
             // silent
