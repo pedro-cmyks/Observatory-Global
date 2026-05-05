@@ -29,12 +29,18 @@ export interface FlowData {
 }
 
 export interface FocusSummary {
-    stats: {
+    focus: { type: string; value: string; hours: number }
+    summary: {
         total_signals: number
-        unique_sources: number
-        unique_countries: number
-        avg_sentiment: number
+        total_countries: number
+        generated_at: string
     }
+    nodes: Array<{
+        country_code: string
+        signal_count: number
+        avg_sentiment: number
+        unique_sources: number
+    }>
     related_topics: Array<{ topic: string; count: number }>
     top_sources: Array<{ source: string; count: number; avg_sentiment: number }>
     headlines: Array<{ url: string; source: string; time: string | null }>

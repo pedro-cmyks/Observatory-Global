@@ -10,7 +10,7 @@ interface GlobalBriefing {
         sources: number
     }
     top_sources: Array<{
-        source_name: string
+        source: string
         count: number
     }>
 }
@@ -34,6 +34,7 @@ export const SourceIntegrityPanel: React.FC = () => {
             try {
                 const hours = timeRangeToHours(timeRange)
                 const res = await fetch(`/api/v2/briefing?hours=${hours}`)
+                if (!res.ok) throw new Error(`briefing ${res.status}`)
                 const data = await res.json()
                 if (isMounted) setGlobalData(data)
             } catch (e) {
@@ -54,14 +55,13 @@ export const SourceIntegrityPanel: React.FC = () => {
     let topSources: Array<{ name: string; count: number }> = []
 
     if (summary) {
-        totalSignals = summary.stats.total_signals
-        uniqueSources = summary.stats.unique_sources
+        totalSignals = summary.summary.total_signals
+        uniqueSources = summary.nodes.reduce((acc, n) => acc + n.unique_sources, 0)
         topSources = summary.top_sources.map(s => ({ name: s.source, count: s.count }))
     } else if (globalData) {
         totalSignals = globalData.stats.total_signals
         uniqueSources = globalData.stats.sources
-        // Note: API might return `source` instead of `source_name`
-        topSources = globalData.top_sources.map(s => ({ name: (s as any).source_name || (s as any).source, count: s.count }))
+        topSources = globalData.top_sources.map(s => ({ name: s.source, count: s.count }))
     }
 
     const concentration = totalSignals > 0 && topSources.length > 0
