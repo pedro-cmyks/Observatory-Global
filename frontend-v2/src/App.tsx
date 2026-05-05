@@ -22,6 +22,9 @@ import { CrisisProvider } from './contexts/CrisisContext'
 import { SettingsPanel } from './components/SettingsPanel'
 import { CountryThemePanel } from './components/CountryThemePanel'
 import { EntityPanel } from './components/EntityPanel'
+import { PersonCompare } from './components/PersonCompare'
+import { ThemeCompare } from './components/ThemeCompare'
+import { SourceProfile } from './components/SourceProfile'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
 import { Globe, ClipboardList } from 'lucide-react'
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
@@ -320,6 +323,11 @@ function AppContent() {
   // const [timeWindow, setTimeWindow] = useState(24) // Replaced by context
   const [viewState, setViewState] = useState(INITIAL_VIEW)
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
+
+  // Comparison & Overlay states
+  const [selectedSourceProfile, setSelectedSourceProfile] = useState<string | null>(null)
+  const [comparePerson, setComparePerson] = useState<{ a: string, b: string } | null>(null)
+  const [compareTheme, setCompareTheme] = useState<{ a: string, b: string } | null>(null)
 
   const mapRef = useRef<MapRef>(null)
   const isGlobe = false
@@ -1055,6 +1063,8 @@ function AppContent() {
                     onClose={closeAll}
                     onThemeSelect={(theme) => handleThemeSelect(theme)}
                     onCountrySelect={(code) => { clearFocus(); handleCountryClick(code); setMapFlyCountry(code) }}
+                    onSourceClick={(source) => setSelectedSourceProfile(source)}
+                    onCompareClick={(other) => setComparePerson({ a: focus.value!, b: other })}
                   />
                 ) : isCountry ? (
                   <CountryBrief inline
@@ -1077,6 +1087,8 @@ function AppContent() {
                       setFocus('person', name, name)
                       setMapFlyCountry(null)
                     }}
+                    onSourceClick={(source) => setSelectedSourceProfile(source)}
+                    onCompareClick={(other) => setCompareTheme({ a: selectedTheme!.theme, b: other })}
                   />
                 ) : isChokepoint ? (
                   <ChokepointPanel
@@ -1224,6 +1236,41 @@ function AppContent() {
             }
           }}
           onThemeSelect={(theme) => { handleThemeSelect(theme, rightPanelThemeCountry.code, rightPanelThemeCountry.name) }}
+        />
+      )}
+
+      {selectedSourceProfile && (
+        <SourceProfile 
+          domain={selectedSourceProfile}
+          hours={timeRangeToHours(timeRange)}
+          onClose={() => setSelectedSourceProfile(null)}
+          onThemeSelect={(theme) => { setSelectedSourceProfile(null); handleThemeSelect(theme); }}
+          onCountrySelect={(code) => { setSelectedSourceProfile(null); handleCountryClick(code); setMapFlyCountry(code); }}
+        />
+      )}
+
+      {comparePerson && (
+        <PersonCompare
+          personA={comparePerson.a}
+          personB={comparePerson.b}
+          timeRange={timeRange}
+          onClose={() => setComparePerson(null)}
+          onThemeSelect={(theme) => { setComparePerson(null); handleThemeSelect(theme); }}
+          onCountrySelect={(code) => { setComparePerson(null); handleCountryClick(code); setMapFlyCountry(code); }}
+          onSourceClick={(source) => setSelectedSourceProfile(source)}
+        />
+      )}
+
+      {compareTheme && (
+        <ThemeCompare
+          themeA={compareTheme.a}
+          themeB={compareTheme.b}
+          hours={timeRangeToHours(timeRange)}
+          onClose={() => setCompareTheme(null)}
+          onThemeSelect={(theme) => { setCompareTheme(null); handleThemeSelect(theme); }}
+          onCountryCardClick={(code, _name) => { setCompareTheme(null); handleCountryClick(code); setMapFlyCountry(code); }}
+          onPersonClick={(name) => { setCompareTheme(null); setFocus('person', name, name); setMapFlyCountry(null); }}
+          onSourceClick={(source) => setSelectedSourceProfile(source)}
         />
       )}
     </div>

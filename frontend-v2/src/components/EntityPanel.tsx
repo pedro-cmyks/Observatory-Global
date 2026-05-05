@@ -26,6 +26,8 @@ interface EntityPanelProps {
     onClose: () => void
     onThemeSelect?: (theme: string) => void
     onCountrySelect?: (code: string) => void
+    onSourceClick?: (domain: string) => void
+    onCompareClick?: (person: string) => void
     inline?: boolean
 }
 
@@ -48,7 +50,7 @@ function formatCount(n: number): string {
     return String(n)
 }
 
-export function EntityPanel({ focusType, focusValue, timeRange, onClose, onThemeSelect, onCountrySelect, inline }: EntityPanelProps) {
+export function EntityPanel({ focusType, focusValue, timeRange, onClose, onThemeSelect, onCountrySelect, onSourceClick, onCompareClick, inline }: EntityPanelProps) {
     const cls = `entity-panel${inline ? ' entity-panel--inline' : ''}`
     const [data, setData] = useState<FocusData | null>(null)
     const [loading, setLoading] = useState(true)
@@ -95,7 +97,21 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
             </div>
 
             <div className="entity-title-block">
-                <h2 className="entity-name">{displayName}</h2>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <h2 className="entity-name">{displayName}</h2>
+                    {focusType === 'person' && onCompareClick && (
+                        <button 
+                            className="entity-compare-btn"
+                            onClick={() => {
+                                const other = prompt("Enter name of person to compare with:");
+                                if (other) onCompareClick(other);
+                            }}
+                            style={{ background: 'transparent', border: '1px solid #6366f1', color: '#a5b4fc', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer' }}
+                        >
+                            Compare With...
+                        </button>
+                    )}
+                </div>
                 {data && (
                     <div className="entity-subtitle">
                         <span>{formatCount(data.summary.total_signals)} signals</span>
@@ -202,7 +218,12 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
                             <div className="entity-section-label">Top Sources</div>
                             <div className="entity-sources">
                                 {data.top_sources.slice(0, 6).map(s => (
-                                    <div key={s.source} className="entity-source-row">
+                                    <div 
+                                        key={s.source} 
+                                        className="entity-source-row"
+                                        style={{ cursor: onSourceClick ? 'pointer' : 'default' }}
+                                        onClick={() => onSourceClick?.(s.source)}
+                                    >
                                         <span className="entity-source-name">{s.source}</span>
                                         <span className="entity-source-count">{formatCount(s.count)}</span>
                                         <span className="entity-source-sentiment" style={{ color: sentimentColor(s.avg_sentiment) }}>

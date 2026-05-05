@@ -44,9 +44,11 @@ interface ThemeDetailProps {
     onThemeSelect?: (theme: string) => void
     onCountryCardClick?: (code: string, name: string) => void
     onPersonClick?: (name: string) => void
+    onSourceClick?: (domain: string) => void
+    onCompareClick?: (theme: string) => void
 }
 
-export function ThemeDetail({ theme, originCountry, originCountryName, initialDrillCountry, hours, onClose, onThemeSelect, onCountryCardClick, onPersonClick }: ThemeDetailProps) {
+export function ThemeDetail({ theme, originCountry, originCountryName, initialDrillCountry, hours, onClose, onThemeSelect, onCountryCardClick, onPersonClick, onSourceClick, onCompareClick }: ThemeDetailProps) {
     const [data, setData] = useState<ThemeData | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -428,15 +430,27 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                                 <h3 data-help="Topics that frequently co-occur with this one in the same signals. Higher count = stronger co-occurrence. Click to open that topic.">Related Topics</h3>
                                 <div className="related-grid">
                                     {data.relatedThemes.slice(0, 8).map(t => (
-                                        <button
-                                            key={t.theme}
-                                            className="related-chip"
-                                            onClick={() => onThemeSelect?.(t.theme)}
-                                        >
-                                            <span className="related-chip-icon">{getThemeIcon(t.theme)}</span>
-                                            <span className="related-chip-label">{getThemeLabel(t.theme)}</span>
-                                            <span className="related-chip-count">{t.count}</span>
-                                        </button>
+                                        <div key={t.theme} className="related-chip-wrap" style={{ display: 'flex', gap: '2px' }}>
+                                            <button
+                                                className="related-chip"
+                                                onClick={() => onThemeSelect?.(t.theme)}
+                                                style={{ flex: 1 }}
+                                            >
+                                                <span className="related-chip-icon">{getThemeIcon(t.theme)}</span>
+                                                <span className="related-chip-label">{getThemeLabel(t.theme)}</span>
+                                                <span className="related-chip-count">{t.count}</span>
+                                            </button>
+                                            {onCompareClick && (
+                                                <button
+                                                    className="related-chip-compare"
+                                                    onClick={(e) => { e.stopPropagation(); onCompareClick(t.theme); }}
+                                                    title="Compare with this theme"
+                                                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#10b981', padding: '0 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', flexShrink: 0 }}
+                                                >
+                                                    VS
+                                                </button>
+                                            )}
+                                        </div>
                                     ))}
                                 </div>
                             </div>
@@ -518,6 +532,15 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                                     <div className="source-intel-header">
                                         <span className="source-intel-name">{selectedSource}</span>
                                         <span className="source-intel-label"> covers this topic as:</span>
+                                        {onSourceClick && (
+                                            <button 
+                                                className="source-full-profile-btn"
+                                                onClick={(e) => { e.stopPropagation(); onSourceClick(selectedSource); }}
+                                                style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid #4b5563', color: '#9ca3af', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}
+                                            >
+                                                Full Profile ↗
+                                            </button>
+                                        )}
                                     </div>
                                     {topThemes.length > 0 && (
                                         <div className="source-intel-themes">

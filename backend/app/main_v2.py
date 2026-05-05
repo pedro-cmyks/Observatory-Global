@@ -2001,6 +2001,109 @@ async def get_flows(
         traceback.print_exc()
         return {"flows": [], "total": 0, "error": str(e)}
 
+@app.get("/api/v2/source/{domain:path}/profile")
+async def get_source_profile(
+    domain: str,
+    hours: int = Query(24, ge=1, le=8760, description="Hours of data (1-168)")
+):
+    """Get the bias profile, top themes, and countries covered by a specific news source."""
+    async with app.state.pool.acquire() as conn:
+        # We need to URL-decode the domain just in case
+        import urllib.parse
+        clean_domain = urllib.parse.unquote(domain).strip()
+
+        # 1. Overall stats
+        stats_query = """
+            SELECT 
+                COUNT(*) as total_signals,
+                AVG(sentiment) as avg_sentiment,
+                COUNT(DISTINCT country_code) as total_countries
+            FROM signals_v2
+            WHERE source_name ILIKE $1
+              AND timestamp > NOW() - ($2 * INTERVAL '1 hour')
+        """
+        stats = await conn.fetchrow(stats_query, f"%{clean_domain}%", hours)
+        
+        if not stats or not stats['total_signals'] or stats['total_signals'] == 0:
+            return {"error": "Source not found or no data in time range", "source": clean_domain}
+
+        # 2. Top themes
+        themes_query = """
+            SELECT 
+                unnest(themes) as theme,
+                COUNT(*) as signal_count,
+                ROUND(AVG(sentiment)::numeric, 2) as avg_sentiment
+            FROM signals_v2
+            WHERE source_name ILIKE $1
+              AND timestamp > NOW() - ($2 * INTERVAL '1 hour')
+              AND themes IS NOT NULL AND array_length(themes, 1) > 0
+            GROUP BY 1
+            ORDER BY 2 DESC
+            LIMIT 10
+        """
+        themes_rows = await conn.fetch(themes_query, f"%{clean_domain}%", hours)
+
+        # 3. Top countries
+        countries_query = """
+            SELECT 
+                country_code,
+                COUNT(*) as signal_count,
+                ROUND(AVG(sentiment)::numeric, 2) as avg_sentiment
+            FROM signals_v2
+            WHERE source_name ILIKE $1
+              AND timestamp > NOW() - ($2 * INTERVAL '1 hour')
+              AND country_code IS NOT NULL
+            GROUP BY 1
+            ORDER BY 2 DESC
+            LIMIT 10
+        """
+        countries_rows = await conn.fetch(countries_query, f"%{clean_domain}%", hours)
+
+        # 4. Volume over time
+        # For small hours, bucket by hour, else by day
+        bucket_interval = 'hour' if hours <= 72 else 'day'
+        timeline_query = f"""
+            SELECT 
+                date_trunc('{bucket_interval}', bucket) as time_bucket,
+                SUM(signal_count) as signal_count,
+                ROUND(AVG(avg_sentiment)::numeric, 2) as avg_sentiment
+            FROM signals_source_hourly
+            WHERE source_name ILIKE $1
+              AND bucket > NOW() - ($2 * INTERVAL '1 hour')
+            GROUP BY 1
+            ORDER BY 1 ASC
+        """
+        timeline_rows = await conn.fetch(timeline_query, f"%{clean_domain}%", hours)
+
+        return {
+            "source": clean_domain,
+            "summary": {
+                "total_signals": stats['total_signals'],
+                "avg_sentiment": round(float(stats['avg_sentiment'] or 0), 2),
+                "total_countries": stats['total_countries'],
+            },
+            "top_themes": [
+                {
+                    "theme": r['theme'],
+                    "count": r['signal_count'],
+                    "sentiment": float(r['avg_sentiment']) if r['avg_sentiment'] else 0
+                } for r in themes_rows
+            ],
+            "top_countries": [
+                {
+                    "country_code": r['country_code'],
+                    "count": r['signal_count'],
+                    "sentiment": float(r['avg_sentiment']) if r['avg_sentiment'] else 0
+                } for r in countries_rows
+            ],
+            "timeline": [
+                {
+                    "time": r['time_bucket'].isoformat() if r['time_bucket'] else None,
+                    "count": r['signal_count'],
+                    "sentiment": float(r['avg_sentiment']) if r['avg_sentiment'] else 0
+                } for r in timeline_rows
+            ]
+        }
 @app.get("/api/v2/country/{country_code}")
 async def get_country_detail(country_code: str, hours: int = Query(24, ge=1, le=8760)):
     """Get detailed information for a specific country."""
