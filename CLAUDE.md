@@ -186,7 +186,7 @@ The project uses a multi-agent architecture where each agent has specific expert
 - Use **Vanilla CSS** for all dashboard components. CSS custom properties come from `ThemeContext`.
 - **Tailwind CSS** is installed but used **exclusively for `Landing.tsx`** (the public marketing page). Do NOT add Tailwind classes to dashboard components.
 - Use `data-tip="text"` for tooltips on any element — NEVER use native `title=` attributes.
-- Components live in `frontend-v2/src/components/`. Current count: **29 .tsx components**.
+- Components live in `frontend-v2/src/components/`. Current count: **32 .tsx components**.
 - Always run `npm run build` (not just `tsc --noEmit`) before pushing — Vite's `tsc -b` is stricter.
 
 ---

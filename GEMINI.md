@@ -84,8 +84,8 @@ stitch_atlas_landing_experience_redesign/   ← Design assets from Google Stitch
   screen.png          ← Stitch screen screenshot
 ```
 
-### Frontend Component List (29 .tsx files)
-`AnomalyPanel`, `AtlasLoader`, `Briefing`, `ChokepointPanel`, `CompareBar`, `CorrelationMatrix`, `CorrelationMatrixPlaceholder`, `CountryBrief`, `CountryThemePanel`, `CrisisDashboard`, `CrisisToggle`, `DeckGLOverlay`, `DevBanner`, `DiscoveryPanel`, `EntityPanel`, `FocusIndicator`, `FocusSummaryPanel`, `IndicatorTooltip`, `Legend`, `MapTooltip`, `NarrativeThreads`, `NarrativeThreadsPlaceholder`, `PanelErrorBoundary`, `SearchBar`, `SettingsPanel`, `SignalStream`, `SourceIntegrityPanel`, `ThemeDetail`, `ThemeSelector`
+### Frontend Component List (32 .tsx files)
+`AnomalyPanel`, `AtlasLoader`, `Briefing`, `ChokepointPanel`, `CompareBar`, `CorrelationMatrix`, `CorrelationMatrixPlaceholder`, `CountryBrief`, `CountryThemePanel`, `CrisisDashboard`, `CrisisToggle`, `DeckGLOverlay`, `DevBanner`, `DiscoveryPanel`, `EntityPanel`, `FocusIndicator`, `FocusSummaryPanel`, `IndicatorTooltip`, `Legend`, `MapTooltip`, `NarrativeThreads`, `NarrativeThreadsPlaceholder`, `PanelErrorBoundary`, `PersonCompare`, `SearchBar`, `SettingsPanel`, `SignalStream`, `SourceIntegrityPanel`, `SourceProfile`, `ThemeCompare`, `ThemeDetail`, `ThemeSelector`
 
 ---
 
@@ -122,6 +122,7 @@ Base: `atlas-api-pedro.fly.dev`
 - `GET /api/v2/trends/search` — Google Trends search
 - `GET /api/v2/trends/match` — Trends-to-theme match
 - `GET /api/v2/compare` — period comparison
+- `GET /api/v2/source/{domain}/profile` — source bias profiler
 
 ### Detail Views
 - `GET /api/v2/country/{code}` — country detail
