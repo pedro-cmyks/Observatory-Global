@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { useFocus } from '../contexts/FocusContext'
+import type { ConceptFilter, RegionFilter } from '../contexts/FocusContext'
 import { Search } from 'lucide-react'
 import './SearchBar.css'
 
@@ -114,6 +115,10 @@ interface TopCountry {
 
 interface ThemeResult {
     theme: string
+    label?: string
+    category?: string
+    description?: string
+    source?: 'taxonomy' | 'signals'
     total_signals: number
     top_countries: TopCountry[]
 }
@@ -134,6 +139,14 @@ interface ConceptResult {
     label: string
     description: string
     themes: string[]
+    related_concepts?: string[]
+}
+
+interface RegionResult {
+    slug: string
+    label: string
+    emoji: string
+    countries: string[]
 }
 
 interface SearchResult {
@@ -141,6 +154,8 @@ interface SearchResult {
     persons: PersonResult[]
     countries: CountryResult[]
     concepts?: ConceptResult[]
+    concept_suggestions?: { slug: string; label: string; description: string }[]
+    region?: RegionResult | null
 }
 
 interface SearchBarProps {
@@ -155,7 +170,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
-    const { setFocus, setMapFlyCountry, setCountry, setTheme } = useFocus()
+    const { setFocus, setMapFlyCountry, setCountry, setTheme, setConcept, setRegion } = useFocus()
 
     const doSearch = useCallback(async (q: string) => {
         if (q.length < 2) {
@@ -169,15 +184,8 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
         const searchQ = parsed.topic.length >= 2 ? parsed.topic : q
         setLoading(true)
         try {
-            const [mainRes, conceptsRes] = await Promise.all([
-                fetch(`/api/v2/search?q=${encodeURIComponent(searchQ)}&hours=168`),
-                fetch(`/api/v2/concepts/search?q=${encodeURIComponent(searchQ)}&limit=4`),
-            ])
-            const data: SearchResult = mainRes.ok ? await mainRes.json() : { themes: [], persons: [], countries: [] }
-            if (conceptsRes.ok) {
-                const conceptData = await conceptsRes.json()
-                data.concepts = conceptData.concepts || []
-            }
+            const res = await fetch(`/api/v2/search/unified?q=${encodeURIComponent(searchQ)}&hours=168`)
+            const data: SearchResult = res.ok ? await res.json() : { themes: [], persons: [], countries: [] }
             setResults(data)
             setIsOpen(true)
         } catch {
@@ -226,17 +234,21 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
     }
 
     const handleConceptClick = (c: ConceptResult) => {
-        const primaryTheme = c.themes[0]
-        if (primaryTheme) {
-            if (parsedQuery.countryCode) {
-                setCountry(parsedQuery.countryCode)
-                setTheme(primaryTheme)
-                setMapFlyCountry(parsedQuery.countryCode)
-            } else {
-                setFocus('theme', primaryTheme, c.label)
-            }
-            onThemeSelect(primaryTheme)
+        const concept: ConceptFilter = { slug: c.slug, themes: c.themes, label: c.label }
+        if (parsedQuery.countryCode) {
+            setCountry(parsedQuery.countryCode)
+            setConcept(concept)
+            setMapFlyCountry(parsedQuery.countryCode)
+        } else {
+            setConcept(concept)
         }
+        if (c.themes[0]) onThemeSelect(c.themes[0])
+        close()
+    }
+
+    const handleRegionClick = (r: RegionResult) => {
+        const region: RegionFilter = { slug: r.slug, label: r.label, countries: r.countries }
+        setRegion(region)
         close()
     }
 
@@ -244,7 +256,8 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
         results.themes.length > 0 ||
         results.persons.length > 0 ||
         results.countries.length > 0 ||
-        (results.concepts?.length ?? 0) > 0
+        (results.concepts?.length ?? 0) > 0 ||
+        results.region != null
     )
 
     const countryBadge = parsedQuery.countryDisplay
@@ -276,6 +289,17 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
                         <div className="search-context-banner">
                             Filtering to: <strong>{parsedQuery.countryDisplay}</strong>
                             <span className="search-context-hint"> · results scoped to this country</span>
+                        </div>
+                    )}
+
+                    {results?.region && (
+                        <div className="search-section">
+                            <div className="search-section-label">Region</div>
+                            <div className="search-item search-item--region" onClick={() => handleRegionClick(results.region!)}>
+                                <span className="search-item-tag region-tag">{results.region.emoji}</span>
+                                <span className="search-item-name">{results.region.label}</span>
+                                <span className="search-item-meta">{results.region.countries.length} countries</span>
+                            </div>
                         </div>
                     )}
 

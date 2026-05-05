@@ -869,6 +869,122 @@ async def search(
 
     return result
 
+@app.get("/api/v2/search/unified")
+async def unified_search(
+    q: str = Query(..., min_length=2, description="Search query"),
+    hours: int = Query(168, ge=1, le=720)
+):
+    """Unified search: merges taxonomy aliases, investigative concepts, region matching,
+    and live DB signal search into a single response.
+
+    Pipeline:
+      1. Taxonomy search (in-memory, instant) — handles aliases, typos, multilingual
+      2. Concept search (in-memory, instant) — investigative frames
+      3. Region match (in-memory, instant) — continent/region detection
+      4. DB search (async) — themes/persons/countries from live signals
+      5. Merge + deduplicate: taxonomy themes get priority over DB-only hits
+    """
+    from app.core.gdelt_taxonomy import (
+        search_themes, search_concepts, find_closest_concepts,
+        match_region, get_theme_label,
+    )
+
+    query = q.strip()
+    query_lower = query.lower()
+
+    cache_key = f"usearch:{query_lower}:{hours}"
+    if app.state.redis:
+        try:
+            cached = await app.state.redis.get(cache_key)
+            if cached:
+                return json.loads(cached)
+        except Exception:
+            pass
+
+    # --- 1. Taxonomy search (in-memory, instant) ---
+    taxonomy_hits = search_themes(query, limit=8, min_score=0.55)
+
+    # --- 2. Concept search (in-memory, instant) ---
+    concept_hits = search_concepts(query, limit=4, min_score=0.6)
+    # If no concepts found, offer suggestions
+    concept_suggestions = []
+    if not concept_hits:
+        concept_suggestions = find_closest_concepts(query, limit=2)
+
+    # --- 3. Region match (in-memory, instant) ---
+    region_match = match_region(query)
+
+    # --- 4. DB search (async) — reuse existing search logic ---
+    db_result = await search(q=query, hours=hours)
+
+    # --- 5. Merge themes: taxonomy first, then DB hits (deduped) ---
+    seen_themes = set()
+    merged_themes = []
+
+    # Taxonomy themes first (these have labels, categories, descriptions)
+    for th in taxonomy_hits:
+        code = th["code"]
+        if code in seen_themes:
+            continue
+        seen_themes.add(code)
+        # Find DB signal count for this theme if available
+        db_match = next((t for t in db_result.get("themes", []) if t["theme"] == code), None)
+        merged_themes.append({
+            "theme": code,
+            "label": th["label"],
+            "category": th.get("category", "other"),
+            "description": th.get("description", ""),
+            "source": "taxonomy",
+            "total_signals": db_match["total_signals"] if db_match else 0,
+            "top_countries": db_match["top_countries"] if db_match else [],
+        })
+
+    # DB themes that weren't in taxonomy results
+    for db_th in db_result.get("themes", []):
+        code = db_th["theme"]
+        if code in seen_themes:
+            continue
+        seen_themes.add(code)
+        merged_themes.append({
+            "theme": code,
+            "label": get_theme_label(code),
+            "category": "other",
+            "description": "",
+            "source": "signals",
+            "total_signals": db_th["total_signals"],
+            "top_countries": db_th["top_countries"],
+        })
+
+    result = {
+        "query": q,
+        "themes": merged_themes,
+        "concepts": [
+            {
+                "slug": c["slug"],
+                "label": c["label"],
+                "description": c["description"],
+                "themes": c.get("themes", []),
+                "related_concepts": c.get("related_concepts", []),
+            }
+            for c in concept_hits
+        ],
+        "concept_suggestions": [
+            {"slug": c["slug"], "label": c["label"], "description": c["description"]}
+            for c in concept_suggestions
+        ],
+        "region": region_match,
+        "persons": db_result.get("persons", []),
+        "countries": db_result.get("countries", []),
+    }
+
+    if app.state.redis:
+        try:
+            await app.state.redis.setex(cache_key, 120, json.dumps(result))
+        except Exception:
+            pass
+
+    return result
+
 @app.get("/api/v2/focus")
 async def get_focus_data(
     focus_type: str = Query(..., description="Type: theme, person, country, source"),

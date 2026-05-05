@@ -1017,10 +1017,143 @@ def get_all_concepts() -> list[dict]:
             for s, c in CONCEPT_MAP.items()]
 
 
+# ===== REGION / CONTINENT MAP =====
+# Maps region slugs to ISO 3166-1 alpha-2 country codes and multilingual aliases.
+# Used by unified search to handle queries like "Africa", "Medio Oriente", "Amérique latine".
+
+REGION_MAP: Dict[str, dict] = {
+    "africa": {
+        "label": "Africa",
+        "emoji": "🌍",
+        "countries": [
+            "DZ", "AO", "BJ", "BW", "BF", "BI", "CV", "CM", "CF", "TD",
+            "KM", "CD", "CG", "CI", "DJ", "EG", "GQ", "ER", "SZ", "ET",
+            "GA", "GM", "GH", "GN", "GW", "KE", "LS", "LR", "LY", "MG",
+            "MW", "ML", "MR", "MU", "MA", "MZ", "NA", "NE", "NG", "RW",
+            "ST", "SN", "SC", "SL", "SO", "ZA", "SS", "SD", "TZ", "TG",
+            "TN", "UG", "ZM", "ZW",
+        ],
+        "aliases": [
+            "africa", "afrika", "áfrica", "afrique", "afriqa",
+        ],
+    },
+    "middle-east": {
+        "label": "Middle East",
+        "emoji": "🕌",
+        "countries": [
+            "BH", "CY", "EG", "IR", "IQ", "IL", "JO", "KW", "LB", "OM",
+            "PS", "QA", "SA", "SY", "TR", "AE", "YE",
+        ],
+        "aliases": [
+            "middle east", "medio oriente", "oriente medio", "moyen-orient",
+            "moyen orient", "naher osten", "oriente médio", "oriente medio",
+            "al-sharq al-awsat", "sharq awsat",
+        ],
+    },
+    "latin-america": {
+        "label": "Latin America",
+        "emoji": "🌎",
+        "countries": [
+            "AR", "BO", "BR", "CL", "CO", "CR", "CU", "DO", "EC", "SV",
+            "GT", "HN", "MX", "NI", "PA", "PY", "PE", "PR", "UY", "VE",
+            "HT", "JM", "TT", "GY", "SR",
+        ],
+        "aliases": [
+            "latin america", "latinoamérica", "latinoamerica", "américa latina",
+            "america latina", "amérique latine", "amerique latine",
+            "lateinamerika", "américa do sul", "sudamérica", "sudamerica",
+            "centroamérica", "centroamerica", "central america", "south america",
+            "caribe", "caribbean",
+        ],
+    },
+    "europe": {
+        "label": "Europe",
+        "emoji": "🇪🇺",
+        "countries": [
+            "AL", "AD", "AT", "BY", "BE", "BA", "BG", "HR", "CZ", "DK",
+            "EE", "FI", "FR", "DE", "GR", "HU", "IS", "IE", "IT", "XK",
+            "LV", "LT", "LU", "MT", "MD", "ME", "NL", "MK", "NO", "PL",
+            "PT", "RO", "RU", "RS", "SK", "SI", "ES", "SE", "CH", "UA",
+            "GB",
+        ],
+        "aliases": [
+            "europe", "europa", "eu", "european union", "unión europea",
+            "union europea", "union européenne", "união europeia",
+        ],
+    },
+    "asia-pacific": {
+        "label": "Asia-Pacific",
+        "emoji": "🌏",
+        "countries": [
+            "AF", "AU", "BD", "BT", "BN", "KH", "CN", "FJ", "IN", "ID",
+            "JP", "KZ", "KG", "LA", "MY", "MV", "MN", "MM", "NP", "NZ",
+            "KP", "PK", "PH", "KR", "SG", "LK", "TW", "TJ", "TH", "TL",
+            "TM", "UZ", "VN",
+        ],
+        "aliases": [
+            "asia", "asia pacific", "asia-pacific", "asia pacífico",
+            "asia pacifico", "asie", "asie-pacifique", "asien",
+            "southeast asia", "east asia", "south asia", "sudeste asiático",
+        ],
+    },
+    "north-america": {
+        "label": "North America",
+        "emoji": "🌎",
+        "countries": ["US", "CA"],
+        "aliases": [
+            "north america", "norteamérica", "norteamerica",
+            "amérique du nord", "amerique du nord", "nordamerika",
+        ],
+    },
+}
+
+
+def match_region(query: str) -> Optional[dict]:
+    """Match a query string to a region using fuzzy alias matching.
+
+    Returns {slug, label, emoji, countries} or None.
+    """
+    q = _normalize(query)
+    q_tokens = set(_tokenize(query))
+
+    best_score = 0.0
+    best_region = None
+
+    for slug, region in REGION_MAP.items():
+        # Exact slug match
+        if slug == q or slug.replace("-", " ") == q:
+            return {"slug": slug, **{k: v for k, v in region.items() if k != "aliases"}}
+
+        # Check aliases
+        for alias in region["aliases"]:
+            alias_norm = _normalize(alias)
+            # Exact alias match
+            if alias_norm == q:
+                return {"slug": slug, **{k: v for k, v in region.items() if k != "aliases"}}
+            # Token overlap
+            alias_tokens = set(_tokenize(alias))
+            if alias_tokens and q_tokens:
+                overlap = len(q_tokens & alias_tokens) / max(len(q_tokens), 1)
+                if overlap > best_score and overlap >= 0.5:
+                    best_score = overlap
+                    best_region = {"slug": slug, **{k: v for k, v in region.items() if k != "aliases"}}
+
+    return best_region
+
+
+def get_all_regions() -> list[dict]:
+    """Return all regions as a list of {slug, label, emoji, country_count}."""
+    return [
+        {"slug": s, "label": r["label"], "emoji": r["emoji"], "country_count": len(r["countries"])}
+        for s, r in REGION_MAP.items()
+    ]
+
+
 __all__ = [
     "THEME_TAXONOMY",
     "THEME_CATEGORIES",
     "CONCEPT_MAP",
+    "REGION_MAP",
     "get_theme_label",
     "get_theme_category",
     "get_themes_by_category",
@@ -1031,4 +1164,6 @@ __all__ = [
     "search_concepts",
     "find_closest_concepts",
     "get_all_concepts",
+    "match_region",
+    "get_all_regions",
 ]

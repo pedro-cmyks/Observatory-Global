@@ -208,3 +208,16 @@
     flex-shrink: 0;
     white-space: nowrap;
 }
+
+.region-tag {
+    background: rgba(29, 158, 117, 0.15);
+    color: #1D9E75;
+    border: 1px solid rgba(29, 158, 117, 0.25);
+    font-size: 12px;
+    padding: 2px 4px;
+}
+
+.search-item--region {
+    border-left: 2px solid rgba(29, 158, 117, 0.4);
+    margin-left: 4px;
+}
