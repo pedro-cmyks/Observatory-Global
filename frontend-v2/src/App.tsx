@@ -717,7 +717,7 @@ function AppContent() {
         </div>
         <div className="command-bar-right">
           <div className="stats">
-            {loading ? '...' : `${nodes.length} ctry • ${totalSignals.toLocaleString()} sig`}
+            {loading ? '...' : `${nodes.length} countries · ${totalSignals.toLocaleString()} signals`}
           </div>
           {/* <CrisisToggle /> - Hidden per visual clarity update */}
           <button className="cmd-btn" onClick={() => {
@@ -951,8 +951,8 @@ function AppContent() {
                   e.stopPropagation()
                   dismissWelcome(true)
                 }}>
-                  <span className="welcome-label">Last 24 hours</span>
-                  <span className="welcome-action">See what's happening →</span>
+                  <span className="welcome-label">Atlas tracks how the world covers the news</span>
+                  <span className="welcome-action">Click a country or search a topic →</span>
                   <button
                     className="welcome-close"
                     onClick={(e) => { e.stopPropagation(); dismissWelcome() }}
