@@ -78,9 +78,11 @@ export const NarrativeThreads: React.FC = () => {
     const { filter, setFocus, setMapFlyCountry } = useFocus()
     const { timeRange } = useFocusData()
 
-    // Cap narrative queries to 24h — at longer windows, all themes converge to 85-90% spread
-    const cappedHours = Math.min(timeRangeToHours(timeRange), 24)
-    const isCapped = timeRangeToHours(timeRange) > 24
+    // Cap to 24h when browsing globally (spread_pct becomes meaningless at wider windows);
+    // when a country is selected, use the full range so client-side filtering has real data.
+    const rawHours = timeRangeToHours(timeRange)
+    const cappedHours = filter.country ? rawHours : Math.min(rawHours, 24)
+    const isCapped = !filter.country && rawHours > 24
 
     // When a country is active, fetch more threads so we can filter client-side
     const fetchLimit = filter.country ? 20 : 5
@@ -112,7 +114,7 @@ export const NarrativeThreads: React.FC = () => {
         : narratives
 
     const handleClick = (n: Narrative) => {
-        setFocus('theme', n.theme_code, getThemeLabel(n.theme_code))
+        setFocus('theme', n.theme_code, n.label || getThemeLabel(n.theme_code))
         if (n.top_countries.length > 0) {
             setMapFlyCountry(n.top_countries[0])
         }
@@ -174,7 +176,7 @@ export const NarrativeThreads: React.FC = () => {
                 const spreadClass = n.spread_pct < 30 ? 'low' : n.spread_pct < 60 ? 'mid' : 'high'
                 // Plain-language hover hint — falls back to label when no description is available.
                 // Using native title attribute so it works without any new component plumbing.
-                const rowHint = `${getThemeLabel(n.theme_code)} — ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries. Click to open the topic breakdown.`
+                const rowHint = `${n.label || getThemeLabel(n.theme_code)} — ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries. Click to open the topic breakdown.`
 
                 return (
                     <div
@@ -188,7 +190,7 @@ export const NarrativeThreads: React.FC = () => {
                             <div className="narrative-label">
                                 <span className={`sentiment-dot ${n.avg_sentiment > 0.1 ? 'pos' : n.avg_sentiment < -0.1 ? 'neg' : 'neu'}`} data-tip={`Avg sentiment: ${n.avg_sentiment > 0.1 ? 'positive (supportive framing)' : n.avg_sentiment < -0.1 ? 'negative (critical or conflict framing)' : 'neutral'}`} />
                                 <span className={`trend-arrow ${n.trend}`}>{trendArrow}</span>
-                                <span>{getThemeLabel(n.theme_code)}</span>
+                                <span>{n.label || getThemeLabel(n.theme_code)}</span>
                             </div>
                             <div className="narrative-stats">
                                 <span data-tip="Total media signals (articles, posts) mentioning this topic in the selected time window">{n.signal_count.toLocaleString()} sig</span>
