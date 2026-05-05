@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
+import { CompareBar } from './CompareBar'
 import './ThemeDetail.css'
 
 interface ThemeData {
@@ -255,6 +256,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                                 <span className="theme-stat-label">Sources</span>
                             </div>
                         </div>
+
+                        {/* Period comparison: volume & sentiment vs previous period */}
+                        <CompareBar entityType="theme" entityValue={theme} hours={hours} />
 
                         {/* PUBLIC ATTENTION — Trends & Wiki cross-reference */}
                         {(trendMatch?.has_public_interest || wikiMatch?.has_wiki_activity) && (
