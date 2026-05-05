@@ -266,21 +266,32 @@
     border-color: rgba(96, 165, 250, 0.5);
 }
 
-.story-title {
-    margin: 0 0 0.25rem 0;
-    font-size: 0.8125rem;
+.story-source-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 0 4px 0;
+    gap: 8px;
+}
+
+.story-domain {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.story-item:hover .story-domain {
     color: #60a5fa;
-    line-height: 1.4;
 }
 
-.story-item:hover .story-title {
-    text-decoration: underline;
-}
-
-.story-meta {
-    margin: 0;
+.story-age {
     font-size: 0.6875rem;
-    color: #6b7280;
+    color: #475569;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 /* Loading state */

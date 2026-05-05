@@ -53,8 +53,8 @@ export const AnomalyPanel: React.FC = () => {
                     {overallSeverity.toUpperCase()}
                 </span>
                 {meta && (
-                    <span className="ap-meta">
-                        {meta.active_countries} countries · {(meta.total_signals_24h / 1000).toFixed(1)}k signals
+                    <span className="ap-meta" data-tip="Anomaly baseline: all countries and signals tracked in last 24h (fixed window for anomaly detection)">
+                        {meta.active_countries} countries · {(meta.total_signals_24h / 1000).toFixed(1)}k signals (24h baseline)
                     </span>
                 )}
             </div>

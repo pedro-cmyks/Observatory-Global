@@ -69,24 +69,30 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <div style={{ marginBottom: '16px' }}>
                 <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: '8px' }}>Map Options</div>
 
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '12px', cursor: 'pointer' }}>
                     <input
                         type="checkbox"
                         checked={showTerminator}
                         onChange={(e) => onToggleTerminator(e.target.checked)}
-                        style={{ accentColor: 'var(--color-accent-primary)' }}
+                        style={{ accentColor: 'var(--color-accent-primary)', marginTop: '2px', flexShrink: 0 }}
                     />
-                    <span style={{ fontSize: '12px', color: 'var(--color-text-primary)' }}>Show day/night overlay</span>
+                    <span>
+                        <span style={{ fontSize: '12px', color: 'var(--color-text-primary)', display: 'block' }}>Day/Night shadow</span>
+                        <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>Shows current solar terminator on map</span>
+                    </span>
                 </label>
 
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
                     <input
                         type="checkbox"
                         checked={sizeBoost}
                         onChange={(e) => onToggleSizeBoost(e.target.checked)}
-                        style={{ accentColor: 'var(--color-accent-primary)' }}
+                        style={{ accentColor: 'var(--color-accent-primary)', marginTop: '2px', flexShrink: 0 }}
                     />
-                    <span style={{ fontSize: '12px', color: 'var(--color-text-primary)' }}>Boost node sizes</span>
+                    <span>
+                        <span style={{ fontSize: '12px', color: 'var(--color-text-primary)', display: 'block' }}>Boost node sizes</span>
+                        <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>Makes low-signal countries more visible</span>
+                    </span>
                 </label>
             </div>
 

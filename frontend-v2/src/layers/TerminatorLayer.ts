@@ -71,7 +71,7 @@ export function createTerminatorLayer(options: TerminatorLayerOptions, date?: Da
 
     const polygon = calculateTerminatorPolygon(date);
     const opacity = options.opacity ?? 0.4;
-    const fillColor = options.fillColor ?? [0, 10, 30, Math.floor(opacity * 255)];
+    const fillColor = options.fillColor ?? [0, 8, 25, Math.floor(opacity * 255)];
 
     return new PolygonLayer({
         id: 'terminator-layer',
@@ -79,7 +79,7 @@ export function createTerminatorLayer(options: TerminatorLayerOptions, date?: Da
         getPolygon: (d: { polygon: number[][] }) => d.polygon,
         getFillColor: fillColor,
         stroked: true,
-        getLineColor: [60, 100, 140, 100],
+        getLineColor: [80, 120, 180, 60],
         lineWidthMinPixels: 1,
         pickable: false,
     });

@@ -15,12 +15,23 @@ import { getThemeLabel } from '../lib/themeLabels';
 // }
 
 interface Story {
-    title: string;
     url: string;
     source: string;
     timestamp: string;
     sentiment: number;
     themeCode: string;
+}
+
+function extractDomain(url: string): string {
+    try { return new URL(url).hostname.replace(/^www\./, ''); }
+    catch { return url; }
+}
+
+function timeAgo(iso: string): string {
+    const h = Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000);
+    if (h < 1) return 'just now';
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
 }
 
 interface Indicators {
@@ -143,15 +154,10 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                         .filter((s: any) => s.url)
                         .map((s: any) => {
                             const themes: string[] = Array.isArray(s.themes) ? s.themes : [];
-                            // Pick first non-language theme so badges link to real narrative threads
                             const primaryTheme = themes.find(
                                 (t: string) => t && !t.startsWith('WORLDLANGUAGES_') && !t.startsWith('TAX_WORLDLANGUAGES_')
                             ) || themes[0] || '';
-                            const label = primaryTheme ? getThemeLabel(primaryTheme) : '';
-                            // If the label is identical to the raw code, it's unmapped — omit it
-                            const title = (label && label !== primaryTheme) ? label : '';
                             return {
-                                title,
                                 url: s.url,
                                 source: s.source,
                                 timestamp: s.timestamp,
@@ -356,19 +362,24 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 </div>
             </section>
 
-            {/* Top Stories / Recent Signals */}
+            {/* Recent Signals — actual articles detected, not synthetic titles */}
             {data.top_stories && data.top_stories.length > 0 && (
                 <section className="brief-section">
-                    <h3>Recent Coverage <span style={{ fontWeight: 400, textTransform: 'none', fontSize: '9px', opacity: 0.5 }}>click theme to explore</span></h3>
+                    <h3>Recent Signals <span style={{ fontWeight: 400, textTransform: 'none', fontSize: '9px', opacity: 0.5 }}>articles detected in last {timeWindow}h</span></h3>
                     <div className="story-list">
-                        {data.top_stories.filter(s => s.title).slice(0, 5).map((story, i) => (
+                        {data.top_stories.slice(0, 6).map((story, i) => (
                             <a
                                 key={i}
                                 href={story.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="story-item"
+                                data-tip="Open article in new tab"
                             >
+                                <p className="story-source-line">
+                                    <span className="story-domain">{extractDomain(story.url)}</span>
+                                    <span className="story-age">{timeAgo(story.timestamp)}</span>
+                                </p>
                                 {story.themeCode && (
                                     <span
                                         className="story-theme-badge"
@@ -382,9 +393,6 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                         {getThemeLabel(story.themeCode)}
                                     </span>
                                 )}
-                                <p className="story-meta">
-                                    {story.source} · {new Date(story.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </p>
                             </a>
                         ))}
                     </div>

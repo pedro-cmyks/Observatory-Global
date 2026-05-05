@@ -157,7 +157,7 @@ function buildLayers({
 }: any) {
   const terminatorLayer = createTerminatorLayer({
     visible: showTerminator && !crisisEnabled,
-    opacity: 0.5,
+    opacity: 0.22,
   })
 
   const hasActiveCp = activeChokepoints.length > 0
@@ -740,7 +740,11 @@ function AppContent() {
         </div>
         <div className="command-bar-right">
           <div className="stats">
-            {loading ? '...' : `${nodes.length} countries · ${totalSignals.toLocaleString()} signals`}
+            {loading ? '...' : (
+              <span data-tip={`Countries and signals in the selected time window${filter.country || filter.theme ? ' (filtered view)' : ' (global)'}`}>
+                {nodes.length} countries · {totalSignals.toLocaleString()} signals
+              </span>
+            )}
           </div>
           {/* <CrisisToggle /> - Hidden per visual clarity update */}
           <button className="cmd-btn" onClick={() => {
@@ -1179,7 +1183,10 @@ function AppContent() {
             </div>
           </div>
           <div className="panel-content">
-            <PanelErrorBoundary panelName="SOURCE INTEGRITY">
+            <PanelErrorBoundary
+              key={`integrity-${filter.country ?? ''}-${filter.theme ?? ''}`}
+              panelName="SOURCE INTEGRITY"
+            >
               <SourceIntegrityPanel />
             </PanelErrorBoundary>
           </div>

@@ -156,7 +156,7 @@ export const NarrativeThreads: React.FC = () => {
         <div className="narrative-threads-container">
             {filter.country && (
                 <div className="narrative-country-filter-notice">
-                    Showing narratives active in {filter.country}
+                    Threads active in {filter.country} — signal counts are global
                 </div>
             )}
             {isCapped && !filter.country && (
@@ -193,9 +193,12 @@ export const NarrativeThreads: React.FC = () => {
                                 <span>{n.label || getThemeLabel(n.theme_code)}</span>
                             </div>
                             <div className="narrative-stats">
-                                <span data-tip="Total media signals (articles, posts) mentioning this topic in the selected time window">{n.signal_count.toLocaleString()} sig</span>
+                                <span data-tip={filter.country ? `${n.signal_count.toLocaleString()} signals worldwide for this topic (not filtered to ${filter.country})` : 'Total media signals mentioning this topic in the selected time window'}>{n.signal_count.toLocaleString()} sig</span>
                                 {' · '}
-                                <span data-tip="Number of distinct countries where this topic is being covered">{n.country_count} ctry</span>
+                                {filter.country
+                                    ? <span className="narrative-stat-global" data-tip="Stats are global — this thread includes coverage from the selected country">global</span>
+                                    : <span data-tip="Number of distinct countries where this topic is being covered">{n.country_count} ctry</span>
+                                }
                             </div>
                         </div>
 
@@ -203,7 +206,7 @@ export const NarrativeThreads: React.FC = () => {
                         <div className="narrative-detail">
                             <div className="narrative-entities">
                                 {n.top_countries.map(c => (
-                                    <span key={c} className="country-pip">{c}</span>
+                                    <span key={c} className={`country-pip${filter.country === c ? ' country-pip--active' : ''}`}>{c}</span>
                                 ))}
                                 {n.top_persons.map(p => (
                                     <span key={p} className="person-pip">{p}</span>
