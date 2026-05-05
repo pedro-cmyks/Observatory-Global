@@ -476,10 +476,8 @@ function AppContent() {
     setShowFlows(true)
     fetchCountryDetail(countryCode)
     // Dismiss the affordance hint on first country click
-    if (showMapHint) {
-      setShowMapHint(false);
-      sessionStorage.setItem('atlas-map-hinted', 'true');
-    }
+    setShowMapHint(false);
+    sessionStorage.setItem('atlas-map-hinted', 'true');
   }
 
   // Theme selection handlers
