@@ -1,9 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import ReactGridLayout, { useContainerWidth } from 'react-grid-layout'
-import type { LayoutItem } from 'react-grid-layout'
-import 'react-grid-layout/css/styles.css'
-import 'react-resizable/css/styles.css'
+import { useNavigate } from 'react-router-dom'
 import MapGL from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
 import { DeckGLOverlay } from './components/DeckGLOverlay'
@@ -29,8 +25,6 @@ import { EntityPanel } from './components/EntityPanel'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
 import { Globe, ClipboardList } from 'lucide-react'
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
-import { resolveCountryName } from './lib/countryNames'
-import { getThemeLabel } from './lib/themeLabels'
 
 // Terminal Panels
 import { SignalStream } from './components/SignalStream'
@@ -41,6 +35,7 @@ import { SourceIntegrityPanel } from './components/SourceIntegrityPanel'
 import { PanelErrorBoundary } from './components/PanelErrorBoundary'
 import { ChokepointPanel } from './components/ChokepointPanel'
 import { AtlasLoader } from './components/AtlasLoader'
+import { useUrlSync } from './hooks/useUrlSync'
 
 
 
@@ -199,8 +194,8 @@ function buildLayers({
       getFillColor: (d: any) => {
         const alt = d.baro_altitude || 0
         if (alt > 10000) return [255, 255, 255, 200]  // cruise: white
-        if (alt > 5000)  return [255, 210, 80,  180]  // mid: amber
-        return                  [255, 140, 40,  160]  // low: orange
+        if (alt > 5000) return [255, 210, 80, 180]  // mid: amber
+        return [255, 140, 40, 160]  // low: orange
       },
       getRadius: (d: any) => (d.baro_altitude || 0) > 10000 ? 2 : 3,
       radiusUnits: 'pixels',
@@ -257,10 +252,10 @@ function buildLayers({
       },
     }),
 
-    // Conflict Markers Layer — ACLED or GDELT Events fallback
+    // ACLED Conflicts Layer — Renders intense 'X' or 'Pulse' at conflict sites
     acledConflicts && acledConflicts.length > 0 && new ScatterplotLayer({
       id: `acled-conflicts-${isGlobe ? 'globe' : 'flat'}`,
-      data: acledConflicts.filter((d: any) => d.location.latitude != null && d.location.longitude != null),
+      data: acledConflicts,
       getPosition: (d: any) => [d.location.longitude, d.location.latitude],
       // Intensity based on fatalities
       getRadius: (d: any) => Math.min(Math.max(4, Math.sqrt(d.fatalities || 1) * 3), 15) * sizeBoost,
@@ -287,49 +282,30 @@ function buildLayers({
 
 // Static coordinate fallback for countries that may not appear in live signals
 const COUNTRY_COORDS: Record<string, [number, number]> = {
-  AF:[65,33],AL:[20,41],DZ:[3,28],AO:[18,-12],AR:[-64,-34],AM:[45,40],AU:[133,-27],AT:[14,47],
-  AZ:[47,40],BH:[50,26],BD:[90,24],BY:[28,53],BE:[4,51],BO:[-65,-17],BA:[18,44],BW:[24,-22],
-  BR:[-51,-14],BG:[25,43],KH:[105,12],CM:[12,6],CA:[-96,60],CL:[-71,-30],CN:[105,35],
-  CO:[-74,4],CD:[24,-3],CG:[15,-1],CR:[-84,10],HR:[16,45],CU:[-80,22],CY:[33,35],CZ:[16,50],
-  DK:[10,56],DO:[-70,19],EC:[-77,-2],EG:[30,27],ET:[40,8],FI:[27,64],FR:[2,46],GA:[12,-1],
-  GE:[44,42],DE:[10,51],GH:[-1,8],GR:[22,39],GT:[-90,15],HT:[-72,19],HN:[-87,15],HU:[19,47],
-  IN:[78,21],ID:[118,-2],IR:[53,32],IQ:[44,33],IE:[-8,53],IL:[35,31],IT:[12,42],JP:[138,36],
-  JO:[37,31],KZ:[67,48],KE:[38,-1],KW:[47,29],LB:[36,34],LY:[17,27],LT:[24,56],MA:[-7,32],
-  MX:[-102,24],MD:[29,47],MN:[105,46],MZ:[35,-18],MM:[96,17],NP:[84,28],NL:[5,52],NZ:[174,-41],
-  NI:[-85,13],NG:[8,10],KP:[127,40],NO:[10,62],PK:[70,30],PA:[-80,9],PY:[-58,-23],PE:[-76,-10],
-  PH:[122,13],PL:[20,52],PT:[-8,39],QA:[51,25],RO:[25,46],RU:[100,60],SA:[45,24],
-  SN:[-14,14],RS:[21,44],SG:[104,1],SK:[19,49],SI:[15,46],SO:[46,6],ZA:[25,-29],KR:[128,36],
-  SS:[30,7],ES:[-4,40],LK:[81,7],SD:[30,15],SE:[18,62],CH:[8,47],SY:[38,35],TW:[121,24],
-  TZ:[35,-6],TH:[101,15],TN:[9,34],TR:[35,39],UG:[32,1],UA:[32,49],AE:[54,24],
-  GB:[-2,54],US:[-98,39],UY:[-56,-33],VE:[-66,8],VN:[108,14],YE:[48,15],ZM:[28,-14],
-  ZW:[30,-20],XK:[21,42],ME:[19,42],PS:[35,32],KV:[21,42],RI:[118,-2],
-  RB:[21,44],SW:[18,62],EI:[-8,53],
-}
-
-const LAYOUT_KEY = 'atlas-layout-v1'
-
-const DEFAULT_LAYOUT: LayoutItem[] = [
-  { i: 'radar',     x: 0,  y: 0,  w: 8,  h: 20, minW: 4, minH: 8 },
-  { i: 'stream',    x: 8,  y: 0,  w: 8,  h: 20, minW: 4, minH: 8 },
-  { i: 'threads',   x: 16, y: 0,  w: 8,  h: 10, minW: 3, minH: 6 },
-  { i: 'matrix',    x: 16, y: 10, w: 8,  h: 10, minW: 3, minH: 6 },
-  { i: 'anomaly',   x: 8,  y: 20, w: 16, h: 8,  minW: 4, minH: 4 },
-  { i: 'integrity', x: 0,  y: 20, w: 8,  h: 8,  minW: 3, minH: 4 },
-]
-
-function loadSavedLayout(): LayoutItem[] {
-  try {
-    const s = localStorage.getItem(LAYOUT_KEY)
-    return s ? JSON.parse(s) : DEFAULT_LAYOUT
-  } catch { return DEFAULT_LAYOUT }
+  AF: [65, 33], AL: [20, 41], DZ: [3, 28], AO: [18, -12], AR: [-64, -34], AM: [45, 40], AU: [133, -27], AT: [14, 47],
+  AZ: [47, 40], BH: [50, 26], BD: [90, 24], BY: [28, 53], BE: [4, 51], BO: [-65, -17], BA: [18, 44], BW: [24, -22],
+  BR: [-51, -14], BG: [25, 43], KH: [105, 12], CM: [12, 6], CA: [-96, 60], CL: [-71, -30], CN: [105, 35],
+  CO: [-74, 4], CD: [24, -3], CG: [15, -1], CR: [-84, 10], HR: [16, 45], CU: [-80, 22], CY: [33, 35], CZ: [16, 50],
+  DK: [10, 56], DO: [-70, 19], EC: [-77, -2], EG: [30, 27], ET: [40, 8], FI: [27, 64], FR: [2, 46], GA: [12, -1],
+  GE: [44, 42], DE: [10, 51], GH: [-1, 8], GR: [22, 39], GT: [-90, 15], HT: [-72, 19], HN: [-87, 15], HU: [19, 47],
+  IN: [78, 21], ID: [118, -2], IR: [53, 32], IQ: [44, 33], IE: [-8, 53], IL: [35, 31], IT: [12, 42], JP: [138, 36],
+  JO: [37, 31], KZ: [67, 48], KE: [38, -1], KW: [47, 29], LB: [36, 34], LY: [17, 27], LT: [24, 56], MA: [-7, 32],
+  MX: [-102, 24], MD: [29, 47], MN: [105, 46], MZ: [35, -18], MM: [96, 17], NP: [84, 28], NL: [5, 52], NZ: [174, -41],
+  NI: [-85, 13], NG: [8, 10], KP: [127, 40], NO: [10, 62], PK: [70, 30], PA: [-80, 9], PY: [-58, -23], PE: [-76, -10],
+  PH: [122, 13], PL: [20, 52], PT: [-8, 39], QA: [51, 25], RO: [25, 46], RU: [100, 60], SA: [45, 24],
+  SN: [-14, 14], RS: [21, 44], SG: [104, 1], SK: [19, 49], SI: [15, 46], SO: [46, 6], ZA: [25, -29], KR: [128, 36],
+  SS: [30, 7], ES: [-4, 40], LK: [81, 7], SD: [30, 15], SE: [18, 62], CH: [8, 47], SY: [38, 35], TW: [121, 24],
+  TZ: [35, -6], TH: [101, 15], TN: [9, 34], TR: [35, 39], UG: [32, 1], UA: [32, 49], AE: [54, 24],
+  GB: [-2, 54], US: [-98, 39], UY: [-56, -33], VE: [-66, 8], VN: [108, 14], YE: [48, 15], ZM: [28, -14],
+  ZW: [30, -20], XK: [21, 42], ME: [19, 42], PS: [35, 32], KV: [21, 42], RI: [118, -2],
+  RB: [21, 44], SW: [18, 62], EI: [-8, 53],
 }
 
 function AppContent() {
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
-  // Track whether we've hydrated from URL yet — we only want to do this once per mount
-  // before user interactions take over.
-  const hasHydratedFromUrl = useRef(false)
+
+  // Sync filter state ↔ URL params for shareable links
+  useUrlSync()
 
   // State
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
@@ -348,7 +324,7 @@ function AppContent() {
   const mapRef = useRef<MapRef>(null)
   const isGlobe = false
   const hasAutoFocused = useRef(false)
-  
+
   const [showWelcome, setShowWelcome] = useState(
     () => sessionStorage.getItem('atlas-welcome-seen') !== 'true'
   )
@@ -358,7 +334,7 @@ function AppContent() {
     if (openBrief) setShowBriefing(true)
   }
   // Focus hook for click-to-focus
-  const { setFocus, focus, clearFocus, filter, setTheme, setCountry, setPerson, clearFilter, mapFlyCountry, setMapFlyCountry } = useFocus()
+  const { setFocus, focus, clearFocus, filter, setTheme, mapFlyCountry, setMapFlyCountry } = useFocus()
 
   // Sync Global Focus to CountrySlide-over + fly to country
   useEffect(() => {
@@ -502,7 +478,6 @@ function AppContent() {
   // Theme selection handlers
   const handleThemeSelect = (theme: string, countryCode?: string, countryName?: string) => {
     setSelectedTheme({ theme, originCountry: countryCode, originCountryName: countryName })
-    setTheme(theme)  // sync FocusContext so NarrativeThreads highlights the active theme
     if (countryCode && countryName) {
       setRightPanelThemeCountry({ code: countryCode, name: countryName })
     } else {
@@ -512,41 +487,6 @@ function AppContent() {
 
   // Focus-aware data from provider - auto-refetches when focus/range changes
   const { nodes, flows, unfilteredFlows, acledConflicts, loading, refetch, timeRange, setTimeRange } = useFocusData()
-
-  // ---- URL <-> state sync (Investigation-as-URL) ----
-  // Hydrate filter + timeRange from URL once on mount.
-  useEffect(() => {
-    if (hasHydratedFromUrl.current) return
-    hasHydratedFromUrl.current = true
-    const urlTheme = searchParams.get('theme')
-    const urlCountry = searchParams.get('country')
-    const urlWindow = searchParams.get('window')
-    if (urlWindow && (TIME_RANGE_OPTIONS as readonly string[]).includes(urlWindow)) {
-      setTimeRange(urlWindow as any)
-    }
-    if (urlCountry) {
-      handleCountryClick(urlCountry)
-      setFocus('country', urlCountry, urlCountry)
-      setMapFlyCountry(urlCountry)
-    }
-    if (urlTheme) {
-      // setSelectedTheme is driven by the existing filter.theme effect below
-      setTheme(urlTheme)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Write filter + timeRange back to URL whenever they change.
-  // Use replace (not push) to avoid back-button spam — every click would otherwise
-  // create a new history entry.
-  useEffect(() => {
-    if (!hasHydratedFromUrl.current) return
-    const next = new URLSearchParams()
-    if (filter.theme) next.set('theme', filter.theme)
-    if (filter.country) next.set('country', filter.country)
-    if (timeRange && timeRange !== '24h') next.set('window', timeRange)
-    setSearchParams(next, { replace: true })
-  }, [filter.theme, filter.country, timeRange, setSearchParams])
 
   // Auto-focus on hottest region at load
   useEffect(() => {
@@ -632,8 +572,8 @@ function AppContent() {
     let filteredFlows = [...baseFlows];
 
     if (selectedCountryCode) {
-      filteredFlows = filteredFlows.filter(f => 
-        f.sourceCountry === selectedCountryCode || 
+      filteredFlows = filteredFlows.filter(f =>
+        f.sourceCountry === selectedCountryCode ||
         f.targetCountry === selectedCountryCode
       );
     }
@@ -732,39 +672,12 @@ function AppContent() {
   // Total signals for stats
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
 
-  // Draggable grid layout
-  const [gridLayout, setGridLayout] = useState<LayoutItem[]>(loadSavedLayout)
-  const { width: gridWidth, containerRef: gridContainerRef } = useContainerWidth({ initialWidth: 1280 })
-  const handleLayoutChange = (l: readonly LayoutItem[]) => {
-    setGridLayout([...l])
-    localStorage.setItem(LAYOUT_KEY, JSON.stringify(l))
-  }
-  const resetLayout = () => {
-    localStorage.removeItem(LAYOUT_KEY)
-    setGridLayout([...DEFAULT_LAYOUT])
-  }
-
-  // Auto-fit rowHeight so the default layout fills exactly the viewport at any screen size.
-  // Formula: totalRows * rowHeight + (totalRows-1) * marginY + 2 * paddingY = viewportH - 48
-  const GRID_ROWS = 28   // max(y + h) across DEFAULT_LAYOUT
-  const GRID_MARGIN_Y = 8
-  const GRID_PADDING_Y = 12
-  const [viewportH, setViewportH] = useState(window.innerHeight)
-  useEffect(() => {
-    const onResize = () => setViewportH(window.innerHeight)
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
-  const rowHeight = Math.max(20, Math.floor(
-    (viewportH - 48 - GRID_PADDING_Y * 2 - GRID_MARGIN_Y * (GRID_ROWS - 1)) / GRID_ROWS
-  ))
-
   // Prefetch briefing data so the modal opens instantly
   const [prefetchedBriefing, setPrefetchedBriefing] = useState<any>(null)
   const [prefetchedInsight, setPrefetchedInsight] = useState<string | null>(null)
   useEffect(() => {
-    fetch('/api/v2/briefing?hours=24').then(r => r.json()).then(setPrefetchedBriefing).catch(() => {})
-    fetch('/api/v2/briefing/insight?hours=24').then(r => r.json()).then(d => { if (d.insight) setPrefetchedInsight(d.insight) }).catch(() => {})
+    fetch('/api/v2/briefing?hours=24').then(r => r.json()).then(setPrefetchedBriefing).catch(() => { })
+    fetch('/api/v2/briefing/insight?hours=24').then(r => r.json()).then(d => { if (d.insight) setPrefetchedInsight(d.insight) }).catch(() => { })
   }, [])
 
   // Show loader until nodes AND map are ready; hard cap at 10s
@@ -790,26 +703,6 @@ function AppContent() {
             onThemeSelect={handleThemeSelect}
             onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
           />
-          {(filter.theme || filter.country || filter.person) && (
-            <div className="active-filters">
-              {filter.theme && (
-                <button className="filter-chip" onClick={() => { setTheme(null) }} data-tip="Remove theme filter">
-                  {getThemeLabel(filter.theme)} <span className="filter-chip-x">×</span>
-                </button>
-              )}
-              {filter.country && (
-                <button className="filter-chip filter-chip--geo" onClick={() => setCountry(null)} data-tip="Remove country filter">
-                  in {resolveCountryName(filter.country)} <span className="filter-chip-x">×</span>
-                </button>
-              )}
-              {filter.person && (
-                <button className="filter-chip filter-chip--person" onClick={() => setPerson(null)} data-tip="Remove person filter">
-                  {filter.person.toLowerCase()} <span className="filter-chip-x">×</span>
-                </button>
-              )}
-              <button className="filter-chip filter-chip--clear" onClick={clearFilter}>Clear</button>
-            </div>
-          )}
           <div className="time-controls">
             {TIME_RANGE_OPTIONS.map(range => (
               <button
@@ -833,7 +726,6 @@ function AppContent() {
           }}>
             <ClipboardList size={13} /> BRIEF
           </button>
-          <button className="cmd-btn cmd-btn--reset" onClick={resetLayout} data-tip="Reset panel layout to defaults">⊞</button>
           <SettingsPanel
             showTerminator={showTerminator}
             onToggleTerminator={setShowTerminator}
@@ -843,17 +735,9 @@ function AppContent() {
         </div>
       </header>
 
-      <div ref={gridContainerRef} className="terminal-layout-container">
-        <ReactGridLayout
-          width={gridWidth}
-          layout={gridLayout}
-          gridConfig={{ cols: 24, rowHeight, margin: [8, GRID_MARGIN_Y], containerPadding: [16, GRID_PADDING_Y] }}
-          dragConfig={{ handle: '.panel-header' }}
-          onLayoutChange={handleLayoutChange}
-          className="terminal-layout-rgl"
-        >
+      <div className="terminal-layout">
         {/* Panel 1: GLOBAL RADAR */}
-        <div key="radar" className="terminal-panel radar">
+        <div className="terminal-panel radar">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -911,7 +795,7 @@ function AppContent() {
 
                   // Atmosphere
                   if (typeof (map as any).setFog === 'function') {
-                    ;(map as any).setFog({
+                    ; (map as any).setFog({
                       'color': 'rgba(10, 15, 26, 0.8)',
                       'horizon-blend': 0.08,
                       'high-color': '#1a3050',
@@ -936,12 +820,12 @@ function AppContent() {
                       'fill-color': [
                         'interpolate', ['linear'],
                         ['coalesce', ['feature-state', 'intensity'], 0],
-                        0,    'rgba(0, 0, 0, 0)',
+                        0, 'rgba(0, 0, 0, 0)',
                         0.05, 'rgba(15, 30, 90, 30)',
                         0.15, 'rgba(30, 55, 130, 50)',
                         0.35, 'rgba(170, 110, 30, 80)',
-                        0.6,  'rgba(215, 70, 15, 110)',
-                        1.0,  'rgba(235, 35, 10, 140)'
+                        0.6, 'rgba(215, 70, 15, 110)',
+                        1.0, 'rgba(235, 35, 10, 140)'
                       ],
                       'fill-opacity': 0.45
                     }
@@ -956,20 +840,20 @@ function AppContent() {
                       'line-color': [
                         'interpolate', ['linear'],
                         ['coalesce', ['feature-state', 'intensity'], 0],
-                        0,    'rgba(0, 0, 0, 0)',
+                        0, 'rgba(0, 0, 0, 0)',
                         0.05, 'rgba(20, 35, 100, 20)',
                         0.15, 'rgba(35, 60, 140, 40)',
                         0.35, 'rgba(190, 120, 30, 60)',
-                        0.6,  'rgba(225, 75, 15, 90)',
-                        1.0,  'rgba(245, 45, 10, 120)'
+                        0.6, 'rgba(225, 75, 15, 90)',
+                        1.0, 'rgba(245, 45, 10, 120)'
                       ],
                       'line-width': [
                         'interpolate', ['linear'],
                         ['coalesce', ['feature-state', 'intensity'], 0],
-                        0,   0,
+                        0, 0,
                         0.05, 2,
-                        0.5,  6,
-                        1.0,  10
+                        0.5, 6,
+                        1.0, 10
                       ],
                       'line-blur': 4,
                       'line-opacity': 0.7
@@ -1040,14 +924,6 @@ function AppContent() {
                       const hdg = object.heading && object.heading < 360 ? `  HDG: ${Math.round(object.heading)}°` : ''
                       return `${object.name}\nMMSI ${object.mmsi}  ·  ${spd}${hdg}`
                     }
-                    if (layer?.id?.startsWith('acled-conflicts')) {
-                      const c = object as any
-                      const loc = [c.location?.name, c.location?.country].filter(Boolean).join(', ')
-                      const actors = [c.actors?.actor1, c.actors?.actor2].filter(Boolean).join(' vs ')
-                      const fatText = c.fatalities > 0 ? `  ·  ${c.fatalities} fatalities` : ''
-                      const src = c.source === 'gdelt_events' ? ' (GDELT)' : ' (ACLED)'
-                      return `${c.type}${src}\n${loc}${fatText}${actors ? `\n${actors}` : ''}\nClick to open country`
-                    }
                     return null
                   }}
                   onHover={(info: any) => {
@@ -1065,15 +941,6 @@ function AppContent() {
                       const cp = info.object as Chokepoint
                       setSelectedChokepoint(prev => prev?.id === cp.id ? null : cp)
                       setMapFlyCountry(cp.primaryCountry)
-                    }
-                    if (info.layer.id?.startsWith('acled-conflicts')) {
-                      const c = info.object as any
-                      const code = c.location?.country
-                      if (code) {
-                        handleCountryClick(code)
-                        setFocus('country', code, c.location?.country)
-                        setMapFlyCountry(code)
-                      }
                     }
                   }}
                 />
@@ -1100,10 +967,7 @@ function AppContent() {
         {/* Panel 2: SIGNAL STREAM — the intel hub, swaps based on active context */}
         {(() => {
           const isPerson = focus.type === 'person' && !!focus.value
-          // Compound: theme + country active together (from search like "elections Colombia")
-          // ThemeDetail wins — it shows topic filtered to that country
-          const isCompound = !!selectedTheme && !!filter.country
-          const isCountry = !!selectedCountry && !isPerson && !isCompound
+          const isCountry = !!selectedCountry && !isPerson
           const isTheme = !!selectedTheme && !isPerson && !isCountry
           const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme
           const closeAll = () => { setSelectedTheme(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null) }
@@ -1124,8 +988,8 @@ function AppContent() {
           const backLabel = prevStreamCtx?.type === 'chokepoint'
             ? `← ${prevStreamCtx.cp.name}`
             : prevStreamCtx?.type === 'theme'
-            ? `← ${prevStreamCtx.theme.replace(/_/g, ' ').slice(0, 20)}`
-            : '← STREAM'
+              ? `← ${prevStreamCtx.theme.replace(/_/g, ' ').slice(0, 20)}`
+              : '← STREAM'
           let panelTitle = <>
             <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               SIGNAL STREAM
@@ -1136,11 +1000,6 @@ function AppContent() {
           if (isTheme) panelTitle = <>
             <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
             <span style={{ color: '#94a3b8' }}>{selectedTheme!.theme.replace(/_/g, ' ').slice(0, 26)}</span>
-            {isCompound && filter.country && (
-              <span style={{ color: '#63b3ed', fontSize: 11, marginLeft: 6, opacity: 0.85 }}>
-                · in {resolveCountryName(filter.country)}
-              </span>
-            )}
           </>
           if (isCountry) panelTitle = <>
             <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>{backLabel}</button>
@@ -1155,7 +1014,7 @@ function AppContent() {
             <span style={{ color: '#2dd4bf' }}>{selectedChokepoint!.name}</span>
           </>
           return (
-            <div key="stream" className="terminal-panel stream">
+            <div className="terminal-panel stream">
               <div className="panel-header">
                 <div className="panel-header-title-wrap">{panelTitle}</div>
               </div>
@@ -1177,9 +1036,8 @@ function AppContent() {
                 ) : isTheme ? (
                   <ThemeDetail
                     theme={selectedTheme!.theme}
-                    originCountry={selectedTheme!.originCountry || (isCompound ? filter.country || undefined : undefined)}
-                    originCountryName={selectedTheme!.originCountryName || (isCompound ? resolveCountryName(filter.country || '') : undefined)}
-                    initialDrillCountry={isCompound ? filter.country || undefined : undefined}
+                    originCountry={selectedTheme!.originCountry}
+                    originCountryName={selectedTheme!.originCountryName}
                     hours={timeRangeToHours(timeRange)}
                     onClose={closeAll}
                     onThemeSelect={(theme) => handleThemeSelect(theme)}
@@ -1210,12 +1068,12 @@ function AppContent() {
         })()}
 
         {/* Panel 3: NARRATIVE THREADS — always visible, reactive to focus context */}
-        <div key="threads" className="terminal-panel threads">
+        <div className="terminal-panel threads">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 NARRATIVE THREADS
-                <InfoBadge text="Top geopolitical topics trending globally right now. The colored dot on each thread shows media tone: red = negative/alarming framing, blue = neutral, green = positive. The ▲▼→ arrow shows if coverage is growing, shrinking, or stable. Click any thread to open a full breakdown." />
+                <InfoBadge text="Top geopolitical topics trending globally right now. Each thread shows signal volume, country spread, sentiment trend, and the key people being mentioned. Click any thread to open a full topic breakdown." />
               </span>
               <span className="panel-subtitle">how topics spread over time</span>
             </div>
@@ -1228,7 +1086,7 @@ function AppContent() {
         </div>
 
         {/* Panel 4: CORRELATION MATRIX */}
-        <div key="matrix" className="terminal-panel matrix">
+        <div className="terminal-panel matrix">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1246,7 +1104,7 @@ function AppContent() {
         </div>
 
         {/* Panel 5: ANOMALY ALERT */}
-        <div key="anomaly" className="terminal-panel anomaly">
+        <div className="terminal-panel anomaly">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1264,7 +1122,7 @@ function AppContent() {
         </div>
 
         {/* Panel 6: SOURCE INTEGRITY */}
-        <div key="integrity" className="terminal-panel integrity">
+        <div className="terminal-panel integrity">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1280,7 +1138,6 @@ function AppContent() {
             </PanelErrorBoundary>
           </div>
         </div>
-        </ReactGridLayout>
       </div>
 
       {/* Hover Tooltip */}
@@ -1318,7 +1175,7 @@ function AppContent() {
 
       {/* ThemeDetail renders inside the stream panel — see stream panel below */}
 
-            {/* CountryThemePanel: drill-in from ThemeDetail into a specific country — still a right-panel for now */}
+      {/* CountryThemePanel: drill-in from ThemeDetail into a specific country — still a right-panel for now */}
       {selectedTheme && rightPanelThemeCountry && (
         <CountryThemePanel
           theme={selectedTheme.theme}
