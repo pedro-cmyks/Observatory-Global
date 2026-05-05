@@ -25,6 +25,8 @@ import { EntityPanel } from './components/EntityPanel'
 import { PersonCompare } from './components/PersonCompare'
 import { ThemeCompare } from './components/ThemeCompare'
 import { SourceProfile } from './components/SourceProfile'
+import { WorkspaceProvider } from './contexts/WorkspaceContext'
+import { InvestigationWorkspace } from './components/InvestigationWorkspace'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
 import { Globe, ClipboardList } from 'lucide-react'
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
@@ -1249,6 +1251,12 @@ function AppContent() {
         />
       )}
 
+      <InvestigationWorkspace 
+        onNavigate={(params) => {
+           window.location.search = params;
+        }}
+      />
+
       {comparePerson && (
         <PersonCompare
           personA={comparePerson.a}
@@ -1283,7 +1291,9 @@ function App() {
     <FocusProvider>
       <FocusDataProvider>
         <CrisisProvider>
-          <AppContent />
+          <WorkspaceProvider>
+            <AppContent />
+          </WorkspaceProvider>
         </CrisisProvider>
       </FocusDataProvider>
     </FocusProvider>

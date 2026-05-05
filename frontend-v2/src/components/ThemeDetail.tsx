@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { CompareBar } from './CompareBar'
+import { ExportMenu } from './ExportMenu'
+import { useWorkspace } from '../contexts/WorkspaceContext'
+import { Pin, PinOff } from 'lucide-react'
 import './ThemeDetail.css'
 
 interface ThemeData {
@@ -60,6 +63,8 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
     const [drillCountryName, setDrillCountryName] = useState<string | null>(
         initialDrillCountry ? (originCountryName || initialDrillCountry) : null
     )
+    const detailRef = useRef<HTMLDivElement>(null)
+    const { pinItem, unpinItem, isPinned } = useWorkspace()
 
     // Public attention signals
     const [trendMatch, setTrendMatch] = useState<{ has_public_interest: boolean; matches: Array<{keyword: string; country_code: string}> } | null>(null)
@@ -170,10 +175,46 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
         return Math.min(100, Math.max(5, ((s + 10) / 20) * 100))
     }
 
+    const pinnedId = `theme-${theme}${originCountry ? '-' + originCountry : ''}`
+    const pinned = isPinned(pinnedId)
+
+    const handlePin = () => {
+        if (pinned) {
+            unpinItem(pinnedId)
+        } else {
+            const params = new URLSearchParams(window.location.search)
+            params.set('theme', theme)
+            if (originCountry) params.set('country', originCountry)
+            pinItem({
+                id: pinnedId,
+                type: 'theme',
+                title: `${getThemeLabel(theme)}${originCountryName ? ` in ${originCountryName}` : ''}`,
+                urlParams: `?${params.toString()}`
+            })
+        }
+    }
+
     return (
-        <div className="theme-detail-overlay">
+        <div className="theme-detail-overlay" ref={detailRef}>
             <div className="theme-detail-panel">
-                <button className="theme-detail-close" onClick={onClose} style={{ display: 'none' }} />
+                <div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px', alignItems: 'center', zIndex: 100 }}>
+                    <button 
+                        onClick={handlePin}
+                        title={pinned ? "Unpin Theme" : "Pin Theme to Workspace"}
+                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: pinned ? '#10b981' : '#94a3b8', width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
+                    >
+                        {pinned ? <PinOff size={14} /> : <Pin size={14} />}
+                    </button>
+                    {!loading && data && (
+                        <ExportMenu 
+                            themeName={getThemeLabel(theme)} 
+                            data={data} 
+                            insight={insight} 
+                            captureRef={detailRef} 
+                        />
+                    )}
+                    <button className="theme-detail-close" onClick={onClose} style={{ position: 'relative', top: 'auto', right: 'auto' }} />
+                </div>
 
 
                 <div className="theme-detail-header">

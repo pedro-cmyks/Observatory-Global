@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
+import { useWorkspace } from '../contexts/WorkspaceContext'
 import { timeRangeToHours } from '../lib/timeRanges'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
+import { Pin, PinOff } from 'lucide-react'
 import './SignalStream.css'
 
 interface Signal {
@@ -151,6 +153,7 @@ export const SignalStream: React.FC = () => {
     const [isHovered, setIsHovered] = useState(false)
     const listRef = useRef<HTMLDivElement>(null)
     const latestTimestampRef = useRef<string | null>(null)
+    const { pinItem, unpinItem, isPinned } = useWorkspace()
 
     // Fetch allowlist once
     useEffect(() => {
@@ -451,10 +454,29 @@ export const SignalStream: React.FC = () => {
                                     </div>
                                     
                                     <div className="signal-main">
-                                        <div className="headline">
-                                            <a href={sig.url} target="_blank" rel="noreferrer">
+                                        <div className="headline" style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                                            <a href={sig.url} target="_blank" rel="noreferrer" style={{ flex: 1 }}>
                                                 {sig.headline || `Signal from ${sig.source}`}
                                             </a>
+                                            <button 
+                                                onClick={() => {
+                                                    const pinnedId = `signal-${sig.id}`
+                                                    if (isPinned(pinnedId)) {
+                                                        unpinItem(pinnedId)
+                                                    } else {
+                                                        pinItem({
+                                                            id: pinnedId,
+                                                            type: 'signal',
+                                                            title: sig.headline || `Signal from ${sig.source}`,
+                                                            urlParams: `?${new URLSearchParams(window.location.search).toString()}`
+                                                        })
+                                                    }
+                                                }}
+                                                title={isPinned(`signal-${sig.id}`) ? "Unpin Signal" : "Pin Signal to Workspace"}
+                                                style={{ background: 'transparent', border: 'none', color: isPinned(`signal-${sig.id}`) ? '#10b981' : '#64748b', cursor: 'pointer', padding: '2px' }}
+                                            >
+                                                {isPinned(`signal-${sig.id}`) ? <PinOff size={12} /> : <Pin size={12} />}
+                                            </button>
                                         </div>
                                         <div className="signal-footer">
                                             <span className={`source ${getSourceClass(sig.source)}`}>{sig.source}</span>

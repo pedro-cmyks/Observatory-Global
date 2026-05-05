@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { IndicatorTooltip, VolumeIndicator } from './IndicatorTooltip';
 import { useCrisis } from '../contexts/CrisisContext';
+import { useWorkspace } from '../contexts/WorkspaceContext';
+import { Pin, PinOff } from 'lucide-react';
 import './CountryBrief.css';
 import { getThemeLabel } from '../lib/themeLabels';
 
@@ -100,6 +102,8 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
     const [indicators, setIndicators] = useState<Indicators | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const { pinItem, unpinItem, isPinned } = useWorkspace();
+    const pinned = isPinned(`country-${countryCode}`);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -225,8 +229,31 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
         <div className={cls}>
             <div className="brief-header">
                 <div className="brief-title">
-                    <span className="country-flag">{getCountryFlag(countryCode)}</span>
-                    <h2>{countryName}</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="country-flag">{getCountryFlag(countryCode)}</span>
+                        <h2>{countryName}</h2>
+                        <button 
+                            onClick={() => {
+                                const pinnedId = `country-${countryCode}`
+                                if (pinned) {
+                                    unpinItem(pinnedId)
+                                } else {
+                                    const params = new URLSearchParams()
+                                    params.set('country', countryCode)
+                                    pinItem({
+                                        id: pinnedId,
+                                        type: 'country',
+                                        title: countryName,
+                                        urlParams: `?${params.toString()}`
+                                    })
+                                }
+                            }}
+                            title={pinned ? "Unpin Country" : "Pin Country to Workspace"}
+                            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: pinned ? '#10b981' : '#94a3b8', width: '24px', height: '24px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
+                        >
+                            {pinned ? <PinOff size={12} /> : <Pin size={12} />}
+                        </button>
+                    </div>
                 </div>
                 <button className="close-button" onClick={onClose} aria-label="Close brief">
                     ✕

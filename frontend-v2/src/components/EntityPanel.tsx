@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { getThemeLabel } from '../lib/themeLabels'
 import { timeRangeToHours } from '../lib/timeRanges'
 import { type TimeRange } from '../lib/timeRanges'
+import { useWorkspace } from '../contexts/WorkspaceContext'
+import { Pin, PinOff } from 'lucide-react'
 import './EntityPanel.css'
 
 interface FocusNode {
@@ -55,6 +57,7 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
     const [data, setData] = useState<FocusData | null>(null)
     const [loading, setLoading] = useState(true)
     const hours = timeRangeToHours(timeRange)
+    const { pinItem, unpinItem, isPinned } = useWorkspace()
 
     useEffect(() => {
         setLoading(true)
@@ -98,7 +101,30 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
 
             <div className="entity-title-block">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <h2 className="entity-name">{displayName}</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h2 className="entity-name">{displayName}</h2>
+                        <button 
+                            onClick={() => {
+                                const pinnedId = `${focusType}-${focusValue}`
+                                if (isPinned(pinnedId)) {
+                                    unpinItem(pinnedId)
+                                } else {
+                                    const params = new URLSearchParams()
+                                    params.set(focusType, focusValue)
+                                    pinItem({
+                                        id: pinnedId,
+                                        type: focusType,
+                                        title: displayName,
+                                        urlParams: `?${params.toString()}`
+                                    })
+                                }
+                            }}
+                            title={isPinned(`${focusType}-${focusValue}`) ? `Unpin ${focusType}` : `Pin ${focusType} to Workspace`}
+                            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: isPinned(`${focusType}-${focusValue}`) ? '#10b981' : '#94a3b8', width: '24px', height: '24px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
+                        >
+                            {isPinned(`${focusType}-${focusValue}`) ? <PinOff size={12} /> : <Pin size={12} />}
+                        </button>
+                    </div>
                     {focusType === 'person' && onCompareClick && (
                         <button 
                             className="entity-compare-btn"
