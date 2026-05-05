@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { CompareBar } from './CompareBar'
+import { NarrativeDrift } from './NarrativeDrift'
 import { ExportMenu } from './ExportMenu'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Pin, PinOff } from 'lucide-react'
@@ -33,6 +34,7 @@ interface ThemeData {
         top_sub_themes: string[]
         sentiment_label: string
     }>
+    relatedConcepts?: Array<{ slug: string; label: string; description: string }>
 }
 
 interface ThemeDetailProps {
@@ -302,6 +304,31 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
 
                         {/* Period comparison: volume & sentiment vs previous period */}
                         <CompareBar entityType="theme" entityValue={theme} hours={hours} />
+
+                        {/* Narrative Drift timeline */}
+                        <NarrativeDrift themeCode={theme} countryCode={drillCountry || originCountry} days={14} />
+
+                        {/* RELATED INVESTIGATIONS (Concepts) */}
+                        {data.relatedConcepts && data.relatedConcepts.length > 0 && (
+                            <div className="theme-section">
+                                <div className="theme-section-title" style={{ color: '#10b981' }}>RELATED INVESTIGATIONS</div>
+                                <div className="concepts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px', marginTop: '12px' }}>
+                                    {data.relatedConcepts.map(c => (
+                                        <button 
+                                            key={c.slug}
+                                            className="concept-card"
+                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onThemeSelect?.(c.slug) }}
+                                            style={{ textAlign: 'left', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.05)'}
+                                        >
+                                            <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#10b981', marginBottom: '4px' }}>{c.label}</div>
+                                            <div style={{ fontSize: '0.75rem', color: '#94a3b8', lineHeight: 1.4 }}>{c.description}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* PUBLIC ATTENTION — Trends & Wiki cross-reference */}
                         {(trendMatch?.has_public_interest || wikiMatch?.has_wiki_activity) && (

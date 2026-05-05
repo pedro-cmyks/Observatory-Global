@@ -1117,6 +1117,54 @@ async def get_focus_data(
                 for r in headlines
             ]
         }
+@app.get("/api/v2/theme/{theme_code}/drift")
+async def get_theme_drift(
+    theme_code: str,
+    country_code: str = Query(None, description="Filter by country"),
+    days: int = Query(14, ge=1, le=90)
+):
+    """Get daily sentiment and volume trajectory for a theme."""
+    try:
+        async with app.state.pool.acquire() as conn:
+            where_conditions = [
+                "$1 = ANY(themes)",
+                f"timestamp > NOW() - INTERVAL '{days} days'"
+            ]
+            params = [theme_code.upper()]
+            
+            if country_code:
+                where_conditions.append("country_code = $2")
+                params.append(country_code.upper())
+            
+            where_clause = " AND ".join(where_conditions)
+            
+            drift_data = await conn.fetch(f"""
+                SELECT 
+                    DATE_TRUNC('day', timestamp) as date,
+                    AVG(sentiment) as sentiment,
+                    COUNT(*) as volume
+                FROM signals_v2
+                WHERE {where_clause}
+                GROUP BY DATE_TRUNC('day', timestamp)
+                ORDER BY date ASC
+            """, *params)
+            
+            return {
+                "theme": theme_code.upper(),
+                "country": country_code.upper() if country_code else "GLO",
+                "days": days,
+                "drift": [
+                    {
+                        "date": row["date"].isoformat() if hasattr(row["date"], "isoformat") else str(row["date"]),
+                        "sentiment": round(row["sentiment"], 3) if row["sentiment"] is not None else 0,
+                        "volume": row["volume"]
+                    }
+                    for row in drift_data
+                ]
+            }
+    except Exception as e:
+        logger.error(f"Error fetching theme drift for {theme_code}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/api/v2/theme/{theme_code}")
 async def get_theme_details(
@@ -1125,6 +1173,7 @@ async def get_theme_details(
     hours: int = Query(24, ge=1, le=8760)
 ):
     """Get detailed information about a theme including rich context."""
+    from app.core.gdelt_taxonomy import get_concepts_for_theme
     try:
         async with app.state.pool.acquire() as conn:
             # Build WHERE clause based on filters
@@ -1320,7 +1369,8 @@ async def get_theme_details(
                     {"hour": t['hour'].isoformat(), "count": int(t['count']), "sentiment": float(t['avg_sentiment'] or 0)}
                     for t in timeline
                 ],
-                "countryFraming": country_framing
+                "countryFraming": country_framing,
+                "relatedConcepts": get_concepts_for_theme(theme_code)
             }
     except Exception as e:
         print(f"Error in theme endpoint: {e}")

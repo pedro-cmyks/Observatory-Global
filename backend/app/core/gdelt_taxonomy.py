@@ -1016,6 +1016,18 @@ def get_all_concepts() -> list[dict]:
     return [{"slug": s, "label": c["label"], "description": c["description"]}
             for s, c in CONCEPT_MAP.items()]
 
+def get_concepts_for_theme(theme_code: str) -> list[dict]:
+    """Return a list of concepts that include this theme in their signature."""
+    matches = []
+    for slug, concept in CONCEPT_MAP.items():
+        if theme_code.upper() in concept.get("themes", []):
+            matches.append({
+                "slug": slug,
+                "label": concept["label"],
+                "description": concept["description"]
+            })
+    return matches
+
 
 # ===== REGION / CONTINENT MAP =====
 # Maps region slugs to ISO 3166-1 alpha-2 country codes and multilingual aliases.

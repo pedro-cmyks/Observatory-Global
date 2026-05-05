@@ -1,0 +1,70 @@
+/* NarrativeDrift.css */
+
+.narrative-drift {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.narrative-drift.loading,
+.narrative-drift.error,
+.narrative-drift.empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 140px;
+    color: #64748b;
+    font-size: 0.8125rem;
+    text-align: center;
+}
+
+.narrative-drift.error {
+    color: #ef4444;
+}
+
+.narrative-drift-header {
+    margin-bottom: 1rem;
+}
+
+.narrative-drift-header h3 {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #cbd5e1;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.narrative-drift-chart {
+    width: 100%;
+}
+
+.drift-tooltip {
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 8px 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+}
+
+.drift-tooltip-date {
+    margin: 0 0 4px 0;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.drift-tooltip-val {
+    margin: 0 0 2px 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.drift-tooltip-vol {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #64748b;
+}
