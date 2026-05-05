@@ -595,6 +595,7 @@
   grid-area: radar;
   border: 1px solid rgba(255, 255, 255, 0.02);
   box-shadow: 0 0 30px rgba(59, 130, 246, 0.04);
+  position: relative;
 }
 
 /* SECONDARY — Signal Stream, Narrative Threads */
@@ -860,4 +861,29 @@
   border-top-color: var(--color-accent-primary, #3b82f6);
   z-index: 9999;
   pointer-events: none;
+}
+
+/* ── Map affordance hint ────────────────────────────────────────────────── */
+.map-hint {
+  position: absolute;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 20, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  font-family: var(--font-mono, monospace);
+  padding: 5px 12px;
+  pointer-events: auto;
+  cursor: pointer;
+  white-space: nowrap;
+  animation: hint-fade-in 0.4s ease forwards;
+  z-index: 10;
+}
+
+@keyframes hint-fade-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
