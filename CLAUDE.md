@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-05 (session 4 — intelligence improvements)
+Last updated: 2026-05-05 (session 5 — first-user experience)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -186,7 +186,8 @@ The project uses a multi-agent architecture where each agent has specific expert
 - Use **Vanilla CSS** for all dashboard components. CSS custom properties come from `ThemeContext`.
 - **Tailwind CSS** is installed but used **exclusively for `Landing.tsx`** (the public marketing page). Do NOT add Tailwind classes to dashboard components.
 - Use `data-tip="text"` for tooltips on any element — NEVER use native `title=` attributes.
-- Components live in `frontend-v2/src/components/`. Current count: **43 components**.
+- Components live in `frontend-v2/src/components/`. Current count: **29 .tsx components**.
+- Always run `npm run build` (not just `tsc --noEmit`) before pushing — Vite's `tsc -b` is stricter.
 
 ---
 
@@ -199,6 +200,7 @@ This project uses three AI models in coordination, each with distinct strengths.
 Claude serves as the **orchestrator and system-level reasoning engine**.
 
 **Primary Responsibilities:**
+
 - High-level design, architecture, and planning
 - Multi-agent coordination and task sequencing
 - Narrative analysis and data interpretation
@@ -208,6 +210,7 @@ Claude serves as the **orchestrator and system-level reasoning engine**.
 - **Automatic delegation** to Gemini and Codex when appropriate
 
 **When to Use Claude:**
+
 - Starting a session and planning work
 - Designing database schemas or API architectures
 - Analyzing narrative patterns or drift detection algorithms
@@ -218,13 +221,15 @@ Claude serves as the **orchestrator and system-level reasoning engine**.
 **Automatic Delegation Rules:**
 
 Claude should automatically:
+
 1. **Delegate to Gemini** when large multi-file context is needed
 2. **Delegate to Codex** when code generation or execution is required
 3. **Keep reasoning centralized** within Claude
 4. **Combine outputs** from Gemini + Codex into coherent plans
 
 **Orchestration Workflow:**
-```
+
+```text
 1. Claude analyzes the goal
 2. If large multi-file context needed → Claude triggers Gemini CLI
 3. Claude receives Gemini's output and reasons about it
@@ -233,6 +238,7 @@ Claude should automatically:
 ```
 
 **Example Commands:**
+
 ```bash
 # Claude Code CLI for orchestration
 claude "Review the handoff document and create today's plan"
@@ -246,9 +252,10 @@ claude "Analyze how drift detection should work across geographic regions"
 
 Gemini CLI leverages Google Gemini's massive context window for analyzing large codebases or multiple files that would exceed Claude's context limits.
 
-### Purpose
+### Gemini Purpose
 
 Use Gemini CLI when:
+
 - Analyzing large codebases or multiple files that exceed context limits
 - Reviewing or comparing full directories
 - Scanning for patterns across many files
@@ -256,7 +263,7 @@ Use Gemini CLI when:
 - Loading hundreds of files at once
 - Performing static read-only analysis requiring massive context
 
-### Syntax
+### Gemini Syntax
 
 Use `gemini -p` for non-interactive mode with prompts:
 
@@ -271,31 +278,37 @@ Use the `@` syntax to include files and directories. Paths are relative to your 
 #### Basic Examples
 
 **Single file analysis:**
+
 ```bash
 gemini -p "@src/main.py Explain this file's purpose and structure"
 ```
 
 **Multiple files:**
+
 ```bash
 gemini -p "@package.json @src/index.js Analyze the dependencies used in the code"
 ```
 
 **Entire directory:**
+
 ```bash
 gemini -p "@src/ Summarize the architecture of this codebase"
 ```
 
 **Multiple directories:**
+
 ```bash
 gemini -p "@src/ @tests/ Analyze test coverage for the source code"
 ```
 
 **Current directory and subdirectories:**
+
 ```bash
 gemini -p "@./ Give me an overview of this entire project"
 ```
 
 **All files automatically:**
+
 ```bash
 gemini --all_files -p "Analyze the project structure and dependencies"
 ```
@@ -303,41 +316,49 @@ gemini --all_files -p "Analyze the project structure and dependencies"
 ### Implementation Verification Examples
 
 **Check if a feature is implemented:**
+
 ```bash
 gemini -p "@src/ @lib/ Has dark mode been implemented in this codebase? Show me the relevant files and functions"
 ```
 
 **Verify authentication implementation:**
+
 ```bash
 gemini -p "@src/ @middleware/ Is JWT authentication implemented? List all auth-related endpoints and middleware"
 ```
 
 **Check for specific patterns:**
+
 ```bash
 gemini -p "@src/ Are there any React hooks that handle WebSocket connections? List them with file paths"
 ```
 
 **Verify error handling:**
+
 ```bash
 gemini -p "@src/ @api/ Is proper error handling implemented for all API endpoints? Show examples of try-catch blocks"
 ```
 
 **Check for rate limiting:**
+
 ```bash
 gemini -p "@backend/ @middleware/ Is rate limiting implemented for the API? Show the implementation details"
 ```
 
 **Verify caching strategy:**
+
 ```bash
 gemini -p "@src/ @lib/ @services/ Is Redis caching implemented? List all cache-related functions and their usage"
 ```
 
 **Check for specific security measures:**
+
 ```bash
 gemini -p "@src/ @api/ Are SQL injection protections implemented? Show how user inputs are sanitized"
 ```
 
 **Verify test coverage for features:**
+
 ```bash
 gemini -p "@src/payment/ @tests/ Is the payment processing module fully tested? List all test cases"
 ```
@@ -373,9 +394,10 @@ gemini -p "@src/payment/ @tests/ Is the payment processing module fully tested? 
 
 Codex CLI is optimized for heavy code generation, refactoring, and execution tasks. It specializes in writing and modifying code with high quality output.
 
-### Purpose
+### Codex Purpose
 
 Use Codex CLI when:
+
 - Generating large code modules or full files
 - Performing refactors across many files
 - Generating test suites or documentation
@@ -384,7 +406,7 @@ Use Codex CLI when:
 - Running project automation tasks (formatters, linters, migrations)
 - Transforming files requiring "write access"
 
-### Syntax
+### Codex Syntax
 
 Use `codex -p` for prompting:
 
@@ -397,26 +419,31 @@ Codex also supports the `@file` and `@directory/` syntax for including context.
 ### Code Generation Examples
 
 **Implement an endpoint:**
+
 ```bash
 codex "Implement GET /api/v2/narratives/topic endpoint in backend/app/main_v2.py following the existing endpoint patterns"
 ```
 
 **Write tests:**
+
 ```bash
 codex "Write unit tests for the gdelt_parser.py parse_v2_tone function"
 ```
 
 **Create TypeScript types:**
+
 ```bash
 codex "Create TypeScript interfaces in frontend/src/lib/types.ts matching the GDELTSignal Pydantic model"
 ```
 
 **Refactor for performance:**
+
 ```bash
 codex "Refactor the flow_detector.py to use numpy vectorization instead of nested loops"
 ```
 
 **Fix a specific bug:**
+
 ```bash
 codex "Fix the heatmap rendering issue in HexagonHeatmapLayer.tsx where hexagons are not appearing"
 ```
@@ -424,21 +451,25 @@ codex "Fix the heatmap rendering issue in HexagonHeatmapLayer.tsx where hexagons
 ### File Context Examples
 
 **Generate tests with context:**
+
 ```bash
 codex -p "@backend/ Generate a complete test suite for all services"
 ```
 
 **Refactor with file context:**
+
 ```bash
 codex -p "@src/ Refactor all API handlers to use dependency injection"
 ```
 
 **Create new module:**
+
 ```bash
 codex -p "@app/ Create a new logging module and integrate it"
 ```
 
 **Full CRUD generation:**
+
 ```bash
 codex -p "@./ Build a full CRUD module for the User entity"
 ```
@@ -599,17 +630,20 @@ codex "Write comprehensive tests for gdelt_parser.py covering all edge cases"
 ## Development Workflow
 
 ### Starting a Session
+
 1. Call the **Orchestrator** to review handoff documentation
 2. Assess current blockers and prioritize work for the window
 3. Create daily plan with agent assignments
 
 ### Working on Tasks
+
 1. Use the appropriate specialized agent for each task type
 2. Maintain small, focused PRs (<300 lines)
 3. Update todos as work progresses
 4. Document decisions in ADRs when ambiguity appears
 
 ### Ending a Session
+
 1. Complete handoff documentation
 2. Update state documents
 3. Tag any unresolved blockers
@@ -620,6 +654,7 @@ codex "Write comprehensive tests for gdelt_parser.py covering all edge cases"
 ## Quality Standards
 
 ### PR Hygiene
+
 - Small, focused diffs
 - All tests passing
 - Structured, useful logs
@@ -627,6 +662,7 @@ codex "Write comprehensive tests for gdelt_parser.py covering all edge cases"
 - Clear commit messages following conventional commits
 
 ### Definition of Done
+
 - [ ] Compiles successfully with no errors
 - [ ] All tests pass
 - [ ] Logs are structured and useful
@@ -637,26 +673,50 @@ codex "Write comprehensive tests for gdelt_parser.py covering all edge cases"
 
 ---
 
-## Current Technical State (as of session 4)
+## Current Technical State (as of session 5)
 
-### New API Endpoints
-- `GET /api/v2/search/unified?q=&hours=` — **preferred search endpoint**. Merges taxonomy search (aliases, typos, multilingual), concept search (investigative frames), region matching, and live DB signal search into one response. Taxonomy-matched themes get priority over DB-only hits. Cached 2 min in Redis.
+### Critical Build Rule
 
-### New Components
-- `CompareBar.tsx` — inline temporal comparison widget showing period-over-period signal volume and sentiment delta. Integrated into ThemeDetail after stats row.
+Always run `npm run build` (not just `tsc --noEmit`) before pushing frontend changes. Vite uses `tsc -b` (project references), which is stricter. A passing `tsc --noEmit` does NOT guarantee a passing Vercel build.
 
-### New Hooks
-- `useUrlSync.ts` — bidirectional sync between FocusContext filter state and URL search params. Enables shareable links: `/app?theme=ARMEDCONFLICT&country=CO&time=1w`.
+### Pending Fly.io Deploy
 
-### FocusContext Changes
-- `GlobalFilter` now includes `concept: ConceptFilter | null` and `region: RegionFilter | null`
-- New setters: `setConcept()` (multi-theme expansion), `setRegion()` (multi-country expansion)
-- Concept filter activates all associated GDELT themes, not just the primary one
+`ingest_v2.py` ON CONFLICT fix is committed but not deployed. Run `fly deploy` to activate it. Migration 007 (unique index on source_url) is already applied in the DB.
+
+### Frontend Component Count
+
+29 .tsx components in `frontend-v2/src/components/`. Do not add Tailwind to any of them.
+
+### New Components (session 5)
+
+- `DiscoveryPanel.tsx` + `DiscoveryPanel.css` — blank-state default for the stream column. Shows top 5 GDELT narratives as explorable cards with trend arrows, signal counts, top countries. Fetches `/api/v2/narratives?hours=24&limit=5`, auto-refreshes every 5 minutes.
+
+### Stream Panel Behavior Change (session 5)
+
+Default stream slot is now `DiscoveryPanel` (blank state), not `SignalStream`. State machine: `isPerson → isCompound → isCountry → isTheme → isChokepoint → DiscoveryPanel`.
+
+### API Endpoints (carried forward from session 4)
+
+- `GET /api/v2/search/unified?q=&hours=` — preferred search. Merges taxonomy, concepts, regions, DB. Cached 2 min.
+
+### Session 4 Components
+
+- `CompareBar.tsx` — period-over-period signal + sentiment delta. In ThemeDetail.
+
+### Session 4 Hooks
+
+- `useUrlSync.ts` — bidirectional FocusContext ↔ URL params sync. Shareable links: `/app?theme=ARMEDCONFLICT&country=CO&time=1w`.
+
+### FocusContext
+
+- `GlobalFilter` includes `concept: ConceptFilter | null` and `region: RegionFilter | null`
+- `setConcept()` expands to multiple GDELT themes; `setRegion()` expands to multiple countries
 
 ### Backend: gdelt_taxonomy.py
-- `REGION_MAP` — 6 regions (Africa, Middle East, Latin America, Europe, Asia-Pacific, North America) with ISO country codes and multilingual aliases (EN/ES/FR/PT/DE/AR)
-- `match_region()` — fuzzy region matching function
-- `get_all_regions()` — returns region list for UI
+
+- `REGION_MAP` — 6 regions with ISO codes and multilingual aliases (EN/ES/FR/PT/DE/AR)
+- `match_region()` — fuzzy region matching
 
 ### GitHub Issues Status
-Phase 1 (#26–29) and Phase 2A (#31) and Phase 3A (#30) — all closed. Remaining open: #32–38.
+
+Phase 1 (#26–29), Phase 2A (#31), Phase 3A (#30) — all closed. Session 5 issue #39 created. Remaining open: #32–38.
