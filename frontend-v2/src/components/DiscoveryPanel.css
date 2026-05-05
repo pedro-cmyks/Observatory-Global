@@ -75,14 +75,14 @@
 .discovery-card__signals {
   font-size: 10px;
   color: rgba(148, 163, 184, 0.7);
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
   white-space: nowrap;
 }
 
 .discovery-card__countries {
   font-size: 10px;
   color: rgba(100, 116, 139, 0.8);
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
   letter-spacing: 0.03em;
 }
 

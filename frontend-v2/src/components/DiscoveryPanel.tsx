@@ -94,7 +94,13 @@ export default function DiscoveryPanel({ hours, onThemeSelect }: DiscoveryPanelP
               onClick={() => onThemeSelect(n.theme_code)}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && onThemeSelect(n.theme_code)}
+              aria-label={getThemeLabel(n.theme_code)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onThemeSelect(n.theme_code);
+                }
+              }}
             >
               <div className="discovery-card__top">
                 <span className="discovery-card__name">{getThemeLabel(n.theme_code)}</span>
