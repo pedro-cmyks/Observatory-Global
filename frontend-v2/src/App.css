@@ -528,8 +528,8 @@
   display: grid;
   grid-template-areas:
     "radar stream threads"
-    "radar stream matrix"
-    "integrity anomaly anomaly";
+    "radar stream threads"
+    "anomaly anomaly integrity";
   grid-template-columns: minmax(280px, 35%) minmax(280px, 1fr) minmax(240px, 30%);
   grid-template-rows: minmax(220px, 40%) minmax(180px, 1fr) minmax(140px, 20%);
   height: calc(100vh - 48px);
@@ -603,12 +603,15 @@
 .terminal-panel.threads { grid-area: threads; }
 
 /* PLACEHOLDER */
-.terminal-panel.matrix { grid-area: matrix; }
+.terminal-panel.matrix {
+  grid-area: matrix;
+  display: none;
+}
 
 /* TERTIARY — Anomaly, Source Integrity: recessive */
 .terminal-panel.anomaly {
   grid-area: anomaly;
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(239, 68, 68, 0.15);
   background: rgba(10, 12, 16, 0.95);
 }
 .terminal-panel.integrity {
