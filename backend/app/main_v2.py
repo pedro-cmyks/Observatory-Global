@@ -1397,12 +1397,20 @@ def _clean_theme_label(theme_code: str) -> str:
     """Convert theme code like WB_475_DIGITAL_GOVERNMENT to 'Digital Government'."""
     label = theme_code.upper()
     # Strip known prefixes
-    for prefix in ("WB_", "TAX_", "GDELT_"):
+    prefixes = (
+        "WB_", "TAX_", "GDELT_", "CRISISLEX_", "USPEC_", "UN_", 
+        "SOC_", "ENV_", "ECON_", "EPU_", "MIL_", "CRIME_", "HEALTH_"
+    )
+    for prefix in prefixes:
         if label.startswith(prefix):
             # Also strip the numeric segment that follows e.g. WB_475_
             parts = label.split("_", 2)
             label = parts[-1] if len(parts) >= 2 else label
             break
+    # Special cleanup for known redundant suffixes
+    if label == "CRISISLEXREC":
+        label = "CRISIS RECOVERY"
+    
     # Remove any remaining leading numeric segment (e.g. "475_DIGITAL" → "DIGITAL")
     parts = label.split("_", 1)
     if parts[0].isdigit() and len(parts) == 2:

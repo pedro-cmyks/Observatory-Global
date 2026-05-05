@@ -4,7 +4,7 @@ import { CompareBar } from './CompareBar'
 import { NarrativeDrift } from './NarrativeDrift'
 import { ExportMenu } from './ExportMenu'
 import { useWorkspace } from '../contexts/WorkspaceContext'
-import { Pin, PinOff } from 'lucide-react'
+import { Pin, PinOff, X } from 'lucide-react'
 import './ThemeDetail.css'
 
 interface ThemeData {
@@ -215,7 +215,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                             captureRef={detailRef}
                         />
                     )}
-                    <button className="theme-detail-close" onClick={onClose} style={{ position: 'relative', top: 'auto', right: 'auto' }} />
+                    <button className="theme-detail-close" onClick={onClose} style={{ position: 'relative', top: 'auto', right: 'auto' }}>
+                        <X size={16} />
+                    </button>
                 </div>
 
 

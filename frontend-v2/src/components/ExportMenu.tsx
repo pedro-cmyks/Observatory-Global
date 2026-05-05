@@ -44,9 +44,10 @@ export function ExportMenu({ themeName, data, insight, captureRef }: ExportMenuP
         URL.revokeObjectURL(url)
     }
 
-    const handleExportCSV = () => {
+    const handleExportCSV = async () => {
         if (!data || !data.signals) return
         
+        // 1. Export Signals
         const headers = ['date', 'source', 'title', 'sentiment', 'url']
         const rows = data.signals.map((s: any) => [
             s.timestamp,
@@ -56,8 +57,34 @@ export function ExportMenu({ themeName, data, insight, captureRef }: ExportMenuP
             s.url || ''
         ])
         
-        const csv = [headers.join(','), ...rows.map((r: any[]) => r.join(','))].join('\n')
-        downloadFile(`atlas-export-${themeName.toLowerCase()}-${new Date().toISOString().split('T')[0]}.csv`, csv, 'text/csv')
+        const signalsCsv = [headers.join(','), ...rows.map((r: any[]) => r.join(','))].join('\n')
+        downloadFile(`atlas-signals-${themeName.toLowerCase()}-${new Date().toISOString().split('T')[0]}.csv`, signalsCsv, 'text/csv')
+        
+        // 2. Export Narrative Drift
+        try {
+            // Find the raw theme code from the data object if available, otherwise use the label
+            const themeCode = data.theme || themeName
+            const res = await fetch(`/api/v2/theme/${encodeURIComponent(themeCode)}/drift?days=14`)
+            if (res.ok) {
+                const driftJson = await res.json()
+                if (driftJson.drift && driftJson.drift.length > 0) {
+                    const driftHeaders = ['date', 'sentiment', 'volume']
+                    const driftRows = driftJson.drift.map((d: any) => [
+                        d.date,
+                        d.sentiment,
+                        d.volume
+                    ])
+                    const driftCsv = [driftHeaders.join(','), ...driftRows.map((r: any[]) => r.join(','))].join('\n')
+                    // Add a tiny delay so the browser doesn't block the second download
+                    setTimeout(() => {
+                        downloadFile(`atlas-drift-${themeName.toLowerCase()}-${new Date().toISOString().split('T')[0]}.csv`, driftCsv, 'text/csv')
+                    }, 500)
+                }
+            }
+        } catch (err) {
+            console.error("Failed to export drift data:", err)
+        }
+
         setOpen(false)
     }
 
