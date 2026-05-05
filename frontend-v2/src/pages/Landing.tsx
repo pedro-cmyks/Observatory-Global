@@ -229,14 +229,14 @@ export function Landing() {
                             { name: 'GDELT 2.0',      badge: 'Media coverage',   desc: '65,000+ news sources in 100+ languages, updated every 15 minutes. The backbone of Atlas.' },
                             { name: 'Google Trends',   badge: 'Public interest',  desc: 'What people are searching for, by country. Captures public attention before media catches up.' },
                             { name: 'Wikipedia',       badge: 'What people read', desc: 'Top-read articles by country and language. Wikipedia spikes often precede news events.' },
-                            { name: 'ACLED',           badge: 'Conflict events',  desc: 'Armed Conflict Location & Event Data — the gold standard for tracking conflict events globally.' },
+                            { name: 'ACLED',           badge: 'Coming soon',      desc: 'Armed Conflict Location & Event Data — field-verified conflict events. Integration in progress.', pending: true },
                             { name: 'ADS-B Exchange',  badge: 'Live aircraft',    desc: 'Real-time military and civilian aircraft positions worldwide via ADS-B transponder data.' },
                             { name: 'AISStream',       badge: 'Live vessels',     desc: 'Live ship positions at global chokepoints — Suez, Hormuz, Panama, Malacca — updated continuously.' },
-                        ].map(({ name, badge, desc }) => (
-                            <div key={name} className="lp-card-hover bg-bg-surface border border-border-subtle rounded-xl p-6 flex flex-col gap-stack-sm">
+                        ].map(({ name, badge, desc, pending }) => (
+                            <div key={name} className={`lp-card-hover bg-bg-surface border border-border-subtle rounded-xl p-6 flex flex-col gap-stack-sm${pending ? ' opacity-60' : ''}`}>
                                 <div className="flex items-center justify-between">
                                     <span className="font-body-strong text-body-strong text-text-primary">{name}</span>
-                                    <span className="font-technical-label text-technical-label text-primary border border-border-subtle rounded-full px-3 py-1 uppercase text-[10px] tracking-wider">{badge}</span>
+                                    <span className={`font-technical-label text-technical-label border border-border-subtle rounded-full px-3 py-1 uppercase text-[10px] tracking-wider${pending ? ' text-slate-500' : ' text-primary'}`}>{badge}</span>
                                 </div>
                                 <p className="font-body-main text-body-main text-text-secondary">{desc}</p>
                             </div>

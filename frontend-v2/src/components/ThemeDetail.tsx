@@ -67,8 +67,8 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
     const { pinItem, unpinItem, isPinned } = useWorkspace()
 
     // Public attention signals
-    const [trendMatch, setTrendMatch] = useState<{ has_public_interest: boolean; matches: Array<{keyword: string; country_code: string}> } | null>(null)
-    const [wikiMatch, setWikiMatch] = useState<{ has_wiki_activity: boolean; matches: Array<{title: string; views: number}>, total_views: number } | null>(null)
+    const [trendMatch, setTrendMatch] = useState<{ has_public_interest: boolean; matches: Array<{ keyword: string; country_code: string }> } | null>(null)
+    const [wikiMatch, setWikiMatch] = useState<{ has_wiki_activity: boolean; matches: Array<{ title: string; views: number }>, total_views: number } | null>(null)
 
     // Reset drill state when theme changes
     useEffect(() => {
@@ -108,11 +108,11 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
         fetch(`/api/v2/trends/match?theme=${encoded}&hours=${hours}`)
             .then(r => r.json().catch(() => null))
             .then(d => { if (d) setTrendMatch(d) })
-            .catch(() => {})
+            .catch(() => { })
         fetch(`/api/v2/wiki/match?theme=${encoded}&days=1`)
             .then(r => r.json().catch(() => null))
             .then(d => { if (d) setWikiMatch(d) })
-            .catch(() => {})
+            .catch(() => { })
     }, [theme, hours])
 
     const [insightError, setInsightError] = useState<string | null>(null)
@@ -198,7 +198,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
         <div className="theme-detail-overlay" ref={detailRef}>
             <div className="theme-detail-panel">
                 <div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px', alignItems: 'center', zIndex: 100 }}>
-                    <button 
+                    <button
                         onClick={handlePin}
                         title={pinned ? "Unpin Theme" : "Pin Theme to Workspace"}
                         style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: pinned ? '#10b981' : '#94a3b8', width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
@@ -206,11 +206,11 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                         {pinned ? <PinOff size={14} /> : <Pin size={14} />}
                     </button>
                     {!loading && data && (
-                        <ExportMenu 
-                            themeName={getThemeLabel(theme)} 
-                            data={data} 
-                            insight={insight} 
-                            captureRef={detailRef} 
+                        <ExportMenu
+                            themeName={getThemeLabel(theme)}
+                            data={data}
+                            insight={insight}
+                            captureRef={detailRef}
                         />
                     )}
                     <button className="theme-detail-close" onClick={onClose} style={{ position: 'relative', top: 'auto', right: 'auto' }} />
@@ -272,8 +272,8 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                                     {insightError === 'insight_unavailable'
                                         ? 'AI analysis not configured — add ANTHROPIC_API_KEY to .env and restart the backend'
                                         : insightError === 'insight_no_credits'
-                                        ? 'AI analysis unavailable — Anthropic account has no credits (top up at console.anthropic.com)'
-                                        : 'Coverage analysis unavailable'}
+                                            ? 'AI analysis unavailable — Anthropic account has no credits (top up at console.anthropic.com)'
+                                            : 'Coverage analysis unavailable'}
                                 </p>
                             )}
                         </div>
@@ -422,10 +422,10 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                                                         {cf.top_sub_themes
                                                             .filter(st => !st.startsWith('WORLDLANGUAGES_') && !st.startsWith('TAX_WORLDLANGUAGES_'))
                                                             .map(st => (
-                                                            <span key={st} className="framing-chip">
-                                                                {getThemeIcon(st)} {getThemeLabel(st)}
-                                                            </span>
-                                                        ))}
+                                                                <span key={st} className="framing-chip">
+                                                                    {getThemeIcon(st)} {getThemeLabel(st)}
+                                                                </span>
+                                                            ))}
                                                     </div>
                                                 </div>
                                             )
@@ -574,7 +574,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                                         <span className="source-intel-name">{selectedSource}</span>
                                         <span className="source-intel-label"> covers this topic as:</span>
                                         {onSourceClick && (
-                                            <button 
+                                            <button
                                                 className="source-full-profile-btn"
                                                 onClick={(e) => { e.stopPropagation(); onSourceClick(selectedSource); }}
                                                 style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid #4b5563', color: '#9ca3af', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}
@@ -632,27 +632,27 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                                 {data.signals
                                     .filter(s => !selectedSource || s.source === selectedSource)
                                     .slice(0, 20).map((s, i) => (
-                                    <div key={i} className="signal-item">
-                                        <div className="signal-header">
-                                            <span className="signal-source">{s.source || 'Unknown'}</span>
-                                            <span className="signal-time">{formatTime(s.timestamp)}</span>
+                                        <div key={i} className="signal-item">
+                                            <div className="signal-header">
+                                                <span className="signal-source">{s.source || 'Unknown'}</span>
+                                                <span className="signal-time">{formatTime(s.timestamp)}</span>
+                                            </div>
+                                            <div className="signal-meta">
+                                                <span className="signal-country">{s.country}</span>
+                                                <span className="signal-sentiment" style={{ color: getSentimentColor(s.sentiment) }}>
+                                                    {s.sentiment > 0 ? '+' : ''}{s.sentiment.toFixed(2)}
+                                                </span>
+                                            </div>
+                                            {s.persons.length > 0 && (
+                                                <div className="signal-persons">Person: {s.persons.join(', ')}</div>
+                                            )}
+                                            {s.url && (
+                                                <a href={s.url} target="_blank" rel="noopener noreferrer" className="signal-link">
+                                                    View Source →
+                                                </a>
+                                            )}
                                         </div>
-                                        <div className="signal-meta">
-                                            <span className="signal-country">{s.country}</span>
-                                            <span className="signal-sentiment" style={{ color: getSentimentColor(s.sentiment) }}>
-                                                {s.sentiment > 0 ? '+' : ''}{s.sentiment.toFixed(2)}
-                                            </span>
-                                        </div>
-                                        {s.persons.length > 0 && (
-                                            <div className="signal-persons">Person: {s.persons.join(', ')}</div>
-                                        )}
-                                        {s.url && (
-                                            <a href={s.url} target="_blank" rel="noopener noreferrer" className="signal-link">
-                                                View Source →
-                                            </a>
-                                        )}
-                                    </div>
-                                ))}
+                                    ))}
                             </div>
                         </div>
 

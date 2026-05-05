@@ -228,18 +228,19 @@ export function Docs() {
                                 <div className="docs-source-meta-item">Table <span>wiki_pageviews_v2</span></div>
                             </div>
                         </div>
-                        <div className="docs-source-card">
+                        <div className="docs-source-card" style={{ opacity: 0.55 }}>
                             <div className="docs-source-card-head">
                                 <span className="docs-source-badge badge-acled">ACLED</span>
                                 <span className="docs-source-title">Armed Conflict Location</span>
+                                <span style={{ marginLeft: 'auto', fontSize: '9px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', border: '1px solid rgba(100,116,139,0.3)', borderRadius: '10px', padding: '2px 8px' }}>Coming soon</span>
                             </div>
                             <p>
                                 Human-verified conflict events: battles, explosions, riots, protests.
                                 Unlike GDELT's media-derived signals, ACLED events are field-verified.
-                                They appear as red markers on the map and in the Kinetic Conflicts section.
+                                API access is pending — conflict markers currently fall back to GDELT Events.
                             </p>
                             <div className="docs-source-meta">
-                                <div className="docs-source-meta-item">Latency <span>~60 min</span></div>
+                                <div className="docs-source-meta-item">Status <span>Integration pending</span></div>
                                 <div className="docs-source-meta-item">Table <span>acled_conflicts_v2</span></div>
                             </div>
                         </div>
@@ -326,23 +327,20 @@ export function Docs() {
                 </section>
 
                 <section className="docs-section" id="acled">
-                    <h3>ACLED — Kinetic Ground Truth</h3>
+                    <h3>ACLED — Kinetic Ground Truth <span style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', border: '1px solid rgba(100,116,139,0.3)', borderRadius: '10px', padding: '2px 8px', marginLeft: '8px', verticalAlign: 'middle' }}>Coming soon</span></h3>
                     <p>
                         ACLED is unique among Atlas's sources: it is human-verified. Every event in
                         <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}> acled_conflicts_v2</code> has been reviewed by
                         regional analysts. This makes it the most reliable signal for ground-truth conflict
-                        activity, but also the smallest dataset and the one requiring API credentials.
-                    </p>
-                    <p>
-                        ACLED events appear as colored map markers: red for battles/explosions, orange for
-                        riots/protests, yellow for other. Fatality counts drive marker size (capped at radius 15px).
+                        activity. API access is currently pending — conflict markers on the map fall back
+                        to GDELT Events (material conflict, Goldstein &lt; −3) in the meantime.
                     </p>
                     <div className="docs-callout">
-                        <strong>Note:</strong> ACLED requires a free API key from{' '}
-                        <span style={{ color: '#38bdf8' }}>acleddata.com</span>. Without credentials,
-                        the <code style={{ fontFamily: 'monospace' }}>ingest_acled</code> service skips silently.
-                        Set <code style={{ fontFamily: 'monospace' }}>ACLED_API_KEY</code> and{' '}
-                        <code style={{ fontFamily: 'monospace' }}>ACLED_EMAIL</code> in your environment to activate it.
+                        <strong>Status:</strong> ACLED API access requires institutional registration at{' '}
+                        <span style={{ color: '#38bdf8' }}>acleddata.com</span> (Research tier or above).
+                        Once granted, set <code style={{ fontFamily: 'monospace' }}>ACLED_API_KEY</code> and{' '}
+                        <code style={{ fontFamily: 'monospace' }}>ACLED_EMAIL</code> as Fly.io secrets to activate ingestion.
+                        Track progress in GitHub issue #46.
                     </div>
                 </section>
 
