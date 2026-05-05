@@ -74,10 +74,6 @@ export default function DiscoveryPanel({ hours, onThemeSelect }: DiscoveryPanelP
 
   return (
     <div className="discovery-panel">
-      <div className="panel-header">
-        <span className="panel-title">WHAT'S HAPPENING</span>
-        <span className="panel-subtitle">top topics right now — click to explore</span>
-      </div>
       <div className="discovery-list">
         {loading && Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="discovery-card discovery-card--skeleton" />
