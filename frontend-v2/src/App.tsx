@@ -27,8 +27,8 @@ import { Globe, ClipboardList } from 'lucide-react'
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
 
 // Terminal Panels
-import { SignalStream } from './components/SignalStream'
 import { NarrativeThreads } from './components/NarrativeThreads'
+import DiscoveryPanel from './components/DiscoveryPanel'
 import { CorrelationMatrix } from './components/CorrelationMatrix'
 import { AnomalyPanel } from './components/AnomalyPanel'
 import { SourceIntegrityPanel } from './components/SourceIntegrityPanel'
@@ -1011,13 +1011,23 @@ function AppContent() {
             : prevStreamCtx?.type === 'theme'
               ? `← ${prevStreamCtx.theme.replace(/_/g, ' ').slice(0, 20)}`
               : '← STREAM'
-          let panelTitle = <>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              SIGNAL STREAM
-              <InfoBadge text="Live feed of individual media signals from GDELT. Each row is a news article mentioning a geopolitical event. Click a country code or theme tag to filter the stream. Geopolitical signals appear first." />
-            </span>
-            <span className="panel-subtitle">live signals, last 15 min</span>
-          </>
+          const isBlankState = !isPerson && !isCountry && !isTheme && !isChokepoint
+          let panelTitle = isBlankState ? (
+            <>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                WHAT'S HAPPENING
+              </span>
+              <span className="panel-subtitle">top topics right now — click to explore</span>
+            </>
+          ) : (
+            <>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                SIGNAL STREAM
+                <InfoBadge text="Live feed of individual media signals from GDELT. Each row is a news article mentioning a geopolitical event. Click a country code or theme tag to filter the stream. Geopolitical signals appear first." />
+              </span>
+              <span className="panel-subtitle">live signals, last 15 min</span>
+            </>
+          )
           if (isTheme) panelTitle = <>
             <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
             <span style={{ color: '#94a3b8' }}>{selectedTheme!.theme.replace(/_/g, ' ').slice(0, 26)}</span>
@@ -1079,9 +1089,10 @@ function AppContent() {
                     }}
                   />
                 ) : (
-                  <PanelErrorBoundary panelName="SIGNAL STREAM">
-                    <SignalStream />
-                  </PanelErrorBoundary>
+                  <DiscoveryPanel
+                    hours={timeRangeToHours(timeRange)}
+                    onThemeSelect={(code) => handleThemeSelect(code)}
+                  />
                 )}
               </div>
             </div>
