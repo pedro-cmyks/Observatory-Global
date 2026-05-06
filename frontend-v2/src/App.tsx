@@ -33,7 +33,7 @@ import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoi
 
 // Terminal Panels
 import { NarrativeThreads } from './components/NarrativeThreads'
-import DiscoveryPanel from './components/DiscoveryPanel'
+import { SignalStream } from './components/SignalStream'
 import { CorrelationMatrix } from './components/CorrelationMatrix'
 import { AnomalyPanel } from './components/AnomalyPanel'
 import { SourceIntegrityPanel } from './components/SourceIntegrityPanel'
@@ -1029,9 +1029,10 @@ function AppContent() {
           let panelTitle = isBlankState ? (
             <>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                WHAT'S HAPPENING
+                SIGNAL STREAM
+                <InfoBadge text="Live feed of individual media signals from GDELT. Each row is a news article mentioning a geopolitical event. Click a country code or theme tag to filter the stream. Geopolitical signals appear first." />
               </span>
-              <span className="panel-subtitle">top topics right now — click to explore</span>
+              <span className="panel-subtitle">live signals, last 15 min</span>
             </>
           ) : (
             <>
@@ -1107,10 +1108,7 @@ function AppContent() {
                     }}
                   />
                 ) : (
-                  <DiscoveryPanel
-                    hours={timeRangeToHours(timeRange)}
-                    onThemeSelect={(code) => handleThemeSelect(code)}
-                  />
+                  <SignalStream />
                 )}
               </div>
             </div>
