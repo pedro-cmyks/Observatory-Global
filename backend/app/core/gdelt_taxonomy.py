@@ -1175,6 +1175,83 @@ def find_closest_concepts(query: str, limit: int = 3) -> list[dict]:
     return [c for s, c in scored[:limit] if s > 0.0]
 
 
+# ===== SOURCE FAMILY CLASSIFICATION =====
+# Maps exact domains to source families. Default is "independent".
+# "state" = government-funded or state-controlled outlet.
+# "wire" = international news wire service.
+SOURCE_FAMILY: Dict[str, str] = {
+    # State / government-controlled
+    "xinhua.net": "state",
+    "xinhuanet.com": "state",
+    "chinadaily.com.cn": "state",
+    "globaltimes.cn": "state",
+    "en.people.cn": "state",
+    "cgtn.com": "state",
+    "rt.com": "state",
+    "ria.ru": "state",
+    "tass.ru": "state",
+    "sputniknews.com": "state",
+    "presstv.ir": "state",
+    "press.ir": "state",
+    "irna.ir": "state",
+    "france24.com": "state",
+    "dw.com": "state",
+    "bbc.co.uk": "state",
+    "bbc.com": "state",
+    "abc.net.au": "state",
+    "nhk.or.jp": "state",
+    "voanews.com": "state",
+    "rferl.org": "state",
+    "almayadeen.net": "state",
+    "aa.com.tr": "state",
+    "trtworld.com": "state",
+    "wam.ae": "state",
+    "spa.gov.sa": "state",
+    "qna.org.qa": "state",
+    "telesurtv.net": "state",
+    "prensa-latina.cu": "state",
+    "cubadebate.cu": "state",
+    "granma.cu": "state",
+    "yonhapnewsagency.com": "state",
+    "koreatimes.co.kr": "state",
+    "jordantimes.com": "state",
+    "egypttoday.com": "state",
+    "egyptindependent.com": "state",
+    # Wire services
+    "reuters.com": "wire",
+    "apnews.com": "wire",
+    "afp.com": "wire",
+    "bloomberg.com": "wire",
+    "bloomberg.net": "wire",
+    "dpa-international.com": "wire",
+    "efe.com": "wire",
+    "dpa.com": "wire",
+    "ansa.it": "wire",
+}
+
+_STATE_TLD_SUFFIXES = (".gov", ".mil", ".gov.uk", ".gc.ca", ".gob.mx", ".gob.ar", ".gov.au")
+
+
+def classify_source(source_url: str) -> str:
+    """Classify a source URL/domain into state, wire, or independent."""
+    try:
+        from urllib.parse import urlparse
+
+        parsed = urlparse(source_url if source_url.startswith("http") else f"http://{source_url}")
+        domain = parsed.netloc.lower().replace("www.", "").split(":")[0]
+    except Exception:
+        domain = source_url.lower()[:60]
+
+    if domain in SOURCE_FAMILY:
+        return SOURCE_FAMILY[domain]
+
+    for suffix in _STATE_TLD_SUFFIXES:
+        if domain.endswith(suffix):
+            return "state"
+
+    return "independent"
+
+
 COUNTRY_ALIASES: list[tuple[str, str, str]] = [
     ("united states", "US", "United States"),
     ("estados unidos", "US", "United States"),
@@ -1471,6 +1548,7 @@ __all__ = [
     "get_all_categories",
     "get_concept",
     "search_concepts",
+    "classify_source",
     "match_country",
     "find_closest_concepts",
     "get_all_concepts",

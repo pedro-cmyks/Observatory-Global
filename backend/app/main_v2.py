@@ -36,6 +36,7 @@ except ImportError:
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from urllib.parse import urlparse
+from app.core.gdelt_taxonomy import classify_source
 
 def extract_domain(source_url: str) -> str:
     if not source_url:
@@ -1387,7 +1388,12 @@ async def get_theme_details(
                 ],
                 "relatedThemes": related_themes,
                 "topSources": [
-                    {"name": extract_domain(r['source_name']), "count": int(r['count']), "sentiment": float(r['avg_sentiment'] or 0)}
+                    {
+                        "name": extract_domain(r['source_name']),
+                        "count": int(r['count']),
+                        "sentiment": float(r['avg_sentiment'] or 0),
+                        "family": classify_source(r['source_name'] or ""),
+                    }
                     for r in top_sources
                 ],
                 "topPersons": top_persons,
