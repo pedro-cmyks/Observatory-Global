@@ -679,8 +679,70 @@ def get_theme_label(theme_code: str) -> str:
     """Get human-readable label for a GDELT theme code."""
     if theme_code in THEME_TAXONOMY:
         return THEME_TAXONOMY[theme_code]["label"]
-    # Fallback: Format unknown codes
-    return theme_code.replace("_", " ").title()
+
+    upper = theme_code.upper()
+    fallback_labels = {
+        "CRISISLEX_C07_SAFETY": "Public Safety",
+        "CRISISLEX_CRISISLEXREC": "Crisis Event",
+        "UNGP_FORESTS_RIVERS_OCEANS": "Environment",
+    }
+    if upper in fallback_labels:
+        return fallback_labels[upper]
+
+    if upper.startswith("WB_"):
+        return f"{_format_theme_words(re.sub(r'^WB_(?:\d+_)?', '', upper))} (World Bank)"
+    if upper.startswith("USPEC_POLICY_ECONOMIC"):
+        return "US Economic Policy"
+    if upper.startswith("USPEC_POLICY"):
+        return "US Policy"
+    if upper.startswith("USPEC_POLITICS"):
+        return "US Politics"
+    if upper.startswith("USPEC_"):
+        return f"US {_format_theme_words(re.sub(r'^USPEC_', '', upper))}"
+    if upper.startswith("EPU_"):
+        return f"Policy: {_format_theme_words(re.sub(r'^EPU_', '', upper))}"
+    if upper.startswith("CRISISLEX_"):
+        return f"Crisis: {_format_theme_words(re.sub(r'^CRISISLEX_(?:C\d+_)?', '', upper))}"
+    if upper.startswith("UNGP_"):
+        return f"UN: {_format_theme_words(re.sub(r'^UNGP_', '', upper))}"
+
+    prefix_rules = [
+        (r"^TAX_FNCACT_", ""),
+        (r"^TAX_ETHNICITY_", "Ethnicity: "),
+        (r"^TAX_WORLDLANGUAGES_", "Language: "),
+        (r"^WORLDLANGUAGES_", "Language: "),
+        (r"^TAX_", ""),
+        (r"^SOC_", ""),
+        (r"^GENERAL_", ""),
+        (r"^MEDIA_?", ""),
+        (r"^ENV_", ""),
+        (r"^ECON_", "Economic: "),
+        (r"^GOV_", "Government: "),
+        (r"^TECH_", "Technology: "),
+        (r"^ENERGY_", "Energy: "),
+    ]
+    for pattern, label_prefix in prefix_rules:
+        if re.match(pattern, upper):
+            return f"{label_prefix}{_format_theme_words(re.sub(pattern, '', upper))}"
+
+    return _format_theme_words(upper)
+
+
+def _format_theme_words(value: str) -> str:
+    """Format unknown GDELT taxonomy fragments without leaking raw prefixes."""
+    label = value.replace("_AND_", " & ").replace("_", " ")
+    label = re.sub(r"\b([A-Z]+)\d+\b", r"\1", label)
+    label = re.sub(r"\s+", " ", label).title().strip()
+    replacements = {
+        "Anti Corruption": "Anti-Corruption",
+        "Nondefense": "Non-Defense",
+        "Non Defense": "Non-Defense",
+        "Un": "UN",
+        "Us": "US",
+    }
+    for raw, formatted in replacements.items():
+        label = re.sub(rf"\b{raw}\b", formatted, label)
+    return label
 
 
 def get_theme_category(theme_code: str) -> str:

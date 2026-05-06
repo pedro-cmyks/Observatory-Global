@@ -194,34 +194,57 @@ export function getThemeLabel(code: string): string {
     if (themeLabels[upper]) return themeLabels[upper]
     if (themeLabels[code]) return themeLabels[code]
 
-    // Clean up common GDELT prefixes
-    return code
-        .replace(/^WB_\d+_/, '')
-        .replace(/^WB_/, '')
-        .replace(/^UNGP_/, 'UN: ')
-        .replace(/^TAX_FNCACT_/, '')
-        .replace(/^TAX_ETHNICITY_/, 'Ethnicity: ')
-        .replace(/^TAX_WORLDLANGUAGES_/, 'Language: ')
-        .replace(/^WORLDLANGUAGES_/, 'Language: ')
-        .replace(/^TAX_/, '')
-        .replace(/^EPU_/, 'Policy: ')
-        .replace(/^CRISISLEX_/, 'Crisis: ')
-        .replace(/^USPEC_/, '')
-        .replace(/^SOC_/, '')
-        .replace(/^GENERAL_/, '')
-        .replace(/^MEDIA_?/, '')
-        .replace(/^ENV_/, '')
-        .replace(/^ECON_/, 'Economic: ')
-        .replace(/^GOV_/, 'Government: ')
-        .replace(/^TECH_/, 'Technology: ')
-        .replace(/^ENERGY_/, 'Energy: ')
+    if (upper.startsWith('WB_')) {
+        return `${formatThemeWords(upper.replace(/^WB_(?:\d+_)?/, ''))} (World Bank)`
+    }
+
+    if (upper.startsWith('USPEC_POLICY_ECONOMIC')) return 'US Economic Policy'
+    if (upper.startsWith('USPEC_POLICY')) return 'US Policy'
+    if (upper.startsWith('USPEC_POLITICS')) return 'US Politics'
+    if (upper.startsWith('USPEC_')) return `US ${formatThemeWords(upper.replace(/^USPEC_/, ''))}`
+
+    if (upper.startsWith('EPU_')) return `Policy: ${formatThemeWords(upper.replace(/^EPU_/, ''))}`
+    if (upper.startsWith('CRISISLEX_')) {
+        return `Crisis: ${formatThemeWords(upper.replace(/^CRISISLEX_(?:C\d+_)?/, ''))}`
+    }
+    if (upper.startsWith('UNGP_')) return `UN: ${formatThemeWords(upper.replace(/^UNGP_/, ''))}`
+
+    const prefixRules: Array<[RegExp, string]> = [
+        [/^TAX_FNCACT_/, ''],
+        [/^TAX_ETHNICITY_/, 'Ethnicity: '],
+        [/^TAX_WORLDLANGUAGES_/, 'Language: '],
+        [/^WORLDLANGUAGES_/, 'Language: '],
+        [/^TAX_/, ''],
+        [/^SOC_/, ''],
+        [/^GENERAL_/, ''],
+        [/^MEDIA_?/, ''],
+        [/^ENV_/, ''],
+        [/^ECON_/, 'Economic: '],
+        [/^GOV_/, 'Government: '],
+        [/^TECH_/, 'Technology: '],
+        [/^ENERGY_/, 'Energy: '],
+    ]
+
+    for (const [pattern, labelPrefix] of prefixRules) {
+        if (pattern.test(upper)) return `${labelPrefix}${formatThemeWords(upper.replace(pattern, ''))}`
+    }
+
+    return formatThemeWords(upper)
+}
+
+function formatThemeWords(value: string): string {
+    return value
         .replace(/_AND_/g, ' & ')
         .replace(/_/g, ' ')
+        .replace(/\b([A-Z]+)\d+\b/g, '$1')
         .replace(/\s+/g, ' ')
         .toLowerCase()
         .replace(/\b\w/g, c => c.toUpperCase())
-        .replace('Un: ', 'UN: ')
-        .replace('Us: ', 'US: ')
+        .replace(/\bAnti Corruption\b/g, 'Anti-Corruption')
+        .replace(/\bNondefense\b/g, 'Non-Defense')
+        .replace(/\bNon Defense\b/g, 'Non-Defense')
+        .replace(/\bUn\b/g, 'UN')
+        .replace(/\bUs\b/g, 'US')
         .trim()
 }
 
