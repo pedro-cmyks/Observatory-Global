@@ -56,7 +56,7 @@
 }
 
 .narrative-label {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--color-text-primary, #f1f5f9);
     display: flex;
@@ -87,7 +87,24 @@
 .trend-arrow.stable { color: var(--color-text-secondary, #94a3b8); }
 .trend-arrow.fading { color: var(--color-text-muted, #64748b); }
 
-.narrative-label span:last-child {
+/* Prominent signal count */
+.narrative-count {
+    font-size: 15px;
+    font-weight: 700;
+    color: #e2e8f0;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    min-width: 32px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+/* Country suffix in thread label */
+.narrative-label-country {
+    color: #64748b;
+    font-weight: 400;
+}
+
+.narrative-label-text {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -198,15 +215,19 @@
     overflow: hidden;
 }
 
-.spread-fill {
+/* Gradient bar (replaces spread-fill color variants) */
+.narrative-grad-bar-track {
+    flex: 1;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.narrative-grad-bar-fill {
     height: 100%;
     border-radius: 2px;
     transition: width 0.5s ease;
 }
-
-.spread-fill.low { background: #22c55e; }
-.spread-fill.mid { background: #eab308; }
-.spread-fill.high { background: #ef4444; }
 
 .spread-label {
     font-size: 9px;

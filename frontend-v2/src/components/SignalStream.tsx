@@ -82,11 +82,18 @@ const getSentimentClass = (sentiment: number) => {
     return 'neutral'
 }
 
-// Format timestamp to HH:MM
-const formatTime = (ts: string) => {
-    const d = new Date(ts)
-    return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })
+// Format timestamp as relative age: 1s, 2m, 15m, 2h
+const formatRelativeAge = (ts: string): string => {
+    const sec = Math.max(0, Math.floor((Date.now() - new Date(ts).getTime()) / 1000))
+    if (sec < 60) return `${sec}s`
+    const min = Math.floor(sec / 60)
+    if (min < 60) return `${min}m`
+    return `${Math.floor(min / 60)}h`
 }
+
+const CRITICAL_THEMES = ['TAX_TERROR', 'ARMEDCONFLICT', 'CRISISLEX_C03_DEAD_WOUNDED', 'KILL', 'MILITARY']
+const ELEVATED_THEMES = ['SOC_PROTEST', 'EPU_POLICY', 'CRIME', 'ARREST', 'DISASTER']
+const MARITIME_KEYWORDS = /suezmax|vessel|maritime|shipping|tanker|LNG|MMSI|strait|harbor|harbour|crude oil|container ship/i
 
 // Filter out malformed GDELT document IDs and garbage headlines
 const isValidHeadline = (title: string | null): boolean => {
@@ -151,6 +158,8 @@ export const SignalStream: React.FC = () => {
     const [velocity, setVelocity] = useState<Velocity | null>(null)
     const [allowlist, setAllowlist] = useState<string[]>([])
     const [isHovered, setIsHovered] = useState(false)
+    const [streamFilter, setStreamFilter] = useState<'all' | 'critical' | 'elevated' | 'notable' | 'trend' | 'person' | 'maritime'>('all')
+    const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
     const listRef = useRef<HTMLDivElement>(null)
     const latestTimestampRef = useRef<string | null>(null)
     const { pinItem, unpinItem, isPinned } = useWorkspace()
@@ -294,6 +303,9 @@ export const SignalStream: React.FC = () => {
                 if (newItems.length > 0) {
                     newItems.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
                     latestTimestampRef.current = newItems[0].timestamp
+                    const justAdded = new Set(newItems.map(i => `${i.type}-${i.id}`))
+                    setNewItemIds(justAdded)
+                    setTimeout(() => setNewItemIds(new Set()), 700)
                     setItems(prev => {
                         const merged = [...newItems, ...prev]
                         // Unique by type + id
@@ -328,36 +340,73 @@ export const SignalStream: React.FC = () => {
         setPerson(person)
     }
 
+    const filteredItems = items.filter(item => {
+        if (streamFilter === 'all') return true
+        if (item.type === 'event') return streamFilter === 'notable'
+        const sig = item as Signal & { type: 'signal' }
+        if (streamFilter === 'person') return sig.persons?.length > 0
+        if (streamFilter === 'maritime') return MARITIME_KEYWORDS.test(sig.headline || '') || sig.themes.some(t => t.includes('MARITIME') || t.includes('VESSEL'))
+        if (streamFilter === 'trend') return sig.themes.some(t => HIGH_PRIORITY_THEMES.some(h => t.includes(h)))
+        if (streamFilter === 'critical') return sig.themes.some(t => CRITICAL_THEMES.some(c => t.includes(c)))
+        if (streamFilter === 'elevated') return sig.themes.some(t => ELEVATED_THEMES.some(e => t.includes(e)))
+        if (streamFilter === 'notable') return isValidHeadline(sig.headline) && !sig.themes.some(t => CRITICAL_THEMES.some(c => t.includes(c)))
+        return true
+    })
+
     return (
         <div className="signal-stream-container">
-            {/* Velocity Header */}
-            {velocity && (
-                <div className="velocity-banner">
-                    <span className="velocity-label">VELOCITY: </span>
-                    <span className="velocity-value">
-                        {velocity.signals_per_minute === 0 && items.length > 0 
-                            ? `~${items.length} items in view` 
-                            : `${velocity.signals_per_minute} ${velocity.signals_per_minute === '--' ? '' : 'sig/min'}`}
+            {/* Stream Header: live status + filter tabs */}
+            <div className="stream-header">
+                <div className="stream-status-bar">
+                    <span className={`stream-live-dot${isHovered ? ' paused' : ''}`} />
+                    <span className="stream-status-text">
+                        {isHovered ? 'paused · last 15 min' : '● LIVE'}
                     </span>
-                    {velocity.delta !== '--' && velocity.signals_per_minute !== 0 && (
-                        <span className={`velocity-delta ${Number(velocity.delta) >= 0 ? 'up' : 'down'}`}>
-                            {Number(velocity.delta) >= 0 ? '▲' : '▼'} {Number(velocity.percentage_change) >= 0 ? '+' : ''}{Number(velocity.percentage_change).toFixed(1)}%
+                    {velocity && velocity.signals_per_minute !== '--' && !isHovered && (
+                        <span className="stream-velocity">
+                            {velocity.signals_per_minute} sig/min
+                            {velocity.delta !== '--' && Number(velocity.delta) !== 0 && (
+                                <span className={`stream-vel-delta ${Number(velocity.delta) >= 0 ? 'up' : 'down'}`}>
+                                    {Number(velocity.delta) >= 0 ? ' ▲' : ' ▼'}{Math.abs(Number(velocity.percentage_change)).toFixed(0)}%
+                                </span>
+                            )}
                         </span>
                     )}
                 </div>
-            )}
+                <div className="stream-filter-bar">
+                    {(['all', 'critical', 'elevated', 'notable'] as const).map(f => (
+                        <button
+                            key={f}
+                            className={`stream-filter-tab${streamFilter === f ? ' active' : ''}`}
+                            onClick={() => setStreamFilter(f)}
+                        >
+                            {f.toUpperCase()}
+                        </button>
+                    ))}
+                    <span className="stream-filter-sep" />
+                    {(['trend', 'person', 'maritime'] as const).map(f => (
+                        <button
+                            key={f}
+                            className={`stream-filter-tab${streamFilter === f ? ' active' : ''}`}
+                            onClick={() => setStreamFilter(f)}
+                        >
+                            {f.toUpperCase()}
+                        </button>
+                    ))}
+                </div>
+            </div>
 
             {/* Stream List */}
-            <div 
-                className="signal-list" 
+            <div
+                className="signal-list"
                 ref={listRef}
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
             >
-                {items.length === 0 ? (
+                {filteredItems.length === 0 ? (
                     <div className="empty-state">No signals or events found</div>
                 ) : (
-                    items
+                    filteredItems
                         .filter(item => {
                             if (item.type === 'event') {
                                 // Only show events with at least one meaningful actor
@@ -373,6 +422,8 @@ export const SignalStream: React.FC = () => {
                             return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
                         })
                         .map(item => {
+                            const itemKey = `${item.type}-${item.id}`
+                            const isNew = newItemIds.has(itemKey)
                             if (item.type === 'event') {
                                 const evt = item as GeopoliticalEvent
                                 const isBad = evt.action.quad_class >= 3
@@ -380,9 +431,9 @@ export const SignalStream: React.FC = () => {
                                 const actor2 = isUsefulActor(evt.actor2?.name ?? null) ? cleanActorName(evt.actor2!.name, evt.actor2!.country_code) : null
                                 const loc = evt.location.country_code || ''
                                 return (
-                                    <div key={`evt-${evt.id}`} className="signal-row event-row-compact">
+                                    <div key={`evt-${evt.id}`} className={`signal-row event-row-compact${isNew ? ' new-entry' : ''}`}>
                                         <div className="signal-meta">
-                                            <span className="time">{formatTime(evt.timestamp)}</span>
+                                            <span className="time">{formatRelativeAge(evt.timestamp)}</span>
                                             <span className="country-chip">{loc || 'GLO'}</span>
                                             <span className={`sentiment-indicator ${isBad ? 'negative' : 'positive'}`} />
                                         </div>
@@ -414,7 +465,7 @@ export const SignalStream: React.FC = () => {
                             
                             if (!isValid) {
                                 return (
-                                    <div key={`sig-${sig.id}`} className={`signal-row compact-mode`}>
+                                    <div key={`sig-${sig.id}`} className={`signal-row compact-mode${isNew ? ' new-entry' : ''}`}>
                                         <div className="signal-main" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                             <span
                                                 className="country-chip clickable"
@@ -441,9 +492,9 @@ export const SignalStream: React.FC = () => {
                             }
                             
                             return (
-                                <div key={sig.id} className={`signal-row priority-${getSignalPriority(sig)}`}>
+                                <div key={sig.id} className={`signal-row priority-${getSignalPriority(sig)}${isNew ? ' new-entry' : ''}`}>
                                     <div className="signal-meta">
-                                        <span className="time">{formatTime(sig.timestamp)}</span>
+                                        <span className="time">{formatRelativeAge(sig.timestamp)}</span>
                                         <span 
                                             className="country-chip clickable" 
                                             onClick={(e) => handleCountryClick(e, sig.country || '')}

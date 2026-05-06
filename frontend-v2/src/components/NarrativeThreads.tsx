@@ -3,7 +3,16 @@ import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { timeRangeToHours } from '../lib/timeRanges'
 import { getThemeLabel } from '../lib/themeLabels'
+import { resolveCountryName } from '../lib/countryNames'
 import './NarrativeThreads.css'
+
+const THREAD_COLORS = [
+    { gradient: 'linear-gradient(90deg, #f97316, #fbbf24)', accent: '#f97316' },
+    { gradient: 'linear-gradient(90deg, #6366f1, #818cf8)', accent: '#6366f1' },
+    { gradient: 'linear-gradient(90deg, #14b8a6, #22d3ee)', accent: '#14b8a6' },
+    { gradient: 'linear-gradient(90deg, #8b5cf6, #a78bfa)', accent: '#8b5cf6' },
+    { gradient: 'linear-gradient(90deg, #22c55e, #84cc16)', accent: '#22c55e' },
+]
 
 interface TimelinePoint {
     hour: string
@@ -173,33 +182,37 @@ export const NarrativeThreads: React.FC = () => {
                 const dimByCountry = !!filter.country && !n.top_countries.includes(filter.country)
                 const isDimmed = dimByTheme || dimByCountry
                 const trendArrow = n.trend === 'accelerating' ? '▲' : n.trend === 'fading' ? '▼' : '→'
-                const spreadClass = n.spread_pct < 30 ? 'low' : n.spread_pct < 60 ? 'mid' : 'high'
                 // Plain-language hover hint — falls back to label when no description is available.
                 // Using native title attribute so it works without any new component plumbing.
                 const rowHint = `${getThemeLabel(n.theme_code)} — ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries. Click to open the topic breakdown.`
 
+                const colorIdx = displayedNarratives.indexOf(n) % THREAD_COLORS.length
+                const threadColor = THREAD_COLORS[colorIdx]
                 return (
                     <div
                         key={n.theme_code}
                         className={`narrative-row ${isFocused ? 'focused' : ''} ${isDimmed ? 'dimmed' : ''}`}
                         data-tip={rowHint}
                         onClick={() => handleClick(n)}
+                        style={{ borderLeftColor: threadColor.accent }}
                     >
                         {/* Row 1: Label + stats */}
                         <div className="narrative-header">
                             <div className="narrative-label">
                                 <span className={`sentiment-dot ${n.avg_sentiment > 0.1 ? 'pos' : n.avg_sentiment < -0.1 ? 'neg' : 'neu'}`} data-tip={`Avg sentiment: ${n.avg_sentiment > 0.1 ? 'positive (supportive framing)' : n.avg_sentiment < -0.1 ? 'negative (critical or conflict framing)' : 'neutral'}`} />
                                 <span className={`trend-arrow ${n.trend}`}>{trendArrow}</span>
-                                <span>{getThemeLabel(n.theme_code)}</span>
+                                <span className="narrative-label-text">
+                                    {getThemeLabel(n.theme_code)}
+                                    {n.top_countries.length > 0 && (
+                                        <span className="narrative-label-country">
+                                            {' · '}{resolveCountryName(n.top_countries[0])}
+                                        </span>
+                                    )}
+                                </span>
                             </div>
-                            <div className="narrative-stats">
-                                <span data-tip={filter.country ? `${n.signal_count.toLocaleString()} signals worldwide for this topic (not filtered to ${filter.country})` : 'Total media signals mentioning this topic in the selected time window'}>{n.signal_count.toLocaleString()} sig</span>
-                                {' · '}
-                                {filter.country
-                                    ? <span className="narrative-stat-global" data-tip="Stats are global — this thread includes coverage from the selected country">global</span>
-                                    : <span data-tip="Number of distinct countries where this topic is being covered">{n.country_count} ctry</span>
-                                }
-                            </div>
+                            <span className="narrative-count" data-tip={`${n.signal_count.toLocaleString()} media signals in the selected window`}>
+                                {n.signal_count > 999 ? `${(n.signal_count / 1000).toFixed(1)}k` : n.signal_count}
+                            </span>
                         </div>
 
                         {/* Row 2: Countries, Persons, attention badges + age */}
@@ -227,10 +240,13 @@ export const NarrativeThreads: React.FC = () => {
 
                         {/* Row 3: Spread bar + trend */}
                         <div className="spread-row">
-                            <div className="spread-track" data-tip="Geographic spread: how widely this topic is covered across countries. 100% = present in every country we track">
+                            <div className="narrative-grad-bar-track" data-tip="Geographic spread: how widely this topic is covered across countries. 100% = present in every country we track">
                                 <div
-                                    className={`spread-fill ${spreadClass}`}
-                                    style={{ width: `${Math.min(n.spread_pct, 100)}%` }}
+                                    className="narrative-grad-bar-fill"
+                                    style={{
+                                        width: `${Math.min(n.spread_pct, 100)}%`,
+                                        background: threadColor.gradient,
+                                    }}
                                 />
                             </div>
                             <span className="spread-label" data-tip="Geographic spread: % of tracked countries covering this topic">{n.spread_pct}%</span>

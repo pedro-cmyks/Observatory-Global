@@ -7,32 +7,102 @@
     color: var(--color-text-primary, #e2e8f0);
 }
 
-.velocity-banner {
-    padding: 6px 12px;
-    background: rgba(0, 0, 0, 0.3);
+/* ── Stream header: status + filter tabs ── */
+.stream-header {
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    font-size: 11px;
-    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+
+.stream-status-bar {
+    padding: 5px 12px;
     display: flex;
     align-items: center;
     gap: 8px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
 }
 
-.velocity-label {
-    color: var(--color-text-muted, #64748b);
+.stream-live-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 6px #4ade80;
+    flex-shrink: 0;
+    animation: live-pulse 2s ease-in-out infinite;
+}
+.stream-live-dot.paused {
+    background: #64748b;
+    box-shadow: none;
+    animation: none;
 }
 
-.velocity-value {
-    color: var(--color-text-primary, #e2e8f0);
-    font-weight: bold;
+@keyframes live-pulse {
+    0%, 100% { opacity: 0.6; transform: scale(0.9); }
+    50% { opacity: 1; transform: scale(1.1); }
 }
 
-.velocity-delta {
-    font-weight: bold;
+.stream-status-text {
+    color: #4ade80;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+.stream-live-dot.paused + .stream-status-text {
+    color: #64748b;
 }
 
-.velocity-delta.up { color: #f87171; } /* Red is spiking */
-.velocity-delta.down { color: #38bdf8; } /* Blue is quiet/down */
+.stream-velocity {
+    margin-left: auto;
+    color: #64748b;
+}
+
+.stream-vel-delta.up { color: #f87171; }
+.stream-vel-delta.down { color: #38bdf8; }
+
+.stream-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.stream-filter-tab {
+    background: none;
+    border: none;
+    color: #475569;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    padding: 3px 7px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+}
+.stream-filter-tab:hover {
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.04);
+}
+.stream-filter-tab.active {
+    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.stream-filter-sep {
+    width: 1px;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 0 4px;
+}
+
+/* ── Signal entry animation ── */
+@keyframes signal-enter {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.signal-row.new-entry {
+    animation: signal-enter 0.35s ease forwards;
+}
 
 .signal-list {
     flex: 1;
@@ -90,11 +160,12 @@
 
 .country-chip {
     font-size: 10px;
-    font-weight: bold;
-    padding: 2px 4px;
+    font-weight: 700;
+    padding: 2px 5px;
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 2px;
-    color: var(--color-text-primary, #cbd5e1);
+    border-radius: 3px;
+    color: #cbd5e1;
+    letter-spacing: 0.04em;
 }
 
 .sentiment-indicator {

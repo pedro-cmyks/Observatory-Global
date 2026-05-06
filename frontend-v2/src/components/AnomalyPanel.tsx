@@ -63,6 +63,7 @@ export const AnomalyPanel: React.FC = () => {
                 {/* ── Left: Geo alerts ── */}
                 <div className="anomaly-col">
                     <div className="col-label">GEO ALERTS</div>
+                    <div className="ap-confidence-label">model confidence &gt; 0.8</div>
                     <div className="col-scroll">
                         {loading && anomalies.length === 0 ? (
                             <div className="ap-empty">Scanning…</div>
@@ -81,13 +82,16 @@ export const AnomalyPanel: React.FC = () => {
                                 ))}
                             </>
                         ) : (
-                            anomalies.map(a => (
+                            anomalies.map((a, idx) => (
                                 <div key={a.country_code}
                                     className={`ap-row ap-row--${a.level} clickable${a.country_code === activeCountry ? ' ap-row--selected' : ''}`}
                                     onClick={() => handleAnomalyClick(a.country_code)}>
-                                    <span className="ap-badge">{a.level.slice(0, 4).toUpperCase()}</span>
+                                    <span className="ap-anom-id">A-{String(idx + 1).padStart(3, '0')}</span>
                                     <span className="ap-country">{resolveCountryName(a.country_code, a.country_name)}</span>
                                     <span className="ap-mult">{a.multiplier.toFixed(1)}×</span>
+                                    <button className="ap-brief-btn" onClick={e => { e.stopPropagation(); handleAnomalyClick(a.country_code) }}>
+                                        BRIEF
+                                    </button>
                                 </div>
                             ))
                         )}
