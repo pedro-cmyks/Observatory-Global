@@ -1,9 +1,9 @@
 # Observatorio Global — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-06 (session 7)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-06 (session 8)
 
 ---
 
-## What we built (sessions 1–7)
+## What we built (sessions 1–8)
 
 ### Core infrastructure (sessions 1–3)
 - PostgreSQL schema: `signals_v2`, `events_v2`, aggregation materialized views
@@ -19,7 +19,7 @@
 - **CountryBrief** — country snapshot: top themes, key people, sentiment, signal count
 - **EntityPanel** — person-focus view: coverage by country, related themes
 - **Comparative engine** — PersonCompare / ThemeCompare side-by-side charts
-- **AnomalyPanel** — spike detection vs 7-day baseline
+- **AnomalyPanel** — spike detection vs 7-day baseline + Wikipedia public attention
 - **SourceIntegrityPanel** — source diversity score per context
 - **CorrelationMatrix** — country/narrative overlap heatmap
 
@@ -29,59 +29,52 @@
 - `workspaceGraph.ts` — two-pass graph builder (pinned nodes always succeed; edges per-item try/catch)
 - Three-layer error boundary: `RootErrorBoundary` → `PanelErrorBoundary` → `MapErrorBoundary`
 
-### UX + quality fixes (sessions 5–7)
+### UX + quality fixes (sessions 5–8)
 - Theme label formatter: all raw GDELT codes → human-readable names via `getThemeLabel()`
 - Country key people: `CountryBrief` shows clickable person chips from `keyPersons`
 - Signal Stream restored as blank state (eliminates duplicate content with NarrativeThreads)
 - Graceful drift fallback: API failure → "No drift data" instead of red error
 - Workspace node spread: D3 charge=-320, link distance=110, edge labels at zoom > 1.2
+- Onboarding coachmark: 3-step overlay on first visit (localStorage-gated)
+- Pin discoverability: workspace tab pulses when empty, empty state shows inline Pin icon
 
 ---
 
-## Changes this session (session 7)
+## Changes this session (session 8)
 
 | Commit | What it does |
 |--------|-------------|
-| `19cdf0d` | Config sync: AGENTS.md, CLAUDE.md, GEMINI.md + .codex/ agents |
-| `3113cb9` | **#42 fixed**: restore SignalStream as blank state (eliminates duplicate content with NarrativeThreads) |
-| `7217909` | Drift error → graceful empty state; workspace node spread + edge labels on canvas |
+| `39b3ad4` | **#71 fixed**: SQL array_agg LIMIT → [1:5] slice in concept endpoint |
+| `76eb21f` | **#54 fixed**: replace broken TRENDING with Wikipedia PUBLIC ATTENTION |
+| `0b32799` | **#50 fixed**: workspace tab pulse + inline Pin icon in empty state |
+| `d082ba0` | **#65 added**: first-load onboarding coachmark (3 steps) |
+| Fly deploy | Activated ingest_v2 ON CONFLICT fix — backend now at 1.66M+ signals |
 
-**Issues closed this session:** #42, #58, #64, #67
-**New issue opened:** #71 (SQL LIMIT bug in `/api/v2/concept/{slug}`)
-
----
-
-## Pending deploy
-
-`ingest_v2.py` ON CONFLICT fix is committed but **not yet on Fly.io**.
-Run `fly deploy` from the repo root to activate it. Migration 007 (unique index on `source_url`) is already in the DB.
+**Issues closed this session:** #50, #54, #65, #71
+**No new issues opened.**
 
 ---
 
-## Open issues (13 open)
+## Deploy status
 
-### Bugs — fix first
-| # | Title | Where |
-|---|-------|-------|
-| **#54** | Anomaly Alert "Trending" section shows "No data yet" permanently | backend/frontend |
-| **#71** | SQL syntax error near LIMIT in `/api/v2/concept/{slug}` | backend |
+Fly.io is **current** — deployed this session. Health: `status: healthy`, `db_ok: true`, `rows_ingested_last_15m: 3853`.
 
-### UX — visible to users
-| # | Title | Effort |
-|---|-------|--------|
-| **#50** | Pin mechanism not discoverable — workspace empty state lacks guidance | small |
-| **#65** | First-load coachmark — 3-step mental model handoff | medium |
+The SQL fix for #71 (`array_agg` slice) needs a second `fly deploy` to take effect on the backend. Run it before testing the concept endpoint.
 
-### Features — new capabilities
-| # | Title | Effort |
-|---|-------|--------|
-| **#66** | Export findings as Markdown or CSV | medium |
-| **#69** | Spanish-language search routing + multilingual query expansion | medium |
-| **#68** | Source-family classification (state / independent / wire service) | medium |
-| **#51** | Tolerant search (fuzzy, token reordering, aliases) | large |
-| **#61** | Temporal and entity comparative engine UI | large |
-| **#63** | Ephemeral session trail graph | medium |
-| **#70** | Theme clustering / GDELT hierarchy research | research |
+---
+
+## Open issues (9 open)
+
+### Features — next build targets
+| # | Title | Effort | Notes |
+|---|-------|--------|-------|
+| **#69** | Spanish-language search routing + multilingual query expansion | medium | backend + frontend |
+| **#68** | Source-family classification (state / independent / wire service) | medium | backend + frontend |
+| **#66** | Export findings as Markdown or CSV | medium | frontend |
+| **#51** | Tolerant search (fuzzy, token reordering, aliases) | large | backend + frontend |
+| **#61** | Temporal and entity comparative engine UI | large | frontend |
+| **#63** | Ephemeral session trail graph | medium | frontend |
+| **#70** | Theme clustering / GDELT hierarchy research | research | backend |
 
 ### Tech debt
 | # | Title |
@@ -93,11 +86,11 @@ Run `fly deploy` from the repo root to activate it. Migration 007 (unique index 
 
 ## Recommended next order
 
-1. `fly deploy` — activate the ON CONFLICT fix (5 min, no code change)
-2. **#54** — Trending data empty (backend bug, high user impact)
-3. **#71** — SQL LIMIT error in concept endpoint (backend bug)
-4. **#50** — Pin discoverability (small UX fix)
-5. **#65** — Onboarding coachmark (medium UX)
+1. `fly deploy` — push the array_agg fix for concept endpoint to production
+2. **#69** — Spanish-language search (backend `match_region` + frontend routing)
+3. **#68** — Source-family classification (state / independent / wire service)
+4. **#66** — Export button (frontend-only, MD + CSV)
+5. **#62** — ESLint debt (housekeeping, unblocks CI)
 
 ---
 
@@ -108,10 +101,10 @@ Vercel (frontend)          Fly.io (backend)         Supabase (DB)
 ─────────────────          ────────────────          ────────────
 frontend-v2/               backend/app/              signals_v2
   App.tsx                    main_v2.py              events_v2
-  36 .tsx components         30+ API endpoints       aggregates_*
-  MapLibre GL                GDELT ingest pipeline   trends_archive
-  DeckGL v9                  Fly machine: iad
-  react-force-graph-2d
+  38 .tsx components         30+ API endpoints       aggregates_*
+  MapLibre GL                GDELT ingest: 15min     wiki_pageviews_v2
+  DeckGL v9                  Wiki ingest: 24h        trends_v2 (empty)
+  react-force-graph-2d       Fly machine: iad
 ```
 
 ### Critical rules (don't break these)
@@ -121,6 +114,7 @@ frontend-v2/               backend/app/              signals_v2
 - **Build**: always `npm run build` (not `tsc --noEmit`) before pushing
 - **Workspace lazy load**: `InteractiveWorkspace` is lazy-loaded via `React.lazy()` in `InvestigationWorkspace` — do NOT import it directly
 - **Graph library**: `react-force-graph-2d` only — never `react-force-graph` (3D version pulls AFRAME, crashes the app)
+- **Onboarding key**: `atlas_onboarding_v1` in localStorage — increment suffix if you need to re-show it to existing users
 
 ---
 
@@ -128,11 +122,12 @@ frontend-v2/               backend/app/              signals_v2
 
 | Area | How to check |
 |------|-------------|
-| Signal Stream | Open `/app` → left panel shows live GDELT articles with timestamps |
-| Narrative Threads | Right panel always visible — 5 topics with sparklines, spread bars, trend arrows |
+| Onboarding | Delete `atlas_onboarding_v1` from localStorage → reload `/app` → 3-step overlay appears |
+| Signal Stream | Left panel shows live GDELT articles with timestamps |
+| Narrative Threads | Right panel — 5 topics with sparklines, spread bars, trend arrows |
 | Theme detail | Click any theme → stats + country cards + drift chart (or "No drift data for this period") |
 | Country brief | Click any country → top themes + clickable person chips |
-| Workspace board | Pin 3+ items → click folder icon (bottom-left tab) → nodes spread across canvas; zoom in to see edge labels |
-| Anomaly panel | Bottom panel → "Spikes" tab should show data; "Trending" tab is broken (#54) |
+| Workspace board | Pin 3+ items → folder tab pulses green when empty → click it → nodes spread, edge labels at zoom-in |
+| Public Attention | Bottom-right of Anomaly panel → shows top Wikipedia articles by pageview |
+| Concept endpoint | `/api/v2/concept/public-health?hours=48` → returns countries JSON (needs fly deploy for array fix) |
 | Search | Top bar → try "climate", "ukraine", "tariffs", "Gaza" |
-| Concept endpoint | `/api/v2/concept/public-health?hours=48` → should work; `/api/v2/concept/blood-diamonds` → currently errors (#71) |
