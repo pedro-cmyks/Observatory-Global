@@ -3526,32 +3526,48 @@ async def get_concept_narratives(
         async with app.state.pool.acquire() as conn:
             await conn.execute("SET statement_timeout = 15000")
 
-            # Per-country breakdown: signal count, avg tone, top themes within concept bundle
+            # Per-country breakdown. Keep the filtered signal set in one CTE so Postgres does
+            # not rescan the 168h window for every country when calculating dominant themes.
             rows = await conn.fetch("""
+                WITH filtered AS (
+                    SELECT country_code, source_name, sentiment, themes
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - ($2 || ' hours')::INTERVAL
+                      AND themes IS NOT NULL
+                      AND themes && $1::text[]
+                ),
+                country_stats AS (
+                    SELECT
+                        country_code,
+                        COUNT(*) AS signal_count,
+                        AVG(sentiment) AS avg_sentiment,
+                        (array_agg(DISTINCT source_name ORDER BY source_name))[1:5] AS top_sources
+                    FROM filtered
+                    GROUP BY country_code
+                ),
+                theme_counts AS (
+                    SELECT f.country_code, t.theme, COUNT(*) AS theme_count
+                    FROM filtered f
+                    CROSS JOIN LATERAL unnest(f.themes) AS t(theme)
+                    WHERE t.theme = ANY($1::text[])
+                    GROUP BY f.country_code, t.theme
+                ),
+                dominant AS (
+                    SELECT DISTINCT ON (country_code)
+                        country_code,
+                        theme AS dominant_theme
+                    FROM theme_counts
+                    ORDER BY country_code, theme_count DESC
+                )
                 SELECT
-                    country_code,
-                    COUNT(*)                          AS signal_count,
-                    AVG(sentiment)                    AS avg_sentiment,
-                    (array_agg(DISTINCT source_name ORDER BY source_name))[1:5] AS top_sources,
-                    (
-                        SELECT t.theme
-                        FROM signals_v2 s2
-                        CROSS JOIN LATERAL unnest(s2.themes) AS t(theme)
-                        WHERE s2.timestamp > NOW() - ($2 || ' hours')::INTERVAL
-                          AND s2.country_code = signals_v2.country_code
-                          AND s2.themes IS NOT NULL
-                          AND s2.themes && $1::text[]
-                          AND t.theme = ANY($1::text[])
-                        GROUP BY t.theme
-                        ORDER BY COUNT(*) DESC
-                        LIMIT 1
-                    ) AS dominant_theme
-                FROM signals_v2
-                WHERE timestamp > NOW() - ($2 || ' hours')::INTERVAL
-                  AND themes IS NOT NULL
-                  AND themes && $1::text[]
-                GROUP BY country_code
-                ORDER BY signal_count DESC
+                    cs.country_code,
+                    cs.signal_count,
+                    cs.avg_sentiment,
+                    cs.top_sources,
+                    d.dominant_theme
+                FROM country_stats cs
+                LEFT JOIN dominant d USING (country_code)
+                ORDER BY cs.signal_count DESC
                 LIMIT 50
             """, themes, str(hours))
 
