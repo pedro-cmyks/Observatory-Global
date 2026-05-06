@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getThemeLabel } from '../lib/themeLabels'
+import { useWorkspace } from '../contexts/WorkspaceContext'
+import { Pin, PinOff } from 'lucide-react'
 import './SourceProfile.css'
 
 interface SourceProfileData {
@@ -35,25 +37,54 @@ function formatCount(n: number): string {
 
 export function SourceProfile({ domain, hours, onClose, onThemeSelect, onCountrySelect }: SourceProfileProps) {
     const [data, setData] = useState<SourceProfileData | null>(null)
-    const [loading, setLoading] = useState(true)
+    const [loadedKey, setLoadedKey] = useState('')
     const [error, setError] = useState<string | null>(null)
+    const { pinItem, unpinItem, isPinned } = useWorkspace()
+    const pinnedId = `source-${domain}`
+    const pinned = isPinned(pinnedId)
+    const requestKey = `${domain}:${hours}`
 
     useEffect(() => {
-        setLoading(true)
-        setError(null)
+        let cancelled = false
         const params = new URLSearchParams({ hours: String(hours) })
         fetch(`/api/v2/source/${encodeURIComponent(domain)}/profile?${params}`)
             .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
             .then(json => {
                 if (json.error) throw new Error(json.error)
+                if (cancelled) return
                 setData(json)
+                setError(null)
             })
-            .catch(e => setError(e.message))
-            .finally(() => setLoading(false))
-    }, [domain, hours])
+            .catch(e => {
+                if (!cancelled) setError(e.message)
+            })
+            .finally(() => {
+                if (!cancelled) setLoadedKey(requestKey)
+            })
+
+        return () => {
+            cancelled = true
+        }
+    }, [domain, hours, requestKey])
 
     const maxThemeCount = data?.top_themes.reduce((max, t) => Math.max(max, t.count), 0) || 1
     const maxCountryCount = data?.top_countries.reduce((max, c) => Math.max(max, c.count), 0) || 1
+    const loading = loadedKey !== requestKey
+    const handlePin = () => {
+        if (pinned) {
+            unpinItem(pinnedId)
+            return
+        }
+
+        const params = new URLSearchParams()
+        params.set('source', domain)
+        pinItem({
+            id: pinnedId,
+            type: 'source',
+            title: domain,
+            urlParams: `?${params.toString()}`,
+        })
+    }
 
     return (
         <div className="source-profile">
@@ -61,6 +92,15 @@ export function SourceProfile({ domain, hours, onClose, onThemeSelect, onCountry
                 <div className="source-profile-title">
                     <h2>{domain}</h2>
                 </div>
+                <button
+                    type="button"
+                    className={`source-profile-pin ${pinned ? 'pinned' : ''}`}
+                    onClick={handlePin}
+                    data-tip={pinned ? 'Unpin Source from Workspace' : 'Pin Source to Workspace'}
+                    aria-label={pinned ? 'Unpin Source from Workspace' : 'Pin Source to Workspace'}
+                >
+                    {pinned ? <PinOff size={13} /> : <Pin size={13} />}
+                </button>
                 <button className="source-profile-close" onClick={onClose}>×</button>
             </div>
 
@@ -78,7 +118,7 @@ export function SourceProfile({ domain, hours, onClose, onThemeSelect, onCountry
                 </div>
             )}
 
-            {!loading && data && (
+            {!loading && !error && data && (
                 <>
                     <div className="source-profile-section">
                         <h3>Source Footprint</h3>
@@ -111,7 +151,7 @@ export function SourceProfile({ domain, hours, onClose, onThemeSelect, onCountry
                                         style={{ cursor: onThemeSelect ? 'pointer' : 'default' }}
                                         onClick={() => onThemeSelect?.(t.theme)}
                                     >
-                                        <span className="source-theme-name" title={getThemeLabel(t.theme)}>{getThemeLabel(t.theme)}</span>
+                                        <span className="source-theme-name" data-tip={getThemeLabel(t.theme)}>{getThemeLabel(t.theme)}</span>
                                         <div className="source-bar-wrap">
                                             <div 
                                                 className="source-bar" 

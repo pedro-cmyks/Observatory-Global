@@ -1260,7 +1260,37 @@ function AppContent() {
 
       <InvestigationWorkspace 
         onNavigate={(params) => {
-           window.location.search = params;
+          const next = new URLSearchParams(params.replace(/^\?/, ''))
+          const source = next.get('source')
+          const theme = next.get('theme')
+          const country = next.get('country')
+          const person = next.get('person')
+
+          if (source) {
+            setSelectedSourceProfile(source)
+            return
+          }
+          if (theme && country) {
+            handleThemeSelect(theme, country, country)
+            setMapFlyCountry(country)
+            return
+          }
+          if (theme) {
+            handleThemeSelect(theme)
+            return
+          }
+          if (country) {
+            handleCountryClick(country)
+            setMapFlyCountry(country)
+            return
+          }
+          if (person) {
+            setFocus('person', person, person)
+            setMapFlyCountry(null)
+            return
+          }
+
+          window.location.search = params;
         }}
       />
 
@@ -1283,7 +1313,7 @@ function AppContent() {
           hours={timeRangeToHours(timeRange)}
           onClose={() => setCompareTheme(null)}
           onThemeSelect={(theme) => { setCompareTheme(null); handleThemeSelect(theme); }}
-          onCountryCardClick={(code, _name) => { setCompareTheme(null); handleCountryClick(code); setMapFlyCountry(code); }}
+          onCountryCardClick={(code) => { setCompareTheme(null); handleCountryClick(code); setMapFlyCountry(code); }}
           onPersonClick={(name) => { setCompareTheme(null); setFocus('person', name, name); setMapFlyCountry(null); }}
           onSourceClick={(source) => setSelectedSourceProfile(source)}
         />
