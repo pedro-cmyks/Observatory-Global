@@ -24,7 +24,7 @@
     "maplibre-gl": "^5.13.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-force-graph": "^1.48.2",
+    "react-force-graph-2d": "^1.29.1",
     "react-grid-layout": "^2.2.3",
     "react-map-gl": "^8.1.0",
     "react-router-dom": "^7.14.2",
