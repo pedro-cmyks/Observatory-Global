@@ -112,7 +112,7 @@ export const SourceIntegrityPanel: React.FC = () => {
                 </div>
 
                 <div className="distribution-section">
-                    <div className="section-title">MOST ACTIVE SOURCES</div>
+                    <div className="section-title" data-tip="Which outlets drive the most signal volume — high share = concentration risk">CONCENTRATION LEADERS</div>
                     <div className="bar-chart">
                         {topSources.length === 0 ? (
                             <div className="empty-state">No source data available</div>
@@ -121,7 +121,7 @@ export const SourceIntegrityPanel: React.FC = () => {
                                 const pct = (s.count / totalSignals) * 100
                                 return (
                                     <div key={idx} className="bar-row">
-                                        <div className="source-name" title={s.name || 'Unknown'}>
+                                        <div className="source-name" data-tip={s.name || 'Unknown'}>
                                             {(s.name || 'Unknown').length > 30 ? (s.name || '').substring(0, 30) + '...' : (s.name || 'Unknown')}
                                         </div>
                                         <div className="bar-track">

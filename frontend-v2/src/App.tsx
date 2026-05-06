@@ -1002,7 +1002,7 @@ function AppContent() {
         {/* Panel 2: SIGNAL STREAM — the intel hub, swaps based on active context */}
         {(() => {
           const isPerson = focus.type === 'person' && !!focus.value
-          const isCountry = !!selectedCountry && !isPerson
+          const isCountry = !!selectedCountryCode && !isPerson
           const isTheme = !!selectedTheme && !isPerson && !isCountry
           const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme
           const closeAll = () => { setSelectedTheme(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null) }
@@ -1048,7 +1048,7 @@ function AppContent() {
           </>
           if (isCountry) panelTitle = <>
             <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>{backLabel}</button>
-            <span style={{ color: '#94a3b8' }}>{selectedCountry!.name || selectedCountry!.countryCode}</span>
+            <span style={{ color: '#94a3b8' }}>{selectedCountry?.name || selectedCountryCode}</span>
           </>
           if (isPerson) panelTitle = <>
             <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
@@ -1074,11 +1074,11 @@ function AppContent() {
                   />
                 ) : isCountry ? (
                   <CountryBrief inline
-                    countryCode={selectedCountry!.countryCode}
-                    countryName={selectedCountry!.name || selectedCountry!.countryCode}
+                    countryCode={selectedCountryCode!}
+                    countryName={selectedCountry?.name || selectedCountryCode!}
                     timeWindow={timeRangeToHours(timeRange)}
                     onClose={handleStreamBack}
-                    onThemeSelect={(theme) => { handleThemeSelect(theme, selectedCountry!.countryCode, selectedCountry!.name || selectedCountry!.countryCode); setMapFlyCountry(selectedCountry!.countryCode) }}
+                    onThemeSelect={(theme) => { handleThemeSelect(theme, selectedCountryCode!, selectedCountry?.name || selectedCountryCode!); setMapFlyCountry(selectedCountryCode!) }}
                   />
                 ) : isTheme ? (
                   <ThemeDetail

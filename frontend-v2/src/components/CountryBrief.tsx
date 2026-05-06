@@ -351,7 +351,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 
             {/* Top Sources */}
             <section className="brief-section">
-                <h3>Top Sources</h3>
+                <h3>Top Publishers <span style={{ fontWeight: 400, textTransform: 'none', fontSize: '9px', opacity: 0.5 }}>who's covering this country</span></h3>
                 <div className="source-list">
                     {data.top_sources.slice(0, 5).map((source, i) => (
                         <div key={i} className="source-item">
