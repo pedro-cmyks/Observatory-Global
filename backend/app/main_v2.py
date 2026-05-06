@@ -3532,7 +3532,7 @@ async def get_concept_narratives(
                     country_code,
                     COUNT(*)                          AS signal_count,
                     AVG(sentiment)                    AS avg_sentiment,
-                    array_agg(DISTINCT source ORDER BY source LIMIT 5) AS top_sources,
+                    (array_agg(DISTINCT source ORDER BY source))[1:5] AS top_sources,
                     (
                         SELECT t
                         FROM unnest(array_agg(themes)) AS arr(themes_arr),
