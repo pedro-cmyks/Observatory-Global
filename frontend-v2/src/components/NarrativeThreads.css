@@ -3,6 +3,7 @@
     flex-direction: column;
     height: 100%;
     width: 100%;
+    overflow-x: hidden;
     overflow-y: auto;
     background: rgba(10, 15, 20, 0.5);
     color: var(--color-text-primary, #e2e8f0);
@@ -26,6 +27,8 @@
     cursor: pointer;
     transition: background 0.2s, border-left 0.15s;
     border-left: 3px solid transparent;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .narrative-row:hover {
@@ -242,6 +245,7 @@
     font-size: 9px;
     font-weight: 600;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .trend-label.accelerating { color: var(--color-severity-critical, #ef4444); }

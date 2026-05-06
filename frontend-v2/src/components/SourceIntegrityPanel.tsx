@@ -88,19 +88,21 @@ export const SourceIntegrityPanel: React.FC = () => {
 
             <div className="source-content">
                 <div className="metrics-grid">
-                    <div className="metric-box">
+                    <div className="metric-box" data-tip="Diversity score 0–100: based on how many distinct sources contribute signals relative to total volume. Higher = broader coverage from more outlets.">
                         <div className="metric-label">SOURCE DIVERSITY</div>
                         <div className={`metric-value ${diversityScore >= 80 ? 'good' : diversityScore >= 50 ? 'warn' : 'bad'}`}>
-                            {totalSignals === 0 ? '--' : diversityScore.toFixed(0)}
+                            {totalSignals === 0 ? '--' : `${diversityScore.toFixed(0)}`}
+                            {totalSignals > 0 && <span className="metric-unit">/100</span>}
                         </div>
-                        <div className="metric-subtitle">how many different sources</div>
+                        <div className="metric-subtitle">{uniqueSources} active outlets</div>
                     </div>
-                    <div className="metric-box">
+                    <div className="metric-box" data-tip="Quality score 0–100: inverse of concentration. Low score = one outlet dominates the signal feed (concentration risk). High score = signals spread across many sources.">
                         <div className="metric-label">SOURCE QUALITY</div>
                         <div className={`metric-value ${qualityScore >= 80 ? 'good' : qualityScore >= 50 ? 'warn' : 'bad'}`}>
-                            {totalSignals === 0 ? '--' : qualityScore.toFixed(0)}
+                            {totalSignals === 0 ? '--' : `${qualityScore.toFixed(0)}`}
+                            {totalSignals > 0 && <span className="metric-unit">/100</span>}
                         </div>
-                        <div className="metric-subtitle">reliability of active sources</div>
+                        <div className="metric-subtitle">low concentration = higher</div>
                     </div>
                     <div className="metric-box">
                         <div className="metric-label">TOP SOURCE SHARE</div>

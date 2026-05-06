@@ -691,6 +691,7 @@ function AppContent() {
   // Prefetch briefing data so the modal opens instantly
   const [prefetchedBriefing, setPrefetchedBriefing] = useState<any>(null)
   const [prefetchedInsight, setPrefetchedInsight] = useState<string | null>(null)
+  const [externalSearchQuery, setExternalSearchQuery] = useState<{ q: string; id: number } | undefined>(undefined)
   useEffect(() => {
     fetch('/api/v2/briefing?hours=24').then(r => r.json()).then(setPrefetchedBriefing).catch(() => { })
     fetch('/api/v2/briefing/insight?hours=24').then(r => r.json()).then(d => { if (d.insight) setPrefetchedInsight(d.insight) }).catch(() => { })
@@ -726,6 +727,7 @@ function AppContent() {
           <SearchBar
             onThemeSelect={handleThemeSelect}
             onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
+            externalQuery={externalSearchQuery}
           />
           <div className="time-controls">
             {TIME_RANGE_OPTIONS.map(range => (
@@ -1165,7 +1167,7 @@ function AppContent() {
           </div>
           <div className="panel-content">
             <PanelErrorBoundary panelName="ANOMALY ALERT">
-              <AnomalyPanel />
+              <AnomalyPanel onWikiClick={(q) => setExternalSearchQuery({ q, id: Date.now() })} />
             </PanelErrorBoundary>
           </div>
         </div>

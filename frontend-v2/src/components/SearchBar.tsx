@@ -161,9 +161,10 @@ interface SearchResult {
 interface SearchBarProps {
     onThemeSelect: (theme: string, countryCode?: string, countryName?: string) => void
     onCountrySelect: (code: string) => void
+    externalQuery?: { q: string; id: number }
 }
 
-export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
+export function SearchBar({ onThemeSelect, onCountrySelect, externalQuery }: SearchBarProps) {
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<SearchResult | null>(null)
     const [parsedQuery, setParsedQuery] = useState<ParsedQuery>({ topic: '', countryCode: null, countryDisplay: null })
@@ -204,6 +205,14 @@ export function SearchBar({ onThemeSelect, onCountrySelect }: SearchBarProps) {
         const t = setTimeout(() => { if (query) doSearch(query) }, 300)
         return () => clearTimeout(t)
     }, [query, doSearch])
+
+    // When an external component (e.g. Public Attention) triggers a search query
+    useEffect(() => {
+        if (!externalQuery) return
+        setQuery(externalQuery.q)
+        doSearch(externalQuery.q)
+        inputRef.current?.focus()
+    }, [externalQuery, doSearch])
 
     const close = () => {
         setIsOpen(false)

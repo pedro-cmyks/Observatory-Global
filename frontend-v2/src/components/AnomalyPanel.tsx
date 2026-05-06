@@ -13,7 +13,11 @@ const SEVERITY_COLORS: Record<string, string> = {
     normal:   '#4ade80',
 }
 
-export const AnomalyPanel: React.FC = () => {
+interface AnomalyPanelProps {
+    onWikiClick?: (query: string) => void
+}
+
+export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick }) => {
     const { anomalies, nearMisses, themeAnomalies, meta, overallSeverity, loading } = useCrisis()
     const { filter, setFocus, setMapFlyCountry } = useFocus()
     const { acledConflicts } = useFocusData()
@@ -152,15 +156,23 @@ export const AnomalyPanel: React.FC = () => {
                         {wikiArticles.length === 0 ? (
                             <div className="ap-empty">Loading…</div>
                         ) : (
-                            wikiArticles.map((a, i) => (
-                                <div key={i} className="ap-row ap-row--trend">
-                                    <span className="ap-rank">#{i + 1}</span>
-                                    <span className="ap-keyword">{a.title.replace(/_/g, ' ')}</span>
-                                    {a.country_count && a.country_count > 1 && (
-                                        <span className="ap-ctry-count">{a.country_count}</span>
-                                    )}
-                                </div>
-                            ))
+                            wikiArticles.map((a, i) => {
+                                const displayTitle = a.title.replace(/_/g, ' ')
+                                return (
+                                    <div
+                                        key={i}
+                                        className={`ap-row ap-row--trend${onWikiClick ? ' clickable' : ''}`}
+                                        onClick={onWikiClick ? () => onWikiClick(displayTitle) : undefined}
+                                        data-tip={onWikiClick ? `Search for "${displayTitle}"` : undefined}
+                                    >
+                                        <span className="ap-rank">#{i + 1}</span>
+                                        <span className="ap-keyword">{displayTitle}</span>
+                                        {a.country_count && a.country_count > 1 && (
+                                            <span className="ap-ctry-count">{a.country_count}</span>
+                                        )}
+                                    </div>
+                                )
+                            })
                         )}
                     </div>
                 </div>
