@@ -1,13 +1,26 @@
 import { useState, useRef, useEffect } from 'react'
 import { Download, Link, FileText, Image, Table, Check } from 'lucide-react'
 import * as htmlToImage from 'html-to-image'
+import {
+    buildThemeBriefingMarkdown,
+    buildThemeSignalsCsv,
+    rowsToCsv,
+    sanitizeFilenamePart,
+    type ThemeExportData,
+} from '../lib/exportFormatters'
 import './ExportMenu.css'
 
 interface ExportMenuProps {
     themeName: string
-    data: any // using any here for brevity, we will parse carefully
+    data: ThemeExportData
     insight: string | null
     captureRef: React.RefObject<HTMLElement | null>
+}
+
+interface DriftPoint {
+    date: string
+    sentiment: number
+    volume: number
 }
 
 export function ExportMenu({ themeName, data, insight, captureRef }: ExportMenuProps) {
@@ -46,19 +59,10 @@ export function ExportMenu({ themeName, data, insight, captureRef }: ExportMenuP
 
     const handleExportCSV = async () => {
         if (!data || !data.signals) return
-        
-        // 1. Export Signals
-        const headers = ['date', 'source', 'title', 'sentiment', 'url']
-        const rows = data.signals.map((s: any) => [
-            s.timestamp,
-            s.source || 'Unknown',
-            `"${(s.title || '').replace(/"/g, '""')}"`,
-            s.sentiment || 0,
-            s.url || ''
-        ])
-        
-        const signalsCsv = [headers.join(','), ...rows.map((r: any[]) => r.join(','))].join('\n')
-        downloadFile(`atlas-signals-${themeName.toLowerCase()}-${new Date().toISOString().split('T')[0]}.csv`, signalsCsv, 'text/csv')
+
+        const filenameTheme = sanitizeFilenamePart(themeName)
+        const signalsCsv = buildThemeSignalsCsv(data.signals)
+        downloadFile(`atlas-signals-${filenameTheme}-${new Date().toISOString().split('T')[0]}.csv`, signalsCsv, 'text/csv')
         
         // 2. Export Narrative Drift
         try {
@@ -66,18 +70,16 @@ export function ExportMenu({ themeName, data, insight, captureRef }: ExportMenuP
             const themeCode = data.theme || themeName
             const res = await fetch(`/api/v2/theme/${encodeURIComponent(themeCode)}/drift?days=14`)
             if (res.ok) {
-                const driftJson = await res.json()
+                const driftJson = await res.json() as { drift?: DriftPoint[] }
                 if (driftJson.drift && driftJson.drift.length > 0) {
-                    const driftHeaders = ['date', 'sentiment', 'volume']
-                    const driftRows = driftJson.drift.map((d: any) => [
+                    const driftCsv = rowsToCsv(['date', 'sentiment', 'volume'], driftJson.drift.map(d => [
                         d.date,
                         d.sentiment,
-                        d.volume
-                    ])
-                    const driftCsv = [driftHeaders.join(','), ...driftRows.map((r: any[]) => r.join(','))].join('\n')
+                        d.volume,
+                    ]))
                     // Add a tiny delay so the browser doesn't block the second download
                     setTimeout(() => {
-                        downloadFile(`atlas-drift-${themeName.toLowerCase()}-${new Date().toISOString().split('T')[0]}.csv`, driftCsv, 'text/csv')
+                        downloadFile(`atlas-drift-${filenameTheme}-${new Date().toISOString().split('T')[0]}.csv`, driftCsv, 'text/csv')
                     }, 500)
                 }
             }
@@ -91,34 +93,8 @@ export function ExportMenu({ themeName, data, insight, captureRef }: ExportMenuP
     const handleExportBriefing = () => {
         if (!data) return
 
-        let md = `# Atlas Intelligence Briefing: ${themeName}\n\n`
-        md += `**Generated:** ${new Date().toUTCString()}\n\n`
-        
-        if (insight) {
-            md += `## AI Insight\n${insight}\n\n`
-        }
-
-        md += `## Metrics\n`
-        md += `- **Total Signals:** ${data.summary?.total_signals || 0}\n`
-        md += `- **Average Sentiment:** ${data.summary?.avg_sentiment?.toFixed(2) || 0}\n\n`
-
-        if (data.topSources && data.topSources.length > 0) {
-            md += `## Top Sources\n`
-            data.topSources.slice(0, 10).forEach((s: any) => {
-                md += `- ${s.name}: ${s.count} signals\n`
-            })
-            md += '\n'
-        }
-
-        if (data.relatedThemes && data.relatedThemes.length > 0) {
-            md += `## Related Topics\n`
-            data.relatedThemes.slice(0, 10).forEach((t: any) => {
-                md += `- ${t.theme}: ${t.count} co-occurrences\n`
-            })
-            md += '\n'
-        }
-
-        downloadFile(`atlas-briefing-${themeName.toLowerCase()}-${new Date().toISOString().split('T')[0]}.md`, md, 'text/markdown')
+        const md = buildThemeBriefingMarkdown({ themeName, data, insight })
+        downloadFile(`atlas-briefing-${sanitizeFilenamePart(themeName)}-${new Date().toISOString().split('T')[0]}.md`, md, 'text/markdown')
         setOpen(false)
     }
 
@@ -152,7 +128,7 @@ export function ExportMenu({ themeName, data, insight, captureRef }: ExportMenuP
             <button 
                 className="export-menu-btn" 
                 onClick={() => setOpen(!open)}
-                title="Export Intelligence"
+                data-tip="Export intelligence"
             >
                 <Download size={14} />
                 Export

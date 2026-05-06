@@ -183,6 +183,7 @@ export const themeLabels: Record<string, string> = {
 
     // Spy / intelligence
     'SPY': 'Intelligence & Espionage',
+    'ARMEDCONFLICT': 'Armed Conflict',
 }
 
 export function getThemeLabel(code: string): string {

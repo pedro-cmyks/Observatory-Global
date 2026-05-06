@@ -3,10 +3,11 @@ import { IndicatorTooltip, VolumeIndicator } from './IndicatorTooltip';
 import { useCrisis } from '../contexts/CrisisContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import { useFocus } from '../contexts/FocusContext';
-import { Pin, PinOff } from 'lucide-react';
+import { Download, Pin, PinOff } from 'lucide-react';
 import './CountryBrief.css';
 import { getThemeLabel } from '../lib/themeLabels';
 import { selectVisibleKeyPersons, type KeyPerson } from '../lib/countryBriefPeople';
+import { buildCountryBriefMarkdown, sanitizeFilenamePart } from '../lib/exportFormatters';
 
 // ThemeChange interface reserved for future use
 // interface ThemeChange {
@@ -145,6 +146,25 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
     const { pinItem, unpinItem, isPinned } = useWorkspace();
     const { setPerson } = useFocus();
     const pinned = isPinned(`country-${countryCode}`);
+
+    const downloadMarkdown = (filename: string, content: string) => {
+        const blob = new Blob([content], { type: 'text/markdown' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+    }
+
+    const handleExportBrief = () => {
+        if (!data) return
+        const md = buildCountryBriefMarkdown({ countryName, data })
+        const date = new Date().toISOString().split('T')[0]
+        downloadMarkdown(`atlas-country-${sanitizeFilenamePart(countryName)}-${date}.md`, md)
+    }
 
     useEffect(() => {
         const fetchData = async () => {
@@ -292,9 +312,20 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                         </button>
                     </div>
                 </div>
-                <button className="close-button" onClick={onClose} aria-label="Close brief">
-                    ✕
-                </button>
+                <div className="brief-header-actions">
+                    <button
+                        className="brief-export-button"
+                        onClick={handleExportBrief}
+                        data-tip="Export country brief as Markdown"
+                        aria-label="Export country brief"
+                    >
+                        <Download size={13} />
+                        Export
+                    </button>
+                    <button className="close-button" onClick={onClose} aria-label="Close brief">
+                        ✕
+                    </button>
+                </div>
             </div>
 
             <p className="brief-subtitle">

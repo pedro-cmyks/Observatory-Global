@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react'
 import { buildWorkspaceGraph, type WorkspaceGraph } from '../lib/workspaceGraph'
+import { buildWorkspaceMarkdown } from '../lib/exportFormatters'
 
 export type PinnedItemType = 'theme' | 'person' | 'country' | 'signal' | 'source' | 'chokepoint'
 
@@ -154,22 +155,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     const graph = useMemo(() => buildWorkspaceGraph({ items, details }), [items, details])
 
     const exportWorkspace = () => {
-        let md = `# Atlas Investigation Workspace\n\n`
-        md += `*Exported: ${new Date().toUTCString()}*\n\n---\n\n`
-
-        if (items.length === 0) {
-            md += `*Workspace is empty.*\n`
-        } else {
-            items.forEach(item => {
-                md += `## [${item.type.toUpperCase()}] ${item.title}\n`
-                md += `- **Pinned on:** ${new Date(item.timestamp).toLocaleString()}\n`
-                md += `- **URL Context:** \`${item.urlParams}\`\n\n`
-                if (item.notes.trim()) {
-                    md += `### Notes\n${item.notes}\n\n`
-                }
-                md += `---\n\n`
-            })
-        }
+        const md = buildWorkspaceMarkdown({ items, details })
 
         const blob = new Blob([md], { type: 'text/markdown' })
         const url = URL.createObjectURL(blob)
