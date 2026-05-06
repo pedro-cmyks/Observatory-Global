@@ -42,6 +42,7 @@
 - **Spanish-language search routing (#69)** — multilingual aliases and country extraction for compound queries like `conflicto Colombia`, `elecciones Colombia`, `violencia Mexico`, `petro colombia`.
 - **Concept endpoint stability (#71)** — production now returns quickly by degrading long lookbacks to `effective_hours: 24`; true 168h aggregates are tracked separately in #73.
 - **Source-family classification (#68)** — backend classifies theme top sources as `state`, `wire`, or `independent`; ThemeDetail now renders source-family badges in Top Sources.
+- **Export findings (#66)** — ThemeDetail exports CSV/Markdown/PNG, CountryBrief exports Markdown, and Workspace export includes fetched investigation details where available.
 - **Terminal dashboard polish** — compact Signal Stream rows, LIVE pill, UTC clock, map status bar, gradient Narrative Threads, A-XXX anomaly labels, improved entity headlines.
 
 ---
@@ -50,6 +51,8 @@
 
 | Commit | What it does |
 |--------|-------------|
+| `3098b59` | **#66 closed**: country and workspace Markdown exports; hardened ThemeDetail export |
+| `a6e7eab` | Refresh Atlas session status |
 | `ddf338c` | **#68 closed**: source-family badges in ThemeDetail Top Sources |
 | `7e405cf` | UX fixes: live stream, map reset, country cap, entity headlines |
 | `7cb6b2c` | UX fixes: map reset, search quality, signal drip, anomaly layout, blood diamonds |
@@ -61,7 +64,7 @@
 | `76dbba1` | **#69**: extract country from multilingual queries |
 | `b161ecf` | **#69**: add multilingual concept aliases |
 
-**Issues closed recently:** #68, #69, #71  
+**Issues closed recently:** #66, #68, #69, #71  
 **Issue opened recently:** #73 (`perf(concepts): support true 168h concept aggregates without timeout`)
 
 ---
@@ -79,12 +82,11 @@ Vercel production deploy follows pushes to `v3-intel-layer`; verify `https://obs
 
 ---
 
-## Open issues (8 open)
+## Open issues (7 open)
 
 ### Features — next build targets
 | # | Title | Effort | Notes |
 |---|-------|--------|-------|
-| **#66** | Export findings as Markdown or CSV | medium | frontend |
 | **#63** | Ephemeral session trail graph | medium | frontend |
 | **#61** | Temporal and entity comparative engine UI | large | frontend |
 | **#51** | Tolerant search (fuzzy, token reordering, aliases) | large | backend + frontend |
@@ -101,11 +103,11 @@ Vercel production deploy follows pushes to `v3-intel-layer`; verify `https://obs
 
 ## Recommended next order
 
-1. **#66** — Export findings as Markdown or CSV; start by hardening the existing ThemeDetail export and enriching Workspace export.
-2. **#63** — Ephemeral Session Trail graph; keep it separate from pinned Workspace persistence.
-3. **#61** — Comparative Engine UI architecture and dense split-screen shell.
-4. **#62** — ESLint debt; avoid broad behavior changes while cleaning.
-5. **#73** — Backend performance path for true 168h concept aggregates.
+1. **#63** — Ephemeral Session Trail graph; keep it separate from pinned Workspace persistence.
+2. **#61** — Comparative Engine UI architecture and dense split-screen shell.
+3. **#62** — ESLint debt; avoid broad behavior changes while cleaning.
+4. **#73** — Backend performance path for true 168h concept aggregates.
+5. **#51** — Broader tolerant search work beyond the Spanish/country routing already shipped.
 
 ---
 
@@ -147,3 +149,4 @@ frontend-v2/               backend/app/              signals_v2
 | Concept endpoint | `/api/v2/concept/blood-diamonds?hours=168` → returns JSON with `effective_hours: 24` until #73 |
 | Search | Top bar → try "conflicto Colombia", "elecciones Colombia", "violencia Mexico", "petro colombia" |
 | Source family | Open a ThemeDetail → Top Sources should show `State`, `Wire`, or `Independent` badges |
+| Export | ThemeDetail Export menu downloads CSV/Markdown; CountryBrief Export downloads Markdown; Workspace export includes details for fetched pinned items |
