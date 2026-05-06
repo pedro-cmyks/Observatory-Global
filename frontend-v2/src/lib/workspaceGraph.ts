@@ -361,7 +361,7 @@ export function buildWorkspaceGraph({ items, details }: WorkspaceGraphInput): Wo
       id: item.id,
       type: item.type,
       title: item.title,
-      subtitle: item.notes.trim() ? 'Pinned with notes' : undefined,
+      subtitle: (item.notes ?? '').trim() ? 'Pinned with notes' : undefined,
       pinned: true,
       weight: 100,
       urlParams: item.urlParams,

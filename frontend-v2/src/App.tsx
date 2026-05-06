@@ -1258,7 +1258,8 @@ function AppContent() {
         />
       )}
 
-      <InvestigationWorkspace 
+      <PanelErrorBoundary panelName="WORKSPACE">
+      <InvestigationWorkspace
         onNavigate={(params) => {
           const next = new URLSearchParams(params.replace(/^\?/, ''))
           const source = next.get('source')
@@ -1293,6 +1294,7 @@ function AppContent() {
           window.location.search = params;
         }}
       />
+      </PanelErrorBoundary>
 
       {comparePerson && (
         <PersonCompare
