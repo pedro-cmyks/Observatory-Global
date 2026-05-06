@@ -737,11 +737,13 @@ async def get_heatmap(hours: int = Query(24, ge=1, le=8760)):
 @app.get("/api/v2/search")
 async def search(
     q: str = Query(..., min_length=2, description="Search query"),
-    hours: int = Query(168, ge=1, le=720)
+    hours: int = Query(168, ge=1, le=720),
+    country: str | None = Query(None, min_length=2, max_length=2)
 ):
     """Search across themes, countries, and persons. Returns top_countries per result for map fly-to."""
     query = q.lower().strip()
-    cache_key = f"search:{query}:{hours}"
+    country_code = country.upper() if country else None
+    cache_key = f"search:{query}:{hours}:{country_code or 'all'}"
     if app.state.redis:
         try:
             cached = await app.state.redis.get(cache_key)
@@ -751,6 +753,11 @@ async def search(
             pass
 
     async with app.state.pool.acquire() as conn:
+        country_clause = "AND country_code = $2" if country_code else ""
+        search_params = [f'%{query}%']
+        if country_code:
+            search_params.append(country_code)
+
         # Themes — grouped with top 3 countries each
         # Exclude pure taxonomy prefixes (TAX_WORLDFISH, TAX_WORLDLANGUAGES, etc.) that
         # match on biological/language names and produce misleading results
@@ -760,6 +767,7 @@ async def search(
                 FROM signals_v2
                 WHERE timestamp > NOW() - INTERVAL '%s hours'
                   AND LOWER(array_to_string(themes, ' ')) LIKE $1
+                  %s
                 GROUP BY theme, country_code
                 HAVING COUNT(*) >= 2
             ),
@@ -789,7 +797,7 @@ async def search(
             LEFT JOIN countries_v2 c ON c.code = r.country_code
             GROUP BY t.theme, t.total_signals
             ORDER BY t.total_signals DESC
-        """ % hours, f'%{query}%')
+        """ % (hours, country_clause), *search_params)
 
         # Persons — same grouping pattern
         person_rows = await conn.fetch("""
@@ -799,6 +807,7 @@ async def search(
                 WHERE timestamp > NOW() - INTERVAL '%s hours'
                   AND persons IS NOT NULL AND array_length(persons, 1) > 0
                   AND LOWER(array_to_string(persons, ' ')) LIKE $1
+                  %s
                 GROUP BY person, country_code
                 HAVING COUNT(*) >= 2
             ),
@@ -823,14 +832,21 @@ async def search(
             LEFT JOIN countries_v2 c ON c.code = r.country_code
             GROUP BY t.person, t.total_signals
             ORDER BY t.total_signals DESC
-        """ % hours, f'%{query}%')
+        """ % (hours, country_clause), *search_params)
 
         # Countries — simple name/code match
-        country_rows = await conn.fetch("""
-            SELECT code, name FROM countries_v2
-            WHERE LOWER(name) LIKE $1 OR LOWER(code) LIKE $1
-            LIMIT 8
-        """, f'%{query}%')
+        if country_code:
+            country_rows = await conn.fetch("""
+                SELECT code, name FROM countries_v2
+                WHERE code = $1
+                LIMIT 1
+            """, country_code)
+        else:
+            country_rows = await conn.fetch("""
+                SELECT code, name FROM countries_v2
+                WHERE LOWER(name) LIKE $1 OR LOWER(code) LIKE $1
+                LIMIT 8
+            """, f'%{query}%')
 
         def build_top_countries(codes, names, counts):
             if not codes:
@@ -917,7 +933,11 @@ async def unified_search(
     region_match = match_region(topic_query)
 
     # --- 4. DB search (async) — reuse existing search logic ---
-    db_result = await search(q=topic_query, hours=hours)
+    db_result = await search(
+        q=topic_query,
+        hours=hours,
+        country=country_match["code"] if country_match else None,
+    )
 
     # --- 5. Merge themes: taxonomy first, then DB hits (deduped) ---
     seen_themes = set()
