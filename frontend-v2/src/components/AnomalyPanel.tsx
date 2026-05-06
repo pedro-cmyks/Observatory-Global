@@ -66,6 +66,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick }) => {
             <div className="anomaly-body-grid">
                 {/* ── Left: Geo alerts ── */}
                 <div className="anomaly-col">
+                    <div className="ap-geo-section">
                     <div className="col-label">GEO ALERTS</div>
                     <div className="ap-confidence-label">model confidence &gt; 0.8</div>
                     <div className="col-scroll">
@@ -101,6 +102,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick }) => {
                         )}
                     </div>
 
+                    </div>{/* /ap-geo-section */}
                     {/* Conflict events — filtered to active country when one is selected */}
                     {visibleConflicts && visibleConflicts.length > 0 && (
                         <div className="ap-sub">
@@ -149,7 +151,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick }) => {
                     )}
 
                     <div className="col-label" style={{ marginTop: themeAnomalies?.length ? '8px' : 0 }}
-                        data-tip="Top Wikipedia articles by pageviews — what people are reading globally right now">
+                        data-tip="Top Wikipedia articles by global pageviews. The blue number = how many countries show this article trending. Click any item to search it in the feed.">
                         PUBLIC ATTENTION
                     </div>
                     <div className="col-scroll">
@@ -168,7 +170,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick }) => {
                                         <span className="ap-rank">#{i + 1}</span>
                                         <span className="ap-keyword">{displayTitle}</span>
                                         {a.country_count && a.country_count > 1 && (
-                                            <span className="ap-ctry-count">{a.country_count}</span>
+                                            <span className="ap-ctry-count" data-tip={`Trending in ${a.country_count} countries`}>{a.country_count} 🌍</span>
                                         )}
                                     </div>
                                 )

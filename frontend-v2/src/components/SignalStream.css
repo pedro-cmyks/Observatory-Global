@@ -127,10 +127,11 @@
 
 .signal-row {
     display: flex;
-    padding: 8px;
+    align-items: center;
+    padding: 5px 8px;
     background: rgba(255, 255, 255, 0.02);
     border-radius: 4px;
-    gap: 12px;
+    gap: 8px;
     transition: background 0.2s;
     border-left: 2px solid transparent;
 }
@@ -155,10 +156,10 @@
 
 .signal-meta {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-    min-width: 45px;
+    flex-direction: row;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
 }
 
 .time {
@@ -178,10 +179,10 @@
 }
 
 .sentiment-indicator {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
-    margin-top: 2px;
+    flex-shrink: 0;
 }
 
 .sentiment-indicator.positive { background: #4ade80; }
@@ -193,16 +194,19 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
 }
 
 .headline {
-    font-size: 13px;
-    line-height: 1.4;
+    font-size: 12px;
+    line-height: 1.3;
     color: var(--color-text-primary, #f8fafc);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .headline a {

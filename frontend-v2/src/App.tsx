@@ -823,6 +823,20 @@ function AppContent() {
               >
                 SHIPS{showVessels && vesselData.length > 0 ? ` ${vesselData.length}` : ''}{showVessels && !vesselConnected ? ' ⏳' : ''}
               </button>
+              <button
+                className="layer-btn layer-btn--reset"
+                onClick={() => {
+                  setViewState(INITIAL_VIEW)
+                  setSelectedCountry(null)
+                  setSelectedCountryCode(null)
+                  setShowFlows(false)
+                  clearFocus()
+                }}
+                data-tip="Reset map to global view"
+                aria-label="Reset map view"
+              >
+                ↺
+              </button>
             </div>
           </div>
           <div className="panel-content" onClick={() => showWelcome && dismissWelcome()}>

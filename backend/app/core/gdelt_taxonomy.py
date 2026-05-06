@@ -866,21 +866,11 @@ def get_all_categories() -> List[str]:
 # that together represent the concept's signal footprint.
 
 CONCEPT_MAP: Dict[str, dict] = {
-    "blood-diamonds": {
-        "label": "Blood Diamonds",
-        "description": "Conflict minerals — gemstones funding armed groups, illicit trade routes, sanctions evasion",
-        "themes": ["ARMEDCONFLICT", "KILL", "CRIME", "ECON_TRADE", "WB_507_ENERGY_AND_EXTRACTIVES", "SEIZE"],
-        "related_concepts": ["cobalt-mining", "arms-trafficking"],
-        "aliases": [
-            "diamantes de sangre", "diamantes de conflicto", "minerais de sang",
-            "conflict minerals", "blood gems",
-        ],
-    },
     "cobalt-mining": {
         "label": "Cobalt Mining",
         "description": "DRC and Central Africa cobalt extraction, child labor, EV supply chain, human rights",
         "themes": ["WB_507_ENERGY_AND_EXTRACTIVES", "LABOR", "WB_HUMAN_RIGHTS", "ECON_TRADE", "ARMEDCONFLICT"],
-        "related_concepts": ["blood-diamonds", "climate-minerals"],
+        "related_concepts": ["climate-minerals"],
         "aliases": [
             "minería de cobalto", "cobalto", "cobalt", "mineração de cobalto",
             "cobalt mine",
@@ -890,7 +880,7 @@ CONCEPT_MAP: Dict[str, dict] = {
         "label": "Arms Trafficking",
         "description": "Illicit weapons trade, smuggling networks, embargo violations, proxy wars",
         "themes": ["ARMEDCONFLICT", "SEIZE", "CRIME", "MILITARY", "TAX_TERROR"],
-        "related_concepts": ["blood-diamonds", "drug-trafficking"],
+        "related_concepts": ["drug-trafficking"],
         "aliases": [
             "tráfico de armas", "contrabando de armas", "trafic d'armes",
             "arms trade", "weapon smuggling",

@@ -702,6 +702,18 @@
   opacity: 0.7;
 }
 
+.layer-btn.layer-btn--reset {
+  color: #475569;
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  margin-left: 2px;
+  font-size: 14px;
+  padding: 2px 7px;
+}
+.layer-btn.layer-btn--reset:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .panel-content {
   flex: 1;
   position: relative;

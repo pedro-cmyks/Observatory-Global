@@ -162,6 +162,7 @@ export const SignalStream: React.FC = () => {
     const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
     const listRef = useRef<HTMLDivElement>(null)
     const latestTimestampRef = useRef<string | null>(null)
+    const dripQueueRef = useRef<StreamItem[]>([])
     const { pinItem, unpinItem, isPinned } = useWorkspace()
 
     // Fetch allowlist once
@@ -254,6 +255,7 @@ export const SignalStream: React.FC = () => {
         }
 
         latestTimestampRef.current = null
+        dripQueueRef.current = []
         fetchInitial()
 
         return () => { isMounted = false }
@@ -303,15 +305,8 @@ export const SignalStream: React.FC = () => {
                 if (newItems.length > 0) {
                     newItems.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
                     latestTimestampRef.current = newItems[0].timestamp
-                    const justAdded = new Set(newItems.map(i => `${i.type}-${i.id}`))
-                    setNewItemIds(justAdded)
-                    setTimeout(() => setNewItemIds(new Set()), 700)
-                    setItems(prev => {
-                        const merged = [...newItems, ...prev]
-                        // Unique by type + id
-                        const unique = merged.filter((v, i, a) => a.findIndex(t => (t.type === v.type && t.id === v.id)) === i)
-                        return unique.slice(0, 100)
-                    })
+                    // Queue new items for drip-reveal instead of showing all at once
+                    dripQueueRef.current = [...newItems, ...dripQueueRef.current]
                 }
             } catch (e) {
                 console.error('[SignalStream] Poll error', e)
@@ -324,6 +319,23 @@ export const SignalStream: React.FC = () => {
             clearInterval(interval)
         }
     }, [filter.country, filter.theme, filter.person, isHovered, timeRange])
+
+    // Drip-reveal: pop one queued signal every 6 seconds for a live-stream feel
+    useEffect(() => {
+        const drip = setInterval(() => {
+            if (dripQueueRef.current.length === 0) return
+            const next = dripQueueRef.current.shift()!
+            const itemKey = `${next.type}-${next.id}`
+            setNewItemIds(new Set([itemKey]))
+            setTimeout(() => setNewItemIds(new Set()), 700)
+            setItems(prev => {
+                const merged = [next, ...prev]
+                const unique = merged.filter((v, i, a) => a.findIndex(t => t.type === v.type && t.id === v.id) === i)
+                return unique.slice(0, 100)
+            })
+        }, 6000)
+        return () => clearInterval(drip)
+    }, [])
 
     const handleThemeClick = (e: React.MouseEvent, theme: string) => {
         e.stopPropagation()

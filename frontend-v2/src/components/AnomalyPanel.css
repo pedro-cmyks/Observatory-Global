@@ -99,9 +99,21 @@
     border-radius: 2px;
 }
 
+.ap-geo-section {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
 .ap-sub {
     border-top: 1px solid rgba(255,255,255,0.05);
-    margin-top: 4px;
+    flex-shrink: 0;
+    max-height: 120px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 /* ── Rows ── */

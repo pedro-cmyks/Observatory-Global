@@ -267,8 +267,8 @@ export function SearchBar({ onThemeSelect, onCountrySelect, externalQuery }: Sea
     }
 
     const hasResults = results && (
-        results.themes.length > 0 ||
-        results.persons.length > 0 ||
+        results.themes.some(t => t.total_signals > 0) ||
+        results.persons.some(p => p.total_signals > 0) ||
         results.countries.length > 0 ||
         (results.concepts?.length ?? 0) > 0 ||
         results.region != null
@@ -343,10 +343,10 @@ export function SearchBar({ onThemeSelect, onCountrySelect, externalQuery }: Sea
                         </div>
                     )}
 
-                    {results?.themes && results.themes.length > 0 && (
+                    {results?.themes && results.themes.filter(t => t.total_signals > 0).length > 0 && (
                         <div className="search-section">
                             <div className="search-section-label">Themes</div>
-                            {results.themes.map((t) => (
+                            {results.themes.filter(t => t.total_signals > 0).map((t) => (
                                 <div key={t.theme} className="search-item" onClick={() => handleThemeClick(t)}>
                                     <span className="search-item-icon">{getThemeIcon(t.theme)}</span>
                                     <span className="search-item-name">{getThemeLabel(t.theme)}</span>
@@ -365,10 +365,10 @@ export function SearchBar({ onThemeSelect, onCountrySelect, externalQuery }: Sea
                         </div>
                     )}
 
-                    {results?.persons && results.persons.length > 0 && (
+                    {results?.persons && results.persons.filter(p => p.total_signals > 0).length > 0 && (
                         <div className="search-section">
                             <div className="search-section-label">People</div>
-                            {results.persons.map((p) => (
+                            {results.persons.filter(p => p.total_signals > 0).map((p) => (
                                 <div key={p.person} className="search-item" onClick={() => handlePersonClick(p)}>
                                     <span className="search-item-tag person-tag">P</span>
                                     <span className="search-item-name" style={{ textTransform: 'capitalize' }}>
