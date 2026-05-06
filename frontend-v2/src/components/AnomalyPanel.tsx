@@ -18,12 +18,12 @@ export const AnomalyPanel: React.FC = () => {
     const { filter, setFocus, setMapFlyCountry } = useFocus()
     const { acledConflicts } = useFocusData()
     const activeCountry = filter.country
-    const [trendingSearches, setTrendingSearches] = useState<{ keyword: string; country_count: number }[]>([])
+    const [wikiArticles, setWikiArticles] = useState<{ title: string; views: number; country_count?: number }[]>([])
 
     useEffect(() => {
-        fetch('/api/v2/trends/search?hours=24&limit=10')
+        fetch('/api/v2/wiki/top?days=1&limit=10')
             .then(r => r.ok ? r.json() : null)
-            .then(d => { if (d?.trending) setTrendingSearches(d.trending) })
+            .then(d => { if (d?.articles?.length) setWikiArticles(d.articles) })
             .catch(() => {})
     }, [])
 
@@ -140,19 +140,20 @@ export const AnomalyPanel: React.FC = () => {
                         </>
                     )}
 
-                    <div className="col-label" style={{ marginTop: themeAnomalies?.length ? '8px' : 0 }}>
-                        TRENDING
+                    <div className="col-label" style={{ marginTop: themeAnomalies?.length ? '8px' : 0 }}
+                        data-tip="Top Wikipedia articles by pageviews — what people are reading globally right now">
+                        PUBLIC ATTENTION
                     </div>
                     <div className="col-scroll">
-                        {trendingSearches.length === 0 ? (
-                            <div className="ap-empty">No data yet</div>
+                        {wikiArticles.length === 0 ? (
+                            <div className="ap-empty">Loading…</div>
                         ) : (
-                            trendingSearches.map((t, i) => (
+                            wikiArticles.map((a, i) => (
                                 <div key={i} className="ap-row ap-row--trend">
                                     <span className="ap-rank">#{i + 1}</span>
-                                    <span className="ap-keyword">{t.keyword}</span>
-                                    {t.country_count > 1 && (
-                                        <span className="ap-ctry-count">{t.country_count}</span>
+                                    <span className="ap-keyword">{a.title.replace(/_/g, ' ')}</span>
+                                    {a.country_count && a.country_count > 1 && (
+                                        <span className="ap-ctry-count">{a.country_count}</span>
                                     )}
                                 </div>
                             ))
