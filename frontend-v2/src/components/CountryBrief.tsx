@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { IndicatorTooltip, VolumeIndicator } from './IndicatorTooltip';
 import { useCrisis } from '../contexts/CrisisContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
+import { useFocus } from '../contexts/FocusContext';
 import { Pin, PinOff } from 'lucide-react';
 import './CountryBrief.css';
 import { getThemeLabel } from '../lib/themeLabels';
+import { selectVisibleKeyPersons, type KeyPerson } from '../lib/countryBriefPeople';
 
 // ThemeChange interface reserved for future use
 // interface ThemeChange {
@@ -60,11 +62,38 @@ interface BriefData {
     signal_count: number;
     top_themes: Array<{ name: string; count: number }>;
     top_sources: Array<{ name: string; count: number }>;
+    keyPersons: KeyPerson[];
     avg_sentiment: number;
     sentiment_trend: 'improving' | 'declining' | 'stable';
     top_stories?: Story[];
     indicators?: Indicators;
     error?: string;
+}
+
+interface CountryAnomaly {
+    country_code: string;
+    multiplier: number;
+    level?: string;
+}
+
+interface CountryDetailResponse {
+    totalSignals?: number;
+    themes?: Array<{ name: string; count: number }>;
+    sources?: Array<{ name: string; count: number }>;
+    keyPersons?: KeyPerson[];
+    sentiment?: number;
+}
+
+interface SignalResponseItem {
+    url?: string;
+    source?: string;
+    timestamp?: string;
+    sentiment?: number;
+    themes?: string[];
+}
+
+interface SignalsResponse {
+    signals?: SignalResponseItem[];
 }
 
 interface CountryBriefProps {
@@ -108,12 +137,13 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 }) => {
     const cls = `country-brief${inline ? ' country-brief--inline' : ''}`
     const { anomalies } = useCrisis()
-    const anomaly = anomalies.find((a: any) => a.country_code === countryCode) ?? null
+    const anomaly = (anomalies as CountryAnomaly[]).find(a => a.country_code === countryCode) ?? null
     const [data, setData] = useState<BriefData | null>(null);
     const [indicators, setIndicators] = useState<Indicators | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const { pinItem, unpinItem, isPinned } = useWorkspace();
+    const { setPerson } = useFocus();
     const pinned = isPinned(`country-${countryCode}`);
 
     useEffect(() => {
@@ -129,7 +159,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 if (!detailRes.ok) {
                     throw new Error(`Failed to fetch country data: ${detailRes.status}`);
                 }
-                const detail = await detailRes.json();
+                const detail = await detailRes.json() as CountryDetailResponse;
 
                 // Fetch indicators
                 const indicatorsRes = await fetch(
@@ -149,19 +179,19 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 );
                 let topStories: Story[] = [];
                 if (signalsRes.ok) {
-                    const signals = await signalsRes.json();
+                    const signals = await signalsRes.json() as SignalsResponse;
                     topStories = (signals.signals || [])
-                        .filter((s: any) => s.url)
-                        .map((s: any) => {
+                        .filter((s): s is SignalResponseItem & { url: string } => Boolean(s.url))
+                        .map((s) => {
                             const themes: string[] = Array.isArray(s.themes) ? s.themes : [];
                             const primaryTheme = themes.find(
                                 (t: string) => t && !t.startsWith('WORLDLANGUAGES_') && !t.startsWith('TAX_WORLDLANGUAGES_')
                             ) || themes[0] || '';
                             return {
                                 url: s.url,
-                                source: s.source,
-                                timestamp: s.timestamp,
-                                sentiment: s.sentiment,
+                                source: s.source || extractDomain(s.url),
+                                timestamp: s.timestamp || new Date().toISOString(),
+                                sentiment: s.sentiment || 0,
                                 themeCode: primaryTheme
                             };
                         });
@@ -179,6 +209,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     signal_count: detail.totalSignals || 0,
                     top_themes: detail.themes || [],
                     top_sources: detail.sources || [],
+                    keyPersons: selectVisibleKeyPersons(detail.keyPersons || []),
                     avg_sentiment: sentiment,
                     sentiment_trend: sentimentTrend,
                     top_stories: topStories,
@@ -254,7 +285,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                     })
                                 }
                             }}
-                            title={pinned ? "Unpin Country" : "Pin Country to Workspace"}
+                            data-tip={pinned ? "Unpin Country" : "Pin Country to Workspace"}
                             style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: pinned ? '#10b981' : '#94a3b8', width: '24px', height: '24px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
                         >
                             {pinned ? <PinOff size={12} /> : <Pin size={12} />}
@@ -348,6 +379,26 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     ))}
                 </div>
             </section>
+
+            {/* Key People */}
+            {data.keyPersons.length > 0 && (
+                <section className="brief-section">
+                    <h3>People Mentioned <span style={{ fontWeight: 400, textTransform: 'none', fontSize: '9px', opacity: 0.5 }}>click to filter signals</span></h3>
+                    <div className="brief-person-list">
+                        {data.keyPersons.map(person => (
+                            <button
+                                key={person.name}
+                                className="brief-person-chip"
+                                onClick={() => setPerson(person.name)}
+                                data-tip={`${person.count} mentions — open person focus`}
+                            >
+                                <span className="brief-person-name">{person.name}</span>
+                                <span className="brief-person-count">{person.count}</span>
+                            </button>
+                        ))}
+                    </div>
+                </section>
+            )}
 
             {/* Top Sources */}
             <section className="brief-section">

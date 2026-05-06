@@ -195,6 +195,45 @@
     font-family: 'JetBrains Mono', monospace;
 }
 
+/* People */
+.brief-person-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.brief-person-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.625rem;
+    background: rgba(167, 139, 250, 0.12);
+    border: 1px solid rgba(167, 139, 250, 0.28);
+    border-radius: 9999px;
+    color: #ddd6fe;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.brief-person-chip:hover {
+    background: rgba(167, 139, 250, 0.2);
+    border-color: rgba(167, 139, 250, 0.48);
+}
+
+.brief-person-name {
+    max-width: 11rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.75rem;
+}
+
+.brief-person-count {
+    color: #a78bfa;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.625rem;
+}
+
 /* Sources */
 .source-list {
     display: flex;
