@@ -133,7 +133,7 @@ function addLink(links: Map<string, WorkspaceGraphLink>, source: string, target:
 }
 
 function parseThemeFromItem(item: PinnedItem): string {
-  const params = new URLSearchParams(item.urlParams.replace(/^\?/, ''))
+  const params = new URLSearchParams((item.urlParams ?? '').replace(/^\?/, ''))
   return params.get('theme') || item.id.replace(/^theme-/, '').split('-')[0] || item.title
 }
 

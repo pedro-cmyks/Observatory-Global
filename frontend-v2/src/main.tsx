@@ -8,9 +8,9 @@ import App from './App.tsx'
 import { Landing } from './pages/Landing.tsx'
 import { Docs } from './pages/Docs.tsx'
 
-class RootErrorBoundary extends Component<{ children: ReactNode }, { crashed: boolean }> {
-  state = { crashed: false }
-  static getDerivedStateFromError() { return { crashed: true } }
+class RootErrorBoundary extends Component<{ children: ReactNode }, { crashed: boolean; message: string }> {
+  state = { crashed: false, message: '' }
+  static getDerivedStateFromError(error: Error) { return { crashed: true, message: error.message } }
   componentDidCatch(error: Error) { console.error('[RootErrorBoundary]', error) }
   render() {
     if (this.state.crashed) {
@@ -18,7 +18,10 @@ class RootErrorBoundary extends Component<{ children: ReactNode }, { crashed: bo
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0a0f1a', color: '#94a3b8', fontFamily: 'system-ui, sans-serif', gap: 12 }}>
           <div style={{ fontSize: 32 }}>⚠</div>
           <div style={{ fontSize: 14, color: '#e2e8f0' }}>Something went wrong</div>
-          <button onClick={() => { this.setState({ crashed: false }); window.location.reload() }} style={{ marginTop: 8, padding: '6px 16px', background: '#1e293b', border: '1px solid #334155', borderRadius: 6, color: '#94a3b8', cursor: 'pointer', fontSize: 12 }}>Reload</button>
+          {this.state.message && (
+            <div style={{ fontSize: 11, color: '#f87171', maxWidth: 400, textAlign: 'center', wordBreak: 'break-all', padding: '0 16px' }}>{this.state.message}</div>
+          )}
+          <button onClick={() => { this.setState({ crashed: false, message: '' }); window.location.reload() }} style={{ marginTop: 8, padding: '6px 16px', background: '#1e293b', border: '1px solid #334155', borderRadius: 6, color: '#94a3b8', cursor: 'pointer', fontSize: 12 }}>Reload</button>
         </div>
       )
     }
