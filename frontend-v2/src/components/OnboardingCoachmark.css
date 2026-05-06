@@ -1,0 +1,102 @@
+.onboarding-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 10, 20, 0.82);
+    backdrop-filter: blur(3px);
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.onboarding-card {
+    background: #0c1828;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 32px 36px;
+    max-width: 420px;
+    width: calc(100vw - 48px);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+}
+
+.onboarding-step-indicator {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 24px;
+}
+
+.onboarding-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    transition: background 0.2s, width 0.2s;
+}
+
+.onboarding-dot.active {
+    background: #10b981;
+    width: 20px;
+    border-radius: 3px;
+}
+
+.onboarding-icon {
+    font-size: 28px;
+    margin-bottom: 12px;
+}
+
+.onboarding-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin: 0 0 8px;
+    font-family: 'Space Grotesk', monospace;
+    letter-spacing: 0.03em;
+}
+
+.onboarding-body {
+    font-size: 13px;
+    color: #94a3b8;
+    line-height: 1.6;
+    margin: 0 0 28px;
+}
+
+.onboarding-body strong {
+    color: #cbd5e1;
+}
+
+.onboarding-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.onboarding-skip {
+    background: none;
+    border: none;
+    color: #475569;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0;
+}
+
+.onboarding-skip:hover {
+    color: #94a3b8;
+}
+
+.onboarding-next {
+    background: #10b981;
+    border: none;
+    color: #021a10;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Space Grotesk', monospace;
+    letter-spacing: 0.04em;
+    transition: background 0.15s;
+}
+
+.onboarding-next:hover {
+    background: #34d399;
+}

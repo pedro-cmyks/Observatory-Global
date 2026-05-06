@@ -34,6 +34,7 @@ import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoi
 // Terminal Panels
 import { NarrativeThreads } from './components/NarrativeThreads'
 import { SignalStream } from './components/SignalStream'
+import { OnboardingCoachmark } from './components/OnboardingCoachmark'
 import { CorrelationMatrix } from './components/CorrelationMatrix'
 import { AnomalyPanel } from './components/AnomalyPanel'
 import { SourceIntegrityPanel } from './components/SourceIntegrityPanel'
@@ -1318,6 +1319,7 @@ function AppContent() {
           onSourceClick={(source) => setSelectedSourceProfile(source)}
         />
       )}
+      <OnboardingCoachmark />
     </div>
   )
 }
