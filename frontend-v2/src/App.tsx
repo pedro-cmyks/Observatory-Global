@@ -307,6 +307,15 @@ const COUNTRY_COORDS: Record<string, [number, number]> = {
   RB: [21, 44], SW: [18, 62], EI: [-8, 53],
 }
 
+function UtcClock() {
+  const [time, setTime] = React.useState(() => new Date().toUTCString().slice(17, 25))
+  React.useEffect(() => {
+    const t = setInterval(() => setTime(new Date().toUTCString().slice(17, 25)), 1000)
+    return () => clearInterval(t)
+  }, [])
+  return <span className="utc-clock">{time} UTC</span>
+}
+
 function AppContent() {
   const navigate = useNavigate()
 
@@ -722,6 +731,10 @@ function AppContent() {
       <header className="command-bar">
         <div className="command-bar-left">
           <h1 className="brand" onClick={() => navigate('/')} style={{ cursor: 'pointer' }} title="Back to home"><Globe size={16} /> ATLAS</h1>
+          <span className="live-pill" data-tip="Ingesting GDELT signals every 15 minutes">
+            <span className="live-pill-dot" />
+            LIVE DATA
+          </span>
         </div>
         <div className="command-bar-center">
           <SearchBar
@@ -749,6 +762,7 @@ function AppContent() {
               </span>
             )}
           </div>
+          <UtcClock />
           {/* <CrisisToggle /> - Hidden per visual clarity update */}
           <button className="cmd-btn" onClick={() => {
             setShowBriefing(true)
@@ -999,6 +1013,30 @@ function AppContent() {
                 ↑ click any country to explore
               </div>
             )}
+            {/* Map Status Bar — floating stats at bottom of globe panel */}
+            <div className="map-status-bar">
+              <span className="msb-item" data-tip="Countries with signal activity in selected time window">
+                <span className="msb-label">TRACKED</span>
+                <span className="msb-value">{loading ? '…' : nodes.length}</span>
+              </span>
+              <span className="msb-sep" />
+              <span className="msb-item" data-tip="Total media signals in selected time window">
+                <span className="msb-label">SIGNALS</span>
+                <span className="msb-value">{loading ? '…' : totalSignals > 999 ? `${(totalSignals / 1000).toFixed(1)}k` : totalSignals}</span>
+              </span>
+              <span className="msb-sep" />
+              <span className="msb-item" data-tip="Countries with signal volume significantly above their 7-day baseline">
+                <span className="msb-label">ANOMALIES</span>
+                <span className={`msb-value ${anomalies.length > 0 ? 'msb-alert' : ''}`}>{anomalies.length > 0 ? anomalies.length : '—'}</span>
+              </span>
+              <span className="msb-sep" />
+              <span className="msb-item" data-tip="Active map layers">
+                <span className="msb-label">LAYER</span>
+                <span className="msb-value msb-layers">
+                  {[showHeatmap && 'GLOW', showFlows && 'FLOW', showAircraft && 'PLANE', showVessels && 'SHIPS'].filter(Boolean).join(' · ') || '—'}
+                </span>
+              </span>
+            </div>
           </div>
         </div>
 

@@ -139,6 +139,15 @@
     background: rgba(255, 255, 255, 0.05);
 }
 
+/* Pin button only appears on hover */
+.signal-row .pin-btn {
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.signal-row:hover .pin-btn {
+    opacity: 1;
+}
+
 .signal-row.priority-1 {
     border-left-color: rgba(56, 189, 248, 0.5);
     background: linear-gradient(90deg, rgba(56, 189, 248, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
@@ -209,6 +218,15 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.2s ease, opacity 0.15s ease;
+}
+
+.signal-row:hover .signal-footer {
+    max-height: 48px;
+    opacity: 1;
 }
 
 .source {

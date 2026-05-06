@@ -509,7 +509,8 @@ export const SignalStream: React.FC = () => {
                                             <a href={sig.url} target="_blank" rel="noreferrer" style={{ flex: 1 }}>
                                                 {sig.headline || `Signal from ${sig.source}`}
                                             </a>
-                                            <button 
+                                            <button
+                                                className="pin-btn"
                                                 onClick={() => {
                                                     const pinnedId = `signal-${sig.id}`
                                                     if (isPinned(pinnedId)) {
