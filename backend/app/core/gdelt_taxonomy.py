@@ -871,138 +871,224 @@ CONCEPT_MAP: Dict[str, dict] = {
         "description": "Conflict minerals — gemstones funding armed groups, illicit trade routes, sanctions evasion",
         "themes": ["ARMEDCONFLICT", "KILL", "CRIME", "ECON_TRADE", "WB_507_ENERGY_AND_EXTRACTIVES", "SEIZE"],
         "related_concepts": ["cobalt-mining", "arms-trafficking"],
+        "aliases": [
+            "diamantes de sangre", "diamantes de conflicto", "minerais de sang",
+            "conflict minerals", "blood gems",
+        ],
     },
     "cobalt-mining": {
         "label": "Cobalt Mining",
         "description": "DRC and Central Africa cobalt extraction, child labor, EV supply chain, human rights",
         "themes": ["WB_507_ENERGY_AND_EXTRACTIVES", "LABOR", "WB_HUMAN_RIGHTS", "ECON_TRADE", "ARMEDCONFLICT"],
         "related_concepts": ["blood-diamonds", "climate-minerals"],
+        "aliases": [
+            "minería de cobalto", "cobalto", "cobalt", "mineração de cobalto",
+            "cobalt mine",
+        ],
     },
     "arms-trafficking": {
         "label": "Arms Trafficking",
         "description": "Illicit weapons trade, smuggling networks, embargo violations, proxy wars",
         "themes": ["ARMEDCONFLICT", "SEIZE", "CRIME", "MILITARY", "TAX_TERROR"],
         "related_concepts": ["blood-diamonds", "drug-trafficking"],
+        "aliases": [
+            "tráfico de armas", "contrabando de armas", "trafic d'armes",
+            "arms trade", "weapon smuggling",
+        ],
     },
     "drug-trafficking": {
         "label": "Drug Trafficking",
         "description": "Narco-trafficking networks, cartel violence, drug interdiction, money laundering",
         "themes": ["CRIME", "ARREST", "KILL", "TAX_TERROR", "ECON_TRADE"],
         "related_concepts": ["arms-trafficking", "money-laundering"],
+        "aliases": [
+            "narcotráfico", "tráfico de drogas", "trafic de drogue", "cartel",
+            "drug trade", "narco",
+        ],
     },
     "money-laundering": {
         "label": "Money Laundering",
         "description": "Financial crime, shell companies, offshore accounts, sanctions evasion",
         "themes": ["CRIME", "TAX_FNCACT", "ECON_TRADE", "ARREST", "WB_ANTI_CORRUPTION"],
         "related_concepts": ["drug-trafficking", "corruption"],
+        "aliases": [
+            "lavado de dinero", "blanqueo de capitales", "blanqueo", "blanchiment",
+            "financial crime",
+        ],
     },
     "corruption": {
         "label": "Corruption",
         "description": "Bribery, embezzlement, state capture, procurement fraud, kleptocracy",
         "themes": ["WB_ANTI_CORRUPTION", "WB_GOVERNANCE", "CRIME", "ARREST", "PROTEST"],
         "related_concepts": ["money-laundering", "sanctions"],
+        "aliases": ["corrupción", "soborno", "corupção", "corruption", "bribery", "kleptocracy"],
     },
     "sanctions": {
         "label": "Sanctions & Embargoes",
         "description": "International sanctions, asset freezes, trade restrictions, compliance",
         "themes": ["ECON_TRADE", "MILITARY", "SEIZE", "WB_TRADE_POLICY", "WB_GOVERNANCE"],
         "related_concepts": ["arms-trafficking", "corruption"],
+        "aliases": ["sanciones", "embargo", "sanções", "sanctions économiques", "asset freeze"],
     },
     "refugee-crisis": {
         "label": "Refugee Crisis",
         "description": "Forced displacement, asylum seekers, border crossings, humanitarian corridors",
         "themes": ["MIGRATION", "WB_HUMAN_RIGHTS", "ARMEDCONFLICT", "DISASTER", "WB_GOVERNANCE"],
         "related_concepts": ["armed-conflict", "humanitarian-aid"],
+        "aliases": [
+            "crisis de refugiados", "refugiados", "réfugiés", "desplazados",
+            "asylum seekers", "migrantes",
+        ],
     },
     "humanitarian-aid": {
         "label": "Humanitarian Aid",
         "description": "Emergency relief, food security, aid access, NGO operations, blockades",
         "themes": ["DISASTER", "WB_HUMAN_RIGHTS", "HEALTH", "ARMEDCONFLICT", "UNGP_DISASTER"],
         "related_concepts": ["refugee-crisis", "food-security"],
+        "aliases": [
+            "ayuda humanitaria", "asistencia humanitaria", "aide humanitaire",
+            "humanitarian relief",
+        ],
     },
     "food-security": {
         "label": "Food Security",
         "description": "Famine, food price crises, agricultural collapse, supply chain disruption",
         "themes": ["AGRICULTURE", "DISASTER", "ECON_INFLATION", "WB_1637_AGRICULTURE_AND_FOOD", "UNGP_DISASTER"],
         "related_concepts": ["humanitarian-aid", "climate-crisis"],
+        "aliases": [
+            "seguridad alimentaria", "hambre", "hambruna", "famine", "food crisis",
+            "escasez de alimentos",
+        ],
     },
     "climate-crisis": {
         "label": "Climate Crisis",
         "description": "Extreme weather, climate migration, emissions, energy transition, IPCC",
         "themes": ["WB_2810_CLIMATE_CHANGE", "DISASTER", "ENERGY", "AGRICULTURE", "MIGRATION"],
         "related_concepts": ["food-security", "climate-minerals"],
+        "aliases": [
+            "crisis climática", "cambio climático", "clima", "calentamiento global",
+            "changement climatique", "climate change",
+        ],
     },
     "climate-minerals": {
         "label": "Critical Minerals",
         "description": "Lithium, cobalt, rare earths — energy transition supply chains and geopolitics",
         "themes": ["WB_507_ENERGY_AND_EXTRACTIVES", "ECON_TRADE", "WB_TRADE_POLICY", "ARMEDCONFLICT"],
         "related_concepts": ["cobalt-mining", "climate-crisis"],
+        "aliases": [
+            "minerales críticos", "litio", "tierras raras", "lithium", "rare earth",
+            "transition minerals",
+        ],
     },
     "disinformation": {
         "label": "Disinformation & Propaganda",
         "description": "Information warfare, state media manipulation, fake news, influence operations",
         "themes": ["MEDIA_MSM", "CYBERATTACK", "MILITARY", "WB_GOVERNANCE", "TAX_TERROR"],
         "related_concepts": ["cyber-warfare", "elections"],
+        "aliases": [
+            "desinformación", "propaganda", "fake news", "noticias falsas", "infox",
+            "manipulation de l'information",
+        ],
     },
     "cyber-warfare": {
         "label": "Cyber Warfare",
         "description": "State-sponsored hacking, critical infrastructure attacks, espionage, ransomware",
         "themes": ["CYBERATTACK", "MILITARY", "WB_GOVERNANCE", "TAX_TERROR", "TECHNOLOGY"],
         "related_concepts": ["disinformation", "sanctions"],
+        "aliases": [
+            "guerra cibernética", "ciberataques", "ciberguerra", "hacking",
+            "ransomware", "espionaje digital",
+        ],
     },
     "elections": {
         "label": "Electoral Integrity",
         "description": "Election interference, voter suppression, disputed results, democratic backsliding",
         "themes": ["ELECTIONS", "PROTEST", "WB_GOVERNANCE", "MEDIA_MSM", "DISINFORMATION"],
         "related_concepts": ["disinformation", "corruption"],
+        "aliases": [
+            "elecciones", "fraude electoral", "integridad electoral", "elections",
+            "voter fraud", "election interference",
+        ],
     },
     "war-crimes": {
         "label": "War Crimes & Atrocities",
         "description": "Civilian targeting, chemical weapons, genocide, ICC prosecutions",
         "themes": ["ARMEDCONFLICT", "KILL", "WB_HUMAN_RIGHTS", "CRISISLEX_C03_DEAD_WOUNDED", "WB_GOVERNANCE"],
         "related_concepts": ["refugee-crisis", "sanctions"],
+        "aliases": [
+            "crímenes de guerra", "atrocidades", "crimen de guerra",
+            "crimes de guerre", "atrocities",
+        ],
     },
     "nuclear-threat": {
         "label": "Nuclear Threat",
         "description": "Nuclear weapons programs, proliferation, deterrence, IAEA inspections",
         "themes": ["MILITARY", "TAX_TERROR", "ECON_TRADE", "WB_GOVERNANCE", "ARMEDCONFLICT"],
         "related_concepts": ["arms-trafficking", "sanctions"],
+        "aliases": [
+            "amenaza nuclear", "armas nucleares", "proliferación nuclear",
+            "nuclear weapons", "nucléaire",
+        ],
     },
     "human-trafficking": {
         "label": "Human Trafficking",
         "description": "Modern slavery, forced labor, sex trafficking, smuggling networks, exploitation",
         "themes": ["CRIME", "ARREST", "WB_HUMAN_RIGHTS", "MIGRATION", "LABOR"],
         "related_concepts": ["arms-trafficking", "drug-trafficking", "refugee-crisis"],
+        "aliases": [
+            "trata de personas", "esclavitud moderna", "tráfico humano",
+            "traite des êtres humains", "modern slavery",
+        ],
     },
     "femicide": {
         "label": "Femicide & Gender Violence",
         "description": "Killings of women, gender-based violence, domestic violence, impunity",
         "themes": ["KILL", "CRISISLEX_C06_VIOLENCE", "WB_HUMAN_RIGHTS", "CRIME", "WB_632_WOMEN_IN_POLITICS"],
         "related_concepts": ["human-trafficking", "state-repression"],
+        "aliases": [
+            "femicidio", "feminicidio", "violencia de género",
+            "violencia contra la mujer", "féminicide",
+        ],
     },
     "genocide": {
         "label": "Genocide & Mass Atrocities",
         "description": "Ethnic cleansing, mass killings, crimes against humanity, ICC referrals",
         "themes": ["KILL", "ARMEDCONFLICT", "WB_HUMAN_RIGHTS", "CRISISLEX_C03_DEAD_WOUNDED", "MIGRATION"],
         "related_concepts": ["war-crimes", "refugee-crisis"],
+        "aliases": [
+            "genocidio", "limpieza étnica", "masacre", "génocide",
+            "ethnic cleansing", "atrocidades masivas",
+        ],
     },
     "press-freedom": {
         "label": "Press Freedom",
         "description": "Journalist safety, media censorship, attacks on press, legal harassment of reporters",
         "themes": ["MEDIA_MSM", "WB_HUMAN_RIGHTS", "WB_GOVERNANCE", "ARREST", "KILL"],
         "related_concepts": ["disinformation", "state-repression"],
+        "aliases": [
+            "libertad de prensa", "censura", "periodistas",
+            "libertad de expresión", "liberté de la presse",
+        ],
     },
     "pandemic-disease": {
         "label": "Pandemic & Disease Outbreaks",
         "description": "Epidemic outbreaks, vaccine access, public health emergencies, WHO response",
         "themes": ["HEALTH", "UNGP_DISASTER", "DISASTER_RESPONSE", "WB_GOVERNANCE", "ECON_TRADE"],
         "related_concepts": ["humanitarian-aid", "climate-crisis"],
+        "aliases": [
+            "pandemia", "epidemia", "brote", "vacunas", "salud pública",
+            "pandémie", "outbreak",
+        ],
     },
     "state-repression": {
         "label": "State Repression",
         "description": "Authoritarian crackdowns, political prisoners, mass arrests, dissent suppression",
         "themes": ["ARREST", "PROTEST", "WB_HUMAN_RIGHTS", "WB_GOVERNANCE", "MILITARY"],
         "related_concepts": ["press-freedom", "femicide", "corruption"],
+        "aliases": [
+            "represión estatal", "represión", "presos políticos", "autoritarismo",
+            "répression", "political prisoners",
+        ],
     },
 }
 
@@ -1037,19 +1123,30 @@ def search_concepts(query: str, limit: int = 10, min_score: float = 0.7) -> list
             scored.append((10.0, {"slug": slug, **concept}))
             continue
 
+        alias_phrase_score = 0.0
+        for alias in concept.get("aliases", []):
+            alias_norm = _normalize(alias)
+            if alias_norm == q_norm:
+                alias_phrase_score = max(alias_phrase_score, 2.0)
+            elif alias_norm and alias_norm in q_norm:
+                alias_phrase_score = max(alias_phrase_score, 1.5)
+
         label_tokens = _tokenize(concept["label"]) + _tokenize(slug.replace("-", " "))
         desc_tokens = _tokenize(concept["description"])
         # Theme codes contribute too — "KILL" search hits "femicide", "genocide" concepts
         theme_tokens = []
         for code in concept["themes"]:
             theme_tokens.extend(_tokenize(code.replace("_", " ")))
+        alias_tokens: list[str] = []
+        for alias in concept.get("aliases", []):
+            alias_tokens.extend(_tokenize(alias))
 
-        label_score = _fuzzy_token_score(q_tokens, label_tokens)
+        label_score = _fuzzy_token_score(q_tokens, label_tokens + alias_tokens)
         desc_score = _fuzzy_token_score(q_tokens, desc_tokens)
         theme_score = _fuzzy_token_score(q_tokens, theme_tokens)
 
         # Weighted: label is the editorial frame, description is supporting, themes are weakest
-        score = max(label_score, 0.7 * desc_score, 0.5 * theme_score)
+        score = max(alias_phrase_score, label_score, 0.7 * desc_score, 0.5 * theme_score)
         if score >= min_score:
             scored.append((score, {"slug": slug, **concept}))
 
