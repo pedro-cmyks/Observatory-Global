@@ -17,22 +17,23 @@ interface NarrativeDriftProps {
 export function NarrativeDrift({ themeCode, countryCode, days = 14 }: NarrativeDriftProps) {
     const [data, setData] = useState<DriftPoint[]>([])
     const [loading, setLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
         let isMounted = true
         const fetchDrift = async () => {
             setLoading(true)
-            setError(null)
             try {
-                let url = `/api/v2/theme/${themeCode}/drift?days=${days}`
-                if (countryCode) url += `&country_code=${countryCode}`
+                let url = `/api/v2/theme/${encodeURIComponent(themeCode)}/drift?days=${days}`
+                if (countryCode) url += `&country_code=${encodeURIComponent(countryCode)}`
                 const res = await fetch(url)
-                if (!res.ok) throw new Error('Failed to fetch drift data')
+                if (!res.ok) {
+                    if (isMounted) setData([])
+                    return
+                }
                 const json = await res.json()
                 if (isMounted) setData(json.drift || [])
-            } catch (err) {
-                if (isMounted) setError(err instanceof Error ? err.message : 'Unknown error')
+            } catch {
+                if (isMounted) setData([])
             } finally {
                 if (isMounted) setLoading(false)
             }
@@ -43,8 +44,7 @@ export function NarrativeDrift({ themeCode, countryCode, days = 14 }: NarrativeD
     }, [themeCode, countryCode, days])
 
     if (loading) return <div className="narrative-drift loading">Loading narrative drift...</div>
-    if (error) return <div className="narrative-drift error">Error: {error}</div>
-    if (!data.length) return <div className="narrative-drift empty">No drift data available for this period.</div>
+    if (!data.length) return <div className="narrative-drift empty">No drift data for this period.</div>
 
     // Format dates for display
     const formattedData = data.map(d => ({

@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ForceGraph2D from 'react-force-graph-2d'
 import { Download, ExternalLink, Filter, FolderKanban, List, Loader2, Network, PinOff, Search, X } from 'lucide-react'
 import { useWorkspace } from '../contexts/WorkspaceContext'
@@ -102,6 +102,7 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
     const [linkKinds, setLinkKinds] = useState<Set<WorkspaceLinkKind>>(() => new Set(WORKSPACE_LINK_KINDS))
     const [showNotes, setShowNotes] = useState(true)
     const boardRef = useRef<HTMLDivElement | null>(null)
+    const graphRef = useRef<any>(null)
     const [boardSize, setBoardSize] = useState({ width: 760, height: 560 })
 
     useEffect(() => {
@@ -127,8 +128,44 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
         })
     }, [graph, deferredQuery, nodeTypes, linkKinds])
 
+    // Strengthen repulsion and set link distance whenever the graph changes
+    useEffect(() => {
+        const fg = graphRef.current
+        if (!fg) return
+        fg.d3Force('charge')?.strength(-320)
+        fg.d3Force('link')?.distance(110)
+        fg.d3ReheatSimulation()
+    }, [filteredGraph])
+
     const activeNodeCount = filteredGraph.nodes.length
     const activeLinkCount = filteredGraph.links.length
+
+    const drawLinkLabel = useCallback((link: WorkspaceGraphLink, ctx: CanvasRenderingContext2D, globalScale: number) => {
+        // Only draw labels when zoomed in enough to be readable
+        if (globalScale < 1.2) return
+        const src = link.source as { x?: number; y?: number }
+        const tgt = link.target as { x?: number; y?: number }
+        if (src.x == null || src.y == null || tgt.x == null || tgt.y == null) return
+        const midX = (src.x + tgt.x) / 2
+        const midY = (src.y + tgt.y) / 2
+        const label = formatFilterLabel(link.kind)
+        const fontSize = Math.max(6, 7 / globalScale)
+        ctx.save()
+        ctx.font = `500 ${fontSize}px Space Grotesk, monospace`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        // Pill background
+        const tw = ctx.measureText(label).width
+        const ph = fontSize * 1.4
+        const pw = tw + fontSize
+        ctx.fillStyle = 'rgba(9, 18, 33, 0.82)'
+        ctx.beginPath()
+        ctx.roundRect(midX - pw / 2, midY - ph / 2, pw, ph, ph / 2)
+        ctx.fill()
+        ctx.fillStyle = LINK_COLORS[link.kind]
+        ctx.fillText(label, midX, midY)
+        ctx.restore()
+    }, [])
 
     return (
         <>
@@ -256,11 +293,12 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
                             </div>
                         ) : (
                             <ForceGraph2D<WorkspaceGraphNode, WorkspaceGraphLink>
+                                ref={graphRef}
                                 graphData={filteredGraph}
                                 width={boardSize.width}
                                 height={boardSize.height}
                                 nodeId="id"
-                                nodeVal={node => Math.max(4, Math.log10((node.weight || 1) + 10) * 3)}
+                                nodeVal={node => Math.max(8, Math.log10((node.weight || 1) + 10) * 5)}
                                 nodeCanvasObject={drawWorkspaceNode}
                                 nodePointerAreaPaint={(node, color, ctx) => {
                                     ctx.fillStyle = color
@@ -271,8 +309,11 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
                                 linkDirectionalParticles={link => link.weight > 10 ? 1 : 0}
                                 linkDirectionalParticleSpeed={0.003}
                                 linkDirectionalParticleWidth={1.5}
-                                cooldownTicks={80}
-                                d3VelocityDecay={0.28}
+                                linkCanvasObjectMode={() => 'after'}
+                                linkCanvasObject={drawLinkLabel}
+                                cooldownTicks={150}
+                                d3AlphaDecay={0.015}
+                                d3VelocityDecay={0.22}
                                 backgroundColor="rgba(0,0,0,0)"
                                 onNodeClick={node => {
                                     if (node.urlParams) onNavigate(node.urlParams)
