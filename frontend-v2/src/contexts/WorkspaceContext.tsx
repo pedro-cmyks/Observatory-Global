@@ -151,14 +151,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
 
     const isPinned = (id: string) => items.some(i => i.id === id)
-    const graph = useMemo(() => {
-        try {
-            return buildWorkspaceGraph({ items, details })
-        } catch (e) {
-            console.error('[WorkspaceGraph] build failed', e)
-            return { nodes: [], links: [] }
-        }
-    }, [items, details])
+    const graph = useMemo(() => buildWorkspaceGraph({ items, details }), [items, details])
 
     const exportWorkspace = () => {
         let md = `# Atlas Investigation Workspace\n\n`

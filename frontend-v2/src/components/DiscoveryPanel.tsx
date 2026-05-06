@@ -87,7 +87,7 @@ export default function DiscoveryPanel({ hours, onThemeSelect }: DiscoveryPanelP
           <div className="discovery-error">Could not load topics</div>
         )}
         {!loading && !error && displayed.map((n) => {
-          const label = n.label || getThemeLabel(n.theme_code);
+          const label = getThemeLabel(n.theme_code);
           return (
             <div
               key={n.theme_code}

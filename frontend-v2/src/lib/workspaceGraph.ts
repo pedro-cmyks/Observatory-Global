@@ -356,6 +356,7 @@ export function buildWorkspaceGraph({ items, details }: WorkspaceGraphInput): Wo
   const nodes = new Map<string, WorkspaceGraphNode>()
   const links = new Map<string, WorkspaceGraphLink>()
 
+  // First pass: always build pinned item nodes — must never fail
   for (const item of items) {
     addNode(nodes, {
       id: item.id,
@@ -368,18 +369,23 @@ export function buildWorkspaceGraph({ items, details }: WorkspaceGraphInput): Wo
     })
   }
 
+  // Second pass: add relationship nodes from fetched details — isolated per item
   for (const item of items) {
     const detail = details[item.id]
     if (!detail) continue
 
-    if (item.type === 'theme') {
-      addThemeRelationships(item, detail as ThemeDetailGraphData, nodes, links)
-    } else if (item.type === 'country') {
-      addCountryRelationships(item, detail as CountryDetailGraphData, nodes, links)
-    } else if (item.type === 'person') {
-      addFocusRelationships(item, detail as FocusGraphData, nodes, links)
-    } else if (item.type === 'source') {
-      addSourceRelationships(item, detail as SourceProfileGraphData, nodes, links)
+    try {
+      if (item.type === 'theme') {
+        addThemeRelationships(item, detail as ThemeDetailGraphData, nodes, links)
+      } else if (item.type === 'country') {
+        addCountryRelationships(item, detail as CountryDetailGraphData, nodes, links)
+      } else if (item.type === 'person') {
+        addFocusRelationships(item, detail as FocusGraphData, nodes, links)
+      } else if (item.type === 'source') {
+        addSourceRelationships(item, detail as SourceProfileGraphData, nodes, links)
+      }
+    } catch (e) {
+      console.warn('[WorkspaceGraph] relationship build failed for', item.id, e)
     }
   }
 
