@@ -5,6 +5,7 @@ import { NarrativeDrift } from './NarrativeDrift'
 import { ExportMenu } from './ExportMenu'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Pin, PinOff, X } from 'lucide-react'
+import { getSourceFamilyMeta, type SourceFamily } from '../lib/sourceFamily'
 import './ThemeDetail.css'
 
 interface ThemeData {
@@ -23,7 +24,7 @@ interface ThemeData {
     }>
     countryBreakdown: Array<{ code: string; count: number; sentiment: number }>
     relatedThemes: Array<{ theme: string; count: number }>
-    topSources: Array<{ name: string; count: number; sentiment: number }>
+    topSources: Array<{ name: string; count: number; sentiment: number; family?: SourceFamily | string | null }>
     topPersons: Array<{ name: string; count: number }>
     timeline: Array<{ hour: string; count: number; sentiment: number }>
     countryFraming?: Array<{
@@ -33,6 +34,7 @@ interface ThemeData {
         avg_sentiment: number
         top_sub_themes: string[]
         sentiment_label: string
+        volumeRank?: number
     }>
     relatedConcepts?: Array<{ slug: string; label: string; description: string }>
 }
@@ -425,7 +427,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                                                     data-tip={`See ${cf.country_name}'s coverage`}
                                                 >
                                                     <div className="framing-card-header">
-                                                        <span className="framing-rank">#{(cf as any).volumeRank ?? idx + 1}</span>
+                                                        <span className="framing-rank">#{cf.volumeRank ?? idx + 1}</span>
                                                         <span className="framing-flag">{getFlag(cf.country_code)}</span>
                                                         <span className="framing-country-name">{cf.country_name}</span>
                                                     </div>
@@ -551,23 +553,29 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                             <div className="theme-section">
                                 <h3>Top Sources</h3>
                                 <div className="source-list">
-                                    {data.topSources.map(s => (
-                                        <div
-                                            key={s.name}
-                                            className={`source-item ${selectedSource === s.name ? 'source-active' : ''}`}
-                                            onClick={() => setSelectedSource(selectedSource === s.name ? null : s.name)}
-                                            data-tip={`Avg tone ${s.sentiment > 0 ? '+' : ''}${s.sentiment.toFixed(2)} · click to filter articles by this source`}
-                                        >
-                                            <span className="source-name">{s.name}</span>
-                                            <span className="source-count">{s.count}</span>
-                                            <span className="source-sentiment" style={{ color: getSentimentColor(s.sentiment) }}>
-                                                {sentimentWord(s.sentiment)}
-                                            </span>
-                                            <span className="source-see-articles">
-                                                {selectedSource === s.name ? '▴' : '▾'}
-                                            </span>
-                                        </div>
-                                    ))}
+                                    {data.topSources.map(s => {
+                                        const family = getSourceFamilyMeta(s.family)
+                                        return (
+                                            <div
+                                                key={s.name}
+                                                className={`source-item ${selectedSource === s.name ? 'source-active' : ''}`}
+                                                onClick={() => setSelectedSource(selectedSource === s.name ? null : s.name)}
+                                                data-tip={`Avg tone ${s.sentiment > 0 ? '+' : ''}${s.sentiment.toFixed(2)} · ${family.tip} · click to filter articles by this source`}
+                                            >
+                                                <span className="source-name">{s.name}</span>
+                                                <span className={`source-family-badge ${family.className}`} data-tip={family.tip}>
+                                                    {family.label}
+                                                </span>
+                                                <span className="source-count">{s.count}</span>
+                                                <span className="source-sentiment" style={{ color: getSentimentColor(s.sentiment) }}>
+                                                    {sentimentWord(s.sentiment)}
+                                                </span>
+                                                <span className="source-see-articles">
+                                                    {selectedSource === s.name ? '▴' : '▾'}
+                                                </span>
+                                            </div>
+                                        )
+                                    })}
                                 </div>
                             </div>
                         )}
