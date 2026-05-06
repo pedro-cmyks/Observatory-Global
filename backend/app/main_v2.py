@@ -3532,7 +3532,7 @@ async def get_concept_narratives(
                     country_code,
                     COUNT(*)                          AS signal_count,
                     AVG(sentiment)                    AS avg_sentiment,
-                    (array_agg(DISTINCT source ORDER BY source))[1:5] AS top_sources,
+                    (array_agg(DISTINCT source_name ORDER BY source_name))[1:5] AS top_sources,
                     (
                         SELECT t
                         FROM unnest(array_agg(themes)) AS arr(themes_arr),
@@ -3556,7 +3556,7 @@ async def get_concept_narratives(
                 SELECT
                     COUNT(*)                              AS total_signals,
                     COUNT(DISTINCT country_code)          AS total_countries,
-                    COUNT(DISTINCT source)                AS total_sources,
+                    COUNT(DISTINCT source_name)           AS total_sources,
                     AVG(sentiment)                        AS avg_sentiment,
                     MIN(timestamp)                        AS first_seen,
                     MAX(timestamp)                        AS last_seen
@@ -3676,7 +3676,7 @@ async def get_theme_spikes(
             spikes = []
             for spike in top_spikes:
                 trigger = await conn.fetchrow("""
-                    SELECT url, source, country_code, sentiment
+                    SELECT url, source_name AS source, country_code, sentiment
                     FROM signals_v2
                     WHERE timestamp >= $1
                       AND timestamp < $1 + INTERVAL '1 hour'
