@@ -3512,7 +3512,8 @@ async def get_concept_narratives(
         raise HTTPException(status_code=404, detail=f"Concept '{slug}' not found")
 
     themes = concept["themes"]
-    cache_key = f"concept:{slug}:{hours}:{region or 'all'}"
+    query_hours = min(hours, 24)
+    cache_key = f"concept:{slug}:{hours}:{query_hours}:{region or 'all'}"
 
     if hasattr(app.state, "redis") and app.state.redis:
         try:
@@ -3526,9 +3527,9 @@ async def get_concept_narratives(
         async with app.state.pool.acquire() as conn:
             await conn.execute("SET statement_timeout = 15000")
 
-            # Per-country breakdown. Keep this aggregation cheap enough for the 168h view:
-            # the concept's first taxonomy theme is used as the frame label instead of
-            # unnesting every signal's theme array under the request timeout.
+            # Per-country breakdown. Concept theme scans are expensive on the live signals
+            # table, so long lookbacks degrade to a 24h effective window until this endpoint
+            # gets a materialized aggregate/indexed concept table.
             rows = await conn.fetch("""
                 SELECT
                     country_code,
@@ -3543,7 +3544,7 @@ async def get_concept_narratives(
                 GROUP BY country_code
                 ORDER BY signal_count DESC
                 LIMIT 50
-            """, themes, str(hours))
+            """, themes, str(query_hours))
 
             # Global totals
             totals = await conn.fetchrow("""
@@ -3558,7 +3559,7 @@ async def get_concept_narratives(
                 WHERE timestamp > NOW() - ($2 || ' hours')::INTERVAL
                   AND themes IS NOT NULL
                   AND themes && $1::text[]
-            """, themes, str(hours))
+            """, themes, str(query_hours))
 
             countries = []
             for r in rows:
@@ -3578,6 +3579,7 @@ async def get_concept_narratives(
                 "themes": themes,
                 "related_concepts": concept.get("related_concepts", []),
                 "hours": hours,
+                "effective_hours": query_hours,
                 "total_signals": totals["total_signals"] or 0,
                 "total_countries": totals["total_countries"] or 0,
                 "avg_sentiment": round(float(totals["avg_sentiment"] or 0), 3),
