@@ -1,6 +1,6 @@
 import { useDeferredValue, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ForceGraph2D from 'react-force-graph-2d'
-import { Download, ExternalLink, Filter, FolderKanban, List, Loader2, Network, PinOff, Search, X } from 'lucide-react'
+import { Download, ExternalLink, Filter, FolderKanban, List, Loader2, Network, Pin, PinOff, Search, X } from 'lucide-react'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import {
     WORKSPACE_LINK_KINDS,
@@ -171,9 +171,9 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
         <>
             <button
                 type="button"
-                className={`workspace-toggle-tab ${isOpen ? 'open' : ''}`}
+                className={`workspace-toggle-tab ${isOpen ? 'open' : ''} ${items.length === 0 && !isOpen ? 'pulse-hint' : ''}`}
                 onClick={() => setIsOpen(!isOpen)}
-                data-tip="Investigation Workspace"
+                data-tip={items.length === 0 ? 'Investigation Workspace — pin countries, topics & people here' : 'Investigation Workspace'}
                 aria-label="Investigation Workspace"
             >
                 <FolderKanban size={18} />
@@ -283,7 +283,9 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
                             <div className="workspace-empty workspace-empty-board">
                                 <FolderKanban size={24} />
                                 <p>Your workspace is empty.</p>
-                                <p>Open a country, topic, person, source, or signal, then click the pin icon to save it here.</p>
+                                <p style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                    Click any <Pin size={13} style={{ color: '#94a3b8', flexShrink: 0 }} /> icon inside a country, topic, or person panel to add it here.
+                                </p>
                             </div>
                         ) : filteredGraph.nodes.length === 0 ? (
                             <div className="workspace-empty workspace-empty-board">

@@ -423,3 +423,14 @@
         max-height: 210px;
     }
 }
+
+/* Pulse ring on workspace tab when no items pinned */
+@keyframes ws-tab-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+    70%  { box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.workspace-toggle-tab.pulse-hint {
+    animation: ws-tab-pulse 2s ease-out infinite;
+}
