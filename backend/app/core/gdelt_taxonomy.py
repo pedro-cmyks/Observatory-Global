@@ -690,7 +690,8 @@ def get_theme_label(theme_code: str) -> str:
         return fallback_labels[upper]
 
     if upper.startswith("WB_"):
-        return f"{_format_theme_words(re.sub(r'^WB_(?:\d+_)?', '', upper))} (World Bank)"
+        wb_code = re.sub(r"^WB_(?:\d+_)?", "", upper)
+        return f"{_format_theme_words(wb_code)} (World Bank)"
     if upper.startswith("USPEC_POLICY_ECONOMIC"):
         return "US Economic Policy"
     if upper.startswith("USPEC_POLICY"):
@@ -698,13 +699,17 @@ def get_theme_label(theme_code: str) -> str:
     if upper.startswith("USPEC_POLITICS"):
         return "US Politics"
     if upper.startswith("USPEC_"):
-        return f"US {_format_theme_words(re.sub(r'^USPEC_', '', upper))}"
+        uspec_code = re.sub(r"^USPEC_", "", upper)
+        return f"US {_format_theme_words(uspec_code)}"
     if upper.startswith("EPU_"):
-        return f"Policy: {_format_theme_words(re.sub(r'^EPU_', '', upper))}"
+        epu_code = re.sub(r"^EPU_", "", upper)
+        return f"Policy: {_format_theme_words(epu_code)}"
     if upper.startswith("CRISISLEX_"):
-        return f"Crisis: {_format_theme_words(re.sub(r'^CRISISLEX_(?:C\d+_)?', '', upper))}"
+        crisis_code = re.sub(r"^CRISISLEX_(?:C\d+_)?", "", upper)
+        return f"Crisis: {_format_theme_words(crisis_code)}"
     if upper.startswith("UNGP_"):
-        return f"UN: {_format_theme_words(re.sub(r'^UNGP_', '', upper))}"
+        ungp_code = re.sub(r"^UNGP_", "", upper)
+        return f"UN: {_format_theme_words(ungp_code)}"
 
     prefix_rules = [
         (r"^TAX_FNCACT_", ""),
