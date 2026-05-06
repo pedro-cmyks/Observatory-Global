@@ -18,7 +18,7 @@ interface FocusData {
     nodes: FocusNode[]
     related_topics: Array<{ topic: string; count: number }>
     top_sources: Array<{ source: string; count: number; avg_sentiment: number }>
-    headlines: Array<{ url: string; source: string; time: string | null }>
+    headlines: Array<{ url: string; source: string; headline: string | null; time: string | null }>
 }
 
 interface EntityPanelProps {
@@ -266,20 +266,23 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
                         <div className="entity-section">
                             <div className="entity-section-label">Recent Coverage</div>
                             <div className="entity-headlines">
-                                {data.headlines.slice(0, 8).map((h, i) => (
-                                    <a
-                                        key={i}
-                                        href={h.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="entity-headline"
-                                    >
-                                        <span className="entity-headline-source">{h.source}</span>
-                                        <span className="entity-headline-url">
-                                            {h.url.replace(/^https?:\/\/[^/]+/, '').slice(0, 60) || h.url.slice(0, 60)}
-                                        </span>
-                                    </a>
-                                ))}
+                                {data.headlines.slice(0, 8).map((h, i) => {
+                                    const displayText = h.headline
+                                        ? h.headline.replace(/^\d{6,}\./, '').trim().slice(0, 90)
+                                        : h.url.replace(/^https?:\/\/[^/]+/, '').replace(/[-_]/g, ' ').slice(0, 70)
+                                    return (
+                                        <a
+                                            key={i}
+                                            href={h.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="entity-headline"
+                                        >
+                                            <span className="entity-headline-source">{h.source}</span>
+                                            <span className="entity-headline-title">{displayText}</span>
+                                        </a>
+                                    )
+                                })}
                             </div>
                         </div>
                     )}

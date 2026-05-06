@@ -320,20 +320,25 @@ export const SignalStream: React.FC = () => {
         }
     }, [filter.country, filter.theme, filter.person, isHovered, timeRange])
 
-    // Drip-reveal: pop one queued signal every 6 seconds for a live-stream feel
+    // Drip-reveal: pop one queued signal every ~1 second for a live-stream feel
     useEffect(() => {
         const drip = setInterval(() => {
             if (dripQueueRef.current.length === 0) return
-            const next = dripQueueRef.current.shift()!
-            const itemKey = `${next.type}-${next.id}`
-            setNewItemIds(new Set([itemKey]))
-            setTimeout(() => setNewItemIds(new Set()), 700)
-            setItems(prev => {
-                const merged = [next, ...prev]
-                const unique = merged.filter((v, i, a) => a.findIndex(t => t.type === v.type && t.id === v.id) === i)
-                return unique.slice(0, 100)
-            })
-        }, 6000)
+            // Occasionally drip 2 at once for a more organic rhythm
+            const batch = dripQueueRef.current.length > 3 && Math.random() < 0.25 ? 2 : 1
+            for (let i = 0; i < batch; i++) {
+                if (dripQueueRef.current.length === 0) break
+                const next = dripQueueRef.current.shift()!
+                const itemKey = `${next.type}-${next.id}`
+                setNewItemIds(prev => new Set([...prev, itemKey]))
+                setTimeout(() => setNewItemIds(prev => { const s = new Set(prev); s.delete(itemKey); return s }), 700)
+                setItems(prev => {
+                    const merged = [next, ...prev]
+                    const unique = merged.filter((v, i, a) => a.findIndex(t => t.type === v.type && t.id === v.id) === i)
+                    return unique.slice(0, 100)
+                })
+            }
+        }, 900)
         return () => clearInterval(drip)
     }, [])
 

@@ -826,14 +826,19 @@ function AppContent() {
               <button
                 className="layer-btn layer-btn--reset"
                 onClick={() => {
-                  setViewState(INITIAL_VIEW)
                   setSelectedCountry(null)
                   setSelectedCountryCode(null)
                   setShowFlows(false)
                   clearFocus()
+                  if (nodes.length > 0) {
+                    const hottest = nodes.reduce((max, n) => n.signalCount > max.signalCount ? n : max, nodes[0])
+                    mapRef.current?.getMap()?.flyTo({ center: [hottest.lon, hottest.lat], zoom: 2.5, duration: 1800, essential: true })
+                  } else {
+                    setViewState(INITIAL_VIEW)
+                  }
                 }}
-                data-tip="Reset map to global view"
-                aria-label="Reset map view"
+                data-tip="Fly to hottest region right now"
+                aria-label="Fly to hottest region"
               >
                 ↺
               </button>

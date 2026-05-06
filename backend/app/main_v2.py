@@ -426,8 +426,7 @@ async def get_nodes(
             elif use_daily_rollup:
                 # Use daily rollup for extended ranges (1m, 3m, record)
                 days = effective_hours // 24
-                # Enforce server-side cap
-                effective_limit = min(limit, 80)
+                effective_limit = min(limit, 217)
                 rows = await conn.fetch("""
                     SELECT
                         d.country_code,
@@ -447,10 +446,31 @@ async def get_nodes(
                     ORDER BY total_signals DESC
                     LIMIT %s
                 """ % (days, effective_limit), timeout=10.0)
+                # If daily rollup is empty (table not yet populated), fall back to hourly
+                if not rows:
+                    fallback_hours = min(effective_hours, 168)
+                    rows = await conn.fetch("""
+                        SELECT
+                            h.country_code,
+                            c.name,
+                            c.latitude,
+                            c.longitude,
+                            SUM(h.signal_count) as total_signals,
+                            AVG(h.avg_sentiment) as sentiment,
+                            MAX(h.max_sentiment) as max_sentiment,
+                            MIN(h.min_sentiment) as min_sentiment,
+                            SUM(h.unique_sources) as unique_sources
+                        FROM country_hourly_v2 h
+                        LEFT JOIN countries_v2 c ON h.country_code = c.code
+                        WHERE h.hour > NOW() - INTERVAL '%s hours'
+                        GROUP BY h.country_code, c.name, c.latitude, c.longitude
+                        HAVING SUM(h.signal_count) > 0
+                        ORDER BY total_signals DESC
+                        LIMIT %s
+                    """ % (fallback_hours, effective_limit), timeout=10.0)
             else:
                 # Use hourly materialized view for short ranges (faster)
-                # Enforce server-side cap
-                effective_limit = min(limit, 80)
+                effective_limit = min(limit, 217)
                 rows = await conn.fetch("""
                     SELECT
                         h.country_code,
@@ -1093,6 +1113,7 @@ async def get_focus_data(
             SELECT DISTINCT ON (LEFT(source_url, 100))
                 source_url,
                 source_name,
+                headline,
                 timestamp
             FROM signals_v2
             WHERE timestamp > NOW() - INTERVAL '{hours} hours'
@@ -1139,6 +1160,7 @@ async def get_focus_data(
                 {
                     "url": r['source_url'],
                     "source": r['source_name'],
+                    "headline": r['headline'],
                     "time": r['timestamp'].isoformat() if r['timestamp'] else None
                 }
                 for r in headlines

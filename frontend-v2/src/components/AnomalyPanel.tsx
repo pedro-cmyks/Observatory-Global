@@ -170,7 +170,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick }) => {
                                         <span className="ap-rank">#{i + 1}</span>
                                         <span className="ap-keyword">{displayTitle}</span>
                                         {a.country_count && a.country_count > 1 && (
-                                            <span className="ap-ctry-count" data-tip={`Trending in ${a.country_count} countries`}>{a.country_count} 🌍</span>
+                                            <span className="ap-ctry-count">{a.country_count} countries</span>
                                         )}
                                     </div>
                                 )

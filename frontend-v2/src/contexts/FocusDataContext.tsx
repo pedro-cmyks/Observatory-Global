@@ -138,8 +138,8 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
             if (!nodesRes.ok) throw new Error(`Nodes fetch failed: ${nodesRes.status}`)
             const nodesData = await nodesRes.json()
 
-            // Safe render: cap nodes at 150 to prevent Deck.gl crashes
-            const MAX_NODES = 150
+            // Safe render: cap at 217 (all sovereign countries) to prevent Deck.gl memory issues
+            const MAX_NODES = 217
             let safeNodes = nodesData.nodes || []
             if (safeNodes.length > MAX_NODES) {
                 safeNodes = safeNodes.slice(0, MAX_NODES)
