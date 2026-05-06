@@ -3534,11 +3534,15 @@ async def get_concept_narratives(
                     AVG(sentiment)                    AS avg_sentiment,
                     (array_agg(DISTINCT source_name ORDER BY source_name))[1:5] AS top_sources,
                     (
-                        SELECT t
-                        FROM unnest(array_agg(themes)) AS arr(themes_arr),
-                             unnest(themes_arr) AS t
-                        WHERE t = ANY($1::text[])
-                        GROUP BY t
+                        SELECT t.theme
+                        FROM signals_v2 s2
+                        CROSS JOIN LATERAL unnest(s2.themes) AS t(theme)
+                        WHERE s2.timestamp > NOW() - ($2 || ' hours')::INTERVAL
+                          AND s2.country_code = signals_v2.country_code
+                          AND s2.themes IS NOT NULL
+                          AND s2.themes && $1::text[]
+                          AND t.theme = ANY($1::text[])
+                        GROUP BY t.theme
                         ORDER BY COUNT(*) DESC
                         LIMIT 1
                     ) AS dominant_theme
@@ -3676,13 +3680,13 @@ async def get_theme_spikes(
             spikes = []
             for spike in top_spikes:
                 trigger = await conn.fetchrow("""
-                    SELECT url, source_name AS source, country_code, sentiment
+                    SELECT source_url AS url, source_name AS source, country_code, sentiment
                     FROM signals_v2
                     WHERE timestamp >= $1
                       AND timestamp < $1 + INTERVAL '1 hour'
                       AND themes IS NOT NULL
                       AND $2 = ANY(themes)
-                      AND url IS NOT NULL
+                      AND source_url IS NOT NULL
                     ORDER BY timestamp ASC
                     LIMIT 1
                 """, spike["hour"], theme_code)
