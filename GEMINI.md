@@ -1,6 +1,6 @@
 # GEMINI Code Assistant Context — Observatory Global (Atlas)
 
-Last updated: 2026-05-05 (session 5 — first-user experience)
+Last updated: 2026-05-06 (session 6 — investigation workspace + error isolation)
 
 This document gives the Gemini AI assistant the current, accurate context for the Observatory Global project. Treat this as the source of truth for deployment topology, architecture, and conventions.
 
@@ -31,15 +31,15 @@ This document gives the Gemini AI assistant the current, accurate context for th
 frontend-v2/          ← ACTIVE React 19 + Vite + TypeScript frontend (use this)
   src/
     pages/            ← Landing.tsx  Landing.css  Docs.tsx  Docs.css
-    components/       ← 29 .tsx components (see full list below)
-    contexts/         ← FocusContext, FocusDataContext, CrisisContext, ThemeContext
+    components/       ← 36 .tsx components (see full list below)
+    contexts/         ← FocusContext, FocusDataContext, CrisisContext, ThemeContext, WorkspaceContext
     hooks/            ← useFocusData.ts, useUrlSync.ts
     layers/           ← TerminatorLayer.ts (custom DeckGL day/night terminator)
-    lib/              ← countryNames.ts, chokepoints.ts, mapUtils.ts, themeLabels.tsx, timeRanges.ts
+    lib/              ← countryNames.ts, chokepoints.ts, mapUtils.ts, themeLabels.tsx, timeRanges.ts, workspaceGraph.ts
     styles/           ← variables.css, themes.ts
     App.tsx           ← main dashboard: all state, layout, routing logic
     App.css           ← global dashboard styles + [data-tip] tooltip system
-    main.tsx          ← React Router v7 setup
+    main.tsx          ← React Router v7 setup + RootErrorBoundary
   public/
     assets/           ← Atlas hero PNGs (6 images, used by Landing.tsx)
   tailwind.config.js  ← Tailwind v3 (used ONLY by Landing.tsx — rest of app uses Vanilla CSS)
@@ -84,14 +84,17 @@ stitch_atlas_landing_experience_redesign/   ← Design assets from Google Stitch
   screen.png          ← Stitch screen screenshot
 ```
 
-### Frontend Component List (32 .tsx files)
-`AnomalyPanel`, `AtlasLoader`, `Briefing`, `ChokepointPanel`, `CompareBar`, `CorrelationMatrix`, `CorrelationMatrixPlaceholder`, `CountryBrief`, `CountryThemePanel`, `CrisisDashboard`, `CrisisToggle`, `DeckGLOverlay`, `DevBanner`, `DiscoveryPanel`, `EntityPanel`, `FocusIndicator`, `FocusSummaryPanel`, `IndicatorTooltip`, `Legend`, `MapTooltip`, `NarrativeThreads`, `NarrativeThreadsPlaceholder`, `PanelErrorBoundary`, `PersonCompare`, `SearchBar`, `SettingsPanel`, `SignalStream`, `SourceIntegrityPanel`, `SourceProfile`, `ThemeCompare`, `ThemeDetail`, `ThemeSelector`
+### Frontend Component List (36 .tsx files)
+`AnomalyPanel`, `AtlasLoader`, `Briefing`, `ChokepointPanel`, `CompareBar`, `CorrelationMatrix`, `CorrelationMatrixPlaceholder`, `CountryBrief`, `CountryThemePanel`, `CrisisDashboard`, `CrisisToggle`, `DeckGLOverlay`, `DevBanner`, `DiscoveryPanel`, `EntityPanel`, `ExportMenu`, `FocusIndicator`, `FocusSummaryPanel`, `IndicatorTooltip`, `InteractiveWorkspace`, `InvestigationWorkspace`, `Legend`, `MapTooltip`, `NarrativeDrift`, `NarrativeThreads`, `NarrativeThreadsPlaceholder`, `PanelErrorBoundary`, `PersonCompare`, `SearchBar`, `SettingsPanel`, `SignalStream`, `SourceIntegrityPanel`, `SourceProfile`, `ThemeCompare`, `ThemeDetail`, `ThemeSelector`
+
+**Session 6 additions:** `InteractiveWorkspace` (force-graph canvas, lazy-loaded), `InvestigationWorkspace` (shell + lazy + error boundary).
+**Note:** `InteractiveWorkspace` must only be imported via `React.lazy()` inside `InvestigationWorkspace` — direct import will include AFRAME-free but still large react-force-graph-2d in the main bundle.
 
 ---
 
 ## Tech stack
 
-- **Frontend:** React 19, TypeScript, Vite, React Router v7, MapLibre GL, DeckGL v9, react-grid-layout v2, Recharts, lucide-react
+- **Frontend:** React 19, TypeScript, Vite, React Router v7, MapLibre GL, DeckGL v9, react-grid-layout v2, Recharts, lucide-react, react-force-graph-2d (investigation workspace)
 - **Styling:** Vanilla CSS for the main dashboard (`App.css`, component `.css` files). **Tailwind CSS v3** is installed and used **exclusively for `Landing.tsx`** (the public marketing page). Do NOT use Tailwind in dashboard components.
 - **State:** React Context (FocusContext, FocusDataContext, CrisisContext, ThemeContext — no Zustand)
 - **Theme system:** CSS custom properties driven by `ThemeContext` + `styles/themes.ts`. Active theme applied via `data-theme` attribute on `<html>`.
@@ -231,6 +234,12 @@ Stitch project: **Atlas Landing Experience Redesign**
 22. **Stream panel state machine**: Right column renders based on which state is truthy first: `isPerson → isCompound(theme+country) → isCountry → isTheme → isChokepoint → DiscoveryPanel`. The title switches between "WHAT'S HAPPENING" (blank state) and "SIGNAL STREAM" (active filter).
 23. **Map hint**: `.map-hint` element in App.css + animation. Appears 2 seconds after `mapReady` for first-time users. Dismissed on any map interaction; `sessionStorage` prevents it from reappearing within the same browser session.
 24. **ingest_v2.py ON CONFLICT status**: Restored to `ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO NOTHING` (requires migration 007's unique index). Committed. Awaiting `fly deploy` to take effect on the running instance.
+25. **Investigation workspace (session 6)**: `InvestigationWorkspace.tsx` is the shell rendered by App.tsx. It uses `React.lazy()` to load `InteractiveWorkspace.tsx` which contains the react-force-graph-2d canvas. Lazy loading splits the graph library (~187KB) into a separate chunk so it does not inflate the main bundle. `PanelErrorBoundary` wraps the workspace in App.tsx.
+26. **Graph library: react-force-graph-2d only**: The 3D variant (`react-force-graph`) pulls AFRAME as a dependency which crashes the entire app. Package.json has `react-force-graph-2d@^1.29.1`. Do NOT add react-force-graph (3D).
+27. **workspaceGraph.ts two-pass build**: `buildWorkspaceGraph()` in `lib/workspaceGraph.ts` runs two passes. Pass 1 adds pinned nodes (never fails). Pass 2 builds relationship edges with per-item try/catch so one malformed workspace item cannot prevent the graph from rendering. This avoids a blank workspace panel when some items have missing fields.
+28. **RootErrorBoundary (session 6)**: Added to `main.tsx`. Catches any unhandled error that escapes all panel-level boundaries. Renders a visible error message with the error text — never a blank screen. Three-layer hierarchy: RootErrorBoundary (main.tsx) → PanelErrorBoundary (individual panels) → MapErrorBoundary (DeckGL map).
+29. **Theme label rule (session 6)**: `getThemeLabel(theme_code)` from `lib/themeLabels.tsx` must be called client-side for every GDELT theme display. The `label` field on API responses can contain raw GDELT code strings. `DiscoveryPanel` and `NarrativeThreads` were fixed this session; apply the same pattern to any new component displaying theme names.
+30. **CountryBrief labels (session 6)**: "Top Sources" renamed to "Top Publishers". `SourceIntegrityPanel` distribution section renamed to "CONCENTRATION LEADERS".
 
 ---
 

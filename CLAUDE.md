@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-05 (session 5 — first-user experience)
+Last updated: 2026-05-06 (session 6 — investigation workspace + error isolation)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -186,8 +186,10 @@ The project uses a multi-agent architecture where each agent has specific expert
 - Use **Vanilla CSS** for all dashboard components. CSS custom properties come from `ThemeContext`.
 - **Tailwind CSS** is installed but used **exclusively for `Landing.tsx`** (the public marketing page). Do NOT add Tailwind classes to dashboard components.
 - Use `data-tip="text"` for tooltips on any element — NEVER use native `title=` attributes.
-- Components live in `frontend-v2/src/components/`. Current count: **32 .tsx components**.
+- Components live in `frontend-v2/src/components/`. Current count: **36 .tsx components**.
 - Always run `npm run build` (not just `tsc --noEmit`) before pushing — Vite's `tsc -b` is stricter.
+- `InteractiveWorkspace.tsx` (the force-graph canvas) is lazy-loaded via `React.lazy()` inside `InvestigationWorkspace.tsx` — do NOT import it directly or it will blow the main bundle.
+- Theme labels: always call `getThemeLabel(theme_code)` from `lib/themeLabels.tsx`. Do NOT trust the `label` field returned by the API — the API field may be raw GDELT codes.
 
 ---
 
@@ -673,7 +675,7 @@ codex "Write comprehensive tests for gdelt_parser.py covering all edge cases"
 
 ---
 
-## Current Technical State (as of session 5)
+## Current Technical State (as of session 6)
 
 ### Critical Build Rule
 
@@ -681,31 +683,45 @@ Always run `npm run build` (not just `tsc --noEmit`) before pushing frontend cha
 
 ### Pending Fly.io Deploy
 
-`ingest_v2.py` ON CONFLICT fix is committed but not deployed. Run `fly deploy` to activate it. Migration 007 (unique index on source_url) is already applied in the DB.
+`ingest_v2.py` ON CONFLICT fix is committed but still not deployed. Run `fly deploy` to activate it. Migration 007 (unique index on source_url) is already applied in the DB.
 
 ### Frontend Component Count
 
-29 .tsx components in `frontend-v2/src/components/`. Do not add Tailwind to any of them.
+36 .tsx components in `frontend-v2/src/components/`. Do not add Tailwind to any of them.
 
-### New Components (session 5)
+### New Components (session 6)
 
-- `DiscoveryPanel.tsx` + `DiscoveryPanel.css` — blank-state default for the stream column. Shows top 5 GDELT narratives as explorable cards with trend arrows, signal counts, top countries. Fetches `/api/v2/narratives?hours=24&limit=5`, auto-refreshes every 5 minutes.
+- `InteractiveWorkspace.tsx` — react-force-graph-2d canvas. Renders pinned nodes and relationship edges. Lazy-loaded (chunk: ~187KB). Uses react-force-graph-2d (NOT react-force-graph — that package pulls AFRAME and crashes the app).
+- `InvestigationWorkspace.tsx` + `InvestigationWorkspace.css` — shell component. Wraps `InteractiveWorkspace` with `React.lazy()` + `Suspense` + `PanelErrorBoundary`. App.tsx renders this panel.
 
-### Stream Panel Behavior Change (session 5)
+### New Lib Files (session 6)
 
-Default stream slot is now `DiscoveryPanel` (blank state), not `SignalStream`. State machine: `isPerson → isCompound → isCountry → isTheme → isChokepoint → DiscoveryPanel`.
+- `frontend-v2/src/lib/workspaceGraph.ts` — graph builder. Two-pass: pinned nodes always succeed; relationship edges built with per-item try/catch so one bad item never kills the whole graph.
+- `frontend-v2/src/lib/workspaceGraph.test.ts` — tests for graph builder.
 
-### API Endpoints (carried forward from session 4)
+### Error Isolation Architecture (established session 6)
+
+Three-layer error boundary hierarchy:
+1. `RootErrorBoundary` in `main.tsx` — catches anything that escapes all panels; shows a readable error message instead of a blank screen.
+2. `PanelErrorBoundary` in `App.tsx` — wraps `InvestigationWorkspace` and other individual panels.
+3. `MapErrorBoundary` — wraps the DeckGL map layer.
+
+### Graph Library Decision (session 6)
+
+react-force-graph (3D) was replaced with react-force-graph-2d because the 3D version pulls AFRAME as a dependency which crashes the entire app on load. Never reintroduce react-force-graph (the 3D package).
+
+### Theme Label Fix (session 6)
+
+`DiscoveryPanel.tsx` and `NarrativeThreads.tsx` now call `getThemeLabel(theme_code)` directly and ignore the API's `label` field. The API field can return raw GDELT codes (e.g. `UNGP_RIGHTS_DIGITAL_COMMUNICATION`) which are not human-readable. This pattern must be used in all components that display theme names.
+
+### Stream Panel Behavior (session 5, still current)
+
+Default stream slot is `DiscoveryPanel` (blank state), not `SignalStream`. State machine: `isPerson → isCompound → isCountry → isTheme → isChokepoint → DiscoveryPanel`.
+
+### API Endpoints
 
 - `GET /api/v2/search/unified?q=&hours=` — preferred search. Merges taxonomy, concepts, regions, DB. Cached 2 min.
-
-### Session 4 Components
-
-- `CompareBar.tsx` — period-over-period signal + sentiment delta. In ThemeDetail.
-
-### Session 4 Hooks
-
-- `useUrlSync.ts` — bidirectional FocusContext ↔ URL params sync. Shareable links: `/app?theme=ARMEDCONFLICT&country=CO&time=1w`.
+- All v2 endpoints live. v3 crisis endpoints live. Fly.io deploy pending for ON CONFLICT fix only.
 
 ### FocusContext
 
@@ -719,4 +735,6 @@ Default stream slot is now `DiscoveryPanel` (blank state), not `SignalStream`. S
 
 ### GitHub Issues Status
 
-Phase 1 (#26–29), Phase 2A (#31), Phase 3A (#30) — all closed. Session 5 issue #39 created. Remaining open: #32–38.
+Closed this session: #47, #48, #49, #52, #53, #55, #56 (Wave 2 + persona evaluation).
+New issues opened: #64 (theme fallback formatter), #65 (onboarding coachmark), #66 (export), #67 (country people), #68 (source-family classification), #69 (Spanish routing), #70 (theme clustering).
+Currently open (unscheduled): #42, #46, #50, #51, #54, #58, #61, #62, #63, #64–#70.
