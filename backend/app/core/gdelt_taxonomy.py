@@ -1175,6 +1175,139 @@ def find_closest_concepts(query: str, limit: int = 3) -> list[dict]:
     return [c for s, c in scored[:limit] if s > 0.0]
 
 
+COUNTRY_ALIASES: list[tuple[str, str, str]] = [
+    ("united states", "US", "United States"),
+    ("estados unidos", "US", "United States"),
+    ("united kingdom", "GB", "United Kingdom"),
+    ("reino unido", "GB", "United Kingdom"),
+    ("south africa", "ZA", "South Africa"),
+    ("sudafrica", "ZA", "South Africa"),
+    ("south korea", "KR", "South Korea"),
+    ("corea del sur", "KR", "South Korea"),
+    ("north korea", "KP", "North Korea"),
+    ("corea del norte", "KP", "North Korea"),
+    ("saudi arabia", "SA", "Saudi Arabia"),
+    ("arabia saudita", "SA", "Saudi Arabia"),
+    ("new zealand", "NZ", "New Zealand"),
+    ("nueva zelanda", "NZ", "New Zealand"),
+    ("costa rica", "CR", "Costa Rica"),
+    ("el salvador", "SV", "El Salvador"),
+    ("sri lanka", "LK", "Sri Lanka"),
+    ("puerto rico", "PR", "Puerto Rico"),
+    ("dominican republic", "DO", "Dominican Rep."),
+    ("republica dominicana", "DO", "Dominican Rep."),
+    ("colombia", "CO", "Colombia"),
+    ("brazil", "BR", "Brazil"),
+    ("brasil", "BR", "Brazil"),
+    ("mexico", "MX", "Mexico"),
+    ("argentina", "AR", "Argentina"),
+    ("venezuela", "VE", "Venezuela"),
+    ("peru", "PE", "Peru"),
+    ("chile", "CL", "Chile"),
+    ("ecuador", "EC", "Ecuador"),
+    ("bolivia", "BO", "Bolivia"),
+    ("uruguay", "UY", "Uruguay"),
+    ("paraguay", "PY", "Paraguay"),
+    ("panama", "PA", "Panama"),
+    ("cuba", "CU", "Cuba"),
+    ("haiti", "HT", "Haiti"),
+    ("russia", "RU", "Russia"),
+    ("rusia", "RU", "Russia"),
+    ("china", "CN", "China"),
+    ("india", "IN", "India"),
+    ("germany", "DE", "Germany"),
+    ("alemania", "DE", "Germany"),
+    ("france", "FR", "France"),
+    ("francia", "FR", "France"),
+    ("spain", "ES", "Spain"),
+    ("espana", "ES", "Spain"),
+    ("italy", "IT", "Italy"),
+    ("italia", "IT", "Italy"),
+    ("japan", "JP", "Japan"),
+    ("japon", "JP", "Japan"),
+    ("israel", "IL", "Israel"),
+    ("iran", "IR", "Iran"),
+    ("ukraine", "UA", "Ukraine"),
+    ("ucrania", "UA", "Ukraine"),
+    ("turkey", "TR", "Turkey"),
+    ("turquia", "TR", "Turkey"),
+    ("pakistan", "PK", "Pakistan"),
+    ("indonesia", "ID", "Indonesia"),
+    ("canada", "CA", "Canada"),
+    ("australia", "AU", "Australia"),
+    ("nigeria", "NG", "Nigeria"),
+    ("ghana", "GH", "Ghana"),
+    ("kenya", "KE", "Kenya"),
+    ("kenia", "KE", "Kenya"),
+    ("ethiopia", "ET", "Ethiopia"),
+    ("etiopia", "ET", "Ethiopia"),
+    ("egypt", "EG", "Egypt"),
+    ("egipto", "EG", "Egypt"),
+    ("angola", "AO", "Angola"),
+    ("sudan", "SD", "Sudan"),
+    ("congo", "CD", "DR Congo"),
+    ("myanmar", "MM", "Myanmar"),
+    ("syria", "SY", "Syria"),
+    ("siria", "SY", "Syria"),
+    ("poland", "PL", "Poland"),
+    ("polonia", "PL", "Poland"),
+    ("netherlands", "NL", "Netherlands"),
+    ("holanda", "NL", "Netherlands"),
+    ("sweden", "SE", "Sweden"),
+    ("suecia", "SE", "Sweden"),
+    ("norway", "NO", "Norway"),
+    ("noruega", "NO", "Norway"),
+    ("denmark", "DK", "Denmark"),
+    ("dinamarca", "DK", "Denmark"),
+    ("finland", "FI", "Finland"),
+    ("finlandia", "FI", "Finland"),
+    ("portugal", "PT", "Portugal"),
+    ("greece", "GR", "Greece"),
+    ("grecia", "GR", "Greece"),
+    ("romania", "RO", "Romania"),
+    ("rumania", "RO", "Romania"),
+    ("afghanistan", "AF", "Afghanistan"),
+    ("afganistan", "AF", "Afghanistan"),
+    ("somalia", "SO", "Somalia"),
+    ("libya", "LY", "Libya"),
+    ("libia", "LY", "Libya"),
+    ("yemen", "YE", "Yemen"),
+    ("iraq", "IQ", "Iraq"),
+    ("irak", "IQ", "Iraq"),
+    ("taiwan", "TW", "Taiwan"),
+    ("vietnam", "VN", "Vietnam"),
+    ("philippines", "PH", "Philippines"),
+    ("filipinas", "PH", "Philippines"),
+    ("malaysia", "MY", "Malaysia"),
+    ("malasia", "MY", "Malaysia"),
+    ("thailand", "TH", "Thailand"),
+    ("tailandia", "TH", "Thailand"),
+    ("bangladesh", "BD", "Bangladesh"),
+]
+
+
+def match_country(query: str) -> dict | None:
+    """Detect a country mention and return a cleaned topic query for compound search."""
+    if not query or not query.strip():
+        return None
+
+    q_norm = _normalize(query)
+    for alias, code, name in sorted(COUNTRY_ALIASES, key=lambda item: len(item[0]), reverse=True):
+        if not re.search(rf"\b{re.escape(alias)}\b", q_norm):
+            continue
+
+        topic = re.sub(rf"\b(en|in|de|del|sobre|from|about)\s+{re.escape(alias)}\b", " ", q_norm)
+        topic = re.sub(rf"\b{re.escape(alias)}\b", " ", topic)
+        topic = re.sub(r"[\s,]+", " ", topic).strip()
+        return {
+            "code": code,
+            "name": name,
+            "query": topic if len(topic) >= 2 else query,
+        }
+
+    return None
+
+
 def get_all_concepts() -> list[dict]:
     """Return all concepts as a list of {slug, label, description} dicts."""
     return [{"slug": s, "label": c["label"], "description": c["description"]}
@@ -1338,6 +1471,7 @@ __all__ = [
     "get_all_categories",
     "get_concept",
     "search_concepts",
+    "match_country",
     "find_closest_concepts",
     "get_all_concepts",
     "match_region",

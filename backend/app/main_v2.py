@@ -886,13 +886,15 @@ async def unified_search(
     """
     from app.core.gdelt_taxonomy import (
         search_themes, search_concepts, find_closest_concepts,
-        match_region, get_theme_label,
+        match_country, match_region, get_theme_label,
     )
 
     query = q.strip()
     query_lower = query.lower()
+    country_match = match_country(query)
+    topic_query = country_match["query"] if country_match else query
 
-    cache_key = f"usearch:{query_lower}:{hours}"
+    cache_key = f"usearch:v2:{query_lower}:{hours}"
     if app.state.redis:
         try:
             cached = await app.state.redis.get(cache_key)
@@ -902,20 +904,20 @@ async def unified_search(
             pass
 
     # --- 1. Taxonomy search (in-memory, instant) ---
-    taxonomy_hits = search_themes(query, limit=8, min_score=0.55)
+    taxonomy_hits = search_themes(topic_query, limit=8, min_score=0.55)
 
     # --- 2. Concept search (in-memory, instant) ---
-    concept_hits = search_concepts(query, limit=4, min_score=0.6)
+    concept_hits = search_concepts(topic_query, limit=4, min_score=0.6)
     # If no concepts found, offer suggestions
     concept_suggestions = []
     if not concept_hits:
-        concept_suggestions = find_closest_concepts(query, limit=2)
+        concept_suggestions = find_closest_concepts(topic_query, limit=2)
 
     # --- 3. Region match (in-memory, instant) ---
-    region_match = match_region(query)
+    region_match = match_region(topic_query)
 
     # --- 4. DB search (async) — reuse existing search logic ---
-    db_result = await search(q=query, hours=hours)
+    db_result = await search(q=topic_query, hours=hours)
 
     # --- 5. Merge themes: taxonomy first, then DB hits (deduped) ---
     seen_themes = set()
@@ -955,6 +957,10 @@ async def unified_search(
             "top_countries": db_th["top_countries"],
         })
 
+    countries = db_result.get("countries", [])
+    if country_match and not any(c.get("code") == country_match["code"] for c in countries):
+        countries = [{"code": country_match["code"], "name": country_match["name"]}, *countries]
+
     result = {
         "query": q,
         "themes": merged_themes,
@@ -974,7 +980,7 @@ async def unified_search(
         ],
         "region": region_match,
         "persons": db_result.get("persons", []),
-        "countries": db_result.get("countries", []),
+        "countries": countries,
     }
 
     if app.state.redis:
