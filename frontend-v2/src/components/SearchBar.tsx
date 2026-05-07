@@ -190,10 +190,11 @@ interface SearchResult {
 interface SearchBarProps {
     onThemeSelect: (theme: string, countryCode?: string, countryName?: string) => void
     onCountrySelect: (code: string) => void
+    onPublicAttentionSelect?: (item: PublicAttentionResult) => void
     externalQuery?: { q: string; id: number }
 }
 
-export function SearchBar({ onThemeSelect, onCountrySelect, externalQuery }: SearchBarProps) {
+export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSelect, externalQuery }: SearchBarProps) {
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<SearchResult | null>(null)
     const [parsedQuery, setParsedQuery] = useState<ParsedQuery>({ topic: '', countryCode: null, countryDisplay: null })
@@ -296,6 +297,11 @@ export function SearchBar({ onThemeSelect, onCountrySelect, externalQuery }: Sea
     }
 
     const handlePublicAttentionClick = (item: PublicAttentionResult) => {
+        if (onPublicAttentionSelect) {
+            onPublicAttentionSelect({ ...item, title: item.title.replace(/_/g, ' ') })
+            close()
+            return
+        }
         setQuery(item.title.replace(/_/g, ' '))
         doSearch(item.title.replace(/_/g, ' '))
     }

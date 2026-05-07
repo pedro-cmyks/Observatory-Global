@@ -15,9 +15,10 @@ const SEVERITY_COLORS: Record<string, string> = {
 
 interface AnomalyPanelProps {
     onWikiClick?: (query: string) => void
+    onPublicAttentionSelect?: (item: { title: string; views?: number; country_count?: number }) => void
 }
 
-export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick }) => {
+export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPublicAttentionSelect }) => {
     const { anomalies, nearMisses, themeAnomalies, meta, overallSeverity, loading } = useCrisis()
     const { filter, setFocus, setMapFlyCountry } = useFocus()
     const { acledConflicts } = useFocusData()
@@ -151,7 +152,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick }) => {
                     )}
 
                     <div className="col-label" style={{ marginTop: themeAnomalies?.length ? '8px' : 0 }}
-                        data-tip="Top Wikipedia articles by global pageviews. The blue number = how many countries show this article trending. Click any item to search it in the feed.">
+                        data-tip="Top Wikipedia articles by global pageviews. The blue number = how many countries show this article trending. Click any item to investigate it in the center panel.">
                         PUBLIC ATTENTION
                     </div>
                     <div className="col-scroll">
@@ -160,12 +161,19 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick }) => {
                         ) : (
                             wikiArticles.map((a, i) => {
                                 const displayTitle = a.title.replace(/_/g, ' ')
+                                const canOpen = Boolean(onPublicAttentionSelect || onWikiClick)
                                 return (
                                     <div
                                         key={i}
-                                        className={`ap-row ap-row--trend${onWikiClick ? ' clickable' : ''}`}
-                                        onClick={onWikiClick ? () => onWikiClick(displayTitle) : undefined}
-                                        data-tip={onWikiClick ? `Search for "${displayTitle}"` : undefined}
+                                        className={`ap-row ap-row--trend${canOpen ? ' clickable' : ''}`}
+                                        onClick={canOpen ? () => {
+                                            if (onPublicAttentionSelect) {
+                                                onPublicAttentionSelect({ ...a, title: displayTitle })
+                                            } else {
+                                                onWikiClick?.(displayTitle)
+                                            }
+                                        } : undefined}
+                                        data-tip={canOpen ? `Investigate "${displayTitle}"` : undefined}
                                     >
                                         <span className="ap-rank">#{i + 1}</span>
                                         <span className="ap-keyword">{displayTitle}</span>

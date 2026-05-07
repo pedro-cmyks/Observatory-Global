@@ -22,6 +22,7 @@ import { CrisisProvider } from './contexts/CrisisContext'
 import { SettingsPanel } from './components/SettingsPanel'
 import { CountryThemePanel } from './components/CountryThemePanel'
 import { EntityPanel } from './components/EntityPanel'
+import { PublicAttentionPanel } from './components/PublicAttentionPanel'
 import { PersonCompare } from './components/PersonCompare'
 import { ThemeCompare } from './components/ThemeCompare'
 import { SourceProfile } from './components/SourceProfile'
@@ -64,6 +65,12 @@ interface CountryDetail {
   sentiment: number
   themes: { name: string; count: number }[]
   sources: { name: string; count: number }[]
+}
+
+interface PublicAttentionSelection {
+  title: string
+  views?: number
+  country_count?: number
 }
 
 // removed sentimentColor
@@ -326,6 +333,7 @@ function AppContent() {
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
   const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null)
   const [selectedTheme, setSelectedTheme] = useState<{ theme: string, originCountry?: string, originCountryName?: string } | null>(null)
+  const [selectedPublicAttention, setSelectedPublicAttention] = useState<PublicAttentionSelection | null>(null)
   const [selectedChokepoint, setSelectedChokepoint] = useState<Chokepoint | null>(null)
   const [rightPanelThemeCountry, setRightPanelThemeCountry] = useState<{ code: string, name: string } | null>(null)
   // One-level back navigation for the stream panel
@@ -492,6 +500,7 @@ function AppContent() {
 
   // Click handlers
   const handleCountryClick = (countryCode: string) => {
+    setSelectedPublicAttention(null)
     setSelectedCountryCode(countryCode)
     setShowFlows(true)
     fetchCountryDetail(countryCode)
@@ -502,12 +511,28 @@ function AppContent() {
 
   // Theme selection handlers
   const handleThemeSelect = (theme: string, countryCode?: string, countryName?: string) => {
+    setSelectedPublicAttention(null)
     setSelectedTheme({ theme, originCountry: countryCode, originCountryName: countryName })
     if (countryCode && countryName) {
       setRightPanelThemeCountry({ code: countryCode, name: countryName })
     } else {
       setRightPanelThemeCountry(null)
     }
+  }
+
+  const handlePublicAttentionSelect = (item: PublicAttentionSelection) => {
+    const title = item.title.replace(/_/g, ' ').trim()
+    setSelectedPublicAttention({ ...item, title })
+    setSelectedTheme(null)
+    setRightPanelThemeCountry(null)
+    setSelectedCountry(null)
+    setSelectedCountryCode(null)
+    setSelectedChokepoint(null)
+    setSelectedSourceProfile(null)
+    setShowFlows(false)
+    setMapFlyCountry(null)
+    clearFocus()
+    if (filter.theme) setTheme(null)
   }
 
   // Focus-aware data from provider - auto-refetches when focus/range changes
@@ -740,6 +765,7 @@ function AppContent() {
           <SearchBar
             onThemeSelect={handleThemeSelect}
             onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
+            onPublicAttentionSelect={handlePublicAttentionSelect}
             externalQuery={externalSearchQuery}
           />
           <div className="time-controls">
@@ -1064,8 +1090,9 @@ function AppContent() {
           const isPerson = focus.type === 'person' && !!focus.value
           const isCountry = !!selectedCountryCode && !isPerson
           const isTheme = !!selectedTheme && !isPerson && !isCountry
-          const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme
-          const closeAll = () => { setSelectedTheme(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null) }
+          const isPublicAttention = !!selectedPublicAttention && !isPerson && !isCountry && !isTheme
+          const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme && !isPublicAttention
+          const closeAll = () => { setSelectedTheme(null); setSelectedPublicAttention(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null) }
           // Smart back: one step up, not all the way to stream
           const handleStreamBack = () => {
             if (prevStreamCtx?.type === 'chokepoint') {
@@ -1085,7 +1112,7 @@ function AppContent() {
             : prevStreamCtx?.type === 'theme'
               ? `← ${prevStreamCtx.theme.replace(/_/g, ' ').slice(0, 20)}`
               : '← STREAM'
-          const isBlankState = !isPerson && !isCountry && !isTheme && !isChokepoint
+          const isBlankState = !isPerson && !isCountry && !isTheme && !isPublicAttention && !isChokepoint
           let panelTitle = isBlankState ? (
             <>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1115,6 +1142,10 @@ function AppContent() {
             <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
             <span style={{ color: '#a78bfa' }}>{focus.value}</span>
           </>
+          if (isPublicAttention) panelTitle = <>
+            <button className="drill-back-btn" onClick={closeAll} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
+            <span style={{ color: '#2dd4bf' }}>{selectedPublicAttention!.title.slice(0, 28)}</span>
+          </>
           if (isChokepoint) panelTitle = <>
             <button className="drill-back-btn" onClick={() => setSelectedChokepoint(null)} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
             <span style={{ color: '#2dd4bf' }}>{selectedChokepoint!.name}</span>
@@ -1133,6 +1164,14 @@ function AppContent() {
                     onSourceClick={(source) => setSelectedSourceProfile(source)}
                     onCompareClick={(other) => setComparePerson({ a: focus.value!, b: other })}
                     onPersonSelect={(name) => { setFocus('person', name, name); setMapFlyCountry(null) }}
+                  />
+                ) : isPublicAttention ? (
+                  <PublicAttentionPanel
+                    item={selectedPublicAttention!}
+                    timeRange={timeRange}
+                    onClose={closeAll}
+                    onThemeSelect={(theme) => handleThemeSelect(theme)}
+                    onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
                   />
                 ) : isCountry ? (
                   <CountryBrief inline
@@ -1225,7 +1264,10 @@ function AppContent() {
           </div>
           <div className="panel-content">
             <PanelErrorBoundary panelName="ANOMALY ALERT">
-              <AnomalyPanel onWikiClick={(q) => setExternalSearchQuery({ q, id: Date.now() })} />
+              <AnomalyPanel
+                onWikiClick={(q) => setExternalSearchQuery({ q, id: Date.now() })}
+                onPublicAttentionSelect={handlePublicAttentionSelect}
+              />
             </PanelErrorBoundary>
           </div>
         </div>
