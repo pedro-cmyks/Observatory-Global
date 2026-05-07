@@ -3,6 +3,7 @@ import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { useFocus } from '../contexts/FocusContext'
 import type { ConceptFilter, RegionFilter } from '../contexts/FocusContext'
 import { Search } from 'lucide-react'
+import { hasVisibleSearchResults } from '../lib/searchResults'
 import './SearchBar.css'
 
 // Sorted longest-first so multi-word country names match before single-word substrings
@@ -149,6 +150,21 @@ interface RegionResult {
     countries: string[]
 }
 
+interface PublicAttentionResult {
+    title: string
+    views: number
+    country_count: number
+}
+
+interface SignalMatchResult {
+    id: number
+    timestamp: string
+    country: string
+    source: string
+    headline: string | null
+    themes: string[]
+}
+
 interface SearchResult {
     themes: ThemeResult[]
     persons: PersonResult[]
@@ -156,6 +172,8 @@ interface SearchResult {
     concepts?: ConceptResult[]
     concept_suggestions?: { slug: string; label: string; description: string }[]
     region?: RegionResult | null
+    public_attention?: PublicAttentionResult[]
+    signal_matches?: SignalMatchResult[]
 }
 
 interface SearchBarProps {
@@ -266,13 +284,22 @@ export function SearchBar({ onThemeSelect, onCountrySelect, externalQuery }: Sea
         close()
     }
 
-    const hasResults = results && (
-        results.themes.some(t => t.total_signals > 0) ||
-        results.persons.some(p => p.total_signals > 0) ||
-        results.countries.length > 0 ||
-        (results.concepts?.length ?? 0) > 0 ||
-        results.region != null
-    )
+    const handlePublicAttentionClick = (item: PublicAttentionResult) => {
+        setQuery(item.title.replace(/_/g, ' '))
+        doSearch(item.title.replace(/_/g, ' '))
+    }
+
+    const handleSignalMatchClick = (s: SignalMatchResult) => {
+        if (s.themes[0]) {
+            setTheme(s.themes[0])
+            onThemeSelect(s.themes[0], s.country)
+        } else if (s.country) {
+            handleCountryClick({ code: s.country, name: s.country })
+        }
+        close()
+    }
+
+    const hasResults = hasVisibleSearchResults(results)
 
     const countryBadge = parsedQuery.countryDisplay
         ? <span className="search-country-badge">in {parsedQuery.countryDisplay}</span>
@@ -338,6 +365,37 @@ export function SearchBar({ onThemeSelect, onCountrySelect, externalQuery }: Sea
                                     <span className="search-item-name">{c.label}</span>
                                     {countryBadge}
                                     <span className="search-item-meta search-item-meta--desc">{c.description.slice(0, 60)}…</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {results?.public_attention && results.public_attention.length > 0 && (
+                        <div className="search-section">
+                            <div className="search-section-label">Public Attention</div>
+                            {results.public_attention.map(item => (
+                                <div key={item.title} className="search-item search-item--attention" onClick={() => handlePublicAttentionClick(item)}>
+                                    <span className="search-item-tag wiki-tag">WIKI</span>
+                                    <span className="search-item-name">{item.title.replace(/_/g, ' ')}</span>
+                                    <span className="search-item-meta">
+                                        {item.country_count} countries · {item.views.toLocaleString()} views
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {results?.signal_matches && results.signal_matches.length > 0 && (
+                        <div className="search-section">
+                            <div className="search-section-label">Media Signals</div>
+                            {results.signal_matches.map(s => (
+                                <div key={s.id} className="search-item search-item--signal" onClick={() => handleSignalMatchClick(s)}>
+                                    <span className="search-item-tag country-tag">{s.country || 'GLO'}</span>
+                                    <span className="search-item-name">{s.headline || `Signal from ${s.source}`}</span>
+                                    <span className="search-item-meta">
+                                        {s.source}
+                                        {s.themes[0] ? ` · ${getThemeLabel(s.themes[0])}` : ''}
+                                    </span>
                                 </div>
                             ))}
                         </div>

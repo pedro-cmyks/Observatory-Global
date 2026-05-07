@@ -149,9 +149,27 @@
     border: 1px solid rgba(251, 191, 36, 0.25);
 }
 
+.wiki-tag {
+    background: rgba(20, 184, 166, 0.12);
+    color: #2dd4bf;
+    border: 1px solid rgba(20, 184, 166, 0.25);
+}
+
 .search-item--concept {
     flex-wrap: wrap;
     gap: 2px;
+}
+
+.search-item--attention,
+.search-item--signal {
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.search-item--attention .search-item-meta,
+.search-item--signal .search-item-meta {
+    width: 100%;
+    padding-left: 42px;
 }
 
 .search-item-meta--desc {

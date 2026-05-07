@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useMemo, useState, useRef } from 'react'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { timeRangeToHours } from '../lib/timeRanges'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
+import { mergeStreamItems, splitInitialStreamBatch } from '../lib/signalStreamQueue'
 import { Pin, PinOff } from 'lucide-react'
 import './SignalStream.css'
 
@@ -36,6 +37,8 @@ interface GeopoliticalEvent {
     location: { name: string, country_code: string, latitude: number, longitude: number }
     meta: { mentions: number, avg_tone: number, source_url: string }
 }
+
+type EventResponse = Omit<GeopoliticalEvent, 'type'>
 
 type StreamItem = (Signal & { type: 'signal' }) | GeopoliticalEvent
 
@@ -101,7 +104,7 @@ const isValidHeadline = (title: string | null): boolean => {
     // Filter out GDELT document ID prefix pattern like "26061264.Title Here"
     if (/^\d{6,}\./.test(title)) return false
     // Filter out hex-looking strings (GDELT document IDs)
-    if (/^[A-Fa-f0-9\s\-]{20,}$/.test(title)) return false
+    if (/^[A-Fa-f0-9\s-]{20,}$/.test(title)) return false
     // Filter out titles starting with "Article" followed by hex
     if (/^Article\s+[A-Fa-f0-9]/i.test(title)) return false
     // Filter out titles that are just numbers/codes
@@ -143,6 +146,9 @@ const HIGH_PRIORITY_THEMES = [
     'WB_CONFLICT', 'CRISISLEX_CRISISLEXREC', 'EPU_POLICY', 'GOV_INTERGOVERNMENTAL', 
     'WB_MILITARY', 'SOC_PROTEST', 'TAX_FNCACT', 'ARMEDCONFLICT', 'TERRORISM'
 ]
+
+const INITIAL_VISIBLE_ITEMS = 18
+const MAX_STREAM_ITEMS = 120
 
 const getSignalPriority = (signal: Signal): number => {
     // Priority 1 (highest): Has high priority geopolitical themes
@@ -212,7 +218,7 @@ export const SignalStream: React.FC = () => {
                 let fetchedEvents: StreamItem[] = []
                 if (evtRes.ok) {
                     const data = await evtRes.json()
-                    fetchedEvents = (data.events || []).map((e: any) => ({ ...e, type: 'event' }))
+                    fetchedEvents = (data.events || []).map((e: EventResponse) => ({ ...e, type: 'event' }))
                 }
 
                 if (!isMounted) return
@@ -221,7 +227,9 @@ export const SignalStream: React.FC = () => {
                     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
                 )
 
-                setItems(allItems)
+                const { visible, queue } = splitInitialStreamBatch(allItems, INITIAL_VISIBLE_ITEMS)
+                setItems(visible)
+                dripQueueRef.current = queue
 
                 if (fetchedSignals.length > 0) {
                     const now = new Date(fetchedSignals[0].timestamp).getTime()
@@ -293,7 +301,7 @@ export const SignalStream: React.FC = () => {
                 let newEvents: StreamItem[] = []
                 if (evtRes.ok) {
                     const data = await evtRes.json()
-                    newEvents = (data.events || []).map((e: any) => ({ ...e, type: 'event' }))
+                    newEvents = (data.events || []).map((e: EventResponse) => ({ ...e, type: 'event' }))
                 }
 
                 if (!isMounted) return
@@ -305,8 +313,9 @@ export const SignalStream: React.FC = () => {
                 if (newItems.length > 0) {
                     newItems.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
                     latestTimestampRef.current = newItems[0].timestamp
-                    // Queue new items for drip-reveal instead of showing all at once
-                    dripQueueRef.current = [...newItems, ...dripQueueRef.current]
+                    // Queue new items for drip-reveal instead of showing all at once.
+                    // Append preserves arrival order and avoids lower rows reshuffling.
+                    dripQueueRef.current = mergeStreamItems(dripQueueRef.current, newItems, 200)
                 }
             } catch (e) {
                 console.error('[SignalStream] Poll error', e)
@@ -324,21 +333,17 @@ export const SignalStream: React.FC = () => {
     useEffect(() => {
         const drip = setInterval(() => {
             if (dripQueueRef.current.length === 0) return
-            // Occasionally drip 2 at once for a more organic rhythm
-            const batch = dripQueueRef.current.length > 3 && Math.random() < 0.25 ? 2 : 1
+            // Drip faster when a batch is waiting so the stream stays alive between 15-min ingests.
+            const batch = dripQueueRef.current.length > 30 ? 3 : dripQueueRef.current.length > 12 ? 2 : 1
             for (let i = 0; i < batch; i++) {
                 if (dripQueueRef.current.length === 0) break
                 const next = dripQueueRef.current.shift()!
                 const itemKey = `${next.type}-${next.id}`
                 setNewItemIds(prev => new Set([...prev, itemKey]))
                 setTimeout(() => setNewItemIds(prev => { const s = new Set(prev); s.delete(itemKey); return s }), 700)
-                setItems(prev => {
-                    const merged = [next, ...prev]
-                    const unique = merged.filter((v, i, a) => a.findIndex(t => t.type === v.type && t.id === v.id) === i)
-                    return unique.slice(0, 100)
-                })
+                setItems(prev => mergeStreamItems([next], prev, MAX_STREAM_ITEMS))
             }
-        }, 900)
+        }, 1800)
         return () => clearInterval(drip)
     }, [])
 
@@ -357,7 +362,7 @@ export const SignalStream: React.FC = () => {
         setPerson(person)
     }
 
-    const filteredItems = items.filter(item => {
+    const filteredItems = useMemo(() => items.filter(item => {
         if (streamFilter === 'all') return true
         if (item.type === 'event') return streamFilter === 'notable'
         const sig = item as Signal & { type: 'signal' }
@@ -368,7 +373,15 @@ export const SignalStream: React.FC = () => {
         if (streamFilter === 'elevated') return sig.themes.some(t => ELEVATED_THEMES.some(e => t.includes(e)))
         if (streamFilter === 'notable') return isValidHeadline(sig.headline) && !sig.themes.some(t => CRITICAL_THEMES.some(c => t.includes(c)))
         return true
-    })
+    }), [items, streamFilter])
+
+    const visibleItems = useMemo(() => filteredItems.filter(item => {
+        if (item.type === 'event') {
+            const evt = item as GeopoliticalEvent
+            return isUsefulActor(evt.actor1?.name ?? null) || isUsefulActor(evt.actor2?.name ?? null)
+        }
+        return isGeopoliticallyRelevant(item as Signal)
+    }), [filteredItems])
 
     return (
         <div className="signal-stream-container">
@@ -420,24 +433,10 @@ export const SignalStream: React.FC = () => {
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
             >
-                {filteredItems.length === 0 ? (
+                {visibleItems.length === 0 ? (
                     <div className="empty-state">No signals or events found</div>
                 ) : (
-                    filteredItems
-                        .filter(item => {
-                            if (item.type === 'event') {
-                                // Only show events with at least one meaningful actor
-                                const evt = item as GeopoliticalEvent
-                                return isUsefulActor(evt.actor1?.name ?? null) || isUsefulActor(evt.actor2?.name ?? null)
-                            }
-                            return isGeopoliticallyRelevant(item as Signal)
-                        })
-                        .sort((a, b) => {
-                            const pA = a.type === 'event' ? 2 : getSignalPriority(a as Signal)
-                            const pB = b.type === 'event' ? 2 : getSignalPriority(b as Signal)
-                            if (pA !== pB) return pA - pB
-                            return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-                        })
+                    visibleItems
                         .map(item => {
                             const itemKey = `${item.type}-${item.id}`
                             const isNew = newItemIds.has(itemKey)
@@ -541,7 +540,7 @@ export const SignalStream: React.FC = () => {
                                                         })
                                                     }
                                                 }}
-                                                title={isPinned(`signal-${sig.id}`) ? "Unpin Signal" : "Pin Signal to Workspace"}
+                                                data-tip={isPinned(`signal-${sig.id}`) ? "Unpin Signal" : "Pin Signal to Workspace"}
                                                 style={{ background: 'transparent', border: 'none', color: isPinned(`signal-${sig.id}`) ? '#10b981' : '#64748b', cursor: 'pointer', padding: '2px' }}
                                             >
                                                 {isPinned(`signal-${sig.id}`) ? <PinOff size={12} /> : <Pin size={12} />}

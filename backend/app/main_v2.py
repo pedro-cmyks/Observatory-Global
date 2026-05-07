@@ -931,7 +931,7 @@ async def unified_search(
     country_match = match_country(query)
     topic_query = country_match["query"] if country_match else query
 
-    cache_key = f"usearch:v2:{query_lower}:{hours}"
+    cache_key = f"usearch:v3:{query_lower}:{hours}"
     if app.state.redis:
         try:
             cached = await app.state.redis.get(cache_key)
@@ -959,6 +959,61 @@ async def unified_search(
         hours=hours,
         country=country_match["code"] if country_match else None,
     )
+
+    # --- 4b. Public attention + headline matches ---
+    public_attention = []
+    signal_matches = []
+    try:
+        async with app.state.pool.acquire() as conn:
+            like_query = f"%{topic_query.lower()}%"
+            wiki_rows = await conn.fetch("""
+                SELECT article_title, SUM(views) AS views, COUNT(DISTINCT country_code) AS country_count
+                FROM wiki_pageviews_v2
+                WHERE fetch_date >= CURRENT_DATE - 1
+                  AND LOWER(article_title) LIKE $1
+                GROUP BY article_title
+                ORDER BY views DESC
+                LIMIT 5
+            """, like_query)
+            public_attention = [
+                {
+                    "title": r["article_title"],
+                    "views": int(r["views"] or 0),
+                    "country_count": int(r["country_count"] or 0),
+                }
+                for r in wiki_rows
+            ]
+
+            signal_country_clause = "AND country_code = $2" if country_match else ""
+            signal_params = [like_query]
+            if country_match:
+                signal_params.append(country_match["code"])
+            signal_rows = await conn.fetch(f"""
+                SELECT id, timestamp, country_code, source_name, headline, themes
+                FROM signals_v2
+                WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+                  AND (
+                    LOWER(COALESCE(headline, '')) LIKE $1
+                    OR LOWER(COALESCE(source_name, '')) LIKE $1
+                  )
+                  {signal_country_clause}
+                ORDER BY timestamp DESC
+                LIMIT 6
+            """, *signal_params, timeout=5.0)
+            signal_matches = [
+                {
+                    "id": r["id"],
+                    "timestamp": r["timestamp"].isoformat(),
+                    "country": r["country_code"],
+                    "source": r["source_name"],
+                    "headline": r["headline"],
+                    "themes": (r["themes"] or [])[:5],
+                }
+                for r in signal_rows
+            ]
+    except Exception:
+        public_attention = []
+        signal_matches = []
 
     # --- 5. Merge themes: taxonomy first, then DB hits (deduped) ---
     seen_themes = set()
@@ -1022,6 +1077,8 @@ async def unified_search(
         "region": region_match,
         "persons": db_result.get("persons", []),
         "countries": countries,
+        "public_attention": public_attention,
+        "signal_matches": signal_matches,
     }
 
     if app.state.redis:
