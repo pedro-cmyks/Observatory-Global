@@ -80,3 +80,7 @@ backend/.venv/share/
 .claude/
 .mcp.json
 .superpowers/
+
+# Local agent/design scratch artifacts
+docs/atlas-dashboard-design.html
+docs/superpowers/plans/2026-05-06-search-sources-export.md
