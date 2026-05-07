@@ -927,6 +927,73 @@ async def search(
 
     return result
 
+async def _get_fuzzy_search_suggestions(
+    conn,
+    query: str,
+    hours: int,
+    limit: int = 5,
+) -> list[dict]:
+    """Return pg_trgm-backed suggestions when available.
+
+    Supabase/Postgres may not have pg_trgm enabled in every environment; callers
+    should treat an empty list as a safe fallback, not an error state.
+    """
+    from app.core.search_normalization import normalize_search_text, should_offer_fuzzy_suggestion
+
+    normalized_query = normalize_search_text(query)
+    if len(normalized_query) < 3:
+        return []
+
+    try:
+        rows = await conn.fetch("""
+            WITH candidates AS (
+                SELECT person AS value, 'person' AS type, COUNT(*)::int AS signal_count
+                FROM signals_v2, unnest(persons) AS person
+                WHERE timestamp > NOW() - INTERVAL '%s hours'
+                  AND persons IS NOT NULL
+                  AND length(person) >= 3
+                GROUP BY person
+
+                UNION ALL
+
+                SELECT name AS value, 'country' AS type, 0::int AS signal_count
+                FROM countries_v2
+
+                UNION ALL
+
+                SELECT article_title AS value, 'public_attention' AS type, SUM(views)::int AS signal_count
+                FROM wiki_pageviews_v2
+                WHERE fetch_date >= CURRENT_DATE - 7
+                GROUP BY article_title
+            )
+            SELECT value, type, signal_count, similarity(LOWER(value), $1) AS score
+            FROM candidates
+            WHERE similarity(LOWER(value), $1) >= 0.35
+            ORDER BY score DESC, signal_count DESC
+            LIMIT $2
+        """ % hours, normalized_query, limit)
+    except Exception:
+        return []
+
+    suggestions = []
+    seen = set()
+    for row in rows:
+        value = row["value"]
+        score = float(row["score"] or 0)
+        if not should_offer_fuzzy_suggestion(normalized_query, value, score):
+            continue
+        key = (row["type"], value.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        suggestions.append({
+            "value": value,
+            "type": row["type"],
+            "score": round(score, 3),
+            "signal_count": int(row["signal_count"] or 0),
+        })
+    return suggestions
+
 @app.get("/api/v2/search/unified")
 async def unified_search(
     q: str = Query(..., min_length=2, description="Search query"),
@@ -987,8 +1054,10 @@ async def unified_search(
     # --- 4b. Public attention + headline matches ---
     public_attention = []
     signal_matches = []
+    fuzzy_suggestions = []
     try:
         async with app.state.pool.acquire() as conn:
+            fuzzy_suggestions = await _get_fuzzy_search_suggestions(conn, topic_query, hours)
             like_queries = [f"%{variant}%" for variant in query_variants]
             wiki_days = max(1, min(7, (hours + 23) // 24))
             wiki_rows = await conn.fetch("""
@@ -1039,6 +1108,7 @@ async def unified_search(
     except Exception:
         public_attention = []
         signal_matches = []
+        fuzzy_suggestions = []
 
     # --- 5. Merge themes: taxonomy first, then DB hits (deduped) ---
     seen_themes = set()
@@ -1106,6 +1176,7 @@ async def unified_search(
         "countries": countries,
         "public_attention": public_attention,
         "signal_matches": signal_matches,
+        "fuzzy_suggestions": fuzzy_suggestions,
     }
 
     if app.state.redis:

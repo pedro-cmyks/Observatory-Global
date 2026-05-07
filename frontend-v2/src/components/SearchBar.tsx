@@ -165,6 +165,13 @@ interface SignalMatchResult {
     themes: string[]
 }
 
+interface FuzzySuggestionResult {
+    value: string
+    type: 'person' | 'country' | 'public_attention' | string
+    score: number
+    signal_count: number
+}
+
 interface SearchResult {
     query?: string
     normalized_query?: string
@@ -177,6 +184,7 @@ interface SearchResult {
     region?: RegionResult | null
     public_attention?: PublicAttentionResult[]
     signal_matches?: SignalMatchResult[]
+    fuzzy_suggestions?: FuzzySuggestionResult[]
 }
 
 interface SearchBarProps {
@@ -302,6 +310,11 @@ export function SearchBar({ onThemeSelect, onCountrySelect, externalQuery }: Sea
         close()
     }
 
+    const handleFuzzySuggestionClick = (suggestion: FuzzySuggestionResult) => {
+        setQuery(suggestion.value)
+        doSearch(suggestion.value)
+    }
+
     const hasResults = hasVisibleSearchResults(results)
     const expandedVariants = (results?.query_variants || [])
         .filter(v => v && v !== results?.normalized_query)
@@ -352,6 +365,21 @@ export function SearchBar({ onThemeSelect, onCountrySelect, externalQuery }: Sea
                                     }}
                                 >
                                     {variant}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {results?.fuzzy_suggestions && results.fuzzy_suggestions.length > 0 && (
+                        <div className="search-suggestion-banner">
+                            Did you mean:
+                            {results.fuzzy_suggestions.slice(0, 3).map(suggestion => (
+                                <button
+                                    key={`${suggestion.type}-${suggestion.value}`}
+                                    className="search-suggestion-chip"
+                                    onClick={() => handleFuzzySuggestionClick(suggestion)}
+                                >
+                                    {suggestion.value}
                                 </button>
                             ))}
                         </div>

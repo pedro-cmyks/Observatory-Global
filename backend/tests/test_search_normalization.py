@@ -1,4 +1,8 @@
-from app.core.search_normalization import build_query_variants, normalize_search_text
+from app.core.search_normalization import (
+    build_query_variants,
+    normalize_search_text,
+    should_offer_fuzzy_suggestion,
+)
 
 
 def test_normalize_search_text_removes_accents_punctuation_and_extra_spaces():
@@ -33,3 +37,9 @@ def test_build_query_variants_normalizes_us_aliases():
     assert "ee uu" in variants
     assert "us" in variants
     assert "united states" in variants
+
+
+def test_should_offer_fuzzy_suggestion_uses_confidence_and_distinct_values():
+    assert should_offer_fuzzy_suggestion("donlad trump", "donald trump", 0.72) is True
+    assert should_offer_fuzzy_suggestion("donald trump", "donald trump", 0.95) is False
+    assert should_offer_fuzzy_suggestion("war", "water", 0.41) is False

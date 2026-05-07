@@ -101,3 +101,17 @@ def build_like_patterns(query: str) -> list[str]:
     """Return SQL LIKE patterns for normalized variants."""
 
     return [f"%{variant}%" for variant in build_query_variants(query)]
+
+
+def should_offer_fuzzy_suggestion(query: str, suggestion: str, score: float) -> bool:
+    """Return whether a fuzzy DB hit is strong enough to show as a suggestion."""
+
+    normalized_query = normalize_search_text(query)
+    normalized_suggestion = normalize_search_text(suggestion)
+    if not normalized_query or not normalized_suggestion:
+        return False
+    if normalized_query == normalized_suggestion:
+        return False
+    if len(normalized_query) <= 3:
+        return score >= 0.68
+    return score >= 0.45
