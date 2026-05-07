@@ -64,12 +64,22 @@ interface SourceProfileGraphData {
   top_countries?: Array<{ country_code: string; count: number }>
 }
 
+interface PublicAttentionGraphData {
+  signal_matches?: Array<{
+    country?: string
+    source?: string
+    themes?: string[]
+  }>
+  themes?: Array<{ theme: string; total_signals: number }>
+  persons?: Array<{ person: string; signal_count: number }>
+}
+
 export interface WorkspaceGraphInput {
   items: PinnedItem[]
   details: Record<string, unknown | undefined>
 }
 
-export const WORKSPACE_NODE_TYPES: PinnedItemType[] = ['theme', 'country', 'source', 'person', 'signal', 'chokepoint']
+export const WORKSPACE_NODE_TYPES: PinnedItemType[] = ['theme', 'country', 'source', 'person', 'signal', 'chokepoint', 'public_attention']
 
 export const WORKSPACE_LINK_KINDS: WorkspaceLinkKind[] = [
   'shared-theme',
@@ -352,6 +362,92 @@ function addSourceRelationships(
   }
 }
 
+function addPublicAttentionRelationships(
+  item: PinnedItem,
+  detail: PublicAttentionGraphData,
+  nodes: Map<string, WorkspaceGraphNode>,
+  links: Map<string, WorkspaceGraphLink>,
+): void {
+  const rootId = item.id
+  const countries = new Map<string, number>()
+  const sources = new Map<string, number>()
+  const themes = new Map<string, number>()
+
+  for (const signal of detail.signal_matches ?? []) {
+    if (signal.country) countries.set(signal.country, (countries.get(signal.country) ?? 0) + 1)
+    if (signal.source) sources.set(signal.source, (sources.get(signal.source) ?? 0) + 1)
+    for (const theme of signal.themes ?? []) {
+      themes.set(theme, (themes.get(theme) ?? 0) + 1)
+    }
+  }
+
+  for (const theme of detail.themes ?? []) {
+    if (theme.total_signals > 0) {
+      themes.set(theme.theme, Math.max(themes.get(theme.theme) ?? 0, theme.total_signals))
+    }
+  }
+
+  for (const [code, count] of [...countries.entries()].sort((a, b) => b[1] - a[1]).slice(0, MAX_DERIVED_PER_GROUP)) {
+    const id = countryId(code)
+    addNode(nodes, {
+      id,
+      type: 'country',
+      title: resolveCountryName(code),
+      subtitle: `${count.toLocaleString()} signals`,
+      pinned: false,
+      weight: count,
+      sourceItemId: item.id,
+      urlParams: `?country=${encodeURIComponent(code)}`,
+    })
+    addLink(links, rootId, id, 'country-framing', count)
+  }
+
+  for (const [theme, count] of [...themes.entries()].sort((a, b) => b[1] - a[1]).slice(0, MAX_DERIVED_PER_GROUP)) {
+    const id = themeId(theme)
+    addNode(nodes, {
+      id,
+      type: 'theme',
+      title: getThemeLabel(theme),
+      subtitle: `${count.toLocaleString()} connected signals`,
+      pinned: false,
+      weight: count,
+      sourceItemId: item.id,
+      urlParams: `?theme=${encodeURIComponent(theme)}`,
+    })
+    addLink(links, rootId, id, 'shared-theme', count)
+  }
+
+  for (const [source, count] of [...sources.entries()].sort((a, b) => b[1] - a[1]).slice(0, MAX_DERIVED_PER_GROUP)) {
+    const id = sourceId(source)
+    addNode(nodes, {
+      id,
+      type: 'source',
+      title: source,
+      subtitle: `${count.toLocaleString()} signals`,
+      pinned: false,
+      weight: count,
+      sourceItemId: item.id,
+      urlParams: `?source=${encodeURIComponent(source)}`,
+    })
+    addLink(links, rootId, id, 'shared-source', count)
+  }
+
+  for (const person of (detail.persons ?? []).slice(0, MAX_DERIVED_PER_GROUP)) {
+    const id = personId(person.person)
+    addNode(nodes, {
+      id,
+      type: 'person',
+      title: person.person,
+      subtitle: `${person.signal_count.toLocaleString()} mentions`,
+      pinned: false,
+      weight: person.signal_count,
+      sourceItemId: item.id,
+      urlParams: `?person=${encodeURIComponent(person.person)}`,
+    })
+    addLink(links, rootId, id, 'co-mentioned-person', person.signal_count)
+  }
+}
+
 export function buildWorkspaceGraph({ items, details }: WorkspaceGraphInput): WorkspaceGraph {
   const nodes = new Map<string, WorkspaceGraphNode>()
   const links = new Map<string, WorkspaceGraphLink>()
@@ -383,6 +479,8 @@ export function buildWorkspaceGraph({ items, details }: WorkspaceGraphInput): Wo
         addFocusRelationships(item, detail as FocusGraphData, nodes, links)
       } else if (item.type === 'source') {
         addSourceRelationships(item, detail as SourceProfileGraphData, nodes, links)
+      } else if (item.type === 'public_attention') {
+        addPublicAttentionRelationships(item, detail as PublicAttentionGraphData, nodes, links)
       }
     } catch (e) {
       console.warn('[WorkspaceGraph] relationship build failed for', item.id, e)

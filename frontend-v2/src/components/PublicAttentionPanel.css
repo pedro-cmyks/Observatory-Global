@@ -18,6 +18,12 @@
     border-bottom: 1px solid rgba(148, 163, 184, 0.14);
 }
 
+.pap-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .pap-kicker,
 .pap-section-label,
 .pap-metric-label {
@@ -40,7 +46,8 @@
     letter-spacing: 0;
 }
 
-.pap-close {
+.pap-close,
+.pap-icon-btn {
     width: 26px;
     height: 26px;
     border: 1px solid rgba(148, 163, 184, 0.18);
@@ -50,9 +57,22 @@
     cursor: pointer;
 }
 
-.pap-close:hover {
+.pap-close:hover,
+.pap-icon-btn:hover,
+.pap-icon-btn.active {
     color: #f8fafc;
     border-color: rgba(45, 212, 191, 0.45);
+}
+
+.pap-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pap-icon-btn.active {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.10);
 }
 
 .pap-metrics {

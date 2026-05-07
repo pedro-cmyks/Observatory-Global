@@ -1367,7 +1367,12 @@ function AppContent() {
           const theme = next.get('theme')
           const country = next.get('country')
           const person = next.get('person')
+          const attention = next.get('attention')
 
+          if (attention) {
+            handlePublicAttentionSelect({ title: attention })
+            return
+          }
           if (source) {
             setSelectedSourceProfile(source)
             return

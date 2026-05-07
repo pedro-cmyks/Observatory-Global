@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, Pin, PinOff } from 'lucide-react'
 import { getThemeLabel } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
 import { timeRangeToHours, type TimeRange } from '../lib/timeRanges'
+import { useWorkspace } from '../contexts/WorkspaceContext'
 import './PublicAttentionPanel.css'
 
 interface PublicAttentionSelection {
@@ -68,7 +69,10 @@ function timeAgo(iso: string): string {
 
 export function PublicAttentionPanel({ item, timeRange, onClose, onThemeSelect, onCountrySelect }: PublicAttentionPanelProps) {
     const title = cleanTitle(item.title)
+    const pinnedId = `public-attention-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
     const hours = timeRangeToHours(timeRange)
+    const { pinItem, unpinItem, isPinned } = useWorkspace()
+    const pinned = isPinned(pinnedId)
     const requestKey = `${title}:${hours}`
     const [panelData, setPanelData] = useState<{
         key: string
@@ -152,7 +156,31 @@ export function PublicAttentionPanel({ item, timeRange, onClose, onThemeSelect, 
                     <div className="pap-kicker">PUBLIC ATTENTION</div>
                     <h2>{title}</h2>
                 </div>
-                <button className="pap-close" onClick={onClose} data-tip="Close public attention panel">x</button>
+                <div className="pap-actions">
+                    <button
+                        className={`pap-icon-btn ${pinned ? 'active' : ''}`}
+                        onClick={() => {
+                            if (pinned) {
+                                unpinItem(pinnedId)
+                                return
+                            }
+                            pinItem({
+                                id: pinnedId,
+                                type: 'public_attention',
+                                title,
+                                urlParams: `?attention=${encodeURIComponent(title)}`,
+                                meta: {
+                                    views: attention.views,
+                                    country_count: attention.countryCount,
+                                },
+                            })
+                        }}
+                        data-tip={pinned ? 'Remove from Investigation Workspace' : 'Pin to Investigation Workspace'}
+                    >
+                        {pinned ? <PinOff size={13} /> : <Pin size={13} />}
+                    </button>
+                    <button className="pap-close" onClick={onClose} data-tip="Close public attention panel">x</button>
+                </div>
             </div>
 
             <div className="pap-metrics">

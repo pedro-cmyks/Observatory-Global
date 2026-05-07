@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useEffect, useMemo, type ReactNode
 import { buildWorkspaceGraph, type WorkspaceGraph } from '../lib/workspaceGraph'
 import { buildWorkspaceMarkdown } from '../lib/exportFormatters'
 
-export type PinnedItemType = 'theme' | 'person' | 'country' | 'signal' | 'source' | 'chokepoint'
+export type PinnedItemType = 'theme' | 'person' | 'country' | 'signal' | 'source' | 'chokepoint' | 'public_attention'
 
 export interface PinnedItem {
     id: string
@@ -41,6 +41,7 @@ function getPinnedValue(item: PinnedItem): string {
     if (item.type === 'country') return getParam(item, 'country') || item.id.replace(/^country-/, '')
     if (item.type === 'source') return getParam(item, 'source') || item.id.replace(/^source-/, '')
     if (item.type === 'person') return getParam(item, 'person') || item.id.replace(/^person-/, '')
+    if (item.type === 'public_attention') return getParam(item, 'attention') || item.id.replace(/^public-attention-/, '')
     return item.id
 }
 
@@ -62,6 +63,8 @@ async function fetchWorkspaceDetail(item: PinnedItem, signal: AbortSignal): Prom
         url = `/api/v2/focus?${params.toString()}`
     } else if (item.type === 'source') {
         url = `/api/v2/source/${encodeURIComponent(value)}/profile?hours=${WORKSPACE_GRAPH_HOURS}`
+    } else if (item.type === 'public_attention') {
+        url = `/api/v2/search/unified?q=${encodeURIComponent(value)}&hours=${WORKSPACE_GRAPH_HOURS}`
     }
 
     if (!url) return undefined

@@ -1,5 +1,6 @@
 import { useDeferredValue, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ForceGraph2D from 'react-force-graph-2d'
+import type { ForceGraphMethods } from 'react-force-graph-2d'
 import { Download, ExternalLink, Filter, FolderKanban, List, Loader2, Network, Pin, PinOff, Search, X } from 'lucide-react'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import {
@@ -24,6 +25,7 @@ const NODE_COLORS: Record<PinnedItemType, string> = {
     person: '#a78bfa',
     signal: '#f87171',
     chokepoint: '#2dd4bf',
+    public_attention: '#22d3ee',
 }
 
 const LINK_COLORS: Record<WorkspaceLinkKind, string> = {
@@ -35,7 +37,10 @@ const LINK_COLORS: Record<WorkspaceLinkKind, string> = {
 }
 
 function formatFilterLabel(value: string): string {
-    return value.replace(/-/g, ' ')
+    return value
+        .replace(/_/g, ' ')
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, char => char.toUpperCase())
 }
 
 function toggleSetValue<T>(current: Set<T>, value: T): Set<T> {
@@ -61,7 +66,7 @@ function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, wi
 
 function drawWorkspaceNode(node: WorkspaceGraphNode & { x?: number; y?: number }, ctx: CanvasRenderingContext2D, globalScale: number): void {
     const label = node.title.length > 32 ? `${node.title.slice(0, 29)}...` : node.title
-    const subtitle = node.pinned ? node.type : node.subtitle || node.type
+    const subtitle = node.pinned ? formatFilterLabel(node.type) : node.subtitle || formatFilterLabel(node.type)
     const fontSize = Math.max(8, 12 / globalScale)
     const subtitleSize = Math.max(7, 9 / globalScale)
     const paddingX = 10 / globalScale
@@ -102,7 +107,7 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
     const [linkKinds, setLinkKinds] = useState<Set<WorkspaceLinkKind>>(() => new Set(WORKSPACE_LINK_KINDS))
     const [showNotes, setShowNotes] = useState(true)
     const boardRef = useRef<HTMLDivElement | null>(null)
-    const graphRef = useRef<any>(null)
+    const graphRef = useRef<ForceGraphMethods<WorkspaceGraphNode, WorkspaceGraphLink> | undefined>(undefined)
     const [boardSize, setBoardSize] = useState({ width: 760, height: 560 })
 
     useEffect(() => {
@@ -343,7 +348,7 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
                                         <article key={item.id} className="workspace-item">
                                             <div className="workspace-item-header">
                                                 <div className="workspace-item-title-area">
-                                                    <span className="workspace-item-type">{item.type}</span>
+                                                    <span className="workspace-item-type">{formatFilterLabel(item.type)}</span>
                                                     <span className="workspace-item-title">{item.title}</span>
                                                 </div>
                                                 <div className="workspace-item-actions">
