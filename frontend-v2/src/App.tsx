@@ -1132,6 +1132,7 @@ function AppContent() {
                     onCountrySelect={(code) => { clearFocus(); handleCountryClick(code); setMapFlyCountry(code) }}
                     onSourceClick={(source) => setSelectedSourceProfile(source)}
                     onCompareClick={(other) => setComparePerson({ a: focus.value!, b: other })}
+                    onPersonSelect={(name) => { setFocus('person', name, name); setMapFlyCountry(null) }}
                   />
                 ) : isCountry ? (
                   <CountryBrief inline

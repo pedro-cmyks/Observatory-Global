@@ -3,6 +3,8 @@ import { getThemeLabel } from '../lib/themeLabels'
 import { timeRangeToHours } from '../lib/timeRanges'
 import { type TimeRange } from '../lib/timeRanges'
 import { useWorkspace } from '../contexts/WorkspaceContext'
+import { selectVisibleKeyPersons } from '../lib/countryBriefPeople'
+import { buildGeoNarrative } from '../lib/geoNarrative'
 import { Pin, PinOff } from 'lucide-react'
 import './EntityPanel.css'
 
@@ -19,6 +21,7 @@ interface FocusData {
     related_topics: Array<{ topic: string; count: number }>
     top_sources: Array<{ source: string; count: number; avg_sentiment: number }>
     headlines: Array<{ url: string; source: string; headline: string | null; time: string | null }>
+    key_people: Array<{ person: string; signal_count: number; avg_sentiment: number; country_count: number }>
 }
 
 interface EntityPanelProps {
@@ -30,6 +33,7 @@ interface EntityPanelProps {
     onCountrySelect?: (code: string) => void
     onSourceClick?: (domain: string) => void
     onCompareClick?: (person: string) => void
+    onPersonSelect?: (name: string) => void
     inline?: boolean
 }
 
@@ -52,7 +56,7 @@ function formatCount(n: number): string {
     return String(n)
 }
 
-export function EntityPanel({ focusType, focusValue, timeRange, onClose, onThemeSelect, onCountrySelect, onSourceClick, onCompareClick, inline }: EntityPanelProps) {
+export function EntityPanel({ focusType, focusValue, timeRange, onClose, onThemeSelect, onCountrySelect, onSourceClick, onCompareClick, onPersonSelect, inline }: EntityPanelProps) {
     const cls = `entity-panel${inline ? ' entity-panel--inline' : ''}`
     const [data, setData] = useState<FocusData | null>(null)
     const [loading, setLoading] = useState(true)
@@ -85,6 +89,10 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
 
     const totalSources = data?.nodes?.reduce((sum, n) => sum + n.unique_sources, 0) ?? 0
     const topNodes = data?.nodes?.slice(0, 10) ?? []
+    const geoNarrative = data ? buildGeoNarrative(data.nodes) : null
+    const keyPeople = selectVisibleKeyPersons(
+        (data?.key_people ?? []).map(p => ({ name: p.person, count: p.signal_count }))
+    )
 
     return (
         <div className={cls}>
@@ -139,19 +147,24 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
                     )}
                 </div>
                 {data && (
-                    <div className="entity-subtitle">
-                        <span>{formatCount(data.summary.total_signals)} signals</span>
-                        <span className="entity-dot">·</span>
-                        <span>{data.summary.total_countries} countries</span>
-                        {globalSentiment !== null && (
-                            <>
-                                <span className="entity-dot">·</span>
-                                <span style={{ color: sentimentColor(globalSentiment) }}>
-                                    {sentimentLabel(globalSentiment)}
-                                </span>
-                            </>
+                    <>
+                        <div className="entity-subtitle">
+                            <span>{formatCount(data.summary.total_signals)} signals</span>
+                            <span className="entity-dot">·</span>
+                            <span>{data.summary.total_countries} countries</span>
+                            {globalSentiment !== null && (
+                                <>
+                                    <span className="entity-dot">·</span>
+                                    <span style={{ color: sentimentColor(globalSentiment) }}>
+                                        {sentimentLabel(globalSentiment)}
+                                    </span>
+                                </>
+                            )}
+                        </div>
+                        {geoNarrative && (
+                            <div className="entity-geo-narrative">{geoNarrative}</div>
                         )}
-                    </div>
+                    </>
                 )}
             </div>
 
@@ -234,6 +247,37 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
                                         {getThemeLabel(t.topic)}
                                     </button>
                                 ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Key People */}
+                    {keyPeople.length > 0 && (
+                        <div className="entity-section">
+                            <div className="entity-section-label">Key People</div>
+                            <div className="entity-people">
+                                {keyPeople.map(p => {
+                                    const fullData = data.key_people.find(k => k.person === p.name)
+                                    return (
+                                        <div
+                                            key={p.name}
+                                            className={`entity-person-row${onPersonSelect ? '' : ' entity-person-row--static'}`}
+                                            onClick={() => onPersonSelect?.(p.name)}
+                                        >
+                                            <span className="entity-person-name">{p.name}</span>
+                                            <span className="entity-person-count">{formatCount(p.count)}</span>
+                                            {fullData && fullData.country_count > 1 && (
+                                                <span className="entity-person-countries">{fullData.country_count} ctrs</span>
+                                            )}
+                                            {fullData && (
+                                                <span
+                                                    className="entity-person-dot"
+                                                    style={{ background: sentimentColor(fullData.avg_sentiment) }}
+                                                />
+                                            )}
+                                        </div>
+                                    )
+                                })}
                             </div>
                         </div>
                     )}
