@@ -1042,7 +1042,7 @@ async def unified_search(
     query_variants = build_query_variants(topic_query)
     normalized_query = query_variants[0] if query_variants else topic_query.lower().strip()
 
-    cache_key = f"usearch:v6:{query_lower}:{hours}"
+    cache_key = f"usearch:v7:{query_lower}:{hours}"
     if app.state.redis:
         try:
             cached = await app.state.redis.get(cache_key)
