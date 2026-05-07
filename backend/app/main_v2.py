@@ -1153,8 +1153,6 @@ async def unified_search(
 
     has_direct_results = (
         any(t.get("total_signals", 0) > 0 for t in merged_themes)
-        or bool(concept_hits)
-        or bool(region_match)
         or any(p.get("total_signals", 0) > 0 for p in db_result.get("persons", []))
         or bool(countries)
         or bool(public_attention)
