@@ -341,6 +341,57 @@ async def compare_periods(
             }
         }
 
+# Static fallback coordinates for countries that may have NULL in countries_v2.
+# Used when the DB LEFT JOIN returns no lat/lon (countries added dynamically via update_countries).
+_COUNTRY_COORDS: dict[str, tuple[float, float]] = {
+    "US": (38.0, -97.0), "GB": (54.0, -2.0), "DE": (51.0, 10.0), "FR": (46.0, 2.0),
+    "CN": (35.0, 105.0), "RU": (60.0, 100.0), "IN": (20.0, 77.0), "BR": (-10.0, -55.0),
+    "JP": (36.0, 138.0), "AU": (-25.0, 133.0), "CA": (56.0, -96.0), "MX": (23.0, -102.0),
+    "KR": (36.0, 128.0), "IT": (42.0, 12.0), "ES": (40.0, -4.0), "SA": (24.0, 45.0),
+    "TR": (39.0, 35.0), "AR": (-34.0, -64.0), "ZA": (-29.0, 25.0), "EG": (27.0, 30.0),
+    "NG": (10.0, 8.0), "PK": (30.0, 70.0), "UA": (49.0, 32.0), "IL": (31.5, 35.0),
+    "IR": (32.0, 53.0), "PL": (52.0, 20.0), "NL": (52.0, 5.0), "SE": (62.0, 15.0),
+    "NO": (62.0, 8.0), "CH": (47.0, 8.0), "BE": (50.0, 4.0), "AT": (47.0, 14.0),
+    "AE": (24.0, 54.0), "TH": (15.0, 101.0), "ID": (-2.0, 118.0), "MY": (2.5, 112.0),
+    "PH": (13.0, 122.0), "VN": (16.0, 108.0), "BD": (24.0, 90.0), "MM": (17.0, 96.0),
+    "IQ": (33.0, 44.0), "SY": (35.0, 38.0), "JO": (31.0, 36.0), "LB": (33.9, 35.5),
+    "KW": (29.5, 47.5), "QA": (25.3, 51.2), "BH": (26.0, 50.6), "OM": (21.0, 57.0),
+    "YE": (15.0, 48.0), "PS": (31.5, 35.0), "AF": (33.0, 65.0), "NP": (28.0, 84.0),
+    "LK": (7.0, 81.0), "TW": (23.7, 121.0), "SG": (1.4, 103.8), "KZ": (48.0, 68.0),
+    "UZ": (41.0, 64.0), "KE": (-1.0, 38.0), "TZ": (-6.0, 35.0), "ET": (9.0, 40.0),
+    "GH": (8.0, -2.0), "CM": (3.8, 11.5), "CI": (7.5, -5.5), "SN": (14.5, -14.5),
+    "ML": (17.0, -4.0), "MR": (20.0, -12.0), "AO": (-12.0, 18.0), "MZ": (-18.0, 35.0),
+    "ZM": (-14.0, 27.0), "RW": (-2.0, 30.0), "DZ": (28.0, 2.0), "MA": (32.0, -5.0),
+    "LY": (27.0, 17.0), "SO": (10.0, 49.0), "SD": (15.0, 30.0), "TN": (34.0, 9.0),
+    "PT": (39.5, -8.0), "GR": (39.0, 22.0), "CZ": (49.8, 15.5), "HU": (47.0, 19.0),
+    "RO": (46.0, 25.0), "BG": (43.0, 25.0), "HR": (45.0, 16.0), "RS": (44.0, 21.0),
+    "SK": (48.7, 19.5), "FI": (62.0, 26.0), "DK": (56.0, 10.0), "IE": (53.0, -8.0),
+    "EE": (59.0, 25.0), "LV": (57.0, 25.0), "LT": (56.0, 24.0), "BY": (53.0, 28.0),
+    "MD": (47.0, 29.0), "GE": (42.0, 44.0), "AM": (40.0, 45.0), "AZ": (40.5, 47.5),
+    "TM": (40.0, 60.0), "TJ": (39.0, 71.0), "KG": (41.0, 75.0), "MN": (46.0, 105.0),
+    "KP": (40.0, 127.0), "KH": (12.5, 105.0), "LA": (18.0, 103.0), "BN": (4.5, 114.7),
+    "TL": (-8.8, 125.7), "PG": (-6.0, 147.0), "NZ": (-41.0, 174.0), "FJ": (-18.0, 178.0),
+    "CL": (-30.0, -71.0), "CO": (4.0, -72.0), "PE": (-10.0, -76.0), "VE": (8.0, -66.0),
+    "EC": (-2.0, -78.0), "BO": (-17.0, -65.0), "PY": (-23.0, -58.0), "UY": (-33.0, -56.0),
+    "GT": (15.0, -90.0), "CU": (22.0, -80.0), "DO": (19.0, -70.7), "HT": (19.0, -72.3),
+    "CR": (10.0, -84.0), "PA": (9.0, -80.0), "HN": (15.0, -87.0), "NI": (13.0, -85.0),
+    "SV": (13.7, -89.0), "JM": (18.0, -77.3), "TT": (10.7, -61.2), "GY": (5.0, -59.0),
+    "SR": (4.0, -56.0), "BI": (-3.0, 30.0), "MW": (-13.5, 34.0), "ZW": (-20.0, 30.0),
+    "BW": (-22.0, 24.0), "NA": (-22.0, 17.0), "LS": (-29.5, 28.3), "SZ": (-26.5, 31.5),
+    "MG": (-20.0, 47.0), "TG": (8.0, 1.0), "BJ": (9.3, 2.3), "BF": (13.0, -2.0),
+    "GN": (11.0, -11.0), "SL": (8.5, -12.0), "LR": (6.5, -9.5), "GW": (12.0, -15.0),
+    "GM": (13.5, -15.0), "CV": (16.0, -24.0), "CF": (7.0, 21.0), "CG": (-1.0, 15.0),
+    "CD": (-4.0, 25.0), "GA": (-1.0, 12.0), "GQ": (2.0, 10.0), "SS": (4.0, 31.0),
+    "ER": (15.0, 39.0), "DJ": (11.5, 43.0), "UG": (1.0, 32.0), "KM": (-11.7, 43.3),
+    "SC": (-4.7, 55.5), "MU": (-20.3, 57.5), "RE": (-21.1, 55.5),
+    "PW": (7.5, 134.6), "FM": (7.0, 158.0), "MH": (9.0, 168.0), "NR": (-0.5, 166.9),
+    "WS": (-13.8, -172.1), "TO": (-20.0, -175.0), "VU": (-16.0, 167.0), "SB": (-8.0, 157.0),
+    "LU": (49.8, 6.1), "CY": (35.0, 33.0), "MT": (35.9, 14.5), "IS": (65.0, -18.0),
+    "AL": (41.0, 20.0), "MK": (41.6, 21.7), "ME": (42.5, 19.3), "BA": (44.0, 17.0),
+    "SI": (46.1, 14.8), "LI": (47.1, 9.5), "MC": (43.7, 7.4), "SM": (43.9, 12.5),
+    "AD": (42.5, 1.5), "VA": (41.9, 12.4),
+}
+
 @app.get("/api/v2/nodes")
 async def get_nodes(
     hours: int = Query(24, ge=1, le=8760, description="Hours of data (1-168) - ignored if range is set"),
@@ -348,7 +399,7 @@ async def get_nodes(
     focus_type: Optional[str] = Query(None, description="Focus type: theme, person, country, source"),
     focus_value: Optional[str] = Query(None, description="Value to focus on"),
     countries: Optional[str] = Query(None, description="Comma-separated country codes to filter (e.g. IR,AE,OM)"),
-    limit: int = Query(80, ge=1, le=200, description="Max nodes to return"),
+    limit: int = Query(217, ge=1, le=250, description="Max nodes to return"),
     fields: Optional[str] = Query(None, description="Comma-separated list of fields to return")
 ):
     """Get country nodes with aggregated stats. Supports focus filtering, country filtering, and extended time ranges."""
@@ -505,23 +556,28 @@ async def get_nodes(
             nodes = []
             total_signals = 0
             for row in rows:
-                if row['latitude'] and row['longitude']:
-                    signal_count = int(row['total_signals'])
-                    total_signals += signal_count
-                    nodes.append({
-                        "id": row['country_code'],
-                        "name": row['name'] or row['country_code'],
-                        "lat": float(row['latitude']),
-                        "lon": float(row['longitude']),
-                        "intensity": float(row['total_signals']) / max_signals,
-                        "sentiment": float(row['sentiment'] or 0) / 10,  # Normalize to -1 to 1
-                        "signalCount": signal_count,
-                        "sourceCount": int(row['unique_sources'] or 0)
-                    })
-            # Sort by total_signals DESC and slice top 80 to guarantee no bloated payloads
+                # Use DB coords first, fall back to static dict for countries with NULL coords
+                lat = row['latitude']
+                lon = row['longitude']
+                if lat is None or lon is None:
+                    code = row['country_code']
+                    if code in _COUNTRY_COORDS:
+                        lat, lon = _COUNTRY_COORDS[code]
+                if lat is None or lon is None:
+                    continue
+                signal_count = int(row['total_signals'])
+                total_signals += signal_count
+                nodes.append({
+                    "id": row['country_code'],
+                    "name": row['name'] or row['country_code'],
+                    "lat": float(lat),
+                    "lon": float(lon),
+                    "intensity": float(row['total_signals']) / max_signals,
+                    "sentiment": float(row['sentiment'] or 0) / 10,
+                    "signalCount": signal_count,
+                    "sourceCount": int(row['unique_sources'] or 0)
+                })
             nodes.sort(key=lambda x: x["signalCount"], reverse=True)
-            if len(nodes) > 80:
-                nodes = nodes[:80]
 
             allowed_fields = None
             if fields:

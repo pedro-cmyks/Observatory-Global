@@ -94,6 +94,20 @@ const formatRelativeAge = (ts: string): string => {
     return `${Math.floor(min / 60)}h`
 }
 
+// Filter GDELT events: drop unmapped codes ("Action NNN") and events with no useful actor context
+const isUsefulEvent = (item: StreamItem): boolean => {
+    if (item.type !== 'event') return true
+    const evt = item as GeopoliticalEvent
+    // Drop fallback labels — these are unmapped CAMEO codes
+    if (evt.action.label.startsWith('Action ')) return false
+    // Drop cooperative/visit events (quad 1-2) with no named actors — they add no context
+    if (evt.action.quad_class <= 2) {
+        const hasActor = isUsefulActor(evt.actor1?.name ?? null) || isUsefulActor(evt.actor2?.name ?? null)
+        if (!hasActor) return false
+    }
+    return true
+}
+
 const CRITICAL_THEMES = ['TAX_TERROR', 'ARMEDCONFLICT', 'CRISISLEX_C03_DEAD_WOUNDED', 'KILL', 'MILITARY']
 const ELEVATED_THEMES = ['SOC_PROTEST', 'EPU_POLICY', 'CRIME', 'ARREST', 'DISASTER']
 const MARITIME_KEYWORDS = /suezmax|vessel|maritime|shipping|tanker|LNG|MMSI|strait|harbor|harbour|crude oil|container ship/i
@@ -218,7 +232,9 @@ export const SignalStream: React.FC = () => {
                 let fetchedEvents: StreamItem[] = []
                 if (evtRes.ok) {
                     const data = await evtRes.json()
-                    fetchedEvents = (data.events || []).map((e: EventResponse) => ({ ...e, type: 'event' }))
+                    fetchedEvents = (data.events || [])
+                        .map((e: EventResponse) => ({ ...e, type: 'event' }))
+                        .filter(isUsefulEvent)
                 }
 
                 if (!isMounted) return
@@ -301,7 +317,9 @@ export const SignalStream: React.FC = () => {
                 let newEvents: StreamItem[] = []
                 if (evtRes.ok) {
                     const data = await evtRes.json()
-                    newEvents = (data.events || []).map((e: EventResponse) => ({ ...e, type: 'event' }))
+                    newEvents = (data.events || [])
+                        .map((e: EventResponse) => ({ ...e, type: 'event' }))
+                        .filter(isUsefulEvent)
                 }
 
                 if (!isMounted) return

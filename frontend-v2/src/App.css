@@ -954,16 +954,14 @@
 .map-status-bar {
   position: absolute;
   bottom: 10px;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 10px;
   display: inline-flex;
   align-items: center;
   gap: 0;
   background: rgba(7, 13, 23, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
-  padding: 5px 14px;
-  backdrop-filter: blur(8px);
+  padding: 4px 10px;
   z-index: 10;
   pointer-events: none;
   white-space: nowrap;
