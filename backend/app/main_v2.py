@@ -931,7 +931,7 @@ async def unified_search(
     country_match = match_country(query)
     topic_query = country_match["query"] if country_match else query
 
-    cache_key = f"usearch:v3:{query_lower}:{hours}"
+    cache_key = f"usearch:v4:{query_lower}:{hours}"
     if app.state.redis:
         try:
             cached = await app.state.redis.get(cache_key)
@@ -965,16 +965,21 @@ async def unified_search(
     signal_matches = []
     try:
         async with app.state.pool.acquire() as conn:
-            like_query = f"%{topic_query.lower()}%"
+            topic_lower = topic_query.lower()
+            search_terms = [topic_lower]
+            if topic_lower.startswith("ortho") and len(topic_lower) > 8:
+                search_terms.append(topic_lower[5:])
+            like_queries = [f"%{term}%" for term in dict.fromkeys(search_terms)]
+            wiki_days = max(1, min(7, (hours + 23) // 24))
             wiki_rows = await conn.fetch("""
                 SELECT article_title, SUM(views) AS views, COUNT(DISTINCT country_code) AS country_count
                 FROM wiki_pageviews_v2
-                WHERE fetch_date >= CURRENT_DATE - 1
-                  AND LOWER(article_title) LIKE $1
+                WHERE fetch_date >= CURRENT_DATE - $2::int
+                  AND LOWER(article_title) LIKE ANY($1::text[])
                 GROUP BY article_title
                 ORDER BY views DESC
                 LIMIT 5
-            """, like_query)
+            """, like_queries, wiki_days)
             public_attention = [
                 {
                     "title": r["article_title"],
@@ -985,7 +990,7 @@ async def unified_search(
             ]
 
             signal_country_clause = "AND country_code = $2" if country_match else ""
-            signal_params = [like_query]
+            signal_params = [like_queries]
             if country_match:
                 signal_params.append(country_match["code"])
             signal_rows = await conn.fetch(f"""
@@ -993,8 +998,8 @@ async def unified_search(
                 FROM signals_v2
                 WHERE timestamp > NOW() - INTERVAL '{hours} hours'
                   AND (
-                    LOWER(COALESCE(headline, '')) LIKE $1
-                    OR LOWER(COALESCE(source_name, '')) LIKE $1
+                    LOWER(COALESCE(headline, '')) LIKE ANY($1::text[])
+                    OR LOWER(COALESCE(source_name, '')) LIKE ANY($1::text[])
                   )
                   {signal_country_clause}
                 ORDER BY timestamp DESC
