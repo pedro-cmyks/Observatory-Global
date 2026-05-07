@@ -968,7 +968,7 @@ async def _get_fuzzy_search_suggestions(
             )
             SELECT value, type, signal_count, similarity(LOWER(value), $1) AS score
             FROM candidates
-            WHERE similarity(LOWER(value), $1) >= 0.35
+            WHERE similarity(LOWER(value), $1) >= 0.25
             ORDER BY score DESC, signal_count DESC
             LIMIT $2
         """ % hours, normalized_query, limit)
@@ -1057,7 +1057,6 @@ async def unified_search(
     fuzzy_suggestions = []
     try:
         async with app.state.pool.acquire() as conn:
-            fuzzy_suggestions = await _get_fuzzy_search_suggestions(conn, topic_query, hours)
             like_queries = [f"%{variant}%" for variant in query_variants]
             wiki_days = max(1, min(7, (hours + 23) // 24))
             wiki_rows = await conn.fetch("""
@@ -1151,6 +1150,22 @@ async def unified_search(
     countries = db_result.get("countries", [])
     if country_match and not any(c.get("code") == country_match["code"] for c in countries):
         countries = [{"code": country_match["code"], "name": country_match["name"]}, *countries]
+
+    has_direct_results = (
+        any(t.get("total_signals", 0) > 0 for t in merged_themes)
+        or bool(concept_hits)
+        or bool(region_match)
+        or any(p.get("total_signals", 0) > 0 for p in db_result.get("persons", []))
+        or bool(countries)
+        or bool(public_attention)
+        or bool(signal_matches)
+    )
+    if not has_direct_results:
+        try:
+            async with app.state.pool.acquire() as conn:
+                fuzzy_suggestions = await _get_fuzzy_search_suggestions(conn, topic_query, hours)
+        except Exception:
+            fuzzy_suggestions = []
 
     result = {
         "query": q,
@@ -1277,11 +1292,43 @@ async def get_focus_data(
             ORDER BY LEFT(source_url, 100), timestamp DESC
             LIMIT 10
         """, filter_value)
-        
+
+        # 5. Get key people mentioned in matching signals
+        persons_rows = await conn.fetch(f"""
+            SELECT
+                p AS person,
+                COUNT(*) AS signal_count,
+                ROUND(AVG(sentiment)::numeric, 2) AS avg_sentiment,
+                COUNT(DISTINCT country_code) AS country_count
+            FROM signals_v2, unnest(persons) p
+            WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+              AND {focus_filter}
+              AND p <> ''
+              AND LENGTH(p) > 3
+            GROUP BY p
+            ORDER BY signal_count DESC
+            LIMIT 12
+        """, filter_value)
+
+        # Filter noise: require at least 2 words and >1 signal
+        def is_valid_person(name: str) -> bool:
+            return len(name.split()) >= 2 and len(name) <= 60
+
+        key_people = [
+            {
+                "person": r['person'],
+                "signal_count": int(r['signal_count']),
+                "avg_sentiment": float(r['avg_sentiment'] or 0),
+                "country_count": int(r['country_count'])
+            }
+            for r in persons_rows
+            if is_valid_person(r['person'])
+        ][:8]
+
         # Calculate totals
         total_signals = sum(int(n['signal_count']) for n in nodes)
         total_countries = len(nodes)
-        
+
         return {
             "focus": {
                 "type": focus_type,
@@ -1319,8 +1366,10 @@ async def get_focus_data(
                     "time": r['timestamp'].isoformat() if r['timestamp'] else None
                 }
                 for r in headlines
-            ]
+            ],
+            "key_people": key_people
         }
+
 @app.get("/api/v2/theme/{theme_code}/drift")
 async def get_theme_drift(
     theme_code: str,

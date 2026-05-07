@@ -114,4 +114,6 @@ def should_offer_fuzzy_suggestion(query: str, suggestion: str, score: float) -> 
         return False
     if len(normalized_query) <= 3:
         return score >= 0.68
+    if len(normalized_query) >= 8 and " " in normalized_query:
+        return score >= 0.25
     return score >= 0.45

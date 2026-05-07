@@ -41,5 +41,6 @@ def test_build_query_variants_normalizes_us_aliases():
 
 def test_should_offer_fuzzy_suggestion_uses_confidence_and_distinct_values():
     assert should_offer_fuzzy_suggestion("donlad trump", "donald trump", 0.72) is True
+    assert should_offer_fuzzy_suggestion("donlad trunp", "donald trump", 0.3) is True
     assert should_offer_fuzzy_suggestion("donald trump", "donald trump", 0.95) is False
     assert should_offer_fuzzy_suggestion("war", "water", 0.41) is False
