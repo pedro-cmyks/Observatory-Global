@@ -44,6 +44,8 @@ def _add_variant(variants: list[str], seen: set[str], value: str) -> None:
 
 
 def _singularize_token(token: str) -> str:
+    if token.endswith("virus"):
+        return token
     if len(token) > 4 and token.endswith("ies"):
         return f"{token[:-3]}y"
     if len(token) > 4 and token.endswith("es"):

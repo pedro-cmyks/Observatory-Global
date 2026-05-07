@@ -10,6 +10,7 @@ def test_build_query_variants_adds_aliases_and_compound_forms():
 
     assert "orthohantavirus" in variants
     assert "hantavirus" in variants
+    assert "orthohantaviru" not in variants
 
 
 def test_build_query_variants_adds_token_reordering_for_short_person_queries():

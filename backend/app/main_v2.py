@@ -768,7 +768,7 @@ async def search(
     query = query_variants[0] if query_variants else q.lower().strip()
     like_patterns = build_like_patterns(q)
     country_code = country.upper() if country else None
-    cache_key = f"search:{query}:{hours}:{country_code or 'all'}"
+    cache_key = f"search:v2:{query}:{hours}:{country_code or 'all'}"
     if app.state.redis:
         try:
             cached = await app.state.redis.get(cache_key)
@@ -867,11 +867,26 @@ async def search(
                 LIMIT 1
             """, country_code)
         else:
+            country_prefix_patterns = [f"{variant}%" for variant in query_variants]
+            country_codes = [
+                variant.upper()
+                for variant in query_variants
+                if 2 <= len(variant) <= 3 and variant.isascii()
+            ]
             country_rows = await conn.fetch("""
                 SELECT code, name FROM countries_v2
-                WHERE LOWER(name) LIKE ANY($1::text[]) OR LOWER(code) LIKE ANY($1::text[])
+                WHERE code = ANY($1::text[])
+                   OR LOWER(name) = ANY($2::text[])
+                   OR LOWER(name) LIKE ANY($3::text[])
+                ORDER BY
+                    CASE
+                        WHEN code = ANY($1::text[]) THEN 0
+                        WHEN LOWER(name) = ANY($2::text[]) THEN 1
+                        ELSE 2
+                    END,
+                    name
                 LIMIT 8
-            """, like_patterns)
+            """, country_codes, query_variants, country_prefix_patterns)
 
         def build_top_countries(codes, names, counts):
             if not codes:
@@ -940,7 +955,7 @@ async def unified_search(
     query_variants = build_query_variants(topic_query)
     normalized_query = query_variants[0] if query_variants else topic_query.lower().strip()
 
-    cache_key = f"usearch:v5:{query_lower}:{hours}"
+    cache_key = f"usearch:v6:{query_lower}:{hours}"
     if app.state.redis:
         try:
             cached = await app.state.redis.get(cache_key)
