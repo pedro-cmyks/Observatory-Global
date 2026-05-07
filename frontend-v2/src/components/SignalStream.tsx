@@ -20,62 +20,12 @@ interface Signal {
     persons: string[]
 }
 
-interface GeopoliticalEvent {
-    type: 'event'
-    id: number
-    timestamp: string
-    action: {
-        code: string
-        label: string
-        quad_class: number
-        quad_label: string
-        goldstein_scale: number | null
-        is_root: boolean
-    }
-    actor1: { name: string, country_code: string } | null
-    actor2: { name: string, country_code: string } | null
-    location: { name: string, country_code: string, latitude: number, longitude: number }
-    meta: { mentions: number, avg_tone: number, source_url: string }
-}
-
-type EventResponse = Omit<GeopoliticalEvent, 'type'>
-
-type StreamItem = (Signal & { type: 'signal' }) | GeopoliticalEvent
+type StreamItem = Signal & { type: 'signal' }
 
 interface Velocity {
     signals_per_minute: number | string
     delta: number | string
     percentage_change: number | string
-}
-
-// Extract readable domain from a URL
-const extractDomain = (url: string): string => {
-    try {
-        const host = new URL(url).hostname.replace(/^www\./, '')
-        return host.split('.').slice(-2).join('.')
-    } catch {
-        return ''
-    }
-}
-
-// Clean CAMEO actor name: title-case, drop generic codes
-const cleanActorName = (name: string, countryCode: string | null): string => {
-    if (!name) return countryCode || '?'
-    return name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
-}
-
-// Generic/noisy CAMEO actor names that add no intelligence value
-const GENERIC_ACTORS = new Set([
-    'WORKER', 'WORKERS', 'SETTLEMENT', 'COMPANY', 'RETIRED',
-    'INDIVIDUAL', 'CITIZEN', 'CIVILIAN', 'PERSON', 'MAN', 'WOMAN',
-    'TOYOTA', 'VEHICLE', 'EXECUTIVE', 'OFFICIAL', 'MEMBER', 'LEADER',
-    'SPOKESPERSON', 'REPRESENTATIVE', 'ACTIVIST', 'PROTESTER',
-])
-
-const isUsefulActor = (name: string | null): boolean => {
-    if (!name) return false
-    const upper = name.toUpperCase().trim()
-    return upper.length > 2 && !GENERIC_ACTORS.has(upper)
 }
 
 // Helper to determine sentiment color
@@ -92,20 +42,6 @@ const formatRelativeAge = (ts: string): string => {
     const min = Math.floor(sec / 60)
     if (min < 60) return `${min}m`
     return `${Math.floor(min / 60)}h`
-}
-
-// Filter GDELT events: drop unmapped codes ("Action NNN") and events with no useful actor context
-const isUsefulEvent = (item: StreamItem): boolean => {
-    if (item.type !== 'event') return true
-    const evt = item as GeopoliticalEvent
-    // Drop fallback labels — these are unmapped CAMEO codes
-    if (evt.action.label.startsWith('Action ')) return false
-    // Drop cooperative/visit events (quad 1-2) with no named actors — they add no context
-    if (evt.action.quad_class <= 2) {
-        const hasActor = isUsefulActor(evt.actor1?.name ?? null) || isUsefulActor(evt.actor2?.name ?? null)
-        if (!hasActor) return false
-    }
-    return true
 }
 
 const CRITICAL_THEMES = ['TAX_TERROR', 'ARMEDCONFLICT', 'CRISISLEX_C03_DEAD_WOUNDED', 'KILL', 'MILITARY']
@@ -183,6 +119,7 @@ export const SignalStream: React.FC = () => {
     const listRef = useRef<HTMLDivElement>(null)
     const latestTimestampRef = useRef<string | null>(null)
     const dripQueueRef = useRef<StreamItem[]>([])
+    const seenIdsRef = useRef<Set<number>>(new Set())
     const { pinItem, unpinItem, isPinned } = useWorkspace()
 
     // Fetch allowlist once
@@ -218,28 +155,21 @@ export const SignalStream: React.FC = () => {
                 if (filter.theme) params.append('theme', filter.theme)
                 if (filter.person) params.append('person', filter.person)
 
-                const [sigRes, evtRes] = await Promise.all([
-                    fetch(`/api/v2/signals?${params.toString()}`),
-                    fetch(`/api/v2/events?${params.toString()}`)
-                ])
-                
+                const sigRes = await fetch(`/api/v2/signals?${params.toString()}`)
+
                 let fetchedSignals: StreamItem[] = []
                 if (sigRes.ok) {
                     const data = await sigRes.json()
-                    fetchedSignals = (data.signals || []).map((s: Signal) => ({ ...s, type: 'signal' }))
-                }
-                
-                let fetchedEvents: StreamItem[] = []
-                if (evtRes.ok) {
-                    const data = await evtRes.json()
-                    fetchedEvents = (data.events || [])
-                        .map((e: EventResponse) => ({ ...e, type: 'event' }))
-                        .filter(isUsefulEvent)
+                    fetchedSignals = (data.signals || [])
+                        .filter((s: Signal) => isValidHeadline(s.headline))
+                        .map((s: Signal) => ({ ...s, type: 'signal' as const }))
                 }
 
                 if (!isMounted) return
 
-                const allItems = [...fetchedSignals, ...fetchedEvents].sort(
+                seenIdsRef.current = new Set(fetchedSignals.map(s => s.id))
+
+                const allItems = fetchedSignals.sort(
                     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
                 )
 
@@ -280,6 +210,7 @@ export const SignalStream: React.FC = () => {
 
         latestTimestampRef.current = null
         dripQueueRef.current = []
+        seenIdsRef.current = new Set()
         fetchInitial()
 
         return () => { isMounted = false }
@@ -301,39 +232,27 @@ export const SignalStream: React.FC = () => {
                 if (filter.person) params.append('person', filter.person)
                 if (latestTimestampRef.current) params.append('since', latestTimestampRef.current)
 
-                const [sigRes, evtRes] = await Promise.all([
-                    fetch(`/api/v2/signals?${params.toString()}`),
-                    fetch(`/api/v2/events?${params.toString()}`)
-                ])
+                const sigRes = await fetch(`/api/v2/signals?${params.toString()}`)
 
                 let newSignals: StreamItem[] = []
                 let newVelocity = null
                 if (sigRes.ok) {
                     const data = await sigRes.json()
-                    newSignals = (data.signals || []).map((s: Signal) => ({ ...s, type: 'signal' }))
+                    newSignals = (data.signals || [])
+                        .filter((s: Signal) => isValidHeadline(s.headline) && !seenIdsRef.current.has(s.id))
+                        .map((s: Signal) => ({ ...s, type: 'signal' as const }))
                     newVelocity = data.velocity || null
-                }
-                
-                let newEvents: StreamItem[] = []
-                if (evtRes.ok) {
-                    const data = await evtRes.json()
-                    newEvents = (data.events || [])
-                        .map((e: EventResponse) => ({ ...e, type: 'event' }))
-                        .filter(isUsefulEvent)
                 }
 
                 if (!isMounted) return
 
                 if (newVelocity) setVelocity(newVelocity)
 
-                const newItems = [...newSignals, ...newEvents]
-                
-                if (newItems.length > 0) {
-                    newItems.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-                    latestTimestampRef.current = newItems[0].timestamp
-                    // Queue new items for drip-reveal instead of showing all at once.
-                    // Append preserves arrival order and avoids lower rows reshuffling.
-                    dripQueueRef.current = mergeStreamItems(dripQueueRef.current, newItems, 200)
+                if (newSignals.length > 0) {
+                    newSignals.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                    latestTimestampRef.current = newSignals[0].timestamp
+                    newSignals.forEach(s => seenIdsRef.current.add(s.id))
+                    dripQueueRef.current = mergeStreamItems(dripQueueRef.current, newSignals, 200)
                 }
             } catch (e) {
                 console.error('[SignalStream] Poll error', e)
@@ -380,26 +299,18 @@ export const SignalStream: React.FC = () => {
         setPerson(person)
     }
 
-    const filteredItems = useMemo(() => items.filter(item => {
+    const filteredItems = useMemo(() => items.filter(sig => {
         if (streamFilter === 'all') return true
-        if (item.type === 'event') return streamFilter === 'notable'
-        const sig = item as Signal & { type: 'signal' }
         if (streamFilter === 'person') return sig.persons?.length > 0
         if (streamFilter === 'maritime') return MARITIME_KEYWORDS.test(sig.headline || '') || sig.themes.some(t => t.includes('MARITIME') || t.includes('VESSEL'))
         if (streamFilter === 'trend') return sig.themes.some(t => HIGH_PRIORITY_THEMES.some(h => t.includes(h)))
         if (streamFilter === 'critical') return sig.themes.some(t => CRITICAL_THEMES.some(c => t.includes(c)))
         if (streamFilter === 'elevated') return sig.themes.some(t => ELEVATED_THEMES.some(e => t.includes(e)))
-        if (streamFilter === 'notable') return isValidHeadline(sig.headline) && !sig.themes.some(t => CRITICAL_THEMES.some(c => t.includes(c)))
+        if (streamFilter === 'notable') return !sig.themes.some(t => CRITICAL_THEMES.some(c => t.includes(c)))
         return true
     }), [items, streamFilter])
 
-    const visibleItems = useMemo(() => filteredItems.filter(item => {
-        if (item.type === 'event') {
-            const evt = item as GeopoliticalEvent
-            return isUsefulActor(evt.actor1?.name ?? null) || isUsefulActor(evt.actor2?.name ?? null)
-        }
-        return isGeopoliticallyRelevant(item as Signal)
-    }), [filteredItems])
+    const visibleItems = useMemo(() => filteredItems.filter(sig => isGeopoliticallyRelevant(sig)), [filteredItems])
 
     return (
         <div className="signal-stream-container">
@@ -452,79 +363,12 @@ export const SignalStream: React.FC = () => {
                 onMouseLeave={() => setIsHovered(false)}
             >
                 {visibleItems.length === 0 ? (
-                    <div className="empty-state">No signals or events found</div>
+                    <div className="empty-state">No signals found</div>
                 ) : (
                     visibleItems
-                        .map(item => {
-                            const itemKey = `${item.type}-${item.id}`
+                        .map(sig => {
+                            const itemKey = `signal-${sig.id}`
                             const isNew = newItemIds.has(itemKey)
-                            if (item.type === 'event') {
-                                const evt = item as GeopoliticalEvent
-                                const isBad = evt.action.quad_class >= 3
-                                const actor1 = isUsefulActor(evt.actor1?.name ?? null) ? cleanActorName(evt.actor1!.name, evt.actor1!.country_code) : null
-                                const actor2 = isUsefulActor(evt.actor2?.name ?? null) ? cleanActorName(evt.actor2!.name, evt.actor2!.country_code) : null
-                                const loc = evt.location.country_code || ''
-                                return (
-                                    <div key={`evt-${evt.id}`} className={`signal-row event-row-compact${isNew ? ' new-entry' : ''}`}>
-                                        <div className="signal-meta">
-                                            <span className="time">{formatRelativeAge(evt.timestamp)}</span>
-                                            <span className="country-chip">{loc || 'GLO'}</span>
-                                            <span className={`sentiment-indicator ${isBad ? 'negative' : 'positive'}`} />
-                                        </div>
-                                        <div className="signal-main">
-                                            <div className="headline" style={{ color: '#94a3b8' }}>
-                                                {actor1 && actor2 ? `${actor1} → ${actor2}: ${evt.action.label}` :
-                                                 actor1 ? `${actor1}: ${evt.action.label}` :
-                                                 evt.action.label}
-                                            </div>
-                                            <div className="signal-footer">
-                                                <span className="source" style={{ color: '#475569', fontSize: '10px' }}>
-                                                    {evt.action.quad_class === 1 ? 'Verbal Coop' : evt.action.quad_class === 2 ? 'Material Coop' : evt.action.quad_class === 3 ? 'Demand' : 'Conflict'}
-                                                    {evt.action.goldstein_scale !== null ? ` · ${evt.action.goldstein_scale > 0 ? '+' : ''}${evt.action.goldstein_scale}` : ''}
-                                                </span>
-                                                {evt.meta.source_url && (
-                                                    <a href={evt.meta.source_url} target="_blank" rel="noopener noreferrer" className="signal-link">
-                                                        {extractDomain(evt.meta.source_url)}
-                                                    </a>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                )
-                            }
-
-                            // Render Signal
-                            const sig = item as Signal & { type: 'signal' }
-                            const isValid = isValidHeadline(sig.headline)
-                            
-                            if (!isValid) {
-                                return (
-                                    <div key={`sig-${sig.id}`} className={`signal-row compact-mode${isNew ? ' new-entry' : ''}`}>
-                                        <div className="signal-main" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                            <span
-                                                className="country-chip clickable"
-                                                onClick={(e) => handleCountryClick(e, sig.country || '')}
-                                            >
-                                                {sig.country || 'GLO'}
-                                            </span>
-                                            <span className={`sentiment-indicator ${getSentimentClass(sig.sentiment)}`} />
-                                            <span className={`source ${getSourceClass(sig.source)}`}>{sig.source}</span>
-                                            <div className="themes">
-                                                {sig.themes.slice(0, 3).map(t => (
-                                                    <span
-                                                        key={t}
-                                                        className="theme-tag clickable"
-                                                        onClick={(e) => handleThemeClick(e, t)}
-                                                    >
-                                                        {getThemeIcon(t)} {getThemeLabel(t)}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                )
-                            }
-                            
                             return (
                                 <div key={sig.id} className={`signal-row priority-${getSignalPriority(sig)}${isNew ? ' new-entry' : ''}`}>
                                     <div className="signal-meta">
