@@ -166,6 +166,9 @@ interface SignalMatchResult {
 }
 
 interface SearchResult {
+    query?: string
+    normalized_query?: string
+    query_variants?: string[]
     themes: ThemeResult[]
     persons: PersonResult[]
     countries: CountryResult[]
@@ -300,6 +303,9 @@ export function SearchBar({ onThemeSelect, onCountrySelect, externalQuery }: Sea
     }
 
     const hasResults = hasVisibleSearchResults(results)
+    const expandedVariants = (results?.query_variants || [])
+        .filter(v => v && v !== results?.normalized_query)
+        .slice(0, 3)
 
     const countryBadge = parsedQuery.countryDisplay
         ? <span className="search-country-badge">in {parsedQuery.countryDisplay}</span>
@@ -330,6 +336,24 @@ export function SearchBar({ onThemeSelect, onCountrySelect, externalQuery }: Sea
                         <div className="search-context-banner">
                             Filtering to: <strong>{parsedQuery.countryDisplay}</strong>
                             <span className="search-context-hint"> · results scoped to this country</span>
+                        </div>
+                    )}
+
+                    {expandedVariants.length > 0 && (
+                        <div className="search-expansion-banner">
+                            Also searching:
+                            {expandedVariants.map(variant => (
+                                <button
+                                    key={variant}
+                                    className="search-expansion-chip"
+                                    onClick={() => {
+                                        setQuery(variant)
+                                        doSearch(variant)
+                                    }}
+                                >
+                                    {variant}
+                                </button>
+                            ))}
                         </div>
                     )}
 

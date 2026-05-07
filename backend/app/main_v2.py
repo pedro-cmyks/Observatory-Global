@@ -762,7 +762,11 @@ async def search(
     country: str | None = Query(None, min_length=2, max_length=2)
 ):
     """Search across themes, countries, and persons. Returns top_countries per result for map fly-to."""
-    query = q.lower().strip()
+    from app.core.search_normalization import build_like_patterns, build_query_variants
+
+    query_variants = build_query_variants(q)
+    query = query_variants[0] if query_variants else q.lower().strip()
+    like_patterns = build_like_patterns(q)
     country_code = country.upper() if country else None
     cache_key = f"search:{query}:{hours}:{country_code or 'all'}"
     if app.state.redis:
@@ -775,7 +779,7 @@ async def search(
 
     async with app.state.pool.acquire() as conn:
         country_clause = "AND country_code = $2" if country_code else ""
-        search_params = [f'%{query}%']
+        search_params = [like_patterns]
         if country_code:
             search_params.append(country_code)
 
@@ -787,7 +791,7 @@ async def search(
                 SELECT unnest(themes) as theme, country_code, COUNT(*) as cnt
                 FROM signals_v2
                 WHERE timestamp > NOW() - INTERVAL '%s hours'
-                  AND LOWER(array_to_string(themes, ' ')) LIKE $1
+                  AND LOWER(array_to_string(themes, ' ')) LIKE ANY($1::text[])
                   %s
                 GROUP BY theme, country_code
                 HAVING COUNT(*) >= 2
@@ -827,7 +831,7 @@ async def search(
                 FROM signals_v2
                 WHERE timestamp > NOW() - INTERVAL '%s hours'
                   AND persons IS NOT NULL AND array_length(persons, 1) > 0
-                  AND LOWER(array_to_string(persons, ' ')) LIKE $1
+                  AND LOWER(array_to_string(persons, ' ')) LIKE ANY($1::text[])
                   %s
                 GROUP BY person, country_code
                 HAVING COUNT(*) >= 2
@@ -865,9 +869,9 @@ async def search(
         else:
             country_rows = await conn.fetch("""
                 SELECT code, name FROM countries_v2
-                WHERE LOWER(name) LIKE $1 OR LOWER(code) LIKE $1
+                WHERE LOWER(name) LIKE ANY($1::text[]) OR LOWER(code) LIKE ANY($1::text[])
                 LIMIT 8
-            """, f'%{query}%')
+            """, like_patterns)
 
         def build_top_countries(codes, names, counts):
             if not codes:
@@ -879,6 +883,8 @@ async def search(
 
         result = {
             "query": q,
+            "normalized_query": query,
+            "query_variants": query_variants,
             "themes": [
                 {
                     "theme": r['theme'],
@@ -925,13 +931,16 @@ async def unified_search(
         search_themes, search_concepts, find_closest_concepts,
         match_country, match_region, get_theme_label,
     )
+    from app.core.search_normalization import build_query_variants
 
     query = q.strip()
     query_lower = query.lower()
     country_match = match_country(query)
     topic_query = country_match["query"] if country_match else query
+    query_variants = build_query_variants(topic_query)
+    normalized_query = query_variants[0] if query_variants else topic_query.lower().strip()
 
-    cache_key = f"usearch:v4:{query_lower}:{hours}"
+    cache_key = f"usearch:v5:{query_lower}:{hours}"
     if app.state.redis:
         try:
             cached = await app.state.redis.get(cache_key)
@@ -965,11 +974,7 @@ async def unified_search(
     signal_matches = []
     try:
         async with app.state.pool.acquire() as conn:
-            topic_lower = topic_query.lower()
-            search_terms = [topic_lower]
-            if topic_lower.startswith("ortho") and len(topic_lower) > 8:
-                search_terms.append(topic_lower[5:])
-            like_queries = [f"%{term}%" for term in dict.fromkeys(search_terms)]
+            like_queries = [f"%{variant}%" for variant in query_variants]
             wiki_days = max(1, min(7, (hours + 23) // 24))
             wiki_rows = await conn.fetch("""
                 SELECT article_title, SUM(views) AS views, COUNT(DISTINCT country_code) AS country_count
@@ -1064,6 +1069,8 @@ async def unified_search(
 
     result = {
         "query": q,
+        "normalized_query": normalized_query,
+        "query_variants": query_variants,
         "themes": merged_themes,
         "concepts": [
             {
