@@ -986,12 +986,32 @@ async def _get_fuzzy_search_suggestions(
         if key in seen:
             continue
         seen.add(key)
+        signal_count = int(row["signal_count"] or 0)
+        if row["type"] == "person" and signal_count < 10 and score < 0.5:
+            continue
         suggestions.append({
             "value": value,
             "type": row["type"],
             "score": round(score, 3),
-            "signal_count": int(row["signal_count"] or 0),
+            "signal_count": signal_count,
         })
+
+    strong_country_suggestions = [
+        suggestion
+        for suggestion in suggestions
+        if suggestion["type"] == "country" and suggestion["score"] >= 0.5
+    ]
+    if strong_country_suggestions:
+        return strong_country_suggestions[:limit]
+
+    strong_public_suggestions = [
+        suggestion
+        for suggestion in suggestions
+        if suggestion["type"] == "public_attention" and suggestion["score"] >= 0.55
+    ]
+    if strong_public_suggestions:
+        return strong_public_suggestions[:limit]
+
     return suggestions
 
 @app.get("/api/v2/search/unified")
