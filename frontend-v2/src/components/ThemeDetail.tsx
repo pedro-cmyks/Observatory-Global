@@ -63,6 +63,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
     const [insightLoading, setInsightLoading] = useState(false)
     const [insightFailed, setInsightFailed] = useState(false)
     const [selectedSource, setSelectedSource] = useState<string | null>(null)
+    const [showDrift, setShowDrift] = useState(false)
     const [drillCountry, setDrillCountry] = useState<string | null>(initialDrillCountry || null)
     const [drillCountryName, setDrillCountryName] = useState<string | null>(
         initialDrillCountry ? (originCountryName || initialDrillCountry) : null
@@ -79,6 +80,13 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
         setDrillCountry(null)
         setDrillCountryName(null)
     }, [theme])
+
+    useEffect(() => {
+        setShowDrift(false)
+        if (loading || !data) return
+        const timer = window.setTimeout(() => setShowDrift(true), 900)
+        return () => window.clearTimeout(timer)
+    }, [theme, hours, drillCountry, loading, data])
 
     useEffect(() => {
         const fetchData = async () => {
@@ -309,8 +317,17 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                         {/* Period comparison: volume & sentiment vs previous period */}
                         <CompareBar entityType="theme" entityValue={theme} hours={hours} />
 
-                        {/* Narrative Drift timeline */}
-                        <NarrativeDrift themeCode={theme} countryCode={drillCountry || originCountry} days={14} />
+                        {/* Narrative Drift timeline — deferred so AEIL explanation renders first */}
+                        {showDrift ? (
+                            <NarrativeDrift themeCode={theme} countryCode={drillCountry || originCountry} days={14} />
+                        ) : (
+                            <div className="narrative-drift narrative-drift--deferred">
+                                <div className="narrative-drift-header">
+                                    <h3>Narrative Drift <span>(loading after summary)</span></h3>
+                                </div>
+                                <div className="drift-deferred-line" />
+                            </div>
+                        )}
 
                         {/* RELATED INVESTIGATIONS (Concepts) */}
                         {data.relatedConcepts && data.relatedConcepts.length > 0 && (

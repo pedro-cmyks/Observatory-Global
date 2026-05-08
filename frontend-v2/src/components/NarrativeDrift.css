@@ -20,6 +20,43 @@
     text-align: center;
 }
 
+.narrative-drift--deferred {
+    min-height: 92px;
+    opacity: 0.72;
+}
+
+.narrative-drift--deferred .narrative-drift-header h3 span {
+    font-weight: 400;
+    opacity: 0.45;
+    font-size: 0.72rem;
+    text-transform: none;
+}
+
+.drift-deferred-line {
+    height: 34px;
+    border-radius: 6px;
+    background:
+        linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.18), transparent),
+        repeating-linear-gradient(
+            90deg,
+            rgba(148, 163, 184, 0.05) 0,
+            rgba(148, 163, 184, 0.05) 1px,
+            transparent 1px,
+            transparent 38px
+        );
+    animation: driftDeferredPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes driftDeferredPulse {
+    0%, 100% {
+        opacity: 0.45;
+    }
+
+    50% {
+        opacity: 0.85;
+    }
+}
+
 .narrative-drift.error {
     color: #ef4444;
 }
