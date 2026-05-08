@@ -1531,6 +1531,39 @@ async def get_theme_details(
                 ORDER BY timestamp DESC
                 LIMIT 200
             """, *params)
+
+            # Representative temporal sample for graph views.
+            # Keep `signals` as latest coverage; spread graphSignals across hours.
+            graph_signals = await conn.fetch(f"""
+                WITH ranked AS (
+                    SELECT
+                        timestamp,
+                        country_code,
+                        source_name,
+                        source_url,
+                        sentiment,
+                        themes,
+                        persons,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY date_trunc('hour', timestamp)
+                            ORDER BY timestamp DESC
+                        ) as rn
+                    FROM signals_v2
+                    WHERE {where_clause}
+                )
+                SELECT
+                    timestamp,
+                    country_code,
+                    source_name,
+                    source_url,
+                    sentiment,
+                    themes,
+                    persons
+                FROM ranked
+                WHERE rn <= 8
+                ORDER BY timestamp ASC
+                LIMIT 240
+            """, *params)
             
             # Get timeline
             timeline = await conn.fetch(f"""
@@ -1681,6 +1714,18 @@ async def get_theme_details(
                         "persons": (r['persons'] or [])[:5]
                     }
                     for r in signals
+                ],
+                "graphSignals": [
+                    {
+                        "timestamp": r['timestamp'].isoformat(),
+                        "country": r['country_code'],
+                        "source": r['source_name'],
+                        "url": r['source_url'],
+                        "sentiment": float(r['sentiment'] or 0),
+                        "otherThemes": [t for t in (r['themes'] or []) if t.upper() != theme_code.upper()][:5],
+                        "persons": (r['persons'] or [])[:5]
+                    }
+                    for r in graph_signals
                 ],
                 "countryBreakdown": [
                     {"code": r['country_code'], "count": int(r['count']), "sentiment": float(r['avg_sentiment'] or 0)}

@@ -17,8 +17,8 @@
 | [#82 Temporal narrative graph](https://github.com/pedro-cmyks/Observatory-Global/issues/82) | Parent issue for this implementation | Implement here first. |
 | [#79 AEIL + Workspace graph](https://github.com/pedro-cmyks/Observatory-Global/issues/79) | Shared product grammar | Temporal graph lives inside AEIL/ThemeDetail first, with pin/promote hooks later. |
 | [#80 Session graph](https://github.com/pedro-cmyks/Observatory-Global/issues/80) | Related but distinct | Do not mix. Session graph tracks user navigation; Temporal Narrative Graph tracks one narrative's evolution. |
-| [#63 Session Trail graph](https://github.com/pedro-cmyks/Observatory-Global/issues/63) | Older version of #80 | Treat as superseded/related to #80, not part of this PR. |
-| [#61 Comparative engine](https://github.com/pedro-cmyks/Observatory-Global/issues/61) | Shares temporal thinking | Do not implement compare UI here. Temporal graph can later feed compare mode. |
+| [#63 Session Trail graph](https://github.com/pedro-cmyks/Observatory-Global/issues/63) | Older version of #80 | Close as duplicate/superseded by #80 or explicitly mark superseded. Not part of this PR. |
+| [#61 Comparative engine](https://github.com/pedro-cmyks/Observatory-Global/issues/61) | Shares temporal thinking | Do not implement compare UI here. Temporal graph may later expose graph selection affordances that launch a comparison pane. MVP does not compare selected nodes or buckets. |
 | [#70 Theme hierarchy](https://github.com/pedro-cmyks/Observatory-Global/issues/70) | Improves related theme grouping | Not required for MVP. Graph should use `getThemeLabel()` now and accept future cluster labels. |
 | [#73 168h aggregates](https://github.com/pedro-cmyks/Observatory-Global/issues/73) | Future backend scale path | Not required for MVP. Full-window graph endpoint should wait until aggregate strategy is clear. |
 | [#77 Source framing visualization](https://github.com/pedro-cmyks/Observatory-Global/issues/77) | Related source-analysis view | Not part of this PR. Source sentiment can color source nodes later. |
@@ -61,7 +61,7 @@ Recommended reading order:
 The graph section contains:
 
 - Header: `Evolution Graph`.
-- Small subtitle: `How countries, sources, people, and related themes connect over time`.
+- Small subtitle: `Connections from the recent coverage sample, bucketed over time`.
 - Graph canvas with central theme node.
 - Timeline scrubber underneath.
 - Current bucket label: `May 8, 13:00`.
@@ -91,6 +91,7 @@ Visual behavior:
 - Link width scales by count.
 - Node size scales by count with min/max caps.
 - Tooltips use `data-tip` where DOM-based. Canvas hover text must be rendered through graph hover state, not native `title=`.
+- Node clicks are navigation/drilldown only. They do not track session history, auto-pin, open Signal Intelligence panels, or compare selected entities in the MVP.
 
 ## Data Strategy
 
@@ -142,7 +143,7 @@ Create:
   - Tests bucket creation, node/link aggregation, filtering, and empty-state behavior.
 
 - `frontend-v2/src/components/TemporalNarrativeGraph.tsx`
-  - Lazy-friendly React component using `react-force-graph-2d`.
+  - React component using `react-force-graph-2d`.
   - Receives prepared `theme`, `themeLabel`, `signals`, `timeline`, and callbacks.
   - Owns scrubber state and graph hover state.
 
@@ -152,7 +153,8 @@ Create:
 Modify:
 
 - `frontend-v2/src/components/ThemeDetail.tsx`
-  - Import and render `TemporalNarrativeGraph` only when `data` is loaded.
+  - Lazy-load `TemporalNarrativeGraph` with `React.lazy()` + `Suspense`.
+  - Render it only when `data` is loaded.
   - Pass callbacks for selecting country/person/source/theme.
   - Keep existing sections.
   - Replace any touched `title=` with `data-tip`.
@@ -215,6 +217,7 @@ export interface BuildTemporalNarrativeGraphInput {
   theme: string
   themeLabel: string
   signals: TemporalSignalInput[]
+  maxCountries?: number
   maxRelatedThemes?: number
   maxPeople?: number
   maxSources?: number
@@ -336,6 +339,7 @@ export interface BuildTemporalNarrativeGraphInput {
   theme: string
   themeLabel: string
   signals: TemporalSignalInput[]
+  maxCountries?: number
   maxRelatedThemes?: number
   maxPeople?: number
   maxSources?: number
@@ -767,18 +771,26 @@ git add frontend-v2/src/components/TemporalNarrativeGraph.tsx frontend-v2/src/co
 git commit -m "feat(graph): add temporal narrative graph component"
 ```
 
-## Task 3: Integrate Graph Into ThemeDetail AEIL
+## Task 3: Lazy-Integrate Graph Into ThemeDetail AEIL
 
 **Files:**
 
 - Modify: `frontend-v2/src/components/ThemeDetail.tsx`
 
-- [ ] **Step 1: Import component**
+- [ ] **Step 1: Add lazy component import**
 
-Add:
+Update the React import at the top of `ThemeDetail.tsx`:
 
 ```ts
-import { TemporalNarrativeGraph } from './TemporalNarrativeGraph'
+import { lazy, Suspense, useState, useEffect, useRef } from 'react'
+```
+
+Add the lazy component near the imports:
+
+```ts
+const TemporalNarrativeGraph = lazy(() =>
+  import('./TemporalNarrativeGraph').then(module => ({ default: module.TemporalNarrativeGraph }))
+)
 ```
 
 - [ ] **Step 2: Render graph after metrics and before Narrative Drift**
@@ -787,19 +799,21 @@ Find the existing metrics block in `ThemeDetail.tsx`, then insert:
 
 ```tsx
 {data.signals.length > 0 && (
-  <TemporalNarrativeGraph
-    theme={theme}
-    themeLabel={getThemeLabel(theme)}
-    signals={data.signals}
-    onThemeSelect={onThemeSelect}
-    onCountrySelect={(code) => {
-      setDrillCountry(code)
-      setDrillCountryName(code)
-      onCountryCardClick?.(code, code)
-    }}
-    onPersonSelect={onPersonClick}
-    onSourceSelect={onSourceClick}
-  />
+  <Suspense fallback={<div className="temporal-graph-loading">Loading evolution graph...</div>}>
+    <TemporalNarrativeGraph
+      theme={theme}
+      themeLabel={getThemeLabel(theme)}
+      signals={data.signals}
+      onThemeSelect={onThemeSelect}
+      onCountrySelect={(code) => {
+        setDrillCountry(code)
+        setDrillCountryName(code)
+        onCountryCardClick?.(code, code)
+      }}
+      onPersonSelect={onPersonClick}
+      onSourceSelect={onSourceClick}
+    />
+  </Suspense>
 )}
 ```
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { lazy, Suspense, useState, useEffect, useRef } from 'react'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { CompareBar } from './CompareBar'
 import { NarrativeDrift } from './NarrativeDrift'
@@ -6,7 +6,12 @@ import { ExportMenu } from './ExportMenu'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Pin, PinOff, X } from 'lucide-react'
 import { getSourceFamilyMeta, type SourceFamily } from '../lib/sourceFamily'
+import { PanelErrorBoundary } from './PanelErrorBoundary'
 import './ThemeDetail.css'
+
+const TemporalNarrativeGraph = lazy(() =>
+    import('./TemporalNarrativeGraph').then(module => ({ default: module.TemporalNarrativeGraph }))
+)
 
 interface ThemeData {
     theme: string
@@ -14,6 +19,15 @@ interface ThemeData {
     total: number
     avgSentiment: number
     signals: Array<{
+        timestamp: string
+        country: string
+        source: string
+        url: string
+        sentiment: number
+        otherThemes: string[]
+        persons: string[]
+    }>
+    graphSignals?: Array<{
         timestamp: string
         country: string
         source: string
@@ -212,7 +226,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                 <div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px', alignItems: 'center', zIndex: 100 }}>
                     <button
                         onClick={handlePin}
-                        title={pinned ? "Unpin Theme" : "Pin Theme to Workspace"}
+                        data-tip={pinned ? "Unpin Theme" : "Pin Theme to Workspace"}
                         style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: pinned ? '#10b981' : '#94a3b8', width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
                     >
                         {pinned ? <PinOff size={14} /> : <Pin size={14} />}
@@ -316,6 +330,27 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
 
                         {/* Period comparison: volume & sentiment vs previous period */}
                         <CompareBar entityType="theme" entityValue={theme} hours={hours} />
+
+                        {/* Evolution Graph: relationship structure over sampled coverage time buckets */}
+                        {(data.graphSignals?.length ?? data.signals.length) > 0 && (
+                            <PanelErrorBoundary panelName="Evolution Graph">
+                                <Suspense fallback={<div className="temporal-graph-loading">Loading evolution graph...</div>}>
+                                    <TemporalNarrativeGraph
+                                        theme={theme}
+                                        themeLabel={getThemeLabel(theme)}
+                                        signals={data.graphSignals?.length ? data.graphSignals : data.signals}
+                                        onThemeSelect={onThemeSelect}
+                                        onCountrySelect={(code) => {
+                                            setDrillCountry(code)
+                                            setDrillCountryName(code)
+                                            onCountryCardClick?.(code, code)
+                                        }}
+                                        onPersonSelect={onPersonClick}
+                                        onSourceSelect={onSourceClick}
+                                    />
+                                </Suspense>
+                            </PanelErrorBoundary>
+                        )}
 
                         {/* Narrative Drift timeline — deferred so AEIL explanation renders first */}
                         {showDrift ? (
@@ -533,7 +568,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                                                 <button
                                                     className="related-chip-compare"
                                                     onClick={(e) => { e.stopPropagation(); onCompareClick(t.theme); }}
-                                                    title="Compare with this theme"
+                                                    data-tip="Compare with this theme"
                                                     style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#10b981', padding: '0 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', flexShrink: 0 }}
                                                 >
                                                     VS
