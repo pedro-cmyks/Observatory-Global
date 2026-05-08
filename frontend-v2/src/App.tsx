@@ -1058,30 +1058,6 @@ function AppContent() {
                 ↑ click any country to explore
               </div>
             )}
-            {/* Map Status Bar — floating stats at bottom of globe panel */}
-            <div className="map-status-bar">
-              <span className="msb-item" data-tip="Countries with signal activity in selected time window">
-                <span className="msb-label">TRACKED</span>
-                <span className="msb-value">{loading ? '…' : nodes.length}</span>
-              </span>
-              <span className="msb-sep" />
-              <span className="msb-item" data-tip="Total media signals in selected time window">
-                <span className="msb-label">SIGNALS</span>
-                <span className="msb-value">{loading ? '…' : totalSignals > 999 ? `${(totalSignals / 1000).toFixed(1)}k` : totalSignals}</span>
-              </span>
-              <span className="msb-sep" />
-              <span className="msb-item" data-tip="Countries with signal volume significantly above their 7-day baseline">
-                <span className="msb-label">ANOMALIES</span>
-                <span className={`msb-value ${anomalies.length > 0 ? 'msb-alert' : ''}`}>{anomalies.length > 0 ? anomalies.length : '—'}</span>
-              </span>
-              <span className="msb-sep" />
-              <span className="msb-item" data-tip="Active map layers">
-                <span className="msb-label">LAYER</span>
-                <span className="msb-value msb-layers">
-                  {[showHeatmap && 'GLOW', showFlows && 'FLOW', showAircraft && 'PLANE', showVessels && 'SHIPS'].filter(Boolean).join(' · ') || '—'}
-                </span>
-              </span>
-            </div>
           </div>
         </div>
 

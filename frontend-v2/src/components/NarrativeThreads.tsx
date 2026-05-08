@@ -4,6 +4,7 @@ import { useFocusData } from '../contexts/FocusDataContext'
 import { timeRangeToHours } from '../lib/timeRanges'
 import { getThemeLabel } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
+import { getNarrativeDisplayLimit, getNarrativeFetchLimit } from '../lib/narrativeThreadLimits'
 import './NarrativeThreads.css'
 
 const THREAD_COLORS = [
@@ -93,8 +94,8 @@ export const NarrativeThreads: React.FC = () => {
     const cappedHours = filter.country ? rawHours : Math.min(rawHours, 24)
     const isCapped = !filter.country && rawHours > 24
 
-    // When a country is active, fetch more threads so we can filter client-side
-    const fetchLimit = filter.country ? 20 : 5
+    // Fetch enough rows for the panel to use the available vertical space.
+    const fetchLimit = getNarrativeFetchLimit(!!filter.country)
 
     const fetchNarratives = useCallback(async () => {
         try {
@@ -119,8 +120,8 @@ export const NarrativeThreads: React.FC = () => {
 
     // When country is active, show only threads that include that country
     const displayedNarratives = filter.country
-        ? narratives.filter(n => n.top_countries.includes(filter.country!)).slice(0, 5)
-        : narratives
+        ? narratives.filter(n => n.top_countries.includes(filter.country!)).slice(0, getNarrativeDisplayLimit(true))
+        : narratives.slice(0, getNarrativeDisplayLimit(false))
 
     const handleClick = (n: Narrative) => {
         setFocus('theme', n.theme_code, getThemeLabel(n.theme_code))
@@ -165,26 +166,25 @@ export const NarrativeThreads: React.FC = () => {
         <div className="narrative-threads-container">
             {filter.country && (
                 <div className="narrative-country-filter-notice">
-                    Threads active in {filter.country} — signal counts are global
+                    Threads active in {filter.country}: signal counts are global
                 </div>
             )}
             {isCapped && !filter.country && (
                 <div className="narrative-cap-notice">
-                    Showing last 24h — narratives are most meaningful at shorter windows
+                    Showing last 24h: narratives are most meaningful at shorter windows
                 </div>
             )}
             {displayedNarratives.map(n => {
                 const isFocused = filter.theme === n.theme_code
                 // Dim conditions:
-                //  - a theme is locked AND it's not this row → dim
-                //  - a country is locked AND this thread doesn't cover that country → dim
+                //  - a theme is locked AND it's not this row -> dim
+                //  - a country is locked AND this thread doesn't cover that country -> dim
                 const dimByTheme = !!filter.theme && filter.theme !== n.theme_code
                 const dimByCountry = !!filter.country && !n.top_countries.includes(filter.country)
                 const isDimmed = dimByTheme || dimByCountry
                 const trendArrow = n.trend === 'accelerating' ? '▲' : n.trend === 'fading' ? '▼' : '→'
-                // Plain-language hover hint — falls back to label when no description is available.
-                // Using native title attribute so it works without any new component plumbing.
-                const rowHint = `${getThemeLabel(n.theme_code)} — ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries. Click to open the topic breakdown.`
+                // Plain-language hover hint; falls back to label when no description is available.
+                const rowHint = `${getThemeLabel(n.theme_code)}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries. Click to open the topic breakdown.`
 
                 const colorIdx = displayedNarratives.indexOf(n) % THREAD_COLORS.length
                 const threadColor = THREAD_COLORS[colorIdx]
@@ -256,7 +256,7 @@ export const NarrativeThreads: React.FC = () => {
                         </div>
 
                         {/* Row 4: Sparkline */}
-                        <div data-tip="Signal volume over time — each point is one hour. Rising = growing coverage, falling = cooling off.">
+                        <div data-tip="Signal volume over time: each point is one hour. Rising = growing coverage, falling = cooling off.">
                             <Sparkline data={n.hourly_timeline} trend={n.trend} />
                         </div>
                     </div>

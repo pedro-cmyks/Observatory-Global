@@ -9,7 +9,7 @@ const STEPS = [
         title: 'Click any country on the map',
         body: (
             <>
-                Tap a country to open its <strong>Coverage Brief</strong> — top narratives,
+                Tap a country to open its <strong>Coverage Brief</strong>: top narratives,
                 sentiment tone, key people, and signal volume. This is your entry point
                 into what any country is talking about right now.
             </>
@@ -20,7 +20,7 @@ const STEPS = [
         title: 'Narrative Threads shows the big picture',
         body: (
             <>
-                The right panel tracks <strong>global topic narratives</strong> — not
+                The right panel tracks <strong>global topic narratives</strong>: not
                 individual articles, but the patterns that emerge across thousands of
                 signals. Watch the trend arrows and spread bars to see what's accelerating
                 and how far it's reached.

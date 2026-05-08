@@ -571,12 +571,6 @@
     display: none;
   }
 
-  .map-status-bar {
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
-    max-width: calc(100% - 24px);
-  }
 }
 
 /* Narrower screens: collapse right column, stack bottom panels */
@@ -689,18 +683,6 @@
     cursor: default;
   }
 
-  .map-status-bar {
-    left: 8px;
-    right: 8px;
-    justify-content: center;
-    transform: none;
-    overflow-x: auto;
-    padding: 4px 6px;
-  }
-
-  .msb-item {
-    padding: 0 7px;
-  }
 }
 
 .terminal-panel {
@@ -1072,66 +1054,5 @@
   color: #475569;
   letter-spacing: 0.04em;
   white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* ============================================================
-   MAP STATUS BAR — floating overlay at bottom of globe panel
-   ============================================================ */
-.map-status-bar {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0;
-  background: rgba(7, 13, 23, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  padding: 4px 10px;
-  z-index: 10;
-  pointer-events: none;
-  white-space: nowrap;
-}
-
-.msb-item {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 0 10px;
-}
-
-.msb-label {
-  font-size: 8px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  color: #475569;
-  text-transform: uppercase;
-}
-
-.msb-value {
-  font-size: 12px;
-  font-weight: 700;
-  color: #94a3b8;
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  letter-spacing: 0.03em;
-}
-
-.msb-value.msb-alert {
-  color: #f87171;
-}
-
-.msb-layers {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: #1D9E75;
-}
-
-.msb-sep {
-  width: 1px;
-  height: 24px;
-  background: rgba(255, 255, 255, 0.07);
   flex-shrink: 0;
 }
