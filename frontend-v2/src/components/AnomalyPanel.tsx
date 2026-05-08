@@ -4,6 +4,7 @@ import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { resolveCountryName } from '../lib/countryNames'
 import { getThemeLabel } from '../lib/themeLabels'
+import { getPublicAttentionTopUrl } from '../lib/publicAttention'
 import './AnomalyPanel.css'
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -24,12 +25,15 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
     const { acledConflicts } = useFocusData()
     const activeCountry = filter.country
     const [wikiArticles, setWikiArticles] = useState<{ title: string; views: number; country_count?: number }[]>([])
+    const [wikiLoading, setWikiLoading] = useState(true)
+    const [wikiError, setWikiError] = useState(false)
 
     useEffect(() => {
-        fetch('/api/v2/wiki/top?days=1&limit=10')
+        fetch(getPublicAttentionTopUrl(10))
             .then(r => r.ok ? r.json() : null)
-            .then(d => { if (d?.articles?.length) setWikiArticles(d.articles) })
-            .catch(() => {})
+            .then(d => { setWikiArticles(d?.articles ?? []) })
+            .catch(() => { setWikiError(true); setWikiArticles([]) })
+            .finally(() => setWikiLoading(false))
     }, [])
 
     const handleAnomalyClick = (countryCode: string) => {
@@ -141,7 +145,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                                     <div key={a.theme} className="ap-row ap-row--theme clickable"
                                         onClick={() => setFocus('theme', a.theme)}>
                                         <span className="ap-badge" style={{ color: '#f59e0b' }}>↑</span>
-                                        <span className="ap-country" title={a.theme}>
+                                        <span className="ap-country" data-tip={a.theme}>
                                             {getThemeLabel(a.theme).slice(0, 24)}
                                         </span>
                                         <span className="ap-mult">{a.multiplier.toFixed(1)}×</span>
@@ -156,8 +160,12 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                         PUBLIC ATTENTION
                     </div>
                     <div className="col-scroll">
-                        {wikiArticles.length === 0 ? (
+                        {wikiLoading ? (
                             <div className="ap-empty">Loading…</div>
+                        ) : wikiError ? (
+                            <div className="ap-empty">Public attention unavailable</div>
+                        ) : wikiArticles.length === 0 ? (
+                            <div className="ap-empty">No public attention spikes</div>
                         ) : (
                             wikiArticles.map((a, i) => {
                                 const displayTitle = a.title.replace(/_/g, ' ')

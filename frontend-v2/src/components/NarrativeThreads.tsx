@@ -4,7 +4,7 @@ import { useFocusData } from '../contexts/FocusDataContext'
 import { timeRangeToHours } from '../lib/timeRanges'
 import { getThemeLabel } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
-import { getNarrativeDisplayLimit, getNarrativeFetchLimit } from '../lib/narrativeThreadLimits'
+import { getNarrativeFetchLimit, getNarrativesForDisplay } from '../lib/narrativeThreadLimits'
 import './NarrativeThreads.css'
 
 const THREAD_COLORS = [
@@ -119,9 +119,7 @@ export const NarrativeThreads: React.FC = () => {
     }, [fetchNarratives])
 
     // When country is active, show only threads that include that country
-    const displayedNarratives = filter.country
-        ? narratives.filter(n => n.top_countries.includes(filter.country!)).slice(0, getNarrativeDisplayLimit(true))
-        : narratives.slice(0, getNarrativeDisplayLimit(false))
+    const displayedNarratives = getNarrativesForDisplay(narratives, filter.country ?? undefined)
 
     const handleClick = (n: Narrative) => {
         setFocus('theme', n.theme_code, getThemeLabel(n.theme_code))
