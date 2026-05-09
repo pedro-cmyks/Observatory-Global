@@ -2709,18 +2709,18 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 "total_signals": stats['total_signals'] or 0,
                 "countries": stats['countries'] or 0,
                 "sources": stats['sources'] or 0,
-                "avg_sentiment": float(stats['avg_sentiment'] or 0)
+                "avg_sentiment": float(stats['avg_sentiment'] or 0) / 10
             },
             "top_countries": [
-                {"code": r['country_code'], "name": r['name'], "signals": r['total'], "sentiment": float(r['sentiment'] or 0)}
+                {"code": r['country_code'], "name": r['name'], "signals": r['total'], "sentiment": float(r['sentiment'] or 0) / 10}
                 for r in top_countries
             ],
             "negative_sentiment": [
-                {"code": r['country_code'], "name": r['name'], "sentiment": float(r['sentiment'] or 0), "signals": r['total']}
+                {"code": r['country_code'], "name": r['name'], "sentiment": float(r['sentiment'] or 0) / 10, "signals": r['total']}
                 for r in negative_sentiment
             ],
             "positive_sentiment": [
-                {"code": r['country_code'], "name": r['name'], "sentiment": float(r['sentiment'] or 0), "signals": r['total']}
+                {"code": r['country_code'], "name": r['name'], "sentiment": float(r['sentiment'] or 0) / 10, "signals": r['total']}
                 for r in positive_sentiment
             ],
             "top_themes": [
