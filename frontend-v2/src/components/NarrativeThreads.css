@@ -102,6 +102,31 @@
     flex-shrink: 0;
 }
 
+.coverage-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.6rem;
+    font-family: var(--font-mono, monospace);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    padding: 1px 4px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    cursor: default;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+.coverage-badge--thin {
+    background: rgba(251, 146, 60, 0.15);
+    color: #fb923c;
+    border: 1px solid rgba(251, 146, 60, 0.35);
+}
+.coverage-badge--limited {
+    background: rgba(250, 204, 21, 0.12);
+    color: #fbbf24;
+    border: 1px solid rgba(250, 204, 21, 0.3);
+}
+
 /* Country suffix in thread label */
 .narrative-label-country {
     color: #64748b;

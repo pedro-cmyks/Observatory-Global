@@ -378,6 +378,16 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     <span className="sentiment-label">
                         {getSentimentLabel(data.avg_sentiment * 10)}
                     </span>
+                    {data.signal_count < 10 && (
+                        <span className="coverage-badge coverage-badge--thin" data-tip={`Only ${data.signal_count} signals in this window — treat as indicative only`}>
+                            thin coverage
+                        </span>
+                    )}
+                    {data.signal_count >= 10 && data.signal_count < 50 && (
+                        <span className="coverage-badge coverage-badge--limited" data-tip={`${data.signal_count} signals — limited data, interpret with caution`}>
+                            limited
+                        </span>
+                    )}
                     <span className="sentiment-trend">
                         {data.sentiment_trend === 'improving' && '↑ Improving'}
                         {data.sentiment_trend === 'declining' && '↓ Declining'}

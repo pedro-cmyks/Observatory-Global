@@ -210,6 +210,12 @@ export const NarrativeThreads: React.FC = () => {
                             </div>
                             <span className="narrative-count" data-tip={`${n.signal_count.toLocaleString()} media signals in the selected window`}>
                                 {n.signal_count > 999 ? `${(n.signal_count / 1000).toFixed(1)}k` : n.signal_count}
+                                {n.signal_count < 10 && (
+                                    <span className="coverage-badge coverage-badge--thin" data-tip={`Only ${n.signal_count} signals — treat as indicative only`}>thin</span>
+                                )}
+                                {n.signal_count >= 10 && n.signal_count < 50 && (
+                                    <span className="coverage-badge coverage-badge--limited" data-tip={`${n.signal_count} signals — limited coverage`}>~</span>
+                                )}
                             </span>
                         </div>
 

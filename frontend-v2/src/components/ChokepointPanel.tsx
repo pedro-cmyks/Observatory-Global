@@ -115,6 +115,12 @@ export function ChokepointPanel({ chokepoint, vesselCount, hours, onCountryClick
                       <span style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
                         {c.signal_count.toLocaleString()} sig
                       </span>
+                      {c.signal_count < 10 && (
+                        <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', fontWeight: 600, padding: '1px 4px', borderRadius: 3, background: 'rgba(251,146,60,0.15)', color: '#fb923c', border: '1px solid rgba(251,146,60,0.35)', textTransform: 'uppercase', letterSpacing: '0.03em' }} data-tip={`Only ${c.signal_count} signals — treat as indicative only`}>thin</span>
+                      )}
+                      {c.signal_count >= 10 && c.signal_count < 50 && (
+                        <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', fontWeight: 600, padding: '1px 4px', borderRadius: 3, background: 'rgba(250,204,21,0.12)', color: '#fbbf24', border: '1px solid rgba(250,204,21,0.3)', textTransform: 'uppercase', letterSpacing: '0.03em' }} data-tip={`${c.signal_count} signals — limited`}>~lim</span>
+                      )}
                     </div>
                   </div>
                   {c.signal_count > 0 && (
