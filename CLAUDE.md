@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-06 (session 6 — investigation workspace + error isolation)
+Last updated: 2026-05-09 (session 7 — signal quality, source waves, sentiment fix, 168h concept perf)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -675,53 +675,62 @@ codex "Write comprehensive tests for gdelt_parser.py covering all edge cases"
 
 ---
 
-## Current Technical State (as of session 6)
+## Current Technical State (as of session 7 — 2026-05-09)
 
 ### Critical Build Rule
 
 Always run `npm run build` (not just `tsc --noEmit`) before pushing frontend changes. Vite uses `tsc -b` (project references), which is stricter. A passing `tsc --noEmit` does NOT guarantee a passing Vercel build.
 
-### Pending Fly.io Deploy
+### No Pending Fly.io Deploys
 
-`ingest_v2.py` ON CONFLICT fix is committed but still not deployed. Run `fly deploy` to activate it. Migration 007 (unique index on source_url) is already applied in the DB.
+All backend changes are live. Fly.io app: `atlas-api-pedro`. Migrations 007–010 applied.
 
 ### Frontend Component Count
 
 36 .tsx components in `frontend-v2/src/components/`. Do not add Tailwind to any of them.
 
-### New Components (session 6)
+### Investigation Workspace (session 6, still current)
 
-- `InteractiveWorkspace.tsx` — react-force-graph-2d canvas. Renders pinned nodes and relationship edges. Lazy-loaded (chunk: ~187KB). Uses react-force-graph-2d (NOT react-force-graph — that package pulls AFRAME and crashes the app).
-- `InvestigationWorkspace.tsx` + `InvestigationWorkspace.css` — shell component. Wraps `InteractiveWorkspace` with `React.lazy()` + `Suspense` + `PanelErrorBoundary`. App.tsx renders this panel.
-
-### New Lib Files (session 6)
-
-- `frontend-v2/src/lib/workspaceGraph.ts` — graph builder. Two-pass: pinned nodes always succeed; relationship edges built with per-item try/catch so one bad item never kills the whole graph.
-- `frontend-v2/src/lib/workspaceGraph.test.ts` — tests for graph builder.
+- `InteractiveWorkspace.tsx` — react-force-graph-2d canvas. Lazy-loaded (chunk: ~187KB). Use react-force-graph-2d ONLY — the 3D version (react-force-graph) pulls AFRAME and crashes the app.
+- `InvestigationWorkspace.tsx` + `InvestigationWorkspace.css` — shell. Wraps `InteractiveWorkspace` via `React.lazy()` + `Suspense` + `PanelErrorBoundary`. Rendered by App.tsx.
+- `workspaceGraph.ts` — two-pass graph builder. Pinned nodes always succeed; edges per-item try/catch.
 
 ### Error Isolation Architecture (established session 6)
 
 Three-layer error boundary hierarchy:
-1. `RootErrorBoundary` in `main.tsx` — catches anything that escapes all panels; shows a readable error message instead of a blank screen.
-2. `PanelErrorBoundary` in `App.tsx` — wraps `InvestigationWorkspace` and other individual panels.
-3. `MapErrorBoundary` — wraps the DeckGL map layer.
+1. `RootErrorBoundary` in `main.tsx`
+2. `PanelErrorBoundary` in `App.tsx` — wraps `InvestigationWorkspace` and other panels
+3. `MapErrorBoundary` — wraps DeckGL map layer
 
-### Graph Library Decision (session 6)
+### Theme Label Rule (session 6, still current)
 
-react-force-graph (3D) was replaced with react-force-graph-2d because the 3D version pulls AFRAME as a dependency which crashes the entire app on load. Never reintroduce react-force-graph (the 3D package).
-
-### Theme Label Fix (session 6)
-
-`DiscoveryPanel.tsx` and `NarrativeThreads.tsx` now call `getThemeLabel(theme_code)` directly and ignore the API's `label` field. The API field can return raw GDELT codes (e.g. `UNGP_RIGHTS_DIGITAL_COMMUNICATION`) which are not human-readable. This pattern must be used in all components that display theme names.
+All components rendering GDELT theme names must call `getThemeLabel(theme_code)` from `lib/themeLabels.tsx`. Do NOT use the API `label` field — it can return raw GDELT codes.
 
 ### Stream Panel Behavior (session 5, still current)
 
-Default stream slot is `DiscoveryPanel` (blank state), not `SignalStream`. State machine: `isPerson → isCompound → isCountry → isTheme → isChokepoint → DiscoveryPanel`.
+Default stream slot is `DiscoveryPanel` (blank state). State machine: `isPerson → isCompound → isCountry → isTheme → isChokepoint → DiscoveryPanel`.
+
+### Sentiment Scale (unified session 7)
+
+All endpoints return sentiment ÷10 (frontend expects ±1 range, ±0.1 thresholds). GDELT V2Tone raw is ~-20 to +20. Exception: ThemeDetail uses `getSentimentBarWidth()` which normalizes -10 to +10 internally. Do not change ThemeDetail.
+
+### Coverage Confidence Badges (session 7)
+
+Applied in CountryBrief, NarrativeThreads, ChokepointPanel: n<10 → `thin` (orange), 10≤n<50 → `limited` (yellow). CSS classes: `coverage-badge--thin`, `coverage-badge--limited` in respective CSS files.
+
+### Concept Endpoint Fast Path (session 7)
+
+`GET /api/v2/concept/{slug}?hours=N`: for `hours > 24` queries `theme_country_hourly_v2` (pre-agg, PK: hour+theme+country). For `hours ≤ 24` queries `signals_v2` directly. `effective_hours` always equals requested `hours`.
+
+### Source Ingestion Stack (session 7)
+
+- `ingest_rss.py` — Wave 1 general feeds + Wave 3 state media (RT/Sputnik/Global Times/IRNA) + non-English (France24 AR/BBC Arabic/El País/DW). `is_state_media=True` for state sources.
+- `ingest_reliefweb.py` — Wave 2: 19 crisis country feeds via ReliefWeb OCHA. `geo_confidence=0.92`, `source_family='ngo'`. Direct URL pattern: `/updates/rss.xml?legacy-river=country/{iso3}` (not country path — that redirects and gets blocked).
 
 ### API Endpoints
 
 - `GET /api/v2/search/unified?q=&hours=` — preferred search. Merges taxonomy, concepts, regions, DB. Cached 2 min.
-- All v2 endpoints live. v3 crisis endpoints live. Fly.io deploy pending for ON CONFLICT fix only.
+- All v2 and v3 endpoints live. No pending deploys.
 
 ### FocusContext
 
@@ -735,6 +744,6 @@ Default stream slot is `DiscoveryPanel` (blank state), not `SignalStream`. State
 
 ### GitHub Issues Status
 
-Closed this session: #47, #48, #49, #52, #53, #55, #56 (Wave 2 + persona evaluation).
-New issues opened: #64 (theme fallback formatter), #65 (onboarding coachmark), #66 (export), #67 (country people), #68 (source-family classification), #69 (Spanish routing), #70 (theme clustering).
-Currently open (unscheduled): #42, #46, #50, #51, #54, #58, #61, #62, #63, #64–#70.
+Open as of 2026-05-09: #46, #51, #61, #62, #63, #70, #77, #78, #79, #80, #81, #82, #83, #92.
+Closed session 7: #73, #84, #85, #86, #87, #88, #89, #90, #91, #93.
+Next priority: #83 (Signal Intelligence Panel), #92 (Wave 4 NLP ADR), #77 (source framing viz).
