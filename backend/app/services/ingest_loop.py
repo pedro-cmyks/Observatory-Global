@@ -70,6 +70,16 @@ async def main():
             except Exception:
                 log.exception("RSS ingestion failed — continuing")
 
+        # ── ReliefWeb/OCHA Humanitarian Feeds: every 4th cycle (~60 min) ──
+        if gdelt_cycle % 4 == 0:
+            try:
+                log.info("ReliefWeb humanitarian feeds ingestion starting...")
+                from app.services.ingest_reliefweb import run_reliefweb_ingestion
+                await run_reliefweb_ingestion()
+                log.info("ReliefWeb ingestion complete.")
+            except Exception:
+                log.exception("ReliefWeb ingestion failed — continuing")
+
         # ── Wikipedia Pageviews: every 96th cycle (~24 hours) ──
         if gdelt_cycle % 96 == 1:  # Run on first cycle and then every ~24h
             try:
