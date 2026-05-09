@@ -37,6 +37,7 @@ from app.config.crisis_themes import (
     calculate_severity,
     get_event_type
 )
+from app.config.source_blocklist import is_blocked
 from app.services.country_codes import fips_to_iso
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://observatory:changeme@localhost:5432/observatory?sslmode=disable")
@@ -60,19 +61,19 @@ async def fetch_latest_gdelt_url(update_url: str = GDELT_LAST_UPDATE_URL) -> Opt
                         return parts[2]
     return None
 
-async def download_and_parse_gkg(url: str) -> list[dict]:
+async def download_and_parse_gkg(url: str, source_lang: str = "en") -> list[dict]:
     """Download and parse GDELT GKG file with resilient error handling."""
     signals = []
     skipped = 0
-    
+
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as resp:
             if resp.status != 200:
                 logger.error(f"Failed to download {url}: {resp.status}")
                 return signals
-            
+
             data = await resp.read()
-            
+
     # Unzip and parse
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
@@ -82,7 +83,7 @@ async def download_and_parse_gkg(url: str) -> list[dict]:
                         reader = csv.reader(io.TextIOWrapper(f, encoding='utf-8', errors='replace'), delimiter='\t')
                         for line_num, row in enumerate(reader, start=1):
                             try:
-                                signal = parse_gkg_row(row)
+                                signal = parse_gkg_row(row, source_lang=source_lang)
                                 if signal:
                                     signals.append(signal)
                             except Exception as e:
@@ -92,13 +93,13 @@ async def download_and_parse_gkg(url: str) -> list[dict]:
                                 continue  # CRITICAL: Continue, don't crash
     except Exception as e:
         logger.error(f"Failed to process zip file from {url}: {e}")
-    
+
     if skipped > 0:
         logger.info(f"Processed {url}: {len(signals)} signals, {skipped} skipped")
-    
+
     return signals
 
-def parse_gkg_row(row: list) -> Optional[dict]:
+def parse_gkg_row(row: list, source_lang: str = "en") -> Optional[dict]:
     """Parse a single GKG row into a signal dict."""
     if len(row) < 27:
         return None
@@ -112,6 +113,10 @@ def parse_gkg_row(row: list) -> Optional[dict]:
     
     source_url = row[4] if len(row) > 4 else None
     source_name = row[3] if len(row) > 3 else None
+
+    # Drop signals from blocked entertainment/tabloid domains before any further work
+    if is_blocked(source_url):
+        return None
     
     import re as _re
     import urllib.parse
@@ -201,6 +206,8 @@ def parse_gkg_row(row: list) -> Optional[dict]:
     severity = calculate_severity(themes) if is_crisis else 'low'
     event_type = get_event_type(themes) if is_crisis else 'other'
     
+    attribution = 'gdelt_gkg_translated' if source_lang != 'en' else 'gdelt_gkg'
+
     return {
         'timestamp': timestamp,
         'country_code': country_code.upper(),
@@ -217,7 +224,13 @@ def parse_gkg_row(row: list) -> Optional[dict]:
         'crisis_score': crisis_score,
         'crisis_themes': crisis_themes,
         'severity': severity,
-        'event_type': event_type
+        'event_type': event_type,
+        # Source provenance fields (migration 008)
+        'source_family': 'gdelt',
+        'source_lang': source_lang,
+        'geo_confidence': 0.85,
+        'attribution_method': attribution,
+        'is_state_media': False,
     }
 
 async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
@@ -235,9 +248,11 @@ async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                     INSERT INTO signals_v2 (
                         timestamp, country_code, latitude, longitude, sentiment,
                         source_url, source_name, headline, themes, persons,
-                        is_crisis, crisis_score, crisis_themes, severity, event_type
+                        is_crisis, crisis_score, crisis_themes, severity, event_type,
+                        source_family, source_lang, geo_confidence, attribution_method, is_state_media
                     )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+                            $16, $17, $18, $19, $20)
                     ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO NOTHING
                 """,
                     signal['timestamp'],
@@ -254,7 +269,12 @@ async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                     signal['crisis_score'],
                     signal['crisis_themes'],
                     signal['severity'],
-                    signal['event_type']
+                    signal['event_type'],
+                    signal.get('source_family', 'gdelt'),
+                    signal.get('source_lang', 'en'),
+                    signal.get('geo_confidence', 0.85),
+                    signal.get('attribution_method', 'gdelt_gkg'),
+                    signal.get('is_state_media', False),
                 )
                 # asyncpg returns "INSERT 0 N" — N=0 means conflict (dup)
                 if result == "INSERT 0 1":
@@ -322,11 +342,12 @@ async def run_ingestion():
             inserted = await insert_signals(pool, signals)
             logger.info("English GKG: %d new signals inserted", inserted)
 
-        # Fetch Translingual GDELT URL
+        # Fetch Translingual GDELT URL (Arabic, Persian, Russian, Chinese, Spanish, etc.)
         trans_url = await fetch_latest_gdelt_url(GDELT_TRANS_UPDATE_URL)
         if trans_url:
             logger.info("Downloading Translingual GKG: %s", trans_url.split('/')[-1])
-            trans_signals = await download_and_parse_gkg(trans_url)
+            # source_lang='xx' signals translingual origin; per-article lang not in GKG schema
+            trans_signals = await download_and_parse_gkg(trans_url, source_lang='xx')
             logger.info("Parsed %d translingual signals from GKG", len(trans_signals))
             inserted_trans = await insert_signals(pool, trans_signals)
             logger.info("Translingual GKG: %d new signals inserted", inserted_trans)
