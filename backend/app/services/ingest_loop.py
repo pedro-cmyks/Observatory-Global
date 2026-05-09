@@ -60,6 +60,16 @@ async def main():
             except Exception:
                 log.exception("ACLED ingestion failed — continuing")
 
+        # ── RSS Curated Feeds: every 4th cycle (~60 min) ──
+        if gdelt_cycle % 4 == 0:
+            try:
+                log.info("RSS curated feeds ingestion starting...")
+                from app.services.ingest_rss import run_rss_ingestion
+                await run_rss_ingestion()
+                log.info("RSS ingestion complete.")
+            except Exception:
+                log.exception("RSS ingestion failed — continuing")
+
         # ── Wikipedia Pageviews: every 96th cycle (~24 hours) ──
         if gdelt_cycle % 96 == 1:  # Run on first cycle and then every ~24h
             try:
