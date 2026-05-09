@@ -393,6 +393,31 @@ async def run_ingestion():
         except Exception as e:
             print(f"theme_hourly_v2 update failed (non-fatal): {e}")
         
+        # Update theme_country_hourly_v2 pre-aggregation (enables fast 168h concept queries)
+        try:
+            async with pool.acquire() as conn:
+                await conn.execute("""
+                    INSERT INTO theme_country_hourly_v2
+                        (hour, theme, country_code, signal_count, avg_sentiment)
+                    SELECT
+                        date_trunc('hour', timestamp) AS hour,
+                        unnest(themes)                AS theme,
+                        country_code,
+                        COUNT(*)                      AS signal_count,
+                        AVG(sentiment)                AS avg_sentiment
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - INTERVAL '2 hours'
+                      AND themes IS NOT NULL
+                      AND country_code IS NOT NULL
+                    GROUP BY 1, 2, 3
+                    ON CONFLICT (hour, theme, country_code) DO UPDATE SET
+                        signal_count  = EXCLUDED.signal_count,
+                        avg_sentiment = EXCLUDED.avg_sentiment
+                """)
+            print("Updated theme_country_hourly_v2")
+        except Exception as e:
+            print(f"theme_country_hourly_v2 update failed (non-fatal): {e}")
+
         # Stats
         async with pool.acquire() as conn:
             total = await conn.fetchval("SELECT COUNT(*) FROM signals_v2")

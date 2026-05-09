@@ -3889,8 +3889,7 @@ async def get_concept_narratives(
         raise HTTPException(status_code=404, detail=f"Concept '{slug}' not found")
 
     themes = concept["themes"]
-    query_hours = min(hours, 24)
-    cache_key = f"concept:{slug}:{hours}:{query_hours}:{region or 'all'}"
+    cache_key = f"concept:{slug}:{hours}:{region or 'all'}"
 
     if hasattr(app.state, "redis") and app.state.redis:
         try:
@@ -3904,50 +3903,85 @@ async def get_concept_narratives(
         async with app.state.pool.acquire() as conn:
             await conn.execute("SET statement_timeout = 15000")
 
-            # Per-country breakdown. Concept theme scans are expensive on the live signals
-            # table, so long lookbacks degrade to a 24h effective window until this endpoint
-            # gets a materialized aggregate/indexed concept table.
-            rows = await conn.fetch("""
-                SELECT
-                    country_code,
-                    COUNT(*) AS signal_count,
-                    AVG(sentiment) AS avg_sentiment,
-                    (array_agg(DISTINCT source_name ORDER BY source_name))[1:5] AS top_sources,
-                    ($1::text[])[1] AS dominant_theme
-                FROM signals_v2
-                WHERE timestamp > NOW() - ($2 || ' hours')::INTERVAL
-                  AND themes IS NOT NULL
-                  AND themes && $1::text[]
-                GROUP BY country_code
-                ORDER BY signal_count DESC
-                LIMIT 50
-            """, themes, str(query_hours))
+            if hours > 24:
+                # Fast path: query pre-aggregated table (sub-second even at 168h)
+                rows = await conn.fetch("""
+                    SELECT
+                        country_code,
+                        SUM(signal_count)::bigint AS signal_count,
+                        (SUM(signal_count * COALESCE(avg_sentiment, 0)) /
+                            NULLIF(SUM(signal_count), 0)) AS avg_sentiment
+                    FROM theme_country_hourly_v2
+                    WHERE hour > NOW() - ($2 || ' hours')::INTERVAL
+                      AND theme = ANY($1::text[])
+                    GROUP BY country_code
+                    ORDER BY signal_count DESC
+                    LIMIT 50
+                """, themes, str(hours))
 
-            # Global totals
-            totals = await conn.fetchrow("""
-                SELECT
-                    COUNT(*)                              AS total_signals,
-                    COUNT(DISTINCT country_code)          AS total_countries,
-                    COUNT(DISTINCT source_name)           AS total_sources,
-                    AVG(sentiment)                        AS avg_sentiment,
-                    MIN(timestamp)                        AS first_seen,
-                    MAX(timestamp)                        AS last_seen
-                FROM signals_v2
-                WHERE timestamp > NOW() - ($2 || ' hours')::INTERVAL
-                  AND themes IS NOT NULL
-                  AND themes && $1::text[]
-            """, themes, str(query_hours))
+                totals = await conn.fetchrow("""
+                    SELECT
+                        SUM(signal_count)::bigint                      AS total_signals,
+                        COUNT(DISTINCT country_code)                    AS total_countries,
+                        (SUM(signal_count * COALESCE(avg_sentiment, 0)) /
+                            NULLIF(SUM(signal_count), 0))               AS avg_sentiment,
+                        MIN(hour)                                       AS first_seen,
+                        MAX(hour)                                       AS last_seen
+                    FROM theme_country_hourly_v2
+                    WHERE hour > NOW() - ($2 || ' hours')::INTERVAL
+                      AND theme = ANY($1::text[])
+                """, themes, str(hours))
 
-            countries = []
-            for r in rows:
-                dominant_label = get_theme_label(r["dominant_theme"]) if r["dominant_theme"] else None
-                countries.append({
-                    "country_code": r["country_code"],
-                    "signal_count": r["signal_count"],
-                    "avg_sentiment": round(float(r["avg_sentiment"] or 0), 3),
-                    "dominant_frame": dominant_label,
-                    "top_sources": list(r["top_sources"] or [])[:3],
-                })
+                countries = []
+                for r in rows:
+                    countries.append({
+                        "country_code": r["country_code"],
+                        "signal_count": int(r["signal_count"] or 0),
+                        "avg_sentiment": round(float(r["avg_sentiment"] or 0), 3),
+                        "dominant_frame": None,
+                        "top_sources": [],
+                    })
+            else:
+                # Direct path: query signals_v2 (fast enough for <= 24h)
+                rows = await conn.fetch("""
+                    SELECT
+                        country_code,
+                        COUNT(*) AS signal_count,
+                        AVG(sentiment) AS avg_sentiment,
+                        (array_agg(DISTINCT source_name ORDER BY source_name))[1:5] AS top_sources,
+                        ($1::text[])[1] AS dominant_theme
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - ($2 || ' hours')::INTERVAL
+                      AND themes IS NOT NULL
+                      AND themes && $1::text[]
+                    GROUP BY country_code
+                    ORDER BY signal_count DESC
+                    LIMIT 50
+                """, themes, str(hours))
+
+                totals = await conn.fetchrow("""
+                    SELECT
+                        COUNT(*)                              AS total_signals,
+                        COUNT(DISTINCT country_code)          AS total_countries,
+                        AVG(sentiment)                        AS avg_sentiment,
+                        MIN(timestamp)                        AS first_seen,
+                        MAX(timestamp)                        AS last_seen
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - ($2 || ' hours')::INTERVAL
+                      AND themes IS NOT NULL
+                      AND themes && $1::text[]
+                """, themes, str(hours))
+
+                countries = []
+                for r in rows:
+                    dominant_label = get_theme_label(r["dominant_theme"]) if r["dominant_theme"] else None
+                    countries.append({
+                        "country_code": r["country_code"],
+                        "signal_count": int(r["signal_count"] or 0),
+                        "avg_sentiment": round(float(r["avg_sentiment"] or 0), 3),
+                        "dominant_frame": dominant_label,
+                        "top_sources": list(r["top_sources"] or [])[:3],
+                    })
 
             result = {
                 "slug": slug,
@@ -3956,9 +3990,9 @@ async def get_concept_narratives(
                 "themes": themes,
                 "related_concepts": concept.get("related_concepts", []),
                 "hours": hours,
-                "effective_hours": query_hours,
-                "total_signals": totals["total_signals"] or 0,
-                "total_countries": totals["total_countries"] or 0,
+                "effective_hours": hours,
+                "total_signals": int(totals["total_signals"] or 0),
+                "total_countries": int(totals["total_countries"] or 0),
                 "avg_sentiment": round(float(totals["avg_sentiment"] or 0), 3),
                 "first_seen": totals["first_seen"].isoformat() if totals["first_seen"] else None,
                 "countries": countries,
