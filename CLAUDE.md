@@ -687,7 +687,8 @@ All backend changes are live. Fly.io app: `atlas-api-pedro`. Migrations 007–01
 
 ### Frontend Component Count
 
-36 .tsx components in `frontend-v2/src/components/`. Do not add Tailwind to any of them.
+39 .tsx components in `frontend-v2/src/components/`. Do not add Tailwind to any of them.
+Session 7 additions: `OnboardingCoachmark`, `PublicAttentionPanel`, `TemporalNarrativeGraph`.
 
 ### Investigation Workspace (session 6, still current)
 
@@ -744,6 +745,6 @@ Applied in CountryBrief, NarrativeThreads, ChokepointPanel: n<10 → `thin` (ora
 
 ### GitHub Issues Status
 
-Open as of 2026-05-09: #46, #51, #61, #62, #63, #70, #77, #78, #79, #80, #81, #82, #83, #92.
-Closed session 7: #73, #84, #85, #86, #87, #88, #89, #90, #91, #93.
+Open as of 2026-05-09 (11 issues): #46, #51, #61, #62, #70, #77, #79, #80, #82, #83, #92.
+Closed session 7: #63, #73, #78, #81, #84–#93.
 Next priority: #83 (Signal Intelligence Panel), #92 (Wave 4 NLP ADR), #77 (source framing viz).

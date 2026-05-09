@@ -1,6 +1,6 @@
 # GEMINI Code Assistant Context — Observatory Global (Atlas)
 
-Last updated: 2026-05-06 (session 6 — investigation workspace + error isolation)
+Last updated: 2026-05-09 (session 7 — signal quality + source expansion + performance)
 
 This document gives the Gemini AI assistant the current, accurate context for the Observatory Global project. Treat this as the source of truth for deployment topology, architecture, and conventions.
 
@@ -18,7 +18,7 @@ This document gives the Gemini AI assistant the current, accurate context for th
 |-----------|----------|-----------------|
 | Frontend | Vercel (auto-deploy from `v3-intel-layer` branch) | observatory-global.vercel.app |
 | Backend API | Fly.io | atlas-api-pedro.fly.dev |
-| Database | Supabase (PostgreSQL) | signals_v2 table — 1.3M+ rows |
+| Database | Supabase (PostgreSQL) | signals_v2 table — 1.3M+ rows. Migrations 007–010 applied. |
 | Cache | Upstash Redis | atlas-redis instance |
 
 **There is no Docker Compose production setup.** The app runs on Vercel + Fly.io. Docker/Compose exists for local dev only.
@@ -31,7 +31,7 @@ This document gives the Gemini AI assistant the current, accurate context for th
 frontend-v2/          ← ACTIVE React 19 + Vite + TypeScript frontend (use this)
   src/
     pages/            ← Landing.tsx  Landing.css  Docs.tsx  Docs.css
-    components/       ← 36 .tsx components (see full list below)
+    components/       ← 39 .tsx components (see full list below)
     contexts/         ← FocusContext, FocusDataContext, CrisisContext, ThemeContext, WorkspaceContext
     hooks/            ← useFocusData.ts, useUrlSync.ts
     layers/           ← TerminatorLayer.ts (custom DeckGL day/night terminator)
@@ -57,8 +57,10 @@ backend/
       config.py           ← App configuration
       logging.py          ← Logging setup
     services/
-      ingest_v2.py        ← GDELT GKG ingestion (primary ingest)
-      ingest_loop.py      ← Scheduler: GDELT 15m, Trends 30m, ACLED 60m, Wiki daily
+      ingest_v2.py        ← GDELT GKG ingestion + populates theme_hourly_v2 + theme_country_hourly_v2
+      ingest_loop.py      ← Scheduler: GDELT 15m, Trends 30m, RSS/ReliefWeb ~60m, Wiki daily
+      ingest_rss.py       ← RSS curated feeds (Wave 1 + Wave 3: state media + non-English regional)
+      ingest_reliefweb.py ← ReliefWeb/OCHA humanitarian feeds (Wave 2, 19 crisis countries)
       ingest_acled.py     ← ACLED conflict ingestion
       ingest_trends.py    ← Google Trends ingestion
       ingest_wiki.py      ← Wikipedia ingestion
@@ -71,7 +73,7 @@ backend/
     models/            ← Pydantic models
     adapters/          ← External adapter layer
   start.sh             ← Watchdog loop + uvicorn launcher (Fly.io entrypoint)
-  migrations/          ← Raw SQL files (007 applied = most recent)
+  migrations/          ← Raw SQL files (010 applied = most recent)
 
 docs/
   superpowers/
@@ -84,11 +86,12 @@ stitch_atlas_landing_experience_redesign/   ← Design assets from Google Stitch
   screen.png          ← Stitch screen screenshot
 ```
 
-### Frontend Component List (36 .tsx files)
-`AnomalyPanel`, `AtlasLoader`, `Briefing`, `ChokepointPanel`, `CompareBar`, `CorrelationMatrix`, `CorrelationMatrixPlaceholder`, `CountryBrief`, `CountryThemePanel`, `CrisisDashboard`, `CrisisToggle`, `DeckGLOverlay`, `DevBanner`, `DiscoveryPanel`, `EntityPanel`, `ExportMenu`, `FocusIndicator`, `FocusSummaryPanel`, `IndicatorTooltip`, `InteractiveWorkspace`, `InvestigationWorkspace`, `Legend`, `MapTooltip`, `NarrativeDrift`, `NarrativeThreads`, `NarrativeThreadsPlaceholder`, `PanelErrorBoundary`, `PersonCompare`, `SearchBar`, `SettingsPanel`, `SignalStream`, `SourceIntegrityPanel`, `SourceProfile`, `ThemeCompare`, `ThemeDetail`, `ThemeSelector`
+### Frontend Component List (39 .tsx files)
+`AnomalyPanel`, `AtlasLoader`, `Briefing`, `ChokepointPanel`, `CompareBar`, `CorrelationMatrix`, `CorrelationMatrixPlaceholder`, `CountryBrief`, `CountryThemePanel`, `CrisisDashboard`, `CrisisToggle`, `DeckGLOverlay`, `DevBanner`, `DiscoveryPanel`, `EntityPanel`, `ExportMenu`, `FocusIndicator`, `FocusSummaryPanel`, `IndicatorTooltip`, `InteractiveWorkspace`, `InvestigationWorkspace`, `Legend`, `MapTooltip`, `NarrativeDrift`, `NarrativeThreads`, `NarrativeThreadsPlaceholder`, `OnboardingCoachmark`, `PanelErrorBoundary`, `PersonCompare`, `PublicAttentionPanel`, `SearchBar`, `SettingsPanel`, `SignalStream`, `SourceIntegrityPanel`, `SourceProfile`, `TemporalNarrativeGraph`, `ThemeCompare`, `ThemeDetail`, `ThemeSelector`
 
 **Session 6 additions:** `InteractiveWorkspace` (force-graph canvas, lazy-loaded), `InvestigationWorkspace` (shell + lazy + error boundary).
-**Note:** `InteractiveWorkspace` must only be imported via `React.lazy()` inside `InvestigationWorkspace` — direct import will include AFRAME-free but still large react-force-graph-2d in the main bundle.
+**Session 7 additions:** `OnboardingCoachmark`, `PublicAttentionPanel`, `TemporalNarrativeGraph`.
+**Note:** `InteractiveWorkspace` must only be imported via `React.lazy()` inside `InvestigationWorkspace` — direct import will include react-force-graph-2d in the main bundle.
 
 ---
 
@@ -101,7 +104,7 @@ stitch_atlas_landing_experience_redesign/   ← Design assets from Google Stitch
 - **Backend:** Python 3.11, FastAPI, asyncpg, pydantic, Anthropic SDK (Claude Haiku for AI summaries)
 - **Database:** PostgreSQL (Supabase) — primary table `signals_v2`, ACLED table `acled_conflicts_v2`, aggregate matviews for trends/themes
 - **Cache:** Redis (Upstash) — AI summaries cached 30 min
-- **Data sources:** GDELT 2.0 (GKG), Google Trends (pytrends), ACLED, Wikipedia
+- **Data sources:** GDELT 2.0 (GKG), Google Trends (pytrends), ACLED, Wikipedia, RSS curated feeds (Wave 1+3), ReliefWeb/OCHA (Wave 2)
 
 ---
 
@@ -216,7 +219,7 @@ Stitch project: **Atlas Landing Experience Redesign**
 4. **Tooltip system**: `[data-tip]` CSS pseudo-element tooltips in `App.css` — instant (80ms fade). Use `data-tip="text"` on any element. Do NOT use native `title=`.
 5. **AI Insight**: Claude Haiku via Anthropic SDK. Cached 30 min in Redis.
 6. **Ingestion watchdog**: `start.sh` runs `ingest_watchdog()` bash loop that restarts `ingest_loop.py` after any crash.
-7. **Migrations**: Raw SQL files in `backend/migrations/`. Run via Supabase SQL editor (NOT alembic — alembic is not used). Most recent migration: `007_signals_dedup.sql`.
+7. **Migrations**: Raw SQL files in `backend/migrations/`. Run via Supabase SQL editor (NOT alembic — alembic is not used). Most recent migration: `010_theme_country_hourly.sql`. Applied migrations: 007 (dedup index), 008 (source provenance), 009 (trends_v2 constraint), 010 (theme_country_hourly_v2 pre-agg).
 8. **Stitch MCP**: Google Stitch connected via MCP over HTTP for AI-assisted landing page design. API key in `.mcp.json` headers (`X-Goog-Api-Key`).
 9. **Tailwind scope**: Tailwind is installed but scoped to `Landing.tsx` only. All dashboard components use Vanilla CSS + CSS custom properties. Do NOT add Tailwind to dashboard components.
 10. **Theme system**: `ThemeContext` reads `styles/themes.ts` and applies CSS vars to `:root` via `data-theme` attribute. `SettingsPanel` allows runtime theme switching.
@@ -233,13 +236,21 @@ Stitch project: **Atlas Landing Experience Redesign**
 21. **DiscoveryPanel (session 5)**: Blank-state default for the stream column. Shows top 5 GDELT narratives as explorable cards with trend arrows (accelerating/fading/stable), signal counts, and top countries. Fetches `GET /api/v2/narratives?hours=24&limit=5`, auto-refreshes every 5 minutes. `SignalStream` is no longer the default view — it is shown only when explicitly triggered.
 22. **Stream panel state machine**: Right column renders based on which state is truthy first: `isPerson → isCompound(theme+country) → isCountry → isTheme → isChokepoint → DiscoveryPanel`. The title switches between "WHAT'S HAPPENING" (blank state) and "SIGNAL STREAM" (active filter).
 23. **Map hint**: `.map-hint` element in App.css + animation. Appears 2 seconds after `mapReady` for first-time users. Dismissed on any map interaction; `sessionStorage` prevents it from reappearing within the same browser session.
-24. **ingest_v2.py ON CONFLICT status**: Restored to `ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO NOTHING` (requires migration 007's unique index). Committed. Awaiting `fly deploy` to take effect on the running instance.
+24. **ingest_v2.py ON CONFLICT**: `ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO NOTHING`. Migration 007 unique index is applied and the fix is deployed. All Fly.io instances are current — no pending deploys.
 25. **Investigation workspace (session 6)**: `InvestigationWorkspace.tsx` is the shell rendered by App.tsx. It uses `React.lazy()` to load `InteractiveWorkspace.tsx` which contains the react-force-graph-2d canvas. Lazy loading splits the graph library (~187KB) into a separate chunk so it does not inflate the main bundle. `PanelErrorBoundary` wraps the workspace in App.tsx.
 26. **Graph library: react-force-graph-2d only**: The 3D variant (`react-force-graph`) pulls AFRAME as a dependency which crashes the entire app. Package.json has `react-force-graph-2d@^1.29.1`. Do NOT add react-force-graph (3D).
 27. **workspaceGraph.ts two-pass build**: `buildWorkspaceGraph()` in `lib/workspaceGraph.ts` runs two passes. Pass 1 adds pinned nodes (never fails). Pass 2 builds relationship edges with per-item try/catch so one malformed workspace item cannot prevent the graph from rendering. This avoids a blank workspace panel when some items have missing fields.
 28. **RootErrorBoundary (session 6)**: Added to `main.tsx`. Catches any unhandled error that escapes all panel-level boundaries. Renders a visible error message with the error text — never a blank screen. Three-layer hierarchy: RootErrorBoundary (main.tsx) → PanelErrorBoundary (individual panels) → MapErrorBoundary (DeckGL map).
 29. **Theme label rule (session 6)**: `getThemeLabel(theme_code)` from `lib/themeLabels.tsx` must be called client-side for every GDELT theme display. The `label` field on API responses can contain raw GDELT code strings. `DiscoveryPanel` and `NarrativeThreads` were fixed this session; apply the same pattern to any new component displaying theme names.
 30. **CountryBrief labels (session 6)**: "Top Sources" renamed to "Top Publishers". `SourceIntegrityPanel` distribution section renamed to "CONCENTRATION LEADERS".
+31. **Source provenance schema (session 7, migration 008)**: `signals_v2` now has `source_family` (wire/state/ngo/social), `source_lang`, `geo_confidence` (0.6 RSS → 0.85 GDELT → 0.92 ReliefWeb), `attribution_method`, `is_state_media`. RT, Sputnik, Global Times, IRNA flagged `is_state_media=TRUE`.
+32. **Sentiment unified (session 7)**: All API endpoints return sentiment in ÷10 normalized range (±2 typical, ±10 max). The briefing endpoint was the last straggler — fixed in session 7. ThemeDetail uses `getSentimentBarWidth()` normalizing -10 to +10.
+33. **Concept endpoint fast path (session 7)**: `GET /api/v2/concept/{slug}?hours=N` uses `theme_country_hourly_v2` for `hours > 24` (migration 010). Query time ~20ms. The `effective_hours` cap has been removed — full requested window is served.
+34. **theme_country_hourly_v2 (session 7, migration 010)**: Pre-aggregation table. PK `(hour, theme, country_code)`. 2.97M rows backfilled from 7 days of `signals_v2`. Populated each GDELT ingest cycle by `ingest_v2.py`.
+35. **Coverage confidence badges (session 7)**: n<10 → "thin" (orange), 10≤n<50 → "limited" (yellow), n≥50 → no badge. Applied in `CountryBrief`, `NarrativeThreads`, `ChokepointPanel`.
+36. **PublicAttentionPanel (session 7)**: Shows Google Trends + Wikipedia signals as a public-attention feed. Clicking an item opens the investigation panel (InvestigationWorkspace). No external navigation on click — stays inside Atlas.
+37. **TemporalNarrativeGraph (session 7)**: Timeline visualization of how a narrative's coverage and sentiment shift over time. Lives in ThemeDetail. Workspace integration still pending (#82).
+38. **OnboardingCoachmark (session 7)**: First-run coachmark overlay component for user onboarding guidance.
 
 ---
 
