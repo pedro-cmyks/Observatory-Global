@@ -98,6 +98,55 @@ CURATED_FEEDS: dict[str, tuple[str, str, str, str, bool]] = {
         "https://allafrica.com/tools/headlines/rdf.xml",
         "wire", "ZA", "en", False,
     ),
+    # ── WAVE 3: STATE MEDIA (is_state_media=True) ─────────────────────────────
+    # Russian state media — essential for tracking Kremlin narrative framing
+    "rt_en": (
+        "https://www.rt.com/rss/news/",
+        "state", "RU", "en", True,
+    ),
+    "rt_arabic": (
+        "https://arabic.rt.com/rss/",
+        "state", "RU", "ar", True,
+    ),
+    "sputnik_en": (
+        "https://sputnikglobe.com/export/rss2/archive/index.xml",
+        "state", "RU", "en", True,
+    ),
+    # Chinese state media — covers Belt & Road, Taiwan framing, trade wars
+    # (CGTN world RSS stale since Apr 2026; Xinhua RSS abandoned since 2018)
+    "global_times": (
+        "https://www.globaltimes.cn/rss/outbrain.xml",
+        "state", "CN", "en", True,
+    ),
+    # Iranian state media — covers Gulf, regional conflicts, nuclear program
+    "irna_en": (
+        "https://en.irna.ir/rss",
+        "state", "IR", "en", True,
+    ),
+    # ── WAVE 3: NON-ENGLISH REGIONAL INDEPENDENTS ─────────────────────────────
+    # Arabic-language coverage — Middle East from Arab perspective
+    "france24_ar": (
+        "https://www.france24.com/ar/rss",
+        "wire", "FR", "ar", False,
+    ),
+    "bbc_arabic": (
+        "https://www.bbc.co.uk/arabic/index.xml",
+        "wire", "GB", "ar", False,
+    ),
+    # Spanish-language — Latin America coverage + Iberian perspective
+    "france24_es": (
+        "https://www.france24.com/es/rss",
+        "wire", "FR", "es", False,
+    ),
+    "elpais_es": (
+        "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada",
+        "independent", "ES", "es", False,
+    ),
+    # German public broadcaster — European geopolitical angle
+    "dw_en": (
+        "https://rss.dw.com/xml/rss-en-all",
+        "wire", "DE", "en", False,
+    ),
 }
 
 # ── Lightweight country extractor ─────────────────────────────────────────────
