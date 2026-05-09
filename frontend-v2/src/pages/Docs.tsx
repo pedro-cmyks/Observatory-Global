@@ -57,7 +57,7 @@ export function Docs() {
                 <span style={{ fontSize: '12px', color: '#64748b' }}>Documentation</span>
                 <div className="docs-topnav-links">
                     <a onClick={() => navigate('/app')} style={{ cursor: 'pointer' }}>Dashboard</a>
-                    <a href="https://github.com/pedro-cmyks/Observatory-Global" target="_blank" rel="noreferrer">GitHub</a>
+                    <a href="https://github.com/pedro-cmyks/Observatory-Global" target="_blank" rel="noopener noreferrer">GitHub</a>
                 </div>
             </nav>
 

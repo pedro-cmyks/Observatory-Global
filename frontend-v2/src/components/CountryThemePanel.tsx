@@ -107,7 +107,7 @@ export function CountryThemePanel({
                                             height: `${Math.max(10, (t.count / Math.max(...data.timeline.map(x => x.count))) * 100)}%`,
                                             backgroundColor: getSentimentColor(t.sentiment)
                                         }}
-                                        title={`${t.count} signals`}
+                                        data-tip={`${t.count} signals`}
                                     />
                                 ))}
                             </div>

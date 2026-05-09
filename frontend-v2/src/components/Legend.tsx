@@ -49,7 +49,7 @@ export const Legend: React.FC = () => {
             {/* Nodes Section */}
             <div style={{ marginBottom: '16px' }}>
                 <div
-                    title="Nodes representing countries. Larger nodes indicate higher news volume."
+                    data-tip="Nodes representing countries. Larger nodes indicate higher news volume."
                     style={{ color: 'var(--color-accent-primary)', fontSize: '10px', textTransform: 'uppercase', marginBottom: '8px', cursor: 'help' }}>
                     Nodes (Countries)
                 </div>
@@ -69,25 +69,25 @@ export const Legend: React.FC = () => {
                         <span className="metric-value" style={{ fontSize: '9px', color: 'var(--color-text-muted)' }}>&gt;1K</span>
                     </div>
                 </div>
-                <div title="The size of the node represents the total number of news signals (mentions/articles) for that country." style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginBottom: '8px', cursor: 'help' }}>
+                <div data-tip="The size of the node represents the total number of news signals (mentions/articles) for that country." style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginBottom: '8px', cursor: 'help' }}>
                     Size = Signal volume (log scale)
                 </div>
 
                 {/* Sentiment Colors */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} title="Average GDELT sentiment score > 0.1 (Scale: -1.0 to +1.0). Indicates generally positive news coverage.">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} data-tip="Average GDELT sentiment score > 0.1 (Scale: -1.0 to +1.0). Indicates generally positive news coverage.">
                         <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--color-sentiment-positive)' }} />
                         <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>Positive tone</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} title="Average GDELT sentiment score between -0.1 and 0.1. Indicates balanced or neutral coverage.">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} data-tip="Average GDELT sentiment score between -0.1 and 0.1. Indicates balanced or neutral coverage.">
                         <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--color-sentiment-neutral)' }} />
                         <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>Neutral tone</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} title="Average GDELT sentiment score < -0.1. Indicates generally negative or critical news coverage.">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} data-tip="Average GDELT sentiment score < -0.1. Indicates generally negative or critical news coverage.">
                         <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--color-sentiment-negative)' }} />
                         <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>Negative tone</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} title="Current signal volume is significantly higher (>2 standard deviations) than the 7-day rolling average.">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} data-tip="Current signal volume is significantly higher (>2 standard deviations) than the 7-day rolling average.">
                         <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--color-accent-secondary)', boxShadow: '0 0 8px var(--color-accent-secondary)' }} />
                         <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>Anomaly (pulsing)</span>
                     </div>
@@ -97,11 +97,11 @@ export const Legend: React.FC = () => {
             {/* Flows Section */}
             <div>
                 <div
-                    title="Co-occurrence of themes between countries"
+                    data-tip="Co-occurrence of themes between countries"
                     style={{ color: 'var(--color-accent-primary)', fontSize: '10px', textTransform: 'uppercase', marginBottom: '8px', cursor: 'help' }}>
                     Flows (Connections)
                 </div>
-                <div title="Strength of connection (Jaccard similarity)" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', cursor: 'help' }}>
+                <div data-tip="Strength of connection (Jaccard similarity)" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', cursor: 'help' }}>
                     <div style={{ width: '30px', height: '3px', background: 'linear-gradient(90deg, var(--color-accent-primary), var(--color-accent-secondary))', borderRadius: '2px' }} />
                     <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>Width = Correlation strength</span>
                 </div>

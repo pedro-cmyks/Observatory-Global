@@ -127,7 +127,7 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
                                     })
                                 }
                             }}
-                            title={isPinned(`${focusType}-${focusValue}`) ? `Unpin ${focusType}` : `Pin ${focusType} to Workspace`}
+                            data-tip={isPinned(`${focusType}-${focusValue}`) ? `Unpin ${focusType}` : `Pin ${focusType} to Workspace`}
                             style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: isPinned(`${focusType}-${focusValue}`) ? '#10b981' : '#94a3b8', width: '24px', height: '24px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
                         >
                             {isPinned(`${focusType}-${focusValue}`) ? <PinOff size={12} /> : <Pin size={12} />}
@@ -242,7 +242,7 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
                                         key={t.topic}
                                         className="entity-theme-chip"
                                         onClick={() => onThemeSelect?.(t.topic)}
-                                        title={`${t.count} signals`}
+                                        data-tip={`${t.count} signals`}
                                     >
                                         {getThemeLabel(t.topic)}
                                     </button>

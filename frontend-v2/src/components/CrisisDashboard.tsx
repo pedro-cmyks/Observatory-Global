@@ -91,11 +91,11 @@ export const CrisisDashboard: React.FC = () => {
                                     <span style={{ fontWeight: 'bold', color: '#fff' }}>
                                         {severityIndicator(a.level)} {a.country_name || a.country_code} <span style={{ opacity: 0.7, fontSize: '0.9em' }}>({a.country_code})</span>
                                     </span>
-                                    <span style={{ fontSize: '12px', color: levelColors[a.level] }} title="Multiplier: Signal count relative to 7-day baseline">
+                                    <span style={{ fontSize: '12px', color: levelColors[a.level] }} data-tip="Multiplier: Signal count relative to 7-day baseline">
                                         {a.multiplier?.toFixed(1)}× normal
                                     </span>
                                 </div>
-                                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }} title="Z-Score: Standard deviations from mean">
+                                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }} data-tip="Z-Score: Standard deviations from mean">
                                     {a.current_count.toLocaleString()} signals (z: {a.zscore?.toFixed(1)})
                                 </div>
                                 <button

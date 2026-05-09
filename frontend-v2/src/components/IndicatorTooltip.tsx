@@ -67,7 +67,7 @@ export const IndicatorTooltip: React.FC<IndicatorProps> = ({
                 onFocus={() => setShowTooltip(true)}
                 onBlur={() => setShowTooltip(false)}
                 aria-label={`Show calculation method for ${label}`}
-                title="Click for more info"
+                data-tip="Click for more info"
             >
                 ?
             </button>

@@ -104,19 +104,19 @@ function InfoBadge({ text }: { text: string }) {
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(o => !o) }}
         style={{
-          background: 'none', border: '1px solid rgba(100,116,139,0.35)',
-          borderRadius: '50%', width: '14px', height: '14px',
-          cursor: 'pointer', padding: 0, color: '#64748b',
+          background: 'rgba(12, 24, 43, 0.68)', border: '1px solid rgba(29,158,117,0.25)',
+          borderRadius: '4px', width: '14px', height: '14px',
+          cursor: 'pointer', padding: 0, color: '#68dbae',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: '9px', lineHeight: 1, flexShrink: 0
         }}
-        title="What does this panel show?"
+        data-tip="What does this panel show?"
       >?</button>
       {open && (
         <div style={{
           position: 'absolute', top: '18px', left: '50%', transform: 'translateX(-50%)',
-          width: '230px', background: '#1a2332', border: '1px solid rgba(100,116,139,0.3)',
-          borderRadius: '6px', padding: '10px 12px', fontSize: '11px', color: '#94a3b8',
+          width: '230px', background: 'rgba(7, 13, 23, 0.97)', border: '1px solid rgba(29,158,117,0.24)',
+          borderRadius: '6px', padding: '10px 12px', fontSize: '11px', color: 'rgba(226,232,240,0.74)',
           lineHeight: '1.6', zIndex: 9999, boxShadow: '0 8px 24px rgba(0,0,0,0.7)',
           pointerEvents: 'auto'
         }}>
@@ -755,7 +755,7 @@ function AppContent() {
       {/* Command Bar */}
       <header className="command-bar">
         <div className="command-bar-left">
-          <h1 className="brand" onClick={() => navigate('/')} style={{ cursor: 'pointer' }} title="Back to home"><Globe size={16} /> ATLAS</h1>
+          <h1 className="brand" onClick={() => navigate('/')} style={{ cursor: 'pointer' }} data-tip="Back to home"><Globe size={16} /> ATLAS</h1>
           <span className="live-pill" data-tip="Ingesting GDELT signals every 15 minutes">
             <span className="live-pill-dot" />
             LIVE DATA
@@ -832,14 +832,14 @@ function AppContent() {
               <button
                 className={`layer-btn ${showAircraft ? 'active' : ''} ${showAircraft && aircraftError ? 'layer-btn-error' : ''}`}
                 onClick={() => setShowAircraft(!showAircraft)}
-                title={showAircraft && aircraftError ? 'No aircraft data available' : undefined}
+                data-tip={showAircraft && aircraftError ? 'No aircraft data available' : undefined}
               >
                 PLANE {showAircraft && aircraftError && '⚠'}
               </button>
               <button
                 className={`layer-btn ${showVessels ? 'active' : ''} ${activeChokepoints.length > 0 && !showVessels ? 'layer-btn-hint' : ''}`}
                 onClick={() => setShowVessels(!showVessels)}
-                title={
+                data-tip={
                   showVessels
                     ? `${vesselData.length} vessels at chokepoints${vesselConnected ? ' · live' : ' · connecting...'}`
                     : activeChokepoints.length > 0
@@ -1045,7 +1045,7 @@ function AppContent() {
                   <button
                     className="welcome-close"
                     onClick={(e) => { e.stopPropagation(); dismissWelcome() }}
-                    title="Dismiss"
+                    data-tip="Dismiss"
                   >×</button>
                 </div>
               )}

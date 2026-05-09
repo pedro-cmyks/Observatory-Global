@@ -384,7 +384,7 @@ export const SignalStream: React.FC = () => {
                                     
                                     <div className="signal-main">
                                         <div className="headline" style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                                            <a href={sig.url} target="_blank" rel="noreferrer" style={{ flex: 1 }}>
+                                            <a href={sig.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1 }}>
                                                 {sig.headline || `Signal from ${sig.source}`}
                                             </a>
                                             <button
