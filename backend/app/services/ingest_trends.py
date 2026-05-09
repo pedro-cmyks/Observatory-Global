@@ -92,13 +92,14 @@ async def insert_trends(pool: asyncpg.Pool, trends: list[dict]) -> int:
 
     inserted = 0
     now = datetime.now(timezone.utc)
+    hour_bucket = now.replace(minute=0, second=0, microsecond=0)
 
     async with pool.acquire() as conn:
         for t in trends:
             try:
                 await conn.execute("""
-                    INSERT INTO trends_v2 (timestamp, country_code, keyword, rank, approximate_volume)
-                    VALUES ($1, $2, $3, $4, $5)
+                    INSERT INTO trends_v2 (timestamp, country_code, keyword, rank, approximate_volume, hour_bucket)
+                    VALUES ($1, $2, $3, $4, $5, $6)
                     ON CONFLICT ON CONSTRAINT trends_v2_country_code_keyword_hour_bucket_key DO UPDATE
                         SET rank = EXCLUDED.rank,
                             approximate_volume = GREATEST(trends_v2.approximate_volume, EXCLUDED.approximate_volume)
@@ -108,6 +109,7 @@ async def insert_trends(pool: asyncpg.Pool, trends: list[dict]) -> int:
                     t["keyword"],
                     t["rank"],
                     t["approximate_volume"],
+                    hour_bucket,
                 )
                 inserted += 1
             except Exception as e:
