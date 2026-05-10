@@ -722,6 +722,20 @@ function AppContent() {
   // Total signals for stats
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
 
+  // Data coverage start date
+  const [dataStartDate, setDataStartDate] = useState<string | null>(null)
+  useEffect(() => {
+    fetch('/api/v2/stats')
+      .then(r => r.json())
+      .then(d => {
+        if (d.database?.oldest_signal) {
+          const dt = new Date(d.database.oldest_signal)
+          setDataStartDate(dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }))
+        }
+      })
+      .catch(() => { })
+  }, [])
+
   // Prefetch briefing data so the modal opens instantly
   const [prefetchedBriefing, setPrefetchedBriefing] = useState<any>(null)
   const [prefetchedInsight, setPrefetchedInsight] = useState<string | null>(null)
@@ -760,6 +774,11 @@ function AppContent() {
             <span className="live-pill-dot" />
             LIVE DATA
           </span>
+          {dataStartDate && (
+            <span className="data-since-pill" data-tip={`Signal archive starts ${dataStartDate}. Historical coverage grows over time.`}>
+              FROM {dataStartDate.toUpperCase()}
+            </span>
+          )}
         </div>
         <div className="command-bar-center">
           <SearchBar

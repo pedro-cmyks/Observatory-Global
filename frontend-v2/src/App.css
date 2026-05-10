@@ -1087,6 +1087,23 @@
   50%       { opacity: 1;   transform: scale(1.1); }
 }
 
+.data-since-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.35);
+  font-family: var(--font-technical, monospace);
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: default;
+}
+
 /* ============================================================
    UTC CLOCK — command bar right
    ============================================================ */
