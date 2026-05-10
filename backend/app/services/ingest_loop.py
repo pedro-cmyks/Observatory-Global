@@ -17,12 +17,23 @@ log = logging.getLogger(__name__)
 INTERVAL_SECONDS = int(os.getenv("INGEST_INTERVAL_SECONDS", "900"))  # 15 min default
 
 
+async def _nlp_background(limit: int) -> None:
+    try:
+        log.info("NLP enrichment starting (limit=%d)...", limit)
+        from enrichment.nlp_pipeline import run_nlp_enrichment
+        await run_nlp_enrichment(limit=limit)
+        log.info("NLP enrichment complete.")
+    except Exception:
+        log.exception("NLP enrichment failed")
+
+
 async def main():
     from app.services.ingest_v2 import run_ingestion
 
     log.info("Ingestion loop starting (interval=%ds)", INTERVAL_SECONDS)
 
     gdelt_cycle = 0  # Counts GDELT cycles
+    nlp_task: asyncio.Task | None = None
 
     while True:
         gdelt_cycle += 1
@@ -39,6 +50,13 @@ async def main():
             log.info("GDELT cycle complete.")
         except Exception:
             log.exception("GDELT ingestion cycle failed — continuing")
+
+        # ── NLP enrichment: background task, non-blocking (Wave 4 ADR-0003) ──
+        # Fire-and-forget: GDELT sleep starts immediately. Skip if previous still running.
+        if nlp_task is None or nlp_task.done():
+            nlp_task = asyncio.create_task(_nlp_background(limit=100))
+        else:
+            log.info("NLP still running from previous cycle — skipping.")
 
         # ── Google Trends: every 2nd cycle (~30 min) ──
         if gdelt_cycle % 2 == 0:
@@ -89,6 +107,24 @@ async def main():
                 log.info("Wikipedia pageviews ingestion complete.")
             except Exception:
                 log.exception("Wikipedia pageviews ingestion failed — continuing")
+
+        # ── Data retention cleanup: every 672nd cycle (~7 days) ──
+        if gdelt_cycle % 672 == 2:
+            try:
+                import asyncpg, os as _os
+                db_url = _os.environ.get("DATABASE_URL") or _os.environ.get("SUPABASE_DB_URL")
+                if db_url:
+                    log.info("Retention cleanup starting (deleting unprocessed signals >90 days)...")
+                    _conn = await asyncpg.connect(db_url)
+                    result = await _conn.execute("""
+                        DELETE FROM signals_v2
+                        WHERE nlp_processed_at IS NULL
+                          AND created_at < NOW() - INTERVAL '90 days'
+                    """)
+                    await _conn.close()
+                    log.info("Retention cleanup complete: %s", result)
+            except Exception:
+                log.exception("Retention cleanup failed — continuing")
 
         log.info("Sleeping %ds.", INTERVAL_SECONDS)
         await asyncio.sleep(INTERVAL_SECONDS)
