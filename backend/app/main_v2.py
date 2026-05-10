@@ -38,6 +38,17 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from urllib.parse import urlparse
 from app.core.gdelt_taxonomy import classify_source
 
+def _resolve_persons(nlp_persons, gdelt_persons) -> list:
+    """Prefer NLP-extracted persons (PERSON type only); fall back to GDELT."""
+    if nlp_persons:
+        import json as _json
+        data = _json.loads(nlp_persons) if isinstance(nlp_persons, str) else nlp_persons
+        names = [e["name"] for e in data if e.get("type") == "PERSON"]
+        if names:
+            return names[:3]
+    return (gdelt_persons or [])[:3]
+
+
 def extract_domain(source_url: str) -> str:
     if not source_url:
         return "Unknown"
@@ -2076,9 +2087,11 @@ async def get_signals(
                 source_name,
                 source_url,
                 headline,
-                sentiment,
+                COALESCE(nlp_sentiment, sentiment) AS sentiment,
                 themes,
-                persons
+                persons,
+                nlp_persons,
+                nlp_framing
             FROM signals_v2
             WHERE {where_clause}
             ORDER BY timestamp DESC
@@ -2117,7 +2130,8 @@ async def get_signals(
                     "headline": r['headline'],
                     "sentiment": float(r['sentiment'] or 0),
                     "themes": r['themes'] or [],
-                    "persons": (r['persons'] or [])[:3]
+                    "persons": _resolve_persons(r['nlp_persons'], r['persons']),
+                    "framing": r['nlp_framing']
                 }
                 for r in rows
             ]

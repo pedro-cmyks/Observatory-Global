@@ -6,19 +6,9 @@ import { timeRangeToHours } from '../lib/timeRanges'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { mergeStreamItems, splitInitialStreamBatch } from '../lib/signalStreamQueue'
 import { Pin, PinOff } from 'lucide-react'
+import { SignalDetailPanel } from './SignalDetailPanel'
+import type { Signal } from './SignalDetailPanel'
 import './SignalStream.css'
-
-interface Signal {
-    id: number
-    timestamp: string
-    country: string
-    source: string
-    url: string
-    headline: string | null
-    sentiment: number
-    themes: string[]
-    persons: string[]
-}
 
 type StreamItem = Signal & { type: 'signal' }
 
@@ -116,6 +106,7 @@ export const SignalStream: React.FC = () => {
     const [isHovered, setIsHovered] = useState(false)
     const [streamFilter, setStreamFilter] = useState<'all' | 'critical' | 'elevated' | 'notable' | 'trend' | 'person' | 'maritime'>('all')
     const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
+    const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null)
     const listRef = useRef<HTMLDivElement>(null)
     const latestTimestampRef = useRef<string | null>(null)
     const dripQueueRef = useRef<StreamItem[]>([])
@@ -313,6 +304,7 @@ export const SignalStream: React.FC = () => {
     const visibleItems = useMemo(() => filteredItems.filter(sig => isGeopoliticallyRelevant(sig)), [filteredItems])
 
     return (
+        <>
         <div className="signal-stream-container">
             {/* Stream Header: live status + filter tabs */}
             <div className="stream-header">
@@ -384,9 +376,12 @@ export const SignalStream: React.FC = () => {
                                     
                                     <div className="signal-main">
                                         <div className="headline" style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                                            <a href={sig.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1 }}>
+                                            <span
+                                                style={{ flex: 1, cursor: 'pointer' }}
+                                                onClick={(e) => { e.stopPropagation(); setSelectedSignal(sig); }}
+                                            >
                                                 {sig.headline || `Signal from ${sig.source}`}
-                                            </a>
+                                            </span>
                                             <button
                                                 className="pin-btn"
                                                 onClick={() => {
@@ -438,5 +433,17 @@ export const SignalStream: React.FC = () => {
                 )}
             </div>
         </div>
+
+        {selectedSignal && (
+            <SignalDetailPanel
+                signal={selectedSignal}
+                onClose={() => setSelectedSignal(null)}
+                onThemeClick={(t) => setTheme(t, 'stream')}
+                onCountryClick={(c) => setCountry(c, 'stream')}
+                onPersonClick={(p) => setPerson(p)}
+                allowlist={allowlist}
+            />
+        )}
+        </>
     )
 }

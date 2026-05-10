@@ -1,6 +1,6 @@
 # GEMINI Code Assistant Context — Observatory Global (Atlas)
 
-Last updated: 2026-05-09 (session 7 — signal quality + source expansion + performance)
+Last updated: 2026-05-10 (session 8 — NLP production fix, OOM resolved, data hygiene, coverage badge)
 
 This document gives the Gemini AI assistant the current, accurate context for the Observatory Global project. Treat this as the source of truth for deployment topology, architecture, and conventions.
 
@@ -18,8 +18,10 @@ This document gives the Gemini AI assistant the current, accurate context for th
 |-----------|----------|-----------------|
 | Frontend | Vercel (auto-deploy from `v3-intel-layer` branch) | observatory-global.vercel.app |
 | Backend API | Fly.io | atlas-api-pedro.fly.dev |
-| Database | Supabase (PostgreSQL) | signals_v2 table — 1.3M+ rows. Migrations 007–010 applied. |
+| Database | Supabase (PostgreSQL) | signals_v2 table — ~1.23M rows (May 3–present). Migrations 007–011 applied. |
 | Cache | Upstash Redis | atlas-redis instance |
+
+**Branch note:** `v3-intel-layer` IS production — 117+ commits ahead of `main`. `main` is stale and abandoned. Vercel and Fly.io both deploy from `v3-intel-layer`.
 
 **There is no Docker Compose production setup.** The app runs on Vercel + Fly.io. Docker/Compose exists for local dev only.
 
@@ -86,8 +88,8 @@ stitch_atlas_landing_experience_redesign/   ← Design assets from Google Stitch
   screen.png          ← Stitch screen screenshot
 ```
 
-### Frontend Component List (39 .tsx files)
-`AnomalyPanel`, `AtlasLoader`, `Briefing`, `ChokepointPanel`, `CompareBar`, `CorrelationMatrix`, `CorrelationMatrixPlaceholder`, `CountryBrief`, `CountryThemePanel`, `CrisisDashboard`, `CrisisToggle`, `DeckGLOverlay`, `DevBanner`, `DiscoveryPanel`, `EntityPanel`, `ExportMenu`, `FocusIndicator`, `FocusSummaryPanel`, `IndicatorTooltip`, `InteractiveWorkspace`, `InvestigationWorkspace`, `Legend`, `MapTooltip`, `NarrativeDrift`, `NarrativeThreads`, `NarrativeThreadsPlaceholder`, `OnboardingCoachmark`, `PanelErrorBoundary`, `PersonCompare`, `PublicAttentionPanel`, `SearchBar`, `SettingsPanel`, `SignalStream`, `SourceIntegrityPanel`, `SourceProfile`, `TemporalNarrativeGraph`, `ThemeCompare`, `ThemeDetail`, `ThemeSelector`
+### Frontend Component List (68 .tsx files as of 2026-05-10)
+`AnomalyPanel`, `AtlasLoader`, `Briefing`, `ChokepointPanel`, `CompareBar`, `CorrelationMatrix`, `CorrelationMatrixPlaceholder`, `CountryBrief`, `CountryThemePanel`, `CrisisDashboard`, `CrisisToggle`, `DeckGLOverlay`, `DevBanner`, `DiscoveryPanel`, `EntityPanel`, `ExportMenu`, `FocusIndicator`, `FocusSummaryPanel`, `IndicatorTooltip`, `InteractiveWorkspace`, `InvestigationWorkspace`, `Legend`, `MapTooltip`, `NarrativeDrift`, `NarrativeThreads`, `NarrativeThreadsPlaceholder`, `OnboardingCoachmark`, `PanelErrorBoundary`, `PersonCompare`, `PublicAttentionPanel`, `SearchBar`, `SettingsPanel`, `SignalStream`, `SourceIntegrityPanel`, `SourceProfile`, `TemporalNarrativeGraph`, `ThemeCompare`, `ThemeDetail`, `ThemeSelector` (and others added through session 8 — run `ls frontend-v2/src/components/*.tsx | wc -l` for current count)
 
 **Session 6 additions:** `InteractiveWorkspace` (force-graph canvas, lazy-loaded), `InvestigationWorkspace` (shell + lazy + error boundary).
 **Session 7 additions:** `OnboardingCoachmark`, `PublicAttentionPanel`, `TemporalNarrativeGraph`.
@@ -219,7 +221,7 @@ Stitch project: **Atlas Landing Experience Redesign**
 4. **Tooltip system**: `[data-tip]` CSS pseudo-element tooltips in `App.css` — instant (80ms fade). Use `data-tip="text"` on any element. Do NOT use native `title=`.
 5. **AI Insight**: Claude Haiku via Anthropic SDK. Cached 30 min in Redis.
 6. **Ingestion watchdog**: `start.sh` runs `ingest_watchdog()` bash loop that restarts `ingest_loop.py` after any crash.
-7. **Migrations**: Raw SQL files in `backend/migrations/`. Run via Supabase SQL editor (NOT alembic — alembic is not used). Most recent migration: `010_theme_country_hourly.sql`. Applied migrations: 007 (dedup index), 008 (source provenance), 009 (trends_v2 constraint), 010 (theme_country_hourly_v2 pre-agg).
+7. **Migrations**: Raw SQL files in `backend/migrations/`. Run via Supabase SQL editor (NOT alembic — alembic is not used). Most recent migration: `011_nlp_columns.sql`. Applied migrations: 007 (dedup index), 008 (source provenance), 009 (trends_v2 constraint), 010 (theme_country_hourly_v2 pre-agg), 011 (NLP columns: nlp_sentiment, nlp_framing, nlp_persons, nlp_confidence, nlp_processed_at).
 8. **Stitch MCP**: Google Stitch connected via MCP over HTTP for AI-assisted landing page design. API key in `.mcp.json` headers (`X-Goog-Api-Key`).
 9. **Tailwind scope**: Tailwind is installed but scoped to `Landing.tsx` only. All dashboard components use Vanilla CSS + CSS custom properties. Do NOT add Tailwind to dashboard components.
 10. **Theme system**: `ThemeContext` reads `styles/themes.ts` and applies CSS vars to `:root` via `data-theme` attribute. `SettingsPanel` allows runtime theme switching.
@@ -251,6 +253,10 @@ Stitch project: **Atlas Landing Experience Redesign**
 36. **PublicAttentionPanel (session 7)**: Shows Google Trends + Wikipedia signals as a public-attention feed. Clicking an item opens the investigation panel (InvestigationWorkspace). No external navigation on click — stays inside Atlas.
 37. **TemporalNarrativeGraph (session 7)**: Timeline visualization of how a narrative's coverage and sentiment shift over time. Lives in ThemeDetail. Workspace integration still pending (#82).
 38. **OnboardingCoachmark (session 7)**: First-run coachmark overlay component for user onboarding guidance.
+39. **NLP pipeline — production automation (session 8)**: `ingest_loop.py` fires `asyncio.create_task(_nlp_background(limit=100))` after each GDELT cycle. Non-blocking — 15-min timing preserved. Skip logic prevents stacking. `backend/enrichment/nlp_pipeline.py` runs the three-phase pipeline (sentiment RoBERTa, NER spaCy, framing NLI).
+40. **Dockerfile HF cache fix (session 8)**: `ENV HF_HOME=/app/hf_cache` and `ENV TRANSFORMERS_CACHE=/app/hf_cache` must appear BEFORE the pre-bake RUN step. `ENV TRANSFORMERS_OFFLINE=1` and `ENV HF_DATASETS_OFFLINE=1` must appear AFTER. This ensures models are stored in a path owned by appuser and that the runtime cannot attempt downloads (which caused OOM at 767MB anon-rss).
+41. **Data retention policy (session 8)**: `ingest_loop.py` every 672nd cycle (~7 days) deletes `signals_v2` rows where `nlp_processed_at IS NULL AND created_at < NOW() - INTERVAL '90 days'`. NLP-processed signals kept indefinitely.
+42. **Data coverage badge (session 8)**: `App.tsx` fetches `/api/v2/stats` on mount, reads `database.oldest_signal`, displays a `FROM [DATE]` pill in the command bar. CSS class `.data-since-pill` in `App.css`. Informs users of signal archive start date.
 
 ---
 

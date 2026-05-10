@@ -1,7 +1,7 @@
 # ADR-0003: Atlas NLP Pipeline — Own Sentiment, Framing, and Entity Extraction
 
 **Date:** 2026-05-09  
-**Status:** Draft — requires Pedro approval before implementation  
+**Status:** Approved — 2026-05-09  
 **Issue ref:** #92  
 **Depends on:** ADR-0002 (Wave plan), Waves 0–2 stable
 
@@ -170,26 +170,47 @@ Run 100 articles per NLP cycle → ~34s. Acceptable as async background task aft
 
 ## Rollout Plan
 
-### Phase 1 (week 1 of Wave 4): Sentiment only
-- Add `nlp_sentiment` to schema
-- Run `cardiffnlp/twitter-roberta-base-sentiment-latest` on RSS signals
-- API uses NLP sentiment when available, GDELT tone as fallback
-- Compare: do NLP and GDELT agree? Validate on 50 manually labeled articles
+### Phase 1 ✅ DONE (2026-05-09): Sentiment
+- `nlp_sentiment` added. cardiffnlp model. 106 RSS signals enriched. COALESCE in API.
 
-### Phase 2 (week 2): Entity extraction
-- Add `nlp_persons`, `nlp_confidence`
-- Validate: no Sanskrit phrases, no cross-country bleed
-- Iran profile: compare V2Persons vs NLP persons
+### Phase 2 ✅ DONE (2026-05-09): Entity extraction
+- `nlp_persons` JSONB. spaCy en_core_web_sm. ASCII + word-count filter. API returns NLP persons.
 
-### Phase 3 (week 3): Framing detection
-- Add `nlp_framing`
-- New UI: framing breakdown per theme/country
-- Victory Day ceasefire: "diplomatic_resolution" vs "conflict_escalation" by source family
+### Phase 3 ✅ DONE (2026-05-09): Framing detection
+- `nlp_framing` VARCHAR(30). cross-encoder/nli-distilroberta-base. 6 frames. 46 English signals classified.
+- Arabic/non-English → NULL (English-only model, correct behavior).
+- API returns `framing` field on every signal.
 
-### Phase 4 (week 4): Geo validation
-- Update `geo_confidence` using spaCy validation
-- Anomaly panel: show confidence badge when `geo_confidence < 0.7`
-- Validate: Singapore/Dukono case resolved
+### Phase 3b — GDELT normalization (next session)
+**Decision (2026-05-09):** Extend NLP to all signals, not just curated RSS subset.
+
+**Two-track execution:**
+
+**Track A — Historical backfill (Mac, one-time):**
+- 2.14M GDELT signals with headlines, `nlp_framing IS NULL`
+- Run `nlp_pipeline.py` on Mac, `ORDER BY timestamp DESC` (recent first)
+- ~59h total CPU time, runs in background, no rush
+- Writes directly to Supabase → visible in production immediately
+
+**Track B — Ongoing automation (Fly, permanent):**
+- Add NLP deps to Dockerfile: torch CPU-only, transformers, spaCy + en_core_web_sm
+- Pre-bake models into image at build time (avoids runtime download)
+- Add `run_nlp_enrichment()` call to `ingest_loop.py` after every GDELT cycle
+- Processes latest 500 unprocessed signals per cycle (~90s on shared CPU)
+- Independent of Mac, runs 24/7
+
+**Fly RAM budget:**
+- Current usage: ~205MB (API + ingestion watchdog)
+- Available: ~654MB
+- Models in-process during NLP run: ~500MB (sentiment + framing loaded one at a time)
+- Pattern: load → run batch → unload → sleep. Peak ~500MB, stays under 985MB limit.
+
+**Remove `CURATED_METHODS` filter:** pipeline processes all signals with `nlp_X IS NULL AND headline IS NOT NULL`.
+
+### Phase 4: Geo validation
+- Update `geo_confidence` using spaCy locations vs GDELT country_code
+- Anomaly panel: badge when `geo_confidence < 0.7`
+- Validates Singapore/Indonesia misattribution bug
 
 ---
 
@@ -211,7 +232,7 @@ Run 100 articles per NLP cycle → ~34s. Acceptable as async background task aft
 
 ### What this does NOT do
 
-- Does not process 100% of signals (only curated RSS subset ~5K/day, not all 183K GDELT signals)
+- Does not process historical backlog instantly (Track A covers this over time, recent-first priority)
 - Does not eliminate GDELT (remains the volume spine)
 - Does not provide real-time framing (async, ~30-min lag after ingestion)
 

@@ -19,6 +19,14 @@ Key files added in session 7:
 - `backend/migrations/009_trends_v2_constraint.sql` — trends_v2 hour_bucket UNIQUE constraint.
 - `backend/migrations/010_theme_country_hourly.sql` — theme_country_hourly_v2 pre-agg table.
 
+Key files changed in session 8:
+- `backend/app/services/ingest_loop.py` — NLP as non-blocking background task (`asyncio.create_task`), weekly 90-day retention cleanup for unprocessed signals.
+- `backend/Dockerfile` — HF_HOME and TRANSFORMERS_CACHE env vars placed before pre-bake RUN; offline env vars placed after. Fixes OOM on Fly.io.
+- `backend/enrichment/nlp_pipeline.py` — three-phase NLP pipeline (sentiment, NER, framing). Called by ingest_loop background task.
+- `backend/migrations/011_nlp_columns.sql` — NLP columns on signals_v2 (APPLIED).
+- `frontend-v2/src/App.tsx` — data coverage badge: fetches oldest_signal from /api/v2/stats, shows FROM [DATE] pill.
+- `frontend-v2/src/App.css` — `.data-since-pill` CSS class.
+
 ## Build, Test, and Development Commands
 Local backend: `cd backend && poetry run uvicorn app.main_v2:app --reload --port 8000`. Local frontend: `cd frontend-v2 && npm run dev`. Fly.io deploy: `fly deploy` from repo root. Lint via `poetry run ruff check`, `poetry run mypy app`, `npm run lint`. Run `npm run build` before every PR — TypeScript/Vite errors must be zero. DO NOT rely on `tsc --noEmit` alone: Vite's build uses `tsc -b` (project references mode), which is stricter and catches errors like TS6133 (unused imports) that `tsc --noEmit` silently ignores. A green `tsc --noEmit` does not guarantee a passing Vercel build. Pytest: `cd backend && poetry run pytest`. Migrations are raw `.sql` files run from the Supabase SQL editor dashboard (NOT via alembic, NOT via the connection pooler).
 
@@ -38,9 +46,15 @@ Additional frontend conventions (session 7):
 - Component count: 39 .tsx components in `frontend-v2/src/components/`.
 
 Backend conventions (session 7):
-- Migrations 007–010 are all applied. Next migration will be 011.
 - All new ingestion services must set `source_family`, `source_lang`, `geo_confidence`, `attribution_method`, and `is_state_media` on every inserted row.
 - Concept endpoint hours>24 must query `theme_country_hourly_v2`, not `signals_v2`. Do not re-add the `effective_hours` cap.
+
+Backend conventions (session 8):
+- Migrations 007–011 are all applied. Next migration will be 012.
+- NLP pipeline runs as a background task in `ingest_loop.py` — do not make it blocking.
+- Dockerfile: `ENV HF_HOME=/app/hf_cache` and `ENV TRANSFORMERS_CACHE=/app/hf_cache` MUST appear before the pre-bake RUN step. `ENV TRANSFORMERS_OFFLINE=1` and `ENV HF_DATASETS_OFFLINE=1` MUST appear after. Do not reorder — this is the OOM fix.
+- Data retention: unprocessed signals (nlp_processed_at IS NULL) are deleted after 90 days. NLP-processed signals are kept indefinitely.
+- Branch: `v3-intel-layer` is production. `main` is abandoned — do not merge into it.
 
 ## Testing Guidelines
 Backend tests live in `backend/tests/test_*.py` per `pyproject.toml`. New services need fixtures for flow/heat math and regression coverage for service clients; mock external providers through the client layer rather than hitting the network. Treat the coverage report from `make test-backend` as a gate and keep touched modules above the current baseline. Frontend work that touches the map or API should include Vitest/React Testing Library smoke tests or, at minimum, refreshed manual steps and screenshots in `docs/demos/`.

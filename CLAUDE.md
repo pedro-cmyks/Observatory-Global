@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-09 (session 7 — signal quality, source waves, sentiment fix, 168h concept perf)
+Last updated: 2026-05-10 (session 8 — NLP production fix, OOM resolved, data hygiene, coverage badge)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -675,7 +675,7 @@ codex "Write comprehensive tests for gdelt_parser.py covering all edge cases"
 
 ---
 
-## Current Technical State (as of session 7 — 2026-05-09)
+## Current Technical State (as of session 8 — 2026-05-10)
 
 ### Critical Build Rule
 
@@ -683,12 +683,38 @@ Always run `npm run build` (not just `tsc --noEmit`) before pushing frontend cha
 
 ### No Pending Fly.io Deploys
 
-All backend changes are live. Fly.io app: `atlas-api-pedro`. Migrations 007–010 applied.
+All backend changes are live. Fly.io app: `atlas-api-pedro`. Migrations 007–011 applied.
 
 ### Frontend Component Count
 
-39 .tsx components in `frontend-v2/src/components/`. Do not add Tailwind to any of them.
+68 .tsx components in `frontend-v2/src/components/` as of 2026-05-10. Do not add Tailwind to any of them.
 Session 7 additions: `OnboardingCoachmark`, `PublicAttentionPanel`, `TemporalNarrativeGraph`.
+
+### NLP Pipeline (session 8, live on Fly.io)
+
+- `backend/enrichment/nlp_pipeline.py` — three-phase pipeline: sentiment (RoBERTa), NER (spaCy), framing (NLI distilroberta).
+- `ingest_loop.py` fires `asyncio.create_task(_nlp_background(limit=100))` after each GDELT cycle. Non-blocking. Skip if previous task still running.
+- Dockerfile: `ENV HF_HOME=/app/hf_cache` and `ENV TRANSFORMERS_CACHE=/app/hf_cache` BEFORE pre-bake RUN. `ENV TRANSFORMERS_OFFLINE=1` AFTER pre-bake RUN. This is the OOM fix — do not reorder.
+- NLP rate on Fly: ~200 signals/hour. Peak memory: ~720–738MB on 985MB machine.
+- API: `COALESCE(nlp_sentiment, sentiment)` — RoBERTa replaces GDELT tone when available.
+
+### Data Hygiene (session 8)
+
+- Deleted 1,116,136 signals from Apr 27 – May 3 (no NLP, freed ~1GB).
+- Retention policy: unprocessed signals deleted after 90 days, NLP-processed kept indefinitely.
+- Automated cleanup in `ingest_loop.py` every 672nd cycle (~7 days).
+- DB state: ~1.23M total signals, ~34K NLP-processed (2.8%), range May 3 – present.
+
+### Data Coverage Badge (session 8)
+
+- `App.tsx` fetches `oldest_signal` from `/api/v2/stats` on mount.
+- Displays `FROM [DATE]` pill next to LIVE DATA in command bar.
+- CSS class `.data-since-pill` in `App.css`.
+
+### Branch Status
+
+- `v3-intel-layer` IS production — Vercel and Fly.io both deploy from it.
+- `main` is stale/abandoned. Do not merge into it.
 
 ### Investigation Workspace (session 6, still current)
 
@@ -745,6 +771,7 @@ Applied in CountryBrief, NarrativeThreads, ChokepointPanel: n<10 → `thin` (ora
 
 ### GitHub Issues Status
 
-Open as of 2026-05-09 (11 issues): #46, #51, #61, #62, #70, #77, #79, #80, #82, #83, #92.
+Open as of 2026-05-10 (10 issues): #46, #51, #61, #62, #70, #77, #79, #80, #82, #83.
 Closed session 7: #63, #73, #78, #81, #84–#93.
-Next priority: #83 (Signal Intelligence Panel), #92 (Wave 4 NLP ADR), #77 (source framing viz).
+Closed session 8: #92 (Wave 4 NLP ADR — ADR-0003 approved and implemented).
+Next priority: Wave 4 Phase 4 (geo validation), #77 (source framing viz), mac backfill completion.

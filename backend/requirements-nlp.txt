@@ -1,0 +1,8 @@
+# Wave 4 NLP pipeline dependencies (ADR-0003)
+# Install separately from main API: pip install -r requirements-nlp.txt
+# NOT included in Fly.io API image (too heavy for 256MB machine)
+# Run pipeline locally or in a dedicated Fly machine after upgrade
+transformers>=4.40.0
+torch>=2.2.0
+sentencepiece>=0.1.99
+asyncpg>=0.29.0
