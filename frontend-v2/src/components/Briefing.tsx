@@ -29,8 +29,8 @@ interface BriefingProps {
 }
 
 export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect, prefetchedData, prefetchedInsight }: BriefingProps) {
-    // prefetchedData is always 24h — only use it when hours matches, otherwise fetch fresh
-    const canUsePrefetch = prefetchedData && hours === 24
+    // App passes prefetchedData only when hours already match — safe to use directly
+    const canUsePrefetch = !!prefetchedData
     const [data, setData] = useState<BriefingData | null>(canUsePrefetch ? prefetchedData : null)
     const [loading, setLoading] = useState(!canUsePrefetch)
     const [insight, setInsight] = useState<string | null>(canUsePrefetch ? (prefetchedInsight ?? null) : null)

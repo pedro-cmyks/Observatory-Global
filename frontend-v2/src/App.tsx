@@ -723,14 +723,18 @@ function AppContent() {
       .catch(() => { })
   }, [])
 
-  // Prefetch briefing data so the modal opens instantly
+  // Prefetch briefing data so the modal opens instantly — keyed to current timeRange
   const [prefetchedBriefing, setPrefetchedBriefing] = useState<any>(null)
   const [prefetchedInsight, setPrefetchedInsight] = useState<string | null>(null)
+  const [prefetchedHours, setPrefetchedHours] = useState<number>(0)
   const [externalSearchQuery, setExternalSearchQuery] = useState<{ q: string; id: number } | undefined>(undefined)
   useEffect(() => {
-    fetch('/api/v2/briefing?hours=24').then(r => r.json()).then(setPrefetchedBriefing).catch(() => { })
-    fetch('/api/v2/briefing/insight?hours=24').then(r => r.json()).then(d => { if (d.insight) setPrefetchedInsight(d.insight) }).catch(() => { })
-  }, [])
+    const h = timeRangeToHours(timeRange)
+    setPrefetchedBriefing(null)
+    setPrefetchedInsight(null)
+    fetch(`/api/v2/briefing?hours=${h}`).then(r => r.json()).then(d => { setPrefetchedBriefing(d); setPrefetchedHours(h) }).catch(() => { })
+    fetch(`/api/v2/briefing/insight?hours=${h}`).then(r => r.json()).then(d => { if (d.insight) setPrefetchedInsight(d.insight) }).catch(() => { })
+  }, [timeRange])
 
   // Show loader until nodes AND map are ready; hard cap at 10s
   const [appReady, setAppReady] = useState(false)
@@ -1257,8 +1261,8 @@ function AppContent() {
       {showBriefing && (
         <Briefing
           hours={timeRangeToHours(timeRange)}
-          prefetchedData={prefetchedBriefing}
-          prefetchedInsight={prefetchedInsight}
+          prefetchedData={prefetchedHours === timeRangeToHours(timeRange) ? prefetchedBriefing : null}
+          prefetchedInsight={prefetchedHours === timeRangeToHours(timeRange) ? prefetchedInsight : null}
           onClose={() => setShowBriefing(false)}
           onCountrySelect={(code) => {
             setSelectedTheme(null)
