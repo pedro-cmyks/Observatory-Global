@@ -146,14 +146,17 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
             }
 
             // Render globe immediately after nodes — don't wait for flows/acled
+            // Preserve stale nodes during refetch when new response is empty (avoids 0-flash in command bar)
             setState(prev => ({
                 ...prev,
-                nodes: safeNodes,
-                meta: {
+                nodes: safeNodes.length > 0 ? safeNodes : (prev.isRefetching ? prev.nodes : safeNodes),
+                meta: safeNodes.length > 0 ? {
                     totalCountries: nodesData.count || nodesData.nodes?.length || 0,
                     totalSignals: nodesData.totalSignals || 0,
                     isFiltered: nodesData.is_filtered || false
-                },
+                } : (prev.isRefetching ? prev.meta : {
+                    totalCountries: 0, totalSignals: 0, isFiltered: false
+                }),
                 loading: false,
                 error: null
             }))
