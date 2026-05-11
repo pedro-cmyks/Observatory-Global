@@ -16,6 +16,7 @@ interface BriefingData {
     positive_sentiment: { code: string; name: string; sentiment: number; signals: number }[]
     top_themes: { theme: string; count: number }[]
     top_sources: { source: string; count: number }[]
+    theme_country?: { theme: string; countries: { code: string; name: string; count: number }[] }[]
 }
 
 interface BriefingProps {
@@ -165,6 +166,36 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect, prefe
                         ))}
                     </div>
                 </div>
+
+                {data.theme_country && data.theme_country.length > 0 && (
+                    <div className="briefing-section">
+                        <h3>Global Focus</h3>
+                        <div className="theme-country-map">
+                            {data.theme_country.slice(0, 6).map(row => (
+                                <div key={row.theme} className="tcm-row">
+                                    <button
+                                        className="tcm-theme"
+                                        onClick={() => { onThemeSelect(row.theme); onClose() }}
+                                    >
+                                        {getThemeLabel(row.theme)}
+                                    </button>
+                                    <div className="tcm-countries">
+                                        {row.countries.slice(0, 4).map(c => (
+                                            <button
+                                                key={c.code}
+                                                className="tcm-country-pill"
+                                                onClick={() => { onCountrySelect(c.code); onClose() }}
+                                            >
+                                                {resolveCountryName(c.code, c.name)}
+                                                <span className="tcm-count">{c.count >= 1000 ? `${(c.count / 1000).toFixed(1)}k` : c.count}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 <div className="briefing-section">
                     <h3>Top Sources</h3>

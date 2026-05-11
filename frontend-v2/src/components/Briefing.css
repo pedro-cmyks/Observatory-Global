@@ -182,6 +182,73 @@
     font-size: 10px;
 }
 
+.theme-country-map {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tcm-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.tcm-theme {
+    flex-shrink: 0;
+    width: 120px;
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+    text-align: right;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    transition: color 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tcm-theme:hover {
+    color: var(--color-accent-primary, #1D9E75);
+}
+
+.tcm-countries {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    flex: 1;
+}
+
+.tcm-country-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.tcm-country-pill:hover {
+    background: rgba(29, 158, 117, 0.15);
+    border-color: rgba(29, 158, 117, 0.4);
+    color: #fff;
+}
+
+.tcm-count {
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 9px;
+}
+
 .source-tags {
     display: flex;
     flex-wrap: wrap;
