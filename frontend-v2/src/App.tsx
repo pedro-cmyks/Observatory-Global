@@ -353,14 +353,6 @@ function AppContent() {
   const isGlobe = false
   const hasAutoFocused = useRef(false)
 
-  const [showWelcome, setShowWelcome] = useState(
-    () => sessionStorage.getItem('atlas-welcome-seen') !== 'true'
-  )
-  const dismissWelcome = (openBrief = false) => {
-    setShowWelcome(false)
-    sessionStorage.setItem('atlas-welcome-seen', 'true')
-    if (openBrief) setShowBriefing(true)
-  }
   // Focus hook for click-to-focus
   const { setFocus, focus, clearFocus, filter, setTheme, mapFlyCountry, setMapFlyCountry } = useFocus()
 
@@ -478,8 +470,6 @@ function AppContent() {
   const [mapReady, setMapReady] = useState(false)
   // Tracks when the 13MB GeoJSON source has actually finished loading
   const [heatSourceReady, setHeatSourceReady] = useState(false)
-  // First-time affordance hint on the map
-  const [showMapHint, setShowMapHint] = useState(false)
 
   // Settings toggles
   const [showTerminator, setShowTerminator] = useState(false)
@@ -504,9 +494,6 @@ function AppContent() {
     setSelectedCountryCode(countryCode)
     setShowFlows(true)
     fetchCountryDetail(countryCode)
-    // Dismiss the affordance hint on first country click
-    setShowMapHint(false);
-    sessionStorage.setItem('atlas-map-hinted', 'true');
   }
 
   // Theme selection handlers
@@ -755,13 +742,6 @@ function AppContent() {
     return () => clearTimeout(t)
   }, [])
 
-  // Affordance hint: show 2s after map is ready, skip if already seen this session
-  useEffect(() => {
-    if (!mapReady) return;
-    if (sessionStorage.getItem('atlas-map-hinted') === 'true') return;
-    const t = setTimeout(() => setShowMapHint(true), 2000);
-    return () => clearTimeout(t);
-  }, [mapReady]);
 
   return (
     <div className={`app ${crisisEnabled ? 'crisis-mode' : ''}`}>
@@ -889,7 +869,7 @@ function AppContent() {
               </button>
             </div>
           </div>
-          <div className="panel-content" onClick={() => showWelcome && dismissWelcome()}>
+          <div className="panel-content">
             <MapErrorBoundary>
               <MapGL
                 ref={mapRef}
@@ -1054,29 +1034,7 @@ function AppContent() {
                 />
               </MapGL>
               <div className="globe-vignette" />
-              {showWelcome && (
-                <div className="welcome-card" onClick={(e) => {
-                  e.stopPropagation()
-                  dismissWelcome(true)
-                }}>
-                  <span className="welcome-label">Atlas tracks how the world covers the news</span>
-                  <span className="welcome-action">Click a country or search a topic →</span>
-                  <button
-                    className="welcome-close"
-                    onClick={(e) => { e.stopPropagation(); dismissWelcome() }}
-                    data-tip="Dismiss"
-                  >×</button>
-                </div>
-              )}
             </MapErrorBoundary>
-            {showMapHint && (
-              <div className="map-hint" onClick={() => {
-                setShowMapHint(false);
-                sessionStorage.setItem('atlas-map-hinted', 'true');
-              }}>
-                ↑ click any country to explore
-              </div>
-            )}
           </div>
         </div>
 
