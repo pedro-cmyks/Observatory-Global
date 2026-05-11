@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useFocus } from './FocusContext'
 import { timeRangeToHours } from '../lib/timeRanges'

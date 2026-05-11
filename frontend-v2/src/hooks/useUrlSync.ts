@@ -39,7 +39,7 @@ export function useUrlSync() {
         // Small delay to let hydration settle before enabling write-back
         setTimeout(() => { isHydrating.current = false }, 500)
         if (!hydrated) { isHydrating.current = false }
-    }, []) // eslint-disable-line react-hooks/exhaustive-deps — intentionally mount-only
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
     // On filter change: write to URL
     useEffect(() => {

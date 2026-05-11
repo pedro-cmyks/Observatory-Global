@@ -428,6 +428,28 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                         </div>
                     )}
 
+                    {results?.concept_suggestions && results.concept_suggestions.length > 0 && !results?.concepts?.length && (
+                        <div className="search-suggestion-banner">
+                            Related concepts:
+                            {results.concept_suggestions.map(c => (
+                                <button
+                                    key={c.slug}
+                                    className="search-suggestion-chip"
+                                    onClick={() => {
+                                        const full = results?.concepts?.find(x => x.slug === c.slug)
+                                        if (full) handleConceptClick(full)
+                                        else {
+                                            setQuery(c.label)
+                                            doSearch(c.label)
+                                        }
+                                    }}
+                                >
+                                    {c.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
                     {results?.public_attention && results.public_attention.length > 0 && (
                         <div className="search-section">
                             <div className="search-section-label">Public Attention</div>

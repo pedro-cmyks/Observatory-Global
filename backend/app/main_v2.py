@@ -38,6 +38,32 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from urllib.parse import urlparse
 from app.core.gdelt_taxonomy import classify_source
 
+_GEO_NAME_BLOCKLIST: set[str] = {
+    "abu dhabi", "saudi arabia", "north korea", "south korea", "north africa",
+    "south africa", "north america", "south america", "latin america",
+    "united states", "united kingdom", "united nations", "united arab emirates",
+    "new york", "new delhi", "new zealand", "new jersey", "new mexico",
+    "hong kong", "puerto rico", "costa rica", "ivory coast", "sierra leone",
+    "burkina faso", "guinea bissau", "equatorial guinea", "papua new guinea",
+    "el salvador", "sri lanka", "west bank", "west africa", "east africa",
+    "middle east", "central asia", "southeast asia", "south asia",
+    "european union", "african union", "las vegas", "los angeles", "san francisco",
+    "san jose", "san diego", "rio de janeiro", "sao paulo", "buenos aires",
+    "kuala lumpur", "tel aviv", "cape town", "addis ababa", "dar es salaam",
+}
+_GEO_FIRST_WORDS: set[str] = {"north", "south", "east", "west", "central", "greater", "upper", "lower"}
+
+
+def _is_valid_person(name: str) -> bool:
+    lower = name.lower()
+    return (
+        len(name.split()) >= 2
+        and len(name) <= 60
+        and lower not in _GEO_NAME_BLOCKLIST
+        and lower.split()[0] not in _GEO_FIRST_WORDS
+    )
+
+
 def _resolve_persons(nlp_persons, gdelt_persons) -> list:
     """Prefer NLP-extracted persons (PERSON type only); fall back to GDELT."""
     if nlp_persons:
@@ -1395,9 +1421,7 @@ async def get_focus_data(
             LIMIT 12
         """, filter_value)
 
-        # Filter noise: require at least 2 words and >1 signal
-        def is_valid_person(name: str) -> bool:
-            return len(name.split()) >= 2 and len(name) <= 60
+        is_valid_person = _is_valid_person
 
         key_people = [
             {
@@ -1650,8 +1674,9 @@ async def get_theme_details(
                 person_counts[p] = person_counts.get(p, 0) + 1
             top_persons = [
                 {"name": p[0], "count": p[1]}
-                for p in sorted(person_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-            ]
+                for p in sorted(person_counts.items(), key=lambda x: x[1], reverse=True)
+                if _is_valid_person(p[0])
+            ][:10]
 
             # --- Country Framing: how different countries cover the same theme ---
             framing_rows = await conn.fetch(f"""
