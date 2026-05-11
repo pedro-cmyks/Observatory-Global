@@ -307,6 +307,114 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* Framing split */
+.entity-framing-spread {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.framing-spread-label {
+    font-size: 9px;
+    color: #64748b;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+}
+
+.framing-spread-bar {
+    flex: 1;
+    height: 3px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.framing-spread-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4ade80, #fbbf24, #f87171);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+}
+
+.framing-spread-value {
+    font-size: 9px;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.entity-framing-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.framing-col-header {
+    font-size: 9px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+}
+
+.framing-col--pos .framing-col-header { color: #4ade80; }
+.framing-col--neg .framing-col-header { color: #f87171; }
+
+.framing-source-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    padding: 2px 0;
+    min-height: 18px;
+    cursor: default;
+}
+
+.framing-source-row--empty { pointer-events: none; }
+
+.framing-source-name {
+    font-size: 10px;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+}
+
+.framing-source-sent {
+    font-size: 10px;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.framing-neutral-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.framing-neutral-label {
+    font-size: 9px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.framing-neutral-source {
+    font-size: 10px;
+    color: #64748b;
+    padding: 1px 5px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 3px;
+    cursor: default;
+}
+
 /* Headlines */
 .entity-headlines {
     display: flex;
