@@ -91,6 +91,15 @@ export const themeLabels: Record<string, string> = {
     'EPU_POLICY_CATS_TAXES': 'Tax Policy',
     'EPU_POLICY_CATS_MIGRATION_FEAR_MIGRATION': 'Migration',
     'EPU_POLICY_CATS_NATIONAL_SECURITY': 'National Security',
+    'EPU_CATS_NATIONAL_SECURITY': 'National Security',
+    'EPU_CATS_TAXES': 'Tax Policy',
+    'EPU_CATS_FISCAL_POLICY_TAXES': 'Tax Policy',
+    'EPU_CATS_MONETARY_POLICY': 'Monetary Policy',
+    'EPU_CATS_HEALTH_CARE': 'Healthcare Policy',
+    'EPU_CATS_REGULATION': 'Regulation',
+    'EPU_CATS_TRADE_POLICY': 'Trade Policy',
+    'EPU_CATS_ENTITLEMENT_PROGRAMS': 'Social Programs',
+    'EPU_CATS_FINANCIAL_REGULATION': 'Financial Regulation',
     'EPUPOLICYPOLICY': 'Policy Uncertainty',
     'EPUECONOMYHISTORIC': 'Economic History',
 
@@ -196,7 +205,7 @@ export function getThemeLabel(code: string): string {
     if (themeLabels[code]) return themeLabels[code]
 
     if (upper.startsWith('WB_')) {
-        return `${formatThemeWords(upper.replace(/^WB_(?:\d+_)?/, ''))} (World Bank)`
+        return formatThemeWords(upper.replace(/^WB_(?:\d+_)?/, ''))
     }
 
     if (upper.startsWith('USPEC_POLICY_ECONOMIC')) return 'US Economic Policy'

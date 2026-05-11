@@ -2628,11 +2628,37 @@ async def get_country_detail(country_code: str, hours: int = Query(24, ge=1, le=
             "keyPersons": [{"name": p['person'], "count": p['count']} for p in persons]
         }
 
+def _build_theme_country_map(rows) -> list:
+    """Group theme_country_hourly rows into [{theme, countries: [{code, name, count}]}]."""
+    from collections import defaultdict
+    grouped: dict = defaultdict(list)
+    for r in rows:
+        grouped[r['theme']].append({
+            "code": r['country_code'],
+            "name": r['country_name'] or r['country_code'],
+            "count": int(r['cnt'])
+        })
+    return [
+        {"theme": theme, "countries": countries[:4]}
+        for theme, countries in grouped.items()
+    ]
+
+
 @app.get("/api/v2/briefing")
 async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
     """Get morning briefing summary."""
+    cache_key = f"briefing_data:{hours}"
+    cache_ttl = 900 if hours <= 24 else 1800
+    if hasattr(app.state, "redis") and app.state.redis:
+        try:
+            cached = await app.state.redis.get(cache_key)
+            if cached:
+                return json.loads(cached)
+        except Exception:
+            pass
+
     async with app.state.pool.acquire() as conn:
-        await conn.execute("SET statement_timeout = 8000")
+        await conn.execute("SET statement_timeout = 12000")
         # Top countries by activity
         top_countries = await conn.fetch("""
             SELECT 
@@ -2680,21 +2706,29 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             LIMIT 10
         """ % hours)
         
-        # Top themes globally
-        top_themes = await conn.fetch("""
-            SELECT 
-                unnest(themes) as theme,
-                COUNT(*) as count
-            FROM signals_v2
-            WHERE timestamp > NOW() - INTERVAL '%s hours'
-            GROUP BY theme
-            ORDER BY count DESC
-            LIMIT 10
-        """ % hours)
+        # Top themes globally — use pre-agg table for windows > 24h
+        if hours > 24:
+            top_themes = await conn.fetch("""
+                SELECT theme, SUM(signal_count) as count
+                FROM theme_country_hourly_v2
+                WHERE hour_bucket > NOW() - INTERVAL '%s hours'
+                GROUP BY theme
+                ORDER BY count DESC
+                LIMIT 10
+            """ % hours)
+        else:
+            top_themes = await conn.fetch("""
+                SELECT unnest(themes) as theme, COUNT(*) as count
+                FROM signals_v2
+                WHERE timestamp > NOW() - INTERVAL '%s hours'
+                GROUP BY theme
+                ORDER BY count DESC
+                LIMIT 10
+            """ % hours)
         
         # Top sources
         top_sources = await conn.fetch("""
-            SELECT 
+            SELECT
                 source_name,
                 COUNT(*) as count
             FROM signals_v2
@@ -2704,6 +2738,23 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             ORDER BY count DESC
             LIMIT 5
         """ % hours)
+
+        # Theme-country connections: for each top theme, which countries drive it
+        theme_country_rows = await conn.fetch("""
+            WITH top_t AS (
+                SELECT theme FROM theme_country_hourly_v2
+                WHERE hour_bucket > NOW() - INTERVAL '%s hours'
+                GROUP BY theme ORDER BY SUM(signal_count) DESC LIMIT 6
+            )
+            SELECT tc.theme, tc.country_code, c.name as country_name,
+                   SUM(tc.signal_count) as cnt
+            FROM theme_country_hourly_v2 tc
+            JOIN top_t ON tc.theme = top_t.theme
+            LEFT JOIN countries_v2 c ON tc.country_code = c.code
+            WHERE tc.hour_bucket > NOW() - INTERVAL '%s hours'
+            GROUP BY tc.theme, tc.country_code, c.name
+            ORDER BY tc.theme, cnt DESC
+        """ % (hours, hours))
         
         # Overall stats
         stats = await conn.fetchrow("""
@@ -2716,7 +2767,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             WHERE timestamp > NOW() - INTERVAL '%s hours'
         """ % hours)
         
-        return {
+        result = {
             "period_hours": hours,
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "stats": {
@@ -2744,8 +2795,15 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             "top_sources": [
                 {"source": extract_domain(r['source_name']), "count": r['count']}
                 for r in top_sources
-            ]
+            ],
+            "theme_country": _build_theme_country_map(theme_country_rows)
         }
+    if hasattr(app.state, "redis") and app.state.redis:
+        try:
+            await app.state.redis.setex(cache_key, cache_ttl, json.dumps(result))
+        except Exception:
+            pass
+    return result
 
 
 @app.get("/api/v2/briefing/insight")
@@ -2766,16 +2824,25 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
 
     try:
         async with app.state.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 10000")
             stats = await conn.fetchrow(f"""
                 SELECT COUNT(*) as total, COUNT(DISTINCT country_code) as countries,
                        AVG(sentiment) as avg_sent
                 FROM signals_v2 WHERE timestamp > NOW() - INTERVAL '{hours} hours'
             """)
-            top_themes = await conn.fetch(f"""
-                SELECT unnest(themes) as theme, COUNT(*) as cnt
-                FROM signals_v2 WHERE timestamp > NOW() - INTERVAL '{hours} hours'
-                GROUP BY theme ORDER BY cnt DESC LIMIT 5
-            """)
+            if hours > 24:
+                top_themes = await conn.fetch(f"""
+                    SELECT theme, SUM(signal_count) as cnt
+                    FROM theme_country_hourly_v2
+                    WHERE hour_bucket > NOW() - INTERVAL '{hours} hours'
+                    GROUP BY theme ORDER BY cnt DESC LIMIT 5
+                """)
+            else:
+                top_themes = await conn.fetch(f"""
+                    SELECT unnest(themes) as theme, COUNT(*) as cnt
+                    FROM signals_v2 WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+                    GROUP BY theme ORDER BY cnt DESC LIMIT 5
+                """)
             top_countries = await conn.fetch(f"""
                 SELECT s.country_code, co.name, COUNT(*) as cnt, AVG(s.sentiment) as avg_s
                 FROM signals_v2 s LEFT JOIN countries_v2 co ON s.country_code = co.code
@@ -2787,10 +2854,10 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
 
     total = int(stats["total"] or 0)
     countries = int(stats["countries"] or 0)
-    avg_sent = float(stats["avg_sent"] or 0)
+    avg_sent = float(stats["avg_sent"] or 0) / 10
     themes_str = ", ".join([_clean_theme_label(r["theme"]) for r in top_themes])
     countries_str = ", ".join([
-        f"{r['name'] or r['country_code']} ({int(r['cnt'])} signals, {float(r['avg_s'] or 0):+.1f})"
+        f"{r['name'] or r['country_code']} ({int(r['cnt'])} signals, {float(r['avg_s'] or 0) / 10:+.2f})"
         for r in top_countries
     ])
 
