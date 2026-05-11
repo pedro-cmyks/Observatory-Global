@@ -21,6 +21,9 @@ interface Props {
     onCountryClick: (country: string) => void
     onPersonClick: (person: string) => void
     allowlist?: string[]
+    relatedSignals?: Signal[]
+    onPin?: () => void
+    isPinned?: boolean
 }
 
 const getSentimentColor = (s: number) => {
@@ -58,7 +61,8 @@ const barLeft = (s: number) => {
 }
 
 export const SignalDetailPanel: React.FC<Props> = ({
-    signal, onClose, onThemeClick, onCountryClick, onPersonClick, allowlist = []
+    signal, onClose, onThemeClick, onCountryClick, onPersonClick, allowlist = [],
+    relatedSignals, onPin, isPinned
 }) => {
     const getSourceClass = (source: string) => {
         const s = source.toLowerCase()
@@ -157,16 +161,34 @@ export const SignalDetailPanel: React.FC<Props> = ({
                             </div>
                         </div>
                     )}
+
+                    {relatedSignals && relatedSignals.length > 0 && (
+                        <div>
+                            <div className="sdp-section-label">Related Signals</div>
+                            <div className="sdp-related-list">
+                                {relatedSignals.map(r => (
+                                    <div key={r.id} className="sdp-related-row" onClick={() => {/* do nothing, just style */}}>
+                                        <span className="sdp-related-headline">{r.headline || `Signal from ${r.source}`}</span>
+                                        <div className="sdp-related-meta">
+                                            <span className="sdp-related-country">{r.country || 'GLO'}</span>
+                                            <span className="sdp-related-source">{r.source}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="sdp-footer">
-                    <a
-                        className="sdp-read-btn"
-                        href={signal.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        Read original article ↗
+                    {onPin && (
+                        <button className={`sdp-pin-btn${isPinned ? ' pinned' : ''}`} onClick={onPin}
+                            title={isPinned ? 'Unpin from Workspace' : 'Pin to Workspace'}>
+                            {isPinned ? '📌 Pinned' : '📌 Pin'}
+                        </button>
+                    )}
+                    <a className="sdp-read-btn" href={signal.url} target="_blank" rel="noopener noreferrer">
+                        Read original ↗
                     </a>
                 </div>
             </div>

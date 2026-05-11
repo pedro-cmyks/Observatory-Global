@@ -442,6 +442,17 @@ export const SignalStream: React.FC = () => {
                 onCountryClick={(c) => setCountry(c, 'stream')}
                 onPersonClick={(p) => setPerson(p)}
                 allowlist={allowlist}
+                relatedSignals={
+                    items
+                        .filter(s => s.id !== selectedSignal.id && s.themes.some(t => selectedSignal.themes.includes(t)))
+                        .slice(0, 3)
+                }
+                onPin={() => {
+                    const pinnedId = `signal-${selectedSignal.id}`
+                    if (isPinned(pinnedId)) unpinItem(pinnedId)
+                    else pinItem({ id: pinnedId, type: 'signal', title: selectedSignal.headline || `Signal from ${selectedSignal.source}`, urlParams: '' })
+                }}
+                isPinned={isPinned(`signal-${selectedSignal.id}`)}
             />
         )}
         </>
