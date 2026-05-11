@@ -7,6 +7,7 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import App from './App.tsx'
 import { Landing } from './pages/Landing.tsx'
 import { Docs } from './pages/Docs.tsx'
+import { BriefNewspaper } from './pages/BriefNewspaper.tsx'
 
 class RootErrorBoundary extends Component<{ children: ReactNode }, { crashed: boolean; message: string }> {
   state = { crashed: false, message: '' }
@@ -37,6 +38,7 @@ createRoot(document.getElementById('root')!).render(
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/app" element={<App />} />
+            <Route path="/brief" element={<BriefNewspaper />} />
             <Route path="/docs" element={<Docs />} />
             <Route path="/docs/*" element={<Docs />} />
             <Route path="*" element={<Landing />} />

@@ -796,10 +796,7 @@ function AppContent() {
           </div>
           <UtcClock />
           {/* <CrisisToggle /> - Hidden per visual clarity update */}
-          <button className="cmd-btn" onClick={() => {
-            setShowBriefing(true)
-            setSelectedTheme(null)
-          }}>
+          <button className="cmd-btn" onClick={() => navigate('/brief')}>
             <ClipboardList size={13} /> BRIEF
           </button>
           <SettingsPanel
