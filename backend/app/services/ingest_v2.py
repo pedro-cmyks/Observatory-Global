@@ -99,6 +99,80 @@ async def download_and_parse_gkg(url: str, source_lang: str = "en") -> list[dict
 
     return signals
 
+# Known domain → ISO2 source-country mapping (largest news domains by country).
+# Used to detect when a signal's country_code differs from the outlet's home country.
+_DOMAIN_COUNTRY: dict[str, str] = {
+    # United States
+    'cnn.com': 'US', 'foxnews.com': 'US', 'msnbc.com': 'US', 'nbcnews.com': 'US',
+    'abcnews.go.com': 'US', 'cbsnews.com': 'US', 'npr.org': 'US', 'pbs.org': 'US',
+    'apnews.com': 'US', 'bloomberg.com': 'US', 'washingtonpost.com': 'US',
+    'nytimes.com': 'US', 'wsj.com': 'US', 'usatoday.com': 'US', 'politico.com': 'US',
+    'axios.com': 'US', 'thehill.com': 'US', 'huffpost.com': 'US', 'vox.com': 'US',
+    'buzzfeednews.com': 'US', 'vice.com': 'US', 'time.com': 'US', 'newsweek.com': 'US',
+    'theatlantic.com': 'US', 'newyorker.com': 'US', 'slate.com': 'US',
+    'breitbart.com': 'US', 'thedailybeast.com': 'US', 'dailywire.com': 'US',
+    'oann.com': 'US', 'newsmax.com': 'US', 'foxbusiness.com': 'US',
+    # United Kingdom
+    'bbc.co.uk': 'GB', 'bbc.com': 'GB', 'theguardian.com': 'GB',
+    'telegraph.co.uk': 'GB', 'thetimes.co.uk': 'GB', 'independent.co.uk': 'GB',
+    'dailymail.co.uk': 'GB', 'mirror.co.uk': 'GB', 'express.co.uk': 'GB',
+    'sky.com': 'GB', 'channel4.com': 'GB', 'ft.com': 'GB',
+    # France
+    'lemonde.fr': 'FR', 'lefigaro.fr': 'FR', 'liberation.fr': 'FR',
+    'france24.com': 'FR', 'rfi.fr': 'FR', 'lepoint.fr': 'FR',
+    # Germany
+    'dw.com': 'DE', 'spiegel.de': 'DE', 'zeit.de': 'DE', 'faz.net': 'DE',
+    'sueddeutsche.de': 'DE', 'bild.de': 'DE',
+    # Russia
+    'rt.com': 'RU', 'sputniknews.com': 'RU', 'tass.com': 'RU',
+    'ria.ru': 'RU', 'pravda.ru': 'RU', 'iz.ru': 'RU',
+    # China
+    'xinhuanet.com': 'CN', 'chinadaily.com.cn': 'CN', 'globaltimes.cn': 'CN',
+    'cgtn.com': 'CN', 'people.com.cn': 'CN',
+    # Iran
+    'irna.ir': 'IR', 'press.tv': 'IR', 'tehrantimes.com': 'IR',
+    'farsnews.ir': 'IR', 'tasnimnews.com': 'IR',
+    # India
+    'thehindu.com': 'IN', 'hindustantimes.com': 'IN', 'ndtv.com': 'IN',
+    'timesofindia.indiatimes.com': 'IN', 'indianexpress.com': 'IN',
+    # Al Jazeera / Qatar
+    'aljazeera.com': 'QA',
+    # Australia
+    'abc.net.au': 'AU', 'smh.com.au': 'AU', 'theaustralian.com.au': 'AU',
+    # Canada
+    'cbc.ca': 'CA', 'globalnews.ca': 'CA', 'torontostar.com': 'CA',
+    # Reuters / AP (international wires — treat as US-headquartered)
+    'reuters.com': 'US',
+}
+
+def _extract_source_country(url: str | None) -> str | None:
+    """Infer the outlet's home country from its domain. Returns ISO2 or None."""
+    if not url:
+        return None
+    try:
+        import urllib.parse as _up
+        host = _up.urlparse(url).netloc.lower().lstrip('www.')
+        # Exact match first
+        if host in _DOMAIN_COUNTRY:
+            return _DOMAIN_COUNTRY[host]
+        # Suffix match (subdomains like 'edition.cnn.com')
+        for domain, country in _DOMAIN_COUNTRY.items():
+            if host.endswith('.' + domain) or host == domain:
+                return country
+        # TLD heuristic for ccTLDs not already in map
+        tld = host.rsplit('.', 1)[-1]
+        _TLD_MAP = {
+            'uk': 'GB', 'fr': 'FR', 'de': 'DE', 'ru': 'RU', 'cn': 'CN',
+            'ir': 'IR', 'in': 'IN', 'au': 'AU', 'ca': 'CA', 'br': 'BR',
+            'mx': 'MX', 'jp': 'JP', 'kr': 'KR', 'eg': 'EG', 'ng': 'NG',
+            'za': 'ZA', 'tr': 'TR', 'pk': 'PK', 'il': 'IL', 'ua': 'UA',
+            'pl': 'PL', 'ar': 'AR', 've': 'VE', 'co': 'CO', 'cl': 'CL',
+        }
+        return _TLD_MAP.get(tld)
+    except Exception:
+        return None
+
+
 def parse_gkg_row(row: list, source_lang: str = "en") -> Optional[dict]:
     """Parse a single GKG row into a signal dict."""
     if len(row) < 27:
@@ -231,6 +305,8 @@ def parse_gkg_row(row: list, source_lang: str = "en") -> Optional[dict]:
         'geo_confidence': 0.85,
         'attribution_method': attribution,
         'is_state_media': False,
+        # Geo validation (migration 012)
+        'source_origin_country': _extract_source_country(source_url),
     }
 
 async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
@@ -249,10 +325,11 @@ async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                         timestamp, country_code, latitude, longitude, sentiment,
                         source_url, source_name, headline, themes, persons,
                         is_crisis, crisis_score, crisis_themes, severity, event_type,
-                        source_family, source_lang, geo_confidence, attribution_method, is_state_media
+                        source_family, source_lang, geo_confidence, attribution_method, is_state_media,
+                        source_origin_country
                     )
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-                            $16, $17, $18, $19, $20)
+                            $16, $17, $18, $19, $20, $21)
                     ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO NOTHING
                 """,
                     signal['timestamp'],
@@ -275,6 +352,7 @@ async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                     signal.get('geo_confidence', 0.85),
                     signal.get('attribution_method', 'gdelt_gkg'),
                     signal.get('is_state_media', False),
+                    signal.get('source_origin_country'),
                 )
                 # asyncpg returns "INSERT 0 N" — N=0 means conflict (dup)
                 if result == "INSERT 0 1":

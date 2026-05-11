@@ -2615,7 +2615,21 @@ async def get_country_detail(country_code: str, hours: int = Query(24, ge=1, le=
             "SELECT name FROM countries_v2 WHERE code = $1", country_code
         )
         country_name = country_record['name'] if country_record else country_code
-        
+
+        # Geo validation: what % of signals come from foreign-origin sources?
+        geo_stats = await conn.fetchrow("""
+            SELECT
+                COUNT(*) FILTER (WHERE source_origin_country IS NOT NULL) AS known,
+                COUNT(*) FILTER (WHERE source_origin_country IS NOT NULL
+                                   AND source_origin_country != $1)       AS foreign_count
+            FROM signals_v2
+            WHERE country_code = $1
+            AND timestamp > NOW() - INTERVAL '%s hours'
+        """ % hours, country_code)
+        known = int(geo_stats['known'] or 0)
+        foreign_count = int(geo_stats['foreign_count'] or 0)
+        foreign_source_pct = round(foreign_count / known * 100) if known > 50 else None
+
         return {
             "countryCode": country_code,
             "name": country_name,
@@ -2625,7 +2639,8 @@ async def get_country_detail(country_code: str, hours: int = Query(24, ge=1, le=
             "minSentiment": float(stats['min_sentiment'] or 0) / 10,
             "themes": [{"name": t['theme'], "count": t['count']} for t in themes],
             "sources": [{"name": s['source_name'], "count": s['count']} for s in sources],
-            "keyPersons": [{"name": p['person'], "count": p['count']} for p in persons]
+            "keyPersons": [{"name": p['person'], "count": p['count']} for p in persons],
+            "foreignSourcePct": foreign_source_pct,
         }
 
 def _build_theme_country_map(rows) -> list:
