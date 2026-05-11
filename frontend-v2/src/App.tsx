@@ -523,7 +523,7 @@ function AppContent() {
   }
 
   // Focus-aware data from provider - auto-refetches when focus/range changes
-  const { nodes, flows, unfilteredFlows, acledConflicts, loading, refetch, timeRange, setTimeRange } = useFocusData()
+  const { nodes, flows, unfilteredFlows, acledConflicts, loading, isRefetching, refetch, timeRange, setTimeRange } = useFocusData()
 
   // Auto-focus on hottest region at load
   useEffect(() => {
@@ -782,7 +782,10 @@ function AppContent() {
         <div className="command-bar-right">
           <div className="stats">
             {loading ? '...' : (
-              <span data-tip={`Countries and signals in the selected time window${filter.country || filter.theme ? ' (filtered view)' : ' (global)'}`}>
+              <span
+                style={{ opacity: isRefetching ? 0.5 : 1, transition: 'opacity 0.2s' }}
+                data-tip={`Countries and signals in the selected time window${filter.country || filter.theme ? ' (filtered view)' : ' (global)'}`}
+              >
                 {nodes.length} countries · {totalSignals.toLocaleString()} signals
               </span>
             )}
