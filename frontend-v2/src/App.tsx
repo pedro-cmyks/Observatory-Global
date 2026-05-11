@@ -356,22 +356,6 @@ function AppContent() {
   // Focus hook for click-to-focus
   const { setFocus, focus, clearFocus, filter, setTheme, mapFlyCountry, setMapFlyCountry } = useFocus()
 
-  // Sync Global Focus to CountrySlide-over + fly to country
-  useEffect(() => {
-    if (focus.type === 'country' && focus.value && focus.value !== selectedCountryCode) {
-      handleCountryClick(focus.value)
-      const node = nodes.find(n => n.id === focus.value)
-      if (node && mapReady) {
-        mapRef.current?.getMap()?.flyTo({
-          center: [node.lon, node.lat],
-          zoom: 3,
-          duration: 2000,
-          essential: true
-        })
-      }
-    }
-  }, [focus.type, focus.value, selectedCountryCode])
-
   // Theme for layer styling
   const { themeId } = useTheme()
 
@@ -489,7 +473,7 @@ function AppContent() {
   }
 
   // Click handlers
-  const handleCountryClick = (countryCode: string) => {
+  function handleCountryClick(countryCode: string) {
     setSelectedPublicAttention(null)
     setSelectedCountryCode(countryCode)
     setShowFlows(true)
@@ -555,6 +539,22 @@ function AppContent() {
     setMapFlyCountry(null)
   }, [mapFlyCountry, mapReady])
 
+  // Sync Global Focus to CountrySlide-over + fly to country
+  useEffect(() => {
+    if (focus.type === 'country' && focus.value && focus.value !== selectedCountryCode) {
+      handleCountryClick(focus.value)
+      const node = nodes.find(n => n.id === focus.value)
+      if (node && mapReady) {
+        mapRef.current?.getMap()?.flyTo({
+          center: [node.lon, node.lat],
+          zoom: 3,
+          duration: 2000,
+          essential: true
+        })
+      }
+    }
+  }, [focus.type, focus.value, selectedCountryCode])
+
   // Open ThemeDetail when theme is focused via FocusContext (e.g. NarrativeThreads click)
   useEffect(() => {
     if (filter.theme && (!selectedTheme || selectedTheme.theme !== filter.theme)) {
@@ -605,7 +605,7 @@ function AppContent() {
     // Determine the base set of flows:
     // If we have a country selected, use the unfiltered map-level flows to ensure
     // we see all connections for that country, even if nodes are focus-filtered.
-    let baseFlows = selectedCountryCode ? (unfilteredFlows || flows) : flows;
+    const baseFlows = selectedCountryCode ? (unfilteredFlows || flows) : flows;
     let filteredFlows = [...baseFlows];
 
     if (selectedCountryCode) {

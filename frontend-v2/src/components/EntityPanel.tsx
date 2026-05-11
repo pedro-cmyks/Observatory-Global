@@ -170,8 +170,8 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
 
             {loading && (
                 <div className="entity-loading">
-                    {Array.from({ length: 8 }).map((_, i) => (
-                        <div key={i} className="entity-skeleton" style={{ width: `${70 + Math.random() * 25}%` }} />
+                    {[80, 65, 90, 72, 85, 60, 78, 68].map((w, i) => (
+                        <div key={i} className="entity-skeleton" style={{ width: `${w}%` }} />
                     ))}
                 </div>
             )}

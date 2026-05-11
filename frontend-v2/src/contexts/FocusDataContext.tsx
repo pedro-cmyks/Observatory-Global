@@ -4,6 +4,7 @@
  * Prevents double-fetch by having WorldMap and FocusSummaryPanel
  * consume the same state from this provider.
  */
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { useFocus } from './FocusContext'
 import { type TimeRange, timeRangeToHours } from '../lib/timeRanges'

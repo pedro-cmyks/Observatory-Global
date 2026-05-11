@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 import type { TimeRange } from '../lib/timeRanges'
 
@@ -127,7 +128,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         label: filter.person || filter.country || filter.theme
     }
 
-    const setFocus = useCallback((type: FocusType, value: string, _label?: string) => {
+    const setFocus = useCallback((type: FocusType, value: string, _label?: string) => { // eslint-disable-line @typescript-eslint/no-unused-vars
         if (type === 'country') {
             setCountry(value)
         } else if (type === 'theme') {
