@@ -43,6 +43,74 @@ _BLOCKED: frozenset[str] = frozenset({
     "businesswire.com",
     "globenewswire.com",
     "accesswire.com",
+
+    # Consumer tech / product news — classified as geopolitical noise (audit 2026-05-11)
+    "macrumors.com",
+    "9to5mac.com",
+    "appleinsider.com",
+    "iphoneincanada.ca",
+    "phonearena.com",
+    "gsmarena.com",
+    "androidpolice.com",
+    "androidauthority.com",
+    "theverge.com",       # mix of tech/culture with minimal geopolitical signal
+    "engadget.com",
+    "gizmodo.com",
+    "techradar.com",
+    "tomsguide.com",
+    "tomshardware.com",
+    "pcmag.com",
+    "cnet.com",           # consumer reviews, rarely geopolitical
+    "zdnet.com",
+
+    # Legal / personal injury / class action news (kratom, supplements, lawsuits)
+    "drugwatch.com",
+    "classaction.org",
+    "legalnewsline.com",
+    "topclassactions.com",
+    "aboutlawsuits.com",
+    "lawyersandsettlements.com",
+
+    # Health supplements / alternative medicine noise
+    "naturalnews.com",
+    "greenmedinfo.com",
+    "mercola.com",
+
+    # Local US traffic / crime / weather aggregators
+    "patch.com",
+    "local10.com",
+    "local12.com",
+    "fox5atlanta.com",
+    "fox5ny.com",
+    "fox4news.com",
+    "wkrn.com",
+    "wsmv.com",
+    "wvlt.tv",
+    "wbir.com",
+
+    # Sports leagues / fantasy
+    "nfl.com",
+    "nba.com",
+    "mlb.com",
+    "nhl.com",
+    "espn.com",
+    "cbssports.com",
+    "si.com",
+    "theathletic.com",
+
+    # Entertainment streaming / gaming
+    "ign.com",
+    "gamespot.com",
+    "kotaku.com",
+    "polygon.com",
+    "pcgamer.com",
+    "screenrant.com",
+    "collider.com",
+    "rottentomatoes.com",
+    "imdb.com",
+    "deadline.com",
+    "hollywoodreporter.com",
+    "variety.com",
 })
 
 

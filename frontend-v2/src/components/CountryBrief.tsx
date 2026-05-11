@@ -69,6 +69,7 @@ interface BriefData {
     top_stories?: Story[];
     indicators?: Indicators;
     error?: string;
+    foreignSourcePct?: number | null;
 }
 
 interface CountryAnomaly {
@@ -83,6 +84,7 @@ interface CountryDetailResponse {
     sources?: Array<{ name: string; count: number }>;
     keyPersons?: KeyPerson[];
     sentiment?: number;
+    foreignSourcePct?: number | null;
 }
 
 interface SignalResponseItem {
@@ -233,7 +235,8 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     avg_sentiment: sentiment,
                     sentiment_trend: sentimentTrend,
                     top_stories: topStories,
-                    indicators: indicatorsData
+                    indicators: indicatorsData,
+                    foreignSourcePct: detail.foreignSourcePct ?? null,
                 });
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -397,6 +400,11 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 <p className="sentiment-warning">
                     Sentiment analysis is noisy and should be interpreted cautiously.
                 </p>
+                {data.foreignSourcePct !== null && data.foreignSourcePct !== undefined && data.foreignSourcePct > 60 && (
+                    <p className="geo-provenance-warning" data-tip="Most coverage comes from media outlets based outside this country. Signals reflect how foreign media covers this country, not necessarily local events.">
+                        {data.foreignSourcePct}% foreign-sourced coverage
+                    </p>
+                )}
             </section>
 
             {/* Top Themes */}

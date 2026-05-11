@@ -282,28 +282,92 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
                         </div>
                     )}
 
-                    {/* Top Sources */}
-                    {data.top_sources.length > 0 && (
-                        <div className="entity-section">
-                            <div className="entity-section-label">Top Sources</div>
-                            <div className="entity-sources">
-                                {data.top_sources.slice(0, 6).map(s => (
-                                    <div 
-                                        key={s.source} 
-                                        className="entity-source-row"
-                                        style={{ cursor: onSourceClick ? 'pointer' : 'default' }}
-                                        onClick={() => onSourceClick?.(s.source)}
-                                    >
-                                        <span className="entity-source-name">{s.source}</span>
-                                        <span className="entity-source-count">{formatCount(s.count)}</span>
-                                        <span className="entity-source-sentiment" style={{ color: sentimentColor(s.avg_sentiment) }}>
-                                            {s.avg_sentiment > 0 ? '+' : ''}{s.avg_sentiment.toFixed(1)}
+                    {/* Source Framing Split */}
+                    {data.top_sources.length > 0 && (() => {
+                        const sources = data.top_sources.slice(0, 8)
+                        const positive = sources.filter(s => s.avg_sentiment > 0.2).sort((a, b) => b.avg_sentiment - a.avg_sentiment)
+                        const negative = sources.filter(s => s.avg_sentiment < -0.2).sort((a, b) => a.avg_sentiment - b.avg_sentiment)
+                        const neutral  = sources.filter(s => Math.abs(s.avg_sentiment) <= 0.2)
+                        const showSplit = positive.length + negative.length >= 2
+                        const spread = positive.length && negative.length
+                            ? positive[0].avg_sentiment - negative[0].avg_sentiment
+                            : null
+
+                        if (!showSplit) {
+                            return (
+                                <div className="entity-section">
+                                    <div className="entity-section-label">Top Sources</div>
+                                    <div className="entity-sources">
+                                        {sources.map(s => (
+                                            <div key={s.source} className="entity-source-row"
+                                                style={{ cursor: onSourceClick ? 'pointer' : 'default' }}
+                                                onClick={() => onSourceClick?.(s.source)}>
+                                                <span className="entity-source-name">{s.source}</span>
+                                                <span className="entity-source-count">{formatCount(s.count)}</span>
+                                                <span className="entity-source-sentiment" style={{ color: sentimentColor(s.avg_sentiment) }}>
+                                                    {s.avg_sentiment > 0 ? '+' : ''}{s.avg_sentiment.toFixed(1)}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )
+                        }
+
+                        const maxRows = Math.max(positive.length, negative.length, 1)
+                        return (
+                            <div className="entity-section">
+                                <div className="entity-section-label">Framing Split</div>
+                                {spread !== null && spread > 0.4 && (
+                                    <div className="entity-framing-spread">
+                                        <span className="framing-spread-label">Narrative spread</span>
+                                        <div className="framing-spread-bar">
+                                            <div className="framing-spread-fill" style={{ width: `${Math.min(spread / 4 * 100, 100)}%` }} />
+                                        </div>
+                                        <span className="framing-spread-value" style={{ color: spread > 2 ? '#f87171' : spread > 1 ? '#fbbf24' : '#888' }}>
+                                            {spread > 2 ? 'High' : spread > 1 ? 'Med' : 'Low'} ({spread.toFixed(1)})
                                         </span>
                                     </div>
-                                ))}
+                                )}
+                                <div className="entity-framing-grid">
+                                    <div className="framing-col framing-col--pos">
+                                        <div className="framing-col-header">Positive</div>
+                                        {Array.from({ length: maxRows }, (_, i) => positive[i]).map((s, i) => s ? (
+                                            <div key={s.source} className="framing-source-row"
+                                                style={{ cursor: onSourceClick ? 'pointer' : 'default' }}
+                                                onClick={() => onSourceClick?.(s.source)}>
+                                                <span className="framing-source-name">{s.source}</span>
+                                                <span className="framing-source-sent positive">+{s.avg_sentiment.toFixed(1)}</span>
+                                            </div>
+                                        ) : <div key={i} className="framing-source-row framing-source-row--empty" />)}
+                                    </div>
+                                    <div className="framing-col framing-col--neg">
+                                        <div className="framing-col-header">Negative</div>
+                                        {Array.from({ length: maxRows }, (_, i) => negative[i]).map((s, i) => s ? (
+                                            <div key={s.source} className="framing-source-row"
+                                                style={{ cursor: onSourceClick ? 'pointer' : 'default' }}
+                                                onClick={() => onSourceClick?.(s.source)}>
+                                                <span className="framing-source-name">{s.source}</span>
+                                                <span className="framing-source-sent negative">{s.avg_sentiment.toFixed(1)}</span>
+                                            </div>
+                                        ) : <div key={i} className="framing-source-row framing-source-row--empty" />)}
+                                    </div>
+                                </div>
+                                {neutral.length > 0 && (
+                                    <div className="framing-neutral-row">
+                                        <span className="framing-neutral-label">Neutral:</span>
+                                        {neutral.map(s => (
+                                            <span key={s.source} className="framing-neutral-source"
+                                                style={{ cursor: onSourceClick ? 'pointer' : 'default' }}
+                                                onClick={() => onSourceClick?.(s.source)}>
+                                                {s.source}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    )}
+                        )
+                    })()}
 
                     {/* Recent Coverage */}
                     {data.headlines.length > 0 && (

@@ -1080,6 +1080,75 @@ CONCEPT_MAP: Dict[str, dict] = {
             "répression", "political prisoners",
         ],
     },
+    "blood-diamonds": {
+        "label": "Blood Diamonds & Conflict Minerals",
+        "description": "Diamonds and minerals funding armed conflict, illicit mining, resource wars",
+        "themes": ["WB_507_ENERGY_AND_EXTRACTIVES", "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+                   "ARMEDCONFLICT", "WB_ORGANIZED_CRIME", "WB_GOVERNANCE"],
+        "related_concepts": ["cobalt-mining", "arms-trafficking", "corruption"],
+        "aliases": [
+            "conflict minerals", "conflict diamonds", "diamantes de sangre",
+            "minerais de sang", "kimberley process", "diamants de sang",
+            "resource curse", "maldición de recursos",
+        ],
+    },
+    "electoral-fraud": {
+        "label": "Electoral Fraud & Vote Manipulation",
+        "description": "Rigged elections, voter suppression, ballot stuffing, electoral integrity",
+        "themes": ["GOV_ELECTION", "WB_ELECTIONS", "WB_GOVERNANCE", "WB_ACCOUNTABILITY",
+                   "EPU_CATS_NATIONAL_SECURITY"],
+        "related_concepts": ["elections", "corruption", "disinformation"],
+        "aliases": [
+            "voter fraud", "election rigging", "ballot stuffing", "voter suppression",
+            "fraude electoral", "manipulation électorale", "elecciones fraudulentas",
+            "stolen election", "election integrity",
+        ],
+    },
+    "narcotrafficking": {
+        "label": "Narcotrafficking & Drug Cartels",
+        "description": "Drug trafficking organizations, cartels, smuggling routes, drug wars",
+        "themes": ["WB_DRUG_TRAFFICKING", "WB_ORGANIZED_CRIME", "WB_SECURITY_SECTOR",
+                   "ARMEDCONFLICT", "SOC_GENERALCRIME"],
+        "related_concepts": ["drug-trafficking", "arms-trafficking", "corruption"],
+        "aliases": [
+            "drug cartel", "narco", "narcotráfico", "cartel", "drug war", "guerra contra el narco",
+            "drug trafficking", "cártel", "sinaloa", "narcotráfico", "fentanyl crisis",
+            "cocaine trade", "heroin trade", "meth",
+        ],
+    },
+    "forced-displacement": {
+        "label": "Forced Displacement & Internal Refugees",
+        "description": "IDPs, mass population movements due to conflict, persecution, or disaster",
+        "themes": ["WB_DISPLACEMENT", "WB_REFUGEE", "WB_HUMANITARIAN",
+                   "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE", "CRISISLEX_C02_DISASTER"],
+        "related_concepts": ["refugee-crisis", "humanitarian-aid", "war-crimes"],
+        "aliases": [
+            "internally displaced", "IDP", "desplazados internos", "desplazamiento forzado",
+            "population displacement", "internal refugees", "déplacés internes",
+        ],
+    },
+    "water-crisis": {
+        "label": "Water Crisis & Scarcity",
+        "description": "Water wars, drought, access to clean water, transboundary water disputes",
+        "themes": ["WB_1619_WATER", "WB_WATER_AND_SANITATION", "CRISISLEX_C01_RESOURCE",
+                   "WB_2810_CLIMATE_CHANGE", "UNGP_FORESTS_RIVERS_OCEANS"],
+        "related_concepts": ["food-security", "climate-crisis", "humanitarian-aid"],
+        "aliases": [
+            "water scarcity", "drought", "water wars", "water rights", "escasez de agua",
+            "crisis hídrica", "crise de l'eau", "water stress", "dam conflict",
+        ],
+    },
+    "land-grabbing": {
+        "label": "Land Grabbing & Dispossession",
+        "description": "Forced evictions, illegal land acquisition, indigenous land rights",
+        "themes": ["WB_LAND", "WB_HUMAN_RIGHTS", "WB_GOVERNANCE", "SOC_PROTEST",
+                   "WB_DISPLACEMENT"],
+        "related_concepts": ["corruption", "state-repression", "forced-displacement"],
+        "aliases": [
+            "land grab", "forced eviction", "desalojo forzado", "acaparamiento de tierras",
+            "indigenous land", "derechos territoriales", "accaparement des terres",
+        ],
+    },
 }
 
 
