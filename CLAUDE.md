@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-10 (session 8 — NLP production fix, OOM resolved, data hygiene, coverage badge)
+Last updated: 2026-05-11 (session 9 — geo-validation, source framing split, NER geo-filter, ESLint clean, tolerant search complete)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -675,6 +675,42 @@ codex "Write comprehensive tests for gdelt_parser.py covering all edge cases"
 
 ---
 
+## Current Technical State (as of session 9 — 2026-05-11)
+
+### Session 9 Additions
+
+**Geo-validation (Wave 4 Phase 4)**
+- `signals_v2.source_origin_country CHAR(2)` — outlet home country (≠ story subject country). Migration 012 applied, 12,944 US signals backfilled.
+- `_extract_source_country(url)` in `ingest_v2.py` — 70+ known domains + ccTLD fallback.
+- `foreignSourcePct` in country endpoint — null when <50 known-origin signals; shown as warning badge in `CountryBrief` when >60%.
+
+**Source framing split (EntityPanel)**
+- Replaces linear source list with Positive/Negative columns + narrative spread bar when sources span both extremes (threshold: `|avg_sentiment| > 0.2`, require ≥2 split sources).
+
+**NER geo-filter**
+- `_is_valid_person()` + `_GEO_NAME_BLOCKLIST` (40 entries) + `_GEO_FIRST_WORDS` in `main_v2.py` — filters GDELT-misclassified place names from People Mentioned.
+
+**ESLint clean (#62)**
+- `npm run lint` exits 0. `react-hooks/set-state-in-effect` and `purity` off; `no-explicit-any` downgraded to warning; before-declaration ordering fixed in `App.tsx`.
+
+**Tolerant search (#51 closed)**
+- `concept_suggestions` chip row added to `SearchBar.tsx`. All acceptance criteria met.
+
+**Onboarding (session 9)**
+- Removed redundant `welcome-card` and `map-hint` overlays from `App.tsx`. `OnboardingCoachmark` is the sole onboarding (localStorage, 3-step).
+
+**Command bar stale-while-revalidate**
+- `FocusDataContext` preserves nodes/meta during refetch when API returns empty. `App.tsx` command bar fades to 50% opacity during `isRefetching`.
+
+**BRIEF Global Focus (session 9)**
+- `Briefing.tsx` — theme→country pill rows showing signal counts per country per topic. Backend already had `theme_country_rows` query + Redis cache.
+
+**Source blocklist expansion**
+- 50+ domains added to `backend/app/config/source_blocklist.py`: consumer tech, sports leagues, entertainment, local US TV.
+
+**Investigative concept vocabulary**
+- 6 new `CONCEPT_MAP` entries: `blood-diamonds`, `electoral-fraud`, `narcotrafficking`, `forced-displacement`, `water-crisis`, `land-grabbing`.
+
 ## Current Technical State (as of session 8 — 2026-05-10)
 
 ### Critical Build Rule
@@ -771,7 +807,8 @@ Applied in CountryBrief, NarrativeThreads, ChokepointPanel: n<10 → `thin` (ora
 
 ### GitHub Issues Status
 
-Open as of 2026-05-10 (10 issues): #46, #51, #61, #62, #70, #77, #79, #80, #82, #83.
+Open as of 2026-05-11 (6 issues): #46, #61, #70, #79, #80, #82, #83.
 Closed session 7: #63, #73, #78, #81, #84–#93.
-Closed session 8: #92 (Wave 4 NLP ADR — ADR-0003 approved and implemented).
-Next priority: Wave 4 Phase 4 (geo validation), #77 (source framing viz), mac backfill completion.
+Closed session 8: #92 (Wave 4 NLP ADR).
+Closed session 9: #51 (tolerant search), #62 (ESLint debt), #77 (source framing viz), #92 (NLP ADR), #99 (geo validation Wave 4 Phase 4), #100 (NER geo-filter).
+Next priority: #83 (Signal Intelligence Panel), #61 (comparative engine UI), #70 (theme clustering), mac backfill completion.
