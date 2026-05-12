@@ -607,4 +607,46 @@
     .brief-stats-bar { padding: 12px 20px; flex-wrap: wrap; }
     .brief-stat { padding: 0 16px; }
     .brief-cta { padding: 32px 20px; }
+    .brief-minimap { margin: 12px 20px; padding: 10px 12px; }
+}
+
+/* SIGNAL DENSITY MINI-MAP */
+.brief-minimap {
+    margin: 0 40px 0;
+    border: 1px solid #1e2d3d;
+    border-radius: 4px;
+    padding: 10px 16px 6px;
+    background: #090e16;
+}
+
+.brief-minimap svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.brief-minimap-label {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 9px;
+    color: #4a6a8a;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 4px;
+}
+
+/* THEME VOLUME BARS */
+.brief-theme-bar-track {
+    height: 3px;
+    background: #1a2535;
+    border-radius: 2px;
+    margin: 4px 0 8px;
+    overflow: hidden;
+}
+
+.brief-theme-bar {
+    height: 100%;
+    background: #1D9E75;
+    border-radius: 2px;
+    transition: width 0.5s ease;
+    min-width: 4px;
 }
