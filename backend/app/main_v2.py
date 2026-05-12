@@ -587,6 +587,47 @@ async def get_nodes(
 
             max_signals = max(float(r['total_signals']) for r in rows)
 
+            # Fetch per-country baselines for z-score heat (non-focus queries only — focus queries
+            # are already filtered so relative deviation vs global baseline is less meaningful)
+            baselines: dict[str, tuple[float, float]] = {}
+            if not (focus_type and focus_value):
+                country_codes = [r['country_code'] for r in rows if r['country_code']]
+                if country_codes:
+                    baseline_rows = await conn.fetch("""
+                        SELECT country_code, avg_daily_signals, stddev_daily_signals
+                        FROM country_baseline_stats
+                        WHERE country_code = ANY($1::text[])
+                    """, country_codes, timeout=3.0)
+                    for br in baseline_rows:
+                        avg = float(br['avg_daily_signals'] or 0)
+                        std = float(br['stddev_daily_signals'] or avg * 0.3 or 1)
+                        baselines[br['country_code']] = (avg, std)
+
+            def _heat(country_code: str, current: float) -> tuple[float, str]:
+                """Return (heat [0-1], anomaly_level) using z-score vs baseline.
+                Falls back to intensity-based heat when no baseline exists."""
+                if country_code not in baselines:
+                    return float(current) / max_signals, "normal"
+                avg_daily, std_daily = baselines[country_code]
+                window_hours = float(effective_hours)
+                expected = (avg_daily / 24.0) * window_hours
+                stddev = (std_daily / 24.0) * window_hours
+                if stddev <= 0:
+                    return float(current) / max_signals, "normal"
+                zscore = (current - expected) / stddev
+                multiplier = current / expected if expected > 0 else 1.0
+                if zscore > 4 and multiplier > 3:
+                    level = "critical"
+                elif zscore > 2.5 or multiplier > 2:
+                    level = "elevated"
+                elif zscore > 1.5 and multiplier > 1.5:
+                    level = "notable"
+                else:
+                    level = "normal"
+                # Clamp z-score to [0, 1]: z=3 → heat=1.0 (fully red)
+                heat = max(0.0, min(1.0, zscore / 3.0))
+                return heat, level
+
             nodes = []
             total_signals = 0
             for row in rows:
@@ -601,12 +642,15 @@ async def get_nodes(
                     continue
                 signal_count = int(row['total_signals'])
                 total_signals += signal_count
+                heat_val, anomaly_level = _heat(row['country_code'], float(signal_count))
                 nodes.append({
                     "id": row['country_code'],
                     "name": row['name'] or row['country_code'],
                     "lat": float(lat),
                     "lon": float(lon),
                     "intensity": float(row['total_signals']) / max_signals,
+                    "heat": heat_val,
+                    "anomalyLevel": anomaly_level,
                     "sentiment": float(row['sentiment'] or 0) / 10,
                     "signalCount": signal_count,
                     "sourceCount": int(row['unique_sources'] or 0)

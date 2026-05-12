@@ -16,6 +16,8 @@ export interface NodeData {
     lat: number
     lon: number
     intensity: number
+    heat?: number
+    anomalyLevel?: string
     sentiment: number
     signalCount: number
     sourceCount: number
@@ -123,7 +125,7 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
             const baseParams = new URLSearchParams({ range: timeRange })
             
             // Add explicit fields filter for payload reduction
-            baseParams.set('fields', 'id,name,lat,lon,signalCount,sentiment,intensity')
+            baseParams.set('fields', 'id,name,lat,lon,signalCount,sentiment,intensity,heat,anomalyLevel')
 
             // Fetch nodes first, but preserve flows during the await
             setState(prev => ({ ...prev, flows: previousFlows.current }))

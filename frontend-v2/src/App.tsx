@@ -654,13 +654,15 @@ function AppContent() {
     const logRange = Math.max(logMax - logMin, 0.001)
 
     enhancedNodes.forEach(node => {
-      // Range-normalized: lowest active country = 0.15, highest = 1.0
-      // Ensures all 36+ countries show visible color regardless of volume gap
+      // intensity: log-normalized volume [0.15, 1.0] — drives circle SIZE / line width
       const normalized = (Math.log(node.signalCount + 1) - logMin) / logRange
       const intensity = 0.15 + normalized * 0.85
+      // heat: z-score deviation from per-country baseline [0, 1] — drives circle COLOR
+      // Falls back to intensity when no baseline exists (new countries)
+      const heat = node.heat != null ? node.heat : intensity
       map.setFeatureState(
         { source: 'country-heat', id: node.id },
-        { intensity }
+        { intensity, heat }
       )
       currentCodes.add(node.id)
     })
@@ -670,7 +672,7 @@ function AppContent() {
       if (!currentCodes.has(code)) {
         map.setFeatureState(
           { source: 'country-heat', id: code },
-          { intensity: 0 }
+          { intensity: 0, heat: 0 }
         )
       }
     })
@@ -904,6 +906,8 @@ function AppContent() {
                   })
 
                   // Layer 1: Country shape fill
+                  // fill-color uses 'heat' (z-score deviation from baseline) so a small country
+                  // spiking above its own norm appears redder than the US on a quiet day
                   map.addLayer({
                     id: 'country-heat-fill',
                     type: 'fill',
@@ -911,7 +915,7 @@ function AppContent() {
                     paint: {
                       'fill-color': [
                         'interpolate', ['linear'],
-                        ['coalesce', ['feature-state', 'intensity'], 0],
+                        ['coalesce', ['feature-state', 'heat'], 0],
                         0, 'rgba(0, 0, 0, 0)',
                         0.05, 'rgba(15, 30, 90, 30)',
                         0.15, 'rgba(30, 55, 130, 50)',
@@ -923,7 +927,7 @@ function AppContent() {
                     }
                   })
 
-                  // Layer 2: Border glow — wide blurred line bleeds heat beyond borders
+                  // Layer 2: Border glow — color driven by heat, width by intensity (volume)
                   map.addLayer({
                     id: 'country-heat-glow',
                     type: 'line',
@@ -931,7 +935,7 @@ function AppContent() {
                     paint: {
                       'line-color': [
                         'interpolate', ['linear'],
-                        ['coalesce', ['feature-state', 'intensity'], 0],
+                        ['coalesce', ['feature-state', 'heat'], 0],
                         0, 'rgba(0, 0, 0, 0)',
                         0.05, 'rgba(20, 35, 100, 20)',
                         0.15, 'rgba(35, 60, 140, 40)',

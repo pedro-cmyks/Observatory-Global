@@ -6,6 +6,7 @@ import { useWorkspace } from '../contexts/WorkspaceContext'
 import { selectVisibleKeyPersons } from '../lib/countryBriefPeople'
 import { buildGeoNarrative } from '../lib/geoNarrative'
 import { Pin, PinOff } from 'lucide-react'
+import { CompareSearchModal } from './CompareSearchModal'
 import './EntityPanel.css'
 
 interface FocusNode {
@@ -60,6 +61,7 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
     const cls = `entity-panel${inline ? ' entity-panel--inline' : ''}`
     const [data, setData] = useState<FocusData | null>(null)
     const [loading, setLoading] = useState(true)
+    const [showCompareModal, setShowCompareModal] = useState(false)
     const hours = timeRangeToHours(timeRange)
     const { pinItem, unpinItem, isPinned } = useWorkspace()
 
@@ -134,16 +136,21 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
                         </button>
                     </div>
                     {focusType === 'person' && onCompareClick && (
-                        <button 
-                            className="entity-compare-btn"
-                            onClick={() => {
-                                const other = prompt("Enter name of person to compare with:");
-                                if (other) onCompareClick(other);
-                            }}
-                            style={{ background: 'transparent', border: '1px solid #6366f1', color: '#a5b4fc', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer' }}
-                        >
-                            Compare With...
-                        </button>
+                        <div style={{ position: 'relative' }}>
+                            <button
+                                className="entity-compare-btn"
+                                onClick={() => setShowCompareModal(v => !v)}
+                                style={{ background: showCompareModal ? 'rgba(99,102,241,0.15)' : 'transparent', border: '1px solid #6366f1', color: '#a5b4fc', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer' }}
+                            >
+                                Compare With...
+                            </button>
+                            {showCompareModal && (
+                                <CompareSearchModal
+                                    onSelect={name => { onCompareClick(name); setShowCompareModal(false) }}
+                                    onClose={() => setShowCompareModal(false)}
+                                />
+                            )}
+                        </div>
                     )}
                 </div>
                 {data && (
