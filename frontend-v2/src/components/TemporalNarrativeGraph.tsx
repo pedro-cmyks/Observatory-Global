@@ -126,9 +126,12 @@ export function TemporalNarrativeGraph({
 
     const graphData = useMemo(() => {
         if (!bucket) return { nodes: [], links: [] }
+        // Spread links to prevent ForceGraph2D from mutating source/target in-place
+        // (ForceGraph2D replaces string IDs with node objects on first render;
+        //  mutated objects passed again on re-render cause crashes)
         return {
-            nodes: bucket.nodes,
-            links: bucket.links,
+            nodes: [...bucket.nodes],
+            links: bucket.links.map(l => ({ ...l })),
         }
     }, [bucket])
 

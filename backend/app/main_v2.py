@@ -1688,6 +1688,19 @@ async def get_theme_details(
             """, *params)
             
             # Calculate summary stats
+            # Get true total from pre-agg (not the LIMIT 200 capped array)
+            if hours > 24:
+                true_total_row = await conn.fetchrow("""
+                    SELECT SUM(signal_count)::bigint as n
+                    FROM theme_country_hourly_v2
+                    WHERE theme = $1 AND hour > NOW() - INTERVAL '%s hours'
+                """ % hours, theme_code.upper())
+                true_total = int(true_total_row['n'] or 0) if true_total_row else len(signals)
+            else:
+                true_total_row = await conn.fetchrow(f"""
+                    SELECT COUNT(*)::bigint as n FROM signals_v2 WHERE {where_clause}
+                """, *params)
+                true_total = int(true_total_row['n'] or 0) if true_total_row else len(signals)
             total = len(signals)
             avg_sentiment = sum(float(s['sentiment'] or 0) for s in signals) / total if total > 0 else 0
             
@@ -1764,7 +1777,8 @@ async def get_theme_details(
                 "theme": theme_code,
                 "country": country_code,
                 "hours": hours,
-                "total": total,
+                "total": true_total,
+                "signalSample": total,
                 "avgSentiment": round(avg_sentiment, 3),
                 "signals": [
                     {
