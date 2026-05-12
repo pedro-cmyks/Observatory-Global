@@ -133,14 +133,27 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
         })
     }, [graph, deferredQuery, nodeTypes, linkKinds])
 
-    // Strengthen repulsion and set link distance whenever the graph changes
+    // Strengthen repulsion, set link distance, and add boundary force
     useEffect(() => {
         const fg = graphRef.current
         if (!fg) return
         fg.d3Force('charge')?.strength(-320)
         fg.d3Force('link')?.distance(110)
+        // Keep nodes away from canvas edges so labels don't clip
+        const pad = 80
+        const w = boardSize.width
+        const h = boardSize.height
+        fg.d3Force('bounds', () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            for (const node of (filteredGraph.nodes as any[])) {
+                if (node.x < pad) node.vx = (node.vx ?? 0) + (pad - node.x) * 0.08
+                else if (node.x > w - pad) node.vx = (node.vx ?? 0) - (node.x - (w - pad)) * 0.08
+                if (node.y < pad) node.vy = (node.vy ?? 0) + (pad - node.y) * 0.08
+                else if (node.y > h - pad) node.vy = (node.vy ?? 0) - (node.y - (h - pad)) * 0.08
+            }
+        })
         fg.d3ReheatSimulation()
-    }, [filteredGraph])
+    }, [filteredGraph, boardSize])
 
     const activeNodeCount = filteredGraph.nodes.length
     const activeLinkCount = filteredGraph.links.length

@@ -30,7 +30,7 @@
 }
 
 .workspace-board-shell {
-    max-width: 1280px;
+    width: 100%;
 }
 
 .workspace-header {
