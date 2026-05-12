@@ -289,10 +289,12 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
         <div className={cls}>
             <div className="brief-header">
                 <div className="brief-title">
+                    <div className="cb-kicker">COUNTRY INTELLIGENCE</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span className="country-flag">{getCountryFlag(countryCode)}</span>
                         <h2>{countryName}</h2>
-                        <button 
+                        <button
+                            className={`cb-icon-btn${pinned ? ' active' : ''}`}
                             onClick={() => {
                                 const pinnedId = `country-${countryCode}`
                                 if (pinned) {
@@ -308,8 +310,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                     })
                                 }
                             }}
-                            data-tip={pinned ? "Unpin Country" : "Pin Country to Workspace"}
-                            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: pinned ? '#10b981' : '#94a3b8', width: '24px', height: '24px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
+                            data-tip={pinned ? 'Remove from Investigation Workspace' : 'Pin to Investigation Workspace'}
                         >
                             {pinned ? <PinOff size={12} /> : <Pin size={12} />}
                         </button>
@@ -331,9 +332,24 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 </div>
             </div>
 
-            <p className="brief-subtitle">
-                Executive Brief • Last {timeWindow}h • {data.signal_count.toLocaleString()} signals
-            </p>
+            <div className="cb-metrics">
+                <div>
+                    <span className="cb-metric-value">{data.signal_count.toLocaleString()}</span>
+                    <span className="cb-metric-label">signals</span>
+                </div>
+                <div>
+                    <span className="cb-metric-value" style={{ color: getSentimentColor(data.avg_sentiment * 10) }}>
+                        {data.avg_sentiment >= 0 ? '+' : ''}{(data.avg_sentiment * 10).toFixed(1)}
+                    </span>
+                    <span className="cb-metric-label">sentiment</span>
+                </div>
+                <div>
+                    <span className="cb-metric-value">
+                        {data.top_themes.filter(t => !t.name.startsWith('WORLDLANGUAGES_') && !t.name.startsWith('TAX_WORLDLANGUAGES_')).length}
+                    </span>
+                    <span className="cb-metric-label">themes</span>
+                </div>
+            </div>
 
             {anomaly && (
                 <div className="anomaly-badge">
@@ -343,10 +359,23 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 </div>
             )}
 
+            {data.top_themes.filter(t => !t.name.startsWith('WORLDLANGUAGES_') && !t.name.startsWith('TAX_WORLDLANGUAGES_')).length > 0 && (
+                <p className="cb-connection-note">
+                    Coverage driven by {data.top_themes
+                        .filter(t => !t.name.startsWith('WORLDLANGUAGES_') && !t.name.startsWith('TAX_WORLDLANGUAGES_'))
+                        .slice(0, 2)
+                        .map(t => getThemeLabel(t.name))
+                        .join(' and ')}
+                    {data.keyPersons.length > 0
+                        ? `, with focus on ${data.keyPersons.slice(0, 2).map(p => p.name).join(' and ')}`
+                        : ''}.
+                </p>
+            )}
+
             {/* Trust Indicators */}
             {indicators && !(indicators as Indicators & { error?: string }).error && (
                 <section className="brief-section">
-                    <h3>Trust Indicators</h3>
+                    <div className="cb-section-label">Trust Indicators</div>
                     <div className="indicators-stack">
                         <IndicatorTooltip
                             score={indicators.diversity?.score || 0}
@@ -370,7 +399,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 
             {/* Sentiment */}
             <section className="brief-section">
-                <h3>Sentiment Overview <span className="sentiment-info-icon" data-tip="Scores range from −10 to +10. Negative = reporting is alarming, critical, or conflict-focused. Positive = coverage is favorable or optimistic. This reflects media tone, not whether the news is objectively good or bad.">?</span></h3>
+                <div className="cb-section-label">Sentiment Overview <span className="sentiment-info-icon" data-tip="Scores range from −10 to +10. Negative = reporting is alarming, critical, or conflict-focused. Positive = coverage is favorable or optimistic. This reflects media tone, not whether the news is objectively good or bad.">?</span></div>
                 <div className="sentiment-display">
                     <span
                         className="sentiment-value"
@@ -409,7 +438,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 
             {/* Top Themes */}
             <section className="brief-section">
-                <h3>Top Themes</h3>
+                <div className="cb-section-label">Top Themes</div>
                 <div className="theme-list">
                     {data.top_themes
                         .filter(t => !t.name.startsWith('WORLDLANGUAGES_') && !t.name.startsWith('TAX_WORLDLANGUAGES_'))
@@ -432,7 +461,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             {/* Key People */}
             {data.keyPersons.length > 0 && (
                 <section className="brief-section">
-                    <h3>People Mentioned <span style={{ fontWeight: 400, textTransform: 'none', fontSize: '9px', opacity: 0.5 }}>click to filter signals</span></h3>
+                    <div className="cb-section-label">People Mentioned <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>click to filter signals</span></div>
                     <div className="brief-person-list">
                         {data.keyPersons.map(person => (
                             <button
@@ -451,7 +480,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 
             {/* Top Sources */}
             <section className="brief-section">
-                <h3>Top Publishers <span style={{ fontWeight: 400, textTransform: 'none', fontSize: '9px', opacity: 0.5 }}>who's covering this country</span></h3>
+                <div className="cb-section-label">Top Publishers <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>who's covering this country</span></div>
                 <div className="source-list">
                     {data.top_sources.slice(0, 5).map((source, i) => (
                         <div key={i} className="source-item">
@@ -465,7 +494,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             {/* Recent Signals — actual articles detected, not synthetic titles */}
             {data.top_stories && data.top_stories.length > 0 && (
                 <section className="brief-section">
-                    <h3>Recent Signals <span style={{ fontWeight: 400, textTransform: 'none', fontSize: '9px', opacity: 0.5 }}>articles detected in last {timeWindow}h</span></h3>
+                    <div className="cb-section-label">Recent Signals <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>articles detected in last {timeWindow}h</span></div>
                     <div className="story-list">
                         {data.top_stories.slice(0, 6).map((story, i) => (
                             <a

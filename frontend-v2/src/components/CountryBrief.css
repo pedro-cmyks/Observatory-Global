@@ -488,3 +488,80 @@
     0%, 100% { opacity: 0.5; }
     50% { opacity: 1; }
 }
+
+/* ── AEIL layout primitives ── */
+
+.cb-kicker {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: #60a5fa;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+}
+
+.cb-icon-btn {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+    flex-shrink: 0;
+}
+.cb-icon-btn:hover { color: #e2e8f0; border-color: rgba(255, 255, 255, 0.25); }
+.cb-icon-btn.active { color: #10b981; border-color: rgba(16, 185, 129, 0.4); }
+
+.cb-metrics {
+    display: flex;
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.cb-metrics > div {
+    display: flex;
+    flex-direction: column;
+    padding: 0 16px;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+.cb-metrics > div:first-child { padding-left: 0; }
+.cb-metrics > div:last-child { border-right: none; }
+
+.cb-metric-value {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 16px;
+    font-weight: 600;
+    color: #e2e8f0;
+    line-height: 1.2;
+}
+.cb-metric-label {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 9px;
+    color: #4a6a8a;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+}
+
+.cb-connection-note {
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.5;
+    padding: 8px 12px;
+    border-left: 2px solid #1e3a5f;
+    margin: 8px 16px 4px;
+    font-style: italic;
+}
+
+.cb-section-label {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 9px;
+    color: #4a6a8a;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 8px;
+}
