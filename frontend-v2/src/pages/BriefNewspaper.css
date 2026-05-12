@@ -202,6 +202,82 @@
 .brief-filter-chip:hover { color: #e2e8f0; border-color: rgba(255, 255, 255, 0.3); }
 .brief-filter-chip.active { background: rgba(29, 158, 117, 0.2); border-color: #1D9E75; color: #1D9E75; }
 
+/* COUNTRY FILTER TYPEAHEAD */
+.brief-filter-active {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.brief-filter-clear {
+    background: none;
+    border: none;
+    color: #64748b;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    transition: color 0.12s;
+}
+.brief-filter-clear:hover { color: #f87171; }
+
+.brief-filter-search-wrap {
+    position: relative;
+}
+
+.brief-filter-input {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    outline: none;
+    width: 180px;
+    transition: border-color 0.15s;
+}
+.brief-filter-input::placeholder { color: #475569; }
+.brief-filter-input:focus { border-color: rgba(29, 158, 117, 0.5); }
+
+.brief-country-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    background: #111827;
+    border: 1px solid rgba(29, 158, 117, 0.25);
+    border-radius: 6px;
+    min-width: 220px;
+    z-index: 200;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.brief-country-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-family: Georgia, serif;
+    font-size: 12px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+    text-align: left;
+    gap: 12px;
+}
+.brief-country-option:hover { background: rgba(29, 158, 117, 0.1); color: #e2e8f0; }
+
+.brief-country-option-count {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 9px;
+    color: #475569;
+    flex-shrink: 0;
+}
+
 /* MAIN BODY */
 .brief-content {
     padding-bottom: 60px;

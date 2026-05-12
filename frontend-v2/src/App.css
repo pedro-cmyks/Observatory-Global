@@ -51,6 +51,13 @@
   right: 0;
   transform: none;
 }
+[data-tip].tip-right::before {
+  left: calc(100% + 8px);
+  right: auto;
+  bottom: auto;
+  top: 50%;
+  transform: translateY(-50%);
+}
 
 .app {
   width: 100vw;

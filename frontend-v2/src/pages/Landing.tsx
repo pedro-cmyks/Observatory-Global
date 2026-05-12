@@ -90,7 +90,7 @@ export function Landing() {
                         </div>
                     </div>
                     <button
-                        onClick={() => navigate('/app')}
+                        onClick={() => navigate('/brief')}
                         className="lp-btn-pulse bg-primary text-on-primary px-6 py-2 rounded font-body-strong text-body-strong transition-all"
                     >
                         Open Atlas
@@ -137,7 +137,7 @@ export function Landing() {
 
                         <div className="flex gap-4 mt-4">
                             <button
-                                onClick={() => navigate('/app')}
+                                onClick={() => navigate('/brief')}
                                 className="lp-btn-pulse bg-primary text-on-primary px-10 py-4 rounded font-body-strong text-body-strong transition-all flex items-center gap-2"
                             >
                                 Open Atlas

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
@@ -40,6 +40,9 @@ export function BriefNewspaper() {
     const [loading, setLoading] = useState(true)
     const [themeSignals, setThemeSignals] = useState<Record<string, ThemeSignal[]>>({})
     const [countryFilter, setCountryFilter] = useState<string | null>(null)
+    const [countryQuery, setCountryQuery] = useState('')
+    const [showCountryDropdown, setShowCountryDropdown] = useState(false)
+    const countryInputRef = useRef<HTMLInputElement>(null)
     const [now] = useState(new Date())
 
     const hours = timeRangeToHours(timeRange)
@@ -182,27 +185,70 @@ export function BriefNewspaper() {
 
                     <div className="brief-rule thin" />
 
-                    {/* COUNTRY FILTER ROW */}
-                    {data.top_countries.length > 0 && (
-                        <section className="brief-filter-row">
-                            <span className="brief-filter-label">Filter by country:</span>
-                            <button
-                                className={`brief-filter-chip ${!countryFilter ? 'active' : ''}`}
-                                onClick={() => setCountryFilter(null)}
-                            >
-                                All
-                            </button>
-                            {data.top_countries.slice(0, 8).map(c => (
-                                <button
-                                    key={c.code}
-                                    className={`brief-filter-chip ${countryFilter === c.code ? 'active' : ''}`}
-                                    onClick={() => setCountryFilter(countryFilter === c.code ? null : c.code)}
-                                >
-                                    {resolveCountryName(c.code, c.name)}
-                                </button>
-                            ))}
-                        </section>
-                    )}
+                    {/* COUNTRY FILTER */}
+                    {data.top_countries.length > 0 && (() => {
+                        const allCountries = data.top_countries
+                        const q = countryQuery.toLowerCase().trim()
+                        const suggestions = q
+                            ? allCountries.filter(c =>
+                                resolveCountryName(c.code, c.name).toLowerCase().includes(q) ||
+                                c.code.toLowerCase().includes(q)
+                              )
+                            : allCountries
+                        const activeCountry = countryFilter
+                            ? allCountries.find(c => c.code === countryFilter)
+                            : null
+
+                        return (
+                            <section className="brief-filter-row">
+                                <span className="brief-filter-label">Country:</span>
+                                {activeCountry ? (
+                                    <div className="brief-filter-active">
+                                        <span className="brief-filter-chip active">
+                                            {resolveCountryName(activeCountry.code, activeCountry.name)}
+                                        </span>
+                                        <button
+                                            className="brief-filter-clear"
+                                            onClick={() => { setCountryFilter(null); setCountryQuery('') }}
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="brief-filter-search-wrap">
+                                        <input
+                                            ref={countryInputRef}
+                                            className="brief-filter-input"
+                                            placeholder="Search country…"
+                                            value={countryQuery}
+                                            onChange={e => { setCountryQuery(e.target.value); setShowCountryDropdown(true) }}
+                                            onFocus={() => setShowCountryDropdown(true)}
+                                            onBlur={() => setTimeout(() => setShowCountryDropdown(false), 150)}
+                                        />
+                                        {showCountryDropdown && suggestions.length > 0 && (
+                                            <div className="brief-country-dropdown">
+                                                {suggestions.slice(0, 10).map(c => (
+                                                    <button
+                                                        key={c.code}
+                                                        className="brief-country-option"
+                                                        onMouseDown={e => e.preventDefault()}
+                                                        onClick={() => {
+                                                            setCountryFilter(c.code)
+                                                            setCountryQuery('')
+                                                            setShowCountryDropdown(false)
+                                                        }}
+                                                    >
+                                                        <span>{resolveCountryName(c.code, c.name)}</span>
+                                                        <span className="brief-country-option-count">{c.signals.toLocaleString()}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </section>
+                        )
+                    })()}
 
                     <div className="brief-rule thin" />
 

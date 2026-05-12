@@ -176,7 +176,7 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
         <>
             <button
                 type="button"
-                className={`workspace-toggle-tab ${isOpen ? 'open' : ''} ${items.length === 0 && !isOpen ? 'pulse-hint' : ''}`}
+                className={`workspace-toggle-tab tip-right ${isOpen ? 'open' : ''} ${items.length === 0 && !isOpen ? 'pulse-hint' : ''}`}
                 onClick={() => setIsOpen(!isOpen)}
                 data-tip={items.length === 0 ? 'Investigation Workspace — pin countries, topics & people here' : 'Investigation Workspace'}
                 aria-label="Investigation Workspace"
