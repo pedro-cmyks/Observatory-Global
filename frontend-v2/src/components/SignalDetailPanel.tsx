@@ -184,7 +184,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                     {onPin && (
                         <button className={`sdp-pin-btn${isPinned ? ' pinned' : ''}`} onClick={onPin}
                             title={isPinned ? 'Unpin from Workspace' : 'Pin to Workspace'}>
-                            {isPinned ? '📌 Pinned' : '📌 Pin'}
+                            {isPinned ? '— Unpin' : '+ Pin'}
                         </button>
                     )}
                     <a className="sdp-read-btn" href={signal.url} target="_blank" rel="noopener noreferrer">

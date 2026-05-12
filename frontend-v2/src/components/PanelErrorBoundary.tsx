@@ -29,6 +29,9 @@ export class PanelErrorBoundary extends React.Component<PanelErrorBoundaryProps,
           <div className="panel-error-icon">⚠</div>
           <div className="panel-error-label">{this.props.panelName}</div>
           <div className="panel-error-msg">UNAVAILABLE</div>
+          {this.state.error && (
+            <div className="panel-error-detail">{this.state.error}</div>
+          )}
           <button
             className="panel-error-retry"
             onClick={() => this.setState({ hasError: false, error: null })}
