@@ -26,7 +26,7 @@ import { PublicAttentionPanel } from './components/PublicAttentionPanel'
 import { PersonCompare } from './components/PersonCompare'
 import { ThemeCompare } from './components/ThemeCompare'
 import { SourceProfile } from './components/SourceProfile'
-import { WorkspaceProvider } from './contexts/WorkspaceContext'
+import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext'
 import { InvestigationWorkspace } from './components/InvestigationWorkspace'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
 import { Globe, ClipboardList } from 'lucide-react'
@@ -329,6 +329,8 @@ function AppContent() {
   // Sync filter state ↔ URL params for shareable links
   useUrlSync()
 
+  const { trackVisit } = useWorkspace()
+
   // State
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
   const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null)
@@ -593,6 +595,38 @@ function AppContent() {
     window.addEventListener('keydown', handleEsc)
     return () => window.removeEventListener('keydown', handleEsc)
   }, [showBriefing, selectedTheme, selectedCountry])
+
+  // --- Session Trail Tracking ---
+  useEffect(() => {
+    if (selectedCountryCode) {
+      trackVisit({ id: `country-${selectedCountryCode}`, type: 'country', title: selectedCountry?.name || selectedCountryCode, urlParams: `?country=${selectedCountryCode}` });
+    }
+  }, [selectedCountryCode, selectedCountry, trackVisit]);
+
+  useEffect(() => {
+    if (selectedTheme) {
+      trackVisit({ id: `theme-${selectedTheme.theme}`, type: 'theme', title: selectedTheme.theme, urlParams: `?theme=${encodeURIComponent(selectedTheme.theme)}` });
+    }
+  }, [selectedTheme, trackVisit]);
+
+  useEffect(() => {
+    if (selectedSourceProfile) {
+      trackVisit({ id: `source-${selectedSourceProfile}`, type: 'source', title: selectedSourceProfile, urlParams: `?source=${encodeURIComponent(selectedSourceProfile)}` });
+    }
+  }, [selectedSourceProfile, trackVisit]);
+
+  useEffect(() => {
+    if (focus.type === 'person' && focus.value) {
+      trackVisit({ id: `person-${focus.value}`, type: 'person', title: focus.value, urlParams: `?person=${encodeURIComponent(focus.value)}` });
+    }
+  }, [focus.type, focus.value, trackVisit]);
+
+  useEffect(() => {
+    if (selectedPublicAttention) {
+      trackVisit({ id: `public-attention-${selectedPublicAttention.title}`, type: 'public_attention', title: selectedPublicAttention.title, urlParams: `?attention=${encodeURIComponent(selectedPublicAttention.title)}` });
+    }
+  }, [selectedPublicAttention, trackVisit]);
+  // ------------------------------
 
   // Auto-refresh every 5 minutes
   useEffect(() => {

@@ -8,6 +8,7 @@ export type WorkspaceLinkKind =
   | 'country-framing'
   | 'co-mentioned-person'
   | 'related-theme'
+  | 'session-trail'
 
 export interface WorkspaceGraphNode {
   id: string
@@ -76,6 +77,7 @@ interface PublicAttentionGraphData {
 
 export interface WorkspaceGraphInput {
   items: PinnedItem[]
+  sessionItems?: PinnedItem[]
   details: Record<string, unknown | undefined>
 }
 
@@ -87,6 +89,7 @@ export const WORKSPACE_LINK_KINDS: WorkspaceLinkKind[] = [
   'country-framing',
   'co-mentioned-person',
   'related-theme',
+  'session-trail',
 ]
 
 const MAX_DERIVED_PER_GROUP = 8
@@ -448,7 +451,7 @@ function addPublicAttentionRelationships(
   }
 }
 
-export function buildWorkspaceGraph({ items, details }: WorkspaceGraphInput): WorkspaceGraph {
+export function buildWorkspaceGraph({ items, sessionItems = [], details }: WorkspaceGraphInput): WorkspaceGraph {
   const nodes = new Map<string, WorkspaceGraphNode>()
   const links = new Map<string, WorkspaceGraphLink>()
 
@@ -465,8 +468,32 @@ export function buildWorkspaceGraph({ items, details }: WorkspaceGraphInput): Wo
     })
   }
 
+  // Session pass: build session nodes and chronological links
+  for (const item of sessionItems) {
+    // Reverse order (assuming sessionItems has newest first, but we want trail A -> B -> C chronologically)
+    // Actually, sessionItems has newest at index 0 because of trackVisit unshift.
+    // Let's just create nodes, we'll link them below correctly.
+    addNode(nodes, {
+      id: item.id,
+      type: item.type,
+      title: item.title,
+      subtitle: 'Visited this session',
+      pinned: false,
+      weight: 80,
+      urlParams: item.urlParams,
+    })
+  }
+
+  // Create session-trail links from oldest to newest (end of array to start)
+  for (let i = sessionItems.length - 1; i > 0; i--) {
+    const source = sessionItems[i].id;
+    const target = sessionItems[i - 1].id;
+    addLink(links, source, target, 'session-trail', 50);
+  }
+
   // Second pass: add relationship nodes from fetched details — isolated per item
-  for (const item of items) {
+  const allCoreItems = [...items, ...sessionItems];
+  for (const item of allCoreItems) {
     const detail = details[item.id]
     if (!detail) continue
 

@@ -27,6 +27,9 @@ interface WorkspaceContextType {
     updateNotes: (id: string, notes: string) => void
     isPinned: (id: string) => boolean
     exportWorkspace: () => void
+    sessionItems: PinnedItem[]
+    trackVisit: (item: Omit<PinnedItem, 'notes' | 'timestamp'>) => void
+    clearSession: () => void
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | null>(null)
@@ -90,13 +93,17 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     const [graphLoading, setGraphLoading] = useState(false)
     const [graphError, setGraphError] = useState<string | null>(null)
 
+    const [sessionItems, setSessionItems] = useState<PinnedItem[]>([])
+
     // Save to localStorage when items change
     useEffect(() => {
         localStorage.setItem('atlas-workspace', JSON.stringify(items))
     }, [items])
 
     useEffect(() => {
-        const fetchableItems = items.filter(item => item.type !== 'signal' && item.type !== 'chokepoint')
+        const allItems = [...items, ...sessionItems];
+        const uniqueItems = Array.from(new Map(allItems.map(i => [i.id, i])).values());
+        const fetchableItems = uniqueItems.filter(item => item.type !== 'signal' && item.type !== 'chokepoint')
         if (fetchableItems.length === 0) {
             Promise.resolve().then(() => {
                 setDetails({})
@@ -136,7 +143,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         void loadDetails()
 
         return () => controller.abort()
-    }, [items])
+    }, [items, sessionItems])
 
     const pinItem = (item: Omit<PinnedItem, 'notes' | 'timestamp'>) => {
         setItems(prev => {
@@ -155,7 +162,20 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
 
     const isPinned = (id: string) => items.some(i => i.id === id)
-    const graph = useMemo(() => buildWorkspaceGraph({ items, details }), [items, details])
+    
+    const trackVisit = (item: Omit<PinnedItem, 'notes' | 'timestamp'>) => {
+        // Only track if it's not already pinned
+        if (items.some(i => i.id === item.id)) return;
+        
+        setSessionItems(prev => {
+            const filtered = prev.filter(i => i.id !== item.id)
+            return [{ ...item, notes: '', timestamp: Date.now() }, ...filtered].slice(0, 20)
+        })
+    }
+
+    const clearSession = () => setSessionItems([])
+
+    const graph = useMemo(() => buildWorkspaceGraph({ items, sessionItems, details }), [items, sessionItems, details])
 
     const exportWorkspace = () => {
         const md = buildWorkspaceMarkdown({ items, details })
@@ -172,7 +192,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
 
     return (
-        <WorkspaceContext.Provider value={{ isOpen, setIsOpen, items, graph, graphLoading, graphError, pinItem, unpinItem, updateNotes, isPinned, exportWorkspace }}>
+        <WorkspaceContext.Provider value={{ isOpen, setIsOpen, items, graph, graphLoading, graphError, pinItem, unpinItem, updateNotes, isPinned, exportWorkspace, sessionItems, trackVisit, clearSession }}>
             {children}
         </WorkspaceContext.Provider>
     )

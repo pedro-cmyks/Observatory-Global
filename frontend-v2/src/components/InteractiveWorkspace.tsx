@@ -34,6 +34,7 @@ const LINK_COLORS: Record<WorkspaceLinkKind, string> = {
     'country-framing': 'rgba(96, 165, 250, 0.68)',
     'co-mentioned-person': 'rgba(167, 139, 250, 0.62)',
     'related-theme': 'rgba(45, 212, 191, 0.68)',
+    'session-trail': 'rgba(148, 163, 184, 0.55)',
 }
 
 function formatFilterLabel(value: string): string {
@@ -79,12 +80,20 @@ function drawWorkspaceNode(node: WorkspaceGraphNode & { x?: number; y?: number }
     ctx.save()
     ctx.shadowColor = color
     ctx.shadowBlur = node.pinned ? 18 / globalScale : 8 / globalScale
-    ctx.fillStyle = node.pinned ? 'rgba(12, 24, 43, 0.94)' : 'rgba(12, 24, 43, 0.78)'
-    ctx.strokeStyle = node.pinned ? color : `${color}aa`
+    ctx.fillStyle = node.pinned ? 'rgba(12, 24, 43, 0.94)' : 'rgba(12, 24, 43, 0.48)'
+    ctx.strokeStyle = node.pinned ? color : `${color}88`
     ctx.lineWidth = node.pinned ? 1.4 / globalScale : 1 / globalScale
+    
+    if (!node.pinned && node.subtitle === 'Visited this session') {
+        ctx.setLineDash([4 / globalScale, 4 / globalScale])
+    } else {
+        ctx.setLineDash([])
+    }
+
     drawRoundedRect(ctx, x, y, width, height, 6 / globalScale)
     ctx.fill()
     ctx.stroke()
+    ctx.setLineDash([]) // reset
 
     ctx.shadowBlur = 0
     ctx.fillStyle = '#e2e8f0'
@@ -105,6 +114,7 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
     const deferredQuery = useDeferredValue(query)
     const [nodeTypes, setNodeTypes] = useState<Set<PinnedItemType>>(() => new Set(WORKSPACE_NODE_TYPES))
     const [linkKinds, setLinkKinds] = useState<Set<WorkspaceLinkKind>>(() => new Set(WORKSPACE_LINK_KINDS))
+    const [showSessionTrail, setShowSessionTrail] = useState(true)
     const [showNotes, setShowNotes] = useState(true)
     const boardRef = useRef<HTMLDivElement | null>(null)
     const graphRef = useRef<ForceGraphMethods<WorkspaceGraphNode, WorkspaceGraphLink> | undefined>(undefined)
@@ -126,12 +136,21 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
     }, [])
 
     const filteredGraph = useMemo(() => {
-        return filterWorkspaceGraph(graph, {
+        const base = filterWorkspaceGraph(graph, {
             query: deferredQuery,
             nodeTypes,
             linkKinds,
         })
-    }, [graph, deferredQuery, nodeTypes, linkKinds])
+
+        if (!showSessionTrail) {
+            const nodes = base.nodes.filter(n => !(n.pinned === false && n.subtitle === 'Visited this session'))
+            const nodeIds = new Set(nodes.map(n => n.id))
+            const links = base.links.filter(l => nodeIds.has(String(l.source)) && nodeIds.has(String(l.target)) && l.kind !== 'session-trail')
+            return { nodes, links }
+        }
+
+        return base
+    }, [graph, deferredQuery, nodeTypes, linkKinds, showSessionTrail])
 
     // Strengthen repulsion, set link distance, and add boundary force
     useEffect(() => {
@@ -257,6 +276,16 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
                                 onChange={event => setQuery(event.target.value)}
                                 placeholder="Filter graph"
                             />
+                        </label>
+
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#cbd5e1', cursor: 'pointer', padding: '0 4px', marginBottom: '16px' }}>
+                            <input
+                                type="checkbox"
+                                checked={showSessionTrail}
+                                onChange={e => setShowSessionTrail(e.target.checked)}
+                                style={{ accentColor: '#10b981', cursor: 'pointer' }}
+                            />
+                            Show Session Trail
                         </label>
 
                         <div className="workspace-filter-group">
