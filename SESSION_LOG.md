@@ -1,5 +1,56 @@
 # Atlas — Session Log
 
+## 2026-05-12 (session 12 — UX audit, panel evaluation, documentation)
+
+### Session Type: Documentation & UX Research (no code shipped)
+
+### Added
+- **Ephemeral Session Trail (#63)** — `WorkspaceContext` now tracks up to 20 visited items per session. `workspaceGraph.ts` generates chronological `session-trail` links. `InteractiveWorkspace` renders session nodes with dashed borders and includes a "Show Session Trail" toggle. `App.tsx` auto-tracks visits to countries, themes, sources, persons, and public attention items.
+- **CompareSearchModal integration** — rescued from Claude Code worktree (`competent-maxwell-4eb03c`) and integrated into EntityPanel.
+- **Z-score heat map logic** — backend `/api/v2/nodes` now uses statistical z-score instead of absolute counts for anomaly heat representation.
+- **Google Trends expansion** — coverage expanded from 30 to 84 countries (commit `7594cb3`).
+
+### UX Panel Evaluation (5-persona audit)
+Conducted a rigorous multi-persona UX audit against production (observatory-global.vercel.app):
+
+| Evaluator | Verdict | Key Finding |
+|-----------|---------|-------------|
+| **Investor (VC)** | 7/10 | `/brief` is the killer feature — lead with it. No clear ICP yet. |
+| **CTO** | 7.5/10 | `main_v2.py` monolith (4,100 lines) is tech debt #1. Error boundaries are excellent. |
+| **Journalist** | 7/10 | Source Family badges are powerful. Signal Stream is noise — needs editorial default. |
+| **Product (UX)** | 7/10 | Dashboard default is overwhelming. "CF CF" country name bug found in production. |
+| **Intelligence Analyst** | 8/10 | 4-source cross-correlation is unique. English-language bias needs disclaimer. |
+
+**Overall: 7.3/10** — "Atlas doesn't need more features. It needs to decide who its #1 user is."
+
+### Issues Created (from audit findings)
+- **#119** — Brief country filter should include ALL countries (not just highlighted) ← owner-reported
+- **#120** — Default Signal Stream to NOTABLE/CRITICAL, not ALL ← relates to #111, #113
+- **#121** — Add coverage bias disclaimer to dashboard ← relates to #105, #91, #70
+- **#122** — Country Brief shows "CF CF" instead of full name ← bug
+- **#123** — Make Workspace tab more discoverable ← relates to #114, #80
+- **#124** — Saved searches / persistent alerts for investigative patterns ← relates to #61, #80
+- **#125** — Refactor main_v2.py into APIRouter modules ← relates to #107, #73
+- **#126** — TemporalNarrativeGraph hover-to-focus (dim unselected) ← relates to #82, #109
+- **#127** — Filter entertainment from Public Attention panel ← relates to #78, #85
+
+### Cross-reference with existing open issues
+| Existing Issue | Audit Finding |
+|---------------|--------------|
+| #111 (Stream filter accessibility) | Confirmed: ALL default is wrong. → #120 created |
+| #113 (Stream show volume) | Confirmed: volume metric exists but doesn't help curation |
+| #114 (WorkspaceBoard UX research) | Confirmed: workspace is hard to find → #123 created |
+| #109 (Evolution Graph interactions) | Confirmed: spaghetti effect → #126 created |
+| #107 (perf audit) | Confirmed: would benefit from router split → #125 created |
+| #105 (RSS feed expansion) | Confirmed: bias is structural, not just volume → #121 created |
+| #82 (Temporal graph integration) | Confirmed: needs hover-to-focus → #126 created |
+
+### Owner Notes
+- Monetization: owner prefers Wikipedia-style donation model (free for the world). Not pursuing SaaS.
+- Philosophy: Atlas exists to help users escape algorithmic echo chambers and see beyond their local information bubble.
+
+---
+
 ## 2026-04-24 (session 2)
 
 ### Added
