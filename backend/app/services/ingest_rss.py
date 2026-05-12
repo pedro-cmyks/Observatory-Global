@@ -1,9 +1,11 @@
 """
-RSS Feed Ingestion Service — Wave 1
+RSS Feed Ingestion Service — Wave 1 + Wave 3 + Wave 4
 
-Ingests curated international RSS feeds targeting coverage gaps found in
-the 2026-05-08 investigation: maritime/chokepoints, Middle East, Russia
-independent, humanitarian, Asia, Africa/LatAm.
+Ingests curated international RSS feeds (50 feeds across 30+ countries).
+Wave 1: maritime/chokepoints, Middle East, Russia independent, humanitarian, Asia, Africa/LatAm.
+Wave 3: state media (RT, Sputnik, Global Times, IRNA) + non-English regional (AR/ES/DE).
+Wave 4: LATAM depth (CO/AR/PE/VE/CL), MENA depth (SA/IL/TR/EG), Sub-Saharan Africa
+         (KE/NG/ZA x8), Southeast Asia (PH/ID/SG/TH/MM x6).
 
 Each feed is tagged with source provenance (migration 008 fields).
 Country extraction uses title/snippet keyword matching as a lightweight
@@ -147,6 +149,139 @@ CURATED_FEEDS: dict[str, tuple[str, str, str, str, bool]] = {
         "https://rss.dw.com/xml/rss-en-all",
         "wire", "DE", "en", False,
     ),
+    # ── WAVE 4A: LATAM ────────────────────────────────────────────────────────
+    # Colombian daily — covers peace process, narco, regional politics
+    "el_tiempo_co": (
+        "https://www.eltiempo.com/rss/colombia.xml",
+        "independent", "CO", "es", False,
+    ),
+    "el_tiempo_mundo": (
+        "https://www.eltiempo.com/rss/mundo.xml",
+        "independent", "CO", "es", False,
+    ),
+    # Peruvian daily — Andean politics, extractive industries
+    "la_republica_pe": (
+        "https://larepublica.pe/rss.xml",
+        "independent", "PE", "es", False,
+    ),
+    # Argentine tabloid/broadsheet — major Southern Cone outlet, high volume
+    "clarin_ar": (
+        "https://www.clarin.com/rss/lo-ultimo/",
+        "independent", "AR", "es", False,
+    ),
+    # Venezuelan independent daily — opposition perspective, regime coverage
+    "elnacional_ve": (
+        "https://www.elnacional.com/feed/",
+        "independent", "VE", "es", False,
+    ),
+    # Venezuelan investigative — Runrún, civil society, human rights angle
+    "runrunes_ve": (
+        "https://runrun.es/feed/",
+        "independent", "VE", "es", False,
+    ),
+    # Chilean investigative journalism — CIPER, corruption/accountability
+    "ciper_cl": (
+        "https://ciperchile.cl/feed/",
+        "independent", "CL", "es", False,
+    ),
+    # ── WAVE 4B: MENA ─────────────────────────────────────────────────────────
+    # Arab News — English-language Saudi outlet; covers Gulf, oil, regional
+    "arab_news": (
+        "https://www.arabnews.com/rss.xml",
+        "independent", "SA", "en", False,
+    ),
+    # Arab News Middle East section — deeper regional coverage
+    "arab_news_me": (
+        "https://www.arabnews.com/cat/2/rss.xml",
+        "independent", "SA", "en", False,
+    ),
+    # Jerusalem Post — Israel/Middle East from Israeli perspective
+    "jpost_mideast": (
+        "https://www.jpost.com/rss/rssfeedsmiddleeastnews.aspx",
+        "independent", "IL", "en", False,
+    ),
+    # Daily Sabah — Turkish English-language, covers Ankara, Syria, Caucasus
+    "daily_sabah": (
+        "https://www.dailysabah.com/rss/world/mid-east",
+        "independent", "TR", "en", False,
+    ),
+    # Egypt Independent — Cairo-based English, regime + civil society coverage
+    "egypt_indep": (
+        "https://egyptindependent.com/feed/",
+        "independent", "EG", "en", False,
+    ),
+    # ── WAVE 4C: SUB-SAHARAN AFRICA ───────────────────────────────────────────
+    # Africanews — pan-continental English wire (France Médias Monde)
+    "africanews": (
+        "https://www.africanews.com/feed/rss",
+        "wire", "FR", "en", False,
+    ),
+    # The Standard — Kenya second paper; Mombasa/coast angle
+    "standard_ke": (
+        "https://www.standardmedia.co.ke/rss/headlines.php",
+        "independent", "KE", "en", False,
+    ),
+    # Nation Africa — Nation Media Group flagship, Kenya/East Africa
+    "nation_africa": (
+        "https://nation.africa/kenya/rss.xml",
+        "independent", "KE", "en", False,
+    ),
+    # Premium Times — Nigeria's top independent digital paper
+    "premium_times_ng": (
+        "https://www.premiumtimesng.com/feed",
+        "independent", "NG", "en", False,
+    ),
+    # Vanguard — Nigerian broadsheet; covers Niger Delta, politics
+    "vanguard_ng": (
+        "https://www.vanguardngr.com/feed/",
+        "independent", "NG", "en", False,
+    ),
+    # The Punch — Nigeria's highest-circulation daily
+    "punch_ng": (
+        "https://punchng.com/feed/",
+        "independent", "NG", "en", False,
+    ),
+    # Daily Maverick — South Africa's leading investigative outlet
+    "daily_maverick": (
+        "https://www.dailymaverick.co.za/rss/",
+        "independent", "ZA", "en", False,
+    ),
+    # Mail & Guardian — South Africa; long-form, accountability journalism
+    "mail_guardian_za": (
+        "https://mg.co.za/feed/",
+        "independent", "ZA", "en", False,
+    ),
+    # ── WAVE 4D: SOUTHEAST ASIA ───────────────────────────────────────────────
+    # Philstar — Philippine broadsheet, covers ASEAN, South China Sea
+    "philstar_ph": (
+        "https://www.philstar.com/rss/world",
+        "independent", "PH", "en", False,
+    ),
+    # Antara — Indonesia's state wire in English; Archipelago + ASEAN
+    "antaranews_en": (
+        "https://en.antaranews.com/rss/news.xml",
+        "wire", "ID", "en", False,
+    ),
+    # Channel NewsAsia — Singapore wire; Southeast Asia business + politics
+    "channel_newsasia": (
+        "https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml",
+        "wire", "SG", "en", False,
+    ),
+    # Bangkok Post — Thailand English daily; Mekong, junta, China relations
+    "bangkok_post": (
+        "https://www.bangkokpost.com/rss/data/topstories.xml",
+        "independent", "TH", "en", False,
+    ),
+    # The Irrawaddy — Myanmar exile-run, civil war, junta accountability
+    "irrawaddy_mm": (
+        "https://www.irrawaddy.com/feed/",
+        "independent", "MM", "en", False,
+    ),
+    # Myanmar NOW — independent news, military conflict coverage
+    "myanmar_now": (
+        "https://myanmar-now.org/en/feed/",
+        "independent", "MM", "en", False,
+    ),
 }
 
 # ── Lightweight country extractor ─────────────────────────────────────────────
@@ -184,6 +319,53 @@ _COUNTRY_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r'\bStrait of Hormuz\b|\bHormuz\b|\bPersian Gulf\b|\bGulf of Oman\b', re.I), "IR"),
     (re.compile(r'\bRed Sea\b|\bGulf of Aden\b|\bBab el-Mandeb\b', re.I), "YE"),
     (re.compile(r'\bTaiwan\b|\bTaipei\b|\bTaiwanese\b', re.I), "TW"),
+    # LATAM (Wave 4A)
+    (re.compile(r'\bColombia\b|\bColombian\b|\bBogotá\b|\bBogota\b|\bPetro\b|\bFARC\b', re.I), "CO"),
+    (re.compile(r'\bPeru\b|\bPeruvian\b|\bLima\b|\bBoluarte\b', re.I), "PE"),
+    (re.compile(r'\bArgentina\b|\bArgentine\b|\bBuenos Aires\b|\bMilei\b', re.I), "AR"),
+    (re.compile(r'\bChile\b|\bChilean\b|\bSantiago\b|\bBoric\b', re.I), "CL"),
+    (re.compile(r'\bMexico\b|\bMexican\b|\bMéxico\b|\bMexico City\b|\bSheinbaum\b|\bCartel\b', re.I), "MX"),
+    (re.compile(r'\bEcuador\b|\bEcuadorian\b|\bQuito\b|\bNoboa\b', re.I), "EC"),
+    (re.compile(r'\bBolivia\b|\bBolivian\b|\bLa Paz\b|\bArce\b', re.I), "BO"),
+    (re.compile(r'\bParaguay\b|\bParaguayan\b|\bAsunción\b', re.I), "PY"),
+    (re.compile(r'\bUruguay\b|\bUruguayan\b|\bMontevideo\b', re.I), "UY"),
+    (re.compile(r'\bCuba\b|\bCuban\b|\bHavana\b|\bDíaz-Canel\b', re.I), "CU"),
+    (re.compile(r'\bNicaragua\b|\bNicaraguan\b|\bManagua\b|\bOrtega\b', re.I), "NI"),
+    # MENA (Wave 4B)
+    (re.compile(r'\bEgypt\b|\bEgyptian\b|\bCairo\b|\bEl-Sisi\b|\bSisi\b', re.I), "EG"),
+    (re.compile(r'\bTurkey\b|\bTurkish\b|\bAnkara\b|\bIstanbul\b|\bErdogan\b|\bErdoğan\b', re.I), "TR"),
+    (re.compile(r'\bMorocco\b|\bMoroccan\b|\bRabat\b|\bCasablanca\b', re.I), "MA"),
+    (re.compile(r'\bTunisia\b|\bTunisian\b|\bTunis\b|\bSaied\b', re.I), "TN"),
+    (re.compile(r'\bJordan\b|\bJordanian\b|\bAmman\b|\bAbdullah\b', re.I), "JO"),
+    (re.compile(r'\bUAE\b|\bDubai\b|\bAbu Dhabi\b|\bEmirati\b', re.I), "AE"),
+    (re.compile(r'\bQatar\b|\bQatari\b|\bDoha\b', re.I), "QA"),
+    (re.compile(r'\bKuwait\b|\bKuwaiti\b', re.I), "KW"),
+    # Sub-Saharan Africa (Wave 4C)
+    (re.compile(r'\bNigeria\b|\bNigerian\b|\bAbuja\b|\bLagos\b|\bTinubu\b|\bBoko Haram\b', re.I), "NG"),
+    (re.compile(r'\bKenya\b|\bKenyan\b|\bNairobi\b|\bRuto\b', re.I), "KE"),
+    (re.compile(r'\bSouth Africa\b|\bSouth African\b|\bJohannesburg\b|\bPretoria\b|\bRamaphosa\b|\bANC\b', re.I), "ZA"),
+    (re.compile(r'\bGhana\b|\bGhanaian\b|\bAccra\b|\bMahama\b', re.I), "GH"),
+    (re.compile(r'\bTanzania\b|\bTanzanian\b|\bDar es Salaam\b|\bDodoma\b', re.I), "TZ"),
+    (re.compile(r'\bUganda\b|\bUgandan\b|\bKampala\b|\bMuseveni\b', re.I), "UG"),
+    (re.compile(r'\bCameroon\b|\bCameroonian\b|\bYaoundé\b|\bDouala\b', re.I), "CM"),
+    (re.compile(r'\bZimbabwe\b|\bZimbabwean\b|\bHarare\b|\bMnangagwa\b', re.I), "ZW"),
+    (re.compile(r'\bMozambique\b|\bMozambican\b|\bMaputo\b|\bFrelimo\b', re.I), "MZ"),
+    (re.compile(r'\bAngola\b|\bAngolan\b|\bLuanda\b|\bMPLA\b', re.I), "AO"),
+    (re.compile(r'\bSenegal\b|\bSenegalese\b|\bDakar\b|\bFaye\b', re.I), "SN"),
+    (re.compile(r'\bMali\b|\bMalian\b|\bBamako\b|\bWagner\b', re.I), "ML"),
+    (re.compile(r'\bBurkina Faso\b|\bOuagadougou\b|\bTraoré\b', re.I), "BF"),
+    (re.compile(r'\bNiger\b|\bNigerien\b|\bNiamey\b|\bTiani\b', re.I), "NE"),
+    # Southeast Asia (Wave 4D)
+    (re.compile(r'\bPhilippines\b|\bFilipino\b|\bManila\b|\bMarcos\b|\bDuterte\b', re.I), "PH"),
+    (re.compile(r'\bIndonesia\b|\bIndonesian\b|\bJakarta\b|\bPrabowo\b', re.I), "ID"),
+    (re.compile(r'\bSingapore\b|\bSingaporean\b|\bLee Hsien Loong\b|\bLawrence Wong\b', re.I), "SG"),
+    (re.compile(r'\bThailand\b|\bThai\b|\bBangkok\b|\bjunta\b|\bPita\b', re.I), "TH"),
+    (re.compile(r'\bVietnam\b|\bVietnamese\b|\bHanoi\b|\bHo Chi Minh\b', re.I), "VN"),
+    (re.compile(r'\bMalaysia\b|\bMalaysian\b|\bKuala Lumpur\b|\bAnwar\b', re.I), "MY"),
+    (re.compile(r'\bCambodia\b|\bCambodian\b|\bPhnom Penh\b|\bHun Sen\b|\bHun Manet\b', re.I), "KH"),
+    (re.compile(r'\bLaos\b|\bLao\b|\bVientiane\b', re.I), "LA"),
+    (re.compile(r'\bBangladesh\b|\bBangladeshi\b|\bDhaka\b|\bYunus\b', re.I), "BD"),
+    (re.compile(r'\bSri Lanka\b|\bSri Lankan\b|\bColombo\b|\bDissanayake\b', re.I), "LK"),
 ]
 
 
