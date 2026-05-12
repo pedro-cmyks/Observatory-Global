@@ -18,11 +18,31 @@ logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://observatory:changeme@localhost:5432/observatory?sslmode=disable")
 
-# ISO country codes supported by Google Trends RSS
+# ISO country codes supported by Google Trends RSS (verified against live feed)
 TREND_COUNTRIES = [
-    "US", "GB", "IN", "BR", "MX", "AR", "CO", "FR", "DE", "IT",
-    "JP", "KR", "AU", "CA", "ES", "ZA", "NG", "EG", "TR", "RU",
-    "UA", "PL", "NL", "SE", "NO", "CH", "SG", "TH", "ID", "PH",
+    # North America
+    "US", "CA", "MX",
+    # Latin America
+    "BR", "AR", "CO", "CL", "VE", "PE", "EC", "BO", "PY",
+    "CR", "GT", "HN", "SV", "NI", "PA", "DO", "CU", "HT",
+    # Europe (West)
+    "GB", "FR", "DE", "IT", "ES", "PT", "NL", "BE", "CH", "AT",
+    "SE", "NO", "DK", "FI", "IE", "PL", "CZ", "SK", "HU", "HR",
+    "RS", "RO", "BG", "GR", "LT", "LV", "EE",
+    # Europe (East / Balkans / Caucasus)
+    "UA", "RU", "BY", "AL", "BA", "AM", "AZ", "KG", "KZ",
+    # Middle East & North Africa
+    "SA", "IL", "IQ", "IR", "LB", "SY", "KW", "BH",
+    "OM", "YE", "MA", "DZ", "LY", "EG",
+    # Sub-Saharan Africa
+    "NG", "KE", "UG", "SN", "CI", "CM", "CD", "AO", "ET", "ZA",
+    # South & Southeast Asia
+    "IN", "PK", "BD", "LK", "NP", "TH", "MY", "SG", "ID", "PH",
+    "MM", "KH",
+    # East Asia & Pacific
+    "JP", "KR", "AU", "NZ", "TW",
+    # Turkey
+    "TR",
 ]
 
 RSS_URL = "https://trends.google.com/trending/rss?geo={geo}"

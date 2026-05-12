@@ -219,26 +219,24 @@ async def get_trends(
         
         if entity_type == "global":
             rows = await conn.fetch(f"""
-                SELECT 
+                SELECT
                     date_trunc('{bucket_interval}', bucket) AS time_bucket,
                     SUM(signal_count) AS signal_count,
-                    ROUND(AVG(avg_sentiment)::numeric, 2) AS avg_sentiment,
-                    SUM(unique_sources) AS unique_sources
+                    ROUND(AVG(avg_sentiment)::numeric, 2) AS avg_sentiment
                 FROM signals_country_hourly
                 WHERE bucket > NOW() - ($1 * INTERVAL '1 day')
                 GROUP BY 1
                 ORDER BY 1 ASC
             """, days)
-            
+
         elif entity_type == "country":
             if not entity_value:
                 return {"error": "entity_value required for country trends"}
             rows = await conn.fetch(f"""
-                SELECT 
+                SELECT
                     date_trunc('{bucket_interval}', bucket) AS time_bucket,
                     SUM(signal_count) AS signal_count,
-                    ROUND(AVG(avg_sentiment)::numeric, 2) AS avg_sentiment,
-                    SUM(unique_sources) AS unique_sources
+                    ROUND(AVG(avg_sentiment)::numeric, 2) AS avg_sentiment
                 FROM signals_country_hourly
                 WHERE country_code = $1
                   AND bucket > NOW() - ($2 * INTERVAL '1 day')
@@ -283,7 +281,6 @@ async def get_trends(
                 "time": row['time_bucket'].isoformat() if row['time_bucket'] else None,
                 "signal_count": row['signal_count'] or 0,
                 "avg_sentiment": float(row['avg_sentiment']) if row['avg_sentiment'] else 0,
-                "unique_sources": row.get('unique_sources')
             }
             for row in rows
         ]

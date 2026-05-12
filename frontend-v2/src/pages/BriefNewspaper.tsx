@@ -1,9 +1,39 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours, type TimeRange } from '../lib/timeRanges'
 import './BriefNewspaper.css'
+
+// Natural Earth 110m with ISO_A2 country properties
+const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
+
+// world-atlas numeric IDs to ISO-2 for signal lookup
+// Only top-coverage countries needed; unmapped = base color
+const NUMERIC_TO_ISO2: Record<string, string> = {
+    '4':'AF','8':'AL','12':'DZ','24':'AO','32':'AR','36':'AU','40':'AT','50':'BD',
+    '56':'BE','64':'BT','68':'BO','76':'BR','100':'BG','116':'KH','120':'CM','124':'CA',
+    '144':'LK','152':'CL','156':'CN','170':'CO','180':'CD','188':'CR','192':'CU','196':'CY',
+    '203':'CZ','208':'DK','214':'DO','218':'EC','818':'EG','222':'SV','231':'ET','246':'FI',
+    '250':'FR','276':'DE','288':'GH','300':'GR','320':'GT','324':'GN','332':'HT','340':'HN',
+    '348':'HU','356':'IN','360':'ID','364':'IR','368':'IQ','372':'IE','376':'IL','380':'IT',
+    '388':'JM','392':'JP','400':'JO','398':'KZ','404':'KE','408':'KP','410':'KR','414':'KW',
+    '418':'LA','422':'LB','430':'LR','434':'LY','484':'MX','458':'MY','466':'ML','504':'MA',
+    '508':'MZ','516':'NA','524':'NP','528':'NL','554':'NZ','558':'NI','566':'NG','578':'NO',
+    '586':'PK','591':'PA','604':'PE','608':'PH','616':'PL','620':'PT','630':'PR','634':'QA',
+    '642':'RO','643':'RU','646':'RW','682':'SA','686':'SN','694':'SL','706':'SO','710':'ZA',
+    '724':'ES','729':'SD','752':'SE','756':'CH','760':'SY','158':'TW','762':'TJ','764':'TH',
+    '768':'TG','788':'TN','792':'TR','800':'UG','804':'UA','784':'AE','826':'GB','840':'US',
+    '858':'UY','860':'UZ','704':'VN','887':'YE','894':'ZM','716':'ZW',
+}
+
+function signalColor(intensity: number): string {
+    const r = Math.round(26 + (29 - 26) * intensity)
+    const g = Math.round(37 + (158 - 37) * intensity)
+    const b = Math.round(53 + (117 - 53) * intensity)
+    return `rgb(${r},${g},${b})`
+}
 
 interface BriefingData {
     period_hours: number
@@ -114,6 +144,16 @@ export function BriefNewspaper() {
 
     const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
+    const signalMap = data
+        ? new Map(data.top_countries.map(c => [c.code, c.signals]))
+        : new Map<string, number>()
+    const maxSignals = data
+        ? Math.max(1, ...data.top_countries.map(c => c.signals))
+        : 1
+    const maxThemeCount = data?.top_themes.length
+        ? Math.max(1, ...data.top_themes.map(t => t.count))
+        : 1
+
     return (
         <div className="brief-page">
             <header className="brief-masthead">
@@ -171,6 +211,41 @@ export function BriefNewspaper() {
                             <span className="brief-stat-value">{moodLabel(data.stats.avg_sentiment)}</span>
                             <span className="brief-stat-label">global mood</span>
                         </div>
+                    </section>
+
+                    {/* SIGNAL MAP — choropleth of signal density by country */}
+                    <section className="brief-minimap">
+                        <div className="brief-minimap-label">Signal density — {TIME_RANGE_LABELS[timeRange]}</div>
+                        <ComposableMap
+                            projection="geoMercator"
+                            projectionConfig={{ scale: 130, center: [0, 20] }}
+                            width={800}
+                            height={380}
+                        >
+                            <Geographies geography={GEO_URL}>
+                                {({ geographies }) =>
+                                    geographies.map(geo => {
+                                        const iso2 = NUMERIC_TO_ISO2[String(geo.id)]
+                                        const count = iso2 ? (signalMap.get(iso2) ?? 0) : 0
+                                        const intensity = count / maxSignals
+                                        return (
+                                            <Geography
+                                                key={geo.rsmKey}
+                                                geography={geo}
+                                                fill={count > 0 ? signalColor(intensity) : '#12202e'}
+                                                stroke="#0c1017"
+                                                strokeWidth={0.5}
+                                                style={{
+                                                    default: { outline: 'none' },
+                                                    hover: { outline: 'none' },
+                                                    pressed: { outline: 'none' },
+                                                }}
+                                            />
+                                        )
+                                    })
+                                }
+                            </Geographies>
+                        </ComposableMap>
                     </section>
 
                     <div className="brief-rule thin" />
@@ -271,6 +346,15 @@ export function BriefNewspaper() {
                                                 <span className="brief-article-count">{themeData.count.toLocaleString()} signals</span>
                                             )}
                                         </div>
+
+                                        {themeData && (
+                                            <div className="brief-theme-bar-track">
+                                                <div
+                                                    className="brief-theme-bar"
+                                                    style={{ width: `${(themeData.count / maxThemeCount) * 100}%` }}
+                                                />
+                                            </div>
+                                        )}
 
                                         {row.countries.length > 0 && (
                                             <div className="brief-article-countries">
