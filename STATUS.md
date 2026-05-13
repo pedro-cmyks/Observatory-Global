@@ -1,5 +1,5 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-12 (UX onboarding + brand refresh)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-13 (production brief/request-storm hotfix)
 
 ---
 
@@ -23,6 +23,32 @@ Issue mapping:
 
 Documentation:
 - `docs/demos/2026-05-12-ux-onboarding-brand-refresh.md`
+
+---
+
+## Production hotfix (2026-05-13)
+
+Root cause for the “no data / slow brief” incident was a frontend request storm, not missing production data.
+The old deployed app repeatedly called `/api/v2/country/CO?hours=24` and `/api/v2/theme/WB_507_ENERGY_AND_EXTRACTIVES?hours=24` while a country and workspace session trail were active, pushing the single Fly machine to its 100 concurrent-connection hard limit and making `/health` degrade with `pool busy`.
+
+Changes shipped in `7ac9500`:
+- Stabilized `WorkspaceContext` callbacks with `useCallback`, especially `trackVisit`, so session tracking no longer retriggers on every render.
+- Removed the `/api/v2/country/{code}` fetch from the country click path in `/app`.
+- Rebuilt `CountryBrief` from lighter `/api/v2/nodes?focus_type=country...` and `/api/v2/signals?country_code=...` calls, deriving top themes, sources, people, sentiment, and recent signals client-side.
+- Changed the coverage-bias disclaimer from fixed overlay to in-flow layout so it no longer covers panel controls/back affordances.
+- `BRIEF` navigation now preserves context: `/brief?range=<range>&country=<code>`.
+
+Production actions and verification:
+- Pushed `7ac9500` to `origin/v3-intel-layer`; Vercel deployed the frontend.
+- Restarted Fly machine `d8d2e46fe07e78` to clear saturated in-flight requests.
+- Verified Fly `/health` recovered to `healthy` with ~1.57M total signals.
+- Verified `https://observatory-global.vercel.app/app?country=CO` loaded Colombia with 736 signals and source integrity populated.
+- Verified `https://observatory-global.vercel.app/brief?range=24h&country=CO` loaded Colombia themes instead of an empty country state.
+
+Follow-up backend hygiene:
+- `/api/v2/stats` still logged one statement-timeout during recovery; harden that endpoint further if it recurs under ingest load.
+- `/health` reported a future `last_ingest_ts` and negative `ingest_lag_minutes`; inspect timestamp normalization in ingest/health separately.
+- Consider short TTL caching or request coalescing for heavy detail endpoints before opening the app to broader demos.
 
 ---
 
