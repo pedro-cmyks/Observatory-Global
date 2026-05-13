@@ -76,7 +76,9 @@ Production verification after `366db9b`:
 
 Backend follow-up shipped after verification:
 - `/api/v2/narratives` now computes per-theme distinct `country_count` and `source_count` from the selected signal window for the top themes, then derives `spread_pct` from that distinct country count.
+- Deployed backend to Fly after correcting the production column name to `source_name`.
 - Validation: `python3 -m py_compile backend/app/main_v2.py` passed. Backend pytest could not run in this shell because `poetry` is not installed.
+- Production API validation: `/health` returned `healthy`; `/api/v2/narratives?hours=24&limit=20` returned no error and top narrative spread values below 100% (`Environment 87.6`, `US Politics 80.2`, `Public Sector 84.8`).
 
 ---
 
