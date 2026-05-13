@@ -75,21 +75,20 @@ CircuitBreaker(
 
 ---
 
-## Google Trends (via pytrends)
+## Google Trends (RSS feed)
 
 ### API Details
-- **Library**: `pytrends` (unofficial Python wrapper)
-- **Base**: Google Trends website scraping
+- **Service**: `backend/app/services/ingest_trends.py`
+- **Base**: `https://trends.google.com/trending/rss?geo={country}`
 - **Authentication**: None
-- **Cost**: Free (but rate-limited)
+- **Cost**: Free, rate-limit sensitive
 
 ### Rate Limits
 | Limit Type | Value | Notes |
 |------------|-------|-------|
-| **Requests per hour** | ~400 | Unofficial limit (community observation) |
-| **Requests per day** | ~10,000 | Soft limit, may trigger CAPTCHA |
-| **Concurrent connections** | 1 recommended | pytrends not designed for concurrency |
-| **Burst rate** | ~10 req/min | Exceeding triggers 429 errors |
+| **Batch size** | 5 countries | Current ingestion batches countries to avoid hammering RSS |
+| **Cadence** | ~30 minutes | Runs every 2nd GDELT cycle in `ingest_loop.py` |
+| **Burst rate** | Conservative | Pause between batches; HTTP failures are skipped |
 
 ### Error Codes
 | Code | Meaning | Action |
@@ -164,15 +163,15 @@ RateLimiter(
 - Asia: IN, JP, KR
 - Oceania: AU
 
-**Unsupported Countries**: Fallback to generic data
+**Unsupported Countries**: Skip the country for that cycle; keep prior rows in `trends_v2`.
 
 ### Best Practices
-- ✅ Respect rate limits (stay under 400 req/hour)
-- ✅ Cache aggressively (15-minute TTL minimum)
-- ✅ Use exponential backoff on 429 errors
-- ✅ Monitor quota usage with Prometheus
+- ✅ Batch countries conservatively and pause between batches
+- ✅ Upsert by `(country_code, keyword, hour_bucket)` to avoid duplicate spikes
+- ✅ Log non-200 RSS responses and continue the cycle
+- ✅ Monitor inserted row counts in `trends_v2`
 - ❌ Don't retry 400 errors (invalid requests)
-- ❌ Don't make concurrent requests (pytrends limitation)
+- ❌ Don't increase concurrency without checking RSS blocking behavior from Fly
 - ❌ Don't ignore 429 errors (will trigger IP ban)
 
 ---

@@ -104,7 +104,7 @@ export const SignalStream: React.FC = () => {
     const [velocity, setVelocity] = useState<Velocity | null>(null)
     const [allowlist, setAllowlist] = useState<string[]>([])
     const [isHovered, setIsHovered] = useState(false)
-    const [streamFilter, setStreamFilter] = useState<'all' | 'critical' | 'elevated' | 'notable' | 'trend' | 'person' | 'maritime'>('all')
+    const [streamFilter, setStreamFilter] = useState<'all' | 'critical' | 'elevated' | 'notable' | 'trend' | 'person' | 'maritime'>('notable')
     const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
     const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null)
     const listRef = useRef<HTMLDivElement>(null)
@@ -297,7 +297,12 @@ export const SignalStream: React.FC = () => {
         if (streamFilter === 'trend') return sig.themes.some(t => HIGH_PRIORITY_THEMES.some(h => t.includes(h)))
         if (streamFilter === 'critical') return sig.themes.some(t => CRITICAL_THEMES.some(c => t.includes(c)))
         if (streamFilter === 'elevated') return sig.themes.some(t => ELEVATED_THEMES.some(e => t.includes(e)))
-        if (streamFilter === 'notable') return !sig.themes.some(t => CRITICAL_THEMES.some(c => t.includes(c)))
+        if (streamFilter === 'notable') {
+            return getSignalPriority(sig) === 1 ||
+                sig.themes.some(t => CRITICAL_THEMES.some(c => t.includes(c))) ||
+                sig.themes.some(t => ELEVATED_THEMES.some(e => t.includes(e))) ||
+                sig.persons?.length > 0
+        }
         return true
     }), [items, streamFilter])
 

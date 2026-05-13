@@ -20,7 +20,7 @@ class TestFlowDetector:
         """Test FlowDetector initialization with default parameters."""
         detector = FlowDetector()
         assert detector.heat_halflife_hours == 6.0
-        assert detector.flow_threshold == 0.5
+        assert detector.flow_threshold == 0.1
 
     def test_calculate_similarity_identical_topics(self):
         """Test similarity calculation with identical topics."""

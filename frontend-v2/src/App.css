@@ -129,6 +129,11 @@
   min-width: 0;
 }
 
+.command-search-tour-target {
+  width: min(520px, 100%);
+  min-width: 260px;
+}
+
 .command-bar-right {
   display: flex;
   align-items: center;
@@ -154,6 +159,12 @@
   border-radius: 4px;
   padding: 2px;
   min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.time-controls::-webkit-scrollbar {
+  display: none;
 }
 
 .time-btn {
@@ -169,6 +180,8 @@
   transition: all var(--motion-standard, 0.24s ease);
   letter-spacing: 0.07em;
   min-width: 0;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .time-btn:hover {
@@ -205,6 +218,44 @@
   border-color: rgba(104, 219, 174, 0.48);
   color: #e2fff4;
   box-shadow: 0 0 16px rgba(29, 158, 117, 0.14);
+}
+
+.workspace-cmd-btn {
+  border-color: rgba(104, 219, 174, 0.34);
+}
+
+.cmd-count {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(104, 219, 174, 0.2);
+  color: #e2fff4;
+  font-size: 9px;
+}
+
+.coverage-disclaimer {
+  position: fixed;
+  top: 58px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 80;
+  max-width: min(760px, calc(100vw - 32px));
+  padding: 6px 12px;
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: 999px;
+  background: rgba(24, 18, 8, 0.72);
+  color: rgba(252, 211, 77, 0.86);
+  font-family: var(--font-technical, monospace);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: center;
+  backdrop-filter: blur(12px);
+  pointer-events: auto;
 }
 
 .cmd-btn--reset {
@@ -605,6 +656,26 @@
 }
 
 /* Narrower screens: collapse right column, stack bottom panels */
+@media (max-width: 1380px) {
+  .command-bar-right .stats,
+  .utc-clock {
+    display: none;
+  }
+
+  .command-bar-center {
+    gap: 8px;
+  }
+
+  .command-search-tour-target {
+    min-width: 220px;
+  }
+
+  .time-btn {
+    padding: 4px 7px;
+    font-size: 9px;
+  }
+}
+
 @media (max-width: 1100px) {
   .terminal-layout {
     grid-template-areas:
@@ -667,6 +738,18 @@
     align-items: stretch;
     justify-content: stretch;
     gap: 6px;
+  }
+
+  .command-search-tour-target {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .coverage-disclaimer {
+    top: 104px;
+    font-size: 9px;
+    line-height: 1.35;
+    border-radius: 6px;
   }
 
   .time-controls {

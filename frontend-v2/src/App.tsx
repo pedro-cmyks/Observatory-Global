@@ -15,7 +15,7 @@ import { Briefing } from './components/Briefing'
 import { ThemeDetail } from './components/ThemeDetail'
 import { CountryBrief } from './components/CountryBrief'
 import { FocusProvider, useFocus } from './contexts/FocusContext'
-import { FocusDataProvider, useFocusData } from './contexts/FocusDataContext'
+import { FocusDataProvider, useFocusData, type NodeData } from './contexts/FocusDataContext'
 
 import { MapTooltip, type TooltipData } from './components/MapTooltip'
 import { CrisisProvider } from './contexts/CrisisContext'
@@ -29,8 +29,9 @@ import { SourceProfile } from './components/SourceProfile'
 import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext'
 import { InvestigationWorkspace } from './components/InvestigationWorkspace'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
-import { Globe, ClipboardList } from 'lucide-react'
+import { Globe, ClipboardList, FolderOpen, HelpCircle } from 'lucide-react'
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
+import { resolveCountryName } from './lib/countryNames'
 
 // Terminal Panels
 import { NarrativeThreads } from './components/NarrativeThreads'
@@ -84,6 +85,18 @@ const INITIAL_VIEW = {
   pitch: 0,
   bearing: 0
 }
+
+const getNodePriority = (node: NodeData) => [
+  node.heat ?? node.intensity ?? 0,
+  node.signalCount ?? 0,
+]
+
+const pickTopAttentionNode = (nodes: NodeData[]) => nodes.reduce((max, node) => {
+  const [nodeHeat, nodeSignals] = getNodePriority(node)
+  const [maxHeat, maxSignals] = getNodePriority(max)
+  if (nodeHeat !== maxHeat) return nodeHeat > maxHeat ? node : max
+  return nodeSignals > maxSignals ? node : max
+}, nodes[0])
 
 // Clickable info badge that shows a styled popup explaining what each panel does
 function InfoBadge({ text }: { text: string }) {
@@ -329,7 +342,7 @@ function AppContent() {
   // Sync filter state ↔ URL params for shareable links
   useUrlSync()
 
-  const { trackVisit } = useWorkspace()
+  const { trackVisit, setIsOpen, items: workspaceItems, sessionItems } = useWorkspace()
 
   // State
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
@@ -342,6 +355,7 @@ function AppContent() {
   type PrevCtx = { type: 'chokepoint'; cp: Chokepoint } | { type: 'theme'; theme: string; originCountry?: string; originCountryName?: string }
   const [prevStreamCtx, setPrevStreamCtx] = useState<PrevCtx | null>(null)
   const [showBriefing, setShowBriefing] = useState(false)
+  const [tourRunId, setTourRunId] = useState(0)
   // const [timeWindow, setTimeWindow] = useState(24) // Replaced by context
   const [viewState, setViewState] = useState(INITIAL_VIEW)
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
@@ -511,11 +525,11 @@ function AppContent() {
   // Focus-aware data from provider - auto-refetches when focus/range changes
   const { nodes, flows, unfilteredFlows, acledConflicts, loading, isRefetching, refetch, timeRange, setTimeRange } = useFocusData()
 
-  // Auto-focus on hottest region at load
+  // Auto-focus on highest baseline-normalized attention region at load
   useEffect(() => {
     if (nodes.length > 0 && !hasAutoFocused.current && mapReady) {
       hasAutoFocused.current = true
-      const hottest = nodes.reduce((max, n) => (n.signalCount > max.signalCount ? n : max), nodes[0])
+      const hottest = pickTopAttentionNode(nodes)
       mapRef.current?.getMap()?.flyTo({
         center: [hottest.lon, hottest.lat],
         zoom: 2.5,
@@ -659,10 +673,16 @@ function AppContent() {
   // Get crisis state for terminator auto-hide and anomalies
   const { enabled: crisisEnabled, anomalies } = useCrisis()
 
-  // Merge anomaly data into nodes for coloring and pulse — capped at 100
+  // Merge anomaly data into nodes for coloring and pulse — capped at 100 by attention index,
+  // not raw volume, so high-volume countries do not crowd out smaller baseline spikes.
   const enhancedNodes = useMemo(() => {
     const anomalyMap = new Map(anomalies.map((a: any) => [a.country_code, a]))
-    return nodes.slice(0, 100).map(n => {
+    return [...nodes].sort((a, b) => {
+      const [aHeat, aSignals] = getNodePriority(a)
+      const [bHeat, bSignals] = getNodePriority(b)
+      if (bHeat !== aHeat) return bHeat - aHeat
+      return bSignals - aSignals
+    }).slice(0, 100).map(n => {
       const anomaly = anomalyMap.get(n.id)
       return {
         ...n,
@@ -688,7 +708,7 @@ function AppContent() {
     const logRange = Math.max(logMax - logMin, 0.001)
 
     enhancedNodes.forEach(node => {
-      // intensity: log-normalized volume [0.15, 1.0] — drives circle SIZE / line width
+      // intensity: log-normalized volume [0.15, 1.0] — evidence/confidence, not importance
       const normalized = (Math.log(node.signalCount + 1) - logMin) / logRange
       const intensity = 0.15 + normalized * 0.85
       // heat: z-score deviation from per-country baseline [0, 1] — drives circle COLOR
@@ -790,7 +810,7 @@ function AppContent() {
       <header className="command-bar">
         <div className="command-bar-left">
           <h1 className="brand" onClick={() => navigate('/')} style={{ cursor: 'pointer' }} data-tip="Back to home"><Globe size={16} /> ATLAS</h1>
-          <span className="live-pill" data-tip="Ingesting GDELT signals every 15 minutes">
+          <span className="live-pill" data-tip="Live open signals from media, curated feeds, public attention, humanitarian sources, and NLP enrichment. Source cadences vary.">
             <span className="live-pill-dot" />
             LIVE DATA
           </span>
@@ -801,12 +821,14 @@ function AppContent() {
           )}
         </div>
         <div className="command-bar-center">
-          <SearchBar
-            onThemeSelect={handleThemeSelect}
-            onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
-            onPublicAttentionSelect={handlePublicAttentionSelect}
-            externalQuery={externalSearchQuery}
-          />
+          <div data-tour="search" className="command-search-tour-target">
+            <SearchBar
+              onThemeSelect={handleThemeSelect}
+              onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
+              onPublicAttentionSelect={handlePublicAttentionSelect}
+              externalQuery={externalSearchQuery}
+            />
+          </div>
           <div className="time-controls">
             {TIME_RANGE_OPTIONS.map(range => (
               <button
@@ -832,8 +854,26 @@ function AppContent() {
           </div>
           <UtcClock />
           {/* <CrisisToggle /> - Hidden per visual clarity update */}
-          <button className="cmd-btn" onClick={() => navigate('/brief')}>
+          <button className="cmd-btn" data-tour="brief-button" onClick={() => navigate('/brief')}>
             <ClipboardList size={13} /> BRIEF
+          </button>
+          <button
+            className="cmd-btn workspace-cmd-btn"
+            data-tour="workspace-button"
+            onClick={() => setIsOpen(true)}
+            data-tip="Open Investigation Workspace"
+          >
+            <FolderOpen size={13} /> WORKSPACE
+            {(workspaceItems.length + sessionItems.length) > 0 && (
+              <span className="cmd-count">{workspaceItems.length + sessionItems.length}</span>
+            )}
+          </button>
+          <button
+            className="cmd-btn"
+            onClick={() => setTourRunId(id => id + 1)}
+            data-tip="Start guided tour"
+          >
+            <HelpCircle size={13} /> TOUR
           </button>
           <SettingsPanel
             showTerminator={showTerminator}
@@ -844,14 +884,18 @@ function AppContent() {
         </div>
       </header>
 
+      <div className="coverage-disclaimer" data-tip="Atlas colors countries by deviation from each country's recent baseline. Raw volume increases evidence density, but it is not treated as real-world importance.">
+        Coverage bias: map heat is baseline-normalized; raw volume is evidence density, not importance.
+      </div>
+
       <div className="terminal-layout">
         {/* Panel 1: GLOBAL RADAR */}
-        <div className="terminal-panel radar">
+        <div className="terminal-panel radar" data-tour="globe">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 GLOBE
-                <InfoBadge text="Narrative activity by country. Glowing areas show higher media volume. FLOW lines show information pathways between countries. PLANE and SHIPS show live real-world assets at strategic locations." />
+                <InfoBadge text="Narrative activity by country. Glow color shows activity above each country's recent baseline; raw signal volume adds evidence density, not importance. FLOW lines show information pathways between countries. PLANE and SHIPS show live real-world assets at strategic locations." />
               </span>
               <span className="panel-subtitle">narrative activity by country</span>
             </div>
@@ -896,14 +940,14 @@ function AppContent() {
                   setShowFlows(false)
                   clearFocus()
                   if (nodes.length > 0) {
-                    const hottest = nodes.reduce((max, n) => n.signalCount > max.signalCount ? n : max, nodes[0])
+                    const hottest = pickTopAttentionNode(nodes)
                     mapRef.current?.getMap()?.flyTo({ center: [hottest.lon, hottest.lat], zoom: 2.5, duration: 1800, essential: true })
                   } else {
                     setViewState(INITIAL_VIEW)
                   }
                 }}
-                data-tip="Fly to hottest region right now"
-                aria-label="Fly to hottest region"
+                data-tip="Fly to highest baseline-normalized attention region"
+                aria-label="Fly to highest baseline-normalized attention region"
               >
                 ↺
               </button>
@@ -1107,22 +1151,25 @@ function AppContent() {
             : prevStreamCtx?.type === 'theme'
               ? `← ${prevStreamCtx.theme.replace(/_/g, ' ').slice(0, 20)}`
               : '← STREAM'
+          const selectedCountryName = selectedCountryCode
+            ? resolveCountryName(selectedCountryCode, selectedCountry?.name)
+            : ''
           const isBlankState = !isPerson && !isCountry && !isTheme && !isPublicAttention && !isChokepoint
           let panelTitle = isBlankState ? (
             <>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 SIGNAL STREAM
-                <InfoBadge text="Live feed of individual media signals from GDELT. Each row is a news article mentioning a geopolitical event. Click a country code or theme tag to filter the stream. Geopolitical signals appear first." />
+                <InfoBadge text="Curated feed of recent open signals. Each row can pivot the console by country, theme, person, source, or headline. Notable geopolitical signals appear first." />
               </span>
-              <span className="panel-subtitle">live signals, last 15 min</span>
+              <span className="panel-subtitle">notable open signals</span>
             </>
           ) : (
             <>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 SIGNAL STREAM
-                <InfoBadge text="Live feed of individual media signals from GDELT. Each row is a news article mentioning a geopolitical event. Click a country code or theme tag to filter the stream. Geopolitical signals appear first." />
+                <InfoBadge text="Curated feed of recent open signals. Each row can pivot the console by country, theme, person, source, or headline. Notable geopolitical signals appear first." />
               </span>
-              <span className="panel-subtitle">live signals, last 15 min</span>
+              <span className="panel-subtitle">notable open signals</span>
             </>
           )
           if (isTheme) panelTitle = <>
@@ -1131,7 +1178,7 @@ function AppContent() {
           </>
           if (isCountry) panelTitle = <>
             <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>{backLabel}</button>
-            <span style={{ color: '#94a3b8' }}>{selectedCountry?.name || selectedCountryCode}</span>
+            <span style={{ color: '#94a3b8' }}>{selectedCountryName}</span>
           </>
           if (isPerson) panelTitle = <>
             <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
@@ -1146,7 +1193,7 @@ function AppContent() {
             <span style={{ color: '#2dd4bf' }}>{selectedChokepoint!.name}</span>
           </>
           return (
-            <div className="terminal-panel stream">
+            <div className="terminal-panel stream" data-tour="stream">
               <div className="panel-header">
                 <div className="panel-header-title-wrap">{panelTitle}</div>
               </div>
@@ -1171,10 +1218,10 @@ function AppContent() {
                 ) : isCountry ? (
                   <CountryBrief inline
                     countryCode={selectedCountryCode!}
-                    countryName={selectedCountry?.name || selectedCountryCode!}
+                    countryName={selectedCountryName}
                     timeWindow={timeRangeToHours(timeRange)}
                     onClose={handleStreamBack}
-                    onThemeSelect={(theme) => { handleThemeSelect(theme, selectedCountryCode!, selectedCountry?.name || selectedCountryCode!); setMapFlyCountry(selectedCountryCode!) }}
+                    onThemeSelect={(theme) => { handleThemeSelect(theme, selectedCountryCode!, selectedCountryName); setMapFlyCountry(selectedCountryCode!) }}
                   />
                 ) : isTheme ? (
                   <ThemeDetail
@@ -1211,7 +1258,7 @@ function AppContent() {
         })()}
 
         {/* Panel 3: NARRATIVE THREADS — always visible, reactive to focus context */}
-        <div className="terminal-panel threads">
+        <div className="terminal-panel threads" data-tour="threads">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1421,7 +1468,11 @@ function AppContent() {
           onSourceClick={(source) => setSelectedSourceProfile(source)}
         />
       )}
-      <OnboardingCoachmark />
+      <OnboardingCoachmark
+        runId={tourRunId}
+        onOpenBrief={() => navigate('/brief')}
+        onOpenWorkspace={() => setIsOpen(true)}
+      />
     </div>
   )
 }

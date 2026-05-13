@@ -155,23 +155,64 @@ async def get_system_stats():
     Shows total signals, time range, and ingestion health.
     """
     async with app.state.pool.acquire() as conn:
-        await conn.execute("SET statement_timeout = 5000")
-        row = await conn.fetchrow("""
-            SELECT
-                COUNT(*) AS total_signals,
-                MIN(timestamp) AS oldest_signal,
-                MAX(timestamp) AS newest_signal,
-                COUNT(*) FILTER (WHERE timestamp > NOW() - INTERVAL '1 hour') AS signals_1h,
-                COUNT(*) FILTER (WHERE timestamp > NOW() - INTERVAL '24 hours') AS signals_24h,
-                COUNT(*) FILTER (WHERE timestamp > NOW() - INTERVAL '7 days') AS signals_7d,
-                COUNT(DISTINCT country_code) AS unique_countries,
-                COUNT(DISTINCT source_name) AS unique_sources
-            FROM signals_v2
+        await conn.execute("SET statement_timeout = 3000")
+
+        async def safe_fetchval(query: str, default=0):
+            try:
+                value = await conn.fetchval(query)
+                return default if value is None else value
+            except Exception as e:
+                print(f"⚠️  /api/v2/stats partial metric failed: {e}")
+                return default
+
+        # Avoid a full COUNT(*) over multi-million-row signals_v2. reltuples is approximate
+        # but fast, and the dashboard only needs a coverage badge + rough system state.
+        total_signals = await safe_fetchval("""
+            SELECT COALESCE(reltuples::bigint, 0)
+            FROM pg_class
+            WHERE oid = 'signals_v2'::regclass
         """)
-        
-        # Check recent ingestion health
-        recent = await conn.fetchval("""
-            SELECT COUNT(*) FROM signals_v2 
+        oldest_signal = await safe_fetchval("""
+            SELECT timestamp
+            FROM signals_v2
+            WHERE timestamp IS NOT NULL
+            ORDER BY timestamp ASC
+            LIMIT 1
+        """, None)
+        newest_signal = await safe_fetchval("""
+            SELECT timestamp
+            FROM signals_v2
+            WHERE timestamp IS NOT NULL
+            ORDER BY timestamp DESC
+            LIMIT 1
+        """, None)
+        signals_1h = await safe_fetchval("""
+            SELECT COUNT(*) FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '1 hour'
+        """)
+        signals_24h = await safe_fetchval("""
+            SELECT COALESCE(SUM(signal_count), 0)::bigint
+            FROM country_hourly_v2
+            WHERE hour > NOW() - INTERVAL '24 hours'
+        """)
+        signals_7d = await safe_fetchval("""
+            SELECT COALESCE(SUM(signal_count), 0)::bigint
+            FROM country_hourly_v2
+            WHERE hour > NOW() - INTERVAL '7 days'
+        """)
+        unique_countries = await safe_fetchval("""
+            SELECT COUNT(DISTINCT country_code)
+            FROM country_hourly_v2
+            WHERE hour > NOW() - INTERVAL '24 hours'
+        """)
+        unique_sources = await safe_fetchval("""
+            SELECT COUNT(DISTINCT source_name)
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '24 hours'
+        """)
+
+        recent = await safe_fetchval("""
+            SELECT COUNT(*) FROM signals_v2
             WHERE timestamp > NOW() - INTERVAL '2 hours'
         """)
         
@@ -179,14 +220,15 @@ async def get_system_stats():
         
         return {
             "database": {
-                "total_signals": row['total_signals'],
-                "signals_1h": row['signals_1h'],
-                "signals_24h": row['signals_24h'],
-                "signals_7d": row['signals_7d'],
-                "unique_countries": row['unique_countries'],
-                "unique_sources": row['unique_sources'],
-                "oldest_signal": row['oldest_signal'].isoformat() if row['oldest_signal'] else None,
-                "newest_signal": row['newest_signal'].isoformat() if row['newest_signal'] else None
+                "total_signals": total_signals,
+                "total_signals_estimated": True,
+                "signals_1h": signals_1h,
+                "signals_24h": signals_24h,
+                "signals_7d": signals_7d,
+                "unique_countries": unique_countries,
+                "unique_sources": unique_sources,
+                "oldest_signal": oldest_signal.isoformat() if oldest_signal else None,
+                "newest_signal": newest_signal.isoformat() if newest_signal else None
             },
             "ingestion": {
                 "status": ingestion_status,
@@ -655,7 +697,10 @@ async def get_nodes(
                     "signalCount": signal_count,
                     "sourceCount": int(row['unique_sources'] or 0)
                 })
-            nodes.sort(key=lambda x: x["signalCount"], reverse=True)
+            # Rank countries by baseline deviation first. Raw signal volume remains
+            # evidence/confidence, but should not make high-volume countries look
+            # inherently more important than countries with unusual activity.
+            nodes.sort(key=lambda x: (x.get("heat") or 0, x["signalCount"]), reverse=True)
 
             allowed_fields = None
             if fields:
@@ -804,8 +849,8 @@ async def get_anomalies(
                     "time_window_hours": hours,
                     "baseline_window_days": 7,
                     "generated_at": datetime.now(timezone.utc).isoformat(),
-                    "active_countries": int(total_stats['active_countries']) if total_stats else 0,
-                    "total_signals_24h": int(total_stats['total_signals']) if total_stats else 0
+                    "active_countries": int((total_stats['active_countries'] if total_stats else 0) or 0),
+                    "total_signals_24h": int((total_stats['total_signals'] if total_stats else 0) or 0)
                 }
             }
     except Exception as e:
@@ -2153,6 +2198,17 @@ async def get_signals(
     """Get raw signals with filters and velocity calculation."""
     async with app.state.pool.acquire() as conn:
         await conn.execute("SET statement_timeout = 10000")
+        has_nlp_columns = await conn.fetchval("""
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_name = 'signals_v2'
+                  AND column_name = 'nlp_sentiment'
+            )
+        """)
+        sentiment_expr = "COALESCE(nlp_sentiment, sentiment)" if has_nlp_columns else "sentiment"
+        nlp_persons_expr = "nlp_persons" if has_nlp_columns else "NULL::jsonb AS nlp_persons"
+        nlp_framing_expr = "nlp_framing" if has_nlp_columns else "NULL::text AS nlp_framing"
         conditions = ["timestamp > NOW() - INTERVAL '%s hours'" % hours]
         params = []
         param_count = 0
@@ -2194,11 +2250,11 @@ async def get_signals(
                 source_name,
                 source_url,
                 headline,
-                COALESCE(nlp_sentiment, sentiment) AS sentiment,
+                {sentiment_expr} AS sentiment,
                 themes,
                 persons,
-                nlp_persons,
-                nlp_framing
+                {nlp_persons_expr},
+                {nlp_framing_expr}
             FROM signals_v2
             WHERE {where_clause}
             ORDER BY timestamp DESC
@@ -2781,6 +2837,9 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
 
     async with app.state.pool.acquire() as conn:
         await conn.execute("SET statement_timeout = 15000")
+        has_theme_country_hourly = await conn.fetchval(
+            "SELECT to_regclass('theme_country_hourly_v2') IS NOT NULL"
+        )
         if hours > 24:
             # Use pre-agg tables to avoid full signals_v2 scan
             top_countries = await conn.fetch("""
@@ -2818,12 +2877,20 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 GROUP BY h.country_code, c.name HAVING SUM(h.signal_count) > 10
                 ORDER BY sentiment DESC LIMIT 10
             """ % hours)
-            top_themes = await conn.fetch("""
-                SELECT theme, SUM(signal_count)::bigint as count
-                FROM theme_country_hourly_v2
-                WHERE hour > NOW() - INTERVAL '%s hours'
-                GROUP BY theme ORDER BY count DESC LIMIT 10
-            """ % hours)
+            if has_theme_country_hourly:
+                top_themes = await conn.fetch("""
+                    SELECT theme, SUM(signal_count)::bigint as count
+                    FROM theme_country_hourly_v2
+                    WHERE hour > NOW() - INTERVAL '%s hours'
+                    GROUP BY theme ORDER BY count DESC LIMIT 10
+                """ % hours)
+            else:
+                top_themes = await conn.fetch("""
+                    SELECT theme, SUM(signal_count)::bigint as count
+                    FROM signals_theme_hourly
+                    WHERE bucket > NOW() - INTERVAL '%s hours'
+                    GROUP BY theme ORDER BY count DESC LIMIT 10
+                """ % hours)
             top_sources = await conn.fetch("""
                 SELECT source_name, SUM(signal_count)::bigint as count
                 FROM signals_source_hourly
@@ -2880,7 +2947,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
 
         # Theme-country: always use 24h window — fast index lookup, "right now" framing
         top_theme_codes = [r['theme'] for r in top_themes[:6]]
-        if top_theme_codes:
+        if top_theme_codes and has_theme_country_hourly:
             theme_country_rows = await conn.fetch("""
                 SELECT tc.theme, tc.country_code, c.name as country_name,
                        SUM(tc.signal_count)::bigint as cnt
@@ -2953,16 +3020,26 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
     try:
         async with app.state.pool.acquire() as conn:
             await conn.execute("SET statement_timeout = 10000")
+            has_theme_country_hourly = await conn.fetchval(
+                "SELECT to_regclass('theme_country_hourly_v2') IS NOT NULL"
+            )
             stats = await conn.fetchrow(f"""
                 SELECT COUNT(*) as total, COUNT(DISTINCT country_code) as countries,
                        AVG(sentiment) as avg_sent
                 FROM signals_v2 WHERE timestamp > NOW() - INTERVAL '{hours} hours'
             """)
-            if hours > 24:
+            if hours > 24 and has_theme_country_hourly:
                 top_themes = await conn.fetch(f"""
                     SELECT theme, SUM(signal_count) as cnt
                     FROM theme_country_hourly_v2
                     WHERE hour > NOW() - INTERVAL '{hours} hours'
+                    GROUP BY theme ORDER BY cnt DESC LIMIT 5
+                """)
+            elif hours > 24:
+                top_themes = await conn.fetch(f"""
+                    SELECT theme, SUM(signal_count) as cnt
+                    FROM signals_theme_hourly
+                    WHERE bucket > NOW() - INTERVAL '{hours} hours'
                     GROUP BY theme ORDER BY cnt DESC LIMIT 5
                 """)
             else:
@@ -3776,7 +3853,7 @@ async def get_acled_conflicts(
 async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Query(5, ge=1, le=20)):
     """Get top narrative threads. Cached 5 min in Redis."""
     from app.core.gdelt_taxonomy import get_theme_label
-    import traceback, json as _json
+    import json as _json
 
     cache_key = f"narratives:{hours}:{limit}"
     if hasattr(app.state, "redis") and app.state.redis:
@@ -3791,21 +3868,39 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
         async with app.state.pool.acquire() as conn:
             await conn.execute("SET statement_timeout = 20000")
             timeline_hours = min(hours, 24)
+            has_theme_hourly = await conn.fetchval(
+                "SELECT to_regclass('theme_hourly_v2') IS NOT NULL"
+            )
 
             # Phase 1: Get top themes from pre-aggregated table (instant, any window)
-            top_rows = await conn.fetch("""
-                SELECT
-                    theme,
-                    SUM(signal_count)   AS signal_count,
-                    SUM(country_count)  AS country_count,
-                    SUM(source_count)   AS source_count,
-                    AVG(avg_sentiment)  AS avg_sentiment
-                FROM theme_hourly_v2
-                WHERE hour > NOW() - ($1 || ' hours')::INTERVAL
-                GROUP BY theme
-                ORDER BY signal_count DESC
-                LIMIT $2
-            """, str(hours), limit)
+            if has_theme_hourly:
+                top_rows = await conn.fetch("""
+                    SELECT
+                        theme,
+                        SUM(signal_count)   AS signal_count,
+                        SUM(country_count)  AS country_count,
+                        SUM(source_count)   AS source_count,
+                        AVG(avg_sentiment)  AS avg_sentiment
+                    FROM theme_hourly_v2
+                    WHERE hour > NOW() - ($1 || ' hours')::INTERVAL
+                    GROUP BY theme
+                    ORDER BY signal_count DESC
+                    LIMIT $2
+                """, str(hours), limit)
+            else:
+                top_rows = await conn.fetch("""
+                    SELECT
+                        theme,
+                        SUM(signal_count) AS signal_count,
+                        0::bigint         AS country_count,
+                        0::bigint         AS source_count,
+                        AVG(avg_sentiment) AS avg_sentiment
+                    FROM signals_theme_hourly
+                    WHERE bucket > NOW() - ($1 || ' hours')::INTERVAL
+                    GROUP BY theme
+                    ORDER BY signal_count DESC
+                    LIMIT $2
+                """, str(hours), limit)
 
             if not top_rows:
                 return {"narratives": [], "hours": hours,
@@ -4008,7 +4103,6 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                     pass
             return result
     except Exception as e:
-        traceback.print_exc()
         return {"narratives": [], "hours": hours, "error": str(e)}
 
 

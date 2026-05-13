@@ -8,6 +8,7 @@ import './CountryBrief.css';
 import { getThemeLabel } from '../lib/themeLabels';
 import { selectVisibleKeyPersons, type KeyPerson } from '../lib/countryBriefPeople';
 import { buildCountryBriefMarkdown, sanitizeFilenamePart } from '../lib/exportFormatters';
+import { resolveCountryName } from '../lib/countryNames';
 
 // ThemeChange interface reserved for future use
 // interface ThemeChange {
@@ -141,6 +142,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
     const cls = `country-brief${inline ? ' country-brief--inline' : ''}`
     const { anomalies } = useCrisis()
     const anomaly = (anomalies as CountryAnomaly[]).find(a => a.country_code === countryCode) ?? null
+    const displayCountryName = resolveCountryName(countryCode, countryName)
     const [data, setData] = useState<BriefData | null>(null);
     const [indicators, setIndicators] = useState<Indicators | null>(null);
     const [loading, setLoading] = useState(true);
@@ -163,9 +165,9 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 
     const handleExportBrief = () => {
         if (!data) return
-        const md = buildCountryBriefMarkdown({ countryName, data })
+        const md = buildCountryBriefMarkdown({ countryName: displayCountryName, data })
         const date = new Date().toISOString().split('T')[0]
-        downloadMarkdown(`atlas-country-${sanitizeFilenamePart(countryName)}-${date}.md`, md)
+        downloadMarkdown(`atlas-country-${sanitizeFilenamePart(displayCountryName)}-${date}.md`, md)
     }
 
     useEffect(() => {
@@ -256,7 +258,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 <div className="brief-header">
                     <div className="brief-title">
                         <span className="country-flag">{getCountryFlag(countryCode)}</span>
-                        <h2>{countryName}</h2>
+                        <h2>{displayCountryName}</h2>
                     </div>
                     <button className="close-button" onClick={onClose}>✕</button>
                 </div>
@@ -274,7 +276,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 <div className="brief-header">
                     <div className="brief-title">
                         <span className="country-flag">{getCountryFlag(countryCode)}</span>
-                        <h2>{countryName}</h2>
+                        <h2>{displayCountryName}</h2>
                     </div>
                     <button className="close-button" onClick={onClose}>✕</button>
                 </div>
@@ -292,7 +294,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     <div className="cb-kicker">COUNTRY INTELLIGENCE</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span className="country-flag">{getCountryFlag(countryCode)}</span>
-                        <h2>{countryName}</h2>
+                        <h2>{displayCountryName}</h2>
                         <button
                             className={`cb-icon-btn${pinned ? ' active' : ''}`}
                             onClick={() => {
@@ -305,7 +307,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                     pinItem({
                                         id: pinnedId,
                                         type: 'country',
-                                        title: countryName,
+                                        title: displayCountryName,
                                         urlParams: `?${params.toString()}`
                                     })
                                 }

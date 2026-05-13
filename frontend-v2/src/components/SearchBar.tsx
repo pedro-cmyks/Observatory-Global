@@ -4,6 +4,7 @@ import { useFocus } from '../contexts/FocusContext'
 import type { ConceptFilter, RegionFilter } from '../contexts/FocusContext'
 import { Search } from 'lucide-react'
 import { hasVisibleSearchResults } from '../lib/searchResults'
+import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters'
 import './SearchBar.css'
 
 // Sorted longest-first so multi-word country names match before single-word substrings
@@ -450,10 +451,10 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                         </div>
                     )}
 
-                    {results?.public_attention && results.public_attention.length > 0 && (
+                    {results?.public_attention && results.public_attention.some(item => isPublicAttentionRelevant(item.title)) && (
                         <div className="search-section">
                             <div className="search-section-label">Public Attention</div>
-                            {results.public_attention.map(item => (
+                            {results.public_attention.filter(item => isPublicAttentionRelevant(item.title)).map(item => (
                                 <div key={item.title} className="search-item search-item--attention" onClick={() => handlePublicAttentionClick(item)}>
                                     <span className="search-item-tag wiki-tag">WIKI</span>
                                     <span className="search-item-name">{item.title.replace(/_/g, ' ')}</span>

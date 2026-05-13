@@ -93,7 +93,7 @@ export function Landing() {
                         onClick={() => navigate('/brief')}
                         className="lp-btn-pulse bg-primary text-on-primary px-6 py-2 rounded font-body-strong text-body-strong transition-all"
                     >
-                        Open Atlas
+                        Open Brief
                     </button>
                 </div>
             </nav>
@@ -123,25 +123,31 @@ export function Landing() {
                     <div className="lp-hero-content z-10 max-w-4xl flex flex-col items-center gap-component">
                         <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-border-subtle bg-bg-surface/80 backdrop-blur-md">
                             <span className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(104,219,174,0.7)] animate-pulse" />
-                            <span className="font-technical-label text-technical-label text-primary uppercase tracking-widest">Live Data</span>
+                            <span className="font-technical-label text-technical-label text-primary uppercase tracking-widest">Public intelligence</span>
                         </div>
 
                         <h1 className="font-display-xl text-display-xl text-text-primary leading-tight">
-                            The news,<br />before you read it.
+                            Atlas
                         </h1>
 
                         <p className="font-body-main text-body-main text-text-secondary max-w-xl text-lg">
-                            See how 200+ countries cover the same world — simultaneously, without editorial filter.
-                            Understand the coverage before you form an opinion.
+                            A public narrative intelligence console that turns open global signals into
+                            a daily brief, live map, country context, anomaly alerts, and investigation workspace.
                         </p>
 
-                        <div className="flex gap-4 mt-4">
+                        <div className="flex flex-wrap justify-center gap-4 mt-4">
                             <button
                                 onClick={() => navigate('/brief')}
                                 className="lp-btn-pulse bg-primary text-on-primary px-10 py-4 rounded font-body-strong text-body-strong transition-all flex items-center gap-2"
                             >
-                                Open Atlas
+                                Open Daily Brief
                                 <span className="material-symbols-outlined" style={FILL_0}>arrow_forward</span>
+                            </button>
+                            <button
+                                onClick={() => navigate('/app')}
+                                className="px-10 py-4 rounded border border-emerald-500/40 bg-bg-surface/70 text-emerald-200 hover:border-primary/70 hover:text-white transition-all font-body-strong text-body-strong"
+                            >
+                                Open Console
                             </button>
                             <a
                                 href="#features"
@@ -157,10 +163,10 @@ export function Landing() {
                 <RevealSection className="flex justify-center">
                     <div className="flex flex-wrap justify-center gap-0 bg-bg-surface border border-border-subtle rounded-xl overflow-hidden backdrop-blur-md divide-x divide-border-subtle">
                         {[
-                            { value: '65,000+', label: 'Sources' },
-                            { value: '15 min',  label: 'Refresh cycle' },
-                            { value: '100+',    label: 'Languages' },
-                            { value: '6',       label: 'Live data sources' },
+                            { value: '1.3M+', label: 'Signals indexed' },
+                            { value: 'Multi', label: 'Open signal families' },
+                            { value: '100+',  label: 'Languages observed' },
+                            { value: 'Live',  label: 'Brief + console' },
                         ].map(({ value, label }) => (
                             <div key={label} className="flex flex-col items-center px-10 py-6">
                                 <span className="lp-stat-num font-headline-md text-headline-md text-primary">{value}</span>
@@ -200,18 +206,19 @@ export function Landing() {
                 <RevealSection id="features" className="flex flex-col gap-gutter scroll-mt-24">
                     <div className="flex flex-col gap-stack-sm max-w-2xl">
                         <span className="font-technical-label text-technical-label text-primary uppercase tracking-widest">What you see</span>
-                        <h2 className="font-headline-md text-headline-md text-text-primary">Six intelligence panels,<br />one coherent picture.</h2>
+                        <h2 className="font-headline-md text-headline-md text-text-primary">A daily brief for orientation.<br />A console for investigation.</h2>
                         <p className="font-body-main text-body-main text-text-secondary">
-                            Every panel answers a different question about the global information landscape.
+                            Atlas is designed for readers who need a global overview and analysts who need
+                            to move from a signal into context, sources, and a workspace.
                         </p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-component">
-                        <BentoCard icon="public"   title="Globe"              text="Live heatmap of narrative activity by country. Flows show information pathways between nations." />
-                        <BentoCard icon="stream"   title="Signal Stream"      text="Real-time feed of individual media signals from GDELT. Click any tag to filter the entire view." />
-                        <BentoCard icon="list"     title="Narrative Threads"  text="Top global topics ranked by coverage volume, with sentiment trend and country spread." />
-                        <BentoCard icon="grid_on"  title="Correlation Matrix" text="Shows which countries share narrative focus. Bright cells mean two nations report heavily on the same topic." />
-                        <BentoCard icon="warning"  title="Anomaly Alert"      text="Statistical detection of unusual spikes in coverage — when a topic suddenly gets far more attention than its 7-day baseline." />
-                        <BentoCard icon="verified" title="Source Integrity"   text="Monitors the diversity and quality of active sources. High concentration in a single outlet is flagged as a bias signal." />
+                        <BentoCard icon="newspaper" title="Daily Brief"        text="A readable front page of global signal density, major themes, country mood, and source activity." />
+                        <BentoCard icon="public"    title="Globe"              text="Live narrative activity by country. Flows show information pathways between nations." />
+                        <BentoCard icon="stream"    title="Signal Stream"      text="A curated feed of notable open signals. Click a country, person, source, or theme to pivot the console." />
+                        <BentoCard icon="list"      title="Narrative Threads"  text="Top global topics ranked by coverage volume, country spread, sentiment, and acceleration." />
+                        <BentoCard icon="warning"   title="Anomaly Alert"      text="Statistical detection of unusual spikes when coverage breaks away from recent baselines." />
+                        <BentoCard icon="account_tree" title="Workspace"       text="Pin countries, themes, people, sources, public-attention topics, and signals into an investigation graph." />
                     </div>
                 </RevealSection>
 
@@ -219,24 +226,26 @@ export function Landing() {
                 <RevealSection id="data" className="flex flex-col gap-gutter scroll-mt-24">
                     <div className="flex flex-col gap-stack-sm max-w-2xl">
                         <span className="font-technical-label text-technical-label text-primary uppercase tracking-widest">The data</span>
-                        <h2 className="font-headline-md text-headline-md text-text-primary">Six open sources.<br />One coherent signal.</h2>
+                        <h2 className="font-headline-md text-headline-md text-text-primary">Open signals.<br />One coherent intelligence layer.</h2>
                         <p className="font-body-main text-body-main text-text-secondary">
-                            All sources are open datasets. Atlas normalizes them into a unified signal without human editorial intervention.
+                            Atlas normalizes open datasets into a unified signal layer. Different sources
+                            update at different cadences, so the interface shows patterns instead of pretending
+                            every feed refreshes on the same clock.
                         </p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-component">
                         {[
-                            { name: 'GDELT 2.0',      badge: 'Media coverage',   desc: '65,000+ news sources in 100+ languages, updated every 15 minutes. The backbone of Atlas.' },
-                            { name: 'Google Trends',   badge: 'Public interest',  desc: 'What people are searching for, by country. Captures public attention before media catches up.' },
-                            { name: 'Wikipedia',       badge: 'What people read', desc: 'Top-read articles by country and language. Wikipedia spikes often precede news events.' },
-                            { name: 'ACLED',           badge: 'Coming soon',      desc: 'Armed Conflict Location & Event Data — field-verified conflict events. Integration in progress.', pending: true },
-                            { name: 'ADS-B Exchange',  badge: 'Live aircraft',    desc: 'Real-time military and civilian aircraft positions worldwide via ADS-B transponder data.' },
-                            { name: 'AISStream',       badge: 'Live vessels',     desc: 'Live ship positions at global chokepoints — Suez, Hormuz, Panama, Malacca — updated continuously.' },
-                        ].map(({ name, badge, desc, pending }) => (
-                            <div key={name} className={`lp-card-hover bg-bg-surface border border-border-subtle rounded-xl p-6 flex flex-col gap-stack-sm${pending ? ' opacity-60' : ''}`}>
+                            { name: 'Open media signals', badge: 'News coverage', desc: 'GDELT and normalized media events show how countries, sources, and themes are being covered.' },
+                            { name: 'Curated RSS',        badge: 'Source breadth', desc: 'Regional, state, NGO, and non-English feeds expand coverage beyond the default global media layer.' },
+                            { name: 'ReliefWeb / OCHA',   badge: 'Humanitarian',   desc: 'Crisis-country feeds add humanitarian context with provenance and geo-confidence metadata.' },
+                            { name: 'Google Trends',      badge: 'Search demand',  desc: 'Country-level search interest helps compare what publics are looking for with what media covers.' },
+                            { name: 'Wikipedia',          badge: 'Reading attention', desc: 'Top-read pages reveal public attention spikes that can appear before or beside media signals.' },
+                            { name: 'NLP enrichment',     badge: 'Intel layer',    desc: 'Sentiment, named entities, framing, source family, language, and provenance fields make the signal investigable.' },
+                        ].map(({ name, badge, desc }) => (
+                            <div key={name} className="lp-card-hover bg-bg-surface border border-border-subtle rounded-xl p-6 flex flex-col gap-stack-sm">
                                 <div className="flex items-center justify-between">
                                     <span className="font-body-strong text-body-strong text-text-primary">{name}</span>
-                                    <span className={`font-technical-label text-technical-label border border-border-subtle rounded-full px-3 py-1 uppercase text-[10px] tracking-wider${pending ? ' text-slate-500' : ' text-primary'}`}>{badge}</span>
+                                    <span className="font-technical-label text-technical-label border border-border-subtle rounded-full px-3 py-1 uppercase text-[10px] tracking-wider text-primary">{badge}</span>
                                 </div>
                                 <p className="font-body-main text-body-main text-text-secondary">{desc}</p>
                             </div>
@@ -253,9 +262,9 @@ export function Landing() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-component">
                             {[
-                                { who: 'Journalists',     desc: 'See how your story is covered globally before you file. Understand the international angle instantly.' },
-                                { who: 'Researchers',     desc: 'Track narrative patterns, sentiment shifts, and coverage anomalies across time and geography.' },
-                                { who: 'Curious readers', desc: "Start your news day with a global overview instead of a single outlet's editorial priority." },
+                                { who: 'Journalists',     desc: 'Move from a global signal to country context, source concentration, headlines, and investigation notes.' },
+                                { who: 'Researchers',     desc: 'Track narrative patterns, sentiment shifts, coverage anomalies, and source provenance across time and geography.' },
+                                { who: 'Curious readers', desc: "Start with the daily brief and see what the world is paying attention to beyond one outlet's front page." },
                             ].map(({ who, desc }) => (
                                 <div key={who} className="flex flex-col gap-stack-sm border-l border-border-subtle pl-6">
                                     <span className="font-body-strong text-body-strong text-primary">{who}</span>
@@ -271,13 +280,13 @@ export function Landing() {
                     <div className="bg-bg-surface border border-primary/25 rounded-xl p-10 text-center flex flex-col items-center gap-4 relative overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
                         <p className="font-body-main text-body-main text-text-secondary max-w-xl text-base z-10">
-                            Atlas runs 24/7 on open data. 1.3M+ signals indexed, 6 live sources, no ads.
+                            Atlas runs 24/7 on open data. 1.3M+ signals indexed, multi-source coverage, no ads.
                         </p>
                         <div className="flex gap-12 pt-4 border-t border-border-subtle w-full justify-center z-10">
                             {[
                                 { value: '1.3M+', label: 'signals indexed' },
-                                { value: '15 min', label: 'refresh, 24/7' },
-                                { value: '6', label: 'live sources' },
+                                { value: 'Multi', label: 'source cadences' },
+                                { value: 'Free', label: 'public access' },
                             ].map(({ value, label }) => (
                                 <div key={label} className="flex flex-col items-center">
                                     <span className="lp-stat-num font-headline-md text-headline-md text-primary">{value}</span>
@@ -301,7 +310,7 @@ export function Landing() {
                             { label: 'GDELT',         href: 'https://gdeltproject.org' },
                             { label: 'Google Trends', href: 'https://trends.google.com' },
                             { label: 'Wikipedia',     href: 'https://wikipedia.org' },
-                            { label: 'ACLED',         href: 'https://acleddata.com' },
+                            { label: 'ReliefWeb',     href: 'https://reliefweb.int' },
                             { label: 'GitHub',        href: 'https://github.com' },
                             { label: 'Support',       href: 'https://ko-fi.com/observatoryglobalatlas' },
                         ].map(({ label, href }) => (

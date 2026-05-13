@@ -298,7 +298,8 @@ export function Docs() {
                 <section className="docs-section" id="google-trends">
                     <h3>Google Trends — Public Interest Signal</h3>
                     <p>
-                        Google Trends data is ingested via the <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>pytrends</code> library
+                        Google Trends data is ingested from the public RSS feed
+                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>trends.google.com/trending/rss</code>
                         every 30 minutes across 50+ country codes. Each record stores the keyword, its rank,
                         approximate search volume, and the country. The Anomaly Panel's right column shows the
                         top globally-trending keywords (ranked by how many countries searched for the same term).
@@ -735,7 +736,7 @@ Severity is derived from the max-weight crisis theme present:
                     <div className="docs-endpoint">
                         <div className="docs-endpoint-header">
                             <span className="docs-method">GET</span>
-                            <span className="docs-endpoint-path">/api/v2/trends</span>
+                            <span className="docs-endpoint-path">/api/v2/trends/search</span>
                         </div>
                         <div className="docs-endpoint-body">
                             Google trending search keywords. Optionally filtered by country code.

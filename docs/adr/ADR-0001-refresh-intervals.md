@@ -17,7 +17,7 @@ The Observatory Global platform aggregates data from three external sources (GDE
 ## Decision Drivers
 
 - **GDELT**: Updates every 15 minutes, no rate limits (public dataset)
-- **Google Trends**: Real-time but rate-limited (~400 requests/hour via pytrends)
+- **Google Trends**: Public RSS feed, rate-limit sensitive; ingested every ~30 minutes in conservative batches
 - **Wikipedia**: High rate limit (200 req/s) but has 1-day data delay
 - **User Expectations**: Need reasonably fresh data (< 30 minutes old)
 - **Cost**: Minimize unnecessary API calls
@@ -209,7 +209,7 @@ rate_limit_errors_total{source}
 ## References
 
 - GDELT Documentation: http://data.gdeltproject.org/documentation/GDELT-Global_Knowledge_Graph_Codebook-V2.1.pdf
-- pytrends Rate Limits: https://github.com/GeneralMills/pytrends/issues (community observations)
+- Google Trends RSS: https://trends.google.com/trending/rss
 - Wikipedia Pageviews API: https://wikimedia.org/api/rest_v1/#/Pageviews%20data
 - Redis TTL Best Practices: https://redis.io/commands/expire
 

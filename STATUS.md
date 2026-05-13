@@ -1,5 +1,28 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-06 (session 9)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-12 (UX onboarding + brand refresh)
+
+---
+
+## Current UX direction (2026-05-12)
+
+Atlas is now positioned as a **public narrative intelligence console**, not a GDELT wrapper.
+The preferred first user path is `/brief` for orientation, with `/app` as the full analyst console.
+
+This session implements:
+- Landing copy refresh: Atlas = daily brief + live map + country context + anomaly alerts + investigation workspace.
+- SEO baseline in `frontend-v2/index.html`: descriptive title, meta description, canonical, Open Graph, Twitter card metadata, and `WebApplication` JSON-LD.
+- Interactive guided tour v2: highlights Search, Globe, Signal Stream, Narrative Threads, Workspace, and Brief instead of showing passive text only.
+- Command-bar discoverability: visible `WORKSPACE` button with pinned/session count and visible `TOUR` restart button.
+- Coverage-bias correction in `/app`: map heat and hot-spot focus use country-baseline deviation; raw volume is framed as evidence density, not importance.
+- `/brief` country selector now includes all known countries and shows an empty state when the selected country has no current-window theme cluster.
+- Signal Stream defaults to `NOTABLE`, not `ALL`.
+- Public Attention lists filter obvious entertainment/sports/lifestyle noise before rendering.
+
+Issue mapping:
+- `#108`, `#113`, `#119`, `#120`, `#121`, `#123`, `#127`.
+
+Documentation:
+- `docs/demos/2026-05-12-ux-onboarding-brand-refresh.md`
 
 ---
 
@@ -47,6 +70,21 @@
 
 ---
 
+## Recent changes (session 10 - UX/QA hardening, 2026-05-12)
+
+- **Brand narrative refresh** — landing now positions Atlas as a public narrative intelligence console, not a GDELT wrapper.
+- **Interactive onboarding** — first-run guide now points users through Search, Globe, Signal Stream, Narrative Threads, Workspace, and Daily Brief instead of showing a passive text card.
+- **Daily Brief UX** — `/brief` supports an all-country selector, empty country states, invalid range fallback, and optional insight fetch handling.
+- **Noise filtering** — shared public-attention filter removes obvious entertainment/sports/lifestyle noise from affected UI surfaces.
+- **Backend QA unblockers** — `/api/v2/stats`, `/api/v2/signals`, `/api/v2/anomalies`, and `/api/v2/briefing` now tolerate the current local Docker DB without timing out or failing on schema drift.
+- **Backend pytest restored** — stale `app.main`/hexmap imports fixed, `HexmapGenerator` compatibility layer restored, GDELT parser aliases added, and network integration tests now require `--run-integration`; local suite is `139 passed, 6 skipped`.
+- **Country Brief name fallback (#122)** — country panel headers now resolve ISO-only API names through shared `resolveCountryName`, avoiding duplicate labels like `CF CF`.
+- **Browser QA completed** — Browser plugin verified landing, `/app`, guided tour steps, workspace entry, `/app?country=CF`, and `/brief?range=record` by DOM/console. Screenshot capture timed out, but recent browser console errors were clean.
+- **Narratives local fallback** — `/api/v2/narratives` now falls back when local Docker DB lacks `theme_hourly_v2`, avoiding noisy traceback logs during QA.
+- **Country code polish** — added GDELT/FIPS display mappings for `HO`, `PC`, and `NF` so record-range briefs do not show raw codes in top sentiment lists.
+- **Known local data limitation** — local DB newest signal is `2026-04-27T20:30:00+00:00`; on `2026-05-12`, 24h/7d views render empty/stalled by design. Use `record`/8760h for local content QA or connect to a DB with current ingest.
+- **Validation doc** — see `docs/demos/2026-05-12-ux-onboarding-brand-refresh.md`.
+
 ## Recent changes (session 9)
 
 | Commit | What it does |
@@ -82,46 +120,70 @@ Vercel production deploy follows pushes to `v3-intel-layer`; verify `https://obs
 
 ---
 
-## Open issues (7 open)
+## Open issues (25 open as of 2026-05-12)
 
-### Features — next build targets
-| # | Title | Effort | Notes |
-|---|-------|--------|-------|
-| **#63** | Ephemeral session trail graph | medium | frontend |
-| **#61** | Temporal and entity comparative engine UI | large | frontend |
-| **#51** | Tolerant search (fuzzy, token reordering, aliases) | large | backend + frontend |
-| **#70** | Theme clustering / GDELT hierarchy research | research | backend |
-| **#73** | True 168h concept aggregates without timeout | medium | backend perf |
+### Current UX/QA cluster
+| # | Title | Status |
+|---|-------|--------|
+| **#127** | Public Attention filter out entertainment/actors | Implemented locally; ready to close after review |
+| **#126** | TemporalNarrativeGraph hover-to-focus | Next small UX target |
+| **#124** | Saved searches / persistent alerts | Next product feature after QA stabilization |
+| **#123** | Workspace discoverability | Implemented locally; ready to close after review |
+| **#122** | Country Brief ISO code header | Implemented locally; ready to close after review |
+| **#121** | Coverage bias correction | Implemented locally; ready to close after review |
+| **#120** | Signal Stream default to NOTABLE/CRITICAL | Implemented locally; ready to close after review |
+| **#119** | Brief country filter includes all countries | Implemented locally; ready to close after review |
+| **#113** | Signal Stream entry moment | Partially covered by revised cadence language; animation still separate |
+| **#108** | Landing `/app` link + brief loading coherence | Implemented locally; ready to close after review |
 
-### Tech debt
-| # | Title |
-|---|-------|
-| **#62** | ESLint debt blocking `npm run lint` |
-| **#46** | ACLED API access (blocked externally) |
+### Larger roadmap
+| # | Title | Notes |
+|---|-------|-------|
+| **#125** | Split `main_v2.py` into APIRouter modules | Backend tech debt; increasingly important after QA patches |
+| **#114** | WorkspaceBoard usage audit | User research / workflow validation |
+| **#112** | Related Topics versus column clarity | UX polish |
+| **#111** | Signal Stream filter as global panel motor | Bigger interaction model |
+| **#110** | Top Sources cap + source-click no recent signals | Backend/frontend bug |
+| **#109** | Evolution Graph to Workspace | Graph roadmap |
+| **#107** | Slow-loading panels: SWR + skeleton states | Performance polish |
+| **#106** | Brand loading animation | Brand identity; defer until product narrative stabilizes |
+| **#105** | Expand curated RSS feeds | Data coverage |
+| **#82** | Temporal narrative graph + workspace relationships | Graph roadmap |
+| **#80** | Session graph auto-build from navigation | Graph/workspace roadmap |
+| **#79** | Entity Intelligence layout + workspace graph | Graph/workspace roadmap |
+| **#70** | Theme clustering hierarchy layer | Backend research |
+| **#61** | Comparative engine UI | Large product surface |
+| **#46** | ACLED API access | Blocked externally |
 
 ---
 
 ## Recommended next order
 
-1. **#63** — Ephemeral Session Trail graph; keep it separate from pinned Workspace persistence.
-2. **#61** — Comparative Engine UI architecture and dense split-screen shell.
-3. **#62** — ESLint debt; avoid broad behavior changes while cleaning.
-4. **#73** — Backend performance path for true 168h concept aggregates.
-5. **#51** — Broader tolerant search work beyond the Spanish/country routing already shipped.
+1. **Close the implemented UX batch** — review and close #108, #119, #120, #121, #123, and #127 after visual QA. #121 now includes baseline-normalized hot-spot behavior, not only disclaimer copy.
+2. **Fix local QA hygiene** — apply or backfill missing local migrations, especially `theme_country_hourly_v2` and NLP columns, then rerun backend tests.
+3. **#122 / #110** — clean visible correctness bugs before adding new surfaces.
+4. **#126 / #112 / #107** — small UX/performance polish while the redesign is still active.
+5. **#124 / #80 / #82** — move toward guided investigation memory: saved searches, session graph, and temporal graph integration.
 
 ---
 
 ## Architecture snapshot
 
 ```
-Vercel (frontend)          Fly.io (backend)         Supabase (DB)
-─────────────────          ────────────────          ────────────
-frontend-v2/               backend/app/              signals_v2
-  App.tsx                    main_v2.py              events_v2
-  40+ .tsx components        30+ API endpoints       aggregates_*
-  MapLibre GL                GDELT ingest: 15min     wiki_pageviews_v2
-  DeckGL v9                  Wiki ingest: 24h        trends_v2 (empty)
-  react-force-graph-2d       Fly machine: iad
+Vercel (frontend)          Fly.io (backend)             Supabase (DB)
+─────────────────          ────────────────             ────────────
+frontend-v2/               backend/start.sh             signals_v2
+  App.tsx                    ingest watchdog             events_v2
+  40+ .tsx components        main_v2.py API              trends_v2
+  MapLibre GL                ingest_loop.py              wiki_pageviews_v2
+  DeckGL v9                  GDELT: 15min                country_hourly_v2
+  react-force-graph-2d       Google Trends RSS: 30min    country_daily_v2
+                             RSS curated: 60min         theme_country_hourly_v2
+                             ReliefWeb/OCHA: 60min      country_baseline_stats
+                             ACLED: 60min               aggregates_*
+                             Wikipedia: 24h
+                             NLP enrichment: background
+                             Fly machine: iad
 ```
 
 ### Critical rules (don't break these)

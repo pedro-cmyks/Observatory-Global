@@ -49,7 +49,7 @@ export const Legend: React.FC = () => {
             {/* Nodes Section */}
             <div style={{ marginBottom: '16px' }}>
                 <div
-                    data-tip="Nodes representing countries. Larger nodes indicate higher news volume."
+                    data-tip="Countries are colored by baseline-normalized attention. Volume is shown as evidence density, not importance."
                     style={{ color: 'var(--color-accent-primary)', fontSize: '10px', textTransform: 'uppercase', marginBottom: '8px', cursor: 'help' }}>
                     Nodes (Countries)
                 </div>
@@ -69,8 +69,8 @@ export const Legend: React.FC = () => {
                         <span className="metric-value" style={{ fontSize: '9px', color: 'var(--color-text-muted)' }}>&gt;1K</span>
                     </div>
                 </div>
-                <div data-tip="The size of the node represents the total number of news signals (mentions/articles) for that country." style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginBottom: '8px', cursor: 'help' }}>
-                    Size = Signal volume (log scale)
+                <div data-tip="The size of the node represents total observed signals on a log scale. Color/glow is the attention index versus that country's own baseline." style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginBottom: '8px', cursor: 'help' }}>
+                    Size = Evidence volume (log scale)
                 </div>
 
                 {/* Sentiment Colors */}
@@ -87,9 +87,9 @@ export const Legend: React.FC = () => {
                         <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--color-sentiment-negative)' }} />
                         <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>Negative tone</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} data-tip="Current signal volume is significantly higher (>2 standard deviations) than the 7-day rolling average.">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} data-tip="Current activity is significantly higher than that country's 7-day rolling baseline.">
                         <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--color-accent-secondary)', boxShadow: '0 0 8px var(--color-accent-secondary)' }} />
-                        <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>Anomaly (pulsing)</span>
+                        <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>Baseline spike</span>
                     </div>
                 </div>
             </div>

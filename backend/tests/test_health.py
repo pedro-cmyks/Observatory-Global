@@ -2,16 +2,19 @@
 
 import pytest
 from fastapi.testclient import TestClient
-from app.main import app
+from app.main_v2 import app
 
 client = TestClient(app)
 
 
 def test_health_check():
-    """Test health check endpoint returns ok status."""
+    """Test health check endpoint returns the current health payload."""
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    data = response.json()
+    assert data["status"] in {"healthy", "degraded", "error"}
+    assert "db_ok" in data
+    assert "timestamp" in data
 
 
 def test_health_check_content_type():

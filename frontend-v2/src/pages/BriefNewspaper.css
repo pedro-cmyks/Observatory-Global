@@ -271,11 +271,19 @@
 }
 .brief-country-option:hover { background: rgba(29, 158, 117, 0.1); color: #e2e8f0; }
 
+.brief-country-option.empty {
+    color: #64748b;
+}
+
 .brief-country-option-count {
     font-family: 'SF Mono', 'Fira Mono', monospace;
     font-size: 9px;
     color: #475569;
     flex-shrink: 0;
+}
+
+.brief-country-option.empty .brief-country-option-count {
+    color: #334155;
 }
 
 /* MAIN BODY */
@@ -364,6 +372,16 @@
     gap: 4px;
 }
 .brief-country-pill:hover { background: rgba(29, 158, 117, 0.1); border-color: rgba(29, 158, 117, 0.4); color: #e2e8f0; }
+
+.brief-empty-country {
+    grid-column: 1 / -1;
+    color: #94a3b8;
+}
+
+.brief-empty-country p {
+    margin: 0 0 18px;
+    line-height: 1.7;
+}
 
 .brief-pill-count {
     color: #475569;

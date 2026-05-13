@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
-import { resolveCountryName } from '../lib/countryNames'
+import { COUNTRY_OPTIONS, resolveCountryName } from '../lib/countryNames'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours, type TimeRange } from '../lib/timeRanges'
 import './BriefNewspaper.css'
 
@@ -62,7 +62,10 @@ interface ThemeSignal {
 export function BriefNewspaper() {
     const navigate = useNavigate()
     const [searchParams, setSearchParams] = useSearchParams()
-    const initialRange = (searchParams.get('range') as TimeRange) || '24h'
+    const rangeParam = searchParams.get('range')
+    const initialRange = TIME_RANGE_OPTIONS.includes(rangeParam as TimeRange)
+        ? (rangeParam as TimeRange)
+        : '24h'
 
     const [timeRange, setTimeRange] = useState<TimeRange>(initialRange)
     const [data, setData] = useState<BriefingData | null>(null)
@@ -87,10 +90,13 @@ export function BriefNewspaper() {
                 fetch(`/api/v2/briefing?hours=${h}`),
                 fetch(`/api/v2/briefing/insight?hours=${h}`)
             ])
+            if (!briefRes.ok) throw new Error(`Briefing request failed: ${briefRes.status}`)
             const briefData: BriefingData = await briefRes.json()
             setData(briefData)
-            const insightData = await insightRes.json()
-            if (insightData.insight) setInsight(insightData.insight)
+            if (insightRes.ok) {
+                const insightData = await insightRes.json()
+                if (insightData.insight) setInsight(insightData.insight)
+            }
 
             // Fetch top 3 headlines per top theme (parallel)
             const topThemes = briefData.top_themes?.slice(0, 6) ?? []
@@ -261,8 +267,14 @@ export function BriefNewspaper() {
                     <div className="brief-rule thin" />
 
                     {/* COUNTRY FILTER */}
-                    {data.top_countries.length > 0 && (() => {
-                        const allCountries = data.top_countries
+                    {(() => {
+                        const signalCounts = new Map(data.top_countries.map(c => [c.code, c.signals]))
+                        const apiNames = new Map(data.top_countries.map(c => [c.code, c.name]))
+                        const allCountries = COUNTRY_OPTIONS.map(c => ({
+                            code: c.code,
+                            name: resolveCountryName(c.code, apiNames.get(c.code) ?? c.name),
+                            signals: signalCounts.get(c.code) ?? 0,
+                        }))
                         const q = countryQuery.toLowerCase().trim()
                         const suggestions = q
                             ? allCountries.filter(c =>
@@ -270,6 +282,10 @@ export function BriefNewspaper() {
                                 c.code.toLowerCase().includes(q)
                               )
                             : allCountries
+                        suggestions.sort((a, b) => {
+                            if (b.signals !== a.signals) return b.signals - a.signals
+                            return a.name.localeCompare(b.name)
+                        })
                         const activeCountry = countryFilter
                             ? allCountries.find(c => c.code === countryFilter)
                             : null
@@ -286,7 +302,7 @@ export function BriefNewspaper() {
                                             className="brief-filter-clear"
                                             onClick={() => { setCountryFilter(null); setCountryQuery('') }}
                                         >
-                                            ×
+                                            x
                                         </button>
                                     </div>
                                 ) : (
@@ -305,7 +321,7 @@ export function BriefNewspaper() {
                                                 {suggestions.slice(0, 10).map(c => (
                                                     <button
                                                         key={c.code}
-                                                        className="brief-country-option"
+                                                        className={`brief-country-option${c.signals === 0 ? ' empty' : ''}`}
                                                         onMouseDown={e => e.preventDefault()}
                                                         onClick={() => {
                                                             setCountryFilter(c.code)
@@ -314,7 +330,7 @@ export function BriefNewspaper() {
                                                         }}
                                                     >
                                                         <span>{resolveCountryName(c.code, c.name)}</span>
-                                                        <span className="brief-country-option-count">{c.signals.toLocaleString()}</span>
+                                                        <span className="brief-country-option-count">{c.signals > 0 ? c.signals.toLocaleString() : 'no signals'}</span>
                                                     </button>
                                                 ))}
                                             </div>
@@ -330,7 +346,25 @@ export function BriefNewspaper() {
                     {/* THEME SECTIONS — main editorial body */}
                     <section className="brief-body">
                         <div className="brief-columns">
-                            {activeThemes.map((row, idx) => {
+                            {activeThemes.length === 0 && countryFilter ? (
+                                <article className="brief-article brief-empty-country">
+                                    <div className="brief-article-header">
+                                        <span className="brief-article-icon">◇</span>
+                                        <h2 className="brief-article-theme">No active themes for {resolveCountryName(countryFilter)}</h2>
+                                    </div>
+                                    <p>
+                                        Atlas has this country in the selector, but the current brief window has
+                                        no theme-level signal cluster for it. Open the console to inspect broader
+                                        context or expand the time range.
+                                    </p>
+                                    <button
+                                        className="brief-theme-link"
+                                        onClick={() => goToAtlas(`country=${countryFilter}`)}
+                                    >
+                                        Open country in Atlas →
+                                    </button>
+                                </article>
+                            ) : activeThemes.map((row, idx) => {
                                 const themeData = data.top_themes.find(t => t.theme === row.theme)
                                 const signals = themeSignals[row.theme] ?? []
                                 const isLead = idx === 0 && !countryFilter

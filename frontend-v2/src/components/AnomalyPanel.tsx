@@ -5,6 +5,7 @@ import { useFocusData } from '../contexts/FocusDataContext'
 import { resolveCountryName } from '../lib/countryNames'
 import { getThemeLabel } from '../lib/themeLabels'
 import { getPublicAttentionTopUrl } from '../lib/publicAttention'
+import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters'
 import './AnomalyPanel.css'
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -31,7 +32,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
     useEffect(() => {
         fetch(getPublicAttentionTopUrl(10))
             .then(r => r.ok ? r.json() : null)
-            .then(d => { setWikiArticles(d?.articles ?? []) })
+            .then(d => { setWikiArticles((d?.articles ?? []).filter((a: { title: string }) => isPublicAttentionRelevant(a.title))) })
             .catch(() => { setWikiError(true); setWikiArticles([]) })
             .finally(() => setWikiLoading(false))
     }, [])
