@@ -55,14 +55,25 @@ interface ThemeSignal {
     id: string | number
     headline: string
     source: string
+    country?: string
     country_code?: string
     published_at?: string
+    themes?: string[]
+}
+
+interface CountryBriefData {
+    countryCode: string
+    name: string
+    totalSignals: number
+    sentiment: number
+    themes: { name: string; count: number }[]
 }
 
 export function BriefNewspaper() {
     const navigate = useNavigate()
     const [searchParams, setSearchParams] = useSearchParams()
     const rangeParam = searchParams.get('range')
+    const countryParam = searchParams.get('country')?.toUpperCase() ?? null
     const initialRange = TIME_RANGE_OPTIONS.includes(rangeParam as TimeRange)
         ? (rangeParam as TimeRange)
         : '24h'
@@ -72,7 +83,10 @@ export function BriefNewspaper() {
     const [insight, setInsight] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
     const [themeSignals, setThemeSignals] = useState<Record<string, ThemeSignal[]>>({})
-    const [countryFilter, setCountryFilter] = useState<string | null>(null)
+    const [countryFilter, setCountryFilter] = useState<string | null>(countryParam)
+    const [countryDetail, setCountryDetail] = useState<CountryBriefData | null>(null)
+    const [countryLoading, setCountryLoading] = useState(false)
+    const [countryError, setCountryError] = useState<string | null>(null)
     const [countryQuery, setCountryQuery] = useState('')
     const [showCountryDropdown, setShowCountryDropdown] = useState(false)
     const countryInputRef = useRef<HTMLInputElement>(null)
@@ -124,9 +138,86 @@ export function BriefNewspaper() {
         fetchData(hours)
     }, [hours, fetchData])
 
+    useEffect(() => {
+        if (!countryFilter) {
+            setCountryDetail(null)
+            setCountryError(null)
+            return
+        }
+
+        let cancelled = false
+        setCountryLoading(true)
+        setCountryError(null)
+
+        Promise.all([
+            fetch(`/api/v2/nodes?focus_type=country&focus_value=${countryFilter}&hours=${hours}&limit=5`)
+                .then(async r => {
+                    if (!r.ok) throw new Error(`Country summary request failed: ${r.status}`)
+                    return r.json()
+                }),
+            fetch(`/api/v2/signals?country_code=${countryFilter}&hours=${hours}&limit=500`)
+                .then(async r => {
+                    if (!r.ok) throw new Error(`Country signals request failed: ${r.status}`)
+                    return r.json()
+                })
+        ])
+            .then(([nodeData, signalData]) => {
+                if (cancelled) return
+                const node = nodeData.nodes?.[0]
+                const signals: ThemeSignal[] = Array.isArray(signalData)
+                    ? signalData
+                    : (signalData.signals ?? [])
+                const themeCounts = new Map<string, number>()
+                const countrySignalMap: Record<string, ThemeSignal[]> = {}
+
+                signals.forEach(signal => {
+                    ;(signal.themes ?? []).forEach(theme => {
+                        themeCounts.set(theme, (themeCounts.get(theme) ?? 0) + 1)
+                        if (!countrySignalMap[theme]) countrySignalMap[theme] = []
+                        if (countrySignalMap[theme].length < 3) {
+                            countrySignalMap[theme].push({
+                                ...signal,
+                                country_code: signal.country_code ?? signal.country
+                            })
+                        }
+                    })
+                })
+
+                const countryData: CountryBriefData = {
+                    countryCode: countryFilter,
+                    name: node?.name ?? resolveCountryName(countryFilter),
+                    totalSignals: node?.signalCount ?? signals.length,
+                    sentiment: node?.sentiment ?? 0,
+                    themes: [...themeCounts.entries()]
+                        .map(([name, count]) => ({ name, count }))
+                        .sort((a, b) => b.count - a.count)
+                        .slice(0, 10)
+                }
+                setCountryDetail(countryData)
+                setThemeSignals(prev => ({ ...prev, ...countrySignalMap }))
+            })
+            .catch(e => {
+                if (cancelled) return
+                setCountryDetail(null)
+                setCountryError(e instanceof Error ? e.message : 'Country data unavailable')
+            })
+            .finally(() => {
+                if (!cancelled) setCountryLoading(false)
+            })
+
+        return () => { cancelled = true }
+    }, [countryFilter, hours])
+
     const handleRangeChange = (range: TimeRange) => {
         setTimeRange(range)
-        setSearchParams({ range })
+        setSearchParams(countryFilter ? { range, country: countryFilter } : { range })
+    }
+
+    const selectCountry = (code: string | null) => {
+        setCountryFilter(code)
+        setCountryQuery('')
+        setShowCountryDropdown(false)
+        setSearchParams(code ? { range: timeRange, country: code } : { range: timeRange })
     }
 
     const goToAtlas = (params?: string) => {
@@ -143,7 +234,18 @@ export function BriefNewspaper() {
             : row.countries
     })).filter(row => !countryFilter || row.countries.length > 0)
 
-    const activeThemes = filteredThemeCountry ?? data?.top_themes?.slice(0, 6).map(t => ({
+    const countryThemes = countryFilter && countryDetail
+        ? countryDetail.themes.slice(0, 6).map(t => ({
+            theme: t.name,
+            countries: [{
+                code: countryFilter,
+                name: countryDetail.name,
+                count: t.count
+            }]
+        }))
+        : null
+
+    const activeThemes = countryThemes ?? filteredThemeCountry ?? data?.top_themes?.slice(0, 6).map(t => ({
         theme: t.theme,
         countries: []
     })) ?? []
@@ -151,14 +253,19 @@ export function BriefNewspaper() {
     const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
     const signalMap = data
-        ? new Map(data.top_countries.map(c => [c.code, c.signals]))
+        ? new Map([
+            ...data.top_countries.map(c => [c.code, c.signals] as const),
+            ...(countryFilter && countryDetail ? [[countryFilter, countryDetail.totalSignals] as const] : [])
+        ])
         : new Map<string, number>()
     const maxSignals = data
-        ? Math.max(1, ...data.top_countries.map(c => c.signals))
+        ? Math.max(1, ...data.top_countries.map(c => c.signals), countryDetail?.totalSignals ?? 0)
         : 1
-    const maxThemeCount = data?.top_themes.length
-        ? Math.max(1, ...data.top_themes.map(t => t.count))
-        : 1
+    const maxThemeCount = countryDetail?.themes.length
+        ? Math.max(1, ...countryDetail.themes.map(t => t.count))
+        : data?.top_themes.length
+            ? Math.max(1, ...data.top_themes.map(t => t.count))
+            : 1
 
     return (
         <div className="brief-page">
@@ -269,7 +376,13 @@ export function BriefNewspaper() {
                     {/* COUNTRY FILTER */}
                     {(() => {
                         const signalCounts = new Map(data.top_countries.map(c => [c.code, c.signals]))
+                        if (countryFilter && countryDetail) {
+                            signalCounts.set(countryFilter, countryDetail.totalSignals)
+                        }
                         const apiNames = new Map(data.top_countries.map(c => [c.code, c.name]))
+                        if (countryFilter && countryDetail) {
+                            apiNames.set(countryFilter, countryDetail.name)
+                        }
                         const allCountries = COUNTRY_OPTIONS.map(c => ({
                             code: c.code,
                             name: resolveCountryName(c.code, apiNames.get(c.code) ?? c.name),
@@ -300,7 +413,7 @@ export function BriefNewspaper() {
                                         </span>
                                         <button
                                             className="brief-filter-clear"
-                                            onClick={() => { setCountryFilter(null); setCountryQuery('') }}
+                                            onClick={() => selectCountry(null)}
                                         >
                                             x
                                         </button>
@@ -323,14 +436,10 @@ export function BriefNewspaper() {
                                                         key={c.code}
                                                         className={`brief-country-option${c.signals === 0 ? ' empty' : ''}`}
                                                         onMouseDown={e => e.preventDefault()}
-                                                        onClick={() => {
-                                                            setCountryFilter(c.code)
-                                                            setCountryQuery('')
-                                                            setShowCountryDropdown(false)
-                                                        }}
+                                                        onClick={() => selectCountry(c.code)}
                                                     >
                                                         <span>{resolveCountryName(c.code, c.name)}</span>
-                                                        <span className="brief-country-option-count">{c.signals > 0 ? c.signals.toLocaleString() : 'no signals'}</span>
+                                                        <span className="brief-country-option-count">{c.signals > 0 ? c.signals.toLocaleString() : 'not in top countries'}</span>
                                                     </button>
                                                 ))}
                                             </div>
@@ -346,16 +455,24 @@ export function BriefNewspaper() {
                     {/* THEME SECTIONS — main editorial body */}
                     <section className="brief-body">
                         <div className="brief-columns">
-                            {activeThemes.length === 0 && countryFilter ? (
+                            {countryLoading && countryFilter ? (
                                 <article className="brief-article brief-empty-country">
                                     <div className="brief-article-header">
                                         <span className="brief-article-icon">◇</span>
-                                        <h2 className="brief-article-theme">No active themes for {resolveCountryName(countryFilter)}</h2>
+                                        <h2 className="brief-article-theme">Loading themes for {resolveCountryName(countryFilter)}</h2>
+                                    </div>
+                                    <p>Checking this country's current signal clusters for the selected brief window.</p>
+                                </article>
+                            ) : activeThemes.length === 0 && countryFilter ? (
+                                <article className="brief-article brief-empty-country">
+                                    <div className="brief-article-header">
+                                        <span className="brief-article-icon">◇</span>
+                                        <h2 className="brief-article-theme">No active signals for {resolveCountryName(countryFilter)}</h2>
                                     </div>
                                     <p>
-                                        Atlas has this country in the selector, but the current brief window has
-                                        no theme-level signal cluster for it. Open the console to inspect broader
-                                        context or expand the time range.
+                                        {countryError
+                                            ? 'Atlas could not load this country brief right now. Open the console to inspect broader context or expand the time range.'
+                                            : 'Atlas has this country in the selector, but the current brief window has no country-level signals available.'}
                                     </p>
                                     <button
                                         className="brief-theme-link"
@@ -365,7 +482,9 @@ export function BriefNewspaper() {
                                     </button>
                                 </article>
                             ) : activeThemes.map((row, idx) => {
-                                const themeData = data.top_themes.find(t => t.theme === row.theme)
+                                const themeData = countryFilter && countryDetail
+                                    ? { theme: row.theme, count: row.countries[0]?.count ?? 0 }
+                                    : data.top_themes.find(t => t.theme === row.theme)
                                 const signals = themeSignals[row.theme] ?? []
                                 const isLead = idx === 0 && !countryFilter
                                 return (
