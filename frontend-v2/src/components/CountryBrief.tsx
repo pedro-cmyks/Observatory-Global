@@ -79,25 +79,26 @@ interface CountryAnomaly {
     level?: string;
 }
 
-interface CountryDetailResponse {
-    totalSignals?: number;
-    themes?: Array<{ name: string; count: number }>;
-    sources?: Array<{ name: string; count: number }>;
-    keyPersons?: KeyPerson[];
-    sentiment?: number;
-    foreignSourcePct?: number | null;
-}
-
 interface SignalResponseItem {
     url?: string;
     source?: string;
     timestamp?: string;
     sentiment?: number;
     themes?: string[];
+    persons?: string[];
 }
 
 interface SignalsResponse {
     signals?: SignalResponseItem[];
+}
+
+interface NodesResponse {
+    nodes?: Array<{
+        id?: string;
+        countryCode?: string;
+        signalCount?: number;
+        sentiment?: number;
+    }>;
 }
 
 interface CountryBriefProps {
@@ -114,6 +115,18 @@ interface CountryBriefProps {
 const getCountryFlag = (code: string): string => {
     return code;
 };
+
+function incrementCount(map: Map<string, number>, value: string | undefined) {
+    if (!value) return;
+    map.set(value, (map.get(value) ?? 0) + 1);
+}
+
+function topCounts(map: Map<string, number>, limit: number): Array<{ name: string; count: number }> {
+    return [...map.entries()]
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, limit);
+}
 
 // Sentiment color
 const getSentimentColor = (sentiment: number): string => {
@@ -171,85 +184,95 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
     }
 
     useEffect(() => {
+        const controller = new AbortController();
+
         const fetchData = async () => {
             setLoading(true);
             setError(null);
+            setIndicators(null);
 
             try {
-                // Fetch country detail
-                const detailRes = await fetch(
-                    `/api/v2/country/${countryCode}?hours=${timeWindow}`
-                );
-                if (!detailRes.ok) {
-                    throw new Error(`Failed to fetch country data: ${detailRes.status}`);
-                }
-                const detail = await detailRes.json() as CountryDetailResponse;
+                const [nodeRes, indicatorsRes, signalsRes] = await Promise.all([
+                    fetch(`/api/v2/nodes?focus_type=country&focus_value=${countryCode}&hours=${timeWindow}&limit=1`, { signal: controller.signal }),
+                    fetch(`/api/indicators/country/${countryCode}?hours=${timeWindow}`, { signal: controller.signal }),
+                    fetch(`/api/v2/signals?country_code=${countryCode}&hours=${timeWindow}&limit=500`, { signal: controller.signal }),
+                ]);
 
-                // Fetch indicators
-                const indicatorsRes = await fetch(
-                    `/api/indicators/country/${countryCode}?hours=${timeWindow}`
-                );
+                if (!signalsRes.ok) {
+                    throw new Error(`Failed to fetch country signals: ${signalsRes.status}`);
+                }
+
+                const nodeData = nodeRes.ok ? await nodeRes.json() as NodesResponse : null;
                 let indicatorsData = null;
                 if (indicatorsRes.ok) {
                     indicatorsData = await indicatorsRes.json();
-                    if (!indicatorsData.error) {
-                        setIndicators(indicatorsData);
-                    }
+                    if (!indicatorsData.error && !controller.signal.aborted) setIndicators(indicatorsData);
                 }
 
-                // Fetch signals for top stories
-                const signalsRes = await fetch(
-                    `/api/v2/signals?country_code=${countryCode}&hours=${timeWindow}&limit=10`
-                );
-                let topStories: Story[] = [];
-                if (signalsRes.ok) {
-                    const signals = await signalsRes.json() as SignalsResponse;
-                    topStories = (signals.signals || [])
-                        .filter((s): s is SignalResponseItem & { url: string } => Boolean(s.url))
-                        .map((s) => {
-                            const themes: string[] = Array.isArray(s.themes) ? s.themes : [];
-                            const primaryTheme = themes.find(
-                                (t: string) => t && !t.startsWith('WORLDLANGUAGES_') && !t.startsWith('TAX_WORLDLANGUAGES_')
-                            ) || themes[0] || '';
-                            return {
-                                url: s.url,
-                                source: s.source || extractDomain(s.url),
-                                timestamp: s.timestamp || new Date().toISOString(),
-                                sentiment: s.sentiment || 0,
-                                themeCode: primaryTheme
-                            };
-                        });
-                }
+                const signalsPayload = await signalsRes.json() as SignalsResponse;
+                const signals = signalsPayload.signals || [];
+                const themeCounts = new Map<string, number>();
+                const sourceCounts = new Map<string, number>();
+                const personCounts = new Map<string, number>();
+                let sentimentTotal = 0;
 
-                // Determine sentiment trend (simplified - would need historical data)
+                signals.forEach(signal => {
+                    sentimentTotal += signal.sentiment || 0;
+                    incrementCount(sourceCounts, signal.source || (signal.url ? extractDomain(signal.url) : undefined));
+                    (signal.themes || []).forEach(theme => incrementCount(themeCounts, theme));
+                    (signal.persons || []).forEach(person => incrementCount(personCounts, person));
+                });
+
+                const topStories: Story[] = signals
+                    .filter((s): s is SignalResponseItem & { url: string } => Boolean(s.url))
+                    .slice(0, 10)
+                    .map((s) => {
+                        const themes: string[] = Array.isArray(s.themes) ? s.themes : [];
+                        const primaryTheme = themes.find(
+                            (t: string) => t && !t.startsWith('WORLDLANGUAGES_') && !t.startsWith('TAX_WORLDLANGUAGES_')
+                        ) || themes[0] || '';
+                        return {
+                            url: s.url,
+                            source: s.source || extractDomain(s.url),
+                            timestamp: s.timestamp || new Date().toISOString(),
+                            sentiment: s.sentiment || 0,
+                            themeCode: primaryTheme
+                        };
+                    });
+
+                const node = nodeData?.nodes?.[0];
+                const sentiment = node?.sentiment ?? (signals.length > 0 ? sentimentTotal / signals.length : 0);
                 let sentimentTrend: 'improving' | 'declining' | 'stable' = 'stable';
-                const sentiment = detail.sentiment || 0;
                 if (sentiment > 0.5) sentimentTrend = 'improving';
                 else if (sentiment < -0.5) sentimentTrend = 'declining';
 
+                if (controller.signal.aborted) return;
                 setData({
                     country_code: countryCode,
                     hours: timeWindow,
-                    signal_count: detail.totalSignals || 0,
-                    top_themes: detail.themes || [],
-                    top_sources: detail.sources || [],
-                    keyPersons: selectVisibleKeyPersons(detail.keyPersons || []),
+                    signal_count: node?.signalCount ?? signals.length,
+                    top_themes: topCounts(themeCounts, 12),
+                    top_sources: topCounts(sourceCounts, 8),
+                    keyPersons: selectVisibleKeyPersons(topCounts(personCounts, 20)),
                     avg_sentiment: sentiment,
                     sentiment_trend: sentimentTrend,
                     top_stories: topStories,
                     indicators: indicatorsData,
-                    foreignSourcePct: detail.foreignSourcePct ?? null,
+                    foreignSourcePct: null,
                 });
             } catch (err) {
+                if (controller.signal.aborted) return;
                 setError(err instanceof Error ? err.message : 'Failed to load data');
             } finally {
-                setLoading(false);
+                if (!controller.signal.aborted) setLoading(false);
             }
         };
 
         if (countryCode) {
             fetchData();
         }
+
+        return () => controller.abort();
     }, [countryCode, timeWindow]);
 
     if (loading) {

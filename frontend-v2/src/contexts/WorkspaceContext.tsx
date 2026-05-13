@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useMemo, useCallback, type ReactNode } from 'react'
 import { buildWorkspaceGraph, type WorkspaceGraph } from '../lib/workspaceGraph'
 import { buildWorkspaceMarkdown } from '../lib/exportFormatters'
 
@@ -145,39 +145,40 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         return () => controller.abort()
     }, [items, sessionItems])
 
-    const pinItem = (item: Omit<PinnedItem, 'notes' | 'timestamp'>) => {
+    const pinItem = useCallback((item: Omit<PinnedItem, 'notes' | 'timestamp'>) => {
         setItems(prev => {
             if (prev.find(i => i.id === item.id)) return prev
             return [{ ...item, notes: '', timestamp: Date.now() }, ...prev]
         })
         setIsOpen(true) // auto-open workspace when pinning
-    }
+    }, [])
 
-    const unpinItem = (id: string) => {
+    const unpinItem = useCallback((id: string) => {
         setItems(prev => prev.filter(i => i.id !== id))
-    }
+    }, [])
 
-    const updateNotes = (id: string, notes: string) => {
+    const updateNotes = useCallback((id: string, notes: string) => {
         setItems(prev => prev.map(i => i.id === id ? { ...i, notes } : i))
-    }
+    }, [])
 
-    const isPinned = (id: string) => items.some(i => i.id === id)
+    const isPinned = useCallback((id: string) => items.some(i => i.id === id), [items])
     
-    const trackVisit = (item: Omit<PinnedItem, 'notes' | 'timestamp'>) => {
+    const trackVisit = useCallback((item: Omit<PinnedItem, 'notes' | 'timestamp'>) => {
         // Only track if it's not already pinned
         if (items.some(i => i.id === item.id)) return;
         
         setSessionItems(prev => {
             const filtered = prev.filter(i => i.id !== item.id)
+            if (filtered.length !== prev.length && prev[0]?.id === item.id) return prev
             return [{ ...item, notes: '', timestamp: Date.now() }, ...filtered].slice(0, 20)
         })
-    }
+    }, [items])
 
-    const clearSession = () => setSessionItems([])
+    const clearSession = useCallback(() => setSessionItems([]), [])
 
     const graph = useMemo(() => buildWorkspaceGraph({ items, sessionItems, details }), [items, sessionItems, details])
 
-    const exportWorkspace = () => {
+    const exportWorkspace = useCallback(() => {
         const md = buildWorkspaceMarkdown({ items, details })
 
         const blob = new Blob([md], { type: 'text/markdown' })
@@ -189,7 +190,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
-    }
+    }, [details, items])
 
     return (
         <WorkspaceContext.Provider value={{ isOpen, setIsOpen, items, graph, graphLoading, graphError, pinItem, unpinItem, updateNotes, isPinned, exportWorkspace, sessionItems, trackVisit, clearSession }}>

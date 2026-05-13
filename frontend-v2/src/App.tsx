@@ -476,24 +476,19 @@ function AppContent() {
   const [sizeBoost, setSizeBoost] = useState(false)
   const [showFlows, setShowFlows] = useState(false)
 
-  // Fetch country detail
-  const fetchCountryDetail = async (countryCode: string) => {
-    try {
-      const hours = timeRangeToHours(timeRange)
-      const res = await fetch(`/api/v2/country/${countryCode}?hours=${hours}`)
-      const data = await res.json()
-      setSelectedCountry(data)
-    } catch (error) {
-      console.error('Failed to fetch country detail:', error)
-    }
-  }
-
   // Click handlers
   function handleCountryClick(countryCode: string) {
     setSelectedPublicAttention(null)
     setSelectedCountryCode(countryCode)
+    setSelectedCountry({
+      countryCode,
+      name: resolveCountryName(countryCode),
+      totalSignals: 0,
+      sentiment: 0,
+      themes: [],
+      sources: [],
+    })
     setShowFlows(true)
-    fetchCountryDetail(countryCode)
   }
 
   // Theme selection handlers
@@ -764,6 +759,12 @@ function AppContent() {
 
   // Total signals for stats
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
+  const openBrief = () => {
+    const params = new URLSearchParams()
+    params.set('range', timeRange)
+    if (selectedCountryCode) params.set('country', selectedCountryCode)
+    navigate(`/brief?${params.toString()}`)
+  }
 
   // Data coverage start date
   const [dataStartDate, setDataStartDate] = useState<string | null>(null)
@@ -854,7 +855,7 @@ function AppContent() {
           </div>
           <UtcClock />
           {/* <CrisisToggle /> - Hidden per visual clarity update */}
-          <button className="cmd-btn" data-tour="brief-button" onClick={() => navigate('/brief')}>
+          <button className="cmd-btn" data-tour="brief-button" onClick={openBrief}>
             <ClipboardList size={13} /> BRIEF
           </button>
           <button
@@ -1470,7 +1471,7 @@ function AppContent() {
       )}
       <OnboardingCoachmark
         runId={tourRunId}
-        onOpenBrief={() => navigate('/brief')}
+        onOpenBrief={openBrief}
         onOpenWorkspace={() => setIsOpen(true)}
       />
     </div>

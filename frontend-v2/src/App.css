@@ -238,12 +238,11 @@
 }
 
 .coverage-disclaimer {
-  position: fixed;
-  top: 58px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 80;
+  position: relative;
+  z-index: 20;
+  width: fit-content;
   max-width: min(760px, calc(100vw - 32px));
+  margin: 8px auto 6px;
   padding: 6px 12px;
   border: 1px solid rgba(245, 158, 11, 0.22);
   border-radius: 999px;
@@ -255,7 +254,7 @@
   letter-spacing: 0.04em;
   text-align: center;
   backdrop-filter: blur(12px);
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .cmd-btn--reset {
@@ -746,10 +745,10 @@
   }
 
   .coverage-disclaimer {
-    top: 104px;
     font-size: 9px;
     line-height: 1.35;
     border-radius: 6px;
+    margin: 6px auto 4px;
   }
 
   .time-controls {
