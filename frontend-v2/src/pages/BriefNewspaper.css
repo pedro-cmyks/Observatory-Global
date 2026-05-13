@@ -643,6 +643,10 @@
     display: block;
 }
 
+.brief-minimap path {
+    cursor: pointer;
+}
+
 .brief-minimap-label {
     font-family: 'SF Mono', 'Fira Mono', monospace;
     font-size: 9px;

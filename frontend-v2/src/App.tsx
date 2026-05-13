@@ -347,7 +347,9 @@ function AppContent() {
   // State
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
   const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null)
-  const [selectedTheme, setSelectedTheme] = useState<{ theme: string, originCountry?: string, originCountryName?: string } | null>(null)
+  type SelectedTheme = { theme: string, originCountry?: string, originCountryName?: string }
+  const [selectedTheme, setSelectedTheme] = useState<SelectedTheme | null>(null)
+  const [themeBackStack, setThemeBackStack] = useState<SelectedTheme[]>([])
   const [selectedPublicAttention, setSelectedPublicAttention] = useState<PublicAttentionSelection | null>(null)
   const [selectedChokepoint, setSelectedChokepoint] = useState<Chokepoint | null>(null)
   const [rightPanelThemeCountry, setRightPanelThemeCountry] = useState<{ code: string, name: string } | null>(null)
@@ -367,7 +369,6 @@ function AppContent() {
 
   const mapRef = useRef<MapRef>(null)
   const isGlobe = false
-  const hasAutoFocused = useRef(false)
 
   // Focus hook for click-to-focus
   const { setFocus, focus, clearFocus, filter, setTheme, mapFlyCountry, setMapFlyCountry } = useFocus()
@@ -494,12 +495,15 @@ function AppContent() {
   // Theme selection handlers
   const handleThemeSelect = (theme: string, countryCode?: string, countryName?: string) => {
     setSelectedPublicAttention(null)
-    setSelectedTheme({ theme, originCountry: countryCode, originCountryName: countryName })
-    if (countryCode && countryName) {
-      setRightPanelThemeCountry({ code: countryCode, name: countryName })
-    } else {
-      setRightPanelThemeCountry(null)
-    }
+    setTheme(theme)
+    const nextTheme = { theme, originCountry: countryCode, originCountryName: countryName }
+    setSelectedTheme(prev => {
+      if (prev && prev.theme !== theme) {
+        setThemeBackStack(stack => [prev, ...stack].slice(0, 5))
+      }
+      return nextTheme
+    })
+    setRightPanelThemeCountry(null)
   }
 
   const handlePublicAttentionSelect = (item: PublicAttentionSelection) => {
@@ -520,19 +524,7 @@ function AppContent() {
   // Focus-aware data from provider - auto-refetches when focus/range changes
   const { nodes, flows, unfilteredFlows, acledConflicts, loading, isRefetching, refetch, timeRange, setTimeRange } = useFocusData()
 
-  // Auto-focus on highest baseline-normalized attention region at load
-  useEffect(() => {
-    if (nodes.length > 0 && !hasAutoFocused.current && mapReady) {
-      hasAutoFocused.current = true
-      const hottest = pickTopAttentionNode(nodes)
-      mapRef.current?.getMap()?.flyTo({
-        center: [hottest.lon, hottest.lat],
-        zoom: 2.5,
-        duration: 2500,
-        essential: true
-      })
-    }
-  }, [nodes, mapReady])
+  // Initial map stays global. The hotspot reset button performs focused fly-to on demand.
 
   // Fly to top country when theme clicked in NarrativeThreads
   useEffect(() => {
@@ -568,11 +560,13 @@ function AppContent() {
 
   // Open ThemeDetail when theme is focused via FocusContext (e.g. NarrativeThreads click)
   useEffect(() => {
-    if (filter.theme && (!selectedTheme || selectedTheme.theme !== filter.theme)) {
-      setSelectedTheme({ theme: filter.theme })
+    const filterCountry = filter.country || undefined
+    if (filter.theme && (!selectedTheme || selectedTheme.theme !== filter.theme || selectedTheme.originCountry !== filterCountry)) {
+      const countryName = filter.country ? resolveCountryName(filter.country) : undefined
+      setSelectedTheme({ theme: filter.theme, originCountry: filterCountry, originCountryName: countryName })
       setRightPanelThemeCountry(null)
     }
-  }, [filter.theme])
+  }, [filter.theme, filter.country, selectedTheme])
 
   // Close CountryBrief when country focus is cleared externally (pill X button)
   useEffect(() => {
@@ -1128,11 +1122,11 @@ function AppContent() {
         {/* Panel 2: SIGNAL STREAM — the intel hub, swaps based on active context */}
         {(() => {
           const isPerson = focus.type === 'person' && !!focus.value
-          const isCountry = !!selectedCountryCode && !isPerson
-          const isTheme = !!selectedTheme && !isPerson && !isCountry
+          const isTheme = !!selectedTheme && !isPerson
+          const isCountry = !!selectedCountryCode && !isPerson && !isTheme
           const isPublicAttention = !!selectedPublicAttention && !isPerson && !isCountry && !isTheme
           const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme && !isPublicAttention
-          const closeAll = () => { setSelectedTheme(null); setSelectedPublicAttention(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null) }
+          const closeAll = () => { setSelectedTheme(null); setThemeBackStack([]); setSelectedPublicAttention(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null) }
           // Smart back: one step up, not all the way to stream
           const handleStreamBack = () => {
             if (prevStreamCtx?.type === 'chokepoint') {
@@ -1146,6 +1140,18 @@ function AppContent() {
             } else {
               closeAll()
             }
+          }
+          const handleThemeBack = () => {
+            const [previous, ...rest] = themeBackStack
+            if (!previous) {
+              handleStreamBack()
+              return
+            }
+            setSelectedTheme(previous)
+            setThemeBackStack(rest)
+            setRightPanelThemeCountry(previous.originCountry && previous.originCountryName
+              ? { code: previous.originCountry, name: previous.originCountryName }
+              : null)
           }
           const backLabel = prevStreamCtx?.type === 'chokepoint'
             ? `← ${prevStreamCtx.cp.name}`
@@ -1174,7 +1180,9 @@ function AppContent() {
             </>
           )
           if (isTheme) panelTitle = <>
-            <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
+            <button className="drill-back-btn" onClick={themeBackStack.length > 0 ? handleThemeBack : handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>
+              {themeBackStack.length > 0 ? `← ${themeBackStack[0].theme.replace(/_/g, ' ').slice(0, 20)}` : '← STREAM'}
+            </button>
             <span style={{ color: '#94a3b8' }}>{selectedTheme!.theme.replace(/_/g, ' ').slice(0, 26)}</span>
           </>
           if (isCountry) panelTitle = <>
@@ -1229,6 +1237,7 @@ function AppContent() {
                     theme={selectedTheme!.theme}
                     originCountry={selectedTheme!.originCountry}
                     originCountryName={selectedTheme!.originCountryName}
+                    initialDrillCountry={selectedTheme!.originCountry}
                     hours={timeRangeToHours(timeRange)}
                     onClose={closeAll}
                     onThemeSelect={(theme) => handleThemeSelect(theme)}

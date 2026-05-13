@@ -9,6 +9,7 @@ import { getThemeLabel } from '../lib/themeLabels';
 import { selectVisibleKeyPersons, type KeyPerson } from '../lib/countryBriefPeople';
 import { buildCountryBriefMarkdown, sanitizeFilenamePart } from '../lib/exportFormatters';
 import { resolveCountryName } from '../lib/countryNames';
+import { useFocusData } from '../contexts/FocusDataContext';
 
 // ThemeChange interface reserved for future use
 // interface ThemeChange {
@@ -162,6 +163,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
     const [error, setError] = useState<string | null>(null);
     const { pinItem, unpinItem, isPinned } = useWorkspace();
     const { setPerson } = useFocus();
+    const { summary } = useFocusData();
     const pinned = isPinned(`country-${countryCode}`);
 
     const downloadMarkdown = (filename: string, content: string) => {
@@ -241,6 +243,13 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     });
 
                 const node = nodeData?.nodes?.[0];
+                const focusSummary = summary?.focus.type === 'country' && summary.focus.value === countryCode
+                    ? summary
+                    : null;
+                const summarySources = focusSummary?.top_sources.map(source => ({
+                    name: source.source,
+                    count: source.count,
+                })) ?? [];
                 const sentiment = node?.sentiment ?? (signals.length > 0 ? sentimentTotal / signals.length : 0);
                 let sentimentTrend: 'improving' | 'declining' | 'stable' = 'stable';
                 if (sentiment > 0.5) sentimentTrend = 'improving';
@@ -250,9 +259,9 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 setData({
                     country_code: countryCode,
                     hours: timeWindow,
-                    signal_count: node?.signalCount ?? signals.length,
+                    signal_count: focusSummary?.summary.total_signals ?? node?.signalCount ?? signals.length,
                     top_themes: topCounts(themeCounts, 12),
-                    top_sources: topCounts(sourceCounts, 8),
+                    top_sources: summarySources.length > 0 ? summarySources : topCounts(sourceCounts, 8),
                     keyPersons: selectVisibleKeyPersons(topCounts(personCounts, 20)),
                     avg_sentiment: sentiment,
                     sentiment_trend: sentimentTrend,
@@ -273,7 +282,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
         }
 
         return () => controller.abort();
-    }, [countryCode, timeWindow]);
+    }, [countryCode, timeWindow, summary]);
 
     if (loading) {
         return (

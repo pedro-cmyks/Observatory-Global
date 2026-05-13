@@ -52,6 +52,24 @@ Follow-up backend hygiene:
 
 ---
 
+## Brief-to-console flow pass (2026-05-13)
+
+Implemented the first slice of #111-style panel orchestration:
+- `/brief` now treats country filters as first-class context: the top stat bar, analysis copy, and map emphasis switch from global to selected-country mode.
+- The brief minimap remains global by default, but clicking a country selects it; when a country is selected, other countries dim and the selected country receives the strongest emphasis.
+- Brief theme CTAs now deep-link to `/app?theme=<theme>&country=<country>` when country context exists, so a topic like Public Sector opens directly as a country-scoped ThemeDetail in the console.
+- `/app` no longer auto-flies to the highest-volume/baseline country on initial load; the globe starts global and the hotspot fly-to remains available through the reset/hotspot button.
+- ThemeDetail preserves country-scoped pivots from Brief/CountryBrief via `initialDrillCountry`.
+- Related theme navigation now maintains a small in-panel back stack, so clicking a related topic no longer strands the analyst without a way back to the previous narrative.
+- CountryBrief source lists now prefer the focus summary top sources when available, instead of relying only on the first 500 recent signals.
+
+Related issues:
+- #111 — Signal Stream/filter as global panel motor.
+- #107 — remaining slow-panel work: add SWR/cache and richer skeletons.
+- #112 — related-topic clarity remains open for deeper Related Investigations copy and behavior.
+
+---
+
 ## What we built (sessions 1–9)
 
 ### Core infrastructure (sessions 1–3)

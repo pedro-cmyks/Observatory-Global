@@ -59,6 +59,7 @@ interface ThemeSignal {
     country_code?: string
     published_at?: string
     themes?: string[]
+    sentiment?: number
 }
 
 interface CountryBriefData {
@@ -66,6 +67,7 @@ interface CountryBriefData {
     name: string
     totalSignals: number
     sentiment: number
+    sources: number
     themes: { name: string; count: number }[]
 }
 
@@ -168,9 +170,13 @@ export function BriefNewspaper() {
                     ? signalData
                     : (signalData.signals ?? [])
                 const themeCounts = new Map<string, number>()
+                const sourceNames = new Set<string>()
                 const countrySignalMap: Record<string, ThemeSignal[]> = {}
+                let sentimentTotal = 0
 
                 signals.forEach(signal => {
+                    if (signal.source) sourceNames.add(signal.source)
+                    sentimentTotal += Number((signal as ThemeSignal & { sentiment?: number }).sentiment ?? 0)
                     ;(signal.themes ?? []).forEach(theme => {
                         themeCounts.set(theme, (themeCounts.get(theme) ?? 0) + 1)
                         if (!countrySignalMap[theme]) countrySignalMap[theme] = []
@@ -187,7 +193,8 @@ export function BriefNewspaper() {
                     countryCode: countryFilter,
                     name: node?.name ?? resolveCountryName(countryFilter),
                     totalSignals: node?.signalCount ?? signals.length,
-                    sentiment: node?.sentiment ?? 0,
+                    sentiment: node?.sentiment ?? (signals.length ? sentimentTotal / signals.length : 0),
+                    sources: sourceNames.size,
                     themes: [...themeCounts.entries()]
                         .map(([name, count]) => ({ name, count }))
                         .sort((a, b) => b.count - a.count)
@@ -224,6 +231,13 @@ export function BriefNewspaper() {
         navigate(`/app${params ? `?${params}` : ''}`)
     }
 
+    const atlasThemeParams = (theme: string, country?: string | null) => {
+        const params = new URLSearchParams()
+        params.set('theme', theme)
+        if (country) params.set('country', country)
+        return params.toString()
+    }
+
     const moodLabel = (s: number) => s > 0.15 ? 'POSITIVE' : s < -0.15 ? 'NEGATIVE' : 'NEUTRAL'
     const moodClass = (s: number) => s > 0.15 ? 'mood-positive' : s < -0.15 ? 'mood-negative' : 'mood-neutral'
 
@@ -249,6 +263,19 @@ export function BriefNewspaper() {
         theme: t.theme,
         countries: []
     })) ?? []
+
+    const displayedStats = countryFilter && countryDetail
+        ? {
+            total_signals: countryDetail.totalSignals,
+            countries: 1,
+            sources: countryDetail.sources,
+            avg_sentiment: countryDetail.sentiment,
+        }
+        : data?.stats
+
+    const displayedInsight = countryFilter && countryDetail
+        ? `${resolveCountryName(countryFilter, countryDetail.name)} shows ${countryDetail.totalSignals.toLocaleString()} signals in this ${TIME_RANGE_LABELS[timeRange].toLowerCase()} window, led by ${countryDetail.themes.slice(0, 3).map(t => getThemeLabel(t.name)).join(', ') || 'low-volume coverage'}. Use the theme sections below to open the full Atlas console with the country and narrative already selected.`
+        : insight
 
     const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
@@ -303,28 +330,28 @@ export function BriefNewspaper() {
             ) : data ? (
                 <main className="brief-content">
 
-                    {/* STATS BAR — global metrics row */}
-                    <section className="brief-stats-bar">
+                    {/* STATS BAR — global or selected-country metrics row */}
+                    {displayedStats && <section className="brief-stats-bar">
                         <div className="brief-stat">
-                            <span className="brief-stat-value">{data.stats.total_signals.toLocaleString()}</span>
+                            <span className="brief-stat-value">{displayedStats.total_signals.toLocaleString()}</span>
                             <span className="brief-stat-label">signals</span>
                         </div>
                         <div className="brief-stat-divider" />
                         <div className="brief-stat">
-                            <span className="brief-stat-value">{data.stats.countries}</span>
-                            <span className="brief-stat-label">countries</span>
+                            <span className="brief-stat-value">{displayedStats.countries}</span>
+                            <span className="brief-stat-label">{displayedStats.countries === 1 ? 'country' : 'countries'}</span>
                         </div>
                         <div className="brief-stat-divider" />
                         <div className="brief-stat">
-                            <span className="brief-stat-value">{data.stats.sources}</span>
+                            <span className="brief-stat-value">{displayedStats.sources}</span>
                             <span className="brief-stat-label">sources</span>
                         </div>
                         <div className="brief-stat-divider" />
-                        <div className={`brief-stat ${moodClass(data.stats.avg_sentiment)}`}>
-                            <span className="brief-stat-value">{moodLabel(data.stats.avg_sentiment)}</span>
-                            <span className="brief-stat-label">global mood</span>
+                        <div className={`brief-stat ${moodClass(displayedStats.avg_sentiment)}`}>
+                            <span className="brief-stat-value">{moodLabel(displayedStats.avg_sentiment)}</span>
+                            <span className="brief-stat-label">{countryFilter ? 'country mood' : 'global mood'}</span>
                         </div>
-                    </section>
+                    </section>}
 
                     {/* SIGNAL MAP — choropleth of signal density by country */}
                     <section className="brief-minimap">
@@ -341,13 +368,19 @@ export function BriefNewspaper() {
                                         const iso2 = NUMERIC_TO_ISO2[String(geo.id)]
                                         const count = iso2 ? (signalMap.get(iso2) ?? 0) : 0
                                         const intensity = count / maxSignals
+                                        const isSelected = Boolean(countryFilter && iso2 === countryFilter)
                                         return (
                                             <Geography
                                                 key={geo.rsmKey}
                                                 geography={geo}
-                                                fill={count > 0 ? signalColor(intensity) : '#12202e'}
-                                                stroke="#0c1017"
-                                                strokeWidth={0.5}
+                                                fill={countryFilter
+                                                    ? isSelected
+                                                        ? signalColor(Math.max(intensity, 0.85))
+                                                        : '#0d1723'
+                                                    : count > 0 ? signalColor(intensity) : '#12202e'}
+                                                stroke={isSelected ? '#68dbae' : '#0c1017'}
+                                                strokeWidth={isSelected ? 1.4 : 0.5}
+                                                onClick={() => iso2 && selectCountry(iso2)}
                                                 style={{
                                                     default: { outline: 'none' },
                                                     hover: { outline: 'none' },
@@ -364,10 +397,10 @@ export function BriefNewspaper() {
                     <div className="brief-rule thin" />
 
                     {/* LEAD STORY — AI insight */}
-                    {insight && (
+                    {displayedInsight && (
                         <section className="brief-lead">
-                            <div className="brief-section-tag">EDITOR'S ANALYSIS</div>
-                            <p className="brief-lead-text">{insight}</p>
+                            <div className="brief-section-tag">{countryFilter ? 'COUNTRY ANALYSIS' : "EDITOR'S ANALYSIS"}</div>
+                            <p className="brief-lead-text">{displayedInsight}</p>
                         </section>
                     )}
 
@@ -515,7 +548,7 @@ export function BriefNewspaper() {
                                                     <button
                                                         key={c.code}
                                                         className="brief-country-pill"
-                                                        onClick={() => goToAtlas(`country=${c.code}`)}
+                                                        onClick={() => goToAtlas(atlasThemeParams(row.theme, c.code))}
                                                     >
                                                         {resolveCountryName(c.code, c.name)}
                                                         <span className="brief-pill-count">
@@ -544,7 +577,7 @@ export function BriefNewspaper() {
 
                                         <button
                                             className="brief-theme-link"
-                                            onClick={() => goToAtlas(`theme=${row.theme}`)}
+                                            onClick={() => goToAtlas(atlasThemeParams(row.theme, countryFilter))}
                                         >
                                             Explore in Atlas →
                                         </button>
@@ -613,7 +646,7 @@ export function BriefNewspaper() {
                     {/* CTA — enter Atlas */}
                     <section className="brief-cta">
                         <p className="brief-cta-label">Full intelligence terminal</p>
-                        <button className="brief-cta-btn" onClick={() => goToAtlas()}>
+                        <button className="brief-cta-btn" onClick={() => goToAtlas(countryFilter ? `country=${countryFilter}` : undefined)}>
                             Enter Atlas →
                         </button>
                     </section>

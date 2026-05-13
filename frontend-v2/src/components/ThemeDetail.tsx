@@ -89,11 +89,11 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
     const [trendMatch, setTrendMatch] = useState<{ has_public_interest: boolean; matches: Array<{ keyword: string; country_code: string }> } | null>(null)
     const [wikiMatch, setWikiMatch] = useState<{ has_wiki_activity: boolean; matches: Array<{ title: string; views: number }>, total_views: number } | null>(null)
 
-    // Reset drill state when theme changes
+    // Reset drill state when theme changes, preserving country-scoped pivots from Brief/CountryBrief.
     useEffect(() => {
-        setDrillCountry(null)
-        setDrillCountryName(null)
-    }, [theme])
+        setDrillCountry(initialDrillCountry || null)
+        setDrillCountryName(initialDrillCountry ? (originCountryName || initialDrillCountry) : null)
+    }, [theme, initialDrillCountry, originCountryName])
 
     useEffect(() => {
         setShowDrift(false)
