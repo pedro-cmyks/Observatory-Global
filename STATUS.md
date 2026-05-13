@@ -68,6 +68,16 @@ Related issues:
 - #107 — remaining slow-panel work: add SWR/cache and richer skeletons.
 - #112 — related-topic clarity remains open for deeper Related Investigations copy and behavior.
 
+Production verification after `366db9b`:
+- Verified `https://observatory-global.vercel.app/brief?range=24h&country=CO&v=366db9b` serves the new brief flow: Colombia has selected-country stats, the minimap dims the world and highlights Colombia, and the analysis block switches to `COUNTRY ANALYSIS`.
+- Verified a brief theme CTA opens `/app?theme=WB_696_PUBLIC_SECTOR_MANAGEMENT&country=CO`, keeps ThemeDetail as the center panel, and loads Colombia-scoped Public Sector data.
+- Verified `/app?v=366db9b` no longer auto-flies to the United States on initial load.
+- During verification, found a backend correctness bug in `/api/v2/narratives`: `theme_hourly_v2.country_count` was summed across hourly buckets, inflating narrative country counts and geographic spread above 100%.
+
+Backend follow-up shipped after verification:
+- `/api/v2/narratives` now computes per-theme distinct `country_count` and `source_count` from the selected signal window for the top themes, then derives `spread_pct` from that distinct country count.
+- Validation: `python3 -m py_compile backend/app/main_v2.py` passed. Backend pytest could not run in this shell because `poetry` is not installed.
+
 ---
 
 ## What we built (sessions 1–9)

@@ -3919,11 +3919,23 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                     WHERE timestamp > NOW() - ($2 || ' hours')::INTERVAL
                 ),
                 filtered AS (
-                    SELECT country_code, themes, timestamp
+                    SELECT country_code, source_domain, themes, timestamp
                     FROM signals_v2
                     WHERE timestamp > NOW() - ($2 || ' hours')::INTERVAL
                       AND themes IS NOT NULL
                       AND themes && $1::text[]
+                ),
+                theme_scope AS (
+                    SELECT
+                        theme,
+                        COUNT(DISTINCT country_code) AS country_count,
+                        COUNT(DISTINCT source_domain) AS source_count
+                    FROM (
+                        SELECT unnest(themes) AS theme, country_code, source_domain
+                        FROM filtered
+                    ) expanded
+                    WHERE theme = ANY($1::text[])
+                    GROUP BY theme
                 ),
                 velocity AS (
                     SELECT
@@ -3969,11 +3981,14 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                     COALESCE(v.prev_hour, 0)   AS prev_hour,
                     COALESCE(tc.countries, '{}') AS top_countries,
                     COALESCE(tl.tl::text, '[]') AS hourly_timeline,
+                    COALESCE(ts.country_count, 0) AS country_count,
+                    COALESCE(ts.source_count, 0) AS source_count,
                     fs.first_seen
                 FROM (SELECT DISTINCT unnest($1::text[]) AS theme) base
                 LEFT JOIN velocity v    ON v.theme = base.theme
                 LEFT JOIN top_ctry tc   ON tc.theme = base.theme
                 LEFT JOIN timeline tl   ON tl.theme = base.theme
+                LEFT JOIN theme_scope ts ON ts.theme = base.theme
                 LEFT JOIN first_seen fs ON fs.theme = base.theme
             """, top_themes, str(hours), str(timeline_hours))
 
@@ -4074,12 +4089,12 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                     "theme_code": tc,
                     "label": get_theme_label(tc),
                     "signal_count": int(tr["signal_count"]),
-                    "country_count": int(tr["country_count"]),
-                    "source_count": int(tr["source_count"]),
+                    "country_count": int(det.get("country_count") or 0),
+                    "source_count": int(det.get("source_count") or 0),
                     "first_seen": first_seen_val.isoformat() if first_seen_val else None,
                     "velocity": last_h,
                     "trend": trend,
-                    "spread_pct": round((int(tr["country_count"]) / total_active) * 100, 1),
+                    "spread_pct": round((int(det.get("country_count") or 0) / total_active) * 100, 1),
                     "avg_sentiment": round(float(tr["avg_sentiment"] or 0), 2),
                     "top_persons": persons_map.get(tc, []),
                     "hourly_timeline": hourly_timeline or [],
