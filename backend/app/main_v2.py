@@ -3919,7 +3919,7 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                     WHERE timestamp > NOW() - ($2 || ' hours')::INTERVAL
                 ),
                 filtered AS (
-                    SELECT country_code, source_domain, themes, timestamp
+                    SELECT country_code, source_name, themes, timestamp
                     FROM signals_v2
                     WHERE timestamp > NOW() - ($2 || ' hours')::INTERVAL
                       AND themes IS NOT NULL
@@ -3929,9 +3929,9 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                     SELECT
                         theme,
                         COUNT(DISTINCT country_code) AS country_count,
-                        COUNT(DISTINCT source_domain) AS source_count
+                        COUNT(DISTINCT source_name) AS source_count
                     FROM (
-                        SELECT unnest(themes) AS theme, country_code, source_domain
+                        SELECT unnest(themes) AS theme, country_code, source_name
                         FROM filtered
                     ) expanded
                     WHERE theme = ANY($1::text[])
