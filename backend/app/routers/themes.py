@@ -1,5 +1,10 @@
+import json
+from datetime import datetime, timezone
+from typing import Optional
+
 from fastapi import APIRouter, Query, HTTPException
 from app import db
+from app.main_v2 import app
 from app.utils import _is_valid_person, _resolve_persons, extract_domain
 from app.core.gdelt_taxonomy import classify_source, get_concepts_for_theme
 import httpx
@@ -905,5 +910,4 @@ async def get_theme_spikes(
     except Exception as e:
         traceback.print_exc()
         return {"theme_code": theme_code, "spikes": [], "error": str(e)}
-
 

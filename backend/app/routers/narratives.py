@@ -1,5 +1,8 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Query
 from app import db
+from app.main_v2 import app
 from app.utils import extract_domain
 from app.core.gdelt_taxonomy import classify_source, get_concepts_for_theme
 
@@ -484,5 +487,4 @@ async def get_concept_narratives(
     except Exception as e:
         traceback.print_exc()
         return {"slug": slug, "error": str(e), "countries": []}
-
 

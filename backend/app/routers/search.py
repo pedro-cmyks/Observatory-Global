@@ -1,5 +1,8 @@
+import json
+
 from fastapi import APIRouter, Query
 from app import db
+from app.main_v2 import app
 from app.utils import _is_valid_person, extract_domain
 
 router = APIRouter()
@@ -468,4 +471,3 @@ async def unified_search(
             pass
 
     return result
-

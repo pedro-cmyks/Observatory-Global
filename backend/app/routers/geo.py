@@ -1,9 +1,11 @@
 import os
 import time
 import json
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Query, HTTPException
 from app import db
+from app.main_v2 import app
 from app.utils import _is_valid_person, _resolve_persons, extract_domain
 from app.core.gdelt_taxonomy import classify_source
 import httpx

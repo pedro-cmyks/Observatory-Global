@@ -1,4 +1,6 @@
 from typing import Optional, List, Dict, Any
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Query
 from app import db
 
@@ -201,4 +203,3 @@ async def get_trends_theme_match(
 # =============================================================================
 # WIKIPEDIA PAGEVIEWS API
 # =============================================================================
-

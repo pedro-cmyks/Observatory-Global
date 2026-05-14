@@ -1,5 +1,9 @@
+import json
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Query
 from app import db
+from app.main_v2 import app
 from app.utils import _is_valid_person, extract_domain
 from app.core.gdelt_taxonomy import classify_source
 import httpx
@@ -312,4 +316,3 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
 # =============================================================================
 # TRUST INDICATORS API (v3)
 # =============================================================================
-
