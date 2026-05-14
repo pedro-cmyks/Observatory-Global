@@ -654,13 +654,50 @@
 }
 
 /* ─── Related Topics 2-col grid ─── */
+.related-topics-hint {
+    margin: 2px 0 8px;
+    font-size: 10px;
+    color: #475569;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
 .related-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 6px;
 }
 
+.related-chip-wrap {
+    display: flex;
+    gap: 2px;
+    overflow: hidden;
+}
+
+.related-chip-compare {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 6px;
+    color: #10b981;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.related-chip-compare:hover {
+    background: rgba(16, 185, 129, 0.14);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: #6ee7b7;
+}
+
 .related-chip {
+    flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
     gap: 6px;

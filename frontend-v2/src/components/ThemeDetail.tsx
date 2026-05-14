@@ -4,7 +4,7 @@ import { CompareBar } from './CompareBar'
 import { NarrativeDrift } from './NarrativeDrift'
 import { ExportMenu } from './ExportMenu'
 import { useWorkspace } from '../contexts/WorkspaceContext'
-import { Pin, PinOff, X } from 'lucide-react'
+import { ArrowLeftRight, Pin, PinOff, X } from 'lucide-react'
 import { getSourceFamilyMeta, type SourceFamily } from '../lib/sourceFamily'
 import { PanelErrorBoundary } from './PanelErrorBoundary'
 import type { PublicAttentionOrigin } from '../lib/publicAttention'
@@ -621,14 +621,14 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                         {/* Related Themes */}
                         {data.relatedThemes.length > 0 && (
                             <div className="theme-section">
-                                <h3 data-help="Topics that frequently co-occur with this one in the same signals. Higher count = stronger co-occurrence. Click to open that topic.">Related Topics</h3>
+                                <h3>Related Topics</h3>
+                                <p className="related-topics-hint">Co-occur in same signals · click to explore</p>
                                 <div className="related-grid">
                                     {data.relatedThemes.slice(0, 8).map(t => (
-                                        <div key={t.theme} className="related-chip-wrap" style={{ display: 'flex', gap: '2px' }}>
+                                        <div key={t.theme} className="related-chip-wrap">
                                             <button
                                                 className="related-chip"
                                                 onClick={() => onThemeSelect?.(t.theme, originAttention)}
-                                                style={{ flex: 1 }}
                                             >
                                                 <span className="related-chip-icon">{getThemeIcon(t.theme)}</span>
                                                 <span className="related-chip-label">{getThemeLabel(t.theme)}</span>
@@ -638,10 +638,10 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                                 <button
                                                     className="related-chip-compare"
                                                     onClick={(e) => { e.stopPropagation(); onCompareClick(t.theme); }}
-                                                    data-tip="Compare with this theme"
-                                                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#10b981', padding: '0 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', flexShrink: 0 }}
+                                                    data-tip={`Compare: ${getThemeLabel(t.theme)} vs current`}
+                                                    aria-label={`Compare ${getThemeLabel(t.theme)} with current topic`}
                                                 >
-                                                    VS
+                                                    <ArrowLeftRight size={12} />
                                                 </button>
                                             )}
                                         </div>
