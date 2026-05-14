@@ -82,10 +82,14 @@ const timeAgo = (isoString: string | null): string => {
     return `Started ${days}d ago`
 }
 
-export const NarrativeThreads: React.FC = () => {
+interface NarrativeThreadsProps {
+    onCountrySelect?: (code: string) => void
+}
+
+export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySelect }) => {
     const [narratives, setNarratives] = useState<Narrative[]>([])
     const [loading, setLoading] = useState(true)
-    const { filter, setFocus, setMapFlyCountry } = useFocus()
+    const { filter, setFocus, setCountry, setMapFlyCountry } = useFocus()
     const { timeRange } = useFocusData()
 
     // Cap to 24h when browsing globally (spread_pct becomes meaningless at wider windows);
@@ -125,7 +129,15 @@ export const NarrativeThreads: React.FC = () => {
         setFocus('theme', n.theme_code, getThemeLabel(n.theme_code))
         if (n.top_countries.length > 0) {
             setMapFlyCountry(n.top_countries[0])
+            onCountrySelect?.(n.top_countries[0])
         }
+    }
+
+    const handleCountryPipClick = (e: React.MouseEvent, code: string) => {
+        e.stopPropagation()
+        setCountry(code)
+        setMapFlyCountry(code)
+        onCountrySelect?.(code)
     }
 
     // Loading skeleton
@@ -223,7 +235,7 @@ export const NarrativeThreads: React.FC = () => {
                         <div className="narrative-detail">
                             <div className="narrative-entities">
                                 {n.top_countries.map(c => (
-                                    <span key={c} className={`country-pip${filter.country === c ? ' country-pip--active' : ''}`}>{c}</span>
+                                    <button key={c} className={`country-pip country-pip--btn${filter.country === c ? ' country-pip--active' : ''}`} onClick={e => handleCountryPipClick(e, c)} title={`Focus on ${c}`}>{c}</button>
                                 ))}
                                 {n.top_persons.map(p => (
                                     <span key={p} className="person-pip">{p}</span>

@@ -181,6 +181,17 @@
     border: 1px solid rgba(96, 165, 250, 0.3);
 }
 
+.country-pip--btn {
+    border: none;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+}
+
+.country-pip--btn:hover {
+    background: rgba(96, 165, 250, 0.18);
+    color: #93c5fd;
+}
+
 .narrative-stat-global {
     font-size: 9px;
     font-weight: 700;

@@ -1282,7 +1282,7 @@ function AppContent() {
           </div>
           <div className="panel-content">
             <PanelErrorBoundary panelName="NARRATIVE THREADS">
-              <NarrativeThreads />
+              <NarrativeThreads onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }} />
             </PanelErrorBoundary>
           </div>
         </div>
