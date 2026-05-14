@@ -245,6 +245,83 @@
     font-size: 13px;
 }
 
+.public-attention-origin {
+    padding: 12px;
+    border: 1px solid rgba(34, 211, 238, 0.16);
+    border-radius: 8px;
+    background:
+        radial-gradient(circle at top left, rgba(34, 211, 238, 0.10), transparent 38%),
+        rgba(8, 16, 29, 0.56);
+}
+
+.public-attention-origin-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(160px, 220px);
+    gap: 14px;
+    align-items: start;
+}
+
+.public-attention-origin-card h3 {
+    margin: 8px 0 6px;
+    color: #e2e8f0;
+    font-size: 15px;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.public-attention-origin-card p {
+    margin: 0;
+    color: #a9bdd1;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.public-attention-origin-metrics {
+    display: grid;
+    gap: 6px;
+}
+
+.public-attention-origin-metrics span {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 8px;
+    border: 1px solid rgba(148, 163, 184, 0.11);
+    border-radius: 5px;
+    color: #7c8fa6;
+    font-size: 11px;
+}
+
+.public-attention-origin-metrics strong {
+    color: #67e8f9;
+}
+
+.public-attention-evidence {
+    display: grid;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.public-attention-evidence-row {
+    padding: 8px;
+    border-left: 2px solid rgba(34, 211, 238, 0.72);
+    border-radius: 5px;
+    background: rgba(15, 23, 42, 0.48);
+}
+
+.public-attention-evidence-row span {
+    color: #64748b;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 10px;
+}
+
+.public-attention-evidence-row p {
+    margin: 4px 0 0;
+    color: #dbeafe;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
 /* ========== Public Attention Signals ========== */
 .attention-signals-row {
     display: flex;

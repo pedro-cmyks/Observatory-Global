@@ -7,6 +7,7 @@ import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Pin, PinOff, X } from 'lucide-react'
 import { getSourceFamilyMeta, type SourceFamily } from '../lib/sourceFamily'
 import { PanelErrorBoundary } from './PanelErrorBoundary'
+import type { PublicAttentionOrigin } from '../lib/publicAttention'
 import './ThemeDetail.css'
 
 const TemporalNarrativeGraph = lazy(() =>
@@ -57,19 +58,39 @@ interface ThemeDetailProps {
     theme: string
     originCountry?: string
     originCountryName?: string
+    originAttention?: PublicAttentionOrigin
     /** When set, automatically applies a country filter to the theme data fetch (compound search) */
     initialDrillCountry?: string
     hours: number
 
     onClose: () => void
-    onThemeSelect?: (theme: string) => void
+    onThemeSelect?: (theme: string, originAttention?: PublicAttentionOrigin) => void
     onCountryCardClick?: (code: string, name: string) => void
     onPersonClick?: (name: string) => void
     onSourceClick?: (domain: string) => void
     onCompareClick?: (theme: string) => void
 }
 
-export function ThemeDetail({ theme, originCountry, originCountryName, initialDrillCountry, hours, onClose, onThemeSelect, onCountryCardClick, onPersonClick, onSourceClick, onCompareClick }: ThemeDetailProps) {
+interface AttentionSearchData {
+    signal_matches?: Array<{
+        id: number
+        timestamp: string
+        country: string
+        source: string
+        headline: string | null
+        themes: string[]
+    }>
+    themes?: Array<{ theme: string; total_signals: number }>
+}
+
+function formatAttentionCount(n?: number): string {
+    if (!n) return '0'
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}m`
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
+    return String(n)
+}
+
+export function ThemeDetail({ theme, originCountry, originCountryName, originAttention, initialDrillCountry, hours, onClose, onThemeSelect, onCountryCardClick, onPersonClick, onSourceClick, onCompareClick }: ThemeDetailProps) {
     const [data, setData] = useState<ThemeData | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -88,6 +109,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
     // Public attention signals
     const [trendMatch, setTrendMatch] = useState<{ has_public_interest: boolean; matches: Array<{ keyword: string; country_code: string }> } | null>(null)
     const [wikiMatch, setWikiMatch] = useState<{ has_wiki_activity: boolean; matches: Array<{ title: string; views: number }>, total_views: number } | null>(null)
+    const [attentionSearchData, setAttentionSearchData] = useState<AttentionSearchData | null>(null)
 
     // Reset drill state when theme changes, preserving country-scoped pivots from Brief/CountryBrief.
     useEffect(() => {
@@ -140,6 +162,20 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
             .then(d => { if (d) setWikiMatch(d) })
             .catch(() => { })
     }, [theme, hours])
+
+    useEffect(() => {
+        if (!originAttention?.title) {
+            setAttentionSearchData(null)
+            return
+        }
+        const controller = new AbortController()
+        const query = originAttention.query || originAttention.title
+        fetch(`/api/v2/search/unified?q=${encodeURIComponent(query)}&hours=${hours}`, { signal: controller.signal })
+            .then(r => r.json().catch(() => null))
+            .then(d => { if (!controller.signal.aborted) setAttentionSearchData(d) })
+            .catch(() => { if (!controller.signal.aborted) setAttentionSearchData(null) })
+        return () => controller.abort()
+    }, [originAttention?.title, originAttention?.query, hours])
 
     const [insightError, setInsightError] = useState<string | null>(null)
 
@@ -265,6 +301,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                                 {originCountryName && (
                                     <span className="origin-country-hint"> · opened from {getFlag(originCountry!)} {originCountryName}</span>
                                 )}
+                                {originAttention?.title && (
+                                    <span className="origin-country-hint"> · opened from Public Attention: {originAttention.title}</span>
+                                )}
                             </p>
                         )}
                     </div>
@@ -331,6 +370,37 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                         {/* Period comparison: volume & sentiment vs previous period */}
                         <CompareBar entityType="theme" entityValue={theme} hours={hours} />
 
+                        {originAttention?.title && (
+                            <div className="theme-section public-attention-origin">
+                                <div className="theme-section-title">PUBLIC ATTENTION CONTEXT</div>
+                                <div className="public-attention-origin-card">
+                                    <div>
+                                        <span className="attention-signal-icon">PUBLIC</span>
+                                        <h3>{originAttention.title}</h3>
+                                        <p>
+                                            This thread was opened from a people-side attention item, so Atlas is reading {getThemeLabel(theme)}
+                                            {' '}through that context instead of as a generic global topic.
+                                        </p>
+                                    </div>
+                                    <div className="public-attention-origin-metrics">
+                                        <span><strong>{formatAttentionCount(originAttention.views)}</strong> wiki views</span>
+                                        <span><strong>{originAttention.country_count ?? attentionSearchData?.signal_matches?.filter(s => s.country).length ?? 0}</strong> countries</span>
+                                        <span><strong>{attentionSearchData?.signal_matches?.length ?? 0}</strong> media matches</span>
+                                    </div>
+                                </div>
+                                {attentionSearchData?.signal_matches && attentionSearchData.signal_matches.length > 0 && (
+                                    <div className="public-attention-evidence">
+                                        {attentionSearchData.signal_matches.slice(0, 3).map(signal => (
+                                            <div key={signal.id} className="public-attention-evidence-row">
+                                                <span>{signal.country || 'GLO'} · {signal.source}</span>
+                                                <p>{signal.headline || 'Untitled signal'}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {/* Evolution Graph: relationship structure over sampled coverage time buckets */}
                         {(data.graphSignals?.length ?? data.signals.length) > 0 && (
                             <PanelErrorBoundary panelName="Evolution Graph">
@@ -373,7 +443,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                                         <button 
                                             key={c.slug}
                                             className="concept-card"
-                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onThemeSelect?.(c.slug) }}
+                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onThemeSelect?.(c.slug, originAttention) }}
                                             style={{ textAlign: 'left', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}
                                             onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)'}
                                             onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.05)'}
@@ -557,7 +627,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, initialDr
                                         <div key={t.theme} className="related-chip-wrap" style={{ display: 'flex', gap: '2px' }}>
                                             <button
                                                 className="related-chip"
-                                                onClick={() => onThemeSelect?.(t.theme)}
+                                                onClick={() => onThemeSelect?.(t.theme, originAttention)}
                                                 style={{ flex: 1 }}
                                             >
                                                 <span className="related-chip-icon">{getThemeIcon(t.theme)}</span>

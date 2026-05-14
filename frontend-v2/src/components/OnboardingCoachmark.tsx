@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import './OnboardingCoachmark.css'
 
-const STORAGE_KEY = 'atlas_onboarding_v2'
+const STORAGE_KEY = 'atlas_onboarding_v3'
 
 type TourAction = 'focus-search' | 'open-brief' | 'open-workspace'
 
@@ -41,6 +41,12 @@ const STEPS: TourStep[] = [
         eyebrow: 'Narrative threads',
         title: 'Follow themes instead of individual headlines',
         body: 'Threads show what is spreading across countries, how sentiment is moving, and which topics deserve a deeper drill-down.',
+    },
+    {
+        selector: '[data-tour="anomaly-attention"]',
+        eyebrow: 'Signals vs attention',
+        title: 'Use anomalies and public attention as the second lens',
+        body: 'Anomaly Alert flags unusual media movement. Public Attention shows what people are reading or searching, so you can compare public interest against the media stream.',
     },
     {
         selector: '[data-tour="workspace-button"]',

@@ -109,13 +109,14 @@ function drawWorkspaceNode(node: WorkspaceGraphNode & { x?: number; y?: number }
 }
 
 export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) {
-    const { isOpen, setIsOpen, items, graph, graphLoading, graphError, unpinItem, updateNotes, exportWorkspace } = useWorkspace()
+    const { isOpen, setIsOpen, items, sessionItems, graph, graphLoading, graphError, pinItem, unpinItem, updateNotes, exportWorkspace } = useWorkspace()
     const [query, setQuery] = useState('')
     const deferredQuery = useDeferredValue(query)
     const [nodeTypes, setNodeTypes] = useState<Set<PinnedItemType>>(() => new Set(WORKSPACE_NODE_TYPES))
     const [linkKinds, setLinkKinds] = useState<Set<WorkspaceLinkKind>>(() => new Set(WORKSPACE_LINK_KINDS))
     const [showSessionTrail, setShowSessionTrail] = useState(true)
     const [showNotes, setShowNotes] = useState(true)
+    const [sidePanelMode, setSidePanelMode] = useState<'trail' | 'pinned'>('trail')
     const boardRef = useRef<HTMLDivElement | null>(null)
     const graphRef = useRef<ForceGraphMethods<WorkspaceGraphNode, WorkspaceGraphLink> | undefined>(undefined)
     const [boardSize, setBoardSize] = useState({ width: 760, height: 560 })
@@ -376,11 +377,91 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
                     {showNotes && (
                         <aside className="workspace-notes-panel" aria-label="Pinned workspace items">
                             <div className="workspace-notes-header">
-                                <span>Pinned</span>
-                                <span>{items.length}</span>
+                                <div className="workspace-side-tabs" role="tablist" aria-label="Workspace side panel">
+                                    <button
+                                        type="button"
+                                        className={sidePanelMode === 'trail' ? 'active' : ''}
+                                        onClick={() => setSidePanelMode('trail')}
+                                    >
+                                        Trail
+                                        <span>{sessionItems.length}</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={sidePanelMode === 'pinned' ? 'active' : ''}
+                                        onClick={() => setSidePanelMode('pinned')}
+                                    >
+                                        Pinned
+                                        <span>{items.length}</span>
+                                    </button>
+                                </div>
                             </div>
                             <div className="workspace-content workspace-list-content">
-                                {items.length === 0 ? (
+                                {sidePanelMode === 'trail' ? (
+                                    sessionItems.length === 0 ? (
+                                        <div className="workspace-empty">
+                                            <p>No trail yet.</p>
+                                            <p style={{ marginTop: '8px', opacity: 0.7 }}>Open countries, topics, people, sources, or public attention items to build a path.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="workspace-trail-list">
+                                            {[...sessionItems].reverse().map((item, index) => {
+                                                const pinned = items.some(p => p.id === item.id)
+                                                const originAttention = item.meta?.originAttention
+                                                return (
+                                                    <article key={`${item.id}-${item.timestamp}`} className="workspace-trail-item">
+                                                        <span className="workspace-trail-index">{String(index + 1).padStart(2, '0')}</span>
+                                                        <div className="workspace-trail-body">
+                                                            <span className="workspace-item-type">{formatFilterLabel(item.type)}</span>
+                                                            <button
+                                                                type="button"
+                                                                className="workspace-trail-title"
+                                                                onClick={() => onNavigate(item.urlParams)}
+                                                            >
+                                                                {item.title}
+                                                            </button>
+                                                            {Boolean(originAttention) && (
+                                                                <span className="workspace-trail-origin">from {String(originAttention)}</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="workspace-item-actions">
+                                                            <button
+                                                                type="button"
+                                                                className="workspace-action-btn"
+                                                                onClick={() => onNavigate(item.urlParams)}
+                                                                data-tip="Open trail point"
+                                                                aria-label={`Open ${item.title}`}
+                                                            >
+                                                                <ExternalLink size={14} />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className="workspace-action-btn"
+                                                                disabled={pinned}
+                                                                onClick={() => {
+                                                                    if (!pinned) {
+                                                                        pinItem({
+                                                                            id: item.id,
+                                                                            type: item.type,
+                                                                            title: item.title,
+                                                                            urlParams: item.urlParams,
+                                                                            meta: item.meta,
+                                                                        })
+                                                                    }
+                                                                }}
+                                                                data-tip={pinned ? 'Already pinned' : 'Pin this trail point'}
+                                                                aria-label={`Pin ${item.title}`}
+                                                                style={{ opacity: pinned ? 0.45 : 1 }}
+                                                            >
+                                                                <Pin size={14} />
+                                                            </button>
+                                                        </div>
+                                                    </article>
+                                                )
+                                            })}
+                                        </div>
+                                    )
+                                ) : items.length === 0 ? (
                                     <div className="workspace-empty">
                                         <p>Nothing pinned yet.</p>
                                         <p style={{ marginTop: '8px', opacity: 0.7 }}>Pinned items appear here with notes and export controls.</p>

@@ -3,10 +3,11 @@ import { ExternalLink, Pin, PinOff } from 'lucide-react'
 import { getThemeLabel } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
 import { timeRangeToHours, type TimeRange } from '../lib/timeRanges'
+import type { PublicAttentionOrigin } from '../lib/publicAttention'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import './PublicAttentionPanel.css'
 
-interface PublicAttentionSelection {
+interface PublicAttentionSelection extends PublicAttentionOrigin {
     title: string
     views?: number
     country_count?: number
@@ -43,7 +44,7 @@ interface PublicAttentionPanelProps {
     item: PublicAttentionSelection
     timeRange: TimeRange
     onClose: () => void
-    onThemeSelect?: (theme: string) => void
+    onThemeSelect?: (theme: string, context?: PublicAttentionOrigin) => void
     onCountrySelect?: (code: string) => void
 }
 
@@ -69,6 +70,12 @@ function timeAgo(iso: string): string {
 
 export function PublicAttentionPanel({ item, timeRange, onClose, onThemeSelect, onCountrySelect }: PublicAttentionPanelProps) {
     const title = cleanTitle(item.title)
+    const attentionContext: PublicAttentionOrigin = {
+        title,
+        views: item.views,
+        country_count: item.country_count,
+        query: item.query ?? title,
+    }
     const pinnedId = `public-attention-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
     const hours = timeRangeToHours(timeRange)
     const { pinItem, unpinItem, isPinned } = useWorkspace()
@@ -107,13 +114,11 @@ export function PublicAttentionPanel({ item, timeRange, onClose, onThemeSelect, 
     const searchData = loading ? null : panelData?.searchData ?? null
     const wikiSummary = loading ? null : panelData?.wikiSummary ?? null
 
-    const attention = useMemo(() => {
-        const fromSearch = searchData?.public_attention?.find(a => cleanTitle(a.title).toLowerCase() === title.toLowerCase())
-        return {
-            views: fromSearch?.views ?? item.views,
-            countryCount: fromSearch?.country_count ?? item.country_count
-        }
-    }, [item.country_count, item.views, searchData?.public_attention, title])
+    const fromSearchAttention = searchData?.public_attention?.find(a => cleanTitle(a.title).toLowerCase() === title.toLowerCase())
+    const attention = {
+        views: fromSearchAttention?.views ?? item.views,
+        countryCount: fromSearchAttention?.country_count ?? item.country_count
+    }
 
     const signalMatches = useMemo(() => searchData?.signal_matches ?? [], [searchData?.signal_matches])
 
@@ -149,12 +154,17 @@ export function PublicAttentionPanel({ item, timeRange, onClose, onThemeSelect, 
             ? `Atlas found recent media signals that mention "${title}" and mapped their source countries, themes, and headlines.`
             : `Atlas found public attention for "${title}" but no matching media signals in the selected time window yet.`
 
+    const contrastNote = signalMatches.length > 0
+        ? `${formatCount(attention.views)} public reads are being compared against ${signalMatches.length} media signal${signalMatches.length === 1 ? '' : 's'} in this window. Use a theme below to see how the topic enters the narrative graph.`
+        : `${formatCount(attention.views)} public reads are visible, but Atlas has not matched recent media signals in this window. Try a longer range or search related terms.`
+
     return (
         <div className="public-attention-panel">
             <div className="pap-header">
                 <div>
                     <div className="pap-kicker">PUBLIC ATTENTION</div>
                     <h2>{title}</h2>
+                    <p className="pap-role">People-side attention layer · compare against media signals</p>
                 </div>
                 <div className="pap-actions">
                     <button
@@ -181,6 +191,14 @@ export function PublicAttentionPanel({ item, timeRange, onClose, onThemeSelect, 
                     </button>
                     <button className="pap-close" onClick={onClose} data-tip="Close public attention panel">x</button>
                 </div>
+            </div>
+
+            <div className="pap-contrast-band">
+                <span>PUBLIC</span>
+                <strong>{formatCount(attention.views)} wiki views</strong>
+                <i />
+                <span>MEDIA</span>
+                <strong>{signalMatches.length} signals</strong>
             </div>
 
             <div className="pap-metrics">
@@ -242,10 +260,16 @@ export function PublicAttentionPanel({ item, timeRange, onClose, onThemeSelect, 
                     <section className="pap-section">
                         <div className="pap-section-label">Why these signals connect</div>
                         <p className="pap-connection-note">{connectionNote}</p>
+                        <p className="pap-contrast-note">{contrastNote}</p>
                         {themes.length > 0 && (
                             <div className="pap-theme-list">
                                 {themes.map(theme => (
-                                    <button key={theme.theme} className="pap-theme-chip" onClick={() => onThemeSelect?.(theme.theme)}>
+                                    <button
+                                        key={theme.theme}
+                                        className="pap-theme-chip"
+                                        onClick={() => onThemeSelect?.(theme.theme, attentionContext)}
+                                        data-tip={`Open ${getThemeLabel(theme.theme)} with ${title} as the public-attention context`}
+                                    >
                                         {getThemeLabel(theme.theme)}
                                         <span>{formatCount(theme.count)}</span>
                                     </button>

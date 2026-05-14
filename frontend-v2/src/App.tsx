@@ -32,6 +32,7 @@ import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/t
 import { Globe, ClipboardList, FolderOpen, HelpCircle } from 'lucide-react'
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
 import { resolveCountryName } from './lib/countryNames'
+import type { PublicAttentionOrigin } from './lib/publicAttention'
 
 // Terminal Panels
 import { NarrativeThreads } from './components/NarrativeThreads'
@@ -68,7 +69,7 @@ interface CountryDetail {
   sources: { name: string; count: number }[]
 }
 
-interface PublicAttentionSelection {
+interface PublicAttentionSelection extends PublicAttentionOrigin {
   title: string
   views?: number
   country_count?: number
@@ -347,7 +348,7 @@ function AppContent() {
   // State
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
   const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null)
-  type SelectedTheme = { theme: string, originCountry?: string, originCountryName?: string }
+  type SelectedTheme = { theme: string, originCountry?: string, originCountryName?: string, originAttention?: PublicAttentionOrigin }
   const [selectedTheme, setSelectedTheme] = useState<SelectedTheme | null>(null)
   const [themeBackStack, setThemeBackStack] = useState<SelectedTheme[]>([])
   const [selectedPublicAttention, setSelectedPublicAttention] = useState<PublicAttentionSelection | null>(null)
@@ -493,10 +494,10 @@ function AppContent() {
   }
 
   // Theme selection handlers
-  const handleThemeSelect = (theme: string, countryCode?: string, countryName?: string) => {
+  const handleThemeSelect = (theme: string, countryCode?: string, countryName?: string, originAttention?: PublicAttentionOrigin) => {
     setSelectedPublicAttention(null)
     setTheme(theme)
-    const nextTheme = { theme, originCountry: countryCode, originCountryName: countryName }
+    const nextTheme = { theme, originCountry: countryCode, originCountryName: countryName, originAttention }
     setSelectedTheme(prev => {
       if (prev && prev.theme !== theme) {
         setThemeBackStack(stack => [prev, ...stack].slice(0, 5))
@@ -520,6 +521,28 @@ function AppContent() {
     clearFocus()
     if (filter.theme) setTheme(null)
   }
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const attention = params.get('attention')
+    if (!attention) return
+    const theme = params.get('theme')
+    const country = params.get('country') || undefined
+    const title = attention.replace(/_/g, ' ').trim()
+    if (theme) {
+      setSelectedPublicAttention(null)
+      setSelectedTheme({
+        theme,
+        originCountry: country,
+        originCountryName: country ? resolveCountryName(country) : undefined,
+        originAttention: { title },
+      })
+      setRightPanelThemeCountry(null)
+      return
+    }
+    handlePublicAttentionSelect({ title })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Focus-aware data from provider - auto-refetches when focus/range changes
   const { nodes, flows, unfilteredFlows, acledConflicts, loading, isRefetching, refetch, timeRange, setTimeRange } = useFocusData()
@@ -608,7 +631,19 @@ function AppContent() {
 
   useEffect(() => {
     if (selectedTheme) {
-      trackVisit({ id: `theme-${selectedTheme.theme}`, type: 'theme', title: selectedTheme.theme, urlParams: `?theme=${encodeURIComponent(selectedTheme.theme)}` });
+      const params = new URLSearchParams()
+      params.set('theme', selectedTheme.theme)
+      if (selectedTheme.originCountry) params.set('country', selectedTheme.originCountry)
+      if (selectedTheme.originAttention?.title) params.set('attention', selectedTheme.originAttention.title)
+      trackVisit({
+        id: `theme-${selectedTheme.theme}${selectedTheme.originAttention?.title ? `-attention-${selectedTheme.originAttention.title}` : ''}`,
+        type: 'theme',
+        title: selectedTheme.originAttention?.title
+          ? `${selectedTheme.theme} from ${selectedTheme.originAttention.title}`
+          : selectedTheme.theme,
+        urlParams: `?${params.toString()}`,
+        meta: selectedTheme.originAttention ? { originAttention: selectedTheme.originAttention.title } : undefined,
+      });
     }
   }, [selectedTheme, trackVisit]);
 
@@ -1221,7 +1256,7 @@ function AppContent() {
                     item={selectedPublicAttention!}
                     timeRange={timeRange}
                     onClose={closeAll}
-                    onThemeSelect={(theme) => handleThemeSelect(theme)}
+                    onThemeSelect={(theme, attentionContext) => handleThemeSelect(theme, undefined, undefined, attentionContext)}
                     onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
                   />
                 ) : isCountry ? (
@@ -1237,10 +1272,11 @@ function AppContent() {
                     theme={selectedTheme!.theme}
                     originCountry={selectedTheme!.originCountry}
                     originCountryName={selectedTheme!.originCountryName}
+                    originAttention={selectedTheme!.originAttention}
                     initialDrillCountry={selectedTheme!.originCountry}
                     hours={timeRangeToHours(timeRange)}
                     onClose={closeAll}
-                    onThemeSelect={(theme) => handleThemeSelect(theme)}
+                    onThemeSelect={(theme, attentionContext) => handleThemeSelect(theme, undefined, undefined, attentionContext ?? selectedTheme!.originAttention)}
                     onCountryCardClick={(code, name) => { setMapFlyCountry(code); setRightPanelThemeCountry({ code, name }) }}
                     onPersonClick={(name) => {
                       setFocus('person', name, name)
@@ -1304,7 +1340,7 @@ function AppContent() {
         </div>
 
         {/* Panel 5: ANOMALY ALERT */}
-        <div className="terminal-panel anomaly">
+        <div className="terminal-panel anomaly" data-tour="anomaly-attention">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1430,12 +1466,12 @@ function AppContent() {
             return
           }
           if (theme && country) {
-            handleThemeSelect(theme, country, country)
+            handleThemeSelect(theme, country, country, attention ? { title: attention } : undefined)
             setMapFlyCountry(country)
             return
           }
           if (theme) {
-            handleThemeSelect(theme)
+            handleThemeSelect(theme, undefined, undefined, attention ? { title: attention } : undefined)
             return
           }
           if (country) {

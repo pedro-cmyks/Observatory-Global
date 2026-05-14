@@ -10,6 +10,11 @@ import { selectVisibleKeyPersons, type KeyPerson } from '../lib/countryBriefPeop
 import { buildCountryBriefMarkdown, sanitizeFilenamePart } from '../lib/exportFormatters';
 import { resolveCountryName } from '../lib/countryNames';
 import { useFocusData } from '../contexts/FocusDataContext';
+import {
+    buildCountryPublicAttentionNarrative,
+    getPublicAttentionTopUrl,
+    getTrendingSearchesUrl,
+} from '../lib/publicAttention';
 
 // ThemeChange interface reserved for future use
 // interface ThemeChange {
@@ -69,6 +74,10 @@ interface BriefData {
     avg_sentiment: number;
     sentiment_trend: 'improving' | 'declining' | 'stable';
     top_stories?: Story[];
+    publicAttention?: {
+        searches: Array<{ keyword: string; rank?: number | null }>;
+        wikiArticles: Array<{ title: string; views?: number | null }>;
+    };
     indicators?: Indicators;
     error?: string;
     foreignSourcePct?: number | null;
@@ -100,6 +109,14 @@ interface NodesResponse {
         signalCount?: number;
         sentiment?: number;
     }>;
+}
+
+interface TrendsResponse {
+    trending?: Array<{ keyword: string; rank?: number | null }>;
+}
+
+interface WikiTopResponse {
+    articles?: Array<{ title: string; views?: number | null }>;
 }
 
 interface CountryBriefProps {
@@ -194,10 +211,12 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             setIndicators(null);
 
             try {
-                const [nodeRes, indicatorsRes, signalsRes] = await Promise.all([
+                const [nodeRes, indicatorsRes, signalsRes, trendsRes, wikiRes] = await Promise.all([
                     fetch(`/api/v2/nodes?focus_type=country&focus_value=${countryCode}&hours=${timeWindow}&limit=1`, { signal: controller.signal }),
                     fetch(`/api/indicators/country/${countryCode}?hours=${timeWindow}`, { signal: controller.signal }),
                     fetch(`/api/v2/signals?country_code=${countryCode}&hours=${timeWindow}&limit=500`, { signal: controller.signal }),
+                    fetch(getTrendingSearchesUrl(5, Math.min(timeWindow, 168), countryCode), { signal: controller.signal }),
+                    fetch(getPublicAttentionTopUrl(5, countryCode), { signal: controller.signal }),
                 ]);
 
                 if (!signalsRes.ok) {
@@ -212,6 +231,8 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 }
 
                 const signalsPayload = await signalsRes.json() as SignalsResponse;
+                const trendsPayload = trendsRes.ok ? await trendsRes.json() as TrendsResponse : null;
+                const wikiPayload = wikiRes.ok ? await wikiRes.json() as WikiTopResponse : null;
                 const signals = signalsPayload.signals || [];
                 const themeCounts = new Map<string, number>();
                 const sourceCounts = new Map<string, number>();
@@ -266,6 +287,10 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     avg_sentiment: sentiment,
                     sentiment_trend: sentimentTrend,
                     top_stories: topStories,
+                    publicAttention: {
+                        searches: (trendsPayload?.trending ?? []).slice(0, 5),
+                        wikiArticles: (wikiPayload?.articles ?? []).slice(0, 5),
+                    },
                     indicators: indicatorsData,
                     foreignSourcePct: null,
                 });
@@ -393,18 +418,19 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 </div>
             )}
 
-            {data.top_themes.filter(t => !t.name.startsWith('WORLDLANGUAGES_') && !t.name.startsWith('TAX_WORLDLANGUAGES_')).length > 0 && (
-                <p className="cb-connection-note">
-                    Coverage driven by {data.top_themes
-                        .filter(t => !t.name.startsWith('WORLDLANGUAGES_') && !t.name.startsWith('TAX_WORLDLANGUAGES_'))
-                        .slice(0, 2)
-                        .map(t => getThemeLabel(t.name))
-                        .join(' and ')}
-                    {data.keyPersons.length > 0
-                        ? `, with focus on ${data.keyPersons.slice(0, 2).map(p => p.name).join(' and ')}`
-                        : ''}.
-                </p>
-            )}
+            <p className="cb-connection-note cb-connection-note--analysis">
+                {buildCountryPublicAttentionNarrative({
+                    countryName: displayCountryName,
+                    signalCount: data.signal_count,
+                    hours: timeWindow,
+                    topThemes: data.top_themes,
+                    topSearches: data.publicAttention?.searches,
+                    topWikiArticles: data.publicAttention?.wikiArticles,
+                })}
+                {data.keyPersons.length > 0
+                    ? ` People most visible in the media layer include ${data.keyPersons.slice(0, 2).map(p => p.name).join(' and ')}.`
+                    : ''}
+            </p>
 
             {/* Trust Indicators */}
             {indicators && !(indicators as Indicators & { error?: string }).error && (
@@ -468,6 +494,42 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                         {data.foreignSourcePct}% foreign-sourced coverage
                     </p>
                 )}
+            </section>
+
+            {/* Public Attention */}
+            <section className="brief-section">
+                <div className="cb-section-label">Public Attention <span className="cb-section-subcopy">people-side proxy</span></div>
+                <p className="cb-public-attention-note">
+                    Google searches and Wikipedia pageviews are country/language-edition proxies. They enrich the media picture, but they are not a population-normalized opinion poll.
+                </p>
+                <div className="cb-attention-grid">
+                    <div className="cb-attention-column">
+                        <span className="cb-attention-heading">Search</span>
+                        {(data.publicAttention?.searches ?? []).length > 0 ? (
+                            data.publicAttention!.searches.slice(0, 4).map(item => (
+                                <div key={item.keyword} className="cb-attention-row">
+                                    <span>{item.keyword}</span>
+                                    <strong>{item.rank ? `#${item.rank}` : 'trend'}</strong>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="cb-attention-empty">No Google Trends rows for this country window.</div>
+                        )}
+                    </div>
+                    <div className="cb-attention-column">
+                        <span className="cb-attention-heading">Wiki</span>
+                        {(data.publicAttention?.wikiArticles ?? []).length > 0 ? (
+                            data.publicAttention!.wikiArticles.slice(0, 4).map(item => (
+                                <div key={item.title} className="cb-attention-row">
+                                    <span>{item.title}</span>
+                                    <strong>{(item.views ?? 0).toLocaleString()}</strong>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="cb-attention-empty">No Wikipedia pageview rows for this country proxy.</div>
+                        )}
+                    </div>
+                </div>
             </section>
 
             {/* Top Themes */}
