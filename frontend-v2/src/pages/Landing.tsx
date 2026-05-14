@@ -93,7 +93,7 @@ export function Landing() {
                         onClick={() => navigate('/brief')}
                         className="lp-btn-pulse bg-primary text-on-primary px-6 py-2 rounded font-body-strong text-body-strong transition-all"
                     >
-                        Open Brief
+                        Read Today's Brief
                     </button>
                 </div>
             </nav>
@@ -131,8 +131,13 @@ export function Landing() {
                         </h1>
 
                         <p className="font-body-main text-body-main text-text-secondary max-w-xl text-lg">
-                            A public narrative intelligence console that turns open global signals into
-                            a daily brief, live map, country context, anomaly alerts, and investigation workspace.
+                            Public narrative intelligence for seeing what the world is paying attention to,
+                            how media frames it, and where a signal becomes an investigation.
+                        </p>
+
+                        <p className="font-body-main text-body-main text-text-secondary/80 max-w-2xl text-sm">
+                            Atlas combines open media signals, public attention, country context, source integrity,
+                            and narrative graphs into a readable brief first, then a full analyst console.
                         </p>
 
                         <div className="flex flex-wrap justify-center gap-4 mt-4">
@@ -140,7 +145,7 @@ export function Landing() {
                                 onClick={() => navigate('/brief')}
                                 className="lp-btn-pulse bg-primary text-on-primary px-10 py-4 rounded font-body-strong text-body-strong transition-all flex items-center gap-2"
                             >
-                                Open Daily Brief
+                                Start With Brief
                                 <span className="material-symbols-outlined" style={FILL_0}>arrow_forward</span>
                             </button>
                             <button
@@ -150,10 +155,11 @@ export function Landing() {
                                 Open Console
                             </button>
                             <a
-                                href="#features"
+                                href="/docs"
+                                onClick={event => { event.preventDefault(); navigate('/docs') }}
                                 className="px-10 py-4 rounded border border-border-subtle text-text-secondary hover:border-primary/60 hover:text-text-primary transition-all font-body-strong text-body-strong"
                             >
-                                See how it works
+                                Read Docs
                             </a>
                         </div>
                     </div>

@@ -31,6 +31,23 @@
 }
 .brief-back:hover { color: #e2e8f0; border-color: rgba(255, 255, 255, 0.3); }
 
+.brief-nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-self: start;
+}
+
+.brief-back-primary {
+    border-color: rgba(29, 158, 117, 0.38);
+    color: #68dbae;
+}
+
+.brief-back-primary:hover {
+    border-color: rgba(104, 219, 174, 0.72);
+    color: #d1fae5;
+}
+
 .brief-masthead-center {
     text-align: center;
 }
@@ -313,6 +330,15 @@
     transition: background 0.15s;
 }
 .brief-article:hover { background: #111827; }
+
+.brief-article-clickable {
+    cursor: pointer;
+}
+
+.brief-article-clickable:focus-visible {
+    outline: 1px solid rgba(104, 219, 174, 0.78);
+    outline-offset: -2px;
+}
 
 .brief-article-lead {
     grid-column: span 1;

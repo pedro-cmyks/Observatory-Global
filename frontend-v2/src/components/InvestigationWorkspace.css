@@ -2,10 +2,11 @@
 
 .investigation-workspace {
     position: fixed;
-    top: 58px;
-    left: 52px;
-    right: 24px;
-    bottom: 24px;
+    top: clamp(54px, 6vh, 64px);
+    left: clamp(10px, 4vw, 52px);
+    right: clamp(10px, 2vw, 24px);
+    bottom: clamp(10px, 2vh, 24px);
+    box-sizing: border-box;
     background:
         radial-gradient(circle at 50% 45%, rgba(29, 158, 117, 0.08), transparent 36%),
         rgba(7, 13, 23, 0.96);
@@ -21,6 +22,8 @@
     backdrop-filter: blur(18px);
     box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
     overflow: hidden;
+    max-width: calc(100vw - 20px);
+    max-height: calc(100vh - 64px);
 }
 
 .investigation-workspace.workspace-open {
@@ -105,6 +108,7 @@
 .workspace-board-layout {
     flex: 1;
     min-height: 0;
+    overflow: hidden;
     display: grid;
     grid-template-columns: 190px minmax(320px, 1fr) minmax(250px, 320px);
     background: rgba(7, 13, 23, 0.6);
@@ -213,6 +217,49 @@
         linear-gradient(90deg, rgba(29, 158, 117, 0.035) 1px, transparent 1px);
     background-size: 36px 36px;
     overflow: hidden;
+}
+
+.workspace-graph-stage--trail {
+    background:
+        radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.08), transparent 34%),
+        linear-gradient(rgba(34, 211, 238, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(34, 211, 238, 0.035) 1px, transparent 1px);
+    background-size: auto, 42px 42px, 42px 42px;
+}
+
+.workspace-graph-stage--pinned {
+    background:
+        radial-gradient(circle at 45% 52%, rgba(29, 158, 117, 0.08), transparent 36%),
+        linear-gradient(rgba(29, 158, 117, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(29, 158, 117, 0.035) 1px, transparent 1px);
+    background-size: auto, 36px 36px, 36px 36px;
+}
+
+.workspace-graph-mode-label {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    z-index: 1;
+    pointer-events: none;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: rgba(7, 13, 23, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.workspace-graph-mode-label span {
+    display: block;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #68dbae;
+}
+
+.workspace-graph-mode-label p {
+    margin: 4px 0 0;
+    color: rgba(203, 213, 225, 0.58);
+    font-size: 11px;
 }
 
 .workspace-graph-stage canvas {
@@ -490,9 +537,11 @@
 
 @media (max-width: 980px) {
     .investigation-workspace {
+        top: 58px;
         left: 10px;
         right: 10px;
         bottom: 10px;
+        max-height: calc(100vh - 68px);
     }
 
     .workspace-board-layout {
@@ -505,6 +554,13 @@
 }
 
 @media (max-width: 700px) {
+    .investigation-workspace {
+        top: 54px;
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+    }
+
     .workspace-board-layout {
         grid-template-columns: 1fr;
         grid-template-rows: auto minmax(320px, 1fr);

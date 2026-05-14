@@ -65,24 +65,34 @@ function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, wi
     ctx.closePath()
 }
 
-function drawWorkspaceNode(node: WorkspaceGraphNode & { x?: number; y?: number }, ctx: CanvasRenderingContext2D, globalScale: number): void {
+function drawWorkspaceNode(
+    node: WorkspaceGraphNode & { x?: number; y?: number },
+    ctx: CanvasRenderingContext2D,
+    globalScale: number,
+    mode: 'trail' | 'pinned',
+    trailIndex?: number
+): void {
     const label = node.title.length > 32 ? `${node.title.slice(0, 29)}...` : node.title
-    const subtitle = node.pinned ? formatFilterLabel(node.type) : node.subtitle || formatFilterLabel(node.type)
+    const subtitle = mode === 'trail' && trailIndex
+        ? `Trail step ${String(trailIndex).padStart(2, '0')}`
+        : node.pinned ? formatFilterLabel(node.type) : node.subtitle || formatFilterLabel(node.type)
     const fontSize = Math.max(8, 12 / globalScale)
     const subtitleSize = Math.max(7, 9 / globalScale)
     const paddingX = 10 / globalScale
     const width = Math.max(92 / globalScale, ctx.measureText(label).width + paddingX * 2)
-    const height = node.pinned ? 46 / globalScale : 38 / globalScale
+    const height = mode === 'trail' ? 50 / globalScale : node.pinned ? 46 / globalScale : 38 / globalScale
     const x = (node.x ?? 0) - width / 2
     const y = (node.y ?? 0) - height / 2
     const color = NODE_COLORS[node.type]
 
     ctx.save()
-    ctx.shadowColor = color
-    ctx.shadowBlur = node.pinned ? 18 / globalScale : 8 / globalScale
-    ctx.fillStyle = node.pinned ? 'rgba(12, 24, 43, 0.94)' : 'rgba(12, 24, 43, 0.48)'
-    ctx.strokeStyle = node.pinned ? color : `${color}88`
-    ctx.lineWidth = node.pinned ? 1.4 / globalScale : 1 / globalScale
+    ctx.shadowColor = mode === 'trail' ? '#22d3ee' : color
+    ctx.shadowBlur = mode === 'trail' ? 14 / globalScale : node.pinned ? 18 / globalScale : 8 / globalScale
+    ctx.fillStyle = mode === 'trail'
+        ? 'rgba(5, 16, 28, 0.9)'
+        : node.pinned ? 'rgba(12, 24, 43, 0.94)' : 'rgba(12, 24, 43, 0.48)'
+    ctx.strokeStyle = mode === 'trail' ? 'rgba(34, 211, 238, 0.88)' : node.pinned ? color : `${color}88`
+    ctx.lineWidth = mode === 'trail' ? 1.6 / globalScale : node.pinned ? 1.4 / globalScale : 1 / globalScale
     
     if (!node.pinned && node.subtitle === 'Visited this session') {
         ctx.setLineDash([4 / globalScale, 4 / globalScale])
@@ -94,6 +104,19 @@ function drawWorkspaceNode(node: WorkspaceGraphNode & { x?: number; y?: number }
     ctx.fill()
     ctx.stroke()
     ctx.setLineDash([]) // reset
+
+    if (mode === 'trail' && trailIndex) {
+        const badgeRadius = 12 / globalScale
+        ctx.fillStyle = '#22d3ee'
+        ctx.beginPath()
+        ctx.arc(x, y, badgeRadius, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#021018'
+        ctx.font = `700 ${Math.max(7, 9 / globalScale)}px Space Grotesk, monospace`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(String(trailIndex), x, y + 0.5 / globalScale)
+    }
 
     ctx.shadowBlur = 0
     ctx.fillStyle = '#e2e8f0'
@@ -172,12 +195,27 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
         }
     }, [graph, deferredQuery, nodeTypes, linkKinds, showSessionTrail, sidePanelMode])
 
+    const trailIndexByNodeId = useMemo(() => {
+        const map = new Map<string, number>()
+        ;[...sessionItems].reverse().forEach((item, index) => {
+            map.set(item.id, index + 1)
+        })
+        return map
+    }, [sessionItems])
+
     // Strengthen repulsion, set link distance, and add boundary force
     useEffect(() => {
         const fg = graphRef.current
         if (!fg) return
-        fg.d3Force('charge')?.strength(filteredGraph.nodes.length > 40 ? -520 : filteredGraph.nodes.length > 20 ? -400 : -320)
-        fg.d3Force('link')?.distance(110)
+        const nodeCount = filteredGraph.nodes.length
+        const charge = sidePanelMode === 'trail'
+            ? (nodeCount > 20 ? -420 : -320)
+            : (nodeCount > 40 ? -760 : nodeCount > 20 ? -560 : -380)
+        const linkDistance = sidePanelMode === 'trail'
+            ? 150
+            : (nodeCount > 40 ? 160 : 125)
+        fg.d3Force('charge')?.strength(charge)
+        fg.d3Force('link')?.distance(linkDistance)
         // Keep nodes away from canvas edges so labels don't clip
         const pad = 80
         const w = boardSize.width
@@ -192,7 +230,7 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
             }
         })
         fg.d3ReheatSimulation()
-    }, [filteredGraph, boardSize])
+    }, [filteredGraph, boardSize, sidePanelMode])
 
     const activeNodeCount = filteredGraph.nodes.length
     const activeLinkCount = filteredGraph.links.length
@@ -347,7 +385,11 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
                         )}
                     </aside>
 
-                    <main className="workspace-graph-stage" ref={boardRef}>
+                    <main className={`workspace-graph-stage workspace-graph-stage--${sidePanelMode}`} ref={boardRef}>
+                        <div className="workspace-graph-mode-label">
+                            <span>{sidePanelMode === 'trail' ? 'Trail map' : 'Pinned evidence map'}</span>
+                            <p>{sidePanelMode === 'trail' ? 'Chronological route through this session' : 'Relationship graph for saved evidence'}</p>
+                        </div>
                         {items.length === 0 ? (
                             <div className="workspace-empty workspace-empty-board">
                                 <FolderKanban size={24} />
@@ -370,7 +412,13 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
                                 height={boardSize.height}
                                 nodeId="id"
                                 nodeVal={node => Math.max(8, Math.log10((node.weight || 1) + 10) * 5)}
-                                nodeCanvasObject={drawWorkspaceNode}
+                                nodeCanvasObject={(node, ctx, globalScale) => drawWorkspaceNode(
+                                    node,
+                                    ctx,
+                                    globalScale,
+                                    sidePanelMode,
+                                    trailIndexByNodeId.get(node.id)
+                                )}
                                 nodePointerAreaPaint={(node, color, ctx) => {
                                     ctx.fillStyle = color
                                     ctx.fillRect((node.x ?? 0) - 70, (node.y ?? 0) - 24, 140, 48)

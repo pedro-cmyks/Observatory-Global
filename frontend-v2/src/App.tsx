@@ -44,6 +44,7 @@ import { SourceIntegrityPanel } from './components/SourceIntegrityPanel'
 import { PanelErrorBoundary } from './components/PanelErrorBoundary'
 import { ChokepointPanel } from './components/ChokepointPanel'
 import { AtlasLoader } from './components/AtlasLoader'
+import { PanelHelpButton } from './components/PanelHelpDrawer'
 import { useUrlSync } from './hooks/useUrlSync'
 
 
@@ -98,48 +99,6 @@ const pickTopAttentionNode = (nodes: NodeData[]) => nodes.reduce((max, node) => 
   if (nodeHeat !== maxHeat) return nodeHeat > maxHeat ? node : max
   return nodeSignals > maxSignals ? node : max
 }, nodes[0])
-
-// Clickable info badge that shows a styled popup explaining what each panel does
-function InfoBadge({ text }: { text: string }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLSpanElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
-
-  return (
-    <span ref={ref} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-      <button
-        onClick={(e) => { e.stopPropagation(); setOpen(o => !o) }}
-        style={{
-          background: 'rgba(12, 24, 43, 0.68)', border: '1px solid rgba(29,158,117,0.25)',
-          borderRadius: '4px', width: '14px', height: '14px',
-          cursor: 'pointer', padding: 0, color: '#68dbae',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '9px', lineHeight: 1, flexShrink: 0
-        }}
-        data-tip="What does this panel show?"
-      >?</button>
-      {open && (
-        <div style={{
-          position: 'absolute', top: '18px', left: '50%', transform: 'translateX(-50%)',
-          width: '230px', background: 'rgba(7, 13, 23, 0.97)', border: '1px solid rgba(29,158,117,0.24)',
-          borderRadius: '6px', padding: '10px 12px', fontSize: '11px', color: 'rgba(226,232,240,0.74)',
-          lineHeight: '1.6', zIndex: 9999, boxShadow: '0 8px 24px rgba(0,0,0,0.7)',
-          pointerEvents: 'auto'
-        }}>
-          {text}
-        </div>
-      )}
-    </span>
-  )
-}
 
 // Error boundary to prevent Deck.gl/WebGL crashes from black-screening the entire app
 interface MapErrorBoundaryState { hasError: boolean }
@@ -359,6 +318,13 @@ function AppContent() {
   const [prevStreamCtx, setPrevStreamCtx] = useState<PrevCtx | null>(null)
   const [showBriefing, setShowBriefing] = useState(false)
   const [tourRunId, setTourRunId] = useState(0)
+  const entrySource = useMemo(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('entry')
+  }, [])
+  const tourEntryContext = entrySource === 'brief'
+    ? 'You came in from the Brief. Atlas will show the full console first, then you can keep exploring the country or narrative you selected.'
+    : undefined
   // const [timeWindow, setTimeWindow] = useState(24) // Replaced by context
   const [viewState, setViewState] = useState(INITIAL_VIEW)
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
@@ -925,7 +891,7 @@ function AppContent() {
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 GLOBE
-                <InfoBadge text="Narrative activity by country. Glow color shows activity above each country's recent baseline; raw signal volume adds evidence density, not importance. FLOW lines show information pathways between countries. PLANE and SHIPS show live real-world assets at strategic locations." />
+                <PanelHelpButton panel="globe" />
               </span>
               <span className="panel-subtitle">narrative activity by country</span>
             </div>
@@ -1201,7 +1167,7 @@ function AppContent() {
             <>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 SIGNAL STREAM
-                <InfoBadge text="Curated feed of recent open signals. Each row can pivot the console by country, theme, person, source, or headline. Notable geopolitical signals appear first." />
+                <PanelHelpButton panel="signal-stream" />
               </span>
               <span className="panel-subtitle">notable open signals</span>
             </>
@@ -1209,7 +1175,7 @@ function AppContent() {
             <>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 SIGNAL STREAM
-                <InfoBadge text="Curated feed of recent open signals. Each row can pivot the console by country, theme, person, source, or headline. Notable geopolitical signals appear first." />
+                <PanelHelpButton panel="signal-stream" />
               </span>
               <span className="panel-subtitle">notable open signals</span>
             </>
@@ -1309,7 +1275,7 @@ function AppContent() {
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 NARRATIVE THREADS
-                <InfoBadge text="Top geopolitical topics trending globally right now. Each thread shows signal volume, country spread, sentiment trend, and the key people being mentioned. Click any thread to open a full topic breakdown." />
+                <PanelHelpButton panel="narrative-threads" />
               </span>
               <span className="panel-subtitle">how topics spread over time</span>
             </div>
@@ -1327,7 +1293,7 @@ function AppContent() {
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 CORRELATION MATRIX
-                <InfoBadge text="Shows how strongly pairs of countries share the same narratives. Brighter green = stronger co-coverage of the same topic. Switch between Country×Country and Theme×Theme views." />
+                <PanelHelpButton panel="correlation-matrix" />
               </span>
               <span className="panel-subtitle">which countries share narratives</span>
             </div>
@@ -1345,7 +1311,7 @@ function AppContent() {
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 ANOMALY ALERT
-                <InfoBadge text="Detects statistical spikes in media volume. A country or theme is flagged when its current signal count is significantly above its 7-day rolling baseline (z-score threshold). Also tracks global theme-level surges." />
+                <PanelHelpButton panel="anomaly-attention" />
               </span>
               <span className="panel-subtitle">unusual activity vs 7-day baseline</span>
             </div>
@@ -1366,7 +1332,7 @@ function AppContent() {
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 SOURCE INTEGRITY
-                <InfoBadge text="Monitors quality and diversity of active data sources. High Top Source Share means one outlet is dominating the feed (potential bias). Quality score is based on allowlisted vs unknown sources." />
+                <PanelHelpButton panel="source-integrity" />
               </span>
               <span className="panel-subtitle">diversity of information sources</span>
             </div>
@@ -1518,6 +1484,7 @@ function AppContent() {
         runId={tourRunId}
         onOpenBrief={openBrief}
         onOpenWorkspace={() => setIsOpen(true)}
+        entryContext={tourEntryContext}
       />
     </div>
   )

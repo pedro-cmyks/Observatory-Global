@@ -81,6 +81,16 @@
     margin: 0 0 18px;
 }
 
+.onboarding-entry-context {
+    margin: -6px 0 18px;
+    padding: 10px 12px;
+    border-left: 2px solid #68dbae;
+    background: rgba(29, 158, 117, 0.1);
+    color: rgba(226, 232, 240, 0.84);
+    font-size: 11px;
+    line-height: 1.55;
+}
+
 .onboarding-actions,
 .onboarding-action-group {
     display: flex;

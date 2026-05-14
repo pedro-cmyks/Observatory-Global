@@ -93,9 +93,10 @@ interface OnboardingCoachmarkProps {
     runId?: number
     onOpenBrief?: () => void
     onOpenWorkspace?: () => void
+    entryContext?: string
 }
 
-export function OnboardingCoachmark({ runId = 0, onOpenBrief, onOpenWorkspace }: OnboardingCoachmarkProps) {
+export function OnboardingCoachmark({ runId = 0, onOpenBrief, onOpenWorkspace, entryContext }: OnboardingCoachmarkProps) {
     const [step, setStep] = useState(0)
     const [visible, setVisible] = useState(() => {
         try {
@@ -176,6 +177,9 @@ export function OnboardingCoachmark({ runId = 0, onOpenBrief, onOpenWorkspace }:
                 <div className="onboarding-eyebrow">{current.eyebrow}</div>
                 <p className="onboarding-title">{current.title}</p>
                 <p className="onboarding-body">{current.body}</p>
+                {entryContext && step === 0 && (
+                    <p className="onboarding-entry-context">{entryContext}</p>
+                )}
                 <div className="onboarding-actions">
                     <button className="onboarding-skip" onClick={dismiss}>
                         Skip tour

@@ -228,7 +228,9 @@ export function BriefNewspaper() {
     }
 
     const goToAtlas = (params?: string) => {
-        navigate(`/app${params ? `?${params}` : ''}`)
+        const next = new URLSearchParams(params)
+        next.set('entry', 'brief')
+        navigate(`/app?${next.toString()}`)
     }
 
     const atlasThemeParams = (theme: string, country?: string | null) => {
@@ -297,7 +299,10 @@ export function BriefNewspaper() {
     return (
         <div className="brief-page">
             <header className="brief-masthead">
-                <button className="brief-back" onClick={() => navigate('/app')}>← Atlas</button>
+                <div className="brief-nav-actions">
+                    <button className="brief-back" onClick={() => navigate('/')}>← Home</button>
+                    <button className="brief-back brief-back-primary" onClick={() => goToAtlas(countryFilter ? `country=${countryFilter}` : undefined)}>Open Console</button>
+                </div>
                 <div className="brief-masthead-center">
                     <div className="brief-edition-flag">INTELLIGENCE BRIEF</div>
                     <h1 className="brief-title">ATLAS</h1>
@@ -523,7 +528,16 @@ export function BriefNewspaper() {
                                 return (
                                     <article
                                         key={row.theme}
-                                        className={`brief-article ${isLead ? 'brief-article-lead' : ''}`}
+                                        className={`brief-article brief-article-clickable ${isLead ? 'brief-article-lead' : ''}`}
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => goToAtlas(atlasThemeParams(row.theme, countryFilter))}
+                                        onKeyDown={event => {
+                                            if (event.key === 'Enter' || event.key === ' ') {
+                                                event.preventDefault()
+                                                goToAtlas(atlasThemeParams(row.theme, countryFilter))
+                                            }
+                                        }}
                                     >
                                         <div className="brief-article-header">
                                             <span className="brief-article-icon">{getThemeIcon(row.theme)}</span>
@@ -548,7 +562,10 @@ export function BriefNewspaper() {
                                                     <button
                                                         key={c.code}
                                                         className="brief-country-pill"
-                                                        onClick={() => goToAtlas(atlasThemeParams(row.theme, c.code))}
+                                                        onClick={event => {
+                                                            event.stopPropagation()
+                                                            goToAtlas(atlasThemeParams(row.theme, c.code))
+                                                        }}
                                                     >
                                                         {resolveCountryName(c.code, c.name)}
                                                         <span className="brief-pill-count">
@@ -577,7 +594,10 @@ export function BriefNewspaper() {
 
                                         <button
                                             className="brief-theme-link"
-                                            onClick={() => goToAtlas(atlasThemeParams(row.theme, countryFilter))}
+                                            onClick={event => {
+                                                event.stopPropagation()
+                                                goToAtlas(atlasThemeParams(row.theme, countryFilter))
+                                            }}
                                         >
                                             Explore in Atlas →
                                         </button>

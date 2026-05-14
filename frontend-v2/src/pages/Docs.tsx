@@ -5,6 +5,20 @@ import './Docs.css'
 const NAV = [
     { id: 'overview', label: 'Overview' },
     {
+        id: 'panel-guide', label: 'Panel Guide', children: [
+            { id: 'globe-panel', label: 'Globe' },
+            { id: 'signal-stream-panel', label: 'Signal Stream' },
+            { id: 'public-attention-panel', label: 'Public Attention' },
+            { id: 'source-integrity-panel', label: 'Source Integrity' },
+        ]
+    },
+    {
+        id: 'methodology', label: 'Methodology', children: [
+            { id: 'coverage-methodology', label: 'Coverage Bias' },
+            { id: 'sentiment-methodology', label: 'Sentiment' },
+        ]
+    },
+    {
         id: 'data-sources', label: 'Data Sources', children: [
             { id: 'gdelt-gkg', label: 'GDELT GKG' },
             { id: 'gdelt-events', label: 'GDELT Events' },
@@ -154,6 +168,89 @@ export function Docs() {
                             </tr>
                         </tbody>
                     </table>
+                </section>
+
+                <hr className="docs-divider" />
+
+                {/* ── Panel Guide ── */}
+                <section className="docs-section" id="panel-guide">
+                    <div className="docs-section-eyebrow">Console Manual</div>
+                    <h2>Panel Guide</h2>
+                    <p className="docs-lead">
+                        Atlas has a readable Brief for orientation and a console for investigation. The console panels
+                        are connected: a click in one panel should give you a next step in another panel or the Workspace.
+                    </p>
+                    <div className="docs-source-grid">
+                        <div className="docs-source-card" id="globe-panel">
+                            <div className="docs-source-card-head">
+                                <span className="docs-source-badge badge-gdelt">MAP</span>
+                                <span className="docs-source-title">Globe</span>
+                            </div>
+                            <p>
+                                The Globe is the orientation layer. Glow shows activity relative to each country's own
+                                recent baseline. Raw signal volume adds evidence density, but it should not be read as
+                                direct real-world importance.
+                            </p>
+                        </div>
+                        <div className="docs-source-card" id="signal-stream-panel">
+                            <div className="docs-source-card-head">
+                                <span className="docs-source-badge badge-wiki">STREAM</span>
+                                <span className="docs-source-title">Signal Stream</span>
+                            </div>
+                            <p>
+                                The stream is the default investigation entry. It is a pivot engine: click a country,
+                                theme, person, source, or headline to turn a raw signal into a focused panel.
+                            </p>
+                        </div>
+                        <div className="docs-source-card" id="public-attention-panel">
+                            <div className="docs-source-card-head">
+                                <span className="docs-source-badge badge-trends">ATTN</span>
+                                <span className="docs-source-title">Public Attention</span>
+                            </div>
+                            <p>
+                                Public Attention is the counterpart to media signals. It captures what people are
+                                reading or searching where those feeds are available, then provides pivots into
+                                countries, themes, and narrative threads.
+                            </p>
+                        </div>
+                        <div className="docs-source-card" id="source-integrity-panel">
+                            <div className="docs-source-card-head">
+                                <span className="docs-source-badge badge-events">SRC</span>
+                                <span className="docs-source-title">Source Integrity</span>
+                            </div>
+                            <p>
+                                Source Integrity checks whether coverage is broad or concentrated. A high concentration
+                                score is a warning to inspect which publishers are dominating a country or theme.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="docs-callout" id="correlation-panel">
+                        <strong>Correlation Matrix:</strong> use this as a lead generator. Bright cells indicate shared
+                        narrative coverage, not agreement or causality.
+                    </div>
+                </section>
+
+                <hr className="docs-divider" />
+
+                {/* ── Methodology ── */}
+                <section className="docs-section" id="methodology">
+                    <div className="docs-section-eyebrow">Interpretation</div>
+                    <h2>Methodology Notes</h2>
+                    <p className="docs-lead">
+                        Atlas should make coverage bias visible instead of hiding it. The product separates signal
+                        volume, normalized activity, source concentration, and public attention so one metric does not
+                        overrule the others.
+                    </p>
+                    <div className="docs-callout" id="coverage-methodology">
+                        <strong>Coverage bias:</strong> countries with more open-source media produce more raw signals.
+                        Atlas can use that volume as more evidence, but map heat and narrative ranking should be
+                        compared against each country's own baseline whenever possible.
+                    </div>
+                    <div className="docs-callout" id="sentiment-methodology">
+                        <strong>Sentiment:</strong> sentiment is a noisy contextual indicator. It should be read with
+                        signal count, source diversity, country spread, and the underlying headlines before drawing an
+                        analytic conclusion.
+                    </div>
                 </section>
 
                 <hr className="docs-divider" />
