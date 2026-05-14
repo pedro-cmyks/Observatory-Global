@@ -1,5 +1,32 @@
 # Atlas — Session Log
 
+## 2026-05-14 (session 17 — Remaining closable issues closed)
+
+### Session type: Issue closure + branch synchronization
+
+### What happened
+Started from the session 16 handoff and verified GitHub open issues. Found that local `v3-intel-layer` was 10 commits ahead of `origin/v3-intel-layer`; ran `npm run build`, committed the remaining-issues plan, and pushed `origin/v3-intel-layer` to match local before new work.
+
+**Closed issues:**
+- `220b91f` **#82** Temporal Narrative Graph selected bucket can now be pinned as a `temporal_snapshot` workspace node, with graph relationships to theme, countries, sources, people, and related themes.
+- `7fb5eaa` **#61** Added shared `CompareDashboard` shell; ThemeCompare and PersonCompare now use one reusable 50/50 comparison overlay.
+- `ea6c2ce` **#105** Safely ported only `backend/app/services/ingest_rss.py` from candidate branch; RSS registry now has 50 curated feeds across LATAM, MENA, Sub-Saharan Africa, and Southeast Asia.
+- `2d3b2aa` **#70** Added frontend-only theme hierarchy: 7 clusters, 79 mapped codes, grouped EntityPanel related themes, and NarrativeThreads cluster labels.
+
+**Blocked issues documented:**
+- **#46** ACLED remains open with `blocked` label; needs real ACLED API access and credentials.
+- **#106** Octopus mascot remains open with `blocked` label; needs designer SVG assets before implementation.
+
+### Validation
+- `cd frontend-v2 && npm run test -- src/lib/workspaceGraph.test.ts` → 4 passed.
+- `cd frontend-v2 && npm run build` → passed; existing large chunk warning only.
+- `python3 -m py_compile backend/app/services/ingest_rss.py` → passed.
+
+### Next
+Push the new session 17 commits to `origin/v3-intel-layer`, let Vercel/Fly deploy, then smoke-test production before considering a controlled `main` migration.
+
+---
+
 ## 2026-05-14 (session 16 — Tier 5 sweep: 10 issues closed)
 
 ### Session type: Issue closure + feature work

@@ -1,9 +1,43 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-14 (Session 16 — 10 issues closed, Tier 5 progress)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-14 (Session 17 — closable issue sweep complete)
 
 ---
 
-## Current handoff (2026-05-14) — Session 16
+## Current handoff (2026-05-14) — Session 17
+
+Latest local commit before this status update: `2d3b2aa feat(themes): add frontend theme hierarchy (#70)` on `v3-intel-layer`.
+
+### Closable issues closed this session
+
+| Commit | Issue | What |
+|--------|-------|------|
+| `69d4b93` | docs | Remaining issue closure plan saved in `docs/superpowers/plans/2026-05-14-remaining-issues-closure.md` |
+| `220b91f` | #82 | Temporal Graph selected bucket can pin a typed temporal snapshot into Workspace |
+| `7fb5eaa` | #61 | Shared `CompareDashboard` shell for ThemeCompare and PersonCompare |
+| `ea6c2ce` | #105 | RSS registry expanded to 50 curated feeds; provenance fields preserved |
+| `2d3b2aa` | #70 | Frontend theme hierarchy: 7 clusters, 79 mapped codes, EntityPanel grouping, NarrativeThreads cluster label |
+
+### Remaining open issues
+
+| # | Status | Notes |
+|---|--------|-------|
+| #46 | blocked | ACLED API access required before real integration. Labeled `blocked` and commented. |
+| #106 | blocked | Designer SVG mascot assets required before dev. Labeled `blocked` and commented. |
+
+### Validation
+
+- `cd frontend-v2 && npm run test -- src/lib/workspaceGraph.test.ts` → 4 passed.
+- `cd frontend-v2 && npm run build` → passed after #82, #61, and #70; known large chunk warning remains.
+- `python3 -m py_compile backend/app/services/ingest_rss.py` → passed.
+- `origin/v3-intel-layer` was synced before issue work; new session commits still need push.
+
+### Branch recommendation
+
+Do not repoint production to `main` until `v3-intel-layer` is pushed, Vercel/Fly deploy from that remote head, and production is smoke-tested. After that, a controlled migration can make `main` the active production branch and keep `v3-intel-layer` as history.
+
+---
+
+## Previous handoff (2026-05-14) — Session 16
 
 Latest shipped commit: `3f42949 feat: Evolution Graph — leaf node treatment + Open in Workspace (#109)` on `v3-intel-layer`.
 
