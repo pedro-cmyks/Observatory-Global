@@ -1,50 +1,48 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-14 (Issue blitz — 14 issues closed, Tiers 1-4 complete)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-14 (Session 16 — 10 issues closed, Tier 5 progress)
 
 ---
 
-## Current handoff (2026-05-14) — Issue blitz
+## Current handoff (2026-05-14) — Session 16
 
-Latest shipped commit: `bf037cf refactor(backend): split main_v2.py into APIRouter modules` pushed to `origin/v3-intel-layer`.
+Latest shipped commit: `3f42949 feat: Evolution Graph — leaf node treatment + Open in Workspace (#109)` on `v3-intel-layer`.
 
-### 14 issues closed this session
+### 10 issues closed this session
 
 | Commit | Issue | What |
 |--------|-------|------|
-| code verified | #122 | Country Brief ISO header → `resolveCountryName()` |
-| code verified | #119 | Brief country filter includes all countries via `COUNTRY_OPTIONS` |
-| code verified | #120 | Signal Stream defaults to `notable` filter |
-| code verified | #121 | Coverage bias disclaimer in App.tsx |
-| code verified | #123 | WORKSPACE cmd button visible in command bar |
-| code verified | #108 | Landing → `/app` link present |
-| code verified | #127 | Public Attention noise filter via `publicAttentionFilters.ts` |
-| `9a0cb5d` | #128 | Workspace: Trail/Pinned separate graph modes; header flex-shrink:0; charge strength scales with node count |
-| `9a0cb5d` | #110 | Top Sources backend LIMIT 10 → 20 |
-| `c265c77` | #126 | TemporalNarrativeGraph hover-to-focus dim (refs-based, frame-stable) |
-| `cbd58b2` | #112 | Related Topics: VS → ArrowLeftRight icon, sub-hint, CSS class, overflow fix |
-| `9eadc3f` | #113 | Signal Stream entry animation: green flash + left border glow, 650ms |
-| `547db58` | #107 | PanelSkeleton component; NarrativeDrift/FocusSummaryPanel skeletons; ThemeDetail stale-while-revalidate |
-| `bf037cf` | #125 | Backend split: main_v2.py 4958→120 lines, 12 APIRouter modules, 43 routes, app/db.py + app/utils.py |
+| `2f97f19` | #129 | Onboarding tour: write localStorage on mount → no re-trigger on nav-away |
+| `5e2499b` | #130 | SourceIntegrityPanel: `filter.theme` → `getThemeLabel()`, no raw GDELT codes |
+| `f5e4383` | #132 | Workspace graph: compact dot mode at 20+ nodes / zoom < 1.2 |
+| `09d24be` | #131 | Custom investigative concepts: `useCustomConcepts` hook, `CustomConceptModal`, SearchBar integration |
+| code verified | #80 | Session graph already fully implemented (trackVisit, trail tab, promote-to-pin) |
+| `1888800` | #111 | StreamLevel in FocusContext; SignalStream writes it; AnomalyPanel + SourceIntegrity show context badges |
+| `1b2b35c` | #114 | Workspace expert analyst audit → `docs/research/workspace-expert-audit.md` |
+| code verified | #79 | Public Attention AEIL pin + workspace node + graph relationships already implemented |
+| `37aaf0b` | #124 | Saved watches: `useSavedWatches` hook, WATCH button in toolbar, watches section in /brief |
+| `3f42949` | #109 | Evolution Graph: leaf node treatment (55% radius, hide label <1.4 zoom); "⊞ Workspace" button |
 
-### Open issues (16 remaining)
+### Untracked fixes (from workspace-expert-audit.md)
+- `21fa9d0` — NarrativeThreads country pips → interactive buttons; thread click auto-opens CountryBrief for top country
 
-New issues opened during session:
-- **#129** — guided tour re-triggers every visit (bug)
-- **#130** — raw theme code `CRISISLEX_CRISISLEXREC` in Source Integrity panel (bug)
-- **#131** — custom investigative concepts (feat)
-- **#132** — workspace graph label overlap 26+ nodes (ux)
+### Open issues (6 remaining)
 
-Tier 5 roadmap remaining: #111, #80, #82, #79, #109, #61, #124, #70, #105, #106, #114, #46 (blocked)
-
-### Recommended next order
-1. **#129** — guided tour bug (small, high annoyance)
-2. **#130** — raw theme code bug (small, visible)
-3. **#132** — label overlap in workspace graph (ties to #128 work)
-4. **#111** — Signal Stream as global panel motor (medium feature)
-5. **#80/#82** — session/temporal graph (larger workspace graph work)
+| # | Type | Notes |
+|---|------|-------|
+| #82 | L | Temporal narrative graph + workspace integration |
+| #61 | L | Compare engine UI |
+| #105 | data | RSS feed expansion |
+| #70 | L | Theme clustering over GDELT taxonomy |
+| #46 | blocked | ACLED API access (external) |
+| #106 | needs designer | Octopus mascot — scope documented in issue comment |
 
 ### Architecture note — backend routers
 `backend/app/main_v2.py` is now the slim entrypoint. All routes live in `backend/app/routers/`. DB pool exposed via `backend/app/db.py` (`db.pool`, set on startup). Shared helpers in `backend/app/utils.py`.
+
+### New hooks added this session
+- `frontend-v2/src/hooks/useCustomConcepts.ts` — localStorage CRUD for user-defined investigative concepts
+- `frontend-v2/src/hooks/useSavedWatches.ts` — localStorage CRUD for named filter watches
+- `frontend-v2/src/components/CustomConceptModal.tsx` — create/edit modal with live theme search picker
 
 ---
 

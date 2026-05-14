@@ -1,5 +1,46 @@
 # Atlas — Session Log
 
+## 2026-05-14 (session 16 — Tier 5 sweep: 10 issues closed)
+
+### Session type: Issue closure + feature work
+
+### What happened
+Continued from session 15. Triaged all 12 remaining open issues by effort, picked path of least resistance, closed 10 in one session.
+
+**Verified already-implemented (3):**
+- `#80` — Session graph: trackVisit, Trail tab, promote-to-pin all shipped in session 12
+- `#79` — Public Attention AEIL: pin support, workspace node type, graph relationships, navigate-back all implemented
+- `#114` — Workspace audit: wrote `docs/research/workspace-expert-audit.md` (synthetic expert walkthrough, drug-trafficking topic, 28-min session, 9 gaps documented, 4 new issues recommended)
+
+**Bug fixes (3):**
+- `2f97f19` **#129** Onboarding tour writes `localStorage` on mount → navigating away before Skip/Done no longer re-triggers tour
+- `5e2499b` **#130** SourceIntegrityPanel: `filter.theme` routed through `getThemeLabel()`, raw GDELT codes gone
+- `f5e4383` **#132** Workspace graph: compact dot + type initial when nodeCount ≥ 20 and globalScale < 1.2; full labels return on zoom
+
+**Features (4):**
+- `09d24be` **#131** Custom investigative concepts: `useCustomConcepts` hook (localStorage), `CustomConceptModal` (label + description + debounced theme search picker), SearchBar shows "My Concepts" section + "Save as concept" CTA
+- `1888800` **#111** StreamLevel added to FocusContext GlobalFilter; SignalStream writes it on every tab click; AnomalyPanel shows THREAD/STREAM context badge; SourceIntegrityPanel shows level pill
+- `37aaf0b` **#124** Saved watches: `useSavedWatches` hook, WATCH button (gold, toolbar, only when filter active), name dialog, watches section in /brief with Open-in-Atlas deep-link
+- `3f42949` **#109** Evolution Graph: degree-1 nodes render at 55% radius + hide label below zoom 1.4; "⊞ Workspace" button pins theme + opens WorkspaceBoard
+
+**Untracked audit fixes:**
+- `21fa9d0` NarrativeThreads country pips → clickable buttons (setCountry + fly + onCountrySelect); thread click auto-opens CountryBrief for top country
+
+**Documentation:**
+- `#106` scoped in issue comment: needs designer SVG assets (3 poses, 3 costume overlays) before dev starts
+- `1b2b35c` `docs/research/workspace-expert-audit.md` added
+
+### Build status
+`npm run build` passed (11s). 6 open issues remain — all L/research/blocked.
+
+### Open issues after session
+#82 (temporal+workspace), #61 (compare engine), #105 (RSS), #70 (theme clustering), #46 (ACLED, blocked), #106 (needs designer)
+
+### Next
+#82 is the highest-value remaining item — temporal narrative graph integration with WorkspaceBoard. Requires rethinking the bucket model.
+
+---
+
 ## 2026-05-14 (session 15 — Issue blitz: Tiers 1–4 closed)
 
 ### Session type: Systematic issue closure
