@@ -1,6 +1,6 @@
 import { EntityPanel } from './EntityPanel'
+import { CompareDashboard } from './CompareDashboard'
 import { type TimeRange } from '../lib/timeRanges'
-import './PersonCompare.css'
 
 interface PersonCompareProps {
     personA: string
@@ -14,39 +14,33 @@ interface PersonCompareProps {
 
 export function PersonCompare({ personA, personB, timeRange, onClose, onThemeSelect, onCountrySelect, onSourceClick }: PersonCompareProps) {
     return (
-        <div className="person-compare-overlay">
-            <div className="person-compare-header">
-                <div className="person-compare-title">
-                    Comparing: <span style={{ color: '#a5b4fc' }}>{personA}</span> vs <span style={{ color: '#a5b4fc' }}>{personB}</span>
-                </div>
-                <button className="person-compare-close" onClick={onClose}>×</button>
-            </div>
-            <div className="person-compare-content">
-                <div className="person-compare-pane" style={{ position: 'relative' }}>
-                    <EntityPanel 
-                        inline 
-                        focusType="person" 
-                        focusValue={personA} 
-                        timeRange={timeRange} 
-                        onClose={onClose} 
-                        onThemeSelect={onThemeSelect} 
-                        onCountrySelect={onCountrySelect}
-                        onSourceClick={onSourceClick}
-                    />
-                </div>
-                <div className="person-compare-pane" style={{ position: 'relative' }}>
-                    <EntityPanel 
-                        inline 
-                        focusType="person" 
-                        focusValue={personB} 
-                        timeRange={timeRange} 
-                        onClose={onClose} 
-                        onThemeSelect={onThemeSelect} 
-                        onCountrySelect={onCountrySelect}
-                        onSourceClick={onSourceClick}
-                    />
-                </div>
-            </div>
-        </div>
+        <CompareDashboard
+            modeLabel="Person Compare"
+            leftLabel={personA}
+            rightLabel={personB}
+            accent="#a78bfa"
+            onClose={onClose}
+        >
+            <EntityPanel
+                inline
+                focusType="person"
+                focusValue={personA}
+                timeRange={timeRange}
+                onClose={onClose}
+                onThemeSelect={onThemeSelect}
+                onCountrySelect={onCountrySelect}
+                onSourceClick={onSourceClick}
+            />
+            <EntityPanel
+                inline
+                focusType="person"
+                focusValue={personB}
+                timeRange={timeRange}
+                onClose={onClose}
+                onThemeSelect={onThemeSelect}
+                onCountrySelect={onCountrySelect}
+                onSourceClick={onSourceClick}
+            />
+        </CompareDashboard>
     )
 }

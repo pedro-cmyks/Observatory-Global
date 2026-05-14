@@ -1,6 +1,6 @@
 import { ThemeDetail } from './ThemeDetail'
+import { CompareDashboard } from './CompareDashboard'
 import { getThemeLabel } from '../lib/themeLabels'
-import './ThemeCompare.css'
 
 interface ThemeCompareProps {
     themeA: string
@@ -15,37 +15,31 @@ interface ThemeCompareProps {
 
 export function ThemeCompare({ themeA, themeB, hours, onClose, onThemeSelect, onCountryCardClick, onPersonClick, onSourceClick }: ThemeCompareProps) {
     return (
-        <div className="theme-compare-overlay">
-            <div className="theme-compare-header">
-                <div className="theme-compare-title">
-                    Comparing: <span style={{ color: '#10b981' }}>{getThemeLabel(themeA)}</span> vs <span style={{ color: '#10b981' }}>{getThemeLabel(themeB)}</span>
-                </div>
-                <button className="theme-compare-close" onClick={onClose}>×</button>
-            </div>
-            <div className="theme-compare-content">
-                <div className="theme-compare-pane">
-                    <ThemeDetail 
-                        theme={themeA} 
-                        hours={hours} 
-                        onClose={() => {}} 
-                        onThemeSelect={onThemeSelect}
-                        onCountryCardClick={onCountryCardClick}
-                        onPersonClick={onPersonClick}
-                        onSourceClick={onSourceClick}
-                    />
-                </div>
-                <div className="theme-compare-pane">
-                    <ThemeDetail 
-                        theme={themeB} 
-                        hours={hours} 
-                        onClose={() => {}} 
-                        onThemeSelect={onThemeSelect}
-                        onCountryCardClick={onCountryCardClick}
-                        onPersonClick={onPersonClick}
-                        onSourceClick={onSourceClick}
-                    />
-                </div>
-            </div>
-        </div>
+        <CompareDashboard
+            modeLabel="Theme Compare"
+            leftLabel={getThemeLabel(themeA)}
+            rightLabel={getThemeLabel(themeB)}
+            accent="#10b981"
+            onClose={onClose}
+        >
+            <ThemeDetail
+                theme={themeA}
+                hours={hours}
+                onClose={() => {}}
+                onThemeSelect={onThemeSelect}
+                onCountryCardClick={onCountryCardClick}
+                onPersonClick={onPersonClick}
+                onSourceClick={onSourceClick}
+            />
+            <ThemeDetail
+                theme={themeB}
+                hours={hours}
+                onClose={() => {}}
+                onThemeSelect={onThemeSelect}
+                onCountryCardClick={onCountryCardClick}
+                onPersonClick={onPersonClick}
+                onSourceClick={onSourceClick}
+            />
+        </CompareDashboard>
     )
 }
