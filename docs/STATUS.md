@@ -1,5 +1,32 @@
 # Project Status
 
+## Current Handoff — 2026-05-14
+
+The active production branch is `v3-intel-layer`.
+
+Latest shipped frontend/UX work:
+- `f6ec9e8 feat(ux): enrich public attention investigation flow`
+- Atlas is positioned as a **public narrative intelligence console**, not a GDELT wrapper.
+- `/brief` is the broad entry point; `/app` is the analyst console.
+- Public Attention is now the people-side enrichment layer that complements Signal Stream/media signals.
+- Theme pivots opened from Public Attention preserve context in `ThemeDetail`.
+- CountryBrief now includes country-scoped Google Trends and Wikipedia proxies plus more readable country analysis copy.
+- Workspace has a visible `Trail` tab based on session navigation.
+- Onboarding key is now `atlas_onboarding_v3` and includes Anomaly/Public Attention.
+
+New follow-up issue:
+- `#128 ux(workspace): keep board in viewport and separate Trail graph from Pinned graph`
+  - Workspace shell can exceed laptop/browser bounds.
+  - Trail and Pinned graphs must become distinct views.
+  - Force graph physics need tuning for dense 40-60 node sessions.
+
+Validation from latest session:
+- `cd frontend-v2 && npm run test` passed: 25 tests.
+- `cd frontend-v2 && npm run build` passed.
+- `cd frontend-v2 && npm run lint` passed with warnings only.
+
+For the canonical, up-to-date session log, use root `STATUS.md`.
+
 ## Current State
 **Version**: v3.1.0 (Intelligence Layer + AI Insight)
 **Status**: Development - Active

@@ -1,5 +1,36 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-13 (production brief/request-storm hotfix)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-14 (Public Attention enrichment + Workspace QA handoff)
+
+---
+
+## Current handoff (2026-05-14)
+
+Latest shipped commit: `f6ec9e8 feat(ux): enrich public attention investigation flow` pushed to `origin/v3-intel-layer`.
+
+What changed:
+- Public Attention now behaves as a people-side enrichment layer, not a separate destination. Clicking a Public Attention topic can open a narrative thread while preserving the originating attention context.
+- `ThemeDetail` shows `opened from Public Attention: <topic>` and adds a Public Attention Context block when opened from an attention item.
+- `CountryBrief` now fetches country-scoped Google Trends and Wikipedia proxies, and its analysis copy reads more like `/brief` while staying inside the console panel.
+- Workspace now exposes a visible `Trail` tab using existing `sessionItems`; the trail records investigation pivots and can pin/open trail points.
+- First-run walkthrough advanced to `atlas_onboarding_v3` and now explains Anomaly/Public Attention as the second lens next to Signal Stream.
+
+Validated:
+- `cd frontend-v2 && npm run test` → 25 tests passed.
+- `cd frontend-v2 && npm run build` → passed; known large chunk warning remains for MapLibre/main bundle.
+- `cd frontend-v2 && npm run lint` → 0 errors, 37 existing warnings.
+- Browser QA local verified `/app?attention=ShinyHunters`, `/app?theme=TAX_FNCACT_CYBER_ATTACK&attention=ShinyHunters`, visible Public Attention context, and Workspace Trail. Local backend was not running, so API-backed content was empty/500 during UI verification.
+
+New issue created:
+- **#128** — `ux(workspace): keep board in viewport and separate Trail graph from Pinned graph`
+  - Workspace modal can exceed laptop/browser bounds, hiding close/actions.
+  - Trail and Pinned need distinct visual modes; Trail should show an ordered investigation path, Pinned should remain the evidence relationship board.
+  - Force graph physics need tuning for 40-60 node sessions; current clusters can collapse into overlapping labels.
+
+Recommended next order:
+1. Fix **#128** before deeper Workspace graph work. This is a usability blocker now that Trail is visible.
+2. Close/review implemented UX issues: #108, #119, #120, #121, #123, #127 after production visual QA.
+3. Continue #80/#82 with the distinction that Trail ≠ Pinned graph.
+4. Then return to #107 slow panels and #110 visible correctness.
 
 ---
 
@@ -182,6 +213,7 @@ Vercel production deploy follows pushes to `v3-intel-layer`; verify `https://obs
 | # | Title | Status |
 |---|-------|--------|
 | **#127** | Public Attention filter out entertainment/actors | Implemented locally; ready to close after review |
+| **#128** | Workspace bounds + distinct Trail/Pinned graph modes | New QA issue from 2026-05-14; next Workspace target |
 | **#126** | TemporalNarrativeGraph hover-to-focus | Next small UX target |
 | **#124** | Saved searches / persistent alerts | Next product feature after QA stabilization |
 | **#123** | Workspace discoverability | Implemented locally; ready to close after review |
@@ -219,7 +251,7 @@ Vercel production deploy follows pushes to `v3-intel-layer`; verify `https://obs
 2. **Fix local QA hygiene** — apply or backfill missing local migrations, especially `theme_country_hourly_v2` and NLP columns, then rerun backend tests.
 3. **#122 / #110** — clean visible correctness bugs before adding new surfaces.
 4. **#126 / #112 / #107** — small UX/performance polish while the redesign is still active.
-5. **#124 / #80 / #82** — move toward guided investigation memory: saved searches, session graph, and temporal graph integration.
+5. **#128 / #80 / #82** — fix Workspace shell/graph usability first, then move toward guided investigation memory: saved searches, session graph, and temporal graph integration.
 
 ---
 
@@ -257,7 +289,7 @@ frontend-v2/               backend/start.sh             signals_v2
 
 | Area | How to check |
 |------|-------------|
-| Onboarding | Delete `atlas_onboarding_v1` from localStorage → reload `/app` → 3-step overlay appears |
+| Onboarding | Delete `atlas_onboarding_v3` from localStorage → reload `/app` → guided overlay appears, including Anomaly/Public Attention |
 | Signal Stream | Left panel shows live GDELT articles with timestamps |
 | Narrative Threads | Right panel — 5 topics with sparklines, spread bars, trend arrows |
 | Theme detail | Click any theme → stats + country cards + drift chart (or "No drift data for this period") |

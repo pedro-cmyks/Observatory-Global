@@ -1,12 +1,24 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-11 (session 9 — geo-validation, source framing split, NER geo-filter, ESLint clean, tolerant search complete)
+Last updated: 2026-05-14 (Public Attention enrichment + Workspace QA handoff)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
 ## Project Overview
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
+
+## Current Session Context (2026-05-14)
+
+- Active branch: `v3-intel-layer`; this is the production branch. Do not merge into `main`.
+- Latest shipped UX commit: `f6ec9e8 feat(ux): enrich public attention investigation flow`.
+- Atlas product framing: **public narrative intelligence console**, not a GDELT wrapper.
+- Preferred user path: `/brief` for readable orientation, then `/app` for full analyst investigation.
+- Public Attention is the people-side layer. It should enrich Signal Stream, ThemeDetail, CountryBrief, AnomalyPanel, and Workspace rather than becoming a separate product surface.
+- Workspace now has a visible `Trail` tab using session navigation. Trail is not the same as Pinned: Trail should become an ordered investigation path, while Pinned remains the curated evidence relationship board.
+- New issue #128 tracks next Workspace fixes: keep board inside viewport bounds, make close/actions reachable on laptop viewports, separate Trail/Pinned graph modes, and tune force graph physics to avoid collapsed clusters.
+- Onboarding storage key is `atlas_onboarding_v3`; it includes Anomaly/Public Attention.
+- Recent validation: `cd frontend-v2 && npm run test`, `npm run build`, and `npm run lint` all pass; lint has warnings only.
 
 ## Specialized Agents
 
