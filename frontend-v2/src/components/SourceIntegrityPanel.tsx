@@ -3,6 +3,7 @@ import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { timeRangeToHours } from '../lib/timeRanges'
 import { resolveCountryName } from '../lib/countryNames'
+import { getThemeLabel } from '../lib/themeLabels'
 import './SourceIntegrityPanel.css'
 
 interface GlobalBriefing {
@@ -82,7 +83,7 @@ export const SourceIntegrityPanel: React.FC = () => {
     return (
         <div className="source-panel-container">
             <div className="source-header">
-                <div>SOURCE HEALTH: {filter.country ? resolveCountryName(filter.country) : filter.theme ? filter.theme : 'GLOBAL AGGREGATE'}</div>
+                <div>SOURCE HEALTH: {filter.country ? resolveCountryName(filter.country) : filter.theme ? getThemeLabel(filter.theme) : 'GLOBAL AGGREGATE'}</div>
                 {isLoading && <div className="loading-spinner" />}
             </div>
 
