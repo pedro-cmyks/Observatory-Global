@@ -698,3 +698,73 @@
     transition: width 0.5s ease;
     min-width: 4px;
 }
+
+/* ── Saved Watches ── */
+.brief-watches {
+    padding: 24px 32px;
+}
+
+.brief-watches-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.brief-watch-card {
+    background: rgba(251,191,36,0.05);
+    border: 1px solid rgba(251,191,36,0.2);
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.brief-watch-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e2e8f0;
+}
+
+.brief-watch-scope {
+    font-size: 11px;
+    color: #94a3b8;
+}
+
+.brief-watch-date {
+    font-size: 10px;
+    color: #475569;
+    margin-top: 2px;
+}
+
+.brief-watch-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+}
+
+.brief-watch-open {
+    background: none;
+    border: none;
+    color: #fbbf24;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+}
+
+.brief-watch-open:hover { color: #fde68a; }
+
+.brief-watch-remove {
+    background: none;
+    border: none;
+    color: #475569;
+    font-size: 16px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+}
+
+.brief-watch-remove:hover { color: #ef4444; }

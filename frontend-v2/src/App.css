@@ -1204,3 +1204,90 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+/* ── Saved Watches ── */
+.cmd-btn--watch {
+    color: #fbbf24;
+    border-color: rgba(251, 191, 36, 0.3);
+}
+
+.cmd-btn--watch:hover {
+    background: rgba(251, 191, 36, 0.1);
+    border-color: rgba(251, 191, 36, 0.6);
+}
+
+.watch-save-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 8500;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.watch-save-dialog {
+    background: #0c1828;
+    border: 1px solid rgba(251, 191, 36, 0.35);
+    border-radius: 10px;
+    padding: 20px;
+    width: 360px;
+    max-width: calc(100vw - 32px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.watch-save-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #fbbf24;
+}
+
+.watch-save-input {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px;
+    color: #e2e8f0;
+    font-size: 13px;
+    padding: 9px 12px;
+    outline: none;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.watch-save-input:focus { border-color: rgba(251,191,36,0.5); }
+
+.watch-save-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.watch-save-cancel {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    color: #94a3b8;
+    font-size: 12px;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+.watch-save-confirm {
+    background: rgba(251,191,36,0.85);
+    border: none;
+    border-radius: 6px;
+    color: #0c1828;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 14px;
+    cursor: pointer;
+}
+
+.watch-save-confirm:disabled { opacity: 0.4; cursor: not-allowed; }
+.watch-save-confirm:hover:not(:disabled) { background: #fbbf24; }

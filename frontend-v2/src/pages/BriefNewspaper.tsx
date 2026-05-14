@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSavedWatches } from '../hooks/useSavedWatches'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
@@ -81,6 +82,7 @@ export function BriefNewspaper() {
         : '24h'
 
     const [timeRange, setTimeRange] = useState<TimeRange>(initialRange)
+    const { watches, remove: removeWatch } = useSavedWatches()
     const [data, setData] = useState<BriefingData | null>(null)
     const [insight, setInsight] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
@@ -660,6 +662,41 @@ export function BriefNewspaper() {
                             ))}
                         </div>
                     </section>
+
+                    {watches.length > 0 && (
+                        <>
+                            <div className="brief-rule" />
+                            <section className="brief-watches">
+                                <div className="brief-section-tag">SAVED WATCHES</div>
+                                <div className="brief-watches-grid">
+                                    {watches.map(w => {
+                                        const parts: string[] = []
+                                        if (w.filter.country) parts.push(resolveCountryName(w.filter.country))
+                                        if (w.filter.concept) parts.push(w.filter.concept.label)
+                                        else if (w.filter.theme) parts.push(getThemeLabel(w.filter.theme))
+                                        if (w.filter.person) parts.push(w.filter.person)
+                                        if (w.filter.region) parts.push(w.filter.region.label)
+                                        const atlasParams = [
+                                            w.filter.country ? `country=${w.filter.country}` : null,
+                                            w.filter.theme ? `theme=${encodeURIComponent(w.filter.theme)}` : null,
+                                            w.filter.person ? `person=${encodeURIComponent(w.filter.person)}` : null,
+                                        ].filter(Boolean).join('&')
+                                        return (
+                                            <div key={w.id} className="brief-watch-card">
+                                                <div className="brief-watch-name">{w.name}</div>
+                                                <div className="brief-watch-scope">{parts.join(' · ') || 'Global'}</div>
+                                                <div className="brief-watch-date">Saved {new Date(w.createdAt).toLocaleDateString()}</div>
+                                                <div className="brief-watch-actions">
+                                                    <button className="brief-watch-open" onClick={() => goToAtlas(atlasParams || undefined)}>Open in Atlas →</button>
+                                                    <button className="brief-watch-remove" onClick={() => removeWatch(w.id)} title="Remove watch">×</button>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </section>
+                        </>
+                    )}
 
                     <div className="brief-rule" />
 

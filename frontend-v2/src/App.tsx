@@ -29,7 +29,7 @@ import { SourceProfile } from './components/SourceProfile'
 import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext'
 import { InvestigationWorkspace } from './components/InvestigationWorkspace'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
-import { Globe, ClipboardList, FolderOpen, HelpCircle } from 'lucide-react'
+import { Globe, ClipboardList, FolderOpen, HelpCircle, BookmarkPlus } from 'lucide-react'
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
 import { resolveCountryName } from './lib/countryNames'
 import type { PublicAttentionOrigin } from './lib/publicAttention'
@@ -46,6 +46,7 @@ import { ChokepointPanel } from './components/ChokepointPanel'
 import { AtlasLoader } from './components/AtlasLoader'
 import { PanelHelpButton } from './components/PanelHelpDrawer'
 import { useUrlSync } from './hooks/useUrlSync'
+import { useSavedWatches } from './hooks/useSavedWatches'
 
 
 
@@ -318,6 +319,8 @@ function AppContent() {
   const [prevStreamCtx, setPrevStreamCtx] = useState<PrevCtx | null>(null)
   const [showBriefing, setShowBriefing] = useState(false)
   const [tourRunId, setTourRunId] = useState(0)
+  const { watches, add: addWatch } = useSavedWatches()
+  const [watchNamePrompt, setWatchNamePrompt] = useState<string | null>(null)
   const entrySource = useMemo(() => {
     const params = new URLSearchParams(window.location.search)
     return params.get('entry')
@@ -338,7 +341,7 @@ function AppContent() {
   const isGlobe = false
 
   // Focus hook for click-to-focus
-  const { setFocus, focus, clearFocus, filter, setTheme, mapFlyCountry, setMapFlyCountry } = useFocus()
+  const { setFocus, focus, clearFocus, filter, setTheme, mapFlyCountry, setMapFlyCountry, isActive } = useFocus()
 
   // Theme for layer styling
   const { themeId } = useTheme()
@@ -850,8 +853,21 @@ function AppContent() {
           </div>
           <UtcClock />
           {/* <CrisisToggle /> - Hidden per visual clarity update */}
+          {isActive && (
+            <button
+              className="cmd-btn cmd-btn--watch"
+              onClick={() => {
+                const label = filter.person || filter.concept?.label || (filter.theme ? filter.theme.replace(/_/g, ' ').toLowerCase() : null) || filter.country || 'Watch'
+                setWatchNamePrompt(label)
+              }}
+              data-tip="Save current filter as a named watch"
+            >
+              <BookmarkPlus size={13} /> WATCH
+            </button>
+          )}
           <button className="cmd-btn" data-tour="brief-button" onClick={openBrief}>
             <ClipboardList size={13} /> BRIEF
+            {watches.length > 0 && <span className="cmd-count">{watches.length}</span>}
           </button>
           <button
             className="cmd-btn workspace-cmd-btn"
@@ -1486,6 +1502,34 @@ function AppContent() {
         onOpenWorkspace={() => setIsOpen(true)}
         entryContext={tourEntryContext}
       />
+
+      {watchNamePrompt !== null && (
+        <div className="watch-save-overlay" onClick={e => e.target === e.currentTarget && setWatchNamePrompt(null)}>
+          <div className="watch-save-dialog">
+            <div className="watch-save-title">Save as Watch</div>
+            <input
+              className="watch-save-input"
+              value={watchNamePrompt}
+              onChange={e => setWatchNamePrompt(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && watchNamePrompt.trim()) { addWatch(watchNamePrompt, filter); setWatchNamePrompt(null) }
+                if (e.key === 'Escape') setWatchNamePrompt(null)
+              }}
+              placeholder="Watch name…"
+              autoFocus
+              maxLength={60}
+            />
+            <div className="watch-save-actions">
+              <button className="watch-save-cancel" onClick={() => setWatchNamePrompt(null)}>Cancel</button>
+              <button
+                className="watch-save-confirm"
+                disabled={!watchNamePrompt.trim()}
+                onClick={() => { addWatch(watchNamePrompt, filter); setWatchNamePrompt(null) }}
+              >Save Watch</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
