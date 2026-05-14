@@ -37,6 +37,24 @@
   white-space: nowrap;
 }
 
+.temporal-graph-workspace-btn {
+  background: none;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 4px;
+  color: #818cf8;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 10px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.temporal-graph-workspace-btn:hover {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.6);
+}
+
 .temporal-graph-stats span {
   padding: 3px 6px;
   border: 1px solid rgba(16, 185, 129, 0.18);

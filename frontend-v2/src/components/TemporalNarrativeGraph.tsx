@@ -18,6 +18,7 @@ interface TemporalNarrativeGraphProps {
     onCountrySelect?: (code: string) => void
     onPersonSelect?: (name: string) => void
     onSourceSelect?: (domain: string) => void
+    onOpenInWorkspace?: () => void
 }
 
 type GraphNode = TemporalNarrativeNode & { x?: number; y?: number }
@@ -55,8 +56,8 @@ function getLinkNode(value: string | GraphNode): GraphNode | null {
     return value
 }
 
-function drawNode(node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number, dimmed = false): void {
-    const radius = nodeRadius(node) / globalScale
+function drawNode(node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number, dimmed = false, isLeaf = false): void {
+    const radius = (isLeaf ? Math.max(3, nodeRadius(node) * 0.55) : nodeRadius(node)) / globalScale
     const color = NODE_COLORS[node.type]
     const x = node.x ?? 0
     const y = node.y ?? 0
@@ -75,7 +76,7 @@ function drawNode(node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: n
     ctx.strokeStyle = 'rgba(226, 232, 240, 0.62)'
     ctx.stroke()
 
-    if (node.type === 'theme' || globalScale >= 0.9) {
+    if ((node.type === 'theme' || globalScale >= 0.9) && (!isLeaf || globalScale >= 1.4)) {
         ctx.shadowBlur = 0
         ctx.font = `600 ${fontSize}px Plus Jakarta Sans, system-ui, sans-serif`
         ctx.textAlign = 'center'
@@ -95,6 +96,7 @@ export function TemporalNarrativeGraph({
     onCountrySelect,
     onPersonSelect,
     onSourceSelect,
+    onOpenInWorkspace,
 }: TemporalNarrativeGraphProps) {
     const graph = useMemo(() => buildTemporalNarrativeGraph({ theme, themeLabel, signals }), [theme, themeLabel, signals])
     const graphKey = `${theme}:${graph.buckets.length}:${graph.buckets.at(-1)?.id ?? 'empty'}`
@@ -128,15 +130,27 @@ export function TemporalNarrativeGraph({
     const bucket = graph.buckets[bucketIndex]
 
     const graphData = useMemo(() => {
-        if (!bucket) return { nodes: [], links: [] }
-        // Spread links to prevent ForceGraph2D from mutating source/target in-place
-        // (ForceGraph2D replaces string IDs with node objects on first render;
-        //  mutated objects passed again on re-render cause crashes)
+        if (!bucket) return { nodes: [], links: [], leafIds: new Set<string>() }
+        // Count degree per node to identify leaves (degree === 1)
+        const degree = new Map<string, number>()
+        for (const l of bucket.links) {
+            degree.set(l.source, (degree.get(l.source) ?? 0) + 1)
+            degree.set(l.target, (degree.get(l.target) ?? 0) + 1)
+        }
+        const leafIds = new Set(
+            bucket.nodes
+                .filter(n => n.type !== 'theme' && (degree.get(n.id) ?? 0) <= 1)
+                .map(n => n.id)
+        )
         return {
             nodes: [...bucket.nodes],
             links: bucket.links.map(l => ({ ...l })),
+            leafIds,
         }
     }, [bucket])
+
+    const leafIdsRef = useRef<Set<string>>(new Set())
+    useEffect(() => { leafIdsRef.current = graphData.leafIds }, [graphData.leafIds])
 
     useEffect(() => {
         const fg = graphRef.current
@@ -217,6 +231,11 @@ export function TemporalNarrativeGraph({
                     <span>{bucket.signalCount} signals</span>
                     <span>{bucket.nodes.length} nodes</span>
                     <span>{bucket.links.length} links</span>
+                    {onOpenInWorkspace && (
+                        <button className="temporal-graph-workspace-btn" onClick={onOpenInWorkspace} title="Open in Workspace">
+                            ⊞ Workspace
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -231,7 +250,8 @@ export function TemporalNarrativeGraph({
                         const n = node as GraphNode
                         const hovered = hoveredNodeRef.current
                         const dimmed = hovered !== null && !connectedIdsRef.current.has(n.id)
-                        drawNode(n, ctx, globalScale, dimmed)
+                        const isLeaf = leafIdsRef.current.has(n.id)
+                        drawNode(n, ctx, globalScale, dimmed, isLeaf)
                     }}
                     nodePointerAreaPaint={(node, color, ctx) => {
                         const graphNode = node as GraphNode

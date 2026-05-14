@@ -105,7 +105,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         initialDrillCountry ? (originCountryName || initialDrillCountry) : null
     )
     const detailRef = useRef<HTMLDivElement>(null)
-    const { pinItem, unpinItem, isPinned } = useWorkspace()
+    const { pinItem, unpinItem, isPinned, setIsOpen: openWorkspace } = useWorkspace()
 
     // Public attention signals
     const [trendMatch, setTrendMatch] = useState<{ has_public_interest: boolean; matches: Array<{ keyword: string; country_code: string }> } | null>(null)
@@ -424,6 +424,13 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                         }}
                                         onPersonSelect={onPersonClick}
                                         onSourceSelect={onSourceClick}
+                                        onOpenInWorkspace={() => {
+                                            const pid = `theme-${theme}`
+                                            if (!isPinned(pid)) {
+                                                pinItem({ id: pid, type: 'theme', title: getThemeLabel(theme), urlParams: `?theme=${encodeURIComponent(theme)}` })
+                                            }
+                                            openWorkspace(true)
+                                        }}
                                     />
                                 </Suspense>
                             </PanelErrorBoundary>
