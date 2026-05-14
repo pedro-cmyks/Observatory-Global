@@ -1,0 +1,223 @@
+.concept-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    background: rgba(0, 0, 0, 0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.concept-modal {
+    background: #0c1828;
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    border-radius: 12px;
+    width: 480px;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 64px);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+}
+
+.concept-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.concept-modal-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e2e8f0;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.concept-modal-close {
+    background: none;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+}
+
+.concept-modal-close:hover { color: #e2e8f0; }
+
+.concept-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.concept-field-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.concept-field-hint {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #475569;
+}
+
+.concept-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #e2e8f0;
+    font-size: 13px;
+    padding: 9px 12px;
+    outline: none;
+    box-sizing: border-box;
+    font-family: inherit;
+    transition: border-color 0.15s;
+}
+
+.concept-input:focus {
+    border-color: rgba(99, 102, 241, 0.5);
+}
+
+.concept-textarea {
+    resize: vertical;
+    min-height: 72px;
+}
+
+.concept-theme-search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.concept-theme-search-icon {
+    position: absolute;
+    left: 10px;
+    color: #475569;
+    pointer-events: none;
+}
+
+.concept-theme-input {
+    padding-left: 30px;
+}
+
+.concept-theme-searching {
+    position: absolute;
+    right: 10px;
+    font-size: 11px;
+    color: #475569;
+}
+
+.concept-theme-hits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.concept-theme-hit {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 20px;
+    color: #a5b4fc;
+    font-size: 11px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.concept-theme-hit:hover {
+    background: rgba(99, 102, 241, 0.25);
+}
+
+.concept-selected-themes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.concept-selected-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    border-radius: 20px;
+    color: #6ee7b7;
+    font-size: 11px;
+    padding: 4px 8px 4px 10px;
+}
+
+.concept-selected-chip button {
+    background: none;
+    border: none;
+    color: #6ee7b7;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 0;
+    opacity: 0.7;
+}
+
+.concept-selected-chip button:hover { opacity: 1; }
+
+.concept-theme-empty {
+    font-size: 11px;
+    color: #475569;
+    margin: 4px 0 0;
+}
+
+.concept-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.concept-btn-cancel {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #94a3b8;
+    font-size: 12px;
+    padding: 7px 14px;
+    cursor: pointer;
+}
+
+.concept-btn-cancel:hover { color: #e2e8f0; }
+
+.concept-btn-save {
+    background: rgba(99, 102, 241, 0.85);
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 16px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.concept-btn-save:hover:not(:disabled) { background: rgba(99, 102, 241, 1); }
+.concept-btn-save:disabled { opacity: 0.4; cursor: not-allowed; }

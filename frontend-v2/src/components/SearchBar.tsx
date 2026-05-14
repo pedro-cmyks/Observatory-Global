@@ -2,9 +2,11 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { useFocus } from '../contexts/FocusContext'
 import type { ConceptFilter, RegionFilter } from '../contexts/FocusContext'
-import { Search } from 'lucide-react'
+import { Search, PlusCircle } from 'lucide-react'
 import { hasVisibleSearchResults } from '../lib/searchResults'
 import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters'
+import { useCustomConcepts } from '../hooks/useCustomConcepts'
+import { CustomConceptModal } from './CustomConceptModal'
 import './SearchBar.css'
 
 // Sorted longest-first so multi-word country names match before single-word substrings
@@ -201,8 +203,10 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
     const [parsedQuery, setParsedQuery] = useState<ParsedQuery>({ topic: '', countryCode: null, countryDisplay: null })
     const [isOpen, setIsOpen] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [showCreateModal, setShowCreateModal] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
     const { setFocus, setMapFlyCountry, setCountry, setTheme, setConcept, setRegion } = useFocus()
+    const { concepts: customConcepts, add: addCustomConcept, remove: removeCustomConcept } = useCustomConcepts()
 
     const doSearch = useCallback(async (q: string) => {
         if (q.length < 2) {
@@ -429,6 +433,28 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                         </div>
                     )}
 
+                    {customConcepts.length > 0 && query.length >= 2 && customConcepts.filter(c =>
+                        c.label.toLowerCase().includes(query.toLowerCase()) ||
+                        c.description.toLowerCase().includes(query.toLowerCase())
+                    ).length > 0 && (
+                        <div className="search-section">
+                            <div className="search-section-label">My Concepts</div>
+                            {customConcepts.filter(c =>
+                                c.label.toLowerCase().includes(query.toLowerCase()) ||
+                                c.description.toLowerCase().includes(query.toLowerCase())
+                            ).map(c => (
+                                <div key={c.slug} className="search-item search-item--concept search-item--custom-concept" onClick={() => {
+                                    handleConceptClick({ slug: c.slug, label: c.label, description: c.description, themes: c.themes })
+                                }}>
+                                    <span className="search-item-tag custom-concept-tag">★</span>
+                                    <span className="search-item-name">{c.label}</span>
+                                    <span className="search-item-meta search-item-meta--desc">{c.description.slice(0, 60)}{c.description.length > 60 ? '…' : ''}</span>
+                                    <button className="search-item-remove-concept" onClick={e => { e.stopPropagation(); removeCustomConcept(c.slug) }} aria-label="Delete concept" title="Delete">×</button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
                     {results?.concept_suggestions && results.concept_suggestions.length > 0 && !results?.concepts?.length && (
                         <div className="search-suggestion-banner">
                             Related concepts:
@@ -530,7 +556,22 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                     {!hasResults && !loading && (
                         <div className="search-empty">No results for "{parsedQuery.topic}"</div>
                     )}
+
+                    {query.length >= 2 && (
+                        <div className="search-create-concept-row">
+                            <button className="search-create-concept-btn" onClick={() => { setShowCreateModal(true); setIsOpen(false) }}>
+                                <PlusCircle size={12} /> Save "{parsedQuery.topic || query}" as investigative concept
+                            </button>
+                        </div>
+                    )}
                 </div>
+            )}
+
+            {showCreateModal && (
+                <CustomConceptModal
+                    onSave={(label, description, themes) => addCustomConcept(label, description, themes)}
+                    onClose={() => setShowCreateModal(false)}
+                />
             )}
         </div>
     )

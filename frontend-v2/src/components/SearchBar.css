@@ -300,3 +300,55 @@
     border-left: 2px solid rgba(29, 158, 117, 0.4);
     margin-left: 4px;
 }
+
+.custom-concept-tag {
+    background: rgba(234, 179, 8, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    font-size: 11px;
+    padding: 2px 5px;
+}
+
+.search-item--custom-concept {
+    border-left: 2px solid rgba(234, 179, 8, 0.35);
+}
+
+.search-item-remove-concept {
+    background: none;
+    border: none;
+    color: #475569;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 2px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.search-item-remove-concept:hover { color: #ef4444; }
+
+.search-create-concept-row {
+    padding: 8px 12px 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.search-create-concept-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: 1px dashed rgba(99, 102, 241, 0.35);
+    border-radius: 6px;
+    color: #818cf8;
+    font-size: 11px;
+    padding: 7px 12px;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.search-create-concept-btn:hover {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.6);
+}
