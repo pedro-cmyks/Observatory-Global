@@ -23,6 +23,8 @@ export interface RegionFilter {
     countries: string[]
 }
 
+export type StreamLevel = 'all' | 'critical' | 'elevated' | 'notable' | 'trend' | 'person' | 'maritime' | null
+
 export interface GlobalFilter {
     country: string | null
     theme: string | null
@@ -31,6 +33,7 @@ export interface GlobalFilter {
     region: RegionFilter | null
     timeRange: TimeRange
     lockedBy: LockedBy
+    streamLevel: StreamLevel
 }
 
 interface FocusContextValue {
@@ -42,6 +45,7 @@ interface FocusContextValue {
     setConcept: (concept: ConceptFilter | null) => void
     setRegion: (region: RegionFilter | null) => void
     setTimeRange: (range: TimeRange) => void
+    setStreamLevel: (level: StreamLevel) => void
     clearFilter: () => void
     // Map fly hint: set a country code to trigger a map flyTo
     mapFlyCountry: string | null
@@ -61,7 +65,8 @@ const defaultFilter: GlobalFilter = {
     concept: null,
     region: null,
     timeRange: '24h',
-    lockedBy: null
+    lockedBy: null,
+    streamLevel: 'notable',
 }
 
 const FocusContext = createContext<FocusContextValue | undefined>(undefined)
@@ -116,6 +121,10 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         console.log(`[GlobalFilter] Set region=${region?.slug} (${region?.countries.length} countries)`)
     }, [])
 
+    const setStreamLevel = useCallback((level: StreamLevel) => {
+        setFilter(prev => ({ ...prev, streamLevel: level }))
+    }, [])
+
     const clearFilter = useCallback(() => {
         setFilter(prev => ({ ...prev, country: null, theme: null, person: null, concept: null, region: null, lockedBy: null }))
         console.log('[GlobalFilter] Cleared')
@@ -145,7 +154,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     return (
         <FocusContext.Provider value={{
-            filter, setCountry, setTheme, setPerson, setConcept, setRegion, setTimeRange, clearFilter,
+            filter, setCountry, setTheme, setPerson, setConcept, setRegion, setTimeRange, setStreamLevel, clearFilter,
             mapFlyCountry, setMapFlyCountry,
             focus, setFocus, clearFocus, isActive
         }}>

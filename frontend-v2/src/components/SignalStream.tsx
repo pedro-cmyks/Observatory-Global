@@ -98,7 +98,7 @@ const getSignalPriority = (signal: Signal): number => {
 }
 
 export const SignalStream: React.FC = () => {
-    const { filter, setTheme, setCountry, setPerson } = useFocus()
+    const { filter, setTheme, setCountry, setPerson, setStreamLevel } = useFocus()
     const { timeRange } = useFocusData()
     const [items, setItems] = useState<StreamItem[]>([])
     const [velocity, setVelocity] = useState<Velocity | null>(null)
@@ -334,7 +334,7 @@ export const SignalStream: React.FC = () => {
                         <button
                             key={f}
                             className={`stream-filter-tab${streamFilter === f ? ' active' : ''}`}
-                            onClick={() => setStreamFilter(f)}
+                            onClick={() => { setStreamFilter(f); setStreamLevel(f) }}
                         >
                             {f.toUpperCase()}
                         </button>
@@ -344,7 +344,7 @@ export const SignalStream: React.FC = () => {
                         <button
                             key={f}
                             className={`stream-filter-tab${streamFilter === f ? ' active' : ''}`}
-                            onClick={() => setStreamFilter(f)}
+                            onClick={() => { setStreamFilter(f); setStreamLevel(f) }}
                         >
                             {f.toUpperCase()}
                         </button>

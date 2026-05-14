@@ -84,7 +84,14 @@ export const SourceIntegrityPanel: React.FC = () => {
         <div className="source-panel-container">
             <div className="source-header">
                 <div>SOURCE HEALTH: {filter.country ? resolveCountryName(filter.country) : filter.theme ? getThemeLabel(filter.theme) : 'GLOBAL AGGREGATE'}</div>
-                {isLoading && <div className="loading-spinner" />}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {filter.streamLevel && filter.streamLevel !== 'notable' && filter.streamLevel !== 'all' && (
+                        <span style={{ fontSize: '9px', fontFamily: 'Space Grotesk, monospace', fontWeight: 600, color: filter.streamLevel === 'critical' ? '#ef4444' : filter.streamLevel === 'elevated' ? '#f97316' : '#fbbf24', letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid currentColor`, borderRadius: '3px', padding: '1px 5px', opacity: 0.85 }}>
+                            {filter.streamLevel}
+                        </span>
+                    )}
+                    {isLoading && <div className="loading-spinner" />}
+                </div>
             </div>
 
             <div className="source-content">

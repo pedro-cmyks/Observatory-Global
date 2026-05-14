@@ -25,6 +25,8 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
     const { filter, setFocus, setMapFlyCountry } = useFocus()
     const { acledConflicts } = useFocusData()
     const activeCountry = filter.country
+    const activeTheme = filter.theme
+    const streamLevel = filter.streamLevel
     const [wikiArticles, setWikiArticles] = useState<{ title: string; views: number; country_count?: number }[]>([])
     const [wikiLoading, setWikiLoading] = useState(true)
     const [wikiError, setWikiError] = useState(false)
@@ -62,6 +64,16 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                 <span className="ap-status-label" style={{ color: severityColor }}>
                     {overallSeverity.toUpperCase()}
                 </span>
+                {activeTheme && (
+                    <span className="ap-focus-badge ap-focus-theme" title={`Narrative Thread active: ${getThemeLabel(activeTheme)}`}>
+                        THREAD: {getThemeLabel(activeTheme).slice(0, 22)}
+                    </span>
+                )}
+                {streamLevel && streamLevel !== 'notable' && streamLevel !== 'all' && !activeTheme && (
+                    <span className={`ap-focus-badge ap-focus-stream ap-focus-stream--${streamLevel}`}>
+                        STREAM: {streamLevel.toUpperCase()}
+                    </span>
+                )}
                 {meta && (
                     <span className="ap-meta" data-tip="Anomaly baseline: all countries and signals tracked in last 24h (fixed window for anomaly detection)">
                         {meta.active_countries} countries · {(meta.total_signals_24h / 1000).toFixed(1)}k signals (24h baseline)

@@ -43,6 +43,31 @@
     margin-left: auto;
 }
 
+.ap-focus-badge {
+    font-size: 9px;
+    font-family: 'Space Grotesk', monospace;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    border-radius: 3px;
+    padding: 1px 5px;
+    white-space: nowrap;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ap-focus-theme {
+    color: #818cf8;
+    border: 1px solid rgba(99, 102, 241, 0.45);
+    background: rgba(99, 102, 241, 0.08);
+}
+
+.ap-focus-stream--critical { color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); }
+.ap-focus-stream--elevated { color: #f97316; border: 1px solid rgba(249, 115, 22, 0.4); }
+.ap-focus-stream--trend    { color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.4); }
+.ap-focus-stream--person   { color: #a78bfa; border: 1px solid rgba(167, 139, 250, 0.4); }
+.ap-focus-stream--maritime { color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); }
+
 /* ── Two-column body ── */
 .anomaly-body-grid {
     display: grid;
