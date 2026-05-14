@@ -70,8 +70,36 @@ function drawWorkspaceNode(
     ctx: CanvasRenderingContext2D,
     globalScale: number,
     mode: 'trail' | 'pinned',
-    trailIndex?: number
+    trailIndex?: number,
+    nodeCount?: number
 ): void {
+    const color = NODE_COLORS[node.type]
+    const nx = node.x ?? 0
+    const ny = node.y ?? 0
+
+    // Compact dot mode when crowded — avoids label pile-up at 20+ nodes
+    if ((nodeCount ?? 0) >= 20 && globalScale < 1.2) {
+        const r = node.pinned ? 7 / globalScale : 5 / globalScale
+        ctx.save()
+        ctx.shadowColor = color
+        ctx.shadowBlur = node.pinned ? 10 / globalScale : 4 / globalScale
+        ctx.fillStyle = node.pinned ? 'rgba(12, 24, 43, 0.94)' : 'rgba(12, 24, 43, 0.6)'
+        ctx.strokeStyle = node.pinned ? color : `${color}88`
+        ctx.lineWidth = node.pinned ? 1.4 / globalScale : 1 / globalScale
+        ctx.beginPath()
+        ctx.arc(nx, ny, r, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.stroke()
+        ctx.shadowBlur = 0
+        ctx.fillStyle = color
+        ctx.font = `700 ${Math.max(5, 6 / globalScale)}px Space Grotesk, monospace`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(node.type[0].toUpperCase(), nx, ny)
+        ctx.restore()
+        return
+    }
+
     const label = node.title.length > 32 ? `${node.title.slice(0, 29)}...` : node.title
     const subtitle = mode === 'trail' && trailIndex
         ? `Trail step ${String(trailIndex).padStart(2, '0')}`
@@ -81,9 +109,8 @@ function drawWorkspaceNode(
     const paddingX = 10 / globalScale
     const width = Math.max(92 / globalScale, ctx.measureText(label).width + paddingX * 2)
     const height = mode === 'trail' ? 50 / globalScale : node.pinned ? 46 / globalScale : 38 / globalScale
-    const x = (node.x ?? 0) - width / 2
-    const y = (node.y ?? 0) - height / 2
-    const color = NODE_COLORS[node.type]
+    const x = nx - width / 2
+    const y = ny - height / 2
 
     ctx.save()
     ctx.shadowColor = mode === 'trail' ? '#22d3ee' : color
@@ -417,7 +444,8 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
                                     ctx,
                                     globalScale,
                                     sidePanelMode,
-                                    trailIndexByNodeId.get(node.id)
+                                    trailIndexByNodeId.get(node.id),
+                                    filteredGraph.nodes.length
                                 )}
                                 nodePointerAreaPaint={(node, color, ctx) => {
                                     ctx.fillStyle = color
