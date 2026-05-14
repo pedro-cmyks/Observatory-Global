@@ -107,6 +107,13 @@ export function OnboardingCoachmark({ runId = 0, onOpenBrief, onOpenWorkspace, e
     })
     const [targetRect, setTargetRect] = useState<DOMRect | null>(null)
 
+    // Mark seen on first mount so navigating away without completing doesn't re-trigger
+    useEffect(() => {
+        if (visible) {
+            try { localStorage.setItem(STORAGE_KEY, '1') } catch { /* noop */ }
+        }
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
     useEffect(() => {
         if (runId > 0) {
             setStep(0)
