@@ -55,7 +55,7 @@ function getLinkNode(value: string | GraphNode): GraphNode | null {
     return value
 }
 
-function drawNode(node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number): void {
+function drawNode(node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number, dimmed = false): void {
     const radius = nodeRadius(node) / globalScale
     const color = NODE_COLORS[node.type]
     const x = node.x ?? 0
@@ -64,6 +64,7 @@ function drawNode(node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: n
     const fontSize = Math.max(7, 10 / globalScale)
 
     ctx.save()
+    ctx.globalAlpha = dimmed ? 0.15 : 1
     ctx.shadowColor = color
     ctx.shadowBlur = node.type === 'theme' ? 14 / globalScale : 8 / globalScale
     ctx.beginPath()
@@ -99,6 +100,8 @@ export function TemporalNarrativeGraph({
     const graphKey = `${theme}:${graph.buckets.length}:${graph.buckets.at(-1)?.id ?? 'empty'}`
     const [bucketSelection, setBucketSelection] = useState<{ graphKey: string; index: number } | null>(null)
     const [hoveredNode, setHoveredNode] = useState<TemporalNarrativeNode | null>(null)
+    const hoveredNodeRef = useRef<TemporalNarrativeNode | null>(null)
+    const connectedIdsRef = useRef<Set<string>>(new Set())
     const canvasRef = useRef<HTMLDivElement | null>(null)
     const graphRef = useRef<ForceGraphMethods<TemporalNarrativeNode, TemporalNarrativeLink> | undefined>(undefined)
     const [canvasSize, setCanvasSize] = useState({ width: 560, height: 320 })
@@ -145,6 +148,23 @@ export function TemporalNarrativeGraph({
         return () => window.clearTimeout(timeoutId)
     }, [bucket])
 
+    // Sync hover state to refs so draw callbacks (called every frame) see latest value
+    useEffect(() => {
+        hoveredNodeRef.current = hoveredNode
+        if (!hoveredNode) {
+            connectedIdsRef.current = new Set()
+            return
+        }
+        const connected = new Set<string>([hoveredNode.id])
+        for (const link of graphData.links) {
+            const srcId = typeof link.source === 'string' ? link.source : (link.source as GraphNode).id
+            const tgtId = typeof link.target === 'string' ? link.target : (link.target as GraphNode).id
+            if (srcId === hoveredNode.id) connected.add(tgtId)
+            if (tgtId === hoveredNode.id) connected.add(srcId)
+        }
+        connectedIdsRef.current = connected
+    }, [hoveredNode, graphData.links])
+
     const handleNodeClick = useCallback((node: TemporalNarrativeNode) => {
         if (node.type === 'country') onCountrySelect?.(node.id.replace(/^country-/, ''))
         if (node.type === 'person') onPersonSelect?.(node.label)
@@ -157,6 +177,11 @@ export function TemporalNarrativeGraph({
         const source = getLinkNode(link.source)
         const target = getLinkNode(link.target)
         if (!source || !target || source.x == null || source.y == null || target.x == null || target.y == null) return
+        const hovered = hoveredNodeRef.current
+        if (hovered) {
+            const connected = connectedIdsRef.current
+            if (!connected.has(source.id) || !connected.has(target.id)) return
+        }
         const x = (source.x + target.x) / 2
         const y = (source.y + target.y) / 2
         ctx.save()
@@ -202,7 +227,12 @@ export function TemporalNarrativeGraph({
                     width={canvasSize.width}
                     height={canvasSize.height}
                     nodeId="id"
-                    nodeCanvasObject={(node, ctx, globalScale) => drawNode(node as GraphNode, ctx, globalScale)}
+                    nodeCanvasObject={(node, ctx, globalScale) => {
+                        const n = node as GraphNode
+                        const hovered = hoveredNodeRef.current
+                        const dimmed = hovered !== null && !connectedIdsRef.current.has(n.id)
+                        drawNode(n, ctx, globalScale, dimmed)
+                    }}
                     nodePointerAreaPaint={(node, color, ctx) => {
                         const graphNode = node as GraphNode
                         ctx.fillStyle = color
@@ -210,8 +240,28 @@ export function TemporalNarrativeGraph({
                         ctx.arc(graphNode.x ?? 0, graphNode.y ?? 0, nodeRadius(graphNode) + 4, 0, Math.PI * 2)
                         ctx.fill()
                     }}
-                    linkWidth={link => Math.max(1, Math.min(5, Number((link as TemporalNarrativeLink).count ?? 1)))}
-                    linkColor={link => LINK_COLORS[(link as TemporalNarrativeLink).kind]}
+                    linkWidth={link => {
+                        const l = link as TemporalNarrativeLink & { source: string | GraphNode; target: string | GraphNode }
+                        const hovered = hoveredNodeRef.current
+                        if (!hovered) return Math.max(1, Math.min(5, Number(l.count ?? 1)))
+                        const srcId = typeof l.source === 'string' ? l.source : (l.source as GraphNode).id
+                        const tgtId = typeof l.target === 'string' ? l.target : (l.target as GraphNode).id
+                        const connected = connectedIdsRef.current
+                        return connected.has(srcId) && connected.has(tgtId)
+                            ? Math.max(1, Math.min(5, Number(l.count ?? 1)))
+                            : 0.5
+                    }}
+                    linkColor={link => {
+                        const l = link as TemporalNarrativeLink & { source: string | GraphNode; target: string | GraphNode }
+                        const hovered = hoveredNodeRef.current
+                        if (!hovered) return LINK_COLORS[l.kind]
+                        const srcId = typeof l.source === 'string' ? l.source : (l.source as GraphNode).id
+                        const tgtId = typeof l.target === 'string' ? l.target : (l.target as GraphNode).id
+                        const connected = connectedIdsRef.current
+                        return connected.has(srcId) && connected.has(tgtId)
+                            ? LINK_COLORS[l.kind]
+                            : 'rgba(255,255,255,0.05)'
+                    }}
                     linkDirectionalParticles={link => Math.min(3, Math.max(1, Math.floor(Number((link as TemporalNarrativeLink).count ?? 1) / 2)))}
                     linkDirectionalParticleWidth={1.4}
                     linkDirectionalParticleSpeed={0.004}
