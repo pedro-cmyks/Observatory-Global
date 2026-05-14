@@ -139,6 +139,16 @@
     white-space: nowrap;
 }
 
+.narrative-cluster-label {
+    margin-left: 6px;
+    color: rgba(148, 163, 184, 0.72);
+    font-size: 9px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
 .narrative-stats {
     font-size: 10px;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);

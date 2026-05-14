@@ -5,6 +5,7 @@ import { type TimeRange } from '../lib/timeRanges'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { selectVisibleKeyPersons } from '../lib/countryBriefPeople'
 import { buildGeoNarrative } from '../lib/geoNarrative'
+import { groupThemeTopics } from '../lib/themeHierarchy'
 import { Pin, PinOff } from 'lucide-react'
 import { CompareSearchModal } from './CompareSearchModal'
 import './EntityPanel.css'
@@ -95,6 +96,7 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
     const keyPeople = selectVisibleKeyPersons(
         (data?.key_people ?? []).map(p => ({ name: p.person, count: p.signal_count }))
     )
+    const relatedThemeGroups = groupThemeTopics((data?.related_topics ?? []).slice(0, 12))
 
     return (
         <div className={cls}>
@@ -240,19 +242,26 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
                     )}
 
                     {/* Top Themes */}
-                    {data.related_topics.length > 0 && (
+                    {relatedThemeGroups.length > 0 && (
                         <div className="entity-section">
                             <div className="entity-section-label">Related Themes</div>
-                            <div className="entity-themes">
-                                {data.related_topics.slice(0, 10).map(t => (
-                                    <button
-                                        key={t.topic}
-                                        className="entity-theme-chip"
-                                        onClick={() => onThemeSelect?.(t.topic)}
-                                        data-tip={`${t.count} signals`}
-                                    >
-                                        {getThemeLabel(t.topic)}
-                                    </button>
+                            <div className="entity-theme-groups">
+                                {relatedThemeGroups.map(group => (
+                                    <div key={group.cluster.id} className="entity-theme-group">
+                                        <div className="entity-theme-group-label">{group.cluster.label}</div>
+                                        <div className="entity-themes">
+                                            {group.items.map(t => (
+                                                <button
+                                                    key={t.topic}
+                                                    className="entity-theme-chip"
+                                                    onClick={() => onThemeSelect?.(t.topic)}
+                                                    data-tip={`${t.count} signals`}
+                                                >
+                                                    {getThemeLabel(t.topic)}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
                                 ))}
                             </div>
                         </div>

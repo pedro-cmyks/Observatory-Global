@@ -5,6 +5,7 @@ import { timeRangeToHours } from '../lib/timeRanges'
 import { getThemeLabel } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
 import { getNarrativeFetchLimit, getNarrativesForDisplay } from '../lib/narrativeThreadLimits'
+import { getThemeCluster } from '../lib/themeHierarchy'
 import './NarrativeThreads.css'
 
 const THREAD_COLORS = [
@@ -195,6 +196,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 const trendArrow = n.trend === 'accelerating' ? '▲' : n.trend === 'fading' ? '▼' : '→'
                 // Plain-language hover hint; falls back to label when no description is available.
                 const rowHint = `${getThemeLabel(n.theme_code)}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries. Click to open the topic breakdown.`
+                const themeCluster = getThemeCluster(n.theme_code)
 
                 const colorIdx = displayedNarratives.indexOf(n) % THREAD_COLORS.length
                 const threadColor = THREAD_COLORS[colorIdx]
@@ -213,6 +215,9 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                 <span className={`trend-arrow ${n.trend}`}>{trendArrow}</span>
                                 <span className="narrative-label-text">
                                     {getThemeLabel(n.theme_code)}
+                                    <span className="narrative-cluster-label">
+                                        {themeCluster.label}
+                                    </span>
                                     {n.top_countries.length > 0 && (
                                         <span className="narrative-label-country">
                                             {' · '}{resolveCountryName(n.top_countries[0])}
@@ -235,7 +240,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                         <div className="narrative-detail">
                             <div className="narrative-entities">
                                 {n.top_countries.map(c => (
-                                    <button key={c} className={`country-pip country-pip--btn${filter.country === c ? ' country-pip--active' : ''}`} onClick={e => handleCountryPipClick(e, c)} title={`Focus on ${c}`}>{c}</button>
+                                    <button key={c} className={`country-pip country-pip--btn${filter.country === c ? ' country-pip--active' : ''}`} onClick={e => handleCountryPipClick(e, c)} data-tip={`Focus on ${c}`}>{c}</button>
                                 ))}
                                 {n.top_persons.map(p => (
                                     <span key={p} className="person-pip">{p}</span>

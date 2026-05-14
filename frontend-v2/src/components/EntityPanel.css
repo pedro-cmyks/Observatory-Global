@@ -269,6 +269,27 @@
     color: #63b3ed;
 }
 
+.entity-theme-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.entity-theme-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.entity-theme-group-label {
+    color: #64748b;
+    font-size: 9px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
 /* Sources */
 .entity-sources {
     display: flex;
