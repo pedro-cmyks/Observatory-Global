@@ -143,21 +143,40 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
             linkKinds,
         })
 
-        if (!showSessionTrail) {
-            const nodes = base.nodes.filter(n => !(n.pinned === false && n.subtitle === 'Visited this session'))
-            const nodeIds = new Set(nodes.map(n => n.id))
-            const links = base.links.filter(l => nodeIds.has(String(l.source)) && nodeIds.has(String(l.target)) && l.kind !== 'session-trail')
-            return { nodes, links }
+        if (sidePanelMode === 'trail') {
+            const trailNodes = base.nodes.filter(n => !n.pinned)
+            const trailNodeIds = new Set(trailNodes.map(n => n.id))
+            return {
+                nodes: trailNodes,
+                links: base.links.filter(
+                    l => l.kind === 'session-trail' &&
+                        trailNodeIds.has(String(l.source)) &&
+                        trailNodeIds.has(String(l.target))
+                ),
+            }
         }
 
-        return base
-    }, [graph, deferredQuery, nodeTypes, linkKinds, showSessionTrail])
+        // Pinned mode: evidence board — pinned nodes + relationship edges
+        // Trail nodes optionally overlaid via showSessionTrail
+        const pinnedNodes = base.nodes.filter(n => n.pinned)
+        const contextNodes = showSessionTrail ? base.nodes.filter(n => !n.pinned) : []
+        const allNodes = [...pinnedNodes, ...contextNodes]
+        const allNodeIds = new Set(allNodes.map(n => n.id))
+        return {
+            nodes: allNodes,
+            links: base.links.filter(
+                l => l.kind !== 'session-trail' &&
+                    allNodeIds.has(String(l.source)) &&
+                    allNodeIds.has(String(l.target))
+            ),
+        }
+    }, [graph, deferredQuery, nodeTypes, linkKinds, showSessionTrail, sidePanelMode])
 
     // Strengthen repulsion, set link distance, and add boundary force
     useEffect(() => {
         const fg = graphRef.current
         if (!fg) return
-        fg.d3Force('charge')?.strength(-320)
+        fg.d3Force('charge')?.strength(filteredGraph.nodes.length > 40 ? -520 : filteredGraph.nodes.length > 20 ? -400 : -320)
         fg.d3Force('link')?.distance(110)
         // Keep nodes away from canvas edges so labels don't clip
         const pad = 80
@@ -279,15 +298,17 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
                             />
                         </label>
 
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#cbd5e1', cursor: 'pointer', padding: '0 4px', marginBottom: '16px' }}>
-                            <input
-                                type="checkbox"
-                                checked={showSessionTrail}
-                                onChange={e => setShowSessionTrail(e.target.checked)}
-                                style={{ accentColor: '#10b981', cursor: 'pointer' }}
-                            />
-                            Show Session Trail
-                        </label>
+                        {sidePanelMode === 'pinned' && (
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#cbd5e1', cursor: 'pointer', padding: '0 4px', marginBottom: '16px' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={showSessionTrail}
+                                    onChange={e => setShowSessionTrail(e.target.checked)}
+                                    style={{ accentColor: '#10b981', cursor: 'pointer' }}
+                                />
+                                Show Trail Context
+                            </label>
+                        )}
 
                         <div className="workspace-filter-group">
                             <span>Node types</span>

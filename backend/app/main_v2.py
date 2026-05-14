@@ -1770,9 +1770,9 @@ async def get_theme_details(
                 AND source_name IS NOT NULL
                 GROUP BY source_name
                 ORDER BY count DESC
-                LIMIT 10
+                LIMIT 20
             """, *params)
-            
+
             # Calculate summary stats
             # Get true total from pre-agg (not the LIMIT 200 capped array)
             if hours > 24:
