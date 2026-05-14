@@ -75,8 +75,8 @@ describe('workspaceGraph', () => {
     const graph = buildWorkspaceGraph(baseInput)
     const filtered = filterWorkspaceGraph(graph, {
       query: 'colombia',
-      nodeTypes: new Set(['country', 'theme', 'source', 'person', 'signal', 'chokepoint', 'public_attention']),
-      linkKinds: new Set(['country-framing', 'shared-theme', 'shared-source', 'co-mentioned-person', 'related-theme']),
+      nodeTypes: new Set(['country', 'theme', 'source', 'person', 'signal', 'chokepoint', 'public_attention', 'temporal_snapshot']),
+      linkKinds: new Set(['country-framing', 'shared-theme', 'shared-source', 'co-mentioned-person', 'related-theme', 'temporal-snapshot']),
     })
 
     expect(filtered.nodes).toHaveLength(1)
@@ -121,6 +121,46 @@ describe('workspaceGraph', () => {
       expect.objectContaining({ source: 'public-attention-ted-turner', target: 'theme-MEDIA_MSM', kind: 'shared-theme' }),
       expect.objectContaining({ source: 'public-attention-ted-turner', target: 'source-forbes.com', kind: 'shared-source' }),
       expect.objectContaining({ source: 'public-attention-ted-turner', target: 'person-Jane Fonda', kind: 'co-mentioned-person' }),
+    ]))
+  })
+
+  it('builds relationships for temporal snapshot pins from stored bucket metadata', () => {
+    const graph = buildWorkspaceGraph({
+      items: [{
+        id: 'temporal-ARMEDCONFLICT-2026-05-14T10:00:00.000Z',
+        type: 'temporal_snapshot',
+        title: 'Armed conflict · May 14, 10:00 AM',
+        urlParams: '?theme=ARMEDCONFLICT',
+        notes: '',
+        timestamp: 4,
+        meta: {
+          theme: 'ARMEDCONFLICT',
+          themeLabel: 'Armed Conflict',
+          bucketLabel: 'May 14, 10:00 AM',
+          signalCount: 12,
+          countries: [{ code: 'CO', label: 'Colombia', count: 7 }],
+          sources: [{ name: 'reuters.com', count: 3 }],
+          people: [{ name: 'Example Person', count: 2 }],
+          relatedThemes: [{ theme: 'TAX_FNCACT_INSURGENT', label: 'Insurgent', count: 4 }],
+        },
+      }],
+      details: {},
+    })
+
+    expect(graph.nodes.map(n => n.id)).toEqual(expect.arrayContaining([
+      'temporal-ARMEDCONFLICT-2026-05-14T10:00:00.000Z',
+      'theme-ARMEDCONFLICT',
+      'country-CO',
+      'source-reuters.com',
+      'person-Example Person',
+      'theme-TAX_FNCACT_INSURGENT',
+    ]))
+    expect(graph.links).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source: 'temporal-ARMEDCONFLICT-2026-05-14T10:00:00.000Z', target: 'theme-ARMEDCONFLICT', kind: 'temporal-snapshot' }),
+      expect.objectContaining({ source: 'temporal-ARMEDCONFLICT-2026-05-14T10:00:00.000Z', target: 'country-CO', kind: 'country-framing' }),
+      expect.objectContaining({ source: 'temporal-ARMEDCONFLICT-2026-05-14T10:00:00.000Z', target: 'source-reuters.com', kind: 'shared-source' }),
+      expect.objectContaining({ source: 'temporal-ARMEDCONFLICT-2026-05-14T10:00:00.000Z', target: 'person-Example Person', kind: 'co-mentioned-person' }),
+      expect.objectContaining({ source: 'temporal-ARMEDCONFLICT-2026-05-14T10:00:00.000Z', target: 'theme-TAX_FNCACT_INSURGENT', kind: 'related-theme' }),
     ]))
   })
 })

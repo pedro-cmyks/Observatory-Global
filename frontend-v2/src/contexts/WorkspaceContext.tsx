@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useEffect, useMemo, useCallback, t
 import { buildWorkspaceGraph, type WorkspaceGraph } from '../lib/workspaceGraph'
 import { buildWorkspaceMarkdown } from '../lib/exportFormatters'
 
-export type PinnedItemType = 'theme' | 'person' | 'country' | 'signal' | 'source' | 'chokepoint' | 'public_attention'
+export type PinnedItemType = 'theme' | 'person' | 'country' | 'signal' | 'source' | 'chokepoint' | 'public_attention' | 'temporal_snapshot'
 
 export interface PinnedItem {
     id: string
@@ -50,7 +50,7 @@ function getPinnedValue(item: PinnedItem): string {
 
 async function fetchWorkspaceDetail(item: PinnedItem, signal: AbortSignal): Promise<unknown | undefined> {
     const value = getPinnedValue(item)
-    if (!value || item.type === 'signal' || item.type === 'chokepoint') return undefined
+    if (!value || item.type === 'signal' || item.type === 'chokepoint' || item.type === 'temporal_snapshot') return undefined
 
     let url: string | null = null
     if (item.type === 'theme') {

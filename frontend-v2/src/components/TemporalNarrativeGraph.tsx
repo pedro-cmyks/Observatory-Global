@@ -19,6 +19,7 @@ interface TemporalNarrativeGraphProps {
     onPersonSelect?: (name: string) => void
     onSourceSelect?: (domain: string) => void
     onOpenInWorkspace?: () => void
+    onPinSnapshot?: (bucket: TemporalNarrativeBucket) => void
 }
 
 type GraphNode = TemporalNarrativeNode & { x?: number; y?: number }
@@ -97,6 +98,7 @@ export function TemporalNarrativeGraph({
     onPersonSelect,
     onSourceSelect,
     onOpenInWorkspace,
+    onPinSnapshot,
 }: TemporalNarrativeGraphProps) {
     const graph = useMemo(() => buildTemporalNarrativeGraph({ theme, themeLabel, signals }), [theme, themeLabel, signals])
     const graphKey = `${theme}:${graph.buckets.length}:${graph.buckets.at(-1)?.id ?? 'empty'}`
@@ -232,8 +234,13 @@ export function TemporalNarrativeGraph({
                     <span>{bucket.nodes.length} nodes</span>
                     <span>{bucket.links.length} links</span>
                     {onOpenInWorkspace && (
-                        <button className="temporal-graph-workspace-btn" onClick={onOpenInWorkspace} title="Open in Workspace">
+                        <button className="temporal-graph-workspace-btn" onClick={onOpenInWorkspace} data-tip="Open Workspace">
                             ⊞ Workspace
+                        </button>
+                    )}
+                    {onPinSnapshot && (
+                        <button className="temporal-graph-workspace-btn" onClick={() => onPinSnapshot(bucket)} data-tip="Pin selected time bucket">
+                            Pin bucket
                         </button>
                     )}
                 </div>

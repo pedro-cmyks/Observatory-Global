@@ -8,6 +8,7 @@ export type WorkspaceLinkKind =
   | 'country-framing'
   | 'co-mentioned-person'
   | 'related-theme'
+  | 'temporal-snapshot'
   | 'session-trail'
 
 export interface WorkspaceGraphNode {
@@ -75,13 +76,24 @@ interface PublicAttentionGraphData {
   persons?: Array<{ person: string; signal_count: number }>
 }
 
+interface TemporalSnapshotMeta {
+  theme?: string
+  themeLabel?: string
+  bucketLabel?: string
+  signalCount?: number
+  countries?: Array<{ code: string; label?: string; count: number }>
+  sources?: Array<{ name: string; count: number }>
+  people?: Array<{ name: string; count: number }>
+  relatedThemes?: Array<{ theme: string; label?: string; count: number }>
+}
+
 export interface WorkspaceGraphInput {
   items: PinnedItem[]
   sessionItems?: PinnedItem[]
   details: Record<string, unknown | undefined>
 }
 
-export const WORKSPACE_NODE_TYPES: PinnedItemType[] = ['theme', 'country', 'source', 'person', 'signal', 'chokepoint', 'public_attention']
+export const WORKSPACE_NODE_TYPES: PinnedItemType[] = ['theme', 'country', 'source', 'person', 'signal', 'chokepoint', 'public_attention', 'temporal_snapshot']
 
 export const WORKSPACE_LINK_KINDS: WorkspaceLinkKind[] = [
   'shared-theme',
@@ -89,6 +101,7 @@ export const WORKSPACE_LINK_KINDS: WorkspaceLinkKind[] = [
   'country-framing',
   'co-mentioned-person',
   'related-theme',
+  'temporal-snapshot',
   'session-trail',
 ]
 
@@ -451,6 +464,91 @@ function addPublicAttentionRelationships(
   }
 }
 
+function addTemporalSnapshotRelationships(
+  item: PinnedItem,
+  meta: TemporalSnapshotMeta,
+  nodes: Map<string, WorkspaceGraphNode>,
+  links: Map<string, WorkspaceGraphLink>,
+): void {
+  const rootId = item.id
+  const theme = meta.theme
+
+  if (theme) {
+    const id = themeId(theme)
+    addNode(nodes, {
+      id,
+      type: 'theme',
+      title: meta.themeLabel || getThemeLabel(theme),
+      subtitle: meta.bucketLabel ? `Snapshot theme · ${meta.bucketLabel}` : 'Snapshot theme',
+      pinned: false,
+      weight: meta.signalCount ?? 1,
+      sourceItemId: item.id,
+      urlParams: `?theme=${encodeURIComponent(theme)}`,
+    })
+    addLink(links, rootId, id, 'temporal-snapshot', meta.signalCount ?? 1)
+  }
+
+  for (const country of (meta.countries ?? []).slice(0, MAX_DERIVED_PER_GROUP)) {
+    const id = countryId(country.code)
+    addNode(nodes, {
+      id,
+      type: 'country',
+      title: resolveCountryName(country.code, country.label),
+      subtitle: `${country.count.toLocaleString()} bucket signals`,
+      pinned: false,
+      weight: country.count,
+      sourceItemId: item.id,
+      urlParams: `?country=${encodeURIComponent(country.code)}${theme ? `&theme=${encodeURIComponent(theme)}` : ''}`,
+    })
+    addLink(links, rootId, id, 'country-framing', country.count)
+  }
+
+  for (const source of (meta.sources ?? []).slice(0, MAX_DERIVED_PER_GROUP)) {
+    const id = sourceId(source.name)
+    addNode(nodes, {
+      id,
+      type: 'source',
+      title: source.name,
+      subtitle: `${source.count.toLocaleString()} bucket signals`,
+      pinned: false,
+      weight: source.count,
+      sourceItemId: item.id,
+      urlParams: `?source=${encodeURIComponent(source.name)}`,
+    })
+    addLink(links, rootId, id, 'shared-source', source.count)
+  }
+
+  for (const person of (meta.people ?? []).slice(0, MAX_DERIVED_PER_GROUP)) {
+    const id = personId(person.name)
+    addNode(nodes, {
+      id,
+      type: 'person',
+      title: person.name,
+      subtitle: `${person.count.toLocaleString()} bucket mentions`,
+      pinned: false,
+      weight: person.count,
+      sourceItemId: item.id,
+      urlParams: `?person=${encodeURIComponent(person.name)}`,
+    })
+    addLink(links, rootId, id, 'co-mentioned-person', person.count)
+  }
+
+  for (const related of (meta.relatedThemes ?? []).slice(0, MAX_DERIVED_PER_GROUP)) {
+    const id = themeId(related.theme)
+    addNode(nodes, {
+      id,
+      type: 'theme',
+      title: related.label || getThemeLabel(related.theme),
+      subtitle: `${related.count.toLocaleString()} bucket co-signals`,
+      pinned: false,
+      weight: related.count,
+      sourceItemId: item.id,
+      urlParams: `?theme=${encodeURIComponent(related.theme)}`,
+    })
+    addLink(links, rootId, id, 'related-theme', related.count)
+  }
+}
+
 export function buildWorkspaceGraph({ items, sessionItems = [], details }: WorkspaceGraphInput): WorkspaceGraph {
   const nodes = new Map<string, WorkspaceGraphNode>()
   const links = new Map<string, WorkspaceGraphLink>()
@@ -461,7 +559,9 @@ export function buildWorkspaceGraph({ items, sessionItems = [], details }: Works
       id: item.id,
       type: item.type,
       title: item.title,
-      subtitle: (item.notes ?? '').trim() ? 'Pinned with notes' : undefined,
+      subtitle: item.type === 'temporal_snapshot'
+        ? `${Number(item.meta?.signalCount ?? 0).toLocaleString()} signals in bucket`
+        : (item.notes ?? '').trim() ? 'Pinned with notes' : undefined,
       pinned: true,
       weight: 100,
       urlParams: item.urlParams,
@@ -494,6 +594,15 @@ export function buildWorkspaceGraph({ items, sessionItems = [], details }: Works
   // Second pass: add relationship nodes from fetched details — isolated per item
   const allCoreItems = [...items, ...sessionItems];
   for (const item of allCoreItems) {
+    if (item.type === 'temporal_snapshot') {
+      try {
+        addTemporalSnapshotRelationships(item, item.meta as TemporalSnapshotMeta, nodes, links)
+      } catch (e) {
+        console.warn('[WorkspaceGraph] temporal snapshot build failed for', item.id, e)
+      }
+      continue
+    }
+
     const detail = details[item.id]
     if (!detail) continue
 

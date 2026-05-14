@@ -9,6 +9,7 @@ import { getSourceFamilyMeta, type SourceFamily } from '../lib/sourceFamily'
 import { PanelErrorBoundary } from './PanelErrorBoundary'
 import { PanelSkeleton, PanelSkeletonGrid } from './PanelSkeleton'
 import type { PublicAttentionOrigin } from '../lib/publicAttention'
+import type { TemporalNarrativeBucket } from '../lib/temporalNarrativeGraph'
 import './ThemeDetail.css'
 
 const TemporalNarrativeGraph = lazy(() =>
@@ -241,6 +242,42 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     const pinnedId = `theme-${theme}${originCountry ? '-' + originCountry : ''}`
     const pinned = isPinned(pinnedId)
 
+    const pinTemporalSnapshot = (bucket: TemporalNarrativeBucket) => {
+        const snapshotId = `temporal-${theme}-${bucket.id}`
+        const countries = bucket.nodes
+            .filter(node => node.type === 'country')
+            .map(node => ({ code: node.id.replace(/^country-/, ''), label: node.label, count: node.count }))
+        const sources = bucket.nodes
+            .filter(node => node.type === 'source')
+            .map(node => ({ name: node.label, count: node.count }))
+        const people = bucket.nodes
+            .filter(node => node.type === 'person')
+            .map(node => ({ name: node.label, count: node.count }))
+        const relatedThemes = bucket.nodes
+            .filter(node => node.type === 'theme' && node.id !== `theme-${theme}`)
+            .map(node => ({ theme: node.id.replace(/^theme-/, ''), label: node.label, count: node.count }))
+
+        pinItem({
+            id: snapshotId,
+            type: 'temporal_snapshot',
+            title: `${getThemeLabel(theme)} · ${bucket.label}`,
+            urlParams: `?theme=${encodeURIComponent(theme)}`,
+            meta: {
+                theme,
+                themeLabel: getThemeLabel(theme),
+                bucketLabel: bucket.label,
+                signalCount: bucket.signalCount,
+                start: bucket.start,
+                end: bucket.end,
+                countries,
+                sources,
+                people,
+                relatedThemes,
+            },
+        })
+        openWorkspace(true)
+    }
+
     const handlePin = () => {
         if (pinned) {
             unpinItem(pinnedId)
@@ -431,6 +468,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                             }
                                             openWorkspace(true)
                                         }}
+                                        onPinSnapshot={pinTemporalSnapshot}
                                     />
                                 </Suspense>
                             </PanelErrorBoundary>

@@ -26,6 +26,7 @@ const NODE_COLORS: Record<PinnedItemType, string> = {
     signal: '#f87171',
     chokepoint: '#2dd4bf',
     public_attention: '#22d3ee',
+    temporal_snapshot: '#fb7185',
 }
 
 const LINK_COLORS: Record<WorkspaceLinkKind, string> = {
@@ -34,6 +35,7 @@ const LINK_COLORS: Record<WorkspaceLinkKind, string> = {
     'country-framing': 'rgba(96, 165, 250, 0.68)',
     'co-mentioned-person': 'rgba(167, 139, 250, 0.62)',
     'related-theme': 'rgba(45, 212, 191, 0.68)',
+    'temporal-snapshot': 'rgba(251, 113, 133, 0.68)',
     'session-trail': 'rgba(148, 163, 184, 0.55)',
 }
 
