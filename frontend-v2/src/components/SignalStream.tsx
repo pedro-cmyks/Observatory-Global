@@ -268,7 +268,7 @@ export const SignalStream: React.FC = () => {
                 const next = dripQueueRef.current.shift()!
                 const itemKey = `${next.type}-${next.id}`
                 setNewItemIds(prev => new Set([...prev, itemKey]))
-                setTimeout(() => setNewItemIds(prev => { const s = new Set(prev); s.delete(itemKey); return s }), 700)
+                setTimeout(() => setNewItemIds(prev => { const s = new Set(prev); s.delete(itemKey); return s }), 900)
                 setItems(prev => mergeStreamItems([next], prev, MAX_STREAM_ITEMS))
             }
         }, 1800)
