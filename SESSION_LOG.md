@@ -1,5 +1,38 @@
 # Atlas — Session Log
 
+## 2026-05-14 (session 14 — UX Panel Evaluation Ronda 2)
+
+### Session Type: Documentation & UX Research (no code shipped)
+
+### Context
+Between sessions 12 and 14, significant work was done by Claude Code (sessions 10–13), shipping 14 of the 16 issues identified in our first evaluation. This session re-evaluates Atlas against the same 5-persona panel to measure progress.
+
+### UX Panel Evaluation Ronda 2 (5-persona re-audit)
+Re-evaluated against production (observatory-global.vercel.app):
+
+| Evaluator | Sesión 12 | Sesión 14 | Delta |
+|-----------|:---------:|:---------:|:-----:|
+| **Investor (VC)** | 7/10 | 8/10 | **+1** |
+| **CTO** | 7.5/10 | 8.5/10 | **+1** |
+| **Journalist** | 7/10 | 8/10 | **+1** |
+| **Product (UX)** | 7/10 | 8.5/10 | **+1.5** |
+| **Intelligence Analyst** | 8/10 | 8.5/10 | **+0.5** |
+| **PROMEDIO** | **7.3** | **8.3** | **+1.0** |
+
+### Issues Verified as Resolved (from Session 12 → closed by Claude Code)
+#108, #112, #113, #119, #120, #121, #122, #123, #125, #126, #127, #128, #107
+
+### New Issues Created (from Ronda 2 findings)
+- **#129** — Guided tour re-triggers on every console visit ← bug, should only show first time
+- **#130** — Raw theme code `CRISISLEX_CRISISLEXREC` visible in Source Integrity ← `getThemeLabel()` rule violation
+- **#131** — Allow users to create custom investigative concepts ← owner-endorsed scope expansion
+- **#132** — Workspace graph label overlap with 26+ nodes ← follow-up to #128
+
+### Owner Notes
+- Custom investigative concepts (#131) endorsed as an important scope problem — the 6 fixed concepts demonstrate the engine's power but limit the analytical lens.
+
+---
+
 ## 2026-05-12 (session 12 — UX audit, panel evaluation, documentation)
 
 ### Session Type: Documentation & UX Research (no code shipped)
