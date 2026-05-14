@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { PanelSkeleton } from './PanelSkeleton'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 import './NarrativeDrift.css'
 
@@ -43,7 +44,7 @@ export function NarrativeDrift({ themeCode, countryCode, days = 14 }: NarrativeD
         return () => { isMounted = false }
     }, [themeCode, countryCode, days])
 
-    if (loading) return <div className="narrative-drift loading">Loading narrative drift...</div>
+    if (loading) return <PanelSkeleton rows={5} className="narrative-drift-skeleton" />
     if (!data.length) return <div className="narrative-drift empty">No drift data for this period.</div>
 
     // Format dates for display

@@ -7,6 +7,7 @@ import { useWorkspace } from '../contexts/WorkspaceContext'
 import { ArrowLeftRight, Pin, PinOff, X } from 'lucide-react'
 import { getSourceFamilyMeta, type SourceFamily } from '../lib/sourceFamily'
 import { PanelErrorBoundary } from './PanelErrorBoundary'
+import { PanelSkeleton, PanelSkeletonGrid } from './PanelSkeleton'
 import type { PublicAttentionOrigin } from '../lib/publicAttention'
 import './ThemeDetail.css'
 
@@ -309,10 +310,16 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                     </div>
                 </div>
 
-                {loading && <div className="theme-detail-loading">Loading...</div>}
+                {loading && !data && (
+                    <div className="theme-detail-loading">
+                        <PanelSkeletonGrid cols={2} rows={2} />
+                        <PanelSkeleton rows={4} />
+                    </div>
+                )}
+                {loading && data && <div className="panel-reloading" aria-label="Refreshing" />}
                 {error && <div className="theme-detail-error">Error: {error}</div>}
 
-                {data && !loading && (
+                {data && (
                     <>
                         {/* AI Coverage Insight */}
                         <div className="theme-insight-block">

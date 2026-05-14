@@ -5,6 +5,7 @@
 import React from 'react'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
+import { PanelSkeleton } from './PanelSkeleton'
 import './FocusSummaryPanel.css'
 
 export const FocusSummaryPanel: React.FC = () => {
@@ -29,7 +30,7 @@ export const FocusSummaryPanel: React.FC = () => {
                     {focus.label || focus.value}
                 </h2>
                 {loading ? (
-                    <div className="focus-summary-loading">Loading...</div>
+                    <PanelSkeleton rows={2} />
                 ) : (
                     <div className="focus-summary-stats">
                         <span>
