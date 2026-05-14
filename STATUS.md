@@ -1,11 +1,54 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-14 (Public Attention enrichment + Workspace QA handoff)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-14 (Issue blitz — 14 issues closed, Tiers 1-4 complete)
 
 ---
 
-## Current handoff (2026-05-14)
+## Current handoff (2026-05-14) — Issue blitz
 
-Latest shipped commit: `f6ec9e8 feat(ux): enrich public attention investigation flow` pushed to `origin/v3-intel-layer`.
+Latest shipped commit: `bf037cf refactor(backend): split main_v2.py into APIRouter modules` pushed to `origin/v3-intel-layer`.
+
+### 14 issues closed this session
+
+| Commit | Issue | What |
+|--------|-------|------|
+| code verified | #122 | Country Brief ISO header → `resolveCountryName()` |
+| code verified | #119 | Brief country filter includes all countries via `COUNTRY_OPTIONS` |
+| code verified | #120 | Signal Stream defaults to `notable` filter |
+| code verified | #121 | Coverage bias disclaimer in App.tsx |
+| code verified | #123 | WORKSPACE cmd button visible in command bar |
+| code verified | #108 | Landing → `/app` link present |
+| code verified | #127 | Public Attention noise filter via `publicAttentionFilters.ts` |
+| `9a0cb5d` | #128 | Workspace: Trail/Pinned separate graph modes; header flex-shrink:0; charge strength scales with node count |
+| `9a0cb5d` | #110 | Top Sources backend LIMIT 10 → 20 |
+| `c265c77` | #126 | TemporalNarrativeGraph hover-to-focus dim (refs-based, frame-stable) |
+| `cbd58b2` | #112 | Related Topics: VS → ArrowLeftRight icon, sub-hint, CSS class, overflow fix |
+| `9eadc3f` | #113 | Signal Stream entry animation: green flash + left border glow, 650ms |
+| `547db58` | #107 | PanelSkeleton component; NarrativeDrift/FocusSummaryPanel skeletons; ThemeDetail stale-while-revalidate |
+| `bf037cf` | #125 | Backend split: main_v2.py 4958→120 lines, 12 APIRouter modules, 43 routes, app/db.py + app/utils.py |
+
+### Open issues (16 remaining)
+
+New issues opened during session:
+- **#129** — guided tour re-triggers every visit (bug)
+- **#130** — raw theme code `CRISISLEX_CRISISLEXREC` in Source Integrity panel (bug)
+- **#131** — custom investigative concepts (feat)
+- **#132** — workspace graph label overlap 26+ nodes (ux)
+
+Tier 5 roadmap remaining: #111, #80, #82, #79, #109, #61, #124, #70, #105, #106, #114, #46 (blocked)
+
+### Recommended next order
+1. **#129** — guided tour bug (small, high annoyance)
+2. **#130** — raw theme code bug (small, visible)
+3. **#132** — label overlap in workspace graph (ties to #128 work)
+4. **#111** — Signal Stream as global panel motor (medium feature)
+5. **#80/#82** — session/temporal graph (larger workspace graph work)
+
+### Architecture note — backend routers
+`backend/app/main_v2.py` is now the slim entrypoint. All routes live in `backend/app/routers/`. DB pool exposed via `backend/app/db.py` (`db.pool`, set on startup). Shared helpers in `backend/app/utils.py`.
+
+---
+
+## Previous handoff (2026-05-14)
 
 What changed:
 - Public Attention now behaves as a people-side enrichment layer, not a separate destination. Clicking a Public Attention topic can open a narrative thread while preserving the originating attention context.

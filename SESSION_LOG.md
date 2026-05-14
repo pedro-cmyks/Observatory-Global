@@ -1,5 +1,42 @@
 # Atlas — Session Log
 
+## 2026-05-14 (session 15 — Issue blitz: Tiers 1–4 closed)
+
+### Session type: Systematic issue closure
+
+### What happened
+Reviewed all 26 open issues, categorized into 4 tiers by impact/effort, and closed 14 in one session.
+
+**Tier 1 — Already implemented, code-verified and closed (7):**
+#108, #119, #120, #121, #122, #123, #127
+
+**Tier 2 — Bug fixes (2):**
+- `9a0cb5d` **#128** Workspace: Trail and Pinned are now separate graph modes; header fixed; charge strength auto-scales
+- `9a0cb5d` **#110** Top Sources LIMIT 10 → 20 in backend theme endpoint
+
+**Tier 3 — UX polish (3):**
+- `c265c77` **#126** TemporalNarrativeGraph hover dims unconnected nodes/links (refs pattern for frame stability)
+- `cbd58b2` **#112** Related Topics compare button: VS → icon + tooltip + CSS class + overflow fix
+- `9eadc3f` **#113** Signal Stream entry: green flash + left border glow animation (650ms, live-arrival feel)
+
+**Tier 4 — Tech debt (2):**
+- `547db58` **#107** PanelSkeleton shimmer component; stale-while-revalidate in ThemeDetail; skeletons in NarrativeDrift + FocusSummaryPanel
+- `bf037cf` **#125** Backend split: main_v2.py 4958→120 lines, 12 APIRouter files, app/db.py, app/utils.py
+
+### New issues opened during session
+- **#129** Guided tour re-triggers every visit (bug — should be localStorage-gated)
+- **#130** Raw GDELT code `CRISISLEX_CRISISLEXREC` visible in Source Integrity panel
+- **#131** Custom investigative concepts (feat)
+- **#132** Workspace graph label overlap at 26+ nodes
+
+### Build status
+`npm run build` passed (15s). All 43 backend routes import-verified with `.venv` Python.
+
+### Next
+#129 (guided tour bug) + #130 (raw code bug) — both small, high-visibility.
+
+---
+
 ## 2026-05-14 (session 14 — UX Panel Evaluation Ronda 2)
 
 ### Session Type: Documentation & UX Research (no code shipped)
