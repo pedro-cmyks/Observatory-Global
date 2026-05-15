@@ -1,11 +1,11 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-14 (Session 17 — closable issue sweep complete)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-14 (Session 17 — issues closed + production hotfix)
 
 ---
 
 ## Current handoff (2026-05-14) — Session 17
 
-Latest local commit before this status update: `2d3b2aa feat(themes): add frontend theme hierarchy (#70)` on `v3-intel-layer`.
+Latest shipped commit: `6e8e0df fix(api): restore router runtime imports` on `v3-intel-layer`.
 
 ### Closable issues closed this session
 
@@ -16,6 +16,8 @@ Latest local commit before this status update: `2d3b2aa feat(themes): add fronte
 | `7fb5eaa` | #61 | Shared `CompareDashboard` shell for ThemeCompare and PersonCompare |
 | `ea6c2ce` | #105 | RSS registry expanded to 50 curated feeds; provenance fields preserved |
 | `2d3b2aa` | #70 | Frontend theme hierarchy: 7 clusters, 79 mapped codes, EntityPanel grouping, NarrativeThreads cluster label |
+| `82e2e77` | hotfix | Restored `/health` imports after production 500 |
+| `6e8e0df` | hotfix | Restored router runtime imports after `/api/v2/narratives` production 500 |
 
 ### Remaining open issues
 
@@ -26,14 +28,19 @@ Latest local commit before this status update: `2d3b2aa feat(themes): add fronte
 
 ### Validation
 
-- `cd frontend-v2 && npm run test -- src/lib/workspaceGraph.test.ts` → 4 passed.
+- `cd frontend-v2 && npm run test` → 26 passed.
 - `cd frontend-v2 && npm run build` → passed after #82, #61, and #70; known large chunk warning remains.
 - `python3 -m py_compile backend/app/services/ingest_rss.py` → passed.
-- `origin/v3-intel-layer` was synced before issue work; new session commits still need push.
+- `python3 -m py_compile backend/app/routers/*.py` targeted hotfix set → passed.
+- `backend/.venv/bin/python -m pytest backend/tests/test_health.py -q` → 2 passed.
+- Production Fly `/health` → 200 healthy, checks passing on machine `d8d2e46fe07e78` version 112.
+- Production Fly and Vercel rewrite `/api/v2/narratives?hours=24&limit=3` → 200 JSON.
+- Production Vercel rewrite `/api/v2/stats` → 200 JSON.
+- `origin/v3-intel-layer` is pushed through `6e8e0df`.
 
 ### Branch recommendation
 
-Do not repoint production to `main` until `v3-intel-layer` is pushed, Vercel/Fly deploy from that remote head, and production is smoke-tested. After that, a controlled migration can make `main` the active production branch and keep `v3-intel-layer` as history.
+Production is currently verified on `v3-intel-layer`. Do not repoint production to `main` in the next handoff; current repo guidance marks `main` as abandoned for now, so any branch migration should be a separate controlled decision.
 
 ---
 

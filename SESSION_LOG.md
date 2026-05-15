@@ -18,12 +18,20 @@ Started from the session 16 handoff and verified GitHub open issues. Found that 
 - **#106** Octopus mascot remains open with `blocked` label; needs designer SVG assets before implementation.
 
 ### Validation
-- `cd frontend-v2 && npm run test -- src/lib/workspaceGraph.test.ts` → 4 passed.
+- `cd frontend-v2 && npm run test` → 26 passed.
 - `cd frontend-v2 && npm run build` → passed; existing large chunk warning only.
 - `python3 -m py_compile backend/app/services/ingest_rss.py` → passed.
+- `backend/.venv/bin/python -m pytest backend/tests/test_health.py -q` → 2 passed.
+- Production Fly `/health` → 200 healthy after `82e2e77`.
+- Production Fly and Vercel `/api/v2/narratives?hours=24&limit=3` → 200 JSON after `6e8e0df`.
+- Production Vercel `/api/v2/stats` → 200 JSON.
+
+### Production hotfixes
+- `82e2e77` restored missing `datetime/timezone/asyncio` imports in `backend/app/routers/stats.py`; fixed `/health` 500 after deploy.
+- `6e8e0df` restored missing runtime imports across split routers; fixed `/api/v2/narratives` 500 and prevented similar `app.state.redis`, `json`, and `datetime/timezone` failures in adjacent endpoints.
 
 ### Next
-Push the new session 17 commits to `origin/v3-intel-layer`, let Vercel/Fly deploy, then smoke-test production before considering a controlled `main` migration.
+Production is deployed and smoke-tested on `v3-intel-layer`. Remaining open GitHub issues are blocked externally: #46 needs ACLED credentials, #106 needs designer SVG assets. Keep production on `v3-intel-layer` unless a separate branch-migration decision is made.
 
 ---
 
