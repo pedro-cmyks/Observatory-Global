@@ -6,6 +6,7 @@ import { ExportMenu } from './ExportMenu'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { ArrowLeftRight, Pin, PinOff, X } from 'lucide-react'
 import { getSourceFamilyMeta, type SourceFamily } from '../lib/sourceFamily'
+import { resolveCountryName } from '../lib/countryNames'
 import { PanelErrorBoundary } from './PanelErrorBoundary'
 import { PanelSkeleton, PanelSkeletonGrid } from './PanelSkeleton'
 import type { PublicAttentionOrigin } from '../lib/publicAttention'
@@ -380,11 +381,21 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             })()}
                             {insightFailed && !insightLoading && !insight && (
                                 <p className="theme-insight-unavailable">
-                                    {insightError === 'insight_unavailable'
-                                        ? 'AI analysis not configured — add ANTHROPIC_API_KEY to .env and restart the backend'
-                                        : insightError === 'insight_no_credits'
-                                            ? 'AI analysis unavailable — Anthropic account has no credits (top up at console.anthropic.com)'
-                                            : 'Coverage analysis unavailable'}
+                                    {insightError === 'insight_no_credits'
+                                        ? 'AI analysis unavailable — Anthropic account has no credits.'
+                                        : data
+                                            ? (() => {
+                                                const top = data.countryBreakdown[0]
+                                                const topName = top ? resolveCountryName(top.code) : null
+                                                const tone = data.avgSentiment > 0.1 ? 'positive' : data.avgSentiment < -0.1 ? 'negative' : 'neutral'
+                                                return [
+                                                    topName ? `Top coverage: ${topName} (${top!.count} signals).` : null,
+                                                    `Overall tone: ${tone} (${data.avgSentiment.toFixed(2)}).`,
+                                                    `${data.total.toLocaleString()} total signals. AI summary unavailable.`,
+                                                ].filter(Boolean).join(' ')
+                                            })()
+                                            : 'AI summary unavailable.'
+                                    }
                                 </p>
                             )}
                         </div>
