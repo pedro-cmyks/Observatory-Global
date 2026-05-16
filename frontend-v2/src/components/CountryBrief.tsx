@@ -125,6 +125,7 @@ interface CountryBriefProps {
     timeWindow: number; // hours
     onClose: () => void;
     onThemeSelect?: (theme: string) => void;
+    onSourceClick?: (domain: string) => void;
     inline?: boolean;
 }
 
@@ -168,6 +169,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
     timeWindow,
     onClose,
     onThemeSelect,
+    onSourceClick: _onSourceClick,
     inline
 }) => {
     const cls = `country-brief${inline ? ' country-brief--inline' : ''}`

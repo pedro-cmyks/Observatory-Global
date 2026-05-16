@@ -315,7 +315,10 @@ function AppContent() {
   const [selectedChokepoint, setSelectedChokepoint] = useState<Chokepoint | null>(null)
   const [rightPanelThemeCountry, setRightPanelThemeCountry] = useState<{ code: string, name: string } | null>(null)
   // One-level back navigation for the stream panel
-  type PrevCtx = { type: 'chokepoint'; cp: Chokepoint } | { type: 'theme'; theme: string; originCountry?: string; originCountryName?: string }
+  type PrevCtx =
+    | { type: 'chokepoint'; cp: Chokepoint }
+    | { type: 'theme'; theme: string; originCountry?: string; originCountryName?: string }
+    | { type: 'country'; code: string; name: string }
   const [prevStreamCtx, setPrevStreamCtx] = useState<PrevCtx | null>(null)
   const [showBriefing, setShowBriefing] = useState(false)
   const [tourRunId, setTourRunId] = useState(0)
@@ -1154,6 +1157,10 @@ function AppContent() {
               setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); clearFocus()
               setSelectedTheme({ theme: prevStreamCtx.theme, originCountry: prevStreamCtx.originCountry, originCountryName: prevStreamCtx.originCountryName })
               setPrevStreamCtx(null)
+            } else if (prevStreamCtx?.type === 'country') {
+              handleCountryClick(prevStreamCtx.code)
+              setMapFlyCountry(prevStreamCtx.code)
+              setPrevStreamCtx(null)
             } else {
               closeAll()
             }
@@ -1248,6 +1255,10 @@ function AppContent() {
                     timeWindow={timeRangeToHours(timeRange)}
                     onClose={handleStreamBack}
                     onThemeSelect={(theme) => { handleThemeSelect(theme, selectedCountryCode!, selectedCountryName); setMapFlyCountry(selectedCountryCode!) }}
+                    onSourceClick={(domain) => {
+                      setPrevStreamCtx({ type: 'country', code: selectedCountryCode!, name: selectedCountryName })
+                      setSelectedSourceProfile(domain)
+                    }}
                   />
                 ) : isTheme ? (
                   <ThemeDetail
@@ -1298,7 +1309,18 @@ function AppContent() {
           </div>
           <div className="panel-content">
             <PanelErrorBoundary panelName="NARRATIVE THREADS">
-              <NarrativeThreads onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }} />
+              <NarrativeThreads onCountrySelect={(code) => {
+                if (selectedTheme) {
+                  setPrevStreamCtx({
+                    type: 'theme',
+                    theme: selectedTheme.theme,
+                    originCountry: selectedTheme.originCountry,
+                    originCountryName: selectedTheme.originCountryName,
+                  })
+                }
+                handleCountryClick(code)
+                setMapFlyCountry(code)
+              }} />
             </PanelErrorBoundary>
           </div>
         </div>
