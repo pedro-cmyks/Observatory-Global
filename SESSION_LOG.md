@@ -1,5 +1,58 @@
 # Atlas — Session Log
 
+## 2026-05-16 (session 18 — Video UX review + productization roadmap)
+
+### Session type: UX research, issue triage, roadmap planning
+
+### What happened
+Reviewed the three owner walkthrough videos through local transcripts and extracted visual frames:
+
+- Landing walkthrough: `docs/research/ux-video-evaluation/transcripts/Screen Recording 2026-05-14 at 21.40.47.txt`
+- Brief walkthrough: `docs/research/ux-video-evaluation/transcripts/Screen Recording 2026-05-14 at 21.53.02.txt`
+- App walkthrough: `docs/research/ux-video-evaluation/transcripts/Screen Recording 2026-05-16 at 09.25.31.txt`
+
+Added:
+
+- `docs/research/ux-video-evaluation/2026-05-16-atlas-video-review.md`
+- `docs/superpowers/specs/2026-05-16-atlas-productization-design.md`
+- `docs/roadmap/2026-05-16-productization-roadmap.md`
+
+### Key conclusion
+The correct flow remains `Landing -> Brief -> App`, but Atlas needs a productization pass before more advanced features. The next product theme is:
+
+**Make Atlas teachable, persistent, and exportable.**
+
+### Issue work
+Reopened with new video evidence:
+
+- #56 Day/Night overlay + Settings utility
+- #69 Spanish-language routing + multilingual query expansion
+- #104 Google Trends missing/stale data
+- #124 Saved watches / persistent alerts
+- #128 Workspace viewport + Trail/Pinned graph clarity
+
+Created:
+
+- #135 Landing live stats + clickable docs/use-case cards
+- #136 Landing -> Brief -> App prefetch/loading states
+- #137 Methodology/editorial explanation
+- #138 Investigation context persistence
+- #139 Time range beyond 24h + Live/Pause semantics
+- #140 Visual use-case manual with real Atlas screenshots
+- #141 Reading Mode / investigation newspaper from pinned evidence
+- #142 Public Attention scoping and actionability
+- #143 Map layer explanation and decluttering
+
+Expanded:
+
+- #133 Workspace dossier should become the evidence foundation for Reading Mode.
+- #134 Use cases should be visual and product-grounded, not text-only.
+
+### Next
+Start with P0 trust/continuity issues: #136, #137, #138, #128, #104/#142, and #69. After that, build the visual manual (#140/#134/#135), then Workspace Dossier and Reading Mode (#133/#141).
+
+---
+
 ## 2026-05-14 (session 17 — Remaining closable issues closed)
 
 ### Session type: Issue closure + branch synchronization

@@ -1,9 +1,68 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-14 (Session 17 — issues closed + production hotfix)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-16 (Session 18 — video UX review + productization roadmap)
 
 ---
 
-## Current handoff (2026-05-14) — Session 17
+## Current handoff (2026-05-16) — Session 18
+
+Latest shipped production commit is still `2989dc5 docs: record production hotfix verification`; this session is documentation/research/roadmap only.
+
+### What changed this session
+
+- Generated local transcripts for the three owner walkthrough videos:
+  - Landing: `docs/research/ux-video-evaluation/transcripts/Screen Recording 2026-05-14 at 21.40.47.txt`
+  - Brief: `docs/research/ux-video-evaluation/transcripts/Screen Recording 2026-05-14 at 21.53.02.txt`
+  - App: `docs/research/ux-video-evaluation/transcripts/Screen Recording 2026-05-16 at 09.25.31.txt`
+- Added full review: `docs/research/ux-video-evaluation/2026-05-16-atlas-video-review.md`
+- Added productization design spec: `docs/superpowers/specs/2026-05-16-atlas-productization-design.md`
+- Added roadmap: `docs/roadmap/2026-05-16-productization-roadmap.md`
+
+### Product direction
+
+Atlas is now in productization mode: make the existing intelligence **teachable, persistent, and exportable**.
+
+- Teachable: explain Brief/App/Workspace methodology with real product screenshots and persona-specific use cases.
+- Persistent: preserve investigation context across search, theme, country, source, Public Attention, and Workspace pivots.
+- Exportable: convert pinned evidence into dossiers, Reading Mode, and eventually Atlas Daily editions.
+
+### GitHub issues updated from the video review
+
+Reopened with new evidence:
+
+| Issue | Why |
+|-------|-----|
+| #56 | Day/Night overlay is harsh; Settings value unclear. |
+| #69 | Spanish query `conflicto en Colombia` did not route to a useful Colombia/conflict investigation. |
+| #104 | Google Trends appears missing/stale in Public Attention. |
+| #124 | Watch button is missing/overlapping and not surfaced in walkthrough. |
+| #128 | Workspace/Trail/Pinned graph remains hard to use and can leave viewport. |
+
+New issues:
+
+| Issue | What |
+|-------|------|
+| #135 | Landing live stats + clickable product cards linked to visual docs. |
+| #136 | Prefetch and loading states across Landing -> Brief -> App. |
+| #137 | Restore/replace editorial analysis and explain mood/tone/sentiment/drift/baseline. |
+| #138 | Preserve investigation context across pivots. |
+| #139 | Extend console range beyond 24h and clarify Live/Pause. |
+| #140 | Visual use-case manual with real Atlas screenshots and annotated flows. |
+| #141 | Reading Mode / Atlas investigation newspaper from pinned evidence. |
+| #142 | Scope Trends/Wikipedia to active country/topic and make items actionable. |
+| #143 | Explain and declutter map layers, ships, geo alerts, arcs, and colors. |
+
+### Recommended next order
+
+1. P0 trust/continuity: #136, #137, #138, #128, #104/#142, #69.
+2. P1 visual onboarding: #140, #134, #135.
+3. P2 exportable investigation: #133, #141, #124.
+4. P3 polish: #139, #143, #56.
+
+Production remains on `v3-intel-layer`. `main` is still abandoned per repo guidance.
+
+---
+
+## Previous handoff (2026-05-14) — Session 17
 
 Latest shipped commit: `6e8e0df fix(api): restore router runtime imports` on `v3-intel-layer`.
 
