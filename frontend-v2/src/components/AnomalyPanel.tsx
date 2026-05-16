@@ -4,7 +4,7 @@ import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { resolveCountryName } from '../lib/countryNames'
 import { getThemeLabel } from '../lib/themeLabels'
-import { getPublicAttentionTopUrl } from '../lib/publicAttention'
+import { getPublicAttentionTopUrl, getTrendingSearchesUrl } from '../lib/publicAttention'
 import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters'
 import './AnomalyPanel.css'
 
@@ -30,14 +30,28 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
     const [wikiArticles, setWikiArticles] = useState<{ title: string; views: number; country_count?: number }[]>([])
     const [wikiLoading, setWikiLoading] = useState(true)
     const [wikiError, setWikiError] = useState(false)
+    const [trendSearches, setTrendSearches] = useState<{ keyword: string; rank?: number | null }[]>([])
+    const [trendsLoading, setTrendsLoading] = useState(false)
 
     useEffect(() => {
-        fetch(getPublicAttentionTopUrl(10))
+        setWikiLoading(true)
+        setWikiError(false)
+        fetch(getPublicAttentionTopUrl(10, activeCountry ?? undefined))
             .then(r => r.ok ? r.json() : null)
             .then(d => { setWikiArticles((d?.articles ?? []).filter((a: { title: string }) => isPublicAttentionRelevant(a.title))) })
             .catch(() => { setWikiError(true); setWikiArticles([]) })
             .finally(() => setWikiLoading(false))
-    }, [])
+    }, [activeCountry])
+
+    useEffect(() => {
+        if (!activeCountry) { setTrendSearches([]); return }
+        setTrendsLoading(true)
+        fetch(getTrendingSearchesUrl(8, 24, activeCountry))
+            .then(r => r.ok ? r.json() : null)
+            .then(d => setTrendSearches(d?.trends ?? d?.results ?? []))
+            .catch(() => setTrendSearches([]))
+            .finally(() => setTrendsLoading(false))
+    }, [activeCountry])
 
     const handleAnomalyClick = (countryCode: string) => {
         setFocus('country', countryCode)
@@ -168,9 +182,41 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                         </>
                     )}
 
-                    <div className="col-label" style={{ marginTop: themeAnomalies?.length ? '8px' : 0 }}
-                        data-tip="Top Wikipedia articles by global pageviews. The blue number = how many countries show this article trending. Click any item to investigate it in the center panel.">
-                        PUBLIC ATTENTION
+                    {/* Google Trends — only when country is active */}
+                    {activeCountry && (
+                        <>
+                            <div className="col-label" style={{ marginTop: themeAnomalies?.length ? '8px' : 0 }}
+                                data-tip={`Google Trends top searches in ${resolveCountryName(activeCountry)} over the last 24h. What people are actively looking for.`}>
+                                TRENDING SEARCHES · {resolveCountryName(activeCountry).toUpperCase()}
+                            </div>
+                            <div className="col-scroll-short">
+                                {trendsLoading ? (
+                                    <div className="ap-empty">Loading…</div>
+                                ) : trendSearches.length === 0 ? (
+                                    <div className="ap-empty">No trend data for this country</div>
+                                ) : trendSearches.map((t, i) => (
+                                    <div
+                                        key={i}
+                                        className="ap-row ap-row--trend clickable"
+                                        onClick={() => onWikiClick?.(t.keyword)}
+                                        data-tip={`Investigate "${t.keyword}"`}
+                                    >
+                                        <span className="ap-rank">#{i + 1}</span>
+                                        <span className="ap-keyword">{t.keyword}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
+
+                    <div className="col-label"
+                        style={{ marginTop: (themeAnomalies?.length || activeCountry) ? '8px' : 0 }}
+                        data-tip={activeCountry
+                            ? `Top Wikipedia articles by pageviews in ${resolveCountryName(activeCountry)} (7-day rolling). Click to investigate.`
+                            : 'Top Wikipedia articles by global pageviews. The blue number = how many countries show this article trending. Click any item to investigate it in the center panel.'}>
+                        {activeCountry
+                            ? `WIKIPEDIA ATTENTION · ${resolveCountryName(activeCountry).toUpperCase()}`
+                            : 'PUBLIC ATTENTION · GLOBAL'}
                     </div>
                     <div className="col-scroll">
                         {wikiLoading ? (
@@ -178,7 +224,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                         ) : wikiError ? (
                             <div className="ap-empty">Public attention unavailable</div>
                         ) : wikiArticles.length === 0 ? (
-                            <div className="ap-empty">No public attention spikes</div>
+                            <div className="ap-empty">No attention spikes</div>
                         ) : (
                             wikiArticles.map((a, i) => {
                                 const displayTitle = a.title.replace(/_/g, ' ')
