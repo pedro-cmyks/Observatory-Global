@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { prefetchBriefing } from '../lib/briefingPrefetch'
 import './Landing.css'
 
 const FILL_0 = { fontVariationSettings: "'FILL' 0" }
@@ -60,6 +61,8 @@ function RevealSection({
 
 export function Landing() {
     const navigate = useNavigate()
+
+    useEffect(() => { prefetchBriefing(24) }, [])
 
     return (
         <div className="dark min-h-screen lp-bg text-on-surface font-body-main antialiased selection:bg-primary selection:text-on-primary">

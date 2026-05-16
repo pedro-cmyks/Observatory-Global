@@ -5,6 +5,7 @@ import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { COUNTRY_OPTIONS, resolveCountryName } from '../lib/countryNames'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours, type TimeRange } from '../lib/timeRanges'
+import { readBriefingCache } from '../lib/briefingPrefetch'
 import './BriefNewspaper.css'
 
 // Natural Earth 110m with ISO_A2 country properties
@@ -104,16 +105,25 @@ export function BriefNewspaper() {
         setInsight(null)
         setThemeSignals({})
         try {
-            const [briefRes, insightRes] = await Promise.all([
-                fetch(`/api/v2/briefing?hours=${h}`),
-                fetch(`/api/v2/briefing/insight?hours=${h}`)
-            ])
-            if (!briefRes.ok) throw new Error(`Briefing request failed: ${briefRes.status}`)
-            const briefData: BriefingData = await briefRes.json()
-            setData(briefData)
-            if (insightRes.ok) {
-                const insightData = await insightRes.json()
-                if (insightData.insight) setInsight(insightData.insight)
+            // Use Landing prefetch cache when available — eliminates visible loading delay
+            const cached = readBriefingCache(h)
+            let briefData: BriefingData
+            if (cached) {
+                briefData = cached.briefing as BriefingData
+                setData(briefData)
+                if (cached.insight) setInsight(cached.insight)
+            } else {
+                const [briefRes, insightRes] = await Promise.all([
+                    fetch(`/api/v2/briefing?hours=${h}`),
+                    fetch(`/api/v2/briefing/insight?hours=${h}`)
+                ])
+                if (!briefRes.ok) throw new Error(`Briefing request failed: ${briefRes.status}`)
+                briefData = await briefRes.json()
+                setData(briefData)
+                if (insightRes.ok) {
+                    const insightData = await insightRes.json()
+                    if (insightData.insight) setInsight(insightData.insight)
+                }
             }
 
             // Fetch top 3 headlines per top theme (parallel)
@@ -332,7 +342,7 @@ export function BriefNewspaper() {
                             <div key={i} className="brief-loading-line" style={{ width: `${w}%` }} />
                         ))}
                     </div>
-                    <p>Composing brief...</p>
+                    <p>Loading brief…</p>
                 </div>
             ) : data ? (
                 <main className="brief-content">
@@ -354,7 +364,10 @@ export function BriefNewspaper() {
                             <span className="brief-stat-label">sources</span>
                         </div>
                         <div className="brief-stat-divider" />
-                        <div className={`brief-stat ${moodClass(displayedStats.avg_sentiment)}`}>
+                        <div
+                            className={`brief-stat ${moodClass(displayedStats.avg_sentiment)}`}
+                            data-tip="Aggregate sentiment across all signals in this window. Positive = media frames events favourably on balance. Negative = critical or alarming framing dominates. Neutral = mixed or factual coverage."
+                        >
                             <span className="brief-stat-value">{moodLabel(displayedStats.avg_sentiment)}</span>
                             <span className="brief-stat-label">{countryFilter ? 'country mood' : 'global mood'}</span>
                         </div>
@@ -362,7 +375,12 @@ export function BriefNewspaper() {
 
                     {/* SIGNAL MAP — choropleth of signal density by country */}
                     <section className="brief-minimap">
-                        <div className="brief-minimap-label">Signal density — {TIME_RANGE_LABELS[timeRange]}</div>
+                        <div
+                            className="brief-minimap-label"
+                            data-tip="Signal density: how many media signals Atlas captured per country in this window. Darker = more coverage. Coverage volume reflects media attention, not geopolitical importance."
+                        >
+                            Signal density — {TIME_RANGE_LABELS[timeRange]}
+                        </div>
                         <ComposableMap
                             projection="geoMercator"
                             projectionConfig={{ scale: 130, center: [0, 20] }}
@@ -406,7 +424,15 @@ export function BriefNewspaper() {
                     {/* LEAD STORY — AI insight */}
                     {displayedInsight && (
                         <section className="brief-lead">
-                            <div className="brief-section-tag">{countryFilter ? 'COUNTRY ANALYSIS' : "EDITOR'S ANALYSIS"}</div>
+                            <div
+                                className="brief-section-tag"
+                                data-tip={countryFilter
+                                    ? "Country-scoped summary derived from signal clusters and source patterns in this window."
+                                    : "AI-generated pattern reading based on signal volume, sentiment shifts, and narrative spread. Describes observable coverage patterns — does not reflect Atlas editorial opinion."
+                                }
+                            >
+                                {countryFilter ? 'COUNTRY ANALYSIS' : "EDITOR'S ANALYSIS"}
+                            </div>
                             <p className="brief-lead-text">{displayedInsight}</p>
                         </section>
                     )}
