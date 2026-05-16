@@ -1317,6 +1317,8 @@ function AppContent() {
                     originCountry: selectedTheme.originCountry,
                     originCountryName: selectedTheme.originCountryName,
                   })
+                  setSelectedTheme(null)
+                  setTheme(null)
                 }
                 handleCountryClick(code)
                 setMapFlyCountry(code)
