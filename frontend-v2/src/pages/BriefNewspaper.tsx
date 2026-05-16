@@ -300,25 +300,17 @@ export function BriefNewspaper() {
         const negNames = negTop.map(c => resolveCountryName(c.code, c.name)).join(' and ')
         const posNames = posTop.map(c => resolveCountryName(c.code, c.name)).join(' and ')
         const themeLabels = topThemeEntries.map(e => getThemeLabel(e.theme))
-        const leadSignal = topThemeEntries[0] ? themeSignals[topThemeEntries[0].theme]?.[0] : null
-        const hl = leadSignal?.headline ? `"${leadSignal.headline}"` : null
         const window = TIME_RANGE_LABELS[timeRange].toLowerCase()
 
         // Rotate narrative angle on each call so repeated views feel like different editions
         const variant = Math.floor(Math.random() * 4)
 
         if (variant === 0) {
-            // Lead: dominant theme + headline anchor
+            // Lead: dominant theme angle
             const parts: string[] = []
-            if (themeLabels[0]) {
-                parts.push(hl
-                    ? `${themeLabels[0]} leads the ${window} feed — ${hl}.`
-                    : `${themeLabels[0]} leads the ${window} feed.`)
-            }
+            if (themeLabels[0]) parts.push(`${themeLabels[0]} leads the ${window} feed.`)
             if (leaderName) parts.push(`${leaderName} accounts for the highest signal volume${runnerName ? `, ahead of ${runnerName}` : ''}.`)
-            if (negNames) {
-                parts.push(`Critical framing concentrates in ${negNames}${posNames ? `; positive coverage peaks in ${posNames}` : ''}.`)
-            }
+            if (negNames) parts.push(`Critical framing concentrates in ${negNames}${posNames ? `; positive coverage peaks in ${posNames}` : ''}.`)
             if (themeLabels.length > 1) parts.push(`${themeLabels.slice(1).join(' and ')} round out the major storylines.`)
             return parts.join(' ')
         }
@@ -331,11 +323,7 @@ export function BriefNewspaper() {
                     ? `${leaderName} and ${runnerName} drive the bulk of ${window} coverage.`
                     : `${leaderName} dominates the ${window} signal landscape.`)
             }
-            if (themeLabels[0]) {
-                parts.push(hl
-                    ? `The defining story: ${themeLabels[0]} — ${hl}.`
-                    : `${themeLabels[0]} is the period's defining narrative thread.`)
-            }
+            if (themeLabels[0]) parts.push(`${themeLabels[0]} is the period's defining narrative thread.`)
             if (themeLabels.length > 1) parts.push(`${themeLabels.slice(1).join(' and ')} also register significant activity.`)
             if (negNames) parts.push(`Sentiment runs most negative in ${negNames}.`)
             return parts.join(' ')
@@ -351,22 +339,14 @@ export function BriefNewspaper() {
             } else if (themeLabels[0]) {
                 parts.push(`${themeLabels[0]} sets the tone for the ${window} edition.`)
             }
-            if (themeLabels[0]) {
-                parts.push(hl
-                    ? `${themeLabels[0]} anchors the feed — ${hl}.`
-                    : `${themeLabels[0]} anchors the global narrative.`)
-            }
+            if (themeLabels[0]) parts.push(`${themeLabels[0]} anchors the global narrative.`)
             if (leaderName) parts.push(`${leaderName} generates the most signals this period${runnerName ? `, with ${runnerName} close behind` : ''}.`)
             return parts.join(' ')
         }
 
-        // variant === 3: Lead with headline first, then context
+        // variant === 3: volume-first, theme second
         const parts: string[] = []
-        if (hl) {
-            parts.push(`${hl} — one of the top headlines in a ${window} dominated by ${themeLabels[0] ?? 'global events'}.`)
-        } else if (themeLabels[0]) {
-            parts.push(`${themeLabels[0]} shapes the ${window} brief across ${d.stats.countries} countries.`)
-        }
+        if (themeLabels[0]) parts.push(`${themeLabels[0]} shapes the ${window} brief across ${d.stats.countries} countries.`)
         if (leaderName) parts.push(`${leaderName} leads coverage volume${runnerName ? `, followed by ${runnerName}` : ''}.`)
         if (negNames) parts.push(`Harshest press scrutiny falls on ${negNames}${posNames ? `; brightest coverage on ${posNames}` : ''}.`)
         if (themeLabels.length > 1) parts.push(`${themeLabels.slice(1).join(' and ')} also feature across the feed.`)
@@ -377,11 +357,6 @@ export function BriefNewspaper() {
         const name = resolveCountryName(countryFilter!, detail.name)
         const topThemes = detail.themes.slice(0, 3).map(t => getThemeLabel(t.name))
         const t = tone(detail.sentiment)
-        const leadThemeName = detail.themes[0]?.name
-        const leadSignal = leadThemeName
-            ? (themeSignals[leadThemeName]?.find(s => s.country_code === countryFilter) ?? themeSignals[leadThemeName]?.[0])
-            : null
-        const hl = leadSignal?.headline ? `"${leadSignal.headline}"` : null
         const window = TIME_RANGE_LABELS[timeRange].toLowerCase()
 
         const sentenceNeg = `Press framing runs predominantly critical — ongoing tension or crisis coverage.`
@@ -393,7 +368,7 @@ export function BriefNewspaper() {
 
         if (variant === 0) {
             const parts: string[] = []
-            if (topThemes[0]) parts.push(hl ? `${name} coverage centres on ${topThemes[0]} this ${window} — ${hl}.` : `${name} coverage centres on ${topThemes[0]} this ${window}.`)
+            if (topThemes[0]) parts.push(`${name} coverage centres on ${topThemes[0]} this ${window}.`)
             if (topThemes.length > 1) parts.push(`${topThemes.slice(1).join(' and ')} also figure prominently.`)
             parts.push(sentimentLine)
             return parts.join(' ')
@@ -402,18 +377,14 @@ export function BriefNewspaper() {
         if (variant === 1) {
             const parts: string[] = []
             parts.push(sentimentLine)
-            if (topThemes[0]) parts.push(hl ? `Lead narrative: ${topThemes[0]} — ${hl}.` : `Lead narrative: ${topThemes[0]}.`)
+            if (topThemes[0]) parts.push(`Lead narrative: ${topThemes[0]}.`)
             if (topThemes.length > 1) parts.push(`Secondary focus: ${topThemes.slice(1).join(', ')}.`)
             return parts.join(' ')
         }
 
-        // variant === 2: headline first
+        // variant === 2: theme volume-first
         const parts: string[] = []
-        if (hl) {
-            parts.push(`${hl} — a signal from ${name}'s ${topThemes[0] ?? 'coverage'} cluster this ${window}.`)
-        } else if (topThemes[0]) {
-            parts.push(`${topThemes[0]} leads ${name}'s ${window} picture.`)
-        }
+        if (topThemes[0]) parts.push(`${topThemes[0]} leads ${name}'s ${window} picture.`)
         if (topThemes.length > 1) parts.push(`${topThemes.slice(1).join(' and ')} also active.`)
         parts.push(sentimentLine)
         return parts.join(' ')
