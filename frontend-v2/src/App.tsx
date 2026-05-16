@@ -33,6 +33,7 @@ import { Globe, ClipboardList, FolderOpen, HelpCircle, BookmarkPlus } from 'luci
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
 import { resolveCountryName } from './lib/countryNames'
 import type { PublicAttentionOrigin } from './lib/publicAttention'
+import { prefetchBriefing } from './lib/briefingPrefetch'
 
 // Terminal Panels
 import { NarrativeThreads } from './components/NarrativeThreads'
@@ -790,6 +791,7 @@ function AppContent() {
     const h = timeRangeToHours(timeRange)
     setPrefetchedBriefing(null)
     setPrefetchedInsight(null)
+    prefetchBriefing(h) // warm sessionStorage so /brief loads without spinner
     fetch(`/api/v2/briefing?hours=${h}`).then(r => r.json()).then(d => { setPrefetchedBriefing(d); setPrefetchedHours(h) }).catch(() => { })
     fetch(`/api/v2/briefing/insight?hours=${h}`).then(r => r.json()).then(d => { if (d.insight) setPrefetchedInsight(d.insight) }).catch(() => { })
   }, [timeRange])
