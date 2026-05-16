@@ -289,26 +289,59 @@ export function BriefNewspaper() {
 
     const tone = (s: number) => s > 0.1 ? 'positive' : s < -0.1 ? 'negative' : 'neutral'
 
+    const buildGlobalFallback = (d: BriefingData): string => {
+        const topThemes = d.top_themes.slice(0, 3).map(t => getThemeLabel(t.theme))
+        const negTop = d.negative_sentiment.slice(0, 2)
+        const posTop = d.positive_sentiment.slice(0, 2)
+        const leader = d.top_countries[0]
+        const runner = d.top_countries[1]
+        const t = tone(d.stats.avg_sentiment)
+        const parts: string[] = []
+
+        if (topThemes.length) {
+            parts.push(`${TIME_RANGE_LABELS[timeRange]} coverage clusters around ${topThemes.join(', ')}.`)
+        }
+        if (leader) {
+            let volumeStr = `${leader.name} leads signal volume`
+            if (runner) volumeStr += ` ahead of ${runner.name}`
+            parts.push(volumeStr + '.')
+        }
+        if (negTop.length) {
+            const negNames = negTop.map(c => c.name).join(' and ')
+            let sentimentStr = `Press tone runs most negative in ${negNames}`
+            if (posTop.length) {
+                const posNames = posTop.map(c => c.name).join(' and ')
+                sentimentStr += `; most positive framing seen in ${posNames}`
+            }
+            parts.push(sentimentStr + '.')
+        }
+        if (t !== 'neutral') {
+            parts.push(`Global sentiment leans ${t} on balance.`)
+        }
+        return parts.join(' ')
+    }
+
+    const buildCountryFallback = (detail: CountryBriefData): string => {
+        const name = resolveCountryName(countryFilter!, detail.name)
+        const topThemes = detail.themes.slice(0, 3).map(t => getThemeLabel(t.name))
+        const t = tone(detail.sentiment)
+        const parts: string[] = []
+
+        parts.push(`${name} accounts for ${detail.totalSignals.toLocaleString()} signals this ${TIME_RANGE_LABELS[timeRange].toLowerCase()}, tracked across ${detail.sources} sources.`)
+        if (topThemes.length) {
+            parts.push(`Coverage concentrates on ${topThemes.join(', ')}.`)
+        }
+        if (t !== 'neutral') {
+            parts.push(`Press framing leans ${t}.`)
+        } else {
+            parts.push('Framing is broadly neutral — factual or mixed coverage.')
+        }
+        return parts.join(' ')
+    }
+
     const displayedInsight = countryFilter && countryDetail
-        ? (() => {
-            const name = resolveCountryName(countryFilter, countryDetail.name)
-            const topThemes = countryDetail.themes.slice(0, 3).map(t => getThemeLabel(t.name)).join(', ') || 'low-volume coverage'
-            const t = tone(countryDetail.sentiment)
-            return `${name}: ${countryDetail.totalSignals.toLocaleString()} signals in this ${TIME_RANGE_LABELS[timeRange].toLowerCase()} window. Dominant narratives: ${topThemes}. Coverage tone: ${t} (${countryDetail.sentiment.toFixed(2)}). ${countryDetail.sources} distinct sources tracked.`
-          })()
-        : insight ?? (data
-            ? (() => {
-                const topThemes = data.top_themes.slice(0, 3).map(t => getThemeLabel(t.theme)).join(', ')
-                const topCountry = data.top_countries[0]?.name ?? null
-                const t = tone(data.stats.avg_sentiment)
-                return [
-                    `${data.stats.countries} countries generated ${data.stats.total_signals.toLocaleString()} signals in this ${TIME_RANGE_LABELS[timeRange].toLowerCase()} window.`,
-                    `Coverage led by ${topThemes}.`,
-                    topCountry ? `Highest activity: ${topCountry}.` : null,
-                    `Global tone: ${t} (${data.stats.avg_sentiment.toFixed(2)}).`,
-                ].filter(Boolean).join(' ')
-              })()
-            : null)
+        ? buildCountryFallback(countryDetail)
+        : insight ?? (data ? buildGlobalFallback(data) : null)
 
     const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
