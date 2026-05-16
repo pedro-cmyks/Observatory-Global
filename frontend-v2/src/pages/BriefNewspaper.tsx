@@ -287,9 +287,28 @@ export function BriefNewspaper() {
         }
         : data?.stats
 
+    const tone = (s: number) => s > 0.1 ? 'positive' : s < -0.1 ? 'negative' : 'neutral'
+
     const displayedInsight = countryFilter && countryDetail
-        ? `${resolveCountryName(countryFilter, countryDetail.name)} shows ${countryDetail.totalSignals.toLocaleString()} signals in this ${TIME_RANGE_LABELS[timeRange].toLowerCase()} window, led by ${countryDetail.themes.slice(0, 3).map(t => getThemeLabel(t.name)).join(', ') || 'low-volume coverage'}. Use the theme sections below to open the full Atlas console with the country and narrative already selected.`
-        : insight
+        ? (() => {
+            const name = resolveCountryName(countryFilter, countryDetail.name)
+            const topThemes = countryDetail.themes.slice(0, 3).map(t => getThemeLabel(t.name)).join(', ') || 'low-volume coverage'
+            const t = tone(countryDetail.sentiment)
+            return `${name}: ${countryDetail.totalSignals.toLocaleString()} signals in this ${TIME_RANGE_LABELS[timeRange].toLowerCase()} window. Dominant narratives: ${topThemes}. Coverage tone: ${t} (${countryDetail.sentiment.toFixed(2)}). ${countryDetail.sources} distinct sources tracked.`
+          })()
+        : insight ?? (data
+            ? (() => {
+                const topThemes = data.top_themes.slice(0, 3).map(t => getThemeLabel(t.theme)).join(', ')
+                const topCountry = data.top_countries[0]?.name ?? null
+                const t = tone(data.stats.avg_sentiment)
+                return [
+                    `${data.stats.countries} countries generated ${data.stats.total_signals.toLocaleString()} signals in this ${TIME_RANGE_LABELS[timeRange].toLowerCase()} window.`,
+                    `Coverage led by ${topThemes}.`,
+                    topCountry ? `Highest activity: ${topCountry}.` : null,
+                    `Global tone: ${t} (${data.stats.avg_sentiment.toFixed(2)}).`,
+                ].filter(Boolean).join(' ')
+              })()
+            : null)
 
     const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
