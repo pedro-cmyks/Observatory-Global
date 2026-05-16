@@ -10,6 +10,7 @@ Reviewed the three owner walkthrough videos through local transcripts and extrac
 - Landing walkthrough: `docs/research/ux-video-evaluation/transcripts/Screen Recording 2026-05-14 at 21.40.47.txt`
 - Brief walkthrough: `docs/research/ux-video-evaluation/transcripts/Screen Recording 2026-05-14 at 21.53.02.txt`
 - App walkthrough: `docs/research/ux-video-evaluation/transcripts/Screen Recording 2026-05-16 at 09.25.31.txt`
+- App YouTube captions: `docs/research/ux-video-evaluation/transcripts/youtube-app-x8qlx2cijEE-es-auto.txt`
 
 Added:
 

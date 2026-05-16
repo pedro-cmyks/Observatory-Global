@@ -1,0 +1,460 @@
+[0.48s +8.28s] Entonces, continuemos con lo que falta
+[3.52s +8.24s] de la revisión y es ya la interacción
+[8.76s +3.00s] eh
+[12.24s +5.60s] con el panel principal. Voy a hacer las
+[15.08s +7.24s] búsquedas, voy a dar mis comentarios.
+[17.84s +4.48s] Bueno, entonces ahorramos la consola.
+[23.52s +5.32s] Eh, esto ya debería estar precargado
+[26.40s +5.32s] porque yo llevaba rato parado atrás en
+[28.84s +5.84s] la pantalla del brief.
+[31.72s +5.80s] El Aquí me dice que empiece buscando
+[34.68s +5.00s] conflicto en Colombia. No, ni siquiera
+[37.52s +4.32s] conflicto en Colombia, sino separado
+[39.68s +8.00s] conflicto Colombia. Yo buscaría
+[41.84s +8.88s] conflicto. Conflicto en Colombia.
+[47.68s +5.32s] A ver, la búsqueda me parece que toma
+[50.72s +4.48s] demasiado tiempo. Todo esto es tiempo
+[53.00s +3.64s] que está pasando. Bueno, ahora esto me
+[55.20s +3.60s] gustaría que si los mensajes se van
+[56.64s +4.76s] agregando de a poquitos,
+[58.80s +4.36s] eh, que esto que la diferencia en
+[61.40s +4.32s] segundos entre la que agregué este a
+[63.16s +5.20s] este a la pantalla sea diferente, no que
+[65.72s +4.16s] el mensaje está en la pantalla hace 26
+[68.36s +4.48s] minutos, eso no tiene sentido. Esto
+[69.88s +5.16s] sigue buscando.
+[72.84s +5.80s] Cuando le doy clic a una nota de estas,
+[75.04s +5.28s] a algo del stream, pues si me tiene como
+[78.64s +4.04s] una evaluación,
+[80.32s +4.32s] ¿eh? Pero
+[82.68s +4.20s] no sé.
+[84.64s +4.48s] A ver,
+[86.88s +4.72s] crisis.
+[89.12s +5.60s] El esto sigue buscando.
+[91.60s +5.00s] Ah, encontró. ¿Qué encontró?
+[94.72s +4.56s] Filtering to Colombia. Bueno, encontró
+[96.60s +5.76s] la palabra Colombia. conceptos. La
+[99.28s +5.56s] palabra, el pool que tenemos de
+[102.36s +4.84s] conceptos,
+[104.84s +4.36s] eso debe ser infinitamente universal,
+[107.20s +3.48s] ¿no? Tres concepticos chiquiticos,
+[109.20s +3.68s] porque es que yo he visto este de Blood
+[110.68s +4.00s] Diamonds por ahí unas 46,000 veces,
+[112.88s +6.16s] porque puse un ejemplo alguna vez de
+[114.68s +5.96s] Blood Diamonds y esto quedó. Entonces,
+[119.04s +3.80s] pues
+[120.64s +5.00s] no sé,
+[122.84s +4.68s] eh, ahí le di a Crisis Ted, no sé qué
+[125.64s +3.32s] significa Crisis TD. Ay, pues ya me dejó
+[127.52s +3.60s] de mostrar cosas. ¿Por qué ya no me
+[128.96s +6.84s] muestra cosas?
+[131.12s +6.00s] Also searching conflicto en Colombia.
+[135.80s +3.84s] Ah, aquí me muestra qué más está
+[137.12s +6.28s] buscando. Pues no, más bien me debería
+[139.64s +5.44s] demostrar podría ser, no podría ser
+[143.40s +5.12s] estas cosas. Bueno, yo creo que está
+[145.08s +4.84s] bien. Estos no me dice nada la palabra
+[148.52s +2.76s] conflicto en Colombia y ni siquiera me
+[149.92s +4.40s] lleva al país de Colombia. Entonces,
+[151.28s +5.32s] creo que no no sirvió esa búsqueda.
+[154.32s +4.36s] Cancelémosla. Se demoró demasiado aquí.
+[156.60s +4.56s] ¿Qué podemos ver?
+[158.68s +6.08s] Eh, ¿cómo se relacionan estos? El
+[161.16s +3.60s] narrative drift
+[164.88s +3.60s] que siempre ha tenido un muy mal
+[166.96s +3.68s] sentimiento. ¿Qué significa un
+[168.48s +5.24s] sentimiento de -42?
+[170.64s +5.28s] Pues obvio, el tema es crisis t muerte.
+[173.72s +4.44s] Ni idea. Coverage análisis está no está
+[175.92s +3.80s] disponible. No sé si se nos dañó la
+[178.16s +4.56s] inteligencia artificial. Habrá que
+[179.72s +3.00s] revisarla.
+[182.96s +7.04s] El API. Ah, sí. Todo esto es negativo,
+[187.08s +5.00s] pero aquí qué personas mencionadas con
+[190.00s +5.24s] matar ese Spongebob Squarpons. Qué
+[192.08s +7.00s] chistoso. ¿Y cómo mencionan a Spongebob
+[195.24s +6.72s] Square con el tema?
+[199.08s +5.40s] Ah, ya se me perdió. Ya no sé cómo
+[201.96s +4.68s] mencionan a Spongebob Squarepons con el
+[204.48s +3.68s] tema de matar.
+[206.64s +2.92s] Ah, ya volví atrás y ya no puedo volver
+[208.16s +3.32s] al tema de matar. Ya se me perdió
+[209.56s +5.00s] también esa búsqueda. Bueno, pero yo
+[211.48s +5.20s] creo que eso está en el trail. A esto no
+[214.56s +4.44s] sé por qué se me sale de la pantalla.
+[216.68s +7.00s] Vamos al trail.
+[219.00s +6.76s] Y el trail que health environment
+[223.68s +4.36s] muestra esto aquí. ¿Y qué significa? No
+[225.76s +5.72s] significa nada.
+[228.04s +6.04s] Pues no se conectan de ninguna manera
+[231.48s +4.16s] estos puntos.
+[234.08s +5.04s] Si estaban conectados desde donde la
+[235.64s +6.60s] pantalla que yo vine, no tiene sentido.
+[239.12s +5.16s] A los pineados yo tenía antavirus,
+[242.24s +5.52s] public sector, public health in the
+[244.28s +6.16s] United States y Crisis Event. Está bien.
+[247.76s +4.32s] Pues no sé cómo moverme aquí. Pues
+[250.44s +4.16s] cuando me muevo sí se mueven las cosas
+[252.08s +4.76s] ahí adentro, pero
+[254.60s +4.68s] no me gusta. Múltiples cosas conectadas.
+[256.84s +5.64s] Igual me parece que es como difícil de
+[259.28s +7.72s] entender. Ah, se dañó.
+[262.48s +4.52s] Lo moví, como que perdió el balance.
+[267.68s +4.84s] Hay que mirar. No sé si buscar otras
+[270.04s +6.52s] maneras de hacer esto. A ver. Y si apago
+[272.52s +6.20s] esto, ¿qué hace? Uh, estalló.
+[276.56s +3.76s] Si lo hundo, ¿qué hace ahora? Ah, se
+[278.72s +5.24s] volvió a dañar. Se volvió a dañar.
+[280.32s +5.68s] Entonces, esto no hace nada.
+[283.96s +3.60s] Share teams.
+[286.00s +3.88s] Pues si los que estoy apagando, ¿por qué
+[287.56s +3.88s] siguen apareciendo?
+[289.88s +4.36s] Ah.
+[291.44s +5.16s] Temporal Snapshot. Pues no, si tiene
+[294.24s +4.64s] sentido, pero si no está aquí, no
+[296.60s +4.04s] debería de estar acá
+[298.88s +3.76s] porque pues estoy apagando cosas que no
+[300.64s +4.68s] están
+[302.64s +4.72s] o sí están y pues por lo menos debería
+[305.32s +4.44s] de relacionarlas. Esto me parece que
+[307.36s +5.28s] necesita trabajo.
+[309.76s +5.76s] Volvamos acá, digamos. Me interesa. Uh,
+[312.64s +5.24s] uh, uh, uh. ¿Qué hice? Ah, pero uy, qué
+[315.52s +4.88s] bacano. Le di click a China, pero me
+[317.88s +4.52s] debió haber entrado China centrado en el
+[320.40s +4.48s] tres de salud.
+[322.40s +4.60s] Hubiera sido mucho más bacano. ¿Qué le
+[324.88s +4.16s] pasó al brief? ¿Por qué está cargando?
+[327.00s +6.00s] Oh, se ve muy bacano China en el mapa
+[329.04s +8.12s] porque tiene estos puestos de control.
+[333.00s +5.64s] El igual los barcos
+[337.16s +3.88s] lo creo que la cantidad de barcos que
+[338.64s +6.24s] estamos poniendo son pocos y estos
+[341.04s +6.84s] eventos que están pasando en el mapa
+[344.88s +4.56s] alerts son como difíciles de entender y
+[347.88s +2.96s] no sé cómo se estén relacionando con las
+[349.44s +6.20s] preguntas. Vamos a ver de qué habla
+[350.84s +7.12s] China. China shows, 5,526
+[355.64s +4.20s] señales en la ventana de 24 horas. O
+[357.96s +4.68s] sea, pues no sé, están hablando más de
+[359.84s +4.40s] lo normal o eso es lo que usualmente
+[362.64s +5.32s] presentan.
+[364.24s +6.44s] Bueno, eh, led by economic history. ¿Qué
+[367.96s +4.56s] significa economic history? Presidential
+[370.68s +4.92s] actions, eso sí entiendo. And digital
+[372.52s +5.56s] government. Okay, eso sí lo entiendo. On
+[375.60s +5.12s] the people side layer, Wikipedia
+[378.08s +4.44s] attention is concentrated on. Ni ideas.
+[380.72s +3.52s] Pues eso está muy bacano que lo pongan
+[382.52s +5.20s] ahí en chino, pero pues no me dice, yo
+[384.24s +6.24s] no sé chino. People mostful media layer
+[387.72s +4.36s] include Donald Trump and Vladimir Putin.
+[390.48s +4.84s] Eso sí me contextualiza como en el país
+[392.08s +6.36s] de China, ¿cierto?
+[395.32s +5.16s] Eh, uh, bacano. La ventana de publicion.
+[398.44s +4.08s] ¿Cómo quedó con lo de Google Trends?
+[400.48s +3.60s] Google Trends debería estar aquí abajo.
+[402.52s +4.64s] Ah, y mira aquí, qué chistoso.
+[404.08s +5.44s] Publicion. La número uno es Wikipedia
+[407.16s +5.60s] Acuel principal y Wikipedia página
+[409.52s +5.24s] principal en español. Horrible. Pues eso
+[412.76s +3.80s] no no dice nada. ¿Y por qué no se
+[414.76s +4.08s] encuentra? No se debería de estar
+[416.56s +4.80s] filtrando aquí el public attention, el
+[418.84s +5.08s] Wikipedia del país en el que yo estoy.
+[421.36s +5.28s] No un país random, pues o todos los
+[423.92s +4.72s] países. Estas las barras completas,
+[426.64s +4.08s] todo, todas las toda la pantalla debería
+[428.64s +4.72s] de actualizarse. Este ya me habla del
+[430.72s +6.04s] país. Este ya me habla de Threads Active
+[433.36s +5.12s] in China. Este sí está muy bien.
+[436.76s +4.52s] Estos son threads que están activos en
+[438.48s +5.20s] China y todos me selecciono el país.
+[441.28s +4.20s] Excelente. Source integrity me habla de
+[443.68s +4.64s] China. Esta parte no me está hablando de
+[445.48s +4.64s] China. Ah, aquí sí. conflicts in China,
+[448.32s +3.56s] pero es demasiado chiquito. Esto me
+[450.12s +4.96s] parece que de pronto se podría expandir
+[451.88s +5.20s] o no sé que llegara por ahí acá la mitad
+[455.08s +4.56s] de la pantalla, un poco más arriba,
+[457.08s +5.48s] aunque esto es muy importante. Bueno,
+[459.64s +4.96s] ahora estando aquí en China me interesa
+[462.56s +5.28s] saber cuáles son los temas de Economic
+[464.60s +4.92s] History de China. Muy bien, vamos a ver
+[467.84s +4.68s] cómo está hablando Economic History en
+[469.52s +3.00s] China.
+[472.88s +6.00s] Economic history solo se relaciona con
+[475.24s +5.64s] China. Qué chistoso.
+[478.88s +3.80s] Bueno, y si voy aquí no se conecta con
+[480.88s +3.80s] más nada.
+[482.68s +4.60s] Ah, pero qué interesante. Presidencial
+[484.68s +6.48s] actions. Pero, ¿y qué? Presidential
+[487.28s +7.04s] actions me lleva presidential actions.
+[491.16s +4.72s] Evolution graph. Presidential United
+[494.32s +4.24s] States. Presidencial elction. Aquí me
+[495.88s +5.72s] puso ya Estados Unidos. Ay, ¿qué pasó?
+[498.56s +5.88s] Está como cambiando.
+[501.60s +5.76s] Va, creo que es bacano, pero no.
+[504.44s +5.80s] A ver, ¿y qué está cargando aquí?
+[507.36s +4.56s] Coverage analysis unavailable. Ah, yo
+[510.24s +5.08s] creo que hay un problema con la
+[511.92s +3.40s] inteligencia artificial.
+[515.68s +5.88s] Ah, el narrative drift.
+[519.08s +5.32s] Han mejorado y han cambiado en China las
+[521.56s +5.80s] acciones presidenciales.
+[524.40s +5.40s] A ver, este, ¿qué hago si le hago clic
+[527.36s +5.44s] aquí? Ah, me compara esos dos que habían
+[529.80s +3.00s] ahí.
+[533.08s +5.84s] Presidential action US Politics. Pero de
+[536.32s +5.00s] aquí yo no entiendo un Y voy a
+[538.92s +4.56s] hacer pin booket. Y pin booket, ¿qué
+[541.32s +6.00s] hace?
+[543.48s +6.52s] Y si le doy open workspace, ¿qué hace?
+[547.32s +5.12s] No hace nada. Pin booket sí lo puso
+[550.00s +5.08s] aquí. Eso sí vi, pero open workspace,
+[552.44s +4.40s] ¿qué hizo? Y si le doy a esta X, ¿qué?
+[555.08s +4.72s] Esta X no hace nada. No me deja cambiar
+[556.84s +4.80s] el tema. Bueno, voy a ir atrás. Uy, ¿qué
+[559.80s +4.40s] pasó?
+[561.64s +4.80s] ¿Qué significa esto? Este, ¿qué es? US
+[564.20s +4.44s] politics.
+[566.44s +5.88s] Ah,
+[568.64s +5.36s] t es temporal snapshot,
+[572.32s +3.00s] pero no tiene sentido. Pues yo no
+[574.00s +4.32s] entiendo esto. ¿Qué significa esta
+[575.32s +3.00s] picion?
+[578.36s +3.72s] Y si le doy clic, ¿qué?
+[582.52s +6.24s] Wow, no entiendo nada. Y el trail.
+[587.16s +3.44s] que me cómo se relaciona todo lo que he
+[588.76s +3.96s] visto. Si fuera una investigación, yo
+[590.60s +3.88s] quisiera saber esto.
+[592.72s +4.32s] Bueno, esta X está difícil de hacerle
+[594.48s +4.36s] click. Ah, pero me lo muestra Yacki y
+[597.04s +3.68s] ahora me muestra los países que están
+[598.84s +4.72s] hablando, pues la distribución
+[600.72s +6.24s] volumétrica de estas señales. A ver,
+[603.56s +4.96s] Estados Unidos, como siempre,
+[606.96s +3.12s] Europa.
+[608.52s +4.64s] Si le hago clic a un país con esto
+[610.08s +5.96s] seleccionado, me muestra el filtro sobre
+[613.16s +5.12s] eh yo no le hice país a la China de esa
+[616.04s +6.76s] misma búsqueda sobre ese país o se me
+[618.28s +6.52s] pierde la el hilo de investigación.
+[622.80s +4.20s] No, nada, ya no tiene nada que ver, pero
+[624.80s +6.20s] supuestamente estaba hablando de eso.
+[627.00s +8.20s] Entonces, debería poder darle click
+[631.00s +8.40s] a Suiza sobre el tema, ¿no? Bueno, creo
+[635.20s +6.04s] que no. A ver, ¿qué más me dice. Sudán
+[639.40s +5.04s] humanitaria. No, no voy a buscar en dos
+[641.24s +5.40s] así porque es que eso no tiene sentido.
+[644.44s +4.16s] Voy a buscar semiconductores. Ahí dice
+[646.64s +5.40s] semiconductores Taiwán, pero yo no creo
+[648.60s +6.44s] que la gente normal busque así.
+[652.04s +3.00s] semiconductores.
+[655.28s +3.32s] Yo debería poder buscar en todos los
+[657.08s +6.04s] idiomas. Bueno, vamos a volver a ver eso
+[658.60s +7.12s] se demora mucho, ¿eh?
+[663.12s +4.80s] Ah, en vivo, porque dice pausada en
+[665.72s +6.60s] vivo, pausada en vivo. Pausada. ¿Cómo
+[667.92s +6.16s] que pausada? ¿O está en vivo? Pausada.
+[672.32s +3.60s] En vivo. Pues yo creo que siempre está
+[674.08s +3.76s] en vivo porque si siempre estamos
+[675.92s +3.92s] agregando a diferentes tiempos las
+[677.84s +4.32s] noticias.
+[679.84s +3.88s] Sí, eso está en vivo. En vivo. Deja de
+[682.16s +3.04s] estar en vivo cuando lleve por ahí unos
+[683.72s +3.60s] cuatro ciclos sin tener señal. Yo
+[685.20s +4.08s] creería que eso ya no es en vivo. Sigue
+[687.32s +4.96s] buscando la búsqueda, sigue buscando.
+[689.28s +3.00s] Eh,
+[693.68s +6.08s] bueno, vamos a ver. Semiconductores.
+[697.08s +5.92s] Tower. A ver, conceptos. A mí la parte
+[699.76s +4.80s] de conceptos me parece interesante
+[703.00s +3.84s] porque no me crea un concepto de mi
+[704.56s +4.00s] búsqueda y busca palabras relacionadas
+[706.84s +2.96s] sobre lo que yo dije. Es un concepto. Lo
+[708.56s +3.36s] que yo estoy diciendo es un concepto.
+[709.80s +5.08s] Semiconductores,
+[711.92s +5.40s] pero concepto de press freedom people.
+[714.88s +4.24s] Thomson semiconductor. Hay un tipo que
+[717.32s +4.28s] se llama semiconductor. No,
+[719.12s +4.16s] semiconducteos.
+[721.60s +3.76s] Mira locura. No creo que sea una
+[723.28s +4.72s] persona,
+[725.36s +6.24s] ¿eh? Ah, bueno. Media Signal. Sí. busca
+[728.00s +5.76s] la palabra y la pone por ahí.
+[731.60s +3.72s] Pero a ver, ahí decías semiconductores
+[733.76s +5.64s] copper,
+[735.32s +4.08s] no veo nada de
+[739.76s +3.36s] Vamos a ver quién está hablando de
+[741.08s +4.76s] cobre. Todos estos países está hablando
+[743.12s +4.76s] de cobre y así se relaciona la
+[745.84s +5.12s] información. ¿Por qué cambia? ¿Qué
+[747.88s +6.12s] cambia? ¿Qué lo hace cambiar el cobre
+[750.96s +5.08s] Israel e Italia?
+[754.00s +4.24s] El sentimiento del cobre estuvo positivo
+[756.04s +4.68s] y ha disminuido. Pues eso igual sigue
+[758.24s +4.76s] siendo muy alto, ¿no? ¿Qué significa un
+[760.72s +4.64s] sentimiento de 21?
+[763.00s +4.36s] Creí que era de un a 10.
+[765.36s +3.88s] Eh,
+[767.36s +3.52s] aquí el número de distintos países donde
+[769.24s +5.96s] la media source are covering distopic,
+[770.88s +6.24s] pues pues sí está bien. 88 señales, 20
+[775.20s +4.48s] fuentes diferentes. Hablan del cobre en
+[777.12s +5.36s] las últimas 24 horas.
+[779.68s +7.44s] Y cómo se ha relacionado la esta tabla,
+[782.48s +7.20s] qué significa cómo diferentes países han
+[787.12s +4.72s] hablado de la información
+[789.68s +4.80s] y cómo se relaciona esa información ante
+[791.84s +5.48s] el tiempo. Pero cuando me muevo de atrás
+[794.48s +4.80s] hacia delante es difícil para mí tener
+[797.32s +3.64s] como una historia lógica de cómo fue la
+[799.28s +4.56s] evolución, porque no hay ninguna como
+[800.96s +6.04s] persistencia ni señal que me haga
+[803.84s +5.40s] entender el cambio. Sí, aquí arriba
+[807.00s +4.04s] puedo ver y decir que hay dos señales y
+[809.24s +4.48s] esto
+[811.04s +5.64s] y aquí hay otras dos señales. Eh, o pues
+[813.72s +5.28s] bueno, pasó de a ver cuatro señales con
+[816.68s +5.48s] con 20 nodos a una señal con ocho nodos,
+[819.00s +4.56s] siete enlaces. Pues sí, ahí ha
+[822.16s +3.04s] evolucionado los países que se
+[823.56s +5.44s] relacionan.
+[825.20s +6.12s] Es útil. A ver qué dice Vietnam del
+[829.00s +4.80s] Cobre.
+[831.32s +5.20s] Me lleva a Vietnam. Me parece muy bien.
+[833.80s +4.96s] Ah, pues no sé, no dice nada. Temas
+[836.52s +4.00s] relacionados estos. Estas son las
+[838.76s +3.04s] fuentes.
+[840.52s +4.00s] Pero, ¿qué dice esta fuente? ¿Qué
+[841.80s +7.36s] significa PLBN?
+[844.52s +4.64s] Que habla negativamente del Vamos a ver.
+[849.44s +7.20s] Sí, sí habla negativamente el cobre.
+[853.72s +6.64s] No. Uy,
+[856.64s +3.72s] se lo podré traducir.
+[863.32s +3.16s] No parece.
+[868.24s +3.84s] Bueno,
+[870.08s +6.64s] no sé. Pues sí me trae este aquí. Pero,
+[872.08s +8.60s] ¿qué dice esto? Que en Taiwán hablan con
+[876.72s +6.08s] un tono positivo sobre el cobre. Creería
+[880.68s +3.36s] que es la única
+[882.80s +2.68s] posición que puedo tener, que
+[884.04s +3.56s] recientemente han estado hablando más
+[885.48s +6.36s] positivo del cobre,
+[887.60s +5.88s] pero pues desde el 8 de mayo.
+[891.84s +3.56s] De pronto me gustaría saber cuál es el
+[893.48s +4.80s] precio del cobre. Ahora que estoy
+[895.40s +4.60s] hablando metales, sí, hay que podría
+[898.28s +7.52s] incorporar fácilmente como una cosa de
+[900.00s +8.08s] commodities y metales y mercados, o sea,
+[905.80s +4.20s] como para considerar, pero bueno. Y
+[908.08s +4.00s] entonces, pero están hablando mejor del
+[910.00s +4.16s] cobre. ¿Qué más países están hablando
+[912.08s +4.92s] del cobre? Esto me llama la atención.
+[914.16s +6.00s] Vamos a crear una Ah, pero es que esto
+[917.00s +5.16s] está vuelto de la sesión pasada.
+[920.16s +5.72s] ¿Cómo borro esto acá? Bueno, voy a
+[922.16s +3.72s] cerrar esto. ¿Cómo borro aquí?
+[926.00s +6.28s] Me toca darle de spinear. A este es el
+[928.32s +7.08s] trail. Bueno, los pines
+[932.28s +5.44s] igual me parece que esto está roto.
+[935.40s +5.48s] Eh, podría ser una sesión interesante,
+[937.72s +5.24s] ¿cierto? Ah, bueno, en Israel, Italia
+[940.88s +4.40s] están hablando del cobre. Vamos a
+[942.96s +5.24s] Israel.
+[945.28s +5.36s] Y quiero ver Israel cómo cubre el cobre.
+[948.20s +4.12s] muy positivo,
+[950.64s +5.68s] pero anteriormente lo estaba hablando
+[952.32s +5.40s] negativamente del cobre.
+[956.32s +4.60s] Sí, si puede hacer uno una
+[957.72s +4.88s] investigación, ¿cierto?
+[960.92s +4.72s] ¿Quién más habla del cobre? Ah, bueno,
+[962.60s +5.32s] esos son los países.
+[965.64s +4.48s] Seguimos con la gráfica y Israel está
+[967.92s +5.68s] ahí, pero entonces me volvería, me
+[970.12s +6.72s] debería de volver a salir Vietnam,
+[973.60s +7.12s] pues o o los otros países o no sé.
+[976.84s +3.88s] Ah, no tiene tanto tiempo.
+[981.32s +7.04s] ¿Cómo regreso a la parte donde estaba?
+[984.12s +7.64s] En global o en el coverage stream está
+[988.36s +5.88s] disponible. Esto estará
+[991.76s +4.20s] pues es el mismo tema. Vamos atrás. Ah,
+[994.24s +3.64s] se perdió. Se perdió toda la
+[995.96s +5.40s] investigación que estaba haciendo. Ojalá
+[997.88s +3.48s] el trail funcionara.
+[1001.48s +5.76s] Mm. Démosle a
+[1004.44s +4.36s] cookie. ¿Qué es esto? Esto no debería de
+[1007.24s +3.92s] estar. Esto pues este tipo de cosas
+[1008.80s +4.92s] debería de filtrarse.
+[1011.16s +4.84s] Google, ¿por qué no se ve aquí?
+[1013.72s +5.44s] Google Trends debe de estar disponible
+[1016.00s +4.96s] en Estados Unidos. Pues no me imagino
+[1019.16s +3.36s] que no esté disponible. Si no está
+[1020.96s +3.32s] disponible aquí, pues, ¿por qué no? Me
+[1022.52s +4.72s] imagino que no lo estamos agregando.
+[1024.28s +6.00s] Pues eso está mal la la tabla.
+[1027.24s +5.20s] Los tiempos de carga en todos lados está
+[1030.28s +5.20s] bien malo. Sí, Google Trends no está
+[1032.44s +5.92s] funcionando en ningún lado. Y aquí están
+[1035.48s +7.84s] buscando
+[1038.36s +7.36s] sobre qué la mismo. El mismo de aquí
+[1043.32s +4.32s] lo filtraste aquí abajo este, pero aquí
+[1045.72s +3.32s] no lo quitaste. Y aquí no me deja
+[1047.64s +4.64s] interactuar con las cosas. Me gustaría
+[1049.04s +5.76s] poder interactuar. ¿Qué están buscando?
+[1052.28s +4.08s] A ver, eh,
+[1054.80s +5.80s] ¿cómo se relaciona Kevin Sexton con
+[1056.36s +4.24s] Estados Unidos o quién es Kevin Sexon?
+[1066.36s +4.68s] Ni idea.
+[1069.08s +4.52s] Sí sé que hablan de él en Estados Unidos
+[1071.04s +4.56s] y que hablan de Mariana Negativa, que
+[1073.60s +4.32s] también están hablando de él en este
+[1075.60s +5.28s] país, que ni idea que sea y en este otro
+[1077.92s +6.88s] país.
+[1080.88s +3.92s] Esto está difícil de leer.
+[1089.04s +3.64s] Bueno,
+[1090.68s +5.32s] eh,
+[1092.68s +6.04s] creo que está cierto funciona. A mí me
+[1096.00s +6.88s] gusta mucho el tour.
+[1098.72s +4.16s] Me parece que quedó super chévere.
+[1107.44s +5.08s] Me parece que le hace falta.
+[1111.08s +6.48s] Ah, ¿será que estoy trabajando en una
+[1112.52s +5.04s] versión vieja? Es posible.
+[1118.84s +6.20s] Bueno, pero no importa.
+[1121.08s +7.44s] Lo lo que dije es lo mismo.
+[1125.04s +3.48s] A ver, espera.
+[1129.04s +6.20s] Pues validemos
+[1132.24s +3.00s] PC.
+[1140.72s +5.12s] Ah, sí, me falta un el botón que decía
+[1144.20s +3.16s] watch,
+[1145.84s +6.20s] el de poderle hacer seguimiento a las
+[1147.36s +4.68s] cosas. No sé por qué no lo tengo.
+[1154.28s +7.20s] Sí, este se sobrepone con este, pero no
+[1158.80s +5.16s] sé entonces este qué función cumple y
+[1161.48s +5.36s] qué diferente es este con el workpace. Y
+[1163.96s +6.80s] lo que dice aquí se pierde arriba.
+[1166.84s +3.92s] En settings, ¿qué puedo hacer?
+[1171.84s +5.44s] Ah, me cambia el color de las cosas.
+[1174.60s +6.24s] Bueno, está bien.
+[1177.28s +5.84s] Booste siz no hace nada.
+[1180.84s +4.68s] De not shadow.
+[1183.12s +5.00s] Me gustaría que no quedara como con ese
+[1185.52s +4.80s] corte así. Eso se ve tan feo. Y lo mismo
+[1188.12s +4.88s] aquí. Y lo mismo aquí atrás. Yo no creo
+[1190.32s +5.40s] que la noche sea así.
+[1193.00s +5.20s] En Ocania. Aquí es de noche y aquí es de
+[1195.72s +6.72s] día. Aquí es de noche y aquí es de día.
+[1198.20s +9.68s] Así tan tan bruscamente.
+[1202.44s +7.64s] Eh, se ve feo. Bueno, eso está bien. Mm.
+[1207.88s +6.28s] Ah, el filtro nada más llega hasta las
+[1210.08s +6.44s] 12 horas. Ya no hay más para atrás.
+[1214.16s +4.92s] Interesante elección.
+[1216.52s +3.84s] 24 horas.
+[1219.08s +3.88s] Eh, yo crearía que por lo menos una
+[1220.36s +5.52s] semana hacia atrás.
+[1222.96s +2.92s] Sí, one week.
+[1227.04s +4.88s] Sí, por lo menos una semana hacia atrás.
+[1230.28s +3.28s] Sí, nos están cabiendo las cosas aquí
+[1231.92s +5.08s] arriba.
+[1233.56s +3.44s] Bueno, ese sería

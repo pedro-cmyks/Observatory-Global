@@ -7,6 +7,7 @@ Transcripts generados localmente desde los tres videos compartidos:
 - Landing: `docs/research/ux-video-evaluation/transcripts/Screen Recording 2026-05-14 at 21.40.47.txt`
 - Brief: `docs/research/ux-video-evaluation/transcripts/Screen Recording 2026-05-14 at 21.53.02.txt`
 - App: `docs/research/ux-video-evaluation/transcripts/Screen Recording 2026-05-16 at 09.25.31.txt`
+- App YouTube captions: `docs/research/ux-video-evaluation/transcripts/youtube-app-x8qlx2cijEE-es-auto.txt`
 
 También se usaron frames/contact sheets extraídos en `/tmp/atlas-video-review/` para validar los momentos visuales mencionados en los transcripts.
 

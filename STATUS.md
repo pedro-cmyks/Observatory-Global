@@ -13,6 +13,8 @@ Latest shipped production commit is still `2989dc5 docs: record production hotfi
   - Landing: `docs/research/ux-video-evaluation/transcripts/Screen Recording 2026-05-14 at 21.40.47.txt`
   - Brief: `docs/research/ux-video-evaluation/transcripts/Screen Recording 2026-05-14 at 21.53.02.txt`
   - App: `docs/research/ux-video-evaluation/transcripts/Screen Recording 2026-05-16 at 09.25.31.txt`
+- Added YouTube auto-generated Spanish captions for the App video:
+  - `docs/research/ux-video-evaluation/transcripts/youtube-app-x8qlx2cijEE-es-auto.txt`
 - Added full review: `docs/research/ux-video-evaluation/2026-05-16-atlas-video-review.md`
 - Added productization design spec: `docs/superpowers/specs/2026-05-16-atlas-productization-design.md`
 - Added roadmap: `docs/roadmap/2026-05-16-productization-roadmap.md`
