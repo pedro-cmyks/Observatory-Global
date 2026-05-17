@@ -1261,6 +1261,7 @@ function AppContent() {
                       setPrevStreamCtx({ type: 'country', code: selectedCountryCode!, name: selectedCountryName })
                       setSelectedSourceProfile(domain)
                     }}
+                    onAttentionItemClick={(q) => setExternalSearchQuery({ q, id: Date.now() })}
                   />
                 ) : isTheme ? (
                   <ThemeDetail

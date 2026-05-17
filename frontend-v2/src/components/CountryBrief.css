@@ -638,6 +638,24 @@
     font-weight: 600;
 }
 
+.cb-attention-row--clickable {
+    cursor: pointer;
+    border-radius: 4px;
+    padding-left: 4px;
+    padding-right: 4px;
+    margin-left: -4px;
+    margin-right: -4px;
+    transition: background 0.15s;
+}
+
+.cb-attention-row--clickable:hover {
+    background: rgba(52, 211, 153, 0.08);
+}
+
+.cb-attention-row--clickable:hover span {
+    color: #6ee7b7;
+}
+
 .cb-attention-empty {
     color: #64748b;
     font-size: 11px;

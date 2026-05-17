@@ -126,6 +126,7 @@ interface CountryBriefProps {
     onClose: () => void;
     onThemeSelect?: (theme: string) => void;
     onSourceClick?: (domain: string) => void;
+    onAttentionItemClick?: (query: string) => void;
     inline?: boolean;
 }
 
@@ -170,6 +171,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
     onClose,
     onThemeSelect,
     onSourceClick: _onSourceClick,
+    onAttentionItemClick,
     inline
 }) => {
     const cls = `country-brief${inline ? ' country-brief--inline' : ''}`
@@ -509,26 +511,36 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                         <span className="cb-attention-heading">Search</span>
                         {(data.publicAttention?.searches ?? []).length > 0 ? (
                             data.publicAttention!.searches.slice(0, 4).map(item => (
-                                <div key={item.keyword} className="cb-attention-row">
+                                <div
+                                    key={item.keyword}
+                                    className={`cb-attention-row${onAttentionItemClick ? ' cb-attention-row--clickable' : ''}`}
+                                    onClick={onAttentionItemClick ? () => onAttentionItemClick(item.keyword) : undefined}
+                                    data-tip={onAttentionItemClick ? `Investigate "${item.keyword}"` : undefined}
+                                >
                                     <span>{item.keyword}</span>
                                     <strong>{item.rank ? `#${item.rank}` : 'trend'}</strong>
                                 </div>
                             ))
                         ) : (
-                            <div className="cb-attention-empty">No Google Trends rows for this country window.</div>
+                            <div className="cb-attention-empty">No Google Trends data for this window.</div>
                         )}
                     </div>
                     <div className="cb-attention-column">
                         <span className="cb-attention-heading">Wiki</span>
                         {(data.publicAttention?.wikiArticles ?? []).length > 0 ? (
                             data.publicAttention!.wikiArticles.slice(0, 4).map(item => (
-                                <div key={item.title} className="cb-attention-row">
-                                    <span>{item.title}</span>
+                                <div
+                                    key={item.title}
+                                    className={`cb-attention-row${onAttentionItemClick ? ' cb-attention-row--clickable' : ''}`}
+                                    onClick={onAttentionItemClick ? () => onAttentionItemClick(item.title.replace(/_/g, ' ')) : undefined}
+                                    data-tip={onAttentionItemClick ? `Investigate "${item.title.replace(/_/g, ' ')}"` : undefined}
+                                >
+                                    <span>{item.title.replace(/_/g, ' ')}</span>
                                     <strong>{(item.views ?? 0).toLocaleString()}</strong>
                                 </div>
                             ))
                         ) : (
-                            <div className="cb-attention-empty">No Wikipedia pageview rows for this country proxy.</div>
+                            <div className="cb-attention-empty">No Wikipedia pageview data for this proxy.</div>
                         )}
                     </div>
                 </div>
