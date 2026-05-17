@@ -170,7 +170,8 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
     const [showNotes, setShowNotes] = useState(true)
     const [sidePanelMode, setSidePanelMode] = useState<'trail' | 'pinned'>('trail')
     const boardRef = useRef<HTMLDivElement | null>(null)
-    const graphRef = useRef<ForceGraphMethods<WorkspaceGraphNode, WorkspaceGraphLink> | undefined>(undefined)
+    const trailGraphRef = useRef<ForceGraphMethods<WorkspaceGraphNode, WorkspaceGraphLink> | undefined>(undefined)
+    const pinnedGraphRef = useRef<ForceGraphMethods<WorkspaceGraphNode, WorkspaceGraphLink> | undefined>(undefined)
     const [boardSize, setBoardSize] = useState({ width: 760, height: 560 })
 
     useEffect(() => {
@@ -188,41 +189,39 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
         return () => observer.disconnect()
     }, [])
 
-    const filteredGraph = useMemo(() => {
-        const base = filterWorkspaceGraph(graph, {
-            query: deferredQuery,
-            nodeTypes,
-            linkKinds,
-        })
+    const baseGraph = useMemo(() => filterWorkspaceGraph(graph, {
+        query: deferredQuery,
+        nodeTypes,
+        linkKinds,
+    }), [graph, deferredQuery, nodeTypes, linkKinds])
 
-        if (sidePanelMode === 'trail') {
-            const trailNodes = base.nodes.filter(n => !n.pinned)
-            const trailNodeIds = new Set(trailNodes.map(n => n.id))
-            return {
-                nodes: trailNodes,
-                links: base.links.filter(
-                    l => l.kind === 'session-trail' &&
-                        trailNodeIds.has(String(l.source)) &&
-                        trailNodeIds.has(String(l.target))
-                ),
-            }
+    const trailGraph = useMemo(() => {
+        const trailNodes = baseGraph.nodes.filter(n => !n.pinned)
+        const trailNodeIds = new Set(trailNodes.map(n => n.id))
+        return {
+            nodes: trailNodes,
+            links: baseGraph.links.filter(
+                l => l.kind === 'session-trail' &&
+                    trailNodeIds.has(String(l.source)) &&
+                    trailNodeIds.has(String(l.target))
+            ),
         }
+    }, [baseGraph])
 
-        // Pinned mode: evidence board — pinned nodes + relationship edges
-        // Trail nodes optionally overlaid via showSessionTrail
-        const pinnedNodes = base.nodes.filter(n => n.pinned)
-        const contextNodes = showSessionTrail ? base.nodes.filter(n => !n.pinned) : []
+    const pinnedGraph = useMemo(() => {
+        const pinnedNodes = baseGraph.nodes.filter(n => n.pinned)
+        const contextNodes = showSessionTrail ? baseGraph.nodes.filter(n => !n.pinned) : []
         const allNodes = [...pinnedNodes, ...contextNodes]
         const allNodeIds = new Set(allNodes.map(n => n.id))
         return {
             nodes: allNodes,
-            links: base.links.filter(
+            links: baseGraph.links.filter(
                 l => l.kind !== 'session-trail' &&
                     allNodeIds.has(String(l.source)) &&
                     allNodeIds.has(String(l.target))
             ),
         }
-    }, [graph, deferredQuery, nodeTypes, linkKinds, showSessionTrail, sidePanelMode])
+    }, [baseGraph, showSessionTrail])
 
     const trailIndexByNodeId = useMemo(() => {
         const map = new Map<string, number>()
@@ -232,26 +231,17 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
         return map
     }, [sessionItems])
 
-    // Strengthen repulsion, set link distance, and add boundary force
+    // Physics for trail graph — linear spread, moderate repulsion
     useEffect(() => {
-        const fg = graphRef.current
+        const fg = trailGraphRef.current
         if (!fg) return
-        const nodeCount = filteredGraph.nodes.length
-        const charge = sidePanelMode === 'trail'
-            ? (nodeCount > 20 ? -420 : -320)
-            : (nodeCount > 40 ? -760 : nodeCount > 20 ? -560 : -380)
-        const linkDistance = sidePanelMode === 'trail'
-            ? 150
-            : (nodeCount > 40 ? 160 : 125)
-        fg.d3Force('charge')?.strength(charge)
-        fg.d3Force('link')?.distance(linkDistance)
-        // Keep nodes away from canvas edges so labels don't clip
-        const pad = 80
-        const w = boardSize.width
-        const h = boardSize.height
+        const nodeCount = trailGraph.nodes.length
+        fg.d3Force('charge')?.strength(nodeCount > 20 ? -420 : -320)
+        fg.d3Force('link')?.distance(150)
+        const pad = 80; const w = boardSize.width; const h = boardSize.height
         fg.d3Force('bounds', () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            for (const node of (filteredGraph.nodes as any[])) {
+            for (const node of (trailGraph.nodes as any[])) {
                 if (node.x < pad) node.vx = (node.vx ?? 0) + (pad - node.x) * 0.08
                 else if (node.x > w - pad) node.vx = (node.vx ?? 0) - (node.x - (w - pad)) * 0.08
                 if (node.y < pad) node.vy = (node.vy ?? 0) + (pad - node.y) * 0.08
@@ -259,10 +249,31 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
             }
         })
         fg.d3ReheatSimulation()
-    }, [filteredGraph, boardSize, sidePanelMode])
+    }, [trailGraph, boardSize])
 
-    const activeNodeCount = filteredGraph.nodes.length
-    const activeLinkCount = filteredGraph.links.length
+    // Physics for pinned graph — stronger repulsion, shorter link distance for dense webs
+    useEffect(() => {
+        const fg = pinnedGraphRef.current
+        if (!fg) return
+        const nodeCount = pinnedGraph.nodes.length
+        fg.d3Force('charge')?.strength(nodeCount > 40 ? -760 : nodeCount > 20 ? -560 : -380)
+        fg.d3Force('link')?.distance(nodeCount > 40 ? 160 : 125)
+        const pad = 80; const w = boardSize.width; const h = boardSize.height
+        fg.d3Force('bounds', () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            for (const node of (pinnedGraph.nodes as any[])) {
+                if (node.x < pad) node.vx = (node.vx ?? 0) + (pad - node.x) * 0.08
+                else if (node.x > w - pad) node.vx = (node.vx ?? 0) - (node.x - (w - pad)) * 0.08
+                if (node.y < pad) node.vy = (node.vy ?? 0) + (pad - node.y) * 0.08
+                else if (node.y > h - pad) node.vy = (node.vy ?? 0) - (node.y - (h - pad)) * 0.08
+            }
+        })
+        fg.d3ReheatSimulation()
+    }, [pinnedGraph, boardSize])
+
+    const activeGraph = sidePanelMode === 'trail' ? trailGraph : pinnedGraph
+    const activeNodeCount = activeGraph.nodes.length
+    const activeLinkCount = activeGraph.links.length
 
     const drawLinkLabel = useCallback((link: WorkspaceGraphLink, ctx: CanvasRenderingContext2D, globalScale: number) => {
         // Only draw labels when zoomed in enough to be readable
@@ -427,50 +438,85 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
                                     Click any <Pin size={13} style={{ color: '#94a3b8', flexShrink: 0 }} /> icon inside a country, topic, or person panel to add it here.
                                 </p>
                             </div>
-                        ) : filteredGraph.nodes.length === 0 ? (
-                            <div className="workspace-empty workspace-empty-board">
-                                <Filter size={24} />
-                                <p>No nodes match this filter.</p>
-                                <p>Clear the search box or re-enable node and relationship filters.</p>
-                            </div>
-                        ) : (
-                            <ForceGraph2D<WorkspaceGraphNode, WorkspaceGraphLink>
-                                ref={graphRef}
-                                graphData={filteredGraph}
-                                width={boardSize.width}
-                                height={boardSize.height}
-                                nodeId="id"
-                                nodeVal={node => Math.max(8, Math.log10((node.weight || 1) + 10) * 5)}
-                                nodeCanvasObject={(node, ctx, globalScale) => drawWorkspaceNode(
-                                    node,
-                                    ctx,
-                                    globalScale,
-                                    sidePanelMode,
-                                    trailIndexByNodeId.get(node.id),
-                                    filteredGraph.nodes.length
+                        ) : (<>
+                            {/* Trail graph — visibility toggled, keeps simulation alive */}
+                            <div className={`workspace-graph-slot${sidePanelMode === 'trail' ? '' : ' hidden'}`}>
+                                {trailGraph.nodes.length === 0 ? (
+                                    <div className="workspace-empty workspace-empty-board">
+                                        <Filter size={24} />
+                                        <p>No trail nodes match this filter.</p>
+                                    </div>
+                                ) : (
+                                    <ForceGraph2D<WorkspaceGraphNode, WorkspaceGraphLink>
+                                        ref={trailGraphRef}
+                                        graphData={trailGraph}
+                                        width={boardSize.width}
+                                        height={boardSize.height}
+                                        nodeId="id"
+                                        nodeVal={node => Math.max(8, Math.log10((node.weight || 1) + 10) * 5)}
+                                        nodeCanvasObject={(node, ctx, globalScale) => drawWorkspaceNode(
+                                            node, ctx, globalScale, 'trail',
+                                            trailIndexByNodeId.get(node.id), trailGraph.nodes.length
+                                        )}
+                                        nodePointerAreaPaint={(node, color, ctx) => {
+                                            ctx.fillStyle = color
+                                            ctx.fillRect((node.x ?? 0) - 70, (node.y ?? 0) - 24, 140, 48)
+                                        }}
+                                        linkColor={link => LINK_COLORS[link.kind]}
+                                        linkWidth={link => Math.max(1, Math.min(4, Math.log10((link.weight || 1) + 1)))}
+                                        linkDirectionalParticles={0}
+                                        cooldownTicks={150}
+                                        d3AlphaDecay={0.015}
+                                        d3VelocityDecay={0.22}
+                                        backgroundColor="rgba(0,0,0,0)"
+                                        onNodeClick={node => { if (node.urlParams) onNavigate(node.urlParams) }}
+                                        nodeLabel={node => `${node.title} (${node.type})`}
+                                        linkLabel={link => formatFilterLabel(link.kind)}
+                                    />
                                 )}
-                                nodePointerAreaPaint={(node, color, ctx) => {
-                                    ctx.fillStyle = color
-                                    ctx.fillRect((node.x ?? 0) - 70, (node.y ?? 0) - 24, 140, 48)
-                                }}
-                                linkColor={link => LINK_COLORS[link.kind]}
-                                linkWidth={link => Math.max(1, Math.min(4, Math.log10((link.weight || 1) + 1)))}
-                                linkDirectionalParticles={link => link.weight > 10 ? 1 : 0}
-                                linkDirectionalParticleSpeed={0.003}
-                                linkDirectionalParticleWidth={1.5}
-                                linkCanvasObjectMode={() => 'after'}
-                                linkCanvasObject={drawLinkLabel}
-                                cooldownTicks={150}
-                                d3AlphaDecay={0.015}
-                                d3VelocityDecay={0.22}
-                                backgroundColor="rgba(0,0,0,0)"
-                                onNodeClick={node => {
-                                    if (node.urlParams) onNavigate(node.urlParams)
-                                }}
-                                nodeLabel={node => `${node.title} (${node.type})`}
-                                linkLabel={link => formatFilterLabel(link.kind)}
-                            />
-                        )}
+                            </div>
+                            {/* Pinned graph — separate simulation, independent state */}
+                            <div className={`workspace-graph-slot${sidePanelMode === 'pinned' ? '' : ' hidden'}`}>
+                                {pinnedGraph.nodes.length === 0 ? (
+                                    <div className="workspace-empty workspace-empty-board">
+                                        <Filter size={24} />
+                                        <p>No nodes match this filter.</p>
+                                        <p>Clear the search box or re-enable node and relationship filters.</p>
+                                    </div>
+                                ) : (
+                                    <ForceGraph2D<WorkspaceGraphNode, WorkspaceGraphLink>
+                                        ref={pinnedGraphRef}
+                                        graphData={pinnedGraph}
+                                        width={boardSize.width}
+                                        height={boardSize.height}
+                                        nodeId="id"
+                                        nodeVal={node => Math.max(8, Math.log10((node.weight || 1) + 10) * 5)}
+                                        nodeCanvasObject={(node, ctx, globalScale) => drawWorkspaceNode(
+                                            node, ctx, globalScale, 'pinned',
+                                            undefined, pinnedGraph.nodes.length
+                                        )}
+                                        nodePointerAreaPaint={(node, color, ctx) => {
+                                            ctx.fillStyle = color
+                                            ctx.fillRect((node.x ?? 0) - 70, (node.y ?? 0) - 24, 140, 48)
+                                        }}
+                                        linkColor={link => LINK_COLORS[link.kind]}
+                                        linkWidth={link => Math.max(1, Math.min(4, Math.log10((link.weight || 1) + 1)))}
+                                        linkDirectionalParticles={link => link.weight > 10 ? 1 : 0}
+                                        linkDirectionalParticleSpeed={0.003}
+                                        linkDirectionalParticleWidth={1.5}
+                                        linkCanvasObjectMode={() => 'after'}
+                                        linkCanvasObject={drawLinkLabel}
+                                        cooldownTicks={150}
+                                        d3AlphaDecay={0.015}
+                                        d3VelocityDecay={0.22}
+                                        backgroundColor="rgba(0,0,0,0)"
+                                        onNodeClick={node => { if (node.urlParams) onNavigate(node.urlParams) }}
+                                        nodeLabel={node => `${node.title} (${node.type})`}
+                                        linkLabel={link => formatFilterLabel(link.kind)}
+                                    />
+                                )}
+                            </div>
+                        </>)}
                     </main>
 
                     {showNotes && (
