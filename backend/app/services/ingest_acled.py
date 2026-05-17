@@ -1,7 +1,9 @@
 """
 ACLED Conflict Data Ingestion Service.
-Fetches recent armed conflict and protest events from the ACLED API.
-Requires ACLED_API_KEY and ACLED_EMAIL in environment variables.
+Optional — not required for core operation.
+Requires ACLED_API_KEY and ACLED_EMAIL env vars. Without them, ingestion is skipped
+and the conflict-markers endpoint returns an empty list. The map layer hides itself
+when no data is present. Do not make this a hard dependency.
 """
 import asyncio
 import aiohttp
