@@ -182,56 +182,48 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                         </>
                     )}
 
-                    {/* Google Trends — only when country is active */}
-                    {activeCountry && (
-                        <>
-                            <div className="col-label" style={{ marginTop: themeAnomalies?.length ? '8px' : 0 }}
-                                data-tip={`Google Trends top searches in ${resolveCountryName(activeCountry)} over the last 24h. What people are actively looking for.`}>
-                                TRENDING SEARCHES · {resolveCountryName(activeCountry).toUpperCase()}
-                            </div>
-                            <div className="col-scroll-short">
-                                {trendsLoading ? (
-                                    <div className="ap-empty">Loading…</div>
-                                ) : trendSearches.length === 0 ? (
-                                    <div className="ap-empty">No trend data for this country</div>
-                                ) : trendSearches.map((t, i) => (
-                                    <div
-                                        key={i}
-                                        className="ap-row ap-row--trend clickable"
-                                        onClick={() => onWikiClick?.(t.keyword)}
-                                        data-tip={`Investigate "${t.keyword}"`}
-                                    >
-                                        <span className="ap-rank">#{i + 1}</span>
-                                        <span className="ap-keyword">{t.keyword}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </>
-                    )}
-
+                    {/* PUBLIC ATTENTION — combined Trends + Wiki, scoped to active country */}
                     <div className="col-label"
-                        style={{ marginTop: (themeAnomalies?.length || activeCountry) ? '8px' : 0 }}
+                        style={{ marginTop: themeAnomalies?.length ? '8px' : 0 }}
                         data-tip={activeCountry
-                            ? `Top Wikipedia articles by pageviews in ${resolveCountryName(activeCountry)} (7-day rolling). Click to investigate.`
-                            : 'Top Wikipedia articles by global pageviews. The blue number = how many countries show this article trending. Click any item to investigate it in the center panel.'}>
+                            ? `What people in ${resolveCountryName(activeCountry)} are searching (Google Trends, 24h) and reading (Wikipedia, 7-day). Click any item to investigate.`
+                            : 'Top Wikipedia articles by global pageviews. Click any item to investigate in the center panel.'}>
                         {activeCountry
-                            ? `WIKIPEDIA ATTENTION · ${resolveCountryName(activeCountry).toUpperCase()}`
+                            ? `PUBLIC ATTENTION · ${resolveCountryName(activeCountry).toUpperCase()}`
                             : 'PUBLIC ATTENTION · GLOBAL'}
                     </div>
                     <div className="col-scroll">
+                        {/* Trends rows — shown only when country active */}
+                        {activeCountry && (trendsLoading ? (
+                            <div className="ap-empty">Loading searches…</div>
+                        ) : trendSearches.length > 0 ? (
+                            trendSearches.slice(0, 5).map((t, i) => (
+                                <div
+                                    key={`trend-${i}`}
+                                    className="ap-row ap-row--trend clickable"
+                                    onClick={() => onWikiClick?.(t.keyword)}
+                                    data-tip={`Investigate "${t.keyword}"`}
+                                >
+                                    <span className="ap-src-tag" style={{ color: '#34d399' }}>S</span>
+                                    <span className="ap-keyword">{t.keyword}</span>
+                                </div>
+                            ))
+                        ) : null)}
+
+                        {/* Wiki rows */}
                         {wikiLoading ? (
-                            <div className="ap-empty">Loading…</div>
+                            <div className="ap-empty">Loading articles…</div>
                         ) : wikiError ? (
-                            <div className="ap-empty">Public attention unavailable</div>
+                            <div className="ap-empty">Wikipedia data unavailable</div>
                         ) : wikiArticles.length === 0 ? (
-                            <div className="ap-empty">No attention spikes</div>
+                            <div className="ap-empty">No attention data</div>
                         ) : (
-                            wikiArticles.map((a, i) => {
+                            wikiArticles.slice(0, activeCountry && trendSearches.length > 0 ? 5 : 10).map((a, i) => {
                                 const displayTitle = a.title.replace(/_/g, ' ')
                                 const canOpen = Boolean(onPublicAttentionSelect || onWikiClick)
                                 return (
                                     <div
-                                        key={i}
+                                        key={`wiki-${i}`}
                                         className={`ap-row ap-row--trend${canOpen ? ' clickable' : ''}`}
                                         onClick={canOpen ? () => {
                                             if (onPublicAttentionSelect) {
@@ -242,10 +234,10 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                                         } : undefined}
                                         data-tip={canOpen ? `Investigate "${displayTitle}"` : undefined}
                                     >
-                                        <span className="ap-rank">#{i + 1}</span>
+                                        <span className="ap-src-tag" style={{ color: '#818cf8' }}>W</span>
                                         <span className="ap-keyword">{displayTitle}</span>
-                                        {a.country_count && a.country_count > 1 && (
-                                            <span className="ap-ctry-count">{a.country_count} countries</span>
+                                        {!activeCountry && a.country_count && a.country_count > 1 && (
+                                            <span className="ap-ctry-count">{a.country_count}</span>
                                         )}
                                     </div>
                                 )
