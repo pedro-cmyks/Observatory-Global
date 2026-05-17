@@ -139,16 +139,15 @@ function buildLayers({
   selectedCountryCode, timeRange, showAircraft, aircraftData,
   showVessels, vesselData, activeChokepoints, themeFocused, acledConflicts
 }: any) {
-  const terminatorLayer = createTerminatorLayer({
+  const terminatorLayers = createTerminatorLayer({
     visible: showTerminator && !crisisEnabled,
-    opacity: 0.22,
   })
 
   const hasActiveCp = activeChokepoints.length > 0
 
   return [
-    // Terminator layer (bottommost)
-    terminatorLayer,
+    // Terminator layers (soft twilight gradient, bottommost)
+    ...terminatorLayers,
 
     // Chokepoint zones — geographic rings at strategic straits
     showVessels && new ScatterplotLayer({

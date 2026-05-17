@@ -77,8 +77,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                         style={{ accentColor: 'var(--color-accent-primary)', marginTop: '2px', flexShrink: 0 }}
                     />
                     <span>
-                        <span style={{ fontSize: '12px', color: 'var(--color-text-primary)', display: 'block' }}>Day/Night shadow</span>
-                        <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>Shows current solar terminator on map</span>
+                        <span style={{ fontSize: '12px', color: 'var(--color-text-primary)', display: 'block' }}>Day/Night Shadow <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>(experimental)</span></span>
+                        <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>Soft twilight overlay based on current UTC time</span>
                     </span>
                 </label>
 
