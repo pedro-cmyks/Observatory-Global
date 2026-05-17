@@ -48,7 +48,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
         setTrendsLoading(true)
         fetch(getTrendingSearchesUrl(8, 24, activeCountry))
             .then(r => r.ok ? r.json() : null)
-            .then(d => setTrendSearches(d?.trends ?? d?.results ?? []))
+            .then(d => setTrendSearches(d?.trending ?? []))
             .catch(() => setTrendSearches([]))
             .finally(() => setTrendsLoading(false))
     }, [activeCountry])
