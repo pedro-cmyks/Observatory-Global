@@ -89,6 +89,7 @@ interface NarrativeThreadsProps {
 
 export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySelect }) => {
     const [narratives, setNarratives] = useState<Narrative[]>([])
+    const [effectiveHours, setEffectiveHours] = useState<number | null>(null)
     const [loading, setLoading] = useState(true)
     const { filter, setFocus, setCountry, setMapFlyCountry } = useFocus()
     const { timeRange } = useFocusData()
@@ -108,6 +109,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
             if (!res.ok) return
             const data = await res.json()
             setNarratives(data.narratives || [])
+            if (data.effective_hours != null) setEffectiveHours(data.effective_hours)
         } catch (e) {
             console.error('[NarrativeThreads] Fetch error', e)
         } finally {
@@ -183,6 +185,11 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
             {isCapped && !filter.country && (
                 <div className="narrative-cap-notice">
                     Showing last 24h: narratives are most meaningful at shorter windows
+                </div>
+            )}
+            {effectiveHours != null && effectiveHours < cappedHours && (
+                <div className="narrative-cap-notice">
+                    Thread details show last {effectiveHours}h · counts reflect full {cappedHours}h window
                 </div>
             )}
             {displayedNarratives.map(n => {

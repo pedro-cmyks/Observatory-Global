@@ -27,6 +27,9 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
         async with db.pool.acquire() as conn:
             await conn.execute("SET statement_timeout = 20000")
             timeline_hours = min(hours, 24)
+            # Phase 2 scans signals_v2 with theme unnest — cap at 48h to avoid timeout.
+            # Phase 1 (theme_hourly_v2) still uses full hours for accurate counts.
+            detail_hours = min(hours, 48)
             has_theme_hourly = await conn.fetchval(
                 "SELECT to_regclass('theme_hourly_v2') IS NOT NULL"
             )
@@ -149,7 +152,7 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
                 LEFT JOIN timeline tl   ON tl.theme = base.theme
                 LEFT JOIN theme_scope ts ON ts.theme = base.theme
                 LEFT JOIN first_seen fs ON fs.theme = base.theme
-            """, top_themes, str(hours), str(timeline_hours))
+            """, top_themes, str(detail_hours), str(timeline_hours))
 
             total_active = max(int((rows[0]["total_active"] if rows else None) or 1), 1)
 
@@ -267,6 +270,7 @@ async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Que
             result = {
                 "narratives": narratives,
                 "hours": hours,
+                "effective_hours": detail_hours,
                 "total_active_countries": total_active,
                 "generated_at": datetime.now(timezone.utc).isoformat()
             }
