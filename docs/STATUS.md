@@ -1,24 +1,41 @@
 # Project Status
 
-## Current Handoff — 2026-05-14
+## Current Handoff — 2026-05-17
 
-The active production branch is `v3-intel-layer`.
+The active production branch is `v3-intel-layer`. PR [#144](https://github.com/pedro-cmyks/Observatory-Global/pull/144) open against `main`.
 
-Latest shipped frontend/UX work:
-- `f6ec9e8 feat(ux): enrich public attention investigation flow`
-- Atlas is positioned as a **public narrative intelligence console**, not a GDELT wrapper.
-- `/brief` is the broad entry point; `/app` is the analyst console.
-- Public Attention is now the people-side enrichment layer that complements Signal Stream/media signals.
-- Theme pivots opened from Public Attention preserve context in `ThemeDetail`.
-- CountryBrief now includes country-scoped Google Trends and Wikipedia proxies plus more readable country analysis copy.
-- Workspace has a visible `Trail` tab based on session navigation.
-- Onboarding key is now `atlas_onboarding_v3` and includes Anomaly/Public Attention.
+### P0 Productization Pass — completed 2026-05-17
 
-New follow-up issue:
-- `#128 ux(workspace): keep board in viewport and separate Trail graph from Pinned graph`
-  - Workspace shell can exceed laptop/browser bounds.
-  - Trail and Pinned graphs must become distinct views.
-  - Force graph physics need tuning for dense 40-60 node sessions.
+**#136 — Brief prefetch / loading states**
+- `briefingPrefetch` lib (sessionStorage, 4-min TTL)
+- Landing prefetches on mount; BriefNewspaper reads cache → no spinner on BRIEF entry
+
+**#137 — Editor's Analysis**
+- 4 rotating global prose variants + 3 country variants, data-derived (no AI dependency)
+- Removed `themeSignals[theme][0]` headline anchors — misclassification risk
+- All country names via `resolveCountryName(code, name)`
+
+**#138 — Investigation context persistence**
+- `prevStreamCtx` union extended with `country` type
+- Back from source → CountryBrief; Back from country → thread if thread was active
+
+**#142 — Public Attention scoped to active country**
+- Google Trends + Wikipedia merged into single PUBLIC ATTENTION section in AnomalyPanel
+- Re-fetches on `activeCountry` change; staleness badge when >25h; deduplication on both panels
+- CountryBrief items clickable via `onAttentionItemClick` prop
+
+**#104 — Google Trends stale data**
+- `ingest_trends.py`: shuffle country order + retry pass + batch 5→3
+- Frontend: 72h minimum window floor, staleness badge
+
+**#139 — Narrative Threads timeout**
+- `detail_hours = min(hours, 48)` caps Phase 2 only; Phase 1 uses full window
+- `effective_hours` in API response; frontend notice when capped
+
+**#128 — Trail / Pinned graph separation**
+- Two independent `ForceGraph2D` instances (`trailGraphRef` + `pinnedGraphRef`)
+- CSS `visibility: hidden` keeps inactive simulation alive
+- Trail: linear-spread physics; Pinned: dense-web physics
 
 Validation from latest session:
 - `cd frontend-v2 && npm run test` passed: 25 tests.
