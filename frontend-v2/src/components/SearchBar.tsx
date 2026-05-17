@@ -220,7 +220,8 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
         const searchQ = parsed.topic.length >= 2 ? parsed.topic : q
         setLoading(true)
         try {
-            const res = await fetch(`/api/v2/search/unified?q=${encodeURIComponent(searchQ)}&hours=168`)
+            const countryParam = parsed.countryCode ? `&country=${parsed.countryCode}` : ''
+            const res = await fetch(`/api/v2/search/unified?q=${encodeURIComponent(searchQ)}&hours=168${countryParam}`)
             if (res.ok) {
                 setResults(await res.json())
             } else {
@@ -261,11 +262,12 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
             setCountry(parsedQuery.countryCode)
             setTheme(t.theme)
             setMapFlyCountry(parsedQuery.countryCode)
+            onThemeSelect(t.theme, parsedQuery.countryCode, parsedQuery.countryDisplay ?? undefined)
         } else {
             setFocus('theme', t.theme, getThemeLabel(t.theme))
             if (t.top_countries[0]) setMapFlyCountry(t.top_countries[0].code)
+            onThemeSelect(t.theme)
         }
-        onThemeSelect(t.theme)
         close()
     }
 
@@ -288,10 +290,11 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
             setCountry(parsedQuery.countryCode)
             setConcept(concept)
             setMapFlyCountry(parsedQuery.countryCode)
+            if (c.themes[0]) onThemeSelect(c.themes[0], parsedQuery.countryCode, parsedQuery.countryDisplay ?? undefined)
         } else {
             setConcept(concept)
+            if (c.themes[0]) onThemeSelect(c.themes[0])
         }
-        if (c.themes[0]) onThemeSelect(c.themes[0])
         close()
     }
 
@@ -343,7 +346,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                     ref={inputRef}
                     type="text"
                     className="search-input"
-                    placeholder="Search topics, countries, people... try 'elections Colombia'"
+                    placeholder="Search topics, countries, people... try 'conflicto Colombia' or 'elections Brazil'"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => results && setIsOpen(true)}
