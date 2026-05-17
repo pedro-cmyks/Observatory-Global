@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { prefetchBriefing } from '../lib/briefingPrefetch'
 import './Landing.css'
@@ -16,13 +16,23 @@ const SIGNAL_DOTS = [
     { top: '50%', left: '88%', delay: '0.4s' },
 ]
 
-function BentoCard({ icon, title, text }: { icon: string; title: string; text: string }) {
+function BentoCard({ icon, title, text, to }: { icon: string; title: string; text: string; to?: string }) {
+    const navigate = useNavigate()
     return (
-        <div className="lp-card-hover bg-bg-surface border border-border-subtle rounded-xl p-8 backdrop-blur-md relative overflow-hidden flex flex-col gap-stack-sm min-h-[220px]">
+        <div
+            className={`lp-card-hover bg-bg-surface border border-border-subtle rounded-xl p-8 backdrop-blur-md relative overflow-hidden flex flex-col gap-stack-sm min-h-[220px]${to ? ' cursor-pointer group' : ''}`}
+            onClick={to ? () => navigate(to) : undefined}
+            role={to ? 'button' : undefined}
+            tabIndex={to ? 0 : undefined}
+            onKeyDown={to ? (e) => { if (e.key === 'Enter' || e.key === ' ') navigate(to) } : undefined}
+        >
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full blur-xl pointer-events-none" />
             <span className="material-symbols-outlined text-primary text-3xl mb-2" style={FILL_0}>{icon}</span>
             <h3 className="font-body-strong text-body-strong text-text-primary text-lg">{title}</h3>
             <p className="font-body-main text-body-main text-text-secondary text-sm mt-auto">{text}</p>
+            {to && (
+                <span className="absolute bottom-4 right-5 text-primary/50 group-hover:text-primary/90 transition-colors text-lg font-bold" aria-hidden>→</span>
+            )}
         </div>
     )
 }
@@ -59,10 +69,28 @@ function RevealSection({
     )
 }
 
+function formatSignalCount(n: number): string {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M+`
+    if (n >= 1_000) return `${Math.floor(n / 1_000)}k+`
+    return String(n)
+}
+
 export function Landing() {
     const navigate = useNavigate()
+    const [liveSignals, setLiveSignals] = useState<string | null>(null)
+    const [liveStatus, setLiveStatus] = useState<'live' | 'degraded' | null>(null)
 
     useEffect(() => { prefetchBriefing(24) }, [])
+
+    useEffect(() => {
+        fetch('/health')
+            .then(r => r.ok ? r.json() : null)
+            .then(d => {
+                if (d?.total_signals) setLiveSignals(formatSignalCount(d.total_signals))
+                if (d?.status) setLiveStatus(d.status === 'healthy' ? 'live' : 'degraded')
+            })
+            .catch(() => {})
+    }, [])
 
     return (
         <div className="dark min-h-screen lp-bg text-on-surface font-body-main antialiased selection:bg-primary selection:text-on-primary">
@@ -172,12 +200,12 @@ export function Landing() {
                 <RevealSection className="flex justify-center">
                     <div className="flex flex-wrap justify-center gap-0 bg-bg-surface border border-border-subtle rounded-xl overflow-hidden backdrop-blur-md divide-x divide-border-subtle">
                         {[
-                            { value: '1.3M+', label: 'Signals indexed' },
-                            { value: 'Multi', label: 'Open signal families' },
-                            { value: '100+',  label: 'Languages observed' },
-                            { value: 'Live',  label: 'Brief + console' },
-                        ].map(({ value, label }) => (
-                            <div key={label} className="flex flex-col items-center px-10 py-6">
+                            { value: liveSignals ?? '1M+', label: 'Signals indexed', tip: liveSignals ? 'Live count from database' : 'Approximate — fetch unavailable' },
+                            { value: '6',     label: 'Data source types', tip: 'GDELT · RSS feeds · Google Trends · Wikipedia · ACLED · ADS-B' },
+                            { value: '100+',  label: 'Languages observed', tip: 'GDELT covers media in 100+ languages globally' },
+                            { value: liveStatus === 'live' ? 'Live' : liveStatus === 'degraded' ? 'Degraded' : 'Live', label: 'Pipeline status', tip: liveStatus === 'degraded' ? 'Ingestion may be delayed' : 'Ingesting every 15 minutes' },
+                        ].map(({ value, label, tip }) => (
+                            <div key={label} className="flex flex-col items-center px-10 py-6" data-tip={tip}>
                                 <span className="lp-stat-num font-headline-md text-headline-md text-primary">{value}</span>
                                 <span className="font-technical-label text-technical-label text-text-secondary uppercase mt-1">{label}</span>
                             </div>
@@ -222,12 +250,12 @@ export function Landing() {
                         </p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-component">
-                        <BentoCard icon="newspaper" title="Daily Brief"        text="A readable front page of global signal density, major themes, country mood, and source activity." />
-                        <BentoCard icon="public"    title="Globe"              text="Live narrative activity by country. Flows show information pathways between nations." />
-                        <BentoCard icon="stream"    title="Signal Stream"      text="A curated feed of notable open signals. Click a country, person, source, or theme to pivot the console." />
-                        <BentoCard icon="list"      title="Narrative Threads"  text="Top global topics ranked by coverage volume, country spread, sentiment, and acceleration." />
-                        <BentoCard icon="warning"   title="Anomaly Alert"      text="Statistical detection of unusual spikes when coverage breaks away from recent baselines." />
-                        <BentoCard icon="account_tree" title="Workspace"       text="Pin countries, themes, people, sources, public-attention topics, and signals into an investigation graph." />
+                        <BentoCard icon="newspaper"    title="Daily Brief"        text="A readable front page of global signal density, major themes, country mood, and source activity." to="/brief" />
+                        <BentoCard icon="public"       title="Globe"              text="Live narrative activity by country. Flows show information pathways between nations." to="/app" />
+                        <BentoCard icon="stream"       title="Signal Stream"      text="A curated feed of notable open signals. Click a country, person, source, or theme to pivot the console." to="/app" />
+                        <BentoCard icon="list"         title="Narrative Threads"  text="Top global topics ranked by coverage volume, country spread, sentiment, and acceleration." to="/app" />
+                        <BentoCard icon="warning"      title="Anomaly Alert"      text="Statistical detection of unusual spikes when coverage breaks away from recent baselines." to="/app" />
+                        <BentoCard icon="account_tree" title="Workspace"          text="Pin countries, themes, people, sources, public-attention topics, and signals into an investigation graph." to="/app" />
                     </div>
                 </RevealSection>
 
@@ -289,12 +317,12 @@ export function Landing() {
                     <div className="bg-bg-surface border border-primary/25 rounded-xl p-10 text-center flex flex-col items-center gap-4 relative overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
                         <p className="font-body-main text-body-main text-text-secondary max-w-xl text-base z-10">
-                            Atlas runs 24/7 on open data. 1.3M+ signals indexed, multi-source coverage, no ads.
+                            Atlas runs 24/7 on open data. {liveSignals ?? '1M+'} signals indexed across 6 source types. No ads, no paywalls.
                         </p>
                         <div className="flex gap-12 pt-4 border-t border-border-subtle w-full justify-center z-10">
                             {[
-                                { value: '1.3M+', label: 'signals indexed' },
-                                { value: 'Multi', label: 'source cadences' },
+                                { value: liveSignals ?? '1M+', label: 'signals indexed' },
+                                { value: '6', label: 'source types' },
                                 { value: 'Free', label: 'public access' },
                             ].map(({ value, label }) => (
                                 <div key={label} className="flex flex-col items-center">
