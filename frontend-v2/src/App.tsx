@@ -46,6 +46,7 @@ import { PanelErrorBoundary } from './components/PanelErrorBoundary'
 import { ChokepointPanel } from './components/ChokepointPanel'
 import { AtlasLoader } from './components/AtlasLoader'
 import { PanelHelpButton } from './components/PanelHelpDrawer'
+import { Legend } from './components/Legend'
 import { useUrlSync } from './hooks/useUrlSync'
 import { useSavedWatches } from './hooks/useSavedWatches'
 
@@ -920,19 +921,27 @@ function AppContent() {
               <button
                 className={`layer-btn ${showHeatmap ? 'active' : ''}`}
                 onClick={() => setShowHeatmap(!showHeatmap)}
+                data-tip="Country heat layer — fill intensity shows deviation from each country's 7-day baseline. Red = far above-average activity."
               >
                 GLOW
               </button>
               <button
                 className={`layer-btn ${showFlows ? 'active' : ''}`}
                 onClick={() => setShowFlows(!showFlows)}
+                data-tip="Narrative flows — arcs connect countries sharing dominant media themes. Width = co-occurrence strength. Non-directional."
               >
                 FLOW
               </button>
               <button
-                className={`layer-btn ${showAircraft ? 'active' : ''} ${showAircraft && aircraftError ? 'layer-btn-error' : ''}`}
+                className={`layer-btn ${showAircraft ? 'active' : ''} ${showAircraft && aircraftError ? 'layer-btn-error' : ''} ${!showAircraft && (filter.country || filter.theme) ? 'layer-btn-hint' : ''}`}
                 onClick={() => setShowAircraft(!showAircraft)}
-                data-tip={showAircraft && aircraftError ? 'No aircraft data available' : undefined}
+                data-tip={
+                  showAircraft && aircraftError
+                    ? 'No aircraft data available'
+                    : !showAircraft && (filter.country || filter.theme)
+                      ? 'Aircraft layer — not typically relevant to narrative analysis. Enable only for transport/geopolitical investigations.'
+                      : 'Live ADS-B aircraft positions. White = cruise (> 10,000 ft), amber = mid, orange = low altitude.'
+                }
               >
                 PLANE {showAircraft && aircraftError && '⚠'}
               </button>
@@ -1138,6 +1147,18 @@ function AppContent() {
               </MapGL>
               <div className="globe-vignette" />
             </MapErrorBoundary>
+            <Legend
+              showHeatmap={showHeatmap}
+              showFlows={showFlows}
+              showAircraft={showAircraft}
+              showVessels={showVessels}
+              showTerminator={showTerminator}
+              activeCountry={filter.country}
+              activeTheme={filter.theme}
+              vesselCount={vesselData.length}
+              vesselConnected={vesselConnected}
+              aircraftError={aircraftError}
+            />
           </div>
         </div>
 

@@ -1,26 +1,81 @@
 import React, { useState } from 'react'
+import { getThemeLabel } from '../lib/themeLabels'
+import { resolveCountryName } from '../lib/countryNames'
 
-export const Legend: React.FC = () => {
+interface LegendProps {
+    showHeatmap: boolean
+    showFlows: boolean
+    showAircraft: boolean
+    showVessels: boolean
+    showTerminator: boolean
+    activeCountry?: string | null
+    activeTheme?: string | null
+    vesselCount?: number
+    vesselConnected?: boolean
+    aircraftError?: boolean
+}
+
+const Swatch: React.FC<{ color: string; label: string; tip?: string }> = ({ color, label, tip }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }} data-tip={tip}>
+        <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: color, flexShrink: 0, boxShadow: `0 0 5px ${color}55` }} />
+        <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>{label}</span>
+    </div>
+)
+
+const ArcSwatch: React.FC<{ tip?: string }> = ({ tip }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }} data-tip={tip}>
+        <svg width="28" height="10" viewBox="0 0 28 10" style={{ flexShrink: 0 }}>
+            <path d="M2 9 Q14 1 26 9" stroke="url(#arcgrad)" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+            <defs>
+                <linearGradient id="arcgrad" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#68dbae" />
+                    <stop offset="100%" stopColor="#22d3ee" />
+                </linearGradient>
+            </defs>
+        </svg>
+        <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>Width = co-occurrence strength</span>
+    </div>
+)
+
+const SectionHeader: React.FC<{ label: string; tip?: string }> = ({ label, tip }) => (
+    <div
+        data-tip={tip}
+        style={{ color: 'var(--color-accent-primary)', fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '7px', cursor: tip ? 'help' : undefined }}
+    >
+        {label}
+    </div>
+)
+
+export const Legend: React.FC<LegendProps> = ({
+    showHeatmap,
+    showFlows,
+    showAircraft,
+    showVessels,
+    showTerminator,
+    activeCountry,
+    activeTheme,
+    vesselCount = 0,
+    vesselConnected = false,
+    aircraftError = false,
+}) => {
     const [collapsed, setCollapsed] = useState(false)
+
+    const contextLabel = activeCountry
+        ? resolveCountryName(activeCountry)
+        : activeTheme
+            ? getThemeLabel(activeTheme)
+            : null
 
     if (collapsed) {
         return (
             <button
                 onClick={() => setCollapsed(false)}
                 className="panel"
-                style={{
-                    position: 'fixed',
-                    bottom: '20px',
-                    left: '20px',
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    zIndex: 800,
-                    fontSize: '12px',
-                    color: 'var(--color-text-secondary)',
-                    border: '1px solid var(--color-border-subtle)',
-                }}
+                style={{ position: 'fixed', bottom: '20px', left: '20px', padding: '6px 11px', cursor: 'pointer', zIndex: 800, fontSize: '11px', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border-subtle)' }}
+                data-tip="Show map legend"
+                aria-label="Show map legend"
             >
-                Legend
+                MAP KEY
             </button>
         )
     }
@@ -28,87 +83,104 @@ export const Legend: React.FC = () => {
     return (
         <div
             className="panel"
-            style={{
-                position: 'fixed',
-                bottom: '20px',
-                left: '20px',
-                minWidth: '240px',
-                zIndex: 800,
-            }}
+            style={{ position: 'fixed', bottom: '20px', left: '20px', minWidth: '220px', maxWidth: '260px', zIndex: 800, padding: '12px 14px' }}
         >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <span className="panel-header" style={{ margin: 0 }}>Legend</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-secondary)' }}>Map Key</span>
                 <button
                     onClick={() => setCollapsed(true)}
-                    style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', lineHeight: 1, padding: '0 2px', fontSize: '14px' }}
+                    aria-label="Collapse legend"
                 >
                     ×
                 </button>
             </div>
 
-            {/* Nodes Section */}
-            <div style={{ marginBottom: '16px' }}>
-                <div
-                    data-tip="Countries are colored by baseline-normalized attention. Volume is shown as evidence density, not importance."
-                    style={{ color: 'var(--color-accent-primary)', fontSize: '10px', textTransform: 'uppercase', marginBottom: '8px', cursor: 'help' }}>
-                    Nodes (Countries)
+            {contextLabel && (
+                <div style={{ marginBottom: '10px', padding: '5px 8px', borderRadius: '4px', background: 'rgba(104, 219, 174, 0.08)', border: '1px solid rgba(104, 219, 174, 0.18)', fontSize: '11px', color: '#68dbae' }}>
+                    ◎ Filtered: {contextLabel}
                 </div>
+            )}
 
-                {/* Size Examples */}
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', marginBottom: '8px' }}>
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--color-sentiment-neutral)', margin: '0 auto 4px' }} />
-                        <span className="metric-value" style={{ fontSize: '9px', color: 'var(--color-text-muted)' }}>&lt;100</span>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'var(--color-sentiment-neutral)', margin: '0 auto 4px' }} />
-                        <span className="metric-value" style={{ fontSize: '9px', color: 'var(--color-text-muted)' }}>100-1K</span>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--color-sentiment-neutral)', margin: '0 auto 4px' }} />
-                        <span className="metric-value" style={{ fontSize: '9px', color: 'var(--color-text-muted)' }}>&gt;1K</span>
-                    </div>
-                </div>
-                <div data-tip="The size of the node represents total observed signals on a log scale. Color/glow is the attention index versus that country's own baseline." style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginBottom: '8px', cursor: 'help' }}>
-                    Size = Evidence volume (log scale)
-                </div>
-
-                {/* Sentiment Colors */}
+            {/* Always-on: country nodes */}
+            <div style={{ marginBottom: '12px' }}>
+                <SectionHeader label="Countries" tip="Node size = total signals (log scale). Color = average news tone. Glow ring = above-baseline activity spike." />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} data-tip="Average GDELT sentiment score > 0.1 (Scale: -1.0 to +1.0). Indicates generally positive news coverage.">
-                        <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--color-sentiment-positive)' }} />
-                        <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>Positive tone</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} data-tip="Average GDELT sentiment score between -0.1 and 0.1. Indicates balanced or neutral coverage.">
-                        <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--color-sentiment-neutral)' }} />
-                        <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>Neutral tone</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} data-tip="Average GDELT sentiment score < -0.1. Indicates generally negative or critical news coverage.">
-                        <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--color-sentiment-negative)' }} />
-                        <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>Negative tone</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} data-tip="Current activity is significantly higher than that country's 7-day rolling baseline.">
-                        <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--color-accent-secondary)', boxShadow: '0 0 8px var(--color-accent-secondary)' }} />
-                        <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>Baseline spike</span>
-                    </div>
+                    <Swatch color="var(--color-sentiment-positive)" label="Positive tone" tip="Avg sentiment > 0.1 (scale: −1 to +1)" />
+                    <Swatch color="var(--color-sentiment-neutral)" label="Neutral tone" tip="Avg sentiment between −0.1 and +0.1" />
+                    <Swatch color="var(--color-sentiment-negative)" label="Negative tone" tip="Avg sentiment < −0.1" />
+                    <Swatch color="var(--color-accent-secondary)" label="Baseline spike" tip="Current signals significantly above that country's 7-day rolling average" />
                 </div>
             </div>
 
-            {/* Flows Section */}
-            <div>
-                <div
-                    data-tip="Co-occurrence of themes between countries"
-                    style={{ color: 'var(--color-accent-primary)', fontSize: '10px', textTransform: 'uppercase', marginBottom: '8px', cursor: 'help' }}>
-                    Flows (Connections)
+            {/* Active optional layers */}
+            {showHeatmap && (
+                <div style={{ marginBottom: '12px' }}>
+                    <SectionHeader label="Heat Layer" tip="Country fill intensity = normalized deviation from baseline. Red = far above-average media volume." />
+                    <div style={{ height: '8px', borderRadius: '4px', background: 'linear-gradient(90deg, rgba(29,78,216,0.6), rgba(251,146,60,0.8), rgba(239,68,68,0.95))', marginBottom: '4px' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--color-text-muted)' }}>
+                        <span>at baseline</span>
+                        <span>far above baseline</span>
+                    </div>
                 </div>
-                <div data-tip="Strength of connection (Jaccard similarity)" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', cursor: 'help' }}>
-                    <div style={{ width: '30px', height: '3px', background: 'linear-gradient(90deg, var(--color-accent-primary), var(--color-accent-secondary))', borderRadius: '2px' }} />
-                    <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>Width = Correlation strength</span>
+            )}
+
+            {showFlows && (
+                <div style={{ marginBottom: '12px' }}>
+                    <SectionHeader
+                        label={contextLabel ? `Flows · ${contextLabel.slice(0, 18)}` : 'Narrative Flows'}
+                        tip={contextLabel ? `Arcs show countries with shared media themes related to ${contextLabel}` : 'Arcs connect countries sharing dominant narrative themes. Not directional — shared attention, not causation.'}
+                    />
+                    <ArcSwatch tip="Jaccard similarity of theme co-occurrence between countries" />
+                    <div style={{ fontSize: '10px', color: 'var(--color-severity-notable)', marginTop: '5px' }}>
+                        Non-directional · shared attention
+                    </div>
                 </div>
-                <div style={{ fontSize: '10px', color: 'var(--color-severity-notable)', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ color: 'var(--color-severity-notable)', fontWeight: 600 }}>Note:</span>
-                    <span>Non-directional. Shared attention, not causation.</span>
+            )}
+
+            {showVessels && (
+                <div style={{ marginBottom: '12px' }}>
+                    <SectionHeader
+                        label={`Vessels${vesselCount > 0 ? ` · ${vesselCount}` : ''}${vesselConnected ? ' · live' : ' · connecting'}`}
+                        tip="AIS transponder positions near strategic maritime chokepoints (Suez, Strait of Hormuz, Panama, Malacca, Bosphorus, etc.)"
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <Swatch color="rgba(0,220,200,0.9)" label="> 10 kn — underway" tip="Vessel speed above 10 knots (active transit)" />
+                        <Swatch color="rgba(0,180,160,0.7)" label="≤ 10 kn — slow / anchored" tip="Vessel speed 10 knots or below (slow transit, anchoring, or stopped)" />
+                    </div>
                 </div>
+            )}
+
+            {showAircraft && (
+                <div style={{ marginBottom: '12px' }}>
+                    <SectionHeader
+                        label={aircraftError ? 'Aircraft · no data' : 'Aircraft · ADS-B live'}
+                        tip="ADS-B transponder positions. Cruise altitude defined as > 10,000 ft."
+                    />
+                    {aircraftError ? (
+                        <div style={{ fontSize: '11px', color: 'var(--color-severity-notable)' }}>Feed unavailable — toggle off to reduce noise</div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <Swatch color="rgba(255,255,255,0.85)" label="> 10,000 ft — cruise" />
+                            <Swatch color="rgba(255,210,80,0.85)" label="5,000–10,000 ft — mid" />
+                            <Swatch color="rgba(255,140,40,0.85)" label="< 5,000 ft — low" />
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {showTerminator && (
+                <div style={{ marginBottom: '12px' }}>
+                    <SectionHeader label="Day / Night" tip="Solar terminator position at current UTC time. Dark overlay = night side." />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                        <span style={{ width: '22px', height: '10px', borderRadius: '3px', background: 'rgba(0,8,25,0.56)', border: '1px solid rgba(80,120,180,0.4)', flexShrink: 0 }} />
+                        <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>Night side shadow</span>
+                    </div>
+                </div>
+            )}
+
+            <div style={{ fontSize: '10px', color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border-subtle)', paddingTop: '8px', marginTop: '4px' }}>
+                Sources: GDELT 2.0 · AIS Stream · ADS-B Exchange · ACLED
             </div>
         </div>
     )
