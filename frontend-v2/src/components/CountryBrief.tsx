@@ -293,7 +293,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     top_stories: topStories,
                     publicAttention: {
                         searches: (trendsPayload?.trending ?? []).slice(0, 5),
-                        wikiArticles: (wikiPayload?.articles ?? []).slice(0, 5),
+                        wikiArticles: Array.from(new Map((wikiPayload?.articles ?? []).map((a: { title: string }) => [a.title, a])).values()).slice(0, 5),
                     },
                     indicators: indicatorsData,
                     foreignSourcePct: null,

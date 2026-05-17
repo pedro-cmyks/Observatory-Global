@@ -38,7 +38,12 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
         setWikiError(false)
         fetch(getPublicAttentionTopUrl(10, activeCountry ?? undefined))
             .then(r => r.ok ? r.json() : null)
-            .then(d => { setWikiArticles((d?.articles ?? []).filter((a: { title: string }) => isPublicAttentionRelevant(a.title))) })
+            .then(d => {
+                type WikiItem = { title: string; views: number; country_count?: number }
+                const raw: WikiItem[] = d?.articles ?? []
+                const deduped = Array.from(new Map(raw.map(a => [a.title, a])).values())
+                setWikiArticles(deduped.filter(a => isPublicAttentionRelevant(a.title)))
+            })
             .catch(() => { setWikiError(true); setWikiArticles([]) })
             .finally(() => setWikiLoading(false))
     }, [activeCountry])
