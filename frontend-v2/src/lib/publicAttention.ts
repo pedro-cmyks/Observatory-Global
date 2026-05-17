@@ -33,9 +33,11 @@ export function getPublicAttentionTopUrl(limit: number, countryCode?: string): s
   return `/api/v2/wiki/top?${params.toString()}`
 }
 
+// Use 72h window — Google Trends RSS is rate-limited from cloud IPs for high-volume
+// countries (US/BR/MX), so data can be 24-48h stale. Better to show stale than empty.
 export function getTrendingSearchesUrl(limit: number, hours: number, countryCode?: string): string {
   const params = new URLSearchParams({
-    hours: String(hours),
+    hours: String(Math.max(hours, 72)),
     limit: String(limit),
   })
   if (countryCode) params.set('country_code', countryCode.toUpperCase())

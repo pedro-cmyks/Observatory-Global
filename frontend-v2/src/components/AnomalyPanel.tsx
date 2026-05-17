@@ -30,8 +30,9 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
     const [wikiArticles, setWikiArticles] = useState<{ title: string; views: number; country_count?: number }[]>([])
     const [wikiLoading, setWikiLoading] = useState(true)
     const [wikiError, setWikiError] = useState(false)
-    const [trendSearches, setTrendSearches] = useState<{ keyword: string; rank?: number | null }[]>([])
+    const [trendSearches, setTrendSearches] = useState<{ keyword: string; rank?: number | null; timestamp?: string }[]>([])
     const [trendsLoading, setTrendsLoading] = useState(false)
+    const [trendsStaleHours, setTrendsStaleHours] = useState<number | null>(null)
 
     useEffect(() => {
         setWikiLoading(true)
@@ -53,8 +54,17 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
         setTrendsLoading(true)
         fetch(getTrendingSearchesUrl(8, 24, activeCountry))
             .then(r => r.ok ? r.json() : null)
-            .then(d => setTrendSearches(d?.trending ?? []))
-            .catch(() => setTrendSearches([]))
+            .then(d => {
+                const items = d?.trending ?? []
+                setTrendSearches(items)
+                if (items.length > 0 && items[0].timestamp) {
+                    const ageH = (Date.now() - new Date(items[0].timestamp).getTime()) / 3_600_000
+                    setTrendsStaleHours(ageH > 25 ? Math.round(ageH) : null)
+                } else {
+                    setTrendsStaleHours(null)
+                }
+            })
+            .catch(() => { setTrendSearches([]); setTrendsStaleHours(null) })
             .finally(() => setTrendsLoading(false))
     }, [activeCountry])
 
@@ -201,8 +211,14 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                         {/* Trends rows — shown only when country active */}
                         {activeCountry && (trendsLoading ? (
                             <div className="ap-empty">Loading searches…</div>
-                        ) : trendSearches.length > 0 ? (
-                            trendSearches.slice(0, 5).map((t, i) => (
+                        ) : trendSearches.length > 0 ? (<>
+                            {trendsStaleHours && (
+                                <div className="ap-empty" style={{ color: '#f59e0b', fontSize: '10px', padding: '2px 0 4px' }}
+                                    data-tip="Google rate-limits high-volume country feeds from cloud IPs. Showing most recent available data.">
+                                    searches from {trendsStaleHours}h ago
+                                </div>
+                            )}
+                            {trendSearches.slice(0, 5).map((t, i) => (
                                 <div
                                     key={`trend-${i}`}
                                     className="ap-row ap-row--trend clickable"
@@ -212,8 +228,8 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                                     <span className="ap-src-tag" style={{ color: '#34d399' }}>S</span>
                                     <span className="ap-keyword">{t.keyword}</span>
                                 </div>
-                            ))
-                        ) : null)}
+                            ))}
+                        </>) : null)}
 
                         {/* Wiki rows */}
                         {wikiLoading ? (

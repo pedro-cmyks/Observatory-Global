@@ -10,6 +10,7 @@ import aiohttp
 import asyncpg
 import logging
 import os
+import random
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 
@@ -148,17 +149,33 @@ async def run_trends_ingestion():
     try:
         all_trends: list[dict] = []
 
-        # Fetch countries in batches of 5 to avoid hammering the RSS endpoint
+        # Shuffle order each run — prevents same countries always hitting rate limits first
+        countries = TREND_COUNTRIES.copy()
+        random.shuffle(countries)
+
+        # Fetch in batches of 3 (reduced from 5) with longer pause to avoid rate limiting
         async with aiohttp.ClientSession() as session:
-            for i in range(0, len(TREND_COUNTRIES), 5):
-                batch = TREND_COUNTRIES[i:i + 5]
+            failed: list[str] = []
+            for i in range(0, len(countries), 3):
+                batch = countries[i:i + 3]
                 tasks = [fetch_trending_for_country(session, cc) for cc in batch]
                 results = await asyncio.gather(*tasks, return_exceptions=True)
-                for res in results:
-                    if isinstance(res, list):
+                for cc, res in zip(batch, results):
+                    if isinstance(res, list) and res:
                         all_trends.extend(res)
-                # Small pause between batches
-                await asyncio.sleep(1)
+                    elif isinstance(res, list) and not res:
+                        failed.append(cc)
+                await asyncio.sleep(2)
+
+            # Single retry pass for failed countries with longer delay
+            if failed:
+                logger.info(f"[Trends] Retrying {len(failed)} failed countries: {failed}")
+                await asyncio.sleep(5)
+                for cc in failed:
+                    res = await fetch_trending_for_country(session, cc)
+                    if res:
+                        all_trends.extend(res)
+                    await asyncio.sleep(3)
 
         if all_trends:
             inserted = await insert_trends(pool, all_trends)
