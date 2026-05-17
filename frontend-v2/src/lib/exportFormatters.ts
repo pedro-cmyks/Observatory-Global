@@ -1,5 +1,47 @@
 import type { PinnedItem } from '../contexts/WorkspaceContext'
 import { getThemeLabel } from './themeLabels'
+import { resolveCountryName } from './countryNames'
+
+export interface DossierSignal {
+  id: string
+  timestamp: string
+  country: string
+  source: string
+  url: string
+  headline: string
+  sentiment: number
+  themes: string[]
+  persons: string[]
+}
+
+export interface DossierSection {
+  item: PinnedItem
+  signals: DossierSignal[]
+}
+
+export async function fetchItemSignals(item: PinnedItem, hours = 168, limit = 30): Promise<DossierSignal[]> {
+  const params = new URLSearchParams({ hours: String(hours), limit: String(limit) })
+  if (item.type === 'theme') {
+    const theme = new URLSearchParams(item.urlParams.replace(/^\?/, '')).get('theme') || item.id.replace(/^theme-/, '')
+    params.set('theme', theme)
+  } else if (item.type === 'country') {
+    const country = new URLSearchParams(item.urlParams.replace(/^\?/, '')).get('country') || item.id.replace(/^country-/, '')
+    params.set('country_code', country)
+  } else if (item.type === 'person') {
+    const person = new URLSearchParams(item.urlParams.replace(/^\?/, '')).get('person') || item.id.replace(/^person-/, '')
+    params.set('person', person)
+  } else {
+    return []
+  }
+  try {
+    const res = await fetch(`/api/v2/signals?${params}`)
+    if (!res.ok) return []
+    const data = await res.json() as { signals?: DossierSignal[] }
+    return data.signals ?? []
+  } catch {
+    return []
+  }
+}
 
 export interface ThemeSignalExport {
   timestamp: string
@@ -279,6 +321,48 @@ export function buildWorkspaceMarkdown({
         md += '\n'
       }
     }
+
+    md += `---\n\n`
+  })
+
+  return md
+}
+
+function sentimentLabel(s: number): string {
+  if (s > 0.1) return '+'
+  if (s < -0.1) return '−'
+  return '·'
+}
+
+export function buildDossierMarkdown(sections: DossierSection[], generatedAt = new Date()): string {
+  let md = `# Atlas Signal Dossier\n\n`
+  md += `*Generated: ${formatGeneratedAt(generatedAt)}*\n`
+  md += `*Window: last 7 days · ${sections.reduce((n, s) => n + s.signals.length, 0)} signals across ${sections.length} pinned items*\n\n---\n\n`
+
+  if (sections.length === 0) return `${md}*No pinned items with signals.*\n`
+
+  sections.forEach(({ item, signals }) => {
+    md += `## ${item.title}\n`
+    md += `*Type: ${item.type}*`
+    if (item.notes.trim()) md += ` · *Note: ${item.notes.trim()}*`
+    md += '\n\n'
+
+    if (signals.length === 0) {
+      md += `*No signals found in window.*\n\n---\n\n`
+      return
+    }
+
+    signals.forEach(sig => {
+      const date = new Date(sig.timestamp).toUTCString().replace(/ GMT$/, ' UTC')
+      const country = resolveCountryName(sig.country)
+      const sentiment = sentimentLabel(sig.sentiment)
+      md += `### ${sentiment} ${sig.headline || '(no headline)'}\n`
+      md += `- **Source:** ${sig.source || 'unknown'} · **Country:** ${country}\n`
+      md += `- **Date:** ${date}\n`
+      if (sig.url) md += `- **URL:** ${sig.url}\n`
+      if (sig.persons?.length) md += `- **People:** ${sig.persons.slice(0, 5).join(', ')}\n`
+      md += '\n'
+    })
 
     md += `---\n\n`
   })

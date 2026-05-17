@@ -1,7 +1,7 @@
 import { useDeferredValue, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ForceGraph2D from 'react-force-graph-2d'
 import type { ForceGraphMethods } from 'react-force-graph-2d'
-import { Download, ExternalLink, Filter, FolderKanban, List, Loader2, Network, Pin, PinOff, Search, X } from 'lucide-react'
+import { BookOpen, Download, ExternalLink, Filter, FolderKanban, List, Loader2, Network, Pin, PinOff, Search, X } from 'lucide-react'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import {
     WORKSPACE_LINK_KINDS,
@@ -12,6 +12,7 @@ import {
     type WorkspaceLinkKind,
 } from '../lib/workspaceGraph'
 import type { PinnedItemType } from '../contexts/WorkspaceContext'
+import { ReadingMode } from './ReadingMode'
 import './InvestigationWorkspace.css'
 
 interface InteractiveWorkspaceProps {
@@ -161,7 +162,9 @@ function drawWorkspaceNode(
 }
 
 export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) {
-    const { isOpen, setIsOpen, items, sessionItems, graph, graphLoading, graphError, pinItem, unpinItem, updateNotes, exportWorkspace } = useWorkspace()
+    const { isOpen, setIsOpen, items, sessionItems, graph, graphLoading, graphError, pinItem, unpinItem, updateNotes, exportWorkspace, exportDossier } = useWorkspace()
+    const [dossierLoading, setDossierLoading] = useState(false)
+    const [readingMode, setReadingMode] = useState(false)
     const [query, setQuery] = useState('')
     const deferredQuery = useDeferredValue(query)
     const [nodeTypes, setNodeTypes] = useState<Set<PinnedItemType>>(() => new Set(WORKSPACE_NODE_TYPES))
@@ -341,13 +344,27 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
                         <button
                             type="button"
                             className="workspace-icon-btn"
-                            onClick={exportWorkspace}
-                            data-tip="Export Workspace as Markdown"
-                            aria-label="Export Workspace as Markdown"
+                            onClick={() => setReadingMode(true)}
+                            data-tip="Reading Mode — newspaper view of pinned evidence"
+                            aria-label="Open Reading Mode"
                             disabled={items.length === 0}
                             style={{ opacity: items.length === 0 ? 0.5 : 1 }}
                         >
-                            <Download size={16} />
+                            <BookOpen size={16} />
+                        </button>
+                        <button
+                            type="button"
+                            className="workspace-icon-btn"
+                            onClick={async () => {
+                                setDossierLoading(true)
+                                try { await exportDossier() } finally { setDossierLoading(false) }
+                            }}
+                            data-tip="Export Signal Dossier — raw articles for all pinned items"
+                            aria-label="Export Signal Dossier"
+                            disabled={items.length === 0 || dossierLoading}
+                            style={{ opacity: items.length === 0 ? 0.5 : 1 }}
+                        >
+                            {dossierLoading ? <Loader2 size={16} className="spin" /> : <Download size={16} />}
                         </button>
                         <button
                             type="button"
@@ -656,6 +673,7 @@ export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) 
                     )}
                 </div>
             </section>
+            {readingMode && <ReadingMode items={items} onClose={() => setReadingMode(false)} />}
         </>
     )
 }

@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useMemo, useCallback, type ReactNode } from 'react'
 import { buildWorkspaceGraph, type WorkspaceGraph } from '../lib/workspaceGraph'
-import { buildWorkspaceMarkdown } from '../lib/exportFormatters'
+import { buildWorkspaceMarkdown, buildDossierMarkdown, fetchItemSignals } from '../lib/exportFormatters'
 
 export type PinnedItemType = 'theme' | 'person' | 'country' | 'signal' | 'source' | 'chokepoint' | 'public_attention' | 'temporal_snapshot'
 
@@ -27,6 +27,7 @@ interface WorkspaceContextType {
     updateNotes: (id: string, notes: string) => void
     isPinned: (id: string) => boolean
     exportWorkspace: () => void
+    exportDossier: () => Promise<void>
     sessionItems: PinnedItem[]
     trackVisit: (item: Omit<PinnedItem, 'notes' | 'timestamp'>) => void
     clearSession: () => void
@@ -192,8 +193,25 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         URL.revokeObjectURL(url)
     }, [details, items])
 
+    const exportDossier = useCallback(async () => {
+        const dossierItems = items.filter(i => ['theme', 'country', 'person'].includes(i.type))
+        const sections = await Promise.all(
+            dossierItems.map(async item => ({ item, signals: await fetchItemSignals(item) }))
+        )
+        const md = buildDossierMarkdown(sections)
+        const blob = new Blob([md], { type: 'text/markdown' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `atlas-dossier-${new Date().toISOString().split('T')[0]}.md`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+    }, [items])
+
     return (
-        <WorkspaceContext.Provider value={{ isOpen, setIsOpen, items, graph, graphLoading, graphError, pinItem, unpinItem, updateNotes, isPinned, exportWorkspace, sessionItems, trackVisit, clearSession }}>
+        <WorkspaceContext.Provider value={{ isOpen, setIsOpen, items, graph, graphLoading, graphError, pinItem, unpinItem, updateNotes, isPinned, exportWorkspace, exportDossier, sessionItems, trackVisit, clearSession }}>
             {children}
         </WorkspaceContext.Provider>
     )
