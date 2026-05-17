@@ -21,17 +21,22 @@ interface PanelHelpContent {
 
 const PANEL_HELP: Record<PanelHelpId, PanelHelpContent> = {
     globe: {
-        eyebrow: 'Orientation layer',
+        eyebrow: 'Map layer guide',
         title: 'Globe',
-        summary: 'The map shows where narratives are unusually active relative to each country baseline. Raw volume adds evidence density, but it is not a direct importance score.',
+        summary: 'The map visualizes narrative activity, not geographic importance. Each layer is independently toggled and has a specific analytical purpose.',
         reads: [
-            'Glow: baseline-normalized country attention.',
-            'Flow: countries sharing the same narrative frame.',
-            'Ships and planes: live strategic context layers, not narrative ranking inputs.',
+            'GLOW (always on): Country fill color shows how far current activity deviates from each country\'s 7-day rolling baseline. Red = far above average. Blue = at or below baseline.',
+            'FLOW: Arcs connect countries that share dominant narrative themes in the current window. Arc width = co-occurrence strength (Jaccard similarity). Non-directional — shared attention, not causation.',
+            'SHIPS: Live AIS transponder positions near strategic maritime chokepoints (Suez, Hormuz, Malacca, Panama, Bosphorus). Cyan = fast transit (> 10 kn), teal = slow or anchored. Useful for trade/supply chain investigations.',
+            'PLANE: Live ADS-B aircraft positions. White = cruise altitude (> 10,000 ft), amber = mid, orange = low. Turn off during narrative analysis — adds visual noise without analytical value.',
+            'Conflict events (always visible): Red/orange dots mark recent ACLED conflict events. Size scales with fatality count.',
+            'Node size: Total signals on a log scale. Node color: average news sentiment (green = positive, red = negative, gray = neutral). Glowing ring = above-baseline spike.',
         ],
         actions: [
-            'Click a country to open Country Intelligence.',
-            'Use the reset control to fly toward the hottest normalized region.',
+            'Click any country to open Country Intelligence.',
+            'Use ↺ to fly to the highest baseline-normalized attention region.',
+            'Hide PLANE and SHIPS when doing pure narrative investigation to reduce clutter.',
+            'Enable FLOW after selecting a country or theme to see which countries share that narrative.',
         ],
         docsHash: 'globe-panel',
     },

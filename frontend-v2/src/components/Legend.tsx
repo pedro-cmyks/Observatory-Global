@@ -13,6 +13,7 @@ interface LegendProps {
     vesselCount?: number
     vesselConnected?: boolean
     aircraftError?: boolean
+    conflictCount?: number
 }
 
 const Swatch: React.FC<{ color: string; label: string; tip?: string }> = ({ color, label, tip }) => (
@@ -57,6 +58,7 @@ export const Legend: React.FC<LegendProps> = ({
     vesselCount = 0,
     vesselConnected = false,
     aircraftError = false,
+    conflictCount = 0,
 }) => {
     const [collapsed, setCollapsed] = useState(false)
 
@@ -175,6 +177,17 @@ export const Legend: React.FC<LegendProps> = ({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                         <span style={{ width: '22px', height: '10px', borderRadius: '3px', background: 'rgba(0,8,25,0.56)', border: '1px solid rgba(80,120,180,0.4)', flexShrink: 0 }} />
                         <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>Night side shadow</span>
+                    </div>
+                </div>
+            )}
+
+            {conflictCount > 0 && (
+                <div style={{ marginBottom: '12px' }}>
+                    <SectionHeader label={`Conflict Events · ${conflictCount}`} tip="ACLED-sourced violent events. Dot size scales with fatality count." />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <Swatch color="rgba(239,68,68,0.9)" label="Battle / Explosion" tip="Armed clashes or explosive events (ACLED)" />
+                        <Swatch color="rgba(249,115,22,0.85)" label="Riot / Protest" tip="Civil unrest events (ACLED)" />
+                        <Swatch color="rgba(234,179,8,0.8)" label="Other violence" tip="Remote violence, strategic developments (ACLED)" />
                     </div>
                 </div>
             )}

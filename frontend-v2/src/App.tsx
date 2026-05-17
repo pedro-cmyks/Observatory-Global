@@ -1158,6 +1158,7 @@ function AppContent() {
               vesselCount={vesselData.length}
               vesselConnected={vesselConnected}
               aircraftError={aircraftError}
+              conflictCount={acledConflicts?.length ?? 0}
             />
           </div>
         </div>
