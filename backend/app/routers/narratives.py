@@ -9,7 +9,7 @@ from app.core.gdelt_taxonomy import classify_source, get_concepts_for_theme
 router = APIRouter()
 
 @router.get("/api/v2/narratives")
-async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Query(5, ge=1, le=20)):
+async def get_narratives(hours: int = Query(24, ge=1, le=8760), limit: int = Query(5, ge=1, le=50)):
     """Get top narrative threads. Cached 5 min in Redis."""
     from app.core.gdelt_taxonomy import get_theme_label
     import json as _json
@@ -491,4 +491,3 @@ async def get_concept_narratives(
     except Exception as e:
         traceback.print_exc()
         return {"slug": slug, "error": str(e), "countries": []}
-

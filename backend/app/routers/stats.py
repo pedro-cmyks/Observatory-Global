@@ -107,8 +107,8 @@ async def health():
     Returns:
         - status: 'healthy', 'degraded', or 'error'
         - db_ok: database connectivity status
-        - last_ingest_ts: timestamp of most recent signal
-        - ingest_lag_minutes: minutes since last ingestion
+        - last_ingest_ts: database insert time of most recent signal
+        - ingest_lag_minutes: minutes since last inserted signal
         - rows_ingested_last_15m: signals ingested in last 15 minutes
         - error_count_last_15m: placeholder for error tracking
     """
@@ -128,17 +128,18 @@ async def health():
             """, timeout=5.0)
             total_signals = int(view_result['total_signals'] or 0) if view_result else 0
 
-            # Actual last insert time and recent count from signals_v2 index (O(1) on timestamp idx)
+            # Operational freshness must use created_at, not source timestamp. Provider/GDELT
+            # timestamps can be ahead of server time and would produce negative lag.
             ingest_result = await conn.fetchrow("""
                 SELECT
-                    MAX(timestamp) as last_ts,
-                    COUNT(*) FILTER (WHERE timestamp > NOW() - INTERVAL '30 minutes') as rows_30m
+                    MAX(created_at) as last_ts,
+                    COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '15 minutes') as rows_15m
                 FROM signals_v2
-                WHERE timestamp > NOW() - INTERVAL '2 hours'
+                WHERE created_at > NOW() - INTERVAL '2 hours'
             """, timeout=5.0)
 
             last_ingest_ts = ingest_result['last_ts'] if ingest_result else None
-            rows_ingested_last_15m = int(ingest_result['rows_30m'] or 0) if ingest_result else 0
+            rows_ingested_last_15m = int(ingest_result['rows_15m'] or 0) if ingest_result else 0
 
             ingest_lag_minutes = None
             if last_ingest_ts:
@@ -157,7 +158,7 @@ async def health():
                 "db_ok": db_ok,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "last_ingest_ts": last_ingest_ts.isoformat() if last_ingest_ts else None,
-                "ingest_lag_minutes": round(ingest_lag_minutes, 1) if ingest_lag_minutes else None,
+                "ingest_lag_minutes": round(ingest_lag_minutes, 1) if ingest_lag_minutes is not None else None,
                 "rows_ingested_last_15m": rows_ingested_last_15m,
                 "total_signals": total_signals,
                 "error_count_last_15m": 0

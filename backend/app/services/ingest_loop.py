@@ -15,6 +15,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 INTERVAL_SECONDS = int(os.getenv("INGEST_INTERVAL_SECONDS", "900"))  # 15 min default
+NLP_ENRICH_LIMIT = int(os.getenv("NLP_ENRICH_LIMIT", "500"))
 
 
 async def _nlp_background(limit: int) -> None:
@@ -54,7 +55,7 @@ async def main():
         # ── NLP enrichment: background task, non-blocking (Wave 4 ADR-0003) ──
         # Fire-and-forget: GDELT sleep starts immediately. Skip if previous still running.
         if nlp_task is None or nlp_task.done():
-            nlp_task = asyncio.create_task(_nlp_background(limit=100))
+            nlp_task = asyncio.create_task(_nlp_background(limit=NLP_ENRICH_LIMIT))
         else:
             log.info("NLP still running from previous cycle — skipping.")
 
