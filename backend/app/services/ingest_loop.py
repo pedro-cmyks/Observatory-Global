@@ -16,6 +16,9 @@ log = logging.getLogger(__name__)
 
 INTERVAL_SECONDS = int(os.getenv("INGEST_INTERVAL_SECONDS", "900"))  # 15 min default
 NLP_ENRICH_LIMIT = int(os.getenv("NLP_ENRICH_LIMIT", "100"))
+# When the standalone nlp_worker process group is live, set NLP_INLINE_ENABLED=false
+# so this loop stops processing rows and avoids double-writes.
+NLP_INLINE_ENABLED = os.getenv("NLP_INLINE_ENABLED", "true").lower() != "false"
 
 
 async def _nlp_background(limit: int) -> None:
@@ -53,11 +56,15 @@ async def main():
             log.exception("GDELT ingestion cycle failed — continuing")
 
         # ── NLP enrichment: background task, non-blocking (Wave 4 ADR-0003) ──
-        # Fire-and-forget: GDELT sleep starts immediately. Skip if previous still running.
-        if nlp_task is None or nlp_task.done():
-            nlp_task = asyncio.create_task(_nlp_background(limit=NLP_ENRICH_LIMIT))
+        # When the standalone nlp_worker process is live, set NLP_INLINE_ENABLED=false
+        # so this branch becomes a no-op and the worker owns the NLP path (issue #163).
+        if NLP_INLINE_ENABLED:
+            if nlp_task is None or nlp_task.done():
+                nlp_task = asyncio.create_task(_nlp_background(limit=NLP_ENRICH_LIMIT))
+            else:
+                log.info("NLP still running from previous cycle — skipping.")
         else:
-            log.info("NLP still running from previous cycle — skipping.")
+            log.debug("Inline NLP disabled (NLP_INLINE_ENABLED=false) — worker handles it.")
 
         # ── Google Trends: every 2nd cycle (~30 min) ──
         if gdelt_cycle % 2 == 0:
@@ -148,6 +155,26 @@ async def main():
                 log.info("Wikipedia pageviews ingestion complete.")
             except Exception:
                 log.exception("Wikipedia pageviews ingestion failed — continuing")
+
+        # ── Atlas composite heat refresh: every cycle (~15 min) ──
+        # country_heat_v2 materialised view (migration 017). Refresh CONCURRENTLY
+        # so we never block readers. Skip on any failure — the previous snapshot
+        # remains valid until the next attempt.
+        try:
+            import asyncpg as _asyncpg
+            _db_url = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
+            if _db_url:
+                _conn = await _asyncpg.connect(_db_url)
+                try:
+                    try:
+                        await _conn.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY country_heat_v2")
+                    except Exception:
+                        await _conn.execute("REFRESH MATERIALIZED VIEW country_heat_v2")
+                    log.info("country_heat_v2 refreshed.")
+                finally:
+                    await _conn.close()
+        except Exception:
+            log.exception("country_heat_v2 refresh failed — continuing")
 
         # ── Data retention cleanup: every 672nd cycle (~7 days) ──
         if gdelt_cycle % 672 == 2:

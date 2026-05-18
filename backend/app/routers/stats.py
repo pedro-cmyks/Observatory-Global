@@ -146,6 +146,42 @@ async def health():
                 ts = last_ingest_ts.replace(tzinfo=timezone.utc) if last_ingest_ts.tzinfo is None else last_ingest_ts
                 ingest_lag_minutes = (datetime.now(timezone.utc) - ts).total_seconds() / 60
 
+            # NLP lag (issue #163). Best-effort: tolerate missing nlp_progress table
+            # on environments where migration 015 has not been applied yet.
+            nlp_block: dict | None = None
+            try:
+                nlp_row = await conn.fetchrow(
+                    """
+                    SELECT
+                        unprocessed_24h,
+                        unprocessed_total,
+                        oldest_unprocessed_at,
+                        lag_minutes,
+                        last_run_at,
+                        last_run_duration_seconds
+                    FROM nlp_progress
+                    ORDER BY last_run_at DESC NULLS LAST
+                    LIMIT 1
+                    """,
+                    timeout=3.0,
+                )
+                if nlp_row is not None:
+                    oldest = nlp_row["oldest_unprocessed_at"]
+                    last_run = nlp_row["last_run_at"]
+                    nlp_block = {
+                        "unprocessed_24h": int(nlp_row["unprocessed_24h"] or 0),
+                        "unprocessed_total": int(nlp_row["unprocessed_total"] or 0),
+                        "oldest_unprocessed_at": oldest.isoformat() if oldest else None,
+                        "lag_minutes": int(nlp_row["lag_minutes"]) if nlp_row["lag_minutes"] is not None else None,
+                        "last_run_at": last_run.isoformat() if last_run else None,
+                        "last_run_duration_seconds": (
+                            round(float(nlp_row["last_run_duration_seconds"]), 1)
+                            if nlp_row["last_run_duration_seconds"] is not None else None
+                        ),
+                    }
+            except Exception:
+                nlp_block = None
+
             if not db_ok:
                 status = "error"
             elif ingest_lag_minutes is None or ingest_lag_minutes > 90:
@@ -153,7 +189,7 @@ async def health():
             else:
                 status = "healthy"
 
-            return {
+            response = {
                 "status": status,
                 "db_ok": db_ok,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -163,6 +199,9 @@ async def health():
                 "total_signals": total_signals,
                 "error_count_last_15m": 0
             }
+            if nlp_block is not None:
+                response["nlp"] = nlp_block
+            return response
     except asyncio.TimeoutError:
         return {
             "status": "degraded",

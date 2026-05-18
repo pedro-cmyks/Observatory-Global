@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getThemeLabel } from '../lib/themeLabels';
+import AtlasHeatList from './AtlasHeatList';
 import './DiscoveryPanel.css';
 
 interface Narrative {
@@ -25,13 +26,14 @@ interface Narrative {
 interface DiscoveryPanelProps {
   hours: number;
   onThemeSelect: (themeCode: string) => void;
+  onCountrySelect?: (countryCode: string) => void;
 }
 
 function formatSignals(n: number): string {
   return n >= 1000 ? `${Math.round(n / 1000)}K signals` : `${n} signals`;
 }
 
-export default function DiscoveryPanel({ hours, onThemeSelect }: DiscoveryPanelProps) {
+export default function DiscoveryPanel({ hours, onThemeSelect, onCountrySelect }: DiscoveryPanelProps) {
   const [narratives, setNarratives] = useState<Narrative[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -113,6 +115,10 @@ export default function DiscoveryPanel({ hours, onThemeSelect }: DiscoveryPanelP
             </div>
           );
         })}
+      </div>
+
+      <div className="discovery-heat">
+        <AtlasHeatList hours={Math.min(hours, 24)} limit={10} onCountrySelect={onCountrySelect} />
       </div>
     </div>
   );

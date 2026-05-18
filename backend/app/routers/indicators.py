@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Query
 from app import db
+from app.utils import extract_domain
 
 try:
     from indicators.source_diversity import calculate_source_diversity, DIVERSITY_TOOLTIP

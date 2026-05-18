@@ -1,16 +1,17 @@
 """
-Atlas NLP Pipeline — Phase 1 + 2 + 3: Sentiment, Entity Extraction & Framing
+Atlas NLP Pipeline — Phase 1 + 2 + 3: Sentiment, Entity Extraction & Framing.
 
-Applies to ALL signals with valid headlines (GDELT + RSS + ReliefWeb).
+Applies to ALL signals with valid headlines (GDELT + RSS + ReliefWeb + API + Social).
 No source filter — everything gets normalized to the same NLP annotations.
 
-Two execution modes:
-  CLI (Mac backfill):  python -m enrichment.nlp_pipeline [--limit N] [--dry-run]
-  Ingest hook (Fly):   await run_nlp_enrichment(limit=500)  ← called from ingest_loop.py
+Multilingual mode (issue #162) routes by NLP_MULTILINGUAL_MODE env:
+  - off:    English-only models, write to production nlp_* columns. (default)
+  - shadow: multilingual models, write to nlp_*_xlm shadow columns.
+  - on:     multilingual models, write to production nlp_* columns.
 
 Memory pattern on Fly (985MB machine):
-  Load sentiment → run → del + gc → load NER → run → del + gc → load framing → run → del + gc
-  Peak per phase: ~500MB. Never loads all models simultaneously.
+  Load sentiment -> run -> del + gc -> load NER -> run -> del + gc -> load framing -> ...
+  Peak per phase: ~500MB. Never loads multiple models at once.
 """
 import argparse
 import asyncio
@@ -25,11 +26,32 @@ import asyncpg
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-SENTIMENT_MODEL = "cardiffnlp/twitter-roberta-base-sentiment-latest"
-FRAMING_MODEL   = "cross-encoder/nli-distilroberta-base"
-BATCH_SIZE         = 20
+# ── Mode + models ────────────────────────────────────────────────────────────
+NLP_MULTILINGUAL_MODE = os.getenv("NLP_MULTILINGUAL_MODE", "off").lower()  # off | shadow | on
+
+SENTIMENT_MODEL_EN = "cardiffnlp/twitter-roberta-base-sentiment-latest"
+SENTIMENT_MODEL_XLM = "cardiffnlp/twitter-xlm-roberta-base-sentiment"
+FRAMING_MODEL_EN = "cross-encoder/nli-distilroberta-base"
+FRAMING_MODEL_XLM = "MoritzLaurer/mDeBERTa-v3-base-mnli-xnli"
+SPACY_MODEL_EN = "en_core_web_sm"
+SPACY_MODEL_XX = "xx_ent_wiki_sm"
+
+MODEL_VERSION_TAG = {
+    "off": "en-v1",
+    "shadow": "xlm-shadow-v1",
+    "on": "xlm-v1",
+}.get(NLP_MULTILINGUAL_MODE, "unknown")
+
+BATCH_SIZE = 20
 FRAMING_BATCH_SIZE = 8
-FRAMING_MIN_SCORE  = 0.35
+FRAMING_MIN_SCORE = 0.35
+# mDeBERTa framing on shared CPU is ~1.5s per (headline x 6 labels) row.
+# Allow operators to skip the framing phase entirely (worker still does
+# sentiment + NER + checkpoint) when NLP_SKIP_FRAMING=true. Useful while we
+# evaluate replacing mDeBERTa with a lighter multilingual NLI model.
+SKIP_FRAMING = os.getenv("NLP_SKIP_FRAMING", "false").lower() == "true"
+# Independent batch limit for framing so we can cap it lower than sentiment/NER.
+FRAMING_LIMIT_CAP = int(os.getenv("NLP_FRAMING_LIMIT", "0"))
 
 FRAME_LABELS = [
     "conflict escalation",
@@ -40,44 +62,88 @@ FRAME_LABELS = [
     "information warfare",
 ]
 LABEL_TO_DB = {
-    "conflict escalation":   "conflict_escalation",
+    "conflict escalation": "conflict_escalation",
     "diplomatic resolution": "diplomatic_resolution",
-    "humanitarian crisis":   "humanitarian_crisis",
-    "economic impact":       "economic_impact",
-    "political domestic":    "political_domestic",
-    "information warfare":   "information_warfare",
+    "humanitarian crisis": "humanitarian_crisis",
+    "economic impact": "economic_impact",
+    "political domestic": "political_domestic",
+    "information warfare": "information_warfare",
 }
+
+# Languages with non-Latin scripts where the existing ASCII filter would over-reject.
+NON_LATIN_LANGS = {"ar", "fa", "he", "hi", "bn", "th", "ja", "ko", "zh", "am", "ti", "ka", "hy", "ur", "pa", "ta", "te"}
+
+
+def _multilingual_enabled() -> bool:
+    return NLP_MULTILINGUAL_MODE in ("shadow", "on")
+
+
+def _shadow_writes() -> bool:
+    return NLP_MULTILINGUAL_MODE == "shadow"
+
+
+def _select_sentiment_model(source_lang: str | None) -> str:
+    if not _multilingual_enabled():
+        return SENTIMENT_MODEL_EN
+    # Multilingual mode: always use XLM for consistency across languages.
+    return SENTIMENT_MODEL_XLM
+
+
+def _select_framing_model(source_lang: str | None) -> str:
+    if not _multilingual_enabled():
+        return FRAMING_MODEL_EN
+    return FRAMING_MODEL_XLM
+
+
+def _select_spacy_model(source_lang: str | None) -> str:
+    if not _multilingual_enabled():
+        return SPACY_MODEL_EN
+    if (source_lang or "").lower() == "en":
+        return SPACY_MODEL_EN
+    return SPACY_MODEL_XX
 
 
 # ── Filters ──────────────────────────────────────────────────────────────────
-def _entity_valid(text: str) -> bool:
+def _entity_valid(text: str, source_lang: str | None = None) -> bool:
+    """Conservative entity quality filter.
+
+    Multilingual mode relaxes the non-ASCII ratio because non-Latin scripts are
+    valid entity tokens. We still reject digits, tiny strings, and overlong spans.
+    """
     t = text.strip()
-    if len(t) < 3 or t.isdigit():
-        return False
-    non_ascii = sum(1 for c in t if ord(c) > 127)
-    if (non_ascii / len(t)) >= 0.4:
+    if len(t) < 2 or t.isdigit():
         return False
     if len(t.split()) > 5:
         return False
-    return True
+    lang = (source_lang or "").lower()
+    if lang in NON_LATIN_LANGS:
+        return True
+    non_ascii = sum(1 for c in t if ord(c) > 127)
+    threshold = 0.6 if _multilingual_enabled() else 0.4
+    return (non_ascii / max(len(t), 1)) < threshold
 
 
 # ── Inference helpers ─────────────────────────────────────────────────────────
 def _map_sentiment(label_scores: list[dict]) -> tuple[float, float]:
+    """Map sentiment label/score list to (signed score [-5, 5], confidence [0, 1]).
+
+    Both the English RoBERTa model and the multilingual XLM-R model expose the
+    same `positive` / `neutral` / `negative` label set, so this mapping is shared.
+    """
     lookup = {d["label"].lower(): d["score"] for d in label_scores}
     pos = lookup.get("positive", 0.0)
     neg = lookup.get("negative", 0.0)
-    return round((pos * 5.0) + (neg * -5.0), 3), max(lookup.values())
+    return round((pos * 5.0) + (neg * -5.0), 3), max(lookup.values()) if lookup else 0.0
 
 
-def _extract_entities(nlp, headline: str) -> list[dict]:
+def _extract_entities(nlp, headline: str, source_lang: str | None) -> list[dict]:
     seen: set[str] = set()
     entities = []
     for ent in nlp(headline).ents:
         if ent.label_ not in {"PERSON", "ORG", "NORP", "FAC", "GPE", "LOC"}:
             continue
         name = ent.text.strip()
-        if not _entity_valid(name) or name.lower() in seen:
+        if not _entity_valid(name, source_lang) or name.lower() in seen:
             continue
         seen.add(name.lower())
         entities.append({"name": name, "type": ent.label_})
@@ -91,23 +157,152 @@ def _detect_framing(clf, headline: str) -> str | None:
     return LABEL_TO_DB[result["labels"][0]]
 
 
+# ── Priority selection ───────────────────────────────────────────────────────
+# Hybrid drain order (Option D, ADR-0004):
+#   1) nlp_sample_queue — stratified set materialised every 6h. Drain first to
+#      guarantee bucket coverage even when raw priority floods one country.
+#   2) Priority query — fall back to the remaining unprocessed rows ranked by
+#      effective age (non-EN, API/social, high-geo-confidence boosted).
+#
+# The unprocessed filter targets the column set we are actually writing this run.
+
+def _priority_select_sql(target_column: str) -> str:
+    """Drain stratified sample first, then fall back to recent-first priority.
+
+    Performance note: the fallback uses a two-stage select. Stage 1 grabs the
+    most recent 5000 unprocessed candidates using the timestamp/created_at
+    indexes — fast. Stage 2 sorts that small pool by the priority expression
+    (non-EN, API/social, high geo_confidence boosted). Avoids the previous
+    full-table sort over 2M+ rows that hung the worker.
+    """
+    return f"""
+        WITH sample_drain AS (
+            SELECT s.id, s.headline, s.source_lang, s.source_family,
+                   s.country_code, s.geo_confidence, s.timestamp
+            FROM nlp_sample_queue q
+            JOIN signals_v2 s ON s.id = q.id
+            WHERE s.{target_column} IS NULL
+              AND s.headline IS NOT NULL AND LENGTH(s.headline) > 10
+            ORDER BY q.enqueued_at ASC
+            LIMIT $1
+        ),
+        recent_candidates AS (
+            SELECT id, headline, source_lang, source_family,
+                   country_code, geo_confidence, timestamp
+            FROM signals_v2
+            WHERE {target_column} IS NULL
+              AND headline IS NOT NULL AND LENGTH(headline) > 10
+              AND created_at > NOW() - INTERVAL '15 days'
+            ORDER BY created_at DESC
+            LIMIT 5000
+        ),
+        priority_fallback AS (
+            SELECT id, headline, source_lang, source_family,
+                   country_code, geo_confidence, timestamp
+            FROM recent_candidates rc
+            WHERE rc.id NOT IN (SELECT id FROM sample_drain)
+            ORDER BY (
+                EXTRACT(EPOCH FROM (NOW() - timestamp)) / 86400.0
+                + CASE WHEN source_lang IS NOT NULL AND source_lang <> 'en' THEN -2 ELSE 0 END
+                + CASE WHEN source_family IN ('api', 'social') THEN -1 ELSE 0 END
+                + CASE WHEN geo_confidence IS NOT NULL AND geo_confidence > 0.8 THEN -0.5 ELSE 0 END
+            ) ASC
+            LIMIT GREATEST($1 - (SELECT COUNT(*) FROM sample_drain), 0)
+        )
+        SELECT * FROM sample_drain
+        UNION ALL
+        SELECT * FROM priority_fallback
+    """
+
+
+# Stratified sample refresh — populate nlp_sample_queue (issue #164, ADR-0004).
+# Coarse buckets (country, theme_top, day) with K=3 per bucket keeps the queue
+# under ~300K rows in the 15-day window.
+
+STRATIFIED_REFRESH_SQL = """
+WITH stratified AS (
+    SELECT
+        id,
+        ROW_NUMBER() OVER (
+            PARTITION BY
+                country_code,
+                LOWER(COALESCE(themes[1], '__none__')),
+                date_trunc('day', timestamp)
+            ORDER BY timestamp DESC, geo_confidence DESC NULLS LAST
+        ) AS rn
+    FROM signals_v2
+    WHERE created_at > NOW() - INTERVAL '15 days'
+      AND nlp_processed_at IS NULL
+      AND headline IS NOT NULL
+      AND LENGTH(headline) > 10
+)
+INSERT INTO nlp_sample_queue (id)
+SELECT id FROM stratified WHERE rn <= 3
+ON CONFLICT (id) DO NOTHING
+"""
+
+
+async def refresh_stratified_sample(conn) -> int:
+    """Insert the latest stratified sample into nlp_sample_queue.
+
+    Worker calls this every N cycles to keep coverage current. Returns the
+    number of rows newly enqueued (best effort — Postgres does not expose the
+    exact count after ON CONFLICT DO NOTHING without a RETURNING clause).
+    """
+    tag = await conn.execute(STRATIFIED_REFRESH_SQL)
+    # tag looks like 'INSERT 0 12345'
+    try:
+        return int(tag.split()[-1])
+    except (ValueError, IndexError):
+        return 0
+
+
+async def cleanup_drained_sample_queue(conn) -> int:
+    """Remove ids from nlp_sample_queue once they have a transformer score."""
+    tag = await conn.execute(
+        "DELETE FROM nlp_sample_queue WHERE id IN ("
+        "  SELECT q.id FROM nlp_sample_queue q "
+        "  JOIN signals_v2 s ON s.id = q.id "
+        "  WHERE s.nlp_processed_at IS NOT NULL"
+        ")"
+    )
+    try:
+        return int(tag.split()[-1])
+    except (ValueError, IndexError):
+        return 0
+
+
+# ── Column targets ───────────────────────────────────────────────────────────
+def _columns() -> dict[str, str]:
+    """Return the column names the current mode reads/writes."""
+    if _shadow_writes():
+        return {
+            "sentiment_target": "nlp_sentiment_xlm",
+            "confidence_target": "nlp_confidence_xlm",
+            "framing_target": "nlp_framing_xlm",
+            "persons_target": "nlp_persons_xlm",
+            "processed_at_target": "nlp_processed_at_xlm",
+        }
+    return {
+        "sentiment_target": "nlp_sentiment",
+        "confidence_target": "nlp_confidence",
+        "framing_target": "nlp_framing",
+        "persons_target": "nlp_persons",
+        "processed_at_target": "nlp_processed_at",
+    }
+
+
 # ── Phase runners (each loads, runs, unloads its model) ─────────────────────
 async def _run_sentiment_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) -> int:
-    rows = await conn.fetch(
-        """
-        SELECT id, headline FROM signals_v2
-        WHERE nlp_processed_at IS NULL
-          AND headline IS NOT NULL AND LENGTH(headline) > 10
-        ORDER BY timestamp DESC LIMIT $1
-        """,
-        limit,
-    )
+    cols = _columns()
+    rows = await conn.fetch(_priority_select_sql(cols["processed_at_target"]), limit)
     if not rows:
         return 0
 
     from transformers import pipeline as hf_pipeline
+    model = SENTIMENT_MODEL_XLM if _multilingual_enabled() else SENTIMENT_MODEL_EN
     clf = hf_pipeline(
-        "sentiment-analysis", model=SENTIMENT_MODEL, tokenizer=SENTIMENT_MODEL,
+        "sentiment-analysis", model=model, tokenizer=model,
         top_k=None, truncation=True, max_length=512, device=-1,
     )
     now = datetime.now(timezone.utc)
@@ -125,68 +320,75 @@ async def _run_sentiment_phase(conn: asyncpg.Connection, limit: int, dry_run: bo
     del clf; gc.collect()
 
     if not dry_run and records:
-        await conn.executemany(
-            "UPDATE signals_v2 SET nlp_sentiment=$1, nlp_confidence=$2, nlp_processed_at=$3 WHERE id=$4",
-            records,
+        update_sql = (
+            f"UPDATE signals_v2 "
+            f"SET {cols['sentiment_target']}=$1, "
+            f"    {cols['confidence_target']}=$2, "
+            f"    {cols['processed_at_target']}=$3, "
+            f"    nlp_model_version=$5 "
+            f"WHERE id=$4"
         )
-    logger.info("Sentiment: %d signals", len(records))
+        await conn.executemany(
+            update_sql,
+            [(score, conf, ts, sid, MODEL_VERSION_TAG) for (score, conf, ts, sid) in records],
+        )
+    logger.info("Sentiment[%s]: %d signals (model=%s)", MODEL_VERSION_TAG, len(records), model)
     return len(records)
 
 
 async def _run_ner_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) -> int:
-    rows = await conn.fetch(
-        """
-        SELECT id, headline FROM signals_v2
-        WHERE nlp_persons IS NULL
-          AND headline IS NOT NULL AND LENGTH(headline) > 10
-        ORDER BY timestamp DESC LIMIT $1
-        """,
-        limit,
-    )
+    cols = _columns()
+    rows = await conn.fetch(_priority_select_sql(cols["persons_target"]), limit)
     if not rows:
         return 0
 
     import spacy
-    try:
-        nlp = spacy.load("en_core_web_sm", disable=["parser", "lemmatizer", "attribute_ruler"])
-    except OSError:
-        import subprocess, sys
-        subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_sm"], check=True)
-        nlp = spacy.load("en_core_web_sm", disable=["parser", "lemmatizer", "attribute_ruler"])
+
+    def _load(name: str):
+        try:
+            return spacy.load(name, disable=["parser", "lemmatizer", "attribute_ruler"])
+        except OSError:
+            import subprocess, sys
+            subprocess.run([sys.executable, "-m", "spacy", "download", name], check=True)
+            return spacy.load(name, disable=["parser", "lemmatizer", "attribute_ruler"])
+
+    nlp_en = _load(SPACY_MODEL_EN)
+    nlp_xx = _load(SPACY_MODEL_XX) if _multilingual_enabled() else None
 
     records = []
-    for i in range(0, len(rows), BATCH_SIZE):
-        batch = rows[i:i + BATCH_SIZE]
-        for row, doc in zip(batch, nlp.pipe([r["headline"] for r in batch], batch_size=BATCH_SIZE)):
-            entities = _extract_entities(nlp, row["headline"])
-            records.append((json.dumps(entities), row["id"]))
+    for row in rows:
+        lang = (row["source_lang"] or "").lower()
+        nlp = nlp_xx if (nlp_xx is not None and lang and lang != "en") else nlp_en
+        entities = _extract_entities(nlp, row["headline"], lang or None)
+        records.append((json.dumps(entities), row["id"]))
 
-    del nlp; gc.collect()
+    del nlp_en
+    if nlp_xx is not None:
+        del nlp_xx
+    gc.collect()
 
     if not dry_run and records:
         await conn.executemany(
-            "UPDATE signals_v2 SET nlp_persons=$1::jsonb WHERE id=$2",
+            f"UPDATE signals_v2 SET {cols['persons_target']}=$1::jsonb WHERE id=$2",
             records,
         )
-    logger.info("NER: %d signals", len(records))
+    logger.info("NER[%s]: %d signals", MODEL_VERSION_TAG, len(records))
     return len(records)
 
 
 async def _run_framing_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) -> int:
-    rows = await conn.fetch(
-        """
-        SELECT id, headline FROM signals_v2
-        WHERE nlp_framing IS NULL
-          AND headline IS NOT NULL AND LENGTH(headline) > 10
-        ORDER BY timestamp DESC LIMIT $1
-        """,
-        limit,
-    )
+    if SKIP_FRAMING:
+        logger.info("Framing[%s]: skipped (NLP_SKIP_FRAMING=true)", MODEL_VERSION_TAG)
+        return 0
+    cols = _columns()
+    effective_limit = min(limit, FRAMING_LIMIT_CAP) if FRAMING_LIMIT_CAP > 0 else limit
+    rows = await conn.fetch(_priority_select_sql(cols["framing_target"]), effective_limit)
     if not rows:
         return 0
 
     from transformers import pipeline as hf_pipeline
-    clf = hf_pipeline("zero-shot-classification", model=FRAMING_MODEL, device=-1)
+    model = FRAMING_MODEL_XLM if _multilingual_enabled() else FRAMING_MODEL_EN
+    clf = hf_pipeline("zero-shot-classification", model=model, device=-1)
 
     records = []
     for i in range(0, len(rows), FRAMING_BATCH_SIZE):
@@ -202,21 +404,19 @@ async def _run_framing_phase(conn: asyncpg.Connection, limit: int, dry_run: bool
 
     if not dry_run and records:
         await conn.executemany(
-            "UPDATE signals_v2 SET nlp_framing=$1 WHERE id=$2",
+            f"UPDATE signals_v2 SET {cols['framing_target']}=$1 WHERE id=$2",
             records,
         )
     classified = sum(1 for f, _ in records if f is not None)
-    logger.info("Framing: %d signals (%d classified, %d ambiguous)", len(records), classified, len(records) - classified)
+    logger.info(
+        "Framing[%s]: %d signals (%d classified, %d ambiguous, model=%s)",
+        MODEL_VERSION_TAG, len(records), classified, len(records) - classified, model,
+    )
     return len(records)
 
 
-# ── Public entry point for ingest_loop.py ────────────────────────────────────
+# ── Public entry point for ingest_loop.py or worker ─────────────────────────
 async def run_nlp_enrichment(limit: int = 500) -> None:
-    """
-    Called from ingest_loop.py after each GDELT cycle.
-    Processes up to `limit` signals per phase (sentiment, NER, framing).
-    Models loaded and unloaded per phase to stay within 985MB Fly RAM.
-    """
     db_url = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
     if not db_url:
         logger.warning("NLP enrichment skipped: DATABASE_URL not set")
@@ -252,9 +452,9 @@ async def _cli_run(limit: int, dry_run: bool, phase: str) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description="Atlas NLP pipeline — backfill tool")
-    parser.add_argument("--limit",   type=int, default=500, help="Signals per phase per run")
+    parser.add_argument("--limit", type=int, default=500, help="Signals per phase per run")
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--phase",   choices=["all", "sentiment", "ner", "framing"], default="all")
+    parser.add_argument("--phase", choices=["all", "sentiment", "ner", "framing"], default="all")
     args = parser.parse_args()
     asyncio.run(_cli_run(args.limit, args.dry_run, args.phase))
 
