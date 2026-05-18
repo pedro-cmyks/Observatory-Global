@@ -24,6 +24,7 @@ DATABASE_URL = os.getenv(
 NEWSDATA_API_KEY = os.getenv("NEWSDATA_API_KEY", "")
 
 BASE_URL = "https://newsdata.io/api/1/latest"
+NEWS_DATA_PAGE_SIZE = int(os.getenv("NEWSDATA_PAGE_SIZE", "10"))
 
 # Language batches — avoid US/EN overrepresentation; focus on gaps
 LANGUAGE_BATCHES = [
@@ -61,12 +62,16 @@ async def _fetch_batch(
     try:
         async with session.get(
             BASE_URL,
-            params={**params, "apikey": NEWSDATA_API_KEY, "size": 50},
+            params={**params, "apikey": NEWSDATA_API_KEY, "size": NEWS_DATA_PAGE_SIZE},
             timeout=aiohttp.ClientTimeout(total=30),
             headers={"User-Agent": "ObservatorioGlobal/1.0"},
         ) as resp:
             if resp.status != 200:
-                logger.warning("[NewsData] HTTP %d for params %s", resp.status, params)
+                body = await resp.text()
+                logger.warning(
+                    "[NewsData] HTTP %d for params %s: %s",
+                    resp.status, params, body[:240],
+                )
                 return signals
             data = await resp.json()
 

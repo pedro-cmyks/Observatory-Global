@@ -22,17 +22,18 @@ NEWSAPI_KEY = os.getenv("NEWSAPI_KEY", "")
 
 BASE_URL = "https://newsapi.org/v2/everything"
 
-# Targeted queries for coverage gaps — prioritize crisis countries + non-English
-# 12 queries × 2h interval = 144 req/day. At 100 req/day limit, use 8 queries.
+# Targeted queries for coverage gaps — prioritize crisis countries + non-English.
+# Current cadence: 8 queries × 12 runs/day = 96 req/day. Keep this small until #156
+# adds a persistent daily quota budget.
 QUERIES = [
-    {"q": "colombia conflict guerrilla", "language": "es", "pageSize": 20},
-    {"q": "venezuela crisis maduro", "language": "es", "pageSize": 20},
-    {"q": "myanmar civil war junta", "language": "en", "pageSize": 20},
-    {"q": "sudan war RSF darfur", "language": "en", "pageSize": 20},
-    {"q": "gaza palestina conflicto", "language": "es", "pageSize": 20},
-    {"q": "haiti gang violence", "language": "fr", "pageSize": 20},
-    {"q": "sahel mali niger burkina", "language": "fr", "pageSize": 20},
-    {"q": "congo DRC M23 kivu", "language": "fr", "pageSize": 20},
+    {"q": 'Colombia AND (conflict OR guerrilla OR FARC OR ELN)', "language": "en", "pageSize": 20},
+    {"q": 'Venezuela AND (crisis OR Maduro OR migration)', "language": "en", "pageSize": 20},
+    {"q": 'Myanmar AND (junta OR "civil war" OR conflict)', "language": "en", "pageSize": 20},
+    {"q": 'Sudan AND (RSF OR Darfur OR war)', "language": "en", "pageSize": 20},
+    {"q": '(Gaza OR Palestine) AND (conflict OR ceasefire OR humanitarian)', "language": "en", "pageSize": 20},
+    {"q": 'Haiti AND (gang OR violence OR crisis)', "language": "en", "pageSize": 20},
+    {"q": '(Sahel OR Mali OR Niger OR Burkina) AND (security OR conflict)', "language": "en", "pageSize": 20},
+    {"q": '(Congo OR DRC OR Kivu) AND (M23 OR conflict OR displacement)', "language": "en", "pageSize": 20},
 ]
 
 
@@ -52,7 +53,7 @@ async def run_newsapi_ingestion() -> None:
         logger.warning("[NewsAPI] NEWSAPI_KEY not set — skipping")
         return
 
-    since = datetime.now(timezone.utc) - timedelta(hours=4)
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
     from_str = since.strftime("%Y-%m-%dT%H:%M:%S")
 
     pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=2)
@@ -65,7 +66,13 @@ async def run_newsapi_ingestion() -> None:
                 try:
                     async with session.get(
                         BASE_URL,
-                        params={**query_params, "from": from_str, "apiKey": NEWSAPI_KEY},
+                        params={
+                            **query_params,
+                            "from": from_str,
+                            "searchIn": "title,description",
+                            "sortBy": "publishedAt",
+                            "apiKey": NEWSAPI_KEY,
+                        },
                         timeout=aiohttp.ClientTimeout(total=30),
                         headers={"User-Agent": "ObservatorioGlobal/1.0"},
                     ) as resp:
