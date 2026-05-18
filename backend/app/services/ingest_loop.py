@@ -156,6 +156,26 @@ async def main():
             except Exception:
                 log.exception("Wikipedia pageviews ingestion failed — continuing")
 
+        # ── Atlas composite heat refresh: every cycle (~15 min) ──
+        # country_heat_v2 materialised view (migration 017). Refresh CONCURRENTLY
+        # so we never block readers. Skip on any failure — the previous snapshot
+        # remains valid until the next attempt.
+        try:
+            import asyncpg as _asyncpg
+            _db_url = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
+            if _db_url:
+                _conn = await _asyncpg.connect(_db_url)
+                try:
+                    try:
+                        await _conn.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY country_heat_v2")
+                    except Exception:
+                        await _conn.execute("REFRESH MATERIALIZED VIEW country_heat_v2")
+                    log.info("country_heat_v2 refreshed.")
+                finally:
+                    await _conn.close()
+        except Exception:
+            log.exception("country_heat_v2 refresh failed — continuing")
+
         # ── Data retention cleanup: every 672nd cycle (~7 days) ──
         if gdelt_cycle % 672 == 2:
             try:

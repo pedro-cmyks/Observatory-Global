@@ -151,25 +151,103 @@ def _detect_framing(clf, headline: str) -> str | None:
 
 
 # ── Priority selection ───────────────────────────────────────────────────────
-# Smallest value = highest priority. Components are expressed in "effective days
-# of age": a non-English row is treated as 2 days fresher than an English row of
-# the same wall-clock age, etc. The unprocessed filter targets the column set
-# we are actually writing this run.
+# Hybrid drain order (Option D, ADR-0004):
+#   1) nlp_sample_queue — stratified set materialised every 6h. Drain first to
+#      guarantee bucket coverage even when raw priority floods one country.
+#   2) Priority query — fall back to the remaining unprocessed rows ranked by
+#      effective age (non-EN, API/social, high-geo-confidence boosted).
+#
+# The unprocessed filter targets the column set we are actually writing this run.
 
 def _priority_select_sql(target_column: str) -> str:
+    """Drain stratified sample first, then fall back to priority queue."""
     return f"""
-        SELECT id, headline, source_lang, source_family, country_code, geo_confidence, timestamp
-        FROM signals_v2
-        WHERE {target_column} IS NULL
-          AND headline IS NOT NULL AND LENGTH(headline) > 10
-        ORDER BY (
-            EXTRACT(EPOCH FROM (NOW() - timestamp)) / 86400.0
-            + CASE WHEN source_lang IS NOT NULL AND source_lang <> 'en' THEN -2 ELSE 0 END
-            + CASE WHEN source_family IN ('api', 'social') THEN -1 ELSE 0 END
-            + CASE WHEN geo_confidence IS NOT NULL AND geo_confidence > 0.8 THEN -0.5 ELSE 0 END
-        ) ASC
-        LIMIT $1
+        WITH sample_drain AS (
+            SELECT s.id, s.headline, s.source_lang, s.source_family,
+                   s.country_code, s.geo_confidence, s.timestamp
+            FROM nlp_sample_queue q
+            JOIN signals_v2 s ON s.id = q.id
+            WHERE s.{target_column} IS NULL
+              AND s.headline IS NOT NULL AND LENGTH(s.headline) > 10
+            ORDER BY q.enqueued_at ASC
+            LIMIT $1
+        ),
+        priority_fallback AS (
+            SELECT id, headline, source_lang, source_family,
+                   country_code, geo_confidence, timestamp
+            FROM signals_v2
+            WHERE {target_column} IS NULL
+              AND headline IS NOT NULL AND LENGTH(headline) > 10
+              AND id NOT IN (SELECT id FROM sample_drain)
+            ORDER BY (
+                EXTRACT(EPOCH FROM (NOW() - timestamp)) / 86400.0
+                + CASE WHEN source_lang IS NOT NULL AND source_lang <> 'en' THEN -2 ELSE 0 END
+                + CASE WHEN source_family IN ('api', 'social') THEN -1 ELSE 0 END
+                + CASE WHEN geo_confidence IS NOT NULL AND geo_confidence > 0.8 THEN -0.5 ELSE 0 END
+            ) ASC
+            LIMIT GREATEST($1 - (SELECT COUNT(*) FROM sample_drain), 0)
+        )
+        SELECT * FROM sample_drain
+        UNION ALL
+        SELECT * FROM priority_fallback
     """
+
+
+# Stratified sample refresh — populate nlp_sample_queue (issue #164, ADR-0004).
+# Coarse buckets (country, theme_top, day) with K=3 per bucket keeps the queue
+# under ~300K rows in the 15-day window.
+
+STRATIFIED_REFRESH_SQL = """
+WITH stratified AS (
+    SELECT
+        id,
+        ROW_NUMBER() OVER (
+            PARTITION BY
+                country_code,
+                LOWER(COALESCE(themes[1], '__none__')),
+                date_trunc('day', timestamp)
+            ORDER BY timestamp DESC, geo_confidence DESC NULLS LAST
+        ) AS rn
+    FROM signals_v2
+    WHERE created_at > NOW() - INTERVAL '15 days'
+      AND nlp_processed_at IS NULL
+      AND headline IS NOT NULL
+      AND LENGTH(headline) > 10
+)
+INSERT INTO nlp_sample_queue (id)
+SELECT id FROM stratified WHERE rn <= 3
+ON CONFLICT (id) DO NOTHING
+"""
+
+
+async def refresh_stratified_sample(conn) -> int:
+    """Insert the latest stratified sample into nlp_sample_queue.
+
+    Worker calls this every N cycles to keep coverage current. Returns the
+    number of rows newly enqueued (best effort — Postgres does not expose the
+    exact count after ON CONFLICT DO NOTHING without a RETURNING clause).
+    """
+    tag = await conn.execute(STRATIFIED_REFRESH_SQL)
+    # tag looks like 'INSERT 0 12345'
+    try:
+        return int(tag.split()[-1])
+    except (ValueError, IndexError):
+        return 0
+
+
+async def cleanup_drained_sample_queue(conn) -> int:
+    """Remove ids from nlp_sample_queue once they have a transformer score."""
+    tag = await conn.execute(
+        "DELETE FROM nlp_sample_queue WHERE id IN ("
+        "  SELECT q.id FROM nlp_sample_queue q "
+        "  JOIN signals_v2 s ON s.id = q.id "
+        "  WHERE s.nlp_processed_at IS NOT NULL"
+        ")"
+    )
+    try:
+        return int(tag.split()[-1])
+    except (ValueError, IndexError):
+        return 0
 
 
 # ── Column targets ───────────────────────────────────────────────────────────

@@ -23,7 +23,11 @@ from datetime import datetime, timezone
 
 import asyncpg
 
-from enrichment.nlp_pipeline import run_nlp_enrichment
+from enrichment.nlp_pipeline import (
+    cleanup_drained_sample_queue,
+    refresh_stratified_sample,
+    run_nlp_enrichment,
+)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [nlp_worker] %(levelname)s %(message)s")
@@ -31,6 +35,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [nlp_worker] %(level
 WORKER_ID = os.getenv("NLP_WORKER_ID", socket.gethostname())
 WORKER_INTERVAL_SECONDS = int(os.getenv("NLP_WORKER_INTERVAL_SECONDS", "120"))
 WORKER_BATCH_LIMIT = int(os.getenv("NLP_WORKER_LIMIT", "500"))
+# Refresh the stratified nlp_sample_queue every N worker cycles (~6h at 120s interval).
+SAMPLE_REFRESH_EVERY_N_CYCLES = int(os.getenv("NLP_SAMPLE_REFRESH_EVERY", "180"))
 
 
 # ── Progress helpers ─────────────────────────────────────────────────────────
@@ -111,7 +117,24 @@ async def _refresh_low_volume_view(conn: asyncpg.Connection) -> None:
 
 
 # ── Main loop ────────────────────────────────────────────────────────────────
-async def _one_cycle(limit: int) -> int:
+async def _maintenance(conn: asyncpg.Connection, cycle_idx: int) -> None:
+    """Per-cycle maintenance: drain cleanup + periodic stratified refresh."""
+    try:
+        drained = await cleanup_drained_sample_queue(conn)
+        if drained:
+            logger.info("Drained %d completed ids from nlp_sample_queue", drained)
+    except Exception:
+        logger.exception("sample queue cleanup failed — non-fatal")
+
+    if cycle_idx % SAMPLE_REFRESH_EVERY_N_CYCLES == 1:
+        try:
+            inserted = await refresh_stratified_sample(conn)
+            logger.info("Stratified sample refresh enqueued %d new ids", inserted)
+        except Exception:
+            logger.exception("stratified sample refresh failed — non-fatal")
+
+
+async def _one_cycle(limit: int, cycle_idx: int) -> int:
     db_url = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
     if not db_url:
         raise RuntimeError("DATABASE_URL or SUPABASE_DB_URL env var required")
@@ -121,8 +144,9 @@ async def _one_cycle(limit: int) -> int:
     last_error: str | None = None
     try:
         await run_nlp_enrichment(limit=limit)
-        # run_nlp_enrichment does not return a count today; estimate via lag delta.
-        # We treat one cycle as up to `limit` rows for the per-iteration metric.
+        # run_nlp_enrichment does not return a count today; treat one cycle as
+        # up to `limit` rows for the per-iteration metric. Real counts come from
+        # the lag delta the checkpoint computes.
         rows_processed = limit
     except Exception as exc:
         last_error = repr(exc)[:500]
@@ -133,25 +157,28 @@ async def _one_cycle(limit: int) -> int:
     conn = await asyncpg.connect(db_url)
     try:
         await _refresh_low_volume_view(conn)
+        await _maintenance(conn, cycle_idx)
         await _checkpoint(conn, rows_processed, duration, last_error)
     finally:
         await conn.close()
 
     logger.info(
-        "Cycle done: rows~=%d duration=%.1fs error=%s",
-        rows_processed, duration, "yes" if last_error else "no",
+        "Cycle %d done: rows~=%d duration=%.1fs error=%s",
+        cycle_idx, rows_processed, duration, "yes" if last_error else "no",
     )
     return rows_processed
 
 
 async def main(limit: int, once: bool) -> None:
     logger.info(
-        "NLP worker starting (worker_id=%s, limit=%d, interval=%ds, once=%s)",
-        WORKER_ID, limit, WORKER_INTERVAL_SECONDS, once,
+        "NLP worker starting (worker_id=%s, limit=%d, interval=%ds, sample_refresh_every=%d, once=%s)",
+        WORKER_ID, limit, WORKER_INTERVAL_SECONDS, SAMPLE_REFRESH_EVERY_N_CYCLES, once,
     )
+    cycle = 0
     while True:
+        cycle += 1
         try:
-            await _one_cycle(limit)
+            await _one_cycle(limit, cycle)
         except Exception:
             logger.exception("Worker iteration crashed — sleeping before retry")
         if once:
