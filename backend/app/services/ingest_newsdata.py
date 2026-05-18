@@ -45,6 +45,23 @@ LANGUAGE_BATCHES = [
     {"language": "hi,ur,bn", "country": "in,pk,bd,np,lk"},
 ]
 
+LANGUAGE_CODES = {
+    "arabic": "ar",
+    "amharic": "am",
+    "bengali": "bn",
+    "french": "fr",
+    "hindi": "hi",
+    "indonesian": "id",
+    "malay": "ms",
+    "portuguese": "pt",
+    "spanish": "es",
+    "swahili": "sw",
+    "tagalog": "tl",
+    "thai": "th",
+    "urdu": "ur",
+    "vietnamese": "vi",
+}
+
 
 def _parse_pub_date(raw: str | None) -> datetime:
     if not raw:
@@ -106,7 +123,8 @@ async def _fetch_batch(
                 or "XX"
             )
 
-            lang = (article.get("language") or "und")[:10]
+            raw_lang = str(article.get("language") or "und").lower()
+            lang = LANGUAGE_CODES.get(raw_lang, raw_lang[:2] if len(raw_lang) >= 2 else "un")
             domain = urlparse(url_str).netloc.lower().removeprefix("www.")
 
             signals.append({
