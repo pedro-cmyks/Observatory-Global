@@ -98,6 +98,46 @@ async def main():
             except Exception:
                 log.exception("ReliefWeb ingestion failed — continuing")
 
+        # ── NewsData.io Multilingual: every 4th cycle (~60 min) ──
+        if gdelt_cycle % 4 == 0:
+            try:
+                log.info("NewsData.io multilingual ingestion starting...")
+                from app.services.ingest_newsdata import run_newsdata_ingestion
+                await run_newsdata_ingestion()
+                log.info("NewsData.io ingestion complete.")
+            except Exception:
+                log.exception("NewsData.io ingestion failed — continuing")
+
+        # ── Reddit Social Signals: every 4th cycle (~60 min) ──
+        if gdelt_cycle % 4 == 0:
+            try:
+                log.info("Reddit social signals ingestion starting...")
+                from app.services.ingest_reddit import run_reddit_ingestion
+                await run_reddit_ingestion()
+                log.info("Reddit ingestion complete.")
+            except Exception:
+                log.exception("Reddit ingestion failed — continuing")
+
+        # ── MediaStack ES/PT: every 8th cycle (~2 hours) ──
+        if gdelt_cycle % 8 == 0:
+            try:
+                log.info("MediaStack ES/PT ingestion starting...")
+                from app.services.ingest_mediastack import run_mediastack_ingestion
+                await run_mediastack_ingestion()
+                log.info("MediaStack ingestion complete.")
+            except Exception:
+                log.exception("MediaStack ingestion failed — continuing")
+
+        # ── NewsAPI.org Targeted Crisis: every 8th cycle (~2 hours) ──
+        if gdelt_cycle % 8 == 4:  # offset from MediaStack to spread load
+            try:
+                log.info("NewsAPI.org targeted crisis ingestion starting...")
+                from app.services.ingest_newsapi import run_newsapi_ingestion
+                await run_newsapi_ingestion()
+                log.info("NewsAPI.org ingestion complete.")
+            except Exception:
+                log.exception("NewsAPI.org ingestion failed — continuing")
+
         # ── Wikipedia Pageviews: every 96th cycle (~24 hours) ──
         if gdelt_cycle % 96 == 1:  # Run on first cycle and then every ~24h
             try:
