@@ -1,200 +1,145 @@
 # Project Status
 
-## Current Handoff — 2026-05-17
+## Current Handoff — 2026-05-18
 
-The active production branch is `v3-intel-layer`. PR [#144](https://github.com/pedro-cmyks/Observatory-Global/pull/144) open against `main`.
+**Production branch**: `v3-intel-layer`
+**Frontend**: Vercel auto-deploy — latest commit `f57b031` deployed `2026-05-18T00:01Z`
+**Backend**: Fly.io `atlas-api-pedro` — healthy, 2M+ signals ingested, version 113
 
-### P0 Productization Pass — completed 2026-05-17
+PR [#144](https://github.com/pedro-cmyks/Observatory-Global/pull/144) open against `main` (219 commits ahead).
 
-**#136 — Brief prefetch / loading states**
+---
+
+## P1 Pass — completed 2026-05-18
+
+All code issues from the UX video review resolved. Zero open code issues remain.
+
+**#143 — Map layer clarity (Legend + Panel Help)**
+- `Legend.tsx` fully rewritten — wired into `App.tsx` with all props
+- Context banner when country/theme active; per-layer color keys; collapsible
+- `PanelHelpDrawer` globe entry rewritten as 8-item layer guide with actionable steps
+
+**#135 — Landing live stats**
+- `/health` fetch on mount → live signal count + pipeline status pill
+- BentoCards navigable (`/brief`, `/app`) with keyboard support
+- `formatSignalCount()` helper for compact display
+
+**#69 — Spanish compound search routing**
+- `parseCompoundQuery` already extracted countryCode from "conflicto Colombia"-style queries
+- Backend search URL now passes `&country=` when countryCode detected
+- `handleThemeClick` / `handleConceptClick` pass countryCode to `onThemeSelect`
+- Placeholder updated to show Spanish example
+
+**#133 — Signal dossier export**
+- "Export Signal Dossier" button (Download icon) in Workspace header
+- `fetchItemSignals()` calls `/api/v2/signals` for each pinned theme/country/person
+- `buildDossierMarkdown()` formats with headlines, sources, URLs, sentiment, people
+- Downloads as `atlas-dossier-YYYY-MM-DD.md`
+
+**#141 — Reading Mode newspaper view**
+- BookOpen icon opens right-panel overlay showing signal cards per pinned item
+- Responsive card grid: source, country badge, date, sentiment indicator, headline, URL
+- Escape/scrim dismiss; Export .md button inside
+- `ReadingMode.tsx` + `ReadingMode.css` (new files)
+
+**#56 — Terminator twilight gradient**
+- Hard-edge polygon replaced with 5-band offset layers
+- Offsets: 0°→3.5°→7°→10.5°→14° lng; opacity: 52%→28%→14%→7%→3%
+- ~1800 km twilight transition zone; label: "Day/Night Shadow (experimental)"
+
+**#124 — Saved watches live counts**
+- WATCH button (command bar) saves current filter as named watch to localStorage
+- `/brief` fetches 24h signal count per watch in parallel (`fetchWatchCount()`)
+- Card shows "N signals today" + delta badge (↑/↓ vs last check)
+- "Open in Atlas →" calls `markSeen(id, count)` — records baseline for next delta
+
+---
+
+## P0 Pass — completed 2026-05-17
+
+**#136 — Brief prefetch**
 - `briefingPrefetch` lib (sessionStorage, 4-min TTL)
-- Landing prefetches on mount; BriefNewspaper reads cache → no spinner on BRIEF entry
+- Landing prefetches on mount; BriefNewspaper reads cache → no spinner
 
-**#137 — Editor's Analysis**
-- 4 rotating global prose variants + 3 country variants, data-derived (no AI dependency)
-- Removed `themeSignals[theme][0]` headline anchors — misclassification risk
-- All country names via `resolveCountryName(code, name)`
+**#137 — Editor's Analysis fallback**
+- 4 rotating global prose variants + 3 country variants, data-derived
+- Removed headline anchors to avoid misclassification risk
 
 **#138 — Investigation context persistence**
 - `prevStreamCtx` union extended with `country` type
-- Back from source → CountryBrief; Back from country → thread if thread was active
+- Back from source → CountryBrief; back from country → thread if active
 
-**#142 — Public Attention scoped to active country**
-- Google Trends + Wikipedia merged into single PUBLIC ATTENTION section in AnomalyPanel
-- Re-fetches on `activeCountry` change; staleness badge when >25h; deduplication on both panels
-- CountryBrief items clickable via `onAttentionItemClick` prop
+**#142 — Public Attention country-scoped**
+- Google Trends + Wikipedia merged into single PUBLIC ATTENTION section
+- Re-fetches on `activeCountry` change; staleness badge when >25h
+- CountryBrief items clickable
 
-**#104 — Google Trends stale data**
-- `ingest_trends.py`: shuffle country order + retry pass + batch 5→3
+**#104 — Google Trends rate-limiting**
+- `ingest_trends.py`: shuffle + retry pass + batch size 5→3
 - Frontend: 72h minimum window floor, staleness badge
 
 **#139 — Narrative Threads timeout**
-- `detail_hours = min(hours, 48)` caps Phase 2 only; Phase 1 uses full window
+- `detail_hours = min(hours, 48)` caps Phase 2; Phase 1 uses full window
 - `effective_hours` in API response; frontend notice when capped
 
 **#128 — Trail / Pinned graph separation**
-- Two independent `ForceGraph2D` instances (`trailGraphRef` + `pinnedGraphRef`)
-- CSS `visibility: hidden` keeps inactive simulation alive
+- Two independent `ForceGraph2D` instances with CSS `visibility: hidden`
 - Trail: linear-spread physics; Pinned: dense-web physics
 
-Validation from latest session:
-- `cd frontend-v2 && npm run test` passed: 25 tests.
-- `cd frontend-v2 && npm run build` passed.
-- `cd frontend-v2 && npm run lint` passed with warnings only.
+---
 
-For the canonical, up-to-date session log, use root `STATUS.md`.
+## Open Issues (non-blocking)
 
-## Current State
-**Version**: v3.1.0 (Intelligence Layer + AI Insight)
-**Status**: Development - Active
-**Last Update**: 2026-04-23
+| # | Issue | Status |
+|---|-------|--------|
+| #140 | Visual use-case manual (docs) | Needs screenshots — not code |
+| #134 | Analytical use-case docs | Writing task only |
+| #106 | Octopus mascot animation | Blocked — needs design assets |
+| #46 | ACLED API access | Blocked — no credentials yet |
 
-## Major Milestone: V3 Intel Layer Implementation ✅
+ACLED is an **optional connector** — system degrades cleanly to empty conflict layer without `ACLED_API_KEY`.
 
-**Completed**: 2025-12-18
+---
 
-### V3 Intelligence Layer Features
+## Architecture
 
-#### Focus Mode System
-- **Click-to-Focus Interaction**: Users can click any node, theme, person, or source to filter the entire map
-- **Focus Context API**: New `/api/v2/focus` endpoint provides filtered data with related topics and sources
-- **Visual Indicators**: FocusIndicator component shows active focus with clear dismiss action
-- **Focus Summary Panel**: Displays filtered statistics, related topics, and top sources
-- **Backend Filtering**: Nodes and flows endpoints support focus parameters (theme, person, country, source)
+| Layer | Stack | Deploy |
+|-------|-------|--------|
+| Frontend | React 18 + TypeScript + Vite + deck.gl + MapLibre | Vercel (auto-deploy from `v3-intel-layer`) |
+| Backend | FastAPI + asyncpg + PostgreSQL | Fly.io `atlas-api-pedro` (IAD region) |
+| Database | Supabase PostgreSQL | Managed — migrations 007–012 applied |
+| Ingestion | GDELT 2.0 every 15 min, AIS stream, ADS-B, Google Trends, Wikipedia | Fly.io background workers |
 
-#### Crisis Detection System
-- **Anomaly Detection**: `/api/v2/anomalies` endpoint compares current activity against 7-day baseline
-- **Crisis Severity Levels**: Normal, Notable, Elevated, Critical classifications
-- **Crisis Dashboard**: Real-time monitoring of anomalous countries with z-scores and multipliers
-- **Crisis Overlay**: Visual alert system for elevated threat levels
-- **Baseline Statistics**: New migration (003_anomaly_baseline.sql) for country baseline tracking
+**Key endpoints:**
+- `GET /api/v2/signals` — raw signals with country/theme/person filters
+- `GET /api/v2/briefing` — aggregated brief (sessionStorage cached 4 min on frontend)
+- `GET /api/v2/narratives` — theme threads, detail capped at 48h
+- `GET /api/v2/nodes` — country nodes with baseline deviation
+- `GET /api/v2/flows` — narrative co-occurrence arcs
+- `GET /api/v2/conflict-markers` — ACLED or empty if unconfigured
+- `GET /health` — pipeline health + total_signals count
 
-#### Trust Indicators Enhancement
-- **Source Quality Scoring**: Enhanced with aggregator denylist (Yahoo, MSN, Flipboard, etc.)
-- **Quality Metrics**: Source diversity, verification status, and reliability scoring
-- **Indicator Tooltips**: Comprehensive explanations via `/api/indicators/tooltips`
+---
 
-#### Developer Experience
-- **RUNBOOK_STARTUP.md**: One-command startup guide with verification checklist
-- **SYSTEM_REPORT.md**: Complete system architecture documentation
-- **Preflight Script**: Automated port conflict detection and resolution
-- **Stop Script**: Clean shutdown with PID tracking
-- **Data Quality Tools**: Snapshot generation and quality reporting scripts
+## Key Technical Patterns
 
-### Production Readiness
-- ✅ Focus Mode fully functional with API support
-- ✅ Crisis detection with baseline comparison
-- ✅ Trust indicators integrated
-- ✅ Developer tooling complete
-- ✅ Documentation comprehensive
-- ✅ Clean working tree pushed to GitHub
+- **Country names**: always `resolveCountryName(code, name)` — never raw API strings
+- **Theme labels**: always `getThemeLabel(code)` — never raw GDELT codes
+- **Tooltips**: `data-tip` attribute only — never native `title=`
+- **Workspace persistence**: localStorage (`atlas-workspace`, `atlas_saved_watches_v1`)
+- **Briefing prefetch**: `sessionStorage` key `atlas_briefing_prefetch_v1`, 4-min TTL
+- **Compound search**: `parseCompoundQuery(q)` extracts countryCode before sending to backend
+- **ForceGraph2D**: Two instances always mounted, CSS `visibility: hidden` preserves simulation
+- **Terminator**: 5-band PolygonLayer array, spread via `...terminatorLayers` in layer stack
 
-## Recent Accomplishments (2025-12-18)
+---
 
-### Repository Maintenance
-- **Git Hygiene**:
-  - Created comprehensive commit for v3 intel layer (62dab9e)
-  - Pushed v3-intel-layer branch to GitHub
-  - Updated .gitignore to exclude runtime files (.dev-pids, logs/, evidence/)
-  - Clean working tree with no uncommitted changes
-- **Branch Status**:
-  - Current branch: v3-intel-layer (pushed to remote)
-  - Main branch: feat/data-geointel/iter1a-pipeline-verification
-  - 1 open issue (#23: Hexmap rendering on smaller sphere)
-  - Recent commits follow conventional commit format
+## Validation (last run 2026-05-18)
 
-### Code Quality
-- **Commit Message Quality**: ✅ All recent commits follow convention (feat, fix, chore, docs)
-- **File Organization**: ✅ Proper separation of concerns with contexts, hooks, and components
-- **TypeScript Integration**: ✅ Full type safety with context providers
-- **API Design**: ✅ RESTful endpoints with consistent response schemas
-
-## Working Features
-
-### Backend API (main_v2.py)
-- `/api/v2/nodes` - Country nodes with focus filtering
-- `/api/v2/flows` - Theme-based flows with focus filtering
-- `/api/v2/focus` - Focus Mode data retrieval
-- `/api/v2/anomalies` - Anomaly detection with baseline comparison
-- `/api/v2/country/{code}` - Detailed country information
-- `/api/v2/briefing` - Morning briefing summary
-- `/api/v2/search` - Full-text search
-- `/api/indicators/tooltips` - Trust indicator explanations
-- `/api/v2/theme/{theme_code}/insight` - AI meta-summary of coverage framing (Claude Haiku, Redis 15 min, requires `ANTHROPIC_API_KEY`)
-
-### Frontend Components
-- **Core Visualization**: Deck.gl + MapLibre with interactive nodes and flows
-- **Focus System**: FocusContext, FocusDataContext, FocusIndicator, FocusSummaryPanel
-- **Crisis System**: CrisisContext, CrisisOverlay, CrisisToggle, CrisisDashboard
-- **Interaction**: MapTooltip, SearchBar with focus integration, Legend
-- **Developer Tools**: DevBanner showing environment info
-
-### Data Pipeline
-- GDELT 2.0 GKG ingestion with themes, persons, locations
-- Hourly aggregation with country_hourly_v2 view
-- Anomaly baseline tracking with 7-day rolling window
-- Source quality scoring with aggregator filtering
-
-## Recent Accomplishments (2026-04-23)
-
-### AI Coverage Insight (new)
-- Endpoint `GET /api/v2/theme/{theme_code}/insight` generates a 2–3 sentence meta-summary of HOW a topic is covered across sources.
-- Uses Claude Haiku (`claude-haiku-4-5`); optional Ollama fallback via `INSIGHT_PROVIDER=ollama`.
-- Redis cached 15 minutes. Graceful no-op when `ANTHROPIC_API_KEY` is absent.
-- `anthropic>=0.40.0` added to `backend/pyproject.toml`.
-- New env vars documented in `.env.example`: `ANTHROPIC_API_KEY`, `INSIGHT_PROVIDER`, `OLLAMA_HOST`, `OLLAMA_MODEL`.
-
-### UX / Focus Fixes (frontend-v2)
-- `FocusContext`: added `mapFlyCountry` / `setMapFlyCountry()` for cross-component fly-to hints.
-- `App.tsx`: 4 new sync effects covering map fly-to from Correlation Matrix, NarrativeThreads hint, ThemeDetail auto-open on filter change, and CountryBrief auto-close on country clear.
-- Fixed CountryBrief re-open bug; ESC and close callbacks now consistently call `clearFocus()`.
-- ArcLayer renders on theme focus; `filter.theme` added to layers `useMemo` deps.
-
-### ThemeDetail Polish
-- People Mentioned → individual pill buttons (clickable).
-- Related Topics → 2-column grid.
-- Top Sources → click-to-filter Recent Coverage section.
-- AI insight block appears async (pulse animation while loading).
-
-## Known Issues
-- **Issue #23**: Hexmap layer renders on smaller sphere than Mapbox globe (open since 2025-11-20)
-  - Status: Low priority, does not affect v3 intel layer functionality
-  - Related to legacy visualization architecture
-
-## Next Steps
-
-### Immediate (Next Session)
-1. UX first-minute experience: auto-focus, welcome card
-2. Maritime vessel layer — AISStream Phase 3C
-3. Aircraft icon — replace dot with real plane shape
-4. Consider wiring AI insight to CountryBrief and Briefing panel
-5. Increase GDELT theme code coverage in manual label dictionary
-
-### Future Enhancements
-1. Add unit tests for Focus and Crisis contexts
-2. Implement E2E tests for Focus Mode user flows
-3. Add performance monitoring for anomaly detection
-4. Create admin dashboard for baseline statistics management
-5. Add export functionality for crisis reports
-
-## Commit History (Last 10)
 ```
-62dab9e feat(v3): Add Focus Mode, Crisis Detection, and Trust Indicators
-502bbc2 chore: standardize on frontend-v2, deprecate legacy Mapbox frontend
-e25bb5f fix: resolve TypeScript errors for runnable repo
-de4bf44 feat: implement v3 intel layer with trust indicators and ingestion supervisor
-b0ac1a5 fix: Convert FIPS country codes to ISO 3166-1 standard
-4333b6a fix(ingest): Fix NULL casting and verify continuous ingestion
-066a184 feat(crisis): Implement crisis classification system (Phase 1)
-27b7654 docs: Observatory Global v2.0 MVP - Complete documentation
-c938519 feat(frontend): Enhanced ThemeDetail with rich narrative context
-ef50dbd feat(theme): Rich theme context with related topics, sources, persons
+npm run build    ✅ clean (Vite + tsc -b)
+tsc --noEmit     ✅ 0 errors
+npm test         ✅ 25 tests passing
+fly status       ✅ atlas-api-pedro started, 1 passing health check
+/health          ✅ 2,022,453 signals, status: healthy
 ```
-
-## Repository Health: EXCELLENT ✅
-
-- Clean working tree
-- All commits follow conventional format
-- Comprehensive documentation
-- Active development with clear milestones
-- Professional commit messages with detailed context

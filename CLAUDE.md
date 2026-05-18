@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-14 (Public Attention enrichment + Workspace QA handoff)
+Last updated: 2026-05-18 (P1 pass complete — issues #56, #69, #124, #133, #135, #141, #143 closed; production deployed)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -8,17 +8,31 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
-## Current Session Context (2026-05-14)
+## Current Session Context (2026-05-18)
 
 - Active branch: `v3-intel-layer`; this is the production branch. Do not merge into `main`.
-- Latest shipped UX commit: `f6ec9e8 feat(ux): enrich public attention investigation flow`.
+- PR #144 open against main: https://github.com/pedro-cmyks/Observatory-Global/pull/144
+- Production: Vercel (frontend auto-deploy), Fly.io `atlas-api-pedro` (backend, version 113)
 - Atlas product framing: **public narrative intelligence console**, not a GDELT wrapper.
 - Preferred user path: `/brief` for readable orientation, then `/app` for full analyst investigation.
-- Public Attention is the people-side layer. It should enrich Signal Stream, ThemeDetail, CountryBrief, AnomalyPanel, and Workspace rather than becoming a separate product surface.
-- Workspace now has a visible `Trail` tab using session navigation. Trail is not the same as Pinned: Trail should become an ordered investigation path, while Pinned remains the curated evidence relationship board.
-- New issue #128 tracks next Workspace fixes: keep board inside viewport bounds, make close/actions reachable on laptop viewports, separate Trail/Pinned graph modes, and tune force graph physics to avoid collapsed clusters.
-- Onboarding storage key is `atlas_onboarding_v3`; it includes Anomaly/Public Attention.
-- Recent validation: `cd frontend-v2 && npm run test`, `npm run build`, and `npm run lint` all pass; lint has warnings only.
+- All P0 + P1 video-review issues closed. Zero open code issues. Only docs (#134, #140) and blocked (#46, #106) remain.
+
+### Key patterns (established across sessions 13–14)
+
+- `resolveCountryName(code, name)` — always use for country display, never raw `c.name` from API
+- `getThemeLabel(code)` — always use, never raw GDELT theme codes in UI
+- `data-tip` attribute only — never native `title=` for tooltips
+- `themeSignals[theme][0]` — do NOT use as headline anchor; misclassification risk
+- `d?.trending ?? []` — correct field for trends API response (`trending`, not `trends`)
+- `detail_hours = min(hours, 48)` — Phase 2 narrative detail cap in `narratives.py`
+- Two ForceGraph2D instances with `visibility: hidden` toggle — preserves simulation state
+- `briefingPrefetch.ts` sessionStorage cache (4-min TTL) — read before fetch in BriefNewspaper
+- `parseCompoundQuery(q)` in SearchBar — extracts countryCode from "topic Country" queries
+- `useSavedWatches` localStorage key: `atlas_saved_watches_v1`; `markSeen(id, count)` records delta baseline
+- ACLED is optional connector — no `ACLED_API_KEY` → empty layer, no errors
+- `createTerminatorLayer()` returns `PolygonLayer[]` (5 bands) — spread with `...terminatorLayers`
+- `fetchItemSignals(item)` in `exportFormatters.ts` — shared by dossier export and ReadingMode
+- `npm run build` (not `tsc --noEmit`) is the canonical build check — Vite uses `tsc -b` (stricter)
 
 ## Specialized Agents
 
@@ -684,6 +698,54 @@ codex "Write comprehensive tests for gdelt_parser.py covering all edge cases"
 - [ ] ADR exists for non-trivial decisions
 - [ ] Documentation updated
 - [ ] Handoff notes complete
+
+---
+
+## Current Technical State (as of session 13 — 2026-05-17)
+
+### Session 13 Additions (P0 productization pass — PR #144)
+
+**Briefing prefetch (#136)**
+- `frontend-v2/src/lib/briefingPrefetch.ts` — sessionStorage cache with 4-min TTL for briefing + insight API responses.
+- `Landing.tsx` prefetches on mount. `BriefNewspaper.tsx` reads cache before fetch — no spinner when entering `/brief` from Landing.
+
+**Editor's Analysis restored (#137)**
+- `BriefNewspaper.tsx`: `buildGlobalFallback(d)` — 4 rotating variants (theme-lead, geography-lead, sentiment-lead, volume-first).
+- `buildCountryFallback(detail)` — 3 country variants.
+- `Math.random()` per render for angle rotation — intentional, not seeded.
+- Removed all `themeSignals[theme][0]` headline anchors — signals misclassification risk.
+- All country names via `resolveCountryName(code, name)` — never raw `c.name`.
+
+**Investigation context preservation (#138)**
+- `App.tsx`: `prevStreamCtx` union extended with `country` type.
+- Back from source → CountryBrief; Back from country → thread if theme was active.
+
+**Public Attention scoped to active country (#142)**
+- `AnomalyPanel.tsx`: re-fetches Wiki on `activeCountry` change; Trends + Wiki merged into single PUBLIC ATTENTION section.
+- `[S]` (green) badge for searches, `[W]` (indigo) badge for wiki articles.
+- Staleness indicator: `trendsStaleHours` state, shows badge when >25h old.
+- Deduplication: `Array.from(new Map(raw.map(a => [a.title, a])).values())`.
+- `CountryBrief`: `onAttentionItemClick?: (query: string) => void` prop; `App.tsx` wires it.
+- API field fix: `d?.trending ?? []` (was `d?.trends`).
+
+**Google Trends stale data mitigation (#104)**
+- `backend/app/services/ingest_trends.py`: shuffle country list each run (`import random`), batch size 5→3, delay 1s→2s, retry pass for failed countries.
+- `frontend-v2/src/lib/publicAttention.ts`: `getTrendingSearchesUrl` uses `Math.max(hours, 72)` floor.
+- AnomalyPanel shows "searches from Nh ago" badge when stale.
+
+**Narrative Threads timeout cap (#139)**
+- `backend/app/routers/narratives.py`: `detail_hours = min(hours, 48)` for Phase 2 (signals_v2 unnest scan); Phase 1 (theme_hourly_v2) still uses full `hours`.
+- `effective_hours: detail_hours` added to result dict.
+- `NarrativeThreads.tsx`: stores `effectiveHours` state; shows notice "Thread details show last Xh · counts reflect full Yh window" when capped.
+
+**Trail / Pinned graph separation (#128)**
+- `InteractiveWorkspace.tsx`: replaced single `graphRef`/`filteredGraph`/physics effect with separate `trailGraphRef` + `pinnedGraphRef`, `trailGraph` + `pinnedGraph` memos, two physics effects.
+- Both ForceGraph2D instances always mounted; CSS `visibility: hidden` keeps simulation alive when inactive.
+- Trail: linear-spread physics (charge -320/-420, distance 150); Pinned: dense-web physics (charge -380/-560/-760, distance 125-160).
+- `InvestigationWorkspace.css`: `.workspace-graph-slot { position: absolute; inset: 0 }` + `.workspace-graph-slot.hidden { visibility: hidden; pointer-events: none }`.
+
+**Backend deployment**
+- Fly.io `atlas-api-pedro` deployed with `ingest_trends.py` + `narratives.py` changes (machine version 113, region iad, 1 passing health check as of 2026-05-17T13:57:17Z).
 
 ---
 

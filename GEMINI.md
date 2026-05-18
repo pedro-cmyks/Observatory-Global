@@ -1,6 +1,6 @@
 # GEMINI Code Assistant Context — Observatory Global (Atlas)
 
-Last updated: 2026-05-10 (session 8 — NLP production fix, OOM resolved, data hygiene, coverage badge)
+Last updated: 2026-05-18 (session 14 — P1 pass complete, issues #56/#69/#124/#133/#135/#141/#143 closed, production deployed)
 
 This document gives the Gemini AI assistant the current, accurate context for the Observatory Global project. Treat this as the source of truth for deployment topology, architecture, and conventions.
 
@@ -18,10 +18,10 @@ This document gives the Gemini AI assistant the current, accurate context for th
 |-----------|----------|-----------------|
 | Frontend | Vercel (auto-deploy from `v3-intel-layer` branch) | observatory-global.vercel.app |
 | Backend API | Fly.io | atlas-api-pedro.fly.dev |
-| Database | Supabase (PostgreSQL) | signals_v2 table — ~1.23M rows (May 3–present). Migrations 007–011 applied. |
+| Database | Supabase (PostgreSQL) | signals_v2 table — ~2M rows. Migrations 007–012 applied. |
 | Cache | Upstash Redis | atlas-redis instance |
 
-**Branch note:** `v3-intel-layer` IS production — 117+ commits ahead of `main`. `main` is stale and abandoned. Vercel and Fly.io both deploy from `v3-intel-layer`.
+**Branch note:** `v3-intel-layer` IS production. `main` is stale and abandoned. Vercel and Fly.io both deploy from `v3-intel-layer`. PR #144 is open (P0+P1 pass) — do not merge `v3-intel-layer` into `main`.
 
 **There is no Docker Compose production setup.** The app runs on Vercel + Fly.io. Docker/Compose exists for local dev only.
 
@@ -75,7 +75,7 @@ backend/
     models/            ← Pydantic models
     adapters/          ← External adapter layer
   start.sh             ← Watchdog loop + uvicorn launcher (Fly.io entrypoint)
-  migrations/          ← Raw SQL files (010 applied = most recent)
+  migrations/          ← Raw SQL files (012 applied = most recent)
 
 docs/
   superpowers/
@@ -88,7 +88,7 @@ stitch_atlas_landing_experience_redesign/   ← Design assets from Google Stitch
   screen.png          ← Stitch screen screenshot
 ```
 
-### Frontend Component List (68 .tsx files as of 2026-05-10)
+### Frontend Component List (45 .tsx files as of 2026-05-17 in src/components/; additional .tsx in src/pages/)
 `AnomalyPanel`, `AtlasLoader`, `Briefing`, `ChokepointPanel`, `CompareBar`, `CorrelationMatrix`, `CorrelationMatrixPlaceholder`, `CountryBrief`, `CountryThemePanel`, `CrisisDashboard`, `CrisisToggle`, `DeckGLOverlay`, `DevBanner`, `DiscoveryPanel`, `EntityPanel`, `ExportMenu`, `FocusIndicator`, `FocusSummaryPanel`, `IndicatorTooltip`, `InteractiveWorkspace`, `InvestigationWorkspace`, `Legend`, `MapTooltip`, `NarrativeDrift`, `NarrativeThreads`, `NarrativeThreadsPlaceholder`, `OnboardingCoachmark`, `PanelErrorBoundary`, `PersonCompare`, `PublicAttentionPanel`, `SearchBar`, `SettingsPanel`, `SignalStream`, `SourceIntegrityPanel`, `SourceProfile`, `TemporalNarrativeGraph`, `ThemeCompare`, `ThemeDetail`, `ThemeSelector` (and others added through session 8 — run `ls frontend-v2/src/components/*.tsx | wc -l` for current count)
 
 **Session 6 additions:** `InteractiveWorkspace` (force-graph canvas, lazy-loaded), `InvestigationWorkspace` (shell + lazy + error boundary).
@@ -221,7 +221,7 @@ Stitch project: **Atlas Landing Experience Redesign**
 4. **Tooltip system**: `[data-tip]` CSS pseudo-element tooltips in `App.css` — instant (80ms fade). Use `data-tip="text"` on any element. Do NOT use native `title=`.
 5. **AI Insight**: Claude Haiku via Anthropic SDK. Cached 30 min in Redis.
 6. **Ingestion watchdog**: `start.sh` runs `ingest_watchdog()` bash loop that restarts `ingest_loop.py` after any crash.
-7. **Migrations**: Raw SQL files in `backend/migrations/`. Run via Supabase SQL editor (NOT alembic — alembic is not used). Most recent migration: `011_nlp_columns.sql`. Applied migrations: 007 (dedup index), 008 (source provenance), 009 (trends_v2 constraint), 010 (theme_country_hourly_v2 pre-agg), 011 (NLP columns: nlp_sentiment, nlp_framing, nlp_persons, nlp_confidence, nlp_processed_at).
+7. **Migrations**: Raw SQL files in `backend/migrations/`. Run via Supabase SQL editor (NOT alembic — alembic is not used). Most recent migration: `012_geo_validation.sql`. Applied migrations: 007 (dedup index), 008 (source provenance), 009 (trends_v2 constraint), 010 (theme_country_hourly_v2 pre-agg), 011 (NLP columns), 012 (source_origin_country CHAR(2) + geo-mismatch indexes). Next migration will be 013.
 8. **Stitch MCP**: Google Stitch connected via MCP over HTTP for AI-assisted landing page design. API key in `.mcp.json` headers (`X-Goog-Api-Key`).
 9. **Tailwind scope**: Tailwind is installed but scoped to `Landing.tsx` only. All dashboard components use Vanilla CSS + CSS custom properties. Do NOT add Tailwind to dashboard components.
 10. **Theme system**: `ThemeContext` reads `styles/themes.ts` and applies CSS vars to `:root` via `data-theme` attribute. `SettingsPanel` allows runtime theme switching.
@@ -257,6 +257,23 @@ Stitch project: **Atlas Landing Experience Redesign**
 40. **Dockerfile HF cache fix (session 8)**: `ENV HF_HOME=/app/hf_cache` and `ENV TRANSFORMERS_CACHE=/app/hf_cache` must appear BEFORE the pre-bake RUN step. `ENV TRANSFORMERS_OFFLINE=1` and `ENV HF_DATASETS_OFFLINE=1` must appear AFTER. This ensures models are stored in a path owned by appuser and that the runtime cannot attempt downloads (which caused OOM at 767MB anon-rss).
 41. **Data retention policy (session 8)**: `ingest_loop.py` every 672nd cycle (~7 days) deletes `signals_v2` rows where `nlp_processed_at IS NULL AND created_at < NOW() - INTERVAL '90 days'`. NLP-processed signals kept indefinitely.
 42. **Data coverage badge (session 8)**: `App.tsx` fetches `/api/v2/stats` on mount, reads `database.oldest_signal`, displays a `FROM [DATE]` pill in the command bar. CSS class `.data-since-pill` in `App.css`. Informs users of signal archive start date.
+43. **Briefing prefetch / sessionStorage cache (session 13, #136)**: `frontend-v2/src/lib/briefingPrefetch.ts` caches `/api/v2/briefing` and `/api/v2/briefing/insight` responses in sessionStorage with a 4-minute TTL. `Landing.tsx` calls the prefetch on mount. `BriefNewspaper.tsx` reads from the cache before making a network request — eliminates the spinner on entry from Landing.
+44. **Editor's Analysis fallback variants (session 13, #137)**: `BriefNewspaper.tsx` has two fallback generators: `buildGlobalFallback(d)` (4 rotating variants: theme-lead, geography-lead, sentiment-lead, volume-first) and `buildCountryFallback(detail)` (3 variants). `Math.random()` selects variant per render — intentional. `themeSignals[theme][0]` is NOT used anywhere as a headline anchor because signals are often misclassified. Country names always via `resolveCountryName(code, name)`.
+45. **Investigation back-navigation context (#138)**: `App.tsx` `prevStreamCtx` union now includes a `country` type. Back from a source panel returns to CountryBrief; back from country detail returns to the thread if a theme was active.
+46. **Public Attention scoped to country (session 13, #142)**: `AnomalyPanel.tsx` re-fetches Wikipedia on `activeCountry` change. Google Trends and Wikipedia items are merged into a single PUBLIC ATTENTION section. Badge labels: `[S]` green for searches, `[W]` indigo for wiki. Staleness shown as "searches from Nh ago" when `trendsStaleHours > 25`. Deduplication via `new Map(raw.map(a => [a.title, a]))`. Correct API field: `d?.trending ?? []` (not `d?.trends`). `CountryBrief` exposes `onAttentionItemClick?: (query: string) => void`.
+47. **Google Trends rate-limit mitigation (session 13, #104)**: `ingest_trends.py` now shuffles the country list each run, uses batch size 3 (was 5), delay 2s between batches (was 1s), and runs a retry pass for countries that failed in the main pass. Frontend `publicAttention.ts` enforces `Math.max(hours, 72)` on the trends URL hours param to avoid empty windows.
+48. **Narrative Threads timeout cap (session 13, #139)**: `backend/app/routers/narratives.py` caps Phase 2 detail scan at `detail_hours = min(hours, 48)`. Phase 1 (theme_hourly_v2 aggregates) still uses the full requested hours. `effective_hours` is returned in the result. `NarrativeThreads.tsx` shows "Thread details show last Xh · counts reflect full Yh window" when capped.
+49. **Trail / Pinned dual graph instances (session 13, #128)**: `InteractiveWorkspace.tsx` mounts two independent `ForceGraph2D` instances — one for Trail, one for Pinned. Separate refs, memos, and physics `useEffect` hooks. The inactive instance is hidden with CSS `visibility: hidden` (not unmounted) so the d3 simulation layout is preserved. Trail uses linear-spread physics (charge -320/-420, link distance 150). Pinned uses dense-web physics (charge -380/-560/-760, link distance 125-160). `InvestigationWorkspace.css` adds `.workspace-graph-slot { position: absolute; inset: 0 }` and `.workspace-graph-slot.hidden { visibility: hidden; pointer-events: none }`.
+
+50. **Map Legend wired and context-aware (session 14, #143)**: `Legend.tsx` fully rewritten and imported in `App.tsx`. Receives `showHeatmap`, `showFlows`, `showAircraft`, `showVessels`, `showTerminator`, `activeCountry`, `activeTheme`, `vesselCount`, `vesselConnected`, `aircraftError`, `conflictCount`. Shows context banner when country/theme active. Color keys only for active layers. Collapsible to "MAP KEY" button.
+
+51. **Terminator 5-band twilight gradient (session 14, #56)**: `TerminatorLayer.ts` now generates 5 offset polygons (0°→3.5°→7°→10.5°→14° lng) at decreasing alpha (52%→28%→14%→7%→3%). `createTerminatorLayer()` returns `PolygonLayer[]` — spread with `...terminatorLayers` in `buildLayers()`. Covers ~1800 km transition zone.
+
+52. **Signal dossier export + Reading Mode (session 14, #133, #141)**: `exportFormatters.ts` exports `fetchItemSignals(item, hours, limit)` — calls `/api/v2/signals` with filter params. `buildDossierMarkdown(sections)` formats with headline/source/URL/sentiment. `WorkspaceContext` exposes `exportDossier()`. `ReadingMode.tsx` is a right-panel overlay (newspaper layout) with signal cards per pinned item, export button, Escape/scrim dismiss.
+
+53. **Saved watches live counts (session 14, #124)**: `useSavedWatches.ts` adds `lastSeenAt`/`lastSeenCount` fields, `markSeen(id, count)`, `fetchWatchCount(filter)` (calls `/api/v2/signals?hours=24&limit=1`). `BriefNewspaper` fetches counts in parallel on mount; card shows "N signals today" + delta badge (↑/↓ green/red vs last check). "Open in Atlas →" calls `markSeen` to record baseline.
+
+54. **Compound query country routing (session 14, #69)**: `SearchBar.tsx` `doSearch()` adds `&country=XX` to `/api/v2/search/unified` URL when `parseCompoundQuery` detects a country. `handleThemeClick` and `handleConceptClick` pass `countryCode` to `onThemeSelect` for compound queries, routing the user to country+theme context.
 
 ---
 

@@ -3,6 +3,39 @@
 ## Project Structure & Module Organization
 `backend/` hosts the FastAPI service (APIs, services, NLP logic) and pytest suites under `tests/`. The active React + Vite client lives in `frontend-v2/` (`src/pages`, `src/components`, `src/lib`, `src/App.tsx`). The `frontend/` directory is DEPRECATED — do not touch it. Docker/Compose exists for local dev only; production runs on Vercel (frontend) + Fly.io (backend). ADRs, demos, and decision logs go in `docs/`; keep environment templates in `.env.example`. MCP server configuration lives in `.mcp.json` (supabase + stitch). Design assets exported from Google Stitch live in `stitch_atlas_landing_experience_redesign/`.
 
+Key files added in session 14 (P1 pass — 2026-05-18):
+- `frontend-v2/src/components/ReadingMode.tsx` — newspaper-style right panel showing signal cards per pinned item. Opens via BookOpen icon in Workspace. Escape/scrim dismiss; Export .md button.
+- `frontend-v2/src/components/ReadingMode.css` — styles for ReadingMode overlay, signal card grid, sentiment indicator, source badges.
+
+Key files changed in session 14:
+- `frontend-v2/src/lib/exportFormatters.ts` — added `DossierSignal`, `DossierSection` types; `fetchItemSignals(item)` calls `/api/v2/signals`; `buildDossierMarkdown(sections)` formats with headline/source/URL/sentiment.
+- `frontend-v2/src/contexts/WorkspaceContext.tsx` — added `exportDossier()` (fetches signals, downloads markdown); exposed in context value.
+- `frontend-v2/src/components/InteractiveWorkspace.tsx` — BookOpen (Reading Mode) + Download (Dossier) buttons replace old single export button; `readingMode` state; `ReadingMode` rendered at component end.
+- `frontend-v2/src/hooks/useSavedWatches.ts` — added `lastSeenAt`/`lastSeenCount` to `SavedWatch`; `markSeen(id, count)`; `fetchWatchCount(filter)` and `buildWatchParams(filter)` exported utilities.
+- `frontend-v2/src/pages/BriefNewspaper.tsx` — `watchCounts` state; parallel fetch of signal counts per watch; card shows count pill + delta badge (↑/↓); `markSeen` called on "Open in Atlas →".
+- `frontend-v2/src/pages/BriefNewspaper.css` — `.brief-watch-stats`, `.brief-watch-count`, `.brief-watch-delta.up/.down/.neutral` classes.
+- `frontend-v2/src/layers/TerminatorLayer.ts` — `calculateTerminatorPolygon` accepts `lngOffsetDeg`; `createTerminatorLayer` returns `PolygonLayer[]` (5 bands, opacity gradient).
+- `frontend-v2/src/components/SettingsPanel.tsx` — Day/Night label → "Day/Night Shadow (experimental)" with description.
+- `frontend-v2/src/App.tsx` — `...terminatorLayers` spread (was single nullable layer); country param in search URL.
+- `frontend-v2/src/components/Legend.tsx` — full rewrite; context banner; per-layer keys; collapsible.
+- `frontend-v2/src/components/SearchBar.tsx` — `countryParam` in backend search URL; `onThemeSelect` passes countryCode for compound queries.
+- `frontend-v2/src/pages/Landing.tsx` — live signal count via `/health`; navigable BentoCards; `formatSignalCount()`.
+- `backend/app/services/ingest_acled.py` — docstring clarifies optional status.
+
+Key files added in session 13 (P0 productization pass — PR #144):
+- `frontend-v2/src/lib/briefingPrefetch.ts` — sessionStorage-backed briefing prefetch cache (4-min TTL).
+- `backend/app/routers/narratives.py` — narrative detail window capped at 48h; returns `effective_hours`.
+
+Key files changed in session 13:
+- `frontend-v2/src/components/AnomalyPanel.tsx` — Trends + Wiki merged into PUBLIC ATTENTION; staleness badge; deduplication.
+- `frontend-v2/src/components/NarrativeThreads.tsx` — capped-window notice when `effectiveHours` < requested hours.
+- `frontend-v2/src/components/InteractiveWorkspace.tsx` — Trail and Pinned split into two independent ForceGraph2D instances.
+- `frontend-v2/src/components/InvestigationWorkspace.css` — `.workspace-graph-slot` and `.workspace-graph-slot.hidden` rules.
+- `frontend-v2/src/pages/BriefNewspaper.tsx` — Editor's Analysis fallbacks; `resolveCountryName` everywhere.
+- `frontend-v2/src/App.tsx` — `prevStreamCtx` union extended with `country` type; back-nav wiring.
+- `frontend-v2/src/lib/publicAttention.ts` — `Math.max(hours, 72)` floor for Trends window.
+- `backend/app/services/ingest_trends.py` — shuffle + retry pass + batch 5→3.
+
 Key files added in session 6:
 - `frontend-v2/src/components/InteractiveWorkspace.tsx` — force-graph canvas (react-force-graph-2d). MUST be lazy-loaded only.
 - `frontend-v2/src/components/InvestigationWorkspace.tsx` — lazy shell + PanelErrorBoundary wrapper.
@@ -43,18 +76,30 @@ Additional frontend conventions (session 7):
 - Sentiment display: all API endpoints return sentiment in ÷10 normalized range. Frontend thresholds: ±0.1 neutral, beyond = positive/negative. Do NOT divide again on the frontend.
 - Coverage confidence badges: when signal count n<10 render an orange "thin" badge; 10≤n<50 render a yellow "limited" badge; n≥50 no badge. Apply in any component displaying per-country/per-source metrics (CountryBrief, NarrativeThreads, ChokepointPanel pattern).
 - PublicAttentionPanel item clicks: must open InvestigationWorkspace (internal), never navigate to external URL.
-- Component count: 39 .tsx components in `frontend-v2/src/components/`.
+- Component count: 45 .tsx components in `frontend-v2/src/components/` as of 2026-05-17.
+
+Additional frontend conventions (session 13):
+- Country names: always call `resolveCountryName(code, name)` — never use the raw `name` field from API country objects. The raw field may be FIPS or incomplete.
+- Theme signal anchors: do NOT use `themeSignals[theme][0]` as a headline anchor. Signals are frequently misclassified and the first result is unreliable.
+- Trends API response field: use `d?.trending ?? []` not `d?.trends`. The field name on the response object is `trending`.
+- Two ForceGraph2D instances pattern: when Trail and Pinned graph modes need to coexist, mount both ForceGraph2D instances and toggle visibility via CSS `visibility: hidden`. This preserves the d3 simulation (layout) — unmounting destroys it.
+- Briefing prefetch: use `briefingPrefetch.ts` cache before making API calls in BriefNewspaper. Landing prefetches on mount via the same module.
 
 Backend conventions (session 7):
 - All new ingestion services must set `source_family`, `source_lang`, `geo_confidence`, `attribution_method`, and `is_state_media` on every inserted row.
 - Concept endpoint hours>24 must query `theme_country_hourly_v2`, not `signals_v2`. Do not re-add the `effective_hours` cap.
 
 Backend conventions (session 8):
-- Migrations 007–011 are all applied. Next migration will be 012.
+- Migrations 007–012 are all applied. Next migration will be 013.
 - NLP pipeline runs as a background task in `ingest_loop.py` — do not make it blocking.
 - Dockerfile: `ENV HF_HOME=/app/hf_cache` and `ENV TRANSFORMERS_CACHE=/app/hf_cache` MUST appear before the pre-bake RUN step. `ENV TRANSFORMERS_OFFLINE=1` and `ENV HF_DATASETS_OFFLINE=1` MUST appear after. Do not reorder — this is the OOM fix.
 - Data retention: unprocessed signals (nlp_processed_at IS NULL) are deleted after 90 days. NLP-processed signals are kept indefinitely.
 - Branch: `v3-intel-layer` is production. `main` is abandoned — do not merge into it.
+
+Backend conventions (session 13):
+- Narrative detail window cap: `detail_hours = min(hours, 48)` in `narratives.py` for Phase 2 (signals_v2 unnest scan). Phase 1 (theme_hourly_v2) uses the full requested hours. Always return `effective_hours` in the result dict so the frontend can display the actual window.
+- Google Trends ingestion: shuffle country list per run, batch size max 3 countries, delay 2s between batches, run a retry pass for failed countries at end of cycle. These are anti-rate-limit measures — do not revert to batch=5 or delay=1s.
+- Trends staleness threshold: frontend shows stale badge when data is >25h old. The `publicAttention.ts` helper enforces a 72h floor on the `hours` param to avoid fetching empty windows.
 
 ## Testing Guidelines
 Backend tests live in `backend/tests/test_*.py` per `pyproject.toml`. New services need fixtures for flow/heat math and regression coverage for service clients; mock external providers through the client layer rather than hitting the network. Treat the coverage report from `make test-backend` as a gate and keep touched modules above the current baseline. Frontend work that touches the map or API should include Vitest/React Testing Library smoke tests or, at minimum, refreshed manual steps and screenshots in `docs/demos/`.
