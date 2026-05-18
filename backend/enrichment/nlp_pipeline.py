@@ -160,7 +160,14 @@ def _detect_framing(clf, headline: str) -> str | None:
 # The unprocessed filter targets the column set we are actually writing this run.
 
 def _priority_select_sql(target_column: str) -> str:
-    """Drain stratified sample first, then fall back to priority queue."""
+    """Drain stratified sample first, then fall back to recent-first priority.
+
+    Performance note: the fallback uses a two-stage select. Stage 1 grabs the
+    most recent 5000 unprocessed candidates using the timestamp/created_at
+    indexes — fast. Stage 2 sorts that small pool by the priority expression
+    (non-EN, API/social, high geo_confidence boosted). Avoids the previous
+    full-table sort over 2M+ rows that hung the worker.
+    """
     return f"""
         WITH sample_drain AS (
             SELECT s.id, s.headline, s.source_lang, s.source_family,
@@ -172,13 +179,21 @@ def _priority_select_sql(target_column: str) -> str:
             ORDER BY q.enqueued_at ASC
             LIMIT $1
         ),
-        priority_fallback AS (
+        recent_candidates AS (
             SELECT id, headline, source_lang, source_family,
                    country_code, geo_confidence, timestamp
             FROM signals_v2
             WHERE {target_column} IS NULL
               AND headline IS NOT NULL AND LENGTH(headline) > 10
-              AND id NOT IN (SELECT id FROM sample_drain)
+              AND created_at > NOW() - INTERVAL '15 days'
+            ORDER BY created_at DESC
+            LIMIT 5000
+        ),
+        priority_fallback AS (
+            SELECT id, headline, source_lang, source_family,
+                   country_code, geo_confidence, timestamp
+            FROM recent_candidates rc
+            WHERE rc.id NOT IN (SELECT id FROM sample_drain)
             ORDER BY (
                 EXTRACT(EPOCH FROM (NOW() - timestamp)) / 86400.0
                 + CASE WHEN source_lang IS NOT NULL AND source_lang <> 'en' THEN -2 ELSE 0 END
