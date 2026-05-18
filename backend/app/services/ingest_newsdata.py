@@ -94,13 +94,17 @@ async def _fetch_batch(
             title = (article.get("title") or "")[:500]
             snippet = (article.get("description") or "")[:500]
 
-            # NewsData returns country as a list; take first or infer from text
+            # NewsData can return ISO2 codes or full country names as a list. The DB
+            # column is CHAR(2), so normalize before insert.
             raw_countries = article.get("country") or []
+            raw_country = str(raw_countries[0]) if raw_countries else ""
             country_code = (
-                raw_countries[0].upper()
-                if raw_countries
-                else extract_country(title, snippet)
-            ) or "XX"
+                raw_country.upper()
+                if len(raw_country) == 2
+                else extract_country(raw_country, "")
+                or extract_country(title, snippet)
+                or "XX"
+            )
 
             lang = (article.get("language") or "und")[:10]
             domain = urlparse(url_str).netloc.lower().removeprefix("www.")
