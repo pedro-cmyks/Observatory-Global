@@ -28,10 +28,10 @@ RUN python -c "from transformers import pipeline; pipeline('sentiment-analysis',
     python -c "from transformers import pipeline; pipeline('zero-shot-classification', model='cross-encoder/nli-distilroberta-base', device=-1)" || true
 
 # Multilingual models for NLP_MULTILINGUAL_MODE=shadow|on (issue #162).
-# These add roughly 560MB to the image but keep runtime memory unchanged because
-# only one model is loaded per phase.
+# Only one model is loaded per phase. Framing uses multilingual MiniLM instead
+# of mDeBERTa so the worker can complete cycles on Fly shared CPU/2GB.
 RUN python -c "from transformers import pipeline; pipeline('sentiment-analysis', model='cardiffnlp/twitter-xlm-roberta-base-sentiment', device=-1)" || true && \
-    python -c "from transformers import pipeline; pipeline('zero-shot-classification', model='MoritzLaurer/mDeBERTa-v3-base-mnli-xnli', device=-1)" || true
+    python -c "from transformers import pipeline; pipeline('zero-shot-classification', model='MoritzLaurer/multilingual-MiniLMv2-L6-mnli-xnli', device=-1)" || true
 
 # After pre-bake: skip HF API network checks at runtime (models are in /app/hf_cache)
 ENV TRANSFORMERS_OFFLINE=1

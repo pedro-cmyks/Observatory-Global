@@ -32,7 +32,7 @@ NLP_MULTILINGUAL_MODE = os.getenv("NLP_MULTILINGUAL_MODE", "off").lower()  # off
 SENTIMENT_MODEL_EN = "cardiffnlp/twitter-roberta-base-sentiment-latest"
 SENTIMENT_MODEL_XLM = "cardiffnlp/twitter-xlm-roberta-base-sentiment"
 FRAMING_MODEL_EN = "cross-encoder/nli-distilroberta-base"
-FRAMING_MODEL_XLM = "MoritzLaurer/mDeBERTa-v3-base-mnli-xnli"
+FRAMING_MODEL_XLM = "MoritzLaurer/multilingual-MiniLMv2-L6-mnli-xnli"
 SPACY_MODEL_EN = "en_core_web_sm"
 SPACY_MODEL_XX = "xx_ent_wiki_sm"
 
@@ -45,7 +45,8 @@ MODEL_VERSION_TAG = {
 BATCH_SIZE = 20
 FRAMING_BATCH_SIZE = 8
 FRAMING_MIN_SCORE = 0.35
-# mDeBERTa framing on shared CPU is ~1.5s per (headline x 6 labels) row.
+# Multilingual MiniLM framing is a smaller NLI model than mDeBERTa, chosen so
+# the worker can complete cycles on Fly shared CPU/2GB instead of stalling.
 # Allow operators to skip the framing phase entirely (worker still does
 # sentiment + NER + checkpoint) when NLP_SKIP_FRAMING=true. Useful while we
 # evaluate replacing mDeBERTa with a lighter multilingual NLI model.
