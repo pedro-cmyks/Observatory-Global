@@ -45,6 +45,13 @@ MODEL_VERSION_TAG = {
 BATCH_SIZE = 20
 FRAMING_BATCH_SIZE = 8
 FRAMING_MIN_SCORE = 0.35
+# mDeBERTa framing on shared CPU is ~1.5s per (headline x 6 labels) row.
+# Allow operators to skip the framing phase entirely (worker still does
+# sentiment + NER + checkpoint) when NLP_SKIP_FRAMING=true. Useful while we
+# evaluate replacing mDeBERTa with a lighter multilingual NLI model.
+SKIP_FRAMING = os.getenv("NLP_SKIP_FRAMING", "false").lower() == "true"
+# Independent batch limit for framing so we can cap it lower than sentiment/NER.
+FRAMING_LIMIT_CAP = int(os.getenv("NLP_FRAMING_LIMIT", "0"))
 
 FRAME_LABELS = [
     "conflict escalation",
@@ -370,8 +377,12 @@ async def _run_ner_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) ->
 
 
 async def _run_framing_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) -> int:
+    if SKIP_FRAMING:
+        logger.info("Framing[%s]: skipped (NLP_SKIP_FRAMING=true)", MODEL_VERSION_TAG)
+        return 0
     cols = _columns()
-    rows = await conn.fetch(_priority_select_sql(cols["framing_target"]), limit)
+    effective_limit = min(limit, FRAMING_LIMIT_CAP) if FRAMING_LIMIT_CAP > 0 else limit
+    rows = await conn.fetch(_priority_select_sql(cols["framing_target"]), effective_limit)
     if not rows:
         return 0
 
