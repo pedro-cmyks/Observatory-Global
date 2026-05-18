@@ -53,7 +53,9 @@ async def run_newsapi_ingestion() -> None:
         logger.warning("[NewsAPI] NEWSAPI_KEY not set — skipping")
         return
 
-    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    # NewsAPI crisis queries are sparse on the free plan. Use a wider window and rely on
+    # source_url dedupe so scheduled runs add new evidence without repeating old rows.
+    since = datetime.now(timezone.utc) - timedelta(days=7)
     from_str = since.strftime("%Y-%m-%dT%H:%M:%S")
 
     pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=2)

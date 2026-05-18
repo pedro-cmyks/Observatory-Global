@@ -176,7 +176,9 @@ async def run_newsdata_ingestion() -> None:
         logger.warning("[NewsData] NEWSDATA_API_KEY not set — skipping")
         return
 
-    since = datetime.now(timezone.utc) - timedelta(hours=2)
+    # NewsData country/language buckets can be sparse; use a wider window and rely on
+    # source_url dedupe so hourly runs backfill useful non-English coverage without repeats.
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
     pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=2)
     total_inserted = 0
     total_fetched = 0
