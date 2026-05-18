@@ -201,7 +201,7 @@ export function Landing() {
                     <div className="flex flex-wrap justify-center gap-0 bg-bg-surface border border-border-subtle rounded-xl overflow-hidden backdrop-blur-md divide-x divide-border-subtle">
                         {[
                             { value: liveSignals ?? '1M+', label: 'Signals indexed', tip: liveSignals ? 'Live count from database' : 'Approximate — fetch unavailable' },
-                            { value: '6',     label: 'Data source types', tip: 'GDELT · RSS feeds · Google Trends · Wikipedia · ACLED · ADS-B' },
+                            { value: '9',     label: 'Data source layers', tip: 'GDELT · RSS/ReliefWeb · NewsData · MediaStack · NewsAPI · Reddit · Google Trends · Wikipedia · NLP' },
                             { value: '100+',  label: 'Languages observed', tip: 'GDELT covers media in 100+ languages globally' },
                             { value: liveStatus === 'live' ? 'Live' : liveStatus === 'degraded' ? 'Degraded' : 'Live', label: 'Pipeline status', tip: liveStatus === 'degraded' ? 'Ingestion may be delayed' : 'Ingesting every 15 minutes' },
                         ].map(({ value, label, tip }) => (
@@ -272,12 +272,12 @@ export function Landing() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-component">
                         {[
-                            { name: 'Open media signals', badge: 'News coverage', desc: 'GDELT and normalized media events show how countries, sources, and themes are being covered.' },
-                            { name: 'Curated RSS',        badge: 'Source breadth', desc: 'Regional, state, NGO, and non-English feeds expand coverage beyond the default global media layer.' },
-                            { name: 'ReliefWeb / OCHA',   badge: 'Humanitarian',   desc: 'Crisis-country feeds add humanitarian context with provenance and geo-confidence metadata.' },
-                            { name: 'Google Trends',      badge: 'Search demand',  desc: 'Country-level search interest helps compare what publics are looking for with what media covers.' },
-                            { name: 'Wikipedia',          badge: 'Reading attention', desc: 'Top-read pages reveal public attention spikes that can appear before or beside media signals.' },
-                            { name: 'NLP enrichment',     badge: 'Intel layer',    desc: 'Sentiment, named entities, framing, source family, language, and provenance fields make the signal investigable.' },
+                            { name: 'GDELT media graph', badge: 'Global baseline', desc: 'GKG and event signals show how countries, sources, people, and themes are being covered.' },
+                            { name: 'Regional media APIs', badge: 'Voice diversity', desc: 'NewsData, MediaStack, and NewsAPI expand non-English and crisis-specific coverage beyond the default media layer.' },
+                            { name: 'RSS + ReliefWeb', badge: 'Provenance', desc: 'Curated regional, humanitarian, NGO, and institutional feeds add clearer source family and geo-confidence metadata.' },
+                            { name: 'Reddit commentary', badge: 'Social layer', desc: 'Public subreddit signals are treated as commentary, useful for early narrative movement but separated from news evidence.' },
+                            { name: 'Public attention', badge: 'Search + reading', desc: 'Google Trends and Wikipedia help compare what publics search or read with what media chooses to cover.' },
+                            { name: 'NLP enrichment', badge: 'Intel layer', desc: 'Sentiment, entities, framing, source family, language, and provenance fields make raw signals investigable.' },
                         ].map(({ name, badge, desc }) => (
                             <div key={name} className="lp-card-hover bg-bg-surface border border-border-subtle rounded-xl p-6 flex flex-col gap-stack-sm">
                                 <div className="flex items-center justify-between">
@@ -317,12 +317,12 @@ export function Landing() {
                     <div className="bg-bg-surface border border-primary/25 rounded-xl p-10 text-center flex flex-col items-center gap-4 relative overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
                         <p className="font-body-main text-body-main text-text-secondary max-w-xl text-base z-10">
-                            Atlas runs 24/7 on open data. {liveSignals ?? '1M+'} signals indexed across 6 source types. No ads, no paywalls.
+                            Atlas runs 24/7 on open data. {liveSignals ?? '1M+'} signals indexed across 9 source layers. No ads, no paywalls.
                         </p>
                         <div className="flex gap-12 pt-4 border-t border-border-subtle w-full justify-center z-10">
                             {[
                                 { value: liveSignals ?? '1M+', label: 'signals indexed' },
-                                { value: '6', label: 'source types' },
+                                { value: '9', label: 'source layers' },
                                 { value: 'Free', label: 'public access' },
                             ].map(({ value, label }) => (
                                 <div key={label} className="flex flex-col items-center">

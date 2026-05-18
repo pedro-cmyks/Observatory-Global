@@ -1,89 +1,95 @@
 # Atlas
 
-> See how information travels the world.
+> Public narrative intelligence for seeing how information moves across countries, sources, languages, and public attention.
 
-![Atlas screenshot showing global narrative map with signal stream and narrative threads](https://raw.githubusercontent.com/pedro-cmyks/ObservatorioGlobal/main/docs/screenshot.png)
+Atlas is not a news aggregator. It is an open-signal intelligence product: it ingests media, public-attention, humanitarian, social, and provenance signals, then turns them into maps, briefs, narrative threads, country context, and investigation workspaces.
 
-## What is Atlas?
+## Product Flow
 
-Atlas is a real-time global narrative intelligence platform. It shows how information moves geographically — which countries are talking about the same topics, how stories travel between regions, and how the same event gets framed differently across the world.
+Atlas is organized as a three-step experience:
 
-It is not a news aggregator. It has no editorial bias. It is a tool for curious people who want to understand the world without relying on an algorithm to decide what matters.
+1. **Landing** — explains what Atlas is, who it is for, and which data layers power it.
+2. **Brief** — a readable daily orientation layer for what is moving now.
+3. **App Console** — the analyst surface: map, signal stream, narrative threads, source integrity, public attention, country briefs, and workspace.
 
-## What it does
+The current design keeps **Brief** as the live orientation page. Future publication outputs such as **Atlas Daily** or a Workspace-generated investigation newspaper should be built as generated/shareable artifacts, not by renaming the live Brief.
 
-- **Live signal stream** — real-time news signals from 50+ countries via GDELT, updated every 15 minutes
-- **Global narrative map** — countries glow with signal intensity. Click any country to see what it's talking about
-- **Narrative threads** — track how topics spread geographically over time. When did it start? Which countries picked it up? Is it accelerating or fading?
-- **Correlation matrix** — which countries are discussing the same topics right now? Country-by-country and theme-by-theme views
-- **Framing analysis** — the same topic covered differently by different countries
-- **Anomaly detection** — countries with unusual activity spikes vs their 7-day baseline
-- **Source integrity** — how diverse and concentrated are the information sources for any country or topic?
-- **Live aircraft tracking** — real-time flight positions via OpenSky Network. Toggle the PLANE layer on the globe
+## Current Capabilities
 
-## Tech stack
+- **Live signal stream** — open media and event signals, updated continuously.
+- **Global narrative map** — country-level activity and attention patterns.
+- **Narrative threads** — themes ranked by volume, spread, velocity, sentiment, and public-attention matches.
+- **Country Brief** — country-level context, source diversity, people, themes, sentiment, and evidence links.
+- **Public Attention** — Google Trends and Wikipedia attention signals where available.
+- **Source Integrity** — source diversity, source concentration, and coverage-quality indicators.
+- **Investigation Workspace** — pin countries, themes, people, sources, public-attention topics, and signals into an investigation graph.
+- **Dossier export** — export workspace evidence and notes for research handoff.
+- **NLP enrichment** — sentiment, named entities, framing, provenance, source family, language, and confidence fields. Multilingual scoring is being hardened before it is treated as fully reliable.
+
+## Data Sources
+
+Atlas is moving from a GDELT-first system into a multi-source intelligence layer.
+
+| Source | Role |
+| --- | --- |
+| GDELT GKG 2.0 | Global media narratives, themes, people, sentiment, locations |
+| GDELT Events | Actor/action geopolitical event stream using CAMEO codes |
+| Curated RSS / ReliefWeb | Humanitarian and regional context with stronger source provenance |
+| NewsData.io | Multilingual media coverage expansion |
+| MediaStack | Country-specific media expansion, especially LatAm coverage |
+| NewsAPI.org | Targeted crisis-query coverage |
+| Reddit public feeds | Social/commentary layer for early narrative movement |
+| Google Trends | Search-demand attention signal |
+| Wikipedia Pageviews | Reference-seeking public attention signal |
+
+Atlas should not rank the world by raw article count alone. The analytical model is designed around baselines, source diversity, language/source mix, country normalization, deduplication, and cluster-level scoring.
+
+## Architecture
 
 | Layer | Technology |
-|-------|-----------|
-| Backend | Python 3.11 + FastAPI |
-| Database | PostgreSQL (Supabase in production) |
-| Cache | Redis |
-| Frontend | React 19 + TypeScript + Vite |
-| Map | MapLibre GL JS + Deck.gl |
-| Data | GDELT Project (free, global, 15-min updates) |
-| Hosting | Fly.io (backend) + Vercel (frontend) |
+| --- | --- |
+| Frontend | React 19 + TypeScript + Vite (`frontend-v2/`) |
+| Backend | Python 3.11 + FastAPI (`backend/`) |
+| Database | PostgreSQL / Supabase |
+| Cache | Redis / Upstash |
+| Backend hosting | Fly.io |
+| Frontend hosting | Vercel |
+| Maps/visualization | MapLibre GL JS, Deck.gl, React Force Graph |
 
-## Running locally
+Production work happens on `v3-intel-layer`. The old `frontend/` directory is deprecated; use `frontend-v2/`.
 
-### Prerequisites
-
-- Docker & Docker Compose
-- Python 3.11+
-- Node.js 18+
-
-### Setup
+## Running Locally
 
 ```bash
-# 1. Start PostgreSQL and Redis
-cd infra
-docker compose up -d
-cd ..
-
-# 2. Backend
+# Backend
 cd backend
 pip install -e ".[dev]"
-uvicorn app.main_v2:app --host 0.0.0.0 --port 8000 --reload
+uvicorn app.main_v2:app --reload --port 8000
 
-# 3. Frontend (new terminal)
+# Frontend
 cd frontend-v2
 npm install
 npm run dev
-
-# 4. Start data ingestion (new terminal)
-./infra/auto_ingest_v2.sh
 ```
 
-Frontend runs at `http://localhost:3000`, backend at `http://localhost:8000`.
+Copy `.env.example` to `.env` and set local database/cache values. Production secrets belong in Fly.io, Vercel, Supabase, and Upstash dashboards, not in git.
 
-### Environment variables
+## Documentation
 
-Copy `.env.example` to `.env`, then set at minimum:
+- Product docs: `/docs` in the web app.
+- Roadmap: `docs/roadmap/2026-05-16-productization-roadmap.md`.
+- Multisource hardening plan: `docs/superpowers/plans/2026-05-18-multisource-intelligence-hardening.md`.
+- Backend docs: `backend/README.md`.
+- Repository guidelines: `AGENTS.md`.
 
-```
-DATABASE_URL=postgresql://observatory:changeme@localhost:5432/observatory
-REDIS_URL=redis://localhost:6379
-```
+## Security Notes
 
-## Project status
+- `.env`, `.env.*`, private keys, local MCP configs, virtual environments, checkpoints, logs, and runtime scratch files are ignored.
+- API keys must be stored as provider secrets, not committed.
+- The repository intentionally tracks `.env.example` files only.
 
-Active development. The six-panel narrative intelligence terminal is live. Current work: 3D globe visualization, additional data source layers, and drift detection algorithms.
+## Status
 
-## Inspiration
+Atlas is in active development. Current focus: data quality, multilingual NLP validation, source diversification, country heat methodology, workspace dossiers, and clearer product documentation.
 
-Built out of curiosity during a period of global uncertainty — too much information, too many conflicting narratives, no clear view of how stories actually travel across the world.
-
-The question was simple: can you build something that lets you *see* how information moves, without anyone telling you what to think about it?
-
----
-
-Built with [GDELT](https://www.gdeltproject.org/) · [MapLibre](https://maplibre.org/) · [Deck.gl](https://deck.gl/) · [FastAPI](https://fastapi.tiangolo.com/)
+Built with open data and public infrastructure: GDELT, Wikimedia, Google Trends, FastAPI, Supabase, Fly.io, Vercel, and React.
