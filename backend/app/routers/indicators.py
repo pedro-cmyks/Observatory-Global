@@ -1,6 +1,15 @@
 from fastapi import APIRouter, Query
 from app import db
 
+try:
+    from indicators.source_diversity import calculate_source_diversity, DIVERSITY_TOOLTIP
+    from indicators.source_quality import calculate_source_quality, get_allowlist, get_denylist, QUALITY_TOOLTIP
+    from indicators.normalized_volume import calculate_normalized_volume, VOLUME_TOOLTIP
+
+    INDICATORS_AVAILABLE = True
+except ImportError:
+    INDICATORS_AVAILABLE = False
+
 router = APIRouter()
 
 @router.get("/api/indicators/tooltips")
@@ -129,5 +138,4 @@ async def get_country_indicators(
             "quality": quality,
             "volume": volume
         }
-
 
