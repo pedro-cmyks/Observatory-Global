@@ -15,7 +15,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 INTERVAL_SECONDS = int(os.getenv("INGEST_INTERVAL_SECONDS", "900"))  # 15 min default
-NLP_ENRICH_LIMIT = int(os.getenv("NLP_ENRICH_LIMIT", "500"))
+NLP_ENRICH_LIMIT = int(os.getenv("NLP_ENRICH_LIMIT", "100"))
 
 
 async def _nlp_background(limit: int) -> None:
