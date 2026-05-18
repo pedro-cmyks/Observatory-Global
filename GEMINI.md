@@ -1,6 +1,6 @@
 # GEMINI Code Assistant Context — Observatory Global (Atlas)
 
-Last updated: 2026-05-18 (session 14 — P1 pass complete, issues #56/#69/#124/#133/#135/#141/#143 closed, production deployed)
+Last updated: 2026-05-18 (session 15 — multi-source ingestion validated; NLP/source-semantics plan added)
 
 This document gives the Gemini AI assistant the current, accurate context for the Observatory Global project. Treat this as the source of truth for deployment topology, architecture, and conventions.
 
@@ -22,6 +22,10 @@ This document gives the Gemini AI assistant the current, accurate context for th
 | Cache | Upstash Redis | atlas-redis instance |
 
 **Branch note:** `v3-intel-layer` IS production. `main` is stale and abandoned. Vercel and Fly.io both deploy from `v3-intel-layer`. PR #144 is open (P0+P1 pass) — do not merge `v3-intel-layer` into `main`.
+
+**Session 15 ingestion update:** NewsData.io, MediaStack, NewsAPI.org, and Reddit public API are wired into `backend/app/services/ingest_loop.py` and deployed on Fly. Keys are documented in `backend/.env.example` and Fly secrets are set for NewsData/MediaStack/NewsAPI.
+
+**Critical next constraint:** Do not assume the new rows are analytically useful until NLP multilingual quality and backlog are validated. `backend/enrichment/nlp_pipeline.py` currently uses English-first sentiment/NER/framing (`cardiffnlp/twitter-roberta-base-sentiment-latest`, `spacy en_core_web_sm`, English NLI framing), while `ingest_loop.py` only enriches 100 rows per 15-min cycle. Plan: `docs/superpowers/plans/2026-05-18-multisource-intelligence-hardening.md`.
 
 **There is no Docker Compose production setup.** The app runs on Vercel + Fly.io. Docker/Compose exists for local dev only.
 
@@ -106,7 +110,7 @@ stitch_atlas_landing_experience_redesign/   ← Design assets from Google Stitch
 - **Backend:** Python 3.11, FastAPI, asyncpg, pydantic, Anthropic SDK (Claude Haiku for AI summaries)
 - **Database:** PostgreSQL (Supabase) — primary table `signals_v2`, ACLED table `acled_conflicts_v2`, aggregate matviews for trends/themes
 - **Cache:** Redis (Upstash) — AI summaries cached 30 min
-- **Data sources:** GDELT 2.0 (GKG), Google Trends (pytrends), ACLED, Wikipedia, RSS curated feeds (Wave 1+3), ReliefWeb/OCHA (Wave 2)
+- **Data sources:** GDELT 2.0 (GKG), Google Trends (pytrends), ACLED, Wikipedia, RSS curated feeds (Wave 1+3), ReliefWeb/OCHA (Wave 2), NewsData.io, MediaStack, NewsAPI.org, Reddit public API
 
 ---
 

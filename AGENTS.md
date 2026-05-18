@@ -22,6 +22,18 @@ Key files changed in session 14:
 - `frontend-v2/src/pages/Landing.tsx` — live signal count via `/health`; navigable BentoCards; `formatSignalCount()`.
 - `backend/app/services/ingest_acled.py` — docstring clarifies optional status.
 
+Key files added in session 15 (multi-source ingestion — 2026-05-18):
+- `backend/app/services/ingest_newsdata.py` — NewsData.io multilingual ingestion every 4th GDELT cycle; currently language/country batches with `geo_confidence=0.7`.
+- `backend/app/services/ingest_mediastack.py` — MediaStack ES/PT LatAm supplement every 8th GDELT cycle; conservative quota use.
+- `backend/app/services/ingest_newsapi.py` — NewsAPI targeted crisis queries every 8th GDELT cycle offset; current 8 queries x 12/day = 96 req/day.
+- `backend/app/services/ingest_reddit.py` — Reddit public API social/commentary ingestion every 4th GDELT cycle; writes `source_family="social"` and `attribution_method="reddit_public"`.
+- `backend/.env.example` — documents `NEWSDATA_API_KEY`, `MEDIASTACK_API_KEY`, `NEWSAPI_KEY`.
+
+Session 15 validation note:
+- The new sources are live, but the blocker is enrichment quality/capacity. `nlp_pipeline.py` is English-first (`cardiffnlp/twitter-roberta-base-sentiment-latest`, `spacy en_core_web_sm`, English NLI framing) and `ingest_loop.py` currently runs NLP with `limit=100` per 15-min cycle. Do not build source-weighted scoring or Voice Mix assumptions until NLP backlog and multilingual behavior are measured.
+- Next migration is 013 and should add `signal_class` before #149 scoring. Recommended classes: `reporting`, `wire`, `state_media`, `humanitarian`, `social_commentary`, `public_attention`, `unknown`. Clustering should come later, after provider attribution and NLP quality are measured.
+- Implementation plan: `docs/superpowers/plans/2026-05-18-multisource-intelligence-hardening.md`.
+
 Key files added in session 13 (P0 productization pass — PR #144):
 - `frontend-v2/src/lib/briefingPrefetch.ts` — sessionStorage-backed briefing prefetch cache (4-min TTL).
 - `backend/app/routers/narratives.py` — narrative detail window capped at 48h; returns `effective_hours`.
@@ -100,6 +112,12 @@ Backend conventions (session 13):
 - Narrative detail window cap: `detail_hours = min(hours, 48)` in `narratives.py` for Phase 2 (signals_v2 unnest scan). Phase 1 (theme_hourly_v2) uses the full requested hours. Always return `effective_hours` in the result dict so the frontend can display the actual window.
 - Google Trends ingestion: shuffle country list per run, batch size max 3 countries, delay 2s between batches, run a retry pass for failed countries at end of cycle. These are anti-rate-limit measures — do not revert to batch=5 or delay=1s.
 - Trends staleness threshold: frontend shows stale badge when data is >25h old. The `publicAttention.ts` helper enforces a 72h floor on the `hours` param to avoid fetching empty windows.
+
+Backend conventions (session 15):
+- New API/social sources must continue setting `source_family`, `source_lang`, `geo_confidence`, `attribution_method`, and `is_state_media`.
+- Treat `source_family="social"` / `attribution_method="reddit_public"` as commentary. It can support early-signal detection but must not count as independent news corroboration.
+- NewsAPI quota math matters: the current 8-query/every-2h schedule spends about 96/100 req/day. Any analyst-query reserve requires a changed cadence or explicit daily quota budget.
+- NewsData should move toward country-primary buckets before using it for high-confidence country scoring.
 
 ## Testing Guidelines
 Backend tests live in `backend/tests/test_*.py` per `pyproject.toml`. New services need fixtures for flow/heat math and regression coverage for service clients; mock external providers through the client layer rather than hitting the network. Treat the coverage report from `make test-backend` as a gate and keep touched modules above the current baseline. Frontend work that touches the map or API should include Vitest/React Testing Library smoke tests or, at minimum, refreshed manual steps and screenshots in `docs/demos/`.

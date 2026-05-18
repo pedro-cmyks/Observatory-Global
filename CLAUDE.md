@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-18 (P1 pass complete — issues #56, #69, #124, #133, #135, #141, #143 closed; production deployed)
+Last updated: 2026-05-18 (session 15 — multi-source ingestion validated; NLP/source-semantics plan added)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -16,6 +16,12 @@ Observatorio Global is a narrative intelligence system that tracks, analyzes, an
 - Atlas product framing: **public narrative intelligence console**, not a GDELT wrapper.
 - Preferred user path: `/brief` for readable orientation, then `/app` for full analyst investigation.
 - All P0 + P1 video-review issues closed. Zero open code issues. Only docs (#134, #140) and blocked (#46, #106) remain.
+- Session 15 added four live ingestion sources: NewsData.io, MediaStack, NewsAPI.org, and Reddit public API.
+- Critical validation: new volume is not the main value; differentiated source voice is. Before scoring/UI work, validate NLP multilingual quality and backlog capacity.
+- `backend/enrichment/nlp_pipeline.py` is English-first today (`cardiffnlp/twitter-roberta-base-sentiment-latest`, `spacy en_core_web_sm`, English NLI framing).
+- `backend/app/services/ingest_loop.py` runs NLP with `limit=100` per 15-min cycle, which is too low for projected ~100K signals/day if applied to all rows.
+- Reddit already writes `source_family="social"` and `attribution_method="reddit_public"`; add `signal_class="social_commentary"` in migration 013 before source-weighted scoring.
+- Plan: `docs/superpowers/plans/2026-05-18-multisource-intelligence-hardening.md`.
 
 ### Key patterns (established across sessions 13–14)
 
