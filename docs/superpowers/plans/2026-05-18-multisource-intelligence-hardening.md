@@ -21,6 +21,43 @@ The previous agent's direction is mostly correct, but several claims need refine
 - **NLP capacity is undersized:** `ingest_loop.py` calls `_nlp_background(limit=100)` every 15 minutes, maxing out around 9,600 rows/day per phase if every cycle completes. New total volume is projected near 100K rows/day, so backlog can grow silently.
 - **New API/social sources enter with `themes=[]`:** without theme classification or clustering, many product surfaces based on themes will underuse the new data.
 - **`signal_class` should not wait for NLP:** provenance already tells us enough to distinguish reporting, humanitarian, state media, wire/API, and social commentary. This is required before Voice Mix and source-weighted scoring.
+- **Atlas should not "cut" volume:** the product goal is not to suppress high-volume countries or sources. The goal is to show proportionality: baseline deviation, voice mix, local/international balance, source diversity, and confidence. Large countries can still be loud; Atlas should reveal when loudness is structural volume versus unusual narrative movement.
+
+## GDELT Surface Area
+
+Current code uses these GDELT paths:
+
+- `backend/app/services/ingest_v2.py` uses GDELT GKG English via `lastupdate.txt`.
+- `backend/app/services/ingest_v2.py` also uses GDELT Translingual GKG via `lastupdate-translation.txt`.
+- `backend/app/services/ingest_events.py` uses GDELT Events `export.CSV.zip`.
+
+Potential GDELT additions:
+
+- **GDELT Event Mentions (`mentions.CSV.zip`)**: use for event propagation and repetition analysis. This should be audited before ingestion because it may be high-volume and should probably land in an event-mentions table, not `signals_v2`.
+- **GDELT DOC 2.0 API**: use as query-time enrichment, not as another firehose. Best use cases: "find more evidence for this investigation", dossier/Reading Mode enrichment, multilingual article search around a selected country/theme, and contrast checks when Atlas detects a low-volume but high-deviation narrative.
+
+Do not add either as raw volume until Phase 0 tells us where the current pipeline is losing signal.
+
+## Statistical/Product Stance
+
+Atlas should show the information environment without pretending all signals are equivalent.
+
+Recommended measurements:
+
+- **Raw volume:** still visible, but never alone.
+- **Baseline deviation:** compare a country's current signal volume/theme activity against its own historical baseline.
+- **Share of voice:** percentage by country, source family, source language, and signal class.
+- **Voice Mix:** local-language, international press, state media, humanitarian, social commentary, public attention.
+- **Source diversity:** number of distinct outlets and source families.
+- **Geo confidence:** distinguish strong country attribution from weak inference.
+- **Narrative lift:** detect countries/themes that are small in absolute volume but unusually active for their own baseline.
+
+Avoid:
+
+- suppressing large countries by fiat;
+- hiding inconvenient volume;
+- editorial labels that say a narrative is "important" without evidence;
+- allowing raw US/English volume to dominate every score.
 
 ## File Map
 
@@ -69,6 +106,37 @@ Purpose: avoid optimizing against assumptions.
     ```
 - [ ] Decide if NLP should process all GDELT rows or prioritize non-GDELT rows first.
   - Recommended: prioritize non-GDELT rows because GDELT already has native tone while API/RSS/social rows have `sentiment=0.0`.
+- [ ] Measure dominance and baseline deviation.
+  - SQL sketch:
+    ```sql
+    WITH current AS (
+      SELECT country_code, COUNT(*) AS n
+      FROM signals_v2
+      WHERE timestamp > NOW() - INTERVAL '24 hours'
+      GROUP BY 1
+    ),
+    baseline AS (
+      SELECT country_code, AVG(daily_n) AS avg_daily_n, STDDEV_POP(daily_n) AS sd_daily_n
+      FROM (
+        SELECT country_code, date_trunc('day', timestamp) AS day, COUNT(*) AS daily_n
+        FROM signals_v2
+        WHERE timestamp BETWEEN NOW() - INTERVAL '15 days' AND NOW() - INTERVAL '1 day'
+        GROUP BY 1,2
+      ) d
+      GROUP BY 1
+    )
+    SELECT c.country_code, c.n, b.avg_daily_n, b.sd_daily_n,
+           CASE WHEN b.sd_daily_n > 0 THEN (c.n - b.avg_daily_n) / b.sd_daily_n ELSE NULL END AS z_score
+    FROM current c
+    LEFT JOIN baseline b USING (country_code)
+    ORDER BY z_score DESC NULLS LAST
+    LIMIT 30;
+    ```
+  - Expected: identify countries that are unusually active relative to themselves, not only countries with the largest media volume.
+- [ ] Audit unused GDELT surfaces before implementation.
+  - Confirm latest `mentions.CSV.zip` availability and columns.
+  - Estimate rows per 15-min cycle and storage impact.
+  - Test one DOC 2.0 query for a selected Atlas theme/country and record result quality.
 
 ## Phase 1 — Signal Semantics
 
@@ -232,3 +300,16 @@ Goal: group duplicate coverage without creating false narrative authority.
 6. Phase 6: conservative clustering only after semantics, provider attribution, and NLP quality are measured.
 
 Do not start with UI-only work. Voice Mix can proceed before clustering, but not before `signal_class` and real production row audit.
+
+## GitHub Issue Map
+
+- **#154** — Phase 0 production source-quality audit, dominance analysis, and NLP backlog.
+- **#155** — Migration 013 `signal_class`, backfill, ingestion writes, and API exposure.
+- **#157** — Multilingual NLP benchmark and backlog capacity.
+- **#156** — NewsAPI quota budget and dynamic crisis queries.
+- **#158** — NewsData country-primary buckets and attribution confidence.
+- **#160** — Voice Mix endpoint and CountryBrief component.
+- **#159** — GDELT Event Mentions research for narrative propagation.
+- **#161** — GDELT DOC 2.0 query-time evidence enrichment.
+- **#149** — Source-weighted scoring normalization; depends on #154 and #155.
+- **#150** — Non-anglophone source expansion; should follow #154 and align with #158.
