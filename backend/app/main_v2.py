@@ -20,6 +20,7 @@ import asyncpg
 import os
 import sys
 import asyncio
+from urllib.parse import urlsplit
 
 try:
     from dotenv import load_dotenv
@@ -49,6 +50,13 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://observatory:changeme@loca
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 
+def _safe_netloc(url: str) -> str:
+    """Return host:port for connection logs without exposing credentials."""
+    parsed = urlsplit(url)
+    host = parsed.hostname or "unknown"
+    return f"{host}:{parsed.port}" if parsed.port else host
+
+
 @app.on_event("startup")
 async def startup():
     """Create async connection pool on startup, with retry for connection saturation."""
@@ -73,7 +81,7 @@ async def startup():
         import redis.asyncio as aioredis
         app.state.redis = await aioredis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
         await app.state.redis.ping()
-        print(f"✅ Connected to Redis: {REDIS_URL}")
+        print(f"✅ Connected to Redis: {_safe_netloc(REDIS_URL)}")
     except Exception as e:
         print(f"⚠️  Redis unavailable (caching disabled): {e}")
         app.state.redis = None

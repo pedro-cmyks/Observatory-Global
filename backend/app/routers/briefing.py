@@ -26,6 +26,24 @@ def _build_theme_country_map(rows) -> list:
     ]
 
 
+def _clean_theme_label(theme_code: str) -> str:
+    """Convert theme code like WB_475_DIGITAL_GOVERNMENT to 'Digital Government'."""
+    label = (theme_code or "").upper()
+    prefixes = (
+        "WB_", "TAX_", "GDELT_", "CRISISLEX_", "USPEC_", "UN_",
+        "SOC_", "ENV_", "ECON_", "EPU_", "MIL_", "CRIME_", "HEALTH_",
+    )
+    for prefix in prefixes:
+        if label.startswith(prefix):
+            parts = label.split("_", 2)
+            label = parts[-1] if len(parts) >= 2 else label
+            break
+    parts = label.split("_", 1)
+    if parts[0].isdigit() and len(parts) == 2:
+        label = parts[1]
+    return label.replace("_", " ").title()
+
+
 @router.get("/api/v2/briefing")
 async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
     """Get morning briefing summary."""
