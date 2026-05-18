@@ -162,7 +162,7 @@ function drawWorkspaceNode(
 }
 
 export function InteractiveWorkspace({ onNavigate }: InteractiveWorkspaceProps) {
-    const { isOpen, setIsOpen, items, sessionItems, graph, graphLoading, graphError, pinItem, unpinItem, updateNotes, exportWorkspace, exportDossier } = useWorkspace()
+    const { isOpen, setIsOpen, items, sessionItems, graph, graphLoading, graphError, pinItem, unpinItem, updateNotes, exportDossier } = useWorkspace()
     const [dossierLoading, setDossierLoading] = useState(false)
     const [readingMode, setReadingMode] = useState(false)
     const [query, setQuery] = useState('')

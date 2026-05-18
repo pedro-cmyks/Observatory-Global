@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useSavedWatches } from '../hooks/useSavedWatches'
+import { useSavedWatches, fetchWatchCount } from '../hooks/useSavedWatches'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
@@ -83,7 +83,8 @@ export function BriefNewspaper() {
         : '24h'
 
     const [timeRange, setTimeRange] = useState<TimeRange>(initialRange)
-    const { watches, remove: removeWatch } = useSavedWatches()
+    const { watches, remove: removeWatch, markSeen } = useSavedWatches()
+    const [watchCounts, setWatchCounts] = useState<Record<string, number | null>>({})
     const [data, setData] = useState<BriefingData | null>(null)
     const [insight, setInsight] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
@@ -226,6 +227,18 @@ export function BriefNewspaper() {
 
         return () => { cancelled = true }
     }, [countryFilter, hours])
+
+    useEffect(() => {
+        if (watches.length === 0) return
+        let cancelled = false
+        void (async () => {
+            const entries = await Promise.all(
+                watches.map(async w => [w.id, await fetchWatchCount(w.filter)] as [string, number])
+            )
+            if (!cancelled) setWatchCounts(Object.fromEntries(entries))
+        })()
+        return () => { cancelled = true }
+    }, [watches])
 
     const handleRangeChange = (range: TimeRange) => {
         setTimeRange(range)
@@ -810,13 +823,40 @@ export function BriefNewspaper() {
                                             w.filter.theme ? `theme=${encodeURIComponent(w.filter.theme)}` : null,
                                             w.filter.person ? `person=${encodeURIComponent(w.filter.person)}` : null,
                                         ].filter(Boolean).join('&')
+                                        const currentCount = watchCounts[w.id] ?? null
+                                        const prevCount = w.lastSeenCount ?? null
+                                        const delta = currentCount !== null && prevCount !== null ? currentCount - prevCount : null
                                         return (
                                             <div key={w.id} className="brief-watch-card">
                                                 <div className="brief-watch-name">{w.name}</div>
                                                 <div className="brief-watch-scope">{parts.join(' · ') || 'Global'}</div>
-                                                <div className="brief-watch-date">Saved {new Date(w.createdAt).toLocaleDateString()}</div>
+                                                <div className="brief-watch-stats">
+                                                    {currentCount === null ? (
+                                                        <span className="brief-watch-count loading">—</span>
+                                                    ) : (
+                                                        <span className="brief-watch-count">{currentCount.toLocaleString()} signals today</span>
+                                                    )}
+                                                    {delta !== null && delta !== 0 && (
+                                                        <span className={`brief-watch-delta ${delta > 0 ? 'up' : 'down'}`}>
+                                                            {delta > 0 ? '↑' : '↓'}{Math.abs(delta)} vs last check
+                                                        </span>
+                                                    )}
+                                                    {delta === 0 && prevCount !== null && (
+                                                        <span className="brief-watch-delta neutral">no change</span>
+                                                    )}
+                                                </div>
+                                                <div className="brief-watch-date">
+                                                    Saved {new Date(w.createdAt).toLocaleDateString()}
+                                                    {w.lastSeenAt && ` · checked ${new Date(w.lastSeenAt).toLocaleDateString()}`}
+                                                </div>
                                                 <div className="brief-watch-actions">
-                                                    <button className="brief-watch-open" onClick={() => goToAtlas(atlasParams || undefined)}>Open in Atlas →</button>
+                                                    <button
+                                                        className="brief-watch-open"
+                                                        onClick={() => {
+                                                            if (currentCount !== null) markSeen(w.id, currentCount)
+                                                            goToAtlas(atlasParams || undefined)
+                                                        }}
+                                                    >Open in Atlas →</button>
                                                     <button className="brief-watch-remove" onClick={() => removeWatch(w.id)} title="Remove watch">×</button>
                                                 </div>
                                             </div>

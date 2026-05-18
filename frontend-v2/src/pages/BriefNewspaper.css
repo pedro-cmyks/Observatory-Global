@@ -768,3 +768,43 @@
 }
 
 .brief-watch-remove:hover { color: #ef4444; }
+
+.brief-watch-stats {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.brief-watch-count {
+    font-size: 12px;
+    font-weight: 600;
+    color: #fbbf24;
+}
+
+.brief-watch-count.loading {
+    color: #475569;
+}
+
+.brief-watch-delta {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 8px;
+}
+
+.brief-watch-delta.up {
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.1);
+}
+
+.brief-watch-delta.down {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.1);
+}
+
+.brief-watch-delta.neutral {
+    color: #64748b;
+    background: rgba(100, 116, 139, 0.1);
+}
