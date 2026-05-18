@@ -26,18 +26,21 @@ NEWSDATA_API_KEY = os.getenv("NEWSDATA_API_KEY", "")
 BASE_URL = "https://newsdata.io/api/1/latest"
 NEWS_DATA_PAGE_SIZE = int(os.getenv("NEWSDATA_PAGE_SIZE", "10"))
 
-# Language batches — avoid US/EN overrepresentation; focus on gaps
+# Language batches — avoid US/EN overrepresentation; focus on gaps.
+# NewsData free plan allows at most 5 countries per request. Keep this at <=8 batches
+# because the hourly cadence consumes batch_count * 24 requests/day (200 req/day cap).
 LANGUAGE_BATCHES = [
     # Spanish + Portuguese LatAm
-    {"language": "es,pt", "country": "co,mx,br,ar,ve,pe,cl,ec,bo,cu"},
+    {"language": "es,pt", "country": "co,mx,br,ar,ve"},
+    {"language": "es,pt", "country": "pe,cl,ec,bo,cu"},
     # Arabic — MENA, not covered by GDELT GKG well
-    {"language": "ar", "country": "eg,sa,iq,sy,ye,jo,lb,ma,tn,ae,qa"},
-    # French West Africa + Levant
-    {"language": "fr", "country": "ml,bf,ne,sn,cd,cm,ci,dz,tn,ma"},
+    {"language": "ar", "country": "eg,sa,iq,sy,ye"},
+    # French West/Central Africa
+    {"language": "fr", "country": "ml,bf,ne,sn,cd"},
     # Swahili / Amharic — East Africa
     {"language": "sw,am", "country": "ke,tz,ug,et,rw"},
     # Southeast Asia
-    {"language": "id,ms,tl,vi,th", "country": "id,my,ph,vn,th,kh,mm"},
+    {"language": "id,ms,tl,vi,th", "country": "id,my,ph,vn,th"},
     # South Asia
     {"language": "hi,ur,bn", "country": "in,pk,bd,np,lk"},
 ]

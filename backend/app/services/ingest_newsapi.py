@@ -26,14 +26,14 @@ BASE_URL = "https://newsapi.org/v2/everything"
 # Current cadence: 8 queries × 12 runs/day = 96 req/day. Keep this small until #156
 # adds a persistent daily quota budget.
 QUERIES = [
-    {"q": 'Colombia AND (conflict OR guerrilla OR FARC OR ELN)', "language": "en", "pageSize": 20},
-    {"q": 'Venezuela AND (crisis OR Maduro OR migration)', "language": "en", "pageSize": 20},
-    {"q": 'Myanmar AND (junta OR "civil war" OR conflict)', "language": "en", "pageSize": 20},
-    {"q": 'Sudan AND (RSF OR Darfur OR war)', "language": "en", "pageSize": 20},
-    {"q": '(Gaza OR Palestine) AND (conflict OR ceasefire OR humanitarian)', "language": "en", "pageSize": 20},
-    {"q": 'Haiti AND (gang OR violence OR crisis)', "language": "en", "pageSize": 20},
-    {"q": '(Sahel OR Mali OR Niger OR Burkina) AND (security OR conflict)', "language": "en", "pageSize": 20},
-    {"q": '(Congo OR DRC OR Kivu) AND (M23 OR conflict OR displacement)', "language": "en", "pageSize": 20},
+    {"q": "Colombia conflict", "language": "en", "pageSize": 20},
+    {"q": "Venezuela crisis", "language": "en", "pageSize": 20},
+    {"q": "Myanmar junta", "language": "en", "pageSize": 20},
+    {"q": "Sudan war", "language": "en", "pageSize": 20},
+    {"q": "Gaza humanitarian", "language": "en", "pageSize": 20},
+    {"q": "Haiti gang", "language": "en", "pageSize": 20},
+    {"q": "Sahel conflict", "language": "en", "pageSize": 20},
+    {"q": "Congo M23", "language": "en", "pageSize": 20},
 ]
 
 
