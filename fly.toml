@@ -1,5 +1,27 @@
 # Fly.io configuration for Atlas backend
 # Deploy from repo root: fly deploy --config fly.toml
+#
+# Process groups (issue #163):
+#   app        — API + ingestion watchdog. Always on.
+#   nlp_worker — Standalone NLP enrichment worker. Drains stratified queue +
+#                global priority queue. Larger memory for transformer models.
+#
+# First-time process-group rollout playbook:
+#   1) Deploy this config: fly deploy --config fly.toml
+#   2) Fly creates one machine per process group automatically when none exist.
+#      If existing machines belong to no group, migrate them once:
+#        fly machines list --app atlas-api-pedro
+#        fly machines update <machine_id> --process-group app
+#   3) Verify with: fly status --app atlas-api-pedro
+#   4) Set worker secrets if needed:
+#        fly secrets set NLP_MULTILINGUAL_MODE=shadow NLP_WORKER_LIMIT=500
+#   5) Disable inline NLP on the app process to avoid double-processing:
+#        fly secrets set NLP_INLINE_ENABLED=false
+#
+# Cost note (USD, approximate as of 2025-Q4):
+#   app        shared-cpu-1x  1GB  ~$1.94/mo always-on
+#   nlp_worker shared-cpu-2x  2GB  ~$7.78/mo always-on (~$2/mo with auto_stop)
+# Total expected additional spend for Phase 2 worker: ~$5-8/month.
 
 app = "atlas-api-pedro"
 primary_region = "iad"  # Washington DC — closest to GDELT servers
@@ -10,9 +32,20 @@ primary_region = "iad"  # Washington DC — closest to GDELT servers
 [env]
   PORT = "8000"
   INGEST_INTERVAL_SECONDS = "900"
+  # Default NLP mode stays "off" so the existing English pipeline runs unchanged.
+  # Flip to "shadow" then "on" once the multilingual deploy is verified (issue #162).
+  NLP_MULTILINGUAL_MODE = "off"
+  # Inline NLP inside the API/ingestion loop is the current production path.
+  # Set to "false" only after the nlp_worker machine is live so we do not
+  # double-process the same rows.
+  NLP_INLINE_ENABLED = "true"
 
 [deploy]
   strategy = "immediate"
+
+[processes]
+  app = "bash start.sh"
+  nlp_worker = "python -m enrichment.nlp_worker"
 
 [http_service]
   internal_port = 8000
@@ -20,16 +53,27 @@ primary_region = "iad"  # Washington DC — closest to GDELT servers
   auto_stop_machines = false   # keep alive so ingestion runs 24/7
   auto_start_machines = true
   min_machines_running = 1
+  processes = ["app"]           # HTTP routing only applies to API process
 
   [http_service.concurrency]
     type = "connections"
     hard_limit = 100
     soft_limit = 80
 
+# API + ingestion machine (unchanged 1GB profile).
 [[vm]]
+  processes = ["app"]
   memory = "1gb"
   cpu_kind = "shared"
   cpus = 1
+
+# NLP worker machine. 2GB to fit transformer model load + headroom.
+# Single shared CPU is enough — the worker is memory-bound, not CPU-bound.
+[[vm]]
+  processes = ["nlp_worker"]
+  memory = "2gb"
+  cpu_kind = "shared"
+  cpus = 2
 
 [checks]
   [checks.health]
@@ -40,3 +84,4 @@ primary_region = "iad"  # Washington DC — closest to GDELT servers
     path = "/health"
     port = 8000
     timeout = "10s"
+    processes = ["app"]

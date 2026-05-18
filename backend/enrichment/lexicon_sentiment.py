@@ -169,7 +169,7 @@ WHERE nlp_processed_at IS NULL
   AND nlp_method IS NULL
   AND headline IS NOT NULL
   AND LENGTH(headline) > 10
-  AND created_at < NOW() - INTERVAL '30 days'
+  AND created_at > NOW() - INTERVAL '15 days'
 ORDER BY timestamp DESC
 LIMIT $1
 """
