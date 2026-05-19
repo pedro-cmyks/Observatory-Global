@@ -165,21 +165,35 @@ Valor para usuario:
 - Puede distinguir una historia reportada por medios de una conversacion social emergente.
 - Puede confiar mas en el heat porque ve sus ingredientes.
 
-### Fase 2: Clasificar temas para fuentes no-GDELT
+### Fase 2: Atlas Topic Intelligence
 
-Crear una capa de `theme_enrichment` para RSS, NewsData, MediaStack, NewsAPI y Reddit.
+Crear una capa propia de `Atlas Topic Intelligence` para RSS, ReliefWeb, NewsData, MediaStack, NewsAPI, Reddit y tambien para refinar GDELT.
+
+El punto no es solamente llenar `themes=[]`. El punto es superar la limitacion de temas GDELT demasiado amplios. `ECON_CRISIS`, `PROTEST` o `ARMEDCONFLICT` sirven como senales estructuradas, pero no transmiten con facilidad que esta pasando. Atlas necesita temas humanos y especificos:
+
+- "fuel subsidy protests tied to transport strikes"
+- "copper royalty dispute and mining investment risk"
+- "gang control disrupting humanitarian corridors"
+- "election legitimacy dispute after court intervention"
+- "grid instability after heat wave and energy rationing"
+
+GDELT debe quedar como un input o prior, no como la capa final de significado.
 
 Opciones:
 
 - Lexicon primero: rapido, barato, explicable.
 - Embeddings despues: mejor recall y mejores relaciones semanticas.
-- Hibrido recomendado: lexicon para alta precision, embeddings para candidatos ambiguos.
+- Clasificador multilingue tipo zero-shot para resolver candidatos ambiguos.
+- Hibrido recomendado: lexicon para alta precision, embeddings para recall, clasificador multilingue para desambiguacion.
+
+Esto es analogo a tener RoBERTa para sentimiento, pero aplicado a "de que trata realmente esta senal". Sentimiento responde tono; Topic Intelligence responde significado.
 
 Resultado esperado:
 
 - Reddit y APIs nuevas empiezan a alimentar hilos narrativos.
 - Las narrativas dejan de ser casi exclusivamente GDELT.
 - El workspace puede exportar evidencia de mas tipos de fuente.
+- Los usuarios ven etiquetas narrativas mas claras que los codigos de taxonomia.
 
 ### Fase 3: Convertir atencion publica en capa narrativa paralela
 
@@ -269,7 +283,7 @@ Orden recomendado:
 Estos son los issues que deberian existir o actualizarse:
 
 - `feat(data): add signal_class for evidence, social commentary, public attention, and analysis`
-- `feat(data): classify themes for non-GDELT signals`
+- `feat(data): add Atlas topic intelligence beyond raw GDELT themes`
 - `feat(ui): expose source mix and voice mix in narrative threads and country brief`
 - `feat(narratives): create public attention threads from Google Trends and Wikipedia`
 - `feat(narratives): semantically link public attention threads to media narratives`
@@ -277,6 +291,13 @@ Estos son los issues que deberian existir o actualizarse:
 - `fix(newsdata): refactor language batches into country-primary buckets`
 - `feat(workspace): export signal dossier with source classes and evidence sections`
 - `docs(methodology): publish Atlas data operating model`
+
+Actualizacion 2026-05-19:
+
+- Plan ejecutable: `docs/superpowers/plans/2026-05-19-topic-intelligence-and-source-visibility.md`.
+- Issue creado: #167 `feat(data): add Atlas topic intelligence beyond raw GDELT themes`.
+- Issue creado: #168 `feat(narratives): create public attention threads and semantic links to media topics`.
+- Issues existentes complementados: #154, #155, #160, #162, #165, #166, #146, #140.
 
 ## 12. Respuesta directa a las preguntas abiertas
 
@@ -294,4 +315,3 @@ Estamos avanzando en esa direccion con heat, source diversity, local voice, geo 
 
 **Cual es el norte?**  
 Atlas deberia pasar de "mapa de noticias" a "sistema de inteligencia narrativa": comparar medios, atencion publica, comentario social y evidencia estructurada, sin mezclar sus significados.
-
