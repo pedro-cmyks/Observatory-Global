@@ -36,32 +36,66 @@ WORKER_ID = os.getenv("NLP_WORKER_ID", socket.gethostname())
 WORKER_INTERVAL_SECONDS = int(os.getenv("NLP_WORKER_INTERVAL_SECONDS", "120"))
 WORKER_BATCH_LIMIT = int(os.getenv("NLP_WORKER_LIMIT", "500"))
 # Refresh the stratified nlp_sample_queue every N worker cycles (~6h at 120s interval).
+# Set to 0 to disable this expensive refresh and run it out-of-band.
 SAMPLE_REFRESH_EVERY_N_CYCLES = int(os.getenv("NLP_SAMPLE_REFRESH_EVERY", "180"))
+LOW_VOLUME_REFRESH_TIMEOUT_SECONDS = int(os.getenv("NLP_LOW_VOLUME_REFRESH_TIMEOUT_SECONDS", "20"))
 
 
 # ── Progress helpers ─────────────────────────────────────────────────────────
-async def _progress_metrics(conn: asyncpg.Connection) -> dict:
-    """Compute lag + backlog totals against the production processed column."""
-    row = await conn.fetchrow(
+async def _progress_metrics(conn: asyncpg.Connection, rows_processed: int) -> dict:
+    """Compute cheap backlog metrics without full-table scans on signals_v2."""
+    previous = await conn.fetchrow(
         """
-        SELECT
-            COUNT(*) FILTER (
-                WHERE nlp_processed_at IS NULL
-                  AND created_at > NOW() - INTERVAL '24 hours'
-            ) AS unprocessed_24h,
-            COUNT(*) FILTER (WHERE nlp_processed_at IS NULL) AS unprocessed_total,
-            MIN(created_at) FILTER (WHERE nlp_processed_at IS NULL) AS oldest_unprocessed_at
-        FROM signals_v2
+        SELECT unprocessed_24h, unprocessed_total, oldest_unprocessed_at
+        FROM nlp_progress
+        ORDER BY last_run_at DESC NULLS LAST
+        LIMIT 1
         """
     )
-    oldest = row["oldest_unprocessed_at"]
+
+    unprocessed_24h = int(previous["unprocessed_24h"] or 0) if previous else 0
+    unprocessed_total = int(previous["unprocessed_total"] or 0) if previous else 0
+    oldest = previous["oldest_unprocessed_at"] if previous else None
+
+    if previous:
+        unprocessed_24h = max(0, unprocessed_24h - rows_processed)
+        unprocessed_total = max(0, unprocessed_total - rows_processed)
+
+    try:
+        recent = await conn.fetchval(
+            """
+            SELECT COUNT(*)
+            FROM signals_v2
+            WHERE nlp_processed_at IS NULL
+              AND created_at > NOW() - INTERVAL '24 hours'
+            """,
+            timeout=5,
+        )
+        unprocessed_24h = int(recent or 0)
+    except Exception:
+        logger.warning("NLP progress recent-count query timed out — using previous estimate")
+
+    try:
+        oldest = await conn.fetchval(
+            """
+            SELECT created_at
+            FROM signals_v2
+            WHERE nlp_processed_at IS NULL
+            ORDER BY created_at ASC
+            LIMIT 1
+            """,
+            timeout=5,
+        ) or oldest
+    except Exception:
+        logger.warning("NLP progress oldest-row query timed out — using previous estimate")
+
     lag_minutes = None
     if oldest is not None:
         delta = datetime.now(timezone.utc) - oldest
         lag_minutes = int(delta.total_seconds() // 60)
     return {
-        "unprocessed_24h": int(row["unprocessed_24h"] or 0),
-        "unprocessed_total": int(row["unprocessed_total"] or 0),
+        "unprocessed_24h": unprocessed_24h,
+        "unprocessed_total": unprocessed_total,
         "oldest_unprocessed_at": oldest,
         "lag_minutes": lag_minutes,
     }
@@ -73,7 +107,7 @@ async def _checkpoint(
     duration_seconds: float,
     last_error: str | None = None,
 ) -> None:
-    metrics = await _progress_metrics(conn)
+    metrics = await _progress_metrics(conn, rows_processed)
     await conn.execute(
         """
         INSERT INTO nlp_progress (
@@ -104,8 +138,9 @@ async def _checkpoint(
     )
 
 
-async def _refresh_low_volume_view(conn: asyncpg.Connection) -> None:
+async def _refresh_low_volume_view(db_url: str) -> None:
     """Refresh the low_volume_countries materialised view used by the priority query."""
+    conn = await asyncpg.connect(db_url)
     try:
         await conn.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY low_volume_countries")
     except Exception:
@@ -114,6 +149,12 @@ async def _refresh_low_volume_view(conn: asyncpg.Connection) -> None:
             await conn.execute("REFRESH MATERIALIZED VIEW low_volume_countries")
         except Exception:
             logger.exception("low_volume_countries refresh failed — non-fatal")
+    finally:
+        await conn.close()
+
+
+def _should_refresh_stratified_sample(cycle_idx: int) -> bool:
+    return SAMPLE_REFRESH_EVERY_N_CYCLES > 0 and cycle_idx % SAMPLE_REFRESH_EVERY_N_CYCLES == 0
 
 
 # ── Main loop ────────────────────────────────────────────────────────────────
@@ -126,7 +167,7 @@ async def _maintenance(conn: asyncpg.Connection, cycle_idx: int) -> None:
     except Exception:
         logger.exception("sample queue cleanup failed — non-fatal")
 
-    if cycle_idx % SAMPLE_REFRESH_EVERY_N_CYCLES == 1:
+    if _should_refresh_stratified_sample(cycle_idx):
         try:
             inserted = await refresh_stratified_sample(conn)
             logger.info("Stratified sample refresh enqueued %d new ids", inserted)
@@ -156,11 +197,26 @@ async def _one_cycle(limit: int, cycle_idx: int) -> int:
 
     conn = await asyncpg.connect(db_url)
     try:
-        await _refresh_low_volume_view(conn)
-        await _maintenance(conn, cycle_idx)
         await _checkpoint(conn, rows_processed, duration, last_error)
     finally:
         await conn.close()
+
+    maintenance_conn = await asyncpg.connect(db_url)
+    try:
+        if _should_refresh_stratified_sample(cycle_idx):
+            try:
+                await asyncio.wait_for(
+                    _refresh_low_volume_view(db_url),
+                    timeout=LOW_VOLUME_REFRESH_TIMEOUT_SECONDS,
+                )
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "low_volume_countries refresh exceeded %ss — skipping this cycle",
+                    LOW_VOLUME_REFRESH_TIMEOUT_SECONDS,
+                )
+        await _maintenance(maintenance_conn, cycle_idx)
+    finally:
+        await maintenance_conn.close()
 
     logger.info(
         "Cycle %d done: rows~=%d duration=%.1fs error=%s",

@@ -158,3 +158,16 @@ def test_priority_sql_targets_correct_column_for_phase():
     assert "nlp_processed_at IS NULL" in sentiment_sql
     assert "nlp_persons IS NULL" in persons_sql
     assert "nlp_framing IS NULL" in framing_sql
+
+
+def test_sample_queue_cleanup_is_batched_and_exists_based():
+    pipeline = _reload_pipeline("on")
+    sql = pipeline.CLEANUP_DRAINED_SAMPLE_QUEUE_SQL
+    assert "WITH drained AS" in sql
+    assert "WHERE EXISTS" in sql
+    assert "LIMIT $1" in sql
+    assert "DELETE FROM nlp_sample_queue q" in sql
+    assert "USING drained d" in sql
+    assert "WHERE q.id = d.id" in sql
+    assert pipeline.SAMPLE_CLEANUP_LIMIT == 500
+    assert pipeline.SAMPLE_CLEANUP_TIMEOUT_SECONDS == 10

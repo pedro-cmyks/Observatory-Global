@@ -242,6 +242,27 @@ SELECT id FROM stratified WHERE rn <= 3
 ON CONFLICT (id) DO NOTHING
 """
 
+SAMPLE_CLEANUP_LIMIT = int(os.getenv("NLP_SAMPLE_CLEANUP_LIMIT", "500"))
+SAMPLE_CLEANUP_TIMEOUT_SECONDS = float(os.getenv("NLP_SAMPLE_CLEANUP_TIMEOUT_SECONDS", "10"))
+
+CLEANUP_DRAINED_SAMPLE_QUEUE_SQL = """
+WITH drained AS (
+    SELECT q.id
+    FROM nlp_sample_queue q
+    WHERE EXISTS (
+        SELECT 1
+        FROM signals_v2 s
+        WHERE s.id = q.id
+          AND s.nlp_processed_at IS NOT NULL
+    )
+    ORDER BY q.enqueued_at ASC
+    LIMIT $1
+)
+DELETE FROM nlp_sample_queue q
+USING drained d
+WHERE q.id = d.id
+"""
+
 
 async def refresh_stratified_sample(conn) -> int:
     """Insert the latest stratified sample into nlp_sample_queue.
@@ -261,11 +282,9 @@ async def refresh_stratified_sample(conn) -> int:
 async def cleanup_drained_sample_queue(conn) -> int:
     """Remove ids from nlp_sample_queue once they have a transformer score."""
     tag = await conn.execute(
-        "DELETE FROM nlp_sample_queue WHERE id IN ("
-        "  SELECT q.id FROM nlp_sample_queue q "
-        "  JOIN signals_v2 s ON s.id = q.id "
-        "  WHERE s.nlp_processed_at IS NOT NULL"
-        ")"
+        CLEANUP_DRAINED_SAMPLE_QUEUE_SQL,
+        SAMPLE_CLEANUP_LIMIT,
+        timeout=SAMPLE_CLEANUP_TIMEOUT_SECONDS,
     )
     try:
         return int(tag.split()[-1])

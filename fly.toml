@@ -18,10 +18,10 @@
 #   5) Disable inline NLP on the app process to avoid double-processing:
 #        fly secrets set NLP_INLINE_ENABLED=false
 #
-# Cost note (USD, approximate as of 2025-Q4):
+# Cost note (USD, approximate):
 #   app        shared-cpu-1x  1GB  ~$1.94/mo always-on
-#   nlp_worker shared-cpu-2x  2GB  ~$7.78/mo always-on (~$2/mo with auto_stop)
-# Total expected additional spend for Phase 2 worker: ~$5-8/month.
+#   nlp_worker shared-cpu-2x  4GB  ~$15-16/mo always-on
+# Total expected additional spend vs 2GB worker: roughly +$8/month.
 
 app = "atlas-api-pedro"
 primary_region = "iad"  # Washington DC — closest to GDELT servers
@@ -67,11 +67,12 @@ primary_region = "iad"  # Washington DC — closest to GDELT servers
   cpu_kind = "shared"
   cpus = 1
 
-# NLP worker machine. 2GB to fit transformer model load + headroom.
-# Single shared CPU is enough — the worker is memory-bound, not CPU-bound.
+# NLP worker machine. 4GB gives headroom for Topic Intelligence benchmarks:
+# compact multilingual embeddings + compact zero-shot loaded sequentially.
+# Keep heavier models on a separate experimental worker until benchmarked.
 [[vm]]
   processes = ["nlp_worker"]
-  memory = "2gb"
+  memory = "4gb"
   cpu_kind = "shared"
   cpus = 2
 
