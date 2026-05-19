@@ -1,6 +1,41 @@
 # Project Status
 
-## Current Handoff — 2026-05-19 (session 15 + Codex parallel work)
+## Current Handoff — 2026-05-19 (session 16 start — signal_class landed)
+
+### Session 16 — `signal_class` semantic provenance live (Track B.1)
+
+**Migration 021** applied in Supabase + ingest services updated. Foundation for #149 cluster scoring, Voice Mix (#160), and topic intelligence ranking gate (#167).
+
+| signal_class | rows |
+|---|---:|
+| reporting | 2,288,194 |
+| state_media | 2,641 |
+| wire | 2,127 |
+| social_commentary | 351 |
+| humanitarian | 3 |
+
+**Files added**:
+- `backend/migrations/021_signal_class.sql`
+- `backend/app/services/_signal_class.py` (centralized derivation helper)
+- `backend/tests/test_signal_class.py` (23 tests, all pass)
+- `docs/roadmap/2026-05-19-topic-and-signal-class-attack.md` (3-track attack plan)
+
+**Files patched** (signal_class write):
+- `backend/app/services/ingest_v2.py` (GDELT)
+- `backend/app/services/ingest_rss.py` (RSS — uses helper for state/wire/independent split)
+- `backend/app/services/ingest_reliefweb.py` (humanitarian)
+- `backend/app/services/ingest_newsdata.py` (reporting)
+- `backend/app/services/ingest_newsapi.py` (reporting)
+- `backend/app/services/ingest_mediastack.py` (reporting)
+- `backend/app/services/ingest_reddit.py` (social_commentary)
+
+**Observation**: humanitarian = 3 reveals broken ReliefWeb ingestion (historical, separate followup, not blocking).
+
+**Next**: migration 022 trigram index + `country` param in `/api/v2/search/unified` (Track A), then bulk SQL lexicon classifier (Track B.2).
+
+---
+
+## Previous handoff — 2026-05-19 (session 15 + Codex parallel work)
 
 **Production branch**: `v3-intel-layer`
 **Frontend**: Vercel auto-deploy — `v3-intel-layer` latest

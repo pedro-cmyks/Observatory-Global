@@ -129,6 +129,8 @@ async def run_newsapi_ingestion() -> None:
                             "geo_confidence": 0.65,
                             "attribution_method": "newsapi_org",
                             "is_state_media": False,
+                            # Semantic class (migration 021)
+                            "signal_class": "reporting",
                         })
 
                     total_fetched += len(signals)
@@ -142,10 +144,11 @@ async def run_newsapi_ingestion() -> None:
                                         timestamp, country_code, latitude, longitude, sentiment,
                                         source_url, source_name, headline, themes, persons,
                                         is_crisis, crisis_score, crisis_themes, severity, event_type,
-                                        source_family, source_lang, geo_confidence, attribution_method, is_state_media
+                                        source_family, source_lang, geo_confidence, attribution_method, is_state_media,
+                                        signal_class
                                     )
                                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-                                            $16,$17,$18,$19,$20)
+                                            $16,$17,$18,$19,$20,$21)
                                     ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO NOTHING
                                     """,
                                     s["timestamp"], s["country_code"], s["latitude"], s["longitude"],
@@ -155,6 +158,7 @@ async def run_newsapi_ingestion() -> None:
                                     s["severity"], s["event_type"],
                                     s["source_family"], s["source_lang"], s["geo_confidence"],
                                     s["attribution_method"], s["is_state_media"],
+                                    s.get("signal_class", "reporting"),
                                 )
                                 if result == "INSERT 0 1":
                                     inserted += 1

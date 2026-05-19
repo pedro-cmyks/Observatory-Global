@@ -24,6 +24,8 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 from urllib.parse import urlparse
 
+from app.services._signal_class import derive_signal_class
+
 from app.config.source_blocklist import is_blocked
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -461,6 +463,8 @@ async def fetch_feed(
                 "geo_confidence": 0.6,     # RSS geo = keyword match, lower confidence than GDELT
                 "attribution_method": "rss_feed",
                 "is_state_media": is_state_media,
+                # Semantic class (migration 021) — derived from provenance
+                "signal_class": derive_signal_class(source_family, "rss_feed", is_state_media),
             })
 
     except aiohttp.ClientError as e:
@@ -486,10 +490,11 @@ async def insert_rss_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                         timestamp, country_code, latitude, longitude, sentiment,
                         source_url, source_name, headline, themes, persons,
                         is_crisis, crisis_score, crisis_themes, severity, event_type,
-                        source_family, source_lang, geo_confidence, attribution_method, is_state_media
+                        source_family, source_lang, geo_confidence, attribution_method, is_state_media,
+                        signal_class
                     )
                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-                            $16,$17,$18,$19,$20)
+                            $16,$17,$18,$19,$20,$21)
                     ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO NOTHING
                     """,
                     s["timestamp"], s["country_code"], s["latitude"], s["longitude"],
@@ -499,6 +504,7 @@ async def insert_rss_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                     s["severity"], s["event_type"],
                     s["source_family"], s["source_lang"], s["geo_confidence"],
                     s["attribution_method"], s["is_state_media"],
+                    s.get("signal_class", "reporting"),
                 )
                 if result == "INSERT 0 1":
                     inserted += 1

@@ -369,6 +369,8 @@ def parse_gkg_row(row: list, source_lang: str = "en") -> Optional[dict]:
         'is_state_media': False,
         # Geo validation (migration 012)
         'source_origin_country': _extract_source_country(source_url),
+        # Semantic class (migration 021) — GDELT is always editorial reporting
+        'signal_class': 'reporting',
     }
 
 async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
@@ -388,10 +390,10 @@ async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                         source_url, source_name, headline, themes, persons,
                         is_crisis, crisis_score, crisis_themes, severity, event_type,
                         source_family, source_lang, geo_confidence, attribution_method, is_state_media,
-                        source_origin_country
+                        source_origin_country, signal_class
                     )
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-                            $16, $17, $18, $19, $20, $21)
+                            $16, $17, $18, $19, $20, $21, $22)
                     ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO NOTHING
                 """,
                     signal['timestamp'],
@@ -415,6 +417,7 @@ async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                     signal.get('attribution_method', 'gdelt_gkg'),
                     signal.get('is_state_media', False),
                     signal.get('source_origin_country'),
+                    signal.get('signal_class', 'reporting'),
                 )
                 # asyncpg returns "INSERT 0 N" — N=0 means conflict (dup)
                 if result == "INSERT 0 1":
