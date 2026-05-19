@@ -167,7 +167,7 @@ Valor para usuario:
 
 ### Fase 2: Atlas Topic Intelligence
 
-Crear una capa propia de `Atlas Topic Intelligence` para RSS, ReliefWeb, NewsData, MediaStack, NewsAPI, Reddit y tambien para refinar GDELT.
+Crear una capa propia de `Atlas Topic Intelligence` para **todas** las senales: GDELT, RSS, ReliefWeb, NewsData, MediaStack, NewsAPI y Reddit.
 
 El punto no es solamente llenar `themes=[]`. El punto es superar la limitacion de temas GDELT demasiado amplios. `ECON_CRISIS`, `PROTEST` o `ARMEDCONFLICT` sirven como senales estructuradas, pero no transmiten con facilidad que esta pasando. Atlas necesita temas humanos y especificos:
 
@@ -177,7 +177,9 @@ El punto no es solamente llenar `themes=[]`. El punto es superar la limitacion d
 - "election legitimacy dispute after court intervention"
 - "grid instability after heat wave and energy rationing"
 
-GDELT debe quedar como un input o prior, no como la capa final de significado.
+GDELT debe quedar como un input o prior, no como la capa final de significado. Sus temas originales se conservan como taxonomia de origen (`signals_v2.themes`), pero cada fila GDELT tambien debe recibir `atlas_topics` normalizados para que sea comparable con Reddit, RSS, NewsData, MediaStack, NewsAPI y ReliefWeb.
+
+Esto evita tener dos mundos: GDELT con su propia taxonomia y el resto con otra. La capa de producto debe leer una semantica comun: `signal_topic_assignments`.
 
 Opciones:
 
@@ -191,7 +193,7 @@ Esto es analogo a tener RoBERTa para sentimiento, pero aplicado a "de que trata 
 Resultado esperado:
 
 - Reddit y APIs nuevas empiezan a alimentar hilos narrativos.
-- Las narrativas dejan de ser casi exclusivamente GDELT.
+- Las narrativas dejan de depender directamente de la taxonomia cruda de GDELT.
 - El workspace puede exportar evidencia de mas tipos de fuente.
 - Los usuarios ven etiquetas narrativas mas claras que los codigos de taxonomia.
 
@@ -273,7 +275,7 @@ Orden recomendado:
 
 1. **UI de procedencia**: mostrar `Source Mix` y `Voice Mix` con las familias que ya existen.
 2. **`signal_class`**: separar evidencia, comentario social y atencion publica.
-3. **Theme enrichment no-GDELT**: hacer que RSS, NewsData, MediaStack, NewsAPI y Reddit puedan entrar a narrativas.
+3. **Atlas Topic Intelligence para todas las fuentes**: normalizar GDELT, RSS, ReliefWeb, NewsData, MediaStack, NewsAPI y Reddit bajo `atlas_topics`.
 4. **Attention threads**: construir hilos propios de Google/Wikipedia y conectarlos semanticamente con narrativas.
 5. **Refactor NewsAPI/NewsData**: mejorar presupuesto, geografia y cobertura.
 6. **Dossier/Workspace**: exportar evidencia real por hilo, separando articulos, posts, tendencias y paginas Wikipedia.
@@ -283,7 +285,7 @@ Orden recomendado:
 Estos son los issues que deberian existir o actualizarse:
 
 - `feat(data): add signal_class for evidence, social commentary, public attention, and analysis`
-- `feat(data): add Atlas topic intelligence beyond raw GDELT themes`
+- `feat(data): add Atlas topic intelligence to normalize all sources including GDELT`
 - `feat(ui): expose source mix and voice mix in narrative threads and country brief`
 - `feat(narratives): create public attention threads from Google Trends and Wikipedia`
 - `feat(narratives): semantically link public attention threads to media narratives`
