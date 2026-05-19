@@ -3,6 +3,34 @@
 ## Project Structure & Module Organization
 `backend/` hosts the FastAPI service (APIs, services, NLP logic) and pytest suites under `tests/`. The active React + Vite client lives in `frontend-v2/` (`src/pages`, `src/components`, `src/lib`, `src/App.tsx`). The `frontend/` directory is DEPRECATED — do not touch it. Docker/Compose exists for local dev only; production runs on Vercel (frontend) + Fly.io (backend). ADRs, demos, and decision logs go in `docs/`; keep environment templates in `.env.example`. MCP server configuration lives in `.mcp.json` (supabase + stitch). Design assets exported from Google Stitch live in `stitch_atlas_landing_experience_redesign/`.
 
+Key files added in session 15 (multi-source ingestion + NLP stabilization — 2026-05-19):
+- `backend/app/services/ingest_newsdata.py` — NewsData.io multilingual ingestion. 7 country-primary buckets after post-commit edit: ES/PT LatAm split (CO/MX/BR/AR/VE + PE/CL/EC/BO/CU), AR MENA, FR West/Central Africa, SW/AM East Africa, SE Asia, S Asia. Page size 10, 7-day fetch window. Called every 4th cycle. Env: `NEWSDATA_API_KEY`. `source_family="api"`, `attribution_method="newsdata_api"`, `geo_confidence=0.7`.
+- `backend/app/services/ingest_mediastack.py` — MediaStack ES/PT supplement. 17 LatAm countries, 100 articles/run, every 8th cycle (~2h). Env: `MEDIASTACK_API_KEY`. Free 500 req/month. `geo_confidence=0.65`.
+- `backend/app/services/ingest_newsapi.py` — NewsAPI.org crisis queries. 8 EN queries (Colombia, Venezuela, Myanmar, Sudan, Gaza, Haiti, Sahel, Congo M23) with 7-day window + `searchIn=title,description` + `sortBy=publishedAt`. Every 8th cycle, offset by 4 from MediaStack. Env: `NEWSAPI_KEY`. Dev plan 100 req/day.
+- `backend/app/services/ingest_reddit.py` — Reddit public API. 14 subreddits: worldnews, geopolitics, GlobalNews, colombia, Venezuela, ukraine, MiddleEast, Turkey, Nigeria, myanmar, haiti, CredibleDefense, SyrianCivilWar, PakistanPolitics. No API key needed. `source_family="social"`, `attribution_method="reddit_public"`, `geo_confidence=0.5`. Commentary layer — NOT peer to wire services.
+- `backend/.env.example` — all backend env vars documented: `DATABASE_URL`, `NEWSDATA_API_KEY`, `MEDIASTACK_API_KEY`, `NEWSAPI_KEY`, `ACLED_API_KEY`, `ACLED_EMAIL`, `INGEST_INTERVAL_SECONDS`, `REDIS_URL`.
+- `backend/migrations/019_atlas_topic_intelligence.sql` — Topic Intelligence schema (Codex track). Tables: `atlas_topics`, `signal_topic_assignments`, `topic_learning_examples`. 30 seed topics.
+- `backend/migrations/020_nlp_progress_indexes.sql` — indexes for NLP worker progress math (Codex track). Avoids full-scan on signals_v2.
+
+Key files changed in session 15:
+- `backend/app/services/ingest_loop.py` — wired 4 new ingestion services. `ingest_newsdata` + `ingest_reddit` at `cycle%4`. `ingest_mediastack` at `cycle%8`. `ingest_newsapi` at `cycle%8+4` (offset to spread load).
+
+Fly.io infra changes session 15 (Codex track):
+- `nlp_worker` machine: `shared-cpu-2x:4096MB` (raised from undersized config to fix OOM)
+- Standby worker stopped (single-worker mode)
+- `NLP_SAMPLE_REFRESH_EVERY=0` env — heavy refresh explicitly OFF
+- `NLP_SAMPLE_CLEANUP_LIMIT=50` env — bounded queue cleanup
+- Fly secrets set: `NEWSDATA_API_KEY`, `MEDIASTACK_API_KEY`, `NEWSAPI_KEY`
+- Deployment ID: `01KS0EG5FJAY5507G729FNVACQ`
+
+Multilingual NLP confirmed: logs show `Sentiment[xlm-v1]`, `NER[xlm-v1]`, `Framing[xlm-v1]`. Cycle duration 231.5s, error=no. Throughput stable at 25 rows/cycle — do NOT raise to 100/200 until DB pressure observed over hours.
+
+Known operational debt for next session:
+- HuggingFace tokenizer warning on `twitter-xlm-roberta-base-sentiment` — validate before trusting multilingual quality
+- `country_heat_v2` refresh hit timeout once — operational item
+- NewsAPI design weak (8 hardcoded EN queries on zones GDELT covers in EN) — refactor to 6 evergreen + 2 dynamic from GDELT spikes + 36 req/day analyst reserve
+- Reddit needs `signal_class="commentary"` field (migration 021) before counting in #149 source-diversity scoring
+
 Key files added in session 14 (P1 pass — 2026-05-18):
 - `frontend-v2/src/components/ReadingMode.tsx` — newspaper-style right panel showing signal cards per pinned item. Opens via BookOpen icon in Workspace. Escape/scrim dismiss; Export .md button.
 - `frontend-v2/src/components/ReadingMode.css` — styles for ReadingMode overlay, signal card grid, sentiment indicator, source badges.

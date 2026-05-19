@@ -1,6 +1,6 @@
 # GEMINI Code Assistant Context — Observatory Global (Atlas)
 
-Last updated: 2026-05-18 (session 15 — multi-source ingestion validated; NLP/source-semantics plan added)
+Last updated: 2026-05-19 (session 15 close — 4 new ingestion sources live; NLP worker 4GB with xlm-v1 multilingual confirmed; migrations 019+020 applied; 2.28M signals)
 
 This document gives the Gemini AI assistant the current, accurate context for the Observatory Global project. Treat this as the source of truth for deployment topology, architecture, and conventions.
 
@@ -25,7 +25,9 @@ This document gives the Gemini AI assistant the current, accurate context for th
 
 **Session 15 ingestion update:** NewsData.io, MediaStack, NewsAPI.org, and Reddit public API are wired into `backend/app/services/ingest_loop.py` and deployed on Fly. Keys are documented in `backend/.env.example` and Fly secrets are set for NewsData/MediaStack/NewsAPI.
 
-**Critical next constraint:** Do not assume the new rows are analytically useful until NLP multilingual quality and backlog are validated. `backend/enrichment/nlp_pipeline.py` currently uses English-first sentiment/NER/framing (`cardiffnlp/twitter-roberta-base-sentiment-latest`, `spacy en_core_web_sm`, English NLI framing), while `ingest_loop.py` only enriches 100 rows per 15-min cycle. Plan: `docs/superpowers/plans/2026-05-18-multisource-intelligence-hardening.md`.
+**Session 15 NLP update (Codex track):** `nlp_worker` raised to `shared-cpu-2x:4096MB`. Migrations `019_atlas_topic_intelligence.sql` (atlas_topics, signal_topic_assignments, topic_learning_examples, 30 seed topics) and `020_nlp_progress_indexes.sql` applied. **Multilingual NLP CONFIRMED running**: logs show `Sentiment[xlm-v1]`, `NER[xlm-v1]`, `Framing[xlm-v1]`. Cycle duration 231.5s, error=no. Env flags: `NLP_SAMPLE_REFRESH_EVERY=0`, `NLP_SAMPLE_CLEANUP_LIMIT=50`. Throughput stable at 25 rows/cycle — DO NOT raise without observing DB pressure over hours.
+
+**Next session priorities:** (1) `signal_class` + `narrative_cluster_id` migration 021 (Reddit must be `"commentary"`), (2) Voice Mix UI component in CountryBrief with `/api/v2/countries/{iso}/voice-mix` endpoint, (3) NewsAPI refactor to 6 evergreen + 2 dynamic from GDELT spikes + 36 req/day analyst reserve, (4) validate HuggingFace tokenizer warning on `twitter-xlm-roberta-base-sentiment`, (5) resolve `country_heat_v2` refresh timeout. Plan: `docs/superpowers/plans/2026-05-18-multisource-intelligence-hardening.md`.
 
 **There is no Docker Compose production setup.** The app runs on Vercel + Fly.io. Docker/Compose exists for local dev only.
 
@@ -278,6 +280,58 @@ Stitch project: **Atlas Landing Experience Redesign**
 53. **Saved watches live counts (session 14, #124)**: `useSavedWatches.ts` adds `lastSeenAt`/`lastSeenCount` fields, `markSeen(id, count)`, `fetchWatchCount(filter)` (calls `/api/v2/signals?hours=24&limit=1`). `BriefNewspaper` fetches counts in parallel on mount; card shows "N signals today" + delta badge (↑/↓ green/red vs last check). "Open in Atlas →" calls `markSeen` to record baseline.
 
 54. **Compound query country routing (session 14, #69)**: `SearchBar.tsx` `doSearch()` adds `&country=XX` to `/api/v2/search/unified` URL when `parseCompoundQuery` detects a country. `handleThemeClick` and `handleConceptClick` pass `countryCode` to `onThemeSelect` for compound queries, routing the user to country+theme context.
+
+---
+
+## Ingestion sources (session 15 close — all active on Fly.io)
+
+All sources write to `signals_v2` using the same schema. Each row requires: `source_family`, `source_lang`, `geo_confidence`, `attribution_method`, `is_state_media`.
+
+| Source | File | `source_family` | `attribution_method` | Cadence | `geo_confidence` |
+|--------|------|-----------------|----------------------|---------|------------------|
+| GDELT GKG | `ingest_v2.py` | `"gdelt"` | `"gdelt_gkg"` | 15 min | 0.9 |
+| GDELT Events | `ingest_events.py` | `"gdelt"` | `"gdelt_events"` | 15 min | 0.9 |
+| Google Trends | `ingest_trends.py` | `"trends"` | `"google_trends"` | 30 min | n/a |
+| RSS curated | `ingest_rss.py` | varies | `"rss_feed"` | 60 min | 0.6 |
+| ReliefWeb/OCHA | `ingest_reliefweb.py` | `"ngo"` | `"reliefweb_api"` | 60 min | 0.92 |
+| **NewsData.io** | `ingest_newsdata.py` | `"api"` | `"newsdata_api"` | 60 min | 0.7 |
+| **Reddit** | `ingest_reddit.py` | `"social"` | `"reddit_public"` | 60 min | 0.5 |
+| **MediaStack** | `ingest_mediastack.py` | `"api"` | `"mediastack_api"` | 2 hours | 0.65 |
+| **NewsAPI.org** | `ingest_newsapi.py` | `"api"` | `"newsapi_org"` | 2 hours | 0.65 |
+| Wikipedia | `ingest_wiki.py` | `"wiki"` | `"wikipedia_pageviews"` | 24 hours | n/a |
+| ACLED (optional) | `ingest_acled.py` | `"conflict"` | `"acled_api"` | 60 min | 0.95 |
+
+Cycle modulus in `ingest_loop.py`: NewsData + Reddit at `cycle%4`, MediaStack at `cycle%8`, NewsAPI at `cycle%8+4` (offset to spread load).
+
+**Design debts for next session:**
+- `signal_class` field (migration 021): add `"news"` / `"commentary"` / `"wire"` / `"ngo"` — Reddit MUST be `"commentary"`, not peer to wire services in source-diversity scoring (#149).
+- `narrative_cluster_id` field (same migration): MinHash or embedding clustering on title+lead to dedupe cross-source narrative amplification before scoring.
+- NewsAPI queries: refactor 8 hardcoded EN crisis queries to 6 evergreen + 2 dynamic (from top GDELT spikes last 24h) + 36 req/day reserve for analyst UI probing via `/api/v2/analyst/probe-newsapi`.
+- NewsData: post-edit already splits into 7 country-primary buckets. Measure resulting `geo_confidence` distribution before further refactor.
+- Validate HuggingFace warning on `twitter-xlm-roberta-base-sentiment` tokenizer before fully trusting multilingual sentiment.
+
+---
+
+## ADR-0055 — Multi-source ingestion strategy (session 15)
+
+**Decision**: Add NewsData.io (multilingual), MediaStack (ES/PT), NewsAPI.org (EN crisis), Reddit (social) as GDELT complements.
+
+**Rationale**: GDELT is EN-heavy (CAMEO event coder trained primarily on English-language text). New sources add non-English voice (~80% of non-EN signal post-session-15) and a social-commentary layer. The goal is NOT volume (GDELT already at 2M rows) — it is source-diversity and emergent-narrative detection.
+
+**Reddit classification**: `source_family="social"` — commentary on news, NOT independent corroboration. Must not count as unique source in #149 diversity scoring. Track separately as commentary signal class.
+
+**Quota management**:
+- NewsData: 200 req/day cap. 7 buckets × 24 runs = 168 req/day. Safe.
+- NewsAPI: 100 req/day cap. 8 queries × 12 runs = 96 req/day. **Operating at the ceiling — zero headroom for retries or analyst queries. Redesign required for analyst-driven exploration.**
+- MediaStack: 500 req/month cap. 12 runs/day × 30 days = 360 req/month. Safe.
+- Reddit: unlimited public API (60 req/min). Conservative: 14 subreddits × 2s sleep = 28s per run × 24 runs/day. Safe.
+
+**Tradeoffs**:
+- More sources = more dedup pressure on `source_url` unique constraint. Already enforced; not a problem at current scale but watch as approach 10M rows.
+- Multilingual signals require multilingual NLP. Codex verified `xlm-v1` running in production — sentiment/NER/framing all multilingual. Earlier worry about EN-only NLP pipeline was resolved.
+- Throughput: NLP worker enriches 25 rows/cycle. At 100K signals/day projected, full enrichment requires sustained throughput discipline. Codex deliberately kept at 25 until DB pressure observed.
+
+**Status**: Implemented and deployed 2026-05-19. Files: `backend/app/services/ingest_{newsdata,mediastack,newsapi,reddit}.py`. Fly secrets set: `NEWSDATA_API_KEY`, `MEDIASTACK_API_KEY`, `NEWSAPI_KEY`.
 
 ---
 

@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-18 (session 15 — multi-source ingestion validated; NLP/source-semantics plan added)
+Last updated: 2026-05-19 (session 15 close — 4 new ingest sources live; NLP worker 4GB with xlm-v1 multilingual confirmed; migrations 019+020 applied; 2.28M signals)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -8,20 +8,42 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
-## Current Session Context (2026-05-18)
+## Current Session Context (2026-05-19, session 15 close)
 
-- Active branch: `v3-intel-layer`; this is the production branch. Do not merge into `main`.
+- Active branch: `v3-intel-layer`; production branch. Do not merge into `main`.
 - PR #144 open against main: https://github.com/pedro-cmyks/Observatory-Global/pull/144
-- Production: Vercel (frontend auto-deploy), Fly.io `atlas-api-pedro` (backend, version 113)
+- Production: Vercel (frontend auto-deploy), Fly.io `atlas-api-pedro` (backend), Fly.io `nlp_worker` (4GB)
+- Total signals: 2,279,950. Ingest lag 4.1 min. 3849 rows/15min.
 - Atlas product framing: **public narrative intelligence console**, not a GDELT wrapper.
 - Preferred user path: `/brief` for readable orientation, then `/app` for full analyst investigation.
-- All P0 + P1 video-review issues closed. Zero open code issues. Only docs (#134, #140) and blocked (#46, #106) remain.
-- Session 15 added four live ingestion sources: NewsData.io, MediaStack, NewsAPI.org, and Reddit public API.
-- Critical validation: new volume is not the main value; differentiated source voice is. Before scoring/UI work, validate NLP multilingual quality and backlog capacity.
-- `backend/enrichment/nlp_pipeline.py` is English-first today (`cardiffnlp/twitter-roberta-base-sentiment-latest`, `spacy en_core_web_sm`, English NLI framing).
-- `backend/app/services/ingest_loop.py` runs NLP with `limit=100` per 15-min cycle, which is too low for projected ~100K signals/day if applied to all rows.
-- Reddit already writes `source_family="social"` and `attribution_method="reddit_public"`; add `signal_class="social_commentary"` in migration 013 before source-weighted scoring.
-- Plan: `docs/superpowers/plans/2026-05-18-multisource-intelligence-hardening.md`.
+
+### Session 15 closed with two parallel tracks:
+
+**Track A (Claude) — Multi-source ingestion**:
+- 4 new ingest services live: NewsData.io (multilingual), MediaStack (ES/PT), NewsAPI.org (EN crisis queries), Reddit public API (social commentary)
+- Fly secrets set: `NEWSDATA_API_KEY`, `MEDIASTACK_API_KEY`, `NEWSAPI_KEY`
+- Volume projection: ~99.7K signals/day total (GDELT ~72K + new ~27.6K)
+- `backend/.env.example` documents all env vars
+
+**Track B (Codex) — NLP worker stabilization + Topic Intelligence**:
+- Commit `e4e8f92`
+- `nlp_worker` raised to `shared-cpu-2x:4096MB`, standby stopped
+- Migrations `019_atlas_topic_intelligence.sql` + `020_nlp_progress_indexes.sql` applied
+- **Multilingual NLP CONFIRMED**: logs show `Sentiment[xlm-v1]`, `NER[xlm-v1]`, `Framing[xlm-v1]`. Cycle 231.5s, error=no
+- `NLP_SAMPLE_REFRESH_EVERY=0`, `NLP_SAMPLE_CLEANUP_LIMIT=50` set in prod
+- 27 tests pass on NLP pipeline + worker + topic intelligence schema
+
+### Next session priorities:
+1. ~~Verify multilingual NLP~~ DONE (xlm-v1 confirmed by Codex)
+2. Add `signal_class` + `narrative_cluster_id` to signals_v2 (migration 021)
+3. Voice Mix component in CountryBrief (stacked bar: local-lang / international / social)
+4. NewsAPI refactor: 6 evergreen + 2 dynamic from GDELT spikes + 36 req/day analyst reserve
+5. Validate HuggingFace tokenizer warning on `twitter-xlm-roberta-base-sentiment`
+6. Resolve `country_heat_v2` refresh timeout
+
+### Reference docs:
+- `docs/STATUS.md` — current state, validation results
+- `docs/superpowers/plans/2026-05-18-multisource-intelligence-hardening.md` — original plan
 
 ### Key patterns (established across sessions 13–14)
 
@@ -38,6 +60,11 @@ Observatorio Global is a narrative intelligence system that tracks, analyzes, an
 - ACLED is optional connector — no `ACLED_API_KEY` → empty layer, no errors
 - `createTerminatorLayer()` returns `PolygonLayer[]` (5 bands) — spread with `...terminatorLayers`
 - `fetchItemSignals(item)` in `exportFormatters.ts` — shared by dossier export and ReadingMode
+- New ingest services follow `ingest_rss.py` pattern: every row sets `source_family`, `source_lang`, `geo_confidence`, `attribution_method`, `is_state_media`
+- Reddit signals: `source_family="social"`, `attribution_method="reddit_public"` — commentary layer, NOT independent corroboration; needs `signal_class="commentary"` before #149 scoring
+- `geo_confidence` defaults: NewsData 0.7, MediaStack 0.65, NewsAPI 0.65, Reddit 0.5, GDELT GKG 0.9, RSS 0.6
+- NLP env flags in prod: `NLP_SAMPLE_REFRESH_EVERY=0`, `NLP_SAMPLE_CLEANUP_LIMIT=50` — do NOT change without testing
+- NLP worker confirmed multilingual: logs `Sentiment[xlm-v1]`, `NER[xlm-v1]`, `Framing[xlm-v1]`. Throughput 25 rows/cycle stable — do NOT raise without observing DB pressure
 - `npm run build` (not `tsc --noEmit`) is the canonical build check — Vite uses `tsc -b` (stricter)
 
 ## Specialized Agents
