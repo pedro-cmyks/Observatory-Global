@@ -155,6 +155,15 @@ def test_ingest_reliefweb_writes_humanitarian():
     assert '"signal_class": "humanitarian"' in src
 
 
+def test_ingest_reliefweb_promotes_conflicting_urls_to_humanitarian():
+    src = _service_path("ingest_reliefweb").read_text()
+    assert "ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO UPDATE SET" in src
+    assert "source_family = EXCLUDED.source_family" in src
+    assert "attribution_method = EXCLUDED.attribution_method" in src
+    assert "signal_class = EXCLUDED.signal_class" in src
+    assert 'result in {"INSERT 0 1", "UPDATE 1"}' in src
+
+
 def test_ingest_rss_uses_derivation_helper():
     src = _service_path("ingest_rss").read_text()
     assert "from app.services._signal_class import derive_signal_class" in src

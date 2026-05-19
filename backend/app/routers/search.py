@@ -1,4 +1,5 @@
 import json
+import logging
 
 from fastapi import APIRouter, Query
 from app import db
@@ -6,12 +7,16 @@ from app.main_v2 import app
 from app.utils import _is_valid_person, extract_domain
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+SEARCH_SEGMENT_TIMEOUT_SECONDS = 8.0
+SEARCH_MATCH_TIMEOUT_SECONDS = 5.0
 
 @router.get("/api/v2/search")
 async def search(
     q: str = Query(..., min_length=2, description="Search query"),
     hours: int = Query(168, ge=1, le=720),
-    country: str | None = Query(None, min_length=2, max_length=2)
+    country: str | None = Query(None, min_length=2, max_length=2),
+    include_aggregates: bool = Query(True, description="Include slower theme/person aggregate segments")
 ):
     """Search across themes, countries, and persons. Returns top_countries per result for map fly-to."""
     from app.core.search_normalization import build_like_patterns, build_query_variants
@@ -20,7 +25,7 @@ async def search(
     query = query_variants[0] if query_variants else q.lower().strip()
     like_patterns = build_like_patterns(q)
     country_code = country.upper() if country else None
-    cache_key = f"search:v2:{query}:{hours}:{country_code or 'all'}"
+    cache_key = f"search:v3:{query}:{hours}:{country_code or 'all'}:{int(include_aggregates)}"
     if app.state.redis:
         try:
             cached = await app.state.redis.get(cache_key)
@@ -35,81 +40,98 @@ async def search(
         if country_code:
             search_params.append(country_code)
 
+        degraded_segments: list[str] = []
+
+        theme_rows = []
+        person_rows = []
+
         # Themes — grouped with top 3 countries each
         # Exclude pure taxonomy prefixes (TAX_WORLDFISH, TAX_WORLDLANGUAGES, etc.) that
         # match on biological/language names and produce misleading results
-        theme_rows = await conn.fetch("""
-            WITH matches AS (
-                SELECT unnest(themes) as theme, country_code, COUNT(*) as cnt
-                FROM signals_v2
-                WHERE timestamp > NOW() - INTERVAL '%s hours'
-                  AND LOWER(array_to_string(themes, ' ')) LIKE ANY($1::text[])
-                  %s
-                GROUP BY theme, country_code
-                HAVING COUNT(*) >= 2
-            ),
-            filtered AS (
-                SELECT * FROM matches
-                WHERE theme NOT LIKE 'TAX_%%'
-                  AND theme NOT LIKE 'WORLDLANGUAGES_%%'
-            ),
-            totals AS (
-                SELECT theme, SUM(cnt) as total_signals
-                FROM filtered GROUP BY theme
-                ORDER BY total_signals DESC LIMIT 10
-            ),
-            ranked AS (
-                SELECT m.theme, m.country_code, m.cnt,
-                       ROW_NUMBER() OVER (PARTITION BY m.theme ORDER BY m.cnt DESC) as rn
-                FROM filtered m JOIN totals t ON t.theme = m.theme
-            )
-            SELECT
-                t.theme,
-                t.total_signals,
-                array_agg(r.country_code ORDER BY r.rn) FILTER (WHERE r.rn <= 3) as top_codes,
-                array_agg(r.cnt::int ORDER BY r.rn)     FILTER (WHERE r.rn <= 3) as top_counts,
-                array_agg(COALESCE(c.name, r.country_code) ORDER BY r.rn) FILTER (WHERE r.rn <= 3) as top_names
-            FROM totals t
-            JOIN ranked r ON r.theme = t.theme AND r.rn <= 3
-            LEFT JOIN countries_v2 c ON c.code = r.country_code
-            GROUP BY t.theme, t.total_signals
-            ORDER BY t.total_signals DESC
-        """ % (hours, country_clause), *search_params)
+        if include_aggregates:
+            try:
+                theme_rows = await conn.fetch("""
+                    WITH matches AS (
+                        SELECT unnest(themes) as theme, country_code, COUNT(*) as cnt
+                        FROM signals_v2
+                        WHERE timestamp > NOW() - INTERVAL '%s hours'
+                          AND LOWER(array_to_string(themes, ' ')) LIKE ANY($1::text[])
+                          %s
+                        GROUP BY theme, country_code
+                        HAVING COUNT(*) >= 2
+                    ),
+                    filtered AS (
+                        SELECT * FROM matches
+                        WHERE theme NOT LIKE 'TAX_%%'
+                          AND theme NOT LIKE 'WORLDLANGUAGES_%%'
+                    ),
+                    totals AS (
+                        SELECT theme, SUM(cnt) as total_signals
+                        FROM filtered GROUP BY theme
+                        ORDER BY total_signals DESC LIMIT 10
+                    ),
+                    ranked AS (
+                        SELECT m.theme, m.country_code, m.cnt,
+                               ROW_NUMBER() OVER (PARTITION BY m.theme ORDER BY m.cnt DESC) as rn
+                        FROM filtered m JOIN totals t ON t.theme = m.theme
+                    )
+                    SELECT
+                        t.theme,
+                        t.total_signals,
+                        array_agg(r.country_code ORDER BY r.rn) FILTER (WHERE r.rn <= 3) as top_codes,
+                        array_agg(r.cnt::int ORDER BY r.rn)     FILTER (WHERE r.rn <= 3) as top_counts,
+                        array_agg(COALESCE(c.name, r.country_code) ORDER BY r.rn) FILTER (WHERE r.rn <= 3) as top_names
+                    FROM totals t
+                    JOIN ranked r ON r.theme = t.theme AND r.rn <= 3
+                    LEFT JOIN countries_v2 c ON c.code = r.country_code
+                    GROUP BY t.theme, t.total_signals
+                    ORDER BY t.total_signals DESC
+                """ % (hours, country_clause), *search_params, timeout=SEARCH_SEGMENT_TIMEOUT_SECONDS)
+            except Exception as exc:
+                logger.warning("Search themes segment degraded for q=%r country=%r: %r", q, country_code, exc)
+                degraded_segments.append("themes")
+                theme_rows = []
 
         # Persons — same grouping pattern
-        person_rows = await conn.fetch("""
-            WITH matches AS (
-                SELECT unnest(persons) as person, country_code, COUNT(*) as cnt
-                FROM signals_v2
-                WHERE timestamp > NOW() - INTERVAL '%s hours'
-                  AND persons IS NOT NULL AND array_length(persons, 1) > 0
-                  AND LOWER(array_to_string(persons, ' ')) LIKE ANY($1::text[])
-                  %s
-                GROUP BY person, country_code
-                HAVING COUNT(*) >= 2
-            ),
-            totals AS (
-                SELECT person, SUM(cnt) as total_signals
-                FROM matches GROUP BY person
-                ORDER BY total_signals DESC LIMIT 8
-            ),
-            ranked AS (
-                SELECT m.person, m.country_code, m.cnt,
-                       ROW_NUMBER() OVER (PARTITION BY m.person ORDER BY m.cnt DESC) as rn
-                FROM matches m JOIN totals t ON t.person = m.person
-            )
-            SELECT
-                t.person,
-                t.total_signals,
-                array_agg(r.country_code ORDER BY r.rn) FILTER (WHERE r.rn <= 3) as top_codes,
-                array_agg(r.cnt::int ORDER BY r.rn)     FILTER (WHERE r.rn <= 3) as top_counts,
-                array_agg(COALESCE(c.name, r.country_code) ORDER BY r.rn) FILTER (WHERE r.rn <= 3) as top_names
-            FROM totals t
-            JOIN ranked r ON r.person = t.person AND r.rn <= 3
-            LEFT JOIN countries_v2 c ON c.code = r.country_code
-            GROUP BY t.person, t.total_signals
-            ORDER BY t.total_signals DESC
-        """ % (hours, country_clause), *search_params)
+        if include_aggregates:
+            try:
+                person_rows = await conn.fetch("""
+                    WITH matches AS (
+                        SELECT unnest(persons) as person, country_code, COUNT(*) as cnt
+                        FROM signals_v2
+                        WHERE timestamp > NOW() - INTERVAL '%s hours'
+                          AND persons IS NOT NULL AND array_length(persons, 1) > 0
+                          AND LOWER(array_to_string(persons, ' ')) LIKE ANY($1::text[])
+                          %s
+                        GROUP BY person, country_code
+                        HAVING COUNT(*) >= 2
+                    ),
+                    totals AS (
+                        SELECT person, SUM(cnt) as total_signals
+                        FROM matches GROUP BY person
+                        ORDER BY total_signals DESC LIMIT 8
+                    ),
+                    ranked AS (
+                        SELECT m.person, m.country_code, m.cnt,
+                               ROW_NUMBER() OVER (PARTITION BY m.person ORDER BY m.cnt DESC) as rn
+                        FROM matches m JOIN totals t ON t.person = m.person
+                    )
+                    SELECT
+                        t.person,
+                        t.total_signals,
+                        array_agg(r.country_code ORDER BY r.rn) FILTER (WHERE r.rn <= 3) as top_codes,
+                        array_agg(r.cnt::int ORDER BY r.rn)     FILTER (WHERE r.rn <= 3) as top_counts,
+                        array_agg(COALESCE(c.name, r.country_code) ORDER BY r.rn) FILTER (WHERE r.rn <= 3) as top_names
+                    FROM totals t
+                    JOIN ranked r ON r.person = t.person AND r.rn <= 3
+                    LEFT JOIN countries_v2 c ON c.code = r.country_code
+                    GROUP BY t.person, t.total_signals
+                    ORDER BY t.total_signals DESC
+                """ % (hours, country_clause), *search_params, timeout=SEARCH_SEGMENT_TIMEOUT_SECONDS)
+            except Exception as exc:
+                logger.warning("Search persons segment degraded for q=%r country=%r: %r", q, country_code, exc)
+                degraded_segments.append("persons")
+                person_rows = []
 
         # Countries — simple name/code match
         if country_code:
@@ -169,6 +191,8 @@ async def search(
                 for r in person_rows
             ],
             "countries": [{"code": r['code'], "name": r['name']} for r in country_rows],
+            "degraded": bool(degraded_segments),
+            "degraded_segments": degraded_segments,
         }
 
     if app.state.redis:
@@ -269,7 +293,8 @@ async def _get_fuzzy_search_suggestions(
 @router.get("/api/v2/search/unified")
 async def unified_search(
     q: str = Query(..., min_length=2, description="Search query"),
-    hours: int = Query(168, ge=1, le=720)
+    hours: int = Query(168, ge=1, le=720),
+    country: str | None = Query(None, min_length=2, max_length=2)
 ):
     """Unified search: merges taxonomy aliases, investigative concepts, region matching,
     and live DB signal search into a single response.
@@ -289,12 +314,14 @@ async def unified_search(
 
     query = q.strip()
     query_lower = query.lower()
+    explicit_country_code = country.upper() if country else None
     country_match = match_country(query)
     topic_query = country_match["query"] if country_match else query
+    country_filter = country_match["code"] if country_match else explicit_country_code
     query_variants = build_query_variants(topic_query)
     normalized_query = query_variants[0] if query_variants else topic_query.lower().strip()
 
-    cache_key = f"usearch:v7:{query_lower}:{hours}"
+    cache_key = f"usearch:v8:{query_lower}:{hours}:{country_filter or 'all'}"
     if app.state.redis:
         try:
             cached = await app.state.redis.get(cache_key)
@@ -320,26 +347,33 @@ async def unified_search(
     db_result = await search(
         q=topic_query,
         hours=hours,
-        country=country_match["code"] if country_match else None,
+        country=country_filter,
+        include_aggregates=False,
     )
 
     # --- 4b. Public attention + headline matches ---
     public_attention = []
     signal_matches = []
     fuzzy_suggestions = []
+    degraded_segments = list(db_result.get("degraded_segments", []))
     try:
         async with db.pool.acquire() as conn:
             like_queries = [f"%{variant}%" for variant in query_variants]
             wiki_days = max(1, min(7, (hours + 23) // 24))
-            wiki_rows = await conn.fetch("""
-                SELECT article_title, SUM(views) AS views, COUNT(DISTINCT country_code) AS country_count
-                FROM wiki_pageviews_v2
-                WHERE fetch_date >= CURRENT_DATE - $2::int
-                  AND LOWER(article_title) LIKE ANY($1::text[])
-                GROUP BY article_title
-                ORDER BY views DESC
-                LIMIT 5
-            """, like_queries, wiki_days)
+            try:
+                wiki_rows = await conn.fetch("""
+                    SELECT article_title, SUM(views) AS views, COUNT(DISTINCT country_code) AS country_count
+                    FROM wiki_pageviews_v2
+                    WHERE fetch_date >= CURRENT_DATE - $2::int
+                      AND LOWER(article_title) LIKE ANY($1::text[])
+                    GROUP BY article_title
+                    ORDER BY views DESC
+                    LIMIT 5
+                """, like_queries, wiki_days, timeout=SEARCH_MATCH_TIMEOUT_SECONDS)
+            except Exception as exc:
+                logger.warning("Unified search public_attention degraded for q=%r: %r", q, exc)
+                degraded_segments.append("public_attention")
+                wiki_rows = []
             public_attention = [
                 {
                     "title": r["article_title"],
@@ -349,22 +383,27 @@ async def unified_search(
                 for r in wiki_rows
             ]
 
-            signal_country_clause = "AND country_code = $2" if country_match else ""
+            signal_country_clause = "AND country_code = $2" if country_filter else ""
             signal_params = [like_queries]
-            if country_match:
-                signal_params.append(country_match["code"])
-            signal_rows = await conn.fetch(f"""
-                SELECT id, timestamp, country_code, source_name, headline, themes
-                FROM signals_v2
-                WHERE timestamp > NOW() - INTERVAL '{hours} hours'
-                  AND (
-                    LOWER(COALESCE(headline, '')) LIKE ANY($1::text[])
-                    OR LOWER(COALESCE(source_name, '')) LIKE ANY($1::text[])
-                  )
-                  {signal_country_clause}
-                ORDER BY timestamp DESC
-                LIMIT 6
-            """, *signal_params, timeout=5.0)
+            if country_filter:
+                signal_params.append(country_filter)
+            try:
+                signal_rows = await conn.fetch(f"""
+                    SELECT id, timestamp, country_code, source_name, headline, themes
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+                      AND (
+                        (headline IS NOT NULL AND LOWER(headline) LIKE ANY($1::text[]))
+                        OR (source_name IS NOT NULL AND LOWER(source_name) LIKE ANY($1::text[]))
+                      )
+                      {signal_country_clause}
+                    ORDER BY timestamp DESC
+                    LIMIT 6
+                """, *signal_params, timeout=SEARCH_MATCH_TIMEOUT_SECONDS)
+            except Exception as exc:
+                logger.warning("Unified search signal_matches degraded for q=%r country=%r: %r", q, country_filter, exc)
+                degraded_segments.append("signal_matches")
+                signal_rows = []
             signal_matches = [
                 {
                     "id": r["id"],
@@ -377,6 +416,7 @@ async def unified_search(
                 for r in signal_rows
             ]
     except Exception:
+        degraded_segments.append("db_matches")
         public_attention = []
         signal_matches = []
         fuzzy_suggestions = []
@@ -462,6 +502,8 @@ async def unified_search(
         "public_attention": public_attention,
         "signal_matches": signal_matches,
         "fuzzy_suggestions": fuzzy_suggestions,
+        "degraded": bool(degraded_segments),
+        "degraded_segments": sorted(set(degraded_segments)),
     }
 
     if app.state.redis:

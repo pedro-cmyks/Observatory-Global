@@ -218,7 +218,7 @@ _COUNTRY_NAME_TO_ISO2: dict[str, str] = {
 async def insert_reliefweb_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
     if not signals:
         return 0
-    inserted = 0
+    upserted = 0
     async with pool.acquire() as conn:
         for s in signals:
             try:
@@ -233,7 +233,26 @@ async def insert_reliefweb_signals(pool: asyncpg.Pool, signals: list[dict]) -> i
                     )
                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
                             $16,$17,$18,$19,$20,$21)
-                    ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO NOTHING
+                    ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO UPDATE SET
+                        country_code = EXCLUDED.country_code,
+                        source_name = EXCLUDED.source_name,
+                        is_crisis = TRUE,
+                        crisis_score = GREATEST(
+                            COALESCE(signals_v2.crisis_score, 0),
+                            EXCLUDED.crisis_score
+                        ),
+                        crisis_themes = EXCLUDED.crisis_themes,
+                        severity = EXCLUDED.severity,
+                        event_type = EXCLUDED.event_type,
+                        source_family = EXCLUDED.source_family,
+                        source_lang = COALESCE(signals_v2.source_lang, EXCLUDED.source_lang),
+                        geo_confidence = GREATEST(
+                            COALESCE(signals_v2.geo_confidence, 0),
+                            EXCLUDED.geo_confidence
+                        ),
+                        attribution_method = EXCLUDED.attribution_method,
+                        is_state_media = FALSE,
+                        signal_class = EXCLUDED.signal_class
                     """,
                     s["timestamp"], s["country_code"], s["latitude"], s["longitude"],
                     s["sentiment"], s["source_url"], s["source_name"], s["headline"],
@@ -244,11 +263,11 @@ async def insert_reliefweb_signals(pool: asyncpg.Pool, signals: list[dict]) -> i
                     s["attribution_method"], s["is_state_media"],
                     s.get("signal_class", "humanitarian"),
                 )
-                if result == "INSERT 0 1":
-                    inserted += 1
+                if result in {"INSERT 0 1", "UPDATE 1"}:
+                    upserted += 1
             except Exception as e:
                 logger.warning("[RW] insert error: %s: %s", type(e).__name__, str(e)[:120])
-    return inserted
+    return upserted
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────
@@ -258,7 +277,7 @@ async def run_reliefweb_ingestion() -> None:
     since = datetime.now(timezone.utc) - timedelta(hours=4)  # wider window — reports are slower
 
     pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=2)
-    total_inserted = 0
+    total_upserted = 0
     total_fetched = 0
 
     try:
@@ -271,9 +290,9 @@ async def run_reliefweb_ingestion() -> None:
                 total_fetched += len(signals)
                 if signals:
                     n = await insert_reliefweb_signals(pool, signals)
-                    total_inserted += n
+                    total_upserted += n
                     if n > 0:
-                        logger.info("[RW] %s: %d fetched → %d inserted", feed_name, len(signals), n)
+                        logger.info("[RW] %s: %d fetched → %d upserted", feed_name, len(signals), n)
 
             # Thematic feeds (disasters, no fixed country)
             for feed_name, feed_url in _THEMATIC_FEEDS:
@@ -281,14 +300,14 @@ async def run_reliefweb_ingestion() -> None:
                 total_fetched += len(signals)
                 if signals:
                     n = await insert_reliefweb_signals(pool, signals)
-                    total_inserted += n
+                    total_upserted += n
                     if n > 0:
-                        logger.info("[RW] %s: %d fetched → %d inserted", feed_name, len(signals), n)
+                        logger.info("[RW] %s: %d fetched → %d upserted", feed_name, len(signals), n)
 
     finally:
         await pool.close()
 
-    logger.info("[RW] ingestion complete — %d fetched, %d new signals inserted", total_fetched, total_inserted)
+    logger.info("[RW] ingestion complete — %d fetched, %d signals upserted", total_fetched, total_upserted)
 
 
 if __name__ == "__main__":
