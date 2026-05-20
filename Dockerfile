@@ -8,6 +8,7 @@ COPY backend/pyproject.toml backend/README.md ./
 COPY backend/app ./app
 COPY backend/enrichment ./enrichment
 COPY backend/indicators ./indicators
+COPY backend/scripts ./scripts
 COPY backend/start.sh ./start.sh
 
 RUN pip install --no-cache-dir --upgrade pip && \
