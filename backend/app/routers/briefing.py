@@ -246,30 +246,30 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             # is tiny.
             heat_voluminous_countries = await _fetch_section(
                 conn, degraded_segments, "heat_voluminous_countries", """
-                WITH thresholded AS (
-                    SELECT h.*,
-                           percentile_disc($1::float) WITHIN GROUP (ORDER BY h.volume_now)
-                             OVER () AS volume_floor
-                    FROM country_heat_v2 h
-                    WHERE h.hours_window = 24
-                      AND h.atlas_heat IS NOT NULL
+                WITH volume_floor AS (
+                    SELECT percentile_disc($1::float) WITHIN GROUP (ORDER BY volume_now)::bigint AS v
+                    FROM country_heat_v2
+                    WHERE hours_window = 24
+                      AND atlas_heat IS NOT NULL
                 )
-                SELECT t.country_code,
-                       COALESCE(c.name, t.country_code)         AS name,
-                       t.volume_now::bigint                     AS volume,
-                       t.volume_floor::bigint                   AS volume_floor,
-                       t.atlas_heat::float                      AS heat,
-                       t.z_velocity_norm::float                 AS velocity,
-                       t.surprise_kl_norm::float                AS surprise,
-                       t.source_diversity_norm::float           AS diversity,
-                       t.local_voice_ratio::float               AS voice,
-                       t.polyphony_norm::float                  AS polyphony,
-                       t.geo_confidence_mean::float             AS geo_confidence,
-                       t.duplication_index_norm::float          AS duplication
-                FROM thresholded t
-                LEFT JOIN countries_v2 c ON t.country_code = c.code
-                WHERE t.volume_now >= t.volume_floor
-                ORDER BY t.atlas_heat DESC
+                SELECT h.country_code,
+                       COALESCE(c.name, h.country_code)         AS name,
+                       h.volume_now::bigint                     AS volume,
+                       (SELECT v FROM volume_floor)             AS volume_floor,
+                       h.atlas_heat::float                      AS heat,
+                       h.z_velocity_norm::float                 AS velocity,
+                       h.surprise_kl_norm::float                AS surprise,
+                       h.source_diversity_norm::float           AS diversity,
+                       h.local_voice_ratio::float               AS voice,
+                       h.polyphony_norm::float                  AS polyphony,
+                       h.geo_confidence_mean::float             AS geo_confidence,
+                       h.duplication_index_norm::float          AS duplication
+                FROM country_heat_v2 h
+                LEFT JOIN countries_v2 c ON h.country_code = c.code
+                WHERE h.hours_window = 24
+                  AND h.atlas_heat IS NOT NULL
+                  AND h.volume_now >= (SELECT v FROM volume_floor)
+                ORDER BY h.atlas_heat DESC
                 LIMIT 10
             """, HEAT_VOLUMINOUS_PERCENTILE)
         else:

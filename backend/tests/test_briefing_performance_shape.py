@@ -73,7 +73,10 @@ def test_briefing_exposes_heat_voluminous_countries_section():
     assert '"heat_voluminous_countries"' in source
     assert "HEAT_VOLUMINOUS_PERCENTILE" in source
     assert "percentile_disc" in source
-    assert "WHERE t.volume_now >= t.volume_floor" in source
+    # percentile_disc with WITHIN GROUP works as an aggregate in PG, not a
+    # window function — so the volume_floor lives in a CTE that the main
+    # SELECT references via a scalar subquery (validated live on Supabase).
+    assert "AND h.volume_now >= (SELECT v FROM volume_floor)" in source
     assert '"heat_voluminous_percentile"' in source
 
 
