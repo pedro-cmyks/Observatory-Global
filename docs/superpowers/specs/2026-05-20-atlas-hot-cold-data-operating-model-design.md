@@ -40,6 +40,8 @@ Move Atlas from a single hot database model to a tiered data operating model:
 - Do not migrate all historical data immediately.
 - Do not run destructive full-table rewrites in production.
 - Do not require a new paid cloud data warehouse before proving the simpler local/archive path.
+- Do not add new cloud services for this transition. Use the current stack:
+  Supabase, Fly.io, Vercel, Upstash, and Pedro's local machine/storage.
 
 ## Recommended Approach
 
@@ -49,13 +51,15 @@ Use a hybrid model:
    - Keeps recent operational data, product-facing aggregates, and user-facing derived fields.
    - Optimized for `/brief`, `/app`, search, country panels, narrative threads, heat ranking, and workspace evidence lookup.
 
-2. **Cold Archive: Local or Cheap Object Storage**
+2. **Cold Archive: Local Storage First**
    - Keeps raw historical signals as append-only partitioned files.
    - Preferred format: compressed Parquet if tooling is available; otherwise JSONL `.zst` as a first step.
    - Partition by date and source family:
      - `archive/signals/year=2026/month=05/day=20/source_family=gdelt/...`
+   - Must be queryable locally. The archive is not only backup; it is the
+     historical research store.
 
-3. **Offline Worker: Local Machine or Detached Batch Runner**
+3. **Offline Worker: Pedro's Local Machine**
    - Reads cold archive partitions.
    - Runs expensive NLP/topic/backfill experiments.
    - Writes only curated outputs back to Supabase:
@@ -66,6 +70,8 @@ Use a hybrid model:
      - topic assignments
      - aggregate refresh inputs
    - Uses checkpoints so it can stop and resume without duplication.
+   - Preferred operating window: early morning UTC-5, when interactive use is
+     low and the machine can run heavier jobs without affecting product demos.
 
 4. **Cloud Worker: Fly NLP Hot Lane**
    - Continues processing fresh/high-value rows.
@@ -100,7 +106,7 @@ Location: Supabase.
 
 Retention target:
 
-- Raw row detail: 24h to 30d, pending measurement.
+- Raw row detail: 24h.
 - Product aggregates: longer retention where useful.
 - User-facing curated evidence: retained if pinned/exported or referenced by a durable product object.
 
@@ -116,6 +122,8 @@ Rules:
 
 - Product routes should prefer aggregates over raw scans.
 - Broad production updates must be batched.
+- Raw rows older than 24h should be exported and verified before leaving the hot
+  store. Aggregates and evidence pointers may remain much longer.
 - Any new aggregate with sentiment must include:
   - raw GDELT sentiment aggregate,
   - NLP sentiment aggregate,
@@ -126,7 +134,7 @@ Rules:
 
 Purpose: query recent history without keeping every raw field in hot tables.
 
-Location: Supabase or a small local/indexed sidecar later.
+Location: Supabase for product-facing rollups; local query index for archive exploration.
 
 Retention target: 30d to 180d.
 
@@ -134,7 +142,7 @@ Contains:
 
 - Deduplicated cluster metadata.
 - Country/topic/source/day rollups.
-- Searchable evidence pointers.
+- Searchable evidence pointers into the local archive.
 - Source and voice mix history.
 
 Rules:
@@ -146,7 +154,7 @@ Rules:
 
 Purpose: preserve raw evidence and allow reprocessing.
 
-Location: local disk first; optional object storage later.
+Location: local disk first. No new cloud storage dependency in the first implementation.
 
 Retention target: indefinite, bounded by storage budget.
 
@@ -163,6 +171,9 @@ Rules:
 - Partitioned by date/source.
 - Checksummed.
 - Rehydratable into Supabase in small batches if needed.
+- Queryable via local scripts or an embedded analytical engine such as DuckDB
+  over Parquet/JSONL partitions. Historical search should not require
+  re-importing the full archive into Supabase.
 
 ## Processing Lanes
 
@@ -182,7 +193,9 @@ Processing:
 
 SLA:
 
-- 95% of hot-window rows get fast-lane enrichment within 24h.
+- 90-100% of hot-window rows served by product routes should have Atlas-owned
+  NLP enrichment within 24h. This may be fast-lane NLP rather than transformer
+  NLP for every row.
 - Stretch target: within 1h for rows that appear in `/brief` or top heat countries.
 
 ### Deep Lane
@@ -223,6 +236,13 @@ Rules:
 
 The local worker is useful, but only as an offline enrichment engine.
 
+Preferred schedule:
+
+- Early morning UTC-5.
+- Runs after the previous UTC day has been archived and checksummed.
+- Prioritizes historical partitions and model improvement work, not today's
+  hot product window unless explicitly invoked for catch-up.
+
 It may:
 
 - Download/export cold partitions.
@@ -230,6 +250,7 @@ It may:
 - Mine lexicons from transformer-tagged rows.
 - Generate candidate updates.
 - Push back bounded, idempotent updates.
+- Serve local-only archive queries for the owner/research workflow.
 
 It must not:
 
@@ -237,6 +258,7 @@ It must not:
 - Be required for `/brief` or `/app` to work.
 - Hold the only copy of any operational hot data.
 - Receive inbound public network traffic.
+- Become a public API dependency.
 
 Connectivity model:
 
@@ -299,6 +321,7 @@ Expected result:
 - No user-facing outage.
 - Historical processing pauses.
 - Latest 24h continues on Fly/Supabase.
+- Local archive queries may be unavailable until the machine is back online.
 
 Recovery:
 
@@ -339,6 +362,7 @@ Expected result:
 
 - App continues.
 - Cold export pauses.
+- Historical query from archive is degraded/unavailable.
 
 Recovery:
 
@@ -352,6 +376,7 @@ Preferred cold format:
 - Parquet with ZSTD compression.
 - Partitioned by date/source.
 - Schema version embedded in metadata or path.
+- Queryable through DuckDB or an equivalent local analytical reader.
 
 Fallback format:
 
@@ -389,6 +414,38 @@ Public system rules:
 - No frontend calls to local URLs.
 - No dependency on local worker for live health.
 
+## Archive Queryability
+
+The cold archive must support owner/research queries without rehydrating all
+data into Supabase.
+
+Minimum query capabilities:
+
+- Query by date range.
+- Query by country.
+- Query by source family or attribution method.
+- Query by source name/domain.
+- Query by topic/theme fields available in the archived rows.
+- Query by NLP method/model version when archived outputs exist.
+
+Implementation preference:
+
+- Store archive partitions in Parquet if the local Python/DuckDB stack is
+  available.
+- Maintain a small local manifest file:
+  - partition path,
+  - min/max timestamp,
+  - row count,
+  - checksum,
+  - schema version,
+  - export job id.
+- Provide a CLI like:
+  - `python -m scripts.archive_query --country CO --from 2026-05-01 --to 2026-05-07`
+  - `python -m scripts.archive_query --source-family social --limit 100`
+
+The app can later expose historical archive search as an offline/admin tool,
+but the public product should keep using Supabase hot data and aggregates.
+
 ## Phased Implementation
 
 ### Phase 0: Measurement and Guardrails
@@ -403,26 +460,33 @@ Public system rules:
 Exit criteria:
 
 - We can see whether backlog is improving or worsening without manual SQL spelunking.
+- We can measure whether hot-window product routes are serving 90-100% rows with
+  Atlas-owned NLP enrichment.
 
 ### Phase 1: Same-Day SLA
 
 - Define hot-window SLA in #188.
 - Ensure every new signal gets fast-lane enrichment.
 - Keep transformer worker focused on fresh/high-value rows.
+- Product routes should prefer enriched rows or enriched aggregates and expose
+  coverage honestly.
 
 Exit criteria:
 
+- 90-100% of rows served from the 24h hot window have at least fast-lane NLP.
 - New data entering today becomes product-usable today, even if historical backlog remains.
 
 ### Phase 2: Safe Archive Export
 
-- Export historical partitions to local cold storage.
+- Export partitions older than 24h to local cold storage.
 - Verify checksums and row counts.
 - Keep Supabase untouched except for read/export.
+- Build the local manifest and basic archive query CLI.
 
 Exit criteria:
 
 - We can prove raw history exists outside Supabase before pruning or moving historical raw rows.
+- The archive is locally queryable by date/country/source without re-importing.
 
 ### Phase 3: Local Offline Worker
 
@@ -456,17 +520,15 @@ Exit criteria:
 
 ## Open Questions
 
-1. What exact hot retention should we start with: 24h, 7d, 15d, or 30d?
-2. Is Pedro's local machine available as a periodic batch worker, or should it only be an archive/workbench?
-3. Do we want local archive first, or cheap cloud object storage first?
-4. What is the minimum user-facing enrichment required for “same-day processed”?
-5. Should historical raw rows remain queryable from the app, or only via exported dossiers/offline tools?
+1. What exact early-morning UTC-5 window should the local worker use?
+2. Should the first archive format be Parquet immediately, or JSONL `.zst` first for easier inspection?
+3. Which product routes count for the initial 90-100% served NLP target: `/brief` only, or `/brief` + `/app` country/theme/search panels?
+4. Should historical archive queries be CLI-only first, or should we plan an owner-only UI later?
 
 ## Recommendation
 
-Start with Phase 0 and Phase 1 before moving storage.
+Start with Phase 0 and Phase 1, then Phase 2 immediately after the SLA is measurable.
 
 The immediate product pain is not historical completeness; it is that incoming data is under-processed. Make today's data healthy first. In parallel, design the archive export so future backfills do not require repeated full-table movement inside Supabase.
 
-Use the local machine for offline enrichment and archive work, not live serving.
-
+Use the local machine for early-morning offline enrichment, archive querying, and historical reprocessing. Do not use it for public live serving.
