@@ -150,6 +150,21 @@ def test_priority_sql_orders_by_age_minus_language_boost():
     assert "LIMIT $1" in sql
 
 
+def test_priority_sql_allocates_hot_lane_before_sample_and_backlog():
+    pipeline = _reload_pipeline("on")
+    sql = pipeline._priority_select_sql("nlp_processed_at")
+
+    assert "hot_lane AS" in sql
+    assert "sample_lane AS" in sql
+    assert "backlog_lane AS" in sql
+    assert sql.index("hot_lane AS") < sql.index("sample_lane AS") < sql.index("backlog_lane AS")
+    assert "0.65" in sql
+    assert "0.25" in sql
+    assert "0.10" in sql
+    assert "created_at > NOW() - INTERVAL '24 hours'" in sql
+    assert "created_at <= NOW() - INTERVAL '24 hours'" in sql
+
+
 def test_priority_sql_targets_correct_column_for_phase():
     pipeline = _reload_pipeline("on")
     sentiment_sql = pipeline._priority_select_sql("nlp_processed_at")
@@ -158,6 +173,34 @@ def test_priority_sql_targets_correct_column_for_phase():
     assert "nlp_processed_at IS NULL" in sentiment_sql
     assert "nlp_persons IS NULL" in persons_sql
     assert "nlp_framing IS NULL" in framing_sql
+
+
+def test_stratified_refresh_sql_targets_requested_column_and_is_bounded():
+    pipeline = _reload_pipeline("shadow")
+    sql = pipeline._stratified_refresh_sql("nlp_processed_at_xlm")
+
+    assert "nlp_processed_at_xlm IS NULL" in sql
+    assert "nlp_processed_at IS NULL" not in sql
+    assert "recent_pool AS" in sql
+    assert "LIMIT 75000" in sql
+    assert "PARTITION BY" in sql
+    assert "source_family" in sql
+    assert "signal_class" in sql
+
+
+def test_shadow_mode_has_created_at_indexes_for_worker_priority():
+    migration = (
+        os.path.dirname(os.path.dirname(__file__))
+        + "/migrations/023_nlp_shadow_priority_indexes.sql"
+    )
+    with open(migration, encoding="utf-8") as f:
+        sql = f.read()
+
+    assert "idx_signals_v2_nlp_xlm_unprocessed_created_at" in sql
+    assert "idx_signals_v2_nlp_xlm_unprocessed_recent" in sql
+    assert "WHERE nlp_processed_at_xlm IS NULL" in sql
+    assert "created_at ASC" in sql
+    assert "created_at DESC" in sql
 
 
 def test_sample_queue_cleanup_is_batched_and_exists_based():

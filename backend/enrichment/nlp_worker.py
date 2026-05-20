@@ -25,6 +25,7 @@ import asyncpg
 
 from enrichment.nlp_pipeline import (
     cleanup_drained_sample_queue,
+    processed_target_column,
     refresh_stratified_sample,
     run_nlp_enrichment,
 )
@@ -42,7 +43,7 @@ LOW_VOLUME_REFRESH_TIMEOUT_SECONDS = int(os.getenv("NLP_LOW_VOLUME_REFRESH_TIMEO
 
 
 # ── Progress helpers ─────────────────────────────────────────────────────────
-async def _progress_metrics(conn: asyncpg.Connection, rows_processed: int) -> dict:
+async def _progress_metrics(conn: asyncpg.Connection, rows_processed: int, target_column: str) -> dict:
     """Compute cheap backlog metrics without full-table scans on signals_v2."""
     previous = await conn.fetchrow(
         """
@@ -63,10 +64,10 @@ async def _progress_metrics(conn: asyncpg.Connection, rows_processed: int) -> di
 
     try:
         recent = await conn.fetchval(
-            """
+            f"""
             SELECT COUNT(*)
             FROM signals_v2
-            WHERE nlp_processed_at IS NULL
+            WHERE {target_column} IS NULL
               AND created_at > NOW() - INTERVAL '24 hours'
             """,
             timeout=5,
@@ -77,10 +78,10 @@ async def _progress_metrics(conn: asyncpg.Connection, rows_processed: int) -> di
 
     try:
         oldest = await conn.fetchval(
-            """
+            f"""
             SELECT created_at
             FROM signals_v2
-            WHERE nlp_processed_at IS NULL
+            WHERE {target_column} IS NULL
             ORDER BY created_at ASC
             LIMIT 1
             """,
@@ -106,8 +107,9 @@ async def _checkpoint(
     rows_processed: int,
     duration_seconds: float,
     last_error: str | None = None,
+    target_column: str = "nlp_processed_at",
 ) -> None:
-    metrics = await _progress_metrics(conn, rows_processed)
+    metrics = await _progress_metrics(conn, rows_processed, target_column)
     await conn.execute(
         """
         INSERT INTO nlp_progress (
@@ -158,10 +160,10 @@ def _should_refresh_stratified_sample(cycle_idx: int) -> bool:
 
 
 # ── Main loop ────────────────────────────────────────────────────────────────
-async def _maintenance(conn: asyncpg.Connection, cycle_idx: int) -> None:
+async def _maintenance(conn: asyncpg.Connection, cycle_idx: int, target_column: str) -> None:
     """Per-cycle maintenance: drain cleanup + periodic stratified refresh."""
     try:
-        drained = await cleanup_drained_sample_queue(conn)
+        drained = await cleanup_drained_sample_queue(conn, target_column)
         if drained:
             logger.info("Drained %d completed ids from nlp_sample_queue", drained)
     except Exception:
@@ -169,7 +171,7 @@ async def _maintenance(conn: asyncpg.Connection, cycle_idx: int) -> None:
 
     if _should_refresh_stratified_sample(cycle_idx):
         try:
-            inserted = await refresh_stratified_sample(conn)
+            inserted = await refresh_stratified_sample(conn, target_column)
             logger.info("Stratified sample refresh enqueued %d new ids", inserted)
         except Exception:
             logger.exception("stratified sample refresh failed — non-fatal")
@@ -183,6 +185,7 @@ async def _one_cycle(limit: int, cycle_idx: int) -> int:
     start = time.monotonic()
     rows_processed = 0
     last_error: str | None = None
+    target_column = processed_target_column()
     try:
         await run_nlp_enrichment(limit=limit)
         # run_nlp_enrichment does not return a count today; treat one cycle as
@@ -197,7 +200,13 @@ async def _one_cycle(limit: int, cycle_idx: int) -> int:
 
     conn = await asyncpg.connect(db_url)
     try:
-        await _checkpoint(conn, rows_processed, duration, last_error)
+        await _checkpoint(
+            conn,
+            rows_processed,
+            duration,
+            last_error,
+            target_column=target_column,
+        )
     finally:
         await conn.close()
 
@@ -214,7 +223,7 @@ async def _one_cycle(limit: int, cycle_idx: int) -> int:
                     "low_volume_countries refresh exceeded %ss — skipping this cycle",
                     LOW_VOLUME_REFRESH_TIMEOUT_SECONDS,
                 )
-        await _maintenance(maintenance_conn, cycle_idx)
+        await _maintenance(maintenance_conn, cycle_idx, target_column)
     finally:
         await maintenance_conn.close()
 

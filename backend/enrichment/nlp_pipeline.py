@@ -160,59 +160,112 @@ def _detect_framing(clf, headline: str) -> str | None:
 
 # ── Priority selection ───────────────────────────────────────────────────────
 # Hybrid drain order (Option D, ADR-0004):
-#   1) nlp_sample_queue — stratified set materialised every 6h. Drain first to
-#      guarantee bucket coverage even when raw priority floods one country.
-#   2) Priority query — fall back to the remaining unprocessed rows ranked by
-#      effective age (non-EN, API/social, high-geo-confidence boosted).
+#   1) hot_lane — newest 24h first so today's incoming sources do not wait
+#      behind the historical backlog.
+#   2) sample_lane — stratified audit queue for country/source/topic coverage.
+#   3) backlog_lane — bounded older control sample from the 15-day window.
 #
 # The unprocessed filter targets the column set we are actually writing this run.
 
-def _priority_select_sql(target_column: str) -> str:
-    """Drain stratified sample first, then fall back to recent-first priority.
+HOT_LANE_SHARE = 0.65
+SAMPLE_LANE_SHARE = 0.25
+BACKLOG_LANE_SHARE = 0.10
+STRATIFIED_REFRESH_POOL_LIMIT = 75_000
 
-    Performance note: the fallback uses a two-stage select. Stage 1 grabs the
-    most recent 5000 unprocessed candidates using the timestamp/created_at
-    indexes — fast. Stage 2 sorts that small pool by the priority expression
-    (non-EN, API/social, high geo_confidence boosted). Avoids the previous
-    full-table sort over 2M+ rows that hung the worker.
+
+def _validate_target_column(target_column: str) -> str:
+    allowed = {
+        "nlp_processed_at",
+        "nlp_processed_at_xlm",
+        "nlp_persons",
+        "nlp_persons_xlm",
+        "nlp_framing",
+        "nlp_framing_xlm",
+    }
+    if target_column not in allowed:
+        raise ValueError(f"Unsupported NLP target column: {target_column}")
+    return target_column
+
+
+def _priority_select_sql(target_column: str) -> str:
+    """Return a mixed-priority selector for NLP batches.
+
+    Performance note: each lane starts from a small created_at-indexed pool.
+    We then sort only that pool by the priority expression (non-EN, API/social,
+    high geo_confidence boosted). This avoids full-table sorts over 2M+ rows.
     """
+    target_column = _validate_target_column(target_column)
     return f"""
-        WITH sample_drain AS (
-            SELECT s.id, s.headline, s.source_lang, s.source_family,
-                   s.country_code, s.geo_confidence, s.timestamp
-            FROM nlp_sample_queue q
-            JOIN signals_v2 s ON s.id = q.id
-            WHERE s.{target_column} IS NULL
-              AND s.headline IS NOT NULL AND LENGTH(s.headline) > 10
-            ORDER BY q.enqueued_at ASC
-            LIMIT $1
+        WITH budgets AS (
+            SELECT
+                GREATEST(1, CEIL($1 * {HOT_LANE_SHARE:.2f})::INT) AS hot_limit,
+                GREATEST(1, CEIL($1 * {SAMPLE_LANE_SHARE:.2f})::INT) AS sample_limit,
+                GREATEST(1, CEIL($1 * {BACKLOG_LANE_SHARE:.2f})::INT) AS backlog_floor
         ),
-        recent_candidates AS (
+        hot_pool AS (
             SELECT id, headline, source_lang, source_family,
-                   country_code, geo_confidence, timestamp
+                   country_code, geo_confidence, timestamp, created_at
             FROM signals_v2
             WHERE {target_column} IS NULL
               AND headline IS NOT NULL AND LENGTH(headline) > 10
-              AND created_at > NOW() - INTERVAL '15 days'
+              AND created_at > NOW() - INTERVAL '24 hours'
             ORDER BY created_at DESC
             LIMIT 5000
         ),
-        priority_fallback AS (
+        hot_lane AS (
             SELECT id, headline, source_lang, source_family,
                    country_code, geo_confidence, timestamp
-            FROM recent_candidates rc
-            WHERE rc.id NOT IN (SELECT id FROM sample_drain)
+            FROM hot_pool
             ORDER BY (
                 EXTRACT(EPOCH FROM (NOW() - timestamp)) / 86400.0
                 + CASE WHEN source_lang IS NOT NULL AND source_lang <> 'en' THEN -2 ELSE 0 END
                 + CASE WHEN source_family IN ('api', 'social') THEN -1 ELSE 0 END
                 + CASE WHEN geo_confidence IS NOT NULL AND geo_confidence > 0.8 THEN -0.5 ELSE 0 END
             ) ASC
-            LIMIT GREATEST($1 - (SELECT COUNT(*) FROM sample_drain), 0)
+            LIMIT (SELECT hot_limit FROM budgets)
+        ),
+        sample_lane AS (
+            SELECT s.id, s.headline, s.source_lang, s.source_family,
+                   s.country_code, s.geo_confidence, s.timestamp
+            FROM nlp_sample_queue q
+            JOIN signals_v2 s ON s.id = q.id
+            WHERE s.{target_column} IS NULL
+              AND s.headline IS NOT NULL AND LENGTH(s.headline) > 10
+              AND s.id NOT IN (SELECT id FROM hot_lane)
+            ORDER BY q.enqueued_at ASC
+            LIMIT (SELECT sample_limit FROM budgets)
+        ),
+        backlog_pool AS (
+            SELECT id, headline, source_lang, source_family,
+                   country_code, geo_confidence, timestamp, created_at
+            FROM signals_v2
+            WHERE {target_column} IS NULL
+              AND headline IS NOT NULL AND LENGTH(headline) > 10
+              AND created_at <= NOW() - INTERVAL '24 hours'
+              AND created_at > NOW() - INTERVAL '15 days'
+            ORDER BY created_at DESC
+            LIMIT 5000
+        ),
+        backlog_lane AS (
+            SELECT id, headline, source_lang, source_family,
+                   country_code, geo_confidence, timestamp
+            FROM backlog_pool bp
+            WHERE bp.id NOT IN (SELECT id FROM hot_lane)
+              AND bp.id NOT IN (SELECT id FROM sample_lane)
+            ORDER BY (
+                EXTRACT(EPOCH FROM (NOW() - timestamp)) / 86400.0
+                + CASE WHEN source_lang IS NOT NULL AND source_lang <> 'en' THEN -2 ELSE 0 END
+                + CASE WHEN source_family IN ('api', 'social') THEN -1 ELSE 0 END
+                + CASE WHEN geo_confidence IS NOT NULL AND geo_confidence > 0.8 THEN -0.5 ELSE 0 END
+            ) ASC
+            LIMIT GREATEST($1 - (SELECT COUNT(*) FROM hot_lane) - (SELECT COUNT(*) FROM sample_lane), 0)
         )
-        SELECT * FROM sample_drain
+        SELECT * FROM hot_lane
         UNION ALL
-        SELECT * FROM priority_fallback
+        SELECT * FROM sample_lane
+        UNION ALL
+        SELECT * FROM backlog_lane
+        LIMIT $1
     """
 
 
@@ -220,58 +273,82 @@ def _priority_select_sql(target_column: str) -> str:
 # Coarse buckets (country, theme_top, day) with K=3 per bucket keeps the queue
 # under ~300K rows in the 15-day window.
 
-STRATIFIED_REFRESH_SQL = """
-WITH stratified AS (
-    SELECT
-        id,
-        ROW_NUMBER() OVER (
-            PARTITION BY
-                country_code,
-                LOWER(COALESCE(themes[1], '__none__')),
-                date_trunc('day', timestamp)
-            ORDER BY timestamp DESC, geo_confidence DESC NULLS LAST
-        ) AS rn
-    FROM signals_v2
-    WHERE created_at > NOW() - INTERVAL '15 days'
-      AND nlp_processed_at IS NULL
-      AND headline IS NOT NULL
-      AND LENGTH(headline) > 10
-)
-INSERT INTO nlp_sample_queue (id)
-SELECT id FROM stratified WHERE rn <= 3
-ON CONFLICT (id) DO NOTHING
-"""
+def _stratified_refresh_sql(target_column: str) -> str:
+    target_column = _validate_target_column(target_column)
+    return f"""
+    WITH recent_pool AS (
+        SELECT
+            id,
+            country_code,
+            source_family,
+            signal_class,
+            source_lang,
+            themes,
+            timestamp,
+            geo_confidence
+        FROM signals_v2
+        WHERE created_at > NOW() - INTERVAL '15 days'
+          AND {target_column} IS NULL
+          AND headline IS NOT NULL
+          AND LENGTH(headline) > 10
+        ORDER BY created_at DESC
+        LIMIT {STRATIFIED_REFRESH_POOL_LIMIT}
+    ),
+    stratified AS (
+        SELECT
+            id,
+            ROW_NUMBER() OVER (
+                PARTITION BY
+                    country_code,
+                    COALESCE(source_family, 'unknown'),
+                    COALESCE(signal_class, 'unknown'),
+                    COALESCE(source_lang, 'unknown'),
+                    LOWER(COALESCE(themes[1], '__none__')),
+                    date_trunc('day', timestamp)
+                ORDER BY timestamp DESC, geo_confidence DESC NULLS LAST
+            ) AS rn
+        FROM recent_pool
+    )
+    INSERT INTO nlp_sample_queue (id)
+    SELECT id FROM stratified WHERE rn <= 3
+    ON CONFLICT (id) DO NOTHING
+    """
 
 SAMPLE_CLEANUP_LIMIT = int(os.getenv("NLP_SAMPLE_CLEANUP_LIMIT", "500"))
 SAMPLE_CLEANUP_TIMEOUT_SECONDS = float(os.getenv("NLP_SAMPLE_CLEANUP_TIMEOUT_SECONDS", "10"))
 
-CLEANUP_DRAINED_SAMPLE_QUEUE_SQL = """
-WITH drained AS (
-    SELECT q.id
-    FROM nlp_sample_queue q
-    WHERE EXISTS (
-        SELECT 1
-        FROM signals_v2 s
-        WHERE s.id = q.id
-          AND s.nlp_processed_at IS NOT NULL
+def _cleanup_drained_sample_queue_sql(target_column: str) -> str:
+    target_column = _validate_target_column(target_column)
+    return f"""
+    WITH drained AS (
+        SELECT q.id
+        FROM nlp_sample_queue q
+        WHERE EXISTS (
+            SELECT 1
+            FROM signals_v2 s
+            WHERE s.id = q.id
+              AND s.{target_column} IS NOT NULL
+        )
+        ORDER BY q.enqueued_at ASC
+        LIMIT $1
     )
-    ORDER BY q.enqueued_at ASC
-    LIMIT $1
-)
-DELETE FROM nlp_sample_queue q
-USING drained d
-WHERE q.id = d.id
-"""
+    DELETE FROM nlp_sample_queue q
+    USING drained d
+    WHERE q.id = d.id
+    """
 
 
-async def refresh_stratified_sample(conn) -> int:
+CLEANUP_DRAINED_SAMPLE_QUEUE_SQL = _cleanup_drained_sample_queue_sql("nlp_processed_at")
+
+
+async def refresh_stratified_sample(conn, target_column: str = "nlp_processed_at") -> int:
     """Insert the latest stratified sample into nlp_sample_queue.
 
     Worker calls this every N cycles to keep coverage current. Returns the
     number of rows newly enqueued (best effort — Postgres does not expose the
     exact count after ON CONFLICT DO NOTHING without a RETURNING clause).
     """
-    tag = await conn.execute(STRATIFIED_REFRESH_SQL)
+    tag = await conn.execute(_stratified_refresh_sql(target_column))
     # tag looks like 'INSERT 0 12345'
     try:
         return int(tag.split()[-1])
@@ -279,10 +356,10 @@ async def refresh_stratified_sample(conn) -> int:
         return 0
 
 
-async def cleanup_drained_sample_queue(conn) -> int:
+async def cleanup_drained_sample_queue(conn, target_column: str = "nlp_processed_at") -> int:
     """Remove ids from nlp_sample_queue once they have a transformer score."""
     tag = await conn.execute(
-        CLEANUP_DRAINED_SAMPLE_QUEUE_SQL,
+        _cleanup_drained_sample_queue_sql(target_column),
         SAMPLE_CLEANUP_LIMIT,
         timeout=SAMPLE_CLEANUP_TIMEOUT_SECONDS,
     )
@@ -310,6 +387,11 @@ def _columns() -> dict[str, str]:
         "persons_target": "nlp_persons",
         "processed_at_target": "nlp_processed_at",
     }
+
+
+def processed_target_column() -> str:
+    """Column that marks a row as processed in the current NLP mode."""
+    return _columns()["processed_at_target"]
 
 
 # ── Phase runners (each loads, runs, unloads its model) ─────────────────────
