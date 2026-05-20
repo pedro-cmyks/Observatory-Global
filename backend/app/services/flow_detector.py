@@ -59,15 +59,37 @@ class FlowDetector:
         if not topics_a or not topics_b:
             return 0.0
 
+        def token_overlap_similarity() -> float:
+            def normalize_token(token: str) -> str:
+                token = token.lower()
+                if token.endswith("ing") and len(token) > 5:
+                    token = token[:-3]
+                elif token.endswith("s") and len(token) > 3:
+                    token = token[:-1]
+                return token
+
+            best = 0.0
+            for topic_a in topics_a:
+                words_a = {
+                    normalize_token(word)
+                    for word in topic_a.split()
+                    if len(normalize_token(word)) > 2
+                }
+                for topic_b in topics_b:
+                    words_b = {
+                        normalize_token(word)
+                        for word in topic_b.split()
+                        if len(normalize_token(word)) > 2
+                    }
+                    if not words_a or not words_b:
+                        continue
+                    overlap = len(words_a & words_b)
+                    best = max(best, overlap / min(len(words_a), len(words_b)))
+            return min(1.0, best)
+
         # TEMPORARY: Fallback when sklearn not available
         if not SKLEARN_AVAILABLE:
-            # Simple word overlap similarity
-            words_a = set(" ".join(topics_a).lower().split())
-            words_b = set(" ".join(topics_b).lower().split())
-            if not words_a or not words_b:
-                return 0.0
-            overlap = len(words_a & words_b)
-            return min(1.0, overlap / min(len(words_a), len(words_b)))
+            return token_overlap_similarity()
 
         try:
             # Combine all topics for vectorization
@@ -100,7 +122,7 @@ class FlowDetector:
                 f"(topics_a={len(topics_a)}, topics_b={len(topics_b)})"
             )
 
-            return max_similarity
+            return max(max_similarity, token_overlap_similarity())
 
         except Exception as e:
             logger.error(f"Error calculating similarity: {e}", exc_info=True)
@@ -527,7 +549,13 @@ class FlowDetector:
                 if len(shared) >= limit:
                     break
                 for topic_b in topics_b:
-                    if topic_a.lower() in topic_b.lower() or topic_b.lower() in topic_a.lower():
+                    words_a = {word.rstrip("s") for word in topic_a.lower().split() if len(word) > 2}
+                    words_b = {word.rstrip("s") for word in topic_b.lower().split() if len(word) > 2}
+                    if (
+                        topic_a.lower() in topic_b.lower()
+                        or topic_b.lower() in topic_a.lower()
+                        or bool(words_a & words_b)
+                    ):
                         if topic_a not in shared and topic_b not in shared:
                             shared.append(topic_a)
                             break
@@ -555,10 +583,10 @@ def parse_time_window(time_window_str: str) -> float:
     if time_window_str.endswith("h"):
         try:
             hours = float(time_window_str[:-1])
-            if hours <= 0:
-                raise ValueError("Time window must be positive")
-            return hours
         except ValueError as e:
             raise ValueError(f"Invalid time window format: {time_window_str}") from e
+        if hours <= 0:
+            raise ValueError("Time window must be positive")
+        return hours
     else:
         raise ValueError(f"Time window must end with 'h' (hours): {time_window_str}")

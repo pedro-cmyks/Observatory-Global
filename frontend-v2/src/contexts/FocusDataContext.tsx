@@ -4,6 +4,7 @@
  * Prevents double-fetch by having WorldMap and FocusSummaryPanel
  * consume the same state from this provider.
  */
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { useFocus } from './FocusContext'
 import { type TimeRange, timeRangeToHours } from '../lib/timeRanges'
@@ -15,6 +16,8 @@ export interface NodeData {
     lat: number
     lon: number
     intensity: number
+    heat?: number
+    anomalyLevel?: string
     sentiment: number
     signalCount: number
     sourceCount: number
@@ -29,12 +32,18 @@ export interface FlowData {
 }
 
 export interface FocusSummary {
-    stats: {
+    focus: { type: string; value: string; hours: number }
+    summary: {
         total_signals: number
-        unique_sources: number
-        unique_countries: number
-        avg_sentiment: number
+        total_countries: number
+        generated_at: string
     }
+    nodes: Array<{
+        country_code: string
+        signal_count: number
+        avg_sentiment: number
+        unique_sources: number
+    }>
     related_topics: Array<{ topic: string; count: number }>
     top_sources: Array<{ source: string; count: number; avg_sentiment: number }>
     headlines: Array<{ url: string; source: string; time: string | null }>
@@ -116,7 +125,7 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
             const baseParams = new URLSearchParams({ range: timeRange })
             
             // Add explicit fields filter for payload reduction
-            baseParams.set('fields', 'id,name,lat,lon,signalCount,sentiment,intensity')
+            baseParams.set('fields', 'id,name,lat,lon,signalCount,sentiment,intensity,heat,anomalyLevel')
 
             // Fetch nodes first, but preserve flows during the await
             setState(prev => ({ ...prev, flows: previousFlows.current }))
@@ -132,22 +141,25 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
             if (!nodesRes.ok) throw new Error(`Nodes fetch failed: ${nodesRes.status}`)
             const nodesData = await nodesRes.json()
 
-            // Safe render: cap nodes at 150 to prevent Deck.gl crashes
-            const MAX_NODES = 150
+            // Safe render: cap at 217 (all sovereign countries) to prevent Deck.gl memory issues
+            const MAX_NODES = 217
             let safeNodes = nodesData.nodes || []
             if (safeNodes.length > MAX_NODES) {
                 safeNodes = safeNodes.slice(0, MAX_NODES)
             }
 
             // Render globe immediately after nodes — don't wait for flows/acled
+            // Preserve stale nodes during refetch when new response is empty (avoids 0-flash in command bar)
             setState(prev => ({
                 ...prev,
-                nodes: safeNodes,
-                meta: {
+                nodes: safeNodes.length > 0 ? safeNodes : (prev.isRefetching ? prev.nodes : safeNodes),
+                meta: safeNodes.length > 0 ? {
                     totalCountries: nodesData.count || nodesData.nodes?.length || 0,
                     totalSignals: nodesData.totalSignals || 0,
                     isFiltered: nodesData.is_filtered || false
-                },
+                } : (prev.isRefetching ? prev.meta : {
+                    totalCountries: 0, totalSignals: 0, isFiltered: false
+                }),
                 loading: false,
                 error: null
             }))
@@ -175,7 +187,7 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 try {
                     const summaryParams = new URLSearchParams({
                         focus_type: focus.type,
-                        focus_value: focus.value,
+                        value: focus.value,
                         hours: timeRangeToHours(timeRange).toString()
                     })
                     const summaryRes = await fetch(`/api/v2/focus?${summaryParams}`)

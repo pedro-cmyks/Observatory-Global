@@ -57,7 +57,7 @@ logger = logging.getLogger(__name__)
 # Data Classes for Parsed GKG Records
 # =============================================================================
 
-@dataclass
+@dataclass(init=False)
 class GKGLocation:
     """
     Parsed location from V2Locations or V2EnhancedLocations field.
@@ -92,6 +92,7 @@ class GKGLocation:
     location_type: int
     full_name: str
     country_code: str
+    country_name: str = ""
     adm1_code: str = ""
     adm2_code: str = ""
     latitude: float = 0.0
@@ -99,8 +100,32 @@ class GKGLocation:
     feature_id: str = ""
     char_offset: int = 0
 
+    def __init__(
+        self,
+        location_type: int,
+        full_name: str,
+        country_code: str,
+        country_name: str = "",
+        adm1_code: str = "",
+        latitude: float = 0.0,
+        longitude: float = 0.0,
+        feature_id: str = "",
+        char_offset: int = 0,
+        adm2_code: str = "",
+    ):
+        self.location_type = location_type
+        self.full_name = full_name
+        self.country_code = country_code
+        self.country_name = country_name or full_name
+        self.adm1_code = adm1_code
+        self.adm2_code = adm2_code
+        self.latitude = latitude
+        self.longitude = longitude
+        self.feature_id = feature_id
+        self.char_offset = char_offset
 
-@dataclass
+
+@dataclass(init=False)
 class GKGTone:
     """
     Parsed sentiment data from V2Tone field.
@@ -142,6 +167,30 @@ class GKGTone:
     activity_density: float = 0.0
     self_group_ref: float = 0.0
     word_count: int = 0
+
+    def __init__(
+        self,
+        tone: float = 0.0,
+        positive_pct: float = 0.0,
+        negative_pct: float = 0.0,
+        polarity: float = 0.0,
+        activity_density: float = 0.0,
+        self_group_ref: float = 0.0,
+        word_count: int = 0,
+        overall: float | None = None,
+    ):
+        self.tone = tone if overall is None else overall
+        self.positive_pct = positive_pct
+        self.negative_pct = negative_pct
+        self.polarity = polarity
+        self.activity_density = activity_density
+        self.self_group_ref = self_group_ref
+        self.word_count = word_count
+
+    @property
+    def overall(self) -> float:
+        """Backward-compatible alias for older tests and adapters."""
+        return self.tone
 
 
 @dataclass

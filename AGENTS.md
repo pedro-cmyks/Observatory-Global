@@ -1,13 +1,151 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-`backend/` hosts the FastAPI service (APIs, services, NLP logic) and pytest suites under `tests/`, plus shared agent specs in `.agents/`. The React + Vite client lives in `frontend/` (`src/pages`, `src/components`, `src/store`), Docker + Cloud Code manifests sit in `infra/`, and data exports or fixtures land in `data/`. ADRs, demos, and decision logs go in `docs/`; keep environment templates in `.env.example` and surface reusable scripts through the root `Makefile`.
+`backend/` hosts the FastAPI service (APIs, services, NLP logic) and pytest suites under `tests/`. The active React + Vite client lives in `frontend-v2/` (`src/pages`, `src/components`, `src/lib`, `src/App.tsx`). The `frontend/` directory is DEPRECATED — do not touch it. Docker/Compose exists for local dev only; production runs on Vercel (frontend) + Fly.io (backend). ADRs, demos, and decision logs go in `docs/`; keep environment templates in `.env.example`. MCP server configuration lives in `.mcp.json` (supabase + stitch). Design assets exported from Google Stitch live in `stitch_atlas_landing_experience_redesign/`.
+
+Key files added in session 15 (multi-source ingestion + NLP stabilization — 2026-05-19):
+- `backend/app/services/ingest_newsdata.py` — NewsData.io multilingual ingestion. 7 country-primary buckets after post-commit edit: ES/PT LatAm split (CO/MX/BR/AR/VE + PE/CL/EC/BO/CU), AR MENA, FR West/Central Africa, SW/AM East Africa, SE Asia, S Asia. Page size 10, 7-day fetch window. Called every 4th cycle. Env: `NEWSDATA_API_KEY`. `source_family="api"`, `attribution_method="newsdata_api"`, `geo_confidence=0.7`.
+- `backend/app/services/ingest_mediastack.py` — MediaStack ES/PT supplement. 17 LatAm countries, 100 articles/run, every 8th cycle (~2h). Env: `MEDIASTACK_API_KEY`. Free 500 req/month. `geo_confidence=0.65`.
+- `backend/app/services/ingest_newsapi.py` — NewsAPI.org crisis queries. 8 EN queries (Colombia, Venezuela, Myanmar, Sudan, Gaza, Haiti, Sahel, Congo M23) with 7-day window + `searchIn=title,description` + `sortBy=publishedAt`. Every 8th cycle, offset by 4 from MediaStack. Env: `NEWSAPI_KEY`. Dev plan 100 req/day.
+- `backend/app/services/ingest_reddit.py` — Reddit public API. 14 subreddits: worldnews, geopolitics, GlobalNews, colombia, Venezuela, ukraine, MiddleEast, Turkey, Nigeria, myanmar, haiti, CredibleDefense, SyrianCivilWar, PakistanPolitics. No API key needed. `source_family="social"`, `attribution_method="reddit_public"`, `geo_confidence=0.5`. Commentary layer — NOT peer to wire services.
+- `backend/.env.example` — all backend env vars documented: `DATABASE_URL`, `NEWSDATA_API_KEY`, `MEDIASTACK_API_KEY`, `NEWSAPI_KEY`, `ACLED_API_KEY`, `ACLED_EMAIL`, `INGEST_INTERVAL_SECONDS`, `REDIS_URL`.
+- `backend/migrations/019_atlas_topic_intelligence.sql` — Topic Intelligence schema (Codex track). Tables: `atlas_topics`, `signal_topic_assignments`, `topic_learning_examples`. 30 seed topics.
+- `backend/migrations/020_nlp_progress_indexes.sql` — indexes for NLP worker progress math (Codex track). Avoids full-scan on signals_v2.
+
+Key files changed in session 15:
+- `backend/app/services/ingest_loop.py` — wired 4 new ingestion services. `ingest_newsdata` + `ingest_reddit` at `cycle%4`. `ingest_mediastack` at `cycle%8`. `ingest_newsapi` at `cycle%8+4` (offset to spread load).
+
+Fly.io infra changes session 15 (Codex track):
+- `nlp_worker` machine: `shared-cpu-2x:4096MB` (raised from undersized config to fix OOM)
+- Standby worker stopped (single-worker mode)
+- `NLP_SAMPLE_REFRESH_EVERY=0` env — heavy refresh explicitly OFF
+- `NLP_SAMPLE_CLEANUP_LIMIT=50` env — bounded queue cleanup
+- Fly secrets set: `NEWSDATA_API_KEY`, `MEDIASTACK_API_KEY`, `NEWSAPI_KEY`
+- Deployment ID: `01KS0EG5FJAY5507G729FNVACQ`
+
+Multilingual NLP confirmed: logs show `Sentiment[xlm-v1]`, `NER[xlm-v1]`, `Framing[xlm-v1]`. Cycle duration 231.5s, error=no. Throughput stable at 25 rows/cycle — do NOT raise to 100/200 until DB pressure observed over hours.
+
+Known operational debt for next session:
+- HuggingFace tokenizer warning on `twitter-xlm-roberta-base-sentiment` — validate before trusting multilingual quality
+- `country_heat_v2` refresh hit timeout once — operational item
+- NewsAPI design weak (8 hardcoded EN queries on zones GDELT covers in EN) — refactor to 6 evergreen + 2 dynamic from GDELT spikes + 36 req/day analyst reserve
+- Reddit needs `signal_class="commentary"` field (migration 021) before counting in #149 source-diversity scoring
+
+Key files added in session 14 (P1 pass — 2026-05-18):
+- `frontend-v2/src/components/ReadingMode.tsx` — newspaper-style right panel showing signal cards per pinned item. Opens via BookOpen icon in Workspace. Escape/scrim dismiss; Export .md button.
+- `frontend-v2/src/components/ReadingMode.css` — styles for ReadingMode overlay, signal card grid, sentiment indicator, source badges.
+
+Key files changed in session 14:
+- `frontend-v2/src/lib/exportFormatters.ts` — added `DossierSignal`, `DossierSection` types; `fetchItemSignals(item)` calls `/api/v2/signals`; `buildDossierMarkdown(sections)` formats with headline/source/URL/sentiment.
+- `frontend-v2/src/contexts/WorkspaceContext.tsx` — added `exportDossier()` (fetches signals, downloads markdown); exposed in context value.
+- `frontend-v2/src/components/InteractiveWorkspace.tsx` — BookOpen (Reading Mode) + Download (Dossier) buttons replace old single export button; `readingMode` state; `ReadingMode` rendered at component end.
+- `frontend-v2/src/hooks/useSavedWatches.ts` — added `lastSeenAt`/`lastSeenCount` to `SavedWatch`; `markSeen(id, count)`; `fetchWatchCount(filter)` and `buildWatchParams(filter)` exported utilities.
+- `frontend-v2/src/pages/BriefNewspaper.tsx` — `watchCounts` state; parallel fetch of signal counts per watch; card shows count pill + delta badge (↑/↓); `markSeen` called on "Open in Atlas →".
+- `frontend-v2/src/pages/BriefNewspaper.css` — `.brief-watch-stats`, `.brief-watch-count`, `.brief-watch-delta.up/.down/.neutral` classes.
+- `frontend-v2/src/layers/TerminatorLayer.ts` — `calculateTerminatorPolygon` accepts `lngOffsetDeg`; `createTerminatorLayer` returns `PolygonLayer[]` (5 bands, opacity gradient).
+- `frontend-v2/src/components/SettingsPanel.tsx` — Day/Night label → "Day/Night Shadow (experimental)" with description.
+- `frontend-v2/src/App.tsx` — `...terminatorLayers` spread (was single nullable layer); country param in search URL.
+- `frontend-v2/src/components/Legend.tsx` — full rewrite; context banner; per-layer keys; collapsible.
+- `frontend-v2/src/components/SearchBar.tsx` — `countryParam` in backend search URL; `onThemeSelect` passes countryCode for compound queries.
+- `frontend-v2/src/pages/Landing.tsx` — live signal count via `/health`; navigable BentoCards; `formatSignalCount()`.
+- `backend/app/services/ingest_acled.py` — docstring clarifies optional status.
+
+Key files added in session 15 (multi-source ingestion — 2026-05-18):
+- `backend/app/services/ingest_newsdata.py` — NewsData.io multilingual ingestion every 4th GDELT cycle; currently language/country batches with `geo_confidence=0.7`.
+- `backend/app/services/ingest_mediastack.py` — MediaStack ES/PT LatAm supplement every 8th GDELT cycle; conservative quota use.
+- `backend/app/services/ingest_newsapi.py` — NewsAPI targeted crisis queries every 8th GDELT cycle offset; current 8 queries x 12/day = 96 req/day.
+- `backend/app/services/ingest_reddit.py` — Reddit public API social/commentary ingestion every 4th GDELT cycle; writes `source_family="social"` and `attribution_method="reddit_public"`.
+- `backend/.env.example` — documents `NEWSDATA_API_KEY`, `MEDIASTACK_API_KEY`, `NEWSAPI_KEY`.
+
+Session 15 validation note:
+- The new sources are live, but the blocker is enrichment quality/capacity. `nlp_pipeline.py` is English-first (`cardiffnlp/twitter-roberta-base-sentiment-latest`, `spacy en_core_web_sm`, English NLI framing) and `ingest_loop.py` currently runs NLP with `limit=100` per 15-min cycle. Do not build source-weighted scoring or Voice Mix assumptions until NLP backlog and multilingual behavior are measured.
+- Next migration is 013 and should add `signal_class` before #149 scoring. Recommended classes: `reporting`, `wire`, `state_media`, `humanitarian`, `social_commentary`, `public_attention`, `unknown`. Clustering should come later, after provider attribution and NLP quality are measured.
+- Implementation plan: `docs/superpowers/plans/2026-05-18-multisource-intelligence-hardening.md`.
+
+Key files added in session 13 (P0 productization pass — PR #144):
+- `frontend-v2/src/lib/briefingPrefetch.ts` — sessionStorage-backed briefing prefetch cache (4-min TTL).
+- `backend/app/routers/narratives.py` — narrative detail window capped at 48h; returns `effective_hours`.
+
+Key files changed in session 13:
+- `frontend-v2/src/components/AnomalyPanel.tsx` — Trends + Wiki merged into PUBLIC ATTENTION; staleness badge; deduplication.
+- `frontend-v2/src/components/NarrativeThreads.tsx` — capped-window notice when `effectiveHours` < requested hours.
+- `frontend-v2/src/components/InteractiveWorkspace.tsx` — Trail and Pinned split into two independent ForceGraph2D instances.
+- `frontend-v2/src/components/InvestigationWorkspace.css` — `.workspace-graph-slot` and `.workspace-graph-slot.hidden` rules.
+- `frontend-v2/src/pages/BriefNewspaper.tsx` — Editor's Analysis fallbacks; `resolveCountryName` everywhere.
+- `frontend-v2/src/App.tsx` — `prevStreamCtx` union extended with `country` type; back-nav wiring.
+- `frontend-v2/src/lib/publicAttention.ts` — `Math.max(hours, 72)` floor for Trends window.
+- `backend/app/services/ingest_trends.py` — shuffle + retry pass + batch 5→3.
+
+Key files added in session 6:
+- `frontend-v2/src/components/InteractiveWorkspace.tsx` — force-graph canvas (react-force-graph-2d). MUST be lazy-loaded only.
+- `frontend-v2/src/components/InvestigationWorkspace.tsx` — lazy shell + PanelErrorBoundary wrapper.
+- `frontend-v2/src/lib/workspaceGraph.ts` — two-pass graph builder (pinned nodes + edges with per-item try/catch).
+- `frontend-v2/src/contexts/WorkspaceContext.tsx` — workspace state (pinned items, graph useMemo, detail fetching).
+
+Key files added in session 7:
+- `frontend-v2/src/components/PublicAttentionPanel.tsx` — Google Trends + Wikipedia public-attention feed. Item clicks open investigation panel (no external navigation).
+- `frontend-v2/src/components/TemporalNarrativeGraph.tsx` — timeline of narrative coverage + sentiment shift over time. In ThemeDetail. Workspace integration pending (#82).
+- `frontend-v2/src/components/OnboardingCoachmark.tsx` — first-run onboarding overlay.
+- `backend/app/services/ingest_rss.py` — RSS curated feed ingestion (Wave 1 + Wave 3).
+- `backend/app/services/ingest_reliefweb.py` — ReliefWeb/OCHA humanitarian feeds (Wave 2, 19 crisis countries, geo_confidence=0.92).
+- `backend/migrations/008_source_provenance.sql` — source_family, source_lang, geo_confidence, attribution_method, is_state_media fields.
+- `backend/migrations/009_trends_v2_constraint.sql` — trends_v2 hour_bucket UNIQUE constraint.
+- `backend/migrations/010_theme_country_hourly.sql` — theme_country_hourly_v2 pre-agg table.
+
+Key files changed in session 8:
+- `backend/app/services/ingest_loop.py` — NLP as non-blocking background task (`asyncio.create_task`), weekly 90-day retention cleanup for unprocessed signals.
+- `backend/Dockerfile` — HF_HOME and TRANSFORMERS_CACHE env vars placed before pre-bake RUN; offline env vars placed after. Fixes OOM on Fly.io.
+- `backend/enrichment/nlp_pipeline.py` — three-phase NLP pipeline (sentiment, NER, framing). Called by ingest_loop background task.
+- `backend/migrations/011_nlp_columns.sql` — NLP columns on signals_v2 (APPLIED).
+- `frontend-v2/src/App.tsx` — data coverage badge: fetches oldest_signal from /api/v2/stats, shows FROM [DATE] pill.
+- `frontend-v2/src/App.css` — `.data-since-pill` CSS class.
 
 ## Build, Test, and Development Commands
-`make up` builds and starts the Compose stack from `infra/`; `make down` stops it. Local loops use `make dev-backend` (Poetry + Uvicorn reload) and `make dev-frontend` (Vite dev server). Lint via `make lint` or component-specific commands (`poetry run ruff check`, `poetry run mypy app`, `npm run lint`). `make test-backend` runs pytest with HTML coverage in `backend/htmlcov/index.html`, while `make test-backend-fast` skips coverage. Always run `npm run build` before PRs so TypeScript/Vite errors surface early.
+Local backend: `cd backend && poetry run uvicorn app.main_v2:app --reload --port 8000`. Local frontend: `cd frontend-v2 && npm run dev`. Fly.io deploy: `fly deploy` from repo root. Lint via `poetry run ruff check`, `poetry run mypy app`, `npm run lint`. Run `npm run build` before every PR — TypeScript/Vite errors must be zero. DO NOT rely on `tsc --noEmit` alone: Vite's build uses `tsc -b` (project references mode), which is stricter and catches errors like TS6133 (unused imports) that `tsc --noEmit` silently ignores. A green `tsc --noEmit` does not guarantee a passing Vercel build. Pytest: `cd backend && poetry run pytest`. Migrations are raw `.sql` files run from the Supabase SQL editor dashboard (NOT via alembic, NOT via the connection pooler).
 
 ## Coding Style & Naming Conventions
-Python targets 3.11, 4-space indentation, 100-char lines (Black/Ruff). Favor pydantic models in `app/models`, keep modules snake_case, and expose FastAPI routes under `/v1/...`. TypeScript uses 2-space indentation, PascalCase components, camelCase hooks/store setters, and colocated styles only when needed. Run Ruff, Mypy, ESLint, and `tsc` before committing; never commit generated OpenAPI artifacts or `node_modules`.
+Python targets 3.11, 4-space indentation, 100-char lines (Black/Ruff). Favor pydantic models in `app/models`, keep modules snake_case, and expose FastAPI routes under `/api/v2/...` (NOT `/v1/` — all active endpoints are v2). TypeScript uses 2-space indentation, PascalCase components, camelCase hooks/store setters, and colocated styles only when needed. Run Ruff, Mypy, ESLint, and `tsc` before committing; never commit generated OpenAPI artifacts or `node_modules`. Tooltip system: use `data-tip="text"` on any element — never use native `title=` attributes.
+
+Additional frontend conventions (session 6):
+- Theme names: always call `getThemeLabel(theme_code)` from `lib/themeLabels.tsx`. Do NOT use the `label` field from API responses — it may contain raw GDELT code strings.
+- Graph library: use `react-force-graph-2d` only. The 3D variant (`react-force-graph`) imports AFRAME and crashes the app.
+- Lazy-load heavy components: any component importing large visualization libraries must be wrapped in `React.lazy()` + `Suspense` to keep the main bundle lean.
+- Error boundaries: wrap any panel that loads async data in `PanelErrorBoundary`. The `RootErrorBoundary` in `main.tsx` is the final fallback only.
+
+Additional frontend conventions (session 7):
+- Sentiment display: all API endpoints return sentiment in ÷10 normalized range. Frontend thresholds: ±0.1 neutral, beyond = positive/negative. Do NOT divide again on the frontend.
+- Coverage confidence badges: when signal count n<10 render an orange "thin" badge; 10≤n<50 render a yellow "limited" badge; n≥50 no badge. Apply in any component displaying per-country/per-source metrics (CountryBrief, NarrativeThreads, ChokepointPanel pattern).
+- PublicAttentionPanel item clicks: must open InvestigationWorkspace (internal), never navigate to external URL.
+- Component count: 45 .tsx components in `frontend-v2/src/components/` as of 2026-05-17.
+
+Additional frontend conventions (session 13):
+- Country names: always call `resolveCountryName(code, name)` — never use the raw `name` field from API country objects. The raw field may be FIPS or incomplete.
+- Theme signal anchors: do NOT use `themeSignals[theme][0]` as a headline anchor. Signals are frequently misclassified and the first result is unreliable.
+- Trends API response field: use `d?.trending ?? []` not `d?.trends`. The field name on the response object is `trending`.
+- Two ForceGraph2D instances pattern: when Trail and Pinned graph modes need to coexist, mount both ForceGraph2D instances and toggle visibility via CSS `visibility: hidden`. This preserves the d3 simulation (layout) — unmounting destroys it.
+- Briefing prefetch: use `briefingPrefetch.ts` cache before making API calls in BriefNewspaper. Landing prefetches on mount via the same module.
+
+Backend conventions (session 7):
+- All new ingestion services must set `source_family`, `source_lang`, `geo_confidence`, `attribution_method`, and `is_state_media` on every inserted row.
+- Concept endpoint hours>24 must query `theme_country_hourly_v2`, not `signals_v2`. Do not re-add the `effective_hours` cap.
+
+Backend conventions (session 8):
+- Migrations 007–012 are all applied. Next migration will be 013.
+- NLP pipeline runs as a background task in `ingest_loop.py` — do not make it blocking.
+- Dockerfile: `ENV HF_HOME=/app/hf_cache` and `ENV TRANSFORMERS_CACHE=/app/hf_cache` MUST appear before the pre-bake RUN step. `ENV TRANSFORMERS_OFFLINE=1` and `ENV HF_DATASETS_OFFLINE=1` MUST appear after. Do not reorder — this is the OOM fix.
+- Data retention: unprocessed signals (nlp_processed_at IS NULL) are deleted after 90 days. NLP-processed signals are kept indefinitely.
+- Branch: `v3-intel-layer` is production. `main` is abandoned — do not merge into it.
+
+Backend conventions (session 13):
+- Narrative detail window cap: `detail_hours = min(hours, 48)` in `narratives.py` for Phase 2 (signals_v2 unnest scan). Phase 1 (theme_hourly_v2) uses the full requested hours. Always return `effective_hours` in the result dict so the frontend can display the actual window.
+- Google Trends ingestion: shuffle country list per run, batch size max 3 countries, delay 2s between batches, run a retry pass for failed countries at end of cycle. These are anti-rate-limit measures — do not revert to batch=5 or delay=1s.
+- Trends staleness threshold: frontend shows stale badge when data is >25h old. The `publicAttention.ts` helper enforces a 72h floor on the `hours` param to avoid fetching empty windows.
+
+Backend conventions (session 15):
+- New API/social sources must continue setting `source_family`, `source_lang`, `geo_confidence`, `attribution_method`, and `is_state_media`.
+- Treat `source_family="social"` / `attribution_method="reddit_public"` as commentary. It can support early-signal detection but must not count as independent news corroboration.
+- NewsAPI quota math matters: the current 8-query/every-2h schedule spends about 96/100 req/day. Any analyst-query reserve requires a changed cadence or explicit daily quota budget.
+- NewsData should move toward country-primary buckets before using it for high-confidence country scoring.
 
 ## Testing Guidelines
 Backend tests live in `backend/tests/test_*.py` per `pyproject.toml`. New services need fixtures for flow/heat math and regression coverage for service clients; mock external providers through the client layer rather than hitting the network. Treat the coverage report from `make test-backend` as a gate and keep touched modules above the current baseline. Frontend work that touches the map or API should include Vitest/React Testing Library smoke tests or, at minimum, refreshed manual steps and screenshots in `docs/demos/`.

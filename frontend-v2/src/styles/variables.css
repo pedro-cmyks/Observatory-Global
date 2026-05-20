@@ -1,23 +1,26 @@
 /* Observatory Global Design System */
 
 :root {
-    /* Defaults (Intel Noir) - overridden by JS ThemeProvider */
-    --color-bg-primary: #0a0f1a;
-    --color-bg-secondary: #0d1526;
-    --color-bg-tertiary: #111d32;
-    --color-bg-panel: linear-gradient(180deg, rgba(10, 22, 40, 0.95) 0%, rgba(13, 31, 60, 0.92) 100%);
+    /* Atlas / Stitch intelligence-console baseline */
+    --color-bg-primary: #070d17;
+    --color-bg-secondary: #0a1220;
+    --color-bg-tertiary: #0c182b;
+    --color-bg-surface: #0c182b;
+    --color-bg-overlay: rgba(7, 13, 23, 0.86);
+    --color-bg-panel: linear-gradient(180deg, rgba(12, 24, 43, 0.94) 0%, rgba(7, 13, 23, 0.91) 100%);
 
     --color-text-primary: #e2e8f0;
-    --color-text-secondary: #94a3b8;
-    --color-text-muted: #64748b;
+    --color-text-secondary: rgba(226, 232, 240, 0.68);
+    --color-text-muted: rgba(226, 232, 240, 0.42);
 
-    --color-border-subtle: rgba(59, 130, 246, 0.15);
-    --color-border-medium: rgba(59, 130, 246, 0.3);
-    --color-border-strong: rgba(59, 130, 246, 0.5);
+    --color-border-subtle: rgba(29, 158, 117, 0.15);
+    --color-border-medium: rgba(29, 158, 117, 0.28);
+    --color-border-strong: rgba(104, 219, 174, 0.5);
 
-    --color-accent-primary: #38bdf8;
+    --color-accent-primary: #68dbae;
     --color-accent-secondary: #fbbf24;
-    --color-accent-highlight: #67e8f9;
+    --color-accent-highlight: #4ade80;
+    --color-accent-glow: rgba(29, 158, 117, 0.14);
 
     --color-severity-normal: #94a3b8;
     --color-severity-notable: #fbbf24;
@@ -28,12 +31,17 @@
     --color-sentiment-neutral: #94a3b8;
     --color-sentiment-negative: #f87171;
 
-    --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-technical: 'Space Grotesk', 'SF Mono', monospace;
+    --font-mono: 'SF Mono', 'Fira Code', monospace;
 
-    --panel-padding: 16px;
-    --panel-radius: 12px;
-    --panel-gap: 12px;
+    --panel-padding: 14px;
+    --panel-radius: 6px;
+    --panel-gap: 10px;
+    --shadow-glow: 0 0 22px rgba(29, 158, 117, 0.15);
+    --shadow-depth: 0 16px 44px rgba(0, 0, 0, 0.42);
+    --motion-standard: 0.24s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Utility classes */
@@ -43,6 +51,14 @@
 
 .font-sans {
     font-family: var(--font-sans);
+}
+
+.font-display {
+    font-family: var(--font-display);
+}
+
+.font-technical {
+    font-family: var(--font-technical);
 }
 
 .metric-value {
@@ -57,14 +73,16 @@
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--panel-radius);
     padding: var(--panel-padding);
+    box-shadow: var(--shadow-depth);
 }
 
 .panel-header {
     color: var(--color-accent-primary);
     font-size: 12px;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
     margin-bottom: var(--panel-gap);
+    font-family: var(--font-technical);
 }
 
 /* Severity indicators */

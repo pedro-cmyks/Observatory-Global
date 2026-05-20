@@ -80,6 +80,16 @@ export const MapTooltip: React.FC<MapTooltipProps> = ({ tooltip }) => {
                     <div style={{ fontSize: '12px', color: '#e2e8f0', marginBottom: '4px' }}>
                         Signals: <strong>{(data.signalCount ?? data.signal_count ?? 0).toLocaleString()}</strong>
                     </div>
+                    {(data.heat ?? null) != null && (
+                        <div style={{ fontSize: '12px', color: '#e2e8f0', marginBottom: '4px' }}>
+                            Attention index: <strong>{Math.round((data.heat ?? 0) * 100)}%</strong>
+                        </div>
+                    )}
+                    {data.anomalyLevel && data.anomalyLevel !== 'normal' && (
+                        <div style={{ fontSize: '12px', color: '#fbbf24', marginBottom: '4px' }}>
+                            Baseline spike: <strong>{data.anomalyLevel}</strong>
+                        </div>
+                    )}
                     <div style={{ fontSize: '12px', color: '#e2e8f0', marginBottom: '4px' }}>
                         Sentiment: <strong style={{
                             color: (data.sentiment ?? data.avg_tone ?? 0) > 0 ? '#4ade80' : (data.sentiment ?? data.avg_tone ?? 0) < 0 ? '#f87171' : '#94a3b8'

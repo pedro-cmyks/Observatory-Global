@@ -5,12 +5,29 @@ import './Docs.css'
 const NAV = [
     { id: 'overview', label: 'Overview' },
     {
+        id: 'panel-guide', label: 'Panel Guide', children: [
+            { id: 'globe-panel', label: 'Globe' },
+            { id: 'signal-stream-panel', label: 'Signal Stream' },
+            { id: 'public-attention-panel', label: 'Public Attention' },
+            { id: 'source-integrity-panel', label: 'Source Integrity' },
+        ]
+    },
+    {
+        id: 'methodology', label: 'Methodology', children: [
+            { id: 'coverage-methodology', label: 'Coverage Bias' },
+            { id: 'sentiment-methodology', label: 'Sentiment' },
+            { id: 'multilingual-methodology', label: 'Multilingual NLP' },
+        ]
+    },
+    { id: 'use-cases', label: 'Use Cases' },
+    {
         id: 'data-sources', label: 'Data Sources', children: [
             { id: 'gdelt-gkg', label: 'GDELT GKG' },
             { id: 'gdelt-events', label: 'GDELT Events' },
+            { id: 'news-apis', label: 'News APIs' },
+            { id: 'reddit', label: 'Reddit' },
             { id: 'google-trends', label: 'Google Trends' },
             { id: 'wikipedia', label: 'Wikipedia' },
-            { id: 'acled', label: 'ACLED' },
         ]
     },
     { id: 'signal-pipeline', label: 'Signal Pipeline' },
@@ -57,7 +74,7 @@ export function Docs() {
                 <span style={{ fontSize: '12px', color: '#64748b' }}>Documentation</span>
                 <div className="docs-topnav-links">
                     <a onClick={() => navigate('/app')} style={{ cursor: 'pointer' }}>Dashboard</a>
-                    <a href="https://github.com/pedro-cmyks/Observatory-Global" target="_blank" rel="noreferrer">GitHub</a>
+                    <a href="https://github.com/pedro-cmyks/Observatory-Global" target="_blank" rel="noopener noreferrer">GitHub</a>
                 </div>
             </nav>
 
@@ -106,12 +123,12 @@ export function Docs() {
                         When a story accelerates in three countries but stalls in two others, that asymmetry is intelligence.
                     </p>
                     <div className="docs-callout">
-                        <strong>Core insight:</strong> A narrative that appears simultaneously in GDELT media signals,
-                        Google trending searches, and Wikipedia editing activity has crossed three independent signal
-                        layers. That cross-source convergence is a strong indicator of real-world salience — not just
-                        one outlet amplifying a story.
+                        <strong>Core insight:</strong> A narrative that appears simultaneously in media signals,
+                        regional/non-English sources, social commentary, Google searches, and Wikipedia reading
+                        has crossed independent signal layers. That convergence is stronger than one outlet or one
+                        country flooding the global feed.
                     </div>
-                    <h3>What Atlas ingests every 15 minutes</h3>
+                    <h3>What Atlas ingests</h3>
                     <table className="docs-table">
                         <thead>
                             <tr>
@@ -122,38 +139,150 @@ export function Docs() {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>GDELT GKG 2.0</td>
-                                <td>Media narratives, themes, sentiment, persons</td>
-                                <td>15 min</td>
-                                <td>~100 countries, 65+ languages</td>
-                            </tr>
-                            <tr>
-                                <td>GDELT Events</td>
-                                <td>Actor–action–actor geopolitical events (CAMEO)</td>
-                                <td>15 min</td>
-                                <td>Global</td>
-                            </tr>
-                            <tr>
-                                <td>Google Trends</td>
-                                <td>Public search interest by keyword and country</td>
-                                <td>30 min</td>
-                                <td>50+ countries</td>
-                            </tr>
-                            <tr>
-                                <td>Wikipedia Pageviews</td>
-                                <td>Article reading volume by language/country</td>
-                                <td>24 h</td>
-                                <td>Global, 20+ languages</td>
-                            </tr>
-                            <tr>
-                                <td>ACLED</td>
-                                <td>Verified armed conflict and protest events</td>
-                                <td>60 min</td>
-                                <td>Global (API key required)</td>
-                            </tr>
+                            <tr><td>GDELT GKG 2.0</td><td>Media narratives, themes, sentiment, persons</td><td>15 min</td><td>Global, multilingual baseline</td></tr>
+                            <tr><td>GDELT Events</td><td>Actor-action geopolitical events using CAMEO</td><td>15 min</td><td>Global</td></tr>
+                            <tr><td>RSS / ReliefWeb</td><td>Curated regional, humanitarian, NGO, institutional feeds</td><td>60 min</td><td>Source provenance and crisis-country context</td></tr>
+                            <tr><td>NewsData.io</td><td>Multilingual media coverage expansion</td><td>60 min</td><td>Language and country buckets</td></tr>
+                            <tr><td>MediaStack</td><td>Country-specific media expansion</td><td>2 h</td><td>LatAm and regional coverage</td></tr>
+                            <tr><td>NewsAPI.org</td><td>Targeted crisis-query coverage</td><td>2 h</td><td>Focused crisis monitoring</td></tr>
+                            <tr><td>Reddit</td><td>Public social commentary from geopolitical subreddits</td><td>60 min</td><td>Commentary layer, not news evidence</td></tr>
+                            <tr><td>Google Trends</td><td>Public search interest by keyword and country</td><td>30 min</td><td>Availability varies by country</td></tr>
+                            <tr><td>Wikipedia Pageviews</td><td>Article reading volume by language/country</td><td>24 h</td><td>Reference-seeking public attention</td></tr>
                         </tbody>
                     </table>
+                </section>
+
+                <hr className="docs-divider" />
+
+                {/* ── Panel Guide ── */}
+                <section className="docs-section" id="panel-guide">
+                    <div className="docs-section-eyebrow">Console Manual</div>
+                    <h2>Panel Guide</h2>
+                    <p className="docs-lead">
+                        Atlas has a readable Brief for orientation and a console for investigation. The console panels
+                        are connected: a click in one panel should give you a next step in another panel or the Workspace.
+                    </p>
+                    <div className="docs-source-grid">
+                        <div className="docs-source-card" id="globe-panel">
+                            <div className="docs-source-card-head">
+                                <span className="docs-source-badge badge-gdelt">MAP</span>
+                                <span className="docs-source-title">Globe</span>
+                            </div>
+                            <p>
+                                The Globe is the orientation layer. Glow shows activity relative to each country's own
+                                recent baseline. Raw signal volume adds evidence density, but it should not be read as
+                                direct real-world importance.
+                            </p>
+                        </div>
+                        <div className="docs-source-card" id="signal-stream-panel">
+                            <div className="docs-source-card-head">
+                                <span className="docs-source-badge badge-wiki">STREAM</span>
+                                <span className="docs-source-title">Signal Stream</span>
+                            </div>
+                            <p>
+                                The stream is the default investigation entry. It is a pivot engine: click a country,
+                                theme, person, source, or headline to turn a raw signal into a focused panel.
+                            </p>
+                        </div>
+                        <div className="docs-source-card" id="public-attention-panel">
+                            <div className="docs-source-card-head">
+                                <span className="docs-source-badge badge-trends">ATTN</span>
+                                <span className="docs-source-title">Public Attention</span>
+                            </div>
+                            <p>
+                                Public Attention is the counterpart to media signals. It captures what people are
+                                reading or searching where those feeds are available, then provides pivots into
+                                countries, themes, and narrative threads.
+                            </p>
+                        </div>
+                        <div className="docs-source-card" id="source-integrity-panel">
+                            <div className="docs-source-card-head">
+                                <span className="docs-source-badge badge-events">SRC</span>
+                                <span className="docs-source-title">Source Integrity</span>
+                            </div>
+                            <p>
+                                Source Integrity checks whether coverage is broad or concentrated. A high concentration
+                                score is a warning to inspect which publishers are dominating a country or theme.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="docs-callout" id="correlation-panel">
+                        <strong>Correlation Matrix:</strong> use this as a lead generator. Bright cells indicate shared
+                        narrative coverage, not agreement or causality.
+                    </div>
+                </section>
+
+                <hr className="docs-divider" />
+
+                {/* ── Methodology ── */}
+                <section className="docs-section" id="methodology">
+                    <div className="docs-section-eyebrow">Interpretation</div>
+                    <h2>Methodology Notes</h2>
+                    <p className="docs-lead">
+                        Atlas should make coverage bias visible instead of hiding it. The product separates signal
+                        volume, normalized activity, source concentration, and public attention so one metric does not
+                        overrule the others.
+                    </p>
+                    <div className="docs-callout" id="coverage-methodology">
+                        <strong>Coverage bias:</strong> countries with more open-source media produce more raw signals.
+                        Atlas can use that volume as more evidence, but map heat and narrative ranking should be
+                        compared against each country's own baseline whenever possible.
+                    </div>
+                    <div className="docs-callout" id="sentiment-methodology">
+                        <strong>Sentiment:</strong> sentiment is a noisy contextual indicator. It should be read with
+                        signal count, source diversity, country spread, and the underlying headlines before drawing an
+                        analytic conclusion.
+                    </div>
+                    <div className="docs-callout" id="multilingual-methodology">
+                        <strong>Multilingual NLP:</strong> Atlas currently treats NLP as an enrichment layer, not as
+                        ground truth. Sentiment, entity extraction, and framing are being hardened for multilingual
+                        coverage before non-English scores are used as high-confidence ranking inputs. During shadow
+                        mode, new multilingual results should be compared against existing fields and sampled manually.
+                    </div>
+                </section>
+
+                <hr className="docs-divider" />
+
+                {/* ── Use Cases ── */}
+                <section className="docs-section" id="use-cases">
+                    <div className="docs-section-eyebrow">Applied Flows</div>
+                    <h2>Use Cases</h2>
+                    <p className="docs-lead">
+                        Atlas is most useful when a user moves from orientation into evidence. These are the core
+                        workflows the product is being shaped around.
+                    </p>
+                    <div className="docs-source-grid">
+                        <div className="docs-source-card">
+                            <div className="docs-source-card-head">
+                                <span className="docs-source-badge badge-gdelt">JOURNALIST</span>
+                                <span className="docs-source-title">Build an investigation dossier</span>
+                            </div>
+                            <p>
+                                Start in Brief, open a country or theme in the console, pin relevant countries,
+                                sources, people, and signals, then export a Workspace dossier with notes and evidence.
+                            </p>
+                        </div>
+                        <div className="docs-source-card">
+                            <div className="docs-source-card-head">
+                                <span className="docs-source-badge badge-events">RISK</span>
+                                <span className="docs-source-title">Monitor drift before it becomes obvious</span>
+                            </div>
+                            <p>
+                                Use country heat, narrative velocity, sentiment drift, and source concentration to
+                                watch whether a country is moving away from its own baseline.
+                            </p>
+                        </div>
+                        <div className="docs-source-card">
+                            <div className="docs-source-card-head">
+                                <span className="docs-source-badge badge-trends">READER</span>
+                                <span className="docs-source-title">Understand why a topic is visible</span>
+                            </div>
+                            <p>
+                                Compare media coverage with search and Wikipedia attention. A topic that appears in
+                                all three layers is different from a topic amplified by one source family.
+                            </p>
+                        </div>
+                    </div>
                 </section>
 
                 <hr className="docs-divider" />
@@ -230,17 +359,45 @@ export function Docs() {
                         </div>
                         <div className="docs-source-card">
                             <div className="docs-source-card-head">
-                                <span className="docs-source-badge badge-acled">ACLED</span>
-                                <span className="docs-source-title">Armed Conflict Location</span>
+                                <span className="docs-source-badge badge-acled">RSS</span>
+                                <span className="docs-source-title">Curated + ReliefWeb Feeds</span>
                             </div>
                             <p>
-                                Human-verified conflict events: battles, explosions, riots, protests.
-                                Unlike GDELT's media-derived signals, ACLED events are field-verified.
-                                They appear as red markers on the map and in the Kinetic Conflicts section.
+                                Curated feeds add regional, state, NGO, and humanitarian sources with stronger
+                                provenance. ReliefWeb/OCHA coverage is especially useful for crisis-country context.
                             </p>
                             <div className="docs-source-meta">
                                 <div className="docs-source-meta-item">Latency <span>~60 min</span></div>
-                                <div className="docs-source-meta-item">Table <span>acled_conflicts_v2</span></div>
+                                <div className="docs-source-meta-item">Table <span>signals_v2</span></div>
+                            </div>
+                        </div>
+                        <div className="docs-source-card">
+                            <div className="docs-source-card-head">
+                                <span className="docs-source-badge badge-gdelt">NEWS</span>
+                                <span className="docs-source-title">NewsData / MediaStack / NewsAPI</span>
+                            </div>
+                            <p>
+                                Additional media APIs improve voice diversity and crisis-specific coverage. These
+                                feeds matter most when they add local-language or region-specific sources that GDELT
+                                does not surface prominently.
+                            </p>
+                            <div className="docs-source-meta">
+                                <div className="docs-source-meta-item">Latency <span>60-120 min</span></div>
+                                <div className="docs-source-meta-item">Table <span>signals_v2</span></div>
+                            </div>
+                        </div>
+                        <div className="docs-source-card">
+                            <div className="docs-source-card-head">
+                                <span className="docs-source-badge badge-wiki">SOCIAL</span>
+                                <span className="docs-source-title">Reddit Commentary</span>
+                            </div>
+                            <p>
+                                Reddit is treated as commentary, not as article evidence. It can reveal early public
+                                discussion, but it should be scored separately from media and institutional sources.
+                            </p>
+                            <div className="docs-source-meta">
+                                <div className="docs-source-meta-item">Latency <span>~60 min</span></div>
+                                <div className="docs-source-meta-item">Class <span>commentary</span></div>
                             </div>
                         </div>
                     </div>
@@ -250,7 +407,7 @@ export function Docs() {
                     <h3>GDELT GKG — Field Mapping</h3>
                     <p>
                         Each GKG record is a news article. Atlas extracts the following fields from the V2 GKG
-                        tab-separated format and normalizes them into <code style={{fontFamily:'monospace',color:'#38bdf8'}}>signals_v2</code>:
+                        tab-separated format and normalizes them into <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>signals_v2</code>:
                     </p>
                     <table className="docs-table">
                         <thead><tr><th>GKG Field</th><th>Column Index</th><th>Atlas Field</th><th>Notes</th></tr></thead>
@@ -278,7 +435,7 @@ export function Docs() {
                     </p>
                     <div className="docs-code">
                         <span className="cm">// Example CAMEO codes in events_v2</span>
-{`
+                        {`
 "14"    → Protest
 "145"   → Protest violently
 "19"    → Fight
@@ -297,7 +454,8 @@ export function Docs() {
                 <section className="docs-section" id="google-trends">
                     <h3>Google Trends — Public Interest Signal</h3>
                     <p>
-                        Google Trends data is ingested via the <code style={{fontFamily:'monospace',color:'#38bdf8'}}>pytrends</code> library
+                        Google Trends data is ingested from the public RSS feed
+                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>trends.google.com/trending/rss</code>
                         every 30 minutes across 50+ country codes. Each record stores the keyword, its rank,
                         approximate search volume, and the country. The Anomaly Panel's right column shows the
                         top globally-trending keywords (ranked by how many countries searched for the same term).
@@ -305,7 +463,7 @@ export function Docs() {
                     <p>
                         At the narrative thread level, Atlas performs a semantic match: it extracts meaningful
                         words from each GDELT theme label and checks whether any match trending keywords
-                        via partial string overlap. A match sets <code style={{fontFamily:'monospace',color:'#4ade80'}}>has_public_interest: true</code> and
+                        via partial string overlap. A match sets <code style={{ fontFamily: 'monospace', color: '#4ade80' }}>has_public_interest: true</code> and
                         displays the SEARCH badge on that thread.
                     </p>
                 </section>
@@ -325,25 +483,31 @@ export function Docs() {
                     </p>
                 </section>
 
-                <section className="docs-section" id="acled">
-                    <h3>ACLED — Kinetic Ground Truth</h3>
+                <section className="docs-section" id="news-apis">
+                    <h3>News APIs — Voice Diversity Layer</h3>
                     <p>
-                        ACLED is unique among Atlas's sources: it is human-verified. Every event in
-                        <code style={{fontFamily:'monospace',color:'#38bdf8'}}> acled_conflicts_v2</code> has been reviewed by
-                        regional analysts. This makes it the most reliable signal for ground-truth conflict
-                        activity, but also the smallest dataset and the one requiring API credentials.
-                    </p>
-                    <p>
-                        ACLED events appear as colored map markers: red for battles/explosions, orange for
-                        riots/protests, yellow for other. Fatality counts drive marker size (capped at radius 15px).
+                        NewsData.io, MediaStack, and NewsAPI.org add a second media layer around GDELT. The point is
+                        not raw volume; it is voice diversity, local-language coverage, and targeted crisis monitoring.
                     </p>
                     <div className="docs-callout">
-                        <strong>Note:</strong> ACLED requires a free API key from{' '}
-                        <span style={{color:'#38bdf8'}}>acleddata.com</span>. Without credentials,
-                        the <code style={{fontFamily:'monospace'}}>ingest_acled</code> service skips silently.
-                        Set <code style={{fontFamily:'monospace'}}>ACLED_API_KEY</code> and{' '}
-                        <code style={{fontFamily:'monospace'}}>ACLED_EMAIL</code> in your environment to activate it.
+                        <strong>Method note:</strong> additional news APIs should be evaluated by what they add to
+                        source mix, country coverage, language mix, and local voice ratio. More rows are only useful
+                        when they reduce blind spots or improve confidence.
                     </div>
+                </section>
+
+                <section className="docs-section" id="reddit">
+                    <h3>Reddit — Commentary Signal</h3>
+                    <p>
+                        Reddit adds a social-discussion layer across geopolitical and country-specific communities.
+                        Atlas should keep it distinct from article evidence with a commentary classification so social
+                        attention does not contaminate media-source scoring.
+                    </p>
+                    <p>
+                        The useful pattern is early movement: if a theme appears in Reddit before it spreads through
+                        media sources, it can become an investigation lead. It still needs corroboration from media,
+                        public-attention, or institutional sources before being treated as evidence.
+                    </p>
                 </section>
 
                 <hr className="docs-divider" />
@@ -353,19 +517,19 @@ export function Docs() {
                     <div className="docs-section-eyebrow">Architecture</div>
                     <h2>Signal Pipeline</h2>
                     <p className="docs-lead">
-                        Raw GDELT files arrive as compressed CSVs every 15 minutes. Atlas transforms them
-                        through a four-stage pipeline into queryable narrative intelligence in under 30 seconds.
+                        Atlas receives signals from file feeds, APIs, RSS, and public-attention endpoints. Every
+                        source is normalized into shared signal fields before enrichment, aggregation, and user-facing
+                        views.
                     </p>
                     <div className="docs-pipeline">
                         <div className="docs-pipeline-step">
                             <div className="docs-pipeline-num">01</div>
                             <div className="docs-pipeline-step-body">
-                                <h4>Fetch & Decompress</h4>
+                                <h4>Fetch</h4>
                                 <p>
-                                    The GDELT lastupdate.txt file is polled for the latest GKG URL.
-                                    Both the English and Translingual feeds are downloaded in parallel.
-                                    ZIP files are decompressed in memory — no disk writes.
-                                    CSV field size limit is raised to 10MB to handle GDELT's large theme columns.
+                                    GDELT files, RSS feeds, news APIs, Reddit JSON, Trends, and Wikipedia are fetched
+                                    on their own cadences. Source family, language, attribution method, and confidence
+                                    metadata are attached as early as possible.
                                 </p>
                             </div>
                         </div>
@@ -374,11 +538,9 @@ export function Docs() {
                             <div className="docs-pipeline-step-body">
                                 <h4>Parse & Normalize</h4>
                                 <p>
-                                    Each GKG row is parsed into a signal dict. FIPS country codes are converted
-                                    to ISO 3166. Themes are deduplicated and capped at 10 per signal.
-                                    Sentiment is extracted from the V2TONE vector's first component.
-                                    Crisis classification (severity, event_type, crisis_score) is computed
-                                    from the theme set using a keyword taxonomy.
+                                    Rows and API objects are converted into shared country, source, URL, headline,
+                                    timestamp, theme, source-family, language, and geo-confidence fields. GDELT FIPS
+                                    codes are converted to ISO 3166 for downstream consistency.
                                 </p>
                             </div>
                         </div>
@@ -387,38 +549,35 @@ export function Docs() {
                             <div className="docs-pipeline-step-body">
                                 <h4>Insert into signals_v2</h4>
                                 <p>
-                                    Parsed signals are batch-inserted with <code style={{fontFamily:'monospace',color:'#38bdf8'}}>ON CONFLICT DO NOTHING</code> (deduplication
-                                    by source_url + timestamp). The <code style={{fontFamily:'monospace',color:'#38bdf8'}}>themes</code> column
-                                    stores a PostgreSQL <code style={{fontFamily:'monospace'}}>text[]</code> array with a GIN index
-                                    enabling sub-millisecond <code style={{fontFamily:'monospace'}}>&&</code> (array overlap) queries.
+                                    Parsed signals are batch-inserted with <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>ON CONFLICT DO NOTHING</code> (deduplication
+                                    by source URL and timestamp where available). The <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>themes</code> column
+                                    stores a PostgreSQL <code style={{ fontFamily: 'monospace' }}>text[]</code> array with a GIN index
+                                    enabling fast <code style={{ fontFamily: 'monospace' }}>&&</code> array-overlap queries.
                                 </p>
                             </div>
                         </div>
                         <div className="docs-pipeline-step">
                             <div className="docs-pipeline-num">04</div>
                             <div className="docs-pipeline-step-body">
-                                <h4>Pre-aggregate into theme_hourly_v2</h4>
+                                <h4>Enrich & Aggregate</h4>
                                 <p>
-                                    After each ingest, the last 2 hours of signals are aggregated into
-                                    <code style={{fontFamily:'monospace',color:'#38bdf8'}}> theme_hourly_v2</code> — one row per (hour, theme) with
-                                    signal_count, country_count, source_count, and avg_sentiment.
-                                    This table is the backbone of the Narrative Threads endpoint:
-                                    it makes any time window query (1h, 24h, 7d) instant by avoiding
-                                    a full <code style={{fontFamily:'monospace'}}>unnest(themes)</code> scan on 300K+ rows.
+                                    NLP enrichment adds sentiment, entities, framing, method, and confidence metadata.
+                                    Aggregates power narrative threads, country brief views, and country heat without
+                                    repeatedly scanning raw rows.
                                 </p>
                             </div>
                         </div>
                     </div>
                     <h3>Database schema overview</h3>
                     <div className="docs-code">
-{`signals_v2          Raw article-level signals (GIN index on themes[])
-theme_hourly_v2     Pre-aggregated (hour, theme) counts — powers Narrative Threads
-country_hourly_v2   Materialized view: per-country hourly signal counts + sentiment
-events_v2           GDELT CAMEO actor→action→actor events
-trends_v2           Google Trends keywords by country
-wiki_pageviews_v2   Wikipedia article views by country/language
-acled_conflicts_v2  ACLED verified conflict events
-countries_v2        Country centroids and metadata`}
+                        {`signals_v2           Raw normalized signals and source provenance
+events_v2            GDELT CAMEO actor-action-actor events
+trends_v2            Google Trends keywords by country
+wiki_pageviews_v2    Wikipedia article views by country/language
+nlp_progress         NLP/backlog tracking by country and source slice
+low_volume_countries Countries that need low-volume normalization
+country_heat_v2      Country heat view for normalized attention ranking
+countries_v2         Country centroids and metadata`}
                     </div>
                 </section>
 
@@ -439,7 +598,7 @@ countries_v2        Country centroids and metadata`}
                     </p>
                     <h3>Phase 1 — Theme ranking (from pre-aggregated table)</h3>
                     <div className="docs-code">
-{`SELECT theme,
+                        {`SELECT theme,
        SUM(signal_count)  AS signal_count,
        SUM(country_count) AS country_count,
        AVG(avg_sentiment) AS avg_sentiment
@@ -450,16 +609,16 @@ ORDER BY signal_count DESC
 LIMIT 5`}
                     </div>
                     <p>
-                        This query reads only <code style={{fontFamily:'monospace',color:'#38bdf8'}}>theme_hourly_v2</code> —
+                        This query reads only <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>theme_hourly_v2</code> —
                         a small pre-aggregated table with ~50K rows — rather than scanning
-                        the full <code style={{fontFamily:'monospace'}}>signals_v2</code> table.
+                        the full <code style={{ fontFamily: 'monospace' }}>signals_v2</code> table.
                         Response time: typically under 50ms.
                     </p>
                     <h3>Phase 2 — Velocity, timeline, countries (GIN-indexed lookup)</h3>
                     <p>
-                        Once the top 5 themes are known, a second query scopes into <code style={{fontFamily:'monospace'}}>signals_v2</code>
-                        using the GIN index on the <code style={{fontFamily:'monospace'}}>themes</code> column. Because it uses
-                        <code style={{fontFamily:'monospace'}}> themes && $top_themes::text[]</code> (array overlap), PostgreSQL
+                        Once the top 5 themes are known, a second query scopes into <code style={{ fontFamily: 'monospace' }}>signals_v2</code>
+                        using the GIN index on the <code style={{ fontFamily: 'monospace' }}>themes</code> column. Because it uses
+                        <code style={{ fontFamily: 'monospace' }}> themes && $top_themes::text[]</code> (array overlap), PostgreSQL
                         uses the GIN index to fetch only rows containing at least one of the top 5 themes —
                         a fraction of the full table.
                     </p>
@@ -490,15 +649,14 @@ LIMIT 5`}
                     <h2>Cross-Source Intelligence</h2>
                     <p className="docs-lead">
                         The most valuable signal in Atlas is not any single source — it's the intersection.
-                        When the same topic appears independently across GDELT media signals, Google search
-                        behavior, and Wikipedia reading patterns, the probability that it reflects genuine
-                        real-world salience is substantially higher.
+                        When the same topic appears independently across media signals, local-language sources,
+                        social commentary, Google search behavior, and Wikipedia reading patterns, the probability
+                        that it reflects genuine real-world salience is substantially higher.
                     </p>
                     <div className="docs-callout">
-                        <strong>The three-layer model:</strong> Media coverage (GDELT) → Public curiosity
-                        (Google Trends) → Reference-seeking (Wikipedia). Each layer represents a different
-                        cognitive and behavioral response to an event. A narrative that activates all three
-                        is deeply embedded in public consciousness, not just a media cycle.
+                        <strong>The layer model:</strong> media coverage, local/regional voice, public commentary,
+                        search curiosity, and reference-seeking each represent a different response to an event. A
+                        narrative that activates several layers is more meaningful than a raw volume spike in one feed.
                     </div>
                     <h3>How SEARCH and WIKI badges are computed</h3>
                     <p>
@@ -511,7 +669,7 @@ LIMIT 5`}
                             <div className="docs-pipeline-step-body">
                                 <h4>Theme label word extraction</h4>
                                 <p>
-                                    The GDELT theme code (e.g. <code style={{fontFamily:'monospace',color:'#38bdf8'}}>ECON_INFLATION</code>) is
+                                    The GDELT theme code (e.g. <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>ECON_INFLATION</code>) is
                                     resolved to a human label ("Inflation"). Words longer than 3 characters
                                     are extracted as search terms.
                                 </p>
@@ -525,7 +683,7 @@ LIMIT 5`}
                                     A single query fetches all trending keywords from the last 48 hours
                                     that partially match any of the extracted words. The result set is
                                     checked for each theme: if any of its words appears in a trending
-                                    keyword, <code style={{fontFamily:'monospace',color:'#4ade80'}}>has_public_interest</code> is set to true.
+                                    keyword, <code style={{ fontFamily: 'monospace', color: '#4ade80' }}>has_public_interest</code> is set to true.
                                 </p>
                             </div>
                         </div>
@@ -534,9 +692,9 @@ LIMIT 5`}
                             <div className="docs-pipeline-step-body">
                                 <h4>Batch Wikipedia query</h4>
                                 <p>
-                                    Same pattern against <code style={{fontFamily:'monospace',color:'#38bdf8'}}>wiki_pageviews_v2</code>
+                                    Same pattern against <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>wiki_pageviews_v2</code>
                                     for the last 3 days. Article titles that partially match the theme
-                                    words trigger <code style={{fontFamily:'monospace',color:'#fbbf24'}}>has_wiki_activity</code> true.
+                                    words trigger <code style={{ fontFamily: 'monospace', color: '#fbbf24' }}>has_wiki_activity</code> true.
                                 </p>
                             </div>
                         </div>
@@ -661,7 +819,7 @@ Severity is derived from the max-weight crisis theme present:
                     <div className="docs-section-eyebrow">Endpoints</div>
                     <h2>API Reference</h2>
                     <p className="docs-lead">
-                        The Atlas backend exposes a REST API at <code style={{fontFamily:'monospace',color:'#38bdf8'}}>atlas-api-pedro.fly.dev</code>.
+                        The Atlas backend exposes a REST API at <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>atlas-api-pedro.fly.dev</code>.
                         All endpoints return JSON and support CORS for the frontend domain.
                     </p>
 
@@ -673,9 +831,9 @@ Severity is derived from the max-weight crisis theme present:
                         <div className="docs-endpoint-body">
                             Top narrative threads for the given time window. Cached 5 minutes in Redis.
                             <br /><br />
-                            <strong style={{color:'#e2e8f0'}}>Params:</strong>{' '}
-                            <code style={{fontFamily:'monospace',color:'#38bdf8'}}>hours</code> (1–8760, default 24),{' '}
-                            <code style={{fontFamily:'monospace',color:'#38bdf8'}}>limit</code> (1–20, default 5)
+                            <strong style={{ color: '#e2e8f0' }}>Params:</strong>{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>hours</code> (1–8760, default 24),{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>limit</code> (1–20, default 5)
                         </div>
                     </div>
 
@@ -688,9 +846,9 @@ Severity is derived from the max-weight crisis theme present:
                             Country-level signal aggregates: total signals, sentiment, top themes, lat/lon.
                             Powers the map globe heatmap.
                             <br /><br />
-                            <strong style={{color:'#e2e8f0'}}>Params:</strong>{' '}
-                            <code style={{fontFamily:'monospace',color:'#38bdf8'}}>range</code> (1h / 6h / 24h / 7d / 30d),{' '}
-                            <code style={{fontFamily:'monospace',color:'#38bdf8'}}>country</code> (optional ISO code)
+                            <strong style={{ color: '#e2e8f0' }}>Params:</strong>{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>range</code> (1h / 6h / 24h / 7d / 30d),{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>country</code> (optional ISO code)
                         </div>
                     </div>
 
@@ -703,11 +861,11 @@ Severity is derived from the max-weight crisis theme present:
                             Individual article-level signals for the Signal Stream panel.
                             Optionally filtered by country or theme.
                             <br /><br />
-                            <strong style={{color:'#e2e8f0'}}>Params:</strong>{' '}
-                            <code style={{fontFamily:'monospace',color:'#38bdf8'}}>limit</code>,{' '}
-                            <code style={{fontFamily:'monospace',color:'#38bdf8'}}>hours</code>,{' '}
-                            <code style={{fontFamily:'monospace',color:'#38bdf8'}}>country</code>,{' '}
-                            <code style={{fontFamily:'monospace',color:'#38bdf8'}}>theme</code>
+                            <strong style={{ color: '#e2e8f0' }}>Params:</strong>{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>limit</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>hours</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>country</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>theme</code>
                         </div>
                     </div>
 
@@ -737,7 +895,7 @@ Severity is derived from the max-weight crisis theme present:
                     <div className="docs-endpoint">
                         <div className="docs-endpoint-header">
                             <span className="docs-method">GET</span>
-                            <span className="docs-endpoint-path">/api/v2/trends</span>
+                            <span className="docs-endpoint-path">/api/v2/trends/search</span>
                         </div>
                         <div className="docs-endpoint-body">
                             Google trending search keywords. Optionally filtered by country code.
@@ -767,7 +925,7 @@ Severity is derived from the max-weight crisis theme present:
                         </div>
                     </div>
 
-                    <div className="docs-callout" style={{marginTop: '32px'}}>
+                    <div className="docs-callout" style={{ marginTop: '32px' }}>
                         <strong>All endpoints</strong> run with a statement_timeout between 5–20 seconds.
                         On timeout, endpoints return empty arrays rather than erroring — the dashboard
                         degrades gracefully and retries on the next auto-refresh cycle.

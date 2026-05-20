@@ -29,6 +29,7 @@ venv/
 .venv/
 env/
 ENV/
+backend/.venv/
 
 # Node
 node_modules/
@@ -68,6 +69,7 @@ data/
 .dev-pids
 logs/
 evidence/
+checkpoints/
 
 # Virtual environment packages (keep .venv dir structure but ignore packages)
 backend/.venv/lib/
@@ -79,3 +81,19 @@ backend/.venv/share/
 .atlas/
 .claude/
 .mcp.json
+.superpowers/
+
+# Local secrets and credentials
+.env.*
+!.env.example
+!backend/.env.example
+*.pem
+*.key
+*.p12
+*.p8
+id_rsa*
+id_ed25519*
+
+# Local agent/design scratch artifacts
+docs/atlas-dashboard-design.html
+docs/superpowers/plans/2026-05-06-search-sources-export.md

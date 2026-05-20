@@ -3,7 +3,18 @@ import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { timeRangeToHours } from '../lib/timeRanges'
 import { getThemeLabel } from '../lib/themeLabels'
+import { resolveCountryName } from '../lib/countryNames'
+import { getNarrativeFetchLimit, getNarrativesForDisplay } from '../lib/narrativeThreadLimits'
+import { getThemeCluster } from '../lib/themeHierarchy'
 import './NarrativeThreads.css'
+
+const THREAD_COLORS = [
+    { gradient: 'linear-gradient(90deg, #f97316, #fbbf24)', accent: '#f97316' },
+    { gradient: 'linear-gradient(90deg, #6366f1, #818cf8)', accent: '#6366f1' },
+    { gradient: 'linear-gradient(90deg, #14b8a6, #22d3ee)', accent: '#14b8a6' },
+    { gradient: 'linear-gradient(90deg, #8b5cf6, #a78bfa)', accent: '#8b5cf6' },
+    { gradient: 'linear-gradient(90deg, #22c55e, #84cc16)', accent: '#22c55e' },
+]
 
 interface TimelinePoint {
     hour: string
@@ -72,30 +83,41 @@ const timeAgo = (isoString: string | null): string => {
     return `Started ${days}d ago`
 }
 
-export const NarrativeThreads: React.FC = () => {
+interface NarrativeThreadsProps {
+    onCountrySelect?: (code: string) => void
+}
+
+export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySelect }) => {
     const [narratives, setNarratives] = useState<Narrative[]>([])
+    const [effectiveHours, setEffectiveHours] = useState<number | null>(null)
     const [loading, setLoading] = useState(true)
-    const { filter, setFocus, setMapFlyCountry } = useFocus()
+    const { filter, setFocus, setCountry, setMapFlyCountry } = useFocus()
     const { timeRange } = useFocusData()
 
-    // Cap narrative queries to 24h — at longer windows, all themes converge to 85-90% spread
-    const cappedHours = Math.min(timeRangeToHours(timeRange), 24)
-    const isCapped = timeRangeToHours(timeRange) > 24
+    // Cap to 24h when browsing globally (spread_pct becomes meaningless at wider windows);
+    // when a country is selected, use the full range so client-side filtering has real data.
+    const rawHours = timeRangeToHours(timeRange)
+    const cappedHours = filter.country ? rawHours : Math.min(rawHours, 24)
+    const isCapped = !filter.country && rawHours > 24
+
+    // Fetch enough rows for the panel to use the available vertical space.
+    const fetchLimit = getNarrativeFetchLimit(!!filter.country)
 
     const fetchNarratives = useCallback(async () => {
         try {
-            const res = await fetch(`/api/v2/narratives?hours=${cappedHours}&limit=5`)
+            const res = await fetch(`/api/v2/narratives?hours=${cappedHours}&limit=${fetchLimit}`)
             if (!res.ok) return
             const data = await res.json()
             setNarratives(data.narratives || [])
+            if (data.effective_hours != null) setEffectiveHours(data.effective_hours)
         } catch (e) {
             console.error('[NarrativeThreads] Fetch error', e)
         } finally {
             setLoading(false)
         }
-    }, [cappedHours])
+    }, [cappedHours, fetchLimit])
 
-    // Initial fetch + 5-minute interval
+    // Initial fetch + 5-minute interval; re-fetch when country changes
     useEffect(() => {
         setLoading(true)
         fetchNarratives()
@@ -103,11 +125,22 @@ export const NarrativeThreads: React.FC = () => {
         return () => clearInterval(interval)
     }, [fetchNarratives])
 
+    // When country is active, show only threads that include that country
+    const displayedNarratives = getNarrativesForDisplay(narratives, filter.country ?? undefined)
+
     const handleClick = (n: Narrative) => {
         setFocus('theme', n.theme_code, getThemeLabel(n.theme_code))
         if (n.top_countries.length > 0) {
             setMapFlyCountry(n.top_countries[0])
+            onCountrySelect?.(n.top_countries[0])
         }
+    }
+
+    const handleCountryPipClick = (e: React.MouseEvent, code: string) => {
+        e.stopPropagation()
+        setCountry(code)
+        setMapFlyCountry(code)
+        onCountrySelect?.(code)
     }
 
     // Loading skeleton
@@ -134,64 +167,98 @@ export const NarrativeThreads: React.FC = () => {
         )
     }
 
+    if (displayedNarratives.length === 0 && filter.country) {
+        return (
+            <div className="narrative-threads-container">
+                <div className="narrative-empty">No top narrative threads found for {filter.country} in this window</div>
+            </div>
+        )
+    }
+
     return (
         <div className="narrative-threads-container">
-            {isCapped && (
-                <div className="narrative-cap-notice">
-                    Showing last 24h — narratives are most meaningful at shorter windows
+            {filter.country && (
+                <div className="narrative-country-filter-notice">
+                    Threads active in {filter.country}: signal counts are global
                 </div>
             )}
-            {narratives.map(n => {
+            {isCapped && !filter.country && (
+                <div className="narrative-cap-notice">
+                    Showing last 24h: narratives are most meaningful at shorter windows
+                </div>
+            )}
+            {effectiveHours != null && effectiveHours < cappedHours && (
+                <div className="narrative-cap-notice">
+                    Thread details show last {effectiveHours}h · counts reflect full {cappedHours}h window
+                </div>
+            )}
+            {displayedNarratives.map(n => {
                 const isFocused = filter.theme === n.theme_code
                 // Dim conditions:
-                //  - a theme is locked AND it's not this row → dim
-                //  - a country is locked AND this thread doesn't cover that country → dim
+                //  - a theme is locked AND it's not this row -> dim
+                //  - a country is locked AND this thread doesn't cover that country -> dim
                 const dimByTheme = !!filter.theme && filter.theme !== n.theme_code
                 const dimByCountry = !!filter.country && !n.top_countries.includes(filter.country)
                 const isDimmed = dimByTheme || dimByCountry
                 const trendArrow = n.trend === 'accelerating' ? '▲' : n.trend === 'fading' ? '▼' : '→'
-                const spreadClass = n.spread_pct < 30 ? 'low' : n.spread_pct < 60 ? 'mid' : 'high'
-                // Plain-language hover hint — falls back to label when no description is available.
-                // Using native title attribute so it works without any new component plumbing.
-                const rowHint = `${getThemeLabel(n.theme_code)} — ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries. Click to open the topic breakdown.`
+                // Plain-language hover hint; falls back to label when no description is available.
+                const rowHint = `${getThemeLabel(n.theme_code)}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries. Click to open the topic breakdown.`
+                const themeCluster = getThemeCluster(n.theme_code)
 
+                const colorIdx = displayedNarratives.indexOf(n) % THREAD_COLORS.length
+                const threadColor = THREAD_COLORS[colorIdx]
                 return (
                     <div
                         key={n.theme_code}
                         className={`narrative-row ${isFocused ? 'focused' : ''} ${isDimmed ? 'dimmed' : ''}`}
-                        title={rowHint}
+                        data-tip={rowHint}
                         onClick={() => handleClick(n)}
+                        style={{ borderLeftColor: threadColor.accent }}
                     >
                         {/* Row 1: Label + stats */}
                         <div className="narrative-header">
                             <div className="narrative-label">
-                                <span className={`sentiment-dot ${n.avg_sentiment > 0.1 ? 'pos' : n.avg_sentiment < -0.1 ? 'neg' : 'neu'}`} title={`Avg sentiment: ${n.avg_sentiment > 0.1 ? 'positive (supportive framing)' : n.avg_sentiment < -0.1 ? 'negative (critical or conflict framing)' : 'neutral'}`} />
+                                <span className={`sentiment-dot ${n.avg_sentiment > 0.1 ? 'pos' : n.avg_sentiment < -0.1 ? 'neg' : 'neu'}`} data-tip={`Avg sentiment: ${n.avg_sentiment > 0.1 ? 'positive (supportive framing)' : n.avg_sentiment < -0.1 ? 'negative (critical or conflict framing)' : 'neutral'}`} />
                                 <span className={`trend-arrow ${n.trend}`}>{trendArrow}</span>
-                                <span>{getThemeLabel(n.theme_code)}</span>
+                                <span className="narrative-label-text">
+                                    {getThemeLabel(n.theme_code)}
+                                    <span className="narrative-cluster-label">
+                                        {themeCluster.label}
+                                    </span>
+                                    {n.top_countries.length > 0 && (
+                                        <span className="narrative-label-country">
+                                            {' · '}{resolveCountryName(n.top_countries[0])}
+                                        </span>
+                                    )}
+                                </span>
                             </div>
-                            <div className="narrative-stats">
-                                <span title="Total media signals (articles, posts) mentioning this topic in the selected time window">{n.signal_count.toLocaleString()} sig</span>
-                                {' · '}
-                                <span title="Number of distinct countries where this topic is being covered">{n.country_count} ctry</span>
-                            </div>
+                            <span className="narrative-count" data-tip={`${n.signal_count.toLocaleString()} media signals in the selected window`}>
+                                {n.signal_count > 999 ? `${(n.signal_count / 1000).toFixed(1)}k` : n.signal_count}
+                                {n.signal_count < 10 && (
+                                    <span className="coverage-badge coverage-badge--thin" data-tip={`Only ${n.signal_count} signals — treat as indicative only`}>thin</span>
+                                )}
+                                {n.signal_count >= 10 && n.signal_count < 50 && (
+                                    <span className="coverage-badge coverage-badge--limited" data-tip={`${n.signal_count} signals — limited coverage`}>~</span>
+                                )}
+                            </span>
                         </div>
 
                         {/* Row 2: Countries, Persons, attention badges + age */}
                         <div className="narrative-detail">
                             <div className="narrative-entities">
                                 {n.top_countries.map(c => (
-                                    <span key={c} className="country-pip">{c}</span>
+                                    <button key={c} className={`country-pip country-pip--btn${filter.country === c ? ' country-pip--active' : ''}`} onClick={e => handleCountryPipClick(e, c)} data-tip={`Focus on ${c}`}>{c}</button>
                                 ))}
                                 {n.top_persons.map(p => (
                                     <span key={p} className="person-pip">{p}</span>
                                 ))}
                                 {n.has_public_interest && (
-                                    <span className="attention-badge search" title={`Trending searches: ${(n.trending_keywords || []).join(', ')}`}>
+                                    <span className="attention-badge search" data-tip={`Trending searches: ${(n.trending_keywords || []).join(', ')}`}>
                                         SEARCH
                                     </span>
                                 )}
                                 {n.has_wiki_activity && (
-                                    <span className="attention-badge wiki" title={`${(n.wiki_views || 0).toLocaleString()} Wikipedia views`}>
+                                    <span className="attention-badge wiki" data-tip={`${(n.wiki_views || 0).toLocaleString()} Wikipedia views`}>
                                         WIKI {n.wiki_views && n.wiki_views > 1000 ? `${Math.round(n.wiki_views / 1000)}K` : ''}
                                     </span>
                                 )}
@@ -201,20 +268,23 @@ export const NarrativeThreads: React.FC = () => {
 
                         {/* Row 3: Spread bar + trend */}
                         <div className="spread-row">
-                            <div className="spread-track" title="Geographic spread: how widely this topic is covered across countries. 100% = present in every country we track">
+                            <div className="narrative-grad-bar-track" data-tip="Geographic spread: how widely this topic is covered across countries. 100% = present in every country we track">
                                 <div
-                                    className={`spread-fill ${spreadClass}`}
-                                    style={{ width: `${Math.min(n.spread_pct, 100)}%` }}
+                                    className="narrative-grad-bar-fill"
+                                    style={{
+                                        width: `${Math.min(n.spread_pct, 100)}%`,
+                                        background: threadColor.gradient,
+                                    }}
                                 />
                             </div>
-                            <span className="spread-label" title="Geographic spread: percentage of tracked countries covering this topic">{n.spread_pct}%</span>
-                            <span className={`trend-label ${n.trend}`} title="Trend over the last few hours: Accelerating = signal volume growing, Fading = volume declining, Stable = consistent">
+                            <span className="spread-label" data-tip="Geographic spread: % of tracked countries covering this topic">{n.spread_pct}%</span>
+                            <span className={`trend-label ${n.trend}`} data-tip="Trend: Accelerating = volume growing, Fading = volume declining, Stable = consistent">
                                 {n.trend === 'accelerating' ? '▲ Accelerating' : n.trend === 'fading' ? '▼ Fading' : '→ Stable'}
                             </span>
                         </div>
 
                         {/* Row 4: Sparkline */}
-                        <div title="Signal volume over time — each point is one hour. Rising line = growing coverage, falling = cooling off.">
+                        <div data-tip="Signal volume over time: each point is one hour. Rising = growing coverage, falling = cooling off.">
                             <Sparkline data={n.hourly_timeline} trend={n.trend} />
                         </div>
                     </div>

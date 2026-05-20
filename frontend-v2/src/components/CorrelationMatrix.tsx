@@ -5,7 +5,7 @@ import { timeRangeToHours } from '../lib/timeRanges'
 import { getThemeLabel } from '../lib/themeLabels'
 
 function matrixAbbrev(label: string): string {
-    const words = label.replace(/[:\-]/g, ' ').split(/\s+/).filter(w => w.length > 1)
+    const words = label.replace(/[:-]/g, ' ').split(/\s+/).filter(w => w.length > 1)
     if (words.length === 0) return '?'
     if (words.length === 1) return words[0].slice(0, 4)
     return words.map(w => w[0].toUpperCase()).join('').slice(0, 4)
@@ -95,7 +95,7 @@ export const CorrelationMatrix: React.FC = () => {
     }
 
     // Normalize to actual data range so small variance becomes visible
-    let normalizeScore = (_s: number) => 0
+    let normalizeScore: (s: number) => number = () => 0
     if (data && data.matrix.length > 0) {
         const offDiag = data.matrix.flatMap((row, r) => row.filter((_, c) => r !== c))
         const dataMin = Math.min(...offDiag)
@@ -148,7 +148,7 @@ export const CorrelationMatrix: React.FC = () => {
                                 <div
                                     key={`col-${idx}`}
                                     className={`matrix-col-header ${mode === 'theme' ? 'theme-mode' : ''} ${hoverCoords && hoverCoords[1] === idx ? 'highlight' : ''}`}
-                                    title={fullLabel}
+                                    data-tip={fullLabel}
                                 >
                                     {label}
                                 </div>
@@ -166,7 +166,7 @@ export const CorrelationMatrix: React.FC = () => {
                                 {/* Row Header */}
                                 <div
                                     className={`matrix-row-header ${hoverCoords && hoverCoords[0] === rowIdx ? 'highlight' : ''}`}
-                                    title={rowFullLabel}
+                                    data-tip={rowFullLabel}
                                 >
                                     {rowLabel}
                                 </div>

@@ -1,0 +1,79 @@
+/* ExportMenu.css */
+
+.export-menu-wrap {
+    position: relative;
+    display: inline-block;
+}
+
+.export-menu-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8125rem;
+    transition: all 0.2s ease;
+}
+
+.export-menu-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.export-menu-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    width: 200px;
+    overflow: hidden;
+    animation: menuFadeIn 0.15s ease-out;
+}
+
+@keyframes menuFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.export-menu-item {
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    color: #cbd5e1;
+    padding: 10px 14px;
+    font-size: 0.8125rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.15s;
+}
+
+.export-menu-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #f8fafc;
+}
+
+.export-menu-item svg {
+    width: 14px;
+    height: 14px;
+    opacity: 0.7;
+}
+
+.export-menu-item:hover svg {
+    opacity: 1;
+}
+
+.export-menu-divider {
+    height: 1px;
+    background: #334155;
+    margin: 4px 0;
+}

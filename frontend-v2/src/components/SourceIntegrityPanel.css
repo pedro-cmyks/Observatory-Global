@@ -72,6 +72,13 @@
 .metric-value.warn { color: var(--color-severity-notable, #fbbf24); }
 .metric-value.bad { color: var(--color-sentiment-negative, #f87171); }
 
+.metric-unit {
+    font-size: 10px;
+    font-weight: 400;
+    color: rgba(226, 232, 240, 0.35);
+    margin-left: 1px;
+}
+
 .distribution-section {
     display: flex;
     flex-direction: column;

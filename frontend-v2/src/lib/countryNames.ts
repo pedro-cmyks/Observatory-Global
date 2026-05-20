@@ -1,4 +1,4 @@
-const COUNTRY_NAMES: Record<string, string> = {
+export const COUNTRY_NAMES: Record<string, string> = {
     AF: 'Afghanistan', AL: 'Albania', DZ: 'Algeria', AO: 'Angola', AR: 'Argentina',
     AM: 'Armenia', AU: 'Australia', AT: 'Austria', AZ: 'Azerbaijan', BH: 'Bahrain',
     BD: 'Bangladesh', BY: 'Belarus', BE: 'Belgium', BZ: 'Belize', BJ: 'Benin',
@@ -47,6 +47,7 @@ const COUNTRY_NAMES: Record<string, string> = {
     // GDELT/FIPS-specific codes (no duplicates with above)
     CJ: 'Cayman Islands', RQ: 'Puerto Rico',
     WE: 'West Bank', YM: 'Yemen', RI: 'Indonesia', RB: 'Serbia',
+    HO: 'Honduras', PC: 'Pitcairn Islands', NF: 'Norfolk Island',
     AN: 'Antilles', RE: 'Réunion', PM: 'St. Pierre', BQ: 'Bonaire',
     SX: 'Sint Maarten', AW: 'Aruba', TC: 'Turks & Caicos',
     BM: 'Bermuda', VI: 'Virgin Islands', GU: 'Guam',
@@ -57,3 +58,7 @@ export function resolveCountryName(code: string, apiName?: string): string {
     if (apiName && apiName !== code && apiName.length > 2) return apiName
     return COUNTRY_NAMES[code?.toUpperCase()] || code
 }
+
+export const COUNTRY_OPTIONS = Object.entries(COUNTRY_NAMES)
+    .map(([code, name]) => ({ code, name }))
+    .sort((a, b) => a.name.localeCompare(b.name))

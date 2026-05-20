@@ -19,5 +19,12 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // React Compiler rules from react-hooks v7 — too aggressive for this codebase
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/purity': 'off',
+      // Warn rather than error — gradual typing improvement
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
   },
 ])

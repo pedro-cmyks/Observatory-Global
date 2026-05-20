@@ -3,6 +3,7 @@
     flex-direction: column;
     height: 100%;
     width: 100%;
+    overflow-x: hidden;
     overflow-y: auto;
     background: rgba(10, 15, 20, 0.5);
     color: var(--color-text-primary, #e2e8f0);
@@ -21,11 +22,14 @@
 
 /* Individual narrative row */
 .narrative-row {
+    flex: 0 0 auto;
     padding: 10px 12px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     cursor: pointer;
     transition: background 0.2s, border-left 0.15s;
     border-left: 3px solid transparent;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .narrative-row:hover {
@@ -56,7 +60,7 @@
 }
 
 .narrative-label {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--color-text-primary, #f1f5f9);
     display: flex;
@@ -87,10 +91,62 @@
 .trend-arrow.stable { color: var(--color-text-secondary, #94a3b8); }
 .trend-arrow.fading { color: var(--color-text-muted, #64748b); }
 
-.narrative-label span:last-child {
+/* Prominent signal count */
+.narrative-count {
+    font-size: 15px;
+    font-weight: 700;
+    color: #e2e8f0;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    min-width: 32px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.coverage-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.6rem;
+    font-family: var(--font-mono, monospace);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    padding: 1px 4px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    cursor: default;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+.coverage-badge--thin {
+    background: rgba(251, 146, 60, 0.15);
+    color: #fb923c;
+    border: 1px solid rgba(251, 146, 60, 0.35);
+}
+.coverage-badge--limited {
+    background: rgba(250, 204, 21, 0.12);
+    color: #fbbf24;
+    border: 1px solid rgba(250, 204, 21, 0.3);
+}
+
+/* Country suffix in thread label */
+.narrative-label-country {
+    color: #64748b;
+    font-weight: 400;
+}
+
+.narrative-label-text {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.narrative-cluster-label {
+    margin-left: 6px;
+    color: rgba(148, 163, 184, 0.72);
+    font-size: 9px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
 }
 
 .narrative-stats {
@@ -126,6 +182,32 @@
     border-radius: 3px;
     background: rgba(255, 255, 255, 0.06);
     color: var(--color-text-secondary, #94a3b8);
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+
+.country-pip--active {
+    background: rgba(96, 165, 250, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(96, 165, 250, 0.3);
+}
+
+.country-pip--btn {
+    border: none;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+}
+
+.country-pip--btn:hover {
+    background: rgba(96, 165, 250, 0.18);
+    color: #93c5fd;
+}
+
+.narrative-stat-global {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(148, 163, 184, 0.5);
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
 
@@ -183,15 +265,19 @@
     overflow: hidden;
 }
 
-.spread-fill {
+/* Gradient bar (replaces spread-fill color variants) */
+.narrative-grad-bar-track {
+    flex: 1;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.narrative-grad-bar-fill {
     height: 100%;
     border-radius: 2px;
     transition: width 0.5s ease;
 }
-
-.spread-fill.low { background: #22c55e; }
-.spread-fill.mid { background: #eab308; }
-.spread-fill.high { background: #ef4444; }
 
 .spread-label {
     font-size: 9px;
@@ -206,6 +292,7 @@
     font-size: 9px;
     font-weight: 600;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .trend-label.accelerating { color: var(--color-severity-critical, #ef4444); }
@@ -260,6 +347,14 @@
     color: var(--color-text-muted, #64748b);
     border-bottom: 1px solid rgba(255, 255, 255, 0.03);
     font-style: italic;
+}
+
+.narrative-country-filter-notice {
+    padding: 4px 12px;
+    font-size: 9px;
+    color: #63b3ed;
+    border-bottom: 1px solid rgba(99, 179, 237, 0.1);
+    letter-spacing: 0.3px;
 }
 
 /* Empty state */

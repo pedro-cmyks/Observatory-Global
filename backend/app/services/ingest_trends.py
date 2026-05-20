@@ -10,6 +10,7 @@ import aiohttp
 import asyncpg
 import logging
 import os
+import random
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 
@@ -18,11 +19,31 @@ logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://observatory:changeme@localhost:5432/observatory?sslmode=disable")
 
-# ISO country codes supported by Google Trends RSS
+# ISO country codes supported by Google Trends RSS (verified against live feed)
 TREND_COUNTRIES = [
-    "US", "GB", "IN", "BR", "MX", "AR", "CO", "FR", "DE", "IT",
-    "JP", "KR", "AU", "CA", "ES", "ZA", "NG", "EG", "TR", "RU",
-    "UA", "PL", "NL", "SE", "NO", "CH", "SG", "TH", "ID", "PH",
+    # North America
+    "US", "CA", "MX",
+    # Latin America
+    "BR", "AR", "CO", "CL", "VE", "PE", "EC", "BO", "PY",
+    "CR", "GT", "HN", "SV", "NI", "PA", "DO", "CU", "HT",
+    # Europe (West)
+    "GB", "FR", "DE", "IT", "ES", "PT", "NL", "BE", "CH", "AT",
+    "SE", "NO", "DK", "FI", "IE", "PL", "CZ", "SK", "HU", "HR",
+    "RS", "RO", "BG", "GR", "LT", "LV", "EE",
+    # Europe (East / Balkans / Caucasus)
+    "UA", "RU", "BY", "AL", "BA", "AM", "AZ", "KG", "KZ",
+    # Middle East & North Africa
+    "SA", "IL", "IQ", "IR", "LB", "SY", "KW", "BH",
+    "OM", "YE", "MA", "DZ", "LY", "EG",
+    # Sub-Saharan Africa
+    "NG", "KE", "UG", "SN", "CI", "CM", "CD", "AO", "ET", "ZA",
+    # South & Southeast Asia
+    "IN", "PK", "BD", "LK", "NP", "TH", "MY", "SG", "ID", "PH",
+    "MM", "KH",
+    # East Asia & Pacific
+    "JP", "KR", "AU", "NZ", "TW",
+    # Turkey
+    "TR",
 ]
 
 RSS_URL = "https://trends.google.com/trending/rss?geo={geo}"
@@ -92,14 +113,15 @@ async def insert_trends(pool: asyncpg.Pool, trends: list[dict]) -> int:
 
     inserted = 0
     now = datetime.now(timezone.utc)
+    hour_bucket = now.replace(minute=0, second=0, microsecond=0)
 
     async with pool.acquire() as conn:
         for t in trends:
             try:
                 await conn.execute("""
-                    INSERT INTO trends_v2 (timestamp, country_code, keyword, rank, approximate_volume)
-                    VALUES ($1, $2, $3, $4, $5)
-                    ON CONFLICT (country_code, keyword, hour_bucket) DO UPDATE
+                    INSERT INTO trends_v2 (timestamp, country_code, keyword, rank, approximate_volume, hour_bucket)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    ON CONFLICT ON CONSTRAINT trends_v2_country_code_keyword_hour_bucket_key DO UPDATE
                         SET rank = EXCLUDED.rank,
                             approximate_volume = GREATEST(trends_v2.approximate_volume, EXCLUDED.approximate_volume)
                 """,
@@ -108,10 +130,11 @@ async def insert_trends(pool: asyncpg.Pool, trends: list[dict]) -> int:
                     t["keyword"],
                     t["rank"],
                     t["approximate_volume"],
+                    hour_bucket,
                 )
                 inserted += 1
             except Exception as e:
-                logger.debug(f"[Trends] Insert skip: {e}")
+                logger.warning(f"[Trends] Insert failed for {t.get('country_code')}/{t.get('keyword')}: {e}")
                 continue
 
     return inserted
@@ -126,17 +149,33 @@ async def run_trends_ingestion():
     try:
         all_trends: list[dict] = []
 
-        # Fetch countries in batches of 5 to avoid hammering the RSS endpoint
+        # Shuffle order each run — prevents same countries always hitting rate limits first
+        countries = TREND_COUNTRIES.copy()
+        random.shuffle(countries)
+
+        # Fetch in batches of 3 (reduced from 5) with longer pause to avoid rate limiting
         async with aiohttp.ClientSession() as session:
-            for i in range(0, len(TREND_COUNTRIES), 5):
-                batch = TREND_COUNTRIES[i:i + 5]
+            failed: list[str] = []
+            for i in range(0, len(countries), 3):
+                batch = countries[i:i + 3]
                 tasks = [fetch_trending_for_country(session, cc) for cc in batch]
                 results = await asyncio.gather(*tasks, return_exceptions=True)
-                for res in results:
-                    if isinstance(res, list):
+                for cc, res in zip(batch, results):
+                    if isinstance(res, list) and res:
                         all_trends.extend(res)
-                # Small pause between batches
-                await asyncio.sleep(1)
+                    elif isinstance(res, list) and not res:
+                        failed.append(cc)
+                await asyncio.sleep(2)
+
+            # Single retry pass for failed countries with longer delay
+            if failed:
+                logger.info(f"[Trends] Retrying {len(failed)} failed countries: {failed}")
+                await asyncio.sleep(5)
+                for cc in failed:
+                    res = await fetch_trending_for_country(session, cc)
+                    if res:
+                        all_trends.extend(res)
+                    await asyncio.sleep(3)
 
         if all_trends:
             inserted = await insert_trends(pool, all_trends)

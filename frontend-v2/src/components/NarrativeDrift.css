@@ -1,0 +1,107 @@
+/* NarrativeDrift.css */
+
+.narrative-drift {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.narrative-drift.loading,
+.narrative-drift.error,
+.narrative-drift.empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 140px;
+    color: #64748b;
+    font-size: 0.8125rem;
+    text-align: center;
+}
+
+.narrative-drift--deferred {
+    min-height: 92px;
+    opacity: 0.72;
+}
+
+.narrative-drift--deferred .narrative-drift-header h3 span {
+    font-weight: 400;
+    opacity: 0.45;
+    font-size: 0.72rem;
+    text-transform: none;
+}
+
+.drift-deferred-line {
+    height: 34px;
+    border-radius: 6px;
+    background:
+        linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.18), transparent),
+        repeating-linear-gradient(
+            90deg,
+            rgba(148, 163, 184, 0.05) 0,
+            rgba(148, 163, 184, 0.05) 1px,
+            transparent 1px,
+            transparent 38px
+        );
+    animation: driftDeferredPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes driftDeferredPulse {
+    0%, 100% {
+        opacity: 0.45;
+    }
+
+    50% {
+        opacity: 0.85;
+    }
+}
+
+.narrative-drift.error {
+    color: #ef4444;
+}
+
+.narrative-drift-header {
+    margin-bottom: 1rem;
+}
+
+.narrative-drift-header h3 {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #cbd5e1;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.narrative-drift-chart {
+    width: 100%;
+}
+
+.drift-tooltip {
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 8px 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+}
+
+.drift-tooltip-date {
+    margin: 0 0 4px 0;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.drift-tooltip-val {
+    margin: 0 0 2px 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.drift-tooltip-vol {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #64748b;
+}

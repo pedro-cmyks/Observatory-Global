@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 import type { TimeRange } from '../lib/timeRanges'
 
@@ -10,12 +11,29 @@ export interface FocusState {
     label: string | null
 }
 
+export interface ConceptFilter {
+    slug: string
+    themes: string[]
+    label: string
+}
+
+export interface RegionFilter {
+    slug: string
+    label: string
+    countries: string[]
+}
+
+export type StreamLevel = 'all' | 'critical' | 'elevated' | 'notable' | 'trend' | 'person' | 'maritime' | null
+
 export interface GlobalFilter {
     country: string | null
     theme: string | null
     person: string | null
+    concept: ConceptFilter | null
+    region: RegionFilter | null
     timeRange: TimeRange
     lockedBy: LockedBy
+    streamLevel: StreamLevel
 }
 
 interface FocusContextValue {
@@ -24,7 +42,10 @@ interface FocusContextValue {
     setCountry: (country: string | null, source?: LockedBy) => void
     setTheme: (theme: string | null, source?: LockedBy) => void
     setPerson: (person: string | null) => void
+    setConcept: (concept: ConceptFilter | null) => void
+    setRegion: (region: RegionFilter | null) => void
     setTimeRange: (range: TimeRange) => void
+    setStreamLevel: (level: StreamLevel) => void
     clearFilter: () => void
     // Map fly hint: set a country code to trigger a map flyTo
     mapFlyCountry: string | null
@@ -41,8 +62,11 @@ const defaultFilter: GlobalFilter = {
     country: null,
     theme: null,
     person: null,
+    concept: null,
+    region: null,
     timeRange: '24h',
-    lockedBy: null
+    lockedBy: null,
+    streamLevel: 'notable',
 }
 
 const FocusContext = createContext<FocusContextValue | undefined>(undefined)
@@ -81,12 +105,28 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }, [])
 
     const setPerson = useCallback((person: string | null) => {
-        setFilter(prev => ({ ...prev, person, country: null, theme: null, lockedBy: null }))
+        setFilter(prev => ({ ...prev, person, country: null, theme: null, concept: null, region: null, lockedBy: null }))
         console.log(`[GlobalFilter] Set person=${person}`)
     }, [])
 
+    const setConcept = useCallback((concept: ConceptFilter | null) => {
+        // Setting a concept also sets the primary theme for panels that only read filter.theme
+        const primaryTheme = concept?.themes[0] ?? null
+        setFilter(prev => ({ ...prev, concept, theme: primaryTheme, person: null, lockedBy: null }))
+        console.log(`[GlobalFilter] Set concept=${concept?.slug} (${concept?.themes.length} themes)`)
+    }, [])
+
+    const setRegion = useCallback((region: RegionFilter | null) => {
+        setFilter(prev => ({ ...prev, region, country: null, person: null, theme: null, concept: null, lockedBy: null }))
+        console.log(`[GlobalFilter] Set region=${region?.slug} (${region?.countries.length} countries)`)
+    }, [])
+
+    const setStreamLevel = useCallback((level: StreamLevel) => {
+        setFilter(prev => ({ ...prev, streamLevel: level }))
+    }, [])
+
     const clearFilter = useCallback(() => {
-        setFilter(prev => ({ ...prev, country: null, theme: null, person: null, lockedBy: null }))
+        setFilter(prev => ({ ...prev, country: null, theme: null, person: null, concept: null, region: null, lockedBy: null }))
         console.log('[GlobalFilter] Cleared')
     }, [])
 
@@ -97,7 +137,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         label: filter.person || filter.country || filter.theme
     }
 
-    const setFocus = useCallback((type: FocusType, value: string, _label?: string) => {
+    const setFocus = useCallback((type: FocusType, value: string, _label?: string) => { // eslint-disable-line @typescript-eslint/no-unused-vars
         if (type === 'country') {
             setCountry(value)
         } else if (type === 'theme') {
@@ -110,11 +150,11 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }, [setCountry, setTheme, setPerson, clearFilter])
 
     const clearFocus = clearFilter
-    const isActive = filter.country !== null || filter.theme !== null || filter.person !== null
+    const isActive = filter.country !== null || filter.theme !== null || filter.person !== null || filter.concept !== null || filter.region !== null
 
     return (
         <FocusContext.Provider value={{
-            filter, setCountry, setTheme, setPerson, setTimeRange, clearFilter,
+            filter, setCountry, setTheme, setPerson, setConcept, setRegion, setTimeRange, setStreamLevel, clearFilter,
             mapFlyCountry, setMapFlyCountry,
             focus, setFocus, clearFocus, isActive
         }}>

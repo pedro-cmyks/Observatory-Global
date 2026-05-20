@@ -2,6 +2,12 @@ import { useState, useEffect } from 'react'
 import { getThemeLabel } from '../lib/themeLabels'
 import { timeRangeToHours } from '../lib/timeRanges'
 import { type TimeRange } from '../lib/timeRanges'
+import { useWorkspace } from '../contexts/WorkspaceContext'
+import { selectVisibleKeyPersons } from '../lib/countryBriefPeople'
+import { buildGeoNarrative } from '../lib/geoNarrative'
+import { groupThemeTopics } from '../lib/themeHierarchy'
+import { Pin, PinOff } from 'lucide-react'
+import { CompareSearchModal } from './CompareSearchModal'
 import './EntityPanel.css'
 
 interface FocusNode {
@@ -16,7 +22,8 @@ interface FocusData {
     nodes: FocusNode[]
     related_topics: Array<{ topic: string; count: number }>
     top_sources: Array<{ source: string; count: number; avg_sentiment: number }>
-    headlines: Array<{ url: string; source: string; time: string | null }>
+    headlines: Array<{ url: string; source: string; headline: string | null; time: string | null }>
+    key_people: Array<{ person: string; signal_count: number; avg_sentiment: number; country_count: number }>
 }
 
 interface EntityPanelProps {
@@ -26,6 +33,9 @@ interface EntityPanelProps {
     onClose: () => void
     onThemeSelect?: (theme: string) => void
     onCountrySelect?: (code: string) => void
+    onSourceClick?: (domain: string) => void
+    onCompareClick?: (person: string) => void
+    onPersonSelect?: (name: string) => void
     inline?: boolean
 }
 
@@ -48,11 +58,13 @@ function formatCount(n: number): string {
     return String(n)
 }
 
-export function EntityPanel({ focusType, focusValue, timeRange, onClose, onThemeSelect, onCountrySelect, inline }: EntityPanelProps) {
+export function EntityPanel({ focusType, focusValue, timeRange, onClose, onThemeSelect, onCountrySelect, onSourceClick, onCompareClick, onPersonSelect, inline }: EntityPanelProps) {
     const cls = `entity-panel${inline ? ' entity-panel--inline' : ''}`
     const [data, setData] = useState<FocusData | null>(null)
     const [loading, setLoading] = useState(true)
+    const [showCompareModal, setShowCompareModal] = useState(false)
     const hours = timeRangeToHours(timeRange)
+    const { pinItem, unpinItem, isPinned } = useWorkspace()
 
     useEffect(() => {
         setLoading(true)
@@ -80,6 +92,11 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
 
     const totalSources = data?.nodes?.reduce((sum, n) => sum + n.unique_sources, 0) ?? 0
     const topNodes = data?.nodes?.slice(0, 10) ?? []
+    const geoNarrative = data ? buildGeoNarrative(data.nodes) : null
+    const keyPeople = selectVisibleKeyPersons(
+        (data?.key_people ?? []).map(p => ({ name: p.person, count: p.signal_count }))
+    )
+    const relatedThemeGroups = groupThemeTopics((data?.related_topics ?? []).slice(0, 12))
 
     return (
         <div className={cls}>
@@ -95,28 +112,75 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
             </div>
 
             <div className="entity-title-block">
-                <h2 className="entity-name">{displayName}</h2>
-                {data && (
-                    <div className="entity-subtitle">
-                        <span>{formatCount(data.summary.total_signals)} signals</span>
-                        <span className="entity-dot">·</span>
-                        <span>{data.summary.total_countries} countries</span>
-                        {globalSentiment !== null && (
-                            <>
-                                <span className="entity-dot">·</span>
-                                <span style={{ color: sentimentColor(globalSentiment) }}>
-                                    {sentimentLabel(globalSentiment)}
-                                </span>
-                            </>
-                        )}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h2 className="entity-name">{displayName}</h2>
+                        <button 
+                            onClick={() => {
+                                const pinnedId = `${focusType}-${focusValue}`
+                                if (isPinned(pinnedId)) {
+                                    unpinItem(pinnedId)
+                                } else {
+                                    const params = new URLSearchParams()
+                                    params.set(focusType, focusValue)
+                                    pinItem({
+                                        id: pinnedId,
+                                        type: focusType,
+                                        title: displayName,
+                                        urlParams: `?${params.toString()}`
+                                    })
+                                }
+                            }}
+                            data-tip={isPinned(`${focusType}-${focusValue}`) ? `Unpin ${focusType}` : `Pin ${focusType} to Workspace`}
+                            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: isPinned(`${focusType}-${focusValue}`) ? '#10b981' : '#94a3b8', width: '24px', height: '24px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
+                        >
+                            {isPinned(`${focusType}-${focusValue}`) ? <PinOff size={12} /> : <Pin size={12} />}
+                        </button>
                     </div>
+                    {focusType === 'person' && onCompareClick && (
+                        <div style={{ position: 'relative' }}>
+                            <button
+                                className="entity-compare-btn"
+                                onClick={() => setShowCompareModal(v => !v)}
+                                style={{ background: showCompareModal ? 'rgba(99,102,241,0.15)' : 'transparent', border: '1px solid #6366f1', color: '#a5b4fc', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer' }}
+                            >
+                                Compare With...
+                            </button>
+                            {showCompareModal && (
+                                <CompareSearchModal
+                                    onSelect={name => { onCompareClick(name); setShowCompareModal(false) }}
+                                    onClose={() => setShowCompareModal(false)}
+                                />
+                            )}
+                        </div>
+                    )}
+                </div>
+                {data && (
+                    <>
+                        <div className="entity-subtitle">
+                            <span>{formatCount(data.summary.total_signals)} signals</span>
+                            <span className="entity-dot">·</span>
+                            <span>{data.summary.total_countries} countries</span>
+                            {globalSentiment !== null && (
+                                <>
+                                    <span className="entity-dot">·</span>
+                                    <span style={{ color: sentimentColor(globalSentiment) }}>
+                                        {sentimentLabel(globalSentiment)}
+                                    </span>
+                                </>
+                            )}
+                        </div>
+                        {geoNarrative && (
+                            <div className="entity-geo-narrative">{geoNarrative}</div>
+                        )}
+                    </>
                 )}
             </div>
 
             {loading && (
                 <div className="entity-loading">
-                    {Array.from({ length: 8 }).map((_, i) => (
-                        <div key={i} className="entity-skeleton" style={{ width: `${70 + Math.random() * 25}%` }} />
+                    {[80, 65, 90, 72, 85, 60, 78, 68].map((w, i) => (
+                        <div key={i} className="entity-skeleton" style={{ width: `${w}%` }} />
                     ))}
                 </div>
             )}
@@ -178,61 +242,171 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
                     )}
 
                     {/* Top Themes */}
-                    {data.related_topics.length > 0 && (
+                    {relatedThemeGroups.length > 0 && (
                         <div className="entity-section">
                             <div className="entity-section-label">Related Themes</div>
-                            <div className="entity-themes">
-                                {data.related_topics.slice(0, 10).map(t => (
-                                    <button
-                                        key={t.topic}
-                                        className="entity-theme-chip"
-                                        onClick={() => onThemeSelect?.(t.topic)}
-                                        title={`${t.count} signals`}
-                                    >
-                                        {getThemeLabel(t.topic)}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Top Sources */}
-                    {data.top_sources.length > 0 && (
-                        <div className="entity-section">
-                            <div className="entity-section-label">Top Sources</div>
-                            <div className="entity-sources">
-                                {data.top_sources.slice(0, 6).map(s => (
-                                    <div key={s.source} className="entity-source-row">
-                                        <span className="entity-source-name">{s.source}</span>
-                                        <span className="entity-source-count">{formatCount(s.count)}</span>
-                                        <span className="entity-source-sentiment" style={{ color: sentimentColor(s.avg_sentiment) }}>
-                                            {s.avg_sentiment > 0 ? '+' : ''}{s.avg_sentiment.toFixed(1)}
-                                        </span>
+                            <div className="entity-theme-groups">
+                                {relatedThemeGroups.map(group => (
+                                    <div key={group.cluster.id} className="entity-theme-group">
+                                        <div className="entity-theme-group-label">{group.cluster.label}</div>
+                                        <div className="entity-themes">
+                                            {group.items.map(t => (
+                                                <button
+                                                    key={t.topic}
+                                                    className="entity-theme-chip"
+                                                    onClick={() => onThemeSelect?.(t.topic)}
+                                                    data-tip={`${t.count} signals`}
+                                                >
+                                                    {getThemeLabel(t.topic)}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     )}
 
+                    {/* Key People */}
+                    {keyPeople.length > 0 && (
+                        <div className="entity-section">
+                            <div className="entity-section-label">Key People</div>
+                            <div className="entity-people">
+                                {keyPeople.map(p => {
+                                    const fullData = data.key_people.find(k => k.person === p.name)
+                                    return (
+                                        <div
+                                            key={p.name}
+                                            className={`entity-person-row${onPersonSelect ? '' : ' entity-person-row--static'}`}
+                                            onClick={() => onPersonSelect?.(p.name)}
+                                        >
+                                            <span className="entity-person-name">{p.name}</span>
+                                            <span className="entity-person-count">{formatCount(p.count)}</span>
+                                            {fullData && fullData.country_count > 1 && (
+                                                <span className="entity-person-countries">{fullData.country_count} ctrs</span>
+                                            )}
+                                            {fullData && (
+                                                <span
+                                                    className="entity-person-dot"
+                                                    style={{ background: sentimentColor(fullData.avg_sentiment) }}
+                                                />
+                                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Source Framing Split */}
+                    {data.top_sources.length > 0 && (() => {
+                        const sources = data.top_sources.slice(0, 8)
+                        const positive = sources.filter(s => s.avg_sentiment > 0.2).sort((a, b) => b.avg_sentiment - a.avg_sentiment)
+                        const negative = sources.filter(s => s.avg_sentiment < -0.2).sort((a, b) => a.avg_sentiment - b.avg_sentiment)
+                        const neutral  = sources.filter(s => Math.abs(s.avg_sentiment) <= 0.2)
+                        const showSplit = positive.length + negative.length >= 2
+                        const spread = positive.length && negative.length
+                            ? positive[0].avg_sentiment - negative[0].avg_sentiment
+                            : null
+
+                        if (!showSplit) {
+                            return (
+                                <div className="entity-section">
+                                    <div className="entity-section-label">Top Sources</div>
+                                    <div className="entity-sources">
+                                        {sources.map(s => (
+                                            <div key={s.source} className="entity-source-row"
+                                                style={{ cursor: onSourceClick ? 'pointer' : 'default' }}
+                                                onClick={() => onSourceClick?.(s.source)}>
+                                                <span className="entity-source-name">{s.source}</span>
+                                                <span className="entity-source-count">{formatCount(s.count)}</span>
+                                                <span className="entity-source-sentiment" style={{ color: sentimentColor(s.avg_sentiment) }}>
+                                                    {s.avg_sentiment > 0 ? '+' : ''}{s.avg_sentiment.toFixed(1)}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )
+                        }
+
+                        const maxRows = Math.max(positive.length, negative.length, 1)
+                        return (
+                            <div className="entity-section">
+                                <div className="entity-section-label">Framing Split</div>
+                                {spread !== null && spread > 0.4 && (
+                                    <div className="entity-framing-spread">
+                                        <span className="framing-spread-label">Narrative spread</span>
+                                        <div className="framing-spread-bar">
+                                            <div className="framing-spread-fill" style={{ width: `${Math.min(spread / 4 * 100, 100)}%` }} />
+                                        </div>
+                                        <span className="framing-spread-value" style={{ color: spread > 2 ? '#f87171' : spread > 1 ? '#fbbf24' : '#888' }}>
+                                            {spread > 2 ? 'High' : spread > 1 ? 'Med' : 'Low'} ({spread.toFixed(1)})
+                                        </span>
+                                    </div>
+                                )}
+                                <div className="entity-framing-grid">
+                                    <div className="framing-col framing-col--pos">
+                                        <div className="framing-col-header">Positive</div>
+                                        {Array.from({ length: maxRows }, (_, i) => positive[i]).map((s, i) => s ? (
+                                            <div key={s.source} className="framing-source-row"
+                                                style={{ cursor: onSourceClick ? 'pointer' : 'default' }}
+                                                onClick={() => onSourceClick?.(s.source)}>
+                                                <span className="framing-source-name">{s.source}</span>
+                                                <span className="framing-source-sent positive">+{s.avg_sentiment.toFixed(1)}</span>
+                                            </div>
+                                        ) : <div key={i} className="framing-source-row framing-source-row--empty" />)}
+                                    </div>
+                                    <div className="framing-col framing-col--neg">
+                                        <div className="framing-col-header">Negative</div>
+                                        {Array.from({ length: maxRows }, (_, i) => negative[i]).map((s, i) => s ? (
+                                            <div key={s.source} className="framing-source-row"
+                                                style={{ cursor: onSourceClick ? 'pointer' : 'default' }}
+                                                onClick={() => onSourceClick?.(s.source)}>
+                                                <span className="framing-source-name">{s.source}</span>
+                                                <span className="framing-source-sent negative">{s.avg_sentiment.toFixed(1)}</span>
+                                            </div>
+                                        ) : <div key={i} className="framing-source-row framing-source-row--empty" />)}
+                                    </div>
+                                </div>
+                                {neutral.length > 0 && (
+                                    <div className="framing-neutral-row">
+                                        <span className="framing-neutral-label">Neutral:</span>
+                                        {neutral.map(s => (
+                                            <span key={s.source} className="framing-neutral-source"
+                                                style={{ cursor: onSourceClick ? 'pointer' : 'default' }}
+                                                onClick={() => onSourceClick?.(s.source)}>
+                                                {s.source}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    })()}
+
                     {/* Recent Coverage */}
                     {data.headlines.length > 0 && (
                         <div className="entity-section">
                             <div className="entity-section-label">Recent Coverage</div>
                             <div className="entity-headlines">
-                                {data.headlines.slice(0, 8).map((h, i) => (
-                                    <a
-                                        key={i}
-                                        href={h.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="entity-headline"
-                                    >
-                                        <span className="entity-headline-source">{h.source}</span>
-                                        <span className="entity-headline-url">
-                                            {h.url.replace(/^https?:\/\/[^/]+/, '').slice(0, 60) || h.url.slice(0, 60)}
-                                        </span>
-                                    </a>
-                                ))}
+                                {data.headlines.slice(0, 8).map((h, i) => {
+                                    const displayText = h.headline
+                                        ? h.headline.replace(/^\d{6,}\./, '').trim().slice(0, 90)
+                                        : h.url.replace(/^https?:\/\/[^/]+/, '').replace(/[-_]/g, ' ').slice(0, 70)
+                                    return (
+                                        <a
+                                            key={i}
+                                            href={h.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="entity-headline"
+                                        >
+                                            <span className="entity-headline-source">{h.source}</span>
+                                            <span className="entity-headline-title">{displayText}</span>
+                                        </a>
+                                    )
+                                })}
                             </div>
                         </div>
                     )}

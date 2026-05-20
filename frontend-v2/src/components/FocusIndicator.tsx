@@ -40,11 +40,10 @@ export function FocusIndicator() {
             <button
                 className="focus-clear"
                 onClick={clearFocus}
-                title="Clear focus"
+                data-tip="Clear focus"
             >
                 ×
             </button>
         </div>
     )
 }
-

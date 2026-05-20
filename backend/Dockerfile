@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y gcc g++ && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml README.md ./
 COPY app ./app
+COPY indicators ./indicators
 COPY start.sh ./start.sh
 
 RUN pip install --no-cache-dir --upgrade pip && \

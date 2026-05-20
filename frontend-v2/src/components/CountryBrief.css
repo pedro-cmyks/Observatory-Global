@@ -48,6 +48,34 @@
     color: #f3f4f6;
 }
 
+.brief-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.brief-export-button {
+    height: 2rem;
+    border-radius: 0.375rem;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.28);
+    color: #a7f3d0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    padding: 0 0.625rem;
+    transition: all 0.15s;
+    font-size: 0.75rem;
+}
+
+.brief-export-button:hover {
+    background: rgba(16, 185, 129, 0.18);
+    border-color: rgba(16, 185, 129, 0.44);
+    color: #d1fae5;
+}
+
 .close-button {
     width: 2rem;
     height: 2rem;
@@ -88,6 +116,30 @@
     color: #9ca3af;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.sentiment-info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    color: #6b7280;
+    font-size: 9px;
+    font-weight: 700;
+    cursor: help;
+    text-transform: none;
+    letter-spacing: 0;
+    flex-shrink: 0;
+}
+.sentiment-info-icon:hover {
+    background: rgba(255,255,255,0.2);
+    color: #d1d5db;
 }
 
 /* Indicators */
@@ -122,6 +174,30 @@
     margin-left: auto;
 }
 
+.coverage-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.65rem;
+    font-family: var(--font-mono, monospace);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    cursor: default;
+    vertical-align: middle;
+}
+.coverage-badge--thin {
+    background: rgba(251, 146, 60, 0.15);
+    color: #fb923c;
+    border: 1px solid rgba(251, 146, 60, 0.35);
+}
+.coverage-badge--limited {
+    background: rgba(250, 204, 21, 0.12);
+    color: #fbbf24;
+    border: 1px solid rgba(250, 204, 21, 0.3);
+}
+
 .sentiment-warning {
     font-size: 0.75rem;
     color: #f59e0b;
@@ -130,6 +206,18 @@
     background: rgba(245, 158, 11, 0.1);
     border-radius: 0.25rem;
     line-height: 1.4;
+}
+
+.geo-provenance-warning {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin: 0.4rem 0 0 0;
+    padding: 0.4rem 0.5rem;
+    background: rgba(148, 163, 184, 0.08);
+    border-left: 2px solid rgba(148, 163, 184, 0.3);
+    border-radius: 0 0.25rem 0.25rem 0;
+    line-height: 1.4;
+    cursor: default;
 }
 
 /* Theme chips */
@@ -169,6 +257,45 @@
     font-size: 0.625rem;
     color: #9ca3af;
     font-family: 'JetBrains Mono', monospace;
+}
+
+/* People */
+.brief-person-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.brief-person-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.625rem;
+    background: rgba(167, 139, 250, 0.12);
+    border: 1px solid rgba(167, 139, 250, 0.28);
+    border-radius: 9999px;
+    color: #ddd6fe;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.brief-person-chip:hover {
+    background: rgba(167, 139, 250, 0.2);
+    border-color: rgba(167, 139, 250, 0.48);
+}
+
+.brief-person-name {
+    max-width: 11rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.75rem;
+}
+
+.brief-person-count {
+    color: #a78bfa;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.625rem;
 }
 
 /* Sources */
@@ -242,21 +369,32 @@
     border-color: rgba(96, 165, 250, 0.5);
 }
 
-.story-title {
-    margin: 0 0 0.25rem 0;
-    font-size: 0.8125rem;
+.story-source-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 0 4px 0;
+    gap: 8px;
+}
+
+.story-domain {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.story-item:hover .story-domain {
     color: #60a5fa;
-    line-height: 1.4;
 }
 
-.story-item:hover .story-title {
-    text-decoration: underline;
-}
-
-.story-meta {
-    margin: 0;
+.story-age {
     font-size: 0.6875rem;
-    color: #6b7280;
+    color: #475569;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 /* Loading state */
@@ -349,4 +487,177 @@
 @keyframes spike-pulse {
     0%, 100% { opacity: 0.5; }
     50% { opacity: 1; }
+}
+
+/* ── AEIL layout primitives ── */
+
+.cb-kicker {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: #60a5fa;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+}
+
+.cb-icon-btn {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+    flex-shrink: 0;
+}
+.cb-icon-btn:hover { color: #e2e8f0; border-color: rgba(255, 255, 255, 0.25); }
+.cb-icon-btn.active { color: #10b981; border-color: rgba(16, 185, 129, 0.4); }
+
+.cb-metrics {
+    display: flex;
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.cb-metrics > div {
+    display: flex;
+    flex-direction: column;
+    padding: 0 16px;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+.cb-metrics > div:first-child { padding-left: 0; }
+.cb-metrics > div:last-child { border-right: none; }
+
+.cb-metric-value {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 16px;
+    font-weight: 600;
+    color: #e2e8f0;
+    line-height: 1.2;
+}
+.cb-metric-label {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 9px;
+    color: #4a6a8a;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+}
+
+.cb-connection-note {
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.5;
+    padding: 8px 12px;
+    border-left: 2px solid #1e3a5f;
+    margin: 8px 16px 4px;
+    font-style: italic;
+}
+
+.cb-connection-note--analysis {
+    color: #9fb3c8;
+    font-size: 12px;
+    font-style: normal;
+    border-left-color: #1D9E75;
+    background: rgba(15, 23, 42, 0.28);
+}
+
+.cb-section-label {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 9px;
+    color: #4a6a8a;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 8px;
+}
+
+.cb-section-subcopy {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    opacity: 0.62;
+}
+
+.cb-public-attention-note {
+    margin: 0 0 10px;
+    color: #7d91a8;
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+.cb-attention-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.cb-attention-column {
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: 6px;
+    background: rgba(8, 13, 20, 0.42);
+}
+
+.cb-attention-heading {
+    display: block;
+    margin-bottom: 6px;
+    color: #67e8f9;
+    font-family: var(--font-mono, 'SF Mono', monospace);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.cb-attention-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    border-top: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.cb-attention-row span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #dbeafe;
+    font-size: 11px;
+}
+
+.cb-attention-row strong {
+    flex-shrink: 0;
+    color: #94a3b8;
+    font-family: var(--font-mono, 'SF Mono', monospace);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.cb-attention-row--clickable {
+    cursor: pointer;
+    border-radius: 4px;
+    padding-left: 4px;
+    padding-right: 4px;
+    margin-left: -4px;
+    margin-right: -4px;
+    transition: background 0.15s;
+}
+
+.cb-attention-row--clickable:hover {
+    background: rgba(52, 211, 153, 0.08);
+}
+
+.cb-attention-row--clickable:hover span {
+    color: #6ee7b7;
+}
+
+.cb-attention-empty {
+    color: #64748b;
+    font-size: 11px;
+    line-height: 1.4;
 }

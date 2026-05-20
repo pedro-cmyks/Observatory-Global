@@ -37,6 +37,7 @@ from app.config.crisis_themes import (
     calculate_severity,
     get_event_type
 )
+from app.config.source_blocklist import is_blocked
 from app.services.country_codes import fips_to_iso
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://observatory:changeme@localhost:5432/observatory?sslmode=disable")
@@ -60,19 +61,19 @@ async def fetch_latest_gdelt_url(update_url: str = GDELT_LAST_UPDATE_URL) -> Opt
                         return parts[2]
     return None
 
-async def download_and_parse_gkg(url: str) -> list[dict]:
+async def download_and_parse_gkg(url: str, source_lang: str = "en") -> list[dict]:
     """Download and parse GDELT GKG file with resilient error handling."""
     signals = []
     skipped = 0
-    
+
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as resp:
             if resp.status != 200:
                 logger.error(f"Failed to download {url}: {resp.status}")
                 return signals
-            
+
             data = await resp.read()
-            
+
     # Unzip and parse
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
@@ -82,7 +83,7 @@ async def download_and_parse_gkg(url: str) -> list[dict]:
                         reader = csv.reader(io.TextIOWrapper(f, encoding='utf-8', errors='replace'), delimiter='\t')
                         for line_num, row in enumerate(reader, start=1):
                             try:
-                                signal = parse_gkg_row(row)
+                                signal = parse_gkg_row(row, source_lang=source_lang)
                                 if signal:
                                     signals.append(signal)
                             except Exception as e:
@@ -92,13 +93,149 @@ async def download_and_parse_gkg(url: str) -> list[dict]:
                                 continue  # CRITICAL: Continue, don't crash
     except Exception as e:
         logger.error(f"Failed to process zip file from {url}: {e}")
-    
+
     if skipped > 0:
         logger.info(f"Processed {url}: {len(signals)} signals, {skipped} skipped")
-    
+
     return signals
 
-def parse_gkg_row(row: list) -> Optional[dict]:
+# Known domain → ISO2 source-country mapping (largest news domains by country).
+# Used to detect when a signal's country_code differs from the outlet's home country.
+_DOMAIN_COUNTRY: dict[str, str] = {
+    # United States
+    'cnn.com': 'US', 'foxnews.com': 'US', 'msnbc.com': 'US', 'nbcnews.com': 'US',
+    'abcnews.go.com': 'US', 'cbsnews.com': 'US', 'npr.org': 'US', 'pbs.org': 'US',
+    'apnews.com': 'US', 'bloomberg.com': 'US', 'washingtonpost.com': 'US',
+    'nytimes.com': 'US', 'wsj.com': 'US', 'usatoday.com': 'US', 'politico.com': 'US',
+    'axios.com': 'US', 'thehill.com': 'US', 'huffpost.com': 'US', 'vox.com': 'US',
+    'buzzfeednews.com': 'US', 'vice.com': 'US', 'time.com': 'US', 'newsweek.com': 'US',
+    'theatlantic.com': 'US', 'newyorker.com': 'US', 'slate.com': 'US',
+    'breitbart.com': 'US', 'thedailybeast.com': 'US', 'dailywire.com': 'US',
+    'oann.com': 'US', 'newsmax.com': 'US', 'foxbusiness.com': 'US',
+    # United Kingdom
+    'bbc.co.uk': 'GB', 'bbc.com': 'GB', 'theguardian.com': 'GB',
+    'telegraph.co.uk': 'GB', 'thetimes.co.uk': 'GB', 'independent.co.uk': 'GB',
+    'dailymail.co.uk': 'GB', 'mirror.co.uk': 'GB', 'express.co.uk': 'GB',
+    'sky.com': 'GB', 'channel4.com': 'GB', 'ft.com': 'GB',
+    # France
+    'lemonde.fr': 'FR', 'lefigaro.fr': 'FR', 'liberation.fr': 'FR',
+    'france24.com': 'FR', 'rfi.fr': 'FR', 'lepoint.fr': 'FR',
+    # Germany
+    'dw.com': 'DE', 'spiegel.de': 'DE', 'zeit.de': 'DE', 'faz.net': 'DE',
+    'sueddeutsche.de': 'DE', 'bild.de': 'DE',
+    # Russia
+    'rt.com': 'RU', 'sputniknews.com': 'RU', 'tass.com': 'RU',
+    'ria.ru': 'RU', 'pravda.ru': 'RU', 'iz.ru': 'RU',
+    # China
+    'xinhuanet.com': 'CN', 'chinadaily.com.cn': 'CN', 'globaltimes.cn': 'CN',
+    'cgtn.com': 'CN', 'people.com.cn': 'CN',
+    # Iran
+    'irna.ir': 'IR', 'press.tv': 'IR', 'tehrantimes.com': 'IR',
+    'farsnews.ir': 'IR', 'tasnimnews.com': 'IR',
+    # India
+    'thehindu.com': 'IN', 'hindustantimes.com': 'IN', 'ndtv.com': 'IN',
+    'timesofindia.indiatimes.com': 'IN', 'indianexpress.com': 'IN',
+    # Al Jazeera / Qatar
+    'aljazeera.com': 'QA',
+    # Australia
+    'abc.net.au': 'AU', 'smh.com.au': 'AU', 'theaustralian.com.au': 'AU',
+    # Canada
+    'cbc.ca': 'CA', 'globalnews.ca': 'CA', 'torontostar.com': 'CA',
+    'theglobeandmail.com': 'CA', 'nationalpost.com': 'CA',
+    # Reuters / AP (international wires — treat as US-headquartered)
+    'reuters.com': 'US',
+    # ── Expanded coverage (issue #165 local_voice_ratio activation) ──
+    # Latin America
+    'elpais.com': 'ES', 'elmundo.es': 'ES', 'abc.es': 'ES', 'lavanguardia.com': 'ES',
+    'clarin.com': 'AR', 'lanacion.com.ar': 'AR', 'pagina12.com.ar': 'AR', 'infobae.com': 'AR',
+    'folha.uol.com.br': 'BR', 'globo.com': 'BR', 'g1.globo.com': 'BR', 'estadao.com.br': 'BR',
+    'eltiempo.com': 'CO', 'semana.com': 'CO', 'elespectador.com': 'CO',
+    'eluniversal.com.mx': 'MX', 'jornada.com.mx': 'MX', 'milenio.com': 'MX', 'reforma.com': 'MX',
+    'eluniversal.com': 'VE', 'el-nacional.com': 'VE',
+    'emol.com': 'CL', 'latercera.com': 'CL', 'biobiochile.cl': 'CL',
+    'larepublica.pe': 'PE', 'elcomercio.pe': 'PE',
+    'eluniverso.com': 'EC', 'elcomercio.com': 'EC',
+    'lostiempos.com': 'BO', 'paginasiete.bo': 'BO',
+    'ultimahora.com': 'PY', 'abc.com.py': 'PY',
+    'elobservador.com.uy': 'UY', 'elpais.com.uy': 'UY',
+    'prensalibre.com': 'GT', 'laprensagrafica.com': 'SV',
+    'laprensa.com.ni': 'NI', 'lanacion.com.do': 'DO',
+    # Africa
+    'allafrica.com': 'ZA',
+    'mg.co.za': 'ZA', 'iol.co.za': 'ZA', 'news24.com': 'ZA', 'dailymaverick.co.za': 'ZA',
+    'punchng.com': 'NG', 'vanguardngr.com': 'NG', 'premiumtimesng.com': 'NG', 'thecable.ng': 'NG',
+    'guardian.ng': 'NG', 'thisdaylive.com': 'NG',
+    'nation.africa': 'KE', 'standardmedia.co.ke': 'KE', 'the-star.co.ke': 'KE',
+    'monitor.co.ug': 'UG', 'newvision.co.ug': 'UG',
+    'theeastafrican.co.ke': 'KE',
+    'graphic.com.gh': 'GH', 'myjoyonline.com': 'GH', 'ghanaweb.com': 'GH',
+    'lemonde.sn': 'SN', 'seneweb.com': 'SN', 'lequotidien.sn': 'SN',
+    'koaci.com': 'CI', 'fratmat.info': 'CI',
+    'ennaharonline.com': 'DZ', 'liberte-algerie.com': 'DZ',
+    'lemorial.tn': 'TN', 'tap.info.tn': 'TN', 'lapresse.tn': 'TN',
+    'middleeastmonitor.com': 'GB', 'almasryalyoum.com': 'EG', 'ahram.org.eg': 'EG', 'egyptindependent.com': 'EG',
+    'addisstandard.com': 'ET', 'addisfortune.news': 'ET', 'thereporterethiopia.com': 'ET',
+    'newtimes.co.rw': 'RW',
+    'thecitizen.co.tz': 'TZ',
+    'mwnation.com': 'MW',
+    'zambianobserver.com': 'ZM',
+    'zimlive.com': 'ZW', 'thezimbabwemail.com': 'ZW',
+    'angop.ao': 'AO',
+    # MENA
+    'arabnews.com': 'SA', 'saudigazette.com.sa': 'SA',
+    'thenationalnews.com': 'AE', 'gulfnews.com': 'AE', 'khaleejtimes.com': 'AE',
+    'dailystar.com.lb': 'LB', 'lorientlejour.com': 'LB',
+    'haaretz.com': 'IL', 'jpost.com': 'IL', 'timesofisrael.com': 'IL', 'ynetnews.com': 'IL',
+    'jordantimes.com': 'JO', 'roya.tv': 'JO',
+    'hurriyetdailynews.com': 'TR', 'dailysabah.com': 'TR', 'trtworld.com': 'TR',
+    'al-monitor.com': 'US',
+    # Asia
+    'scmp.com': 'HK', 'standnews.com': 'HK',
+    'straitstimes.com': 'SG', 'channelnewsasia.com': 'SG', 'todayonline.com': 'SG',
+    'bangkokpost.com': 'TH', 'nationthailand.com': 'TH',
+    'jakartapost.com': 'ID', 'tempo.co': 'ID', 'kompas.com': 'ID',
+    'inquirer.net': 'PH', 'rappler.com': 'PH', 'philstar.com': 'PH', 'abs-cbn.com': 'PH',
+    'vnexpress.net': 'VN', 'tuoitrenews.vn': 'VN',
+    'mizzima.com': 'MM', 'irrawaddy.com': 'MM', 'frontiermyanmar.net': 'MM',
+    'dhakatribune.com': 'BD', 'thedailystar.net': 'BD',
+    'thehimalayantimes.com': 'NP', 'kathmandupost.com': 'NP',
+    'dawn.com': 'PK', 'tribune.com.pk': 'PK', 'thenews.com.pk': 'PK', 'geo.tv': 'PK',
+    'asahi.com': 'JP', 'mainichi.jp': 'JP', 'japantimes.co.jp': 'JP', 'nhk.or.jp': 'JP',
+    'koreaherald.com': 'KR', 'koreatimes.co.kr': 'KR', 'hankyoreh.com': 'KR', 'chosun.com': 'KR',
+    'kyivindependent.com': 'UA', 'pravda.com.ua': 'UA',
+    # Latin Americas (additional)
+    'la-prensa.com.ar': 'AR', 'rfi.fr/es': 'FR',
+}
+
+def _extract_source_country(url: str | None) -> str | None:
+    """Infer the outlet's home country from its domain. Returns ISO2 or None."""
+    if not url:
+        return None
+    try:
+        import urllib.parse as _up
+        host = _up.urlparse(url).netloc.lower().lstrip('www.')
+        # Exact match first
+        if host in _DOMAIN_COUNTRY:
+            return _DOMAIN_COUNTRY[host]
+        # Suffix match (subdomains like 'edition.cnn.com')
+        for domain, country in _DOMAIN_COUNTRY.items():
+            if host.endswith('.' + domain) or host == domain:
+                return country
+        # TLD heuristic for ccTLDs not already in map
+        tld = host.rsplit('.', 1)[-1]
+        _TLD_MAP = {
+            'uk': 'GB', 'fr': 'FR', 'de': 'DE', 'ru': 'RU', 'cn': 'CN',
+            'ir': 'IR', 'in': 'IN', 'au': 'AU', 'ca': 'CA', 'br': 'BR',
+            'mx': 'MX', 'jp': 'JP', 'kr': 'KR', 'eg': 'EG', 'ng': 'NG',
+            'za': 'ZA', 'tr': 'TR', 'pk': 'PK', 'il': 'IL', 'ua': 'UA',
+            'pl': 'PL', 'ar': 'AR', 've': 'VE', 'co': 'CO', 'cl': 'CL',
+        }
+        return _TLD_MAP.get(tld)
+    except Exception:
+        return None
+
+
+def parse_gkg_row(row: list, source_lang: str = "en") -> Optional[dict]:
     """Parse a single GKG row into a signal dict."""
     if len(row) < 27:
         return None
@@ -112,6 +249,10 @@ def parse_gkg_row(row: list) -> Optional[dict]:
     
     source_url = row[4] if len(row) > 4 else None
     source_name = row[3] if len(row) > 3 else None
+
+    # Drop signals from blocked entertainment/tabloid domains before any further work
+    if is_blocked(source_url):
+        return None
     
     import re as _re
     import urllib.parse
@@ -201,6 +342,8 @@ def parse_gkg_row(row: list) -> Optional[dict]:
     severity = calculate_severity(themes) if is_crisis else 'low'
     event_type = get_event_type(themes) if is_crisis else 'other'
     
+    attribution = 'gdelt_gkg_translated' if source_lang != 'en' else 'gdelt_gkg'
+
     return {
         'timestamp': timestamp,
         'country_code': country_code.upper(),
@@ -217,27 +360,42 @@ def parse_gkg_row(row: list) -> Optional[dict]:
         'crisis_score': crisis_score,
         'crisis_themes': crisis_themes,
         'severity': severity,
-        'event_type': event_type
+        'event_type': event_type,
+        # Source provenance fields (migration 008)
+        'source_family': 'gdelt',
+        'source_lang': source_lang,
+        'geo_confidence': 0.85,
+        'attribution_method': attribution,
+        'is_state_media': False,
+        # Geo validation (migration 012)
+        'source_origin_country': _extract_source_country(source_url),
+        # Semantic class (migration 021) — GDELT is always editorial reporting
+        'signal_class': 'reporting',
     }
 
 async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
-    """Insert signals into database."""
+    """Insert signals into database. Returns count of newly inserted rows."""
     if not signals:
         return 0
-    
+
     inserted = 0
+    skipped_dup = 0
+    failed = 0
     async with pool.acquire() as conn:
         for signal in signals:
             try:
-                await conn.execute("""
+                result = await conn.execute("""
                     INSERT INTO signals_v2 (
-                        timestamp, country_code, latitude, longitude, sentiment, 
+                        timestamp, country_code, latitude, longitude, sentiment,
                         source_url, source_name, headline, themes, persons,
-                        is_crisis, crisis_score, crisis_themes, severity, event_type
+                        is_crisis, crisis_score, crisis_themes, severity, event_type,
+                        source_family, source_lang, geo_confidence, attribution_method, is_state_media,
+                        source_origin_country, signal_class
                     )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-                    ON CONFLICT DO NOTHING
-                """, 
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+                            $16, $17, $18, $19, $20, $21, $22)
+                    ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO NOTHING
+                """,
                     signal['timestamp'],
                     signal['country_code'],
                     signal['latitude'],
@@ -252,12 +410,27 @@ async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                     signal['crisis_score'],
                     signal['crisis_themes'],
                     signal['severity'],
-                    signal['event_type']
+                    signal['event_type'],
+                    signal.get('source_family', 'gdelt'),
+                    signal.get('source_lang', 'en'),
+                    signal.get('geo_confidence', 0.85),
+                    signal.get('attribution_method', 'gdelt_gkg'),
+                    signal.get('is_state_media', False),
+                    signal.get('source_origin_country'),
+                    signal.get('signal_class', 'reporting'),
                 )
-                inserted += 1
+                # asyncpg returns "INSERT 0 N" — N=0 means conflict (dup)
+                if result == "INSERT 0 1":
+                    inserted += 1
+                else:
+                    skipped_dup += 1
             except Exception as e:
-                continue
-    
+                failed += 1
+                if failed <= 3:
+                    logger.warning("Insert failed: %s: %s", type(e).__name__, str(e)[:120])
+
+    logger.info("insert_signals: %d parsed → %d inserted, %d dup-skipped, %d errors",
+                len(signals), inserted, skipped_dup, failed)
     return inserted
 
 async def update_countries(pool: asyncpg.Pool):
@@ -298,28 +471,29 @@ async def refresh_aggregates(pool: asyncpg.Pool):
 
 async def run_ingestion():
     """Main ingestion function."""
-    print(f"[{datetime.now()}] Starting GDELT ingestion...")
-    
+    logger.info("GDELT ingestion cycle starting")
+
     pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=1)
-    
+
     try:
         # Fetch latest GDELT URL
         url = await fetch_latest_gdelt_url(GDELT_LAST_UPDATE_URL)
         if url:
-            print(f"Downloading: {url}")
+            logger.info("Downloading English GKG: %s", url.split('/')[-1])
             signals = await download_and_parse_gkg(url)
-            print(f"Parsed {len(signals)} eng signals")
+            logger.info("Parsed %d English signals from GKG", len(signals))
             inserted = await insert_signals(pool, signals)
-            print(f"Inserted {inserted} new eng signals")
-        
-        # Fetch Translingual GDELT URL
+            logger.info("English GKG: %d new signals inserted", inserted)
+
+        # Fetch Translingual GDELT URL (Arabic, Persian, Russian, Chinese, Spanish, etc.)
         trans_url = await fetch_latest_gdelt_url(GDELT_TRANS_UPDATE_URL)
         if trans_url:
-            print(f"Downloading Translingual: {trans_url}")
-            trans_signals = await download_and_parse_gkg(trans_url)
-            print(f"Parsed {len(trans_signals)} translingual signals")
+            logger.info("Downloading Translingual GKG: %s", trans_url.split('/')[-1])
+            # source_lang='xx' signals translingual origin; per-article lang not in GKG schema
+            trans_signals = await download_and_parse_gkg(trans_url, source_lang='xx')
+            logger.info("Parsed %d translingual signals from GKG", len(trans_signals))
             inserted_trans = await insert_signals(pool, trans_signals)
-            print(f"Inserted {inserted_trans} new translingual signals")
+            logger.info("Translingual GKG: %d new signals inserted", inserted_trans)
         
         # Update countries (non-fatal if it fails)
         try:
@@ -335,42 +509,83 @@ async def run_ingestion():
         except Exception as e:
             print(f"refresh_aggregates failed: {e}")
 
-        # Update theme_hourly_v2 pre-aggregation (enables fast narratives for any window)
+        # Update theme_hourly_v2 pre-aggregation (enables fast narratives for any window).
+        # nlp_signal_count + avg_nlp_sentiment let downstream readers pick transformer
+        # sentiment when bucket coverage clears the threshold (migration 025).
         try:
             async with pool.acquire() as conn:
                 await conn.execute("""
                     INSERT INTO theme_hourly_v2
-                        (hour, theme, signal_count, country_count, source_count, avg_sentiment)
+                        (hour, theme, signal_count, country_count, source_count, avg_sentiment,
+                         nlp_signal_count, avg_nlp_sentiment)
                     SELECT
                         date_trunc('hour', timestamp) AS hour,
                         unnest(themes)                AS theme,
                         COUNT(*)                      AS signal_count,
                         COUNT(DISTINCT country_code)  AS country_count,
                         COUNT(DISTINCT source_name)   AS source_count,
-                        AVG(sentiment)                AS avg_sentiment
+                        AVG(sentiment)                AS avg_sentiment,
+                        COUNT(*) FILTER (WHERE nlp_sentiment IS NOT NULL) AS nlp_signal_count,
+                        AVG(nlp_sentiment) FILTER (WHERE nlp_sentiment IS NOT NULL) AS avg_nlp_sentiment
                     FROM signals_v2
                     WHERE timestamp > NOW() - INTERVAL '2 hours'
                       AND themes IS NOT NULL
                     GROUP BY 1, 2
                     ON CONFLICT (hour, theme) DO UPDATE SET
-                        signal_count  = EXCLUDED.signal_count,
-                        country_count = EXCLUDED.country_count,
-                        source_count  = EXCLUDED.source_count,
-                        avg_sentiment = EXCLUDED.avg_sentiment
+                        signal_count      = EXCLUDED.signal_count,
+                        country_count     = EXCLUDED.country_count,
+                        source_count      = EXCLUDED.source_count,
+                        avg_sentiment     = EXCLUDED.avg_sentiment,
+                        nlp_signal_count  = EXCLUDED.nlp_signal_count,
+                        avg_nlp_sentiment = EXCLUDED.avg_nlp_sentiment
                 """)
             print("Updated theme_hourly_v2")
         except Exception as e:
             print(f"theme_hourly_v2 update failed (non-fatal): {e}")
-        
+
+        # Update theme_country_hourly_v2 pre-aggregation (enables fast 168h concept queries).
+        # Same NLP coverage columns as theme_hourly_v2.
+        try:
+            async with pool.acquire() as conn:
+                await conn.execute("""
+                    INSERT INTO theme_country_hourly_v2
+                        (hour, theme, country_code, signal_count, avg_sentiment,
+                         nlp_signal_count, avg_nlp_sentiment)
+                    SELECT
+                        date_trunc('hour', timestamp) AS hour,
+                        unnest(themes)                AS theme,
+                        country_code,
+                        COUNT(*)                      AS signal_count,
+                        AVG(sentiment)                AS avg_sentiment,
+                        COUNT(*) FILTER (WHERE nlp_sentiment IS NOT NULL) AS nlp_signal_count,
+                        AVG(nlp_sentiment) FILTER (WHERE nlp_sentiment IS NOT NULL) AS avg_nlp_sentiment
+                    FROM signals_v2
+                    WHERE timestamp > NOW() - INTERVAL '2 hours'
+                      AND themes IS NOT NULL
+                      AND country_code IS NOT NULL
+                    GROUP BY 1, 2, 3
+                    ON CONFLICT (hour, theme, country_code) DO UPDATE SET
+                        signal_count      = EXCLUDED.signal_count,
+                        avg_sentiment     = EXCLUDED.avg_sentiment,
+                        nlp_signal_count  = EXCLUDED.nlp_signal_count,
+                        avg_nlp_sentiment = EXCLUDED.avg_nlp_sentiment
+                """)
+            print("Updated theme_country_hourly_v2")
+        except Exception as e:
+            print(f"theme_country_hourly_v2 update failed (non-fatal): {e}")
+
         # Stats
         async with pool.acquire() as conn:
-            count = await conn.fetchval("SELECT COUNT(*) FROM signals_v2")
-            print(f"Total signals in database: {count}")
-        
+            total = await conn.fetchval("SELECT COUNT(*) FROM signals_v2")
+            last_1h = await conn.fetchval(
+                "SELECT COUNT(*) FROM signals_v2 WHERE timestamp > NOW() - INTERVAL '1 hour'"
+            )
+            logger.info("DB totals — total: %d, last 1h: %d", total, last_1h)
+
     finally:
         await pool.close()
-    
-    print(f"[{datetime.now()}] Ingestion complete!")
+
+    logger.info("GDELT ingestion cycle complete")
 
 if __name__ == "__main__":
     asyncio.run(run_ingestion())

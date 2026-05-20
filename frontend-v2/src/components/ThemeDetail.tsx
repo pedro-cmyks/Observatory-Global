@@ -1,6 +1,21 @@
-import { useState, useEffect } from 'react'
+import { lazy, Suspense, useState, useEffect, useRef } from 'react'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
+import { CompareBar } from './CompareBar'
+import { NarrativeDrift } from './NarrativeDrift'
+import { ExportMenu } from './ExportMenu'
+import { useWorkspace } from '../contexts/WorkspaceContext'
+import { ArrowLeftRight, Pin, PinOff, X } from 'lucide-react'
+import { getSourceFamilyMeta, type SourceFamily } from '../lib/sourceFamily'
+import { resolveCountryName } from '../lib/countryNames'
+import { PanelErrorBoundary } from './PanelErrorBoundary'
+import { PanelSkeleton, PanelSkeletonGrid } from './PanelSkeleton'
+import type { PublicAttentionOrigin } from '../lib/publicAttention'
+import type { TemporalNarrativeBucket } from '../lib/temporalNarrativeGraph'
 import './ThemeDetail.css'
+
+const TemporalNarrativeGraph = lazy(() =>
+    import('./TemporalNarrativeGraph').then(module => ({ default: module.TemporalNarrativeGraph }))
+)
 
 interface ThemeData {
     theme: string
@@ -16,9 +31,18 @@ interface ThemeData {
         otherThemes: string[]
         persons: string[]
     }>
+    graphSignals?: Array<{
+        timestamp: string
+        country: string
+        source: string
+        url: string
+        sentiment: number
+        otherThemes: string[]
+        persons: string[]
+    }>
     countryBreakdown: Array<{ code: string; count: number; sentiment: number }>
     relatedThemes: Array<{ theme: string; count: number }>
-    topSources: Array<{ name: string; count: number; sentiment: number }>
+    topSources: Array<{ name: string; count: number; sentiment: number; family?: SourceFamily | string | null }>
     topPersons: Array<{ name: string; count: number }>
     timeline: Array<{ hour: string; count: number; sentiment: number }>
     countryFraming?: Array<{
@@ -28,22 +52,48 @@ interface ThemeData {
         avg_sentiment: number
         top_sub_themes: string[]
         sentiment_label: string
+        volumeRank?: number
     }>
+    relatedConcepts?: Array<{ slug: string; label: string; description: string }>
 }
 
 interface ThemeDetailProps {
     theme: string
     originCountry?: string
     originCountryName?: string
+    originAttention?: PublicAttentionOrigin
+    /** When set, automatically applies a country filter to the theme data fetch (compound search) */
+    initialDrillCountry?: string
     hours: number
 
     onClose: () => void
-    onThemeSelect?: (theme: string) => void
+    onThemeSelect?: (theme: string, originAttention?: PublicAttentionOrigin) => void
     onCountryCardClick?: (code: string, name: string) => void
     onPersonClick?: (name: string) => void
+    onSourceClick?: (domain: string) => void
+    onCompareClick?: (theme: string) => void
 }
 
-export function ThemeDetail({ theme, originCountry, originCountryName, hours, onClose, onThemeSelect, onCountryCardClick, onPersonClick }: ThemeDetailProps) {
+interface AttentionSearchData {
+    signal_matches?: Array<{
+        id: number
+        timestamp: string
+        country: string
+        source: string
+        headline: string | null
+        themes: string[]
+    }>
+    themes?: Array<{ theme: string; total_signals: number }>
+}
+
+function formatAttentionCount(n?: number): string {
+    if (!n) return '0'
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}m`
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
+    return String(n)
+}
+
+export function ThemeDetail({ theme, originCountry, originCountryName, originAttention, initialDrillCountry, hours, onClose, onThemeSelect, onCountryCardClick, onPersonClick, onSourceClick, onCompareClick }: ThemeDetailProps) {
     const [data, setData] = useState<ThemeData | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -51,18 +101,31 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
     const [insightLoading, setInsightLoading] = useState(false)
     const [insightFailed, setInsightFailed] = useState(false)
     const [selectedSource, setSelectedSource] = useState<string | null>(null)
-    const [drillCountry, setDrillCountry] = useState<string | null>(null)
-    const [drillCountryName, setDrillCountryName] = useState<string | null>(null)
+    const [showDrift, setShowDrift] = useState(false)
+    const [drillCountry, setDrillCountry] = useState<string | null>(initialDrillCountry || null)
+    const [drillCountryName, setDrillCountryName] = useState<string | null>(
+        initialDrillCountry ? (originCountryName || initialDrillCountry) : null
+    )
+    const detailRef = useRef<HTMLDivElement>(null)
+    const { pinItem, unpinItem, isPinned, setIsOpen: openWorkspace } = useWorkspace()
 
     // Public attention signals
-    const [trendMatch, setTrendMatch] = useState<{ has_public_interest: boolean; matches: Array<{keyword: string; country_code: string}> } | null>(null)
-    const [wikiMatch, setWikiMatch] = useState<{ has_wiki_activity: boolean; matches: Array<{title: string; views: number}>, total_views: number } | null>(null)
+    const [trendMatch, setTrendMatch] = useState<{ has_public_interest: boolean; matches: Array<{ keyword: string; country_code: string }> } | null>(null)
+    const [wikiMatch, setWikiMatch] = useState<{ has_wiki_activity: boolean; matches: Array<{ title: string; views: number }>, total_views: number } | null>(null)
+    const [attentionSearchData, setAttentionSearchData] = useState<AttentionSearchData | null>(null)
 
-    // Reset drill state when theme changes
+    // Reset drill state when theme changes, preserving country-scoped pivots from Brief/CountryBrief.
     useEffect(() => {
-        setDrillCountry(null)
-        setDrillCountryName(null)
-    }, [theme])
+        setDrillCountry(initialDrillCountry || null)
+        setDrillCountryName(initialDrillCountry ? (originCountryName || initialDrillCountry) : null)
+    }, [theme, initialDrillCountry, originCountryName])
+
+    useEffect(() => {
+        setShowDrift(false)
+        if (loading || !data) return
+        const timer = window.setTimeout(() => setShowDrift(true), 900)
+        return () => window.clearTimeout(timer)
+    }, [theme, hours, drillCountry, loading, data])
 
     useEffect(() => {
         const fetchData = async () => {
@@ -96,12 +159,26 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
         fetch(`/api/v2/trends/match?theme=${encoded}&hours=${hours}`)
             .then(r => r.json().catch(() => null))
             .then(d => { if (d) setTrendMatch(d) })
-            .catch(() => {})
+            .catch(() => { })
         fetch(`/api/v2/wiki/match?theme=${encoded}&days=1`)
             .then(r => r.json().catch(() => null))
             .then(d => { if (d) setWikiMatch(d) })
-            .catch(() => {})
+            .catch(() => { })
     }, [theme, hours])
+
+    useEffect(() => {
+        if (!originAttention?.title) {
+            setAttentionSearchData(null)
+            return
+        }
+        const controller = new AbortController()
+        const query = originAttention.query || originAttention.title
+        fetch(`/api/v2/search/unified?q=${encodeURIComponent(query)}&hours=${hours}`, { signal: controller.signal })
+            .then(r => r.json().catch(() => null))
+            .then(d => { if (!controller.signal.aborted) setAttentionSearchData(d) })
+            .catch(() => { if (!controller.signal.aborted) setAttentionSearchData(null) })
+        return () => controller.abort()
+    }, [originAttention?.title, originAttention?.query, hours])
 
     const [insightError, setInsightError] = useState<string | null>(null)
 
@@ -130,6 +207,14 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
     const getSentimentColor = (s: number) =>
         s > 0.1 ? '#4ade80' : s < -0.1 ? '#f87171' : '#fbbf24'
 
+    const sentimentWord = (s: number): string => {
+        if (s > 2) return 'Very positive'
+        if (s > 0.5) return 'Slightly positive'
+        if (s > -0.5) return 'Neutral'
+        if (s > -2) return 'Mostly negative'
+        return 'Very negative'
+    }
+
     const formatTime = (iso: string) => {
         const d = new Date(iso)
         return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -155,10 +240,84 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
         return Math.min(100, Math.max(5, ((s + 10) / 20) * 100))
     }
 
+    const pinnedId = `theme-${theme}${originCountry ? '-' + originCountry : ''}`
+    const pinned = isPinned(pinnedId)
+
+    const pinTemporalSnapshot = (bucket: TemporalNarrativeBucket) => {
+        const snapshotId = `temporal-${theme}-${bucket.id}`
+        const countries = bucket.nodes
+            .filter(node => node.type === 'country')
+            .map(node => ({ code: node.id.replace(/^country-/, ''), label: node.label, count: node.count }))
+        const sources = bucket.nodes
+            .filter(node => node.type === 'source')
+            .map(node => ({ name: node.label, count: node.count }))
+        const people = bucket.nodes
+            .filter(node => node.type === 'person')
+            .map(node => ({ name: node.label, count: node.count }))
+        const relatedThemes = bucket.nodes
+            .filter(node => node.type === 'theme' && node.id !== `theme-${theme}`)
+            .map(node => ({ theme: node.id.replace(/^theme-/, ''), label: node.label, count: node.count }))
+
+        pinItem({
+            id: snapshotId,
+            type: 'temporal_snapshot',
+            title: `${getThemeLabel(theme)} · ${bucket.label}`,
+            urlParams: `?theme=${encodeURIComponent(theme)}`,
+            meta: {
+                theme,
+                themeLabel: getThemeLabel(theme),
+                bucketLabel: bucket.label,
+                signalCount: bucket.signalCount,
+                start: bucket.start,
+                end: bucket.end,
+                countries,
+                sources,
+                people,
+                relatedThemes,
+            },
+        })
+        openWorkspace(true)
+    }
+
+    const handlePin = () => {
+        if (pinned) {
+            unpinItem(pinnedId)
+        } else {
+            const params = new URLSearchParams(window.location.search)
+            params.set('theme', theme)
+            if (originCountry) params.set('country', originCountry)
+            pinItem({
+                id: pinnedId,
+                type: 'theme',
+                title: `${getThemeLabel(theme)}${originCountryName ? ` in ${originCountryName}` : ''}`,
+                urlParams: `?${params.toString()}`
+            })
+        }
+    }
+
     return (
-        <div className="theme-detail-overlay">
+        <div className="theme-detail-overlay" ref={detailRef}>
             <div className="theme-detail-panel">
-                <button className="theme-detail-close" onClick={onClose} style={{ display: 'none' }} />
+                <div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px', alignItems: 'center', zIndex: 100 }}>
+                    <button
+                        onClick={handlePin}
+                        data-tip={pinned ? "Unpin Theme" : "Pin Theme to Workspace"}
+                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: pinned ? '#10b981' : '#94a3b8', width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
+                    >
+                        {pinned ? <PinOff size={14} /> : <Pin size={14} />}
+                    </button>
+                    {!loading && data && (
+                        <ExportMenu
+                            themeName={getThemeLabel(theme)}
+                            data={data}
+                            insight={insight}
+                            captureRef={detailRef}
+                        />
+                    )}
+                    <button className="theme-detail-close" onClick={onClose} style={{ position: 'relative', top: 'auto', right: 'auto' }}>
+                        <X size={16} />
+                    </button>
+                </div>
 
 
                 <div className="theme-detail-header">
@@ -181,15 +340,24 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
                                 {originCountryName && (
                                     <span className="origin-country-hint"> · opened from {getFlag(originCountry!)} {originCountryName}</span>
                                 )}
+                                {originAttention?.title && (
+                                    <span className="origin-country-hint"> · opened from Public Attention: {originAttention.title}</span>
+                                )}
                             </p>
                         )}
                     </div>
                 </div>
 
-                {loading && <div className="theme-detail-loading">Loading...</div>}
+                {loading && !data && (
+                    <div className="theme-detail-loading">
+                        <PanelSkeletonGrid cols={2} rows={2} />
+                        <PanelSkeleton rows={4} />
+                    </div>
+                )}
+                {loading && data && <div className="panel-reloading" aria-label="Refreshing" />}
                 {error && <div className="theme-detail-error">Error: {error}</div>}
 
-                {data && !loading && (
+                {data && (
                     <>
                         {/* AI Coverage Insight */}
                         <div className="theme-insight-block">
@@ -213,36 +381,143 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
                             })()}
                             {insightFailed && !insightLoading && !insight && (
                                 <p className="theme-insight-unavailable">
-                                    {insightError === 'insight_unavailable'
-                                        ? 'AI analysis not configured — add ANTHROPIC_API_KEY to .env and restart the backend'
-                                        : insightError === 'insight_no_credits'
-                                        ? 'AI analysis unavailable — Anthropic account has no credits (top up at console.anthropic.com)'
-                                        : 'Coverage analysis unavailable'}
+                                    {insightError === 'insight_no_credits'
+                                        ? 'AI analysis unavailable — Anthropic account has no credits.'
+                                        : data
+                                            ? (() => {
+                                                const top = data.countryBreakdown[0]
+                                                const topName = top ? resolveCountryName(top.code) : null
+                                                const tone = data.avgSentiment > 0.1 ? 'positive' : data.avgSentiment < -0.1 ? 'negative' : 'neutral'
+                                                return [
+                                                    topName ? `Top coverage: ${topName} (${top!.count} signals).` : null,
+                                                    `Overall tone: ${tone} (${data.avgSentiment.toFixed(2)}).`,
+                                                    `${data.total.toLocaleString()} total signals. AI summary unavailable.`,
+                                                ].filter(Boolean).join(' ')
+                                            })()
+                                            : 'AI summary unavailable.'
+                                    }
                                 </p>
                             )}
                         </div>
 
                         {/* Summary Stats */}
                         <div className="theme-stats-row">
-                            <div className="theme-stat" title="Total media signals (articles, posts) mentioning this topic in the selected time window">
+                            <div className="theme-stat" data-tip="Total media signals (articles, posts) mentioning this topic in the selected time window">
                                 <span className="theme-stat-value">{data.total}</span>
                                 <span className="theme-stat-label">Signals</span>
                             </div>
-                            <div className="theme-stat" title="Average GDELT tone score across all signals. Scale −10 to +10: negative = topic framed critically or with conflict, positive = framed supportively. Scores rarely exceed ±3 in normal news.">
+                            <div className="theme-stat" data-tip="Avg GDELT tone: −10 to +10. Negative = topic framed critically or with conflict, positive = framed supportively. Scores rarely exceed ±3 in normal news.">
                                 <span className="theme-stat-value" style={{ color: getSentimentColor(data.avgSentiment) }}>
                                     {data.avgSentiment > 0 ? '+' : ''}{data.avgSentiment.toFixed(2)}
                                 </span>
                                 <span className="theme-stat-label">Avg Sentiment</span>
                             </div>
-                            <div className="theme-stat" title="Number of distinct countries where media sources are covering this topic">
+                            <div className="theme-stat" data-tip="Number of distinct countries where media sources are covering this topic">
                                 <span className="theme-stat-value">{data.countryBreakdown.length}</span>
                                 <span className="theme-stat-label">Countries</span>
                             </div>
-                            <div className="theme-stat" title="Number of distinct media outlets (news sites, blogs, feeds) contributing signals">
+                            <div className="theme-stat" data-tip="Number of distinct media outlets (news sites, blogs, feeds) contributing signals">
                                 <span className="theme-stat-value">{data.topSources.length}</span>
                                 <span className="theme-stat-label">Sources</span>
                             </div>
                         </div>
+
+                        {/* Period comparison: volume & sentiment vs previous period */}
+                        <CompareBar entityType="theme" entityValue={theme} hours={hours} />
+
+                        {originAttention?.title && (
+                            <div className="theme-section public-attention-origin">
+                                <div className="theme-section-title">PUBLIC ATTENTION CONTEXT</div>
+                                <div className="public-attention-origin-card">
+                                    <div>
+                                        <span className="attention-signal-icon">PUBLIC</span>
+                                        <h3>{originAttention.title}</h3>
+                                        <p>
+                                            This thread was opened from a people-side attention item, so Atlas is reading {getThemeLabel(theme)}
+                                            {' '}through that context instead of as a generic global topic.
+                                        </p>
+                                    </div>
+                                    <div className="public-attention-origin-metrics">
+                                        <span><strong>{formatAttentionCount(originAttention.views)}</strong> wiki views</span>
+                                        <span><strong>{originAttention.country_count ?? attentionSearchData?.signal_matches?.filter(s => s.country).length ?? 0}</strong> countries</span>
+                                        <span><strong>{attentionSearchData?.signal_matches?.length ?? 0}</strong> media matches</span>
+                                    </div>
+                                </div>
+                                {attentionSearchData?.signal_matches && attentionSearchData.signal_matches.length > 0 && (
+                                    <div className="public-attention-evidence">
+                                        {attentionSearchData.signal_matches.slice(0, 3).map(signal => (
+                                            <div key={signal.id} className="public-attention-evidence-row">
+                                                <span>{signal.country || 'GLO'} · {signal.source}</span>
+                                                <p>{signal.headline || 'Untitled signal'}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Evolution Graph: relationship structure over sampled coverage time buckets */}
+                        {(data.graphSignals?.length ?? data.signals.length) > 0 && (
+                            <PanelErrorBoundary panelName="Evolution Graph">
+                                <Suspense fallback={<div className="temporal-graph-loading">Loading evolution graph...</div>}>
+                                    <TemporalNarrativeGraph
+                                        theme={theme}
+                                        themeLabel={getThemeLabel(theme)}
+                                        signals={data.graphSignals?.length ? data.graphSignals : data.signals}
+                                        onThemeSelect={onThemeSelect}
+                                        onCountrySelect={(code) => {
+                                            setDrillCountry(code)
+                                            setDrillCountryName(code)
+                                            onCountryCardClick?.(code, code)
+                                        }}
+                                        onPersonSelect={onPersonClick}
+                                        onSourceSelect={onSourceClick}
+                                        onOpenInWorkspace={() => {
+                                            const pid = `theme-${theme}`
+                                            if (!isPinned(pid)) {
+                                                pinItem({ id: pid, type: 'theme', title: getThemeLabel(theme), urlParams: `?theme=${encodeURIComponent(theme)}` })
+                                            }
+                                            openWorkspace(true)
+                                        }}
+                                        onPinSnapshot={pinTemporalSnapshot}
+                                    />
+                                </Suspense>
+                            </PanelErrorBoundary>
+                        )}
+
+                        {/* Narrative Drift timeline — deferred so AEIL explanation renders first */}
+                        {showDrift ? (
+                            <NarrativeDrift themeCode={theme} countryCode={drillCountry || originCountry} days={14} />
+                        ) : (
+                            <div className="narrative-drift narrative-drift--deferred">
+                                <div className="narrative-drift-header">
+                                    <h3>Narrative Drift <span>(loading after summary)</span></h3>
+                                </div>
+                                <div className="drift-deferred-line" />
+                            </div>
+                        )}
+
+                        {/* RELATED INVESTIGATIONS (Concepts) */}
+                        {data.relatedConcepts && data.relatedConcepts.length > 0 && (
+                            <div className="theme-section">
+                                <div className="theme-section-title" style={{ color: '#10b981' }}>RELATED INVESTIGATIONS</div>
+                                <div className="concepts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px', marginTop: '12px' }}>
+                                    {data.relatedConcepts.map(c => (
+                                        <button 
+                                            key={c.slug}
+                                            className="concept-card"
+                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onThemeSelect?.(c.slug, originAttention) }}
+                                            style={{ textAlign: 'left', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.05)'}
+                                        >
+                                            <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#10b981', marginBottom: '4px' }}>{c.label}</div>
+                                            <div style={{ fontSize: '0.75rem', color: '#94a3b8', lineHeight: 1.4 }}>{c.description}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* PUBLIC ATTENTION — Trends & Wiki cross-reference */}
                         {(trendMatch?.has_public_interest || wikiMatch?.has_wiki_activity) && (
@@ -318,7 +593,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
                                         <span className="framing-scope">
                                             top {data.countryFraming.length} of {data.countryBreakdown.length} countries by volume
                                         </span>
-                                        <span className="framing-info-btn" title="Each card shows how a country's media covers this topic. Sentiment (tone) ranges from −10 to +10 on the GDELT scale — negative means the topic is framed critically, positive means supportively. Sub-themes show which related topics co-occur most in that country's coverage. Click any card to see that country's panel.">?</span>
+                                        <span className="framing-info-btn" data-tip="Each card shows how a country's media covers this topic. Tone −10 to +10: negative = framed critically, positive = framed supportively. Sub-themes co-occur most in that country's coverage. Click any card to see that country's signals.">?</span>
                                     </div>
                                     <div className="framing-grid">
                                         {framing.map((cf, idx) => {
@@ -334,23 +609,23 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
                                                         ? onCountryCardClick(cf.country_code, cf.country_name)
                                                         : (setDrillCountry(cf.country_code), setDrillCountryName(cf.country_name))
                                                     }
-                                                    title={`See ${cf.country_name}'s coverage in the side panel`}
+                                                    data-tip={`See ${cf.country_name}'s coverage`}
                                                 >
                                                     <div className="framing-card-header">
-                                                        <span className="framing-rank">#{(cf as any).volumeRank ?? idx + 1}</span>
+                                                        <span className="framing-rank">#{cf.volumeRank ?? idx + 1}</span>
                                                         <span className="framing-flag">{getFlag(cf.country_code)}</span>
                                                         <span className="framing-country-name">{cf.country_name}</span>
                                                     </div>
                                                     <div className="framing-stats">
-                                                        <span className="framing-signal-count" title="Number of signals from this country · its share of total global coverage for this topic">
+                                                        <span className="framing-signal-count" data-tip="Signals from this country · share of total global coverage for this topic">
                                                             {cf.signal_count.toLocaleString()} sig
                                                             <span className="framing-share"> · {sharePct}%</span>
                                                         </span>
-                                                        <span className="framing-tone" title="Average GDELT tone: how this country's media frames the topic. −10 = very critical, 0 = neutral, +10 = very supportive." style={{ color: getFramingSentimentColor(cf.avg_sentiment) }}>
+                                                        <span className="framing-tone" data-tip="Avg GDELT tone: how this country's media frames the topic. −10 = very critical, 0 = neutral, +10 = very supportive." style={{ color: getFramingSentimentColor(cf.avg_sentiment) }}>
                                                             {cf.avg_sentiment > 0 ? '+' : ''}{cf.avg_sentiment.toFixed(1)} tone
                                                         </span>
                                                     </div>
-                                                    <div className="framing-sentiment-bar" title="Tone bar: left = negative, center = neutral, right = positive">
+                                                    <div className="framing-sentiment-bar" data-tip="Tone bar: left = negative, center = neutral, right = positive">
                                                         <div
                                                             className="framing-sentiment-fill"
                                                             style={{
@@ -360,11 +635,13 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
                                                         />
                                                     </div>
                                                     <div className="framing-sub-themes">
-                                                        {cf.top_sub_themes.map(st => (
-                                                            <span key={st} className="framing-chip">
-                                                                {getThemeIcon(st)} {getThemeLabel(st)}
-                                                            </span>
-                                                        ))}
+                                                        {cf.top_sub_themes
+                                                            .filter(st => !st.startsWith('WORLDLANGUAGES_') && !st.startsWith('TAX_WORLDLANGUAGES_'))
+                                                            .map(st => (
+                                                                <span key={st} className="framing-chip">
+                                                                    {getThemeIcon(st)} {getThemeLabel(st)}
+                                                                </span>
+                                                            ))}
                                                     </div>
                                                 </div>
                                             )
@@ -392,7 +669,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
                                                 height: `${Math.max(10, (t.count / Math.max(...data.timeline.map(x => x.count))) * 100)}%`,
                                                 backgroundColor: getSentimentColor(t.sentiment)
                                             }}
-                                            title={`${formatTime(t.hour)}: ${t.count} signals`}
+                                            data-tip={`${formatTime(t.hour)}: ${t.count} signals`}
                                         />
                                     ))}
                                 </div>
@@ -407,18 +684,30 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
                         {/* Related Themes */}
                         {data.relatedThemes.length > 0 && (
                             <div className="theme-section">
-                                <h3 data-help="Topics that frequently co-occur with this one in the same signals. Higher count = stronger co-occurrence. Click to open that topic.">Related Topics</h3>
+                                <h3>Related Topics</h3>
+                                <p className="related-topics-hint">Co-occur in same signals · click to explore</p>
                                 <div className="related-grid">
                                     {data.relatedThemes.slice(0, 8).map(t => (
-                                        <button
-                                            key={t.theme}
-                                            className="related-chip"
-                                            onClick={() => onThemeSelect?.(t.theme)}
-                                        >
-                                            <span className="related-chip-icon">{getThemeIcon(t.theme)}</span>
-                                            <span className="related-chip-label">{getThemeLabel(t.theme)}</span>
-                                            <span className="related-chip-count">{t.count}</span>
-                                        </button>
+                                        <div key={t.theme} className="related-chip-wrap">
+                                            <button
+                                                className="related-chip"
+                                                onClick={() => onThemeSelect?.(t.theme, originAttention)}
+                                            >
+                                                <span className="related-chip-icon">{getThemeIcon(t.theme)}</span>
+                                                <span className="related-chip-label">{getThemeLabel(t.theme)}</span>
+                                                <span className="related-chip-count">{t.count}</span>
+                                            </button>
+                                            {onCompareClick && (
+                                                <button
+                                                    className="related-chip-compare"
+                                                    onClick={(e) => { e.stopPropagation(); onCompareClick(t.theme); }}
+                                                    data-tip={`Compare: ${getThemeLabel(t.theme)} vs current`}
+                                                    aria-label={`Compare ${getThemeLabel(t.theme)} with current topic`}
+                                                >
+                                                    <ArrowLeftRight size={12} />
+                                                </button>
+                                            )}
+                                        </div>
                                     ))}
                                 </div>
                             </div>
@@ -433,7 +722,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
                                         <span
                                             key={p.name}
                                             className="person-pill"
-                                            title={`${p.count} mentions — click to filter`}
+                                            data-tip={`${p.count} mentions — click to filter signals`}
                                             onClick={() => onPersonClick?.(p.name)}
                                         >
                                             {p.name}
@@ -449,22 +738,101 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
                             <div className="theme-section">
                                 <h3>Top Sources</h3>
                                 <div className="source-list">
-                                    {data.topSources.map(s => (
-                                        <div
-                                            key={s.name}
-                                            className={`source-item ${selectedSource === s.name ? 'source-active' : ''}`}
-                                            onClick={() => setSelectedSource(selectedSource === s.name ? null : s.name)}
-                                        >
-                                            <span className="source-name">{s.name}</span>
-                                            <span className="source-count">{s.count}</span>
-                                            <span className="source-sentiment" style={{ color: getSentimentColor(s.sentiment) }}>
-                                                {s.sentiment > 0 ? '+' : ''}{s.sentiment.toFixed(2)}
-                                            </span>
-                                        </div>
-                                    ))}
+                                    {data.topSources.map(s => {
+                                        const family = getSourceFamilyMeta(s.family)
+                                        return (
+                                            <div
+                                                key={s.name}
+                                                className={`source-item ${selectedSource === s.name ? 'source-active' : ''}`}
+                                                onClick={() => setSelectedSource(selectedSource === s.name ? null : s.name)}
+                                                data-tip={`Avg tone ${s.sentiment > 0 ? '+' : ''}${s.sentiment.toFixed(2)} · ${family.tip} · click to filter articles by this source`}
+                                            >
+                                                <span className="source-name">{s.name}</span>
+                                                <span className={`source-family-badge ${family.className}`} data-tip={family.tip}>
+                                                    {family.label}
+                                                </span>
+                                                <span className="source-count">{s.count}</span>
+                                                <span className="source-sentiment" style={{ color: getSentimentColor(s.sentiment) }}>
+                                                    {sentimentWord(s.sentiment)}
+                                                </span>
+                                                <span className="source-see-articles">
+                                                    {selectedSource === s.name ? '▴' : '▾'}
+                                                </span>
+                                            </div>
+                                        )
+                                    })}
                                 </div>
                             </div>
                         )}
+
+                        {/* Source Intelligence Block — shown when a source is selected */}
+                        {selectedSource && (() => {
+                            const srcSigs = data.signals.filter(s => s.source === selectedSource)
+                            if (srcSigs.length === 0) return null
+
+                            // Top co-occurring themes from this source's signals
+                            const themeFreq: Record<string, number> = {}
+                            for (const sig of srcSigs) {
+                                for (const t of sig.otherThemes) {
+                                    if (!t.startsWith('WORLDLANGUAGES_') && !t.startsWith('TAX_WORLDLANGUAGES_')) {
+                                        themeFreq[t] = (themeFreq[t] || 0) + 1
+                                    }
+                                }
+                            }
+                            const topThemes = Object.entries(themeFreq).sort((a, b) => b[1] - a[1]).slice(0, 4)
+
+                            // Country breakdown
+                            const countryFreq: Record<string, number> = {}
+                            for (const sig of srcSigs) {
+                                countryFreq[sig.country] = (countryFreq[sig.country] || 0) + 1
+                            }
+                            const topCountries = Object.entries(countryFreq).sort((a, b) => b[1] - a[1]).slice(0, 3)
+
+                            const avgSent = srcSigs.reduce((sum, s) => sum + s.sentiment, 0) / srcSigs.length
+
+                            return (
+                                <div className="source-intel-block">
+                                    <div className="source-intel-header">
+                                        <span className="source-intel-name">{selectedSource}</span>
+                                        <span className="source-intel-label"> covers this topic as:</span>
+                                        {onSourceClick && (
+                                            <button
+                                                className="source-full-profile-btn"
+                                                onClick={(e) => { e.stopPropagation(); onSourceClick(selectedSource); }}
+                                                style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid #4b5563', color: '#9ca3af', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}
+                                            >
+                                                Full Profile ↗
+                                            </button>
+                                        )}
+                                    </div>
+                                    {topThemes.length > 0 && (
+                                        <div className="source-intel-themes">
+                                            {topThemes.map(([t, count]) => (
+                                                <span key={t} className="source-intel-chip">
+                                                    {getThemeLabel(t)}
+                                                    <span className="source-intel-chip-count">{count}</span>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <div className="source-intel-meta">
+                                        <span style={{ color: getSentimentColor(avgSent) }}>
+                                            {sentimentWord(avgSent)}
+                                        </span>
+                                        {topCountries.length > 0 && (
+                                            <>
+                                                <span className="source-intel-dot">·</span>
+                                                <span className="source-intel-countries">
+                                                    {topCountries.map(([code, cnt], i) => (
+                                                        <span key={code}>{i > 0 ? ', ' : ''}{code} ({cnt})</span>
+                                                    ))}
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            )
+                        })()}
 
                         {/* Recent Coverage */}
                         <div className="theme-section">
@@ -486,27 +854,27 @@ export function ThemeDetail({ theme, originCountry, originCountryName, hours, on
                                 {data.signals
                                     .filter(s => !selectedSource || s.source === selectedSource)
                                     .slice(0, 20).map((s, i) => (
-                                    <div key={i} className="signal-item">
-                                        <div className="signal-header">
-                                            <span className="signal-source">{s.source || 'Unknown'}</span>
-                                            <span className="signal-time">{formatTime(s.timestamp)}</span>
+                                        <div key={i} className="signal-item">
+                                            <div className="signal-header">
+                                                <span className="signal-source">{s.source || 'Unknown'}</span>
+                                                <span className="signal-time">{formatTime(s.timestamp)}</span>
+                                            </div>
+                                            <div className="signal-meta">
+                                                <span className="signal-country">{s.country}</span>
+                                                <span className="signal-sentiment" style={{ color: getSentimentColor(s.sentiment) }}>
+                                                    {s.sentiment > 0 ? '+' : ''}{s.sentiment.toFixed(2)}
+                                                </span>
+                                            </div>
+                                            {s.persons.length > 0 && (
+                                                <div className="signal-persons">Person: {s.persons.join(', ')}</div>
+                                            )}
+                                            {s.url && (
+                                                <a href={s.url} target="_blank" rel="noopener noreferrer" className="signal-link">
+                                                    View Source →
+                                                </a>
+                                            )}
                                         </div>
-                                        <div className="signal-meta">
-                                            <span className="signal-country">{s.country}</span>
-                                            <span className="signal-sentiment" style={{ color: getSentimentColor(s.sentiment) }}>
-                                                {s.sentiment > 0 ? '+' : ''}{s.sentiment.toFixed(2)}
-                                            </span>
-                                        </div>
-                                        {s.persons.length > 0 && (
-                                            <div className="signal-persons">Person: {s.persons.join(', ')}</div>
-                                        )}
-                                        {s.url && (
-                                            <a href={s.url} target="_blank" rel="noopener noreferrer" className="signal-link">
-                                                View Source →
-                                            </a>
-                                        )}
-                                    </div>
-                                ))}
+                                    ))}
                             </div>
                         </div>
 

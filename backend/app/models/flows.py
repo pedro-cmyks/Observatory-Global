@@ -124,6 +124,11 @@ class Hotspot(BaseModel):
         description="Source diversity ratio: unique_outlets / total_signals (0=concentrated, 1=highly diverse)"
     )
 
+    @property
+    def country(self) -> str:
+        """Backward-compatible alias for older flow tests/clients."""
+        return self.country_code
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -180,6 +185,16 @@ class Flow(BaseModel):
         min_length=2,
         max_length=2,
     )
+
+    @property
+    def similarity_score(self) -> float:
+        """Backward-compatible alias for older flow tests/clients."""
+        return self.similarity
+
+    @property
+    def time_delta_hours(self) -> float:
+        """Backward-compatible alias for older flow tests/clients."""
+        return self.time_delta_minutes / 60.0
 
     class Config:
         json_schema_extra = {

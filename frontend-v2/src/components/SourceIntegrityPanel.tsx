@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { timeRangeToHours } from '../lib/timeRanges'
+import { resolveCountryName } from '../lib/countryNames'
+import { getThemeLabel } from '../lib/themeLabels'
 import './SourceIntegrityPanel.css'
 
 interface GlobalBriefing {
@@ -10,7 +12,7 @@ interface GlobalBriefing {
         sources: number
     }
     top_sources: Array<{
-        source_name: string
+        source: string
         count: number
     }>
 }
@@ -34,6 +36,7 @@ export const SourceIntegrityPanel: React.FC = () => {
             try {
                 const hours = timeRangeToHours(timeRange)
                 const res = await fetch(`/api/v2/briefing?hours=${hours}`)
+                if (!res.ok) throw new Error(`briefing ${res.status}`)
                 const data = await res.json()
                 if (isMounted) setGlobalData(data)
             } catch (e) {
@@ -54,14 +57,13 @@ export const SourceIntegrityPanel: React.FC = () => {
     let topSources: Array<{ name: string; count: number }> = []
 
     if (summary) {
-        totalSignals = summary.stats.total_signals
-        uniqueSources = summary.stats.unique_sources
-        topSources = summary.top_sources.map((s: any) => ({ name: s.source, count: s.count }))
+        totalSignals = summary.summary.total_signals
+        uniqueSources = summary.nodes.reduce((acc, n) => acc + n.unique_sources, 0)
+        topSources = summary.top_sources.map(s => ({ name: s.source, count: s.count }))
     } else if (globalData) {
         totalSignals = globalData.stats.total_signals
         uniqueSources = globalData.stats.sources
-        // Note: API might return `source` instead of `source_name`
-        topSources = globalData.top_sources.map(s => ({ name: (s as any).source_name || (s as any).source, count: s.count }))
+        topSources = globalData.top_sources.map(s => ({ name: s.source, count: s.count }))
     }
 
     const concentration = totalSignals > 0 && topSources.length > 0
@@ -69,7 +71,7 @@ export const SourceIntegrityPanel: React.FC = () => {
         : 0
 
     // Approximate diversity score (0-100)
-    const diversityScore = totalSignals > 0 
+    const diversityScore = totalSignals > 0
         ? Math.min(100, Math.round((uniqueSources / Math.sqrt(totalSignals)) * 50))
         : 0
 
@@ -81,25 +83,34 @@ export const SourceIntegrityPanel: React.FC = () => {
     return (
         <div className="source-panel-container">
             <div className="source-header">
-                <div>SOURCE HEALTH: {filter.country ? filter.country : filter.theme ? filter.theme : 'GLOBAL AGGREGATE'}</div>
-                {isLoading && <div className="loading-spinner" />}
+                <div>SOURCE HEALTH: {filter.country ? resolveCountryName(filter.country) : filter.theme ? getThemeLabel(filter.theme) : 'GLOBAL AGGREGATE'}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {filter.streamLevel && filter.streamLevel !== 'notable' && filter.streamLevel !== 'all' && (
+                        <span style={{ fontSize: '9px', fontFamily: 'Space Grotesk, monospace', fontWeight: 600, color: filter.streamLevel === 'critical' ? '#ef4444' : filter.streamLevel === 'elevated' ? '#f97316' : '#fbbf24', letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid currentColor`, borderRadius: '3px', padding: '1px 5px', opacity: 0.85 }}>
+                            {filter.streamLevel}
+                        </span>
+                    )}
+                    {isLoading && <div className="loading-spinner" />}
+                </div>
             </div>
 
             <div className="source-content">
                 <div className="metrics-grid">
-                    <div className="metric-box">
+                    <div className="metric-box" data-tip="Diversity score 0–100: based on how many distinct sources contribute signals relative to total volume. Higher = broader coverage from more outlets.">
                         <div className="metric-label">SOURCE DIVERSITY</div>
                         <div className={`metric-value ${diversityScore >= 80 ? 'good' : diversityScore >= 50 ? 'warn' : 'bad'}`}>
-                            {totalSignals === 0 ? '--' : diversityScore.toFixed(0)}
+                            {totalSignals === 0 ? '--' : `${diversityScore.toFixed(0)}`}
+                            {totalSignals > 0 && <span className="metric-unit">/100</span>}
                         </div>
-                        <div className="metric-subtitle">how many different sources</div>
+                        <div className="metric-subtitle">{uniqueSources} active outlets</div>
                     </div>
-                    <div className="metric-box">
+                    <div className="metric-box" data-tip="Quality score 0–100: inverse of concentration. Low score = one outlet dominates the signal feed (concentration risk). High score = signals spread across many sources.">
                         <div className="metric-label">SOURCE QUALITY</div>
                         <div className={`metric-value ${qualityScore >= 80 ? 'good' : qualityScore >= 50 ? 'warn' : 'bad'}`}>
-                            {totalSignals === 0 ? '--' : qualityScore.toFixed(0)}
+                            {totalSignals === 0 ? '--' : `${qualityScore.toFixed(0)}`}
+                            {totalSignals > 0 && <span className="metric-unit">/100</span>}
                         </div>
-                        <div className="metric-subtitle">reliability of active sources</div>
+                        <div className="metric-subtitle">low concentration = higher</div>
                     </div>
                     <div className="metric-box">
                         <div className="metric-label">TOP SOURCE SHARE</div>
@@ -111,7 +122,7 @@ export const SourceIntegrityPanel: React.FC = () => {
                 </div>
 
                 <div className="distribution-section">
-                    <div className="section-title">MOST ACTIVE SOURCES</div>
+                    <div className="section-title" data-tip="Which outlets drive the most signal volume — high share = concentration risk">CONCENTRATION LEADERS</div>
                     <div className="bar-chart">
                         {topSources.length === 0 ? (
                             <div className="empty-state">No source data available</div>
@@ -120,7 +131,7 @@ export const SourceIntegrityPanel: React.FC = () => {
                                 const pct = (s.count / totalSignals) * 100
                                 return (
                                     <div key={idx} className="bar-row">
-                                        <div className="source-name" title={s.name || 'Unknown'}>
+                                        <div className="source-name" data-tip={s.name || 'Unknown'}>
                                             {(s.name || 'Unknown').length > 30 ? (s.name || '').substring(0, 30) + '...' : (s.name || 'Unknown')}
                                         </div>
                                         <div className="bar-track">
@@ -133,7 +144,7 @@ export const SourceIntegrityPanel: React.FC = () => {
                         )}
                     </div>
                 </div>
-                
+
                 <div className="footer-stats">
                     Active Sources: <span className="highlight">{uniqueSources.toLocaleString()}</span> networks
                 </div>

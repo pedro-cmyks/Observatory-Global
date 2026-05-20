@@ -5,6 +5,7 @@
 import React from 'react'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
+import { PanelSkeleton } from './PanelSkeleton'
 import './FocusSummaryPanel.css'
 
 export const FocusSummaryPanel: React.FC = () => {
@@ -29,7 +30,7 @@ export const FocusSummaryPanel: React.FC = () => {
                     {focus.label || focus.value}
                 </h2>
                 {loading ? (
-                    <div className="focus-summary-loading">Loading...</div>
+                    <PanelSkeleton rows={2} />
                 ) : (
                     <div className="focus-summary-stats">
                         <span>
@@ -51,7 +52,7 @@ export const FocusSummaryPanel: React.FC = () => {
                             <h4>Related Topics</h4>
                             <div className="focus-topics">
                                 {summary.related_topics.slice(0, 10).map((topic, i) => (
-                                    <span key={i} className="focus-topic-chip" title={`${topic.count} signals`}>
+                                    <span key={i} className="focus-topic-chip" data-tip={`${topic.count} signals`}>
                                         {topic.topic}
                                         <span className="focus-topic-count">{topic.count}</span>
                                     </span>
