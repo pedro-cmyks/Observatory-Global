@@ -206,8 +206,10 @@ def test_shadow_mode_has_created_at_indexes_for_worker_priority():
 def test_sample_queue_cleanup_is_batched_and_exists_based():
     pipeline = _reload_pipeline("on")
     sql = pipeline.CLEANUP_DRAINED_SAMPLE_QUEUE_SQL
-    assert "WITH drained AS" in sql
-    assert "WHERE EXISTS" in sql
+    assert "WITH candidates AS" in sql
+    assert "drained AS" in sql
+    assert "FROM candidates c" in sql
+    assert "JOIN signals_v2 s ON s.id = c.id" in sql
     assert "LIMIT $1" in sql
     assert "DELETE FROM nlp_sample_queue q" in sql
     assert "USING drained d" in sql

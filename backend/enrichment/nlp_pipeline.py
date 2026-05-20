@@ -320,17 +320,17 @@ SAMPLE_CLEANUP_TIMEOUT_SECONDS = float(os.getenv("NLP_SAMPLE_CLEANUP_TIMEOUT_SEC
 def _cleanup_drained_sample_queue_sql(target_column: str) -> str:
     target_column = _validate_target_column(target_column)
     return f"""
-    WITH drained AS (
-        SELECT q.id
+    WITH candidates AS (
+        SELECT id
         FROM nlp_sample_queue q
-        WHERE EXISTS (
-            SELECT 1
-            FROM signals_v2 s
-            WHERE s.id = q.id
-              AND s.{target_column} IS NOT NULL
-        )
         ORDER BY q.enqueued_at ASC
         LIMIT $1
+    ),
+    drained AS (
+        SELECT c.id
+        FROM candidates c
+        JOIN signals_v2 s ON s.id = c.id
+        WHERE s.{target_column} IS NOT NULL
     )
     DELETE FROM nlp_sample_queue q
     USING drained d
