@@ -207,6 +207,37 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             ORDER BY count DESC
             LIMIT 5
         """, hours)
+        # Heat ranking (#149): atlas_heat from country_heat_v2 ranks countries by
+        # what is heating up right now (velocity + surprise + source diversity +
+        # local voice + frame polyphony + geo confidence − duplication), not raw
+        # signal volume. Complements top_countries (volume rank) so the briefing
+        # exposes both lenses without forcing a single ranking metric.
+        has_country_heat = await conn.fetchval(
+            "SELECT to_regclass('country_heat_v2') IS NOT NULL"
+        )
+        if has_country_heat:
+            heat_countries = await _fetch_section(conn, degraded_segments, "heat_countries", """
+                SELECT h.country_code,
+                       COALESCE(c.name, h.country_code)        AS name,
+                       h.volume_now::bigint                    AS volume,
+                       h.atlas_heat::float                     AS heat,
+                       h.z_velocity_norm::float                AS velocity,
+                       h.surprise_kl_norm::float               AS surprise,
+                       h.source_diversity_norm::float          AS diversity,
+                       h.local_voice_ratio::float              AS voice,
+                       h.polyphony_norm::float                 AS polyphony,
+                       h.geo_confidence_mean::float            AS geo_confidence,
+                       h.duplication_index_norm::float         AS duplication
+                FROM country_heat_v2 h
+                LEFT JOIN countries_v2 c ON h.country_code = c.code
+                WHERE h.hours_window = 24
+                  AND h.atlas_heat IS NOT NULL
+                ORDER BY h.atlas_heat DESC
+                LIMIT 10
+            """)
+        else:
+            heat_countries = []
+
         stats = await _fetch_section(conn, degraded_segments, "stats", """
             SELECT SUM(signal_count)::bigint                          AS total_signals,
                    COUNT(DISTINCT country_code)                       AS countries,
@@ -270,6 +301,24 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             "top_countries": [serialize_country_row(r) for r in top_countries],
             "negative_sentiment": [serialize_country_row(r) for r in negative_sentiment],
             "positive_sentiment": [serialize_country_row(r) for r in positive_sentiment],
+            "heat_countries": [
+                {
+                    "code": r["country_code"],
+                    "name": r["name"],
+                    "volume": r["volume"],
+                    "heat": round(float(r["heat"] or 0), 3),
+                    "components": {
+                        "velocity": round(float(r["velocity"] or 0), 3),
+                        "surprise": round(float(r["surprise"] or 0), 3),
+                        "diversity": round(float(r["diversity"] or 0), 3),
+                        "voice": round(float(r["voice"] or 0), 3),
+                        "polyphony": round(float(r["polyphony"] or 0), 3),
+                        "geo_confidence": round(float(r["geo_confidence"] or 0), 3),
+                        "duplication": round(float(r["duplication"] or 0), 3),
+                    },
+                }
+                for r in heat_countries
+            ],
             "top_themes": [
                 {"theme": r['theme'], "count": r['count']}
                 for r in top_themes

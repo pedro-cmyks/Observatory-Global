@@ -49,6 +49,21 @@ def test_briefing_top_sources_does_not_read_dead_table():
     assert "AND source_name IS NOT NULL" in top_sources_section
 
 
+def test_briefing_exposes_heat_countries_section():
+    """heat_countries reads country_heat_v2 (mig 017) and exposes atlas_heat
+    components so the briefing offers both volume and heat rankings."""
+    source = _get_briefing_source()
+
+    assert '"heat_countries"' in source
+    assert "FROM country_heat_v2" in source
+    assert "ORDER BY h.atlas_heat DESC" in source
+    assert "to_regclass('country_heat_v2')" in source
+    # Component breakdown exposed for transparency
+    for component in ("velocity", "surprise", "diversity", "voice",
+                      "polyphony", "geo_confidence", "duplication"):
+        assert f'"{component}"' in source, f"heat_countries missing component {component}"
+
+
 def test_briefing_uses_parameterized_intervals_and_no_percent_interpolation():
     source = _get_briefing_source()
 
