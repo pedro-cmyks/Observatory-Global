@@ -15,6 +15,13 @@ logger = logging.getLogger(__name__)
 
 BRIEFING_DB_TIMEOUT_SECONDS = float(os.getenv("BRIEFING_DB_TIMEOUT_SECONDS", "8"))
 
+from app.services.sentiment_fusion import (  # noqa: E402 — kept here to group briefing config
+    NLP_COVERAGE_THRESHOLD,
+    NLP_SENTIMENT_SCALE,
+    choose_sentiment,
+    serialize_country_row,
+)
+
 
 async def _fetch_section(
     conn,
@@ -86,43 +93,96 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         has_theme_country_hourly = await conn.fetchval(
             "SELECT to_regclass('theme_country_hourly_v2') IS NOT NULL"
         )
-        # Use pre-agg tables for every window, including 24h. The previous 24h
-        # path grouped signals_v2 directly and could trip Supabase IO/timeouts.
+        # Use pre-agg tables for every window. Sentiment payload selects NLP
+        # transformer-normalized values when bucket NLP coverage clears the
+        # threshold, otherwise falls back to GDELT V2Tone. chosen_sentiment_raw
+        # drives ORDER BY so rankings reflect what we actually serve.
         top_countries = await _fetch_section(conn, degraded_segments, "top_countries", """
-            SELECT h.country_code, c.name,
-                   SUM(h.signal_count)::bigint as total,
-                   CASE WHEN SUM(h.signal_count) > 0
-                        THEN (SUM(h.avg_sentiment * h.signal_count) / SUM(h.signal_count))::float
-                        ELSE 0::float END as sentiment
-            FROM country_hourly_v2 h
-            JOIN countries_v2 c ON h.country_code = c.code
-            WHERE h.hour > NOW() - ($1::int * INTERVAL '1 hour')
-            GROUP BY h.country_code, c.name ORDER BY total DESC LIMIT 10
+            WITH agg AS (
+                SELECT h.country_code, c.name,
+                       SUM(h.signal_count)         AS sig_total,
+                       SUM(h.nlp_signal_count)     AS nlp_total,
+                       CASE WHEN SUM(h.signal_count) > 0
+                            THEN SUM(h.avg_sentiment * h.signal_count) / SUM(h.signal_count)
+                            ELSE NULL END           AS gdelt_avg,
+                       CASE WHEN SUM(h.nlp_signal_count) > 0
+                            THEN SUM(h.avg_nlp_sentiment * h.nlp_signal_count) / SUM(h.nlp_signal_count)
+                            ELSE NULL END           AS nlp_avg
+                FROM country_hourly_v2 h
+                JOIN countries_v2 c ON h.country_code = c.code
+                WHERE h.hour > NOW() - ($1::int * INTERVAL '1 hour')
+                GROUP BY h.country_code, c.name
+            )
+            SELECT country_code, name,
+                   sig_total::bigint                          AS total,
+                   COALESCE(gdelt_avg, 0)::float              AS gdelt_sentiment,
+                   nlp_avg::float                             AS nlp_sentiment,
+                   (nlp_total::float / NULLIF(sig_total, 0))  AS nlp_coverage
+            FROM agg
+            ORDER BY total DESC LIMIT 10
         """, hours)
         negative_sentiment = await _fetch_section(conn, degraded_segments, "negative_sentiment", """
-            SELECT h.country_code, c.name,
-                   CASE WHEN SUM(h.signal_count) > 0
-                        THEN (SUM(h.avg_sentiment * h.signal_count) / SUM(h.signal_count))::float
-                        ELSE 0::float END as sentiment,
-                   SUM(h.signal_count)::bigint as total
-            FROM country_hourly_v2 h
-            JOIN countries_v2 c ON h.country_code = c.code
-            WHERE h.hour > NOW() - ($1::int * INTERVAL '1 hour')
-            GROUP BY h.country_code, c.name HAVING SUM(h.signal_count) > 10
-            ORDER BY sentiment ASC LIMIT 10
-        """, hours)
+            WITH agg AS (
+                SELECT h.country_code, c.name,
+                       SUM(h.signal_count)         AS sig_total,
+                       SUM(h.nlp_signal_count)     AS nlp_total,
+                       CASE WHEN SUM(h.signal_count) > 0
+                            THEN SUM(h.avg_sentiment * h.signal_count) / SUM(h.signal_count)
+                            ELSE NULL END           AS gdelt_avg,
+                       CASE WHEN SUM(h.nlp_signal_count) > 0
+                            THEN SUM(h.avg_nlp_sentiment * h.nlp_signal_count) / SUM(h.nlp_signal_count)
+                            ELSE NULL END           AS nlp_avg
+                FROM country_hourly_v2 h
+                JOIN countries_v2 c ON h.country_code = c.code
+                WHERE h.hour > NOW() - ($1::int * INTERVAL '1 hour')
+                GROUP BY h.country_code, c.name
+                HAVING SUM(h.signal_count) > 10
+            )
+            SELECT country_code, name,
+                   sig_total::bigint                          AS total,
+                   COALESCE(gdelt_avg, 0)::float              AS gdelt_sentiment,
+                   nlp_avg::float                             AS nlp_sentiment,
+                   (nlp_total::float / NULLIF(sig_total, 0))  AS nlp_coverage,
+                   CASE
+                       WHEN nlp_total::float / NULLIF(sig_total, 0) >= $2::float
+                            AND nlp_avg IS NOT NULL
+                       THEN nlp_avg * $3::float
+                       ELSE COALESCE(gdelt_avg, 0)
+                   END                                         AS chosen_sentiment_raw
+            FROM agg
+            ORDER BY chosen_sentiment_raw ASC LIMIT 10
+        """, hours, NLP_COVERAGE_THRESHOLD, NLP_SENTIMENT_SCALE)
         positive_sentiment = await _fetch_section(conn, degraded_segments, "positive_sentiment", """
-            SELECT h.country_code, c.name,
-                   CASE WHEN SUM(h.signal_count) > 0
-                        THEN (SUM(h.avg_sentiment * h.signal_count) / SUM(h.signal_count))::float
-                        ELSE 0::float END as sentiment,
-                   SUM(h.signal_count)::bigint as total
-            FROM country_hourly_v2 h
-            JOIN countries_v2 c ON h.country_code = c.code
-            WHERE h.hour > NOW() - ($1::int * INTERVAL '1 hour')
-            GROUP BY h.country_code, c.name HAVING SUM(h.signal_count) > 10
-            ORDER BY sentiment DESC LIMIT 10
-        """, hours)
+            WITH agg AS (
+                SELECT h.country_code, c.name,
+                       SUM(h.signal_count)         AS sig_total,
+                       SUM(h.nlp_signal_count)     AS nlp_total,
+                       CASE WHEN SUM(h.signal_count) > 0
+                            THEN SUM(h.avg_sentiment * h.signal_count) / SUM(h.signal_count)
+                            ELSE NULL END           AS gdelt_avg,
+                       CASE WHEN SUM(h.nlp_signal_count) > 0
+                            THEN SUM(h.avg_nlp_sentiment * h.nlp_signal_count) / SUM(h.nlp_signal_count)
+                            ELSE NULL END           AS nlp_avg
+                FROM country_hourly_v2 h
+                JOIN countries_v2 c ON h.country_code = c.code
+                WHERE h.hour > NOW() - ($1::int * INTERVAL '1 hour')
+                GROUP BY h.country_code, c.name
+                HAVING SUM(h.signal_count) > 10
+            )
+            SELECT country_code, name,
+                   sig_total::bigint                          AS total,
+                   COALESCE(gdelt_avg, 0)::float              AS gdelt_sentiment,
+                   nlp_avg::float                             AS nlp_sentiment,
+                   (nlp_total::float / NULLIF(sig_total, 0))  AS nlp_coverage,
+                   CASE
+                       WHEN nlp_total::float / NULLIF(sig_total, 0) >= $2::float
+                            AND nlp_avg IS NOT NULL
+                       THEN nlp_avg * $3::float
+                       ELSE COALESCE(gdelt_avg, 0)
+                   END                                         AS chosen_sentiment_raw
+            FROM agg
+            ORDER BY chosen_sentiment_raw DESC LIMIT 10
+        """, hours, NLP_COVERAGE_THRESHOLD, NLP_SENTIMENT_SCALE)
         # theme_hourly_v2 is the live pre-agg populated by ingest_v2.refresh.
         # The legacy signals_theme_hourly table from migration 006 is no longer
         # written to and returns empty results.
@@ -143,12 +203,17 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             GROUP BY source_name ORDER BY count DESC LIMIT 5
         """, hours)
         stats = await _fetch_section(conn, degraded_segments, "stats", """
-            SELECT SUM(signal_count)::bigint as total_signals,
-                   COUNT(DISTINCT country_code) as countries,
-                   SUM(unique_sources)::bigint as sources,
+            SELECT SUM(signal_count)::bigint                          AS total_signals,
+                   COUNT(DISTINCT country_code)                       AS countries,
+                   SUM(unique_sources)::bigint                        AS sources,
                    CASE WHEN SUM(signal_count) > 0
                         THEN SUM(avg_sentiment * signal_count) / SUM(signal_count)
-                        ELSE 0 END as avg_sentiment
+                        ELSE 0 END                                    AS gdelt_sentiment,
+                   CASE WHEN SUM(nlp_signal_count) > 0
+                        THEN SUM(avg_nlp_sentiment * nlp_signal_count) / SUM(nlp_signal_count)
+                        ELSE NULL END                                 AS nlp_sentiment,
+                   (SUM(nlp_signal_count)::float
+                       / NULLIF(SUM(signal_count), 0))                AS nlp_coverage
             FROM country_hourly_v2
             WHERE hour > NOW() - ($1::int * INTERVAL '1 hour')
         """, hours, row=True)
@@ -173,8 +238,16 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             "total_signals": 0,
             "countries": 0,
             "sources": 0,
-            "avg_sentiment": 0,
+            "gdelt_sentiment": 0,
+            "nlp_sentiment": None,
+            "nlp_coverage": 0,
         }
+
+        global_sentiment, global_source, global_coverage = choose_sentiment(
+            stats.get("gdelt_sentiment") if isinstance(stats, dict) else stats["gdelt_sentiment"],
+            stats.get("nlp_sentiment") if isinstance(stats, dict) else stats["nlp_sentiment"],
+            stats.get("nlp_coverage") if isinstance(stats, dict) else stats["nlp_coverage"],
+        )
 
         result = {
             "period_hours": hours,
@@ -185,20 +258,13 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 "total_signals": stats['total_signals'] or 0,
                 "countries": stats['countries'] or 0,
                 "sources": stats['sources'] or 0,
-                "avg_sentiment": float(stats['avg_sentiment'] or 0) / 10
+                "avg_sentiment": global_sentiment,
+                "sentiment_source": global_source,
+                "nlp_coverage": round(global_coverage, 3),
             },
-            "top_countries": [
-                {"code": r['country_code'], "name": r['name'], "signals": r['total'], "sentiment": float(r['sentiment'] or 0) / 10}
-                for r in top_countries
-            ],
-            "negative_sentiment": [
-                {"code": r['country_code'], "name": r['name'], "sentiment": float(r['sentiment'] or 0) / 10, "signals": r['total']}
-                for r in negative_sentiment
-            ],
-            "positive_sentiment": [
-                {"code": r['country_code'], "name": r['name'], "sentiment": float(r['sentiment'] or 0) / 10, "signals": r['total']}
-                for r in positive_sentiment
-            ],
+            "top_countries": [serialize_country_row(r) for r in top_countries],
+            "negative_sentiment": [serialize_country_row(r) for r in negative_sentiment],
+            "positive_sentiment": [serialize_country_row(r) for r in positive_sentiment],
             "top_themes": [
                 {"theme": r['theme'], "count": r['count']}
                 for r in top_themes
