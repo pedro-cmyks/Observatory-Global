@@ -192,15 +192,20 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             WHERE hour > NOW() - ($1::int * INTERVAL '1 hour')
             GROUP BY theme ORDER BY count DESC LIMIT 10
         """, hours)
-        # TODO(#TBD): source_hourly_v2 pre-agg does not exist yet — high source_name
-        # cardinality (~86K unique/day) makes a (hour, source_name) table heavy.
-        # Track separately; meanwhile this section degrades to empty. Briefing
-        # already surfaces source counts in stats via country_hourly_v2.unique_sources.
+        # Top sources scans signals_v2 directly with a bounded window. The legacy
+        # signals_source_hourly pre-agg is dead and a dedicated (hour, source_name)
+        # pre-agg would have very high cardinality (~86K unique sources/day). The
+        # GROUP BY here is bounded by the time window and Redis-cached for the
+        # full briefing TTL (15–30 min), so we eat the scan at most twice an hour
+        # rather than building a new pre-agg pipeline.
         top_sources = await _fetch_section(conn, degraded_segments, "top_sources", """
-            SELECT source_name, SUM(signal_count)::bigint as count
-            FROM signals_source_hourly
-            WHERE bucket > NOW() - ($1::int * INTERVAL '1 hour') AND source_name IS NOT NULL
-            GROUP BY source_name ORDER BY count DESC LIMIT 5
+            SELECT source_name, COUNT(*)::bigint AS count
+            FROM signals_v2
+            WHERE timestamp > NOW() - ($1::int * INTERVAL '1 hour')
+              AND source_name IS NOT NULL
+            GROUP BY source_name
+            ORDER BY count DESC
+            LIMIT 5
         """, hours)
         stats = await _fetch_section(conn, degraded_segments, "stats", """
             SELECT SUM(signal_count)::bigint                          AS total_signals,

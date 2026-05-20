@@ -38,6 +38,17 @@ def test_briefing_top_themes_uses_theme_hourly_v2_not_dead_table():
     assert "WHERE hour >" in top_themes_section
 
 
+def test_briefing_top_sources_does_not_read_dead_table():
+    """top_sources must not read from signals_source_hourly (dead). Direct
+    signals_v2 scan is acceptable because the section is Redis-cached."""
+    source = _get_briefing_source()
+    top_sources_section = source[source.index('"top_sources"'):source.index('"stats"')]
+
+    assert "FROM signals_source_hourly" not in top_sources_section
+    assert "FROM signals_v2" in top_sources_section
+    assert "AND source_name IS NOT NULL" in top_sources_section
+
+
 def test_briefing_uses_parameterized_intervals_and_no_percent_interpolation():
     source = _get_briefing_source()
 
