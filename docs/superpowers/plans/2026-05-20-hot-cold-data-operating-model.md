@@ -57,10 +57,64 @@ Supabase and the local archive hold overlapping information briefly, but they do
 
 ## Phase 5 - Retention Cutover
 
-- [ ] Run archive export for a small date range and verify counts.
+- [x] Run archive export for a small date range and verify counts.
 - [ ] Run archive export for all rows older than 24 hours in date-sized batches.
 - [ ] Only after verification, add a prune script for archived raw rows older than 24 hours.
 - [ ] Keep product aggregate tables and correction tables in Supabase even when raw rows age out.
+
+## Production Probe - 2026-05-20
+
+Completed the first real cold-archive probe without deleting any Supabase rows.
+
+Probe window:
+
+```text
+from: 2026-05-19T00:00:00Z
+to:   2026-05-19T00:10:00Z
+rows: 952
+```
+
+Local archive path:
+
+```text
+/Users/pedro/AtlasArchive
+```
+
+Manifest:
+
+```text
+/Users/pedro/AtlasArchive/manifest.jsonl
+```
+
+Partition:
+
+```text
+/Users/pedro/AtlasArchive/signals/year=2026/month=05/day=19/source_family=mixed/part-ab9f6d0ab5ef.jsonl.gz
+```
+
+Verification:
+
+- Manifest row count: `952`.
+- Local query count: `952`.
+- SHA256 verified: `b84c975055da7dc37e9a4affbd2281add13be2605378e5af6bb83f47701e2c7b`.
+- Archive size after staging cleanup: `184K`.
+
+Working local query examples:
+
+```bash
+cd backend
+.venv/bin/python -m scripts.archive_query \
+  --archive-dir /Users/pedro/AtlasArchive \
+  --summary \
+  --limit 2000
+
+.venv/bin/python -m scripts.archive_query \
+  --archive-dir /Users/pedro/AtlasArchive \
+  --country US \
+  --limit 3
+```
+
+Decision: #189 covers the architecture and first verified archive path. The destructive retention/prune cutover should be handled separately so it can require explicit manifest checks and a dry-run gate.
 
 ## Example Commands
 
