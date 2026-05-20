@@ -64,6 +64,19 @@ def test_briefing_exposes_heat_countries_section():
         assert f'"{component}"' in source, f"heat_countries missing component {component}"
 
 
+def test_briefing_exposes_heat_voluminous_countries_section():
+    """heat_voluminous_countries (#187) filters country_heat_v2 by a volume
+    percentile floor before re-ranking by atlas_heat — surfaces stories that
+    are both heating up and large enough to matter."""
+    source = _get_briefing_source()
+
+    assert '"heat_voluminous_countries"' in source
+    assert "HEAT_VOLUMINOUS_PERCENTILE" in source
+    assert "percentile_disc" in source
+    assert "WHERE t.volume_now >= t.volume_floor" in source
+    assert '"heat_voluminous_percentile"' in source
+
+
 def test_briefing_uses_parameterized_intervals_and_no_percent_interpolation():
     source = _get_briefing_source()
 

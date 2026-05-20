@@ -43,8 +43,24 @@ LOW_VOLUME_REFRESH_TIMEOUT_SECONDS = int(os.getenv("NLP_LOW_VOLUME_REFRESH_TIMEO
 
 
 # ── Progress helpers ─────────────────────────────────────────────────────────
+#
+# Per issue #186: recompute backlog counts at every cycle from the partial
+# index on (created_at) WHERE nlp_processed_at IS NULL (mig 020) instead of
+# the previous delta-math approach (subtract rows_processed from cached total).
+# The delta math went stale whenever rows were deleted out-of-band — the
+# ADR-0004 prune on 2026-05-20 left /health.unprocessed_total ~128K too high
+# until somebody manually UPDATEd nlp_progress. Recomputing every cycle stays
+# honest at a tiny cost (partial index scan).
+PROGRESS_COUNT_TIMEOUT_SECONDS = float(os.getenv("NLP_PROGRESS_COUNT_TIMEOUT_SECONDS", "8"))
+
+
 async def _progress_metrics(conn: asyncpg.Connection, rows_processed: int, target_column: str) -> dict:
-    """Compute cheap backlog metrics without full-table scans on signals_v2."""
+    """Compute backlog metrics fresh on every cycle (issue #186).
+
+    Reads the partial indexes installed by migrations 020 + 023 so totals stay
+    in sync after external DELETEs. Falls back to the previous cached value if
+    a count query times out — degraded but never overstated.
+    """
     previous = await conn.fetchrow(
         """
         SELECT unprocessed_24h, unprocessed_total, oldest_unprocessed_at
@@ -53,28 +69,33 @@ async def _progress_metrics(conn: asyncpg.Connection, rows_processed: int, targe
         LIMIT 1
         """
     )
-
-    unprocessed_24h = int(previous["unprocessed_24h"] or 0) if previous else 0
-    unprocessed_total = int(previous["unprocessed_total"] or 0) if previous else 0
+    cached_24h = int(previous["unprocessed_24h"] or 0) if previous else 0
+    cached_total = int(previous["unprocessed_total"] or 0) if previous else 0
     oldest = previous["oldest_unprocessed_at"] if previous else None
 
-    if previous:
-        unprocessed_24h = max(0, unprocessed_24h - rows_processed)
-        unprocessed_total = max(0, unprocessed_total - rows_processed)
+    unprocessed_24h = cached_24h
+    unprocessed_total = cached_total
 
     try:
-        recent = await conn.fetchval(
+        unprocessed_total = int(await conn.fetchval(
+            f"SELECT COUNT(*) FROM signals_v2 WHERE {target_column} IS NULL",
+            timeout=PROGRESS_COUNT_TIMEOUT_SECONDS,
+        ) or 0)
+    except Exception:
+        logger.warning("NLP progress total-count query timed out — keeping cached value %d", cached_total)
+
+    try:
+        unprocessed_24h = int(await conn.fetchval(
             f"""
             SELECT COUNT(*)
             FROM signals_v2
             WHERE {target_column} IS NULL
               AND created_at > NOW() - INTERVAL '24 hours'
             """,
-            timeout=5,
-        )
-        unprocessed_24h = int(recent or 0)
+            timeout=PROGRESS_COUNT_TIMEOUT_SECONDS,
+        ) or 0)
     except Exception:
-        logger.warning("NLP progress recent-count query timed out — using previous estimate")
+        logger.warning("NLP progress recent-count query timed out — keeping cached value %d", cached_24h)
 
     try:
         oldest = await conn.fetchval(
@@ -85,7 +106,7 @@ async def _progress_metrics(conn: asyncpg.Connection, rows_processed: int, targe
             ORDER BY created_at ASC
             LIMIT 1
             """,
-            timeout=5,
+            timeout=PROGRESS_COUNT_TIMEOUT_SECONDS,
         ) or oldest
     except Exception:
         logger.warning("NLP progress oldest-row query timed out — using previous estimate")

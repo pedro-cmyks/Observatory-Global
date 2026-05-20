@@ -14,6 +14,9 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 BRIEFING_DB_TIMEOUT_SECONDS = float(os.getenv("BRIEFING_DB_TIMEOUT_SECONDS", "8"))
+# Volume floor percentile for the hot-AND-voluminous lens (#187). 0.75 keeps
+# the top quartile by volume before re-ranking by atlas_heat.
+HEAT_VOLUMINOUS_PERCENTILE = float(os.getenv("BRIEFING_HEAT_VOLUMINOUS_PERCENTILE", "0.75"))
 
 from app.services.sentiment_fusion import (  # noqa: E402 — kept here to group briefing config
     NLP_COVERAGE_THRESHOLD,
@@ -235,8 +238,43 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 ORDER BY h.atlas_heat DESC
                 LIMIT 10
             """)
+            # Hot AND voluminous (#187): filter heat to countries whose volume
+            # clears the configurable percentile, then re-rank by atlas_heat.
+            # Surfaces stories big enough to matter and surprising enough to
+            # investigate — avoids the "low-volume noise" failure mode where a
+            # country with 5 signals tops the heat board because its baseline
+            # is tiny.
+            heat_voluminous_countries = await _fetch_section(
+                conn, degraded_segments, "heat_voluminous_countries", """
+                WITH thresholded AS (
+                    SELECT h.*,
+                           percentile_disc($1::float) WITHIN GROUP (ORDER BY h.volume_now)
+                             OVER () AS volume_floor
+                    FROM country_heat_v2 h
+                    WHERE h.hours_window = 24
+                      AND h.atlas_heat IS NOT NULL
+                )
+                SELECT t.country_code,
+                       COALESCE(c.name, t.country_code)         AS name,
+                       t.volume_now::bigint                     AS volume,
+                       t.volume_floor::bigint                   AS volume_floor,
+                       t.atlas_heat::float                      AS heat,
+                       t.z_velocity_norm::float                 AS velocity,
+                       t.surprise_kl_norm::float                AS surprise,
+                       t.source_diversity_norm::float           AS diversity,
+                       t.local_voice_ratio::float               AS voice,
+                       t.polyphony_norm::float                  AS polyphony,
+                       t.geo_confidence_mean::float             AS geo_confidence,
+                       t.duplication_index_norm::float          AS duplication
+                FROM thresholded t
+                LEFT JOIN countries_v2 c ON t.country_code = c.code
+                WHERE t.volume_now >= t.volume_floor
+                ORDER BY t.atlas_heat DESC
+                LIMIT 10
+            """, HEAT_VOLUMINOUS_PERCENTILE)
         else:
             heat_countries = []
+            heat_voluminous_countries = []
 
         stats = await _fetch_section(conn, degraded_segments, "stats", """
             SELECT SUM(signal_count)::bigint                          AS total_signals,
@@ -319,6 +357,26 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 }
                 for r in heat_countries
             ],
+            "heat_voluminous_countries": [
+                {
+                    "code": r["country_code"],
+                    "name": r["name"],
+                    "volume": r["volume"],
+                    "volume_floor": r["volume_floor"],
+                    "heat": round(float(r["heat"] or 0), 3),
+                    "components": {
+                        "velocity": round(float(r["velocity"] or 0), 3),
+                        "surprise": round(float(r["surprise"] or 0), 3),
+                        "diversity": round(float(r["diversity"] or 0), 3),
+                        "voice": round(float(r["voice"] or 0), 3),
+                        "polyphony": round(float(r["polyphony"] or 0), 3),
+                        "geo_confidence": round(float(r["geo_confidence"] or 0), 3),
+                        "duplication": round(float(r["duplication"] or 0), 3),
+                    },
+                }
+                for r in heat_voluminous_countries
+            ],
+            "heat_voluminous_percentile": HEAT_VOLUMINOUS_PERCENTILE,
             "top_themes": [
                 {"theme": r['theme'], "count": r['count']}
                 for r in top_themes

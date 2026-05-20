@@ -32,10 +32,24 @@ def test_progress_metrics_avoids_full_table_filtered_aggregate():
     source = inspect.getsource(worker._progress_metrics)
 
     assert "COUNT(*) FILTER" not in source
-    assert "timeout=5" in source
-    assert "using previous estimate" in source
+    assert "PROGRESS_COUNT_TIMEOUT_SECONDS" in source
+    assert "keeping cached value" in source
     assert "target_column" in inspect.signature(worker._progress_metrics).parameters
     assert "WHERE {target_column} IS NULL" in source
+
+
+def test_progress_metrics_recomputes_total_on_every_cycle():
+    """Issue #186: external DELETEs leave the worker's cached total stale;
+    recompute via partial index every cycle."""
+    import enrichment.nlp_worker as worker
+
+    worker = importlib.reload(worker)
+    source = inspect.getsource(worker._progress_metrics)
+
+    # Plain COUNT(*) bounded by the partial index — no delta math on the cached value.
+    assert "SELECT COUNT(*) FROM signals_v2 WHERE {target_column} IS NULL" in source
+    assert "unprocessed_total = max(0, unprocessed_total - rows_processed)" not in source
+    assert "unprocessed_24h = max(0, unprocessed_24h - rows_processed)" not in source
 
 
 def test_sample_refresh_can_be_disabled_and_is_periodic(monkeypatch):
