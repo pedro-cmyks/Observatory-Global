@@ -228,43 +228,57 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
 
     try:
         async with db.pool.acquire() as conn:
-            await conn.execute("SET statement_timeout = 10000")
-            has_theme_country_hourly = await conn.fetchval(
-                "SELECT to_regclass('theme_country_hourly_v2') IS NOT NULL"
+            await conn.execute("SET statement_timeout = 15000")
+            degraded_segments: list[str] = []
+            has_theme_hourly = await conn.fetchval(
+                "SELECT to_regclass('theme_hourly_v2') IS NOT NULL"
             )
-            stats = await conn.fetchrow(f"""
-                SELECT COUNT(*) as total, COUNT(DISTINCT country_code) as countries,
-                       AVG(sentiment) as avg_sent
-                FROM signals_v2 WHERE timestamp > NOW() - INTERVAL '{hours} hours'
-            """)
-            if hours > 24 and has_theme_country_hourly:
-                top_themes = await conn.fetch(f"""
-                    SELECT theme, SUM(signal_count) as cnt
-                    FROM theme_country_hourly_v2
-                    WHERE hour > NOW() - INTERVAL '{hours} hours'
+
+            # Stats + top_countries come from country_hourly_v2 (same fast path as /briefing).
+            stats = await _fetch_section(conn, degraded_segments, "insight_stats", """
+                SELECT SUM(signal_count)::bigint AS total,
+                       COUNT(DISTINCT country_code) AS countries,
+                       CASE WHEN SUM(signal_count) > 0
+                            THEN (SUM(avg_sentiment * signal_count) / SUM(signal_count))::float
+                            ELSE 0::float END AS avg_sent
+                FROM country_hourly_v2
+                WHERE hour > NOW() - ($1::int * INTERVAL '1 hour')
+            """, hours, row=True)
+
+            top_countries = await _fetch_section(conn, degraded_segments, "insight_top_countries", """
+                SELECT h.country_code, c.name,
+                       SUM(h.signal_count)::bigint AS cnt,
+                       CASE WHEN SUM(h.signal_count) > 0
+                            THEN (SUM(h.avg_sentiment * h.signal_count) / SUM(h.signal_count))::float
+                            ELSE 0::float END AS avg_s
+                FROM country_hourly_v2 h
+                LEFT JOIN countries_v2 c ON h.country_code = c.code
+                WHERE h.hour > NOW() - ($1::int * INTERVAL '1 hour')
+                GROUP BY h.country_code, c.name
+                ORDER BY cnt DESC LIMIT 5
+            """, hours)
+
+            # top_themes uses theme_hourly_v2 (post-mig 008 + 025). Falls back to
+            # signals_theme_hourly if the v2 pre-agg is unavailable on a given env.
+            if has_theme_hourly:
+                top_themes = await _fetch_section(conn, degraded_segments, "insight_top_themes", """
+                    SELECT theme, SUM(signal_count)::bigint AS cnt
+                    FROM theme_hourly_v2
+                    WHERE hour > NOW() - ($1::int * INTERVAL '1 hour')
                     GROUP BY theme ORDER BY cnt DESC LIMIT 5
-                """)
-            elif hours > 24:
-                top_themes = await conn.fetch(f"""
-                    SELECT theme, SUM(signal_count) as cnt
-                    FROM signals_theme_hourly
-                    WHERE bucket > NOW() - INTERVAL '{hours} hours'
-                    GROUP BY theme ORDER BY cnt DESC LIMIT 5
-                """)
+                """, hours)
             else:
-                top_themes = await conn.fetch(f"""
-                    SELECT unnest(themes) as theme, COUNT(*) as cnt
-                    FROM signals_v2 WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+                top_themes = await _fetch_section(conn, degraded_segments, "insight_top_themes_fallback", """
+                    SELECT theme, SUM(signal_count)::bigint AS cnt
+                    FROM signals_theme_hourly
+                    WHERE bucket > NOW() - ($1::int * INTERVAL '1 hour')
                     GROUP BY theme ORDER BY cnt DESC LIMIT 5
-                """)
-            top_countries = await conn.fetch(f"""
-                SELECT s.country_code, co.name, COUNT(*) as cnt, AVG(s.sentiment) as avg_s
-                FROM signals_v2 s LEFT JOIN countries_v2 co ON s.country_code = co.code
-                WHERE s.timestamp > NOW() - INTERVAL '{hours} hours'
-                GROUP BY s.country_code, co.name ORDER BY cnt DESC LIMIT 5
-            """)
-    except Exception as e:
+                """, hours)
+    except Exception as exc:
+        logger.warning("briefing/insight db failed: %s", exc)
         return {"insight": None, "error": "db_error", "generated_at": generated_at}
+
+    stats = stats or {"total": 0, "countries": 0, "avg_sent": 0}
 
     total = int(stats["total"] or 0)
     countries = int(stats["countries"] or 0)

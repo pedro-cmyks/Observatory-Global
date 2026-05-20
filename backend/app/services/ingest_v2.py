@@ -509,53 +509,66 @@ async def run_ingestion():
         except Exception as e:
             print(f"refresh_aggregates failed: {e}")
 
-        # Update theme_hourly_v2 pre-aggregation (enables fast narratives for any window)
+        # Update theme_hourly_v2 pre-aggregation (enables fast narratives for any window).
+        # nlp_signal_count + avg_nlp_sentiment let downstream readers pick transformer
+        # sentiment when bucket coverage clears the threshold (migration 025).
         try:
             async with pool.acquire() as conn:
                 await conn.execute("""
                     INSERT INTO theme_hourly_v2
-                        (hour, theme, signal_count, country_count, source_count, avg_sentiment)
+                        (hour, theme, signal_count, country_count, source_count, avg_sentiment,
+                         nlp_signal_count, avg_nlp_sentiment)
                     SELECT
                         date_trunc('hour', timestamp) AS hour,
                         unnest(themes)                AS theme,
                         COUNT(*)                      AS signal_count,
                         COUNT(DISTINCT country_code)  AS country_count,
                         COUNT(DISTINCT source_name)   AS source_count,
-                        AVG(sentiment)                AS avg_sentiment
+                        AVG(sentiment)                AS avg_sentiment,
+                        COUNT(*) FILTER (WHERE nlp_sentiment IS NOT NULL) AS nlp_signal_count,
+                        AVG(nlp_sentiment) FILTER (WHERE nlp_sentiment IS NOT NULL) AS avg_nlp_sentiment
                     FROM signals_v2
                     WHERE timestamp > NOW() - INTERVAL '2 hours'
                       AND themes IS NOT NULL
                     GROUP BY 1, 2
                     ON CONFLICT (hour, theme) DO UPDATE SET
-                        signal_count  = EXCLUDED.signal_count,
-                        country_count = EXCLUDED.country_count,
-                        source_count  = EXCLUDED.source_count,
-                        avg_sentiment = EXCLUDED.avg_sentiment
+                        signal_count      = EXCLUDED.signal_count,
+                        country_count     = EXCLUDED.country_count,
+                        source_count      = EXCLUDED.source_count,
+                        avg_sentiment     = EXCLUDED.avg_sentiment,
+                        nlp_signal_count  = EXCLUDED.nlp_signal_count,
+                        avg_nlp_sentiment = EXCLUDED.avg_nlp_sentiment
                 """)
             print("Updated theme_hourly_v2")
         except Exception as e:
             print(f"theme_hourly_v2 update failed (non-fatal): {e}")
-        
-        # Update theme_country_hourly_v2 pre-aggregation (enables fast 168h concept queries)
+
+        # Update theme_country_hourly_v2 pre-aggregation (enables fast 168h concept queries).
+        # Same NLP coverage columns as theme_hourly_v2.
         try:
             async with pool.acquire() as conn:
                 await conn.execute("""
                     INSERT INTO theme_country_hourly_v2
-                        (hour, theme, country_code, signal_count, avg_sentiment)
+                        (hour, theme, country_code, signal_count, avg_sentiment,
+                         nlp_signal_count, avg_nlp_sentiment)
                     SELECT
                         date_trunc('hour', timestamp) AS hour,
                         unnest(themes)                AS theme,
                         country_code,
                         COUNT(*)                      AS signal_count,
-                        AVG(sentiment)                AS avg_sentiment
+                        AVG(sentiment)                AS avg_sentiment,
+                        COUNT(*) FILTER (WHERE nlp_sentiment IS NOT NULL) AS nlp_signal_count,
+                        AVG(nlp_sentiment) FILTER (WHERE nlp_sentiment IS NOT NULL) AS avg_nlp_sentiment
                     FROM signals_v2
                     WHERE timestamp > NOW() - INTERVAL '2 hours'
                       AND themes IS NOT NULL
                       AND country_code IS NOT NULL
                     GROUP BY 1, 2, 3
                     ON CONFLICT (hour, theme, country_code) DO UPDATE SET
-                        signal_count  = EXCLUDED.signal_count,
-                        avg_sentiment = EXCLUDED.avg_sentiment
+                        signal_count      = EXCLUDED.signal_count,
+                        avg_sentiment     = EXCLUDED.avg_sentiment,
+                        nlp_signal_count  = EXCLUDED.nlp_signal_count,
+                        avg_nlp_sentiment = EXCLUDED.avg_nlp_sentiment
                 """)
             print("Updated theme_country_hourly_v2")
         except Exception as e:
