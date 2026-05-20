@@ -48,13 +48,73 @@ SUPPORTED_LANGS = {"en", "es", "fr", "pt", "ar", "it", "de"}
 # token, matching what the lexicon scorer does at runtime.
 TOKEN_RE = re.compile(r"\w+", re.UNICODE)
 
-# Tokens that are common across topics and contribute little sentiment signal
-# should not become lexicon entries even if their mean is non-zero by chance.
-# This is a conservative stoplist — the min-freq/max-freq filters remove most
-# noise; the stoplist catches single-letter and pure-digit tokens that pass
-# through TOKEN_RE for languages with diacritics.
-GLOBAL_STOPWORDS = {"a", "an", "the", "and", "or", "of", "to", "in", "on", "at", "for", "by",
-                    "is", "was", "are", "with", "as", "it", "be", "from", "this", "that"}
+# Per-language stopword lists. Without these, mining picks up high-frequency
+# closed-class tokens (articles, prepositions, auxiliaries) whose mean
+# nlp_sentiment is non-zero because the per-language corpus is structurally
+# biased (Spanish crisis coverage skews negative, etc.) but that carry no
+# discriminative signal per headline. Lists are intentionally conservative —
+# only the most common function words. Domain-charged terms ("crisis",
+# "victoria", etc.) stay miner-eligible.
+STOPWORDS_BY_LANG: dict[str, set[str]] = {
+    "en": {
+        "a", "an", "the", "and", "or", "of", "to", "in", "on", "at", "for", "by",
+        "is", "was", "are", "with", "as", "it", "be", "from", "this", "that",
+        "has", "have", "had", "but", "not", "no", "so", "if", "than", "then",
+        "into", "over", "out", "up", "down", "off", "about", "after", "before",
+        "i", "you", "he", "she", "we", "they", "his", "her", "their", "its",
+        "will", "would", "can", "could", "should", "may", "might", "must",
+    },
+    "es": {
+        "el", "la", "los", "las", "un", "una", "unos", "unas", "de", "del", "al",
+        "en", "y", "o", "u", "a", "con", "por", "para", "que", "se", "su", "sus",
+        "lo", "le", "les", "ya", "no", "sí", "si", "es", "son", "fue", "era",
+        "ha", "han", "más", "mas", "como", "pero", "porque", "este", "esta",
+        "esto", "ese", "esa", "eso", "aquel", "aquella", "aquello", "yo", "tú",
+        "él", "ella", "nos", "vos", "ustedes", "ellos", "ellas", "muy", "ser",
+        "estar", "tener", "hacer", "ir",
+    },
+    "fr": {
+        "le", "la", "les", "un", "une", "des", "de", "du", "et", "ou", "à",
+        "au", "aux", "en", "dans", "pour", "par", "sur", "sous", "avec", "sans",
+        "vers", "chez", "ne", "pas", "plus", "moins", "ce", "cette", "ces",
+        "qui", "que", "quoi", "dont", "où", "il", "elle", "ils", "elles", "je",
+        "tu", "nous", "vous", "se", "son", "sa", "ses", "leur", "leurs", "y",
+        "mais", "comme", "si", "très", "tout", "tous", "toute", "toutes",
+        "est", "sont", "était", "été", "a", "ont", "avoir", "être",
+    },
+    "pt": {
+        "o", "a", "os", "as", "um", "uma", "uns", "umas", "de", "do", "da",
+        "dos", "das", "no", "na", "nos", "nas", "ao", "aos", "à", "às", "e",
+        "ou", "em", "por", "para", "com", "sem", "que", "se", "su", "seu",
+        "sua", "seus", "suas", "ele", "ela", "eles", "elas", "eu", "tu", "nós",
+        "vós", "lhe", "lhes", "me", "te", "nos", "vos", "não", "sim", "é",
+        "são", "foi", "era", "tem", "têm", "ter", "ser", "estar",
+        "mais", "menos", "como", "mas", "porque",
+    },
+    "it": {
+        "il", "lo", "la", "i", "gli", "le", "un", "uno", "una", "di", "del",
+        "dello", "della", "dei", "degli", "delle", "a", "al", "allo", "alla",
+        "ai", "agli", "alle", "da", "dal", "dallo", "dalla", "dai", "dagli",
+        "dalle", "in", "nel", "nello", "nella", "nei", "negli", "nelle", "con",
+        "per", "su", "tra", "fra", "e", "o", "ma", "che", "non", "non",
+        "è", "sono", "era", "ha", "hanno", "essere", "avere",
+    },
+    "de": {
+        "der", "die", "das", "den", "dem", "des", "ein", "eine", "einen", "einem",
+        "eines", "und", "oder", "in", "im", "an", "am", "auf", "mit", "für",
+        "bei", "von", "zu", "zum", "zur", "aus", "nach", "über", "unter", "vor",
+        "nicht", "kein", "keine", "ist", "sind", "war", "waren", "hat", "haben",
+        "wird", "werden", "wurde", "wurden", "ich", "du", "er", "sie", "es",
+        "wir", "ihr", "mein", "dein", "sein", "ihre", "unser", "euer", "als",
+        "wenn", "weil", "dass", "ob", "aber", "doch",
+    },
+    "ar": {
+        "في", "من", "إلى", "على", "عن", "مع", "و", "أو", "ال", "أن", "إن",
+        "لا", "لم", "لن", "كان", "كانت", "هو", "هي", "هم", "أنا", "أنت",
+        "نحن", "هذا", "هذه", "ذلك", "تلك", "الذي", "التي", "ما", "ماذا",
+        "كما", "ثم", "أيضا", "لكن", "إذا", "حتى", "بين", "بعد", "قبل",
+    },
+}
 
 PRIORITY_SELECT_SQL = """
 SELECT headline, source_lang, nlp_sentiment
@@ -113,9 +173,10 @@ async def _mine(
                 total_skipped_lang += 1
                 continue
             total_rows += 1
+            stopwords = STOPWORDS_BY_LANG.get(lang, set())
             seen_in_row: set[str] = set()
             for tok in _tokens(row["headline"]):
-                if tok in GLOBAL_STOPWORDS:
+                if tok in stopwords:
                     continue
                 if len(tok) < 2 or tok.isdigit():
                     continue
