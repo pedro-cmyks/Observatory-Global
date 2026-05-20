@@ -69,11 +69,15 @@ SELECT
     source_lang,
     country_code,
     COUNT(*)::bigint AS rows,
+    COUNT(*) FILTER (
+        WHERE enrichment_method NOT IN ('transformer', 'lexicon', 'fast_neutral', 'topic_lexicon')
+    )::bigint AS gap_rows,
+    COUNT(*) FILTER (WHERE enrichment_method = 'provenance_only')::bigint AS provenance_only_rows,
     COUNT(*) FILTER (WHERE enrichment_method = 'raw')::bigint AS raw_rows,
     COUNT(*) FILTER (WHERE enrichment_method = 'transformer')::bigint AS transformer_rows
 FROM hot
 GROUP BY source_family, source_lang, country_code
-ORDER BY raw_rows DESC, rows DESC
+ORDER BY gap_rows DESC, rows DESC
 LIMIT $2
 """
 
@@ -100,7 +104,7 @@ async def build_report(hours: int, limit: int) -> dict[str, Any]:
             "target": "90-100% product-served rows have Atlas-owned enrichment",
             "coverage_pct": coverage_pct(atlas_owned, total),
             "summary": {k: int(v or 0) for k, v in summary.items()},
-            "largest_raw_gaps": [dict(row) for row in breakdown_rows],
+            "largest_enrichment_gaps": [dict(row) for row in breakdown_rows],
             "method_note": (
                 "Atlas-owned includes transformer and fast-lane method tags. "
                 "Provenance-only is reported separately and is not counted toward the SLA because "

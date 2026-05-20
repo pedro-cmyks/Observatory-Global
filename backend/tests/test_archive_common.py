@@ -16,7 +16,7 @@ from scripts.archive_common import (
 )
 from scripts.archive_query import query_archive
 from scripts.local_archive_worker import is_inside_window, parse_clock
-from scripts.nlp_sla_report import coverage_pct
+from scripts.nlp_sla_report import BREAKDOWN_SQL, coverage_pct
 
 
 def test_partition_path_is_date_and_family_scoped(tmp_path):
@@ -115,6 +115,12 @@ def test_parse_timestamp_normalizes_to_utc():
 def test_sla_coverage_pct():
     assert coverage_pct(90, 100) == 90.0
     assert coverage_pct(0, 0) == 100.0
+
+
+def test_sla_breakdown_reports_enrichment_gap_not_only_raw_rows():
+    assert "AS gap_rows" in BREAKDOWN_SQL
+    assert "provenance_only_rows" in BREAKDOWN_SQL
+    assert "ORDER BY gap_rows DESC" in BREAKDOWN_SQL
 
 
 def test_local_worker_window():
