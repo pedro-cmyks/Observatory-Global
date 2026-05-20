@@ -218,7 +218,7 @@ LEXICON_AR: dict[str, float] = {
     "حر": 1.5, "إنقاذ": 2, "تحسين": 1.5, "نجاح": 2,
 }
 
-LEXICONS: dict[str, dict[str, float]] = {
+_SEED_LEXICONS: dict[str, dict[str, float]] = {
     "en": LEXICON_EN,
     "es": LEXICON_ES,
     "fr": LEXICON_FR,
@@ -226,6 +226,46 @@ LEXICONS: dict[str, dict[str, float]] = {
     "ar": LEXICON_AR,
     "it": LEXICON_IT,
     "de": LEXICON_DE,
+}
+
+
+def _load_mined_lexicon(lang: str) -> dict[str, float]:
+    """Load mined vocabulary snapshot (issue #185) for a language if present.
+
+    Snapshots are checked into the repo at enrichment/lexicons/<lang>.mined.json
+    by backend/scripts/mine_lexicon_vocab.py. Missing files are normal (mining
+    has not run yet for that lang) and return an empty dict.
+    """
+    import json
+    import os
+
+    path = os.path.join(os.path.dirname(__file__), "lexicons", f"{lang}.mined.json")
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        if not isinstance(data, dict):
+            logger.warning("Mined lexicon %s is not a dict — ignoring", path)
+            return {}
+        return {str(k).lower(): float(v) for k, v in data.items()}
+    except Exception as exc:
+        logger.warning("Failed to load mined lexicon %s: %s", path, exc)
+        return {}
+
+
+def _merge_lexicons(seed: dict[str, float], mined: dict[str, float]) -> dict[str, float]:
+    """Compose seed + mined vocab. Seeds always win on conflict so curated
+    high-confidence weights are never overridden by automatically derived ones.
+    """
+    merged: dict[str, float] = dict(mined)
+    merged.update(seed)
+    return merged
+
+
+LEXICONS: dict[str, dict[str, float]] = {
+    lang: _merge_lexicons(seed, _load_mined_lexicon(lang))
+    for lang, seed in _SEED_LEXICONS.items()
 }
 
 # Script-based detection fallback when source_lang is unknown.

@@ -54,11 +54,11 @@ Six commits on `v3-intel-layer` (`09b95bb` → `43732a9`), six Fly deploys (vers
 - ✅ **Closed #182** (briefing sentiment timeout) — already done; this session reinforced via `/briefing/insight` parallel hardening.
 - 📝 **Progress comment #164** — ADR-0004 prune executed end-to-end, lexicon backfill shipped.
 - 📝 **Progress comment #171** — lexicon vocab expanded, plateau measured, follow-up tracked.
-- 🆕 **#183** — frontend rendering of sentiment_source badge + heat_countries panel.
-- 🆕 **#184** — NLP_WORKER_LIMIT bump experiment with decision rule.
-- 🆕 **#185** — corpus-mine lexicon vocab from transformer-tagged rows (breaks the 12% plateau).
-- 🆕 **#186** — `nlp_progress` should self-recompute totals instead of trusting delta math.
-- 🆕 **#187** — hot-AND-voluminous intersection lens for briefing.
+- 🆕 **#183** — frontend rendering of sentiment_source badge + heat_countries panel. OPEN.
+- 🆕 **#184** — NLP_WORKER_LIMIT bump experiment with decision rule. OPEN.
+- 🆕 **#185** — corpus-mine lexicon vocab from transformer-tagged rows (breaks the 12% plateau). OPEN.
+- ✅ **#186** — `nlp_progress` recompute landed in commit `613a21e`. /health.unprocessed_total now stays honest after external DELETEs. CLOSED.
+- ✅ **#187** — `heat_voluminous_countries` lens landed in commits `613a21e` + `3e0fce8`. Top-quartile-by-volume re-ranked by atlas_heat surfaces CO, NG, AR, AJ, BR right now. CLOSED.
 
 ### Routes / paths reference
 
