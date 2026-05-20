@@ -123,12 +123,19 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             GROUP BY h.country_code, c.name HAVING SUM(h.signal_count) > 10
             ORDER BY sentiment DESC LIMIT 10
         """, hours)
+        # theme_hourly_v2 is the live pre-agg populated by ingest_v2.refresh.
+        # The legacy signals_theme_hourly table from migration 006 is no longer
+        # written to and returns empty results.
         top_themes = await _fetch_section(conn, degraded_segments, "top_themes", """
             SELECT theme, SUM(signal_count)::bigint as count
-            FROM signals_theme_hourly
-            WHERE bucket > NOW() - ($1::int * INTERVAL '1 hour')
+            FROM theme_hourly_v2
+            WHERE hour > NOW() - ($1::int * INTERVAL '1 hour')
             GROUP BY theme ORDER BY count DESC LIMIT 10
         """, hours)
+        # TODO(#TBD): source_hourly_v2 pre-agg does not exist yet — high source_name
+        # cardinality (~86K unique/day) makes a (hour, source_name) table heavy.
+        # Track separately; meanwhile this section degrades to empty. Briefing
+        # already surfaces source counts in stats via country_hourly_v2.unique_sources.
         top_sources = await _fetch_section(conn, degraded_segments, "top_sources", """
             SELECT source_name, SUM(signal_count)::bigint as count
             FROM signals_source_hourly

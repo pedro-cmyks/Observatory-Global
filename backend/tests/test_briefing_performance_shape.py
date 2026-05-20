@@ -28,6 +28,16 @@ def test_briefing_uses_preaggregates_for_country_sentiment_sections():
     assert "FROM signals_v2 s JOIN countries_v2" not in source
 
 
+def test_briefing_top_themes_uses_theme_hourly_v2_not_dead_table():
+    """top_themes must read from theme_hourly_v2 (populated) not signals_theme_hourly (dead)."""
+    source = _get_briefing_source()
+    top_themes_section = source[source.index('"top_themes"'):source.index('"top_sources"')]
+
+    assert "FROM theme_hourly_v2" in top_themes_section
+    assert "FROM signals_theme_hourly" not in top_themes_section
+    assert "WHERE hour >" in top_themes_section
+
+
 def test_briefing_uses_parameterized_intervals_and_no_percent_interpolation():
     source = _get_briefing_source()
 
