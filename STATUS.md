@@ -1,9 +1,71 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-16 (Session 18 — video UX review + productization roadmap)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-20 (Session 19 — data throughput, NLP coverage, heat ranking, lexicon mining)
 
 ---
 
-## Current handoff (2026-05-16) — Session 18
+## Current handoff (2026-05-20) — Session 19
+
+Production is on `v3-intel-layer` at `763b3c9 feat(lexicon): first mined vocab snapshots from 15K transformer-tagged rows`.
+
+### Production state verified 2026-05-20
+
+- Fly `/health`: healthy.
+- `total_signals`: ~2.26M.
+- `rows_ingested_last_15m`: ~3K during latest check.
+- NLP backlog remains the core constraint:
+  - `unprocessed_24h`: ~179K.
+  - `unprocessed_total`: ~2.09M.
+  - worker is healthy, but current throughput is structurally below ingest velocity.
+- `nlp_worker`: Fly process group, `shared-cpu-2x`, 4GB, `NLP_WORKER_LIMIT` still conservative.
+
+### What shipped since the previous status
+
+| Commit | Area | Result |
+|--------|------|--------|
+| `09b95bb` | Migrations 025 + briefing insight | Pre-aggregates now track NLP coverage columns. |
+| `507c395` | Migration 026 | `country_hourly_v2` matview swap with NLP coverage. |
+| `70e39c0` | Sentiment fusion | `choose_sentiment()` selects NLP only when coverage is high enough; otherwise honest GDELT fallback. |
+| `82c0888` | Lexicon seeds | Expanded EN/ES/PT and added IT/DE seed lexicons; plateau confirmed. |
+| `1332a8d` | Briefing sources | Restored `top_sources` from bounded/cached `signals_v2`. |
+| `43732a9` | Heat ranking | Added `heat_countries` section; closes #149/#165 product side. |
+| `613a21e` + `3e0fce8` | Operational integrity | `nlp_progress` recomputes from ground truth; added `heat_voluminous_countries`. |
+| `afc68e5` → `763b3c9` | Lexicon mining | Added corpus miner, Docker script copy, stopword filtering, and first mined snapshots. |
+
+### Issues closed or updated
+
+- Closed: #149, #165, #186, #187.
+- Open and current:
+  - #183 — frontend must render `sentiment_source`, NLP coverage badge, heat panels.
+  - #184 — bump `NLP_WORKER_LIMIT` and measure memory/DB pressure.
+  - #185 — corpus mining infrastructure shipped, but quality target remains open. Current snapshots are strong for EN only; non-EN corpus is too small.
+  - #188 — define same-day processing SLA for incoming signals.
+  - #189 — define hot/cold storage and optional local-worker operating model.
+- Still relevant older data/product issues: #154, #157, #162, #164, #167, #171, #180.
+
+### Important findings
+
+1. Atlas has enough raw volume, but not enough normalized/enriched volume.
+2. Ingest velocity currently exceeds transformer NLP velocity by a wide margin.
+3. Lexicon backfill helps but does not solve multilingual quality by itself:
+   - manual seeds plateaued;
+   - corpus-mined EN expanded to ~1,920 tokens;
+   - non-EN mined snapshots remain tiny because transformer-tagged non-EN sample is too small.
+4. Heat ranking works as intended: it surfaces smaller/regional countries that raw volume ranking hides.
+5. Supabase IO becomes the limiting factor when we run broad updates or full-table backfills. Avoid all-table mutation patterns.
+
+### Next decision
+
+Before continuing implementation, decide the data operating model:
+
+- **A. Cloud-only acceleration:** increase Fly NLP capacity and keep Supabase as canonical hot+historical store.
+- **B. Hot/cold split:** Supabase keeps hot operational data and aggregates; local/cheap storage keeps raw historical archive and offline backfills.
+- **C. Hybrid worker:** local machine runs heavy offline NLP/backfill jobs and syncs curated results back to Supabase/Fly.
+
+Recommended direction: **B plus C carefully**. Keep Supabase as the 24h-30d operational surface, but move raw historical/bulk experimentation to local object/archive storage. Do not make the public app depend on the home machine being online.
+
+---
+
+## Previous handoff (2026-05-16) — Session 18
 
 Latest shipped production commit is still `2989dc5 docs: record production hotfix verification`; this session is documentation/research/roadmap only.
 

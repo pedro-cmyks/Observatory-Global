@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-20 (session 17 close — Opción A sentiment fusion live; migrations 025+026 applied; country_hourly_v2 matview swapped; heat_countries section ships #149/#165; ADR-0004 prune ran (241K rows); ~2.19M signals; coverage 8.0%)
+Last updated: 2026-05-20 (session 19 — Opción A sentiment fusion live; heat + heat_voluminous shipped; nlp_progress recompute landed; lexicon mining infra + first snapshots; main blocker is NLP throughput vs ingest velocity)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -8,16 +8,17 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
-## Current Session Context (2026-05-20, session 17 close)
+## Current Session Context (2026-05-20, session 19 close)
 
 - Active branch: `v3-intel-layer`; production branch. Do not merge into `main`.
 - PR #144 open against main: https://github.com/pedro-cmyks/Observatory-Global/pull/144
-- Production: Vercel (frontend auto-deploy), Fly.io `atlas-api-pedro` v160 (backend), Fly.io `nlp_worker` 4GB
-- Total signals: 2,191,567 (post ADR-0004 prune of 241K rows). Coverage NLP global 8.0%.
+- Production: Vercel (frontend auto-deploy), Fly.io `atlas-api-pedro` backend, Fly.io `nlp_worker` 4GB.
+- Latest known production commit: `763b3c9 feat(lexicon): first mined vocab snapshots from 15K transformer-tagged rows`.
+- Total signals: ~2.26M on latest `/health`. NLP backlog remains high (`unprocessed_total` ~2.09M, `unprocessed_24h` ~179K).
 - Atlas product framing: **public narrative intelligence console**, not a GDELT wrapper.
 - Preferred user path: `/brief` for readable orientation, then `/app` for full analyst investigation.
 
-### Session 17 closed with one full architectural pass:
+### Session 19 closed with data architecture pressure exposed:
 
 **Sentiment fusion (Opción A) end-to-end**
 - Migration 025: `theme_hourly_v2` + `theme_country_hourly_v2` gained `nlp_signal_count` + `avg_nlp_sentiment`.
@@ -42,20 +43,26 @@ Observatorio Global is a narrative intelligence system that tracks, analyzes, an
 - `nlp_progress` synced to ground truth post-prune (worker delta math doesn't self-correct — tracked in #186).
 - Lexicon vocab expansion: EN +110 terms, ES/PT +50, IT/DE seeds added. Hit rate plateau ~12% confirmed live.
 
-**Tests**: 236 passed, 6 skipped, 0 failed.
+**Follow-up commits after session 17 close**
+- `613a21e` + `3e0fce8`: `nlp_progress` recomputes ground truth and briefing exposes `heat_voluminous_countries`.
+- `afc68e5`: `backend/scripts/mine_lexicon_vocab.py` mines lexicon vocab from transformer-tagged rows.
+- `3d7d7af`: Dockerfile copies `backend/scripts` into the Fly image.
+- `1894128`: per-language stopword sets reject closed-class tokens.
+- `763b3c9`: first mined snapshots committed (`en.mined.json` ~1,920 entries; non-EN still tiny).
+
+**Tests**: 244 passed at lexicon mining stage; 238 passed before heat_voluminous deploy. Keep running full backend suite after touching data paths.
 
 ### Issues touched
 
-- ✅ Closed: #149 (volumetric US dominance), #165 (Atlas composite heat).
+- ✅ Closed: #149 (volumetric US dominance), #165 (Atlas composite heat), #186 (`nlp_progress` self-recompute), #187 (`heat_voluminous_countries` lens).
 - 📝 Progress comments on #164 (ADR-0004 prune executed), #171 (lexicon vocab expanded, plateau measured).
-- 🆕 Opened: #183 (frontend sentiment badge + heat panel), #184 (NLP_WORKER_LIMIT bump experiment), #185 (corpus-mine lexicon vocab), #186 (`nlp_progress` self-recompute), #187 (hot-AND-voluminous intersection lens).
+- 🆕 Still open: #183 (frontend sentiment badge + heat panel), #184 (NLP_WORKER_LIMIT bump experiment), #185 (corpus-mine lexicon vocab quality target).
 
 ### Next session priorities:
-1. **#184** — bump `NLP_WORKER_LIMIT` 25 → 100, observe Fly memory + Supabase IO over 24h, decide 100 vs 200.
-2. **#183** — frontend renders `sentiment_source` badge + new heat panel using exposed components.
-3. **#186** — `nlp_progress` recomputes counts at every cycle (delete partial index scan).
-4. **#185** — corpus-mine lexicon vocab from transformer-tagged rows to break the 12% seed plateau.
-5. **#187** — `heat_voluminous_countries` filtered lens (`volume >= percentile_75 AND ORDER BY atlas_heat`).
+1. **Data operating model decision** — cloud-only vs hot/cold split vs hybrid local worker. Do this before large backfills.
+2. **#184** — controlled `NLP_WORKER_LIMIT` bump experiment, with Fly memory + Supabase IO observation.
+3. **#185** — improve multilingual corpus mining; EN snapshot exists, non-EN remains too small.
+4. **#183** — frontend renders `sentiment_source`, NLP coverage, `heat_countries`, and `heat_voluminous_countries`.
 
 ### Reference docs:
 - `docs/STATUS.md` — current state, full session 17 inventory.
