@@ -6,6 +6,7 @@ that gate which signals enter the pipeline and which entities are kept.
 from __future__ import annotations
 
 import importlib
+import inspect
 import os
 
 import pytest
@@ -112,6 +113,14 @@ def test_columns_target_production_in_on_mode():
     pipeline = _reload_pipeline("on")
     cols = pipeline._columns()
     assert cols["sentiment_target"] == "nlp_sentiment"
+
+
+def test_sentiment_phase_marks_production_writes_as_transformer():
+    pipeline = _reload_pipeline("on")
+    source = inspect.getsource(pipeline._run_sentiment_phase)
+
+    assert "nlp_method=$6" in source
+    assert 'method = None if _shadow_writes() else "transformer"' in source
 
 
 # ── Sentiment mapping ────────────────────────────────────────────────────────

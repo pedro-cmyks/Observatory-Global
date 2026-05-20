@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from datetime import datetime, timezone
 
@@ -10,6 +11,27 @@ from app.core.gdelt_taxonomy import classify_source
 import httpx
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+BRIEFING_DB_TIMEOUT_SECONDS = float(os.getenv("BRIEFING_DB_TIMEOUT_SECONDS", "8"))
+
+
+async def _fetch_section(
+    conn,
+    degraded_segments: list[str],
+    segment: str,
+    query: str,
+    *args,
+    row: bool = False,
+):
+    try:
+        if row:
+            return await conn.fetchrow(query, *args, timeout=BRIEFING_DB_TIMEOUT_SECONDS)
+        return await conn.fetch(query, *args, timeout=BRIEFING_DB_TIMEOUT_SECONDS)
+    except Exception as exc:
+        degraded_segments.append(segment)
+        logger.warning("briefing section degraded: %s: %s", segment, exc)
+        return None if row else []
 
 def _build_theme_country_map(rows) -> list:
     """Group theme_country_hourly rows into [{theme, countries: [{code, name, count}]}]."""
@@ -60,118 +82,74 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
 
     async with db.pool.acquire() as conn:
         await conn.execute("SET statement_timeout = 15000")
+        degraded_segments: list[str] = []
         has_theme_country_hourly = await conn.fetchval(
             "SELECT to_regclass('theme_country_hourly_v2') IS NOT NULL"
         )
-        if hours > 24:
-            # Use pre-agg tables to avoid full signals_v2 scan
-            top_countries = await conn.fetch("""
-                SELECT h.country_code, c.name,
-                       SUM(h.signal_count)::bigint as total,
-                       CASE WHEN SUM(h.signal_count) > 0
-                            THEN (SUM(h.avg_sentiment * h.signal_count) / SUM(h.signal_count))::float
-                            ELSE 0::float END as sentiment
-                FROM country_hourly_v2 h
-                JOIN countries_v2 c ON h.country_code = c.code
-                WHERE h.hour > NOW() - INTERVAL '%s hours'
-                GROUP BY h.country_code, c.name ORDER BY total DESC LIMIT 10
-            """ % hours)
-            negative_sentiment = await conn.fetch("""
-                SELECT h.country_code, c.name,
-                       CASE WHEN SUM(h.signal_count) > 0
-                            THEN (SUM(h.avg_sentiment * h.signal_count) / SUM(h.signal_count))::float
-                            ELSE 0::float END as sentiment,
-                       SUM(h.signal_count)::bigint as total
-                FROM country_hourly_v2 h
-                JOIN countries_v2 c ON h.country_code = c.code
-                WHERE h.hour > NOW() - INTERVAL '%s hours'
-                GROUP BY h.country_code, c.name HAVING SUM(h.signal_count) > 10
-                ORDER BY sentiment ASC LIMIT 10
-            """ % hours)
-            positive_sentiment = await conn.fetch("""
-                SELECT h.country_code, c.name,
-                       CASE WHEN SUM(h.signal_count) > 0
-                            THEN (SUM(h.avg_sentiment * h.signal_count) / SUM(h.signal_count))::float
-                            ELSE 0::float END as sentiment,
-                       SUM(h.signal_count)::bigint as total
-                FROM country_hourly_v2 h
-                JOIN countries_v2 c ON h.country_code = c.code
-                WHERE h.hour > NOW() - INTERVAL '%s hours'
-                GROUP BY h.country_code, c.name HAVING SUM(h.signal_count) > 10
-                ORDER BY sentiment DESC LIMIT 10
-            """ % hours)
-            if has_theme_country_hourly:
-                top_themes = await conn.fetch("""
-                    SELECT theme, SUM(signal_count)::bigint as count
-                    FROM theme_country_hourly_v2
-                    WHERE hour > NOW() - INTERVAL '%s hours'
-                    GROUP BY theme ORDER BY count DESC LIMIT 10
-                """ % hours)
-            else:
-                top_themes = await conn.fetch("""
-                    SELECT theme, SUM(signal_count)::bigint as count
-                    FROM signals_theme_hourly
-                    WHERE bucket > NOW() - INTERVAL '%s hours'
-                    GROUP BY theme ORDER BY count DESC LIMIT 10
-                """ % hours)
-            top_sources = await conn.fetch("""
-                SELECT source_name, SUM(signal_count)::bigint as count
-                FROM signals_source_hourly
-                WHERE bucket > NOW() - INTERVAL '%s hours' AND source_name IS NOT NULL
-                GROUP BY source_name ORDER BY count DESC LIMIT 5
-            """ % hours)
-            stats = await conn.fetchrow("""
-                SELECT SUM(signal_count)::bigint as total_signals,
-                       COUNT(DISTINCT country_code) as countries,
-                       SUM(unique_sources)::bigint as sources,
-                       CASE WHEN SUM(signal_count) > 0
-                            THEN SUM(avg_sentiment * signal_count) / SUM(signal_count)
-                            ELSE 0 END as avg_sentiment
-                FROM country_hourly_v2
-                WHERE hour > NOW() - INTERVAL '%s hours'
-            """ % hours)
-        else:
-            top_countries = await conn.fetch("""
-                SELECT s.country_code, c.name, COUNT(*) as total, AVG(s.sentiment) as sentiment
-                FROM signals_v2 s JOIN countries_v2 c ON s.country_code = c.code
-                WHERE s.timestamp > NOW() - INTERVAL '%s hours'
-                GROUP BY s.country_code, c.name ORDER BY total DESC LIMIT 10
-            """ % hours)
-            negative_sentiment = await conn.fetch("""
-                SELECT s.country_code, c.name, AVG(s.sentiment) as sentiment, COUNT(*) as total
-                FROM signals_v2 s JOIN countries_v2 c ON s.country_code = c.code
-                WHERE s.timestamp > NOW() - INTERVAL '%s hours'
-                GROUP BY s.country_code, c.name HAVING COUNT(*) > 10
-                ORDER BY sentiment ASC LIMIT 10
-            """ % hours)
-            positive_sentiment = await conn.fetch("""
-                SELECT s.country_code, c.name, AVG(s.sentiment) as sentiment, COUNT(*) as total
-                FROM signals_v2 s JOIN countries_v2 c ON s.country_code = c.code
-                WHERE s.timestamp > NOW() - INTERVAL '%s hours'
-                GROUP BY s.country_code, c.name HAVING COUNT(*) > 10
-                ORDER BY sentiment DESC LIMIT 10
-            """ % hours)
-            top_themes = await conn.fetch("""
-                SELECT unnest(themes) as theme, COUNT(*) as count
-                FROM signals_v2 WHERE timestamp > NOW() - INTERVAL '%s hours'
-                GROUP BY theme ORDER BY count DESC LIMIT 10
-            """ % hours)
-            top_sources = await conn.fetch("""
-                SELECT source_name, COUNT(*) as count
-                FROM signals_v2
-                WHERE timestamp > NOW() - INTERVAL '%s hours' AND source_name IS NOT NULL
-                GROUP BY source_name ORDER BY count DESC LIMIT 5
-            """ % hours)
-            stats = await conn.fetchrow("""
-                SELECT COUNT(*) as total_signals, COUNT(DISTINCT country_code) as countries,
-                       COUNT(DISTINCT source_name) as sources, AVG(sentiment) as avg_sentiment
-                FROM signals_v2 WHERE timestamp > NOW() - INTERVAL '%s hours'
-            """ % hours)
+        # Use pre-agg tables for every window, including 24h. The previous 24h
+        # path grouped signals_v2 directly and could trip Supabase IO/timeouts.
+        top_countries = await _fetch_section(conn, degraded_segments, "top_countries", """
+            SELECT h.country_code, c.name,
+                   SUM(h.signal_count)::bigint as total,
+                   CASE WHEN SUM(h.signal_count) > 0
+                        THEN (SUM(h.avg_sentiment * h.signal_count) / SUM(h.signal_count))::float
+                        ELSE 0::float END as sentiment
+            FROM country_hourly_v2 h
+            JOIN countries_v2 c ON h.country_code = c.code
+            WHERE h.hour > NOW() - ($1::int * INTERVAL '1 hour')
+            GROUP BY h.country_code, c.name ORDER BY total DESC LIMIT 10
+        """, hours)
+        negative_sentiment = await _fetch_section(conn, degraded_segments, "negative_sentiment", """
+            SELECT h.country_code, c.name,
+                   CASE WHEN SUM(h.signal_count) > 0
+                        THEN (SUM(h.avg_sentiment * h.signal_count) / SUM(h.signal_count))::float
+                        ELSE 0::float END as sentiment,
+                   SUM(h.signal_count)::bigint as total
+            FROM country_hourly_v2 h
+            JOIN countries_v2 c ON h.country_code = c.code
+            WHERE h.hour > NOW() - ($1::int * INTERVAL '1 hour')
+            GROUP BY h.country_code, c.name HAVING SUM(h.signal_count) > 10
+            ORDER BY sentiment ASC LIMIT 10
+        """, hours)
+        positive_sentiment = await _fetch_section(conn, degraded_segments, "positive_sentiment", """
+            SELECT h.country_code, c.name,
+                   CASE WHEN SUM(h.signal_count) > 0
+                        THEN (SUM(h.avg_sentiment * h.signal_count) / SUM(h.signal_count))::float
+                        ELSE 0::float END as sentiment,
+                   SUM(h.signal_count)::bigint as total
+            FROM country_hourly_v2 h
+            JOIN countries_v2 c ON h.country_code = c.code
+            WHERE h.hour > NOW() - ($1::int * INTERVAL '1 hour')
+            GROUP BY h.country_code, c.name HAVING SUM(h.signal_count) > 10
+            ORDER BY sentiment DESC LIMIT 10
+        """, hours)
+        top_themes = await _fetch_section(conn, degraded_segments, "top_themes", """
+            SELECT theme, SUM(signal_count)::bigint as count
+            FROM signals_theme_hourly
+            WHERE bucket > NOW() - ($1::int * INTERVAL '1 hour')
+            GROUP BY theme ORDER BY count DESC LIMIT 10
+        """, hours)
+        top_sources = await _fetch_section(conn, degraded_segments, "top_sources", """
+            SELECT source_name, SUM(signal_count)::bigint as count
+            FROM signals_source_hourly
+            WHERE bucket > NOW() - ($1::int * INTERVAL '1 hour') AND source_name IS NOT NULL
+            GROUP BY source_name ORDER BY count DESC LIMIT 5
+        """, hours)
+        stats = await _fetch_section(conn, degraded_segments, "stats", """
+            SELECT SUM(signal_count)::bigint as total_signals,
+                   COUNT(DISTINCT country_code) as countries,
+                   SUM(unique_sources)::bigint as sources,
+                   CASE WHEN SUM(signal_count) > 0
+                        THEN SUM(avg_sentiment * signal_count) / SUM(signal_count)
+                        ELSE 0 END as avg_sentiment
+            FROM country_hourly_v2
+            WHERE hour > NOW() - ($1::int * INTERVAL '1 hour')
+        """, hours, row=True)
 
         # Theme-country: always use 24h window — fast index lookup, "right now" framing
         top_theme_codes = [r['theme'] for r in top_themes[:6]]
         if top_theme_codes and has_theme_country_hourly:
-            theme_country_rows = await conn.fetch("""
+            theme_country_rows = await _fetch_section(conn, degraded_segments, "theme_country", """
                 SELECT tc.theme, tc.country_code, c.name as country_name,
                        SUM(tc.signal_count)::bigint as cnt
                 FROM theme_country_hourly_v2 tc
@@ -184,10 +162,18 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         else:
             theme_country_rows = []
 
+        stats = stats or {
+            "total_signals": 0,
+            "countries": 0,
+            "sources": 0,
+            "avg_sentiment": 0,
+        }
 
         result = {
             "period_hours": hours,
             "generated_at": datetime.now(timezone.utc).isoformat(),
+            "degraded": bool(degraded_segments),
+            "degraded_segments": degraded_segments,
             "stats": {
                 "total_signals": stats['total_signals'] or 0,
                 "countries": stats['countries'] or 0,

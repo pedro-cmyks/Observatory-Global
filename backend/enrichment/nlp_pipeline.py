@@ -427,12 +427,17 @@ async def _run_sentiment_phase(conn: asyncpg.Connection, limit: int, dry_run: bo
             f"SET {cols['sentiment_target']}=$1, "
             f"    {cols['confidence_target']}=$2, "
             f"    {cols['processed_at_target']}=$3, "
-            f"    nlp_model_version=$5 "
+            f"    nlp_model_version=$5, "
+            f"    nlp_method=$6 "
             f"WHERE id=$4"
         )
+        method = None if _shadow_writes() else "transformer"
         await conn.executemany(
             update_sql,
-            [(score, conf, ts, sid, MODEL_VERSION_TAG) for (score, conf, ts, sid) in records],
+            [
+                (score, conf, ts, sid, MODEL_VERSION_TAG, method)
+                for (score, conf, ts, sid) in records
+            ],
         )
     logger.info("Sentiment[%s]: %d signals (model=%s)", MODEL_VERSION_TAG, len(records), model)
     return len(records)
