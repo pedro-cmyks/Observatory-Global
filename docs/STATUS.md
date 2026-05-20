@@ -1,6 +1,82 @@
 # Project Status
 
-## Current Handoff — 2026-05-19 (session 16 start — signal_class landed)
+## Current Handoff — 2026-05-20 (session 17 close — Opción A end-to-end + atlas_heat surface)
+
+### What shipped this session
+
+Six commits on `v3-intel-layer` (`09b95bb` → `43732a9`), six Fly deploys (versions 156 → 161), DB-level changes via Supabase MCP. Production verified live throughout.
+
+**Database**
+- Migration **025** — `theme_hourly_v2` + `theme_country_hourly_v2` gained `nlp_signal_count INTEGER NOT NULL DEFAULT 0` and `avg_nlp_sentiment NUMERIC`. Additive, metadata-only `ALTER ADD COLUMN`, no rewrite.
+- Migration **026** — `country_hourly_v2` matview swapped to add the same NLP coverage columns. Build-populate-rename so briefing reads never saw an empty matview.
+- ADR-0004 prune ran end-to-end via Supabase MCP — **241,656 rows deleted** in batches (25k → 50k), `VACUUM ANALYZE` completed, `signals_v2` size unchanged on disk but `dead_tup = 0` and ~240k pages available for new INSERTs.
+- `signals_v2` autovacuum tuned: `scale_factor = 0.05`, `cost_delay = 10`. NLP backfill UPDATE bloat now triggers vacuum at ~107K dead tuples instead of ~475K.
+- `nlp_sample_queue` truncated (610K zombie ids; worker preferred fresh since commit `7472aba`, queue never drained).
+- `nlp_progress` synced to ground truth (worker's cached delta math went stale after the external DELETE; manual `UPDATE` until #186 fixes the recompute path).
+
+**Backend code**
+- `app/routers/briefing.py` — every country-shaped SQL is now a CTE that pulls both `gdelt_sentiment` and `nlp_sentiment` per bucket and a `chosen_sentiment_raw` expression that ORDER BYs honestly.
+- `app/services/sentiment_fusion.py` — new module. `choose_sentiment(gdelt_raw, nlp_raw, nlp_coverage)` picks NLP transformer when bucket coverage ≥ 0.30 and rescales by `NLP_SENTIMENT_SCALE = 2.37` so the value lands on the same ±0.1 frontend threshold as GDELT. Both constants env-tunable.
+- Briefing response gains `sentiment_source` (`"nlp"` | `"gdelt"`) and `nlp_coverage` on every country row + on global stats.
+- New section `heat_countries` reads `country_heat_v2` (#165) and ranks by `atlas_heat`. Each entry exposes the full component breakdown (velocity, surprise, diversity, voice, polyphony, geo_confidence, duplication).
+- `top_themes` switched from dead `signals_theme_hourly` to live `theme_hourly_v2`.
+- `top_sources` switched from dead `signals_source_hourly` to `signals_v2` direct scan (Redis-cached 15–30 min, single bounded GROUP BY per cache miss).
+- `/briefing/insight` mirrors the `/briefing` hardening — `country_hourly_v2` instead of raw `signals_v2`, parameterized `$1::int * INTERVAL '1 hour'`, every section through `_fetch_section` with degraded fallback.
+- `ingest_v2.refresh` writes `nlp_signal_count` + `avg_nlp_sentiment` via `FILTER (WHERE nlp_sentiment IS NOT NULL)` in the same INSERT pass — zero IO overhead.
+- Lexicon vocab expanded: EN +110 terms, ES/PT +50, new `IT` and `DE` seed lexicons. Hit rate measured live at 12% (news headlines are mostly factual — manual seeds have a ceiling). Coverage moved 7.8% → 8.0%.
+
+**Tests**
+- `tests/test_briefing_performance_shape.py` — guardrails for sentiment-preagg use, parameterized intervals, degraded response shape, top_themes ≠ dead-table, top_sources ≠ dead-table, heat_countries section structure.
+- `tests/test_briefing_sentiment_fusion.py` — 7 cases for `choose_sentiment` boundary behavior.
+- `tests/test_ingest_pre_agg_nlp_coverage.py` — pins the NLP coverage SQL into both pre-agg INSERTs.
+- Full suite: **236 passed, 6 skipped, 0 failed**.
+
+### Live production state (2026-05-20 13:55 UTC)
+
+| Metric | Value |
+|---|---|
+| Image | `deployment-01KS2P*` (v160) — see `fly status` |
+| `signals_v2` total | 2,191,567 |
+| Over-15d unprocessed | 0 (post-prune) |
+| Lexicon-tagged | 7,300 |
+| Transformer-tagged | 35,550 |
+| Global NLP coverage | **8.0%** |
+| Briefing fusion threshold | 0.30 (env-tunable) |
+| Briefing API | `degraded=false`, all 6 sections populated |
+| heat_countries top 5 | LB · NI · GZ · DO · MB |
+| top_countries top 5 | US · CN · GB · RU · IN |
+| top_sources top 3 | zazoom.it · indiatimes.com · 163.com |
+
+### Issues touched
+
+- ✅ **Closed #149** (volumetric US dominance) — heat_countries lens ships dual-rank.
+- ✅ **Closed #165** (Atlas composite heat) — atlas_heat consumed in briefing.
+- ✅ **Closed #182** (briefing sentiment timeout) — already done; this session reinforced via `/briefing/insight` parallel hardening.
+- 📝 **Progress comment #164** — ADR-0004 prune executed end-to-end, lexicon backfill shipped.
+- 📝 **Progress comment #171** — lexicon vocab expanded, plateau measured, follow-up tracked.
+- 🆕 **#183** — frontend rendering of sentiment_source badge + heat_countries panel.
+- 🆕 **#184** — NLP_WORKER_LIMIT bump experiment with decision rule.
+- 🆕 **#185** — corpus-mine lexicon vocab from transformer-tagged rows (breaks the 12% plateau).
+- 🆕 **#186** — `nlp_progress` should self-recompute totals instead of trusting delta math.
+- 🆕 **#187** — hot-AND-voluminous intersection lens for briefing.
+
+### Routes / paths reference
+
+- New module: `backend/app/services/sentiment_fusion.py` (importable, pure, unit-testable, free of FastAPI circular imports).
+- New migrations: `backend/migrations/025_pre_agg_nlp_coverage.sql`, `backend/migrations/026_country_hourly_v2_nlp_coverage.sql`.
+- New tests: `backend/tests/test_briefing_sentiment_fusion.py`, `backend/tests/test_ingest_pre_agg_nlp_coverage.py`.
+- Lexicon: `backend/enrichment/lexicon_sentiment.py` (EN/ES/FR/PT/AR/IT/DE).
+- Existing matview consumed: `country_heat_v2` (mig 017) — read via briefing `heat_countries` section.
+
+### Honest verdict
+
+The architecture is correct and the API is honest. Coverage is still 8% because the worker can't outrun ingest at `NLP_WORKER_LIMIT=25` and the lexicon seed approach caps at ~12% hit rate. Fusion will not flip to `sentiment_source = "nlp"` at scale until either (a) the worker is bumped per #184, (b) corpus-mined vocab ships per #185, or (c) the coverage threshold is dropped from 0.30 via the `BRIEFING_NLP_COVERAGE_THRESHOLD` env var.
+
+Backend foundation for the next visible UX leap is in place — frontend wiring tracked in #183.
+
+---
+
+## Previous handoff — 2026-05-19 (session 16 start — signal_class landed)
 
 ### Session 16 — `signal_class` semantic provenance live (Track B.1)
 

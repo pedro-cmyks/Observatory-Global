@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-19 (session 15 close — 4 new ingest sources live; NLP worker 4GB with xlm-v1 multilingual confirmed; migrations 019+020 applied; 2.28M signals)
+Last updated: 2026-05-20 (session 17 close — Opción A sentiment fusion live; migrations 025+026 applied; country_hourly_v2 matview swapped; heat_countries section ships #149/#165; ADR-0004 prune ran (241K rows); ~2.19M signals; coverage 8.0%)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -8,42 +8,59 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
-## Current Session Context (2026-05-19, session 15 close)
+## Current Session Context (2026-05-20, session 17 close)
 
 - Active branch: `v3-intel-layer`; production branch. Do not merge into `main`.
 - PR #144 open against main: https://github.com/pedro-cmyks/Observatory-Global/pull/144
-- Production: Vercel (frontend auto-deploy), Fly.io `atlas-api-pedro` (backend), Fly.io `nlp_worker` (4GB)
-- Total signals: 2,279,950. Ingest lag 4.1 min. 3849 rows/15min.
+- Production: Vercel (frontend auto-deploy), Fly.io `atlas-api-pedro` v160 (backend), Fly.io `nlp_worker` 4GB
+- Total signals: 2,191,567 (post ADR-0004 prune of 241K rows). Coverage NLP global 8.0%.
 - Atlas product framing: **public narrative intelligence console**, not a GDELT wrapper.
 - Preferred user path: `/brief` for readable orientation, then `/app` for full analyst investigation.
 
-### Session 15 closed with two parallel tracks:
+### Session 17 closed with one full architectural pass:
 
-**Track A (Claude) — Multi-source ingestion**:
-- 4 new ingest services live: NewsData.io (multilingual), MediaStack (ES/PT), NewsAPI.org (EN crisis queries), Reddit public API (social commentary)
-- Fly secrets set: `NEWSDATA_API_KEY`, `MEDIASTACK_API_KEY`, `NEWSAPI_KEY`
-- Volume projection: ~99.7K signals/day total (GDELT ~72K + new ~27.6K)
-- `backend/.env.example` documents all env vars
+**Sentiment fusion (Opción A) end-to-end**
+- Migration 025: `theme_hourly_v2` + `theme_country_hourly_v2` gained `nlp_signal_count` + `avg_nlp_sentiment`.
+- Migration 026: `country_hourly_v2` matview swapped (build-populate-rename) with the same NLP coverage columns.
+- `app/services/sentiment_fusion.py` — `choose_sentiment(gdelt_raw, nlp_raw, coverage)` picks NLP when bucket coverage ≥ `BRIEFING_NLP_COVERAGE_THRESHOLD` (default 0.30) and rescales by `NLP_SENTIMENT_SCALE = 2.37` (calibrated from GDELT stddev 3.99 / NLP stddev 1.68 measured live).
+- Briefing API exposes `sentiment_source` (`"nlp"` | `"gdelt"`) + `nlp_coverage` on every country row + global stats.
+- `negative_sentiment` / `positive_sentiment` order by the chosen sentiment (computed in SQL via CASE), not always-GDELT.
 
-**Track B (Codex) — NLP worker stabilization + Topic Intelligence**:
-- Commit `e4e8f92`
-- `nlp_worker` raised to `shared-cpu-2x:4096MB`, standby stopped
-- Migrations `019_atlas_topic_intelligence.sql` + `020_nlp_progress_indexes.sql` applied
-- **Multilingual NLP CONFIRMED**: logs show `Sentiment[xlm-v1]`, `NER[xlm-v1]`, `Framing[xlm-v1]`. Cycle 231.5s, error=no
-- `NLP_SAMPLE_REFRESH_EVERY=0`, `NLP_SAMPLE_CLEANUP_LIMIT=50` set in prod
-- 27 tests pass on NLP pipeline + worker + topic intelligence schema
+**Heat ranking surface (#149 + #165 closed)**
+- New `heat_countries` section in briefing reads `country_heat_v2` and ranks by `atlas_heat`.
+- Each entry exposes full component breakdown (velocity, surprise, diversity, voice, polyphony, geo_confidence, duplication).
+- Sits next to `top_countries` (volume rank) so the briefing surfaces both lenses; nothing replaced.
+
+**Briefing hygiene**
+- `top_themes` switched from dead `signals_theme_hourly` to `theme_hourly_v2`.
+- `top_sources` switched from dead `signals_source_hourly` to a bounded `signals_v2` scan, Redis-cached 15–30 min.
+- `/briefing/insight` mirrors `/briefing` hardening — `country_hourly_v2` + parameterized intervals + `_fetch_section` degraded path.
+
+**Data ops via Supabase MCP**
+- ADR-0004 prune: 241,656 rows deleted (5 batches, 25k–50k each), `VACUUM ANALYZE` complete, `signals_v2` autovacuum tuned (`scale_factor=0.05`, `cost_delay=10`).
+- `nlp_sample_queue` truncated (610K zombie ids — worker prioritized fresh since `7472aba`, queue never drained).
+- `nlp_progress` synced to ground truth post-prune (worker delta math doesn't self-correct — tracked in #186).
+- Lexicon vocab expansion: EN +110 terms, ES/PT +50, IT/DE seeds added. Hit rate plateau ~12% confirmed live.
+
+**Tests**: 236 passed, 6 skipped, 0 failed.
+
+### Issues touched
+
+- ✅ Closed: #149 (volumetric US dominance), #165 (Atlas composite heat).
+- 📝 Progress comments on #164 (ADR-0004 prune executed), #171 (lexicon vocab expanded, plateau measured).
+- 🆕 Opened: #183 (frontend sentiment badge + heat panel), #184 (NLP_WORKER_LIMIT bump experiment), #185 (corpus-mine lexicon vocab), #186 (`nlp_progress` self-recompute), #187 (hot-AND-voluminous intersection lens).
 
 ### Next session priorities:
-1. ~~Verify multilingual NLP~~ DONE (xlm-v1 confirmed by Codex)
-2. Add `signal_class` + `narrative_cluster_id` to signals_v2 (migration 021)
-3. Voice Mix component in CountryBrief (stacked bar: local-lang / international / social)
-4. NewsAPI refactor: 6 evergreen + 2 dynamic from GDELT spikes + 36 req/day analyst reserve
-5. Validate HuggingFace tokenizer warning on `twitter-xlm-roberta-base-sentiment`
-6. Resolve `country_heat_v2` refresh timeout
+1. **#184** — bump `NLP_WORKER_LIMIT` 25 → 100, observe Fly memory + Supabase IO over 24h, decide 100 vs 200.
+2. **#183** — frontend renders `sentiment_source` badge + new heat panel using exposed components.
+3. **#186** — `nlp_progress` recomputes counts at every cycle (delete partial index scan).
+4. **#185** — corpus-mine lexicon vocab from transformer-tagged rows to break the 12% seed plateau.
+5. **#187** — `heat_voluminous_countries` filtered lens (`volume >= percentile_75 AND ORDER BY atlas_heat`).
 
 ### Reference docs:
-- `docs/STATUS.md` — current state, validation results
-- `docs/superpowers/plans/2026-05-18-multisource-intelligence-hardening.md` — original plan
+- `docs/STATUS.md` — current state, full session 17 inventory.
+- `docs/adr/ADR-0004-nlp-stratified-sampling.md` — stratified + prune strategy (approved, executed).
+- `docs/methodology/atlas-heat.md` — `country_heat_v2` formula reference.
 
 ### Key patterns (established across sessions 13–14)
 
@@ -66,6 +83,19 @@ Observatorio Global is a narrative intelligence system that tracks, analyzes, an
 - NLP env flags in prod: `NLP_SAMPLE_REFRESH_EVERY=0`, `NLP_SAMPLE_CLEANUP_LIMIT=50` — do NOT change without testing
 - NLP worker confirmed multilingual: logs `Sentiment[xlm-v1]`, `NER[xlm-v1]`, `Framing[xlm-v1]`. Throughput 25 rows/cycle stable — do NOT raise without observing DB pressure
 - `npm run build` (not `tsc --noEmit`) is the canonical build check — Vite uses `tsc -b` (stricter)
+
+### Patterns added session 17
+
+- **Sentiment fusion**: never sub-in NLP for GDELT silently. Read both, choose via `choose_sentiment(gdelt_raw, nlp_raw, nlp_coverage)`, rescale NLP by `NLP_SENTIMENT_SCALE` so frontend ±0.1 threshold works for both sources. Helper lives in `app.services.sentiment_fusion` to avoid `briefing` → `main_v2` → `briefing.router` circular import.
+- **Pre-agg NLP coverage**: any new ingest pre-agg that has `avg_sentiment` must also have `nlp_signal_count INTEGER NOT NULL DEFAULT 0` and `avg_nlp_sentiment NUMERIC` populated via `COUNT(*) FILTER (WHERE nlp_sentiment IS NOT NULL)` and `AVG(nlp_sentiment) FILTER (WHERE nlp_sentiment IS NOT NULL)`. Tracked by shape tests in `test_ingest_pre_agg_nlp_coverage.py`.
+- **Matview schema changes**: never DROP/CREATE in place when readers depend on the matview — use the build-populate-rename pattern from mig 026 (CREATE `_new` `WITH NO DATA` → CREATE UNIQUE INDEX → REFRESH → BEGIN/RENAME/RENAME indexes/COMMIT → DROP `_old`).
+- **Dead-table guardrails**: legacy mig 006 tables `signals_theme_hourly`, `signals_source_hourly`, `signals_country_hourly` are NOT written to. Any reader pointing at them is a bug. Shape tests in `test_briefing_performance_shape.py` keep this pinned.
+- **Honest ranking**: briefing now ships `top_countries` (volume) AND `heat_countries` (atlas_heat). Don't replace one with the other — every ranking lens answers a different question.
+- **Atlas heat consumption**: `country_heat_v2.atlas_heat` is the canonical "what's heating up" metric. Always JOIN with `to_regclass` fall-through so the section degrades to `[]` if the matview is unavailable.
+- **`nlp_progress` after external deletes**: worker's delta math goes stale. Manual `UPDATE nlp_progress SET unprocessed_total = ...` until #186 lands a recompute path.
+- **Lexicon backfill plateau**: manual seeds cap at ~12% hit rate (most headlines factual). Don't expand vocab further by hand — pivot to #185 corpus-mining.
+- **Supabase MCP DML pattern**: never `RETURNING 1` on bulk DELETE (returns N rows of 1, blows context). Run silent DELETE + separate COUNT verify.
+- **Sentiment scale calibration**: NLP transformer raw stddev ~1.68 vs GDELT V2Tone raw stddev ~3.99. Ratio 2.37 stored in `NLP_SENTIMENT_SCALE`. Re-measure if NLP model swap happens (issue #162 multilingual already accounted for).
 
 ## Specialized Agents
 
