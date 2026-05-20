@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -910,4 +911,3 @@ async def get_theme_spikes(
     except Exception as e:
         traceback.print_exc()
         return {"theme_code": theme_code, "spikes": [], "error": str(e)}
-
