@@ -6,6 +6,8 @@
 
 **Architecture:** Every signal source, including GDELT, passes through the Atlas-owned topic intelligence layer. GDELT themes remain valuable source metadata and priors, but `atlas_topics` become the normalized topic layer used for cross-source comparison. The layer combines lexicon rules, multilingual embeddings, and zero-shot/topic classification to produce specific `atlas_topics` and `topic_clusters` across GDELT, RSS, APIs, Reddit, Trends, and Wikipedia. Then expose source mix, voice mix, public-attention links, and topic explanations in the product.
 
+**Product-readability update:** The 2026-05-19 screen recording review at `docs/demos/2026-05-19-screen-recording-information-routes.md` adds an explicit UX requirement: Atlas must expose the route from user action to evidence. Topic Intelligence and Source Visibility are not enough if country/topic/person panels, stream items, public attention, and global narrative cards appear as disconnected surfaces.
+
 **Tech Stack:** FastAPI, asyncpg, Supabase PostgreSQL migrations, Python NLP/enrichment workers, Hugging Face multilingual models, pgvector or stored embedding vectors if enabled later, React/Vite frontend, GitHub issues for delivery tracking.
 
 ---
@@ -30,12 +32,27 @@ Validated open issues on 2026-05-19 before proposing new work:
 | Narrative thread UX explanation | #146 | Open | Keep; update copy after new topic model exists. |
 | Visual use-case manual | #140/#134 | Open | Keep; screenshots should show Source Mix, Voice Mix, and topic explanations once built. |
 | Workspace signal dossier | #133 | Closed | Reopen or recreate only if export is not implemented in current product. |
+| Evidence route / "why am I seeing this?" | #173 | Open | Add as product layer above topic/source work. |
+| Scope coherence across panels | #174 | Open | Treat as P0 UX correctness; panels must scope or label global background. |
+| Topic empty states | #175 | Open | Treat as P0 polish/correctness for low-volume topics. |
+| Entity/person hygiene | #176 | Open | Keep; depends on NLP confidence and analyst correction loop. |
+| Signal Stream relevance | #177 | Open | Keep; consumes `signal_class` and later `signal_topic_assignments`. |
+| Stable stream inspection and timestamps | #178 | Open | Keep; protects reading workflow while live stream updates. |
+| Active map legend | #179 | Open | Keep; clarifies current visual encoding. |
 
 Gaps found:
 
 1. No open issue specifically covers **Atlas-owned topic intelligence** that normalizes all sources, including GDELT.
 2. No open issue specifically covers **public attention threads** as first-class narrative objects.
 3. No open issue specifically covers **Source Mix in narrative cards/workspace**, though #160 covers CountryBrief Voice Mix.
+
+Post-walkthrough gaps now tracked:
+
+4. Active context is not propagated consistently across panels (#174).
+5. Empty topic/person states can look like broken loading states (#175).
+6. The live stream can move while a user is reading, and publication time is not clearly separated from Atlas render/seen time (#178).
+7. Entity drilldowns need confidence and identity guardrails (#176).
+8. The map legend needs active-layer hierarchy (#179).
 
 ## 1. Product Principle
 
@@ -378,22 +395,38 @@ GET /api/v2/topics/clusters?hours=24&country=OPTIONAL
   - attention relationship (`media-led`, `public-led`, etc.),
   - Workspace dossier evidence.
 
-## 5. Recommended New or Updated Issues
+### Task 12: Evidence Route and Readability Pass
 
-Do not duplicate the issues listed in section 0. Recommended GitHub action:
+**Files:**
+- Modify: `frontend-v2/src/App.tsx` and active-scope state owner
+- Modify: `frontend-v2/src/components/NarrativeThreads.tsx`
+- Modify: `frontend-v2/src/components/Legend.tsx`
+- Modify: Signal Stream component used in the center panel
+- Modify: entity/person detail component used by active stream route
+- Test: frontend build with `npm run build`
 
-1. Create one new issue for **Topic Intelligence**.
-2. Create one new issue for **Public Attention Threads**.
-3. Add comments to #155, #160, #165, #166, #146, and #140 linking this plan and explaining how they should consume the new topic/source model.
+- [ ] Implement #174 first: one active scope model. Every panel must either use the active scope or label itself as `Global background`.
+- [ ] Implement #175: zero-result topic/person/country responses render explicit empty states with actions, not skeletons.
+- [ ] Implement #178: selected stream item remains readable during live updates and shows both source publication time and Atlas seen/rendered time.
+- [ ] Implement #173 after `signal_class` is available: add an Evidence Route strip/drawer showing country/topic/person/source/signal path, evidence class, method, and supporting counts.
+- [ ] Implement #176: entity routes show confidence, mention context, and thin/ambiguous entity warnings. Wikipedia/Google-like enrichment can be used only as labeled context, not corroboration.
+- [ ] Implement #177: add analyst-grade stream relevance and noise separation. First pass can use source class, active scope, crisis tags, and raw themes; later pass consumes `signal_topic_assignments`.
+- [ ] Implement #179: map legend prioritizes active layer and collapses inactive layer descriptions.
 
-Suggested issue titles:
+## 5. Issue Map
 
-- `feat(data): add Atlas topic intelligence to normalize all sources including GDELT`
-- `feat(narratives): create public attention threads and semantic links to media topics`
+Do not duplicate the issues listed in section 0. The current GitHub map is:
 
-Optional only if #160 scope is kept country-only:
-
-- `feat(ui): show source mix and topic evidence in narrative cards and workspace`
+| Workstream | Primary issues | Notes |
+|---|---|---|
+| Search/scoping performance | #169, #170, #174 | #174 is UX-level scope correctness; #169/#170 are backend/search accelerators. |
+| Signal provenance | #155, #160, #149, #165 | `signal_class` and Voice Mix feed Evidence Route and scoring. |
+| Topic Intelligence | #167, #171, #157, #162 | #167 is the semantic layer; #171 is the fast lexicon backfill path. |
+| Public attention | #145, #168, #172 | Must remain separate from factual reporting evidence. |
+| Evidence Route/readability | #173, #174, #175, #178, #179 | Turns topic/source work into a legible analyst flow. |
+| Entities/corrections | #166, #176 | Entity confidence and corrections prevent noisy people/orgs from becoming false anchors. |
+| Stream relevance | #177, #178 | Stable inspection first, analyst relevance second. |
+| Documentation/manual | #140, #134 | Use `docs/demos/2026-05-19-screen-recording-information-routes.md` as source material. |
 
 ## 6. Execution Order
 
@@ -402,14 +435,15 @@ Recommended order:
 1. Finish #154 audit with topic-readiness section.
 2. Implement #155 `signal_class`.
 3. Create Topic Intelligence migration and lexicon pass.
-4. Benchmark compact multilingual topic models.
-5. Run topic intelligence in `shadow`.
-6. Expose topic assignments via API.
-7. Add Source Mix and Voice Mix to UI.
-8. Add attention threads and semantic linking.
-9. Promote topic intelligence into narrative ranking.
-10. Extend analyst corrections to topics.
-11. Update docs/use-case manual with real screenshots.
+4. In parallel, implement #174/#175/#178 so existing data becomes readable immediately.
+5. Benchmark compact multilingual topic models.
+6. Run topic intelligence in `shadow`.
+7. Expose topic assignments via API.
+8. Add Source Mix, Voice Mix, and Evidence Route UI.
+9. Add attention threads and semantic linking.
+10. Promote topic intelligence into narrative ranking.
+11. Extend analyst corrections to topics and entities.
+12. Add stream relevance, active map legend, and use-case screenshots.
 
 ## 7. Non-Goals
 
@@ -419,3 +453,5 @@ Recommended order:
 - Do not let Reddit count as factual corroboration.
 - Do not hide raw volume; contextualize it.
 - Do not make topic labels purely LLM-generated without confidence/evidence metadata.
+- Do not let global panels masquerade as scoped evidence.
+- Do not treat entity identity enrichment from web/Wikipedia as factual reporting corroboration.

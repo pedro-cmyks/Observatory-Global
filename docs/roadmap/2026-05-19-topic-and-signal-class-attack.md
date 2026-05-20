@@ -1,6 +1,6 @@
 # Topic Intelligence + Signal Class Attack Plan — 2026-05-19
 
-Successor to [2026-05-16-productization-roadmap.md](2026-05-16-productization-roadmap.md). Drives 3 parallel tracks against the open issue backlog (#145–#169).
+Successor to [2026-05-16-productization-roadmap.md](2026-05-16-productization-roadmap.md). Drives 4 parallel tracks against the open issue backlog (#145–#179).
 
 ## Why this plan now
 
@@ -10,7 +10,9 @@ Audit [docs/research/2026-05-19-topic-readiness-and-search-performance-audit.md]
 2. **New ingest sources invisible** — NewsData, MediaStack, NewsAPI, Reddit all have `themes=[]` (96%+ outside GDELT). Diversity exists in DB but not in UI.
 3. **No semantic provenance** — without `signal_class`, Reddit commentary and Reuters syndication count equally in scoring; #149 cluster scoring blocked; Voice Mix blocked.
 
-Plan #11 ([2026-05-19-topic-intelligence-and-source-visibility.md](../superpowers/plans/2026-05-19-topic-intelligence-and-source-visibility.md)) sequenced these serially. This attack plan runs them as 3 parallel tracks because dependencies allow it.
+Plan #11 ([2026-05-19-topic-intelligence-and-source-visibility.md](../superpowers/plans/2026-05-19-topic-intelligence-and-source-visibility.md)) sequenced the original backend/data work serially. This attack plan runs the program as 4 parallel tracks because dependencies allow it.
+
+Update after product walkthrough: screen recording [docs/demos/2026-05-19-screen-recording-information-routes.md](../demos/2026-05-19-screen-recording-information-routes.md) adds a fourth UX/data-readability track. The core insight is that Atlas must not only classify topics and sources; it must show the user's route through evidence, keep scope coherent, and protect reading context while live data changes.
 
 ---
 
@@ -177,6 +179,75 @@ Use Wikipedia opening sentence + Trends keyword as zero-shot input — no articl
 
 ---
 
+## Track D — Evidence Route UX + Analyst Readability (P0/P1/P2, ~6 days, parallel with A-C)
+
+**Issues closed**: [#173](https://github.com/pedro-cmyks/Observatory-Global/issues/173), [#174](https://github.com/pedro-cmyks/Observatory-Global/issues/174), [#175](https://github.com/pedro-cmyks/Observatory-Global/issues/175), [#176](https://github.com/pedro-cmyks/Observatory-Global/issues/176), [#177](https://github.com/pedro-cmyks/Observatory-Global/issues/177), [#178](https://github.com/pedro-cmyks/Observatory-Global/issues/178), [#179](https://github.com/pedro-cmyks/Observatory-Global/issues/179)
+**Issues advanced**: [#140](https://github.com/pedro-cmyks/Observatory-Global/issues/140), [#146](https://github.com/pedro-cmyks/Observatory-Global/issues/146), [#160](https://github.com/pedro-cmyks/Observatory-Global/issues/160), [#167](https://github.com/pedro-cmyks/Observatory-Global/issues/167), [#168](https://github.com/pedro-cmyks/Observatory-Global/issues/168), [#169](https://github.com/pedro-cmyks/Observatory-Global/issues/169)
+
+**Why this track exists**: the 2026-05-19 walkthrough showed that even when Atlas has the right underlying data, the analyst can lose the path: country click -> theme -> person -> stream signal -> topic filter -> global panels. Without an explicit evidence route and coherent scope labeling, good data still reads as disconnected panels.
+
+### D.1 — Scope coherence and empty states (P0)
+
+Issues: #174, #175.
+
+Moves:
+
+1. Define one active scope object shared across panels:
+   ```ts
+   { type: 'global' | 'country' | 'theme' | 'person' | 'source' | 'signal', value, country?, theme?, person?, hours }
+   ```
+2. Every panel must either consume the active scope or label itself as `Global background`.
+3. Completed empty fetches must render explicit empty states, never loading skeletons.
+4. Empty states must show active scope, time window, source layer, and actions: expand window, clear filter, search globally, open stream.
+
+Exit gate: country -> theme -> person -> topic -> clear flow never shows stale global panels as scoped evidence.
+
+### D.2 — Evidence Route panel (P1)
+
+Issue: #173.
+
+The route answers "why am I seeing this?" for every active context. It should display count, evidence class, and method:
+
+```text
+Country: Sudan
+  -> Heat spike: 3x baseline
+  -> Top raw theme: Crisis Event
+  -> Atlas topics: pending / shadow assignments
+  -> Source mix: reporting, humanitarian, social commentary
+  -> Evidence signals: latest supporting rows
+```
+
+Data dependencies:
+- `signal_class` from Track B.1.
+- `signal_topic_assignments` from Track B.2/B.3.
+- Voice Mix from Track C.1.
+- Attention relationships from Track C.2.
+
+### D.3 — Stream readability and relevance (P1)
+
+Issues: #177, #178.
+
+Moves:
+
+1. Stable selected item state so live stream refreshes do not steal the reading target.
+2. Display both publication time and Atlas seen/rendered time.
+3. Add analyst-grade relevance mode that separates crisis/conflict/humanitarian/economic stress from entertainment, sports, celebrity, and generic public-attention noise.
+4. Ranking should eventually consume `signal_class` + `signal_topic_assignments`, but first version can use source class, GDELT themes, crisis tags, and active scope.
+
+### D.4 — Entity hygiene (P1/P2)
+
+Issue: #176.
+
+Entity routes must not look authoritative when NLP extracted a weak or ambiguous name. Show extraction confidence, mention context, thin-data warnings, and optional contextual enrichment via Wikipedia/Google-like knowledge lookup. Contextual enrichment is not corroboration; it is a labeled identity aid.
+
+### D.5 — Map interpretation (P2)
+
+Issue: #179.
+
+The legend should prioritize the active layer and collapse inactive explanation. Topic-filtered mode must explain which colors/markers are affected by the topic and which remain global map context.
+
+---
+
 ## Decisions to commit before B.3
 
 | Decision | Recommendation |
@@ -203,13 +274,13 @@ Use Wikipedia opening sentence + Trends keyword as zero-shot input — no articl
 
 ## Issue map summary
 
-**Closes 7**: #155, #157, #160, #162, #167, #168, #169
-**Advances 7**: #69, #145, #146, #149, #150, #163, #164
+**Closes 14**: #155, #157, #160, #162, #167, #168, #169, #173, #174, #175, #176, #177, #178, #179
+**Advances 10**: #69, #140, #145, #146, #149, #150, #163, #164, #165, #166
 **Unblocks 2**: #165, #166
-**New 3** (this plan opens them): trigram index, bulk SQL lexicon, silent-risk detector
+**New 10** (this plan family opens them): trigram index, bulk SQL lexicon, silent-risk detector, evidence route, scope coherence, empty states, entity hygiene, stream relevance, stable stream inspection, active map legend
 **Parking 14**: ACLED, mascot, polish, downstream research
 
-Net: 45% backlog clearance + 4 previously-blocked features unblocked.
+Net: search reliability + topic intelligence + source visibility + evidence-route readability move as one program instead of separate UX/backend efforts.
 
 ---
 
@@ -224,3 +295,4 @@ Net: 45% backlog clearance + 4 previously-blocked features unblocked.
 7. Commit + push branch
 8. Next: Track A migration 022 trigram index + `country` param in search
 9. Next: Track B.2 bulk SQL lexicon classifier
+10. Next: Track D.1 scope coherence + empty states, because this is visible immediately in the walkthrough

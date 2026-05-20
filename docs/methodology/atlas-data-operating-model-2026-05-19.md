@@ -33,13 +33,14 @@ flowchart LR
   I --> M["Narrative UI / Workspace"]
 ```
 
-Atlas deberia entenderse como una plataforma que compara tres cosas:
+Atlas deberia entenderse como una plataforma que compara cuatro cosas:
 
 - **Cobertura mediatica**: que temas estan siendo reportados y con que volumen.
 - **Atencion publica**: que esta buscando o leyendo la gente.
 - **Diversidad de voz**: desde donde viene la informacion, en que idioma, con que cercania geografica y con que tipo de fuente.
+- **Ruta de evidencia**: por que Atlas esta mostrando un pais, tema, persona, fuente o senal, y que capas sostienen esa lectura.
 
-Hoy la primera capa esta mas madura que las otras dos.
+Hoy la primera capa esta mas madura que las otras tres.
 
 ## 3. Fuentes y uso actual
 
@@ -145,6 +146,9 @@ Sin eso, hay volumen nuevo pero poco valor analitico visible.
 4. **Atencion publica subutilizada**: Google/Wikipedia aparecen como panel o badge, pero no como una capa narrativa paralela.
 5. **Backlog NLP**: si el procesamiento no alcanza el ritmo de ingesta, el producto mezcla informacion enriquecida con informacion cruda.
 6. **UI de procedencia insuficiente**: el usuario no puede ver facilmente si un hilo viene de medios locales, prensa internacional, Reddit, busquedas o Wikipedia.
+7. **Scope ambiguo**: una vista puede estar filtrada por pais, tema o persona mientras otros paneles siguen mostrando contexto global sin decirlo. Eso hace que fondo global parezca evidencia especifica.
+8. **Lectura inestable del stream**: si el feed se reordena mientras el usuario inspecciona una senal, se pierde el hilo analitico.
+9. **Entidades con autoridad excesiva**: una persona extraida por NER puede verse como un ancla confiable aunque sea ambigua, repetida por una sola fuente o extraida con baja confianza.
 
 ## 9. Mejoras recomendadas
 
@@ -250,6 +254,43 @@ UI sugerida por hilo:
 - Badges `SEARCH`, `WIKI`, `SOCIAL`, `LOCAL`, `THIN COVERAGE`.
 - Boton "ver evidencia" que abre Workspace con articulos/posts reales.
 
+### Fase 5b: Ruta de evidencia y coherencia de scope
+
+La revision de pantalla del 2026-05-19 mostro que el problema no es solo tener mejores temas. Tambien falta explicar la ruta por la que el usuario llego a una lectura.
+
+Atlas debe poder decir:
+
+- que accion abrio la vista actual: click de mapa, search, stream, narrative card, persona, fuente o workspace;
+- que scope esta activo: global, pais, tema, persona, fuente o senal;
+- que paneles usan ese scope y cuales son fondo global;
+- que evidencia soporta el estado actual: reporting, wire, humanitarian, social commentary, public attention;
+- que metodo produjo cada relacion: raw GDELT theme, Atlas topic assignment, NLP entity, search match, attention link, stream click.
+
+Esto crea una capa de producto llamada **Evidence Route**. No reemplaza Topic Intelligence; la vuelve legible. Ejemplos:
+
+- `Country: Sudan -> Heat spike 3x baseline -> Raw theme: Crisis Event -> Source mix -> Supporting signals`
+- `Person: Malhar Yamur -> NLP entity mention -> 6 signals / 2 countries -> thin evidence -> source headlines`
+- `Topic: Maritime Incident -> 0 scoped signals in 24h -> expand window / clear filter / inspect global background`
+
+Issues que ejecutan esta fase:
+
+- #173 Evidence Route panel.
+- #174 scope coherente entre paneles.
+- #175 empty states para resultados cero.
+- #176 higiene de entidades.
+- #178 inspeccion estable del stream y doble timestamp.
+- #179 leyenda activa del mapa.
+
+### Fase 5c: Stream analitico
+
+El Signal Stream no debe mezclar todo bajo una sola idea de "notable". Para flujos de riesgo global, el modo por defecto debe separar:
+
+- crisis, conflicto, humanitario, economia/recursos, infraestructura critica;
+- atencion publica, entretenimiento, deportes, politica domestica generica y firehose crudo;
+- senales nuevas por publicacion vs senales nuevas porque Atlas las acaba de ver/renderizar.
+
+Issue principal: #177. Este trabajo debe consumir `signal_class` primero y `signal_topic_assignments` despues.
+
 ### Fase 6: Ajustar NewsAPI y NewsData
 
 NewsAPI hoy gasta casi todo su presupuesto en 8 queries de crisis en ingles. Eso es util, pero redundante con GDELT.
@@ -275,12 +316,28 @@ Orden recomendado:
 
 1. **UI de procedencia**: mostrar `Source Mix` y `Voice Mix` con las familias que ya existen.
 2. **`signal_class`**: separar evidencia, comentario social y atencion publica.
-3. **Atlas Topic Intelligence para todas las fuentes**: normalizar GDELT, RSS, ReliefWeb, NewsData, MediaStack, NewsAPI y Reddit bajo `atlas_topics`.
-4. **Attention threads**: construir hilos propios de Google/Wikipedia y conectarlos semanticamente con narrativas.
-5. **Refactor NewsAPI/NewsData**: mejorar presupuesto, geografia y cobertura.
-6. **Dossier/Workspace**: exportar evidencia real por hilo, separando articulos, posts, tendencias y paginas Wikipedia.
+3. **Scope y lectura basica**: #174/#175/#178 para que los paneles actuales sean confiables antes de agregar mas inteligencia visual.
+4. **Atlas Topic Intelligence para todas las fuentes**: normalizar GDELT, RSS, ReliefWeb, NewsData, MediaStack, NewsAPI y Reddit bajo `atlas_topics`.
+5. **Evidence Route**: #173 como capa de explicacion que une accion, scope, metodo y evidencia.
+6. **Attention threads**: construir hilos propios de Google/Wikipedia y conectarlos semanticamente con narrativas.
+7. **Stream analitico y mapa legible**: #177/#179 para reducir ruido y explicar visualmente las capas activas.
+8. **Refactor NewsAPI/NewsData**: mejorar presupuesto, geografia y cobertura.
+9. **Dossier/Workspace**: exportar evidencia real por hilo, separando articulos, posts, tendencias y paginas Wikipedia.
 
-## 11. Issues sugeridos
+## 11. Mapa de issues integrado
+
+| Capa | Issues |
+|---|---|
+| Search y scoping tecnico | #169, #174 |
+| Procedencia y clase de senal | #155, #160, #149, #165 |
+| Topic Intelligence | #167, #170, #171, #157, #162 |
+| Atencion publica | #145, #168, #172 |
+| Ruta de evidencia / UX analitica | #173, #174, #175, #178, #179 |
+| Entidades y correcciones | #166, #176 |
+| Stream / ruido / relevancia | #177, #178 |
+| Manual visual y demos | #140, #134, `docs/demos/2026-05-19-screen-recording-information-routes.md` |
+
+## 12. Issues sugeridos
 
 Estos son los issues que deberian existir o actualizarse:
 
@@ -299,9 +356,10 @@ Actualizacion 2026-05-19:
 - Plan ejecutable: `docs/superpowers/plans/2026-05-19-topic-intelligence-and-source-visibility.md`.
 - Issue creado: #167 `feat(data): add Atlas topic intelligence beyond raw GDELT themes`.
 - Issue creado: #168 `feat(narratives): create public attention threads and semantic links to media topics`.
+- Issues creados desde walkthrough: #173, #174, #175, #176, #177, #178, #179.
 - Issues existentes complementados: #154, #155, #160, #162, #165, #166, #146, #140.
 
-## 12. Respuesta directa a las preguntas abiertas
+## 13. Respuesta directa a las preguntas abiertas
 
 **Esta Reddit alimentando los hilos narrativos?**  
 No de manera significativa todavia. Entra como `source_family='social'` en `signals_v2`, pero como llega sin `themes`, el endpoint de narrativas casi no lo usa.
