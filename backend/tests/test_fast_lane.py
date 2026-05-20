@@ -23,6 +23,14 @@ def test_fast_lane_neutral_fallback_is_low_confidence_and_explicit():
     assert decision.confidence == FAST_NEUTRAL_CONFIDENCE
 
 
+def test_fast_lane_handles_missing_or_short_headline_as_explicit_fallback():
+    decision = classify_fast_lane(None, "xx")
+
+    assert decision.method == "fast_neutral"
+    assert decision.sentiment == 0
+    assert decision.confidence == FAST_NEUTRAL_CONFIDENCE
+
+
 def test_fast_lane_update_does_not_set_transformer_processed_at():
     import enrichment.fast_lane as fast_lane
 
@@ -33,13 +41,17 @@ def test_fast_lane_update_does_not_set_transformer_processed_at():
 
 
 def test_fast_lane_selector_matches_pending_method_index():
-    migration = Path("migrations/027_fast_lane_nlp_method_index.sql").read_text(encoding="utf-8")
+    migration_027 = Path("migrations/027_fast_lane_nlp_method_index.sql").read_text(encoding="utf-8")
+    migration_028 = Path("migrations/028_fast_lane_timestamp_window_index.sql").read_text(encoding="utf-8")
 
     assert "WHERE nlp_method IS NULL" in SELECT_SQL
-    assert "created_at > NOW()" in SELECT_SQL
-    assert "idx_signals_v2_fast_lane_pending_created_at" in migration
-    assert "WHERE nlp_method IS NULL" in migration
-    assert "ON signals_v2 (created_at DESC)" in migration
+    assert "timestamp > NOW()" in SELECT_SQL
+    assert "headline IS NOT NULL" not in SELECT_SQL
+    assert "LENGTH(headline)" not in SELECT_SQL
+    assert "idx_signals_v2_fast_lane_pending_created_at" in migration_027
+    assert "idx_signals_v2_fast_lane_pending_timestamp" in migration_028
+    assert "WHERE nlp_method IS NULL" in migration_028
+    assert "ON signals_v2 (timestamp DESC)" in migration_028
 
 
 def test_nlp_worker_runs_fast_lane_before_transformer():

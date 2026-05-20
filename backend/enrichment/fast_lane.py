@@ -51,10 +51,8 @@ SELECT_SQL = """
 SELECT id, headline, source_lang
 FROM signals_v2
 WHERE nlp_method IS NULL
-  AND headline IS NOT NULL
-  AND LENGTH(headline) > 10
-  AND created_at > NOW() - ($1 || ' hours')::INTERVAL
-ORDER BY created_at DESC
+  AND timestamp > NOW() - ($1 || ' hours')::INTERVAL
+ORDER BY timestamp DESC
 LIMIT $2
 """
 
