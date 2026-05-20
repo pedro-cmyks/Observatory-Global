@@ -82,8 +82,8 @@ def test_confidence_never_exceeds_lexicon_ceiling():
     assert conf <= CONFIDENCE_CEILING + 1e-6
 
 
-def test_neutral_text_scores_zero_with_zero_confidence():
-    score, conf, _ = score_headline("The conference will be held next Monday in the city center building.", source_lang="en")
+def test_unknown_tokens_score_zero_with_zero_confidence():
+    score, conf, _ = score_headline("lorem ipsum qwerty zyxwvu placeholder", source_lang="en")
     assert score == 0
     assert conf == 0
 

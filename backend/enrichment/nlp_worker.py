@@ -29,6 +29,7 @@ from enrichment.nlp_pipeline import (
     refresh_stratified_sample,
     run_nlp_enrichment,
 )
+from enrichment.fast_lane import run_fast_lane
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [nlp_worker] %(levelname)s %(message)s")
@@ -36,6 +37,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [nlp_worker] %(level
 WORKER_ID = os.getenv("NLP_WORKER_ID", socket.gethostname())
 WORKER_INTERVAL_SECONDS = int(os.getenv("NLP_WORKER_INTERVAL_SECONDS", "120"))
 WORKER_BATCH_LIMIT = int(os.getenv("NLP_WORKER_LIMIT", "500"))
+FAST_LANE_ENABLED = os.getenv("NLP_FAST_LANE_ENABLED", "true").lower() not in {"0", "false", "no"}
+FAST_LANE_LIMIT = int(os.getenv("NLP_FAST_LANE_LIMIT", "10000"))
+FAST_LANE_HOURS = int(os.getenv("NLP_FAST_LANE_HOURS", "24"))
 # Refresh the stratified nlp_sample_queue every N worker cycles (~6h at 120s interval).
 # Set to 0 to disable this expensive refresh and run it out-of-band.
 SAMPLE_REFRESH_EVERY_N_CYCLES = int(os.getenv("NLP_SAMPLE_REFRESH_EVERY", "180"))
@@ -208,6 +212,18 @@ async def _one_cycle(limit: int, cycle_idx: int) -> int:
     last_error: str | None = None
     target_column = processed_target_column()
     try:
+        if FAST_LANE_ENABLED:
+            fast_conn = await asyncpg.connect(db_url)
+            try:
+                fast_result = await run_fast_lane(
+                    fast_conn,
+                    hours=FAST_LANE_HOURS,
+                    limit=FAST_LANE_LIMIT,
+                    dry_run=False,
+                )
+                logger.info("Fast-lane hot enrichment: %s", fast_result)
+            finally:
+                await fast_conn.close()
         await run_nlp_enrichment(limit=limit)
         # run_nlp_enrichment does not return a count today; treat one cycle as
         # up to `limit` rows for the per-iteration metric. Real counts come from
