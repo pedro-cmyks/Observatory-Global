@@ -94,7 +94,7 @@ async def build_report(hours: int, limit: int) -> dict[str, Any]:
         raise RuntimeError("DATABASE_URL or SUPABASE_DB_URL env var required")
     conn = await asyncpg.connect(db_url)
     try:
-        await conn.execute("SET statement_timeout = 10000")
+        await conn.execute("SET statement_timeout = 45000")
         summary = dict(await conn.fetchrow(SUMMARY_SQL, str(hours)))
         breakdown_rows = await conn.fetch(BREAKDOWN_SQL, str(hours), limit)
         total = int(summary["total_rows"] or 0)
