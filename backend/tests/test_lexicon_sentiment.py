@@ -68,8 +68,8 @@ def test_latin_script_falls_back_to_en_without_hint():
 
 
 def test_unsupported_lang_hint_falls_back_by_script():
-    # German is not in v1; Latin script still routes to EN.
-    score, _, lang = score_headline("Peace agreement reached today", source_lang="de")
+    # Japanese is not in v1; Latin script still routes to EN.
+    score, _, lang = score_headline("Peace agreement reached today", source_lang="ja")
     assert lang == "en"
     assert score > 0
 
