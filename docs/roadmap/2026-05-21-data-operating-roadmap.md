@@ -126,6 +126,8 @@ Root causes are routing/grain mismatches, not missing storage.
    - explicit low-confidence neutral fallback when no sentiment evidence exists
 3. Mine lexicons from transformer-tagged rows, but promote language-specific vocab only when the sample is large enough.
 4. Track `method`, `confidence`, and coverage for every derived field.
+5. Split Fly runtime images so API-only deploys do not rebuild/pull the ~7.7GB NLP/model image (#195).
+6. Treat external live providers such as AISStream as degradable dependencies with bounded retry logs and UI/provider health state (#196).
 
 **Creative solution:** use "progressive certainty" instead of binary processed/unprocessed. A row can start with fast-neutral + topic hint, then later receive transformer sentiment, NER, framing, and topic refinement. The UI should show the best available method and coverage.
 
@@ -134,6 +136,7 @@ Root causes are routing/grain mismatches, not missing storage.
 - Hot-window product-served rows are 90-100% processed by Atlas-owned methods.
 - `general-monitoring` no longer dominates historical/topic surfaces without explanation.
 - NLP worker throughput is tuned from real pressure, not guessed limits.
+- API deploys stay fast and independent from the heavy NLP worker image.
 
 ## Phase 4 — Make Source Diversity Visible
 
