@@ -32,3 +32,13 @@ def test_heat_countries_routes_long_windows_to_processed_history():
     assert "build_historical_coverage" in source
     assert '"source": "historical_topic_country_daily"' in source
     assert "hours_window=24 only in v1" not in source
+
+
+def test_country_detail_routes_long_windows_to_processed_history():
+    source = Path("app/routers/geo.py").read_text(encoding="utf-8")
+
+    assert "use_processed_history(hours)" in source
+    assert "query_historical_country_detail" in source
+    assert "build_historical_coverage" in source
+    assert '"source": "historical_topic_country_daily"' in source
+    assert "source_mix_not_source_names" in source

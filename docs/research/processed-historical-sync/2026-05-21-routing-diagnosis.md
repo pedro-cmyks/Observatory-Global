@@ -134,7 +134,7 @@ These map naturally to daily aggregate grain:
 
 1. Add shared `processed_historical.py` helper and coverage metadata.
 2. Route `/api/v2/heat/countries` for `hours > 24` from compact historical country totals. Keep the existing `country_heat_v2` 24h heat path unchanged.
-3. Route `/api/v2/country/{code}` long-window summary and topics from compact history. Mark sources/persons as hot-only or omit them from historical coverage until source/evidence tables exist.
+3. Route `/api/v2/country/{code}` long-window summary and topics from compact history. Mark sources/persons as hot-only or omit them from historical coverage until source/evidence tables exist. Implemented on 2026-05-21: long windows now return country summary, processed topics, source-family/signal-class mix, optional evidence samples, and coverage metadata.
 4. Route `/api/v2/theme/{topic_slug}` long-window Atlas topic pages from compact history. Add explicit `source="historical_topic_country_daily"` and `coverage`.
 5. Fix `/api/v2/anomalies/themes` by using compact history for historical windows and returning a degraded/coverage reason when baseline is unavailable.
 6. Add `historical_source_daily` for #194 so long-window top publishers do not scan raw `signals_v2`.

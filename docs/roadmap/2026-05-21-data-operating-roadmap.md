@@ -91,11 +91,11 @@ Root causes are routing/grain mismatches, not missing storage.
 **Work:**
 
 1. [x] Add `processed_historical.py` as the shared backend routing helper.
-2. Add config-driven `HOT_STORE_FLOOR`.
+2. [x] Add config-driven `HOT_STORE_FLOOR`.
 3. Route the endpoint quintet from the routing spec:
    - `/api/v2/heatmap`
    - [x] `/api/v2/heat/countries` (`hours>24` now returns historical processed attention + coverage)
-   - `/api/v2/country/{code}`
+   - [x] `/api/v2/country/{code}` (`hours>24` now returns historical processed country summary, topics, source-family mix, and coverage)
    - `/api/v2/theme/{code}`
    - `/api/v2/anomalies/themes`
 4. Add a reusable frontend `CoverageBadge`.

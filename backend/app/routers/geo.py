@@ -8,6 +8,11 @@ from app import db
 from app.main_v2 import app
 from app.utils import _is_valid_person, _resolve_persons, extract_domain
 from app.core.gdelt_taxonomy import classify_source
+from app.services.processed_historical import (
+    build_historical_coverage,
+    query_historical_country_detail,
+    use_processed_history,
+)
 import httpx
 import asyncio
 
@@ -195,6 +200,59 @@ async def get_country_detail(country_code: str, hours: int = Query(24, ge=1, le=
     country_code = country_code.upper()
     
     async with db.pool.acquire() as conn:
+        if use_processed_history(hours):
+            historical = await query_historical_country_detail(
+                conn,
+                country_code=country_code,
+                hours=hours,
+            )
+            if not historical:
+                raise HTTPException(status_code=404, detail=f"No processed history for country {country_code}")
+
+            stats = historical["stats"]
+            local_voice_ratio = stats.get("local_voice_ratio")
+            foreign_source_pct = (
+                round((1 - float(local_voice_ratio)) * 100)
+                if local_voice_ratio is not None
+                else None
+            )
+            coverage = await build_historical_coverage(conn, hours=hours)
+            return {
+                "countryCode": country_code,
+                "name": stats.get("country_name") or country_code,
+                "totalSignals": int(stats["signal_count"] or 0),
+                "sentiment": float(stats["avg_sentiment"] or 0),
+                "maxSentiment": float(stats["max_sentiment"] or 0),
+                "minSentiment": float(stats["min_sentiment"] or 0),
+                "themes": [
+                    {"name": row["topic_slug"], "count": int(row["signal_count"] or 0)}
+                    for row in historical["themes"]
+                ],
+                "sources": [
+                    {
+                        "name": f"{row['source_family']}:{row['signal_class']}",
+                        "count": int(row["signal_count"] or 0),
+                    }
+                    for row in historical["source_mix"]
+                ],
+                "keyPersons": [],
+                "foreignSourcePct": foreign_source_pct,
+                "evidence": [
+                    {
+                        "headline": row["headline"],
+                        "source": row["source_name"],
+                        "url": row["source_url"],
+                        "topic": row["topic_slug"],
+                        "time": row["signal_timestamp"].isoformat() if row["signal_timestamp"] else None,
+                        "sentiment": float(row["sentiment"] or 0),
+                    }
+                    for row in historical["evidence"]
+                ],
+                "coverage": coverage.to_dict(),
+                "source": "historical_topic_country_daily",
+                "warnings": ["historical_processed", "source_mix_not_source_names"],
+            }
+
         # Basic stats from materialized view
         stats = await conn.fetchrow("""
             SELECT 
