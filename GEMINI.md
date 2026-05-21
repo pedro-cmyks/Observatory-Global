@@ -1,6 +1,6 @@
 # GEMINI Code Assistant Context — Observatory Global (Atlas)
 
-Last updated: 2026-05-20 (session 20 — hot/cold archive cutover verified; prune guardrails added)
+Last updated: 2026-05-21 (processed historical sync plan added after hot/cold prune)
 
 This document gives the Gemini AI assistant the current, accurate context for the Observatory Global project. Treat this as the source of truth for deployment topology, architecture, and conventions.
 
@@ -29,7 +29,11 @@ This document gives the Gemini AI assistant the current, accurate context for th
 
 **Session 20 hot/cold archive update:** The hot/cold operating model is now operationally tested. Local archive root is `/Users/pedro/AtlasArchive`; clean cutover archive is `/Users/pedro/AtlasArchive/cutovers/2026-05-20`. Verified export covers `2026-05-03T00:00:00Z` through `2026-05-20T03:33:29Z`, with 18 manifest records, 2,128,070 rows, ~368M compressed, 0 checksum failures, and 0 overlapping ranges. New scripts: `backend/scripts/archive_verify.py`, `backend/scripts/archive_plan.py`, `backend/scripts/prune_archived_signals.py`. Verified prune dry-run from Fly nlp_worker `0803426f142468` passed exactly: `archive_rows=2,128,070`, `db_candidate_rows=2,128,070`, `range_count=18`, `executed=false`. Live prune completed after Pedro's explicit approval: `deleted_rows=2,128,070`, `elapsed_seconds=139.13`, archived range remaining `0`, exact `signals_v2` count `259,360`. The prune script only touched `signals_v2`; product aggregate tables, correction tables, topic tables, and NLP audit/progress tables stay in Supabase. `/health.total_signals` now reflects historical aggregate volume from `country_hourly_v2`, not raw hot-store row count.
 
-**Next session priorities:** (1) `signal_class` + `narrative_cluster_id` migration 021 (Reddit must be `"commentary"`), (2) Voice Mix UI component in CountryBrief with `/api/v2/countries/{iso}/voice-mix` endpoint, (3) NewsAPI refactor to 6 evergreen + 2 dynamic from GDELT spikes + 36 req/day analyst reserve, (4) validate HuggingFace tokenizer warning on `twitter-xlm-roberta-base-sentiment`, (5) resolve `country_heat_v2` refresh timeout. Plan: `docs/superpowers/plans/2026-05-18-multisource-intelligence-hardening.md`.
+**Processed historical sync direction:** Supabase should serve processed historical product surfaces, not raw historical rows. Raw historical signals stay in `/Users/pedro/AtlasArchive`; the local processor will produce compact daily aggregates, coverage metadata, and evidence samples, then sync those outputs to Supabase. Spec: `docs/superpowers/specs/2026-05-21-processed-historical-sync-design.md`. Plan: `docs/superpowers/plans/2026-05-21-processed-historical-sync.md`. Tracking issues: #191, #192, #193. Related issues commented: #164, #167, #171, #184, #185. Fly remains responsible for hot-window SLA; local compute handles historical/backlog processing; Supabase stays lightweight.
+
+**Processed historical sync implementation started:** Added `backend/migrations/029_historical_processed_tables.sql`, `backend/scripts/historical_process_partition.py`, `backend/scripts/historical_sync.py`, `backend/tests/test_historical_processing.py`, and first artifact `docs/research/processed-historical-sync/2026-05-19-topic-country.json`. Smoke processed `185,163` archived rows into `1,728` daily topic/country aggregate rows; sync dry-run accepted `1,728` rows. Migration `029` is ready and locally tested but was not applied to Supabase in the creating session because no local `DATABASE_URL` or exposed Supabase SQL MCP tool was available.
+
+**Next session priorities:** (1) #191/#192 processed historical schema and local archive processor, (2) #193 route `1w` and `1m` app windows to processed historical tables with coverage metadata, (3) #184 keep Fly worker focused on hot-window SLA and resize only after observing DB pressure, (4) #185 improve multilingual corpus mining, (5) #183 frontend render sentiment source, NLP coverage, heat countries, and heat-voluminous countries.
 
 **There is no Docker Compose production setup.** The app runs on Vercel + Fly.io. Docker/Compose exists for local dev only.
 

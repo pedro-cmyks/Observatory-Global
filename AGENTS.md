@@ -17,6 +17,17 @@ Key files added in session 20 (hot/cold retention cutover — 2026-05-20):
 - `backend/scripts/archive_plan.py` — plans daily `signals_v2` cold-export batches from Supabase without writing archive files.
 - `backend/scripts/prune_archived_signals.py` — dry-run-first prune for `signals_v2`; live deletion requires `--execute --i-understand-irreversible-delete` and only applies to verified manifest ranges.
 
+Key docs added in session 21 (processed historical sync — 2026-05-21):
+- `docs/superpowers/specs/2026-05-21-processed-historical-sync-design.md` — canonical design: Supabase serves processed historical product surfaces, not raw historical rows.
+- `docs/superpowers/plans/2026-05-21-processed-historical-sync.md` — implementation plan for historical processed schema, local archive processor, idempotent sync, long-window API bridge, and coverage reporting.
+
+Key files added in session 21 (processed historical sync — 2026-05-21):
+- `backend/migrations/029_historical_processed_tables.sql` — compact processed historical tables: runs, topic/country daily aggregates, evidence samples, and archive coverage. Not applied to Supabase yet unless a later note says so.
+- `backend/scripts/historical_process_partition.py` — local archive partition processor. First smoke: 2026-05-19 archive partition, 185,163 rows -> 1,728 aggregate rows.
+- `backend/scripts/historical_sync.py` — dry-run/live idempotent sync into `historical_topic_country_daily`.
+- `backend/tests/test_historical_processing.py` — migration shape, topic inference, aggregate, and sync payload tests.
+- `docs/research/processed-historical-sync/2026-05-19-topic-country.json` — first processed historical artifact.
+
 Session 20 data state:
 - Local archive root: `/Users/pedro/AtlasArchive`.
 - Clean cutover archive: `/Users/pedro/AtlasArchive/cutovers/2026-05-20`.
@@ -25,6 +36,14 @@ Session 20 data state:
 - Smoke queries passed: date `2026-05-19` = 185,163 rows; country `CO` = 13,654; source_family `social` = 485; topic/headline `energy` = 92,005.
 - Live prune completed after explicit approval: 2,128,070 rows deleted from `signals_v2` in 139.13s; archived range remaining 0; exact `signals_v2` count 259,360; `ANALYZE signals_v2` completed; `nlp_progress` recomputed to `unprocessed_total=241,002`.
 - Guardrail: do NOT manually delete historical rows. Use `archive_verify.py` first, then `prune_archived_signals.py` dry-run. Keep product aggregate tables, correction tables, topic tables, and NLP audit/progress tables in Supabase. `/health.total_signals` reflects historical aggregate volume, not raw hot-store row count.
+
+Session 21 processed historical sync direction:
+- Raw historical archive remains local at `/Users/pedro/AtlasArchive`; do not rehydrate full raw history into Supabase.
+- Supabase should store compact processed historical outputs: daily topic/country/source aggregates, coverage metadata, run metadata, and small evidence samples.
+- Fly handles hot 24h ingestion/enrichment SLA. Pedro's local machine handles historical/backlog processing and syncs compact outputs back to Supabase.
+- Tracking issues: #191 (local archive -> processed historical sync), #192 (processed-only historical tables), #193 (route `1w`/`1m` app windows to processed historical tables). Related issues commented: #164, #167, #171, #184, #185.
+- First implementation should start with migration `029_historical_processed_tables.sql`, then `backend/scripts/historical_process_partition.py`, then `backend/scripts/historical_sync.py`.
+- Current implementation status: migration 029 is ready and tested locally but not applied to Supabase in the session that created it; apply via explicit SQL editor/MCP path before running `historical_sync.py` live.
 
 Key files changed in session 15:
 - `backend/app/services/ingest_loop.py` — wired 4 new ingestion services. `ingest_newsdata` + `ingest_reddit` at `cycle%4`. `ingest_mediastack` at `cycle%8`. `ingest_newsapi` at `cycle%8+4` (offset to spread load).

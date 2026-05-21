@@ -1,11 +1,52 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-20 (Session 20 — hot/cold archive cutover backfill and prune guardrails)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-21 (processed historical sync plan after hot/cold prune)
 
 ---
 
-## Current handoff (2026-05-20) — Session 20
+## Current handoff (2026-05-21) — Processed Historical Sync
 
-Production branch remains `v3-intel-layer`. This session moved the hot/cold model from architecture/probe to a verified cutover archive.
+Production branch remains `v3-intel-layer`. The hot/cold cutover is complete; the current implementation direction is to make the local archive useful by syncing processed historical outputs back to Supabase without reloading raw history.
+
+### Processed Historical Sync direction (2026-05-21)
+
+Canonical decision: Supabase should serve processed historical product surfaces,
+not raw historical rows. Raw historical signals live in the local archive; the
+local processor turns archive partitions into compact processed outputs and syncs
+only those product-ready tables to Supabase.
+
+New docs:
+
+- Spec: `docs/superpowers/specs/2026-05-21-processed-historical-sync-design.md`
+- Plan: `docs/superpowers/plans/2026-05-21-processed-historical-sync.md`
+
+New tracking issues:
+
+- #191 — local processed historical sync from archive to Supabase.
+- #192 — processed-only historical tables and Supabase lightweight guardrails.
+- #193 — route `1w`/`1m` app windows to processed historical tables.
+
+Related issues commented with integration note: #164, #167, #171, #184, #185.
+
+Operational rule:
+
+- Fly owns hot-window SLA and fresh processing.
+- Local machine owns historical/backlog processing.
+- Supabase stores hot raw rows temporarily, plus compact processed aggregates,
+  evidence samples, coverage metadata, topic/entity/narrative indexes, and
+  correction/learning state.
+- Supabase should not receive a raw historical copy of `signals_v2`.
+
+Implementation started:
+
+- Added `backend/migrations/029_historical_processed_tables.sql` for compact historical processed tables.
+- Added `backend/scripts/historical_process_partition.py` to convert local archive partitions into daily topic/country aggregates.
+- Added `backend/scripts/historical_sync.py` for idempotent upsert payloads and dry-run/live sync.
+- Added `backend/tests/test_historical_processing.py`.
+- Smoke processed archive day `2026-05-19`: `185,163` archived rows -> `1,728` processed aggregate rows.
+- Smoke artifact: `docs/research/processed-historical-sync/2026-05-19-topic-country.json`.
+- Validation: `cd backend && .venv/bin/python -m pytest tests/test_historical_processing.py tests/test_archive_common.py -q` -> `18 passed`.
+- Validation: `cd backend && .venv/bin/python -m scripts.historical_sync --artifact ../docs/research/processed-historical-sync/2026-05-19-topic-country.json --dry-run` -> `{"dry_run": true, "rows": 1728}`.
+- Not applied yet: migration `029` in Supabase. This session had no local `DATABASE_URL` and no exposed Supabase MCP SQL tool, so production DDL was intentionally left for an explicit SQL-editor/MCP step.
 
 ### Hot/cold retention cutover state
 

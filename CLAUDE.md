@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-20 (session 20 — hot/cold archive cutover backfill verified; prune guardrails added; next gate is dry-run prune)
+Last updated: 2026-05-21 (processed historical sync plan added after hot/cold prune)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -8,15 +8,34 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
-## Current Session Context (2026-05-20, session 20 close)
+## Current Session Context (2026-05-21, processed historical sync)
 
 - Active branch: `v3-intel-layer`; production branch. Do not merge into `main`.
 - PR #144 open against main: https://github.com/pedro-cmyks/Observatory-Global/pull/144
 - Production: Vercel (frontend auto-deploy), Fly.io `atlas-api-pedro` backend, Fly.io `nlp_worker` 4GB.
-- Latest known production commit before this handoff: `f31349f docs(data): record hot cold archive probe`; subsequent hot/cold guardrail commit should be deployed before running prune dry-run via Fly.
-- Total signals: ~2.28M on latest `/health`; hot-window SLA was brought above 99% with fast-lane enrichment.
+- Latest hot/cold doc commit before this handoff: `bb26197 docs(data): record live hot cold prune`.
+- Current direction: Supabase serves processed historical product surfaces, not raw historical rows. The local archive stays raw; a local processor will sync compact processed aggregates/evidence samples back to Supabase.
 - Atlas product framing: **public narrative intelligence console**, not a GDELT wrapper.
 - Preferred user path: `/brief` for readable orientation, then `/app` for full analyst investigation.
+
+### Processed historical sync direction
+
+- Spec: `docs/superpowers/specs/2026-05-21-processed-historical-sync-design.md`.
+- Implementation plan: `docs/superpowers/plans/2026-05-21-processed-historical-sync.md`.
+- Implementation started:
+  - `backend/migrations/029_historical_processed_tables.sql`.
+  - `backend/scripts/historical_process_partition.py`.
+  - `backend/scripts/historical_sync.py`.
+  - `backend/tests/test_historical_processing.py`.
+  - `docs/research/processed-historical-sync/2026-05-19-topic-country.json`.
+- Smoke result: `185,163` archived rows from `2026-05-19` -> `1,728` processed aggregate rows. Sync dry-run accepted `1,728` rows.
+- Migration `029` is ready but not applied to Supabase unless a later note says so; the creating session had no local `DATABASE_URL` and no exposed Supabase SQL MCP tool.
+- Tracking issues:
+  - #191 — local archive -> processed historical Supabase sync.
+  - #192 — processed-only historical Supabase schema and guardrails.
+  - #193 — route `1w`/`1m` app windows to processed historical tables.
+- Related issues commented: #164, #167, #171, #184, #185.
+- Operating rule: Fly handles hot 24h SLA; Pedro's local machine handles historical/backlog processing; Supabase stores compact processed outputs and small evidence samples, not full raw history.
 
 ### Session 20 hot/cold archive cutover state
 
@@ -85,10 +104,11 @@ Tests after hot/cold guardrail changes: `cd backend && .venv/bin/python -m pytes
 - 🆕 Still open: #183 (frontend sentiment badge + heat panel), #184 (NLP_WORKER_LIMIT bump experiment), #185 (corpus-mine lexicon vocab quality target).
 
 ### Next session priorities:
-1. **Data operating model decision** — cloud-only vs hot/cold split vs hybrid local worker. Do this before large backfills.
-2. **#184** — controlled `NLP_WORKER_LIMIT` bump experiment, with Fly memory + Supabase IO observation.
-3. **#185** — improve multilingual corpus mining; EN snapshot exists, non-EN remains too small.
-4. **#183** — frontend renders `sentiment_source`, NLP coverage, `heat_countries`, and `heat_voluminous_countries`.
+1. **#191 / #192** — add processed historical schema and local archive processor.
+2. **#193** — route long app windows (`1w`, `1m`) to processed historical tables with coverage metadata.
+3. **#184** — keep Fly worker focused on hot-window SLA; only resize after observing hot backlog and Supabase IO.
+4. **#185** — improve multilingual corpus mining; EN snapshot exists, non-EN remains too small.
+5. **#183** — frontend renders `sentiment_source`, NLP coverage, `heat_countries`, and `heat_voluminous_countries`.
 
 ### Reference docs:
 - `docs/STATUS.md` — current state, full session 17 inventory.
