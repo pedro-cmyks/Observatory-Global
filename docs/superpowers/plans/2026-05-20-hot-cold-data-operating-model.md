@@ -62,7 +62,7 @@ Supabase and the local archive hold overlapping information briefly, but they do
 - [x] Only after verification, add a prune script for archived raw rows older than 24 hours.
 - [x] Keep product aggregate tables and correction tables in Supabase even when raw rows age out.
 - [x] Run verified prune dry-run from Fly against the clean cutover manifest.
-- [ ] Execute live prune only after dry-run candidate counts match the verified archive and Pedro confirms the irreversible delete.
+- [x] Execute live prune only after dry-run candidate counts match the verified archive and Pedro confirms the irreversible delete.
 
 ## Production Probe - 2026-05-20
 
@@ -182,6 +182,30 @@ python -m scripts.prune_archived_signals \
   --execute \
   --i-understand-irreversible-delete
 ```
+
+Live prune completed after explicit approval on 2026-05-21:
+
+```text
+ran from: Fly nlp_worker machine 0803426f142468
+archive_rows:       2,128,070
+db_candidate_rows:  2,128,070
+deleted_rows:       2,128,070
+elapsed_seconds:    139.13
+post-prune archived range remaining: 0
+post-prune signals_v2 exact count:   259,360
+```
+
+Post-prune maintenance:
+
+- `ANALYZE signals_v2` completed.
+- `nlp_progress` recomputed from ground truth.
+- `/health` healthy after recompute:
+  - `ingest_lag_minutes`: `0.0`
+  - `rows_ingested_last_15m`: `2,171`
+  - `nlp.unprocessed_total`: `241,002`
+  - `nlp.oldest_unprocessed_at`: `2026-05-20T01:57:38.103524+00:00`
+
+Note: `/health.total_signals` intentionally still reads from `country_hourly_v2` historical aggregates, not raw `signals_v2`. It is no longer a raw hot-store row count after the hot/cold cutover.
 
 ## Example Commands
 

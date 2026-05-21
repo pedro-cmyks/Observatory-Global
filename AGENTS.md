@@ -23,7 +23,8 @@ Session 20 data state:
 - Verified export window: `2026-05-03T00:00:00Z` through `2026-05-20T03:33:29Z`.
 - Verified archive: 18 manifest records, 2,128,070 rows, ~368M local compressed size, 0 checksum failures, 0 overlaps.
 - Smoke queries passed: date `2026-05-19` = 185,163 rows; country `CO` = 13,654; source_family `social` = 485; topic/headline `energy` = 92,005.
-- Guardrail: do NOT manually delete historical rows. Use `archive_verify.py` first, then `prune_archived_signals.py` dry-run. Keep product aggregate tables, correction tables, topic tables, and NLP audit/progress tables in Supabase.
+- Live prune completed after explicit approval: 2,128,070 rows deleted from `signals_v2` in 139.13s; archived range remaining 0; exact `signals_v2` count 259,360; `ANALYZE signals_v2` completed; `nlp_progress` recomputed to `unprocessed_total=241,002`.
+- Guardrail: do NOT manually delete historical rows. Use `archive_verify.py` first, then `prune_archived_signals.py` dry-run. Keep product aggregate tables, correction tables, topic tables, and NLP audit/progress tables in Supabase. `/health.total_signals` reflects historical aggregate volume, not raw hot-store row count.
 
 Key files changed in session 15:
 - `backend/app/services/ingest_loop.py` — wired 4 new ingestion services. `ingest_newsdata` + `ingest_reddit` at `cycle%4`. `ingest_mediastack` at `cycle%8`. `ingest_newsapi` at `cycle%8+4` (offset to spread load).

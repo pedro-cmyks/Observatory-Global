@@ -43,11 +43,11 @@ Issue state:
 - #188 closed: same-day hot-window NLP SLA reached through fast-lane enrichment.
 - #189 closed: hot/cold architecture and first archive probe completed.
 - #190 active: cutover archive backfill completed; next gate is verified prune dry-run and then explicit live prune decision.
-- #190 active: cutover archive backfill completed; verified prune dry-run passed exactly (`2,128,070` archive rows = `2,128,070` DB candidates). Live prune is intentionally pending explicit confirmation after this dry-run result.
+- #190 closed: cutover archive backfill completed; verified prune dry-run passed exactly (`2,128,070` archive rows = `2,128,070` DB candidates); live prune executed after explicit approval.
 
 ### Important guardrail
 
-Do not run broad deletes manually. Use `backend/scripts/prune_archived_signals.py` only after `archive_verify.py` passes on the clean cutover archive. The prune dry-run passed from Fly nlp_worker `0803426f142468` with exact parity: `archive_rows=2,128,070`, `db_candidate_rows=2,128,070`, `range_count=18`, `executed=false`. Live prune still requires explicit confirmation because Supabase `signals_v2` deletion is irreversible without restore. The prune script touches only `signals_v2`; product aggregates, correction tables, topic tables, and NLP audit/progress state are intentionally retained.
+Do not run broad deletes manually. Use `backend/scripts/prune_archived_signals.py` only after `archive_verify.py` passes on a clean archive. The live prune completed from Fly nlp_worker `0803426f142468` with exact parity: `archive_rows=2,128,070`, `db_candidate_rows=2,128,070`, `deleted_rows=2,128,070`, `elapsed_seconds=139.13`. Post-prune verification: archived range remaining `0`, exact `signals_v2` count `259,360`, `ANALYZE signals_v2` completed, and `nlp_progress` recomputed to `unprocessed_total=241,002`. The prune script touched only `signals_v2`; product aggregates, correction tables, topic tables, and NLP audit/progress state were intentionally retained. `/health.total_signals` now represents historical aggregate volume from `country_hourly_v2`, not raw hot-store rows.
 
 ---
 
