@@ -12,6 +12,19 @@ Key files added in session 15 (multi-source ingestion + NLP stabilization — 20
 - `backend/migrations/019_atlas_topic_intelligence.sql` — Topic Intelligence schema (Codex track). Tables: `atlas_topics`, `signal_topic_assignments`, `topic_learning_examples`. 30 seed topics.
 - `backend/migrations/020_nlp_progress_indexes.sql` — indexes for NLP worker progress math (Codex track). Avoids full-scan on signals_v2.
 
+Key files added in session 20 (hot/cold retention cutover — 2026-05-20):
+- `backend/scripts/archive_verify.py` — verifies local archive manifest row counts, SHA256 digests, compressed byte sizes, and overlapping time ranges.
+- `backend/scripts/archive_plan.py` — plans daily `signals_v2` cold-export batches from Supabase without writing archive files.
+- `backend/scripts/prune_archived_signals.py` — dry-run-first prune for `signals_v2`; live deletion requires `--execute --i-understand-irreversible-delete` and only applies to verified manifest ranges.
+
+Session 20 data state:
+- Local archive root: `/Users/pedro/AtlasArchive`.
+- Clean cutover archive: `/Users/pedro/AtlasArchive/cutovers/2026-05-20`.
+- Verified export window: `2026-05-03T00:00:00Z` through `2026-05-20T03:33:29Z`.
+- Verified archive: 18 manifest records, 2,128,070 rows, ~368M local compressed size, 0 checksum failures, 0 overlaps.
+- Smoke queries passed: date `2026-05-19` = 185,163 rows; country `CO` = 13,654; source_family `social` = 485; topic/headline `energy` = 92,005.
+- Guardrail: do NOT manually delete historical rows. Use `archive_verify.py` first, then `prune_archived_signals.py` dry-run. Keep product aggregate tables, correction tables, topic tables, and NLP audit/progress tables in Supabase.
+
 Key files changed in session 15:
 - `backend/app/services/ingest_loop.py` — wired 4 new ingestion services. `ingest_newsdata` + `ingest_reddit` at `cycle%4`. `ingest_mediastack` at `cycle%8`. `ingest_newsapi` at `cycle%8+4` (offset to spread load).
 

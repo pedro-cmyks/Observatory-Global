@@ -8,12 +8,16 @@ from scripts.archive_common import (
     ArchiveFilters,
     ArchiveManifestRecord,
     append_manifest,
+    iter_manifest_records,
     iter_archive_rows,
     parse_timestamp,
     partition_path,
     row_matches,
+    verify_archive_file,
     write_jsonl_gzip,
 )
+from scripts.archive_verify import verify_archive
+from scripts.prune_archived_signals import covered_manifest_ranges
 from scripts.archive_query import query_archive
 from scripts.local_archive_worker import is_inside_window, parse_clock
 from scripts.nlp_sla_report import BREAKDOWN_SQL, coverage_pct
@@ -75,6 +79,14 @@ def test_write_manifest_and_query_archive(tmp_path):
     manifest = (tmp_path / "manifest.jsonl").read_text(encoding="utf-8").strip()
     assert json.loads(manifest)["row_count"] == 2
     assert len(list(iter_archive_rows(tmp_path))) == 2
+    assert len(list(iter_manifest_records(tmp_path))) == 1
+    file_check = verify_archive_file(tmp_path, next(iter_manifest_records(tmp_path)))
+    assert file_check["ok"] is True
+    assert file_check["actual_rows"] == 2
+
+    archive_check = verify_archive(tmp_path)
+    assert archive_check["ok"] is True
+    assert archive_check["total_rows"] == 2
 
     matches = query_archive(
         archive_dir=tmp_path,
@@ -134,3 +146,102 @@ def test_local_worker_window():
         parse_clock("00:00"),
         parse_clock("06:00"),
     )
+
+
+def test_archive_verify_detects_modified_file(tmp_path):
+    ts = parse_timestamp("2026-05-19T03:00:00Z")
+    path = partition_path(tmp_path, ts, "api", "abc")
+    count, digest, byte_count = write_jsonl_gzip(
+        path,
+        [{"id": 1, "timestamp": "2026-05-19T03:00:00Z", "headline": "original"}],
+    )
+    append_manifest(
+        tmp_path,
+        ArchiveManifestRecord(
+            archive_version=ARCHIVE_VERSION,
+            kind="signals_v2_export",
+            created_at="2026-05-20T00:00:00Z",
+            from_ts="2026-05-19T00:00:00Z",
+            to_ts="2026-05-20T00:00:00Z",
+            source_family="mixed",
+            row_count=count,
+            relative_path=str(path.relative_to(tmp_path)),
+            sha256=digest,
+            bytes=byte_count,
+            command="test",
+        ),
+    )
+    write_jsonl_gzip(path, [{"id": 2, "timestamp": "2026-05-19T03:00:00Z", "headline": "changed"}])
+
+    result = verify_archive(tmp_path)
+
+    assert result["ok"] is False
+    assert result["failed_records"] == 1
+    assert result["failures"][0]["sha256_ok"] is False
+
+
+def test_archive_verify_detects_overlapping_manifest_ranges(tmp_path):
+    ts = parse_timestamp("2026-05-19T00:00:00Z")
+    path_a = partition_path(tmp_path, ts, "mixed", "a")
+    path_b = partition_path(tmp_path, ts, "mixed", "b")
+    count_a, digest_a, bytes_a = write_jsonl_gzip(path_a, [{"id": 1}])
+    count_b, digest_b, bytes_b = write_jsonl_gzip(path_b, [{"id": 2}])
+    for path, count, digest, byte_count, from_ts, to_ts in [
+        (path_a, count_a, digest_a, bytes_a, "2026-05-19T00:00:00Z", "2026-05-19T01:00:00Z"),
+        (path_b, count_b, digest_b, bytes_b, "2026-05-19T00:30:00Z", "2026-05-19T02:00:00Z"),
+    ]:
+        append_manifest(
+            tmp_path,
+            ArchiveManifestRecord(
+                archive_version=ARCHIVE_VERSION,
+                kind="signals_v2_export",
+                created_at="2026-05-20T00:00:00Z",
+                from_ts=from_ts,
+                to_ts=to_ts,
+                source_family="mixed",
+                row_count=count,
+                relative_path=str(path.relative_to(tmp_path)),
+                sha256=digest,
+                bytes=byte_count,
+                command="test",
+            ),
+        )
+
+    result = verify_archive(tmp_path)
+
+    assert result["ok"] is False
+    assert result["failed_records"] == 0
+    assert result["overlap_count"] == 1
+
+
+def test_prune_ranges_only_include_manifest_ranges_before_cutoff(tmp_path):
+    ts = parse_timestamp("2026-05-19T00:00:00Z")
+    path_a = partition_path(tmp_path, ts, "mixed", "a")
+    path_b = partition_path(tmp_path, ts, "mixed", "b")
+    count_a, digest_a, bytes_a = write_jsonl_gzip(path_a, [{"id": 1}])
+    count_b, digest_b, bytes_b = write_jsonl_gzip(path_b, [{"id": 2}])
+    for path, count, digest, byte_count, from_ts, to_ts in [
+        (path_a, count_a, digest_a, bytes_a, "2026-05-18T00:00:00Z", "2026-05-19T00:00:00Z"),
+        (path_b, count_b, digest_b, bytes_b, "2026-05-20T00:00:00Z", "2026-05-21T00:00:00Z"),
+    ]:
+        append_manifest(
+            tmp_path,
+            ArchiveManifestRecord(
+                archive_version=ARCHIVE_VERSION,
+                kind="signals_v2_export",
+                created_at="2026-05-20T00:00:00Z",
+                from_ts=from_ts,
+                to_ts=to_ts,
+                source_family="mixed",
+                row_count=count,
+                relative_path=str(path.relative_to(tmp_path)),
+                sha256=digest,
+                bytes=byte_count,
+                command="test",
+            ),
+        )
+
+    ranges = covered_manifest_ranges(tmp_path, parse_timestamp("2026-05-20T00:00:00Z"))
+
+    assert len(ranges) == 1
+    assert ranges[0]["row_count"] == 1

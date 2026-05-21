@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-20 (session 19 — Opción A sentiment fusion live; heat + heat_voluminous shipped; nlp_progress recompute landed; lexicon mining infra + first snapshots; main blocker is NLP throughput vs ingest velocity)
+Last updated: 2026-05-20 (session 20 — hot/cold archive cutover backfill verified; prune guardrails added; next gate is dry-run prune)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -8,17 +8,41 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
-## Current Session Context (2026-05-20, session 19 close)
+## Current Session Context (2026-05-20, session 20 close)
 
 - Active branch: `v3-intel-layer`; production branch. Do not merge into `main`.
 - PR #144 open against main: https://github.com/pedro-cmyks/Observatory-Global/pull/144
 - Production: Vercel (frontend auto-deploy), Fly.io `atlas-api-pedro` backend, Fly.io `nlp_worker` 4GB.
-- Latest known production commit: `763b3c9 feat(lexicon): first mined vocab snapshots from 15K transformer-tagged rows`.
-- Total signals: ~2.26M on latest `/health`. NLP backlog remains high (`unprocessed_total` ~2.09M, `unprocessed_24h` ~179K).
+- Latest known production commit before this handoff: `f31349f docs(data): record hot cold archive probe`; subsequent hot/cold guardrail commit should be deployed before running prune dry-run via Fly.
+- Total signals: ~2.28M on latest `/health`; hot-window SLA was brought above 99% with fast-lane enrichment.
 - Atlas product framing: **public narrative intelligence console**, not a GDELT wrapper.
 - Preferred user path: `/brief` for readable orientation, then `/app` for full analyst investigation.
 
-### Session 19 closed with data architecture pressure exposed:
+### Session 20 hot/cold archive cutover state
+
+- Local archive root: `/Users/pedro/AtlasArchive`.
+- First probe archive remains at `/Users/pedro/AtlasArchive` with `952` verified rows.
+- Clean cutover archive: `/Users/pedro/AtlasArchive/cutovers/2026-05-20`.
+- Cutover export source: Fly app machine `d8d2e46fe07e78`, Supabase `signals_v2`.
+- Cutover export window: `2026-05-03T00:00:00Z` through `2026-05-20T03:33:29Z`.
+- Cutover archive verified: `18` manifest records, `2,128,070` rows, `~368M`, `0` failures, `0` overlaps.
+- Smoke queries:
+  - Date `2026-05-19`: `185,163` rows.
+  - Country `CO`: `13,654` rows.
+  - Source family `social`: `485` rows.
+  - Topic/headline substring `energy`: `92,005` rows.
+
+New safety scripts:
+
+- `backend/scripts/archive_verify.py` — local manifest verifier for rows, SHA256, bytes, and overlapping ranges.
+- `backend/scripts/archive_plan.py` — Supabase daily export planner.
+- `backend/scripts/prune_archived_signals.py` — dry-run by default; live delete requires `--execute --i-understand-irreversible-delete`; deletes only `signals_v2` rows inside verified manifest ranges.
+
+Guardrail: do not manually delete historical rows. Run `archive_verify.py` first, then `prune_archived_signals.py` dry-run. Product aggregate tables, correction tables, topic tables, and NLP audit/progress state stay in Supabase.
+
+Tests after hot/cold guardrail changes: `cd backend && .venv/bin/python -m pytest -q` -> `260 passed, 6 skipped`.
+
+### Previous session 19 closed with data architecture pressure exposed:
 
 **Sentiment fusion (Opción A) end-to-end**
 - Migration 025: `theme_hourly_v2` + `theme_country_hourly_v2` gained `nlp_signal_count` + `avg_nlp_sentiment`.

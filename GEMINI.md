@@ -1,6 +1,6 @@
 # GEMINI Code Assistant Context — Observatory Global (Atlas)
 
-Last updated: 2026-05-19 (session 15 close — 4 new ingestion sources live; NLP worker 4GB with xlm-v1 multilingual confirmed; migrations 019+020 applied; 2.28M signals)
+Last updated: 2026-05-20 (session 20 — hot/cold archive cutover verified; prune guardrails added)
 
 This document gives the Gemini AI assistant the current, accurate context for the Observatory Global project. Treat this as the source of truth for deployment topology, architecture, and conventions.
 
@@ -26,6 +26,8 @@ This document gives the Gemini AI assistant the current, accurate context for th
 **Session 15 ingestion update:** NewsData.io, MediaStack, NewsAPI.org, and Reddit public API are wired into `backend/app/services/ingest_loop.py` and deployed on Fly. Keys are documented in `backend/.env.example` and Fly secrets are set for NewsData/MediaStack/NewsAPI.
 
 **Session 15 NLP update (Codex track):** `nlp_worker` raised to `shared-cpu-2x:4096MB`. Migrations `019_atlas_topic_intelligence.sql` (atlas_topics, signal_topic_assignments, topic_learning_examples, 30 seed topics) and `020_nlp_progress_indexes.sql` applied. **Multilingual NLP CONFIRMED running**: logs show `Sentiment[xlm-v1]`, `NER[xlm-v1]`, `Framing[xlm-v1]`. Cycle duration 231.5s, error=no. Env flags: `NLP_SAMPLE_REFRESH_EVERY=0`, `NLP_SAMPLE_CLEANUP_LIMIT=50`. Throughput stable at 25 rows/cycle — DO NOT raise without observing DB pressure over hours.
+
+**Session 20 hot/cold archive update:** The hot/cold operating model is now operationally tested. Local archive root is `/Users/pedro/AtlasArchive`; clean cutover archive is `/Users/pedro/AtlasArchive/cutovers/2026-05-20`. Verified export covers `2026-05-03T00:00:00Z` through `2026-05-20T03:33:29Z`, with 18 manifest records, 2,128,070 rows, ~368M compressed, 0 checksum failures, and 0 overlapping ranges. New scripts: `backend/scripts/archive_verify.py`, `backend/scripts/archive_plan.py`, `backend/scripts/prune_archived_signals.py`. Do not manually delete historical rows; run archive verification first, then `prune_archived_signals.py` dry-run. The prune script must only touch `signals_v2`; product aggregate tables, correction tables, topic tables, and NLP audit/progress tables stay in Supabase.
 
 **Next session priorities:** (1) `signal_class` + `narrative_cluster_id` migration 021 (Reddit must be `"commentary"`), (2) Voice Mix UI component in CountryBrief with `/api/v2/countries/{iso}/voice-mix` endpoint, (3) NewsAPI refactor to 6 evergreen + 2 dynamic from GDELT spikes + 36 req/day analyst reserve, (4) validate HuggingFace tokenizer warning on `twitter-xlm-roberta-base-sentiment`, (5) resolve `country_heat_v2` refresh timeout. Plan: `docs/superpowers/plans/2026-05-18-multisource-intelligence-hardening.md`.
 

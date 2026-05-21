@@ -125,6 +125,66 @@ def append_manifest(archive_dir: Path, record: ArchiveManifestRecord) -> None:
         handle.write("\n")
 
 
+def iter_manifest_records(archive_dir: Path) -> Iterator[ArchiveManifestRecord]:
+    manifest = archive_dir / MANIFEST_FILE
+    if not manifest.exists():
+        return
+    with manifest.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            payload = json.loads(line)
+            yield ArchiveManifestRecord(**payload)
+
+
+def verify_archive_file(archive_dir: Path, record: ArchiveManifestRecord) -> dict[str, Any]:
+    path = archive_dir / record.relative_path
+    result: dict[str, Any] = {
+        "relative_path": record.relative_path,
+        "from_ts": record.from_ts,
+        "to_ts": record.to_ts,
+        "source_family": record.source_family,
+        "expected_rows": record.row_count,
+        "expected_sha256": record.sha256,
+        "exists": path.exists(),
+        "ok": False,
+    }
+    if not path.exists():
+        result["error"] = "missing_file"
+        return result
+
+    digest = hashlib.sha256()
+    count = 0
+    try:
+        with gzip.open(path, "rt", encoding="utf-8") as handle:
+            for line in handle:
+                if not line.strip():
+                    continue
+                encoded = line.rstrip("\n").encode("utf-8")
+                digest.update(encoded)
+                digest.update(b"\n")
+                count += 1
+    except OSError as exc:
+        result["error"] = f"gzip_read_failed:{exc}"
+        return result
+
+    actual_sha = digest.hexdigest()
+    actual_bytes = path.stat().st_size
+    result.update(
+        {
+            "actual_rows": count,
+            "actual_sha256": actual_sha,
+            "expected_bytes": record.bytes,
+            "actual_bytes": actual_bytes,
+            "rows_ok": count == record.row_count,
+            "sha256_ok": actual_sha == record.sha256,
+            "bytes_ok": actual_bytes == record.bytes,
+        }
+    )
+    result["ok"] = bool(result["rows_ok"] and result["sha256_ok"] and result["bytes_ok"])
+    return result
+
+
 def iter_archive_files(archive_dir: Path) -> Iterator[Path]:
     yield from sorted((archive_dir / "signals").glob("**/*.jsonl.gz"))
 

@@ -58,9 +58,11 @@ Supabase and the local archive hold overlapping information briefly, but they do
 ## Phase 5 - Retention Cutover
 
 - [x] Run archive export for a small date range and verify counts.
-- [ ] Run archive export for all rows older than 24 hours in date-sized batches.
-- [ ] Only after verification, add a prune script for archived raw rows older than 24 hours.
-- [ ] Keep product aggregate tables and correction tables in Supabase even when raw rows age out.
+- [x] Run archive export for all rows older than 24 hours in date-sized batches.
+- [x] Only after verification, add a prune script for archived raw rows older than 24 hours.
+- [x] Keep product aggregate tables and correction tables in Supabase even when raw rows age out.
+- [ ] Run verified prune dry-run from Fly against the clean cutover manifest.
+- [ ] Execute live prune only after dry-run candidate counts match the verified archive.
 
 ## Production Probe - 2026-05-20
 
@@ -115,6 +117,49 @@ cd backend
 ```
 
 Decision: #189 covers the architecture and first verified archive path. The destructive retention/prune cutover should be handled separately so it can require explicit manifest checks and a dry-run gate.
+
+## Retention Cutover Backfill - 2026-05-20
+
+Created a clean cutover archive separate from the small probe so manifest ranges do not overlap.
+
+Cutover archive path:
+
+```text
+/Users/pedro/AtlasArchive/cutovers/2026-05-20
+```
+
+Exported from Fly.io app machine `d8d2e46fe07e78` in date-sized UTC partitions:
+
+```text
+from: 2026-05-03T00:00:00Z
+to:   2026-05-20T03:33:29Z
+```
+
+Verification:
+
+- Manifest records: `18`.
+- Verified records: `18`.
+- Rows archived: `2,128,070`.
+- Compressed bytes: `385,939,744` (`~368M` on disk locally).
+- Overlap count: `0`.
+- Failed records: `0`.
+
+Smoke queries:
+
+```text
+date 2026-05-19: 185,163 rows
+country CO:       13,654 rows
+source social:       485 rows
+topic energy:      92,005 rows
+```
+
+Safety tooling added:
+
+- `backend/scripts/archive_verify.py` verifies manifest row counts, SHA256 digests, compressed byte sizes, and overlapping ranges.
+- `backend/scripts/archive_plan.py` plans daily export batches from Supabase without writing archive files.
+- `backend/scripts/prune_archived_signals.py` prunes only rows covered by verified manifest ranges. It defaults to dry-run and requires both `--execute` and `--i-understand-irreversible-delete` for live delete.
+
+Important: live prune still must be treated as irreversible. The script only touches `signals_v2`; it does not touch product aggregate tables, correction tables, topic tables, or NLP audit/progress tables.
 
 ## Example Commands
 

@@ -1,9 +1,56 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-20 (Session 19 — data throughput, NLP coverage, heat ranking, lexicon mining)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-20 (Session 20 — hot/cold archive cutover backfill and prune guardrails)
 
 ---
 
-## Current handoff (2026-05-20) — Session 19
+## Current handoff (2026-05-20) — Session 20
+
+Production branch remains `v3-intel-layer`. This session moved the hot/cold model from architecture/probe to a verified cutover archive.
+
+### Hot/cold retention cutover state
+
+- Local archive root: `/Users/pedro/AtlasArchive`.
+- Clean cutover archive: `/Users/pedro/AtlasArchive/cutovers/2026-05-20`.
+- Export source: Fly app machine `d8d2e46fe07e78`, Supabase `signals_v2`.
+- Export window: `2026-05-03T00:00:00Z` through `2026-05-20T03:33:29Z`.
+- Exported partitions: `18` UTC date-sized JSONL gzip files.
+- Verified rows: `2,128,070`.
+- Local compressed size: `~368M`.
+- Manifest verification: `18/18` records OK, `0` failed, `0` overlaps.
+
+Smoke queries against the local archive:
+
+| Query | Result |
+|-------|--------|
+| Date `2026-05-19` | `185,163` rows |
+| Country `CO` | `13,654` rows |
+| Source family `social` | `485` rows |
+| Topic/headline substring `energy` | `92,005` rows |
+
+Safety tooling added:
+
+- `backend/scripts/archive_verify.py` — verifies manifest row counts, SHA256 digests, compressed byte sizes, and overlapping ranges.
+- `backend/scripts/archive_plan.py` — plans daily cold-export batches from Supabase.
+- `backend/scripts/prune_archived_signals.py` — dry-run by default; live delete requires `--execute --i-understand-irreversible-delete` and only prunes `signals_v2` rows covered by verified manifest ranges.
+
+Validation:
+
+- `cd backend && .venv/bin/python -m pytest tests/test_archive_common.py -q` → `10 passed`.
+- `cd backend && .venv/bin/python -m pytest -q` → `260 passed, 6 skipped`.
+
+Issue state:
+
+- #188 closed: same-day hot-window NLP SLA reached through fast-lane enrichment.
+- #189 closed: hot/cold architecture and first archive probe completed.
+- #190 active: cutover archive backfill completed; next gate is verified prune dry-run and then explicit live prune decision.
+
+### Important guardrail
+
+Do not run broad deletes manually. Use `backend/scripts/prune_archived_signals.py` only after `archive_verify.py` passes on the clean cutover archive. The prune script touches only `signals_v2`; product aggregates, correction tables, topic tables, and NLP audit/progress state are intentionally retained.
+
+---
+
+## Previous handoff (2026-05-20) — Session 19
 
 Production is on `v3-intel-layer` at `763b3c9 feat(lexicon): first mined vocab snapshots from 15K transformer-tagged rows`.
 
