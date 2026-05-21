@@ -26,16 +26,22 @@ Already shipped:
 
 - `/api/v2/briefing?hours>24` routes `top_themes` to `historical_topic_country_daily`.
 - `/brief` shows historical processed coverage metadata.
+- Full verified cutover archive backfill is synced to Supabase compact history:
+  `18` days, `2,128,070` represented signals, `22,711` compact aggregate rows,
+  `236` countries, `11` topics, model `atlas-hist-v1`.
 
 Still pending:
 
-- Process all remaining cutover archive days into `historical_topic_country_daily`.
 - Add the shared `processed_historical.py` helper.
 - Route `/api/v2/heatmap`, `/api/v2/heat/countries`, `/api/v2/country/{code}`, `/api/v2/theme/{code}`, and `/api/v2/anomalies/themes`.
 - Add a reusable frontend `CoverageBadge`.
 - Fix long-window `top_sources` degradation (#194).
 
 Issue `#193` should remain open until app-wide routing is shipped and smoke-tested. The briefing bridge is complete but not the full app-window routing scope.
+
+Quality finding: historical compact storage is complete for the cutover, but
+`general-monitoring` still represents `1,559,990` of `2,128,070` signals. That
+makes #171/#167/#185 the next quality bottleneck after app-wide routing.
 
 ---
 

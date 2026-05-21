@@ -46,20 +46,37 @@ Atlas should behave like a data product, not a raw news dump:
 
 **Issues:** #191, #192.
 
+**Status 2026-05-21:** complete for the verified May 20 cutover archive.
+
 **Work:**
 
-1. Process the remaining archive days from `2026-05-03` through `2026-05-18`.
-2. Sync daily aggregates into `historical_topic_country_daily` with `model_version='atlas-hist-v1'`.
-3. Run `historical_coverage_report.py` after each day and once globally.
-4. Keep raw historical rows out of Supabase.
+1. [x] Process the remaining archive days from `2026-05-03` through `2026-05-18`, plus the partial cutover day `2026-05-20`.
+2. [x] Sync daily aggregates into `historical_topic_country_daily` with `model_version='atlas-hist-v1'`.
+3. [x] Run `historical_coverage_report.py` globally.
+4. [x] Keep raw historical rows out of Supabase.
+
+**Result:**
+
+| Metric | Value |
+|---|---:|
+| Historical days | 18 |
+| Verified archive rows represented | 2,128,070 |
+| Compact aggregate rows in Supabase | 22,711 |
+| Countries | 236 |
+| Topics | 11 |
+| Avg topic coverage | 0.8052 |
+| Avg NLP sentiment coverage | 0.1695 |
+| Avg entity coverage | 0.5564 |
 
 **Creative solution:** use a "coverage ledger" mindset. Treat each UTC day as an accounting close: archive verified, processed artifact written, Supabase compact rows synced, coverage report recorded. This prevents partial historical windows from becoming invisible debt.
 
 **Done when:**
 
-- `historical_coverage_report.py` shows all cutover days represented.
-- `represented_signals` is near the verified archive count of `2,128,070`.
-- Any missing day has an explicit reason.
+- [x] `historical_coverage_report.py` shows all cutover days represented.
+- [x] `represented_signals` matches the verified archive count of `2,128,070`.
+- [x] Any missing day has an explicit reason. Current result: no missing cutover days in compact history.
+
+**Quality finding:** `general-monitoring` still represents `1,559,990` of `2,128,070` historical signals. Storage/routing is now working; the next quality bottleneck is topic intelligence and non-general classification (#171, #167, #185).
 
 ## Phase 2 — Route App Windows Through Processed History
 
@@ -184,8 +201,8 @@ These stay open but should not interrupt Phases 1-3 unless they become blockers:
 
 ## Next Execution Order
 
-1. Reopen and clarify `#193`.
-2. Finish historical processed backfill for the cutover archive.
+1. [x] Reopen and clarify `#193`.
+2. [x] Finish historical processed backfill for the cutover archive.
 3. Turn the routing spec into a focused implementation plan.
 4. Execute app-wide routing + coverage badge.
 5. Fix `#194` long-window `top_sources`.

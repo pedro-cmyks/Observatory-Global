@@ -27,6 +27,7 @@ Key files added in session 21 (processed historical sync — 2026-05-21):
 - `backend/migrations/029_historical_processed_tables.sql` — compact processed historical tables: runs, topic/country daily aggregates, evidence samples, and archive coverage. Applied to Supabase through Supabase MCP after OAuth setup.
 - `backend/scripts/historical_process_partition.py` — local archive partition processor. First smoke: 2026-05-19 archive partition, 185,163 rows -> 1,728 aggregate rows.
 - `backend/scripts/historical_sync.py` — dry-run/live idempotent sync into `historical_topic_country_daily`.
+- `backend/scripts/historical_backfill.py` — idempotent cutover backfill orchestrator. Discovers verified manifest records, writes missing daily artifacts, and can sync existing artifacts with `--sync-existing --execute-sync`.
 - `backend/scripts/historical_coverage_report.py` — Supabase budget/coverage report for compact processed history.
 - `backend/tests/test_historical_processing.py` — migration shape, topic inference, aggregate, and sync payload tests.
 - `docs/research/processed-historical-sync/2026-05-19-topic-country.json` — first processed historical artifact.
@@ -47,8 +48,10 @@ Session 21 processed historical sync direction:
 - Tracking issues: #191 (local archive -> processed historical sync), #192 (processed-only historical tables), #193 (route `1w`/`1m` app windows to processed historical tables). Related issues commented: #164, #167, #171, #184, #185.
 - First implementation should start with migration `029_historical_processed_tables.sql`, then `backend/scripts/historical_process_partition.py`, then `backend/scripts/historical_sync.py`.
 - Current implementation status: migration 029 applied; first `historical_sync.py` live run inserted/upserted `1,728` rows for `2026-05-19` / `atlas-hist-v1`, summing to `185,163` signals. Next step is API bridge for long-window reads.
-- Long-window API bridge status: `/api/v2/briefing?hours>24` routes `top_themes` to `historical_topic_country_daily` and `/brief` renders historical processed coverage metadata. Current coverage report: `1,728` aggregate rows, `185,163` represented signals, `226` countries, `11` topics.
+- Full cutover backfill status: `historical_backfill.py` processed/synced `2026-05-03` through partial `2026-05-20`: `18` historical days, `22,711` compact rows, and `2,128,070` represented signals, exactly matching the verified local archive.
+- Long-window API bridge status: `/api/v2/briefing?hours>24` routes `top_themes` to `historical_topic_country_daily` and `/brief` renders historical processed coverage metadata. Current coverage report after full backfill: `22,711` aggregate rows, `2,128,070` represented signals, `236` countries, `11` topics, avg topic coverage `0.8052`, avg NLP sentiment coverage `0.1695`.
 - Scope correction: do not close #193 based only on `/brief`. #193 remains open until app-wide routing from `docs/superpowers/specs/2026-05-21-processed-historical-routing-design.md` is implemented for `/api/v2/heatmap`, `/api/v2/heat/countries`, `/api/v2/country/{code}`, `/api/v2/theme/{code}`, and `/api/v2/anomalies/themes`, plus frontend `CoverageBadge`. #194 tracks long-window `top_sources` pre-aggregation.
+- Quality finding: `general-monitoring` represents `1,559,990` of `2,128,070` historical signals, so storage is no longer the blocker; topic intelligence quality (#171/#167/#185) is.
 
 Key files changed in session 15:
 - `backend/app/services/ingest_loop.py` — wired 4 new ingestion services. `ingest_newsdata` + `ingest_reddit` at `cycle%4`. `ingest_mediastack` at `cycle%8`. `ingest_newsapi` at `cycle%8+4` (offset to spread load).

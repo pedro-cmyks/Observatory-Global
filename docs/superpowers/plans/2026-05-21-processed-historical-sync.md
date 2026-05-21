@@ -847,6 +847,12 @@ Status 2026-05-21: `historical_coverage_report` against Supabase returned
 `1,728` aggregate rows, `185,163` represented signals, `226` countries, and
 `11` topics for the current historical processed baseline.
 
+Updated 2026-05-21 after full cutover backfill: `historical_coverage_report`
+against Supabase returned `22,711` aggregate rows, `2,128,070` represented
+signals, `236` countries, `11` topics, average topic coverage `0.8052`,
+average NLP sentiment coverage `0.1695`, and average entity coverage `0.5564`.
+This exactly matches the verified local archive row count.
+
 ```sql
 SELECT COUNT(*) FROM historical_topic_country_daily;
 SELECT COUNT(*) FROM historical_evidence_samples;
@@ -862,6 +868,55 @@ SELECT COUNT(*) FROM signals_v2;
 5. Add frontend coverage badge.
 6. Expand to country/topic/source/entity historical surfaces.
 7. Revisit Fly worker size only after hot SLA is stable for 48h.
+
+## Full Cutover Backfill — 2026-05-21
+
+Added `backend/scripts/historical_backfill.py` to make the backfill repeatable
+and idempotent. It discovers verified manifest records, writes missing daily
+artifacts, and can sync existing artifacts with `--sync-existing --execute-sync`.
+
+Commands used:
+
+```bash
+cd backend
+
+.venv/bin/python -m scripts.historical_backfill \
+  --archive-dir /Users/pedro/AtlasArchive/cutovers/2026-05-20 \
+  --output-dir ../docs/research/processed-historical-sync \
+  --start-day 2026-05-03 \
+  --end-day 2026-05-20
+
+DATABASE_URL="$DB_URL" .venv/bin/python -m scripts.historical_backfill \
+  --archive-dir /Users/pedro/AtlasArchive/cutovers/2026-05-20 \
+  --output-dir ../docs/research/processed-historical-sync \
+  --start-day 2026-05-03 \
+  --end-day 2026-05-20 \
+  --sync-existing \
+  --execute-sync
+```
+
+Result:
+
+```text
+days synced:         18
+manifest rows:       2,128,070
+aggregate rows:      22,711
+first day:           2026-05-03
+last day:            2026-05-20
+model_version:       atlas-hist-v1
+```
+
+Production smoke after sync:
+
+```text
+/api/v2/briefing?hours=168
+top_themes_source: historical_topic_country_daily
+historical_coverage.source: historical_processed
+historical_coverage.sentimentCoverage: 0.148
+degraded_segments: ["top_sources"]
+```
+
+`top_sources` degradation is tracked separately in #194.
 
 ## Self-Review
 

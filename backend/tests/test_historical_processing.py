@@ -1,5 +1,8 @@
+import json
 from pathlib import Path
 
+from scripts.archive_common import ArchiveManifestRecord
+from scripts.historical_backfill import _day_from_path, discover_backfill_days
 from scripts.historical_process_partition import (
     build_daily_topic_country_rows,
     infer_topic_slug,
@@ -169,3 +172,40 @@ def test_historical_coverage_report_uses_compact_processed_tables_only():
     assert "represented_signals" in combined_sql
     assert "avg_sentiment_coverage" in combined_sql
     assert "signals_v2" not in combined_sql
+
+
+def test_historical_backfill_extracts_day_from_archive_path():
+    path = Path("signals/year=2026/month=05/day=18/source_family=mixed/part-test.jsonl.gz")
+
+    assert _day_from_path(path).isoformat() == "2026-05-18"
+
+
+def test_historical_backfill_discovers_missing_artifacts(tmp_path):
+    archive_dir = tmp_path / "archive"
+    output_dir = tmp_path / "out"
+    partition = archive_dir / "signals/year=2026/month=05/day=18/source_family=mixed"
+    partition.mkdir(parents=True)
+    (partition / "part-test.jsonl.gz").write_bytes(b"")
+    manifest = archive_dir / "manifest.jsonl"
+    record = ArchiveManifestRecord(
+        archive_version=1,
+        kind="signals_v2",
+        created_at="2026-05-21T00:00:00Z",
+        from_ts="2026-05-18T00:00:00Z",
+        to_ts="2026-05-19T00:00:00Z",
+        source_family="mixed",
+        row_count=42,
+        relative_path="signals/year=2026/month=05/day=18/source_family=mixed/part-test.jsonl.gz",
+        sha256="abc",
+        bytes=123,
+        command="test",
+    )
+    manifest.write_text(json.dumps(record.__dict__) + "\n", encoding="utf-8")
+
+    days = discover_backfill_days(archive_dir=archive_dir, output_dir=output_dir)
+
+    assert len(days) == 1
+    assert days[0].day.isoformat() == "2026-05-18"
+    assert days[0].manifest_rows == 42
+    assert days[0].should_process is True
+    assert days[0].should_sync is True

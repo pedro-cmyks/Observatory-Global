@@ -34,11 +34,13 @@ Older docs remain valid but subordinate:
 
 - Done: `/api/v2/briefing?hours>24` routes `top_themes` to `historical_topic_country_daily`.
 - Done: `/brief` renders historical processed coverage metadata.
-- Pending: backfill all cutover archive days into compact historical tables.
+- Done: full cutover archive backfill into compact historical tables using `backend/scripts/historical_backfill.py`: `18` days, `22,711` compact rows, `2,128,070` represented signals, `236` countries, `11` topics.
 - Pending: shared `processed_historical.py` helper.
 - Pending: `/api/v2/heatmap`, `/api/v2/heat/countries`, `/api/v2/country/{code}`, `/api/v2/theme/{code}`, and `/api/v2/anomalies/themes` coverage envelopes.
 - Pending: reusable frontend `CoverageBadge`.
 - Pending: `#194` long-window `top_sources` pre-aggregation.
+
+Quality finding after full backfill: `general-monitoring` represents `1,559,990` of `2,128,070` historical signals. Historical storage/routing has enough data; next quality work is topic intelligence (#171/#167/#185).
 
 ### Security RLS lockdown (migration 030)
 
