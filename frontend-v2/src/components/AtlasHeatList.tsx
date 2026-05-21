@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { resolveCountryName } from '../lib/countryNames';
+import { CoverageBadge, type CoverageMeta } from './CoverageBadge';
 import './AtlasHeatList.css';
 
 interface HeatComponents {
@@ -25,6 +26,8 @@ interface HeatResponse {
   hours: number;
   items: HeatItem[];
   refreshed_at: string;
+  source?: string;
+  coverage?: CoverageMeta;
 }
 
 interface AtlasHeatListProps {
@@ -80,11 +83,21 @@ export default function AtlasHeatList({ hours, limit = 12, onCountrySelect }: At
 
   const items = useMemo(() => data?.items ?? [], [data]);
   const refreshedAt = data?.refreshed_at;
+  const title = data?.source === 'historical_topic_country_daily'
+    ? `historical attention — last ${hours}h`
+    : `composite heat — last ${hours}h`;
 
   return (
     <div className="atlas-heat">
       <div className="atlas-heat__header">
-        <span className="atlas-heat__title">composite heat — last {hours}h</span>
+        <span className="atlas-heat__title">{title}</span>
+        {data && (
+          <CoverageBadge
+            coverage={data.coverage}
+            source={data.source}
+            compact
+          />
+        )}
         {refreshedAt && (
           <span
             className="atlas-heat__refreshed"

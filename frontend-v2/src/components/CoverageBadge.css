@@ -1,0 +1,37 @@
+.coverage-method-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 20px;
+  padding: 2px 7px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.1);
+  color: #cbd5e1;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  cursor: help;
+  white-space: nowrap;
+}
+
+.coverage-method-badge--history {
+  border-color: rgba(45, 212, 191, 0.32);
+  background: rgba(20, 184, 166, 0.12);
+  color: #5eead4;
+}
+
+.coverage-method-badge--partial {
+  border-color: rgba(251, 191, 36, 0.34);
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+}
+
+.coverage-method-badge--compact {
+  min-height: 18px;
+  padding: 2px 6px;
+  font-size: 9px;
+}

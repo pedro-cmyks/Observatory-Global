@@ -9,6 +9,7 @@ import { getSourceFamilyMeta, type SourceFamily } from '../lib/sourceFamily'
 import { resolveCountryName } from '../lib/countryNames'
 import { PanelErrorBoundary } from './PanelErrorBoundary'
 import { PanelSkeleton, PanelSkeletonGrid } from './PanelSkeleton'
+import { CoverageBadge, type CoverageMeta } from './CoverageBadge'
 import type { PublicAttentionOrigin } from '../lib/publicAttention'
 import type { TemporalNarrativeBucket } from '../lib/temporalNarrativeGraph'
 import './ThemeDetail.css'
@@ -45,6 +46,9 @@ interface ThemeData {
     topSources: Array<{ name: string; count: number; sentiment: number; family?: SourceFamily | string | null }>
     topPersons: Array<{ name: string; count: number }>
     timeline: Array<{ hour: string; count: number; sentiment: number }>
+    source?: string
+    coverage?: CoverageMeta
+    warnings?: string[]
     countryFraming?: Array<{
         country_code: string
         country_name: string
@@ -344,6 +348,15 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                     <span className="origin-country-hint"> · opened from Public Attention: {originAttention.title}</span>
                                 )}
                             </p>
+                        )}
+                        {data && (
+                            <div className="theme-detail-coverage-row">
+                                <CoverageBadge
+                                    coverage={data.coverage}
+                                    source={data.source}
+                                    warnings={data.warnings}
+                                />
+                            </div>
                         )}
                     </div>
                 </div>

@@ -408,3 +408,102 @@ async def query_historical_topic_detail(
         "source_mix": [dict(row) for row in source_mix],
         "evidence": [dict(row) for row in evidence],
     }
+
+
+async def query_historical_theme_anomalies(
+    conn,
+    *,
+    hours: int,
+    limit: int,
+    model_version: str = HISTORICAL_MODEL_VERSION,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Return daily topic anomalies from compact history for long windows.
+
+    Historical archive data is daily-grain. For anomaly detection, compare the
+    latest complete archived day before HOT_STORE_FLOOR against previous days in
+    the requested window. This avoids treating the partial cutover day as a drop.
+    """
+    days = days_for_hours(hours)
+    current_day = await conn.fetchval(
+        """
+        SELECT MAX(day)::date
+        FROM historical_topic_country_daily
+        WHERE day < $1::date
+          AND day >= CURRENT_DATE - $2::int
+          AND model_version = $3::text
+        """,
+        HOT_STORE_FLOOR.date(),
+        days,
+        model_version,
+    )
+    if not current_day:
+        return [], {
+            "baseline_window_days": days,
+            "current_day": None,
+            "days_observed": 0,
+            "degraded": True,
+            "degraded_reason": "no_complete_historical_day",
+        }
+
+    rows = await conn.fetch(
+        """
+        WITH daily_topic AS (
+            SELECT day,
+                   topic_slug,
+                   SUM(signal_count)::bigint AS daily_count,
+                   AVG(topic_coverage)::float AS topic_coverage,
+                   AVG(sentiment_coverage)::float AS sentiment_coverage
+            FROM historical_topic_country_daily
+            WHERE day <= $1::date
+              AND day >= $1::date - $2::int
+              AND model_version = $3::text
+            GROUP BY day, topic_slug
+        ),
+        current_window AS (
+            SELECT topic_slug,
+                   daily_count,
+                   topic_coverage,
+                   sentiment_coverage
+            FROM daily_topic
+            WHERE day = $1::date
+              AND daily_count >= 10
+        ),
+        baseline AS (
+            SELECT topic_slug,
+                   COUNT(*)::int AS days_observed,
+                   AVG(daily_count)::float AS avg_daily,
+                   STDDEV(daily_count)::float AS stddev_daily
+            FROM daily_topic
+            WHERE day < $1::date
+            GROUP BY topic_slug
+            HAVING COUNT(*) >= 2
+        )
+        SELECT c.topic_slug,
+               c.daily_count,
+               b.avg_daily,
+               b.days_observed,
+               c.topic_coverage,
+               c.sentiment_coverage,
+               ROUND((c.daily_count::numeric / NULLIF(b.avg_daily, 0)::numeric), 2) AS multiplier,
+               ROUND(((c.daily_count - b.avg_daily) /
+                      NULLIF(COALESCE(b.stddev_daily, b.avg_daily * 0.3), 0))::numeric, 2) AS zscore
+        FROM current_window c
+        JOIN baseline b ON b.topic_slug = c.topic_slug
+        WHERE ((c.daily_count - b.avg_daily) /
+               NULLIF(COALESCE(b.stddev_daily, b.avg_daily * 0.3), 0)) > 1.5
+        ORDER BY zscore DESC NULLS LAST, c.daily_count DESC
+        LIMIT $4::int
+        """,
+        current_day,
+        days,
+        model_version,
+        limit,
+    )
+    meta = {
+        "baseline_window_days": days,
+        "current_day": current_day.isoformat(),
+        "degraded": False,
+        "degraded_reason": None,
+        "method": "historical_daily_topic_zscore",
+    }
+    return [dict(row) for row in rows], meta

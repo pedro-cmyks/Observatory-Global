@@ -24,7 +24,11 @@ async def get_heatmap(hours: int = Query(24, ge=1, le=8760)):
     return {
         "points": [],
         "count": 0,
-        "message": "Heatmap deprecated, use nodes with glow effect"
+        "status": "deprecated",
+        "source": "deprecated_heatmap",
+        "replacement": "/api/v2/heat/countries",
+        "hours": hours,
+        "message": "Heatmap deprecated; use /api/v2/heat/countries or nodes with glow effect.",
     }
 
 @router.get("/api/v2/flows")

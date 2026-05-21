@@ -10,12 +10,17 @@
 .atlas-heat__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 6px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 10px;
   color: var(--text-secondary);
   padding: 2px 4px;
+}
+
+.atlas-heat__title {
+  margin-right: auto;
 }
 
 .atlas-heat__refreshed {

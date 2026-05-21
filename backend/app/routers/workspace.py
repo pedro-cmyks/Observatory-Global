@@ -5,6 +5,11 @@ from fastapi import APIRouter, Query
 from app import db
 from app.utils import extract_domain
 from app.core.gdelt_taxonomy import classify_source
+from app.services.processed_historical import (
+    build_historical_coverage,
+    query_historical_theme_anomalies,
+    use_processed_history,
+)
 
 router = APIRouter()
 
@@ -543,6 +548,37 @@ async def get_theme_anomalies(
     """
     try:
         async with db.pool.acquire() as conn:
+            if use_processed_history(hours):
+                rows, historical_meta = await query_historical_theme_anomalies(
+                    conn,
+                    hours=hours,
+                    limit=limit,
+                )
+                coverage = await build_historical_coverage(conn, hours=hours)
+                anomalies = []
+                for row in rows:
+                    anomalies.append({
+                        "theme": row["topic_slug"],
+                        "current_count": int(row["daily_count"] or 0),
+                        "baseline_avg": round(float(row["avg_daily"] or 0), 1),
+                        "days_observed": int(row["days_observed"] or 0),
+                        "multiplier": float(row["multiplier"] or 0),
+                        "zscore": float(row["zscore"] or 0),
+                        "topic_coverage": round(float(row["topic_coverage"] or 0), 4),
+                        "sentiment_coverage": round(float(row["sentiment_coverage"] or 0), 4),
+                    })
+                return {
+                    "theme_anomalies": anomalies,
+                    "source": "historical_topic_country_daily",
+                    "coverage": coverage.to_dict(),
+                    "warnings": ["historical_processed", "daily_grain_anomaly"],
+                    "meta": {
+                        "time_window_hours": hours,
+                        "generated_at": datetime.now(timezone.utc).isoformat(),
+                        **historical_meta,
+                    },
+                }
+
             await conn.execute("SET statement_timeout = 8000")
             rows = await conn.fetch("""
                 WITH current_window AS (

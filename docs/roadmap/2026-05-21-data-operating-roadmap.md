@@ -93,12 +93,12 @@ Root causes are routing/grain mismatches, not missing storage.
 1. [x] Add `processed_historical.py` as the shared backend routing helper.
 2. [x] Add config-driven `HOT_STORE_FLOOR`.
 3. Route the endpoint quintet from the routing spec:
-   - `/api/v2/heatmap`
+   - [x] `/api/v2/heatmap` remains explicitly deprecated and points callers to `/api/v2/heat/countries`
    - [x] `/api/v2/heat/countries` (`hours>24` now returns historical processed attention + coverage)
    - [x] `/api/v2/country/{code}` (`hours>24` now returns historical processed country summary, topics, source-family mix, and coverage)
    - [x] `/api/v2/theme/{code}` for Atlas topic slugs (`hours>24` now returns historical processed topic summary, countries, daily timeline, source-family mix, and coverage)
-   - `/api/v2/anomalies/themes`
-4. Add a reusable frontend `CoverageBadge`.
+   - [x] `/api/v2/anomalies/themes` (`hours>24` now uses complete-day historical topic z-score with coverage/degraded metadata)
+4. [x] Add a reusable frontend `CoverageBadge`.
 5. Pre-aggregate or bounded-route long-window `top_sources` so `/brief` does not degrade.
 
 **Creative solution:** do not try to make every endpoint historical at once. Use a "grain contract": only endpoints that naturally map to `(day, topic, country, source_class)` can use compact history. Signal-level endpoints stay hot-only until evidence sampling exists.

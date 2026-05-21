@@ -52,6 +52,13 @@
     font-size: 13px;
 }
 
+.theme-detail-coverage-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
 .drill-back-btn {
     background: none;
     border: none;

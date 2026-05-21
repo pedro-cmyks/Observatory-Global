@@ -51,3 +51,12 @@ def test_atlas_topic_detail_routes_long_windows_to_processed_history():
     assert "query_historical_topic_detail" in source
     assert "atlas_topic_slug" in source
     assert '"source": "historical_topic_country_daily"' in source
+
+
+def test_theme_anomalies_routes_long_windows_to_processed_history():
+    source = Path("app/routers/workspace.py").read_text(encoding="utf-8")
+
+    assert "use_processed_history(hours)" in source
+    assert "query_historical_theme_anomalies" in source
+    assert "daily_grain_anomaly" in source
+    assert '"source": "historical_topic_country_daily"' in source
