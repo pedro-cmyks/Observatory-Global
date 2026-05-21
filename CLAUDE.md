@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-21 (processed historical sync plan added after hot/cold prune)
+Last updated: 2026-05-21 (security RLS lockdown + atlas topic classifier v1)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -8,7 +8,36 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
-## Current Session Context (2026-05-21, processed historical sync)
+## Current Session Context (2026-05-21, security lockdown + topic classifier v1)
+
+### Security RLS lockdown (migration 030)
+
+- Supabase advisor flagged 45 public tables with RLS disabled — anon/authenticated roles could read or write every row via PostgREST.
+- Backend connects as `postgres` superuser via `DATABASE_URL`, which bypasses RLS unconditionally; frontend does NOT use the Supabase JS client. So enabling RLS without policies locked out anon/authenticated without breaking the app.
+- Migration `030_security_rls_lockdown.sql` (applied via Supabase MCP):
+  - `ENABLE ROW LEVEL SECURITY` on all 45 public tables.
+  - `REVOKE SELECT FROM anon, authenticated` on 5 materialized views (`mv_recent_hotspots`, `low_volume_countries`, `country_heat_v2`, `mv_active_flows`, `country_hourly_v2`) — RLS does not apply to matviews.
+  - Converted 2 `SECURITY DEFINER` views (`v_table_sizes`, `v_row_counts`) to `security_invoker = true`.
+  - Locked `search_path = public, pg_temp` on 11 public functions (prevents search-path injection).
+- Advisor result: 1 CRITICAL + 2 ERROR + many WARN -> 0 CRITICAL/ERROR; remaining issues are INFO (RLS enabled, no policy — expected) plus 1 WARN (`pg_trgm` in public, cosmetic).
+- Backend tests: 271 passed, 6 skipped. `/api/v2/briefing?hours=24` returns full payload, no errors.
+
+### Atlas topic classifier v1 (migration 031 + `classify_topics.py`)
+
+- Audit on last 24h of `signals_v2` (208k rows): only 50% of signals matched any `atlas_topics` via `gdelt_theme_hints`, because the hints used short codes (`TRANSPORT`, `ENERGY`, `SANCTION`) that don't exist in real GDELT GKG output — GDELT uses prefixed taxonomy (`WB_*`, `TAX_*`, `CRISISLEX_*`, `UNGP_*`, `EPU_*`).
+- Migration `031_atlas_topic_hints_realign.sql` rewrites `gdelt_theme_hints` on all 30 active atlas topics with the real GDELT codes observed in production data. Theme-level coverage jumps 50.02% -> 84.21%.
+- `signal_topic_assignments` was empty (0 rows). `backend/scripts/classify_topics.py` is the first-pass classifier: it joins `signals_v2.themes` against `atlas_topics.gdelt_theme_hints` (set intersection) and checks `atlas_topics.lexicon_terms` against `lower(headline)`. A signal qualifies only if a lexicon term matches the headline OR at least 3 theme hints match. Confidence is normalized to 0..1: `0.4 * (theme_hits / hint_count) + 0.6 * lex_match`. Top-2 topics per signal, min confidence 0.3.
+- First backfill (last 24h, applied via Supabase MCP, mirrors the SQL inside `classify_topics.py`): 1,657 assignments across 1,646 distinct signals, all 30 atlas topics represented, average confidence 0.661, 1,457 high-confidence (>=0.6).
+- Top topics post-classifier: disease-outbreak (320), labor-strike-disruption (173), oil-gas-supply-risk (162), flood-landslide-disaster (157), armed-conflict-escalation (94). Distribution is balanced — no `general-monitoring` domination.
+- Tradeoff: precision-first (lex OR >=3 theme hits) keeps quality ~65% in spot checks at the cost of recall (~0.8% of 24h volume classified). Boosting recall requires the multilingual NLP swap (#162) and the deeper topic intelligence work (#167) — GDELT themes alone are not discriminative enough for fine topics.
+- Method/version tag for these assignments: `method='lexicon'`, `model_version='theme-hint-lex-v1'`. Future ML-based or analyst-corrected assignments use different tags and can coexist via the PK `(signal_id, topic_id, method, model_version)`.
+
+### Operational rule
+
+- New tables added to the public schema must enable RLS at creation time (migration 030 set the baseline). If a table needs read access from the anon/authenticated roles, add an explicit `CREATE POLICY` in the same migration; otherwise rely on the `postgres` superuser bypass that the backend uses.
+- Atlas topics taxonomy lives in `atlas_topics.gdelt_theme_hints` / `lexicon_terms`. When adding or editing a topic, sanity-check that the theme hints actually appear in `signals_v2.themes` (sample last 24h); otherwise the topic stays at 0 matches like the original 4 broken topics did.
+
+## Previous Session Context (2026-05-21, processed historical sync)
 
 - Active branch: `v3-intel-layer`; production branch. Do not merge into `main`.
 - PR #144 open against main: https://github.com/pedro-cmyks/Observatory-Global/pull/144
