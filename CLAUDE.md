@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-21 (security RLS lockdown + atlas topic classifier v1)
+Last updated: 2026-05-21 (data operating roadmap + app-wide historical routing scope)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -8,7 +8,39 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
-## Current Session Context (2026-05-21, security lockdown + topic classifier v1)
+## Current Session Context (2026-05-21, data operating roadmap)
+
+### Coordination roadmap
+
+Use `docs/roadmap/2026-05-21-data-operating-roadmap.md` as the current execution order for the data phase. It coordinates:
+
+1. Supabase-light hot/cold operating model.
+2. Local archive -> processed historical sync.
+3. App-wide long-window routing through processed history.
+4. Hot-window NLP/topic/source quality.
+5. Coverage/provenance UI and visual manuals.
+
+Older docs remain valid but subordinate:
+
+- `docs/superpowers/plans/2026-05-20-hot-cold-data-operating-model.md`
+- `docs/superpowers/plans/2026-05-21-processed-historical-sync.md`
+- `docs/superpowers/specs/2026-05-21-processed-historical-routing-design.md`
+- `docs/roadmap/2026-05-19-topic-and-signal-class-attack.md`
+- `docs/roadmap/2026-05-16-productization-roadmap.md`
+
+### App-wide historical routing scope
+
+`#193` should be treated as still open until `/app` long-window routing is complete. The shipped work only covered the first bridge:
+
+- Done: `/api/v2/briefing?hours>24` routes `top_themes` to `historical_topic_country_daily`.
+- Done: `/brief` renders historical processed coverage metadata.
+- Pending: backfill all cutover archive days into compact historical tables.
+- Pending: shared `processed_historical.py` helper.
+- Pending: `/api/v2/heatmap`, `/api/v2/heat/countries`, `/api/v2/country/{code}`, `/api/v2/theme/{code}`, and `/api/v2/anomalies/themes` coverage envelopes.
+- Pending: reusable frontend `CoverageBadge`.
+- Pending: `#194` long-window `top_sources` pre-aggregation.
+
+### Security RLS lockdown (migration 030)
 
 ### Security RLS lockdown (migration 030)
 

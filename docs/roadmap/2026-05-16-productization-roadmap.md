@@ -1,5 +1,7 @@
 # Atlas Productization Roadmap — 2026-05-16
 
+> Coordination note 2026-05-21: this remains the product/UX roadmap. Current data execution is coordinated in [2026-05-21-data-operating-roadmap.md](2026-05-21-data-operating-roadmap.md) so the product work rests on reliable processed history, NLP coverage, and source provenance.
+
 ## Current phase
 
 Atlas has moved from issue-closing mode into productization mode.

@@ -1,6 +1,6 @@
 # GEMINI Code Assistant Context — Observatory Global (Atlas)
 
-Last updated: 2026-05-21 (processed historical sync plan added after hot/cold prune)
+Last updated: 2026-05-21 (data operating roadmap + app-wide historical routing scope)
 
 This document gives the Gemini AI assistant the current, accurate context for the Observatory Global project. Treat this as the source of truth for deployment topology, architecture, and conventions.
 
@@ -33,9 +33,13 @@ This document gives the Gemini AI assistant the current, accurate context for th
 
 **Processed historical sync implementation started:** Added `backend/migrations/029_historical_processed_tables.sql`, `backend/scripts/historical_process_partition.py`, `backend/scripts/historical_sync.py`, `backend/tests/test_historical_processing.py`, and first artifact `docs/research/processed-historical-sync/2026-05-19-topic-country.json`. Smoke processed `185,163` archived rows into `1,728` daily topic/country aggregate rows; sync dry-run accepted `1,728` rows. Supabase MCP OAuth is configured, migration `029` was applied through Supabase MCP, and the first artifact was synced live using Fly runtime `DATABASE_URL`: `1,728` rows in `historical_topic_country_daily`, summing to `185,163` signals for `2026-05-19` / `atlas-hist-v1`.
 
+**Current data coordination roadmap:** Use `docs/roadmap/2026-05-21-data-operating-roadmap.md` as the active execution order. It coordinates the hot/cold model, processed historical sync, app-wide long-window routing, hot-window NLP/topic/source quality, and the later coverage/provenance UI work. Older roadmaps remain useful background but should not override this ordering.
+
 **Processed historical app bridge:** `/api/v2/briefing?hours>24` now routes `top_themes` to `historical_topic_country_daily` when available and returns `historical_coverage` metadata. `/brief` renders a compact historical processed coverage note. `backend/scripts/historical_coverage_report.py` reports the current baseline: `1,728` aggregate rows, `185,163` represented signals, `226` countries, `11` topics, average topic coverage `0.7703`, average sentiment coverage `0.1384`.
 
-**Next session priorities:** (1) #191/#192 processed historical schema and local archive processor, (2) #193 route `1w` and `1m` app windows to processed historical tables with coverage metadata, (3) #184 keep Fly worker focused on hot-window SLA and resize only after observing DB pressure, (4) #185 improve multilingual corpus mining, (5) #183 frontend render sentiment source, NLP coverage, heat countries, and heat-voluminous countries.
+**Important scope correction for #193:** the briefing bridge is done, but app-wide `1w`/`1m` routing is not done. Treat `docs/superpowers/specs/2026-05-21-processed-historical-routing-design.md` as the pending app-wide routing design. `#193` should stay open until the endpoint quintet (`/heatmap`, `/heat/countries`, `/country/{code}`, `/theme/{code}`, `/anomalies/themes`) serves processed historical coverage envelopes and the frontend renders a reusable `CoverageBadge`. `#194` tracks the separate long-window `top_sources` degradation.
+
+**Next session priorities:** (1) complete processed historical backfill for the verified cutover archive, (2) implement app-wide routing from the processed historical routing spec and keep #193 open until verified, (3) fix #194 long-window `top_sources`, (4) return to #171/#167/#185/#184 for topic/NLP quality, (5) proceed to source-diversity and UI presentation issues.
 
 **There is no Docker Compose production setup.** The app runs on Vercel + Fly.io. Docker/Compose exists for local dev only.
 

@@ -1,5 +1,41 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-21 (processed historical sync plan after hot/cold prune)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-21 (data operating roadmap + app-wide historical routing scope)
+
+---
+
+## Current coordination layer (2026-05-21)
+
+Use `docs/roadmap/2026-05-21-data-operating-roadmap.md` as the active execution order for the current data phase. It organizes the open work into five layers:
+
+1. Stabilize ground truth and issue scope.
+2. Fill processed historical tables from the verified local archive.
+3. Route `/app` long windows through processed history with explicit coverage.
+4. Improve hot-window NLP/topic/source quality at ingest speed.
+5. Present the improved data with coverage/provenance UI and visual manuals.
+
+The older roadmap files remain useful background, but they are now subordinate to this coordination roadmap:
+
+- `docs/roadmap/2026-05-16-productization-roadmap.md` — product/UX direction.
+- `docs/roadmap/2026-05-19-topic-and-signal-class-attack.md` — detailed topic/source-quality plan.
+
+### Routing scope correction
+
+`docs/superpowers/specs/2026-05-21-processed-historical-routing-design.md` is now explicitly scoped as **app-wide processed historical routing**, not merely the shipped `/brief` bridge.
+
+Already shipped:
+
+- `/api/v2/briefing?hours>24` routes `top_themes` to `historical_topic_country_daily`.
+- `/brief` shows historical processed coverage metadata.
+
+Still pending:
+
+- Process all remaining cutover archive days into `historical_topic_country_daily`.
+- Add the shared `processed_historical.py` helper.
+- Route `/api/v2/heatmap`, `/api/v2/heat/countries`, `/api/v2/country/{code}`, `/api/v2/theme/{code}`, and `/api/v2/anomalies/themes`.
+- Add a reusable frontend `CoverageBadge`.
+- Fix long-window `top_sources` degradation (#194).
+
+Issue `#193` should remain open until app-wide routing is shipped and smoke-tested. The briefing bridge is complete but not the full app-window routing scope.
 
 ---
 

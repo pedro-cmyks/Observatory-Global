@@ -1,5 +1,7 @@
 # Topic Intelligence + Signal Class Attack Plan — 2026-05-19
 
+> Coordination note 2026-05-21: this roadmap remains the detailed topic/source-quality plan, but execution priority now flows through [2026-05-21-data-operating-roadmap.md](2026-05-21-data-operating-roadmap.md). Finish processed historical backfill and app-wide historical routing before expanding UI surfaces that depend on long-window data.
+
 Successor to [2026-05-16-productization-roadmap.md](2026-05-16-productization-roadmap.md). Drives 4 parallel tracks against the open issue backlog (#145–#179).
 
 ## Why this plan now

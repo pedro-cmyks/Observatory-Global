@@ -20,6 +20,8 @@ Key files added in session 20 (hot/cold retention cutover — 2026-05-20):
 Key docs added in session 21 (processed historical sync — 2026-05-21):
 - `docs/superpowers/specs/2026-05-21-processed-historical-sync-design.md` — canonical design: Supabase serves processed historical product surfaces, not raw historical rows.
 - `docs/superpowers/plans/2026-05-21-processed-historical-sync.md` — implementation plan for historical processed schema, local archive processor, idempotent sync, long-window API bridge, and coverage reporting.
+- `docs/superpowers/specs/2026-05-21-processed-historical-routing-design.md` — pending app-wide long-window routing design. The `/brief` bridge is done, but this spec covers `/app` endpoints and should not be considered complete until the endpoint quintet returns coverage envelopes.
+- `docs/roadmap/2026-05-21-data-operating-roadmap.md` — current execution-order roadmap for data work. It coordinates hot/cold storage, processed historical sync, app-wide routing, NLP/topic/source quality, and later coverage/provenance UI.
 
 Key files added in session 21 (processed historical sync — 2026-05-21):
 - `backend/migrations/029_historical_processed_tables.sql` — compact processed historical tables: runs, topic/country daily aggregates, evidence samples, and archive coverage. Applied to Supabase through Supabase MCP after OAuth setup.
@@ -46,6 +48,7 @@ Session 21 processed historical sync direction:
 - First implementation should start with migration `029_historical_processed_tables.sql`, then `backend/scripts/historical_process_partition.py`, then `backend/scripts/historical_sync.py`.
 - Current implementation status: migration 029 applied; first `historical_sync.py` live run inserted/upserted `1,728` rows for `2026-05-19` / `atlas-hist-v1`, summing to `185,163` signals. Next step is API bridge for long-window reads.
 - Long-window API bridge status: `/api/v2/briefing?hours>24` routes `top_themes` to `historical_topic_country_daily` and `/brief` renders historical processed coverage metadata. Current coverage report: `1,728` aggregate rows, `185,163` represented signals, `226` countries, `11` topics.
+- Scope correction: do not close #193 based only on `/brief`. #193 remains open until app-wide routing from `docs/superpowers/specs/2026-05-21-processed-historical-routing-design.md` is implemented for `/api/v2/heatmap`, `/api/v2/heat/countries`, `/api/v2/country/{code}`, `/api/v2/theme/{code}`, and `/api/v2/anomalies/themes`, plus frontend `CoverageBadge`. #194 tracks long-window `top_sources` pre-aggregation.
 
 Key files changed in session 15:
 - `backend/app/services/ingest_loop.py` — wired 4 new ingestion services. `ingest_newsdata` + `ingest_reddit` at `cycle%4`. `ingest_mediastack` at `cycle%8`. `ingest_newsapi` at `cycle%8+4` (offset to spread load).

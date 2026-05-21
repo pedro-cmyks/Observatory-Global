@@ -4,7 +4,7 @@
 **Author**: Claude (orchestrator) + Pedro
 **Tracking issue**: #193
 **Related spec**: [`2026-05-21-processed-historical-sync-design.md`](./2026-05-21-processed-historical-sync-design.md)
-**Status**: Draft pending user approval
+**Status**: Approved direction, narrowed for app-wide routing execution
 
 ## Context
 
@@ -12,12 +12,23 @@ Issue #193 asks to route `/app` long-window queries (`1w`, `1m`) to the processe
 
 Current state:
 
-- Hot store (`signals_v2` on Fly Postgres) is pruned to a 24h SLA. Floor after the May 20 cutover is `2026-05-20T03:33:29Z`. Roughly 259k rows present.
+- Hot store (`signals_v2` on Supabase) is pruned to a 24h SLA. Floor after the May 20 cutover is `2026-05-20T03:33:29Z`. It held roughly 259k rows immediately after prune and roughly 295k rows after subsequent ingestion.
 - Cold archive lives on Pedro's local disk at `/Users/pedro/AtlasArchive/cutovers/2026-05-20`. 2.1M verified raw rows covering `2026-05-03` → `2026-05-20T03:33Z`.
 - Processed historical table `historical_topic_country_daily` already exists (migration 029). The first artifact is loaded for `2026-05-19` only — 1,728 aggregate rows representing 185,163 signals across 11 atlas topics and 226 countries.
-- `/api/v2/briefing` already routes `hours > 24` to `historical_topic_country_daily` (PR #144 follow-up). `/app` endpoints do not.
+- `/api/v2/briefing` already routes long-window `top_themes` to `historical_topic_country_daily` and `/brief` shows historical processed coverage. This is the first shipped bridge, not completion of app-wide routing.
+- `/app` endpoints still need explicit processed-historical routing and coverage metadata.
 
-Without #193, the analyst surface in `/app` is silently capped to 24h — users see empty heatmaps and topic detail pages for any window longer than a day. The product framing is "narrative intelligence console", not "live monitor", so this gap is a credibility hit.
+Without the remaining #193 work, the analyst surface in `/app` is silently capped to 24h — users see empty or misleading heatmaps and topic detail pages for any window longer than a day. The product framing is "narrative intelligence console", not "live monitor", so this gap is a credibility hit.
+
+## Scope clarification — 2026-05-21
+
+This spec is **not** another broad data-platform plan. It is the app-wide routing layer that sits on top of the already-approved hot/cold model:
+
+- **Already shipped:** historical processed schema, one-day processed sync, long-window briefing `top_themes`, and a briefing coverage note.
+- **Still pending here:** reusable routing helper, `/app` endpoint coverage envelopes, `CoverageBadge`, and full archive-day backfill into processed historical tables.
+- **Tracked elsewhere:** topic quality, NLP throughput, source diversity, voice mix, public attention threads, and manual/use-case UX.
+
+This document should be implemented after the historical backfill produces enough processed days to make `1w` meaningful. It should not expand into signal-level evidence routing or new storage architecture.
 
 ## Goals
 
@@ -26,6 +37,7 @@ Without #193, the analyst surface in `/app` is silently capped to 24h — users 
 3. Routing logic lives in one place and is unit-testable, not duplicated across endpoints.
 4. The cutover boundary (`HOT_STORE_FLOOR`) is config-driven, not hardcoded into every endpoint.
 5. The backfill that fills in `2026-05-03` → `2026-05-19` runs once, deterministically, with verifiable output.
+6. The first shipped briefing bridge remains intact while `/app` gets the broader routing behavior.
 
 ## Non-goals
 
@@ -33,6 +45,7 @@ Without #193, the analyst surface in `/app` is silently capped to 24h — users 
 - Auto-backfill triggered by missing coverage ("self-healing archive") is out of scope. Sketched as option D in the brainstorm; revisit in a separate spec.
 - Pre-aggregated weekly/monthly rollup tables (`historical_topic_country_weekly` etc.) are out of scope. Filed as the follow-up issue suggested in the brainstorm. The daily table is sufficient to validate routing first.
 - Frontend ranking changes (replacing volume-rank with heat-rank, etc.) are unrelated and out of scope.
+- Reworking the already-shipped `/brief` bridge is out of scope except for sharing helper types if doing so reduces duplication.
 
 ## Design decisions (brainstorm record)
 
@@ -352,7 +365,7 @@ Fixtures use a fake `signals_v2` table and a fake `historical_topic_country_dail
 - [ ] Frontend `npm run build` passes.
 - [ ] `CLAUDE.md` "Current Session Context" updated with the routing summary and the new `HOT_STORE_FLOOR` operational rule.
 - [ ] Commits pushed to `v3-intel-layer`, Fly auto-deploys, Vercel auto-deploys.
-- [ ] Issue #193 closed with link to the merged commits and the live smoke transcripts.
+- [ ] Issue #193 closed only after app-wide routing, not merely the briefing bridge, is live and smoke-tested.
 
 ## Open questions
 
