@@ -25,6 +25,7 @@ Key files added in session 21 (processed historical sync — 2026-05-21):
 - `backend/migrations/029_historical_processed_tables.sql` — compact processed historical tables: runs, topic/country daily aggregates, evidence samples, and archive coverage. Applied to Supabase through Supabase MCP after OAuth setup.
 - `backend/scripts/historical_process_partition.py` — local archive partition processor. First smoke: 2026-05-19 archive partition, 185,163 rows -> 1,728 aggregate rows.
 - `backend/scripts/historical_sync.py` — dry-run/live idempotent sync into `historical_topic_country_daily`.
+- `backend/scripts/historical_coverage_report.py` — Supabase budget/coverage report for compact processed history.
 - `backend/tests/test_historical_processing.py` — migration shape, topic inference, aggregate, and sync payload tests.
 - `docs/research/processed-historical-sync/2026-05-19-topic-country.json` — first processed historical artifact.
 
@@ -44,6 +45,7 @@ Session 21 processed historical sync direction:
 - Tracking issues: #191 (local archive -> processed historical sync), #192 (processed-only historical tables), #193 (route `1w`/`1m` app windows to processed historical tables). Related issues commented: #164, #167, #171, #184, #185.
 - First implementation should start with migration `029_historical_processed_tables.sql`, then `backend/scripts/historical_process_partition.py`, then `backend/scripts/historical_sync.py`.
 - Current implementation status: migration 029 applied; first `historical_sync.py` live run inserted/upserted `1,728` rows for `2026-05-19` / `atlas-hist-v1`, summing to `185,163` signals. Next step is API bridge for long-window reads.
+- Long-window API bridge status: `/api/v2/briefing?hours>24` routes `top_themes` to `historical_topic_country_daily` and `/brief` renders historical processed coverage metadata. Current coverage report: `1,728` aggregate rows, `185,163` represented signals, `226` countries, `11` topics.
 
 Key files changed in session 15:
 - `backend/app/services/ingest_loop.py` — wired 4 new ingestion services. `ingest_newsdata` + `ingest_reddit` at `cycle%4`. `ingest_mediastack` at `cycle%8`. `ingest_newsapi` at `cycle%8+4` (offset to spread load).

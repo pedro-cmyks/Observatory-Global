@@ -50,6 +50,10 @@ Implementation started:
 - Live sync completed using Fly runtime `DATABASE_URL`: `{"dry_run": false, "rows": 1728}`.
 - Supabase verification for `day='2026-05-19'`, `model_version='atlas-hist-v1'`: `1,728` rows, `185,163` summed `signal_count`.
 - Top synced bucket: `general-monitoring` / `US` / `gdelt` / `reporting` with `20,960` signals. This confirms the historical path works and also shows Topic Intelligence needs better non-general coverage.
+- API bridge implemented for #193: `/api/v2/briefing?hours>24` now routes `top_themes` to `historical_topic_country_daily` when available and returns `top_themes_source` plus `historical_coverage` metadata.
+- Frontend `/brief` displays a compact historical processed coverage note for long-window briefs.
+- Added `backend/scripts/historical_coverage_report.py`. Live report baseline: `1,728` aggregate rows, `185,163` represented signals, `226` countries, `11` topics, avg topic coverage `0.7703`, avg sentiment coverage `0.1384`.
+- Validation: backend full suite -> `271 passed, 6 skipped`; frontend `npm run build` passed; archive verify passed (`18/18` records, `2,128,070` rows, `0` failures).
 
 ### Hot/cold retention cutover state
 

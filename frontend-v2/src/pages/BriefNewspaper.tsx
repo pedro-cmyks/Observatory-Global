@@ -48,7 +48,21 @@ interface BriefingData {
     top_countries: { code: string; name: string; signals: number; sentiment: number }[]
     negative_sentiment: { code: string; name: string; sentiment: number; signals: number }[]
     positive_sentiment: { code: string; name: string; sentiment: number; signals: number }[]
-    top_themes: { theme: string; count: number }[]
+    top_themes: {
+        theme: string
+        count: number
+        source_table?: string
+        model_version?: string | null
+        topic_coverage?: number | null
+        sentiment_coverage?: number | null
+    }[]
+    top_themes_source?: string
+    historical_coverage?: {
+        source: 'hot' | 'historical_processed'
+        sentimentCoverage?: number | null
+        topicCoverage?: number | null
+        modelVersion?: string | null
+    }
     top_sources: { source: string; count: number }[]
     theme_country?: { theme: string; countries: { code: string; name: string; count: number }[] }[]
 }
@@ -299,6 +313,7 @@ export function BriefNewspaper() {
             avg_sentiment: countryDetail.sentiment,
         }
         : data?.stats
+    const historicalCoverage = data?.historical_coverage
 
     const tone = (s: number) => s > 0.1 ? 'positive' : s < -0.1 ? 'negative' : 'neutral'
 
@@ -488,6 +503,21 @@ export function BriefNewspaper() {
                             <span className="brief-stat-label">{countryFilter ? 'country mood' : 'global mood'}</span>
                         </div>
                     </section>}
+
+                    {historicalCoverage?.source === 'historical_processed' && (
+                        <div
+                            className="brief-coverage-note"
+                            data-tip="This long-window brief is served from compact processed historical aggregates synced from the local archive, not from raw historical rows."
+                        >
+                            <span>Historical processed</span>
+                            {typeof historicalCoverage.topicCoverage === 'number' && (
+                                <span>{Math.round(historicalCoverage.topicCoverage * 100)}% topic coverage</span>
+                            )}
+                            {typeof historicalCoverage.sentimentCoverage === 'number' && (
+                                <span>{Math.round(historicalCoverage.sentimentCoverage * 100)}% NLP sentiment</span>
+                            )}
+                        </div>
+                    )}
 
                     {/* SIGNAL MAP — choropleth of signal density by country */}
                     <section className="brief-minimap">

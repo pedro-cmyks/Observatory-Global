@@ -30,6 +30,7 @@ Observatorio Global is a narrative intelligence system that tracks, analyzes, an
   - `docs/research/processed-historical-sync/2026-05-19-topic-country.json`.
 - Smoke result: `185,163` archived rows from `2026-05-19` -> `1,728` processed aggregate rows. Sync dry-run accepted `1,728` rows.
 - Supabase MCP OAuth is configured. Migration `029` was applied through Supabase MCP, then the first artifact was synced live using Fly runtime `DATABASE_URL`: `1,728` rows in `historical_topic_country_daily`, summing to `185,163` signals for `2026-05-19` / `atlas-hist-v1`.
+- #193 first bridge implemented: `/api/v2/briefing?hours>24` routes `top_themes` to `historical_topic_country_daily` and returns `historical_coverage`; `/brief` renders a historical processed coverage note. `historical_coverage_report.py` reports the current baseline: `1,728` aggregate rows, `185,163` represented signals, `226` countries, `11` topics.
 - Tracking issues:
   - #191 — local archive -> processed historical Supabase sync.
   - #192 — processed-only historical Supabase schema and guardrails.

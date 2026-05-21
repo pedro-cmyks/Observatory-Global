@@ -618,7 +618,7 @@ git commit -m "feat(data): sync processed historical aggregates"
 
 ## Phase 4: API Bridge For Long Windows
 
-- [ ] **Step 1: Add briefing shape test**
+- [x] **Step 1: Add briefing shape test**
 
 Create or extend `backend/tests/test_briefing_performance_shape.py`:
 
@@ -633,7 +633,7 @@ def test_briefing_long_windows_use_historical_processed_tables():
     assert "hours > 24" in source or "use_historical" in source
 ```
 
-- [ ] **Step 2: Add helper in briefing router**
+- [x] **Step 2: Add helper in briefing router**
 
 Modify `backend/app/routers/briefing.py` with a helper:
 
@@ -642,7 +642,12 @@ def _use_historical_processed(hours: int) -> bool:
     return hours > 24
 ```
 
-- [ ] **Step 3: Route long-window `top_themes` to historical table**
+- [x] **Step 3: Route long-window `top_themes` to historical table**
+
+Status 2026-05-21: `top_themes_historical` uses
+`historical_topic_country_daily` for `hours > 24`, filters by
+`BRIEFING_HISTORICAL_MODEL_VERSION` (`atlas-hist-v1` default), and returns
+coverage/source metadata.
 
 In `get_briefing`, branch `top_themes`:
 
@@ -665,7 +670,7 @@ else:
     """, hours)
 ```
 
-- [ ] **Step 4: Run backend tests**
+- [x] **Step 4: Run backend tests**
 
 Run:
 
@@ -676,7 +681,7 @@ cd backend
 
 Expected: all selected tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/app/routers/briefing.py backend/tests/test_briefing_performance_shape.py
@@ -685,7 +690,7 @@ git commit -m "feat(api): serve long-window briefing from historical aggregates"
 
 ## Phase 5: Frontend Coverage Badge
 
-- [ ] **Step 1: Extend `BriefingData` type**
+- [x] **Step 1: Extend `BriefingData` type**
 
 Modify `frontend-v2/src/pages/BriefNewspaper.tsx`:
 
@@ -700,7 +705,7 @@ type HistoricalCoverage = {
 
 Add `historical_coverage?: HistoricalCoverage` to `BriefingData`.
 
-- [ ] **Step 2: Render long-window coverage note**
+- [x] **Step 2: Render long-window coverage note**
 
 In the briefing header area, render:
 
@@ -715,7 +720,7 @@ In the briefing header area, render:
 )}
 ```
 
-- [ ] **Step 3: Add CSS**
+- [x] **Step 3: Add CSS**
 
 Modify `frontend-v2/src/pages/BriefNewspaper.css`:
 
@@ -732,7 +737,7 @@ Modify `frontend-v2/src/pages/BriefNewspaper.css`:
 }
 ```
 
-- [ ] **Step 4: Build frontend**
+- [x] **Step 4: Build frontend**
 
 Run:
 
@@ -743,7 +748,7 @@ npm run build
 
 Expected: Vite build passes.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend-v2/src/pages/BriefNewspaper.tsx frontend-v2/src/pages/BriefNewspaper.css
@@ -752,7 +757,7 @@ git commit -m "feat(frontend): show historical processed coverage"
 
 ## Phase 6: Operations And Supabase Budget Guardrails
 
-- [ ] **Step 1: Add coverage report script**
+- [x] **Step 1: Add coverage report script**
 
 Create `backend/scripts/historical_coverage_report.py`:
 
@@ -803,7 +808,7 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: Document operating cadence**
+- [x] **Step 2: Document operating cadence**
 
 Update `docs/superpowers/plans/2026-05-20-hot-cold-data-operating-model.md` with:
 
@@ -816,7 +821,7 @@ Nightly cadence:
 5. Keep Supabase raw retention at the hot-window policy.
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add backend/scripts/historical_coverage_report.py docs/superpowers/plans/2026-05-20-hot-cold-data-operating-model.md
@@ -825,10 +830,10 @@ git commit -m "docs(data): add historical sync operating cadence"
 
 ## Verification Checklist
 
-- [ ] `cd backend && .venv/bin/python -m pytest tests/test_historical_processing.py -q`
-- [ ] `cd backend && .venv/bin/python -m pytest tests/test_briefing_performance_shape.py -q`
-- [ ] `cd frontend-v2 && npm run build`
-- [ ] Local archive still verifies:
+- [x] `cd backend && .venv/bin/python -m pytest tests/test_historical_processing.py -q`
+- [x] `cd backend && .venv/bin/python -m pytest tests/test_briefing_performance_shape.py -q`
+- [x] `cd frontend-v2 && npm run build`
+- [x] Local archive still verifies:
 
 ```bash
 cd backend
@@ -836,7 +841,11 @@ cd backend
   --archive-dir /Users/pedro/AtlasArchive/cutovers/2026-05-20
 ```
 
-- [ ] Supabase row budget check after sync:
+- [x] Supabase row budget check after sync:
+
+Status 2026-05-21: `historical_coverage_report` against Supabase returned
+`1,728` aggregate rows, `185,163` represented signals, `226` countries, and
+`11` topics for the current historical processed baseline.
 
 ```sql
 SELECT COUNT(*) FROM historical_topic_country_daily;

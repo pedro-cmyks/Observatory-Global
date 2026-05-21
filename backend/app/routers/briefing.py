@@ -17,6 +17,10 @@ BRIEFING_DB_TIMEOUT_SECONDS = float(os.getenv("BRIEFING_DB_TIMEOUT_SECONDS", "8"
 # Volume floor percentile for the hot-AND-voluminous lens (#187). 0.75 keeps
 # the top quartile by volume before re-ranking by atlas_heat.
 HEAT_VOLUMINOUS_PERCENTILE = float(os.getenv("BRIEFING_HEAT_VOLUMINOUS_PERCENTILE", "0.75"))
+HISTORICAL_PROCESSED_MODEL_VERSION = os.getenv(
+    "BRIEFING_HISTORICAL_MODEL_VERSION",
+    "atlas-hist-v1",
+)
 
 from app.services.sentiment_fusion import (  # noqa: E402 — kept here to group briefing config
     NLP_COVERAGE_THRESHOLD,
@@ -77,6 +81,18 @@ def _clean_theme_label(theme_code: str) -> str:
     return label.replace("_", " ").title()
 
 
+def _record_get(row, key: str, default=None):
+    try:
+        return row[key]
+    except (KeyError, TypeError):
+        return default
+
+
+def _use_historical_processed(hours: int) -> bool:
+    """Use compact processed history for windows outside the hot raw horizon."""
+    return hours > 24
+
+
 @router.get("/api/v2/briefing")
 async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
     """Get morning briefing summary."""
@@ -95,6 +111,9 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         degraded_segments: list[str] = []
         has_theme_country_hourly = await conn.fetchval(
             "SELECT to_regclass('theme_country_hourly_v2') IS NOT NULL"
+        )
+        has_historical_processed = await conn.fetchval(
+            "SELECT to_regclass('historical_topic_country_daily') IS NOT NULL"
         )
         # Use pre-agg tables for every window. Sentiment payload selects NLP
         # transformer-normalized values when bucket NLP coverage clears the
@@ -186,15 +205,39 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             FROM agg
             ORDER BY chosen_sentiment_raw DESC LIMIT 10
         """, hours, NLP_COVERAGE_THRESHOLD, NLP_SENTIMENT_SCALE)
-        # theme_hourly_v2 is the live pre-agg populated by ingest_v2.refresh.
-        # The legacy signals_theme_hourly table from migration 006 is no longer
-        # written to and returns empty results.
-        top_themes = await _fetch_section(conn, degraded_segments, "top_themes", """
-            SELECT theme, SUM(signal_count)::bigint as count
-            FROM theme_hourly_v2
-            WHERE hour > NOW() - ($1::int * INTERVAL '1 hour')
-            GROUP BY theme ORDER BY count DESC LIMIT 10
-        """, hours)
+        # Long windows should use compact processed historical tables, not raw
+        # historical scans. For hot windows, theme_hourly_v2 remains the live
+        # pre-agg populated by ingest_v2.refresh. The legacy
+        # signals_theme_hourly table from migration 006 is dead.
+        if _use_historical_processed(hours) and has_historical_processed:
+            top_themes = await _fetch_section(
+                conn, degraded_segments, "top_themes_historical", """
+                SELECT topic_slug AS theme,
+                       SUM(signal_count)::bigint        AS count,
+                       AVG(topic_coverage)::float       AS topic_coverage,
+                       AVG(sentiment_coverage)::float   AS sentiment_coverage,
+                       'historical_topic_country_daily' AS source_table,
+                       $2::text                         AS model_version
+                FROM historical_topic_country_daily
+                WHERE day >= CURRENT_DATE - GREATEST(1, CEIL($1::numeric / 24)::int)
+                  AND model_version = $2::text
+                GROUP BY topic_slug
+                ORDER BY count DESC LIMIT 10
+            """, hours, HISTORICAL_PROCESSED_MODEL_VERSION)
+            top_themes_source = "historical_topic_country_daily"
+        else:
+            top_themes = await _fetch_section(conn, degraded_segments, "top_themes", """
+                SELECT theme,
+                       SUM(signal_count)::bigint AS count,
+                       NULL::float               AS topic_coverage,
+                       NULL::float               AS sentiment_coverage,
+                       'theme_hourly_v2'         AS source_table,
+                       NULL::text                AS model_version
+                FROM theme_hourly_v2
+                WHERE hour > NOW() - ($1::int * INTERVAL '1 hour')
+                GROUP BY theme ORDER BY count DESC LIMIT 10
+            """, hours)
+            top_themes_source = "theme_hourly_v2"
         # Top sources scans signals_v2 directly with a bounded window. The legacy
         # signals_source_hourly pre-agg is dead and a dedicated (hour, source_name)
         # pre-agg would have very high cardinality (~86K unique sources/day). The
@@ -378,9 +421,51 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             ],
             "heat_voluminous_percentile": HEAT_VOLUMINOUS_PERCENTILE,
             "top_themes": [
-                {"theme": r['theme'], "count": r['count']}
+                {
+                    "theme": r['theme'],
+                    "count": r['count'],
+                    "source_table": _record_get(r, "source_table", top_themes_source),
+                    "model_version": _record_get(r, "model_version"),
+                    "topic_coverage": (
+                        round(float(r["topic_coverage"]), 3)
+                        if _record_get(r, "topic_coverage") is not None else None
+                    ),
+                    "sentiment_coverage": (
+                        round(float(r["sentiment_coverage"]), 3)
+                        if _record_get(r, "sentiment_coverage") is not None else None
+                    ),
+                }
                 for r in top_themes
             ],
+            "top_themes_source": top_themes_source,
+            "historical_coverage": {
+                "source": (
+                    "historical_processed"
+                    if top_themes_source == "historical_topic_country_daily" else "hot"
+                ),
+                "topicCoverage": (
+                    round(
+                        sum(float(_record_get(r, "topic_coverage") or 0) for r in top_themes)
+                        / len(top_themes),
+                        3,
+                    )
+                    if top_themes_source == "historical_topic_country_daily" and top_themes
+                    else None
+                ),
+                "sentimentCoverage": (
+                    round(
+                        sum(float(_record_get(r, "sentiment_coverage") or 0) for r in top_themes)
+                        / len(top_themes),
+                        3,
+                    )
+                    if top_themes_source == "historical_topic_country_daily" and top_themes
+                    else None
+                ),
+                "modelVersion": (
+                    HISTORICAL_PROCESSED_MODEL_VERSION
+                    if top_themes_source == "historical_topic_country_daily" else None
+                ),
+            },
             "top_sources": [
                 {"source": extract_domain(r['source_name']), "count": r['count']}
                 for r in top_sources

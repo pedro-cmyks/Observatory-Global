@@ -207,6 +207,26 @@ Post-prune maintenance:
 
 Note: `/health.total_signals` intentionally still reads from `country_hourly_v2` historical aggregates, not raw `signals_v2`. It is no longer a raw hot-store row count after the hot/cold cutover.
 
+## Nightly Processed Historical Cadence
+
+Use this cadence for the 00:00-06:00 America/Bogota local worker window:
+
+1. Verify the local archive manifest for the target partition.
+2. Process the cold partition locally into compact historical aggregates and evidence samples.
+3. Sync compact historical outputs to Supabase; do not sync full raw historical rows.
+4. Run `backend/scripts/historical_coverage_report.py` and store/report the summary.
+5. Keep Supabase raw retention aligned to the hot-window policy after archive verification.
+
+Current processed historical baseline:
+
+```text
+day:                  2026-05-19
+model_version:        atlas-hist-v1
+aggregate rows:       1,728
+represented signals:  185,163
+table:                historical_topic_country_daily
+```
+
 ## Example Commands
 
 ```bash

@@ -4,6 +4,7 @@ from scripts.historical_process_partition import (
     build_daily_topic_country_rows,
     infer_topic_slug,
 )
+from scripts.historical_coverage_report import REPORT_SQL, TOP_TOPICS_SQL
 from scripts.historical_sync import build_upsert_payload, coerce_day
 
 
@@ -159,3 +160,12 @@ def test_build_upsert_payload_rejects_rows_without_primary_key_fields():
 
 def test_coerce_day_returns_date_for_asyncpg():
     assert coerce_day("2026-05-19").isoformat() == "2026-05-19"
+
+
+def test_historical_coverage_report_uses_compact_processed_tables_only():
+    combined_sql = f"{REPORT_SQL}\n{TOP_TOPICS_SQL}".lower()
+
+    assert "historical_topic_country_daily" in combined_sql
+    assert "represented_signals" in combined_sql
+    assert "avg_sentiment_coverage" in combined_sql
+    assert "signals_v2" not in combined_sql

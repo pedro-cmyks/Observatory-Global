@@ -29,13 +29,33 @@ def test_briefing_uses_preaggregates_for_country_sentiment_sections():
 
 
 def test_briefing_top_themes_uses_theme_hourly_v2_not_dead_table():
-    """top_themes must read from theme_hourly_v2 (populated) not signals_theme_hourly (dead)."""
+    """Hot-window top_themes must read from theme_hourly_v2, not dead tables."""
     source = _get_briefing_source()
     top_themes_section = source[source.index('"top_themes"'):source.index('"top_sources"')]
 
     assert "FROM theme_hourly_v2" in top_themes_section
     assert "FROM signals_theme_hourly" not in top_themes_section
     assert "WHERE hour >" in top_themes_section
+
+
+def test_briefing_long_windows_use_historical_processed_tables():
+    """Long-window top_themes must use compact processed history instead of
+    rehydrating/scanning historical raw signals."""
+    source = _get_briefing_source()
+    top_themes_section = source[source.index('"top_themes_historical"'):source.index('"top_sources"')]
+
+    assert "def _use_historical_processed(hours: int)" in _briefing_source()
+    assert "_use_historical_processed(hours)" in source
+    assert "to_regclass('historical_topic_country_daily')" in source
+    assert "FROM historical_topic_country_daily" in top_themes_section
+    assert "topic_slug AS theme" in top_themes_section
+    assert "CEIL($1::numeric / 24)::int" in top_themes_section
+    assert "AND model_version = $2::text" in top_themes_section
+    assert "HISTORICAL_PROCESSED_MODEL_VERSION" in source
+    assert '"top_themes_source": top_themes_source' in source
+    assert '"historical_coverage"' in source
+    assert '"historical_processed"' in source
+    assert "FROM signals_v2" not in top_themes_section
 
 
 def test_briefing_top_sources_does_not_read_dead_table():
