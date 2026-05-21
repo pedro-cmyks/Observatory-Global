@@ -42,3 +42,12 @@ def test_country_detail_routes_long_windows_to_processed_history():
     assert "build_historical_coverage" in source
     assert '"source": "historical_topic_country_daily"' in source
     assert "source_mix_not_source_names" in source
+
+
+def test_atlas_topic_detail_routes_long_windows_to_processed_history():
+    source = Path("app/routers/themes.py").read_text(encoding="utf-8")
+
+    assert "use_processed_history(hours) and \"-\" in theme_code" in source
+    assert "query_historical_topic_detail" in source
+    assert "atlas_topic_slug" in source
+    assert '"source": "historical_topic_country_daily"' in source

@@ -8,6 +8,11 @@ from app import db
 from app.main_v2 import app
 from app.utils import _is_valid_person, _resolve_persons, extract_domain
 from app.core.gdelt_taxonomy import classify_source, get_concepts_for_theme
+from app.services.processed_historical import (
+    build_historical_coverage,
+    query_historical_topic_detail,
+    use_processed_history,
+)
 import httpx
 
 router = APIRouter()
@@ -239,6 +244,103 @@ async def get_theme_details(
     signals_hours = min(hours, 48) if hours > 24 else hours
     try:
         async with db.pool.acquire() as conn:
+            if use_processed_history(hours) and "-" in theme_code:
+                topic_slug = theme_code.lower()
+                historical = await query_historical_topic_detail(
+                    conn,
+                    topic_slug=topic_slug,
+                    hours=hours,
+                    country_code=country_code.upper() if country_code else None,
+                )
+                if not historical:
+                    return {
+                        "theme": theme_code,
+                        "country": country_code,
+                        "hours": hours,
+                        "total": 0,
+                        "avgSentiment": 0,
+                        "signals": [],
+                        "graphSignals": [],
+                        "countryBreakdown": [],
+                        "relatedThemes": [],
+                        "topSources": [],
+                        "topPersons": [],
+                        "timeline": [],
+                        "countryFraming": [],
+                        "relatedConcepts": [],
+                        "source": "historical_topic_country_daily",
+                        "coverage": (await build_historical_coverage(conn, hours=hours)).to_dict(),
+                        "warnings": ["historical_processed", "no_processed_topic_history"],
+                    }
+
+                stats = historical["stats"]
+                coverage = await build_historical_coverage(conn, hours=hours)
+                return {
+                    "theme": topic_slug,
+                    "country": country_code,
+                    "hours": hours,
+                    "total": int(stats["signal_count"] or 0),
+                    "signalSample": 0,
+                    "avgSentiment": round(float(stats["avg_sentiment"] or 0), 3),
+                    "signals": [
+                        {
+                            "timestamp": row["signal_timestamp"].isoformat()
+                            if row["signal_timestamp"] else None,
+                            "country": row["country_code"],
+                            "source": row["source_name"],
+                            "url": row["source_url"],
+                            "headline": row["headline"],
+                            "sentiment": float(row["sentiment"] or 0),
+                            "otherThemes": [],
+                            "persons": [],
+                        }
+                        for row in historical["evidence"]
+                    ],
+                    "graphSignals": [],
+                    "countryBreakdown": [
+                        {
+                            "code": row["country_code"],
+                            "name": row["country_name"] or row["country_code"],
+                            "count": int(row["signal_count"] or 0),
+                            "sentiment": float(row["avg_sentiment"] or 0),
+                        }
+                        for row in historical["countries"]
+                    ],
+                    "relatedThemes": [],
+                    "topSources": [
+                        {
+                            "name": f"{row['source_family']}:{row['signal_class']}",
+                            "count": int(row["signal_count"] or 0),
+                            "sentiment": 0,
+                            "family": row["source_family"],
+                        }
+                        for row in historical["source_mix"]
+                    ],
+                    "topPersons": [],
+                    "timeline": [
+                        {
+                            "hour": datetime.combine(row["day"], datetime.min.time()).replace(
+                                tzinfo=timezone.utc
+                            ).isoformat(),
+                            "count": int(row["signal_count"] or 0),
+                            "sentiment": float(row["avg_sentiment"] or 0),
+                        }
+                        for row in historical["timeline"]
+                    ],
+                    "countryFraming": [],
+                    "relatedConcepts": [],
+                    "source": "historical_topic_country_daily",
+                    "coverage": coverage.to_dict(),
+                    "warnings": ["historical_processed", "atlas_topic_slug", "source_mix_not_source_names"],
+                    "historical": {
+                        "countryCount": int(stats["country_count"] or 0),
+                        "topicCoverage": round(float(stats["topic_coverage"] or 0), 4),
+                        "sentimentCoverage": round(float(stats["sentiment_coverage"] or 0), 4),
+                        "entityCoverage": round(float(stats["entity_coverage"] or 0), 4),
+                        "sourceDiversity": round(float(stats["source_diversity"] or 0), 4),
+                    },
+                }
+
             await conn.execute("SET statement_timeout = 25000")
             # Build WHERE clause based on filters
             where_conditions = [

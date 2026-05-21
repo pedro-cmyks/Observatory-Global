@@ -269,3 +269,142 @@ async def query_historical_country_detail(
         "source_mix": [dict(row) for row in source_mix],
         "evidence": [dict(row) for row in evidence],
     }
+
+
+async def query_historical_topic_detail(
+    conn,
+    *,
+    topic_slug: str,
+    hours: int,
+    country_code: str | None = None,
+    model_version: str = HISTORICAL_MODEL_VERSION,
+) -> dict[str, Any] | None:
+    """Return compact processed topic detail for Atlas topic slugs."""
+    days = days_for_hours(hours)
+    stats = await conn.fetchrow(
+        """
+        SELECT h.topic_slug,
+               SUM(h.signal_count)::bigint AS signal_count,
+               CASE WHEN SUM(h.signal_count) > 0
+                    THEN (
+                        SUM(COALESCE(h.avg_sentiment, 0) * h.signal_count)
+                        / SUM(h.signal_count)
+                    )::float
+                    ELSE 0::float END AS avg_sentiment,
+               COUNT(DISTINCT h.country_code)::int AS country_count,
+               AVG(h.topic_coverage)::float AS topic_coverage,
+               AVG(h.sentiment_coverage)::float AS sentiment_coverage,
+               AVG(h.entity_coverage)::float AS entity_coverage,
+               AVG(h.source_diversity)::float AS source_diversity
+        FROM historical_topic_country_daily h
+        WHERE h.topic_slug = $1::text
+          AND h.day >= CURRENT_DATE - $2::int
+          AND h.model_version = $3::text
+          AND ($4::text IS NULL OR h.country_code = $4::text)
+        GROUP BY h.topic_slug
+        """,
+        topic_slug,
+        days,
+        model_version,
+        country_code,
+    )
+    if not stats or not stats["signal_count"]:
+        return None
+
+    timeline = await conn.fetch(
+        """
+        SELECT day,
+               SUM(signal_count)::bigint AS signal_count,
+               CASE WHEN SUM(signal_count) > 0
+                    THEN (
+                        SUM(COALESCE(avg_sentiment, 0) * signal_count)
+                        / SUM(signal_count)
+                    )::float
+                    ELSE 0::float END AS avg_sentiment
+        FROM historical_topic_country_daily
+        WHERE topic_slug = $1::text
+          AND day >= CURRENT_DATE - $2::int
+          AND model_version = $3::text
+          AND ($4::text IS NULL OR country_code = $4::text)
+        GROUP BY day
+        ORDER BY day
+        """,
+        topic_slug,
+        days,
+        model_version,
+        country_code,
+    )
+    countries = await conn.fetch(
+        """
+        SELECT h.country_code,
+               c.name AS country_name,
+               SUM(h.signal_count)::bigint AS signal_count,
+               CASE WHEN SUM(h.signal_count) > 0
+                    THEN (
+                        SUM(COALESCE(h.avg_sentiment, 0) * h.signal_count)
+                        / SUM(h.signal_count)
+                    )::float
+                    ELSE 0::float END AS avg_sentiment
+        FROM historical_topic_country_daily h
+        LEFT JOIN countries_v2 c ON c.code = h.country_code
+        WHERE h.topic_slug = $1::text
+          AND h.day >= CURRENT_DATE - $2::int
+          AND h.model_version = $3::text
+          AND ($4::text IS NULL OR h.country_code = $4::text)
+        GROUP BY h.country_code, c.name
+        ORDER BY signal_count DESC
+        LIMIT 15
+        """,
+        topic_slug,
+        days,
+        model_version,
+        country_code,
+    )
+    source_mix = await conn.fetch(
+        """
+        SELECT source_family,
+               signal_class,
+               SUM(signal_count)::bigint AS signal_count
+        FROM historical_topic_country_daily
+        WHERE topic_slug = $1::text
+          AND day >= CURRENT_DATE - $2::int
+          AND model_version = $3::text
+          AND ($4::text IS NULL OR country_code = $4::text)
+        GROUP BY source_family, signal_class
+        ORDER BY signal_count DESC
+        LIMIT 20
+        """,
+        topic_slug,
+        days,
+        model_version,
+        country_code,
+    )
+    evidence = await conn.fetch(
+        """
+        SELECT headline,
+               source_name,
+               source_url,
+               country_code,
+               signal_timestamp,
+               sentiment
+        FROM historical_evidence_samples
+        WHERE topic_slug = $1::text
+          AND day >= CURRENT_DATE - $2::int
+          AND model_version = $3::text
+          AND ($4::text IS NULL OR country_code = $4::text)
+        ORDER BY day DESC, signal_timestamp DESC NULLS LAST
+        LIMIT 12
+        """,
+        topic_slug,
+        days,
+        model_version,
+        country_code,
+    )
+
+    return {
+        "stats": dict(stats),
+        "timeline": [dict(row) for row in timeline],
+        "countries": [dict(row) for row in countries],
+        "source_mix": [dict(row) for row in source_mix],
+        "evidence": [dict(row) for row in evidence],
+    }

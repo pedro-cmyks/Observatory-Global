@@ -96,7 +96,7 @@ Root causes are routing/grain mismatches, not missing storage.
    - `/api/v2/heatmap`
    - [x] `/api/v2/heat/countries` (`hours>24` now returns historical processed attention + coverage)
    - [x] `/api/v2/country/{code}` (`hours>24` now returns historical processed country summary, topics, source-family mix, and coverage)
-   - `/api/v2/theme/{code}`
+   - [x] `/api/v2/theme/{code}` for Atlas topic slugs (`hours>24` now returns historical processed topic summary, countries, daily timeline, source-family mix, and coverage)
    - `/api/v2/anomalies/themes`
 4. Add a reusable frontend `CoverageBadge`.
 5. Pre-aggregate or bounded-route long-window `top_sources` so `/brief` does not degrade.
