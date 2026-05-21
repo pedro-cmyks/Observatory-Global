@@ -84,13 +84,17 @@ Atlas should behave like a data product, not a raw news dump:
 
 **Issues:** #193, #194.
 
+**Diagnosis 2026-05-21:** recorded in
+`docs/research/processed-historical-sync/2026-05-21-routing-diagnosis.md`.
+Root causes are routing/grain mismatches, not missing storage.
+
 **Work:**
 
-1. Add `processed_historical.py` as the shared backend routing helper.
+1. [x] Add `processed_historical.py` as the shared backend routing helper.
 2. Add config-driven `HOT_STORE_FLOOR`.
 3. Route the endpoint quintet from the routing spec:
    - `/api/v2/heatmap`
-   - `/api/v2/heat/countries`
+   - [x] `/api/v2/heat/countries` (`hours>24` now returns historical processed attention + coverage)
    - `/api/v2/country/{code}`
    - `/api/v2/theme/{code}`
    - `/api/v2/anomalies/themes`

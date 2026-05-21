@@ -17,6 +17,11 @@ from typing import Any
 from fastapi import APIRouter, Header, HTTPException, Query, Request
 
 from app import db
+from app.services.processed_historical import (
+    build_historical_coverage,
+    query_historical_country_attention,
+    use_processed_history,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -61,13 +66,76 @@ async def get_country_heat(
         except Exception:
             pass
 
-    if hours != 24:
-        raise HTTPException(
-            status_code=400,
-            detail="hours_window=24 only in v1. See issue #165 for additional windows.",
-        )
-
     async with db.pool.acquire() as conn:
+        if use_processed_history(hours):
+            rows = await query_historical_country_attention(conn, hours=hours, limit=limit)
+            coverage = await build_historical_coverage(conn, hours=hours)
+            items = []
+            for row in rows:
+                topic_coverage = row.get("topic_coverage")
+                sentiment_coverage = row.get("sentiment_coverage")
+                source_diversity = row.get("source_diversity")
+                items.append({
+                    "country_code": row["country_code"],
+                    "atlas_heat": (
+                        round(float(row["historical_attention"]), 3)
+                        if row.get("historical_attention") is not None else None
+                    ),
+                    "components": {
+                        "z_velocity": None,
+                        "surprise_kl": None,
+                        "source_diversity": (
+                            round(float(source_diversity), 3)
+                            if source_diversity is not None else None
+                        ),
+                        "local_voice_ratio": None,
+                        "polyphony": None,
+                        "geo_confidence_mean": None,
+                        "duplication_index": None,
+                    },
+                    "volume_now": int(row["signal_count"] or 0),
+                    "volume_baseline_daily": None,
+                    "warnings": [
+                        warning for warning, enabled in (
+                            ("historical_processed", True),
+                            ("low_topic_coverage", (topic_coverage or 0) < 0.5),
+                            ("low_nlp_sentiment", (sentiment_coverage or 0) < 0.3),
+                        ) if enabled
+                    ],
+                    "historical": {
+                        "country_name": row.get("country_name") or row["country_code"],
+                        "avg_sentiment": (
+                            round(float(row["avg_sentiment"]), 4)
+                            if row.get("avg_sentiment") is not None else None
+                        ),
+                        "topic_coverage": (
+                            round(float(topic_coverage), 4) if topic_coverage is not None else None
+                        ),
+                        "sentiment_coverage": (
+                            round(float(sentiment_coverage), 4)
+                            if sentiment_coverage is not None else None
+                        ),
+                        "entity_coverage": (
+                            round(float(row["entity_coverage"]), 4)
+                            if row.get("entity_coverage") is not None else None
+                        ),
+                    },
+                })
+
+            response = {
+                "hours": hours,
+                "items": items,
+                "refreshed_at": datetime.now(timezone.utc).isoformat(),
+                "source": "historical_topic_country_daily",
+                "coverage": coverage.to_dict(),
+            }
+            if redis:
+                try:
+                    await redis.setex(cache_key, 300, json.dumps(response))
+                except Exception:
+                    pass
+            return response
+
         try:
             rows = await conn.fetch(
                 """
