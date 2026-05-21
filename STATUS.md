@@ -1,5 +1,5 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-21 (data operating roadmap + app-wide historical routing scope)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-21 (processed history routing + historical source aggregates)
 
 ---
 
@@ -25,17 +25,23 @@ The older roadmap files remain useful background, but they are now subordinate t
 Already shipped:
 
 - `/api/v2/briefing?hours>24` routes `top_themes` to `historical_topic_country_daily`.
+- `/api/v2/briefing?hours>24` routes `top_sources` to `historical_source_daily` (#194 fix).
 - `/brief` shows historical processed coverage metadata.
 - Full verified cutover archive backfill is synced to Supabase compact history:
   `18` days, `2,128,070` represented signals, `22,711` compact aggregate rows,
   `236` countries, `11` topics, model `atlas-hist-v1`.
+- Source aggregate backfill is synced to Supabase compact history:
+  `18` days, `2,128,070` represented signals, `161,871` daily source aggregate rows,
+  model `atlas-hist-v1`; live `top_sources` historical query is ~40 ms with index-only scan.
+- `/api/v2/heat/countries`, `/api/v2/country/{code}`, `/api/v2/theme/{topic_slug}`,
+  and `/api/v2/anomalies/themes` route long windows through processed history with coverage metadata.
+- Reusable frontend `CoverageBadge` is wired into Heat and Theme Detail.
 
 Still pending:
 
-- Add the shared `processed_historical.py` helper.
-- Route `/api/v2/heatmap`, `/api/v2/heat/countries`, `/api/v2/country/{code}`, `/api/v2/theme/{code}`, and `/api/v2/anomalies/themes`.
-- Add a reusable frontend `CoverageBadge`.
-- Fix long-window `top_sources` degradation (#194).
+- Visual app-wide smoke test through the deployed frontend before closing `#193`.
+- Continue hot-window data quality and throughput work: `#171`, `#167`, `#185`, `#184`.
+- Split Fly API and NLP worker images (#195) to stop rebuilding the 7.7GB model image for small API changes.
 
 Issue `#193` should remain open until app-wide routing is shipped and smoke-tested. The briefing bridge is complete but not the full app-window routing scope.
 

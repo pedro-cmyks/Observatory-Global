@@ -99,7 +99,11 @@ Root causes are routing/grain mismatches, not missing storage.
    - [x] `/api/v2/theme/{code}` for Atlas topic slugs (`hours>24` now returns historical processed topic summary, countries, daily timeline, source-family mix, and coverage)
    - [x] `/api/v2/anomalies/themes` (`hours>24` now uses complete-day historical topic z-score with coverage/degraded metadata)
 4. [x] Add a reusable frontend `CoverageBadge`.
-5. Pre-aggregate or bounded-route long-window `top_sources` so `/brief` does not degrade.
+5. [x] Pre-aggregate or bounded-route long-window `top_sources` so `/brief` does not degrade.
+   - Added `historical_source_daily` as a compact processed publisher aggregate.
+   - Synced 18 archive days: `2,128,070` represented raw signals -> `161,871` daily source aggregate rows.
+   - `/api/v2/briefing?hours>24` now routes `top_sources` to `historical_source_daily` and exposes `top_sources_source`.
+   - Live query plan after `VACUUM`: ~40 ms, index-only scan, `Heap Fetches: 0`.
 
 **Creative solution:** do not try to make every endpoint historical at once. Use a "grain contract": only endpoints that naturally map to `(day, topic, country, source_class)` can use compact history. Signal-level endpoints stay hot-only until evidence sampling exists.
 
@@ -212,5 +216,5 @@ These stay open but should not interrupt Phases 1-3 unless they become blockers:
 2. [x] Finish historical processed backfill for the cutover archive.
 3. Turn the routing spec into a focused implementation plan.
 4. Execute app-wide routing + coverage badge.
-5. Fix `#194` long-window `top_sources`.
+5. [x] Fix `#194` long-window `top_sources`.
 6. Return to NLP/topic quality: `#171`, `#167`, `#185`, `#184`.

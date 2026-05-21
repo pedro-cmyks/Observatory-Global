@@ -4,14 +4,17 @@ from pathlib import Path
 from scripts.archive_common import ArchiveManifestRecord
 from scripts.historical_backfill import _day_from_path, discover_backfill_days
 from scripts.historical_process_partition import (
+    build_daily_source_rows,
     build_daily_topic_country_rows,
     infer_topic_slug,
+    normalize_source_domain,
 )
 from scripts.historical_coverage_report import REPORT_SQL, TOP_TOPICS_SQL
-from scripts.historical_sync import build_upsert_payload, coerce_day
+from scripts.historical_sync import build_source_upsert_payload, build_upsert_payload, coerce_day
 
 
 MIGRATION = Path("migrations/029_historical_processed_tables.sql")
+SOURCE_MIGRATION = Path("migrations/032_historical_source_daily.sql")
 
 
 def test_migration_029_defines_processed_historical_tables():
@@ -45,6 +48,17 @@ def test_migration_029_tracks_processing_method_and_coverage():
     assert "topic_coverage" in sql
     assert "entity_coverage" in sql
     assert "check (sentiment_coverage >= 0 and sentiment_coverage <= 1)" in sql
+
+
+def test_migration_032_defines_compact_historical_source_table():
+    sql = SOURCE_MIGRATION.read_text().lower()
+
+    assert "create table if not exists public.historical_source_daily" in sql
+    assert "primary key (day, source_domain, source_family, signal_class, model_version)" in sql
+    assert "idx_hist_source_daily_lookup" in sql
+    assert "enable row level security" in sql
+    assert "source_url" not in sql
+    assert "headline" not in sql
 
 
 def test_infer_topic_slug_uses_atlas_topic_hints():
@@ -121,6 +135,51 @@ def test_build_daily_topic_country_rows_falls_back_to_gdelt_sentiment_with_metho
     assert output[0]["entity_coverage"] == 1.0
 
 
+def test_normalize_source_domain_prefers_url_host():
+    row = {
+        "source_name": "Example Wire",
+        "source_url": "https://www.example.com/news/story",
+    }
+
+    assert normalize_source_domain(row) == "example.com"
+
+
+def test_build_daily_source_rows_groups_domains_without_raw_payload():
+    rows = [
+        {
+            "timestamp": "2026-05-19T03:00:00Z",
+            "source_name": "Example",
+            "source_url": "https://www.example.com/a",
+            "source_family": "gdelt",
+            "signal_class": "reporting",
+            "nlp_sentiment": -0.2,
+        },
+        {
+            "timestamp": "2026-05-19T04:00:00Z",
+            "source_name": "example.com",
+            "source_url": "https://example.com/b",
+            "source_family": "gdelt",
+            "signal_class": "reporting",
+            "sentiment": 2.0,
+        },
+    ]
+
+    output = build_daily_source_rows(rows, model_version="atlas-hist-v1")
+
+    assert output == [
+        {
+            "day": "2026-05-19",
+            "source_domain": "example.com",
+            "source_family": "gdelt",
+            "signal_class": "reporting",
+            "signal_count": 2,
+            "avg_sentiment": 0.0,
+            "sentiment_coverage": 0.5,
+            "model_version": "atlas-hist-v1",
+        }
+    ]
+
+
 def test_build_upsert_payload_preserves_primary_key_fields():
     rows = [
         {
@@ -159,6 +218,26 @@ def test_build_upsert_payload_rejects_rows_without_primary_key_fields():
         assert "model_version" in str(exc)
     else:
         raise AssertionError("expected missing primary key fields to fail")
+
+
+def test_build_source_upsert_payload_preserves_compact_source_fields():
+    rows = [
+        {
+            "day": "2026-05-19",
+            "source_domain": "example.com",
+            "source_family": "gdelt",
+            "signal_class": "reporting",
+            "signal_count": 2,
+            "avg_sentiment": 0.1,
+            "sentiment_coverage": 0.5,
+            "model_version": "atlas-hist-v1",
+        }
+    ]
+
+    payload = build_source_upsert_payload(rows)
+
+    assert payload[0]["source_domain"] == "example.com"
+    assert payload[0]["signal_count"] == 2
 
 
 def test_coerce_day_returns_date_for_asyncpg():

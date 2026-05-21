@@ -58,15 +58,19 @@ def test_briefing_long_windows_use_historical_processed_tables():
     assert "FROM signals_v2" not in top_themes_section
 
 
-def test_briefing_top_sources_does_not_read_dead_table():
-    """top_sources must not read from signals_source_hourly (dead). Direct
-    signals_v2 scan is acceptable because the section is Redis-cached."""
+def test_briefing_long_window_top_sources_uses_historical_source_daily():
+    """Long-window top_sources must use compact processed history instead of
+    grouping raw signals_v2 over a week."""
     source = _get_briefing_source()
-    top_sources_section = source[source.index('"top_sources"'):source.index('"stats"')]
+    top_sources_section = source[source.index('"top_sources_historical"'):source.index('"stats"')]
 
     assert "FROM signals_source_hourly" not in top_sources_section
+    assert "to_regclass('historical_source_daily')" in source
+    assert '"top_sources_historical"' in top_sources_section
+    assert "FROM historical_source_daily" in top_sources_section
     assert "FROM signals_v2" in top_sources_section
     assert "AND source_name IS NOT NULL" in top_sources_section
+    assert '"top_sources_source": top_sources_source' in source
 
 
 def test_briefing_exposes_heat_countries_section():

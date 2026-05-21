@@ -7,6 +7,7 @@ import json
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from scripts.archive_common import parse_timestamp
 
@@ -103,6 +104,95 @@ def _normalized_sentiment(row: dict[str, Any]) -> tuple[float | None, bool]:
 
 def _has_entities(row: dict[str, Any]) -> bool:
     return bool(_as_list(row.get("nlp_persons")) or _as_list(row.get("persons")))
+
+
+def normalize_source_domain(row: dict[str, Any]) -> str | None:
+    """Return a stable publisher/domain key for historical source aggregates."""
+    source_url = row.get("source_url") or row.get("url")
+    if source_url:
+        parsed = urlparse(str(source_url))
+        host = (parsed.netloc or parsed.path.split("/", 1)[0]).lower()
+        if host.startswith("www."):
+            host = host[4:]
+        if host and "." in host:
+            return host
+
+    source_name = row.get("source_name")
+    if not source_name:
+        return None
+    source = str(source_name).strip().lower()
+    if not source:
+        return None
+    parsed = urlparse(source if "://" in source else f"//{source}")
+    host = (parsed.netloc or parsed.path).split("/", 1)[0].lower()
+    if host.startswith("www."):
+        host = host[4:]
+    return host or source
+
+
+def build_daily_source_rows(
+    rows: list[dict[str, Any]],
+    *,
+    model_version: str,
+) -> list[dict[str, Any]]:
+    buckets: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+
+    for row in rows:
+        ts_raw = row.get("timestamp") or row.get("created_at")
+        if not ts_raw:
+            continue
+        source_domain = normalize_source_domain(row)
+        if not source_domain:
+            continue
+
+        day = parse_timestamp(str(ts_raw)).date().isoformat()
+        source_family = row.get("source_family") or "unknown"
+        signal_class = row.get("signal_class") or "unknown"
+        key = (day, source_domain, source_family, signal_class)
+
+        bucket = buckets.setdefault(
+            key,
+            {
+                "day": day,
+                "source_domain": source_domain,
+                "source_family": source_family,
+                "signal_class": signal_class,
+                "signal_count": 0,
+                "_sentiment_sum": 0.0,
+                "_sentiment_n": 0,
+                "_nlp_sentiment_n": 0,
+                "model_version": model_version,
+            },
+        )
+
+        bucket["signal_count"] += 1
+        sentiment, came_from_nlp = _normalized_sentiment(row)
+        if sentiment is not None:
+            bucket["_sentiment_sum"] += sentiment
+            bucket["_sentiment_n"] += 1
+            if came_from_nlp:
+                bucket["_nlp_sentiment_n"] += 1
+
+    output: list[dict[str, Any]] = []
+    for bucket in buckets.values():
+        count = bucket["signal_count"]
+        sentiment_n = bucket.pop("_sentiment_n")
+        sentiment_sum = bucket.pop("_sentiment_sum")
+        nlp_sentiment_n = bucket.pop("_nlp_sentiment_n")
+
+        bucket["avg_sentiment"] = round(sentiment_sum / sentiment_n, 4) if sentiment_n else None
+        bucket["sentiment_coverage"] = round(nlp_sentiment_n / count, 4)
+        output.append(bucket)
+
+    return sorted(
+        output,
+        key=lambda item: (
+            item["day"],
+            item["source_domain"],
+            item["source_family"],
+            item["signal_class"],
+        ),
+    )
 
 
 def build_daily_topic_country_rows(
@@ -203,6 +293,7 @@ def main() -> None:
 
     rows = list(iter_jsonl_gzip(Path(args.input)))
     aggregate_rows = build_daily_topic_country_rows(rows, model_version=args.model_version)
+    source_rows = build_daily_source_rows(rows, model_version=args.model_version)
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
@@ -212,6 +303,8 @@ def main() -> None:
                 "model_version": args.model_version,
                 "input_rows": len(rows),
                 "aggregate_rows": len(aggregate_rows),
+                "source_rows": source_rows,
+                "source_aggregate_rows": len(source_rows),
                 "rows": aggregate_rows,
             },
             indent=2,
@@ -224,6 +317,7 @@ def main() -> None:
             {
                 "input_rows": len(rows),
                 "aggregate_rows": len(aggregate_rows),
+                "source_aggregate_rows": len(source_rows),
                 "output": str(output_path),
             },
             sort_keys=True,

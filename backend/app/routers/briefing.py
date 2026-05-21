@@ -115,6 +115,9 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         has_historical_processed = await conn.fetchval(
             "SELECT to_regclass('historical_topic_country_daily') IS NOT NULL"
         )
+        has_historical_source_daily = await conn.fetchval(
+            "SELECT to_regclass('historical_source_daily') IS NOT NULL"
+        )
         # Use pre-agg tables for every window. Sentiment payload selects NLP
         # transformer-normalized values when bucket NLP coverage clears the
         # threshold, otherwise falls back to GDELT V2Tone. chosen_sentiment_raw
@@ -238,21 +241,40 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 GROUP BY theme ORDER BY count DESC LIMIT 10
             """, hours)
             top_themes_source = "theme_hourly_v2"
-        # Top sources scans signals_v2 directly with a bounded window. The legacy
-        # signals_source_hourly pre-agg is dead and a dedicated (hour, source_name)
-        # pre-agg would have very high cardinality (~86K unique sources/day). The
-        # GROUP BY here is bounded by the time window and Redis-cached for the
-        # full briefing TTL (15–30 min), so we eat the scan at most twice an hour
-        # rather than building a new pre-agg pipeline.
-        top_sources = await _fetch_section(conn, degraded_segments, "top_sources", """
-            SELECT source_name, COUNT(*)::bigint AS count
-            FROM signals_v2
-            WHERE timestamp > NOW() - ($1::int * INTERVAL '1 hour')
-              AND source_name IS NOT NULL
-            GROUP BY source_name
-            ORDER BY count DESC
-            LIMIT 5
-        """, hours)
+        # Long-window source rankings use compact processed history. Hot windows
+        # keep the bounded raw scan so same-day sources reflect current ingestion
+        # before the local archive/sync path has produced daily aggregates.
+        if _use_historical_processed(hours) and has_historical_source_daily:
+            top_sources = await _fetch_section(
+                conn, degraded_segments, "top_sources_historical", """
+                SELECT source_domain AS source_name,
+                       SUM(signal_count)::bigint AS count,
+                       AVG(sentiment_coverage)::float AS sentiment_coverage,
+                       'historical_source_daily' AS source_table,
+                       $2::text AS model_version
+                FROM historical_source_daily
+                WHERE day >= CURRENT_DATE - GREATEST(1, CEIL($1::numeric / 24)::int)
+                  AND model_version = $2::text
+                GROUP BY source_domain
+                ORDER BY count DESC
+                LIMIT 5
+            """, hours, HISTORICAL_PROCESSED_MODEL_VERSION)
+            top_sources_source = "historical_source_daily"
+        else:
+            top_sources = await _fetch_section(conn, degraded_segments, "top_sources", """
+                SELECT source_name,
+                       COUNT(*)::bigint AS count,
+                       NULL::float AS sentiment_coverage,
+                       'signals_v2' AS source_table,
+                       NULL::text AS model_version
+                FROM signals_v2
+                WHERE timestamp > NOW() - ($1::int * INTERVAL '1 hour')
+                  AND source_name IS NOT NULL
+                GROUP BY source_name
+                ORDER BY count DESC
+                LIMIT 5
+            """, hours)
+            top_sources_source = "signals_v2"
         # Heat ranking (#149): atlas_heat from country_heat_v2 ranks countries by
         # what is heating up right now (velocity + surprise + source diversity +
         # local voice + frame polyphony + geo confidence − duplication), not raw
@@ -467,9 +489,19 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 ),
             },
             "top_sources": [
-                {"source": extract_domain(r['source_name']), "count": r['count']}
+                {
+                    "source": extract_domain(r['source_name']),
+                    "count": r['count'],
+                    "source_table": _record_get(r, "source_table", top_sources_source),
+                    "model_version": _record_get(r, "model_version"),
+                    "sentiment_coverage": (
+                        round(float(r["sentiment_coverage"]), 3)
+                        if _record_get(r, "sentiment_coverage") is not None else None
+                    ),
+                }
                 for r in top_sources
             ],
+            "top_sources_source": top_sources_source,
             "theme_country": _build_theme_country_map(theme_country_rows)
         }
     if hasattr(app.state, "redis") and app.state.redis:

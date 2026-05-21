@@ -12,8 +12,8 @@ from typing import Any
 
 from scripts.archive_common import MANIFEST_FILE, iter_manifest_records
 from scripts.historical_process_partition import MODEL_VERSION_DEFAULT, iter_jsonl_gzip
-from scripts.historical_process_partition import build_daily_topic_country_rows
-from scripts.historical_sync import load_artifact, upsert_rows
+from scripts.historical_process_partition import build_daily_source_rows, build_daily_topic_country_rows
+from scripts.historical_sync import load_artifact, load_source_artifact, upsert_rows, upsert_source_rows
 
 
 @dataclass(frozen=True)
@@ -87,6 +87,7 @@ def discover_backfill_days(
 def process_partition(day: BackfillDay, *, model_version: str) -> dict[str, Any]:
     rows = list(iter_jsonl_gzip(day.input_path))
     aggregate_rows = build_daily_topic_country_rows(rows, model_version=model_version)
+    source_rows = build_daily_source_rows(rows, model_version=model_version)
     day.output_path.parent.mkdir(parents=True, exist_ok=True)
     day.output_path.write_text(
         json.dumps(
@@ -96,7 +97,9 @@ def process_partition(day: BackfillDay, *, model_version: str) -> dict[str, Any]
                 "input_rows": len(rows),
                 "manifest_rows": day.manifest_rows,
                 "aggregate_rows": len(aggregate_rows),
+                "source_aggregate_rows": len(source_rows),
                 "rows": aggregate_rows,
+                "source_rows": source_rows,
             },
             indent=2,
             sort_keys=True,
@@ -109,14 +112,21 @@ def process_partition(day: BackfillDay, *, model_version: str) -> dict[str, Any]
         "input_rows": len(rows),
         "manifest_rows": day.manifest_rows,
         "aggregate_rows": len(aggregate_rows),
+        "source_aggregate_rows": len(source_rows),
         "output": str(day.output_path),
     }
 
 
 async def sync_artifact(database_url: str, artifact_path: Path) -> dict[str, Any]:
     rows = load_artifact(artifact_path)
+    source_rows = load_source_artifact(artifact_path)
     synced = await upsert_rows(database_url, rows)
-    return {"artifact": str(artifact_path), "synced_rows": synced}
+    synced_source_rows = await upsert_source_rows(database_url, source_rows) if source_rows else 0
+    return {
+        "artifact": str(artifact_path),
+        "synced_rows": synced,
+        "synced_source_rows": synced_source_rows,
+    }
 
 
 async def run_backfill(args: argparse.Namespace) -> dict[str, Any]:
@@ -159,6 +169,7 @@ async def run_backfill(args: argparse.Namespace) -> dict[str, Any]:
                     "processed": False,
                     "input_rows": artifact.get("input_rows"),
                     "aggregate_rows": artifact.get("aggregate_rows"),
+                    "source_aggregate_rows": artifact.get("source_aggregate_rows"),
                 }
             )
 

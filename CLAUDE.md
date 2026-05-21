@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-21 (data operating roadmap + app-wide historical routing scope)
+Last updated: 2026-05-21 (processed history routing + historical source aggregates)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -30,15 +30,16 @@ Older docs remain valid but subordinate:
 
 ### App-wide historical routing scope
 
-`#193` should be treated as still open until `/app` long-window routing is complete. The shipped work only covered the first bridge:
+`#193` should be treated as still open until deployed frontend visual smoke tests pass. Backend routing is implemented, but do not close the issue solely from API checks.
 
 - Done: `/api/v2/briefing?hours>24` routes `top_themes` to `historical_topic_country_daily`.
+- Done: `/api/v2/briefing?hours>24` routes `top_sources` to `historical_source_daily` (#194).
 - Done: `/brief` renders historical processed coverage metadata.
 - Done: full cutover archive backfill into compact historical tables using `backend/scripts/historical_backfill.py`: `18` days, `22,711` compact rows, `2,128,070` represented signals, `236` countries, `11` topics.
-- Pending: shared `processed_historical.py` helper.
-- Pending: `/api/v2/heatmap`, `/api/v2/heat/countries`, `/api/v2/country/{code}`, `/api/v2/theme/{code}`, and `/api/v2/anomalies/themes` coverage envelopes.
-- Pending: reusable frontend `CoverageBadge`.
-- Pending: `#194` long-window `top_sources` pre-aggregation.
+- Done: source backfill into `historical_source_daily`: `18` days, `161,871` compact daily source rows, `2,128,070` represented signals; live query plan after `VACUUM` is ~40 ms index-only scan with `Heap Fetches: 0`.
+- Done: shared `processed_historical.py` helper.
+- Done: `/api/v2/heatmap`, `/api/v2/heat/countries`, `/api/v2/country/{code}`, `/api/v2/theme/{topic_slug}`, and `/api/v2/anomalies/themes` coverage envelopes.
+- Done: reusable frontend `CoverageBadge` in Heat and Theme Detail.
 
 Quality finding after full backfill: `general-monitoring` represents `1,559,990` of `2,128,070` historical signals. Historical storage/routing has enough data; next quality work is topic intelligence (#171/#167/#185).
 
@@ -143,7 +144,7 @@ Tests after hot/cold guardrail changes: `cd backend && .venv/bin/python -m pytes
 
 **Briefing hygiene**
 - `top_themes` switched from dead `signals_theme_hourly` to `theme_hourly_v2`.
-- `top_sources` switched from dead `signals_source_hourly` to a bounded `signals_v2` scan, Redis-cached 15–30 min.
+- `top_sources` switched from dead `signals_source_hourly` to `historical_source_daily` for long windows; hot windows keep the bounded `signals_v2` scan.
 - `/briefing/insight` mirrors `/briefing` hardening — `country_hourly_v2` + parameterized intervals + `_fetch_section` degraded path.
 
 **Data ops via Supabase MCP**

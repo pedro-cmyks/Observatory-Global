@@ -99,6 +99,13 @@ Long-window topic pages need to branch:
 
 The current briefing fallback groups hot `signals_v2` by `source_name` across 168h. After hot/cold prune this is both semantically partial and slow.
 
+Resolution shipped 2026-05-21:
+
+- Added `historical_source_daily` with daily `source_domain` / `source_family` / `signal_class` aggregates.
+- Synced the verified cutover archive into `161,871` compact source aggregate rows representing `2,128,070` archived signals.
+- Routed `/api/v2/briefing?hours>24` `top_sources` to `historical_source_daily`.
+- Live query plan after `VACUUM`: ~40 ms, index-only scan, `Heap Fetches: 0`.
+
 ### 4. `theme_daily_v2` is empty
 
 `/api/v2/anomalies/themes` joins against `theme_daily_v2`, but live stats show `theme_daily_v2` has 0 rows. The endpoint can return a valid empty payload while hiding that its baseline table has no data.
@@ -137,7 +144,7 @@ These map naturally to daily aggregate grain:
 3. Route `/api/v2/country/{code}` long-window summary and topics from compact history. Mark sources/persons as hot-only or omit them from historical coverage until source/evidence tables exist. Implemented on 2026-05-21: long windows now return country summary, processed topics, source-family/signal-class mix, optional evidence samples, and coverage metadata.
 4. Route `/api/v2/theme/{topic_slug}` long-window Atlas topic pages from compact history. Add explicit `source="historical_topic_country_daily"` and `coverage`.
 5. Fix `/api/v2/anomalies/themes` by using compact history for historical windows and returning a degraded/coverage reason when baseline is unavailable.
-6. Add `historical_source_daily` for #194 so long-window top publishers do not scan raw `signals_v2`.
+6. Add `historical_source_daily` for #194 so long-window top publishers do not scan raw `signals_v2`. Implemented on 2026-05-21: long-window briefing source rankings now use compact processed source aggregates and expose `top_sources_source`.
 
 ## Non-Fixes
 

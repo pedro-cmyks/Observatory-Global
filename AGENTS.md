@@ -31,6 +31,7 @@ Key files added in session 21 (processed historical sync — 2026-05-21):
 - `backend/scripts/historical_coverage_report.py` — Supabase budget/coverage report for compact processed history.
 - `backend/tests/test_historical_processing.py` — migration shape, topic inference, aggregate, and sync payload tests.
 - `docs/research/processed-historical-sync/2026-05-19-topic-country.json` — first processed historical artifact.
+- `backend/migrations/032_historical_source_daily.sql` — compact daily source-domain aggregate for long-window briefing `top_sources`.
 
 Session 20 data state:
 - Local archive root: `/Users/pedro/AtlasArchive`.
@@ -50,7 +51,9 @@ Session 21 processed historical sync direction:
 - Current implementation status: migration 029 applied; first `historical_sync.py` live run inserted/upserted `1,728` rows for `2026-05-19` / `atlas-hist-v1`, summing to `185,163` signals. Next step is API bridge for long-window reads.
 - Full cutover backfill status: `historical_backfill.py` processed/synced `2026-05-03` through partial `2026-05-20`: `18` historical days, `22,711` compact rows, and `2,128,070` represented signals, exactly matching the verified local archive.
 - Long-window API bridge status: `/api/v2/briefing?hours>24` routes `top_themes` to `historical_topic_country_daily` and `/brief` renders historical processed coverage metadata. Current coverage report after full backfill: `22,711` aggregate rows, `2,128,070` represented signals, `236` countries, `11` topics, avg topic coverage `0.8052`, avg NLP sentiment coverage `0.1695`.
-- Scope correction: do not close #193 based only on `/brief`. #193 remains open until app-wide routing from `docs/superpowers/specs/2026-05-21-processed-historical-routing-design.md` is implemented for `/api/v2/heatmap`, `/api/v2/heat/countries`, `/api/v2/country/{code}`, `/api/v2/theme/{code}`, and `/api/v2/anomalies/themes`, plus frontend `CoverageBadge`. #194 tracks long-window `top_sources` pre-aggregation.
+- App-wide routing status: `/api/v2/heat/countries`, `/api/v2/country/{code}`, `/api/v2/theme/{topic_slug}`, and `/api/v2/anomalies/themes` route long windows through processed history with coverage metadata; `/api/v2/heatmap` is explicitly deprecated in favor of `/api/v2/heat/countries`; frontend `CoverageBadge` is wired into Heat and Theme Detail.
+- Long-window briefing source status (#194): `/api/v2/briefing?hours>24` routes `top_sources` to `historical_source_daily`. Full source backfill synced `161,871` daily source aggregate rows representing `2,128,070` archived signals. Live query plan after `VACUUM`: ~40 ms, index-only scan, `Heap Fetches: 0`.
+- Scope correction: do not close #193 based only on backend/API work. #193 remains open until app-wide visual smoke tests pass through the deployed frontend.
 - Quality finding: `general-monitoring` represents `1,559,990` of `2,128,070` historical signals, so storage is no longer the blocker; topic intelligence quality (#171/#167/#185) is.
 
 Key files changed in session 15:
