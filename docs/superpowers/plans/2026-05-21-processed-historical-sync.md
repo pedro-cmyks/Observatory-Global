@@ -203,11 +203,10 @@ cd backend
 
 Expected: `2 passed`.
 
-- [ ] **Step 4: Apply migration**
+- [x] **Step 4: Apply migration**
 
-Status 2026-05-21: migration file and local tests are ready, but production DDL
-was not applied in this Codex session because no Supabase MCP/SQL editor path or
-local `DATABASE_URL` was available. Apply this explicitly before live sync.
+Status 2026-05-21: Supabase MCP OAuth configured, migration applied through
+Supabase MCP, and tables verified before live sync.
 
 Apply via Supabase SQL editor or the configured Supabase MCP, not through Alembic.
 
@@ -219,7 +218,7 @@ SELECT to_regclass('historical_topic_country_daily') IS NOT NULL AS ok;
 
 Expected: `ok = true`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/migrations/029_historical_processed_tables.sql backend/tests/test_historical_processing.py
@@ -432,7 +431,7 @@ cd backend
 
 Expected: JSON output with `input_rows` around `185163` and `aggregate_rows > 0`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/scripts/historical_process_partition.py backend/tests/test_historical_processing.py docs/research/processed-historical-sync/
@@ -605,7 +604,12 @@ cd backend
 
 Expected: `{"dry_run": true, "rows": <positive number>}`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
+
+Status 2026-05-21: live sync completed using Fly runtime `DATABASE_URL`.
+Result: `{"dry_run": false, "rows": 1728}`. Supabase verification for
+`2026-05-19` / `atlas-hist-v1`: `1,728` rows and `185,163` summed
+`signal_count`.
 
 ```bash
 git add backend/scripts/historical_sync.py backend/tests/test_historical_processing.py

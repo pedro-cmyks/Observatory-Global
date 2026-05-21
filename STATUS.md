@@ -46,7 +46,10 @@ Implementation started:
 - Smoke artifact: `docs/research/processed-historical-sync/2026-05-19-topic-country.json`.
 - Validation: `cd backend && .venv/bin/python -m pytest tests/test_historical_processing.py tests/test_archive_common.py -q` -> `18 passed`.
 - Validation: `cd backend && .venv/bin/python -m scripts.historical_sync --artifact ../docs/research/processed-historical-sync/2026-05-19-topic-country.json --dry-run` -> `{"dry_run": true, "rows": 1728}`.
-- Not applied yet: migration `029` in Supabase. This session had no local `DATABASE_URL` and no exposed Supabase MCP SQL tool, so production DDL was intentionally left for an explicit SQL-editor/MCP step.
+- Supabase MCP configured and OAuth login completed. Migration `029` applied through Supabase MCP.
+- Live sync completed using Fly runtime `DATABASE_URL`: `{"dry_run": false, "rows": 1728}`.
+- Supabase verification for `day='2026-05-19'`, `model_version='atlas-hist-v1'`: `1,728` rows, `185,163` summed `signal_count`.
+- Top synced bucket: `general-monitoring` / `US` / `gdelt` / `reporting` with `20,960` signals. This confirms the historical path works and also shows Topic Intelligence needs better non-general coverage.
 
 ### Hot/cold retention cutover state
 

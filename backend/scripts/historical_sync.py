@@ -5,6 +5,7 @@ import argparse
 import asyncio
 import json
 import os
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -60,6 +61,14 @@ def build_upsert_payload(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return payload
 
 
+def coerce_day(value: Any) -> date:
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        return date.fromisoformat(value)
+    raise TypeError(f"Unsupported historical aggregate day value: {value!r}")
+
+
 def load_artifact(path: Path) -> list[dict[str, Any]]:
     data = json.loads(path.read_text(encoding="utf-8"))
     rows = data.get("rows")
@@ -78,7 +87,7 @@ async def upsert_rows(database_url: str, rows: list[dict[str, Any]], *, batch_si
                 UPSERT_SQL,
                 [
                     (
-                        row["day"],
+                        coerce_day(row["day"]),
                         row["topic_slug"],
                         row["country_code"],
                         row["source_family"],

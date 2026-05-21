@@ -4,7 +4,7 @@ from scripts.historical_process_partition import (
     build_daily_topic_country_rows,
     infer_topic_slug,
 )
-from scripts.historical_sync import build_upsert_payload
+from scripts.historical_sync import build_upsert_payload, coerce_day
 
 
 MIGRATION = Path("migrations/029_historical_processed_tables.sql")
@@ -155,3 +155,7 @@ def test_build_upsert_payload_rejects_rows_without_primary_key_fields():
         assert "model_version" in str(exc)
     else:
         raise AssertionError("expected missing primary key fields to fail")
+
+
+def test_coerce_day_returns_date_for_asyncpg():
+    assert coerce_day("2026-05-19").isoformat() == "2026-05-19"
