@@ -26,6 +26,7 @@ Observatorio Global is a narrative intelligence system that tracks, analyzes, an
 - Cutover export source: Fly app machine `d8d2e46fe07e78`, Supabase `signals_v2`.
 - Cutover export window: `2026-05-03T00:00:00Z` through `2026-05-20T03:33:29Z`.
 - Cutover archive verified: `18` manifest records, `2,128,070` rows, `~368M`, `0` failures, `0` overlaps.
+- Verified prune dry-run from Fly nlp_worker `0803426f142468`: `archive_rows=2,128,070`, `db_candidate_rows=2,128,070`, `range_count=18`, `executed=false`.
 - Smoke queries:
   - Date `2026-05-19`: `185,163` rows.
   - Country `CO`: `13,654` rows.
@@ -38,7 +39,7 @@ New safety scripts:
 - `backend/scripts/archive_plan.py` — Supabase daily export planner.
 - `backend/scripts/prune_archived_signals.py` — dry-run by default; live delete requires `--execute --i-understand-irreversible-delete`; deletes only `signals_v2` rows inside verified manifest ranges.
 
-Guardrail: do not manually delete historical rows. Run `archive_verify.py` first, then `prune_archived_signals.py` dry-run. Product aggregate tables, correction tables, topic tables, and NLP audit/progress state stay in Supabase.
+Guardrail: do not manually delete historical rows. Run `archive_verify.py` first, then `prune_archived_signals.py` dry-run. The dry-run has passed exactly, but live prune is still pending Pedro's explicit confirmation after seeing the dry-run result because deleting `signals_v2` rows is irreversible without restore. Product aggregate tables, correction tables, topic tables, and NLP audit/progress state stay in Supabase.
 
 Tests after hot/cold guardrail changes: `cd backend && .venv/bin/python -m pytest -q` -> `260 passed, 6 skipped`.
 

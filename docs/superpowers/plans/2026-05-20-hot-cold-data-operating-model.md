@@ -61,8 +61,8 @@ Supabase and the local archive hold overlapping information briefly, but they do
 - [x] Run archive export for all rows older than 24 hours in date-sized batches.
 - [x] Only after verification, add a prune script for archived raw rows older than 24 hours.
 - [x] Keep product aggregate tables and correction tables in Supabase even when raw rows age out.
-- [ ] Run verified prune dry-run from Fly against the clean cutover manifest.
-- [ ] Execute live prune only after dry-run candidate counts match the verified archive.
+- [x] Run verified prune dry-run from Fly against the clean cutover manifest.
+- [ ] Execute live prune only after dry-run candidate counts match the verified archive and Pedro confirms the irreversible delete.
 
 ## Production Probe - 2026-05-20
 
@@ -160,6 +160,28 @@ Safety tooling added:
 - `backend/scripts/prune_archived_signals.py` prunes only rows covered by verified manifest ranges. It defaults to dry-run and requires both `--execute` and `--i-understand-irreversible-delete` for live delete.
 
 Important: live prune still must be treated as irreversible. The script only touches `signals_v2`; it does not touch product aggregate tables, correction tables, topic tables, or NLP audit/progress tables.
+
+Dry-run prune gate:
+
+```text
+ran from: Fly nlp_worker machine 0803426f142468
+archive:  /tmp/atlas_archive_cutover_upload
+local:    /Users/pedro/AtlasArchive/cutovers/2026-05-20
+status:   ok=true, executed=false
+archive_rows:       2,128,070
+db_candidate_rows:  2,128,070
+range_count:        18
+```
+
+Every manifest range matched the database candidate count exactly. The remaining live step is intentionally gated because deleting from Supabase `signals_v2` is irreversible without restore:
+
+```bash
+cd /app
+python -m scripts.prune_archived_signals \
+  --archive-dir /tmp/atlas_archive_cutover_upload \
+  --execute \
+  --i-understand-irreversible-delete
+```
 
 ## Example Commands
 
