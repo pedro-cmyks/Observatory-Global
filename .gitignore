@@ -82,6 +82,8 @@ backend/.venv/share/
 .claude/
 .mcp.json
 .superpowers/
+.agents/
+skills-lock.json
 
 # Local secrets and credentials
 .env.*
