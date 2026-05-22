@@ -1,5 +1,106 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-22 (lexicon HTML entity + langdetect fixes)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-22 (confidence-weighted sentiment fusion)
+
+---
+
+## Confidence-weighted sentiment fusion (2026-05-22, migration 033)
+
+Follow-up to the lexicon HTML entity fix. Empirical benchmark on 5,000 random
+transformer-tagged rows showed 29.2% sign disagreement between transformer
+and lexicon sentiment in the same headlines (mean |diff| = 2.02 on the
+raw -5..+5 scale). Briefing's flat `AVG(nlp_sentiment) FILTER (...)` was
+therefore mixing high-confidence transformer rows (avg confidence 0.64)
+with low-confidence lexicon (~0.31) and `fast_neutral` (~0.01) rows at
+equal per-row weight, diluting the transformer signal exactly where it
+disagrees with the lexicon.
+
+Migration 033 adds confidence-weighted sums to the three hot pre-aggregates:
+
+- `theme_hourly_v2` (regular table, ADD COLUMN)
+- `theme_country_hourly_v2` (regular table, ADD COLUMN)
+- `country_hourly_v2` (matview — build-populate-rename swap)
+
+New columns per bucket:
+
+- `nlp_sentiment_weight_sum` = `SUM(nlp_sentiment * nlp_confidence) FILTER (...)`
+- `nlp_confidence_sum`       = `SUM(nlp_confidence) FILTER (...)`
+
+Downstream computes `weighted_avg = weight_sum / NULLIF(conf_sum, 0)` and the
+`choose_sentiment_weighted` helper in `app/services/sentiment_fusion.py`
+picks it over the legacy `avg_nlp_sentiment` whenever it is available.
+
+Production validation right after the swap, top 10 countries by 24h volume:
+
+| CC | Vol | Flat | Weighted | Delta |
+|----|----:|-----:|---------:|------:|
+| US | 25,868 | -1.24 | **-2.20** | -0.96 |
+| GB |  9,882 | -1.21 | -2.18 | -0.97 |
+| CN |  8,611 | -0.55 | -1.83 | **-1.28** |
+| IN |  7,428 | -1.34 | -2.32 | -0.97 |
+| IT |  6,871 | -1.48 | -2.37 | -0.89 |
+| RU |  6,260 | -3.75 | -4.25 | -0.50 |
+| CA |  5,115 | -0.77 | -1.58 | -0.80 |
+| DE |  4,925 | -1.73 | -2.77 | -1.05 |
+| ES |  4,470 | -2.92 | -3.74 | -0.81 |
+| TR |  4,389 | -3.63 | -4.07 | -0.44 |
+
+Every top-10 country shifts more negative because the lexicon hits were
+under-reporting magnitude. CN moves furthest (-1.28) because lexicon
+coverage on Chinese-language headlines was weakest, so transformer rows
+carry disproportionately more signal in that bucket.
+
+Migration application order (Supabase MCP, statement-level):
+
+1. `033a` — `ALTER TABLE` on theme_hourly_v2 + theme_country_hourly_v2.
+2. Backfill 24h windows in chunks (6h × 3) to avoid MCP query timeouts.
+3. `033b` — `CREATE MATERIALIZED VIEW country_hourly_v2_new WITH NO DATA`
+   plus unique + secondary indexes.
+4. `REFRESH MATERIALIZED VIEW country_hourly_v2_new` via `execute_sql`
+   because REFRESH cannot run inside a transaction block.
+5. `033c` — `BEGIN; RENAME swap; COMMIT;` for matview + 4 indexes.
+6. `033d` — `DROP MATERIALIZED VIEW country_hourly_v2_old CASCADE`.
+
+Code changes:
+
+- `app/services/sentiment_fusion.py`: new `_weighted_nlp_raw` +
+  `choose_sentiment_weighted` helpers, plus `serialize_country_row`
+  auto-detecting weighted columns. Legacy `choose_sentiment` preserved.
+- `app/services/ingest_v2.py`: theme_hourly_v2 + theme_country_hourly_v2
+  INSERT...ON CONFLICT extended to write the weighted sums on every
+  2-hour refresh cycle.
+- `app/routers/briefing.py`: three country queries (top_countries,
+  negative_sentiment, positive_sentiment) and the global stats query now
+  select the weighted columns. `chosen_sentiment_raw` ORDER BY prefers
+  `(weight_sum / conf_sum)` and falls through to legacy `nlp_avg` then
+  GDELT. Global stats consume `choose_sentiment_weighted`.
+
+Tests: 298 passed, 6 skipped. New coverage:
+
+- `tests/test_briefing_sentiment_fusion.py`: 9 cases for
+  `_weighted_nlp_raw` + `choose_sentiment_weighted` including the
+  transformer-vs-lexicon dilution scenario from the production benchmark.
+- `tests/test_ingest_pre_agg_nlp_coverage.py`: relaxed whitespace
+  matching and added two shape tests for the new INSERT columns.
+
+Deployment:
+
+- DB is live with the new schema and backfilled 24h of weighted sums.
+- Backend API still serves the legacy `sentiment_source = "nlp"` path
+  until `scripts/deploy-fly-api.sh` ships the new code. The current API
+  reads the new matview transparently because old columns still exist;
+  no degradation in the meantime.
+- After deploy the briefing response carries
+  `sentiment_source = "nlp_weighted"` whenever the bucket has any
+  confidence mass. UI label work to expose the new source label is a
+  follow-up under #183.
+
+Out of scope for migration 033:
+
+- `historical_topic_country_daily` does not carry per-row
+  `nlp_confidence`, so historical day cells stay on flat
+  `sentiment_coverage` until `historical_process_partition.py` is
+  extended to emit weighted sums and the existing 18 cutover days are
+  reprocessed.
 
 ---
 

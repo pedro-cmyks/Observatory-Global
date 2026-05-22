@@ -26,6 +26,7 @@ from app.services.sentiment_fusion import (  # noqa: E402 — kept here to group
     NLP_COVERAGE_THRESHOLD,
     NLP_SENTIMENT_SCALE,
     choose_sentiment,
+    choose_sentiment_weighted,
     serialize_country_row,
 )
 
@@ -125,14 +126,16 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         top_countries = await _fetch_section(conn, degraded_segments, "top_countries", """
             WITH agg AS (
                 SELECT h.country_code, c.name,
-                       SUM(h.signal_count)         AS sig_total,
-                       SUM(h.nlp_signal_count)     AS nlp_total,
+                       SUM(h.signal_count)             AS sig_total,
+                       SUM(h.nlp_signal_count)         AS nlp_total,
+                       SUM(h.nlp_sentiment_weight_sum) AS nlp_weight_sum,
+                       SUM(h.nlp_confidence_sum)       AS nlp_conf_sum,
                        CASE WHEN SUM(h.signal_count) > 0
                             THEN SUM(h.avg_sentiment * h.signal_count) / SUM(h.signal_count)
-                            ELSE NULL END           AS gdelt_avg,
+                            ELSE NULL END               AS gdelt_avg,
                        CASE WHEN SUM(h.nlp_signal_count) > 0
                             THEN SUM(h.avg_nlp_sentiment * h.nlp_signal_count) / SUM(h.nlp_signal_count)
-                            ELSE NULL END           AS nlp_avg
+                            ELSE NULL END               AS nlp_avg
                 FROM country_hourly_v2 h
                 JOIN countries_v2 c ON h.country_code = c.code
                 WHERE h.hour > NOW() - ($1::int * INTERVAL '1 hour')
@@ -140,8 +143,12 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             )
             SELECT country_code, name,
                    sig_total::bigint                          AS total,
+                   sig_total::bigint                          AS signal_count,
+                   nlp_total::bigint                          AS nlp_signal_count,
                    COALESCE(gdelt_avg, 0)::float              AS gdelt_sentiment,
                    nlp_avg::float                             AS nlp_sentiment,
+                   nlp_weight_sum::float                      AS nlp_sentiment_weight_sum,
+                   nlp_conf_sum::float                        AS nlp_confidence_sum,
                    (nlp_total::float / NULLIF(sig_total, 0))  AS nlp_coverage
             FROM agg
             ORDER BY total DESC LIMIT 10
@@ -149,14 +156,16 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         negative_sentiment = await _fetch_section(conn, degraded_segments, "negative_sentiment", """
             WITH agg AS (
                 SELECT h.country_code, c.name,
-                       SUM(h.signal_count)         AS sig_total,
-                       SUM(h.nlp_signal_count)     AS nlp_total,
+                       SUM(h.signal_count)             AS sig_total,
+                       SUM(h.nlp_signal_count)         AS nlp_total,
+                       SUM(h.nlp_sentiment_weight_sum) AS nlp_weight_sum,
+                       SUM(h.nlp_confidence_sum)       AS nlp_conf_sum,
                        CASE WHEN SUM(h.signal_count) > 0
                             THEN SUM(h.avg_sentiment * h.signal_count) / SUM(h.signal_count)
-                            ELSE NULL END           AS gdelt_avg,
+                            ELSE NULL END               AS gdelt_avg,
                        CASE WHEN SUM(h.nlp_signal_count) > 0
                             THEN SUM(h.avg_nlp_sentiment * h.nlp_signal_count) / SUM(h.nlp_signal_count)
-                            ELSE NULL END           AS nlp_avg
+                            ELSE NULL END               AS nlp_avg
                 FROM country_hourly_v2 h
                 JOIN countries_v2 c ON h.country_code = c.code
                 WHERE h.hour > NOW() - ($1::int * INTERVAL '1 hour')
@@ -165,10 +174,17 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             )
             SELECT country_code, name,
                    sig_total::bigint                          AS total,
+                   sig_total::bigint                          AS signal_count,
+                   nlp_total::bigint                          AS nlp_signal_count,
                    COALESCE(gdelt_avg, 0)::float              AS gdelt_sentiment,
                    nlp_avg::float                             AS nlp_sentiment,
+                   nlp_weight_sum::float                      AS nlp_sentiment_weight_sum,
+                   nlp_conf_sum::float                        AS nlp_confidence_sum,
                    (nlp_total::float / NULLIF(sig_total, 0))  AS nlp_coverage,
                    CASE
+                       WHEN nlp_total::float / NULLIF(sig_total, 0) >= $2::float
+                            AND nlp_conf_sum > 0
+                       THEN (nlp_weight_sum / nlp_conf_sum) * $3::float
                        WHEN nlp_total::float / NULLIF(sig_total, 0) >= $2::float
                             AND nlp_avg IS NOT NULL
                        THEN nlp_avg * $3::float
@@ -180,14 +196,16 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         positive_sentiment = await _fetch_section(conn, degraded_segments, "positive_sentiment", """
             WITH agg AS (
                 SELECT h.country_code, c.name,
-                       SUM(h.signal_count)         AS sig_total,
-                       SUM(h.nlp_signal_count)     AS nlp_total,
+                       SUM(h.signal_count)             AS sig_total,
+                       SUM(h.nlp_signal_count)         AS nlp_total,
+                       SUM(h.nlp_sentiment_weight_sum) AS nlp_weight_sum,
+                       SUM(h.nlp_confidence_sum)       AS nlp_conf_sum,
                        CASE WHEN SUM(h.signal_count) > 0
                             THEN SUM(h.avg_sentiment * h.signal_count) / SUM(h.signal_count)
-                            ELSE NULL END           AS gdelt_avg,
+                            ELSE NULL END               AS gdelt_avg,
                        CASE WHEN SUM(h.nlp_signal_count) > 0
                             THEN SUM(h.avg_nlp_sentiment * h.nlp_signal_count) / SUM(h.nlp_signal_count)
-                            ELSE NULL END           AS nlp_avg
+                            ELSE NULL END               AS nlp_avg
                 FROM country_hourly_v2 h
                 JOIN countries_v2 c ON h.country_code = c.code
                 WHERE h.hour > NOW() - ($1::int * INTERVAL '1 hour')
@@ -196,10 +214,17 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             )
             SELECT country_code, name,
                    sig_total::bigint                          AS total,
+                   sig_total::bigint                          AS signal_count,
+                   nlp_total::bigint                          AS nlp_signal_count,
                    COALESCE(gdelt_avg, 0)::float              AS gdelt_sentiment,
                    nlp_avg::float                             AS nlp_sentiment,
+                   nlp_weight_sum::float                      AS nlp_sentiment_weight_sum,
+                   nlp_conf_sum::float                        AS nlp_confidence_sum,
                    (nlp_total::float / NULLIF(sig_total, 0))  AS nlp_coverage,
                    CASE
+                       WHEN nlp_total::float / NULLIF(sig_total, 0) >= $2::float
+                            AND nlp_conf_sum > 0
+                       THEN (nlp_weight_sum / nlp_conf_sum) * $3::float
                        WHEN nlp_total::float / NULLIF(sig_total, 0) >= $2::float
                             AND nlp_avg IS NOT NULL
                        THEN nlp_avg * $3::float
@@ -345,12 +370,16 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             SELECT SUM(signal_count)::bigint                          AS total_signals,
                    COUNT(DISTINCT country_code)                       AS countries,
                    SUM(unique_sources)::bigint                        AS sources,
+                   SUM(signal_count)::bigint                          AS signal_count,
+                   SUM(nlp_signal_count)::bigint                      AS nlp_signal_count,
                    CASE WHEN SUM(signal_count) > 0
                         THEN SUM(avg_sentiment * signal_count) / SUM(signal_count)
                         ELSE 0 END                                    AS gdelt_sentiment,
                    CASE WHEN SUM(nlp_signal_count) > 0
                         THEN SUM(avg_nlp_sentiment * nlp_signal_count) / SUM(nlp_signal_count)
                         ELSE NULL END                                 AS nlp_sentiment,
+                   SUM(nlp_sentiment_weight_sum)::float               AS nlp_sentiment_weight_sum,
+                   SUM(nlp_confidence_sum)::float                     AS nlp_confidence_sum,
                    (SUM(nlp_signal_count)::float
                        / NULLIF(SUM(signal_count), 0))                AS nlp_coverage
             FROM country_hourly_v2
@@ -379,13 +408,20 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             "sources": 0,
             "gdelt_sentiment": 0,
             "nlp_sentiment": None,
+            "nlp_sentiment_weight_sum": None,
+            "nlp_confidence_sum": None,
+            "signal_count": 0,
+            "nlp_signal_count": 0,
             "nlp_coverage": 0,
         }
 
-        global_sentiment, global_source, global_coverage = choose_sentiment(
+        global_sentiment, global_source, global_coverage = choose_sentiment_weighted(
             stats.get("gdelt_sentiment") if isinstance(stats, dict) else stats["gdelt_sentiment"],
-            stats.get("nlp_sentiment") if isinstance(stats, dict) else stats["nlp_sentiment"],
-            stats.get("nlp_coverage") if isinstance(stats, dict) else stats["nlp_coverage"],
+            stats.get("nlp_sentiment_weight_sum"),
+            stats.get("nlp_confidence_sum"),
+            stats.get("nlp_signal_count"),
+            stats.get("signal_count") or stats.get("total_signals"),
+            fallback_nlp_avg=stats.get("nlp_sentiment"),
         )
 
         result = {
