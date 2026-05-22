@@ -1,5 +1,5 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-22 (incremental hot/cold catch-up)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-22 (local hot/cold automation)
 
 ---
 
@@ -54,8 +54,9 @@ Infrastructure shipped:
 ### Incremental catch-up after local outage (2026-05-22)
 
 Pedro's computer was off during the intended `00:00-06:00 America/Bogota`
-maintenance window, so no local archive/backlog job ran automatically. There is
-currently no `cron`/`launchd` scheduler installed for Atlas local maintenance.
+maintenance window, so no local archive/backlog job ran automatically. The manual
+catch-up below cleared that gap, and a local `launchd` automation is now installed
+to keep the hot store light going forward.
 
 Manual catch-up completed on 2026-05-22:
 
@@ -75,9 +76,26 @@ Manual catch-up completed on 2026-05-22:
   - `/health`: healthy; `rows_ingested_last_15m=890`; `nlp.unprocessed_total≈168.6k`.
   - Local SLA report for 24h: `100%` Atlas-owned enrichment (`168,573` fast-lane rows, `8,021` transformer rows).
 
-Small residual note: immediately after the catch-up, `archive_plan --older-than-hours 24`
-showed `42` rows at the moving cutoff edge. Leave these for the next scheduled/manual
-cycle; the large hot-store backlog is cleared.
+Follow-up automation shipped on 2026-05-22:
+
+- New runner: `backend/scripts/local_hot_cold_catchup.py`.
+- Launch wrapper: `scripts/run-local-hot-cold-catchup.sh`.
+- Installer: `scripts/install-local-hot-cold-launchd.sh`.
+- LaunchAgent template: `infra/launchd/com.atlas.local-hot-cold-catchup.plist`.
+- Runtime home: `/Users/pedro/AtlasLocalWorker` because macOS blocks launchd execution from Desktop-protected paths.
+- Schedule: `00:10`, `01:10`, `02:10`, `03:10`, `04:10`, `05:10` local time, plus `RunAtLoad`.
+- Behavior: dry-run by code default, but installed wrapper runs live export + verified sync + verified prune. It only runs outside the window when catch-up rows exceed the threshold.
+- Safety gates: archive verification must pass; prune dry-run must match exported rows and DB candidate rows; live prune requires `--i-understand-irreversible-delete`; `VACUUM (ANALYZE) public.signals_v2` runs after prune.
+- LaunchAgent verification: installed and `last exit code = 0`.
+
+Validation after automation install:
+
+- Launchd catch-up exported/verified/pruned an additional `3,645` rows.
+- `signals_v2`: `173,925` rows, min timestamp `2026-05-21T13:16:07Z`.
+- `historical_topic_country_daily`: `2,412,591` represented signals, `2026-05-03` through `2026-05-21`.
+- `historical_source_daily`: `2,412,591` represented signals, `2026-05-03` through `2026-05-21`.
+- `archive_plan --older-than-hours 24`: `7` residual moving-cutoff rows.
+- Local SLA report for 24h: `100%` Atlas-owned enrichment (`165,818` fast-lane rows, `8,104` transformer rows).
 
 Issue `#193` should remain open until app-wide routing is shipped and smoke-tested. The briefing bridge is complete but not the full app-window routing scope.
 

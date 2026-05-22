@@ -32,6 +32,10 @@ Key files added in session 21 (processed historical sync — 2026-05-21):
 - `backend/tests/test_historical_processing.py` — migration shape, topic inference, aggregate, and sync payload tests.
 - `docs/research/processed-historical-sync/2026-05-19-topic-country.json` — first processed historical artifact.
 - `backend/migrations/032_historical_source_daily.sql` — compact daily source-domain aggregate for long-window briefing `top_sources`.
+- `backend/scripts/local_hot_cold_catchup.py` — end-to-end local catch-up runner. It plans rows older than 24h, exports to local archive, verifies the manifest, recomputes compact historical days from all archive roots, syncs processed aggregates, then prunes only after dry-run parity.
+- `scripts/run-local-hot-cold-catchup.sh` — launchd-safe wrapper. It fetches `DATABASE_URL` from Fly if absent and writes processed artifacts under `/Users/pedro/AtlasArchive/processed-historical-sync`.
+- `scripts/install-local-hot-cold-launchd.sh` — installs a minimal runtime under `/Users/pedro/AtlasLocalWorker` and loads `com.atlas.local-hot-cold-catchup`.
+- `infra/launchd/com.atlas.local-hot-cold-catchup.plist` — LaunchAgent schedule for `00:10` through `05:10` local time plus `RunAtLoad`.
 
 Session 20 data state:
 - Local archive root: `/Users/pedro/AtlasArchive`.
@@ -53,6 +57,7 @@ Session 21 processed historical sync direction:
 - Long-window API bridge status: `/api/v2/briefing?hours>24` routes `top_themes` to `historical_topic_country_daily` and `/brief` renders historical processed coverage metadata. Current coverage report after full backfill: `22,711` aggregate rows, `2,128,070` represented signals, `236` countries, `11` topics, avg topic coverage `0.8052`, avg NLP sentiment coverage `0.1695`.
 - App-wide routing status: `/api/v2/heat/countries`, `/api/v2/country/{code}`, `/api/v2/theme/{topic_slug}`, and `/api/v2/anomalies/themes` route long windows through processed history with coverage metadata; `/api/v2/heatmap` is explicitly deprecated in favor of `/api/v2/heat/countries`; frontend `CoverageBadge` is wired into Heat and Theme Detail.
 - Long-window briefing source status (#194): `/api/v2/briefing?hours>24` routes `top_sources` to `historical_source_daily`. Full source backfill synced `161,871` daily source aggregate rows representing `2,128,070` archived signals. Live query plan after `VACUUM`: ~40 ms, index-only scan, `Heap Fetches: 0`.
+- Local hot/cold automation status: installed LaunchAgent `com.atlas.local-hot-cold-catchup` runs from `/Users/pedro/AtlasLocalWorker`, not the Desktop repo, because macOS blocks launchd access to Desktop-protected paths. Last verified install exited `0`; after incremental catch-up, `signals_v2` had `173,925` hot rows and compact historical tables represented `2,412,591` signals through `2026-05-21`.
 - Scope correction: do not close #193 based only on backend/API work. #193 remains open until app-wide visual smoke tests pass through the deployed frontend.
 - Quality finding: `general-monitoring` represents `1,559,990` of `2,128,070` historical signals, so storage is no longer the blocker; topic intelligence quality (#171/#167/#185) is.
 

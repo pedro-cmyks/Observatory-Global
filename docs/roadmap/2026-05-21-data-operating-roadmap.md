@@ -48,12 +48,20 @@ Atlas should behave like a data product, not a raw news dump:
 
 **Status 2026-05-21:** complete for the verified May 20 cutover archive.
 
+**Status 2026-05-22:** incremental hot/cold automation is installed locally.
+The runner exports rows older than 24h, verifies the local archive, recomputes
+overlapping UTC days from all local archive roots, syncs compact processed
+aggregates, and prunes only after dry-run parity. Runtime lives in
+`/Users/pedro/AtlasLocalWorker` to avoid macOS Desktop privacy restrictions.
+
 **Work:**
 
 1. [x] Process the remaining archive days from `2026-05-03` through `2026-05-18`, plus the partial cutover day `2026-05-20`.
 2. [x] Sync daily aggregates into `historical_topic_country_daily` with `model_version='atlas-hist-v1'`.
 3. [x] Run `historical_coverage_report.py` globally.
 4. [x] Keep raw historical rows out of Supabase.
+5. [x] Automate incremental catch-up with `launchd` for `00:00-06:00 America/Bogota`
+   and `RunAtLoad` recovery after local outages.
 
 **Result:**
 
@@ -67,6 +75,15 @@ Atlas should behave like a data product, not a raw news dump:
 | Avg topic coverage | 0.8052 |
 | Avg NLP sentiment coverage | 0.1695 |
 | Avg entity coverage | 0.5564 |
+
+Post-automation validation:
+
+| Metric | Value |
+|---|---:|
+| Additional incremental rows archived/pruned on 2026-05-22 | 4,966 |
+| Current compact represented signals | 2,412,591 |
+| Current hot `signals_v2` rows | 173,925 |
+| Current older-than-24h residual | 7 |
 
 **Creative solution:** use a "coverage ledger" mindset. Treat each UTC day as an accounting close: archive verified, processed artifact written, Supabase compact rows synced, coverage report recorded. This prevents partial historical windows from becoming invisible debt.
 
@@ -219,7 +236,8 @@ These stay open but should not interrupt Phases 1-3 unless they become blockers:
 
 1. [x] Reopen and clarify `#193`.
 2. [x] Finish historical processed backfill for the cutover archive.
-3. Turn the routing spec into a focused implementation plan.
-4. Execute app-wide routing + coverage badge.
+3. [x] Turn the routing spec into a focused implementation plan.
+4. [x] Execute app-wide routing + coverage badge.
 5. [x] Fix `#194` long-window `top_sources`.
-6. Return to NLP/topic quality: `#171`, `#167`, `#185`, `#184`.
+6. [x] Install local incremental hot/cold catch-up automation.
+7. Return to NLP/topic quality: `#171`, `#167`, `#185`, `#184`.

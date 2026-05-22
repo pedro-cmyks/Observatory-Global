@@ -20,6 +20,11 @@ from scripts.archive_verify import verify_archive
 from scripts.prune_archived_signals import covered_manifest_ranges
 from scripts.archive_query import query_archive
 from scripts.local_archive_worker import is_inside_window, parse_clock
+from scripts.local_hot_cold_catchup import (
+    collect_rows_for_day,
+    days_touched_by_records,
+    discover_archive_roots,
+)
 from scripts.nlp_sla_report import BREAKDOWN_SQL, coverage_pct
 
 
@@ -245,3 +250,94 @@ def test_prune_ranges_only_include_manifest_ranges_before_cutoff(tmp_path):
 
     assert len(ranges) == 1
     assert ranges[0]["row_count"] == 1
+
+
+def test_catchup_days_touched_by_records_handles_cross_day_range():
+    record = ArchiveManifestRecord(
+        archive_version=ARCHIVE_VERSION,
+        kind="signals_v2_export",
+        created_at="2026-05-20T00:00:00Z",
+        from_ts="2026-05-19T23:30:00Z",
+        to_ts="2026-05-20T00:30:00Z",
+        source_family="mixed",
+        row_count=2,
+        relative_path="signals/year=2026/month=05/day=19/source_family=mixed/part-test.jsonl.gz",
+        sha256="abc",
+        bytes=123,
+        command="test",
+    )
+
+    assert [day.isoformat() for day in days_touched_by_records([record])] == [
+        "2026-05-19",
+        "2026-05-20",
+    ]
+
+
+def test_catchup_collects_combined_day_rows_without_partial_overwrite(tmp_path):
+    archive_root = tmp_path / "AtlasArchive"
+    cutover = archive_root / "cutovers" / "2026-05-20"
+    incremental = archive_root / "incremental" / "2026-05-22-catchup"
+
+    old_ts = parse_timestamp("2026-05-20T03:00:00Z")
+    new_ts = parse_timestamp("2026-05-20T15:00:00Z")
+    old_path = partition_path(cutover, old_ts, "mixed", "old")
+    new_path = partition_path(incremental, new_ts, "mixed", "new")
+    old_count, old_digest, old_bytes = write_jsonl_gzip(
+        old_path,
+        [
+            {
+                "id": "old",
+                "timestamp": "2026-05-20T03:00:00Z",
+                "country_code": "CO",
+                "headline": "Old archive row",
+            }
+        ],
+    )
+    new_count, new_digest, new_bytes = write_jsonl_gzip(
+        new_path,
+        [
+            {
+                "id": "new",
+                "timestamp": "2026-05-20T15:00:00Z",
+                "country_code": "CO",
+                "headline": "Incremental archive row",
+            }
+        ],
+    )
+    append_manifest(
+        cutover,
+        ArchiveManifestRecord(
+            archive_version=ARCHIVE_VERSION,
+            kind="signals_v2_export",
+            created_at="2026-05-20T00:00:00Z",
+            from_ts="2026-05-20T00:00:00Z",
+            to_ts="2026-05-20T12:00:00Z",
+            source_family="mixed",
+            row_count=old_count,
+            relative_path=str(old_path.relative_to(cutover)),
+            sha256=old_digest,
+            bytes=old_bytes,
+            command="test",
+        ),
+    )
+    append_manifest(
+        incremental,
+        ArchiveManifestRecord(
+            archive_version=ARCHIVE_VERSION,
+            kind="signals_v2_export",
+            created_at="2026-05-22T00:00:00Z",
+            from_ts="2026-05-20T12:00:00Z",
+            to_ts="2026-05-21T00:00:00Z",
+            source_family="mixed",
+            row_count=new_count,
+            relative_path=str(new_path.relative_to(incremental)),
+            sha256=new_digest,
+            bytes=new_bytes,
+            command="test",
+        ),
+    )
+
+    roots = discover_archive_roots(archive_root)
+    rows = collect_rows_for_day(roots, parse_timestamp("2026-05-20T00:00:00Z").date())
+
+    assert [row["id"] for row in rows] == ["old", "new"]
