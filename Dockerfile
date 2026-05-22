@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11-slim AS base
 
 WORKDIR /app
 
@@ -13,6 +13,20 @@ COPY backend/start.sh ./start.sh
 
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir .
+
+FROM base AS api-runtime
+
+ENV NLP_MULTILINGUAL_MODE=off
+ENV NLP_INLINE_ENABLED=false
+
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8000
+
+CMD ["bash", "start.sh"]
+
+FROM base AS nlp-runtime
 
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir transformers sentencepiece protobuf spacy && \
@@ -44,4 +58,4 @@ USER appuser
 
 EXPOSE 8000
 
-CMD ["bash", "start.sh"]
+CMD ["python", "-m", "enrichment.nlp_worker"]

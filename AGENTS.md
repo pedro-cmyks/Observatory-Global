@@ -67,6 +67,13 @@ Fly.io infra changes session 15 (Codex track):
 - Fly secrets set: `NEWSDATA_API_KEY`, `MEDIASTACK_API_KEY`, `NEWSAPI_KEY`
 - Deployment ID: `01KS0EG5FJAY5507G729FNVACQ`
 
+Fly.io image split (session 21, #195):
+- `Dockerfile` has two deploy targets: `api-runtime` (FastAPI/ingestion, no Torch/Transformers/model cache) and `nlp-runtime` (heavy NLP worker with Torch/Transformers/spaCy/HF cache).
+- Use `scripts/deploy-fly-api.sh` for API-only changes. It runs `fly deploy --build-target api-runtime --process-groups app` and should update only the `app` machine.
+- Use `scripts/deploy-fly-nlp-worker.sh` for NLP/model changes. It runs `fly deploy --build-target nlp-runtime --process-groups nlp_worker`.
+- Production verification: API-only deploy created a `257 MB` image and updated `1/3` machines; `nlp_worker` stayed on the heavy image and continued `Sentiment[xlm-v1]`, `NER[xlm-v1]`, `Framing[xlm-v1]`.
+- Do not use bare `fly deploy --config fly.toml` for routine API work; it can rebuild/push the heavy model image.
+
 Multilingual NLP confirmed: logs show `Sentiment[xlm-v1]`, `NER[xlm-v1]`, `Framing[xlm-v1]`. Cycle duration 231.5s, error=no. Throughput stable at 25 rows/cycle — do NOT raise to 100/200 until DB pressure observed over hours.
 
 Known operational debt for next session:

@@ -130,7 +130,12 @@ Root causes are routing/grain mismatches, not missing storage.
    - explicit low-confidence neutral fallback when no sentiment evidence exists
 3. Mine lexicons from transformer-tagged rows, but promote language-specific vocab only when the sample is large enough.
 4. Track `method`, `confidence`, and coverage for every derived field.
-5. Split Fly runtime images so API-only deploys do not rebuild/pull the ~7.7GB NLP/model image (#195).
+5. [x] Split Fly runtime images so API-only deploys do not rebuild/pull the ~7.7GB NLP/model image (#195).
+   - `Dockerfile` targets: `api-runtime` and `nlp-runtime`.
+   - API-only deploy: `scripts/deploy-fly-api.sh`.
+   - NLP worker/model deploy: `scripts/deploy-fly-nlp-worker.sh`.
+   - Production API-only deploy updated only `app` and produced a `257 MB` image.
+   - `nlp_worker` stayed on the heavy image and continued `Sentiment[xlm-v1]`, `NER[xlm-v1]`, `Framing[xlm-v1]` cycles.
 6. Treat external live providers such as AISStream as degradable dependencies with bounded retry logs and UI/provider health state (#196).
 
 **Creative solution:** use "progressive certainty" instead of binary processed/unprocessed. A row can start with fast-neutral + topic hint, then later receive transformer sentiment, NER, framing, and topic refinement. The UI should show the best available method and coverage.

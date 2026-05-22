@@ -77,6 +77,7 @@ Quality finding after full backfill: `general-monitoring` represents `1,559,990`
 - Active branch: `v3-intel-layer`; production branch. Do not merge into `main`.
 - PR #144 open against main: https://github.com/pedro-cmyks/Observatory-Global/pull/144
 - Production: Vercel (frontend auto-deploy), Fly.io `atlas-api-pedro` backend, Fly.io `nlp_worker` 4GB.
+- Fly image split (#195): use `scripts/deploy-fly-api.sh` for API-only deploys (`api-runtime`, process group `app`, verified `257 MB` image) and `scripts/deploy-fly-nlp-worker.sh` for NLP/model deploys (`nlp-runtime`, process group `nlp_worker`). Avoid bare `fly deploy --config fly.toml` for routine API work because it can rebuild/push the heavy model image.
 - Latest hot/cold doc commit before this handoff: `bb26197 docs(data): record live hot cold prune`.
 - Current direction: Supabase serves processed historical product surfaces, not raw historical rows. The local archive stays raw; a local processor will sync compact processed aggregates/evidence samples back to Supabase.
 - Atlas product framing: **public narrative intelligence console**, not a GDELT wrapper.

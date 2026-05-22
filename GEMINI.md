@@ -41,7 +41,9 @@ This document gives the Gemini AI assistant the current, accurate context for th
 
 **Important scope correction for #193:** backend app-wide `1w`/`1m` routing is implemented for `/heat/countries`, `/country/{code}`, `/theme/{topic_slug}`, and `/anomalies/themes`; `/heatmap` is explicitly deprecated in favor of `/heat/countries`; frontend `CoverageBadge` is wired into Heat and Theme Detail. `#193` should stay open until visual smoke tests pass through the deployed frontend. `#194` long-window `top_sources` is fixed with `historical_source_daily`; live plan after `VACUUM` is ~40 ms index-only scan, `Heap Fetches: 0`.
 
-**Next session priorities:** (1) visual smoke test app-wide historical routing and close #193 only after UI verification, (2) return to #171/#167/#185/#184 for topic/NLP quality — especially `general-monitoring`, now `1,559,990` of `2,128,070` historical signals, (3) split Fly API and NLP worker images (#195) to avoid rebuilding the 7.7GB model image for small API changes, (4) handle AIS degraded TLS provider (#196).
+**Next session priorities:** (1) visual smoke test app-wide historical routing and close #193 only after UI verification, (2) return to #171/#167/#185/#184 for topic/NLP quality — especially `general-monitoring`, now `1,559,990` of `2,128,070` historical signals, (3) handle AIS degraded TLS provider (#196).
+
+**Fly image split (#195):** `Dockerfile` now has `api-runtime` and `nlp-runtime` targets. Use `scripts/deploy-fly-api.sh` for API-only deploys (`--build-target api-runtime --process-groups app`) and `scripts/deploy-fly-nlp-worker.sh` for NLP/model deploys (`--build-target nlp-runtime --process-groups nlp_worker`). Production verification: API-only deploy produced a `257 MB` image and updated only the `app` machine; `nlp_worker` stayed on the heavy image and continued `Sentiment[xlm-v1]`, `NER[xlm-v1]`, `Framing[xlm-v1]`.
 
 **There is no Docker Compose production setup.** The app runs on Vercel + Fly.io. Docker/Compose exists for local dev only.
 

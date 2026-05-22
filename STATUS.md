@@ -41,7 +41,15 @@ Still pending:
 
 - Visual app-wide smoke test through the deployed frontend before closing `#193`.
 - Continue hot-window data quality and throughput work: `#171`, `#167`, `#185`, `#184`.
-- Split Fly API and NLP worker images (#195) to stop rebuilding the 7.7GB model image for small API changes.
+- Continue hot-window data quality and throughput work: `#171`, `#167`, `#185`, `#184`.
+- Handle AISStream expired TLS as a degraded provider (#196).
+
+Infrastructure shipped:
+
+- Fly image split (#195) is implemented and production-verified.
+- `scripts/deploy-fly-api.sh` deploys `api-runtime` only to process group `app`; verified image size `257 MB`.
+- `scripts/deploy-fly-nlp-worker.sh` deploys `nlp-runtime` only to process group `nlp_worker`.
+- Current production has mixed images by design: `app` on lightweight API image, `nlp_worker` on heavy model image.
 
 Issue `#193` should remain open until app-wide routing is shipped and smoke-tested. The briefing bridge is complete but not the full app-window routing scope.
 

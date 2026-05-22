@@ -1,5 +1,8 @@
 # Fly.io configuration for Atlas backend
-# Deploy from repo root: fly deploy --config fly.toml
+# Deploy from repo root:
+#   API only:        scripts/deploy-fly-api.sh
+#   NLP worker only: scripts/deploy-fly-nlp-worker.sh
+#   Full legacy:     fly deploy --config fly.toml
 #
 # Process groups (issue #163):
 #   app        — API + ingestion watchdog. Always on.
@@ -18,6 +21,13 @@
 #   5) Disable inline NLP on the app process to avoid double-processing:
 #        fly secrets set NLP_INLINE_ENABLED=false
 #
+# Image split (#195):
+#   Dockerfile has two targets:
+#     api-runtime — FastAPI + ingestion only, no Torch/Transformers/model cache.
+#     nlp-runtime — heavy NLP worker with Torch/Transformers/spaCy/HF cache.
+#   Use --process-groups with --build-target so API routing changes do not
+#   rebuild/pull the 7.7GB NLP image.
+#
 # Cost note (USD, approximate):
 #   app        shared-cpu-1x  1GB  ~$1.94/mo always-on
 #   nlp_worker shared-cpu-2x  4GB  ~$15-16/mo always-on
@@ -35,10 +45,9 @@ primary_region = "iad"  # Washington DC — closest to GDELT servers
   # Default NLP mode stays "off" so the existing English pipeline runs unchanged.
   # Flip to "shadow" then "on" once the multilingual deploy is verified (issue #162).
   NLP_MULTILINGUAL_MODE = "off"
-  # Inline NLP inside the API/ingestion loop is the current production path.
-  # Set to "false" only after the nlp_worker machine is live so we do not
-  # double-process the same rows.
-  NLP_INLINE_ENABLED = "true"
+  # Inline NLP stays off in production. The dedicated nlp_worker process owns
+  # transformer enrichment; the API image intentionally has no model deps.
+  NLP_INLINE_ENABLED = "false"
 
 [deploy]
   strategy = "immediate"

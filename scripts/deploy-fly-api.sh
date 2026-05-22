@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+fly deploy \
+  --config fly.toml \
+  --build-target api-runtime \
+  --process-groups app \
+  "$@"
