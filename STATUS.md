@@ -1,5 +1,76 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-22 (local hot/cold automation)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-22 (lexicon HTML entity + langdetect fixes)
+
+---
+
+## Lexicon mining + scoring quality fix (2026-05-22)
+
+Following the local hot/cold automation, a quality audit produced two
+findings that reframe the next NLP work:
+
+1. **Effective NLP coverage in product cells is already near 100% in the
+   hot window** (`country_hourly_v2`: 221/221 cells qualify for fusion;
+   `theme_country_hourly_v2`: 103,256/104,295 cells qualify). The
+   widely-cited "4% transformer" figure is the raw row share, not the
+   product-cell share. Baseline saved at
+   `docs/research/nlp-coverage/2026-05-22-effective-coverage-baseline.{json,md}`.
+2. **The real dilution lever is the 11.5% `fast_neutral` share**, not the
+   transformer-row gap. New helper:
+   `backend/scripts/nlp_coverage_report.py` measures this directly against
+   `country_hourly_v2`, `theme_country_hourly_v2`, and
+   `historical_topic_country_daily`.
+
+Two bugs were unblocking the lexicon path (#185):
+
+- **HTML entity decode.** Headlines from upstream feeds contain numeric
+  references (`&#xE4;`) that the tokenizer fractured into junk tokens
+  (`verk` + `xe4` + `ndet`). `html.unescape` is now applied in both the
+  runtime scorer (`enrichment/lexicon_sentiment.py`) and the miner
+  (`scripts/mine_lexicon_vocab.py`). 22.6% of sampled `fast_neutral` rows
+  from the last 24h contain such entities; 3.5% would now flip to lexicon.
+- **`xx` rows ignored.** The XLM multilingual NLP pipeline stamps
+  `source_lang='xx'` on 82% of transformer-tagged rows. The miner
+  previously discarded them. It now runs `langdetect.detect_langs` on the
+  cleaned headline (seed 0; min confidence 0.85) and projects onto the
+  supported set.
+
+Live mine results (min_freq=10, min_abs_mean=0.4) after both fixes:
+
+| Lang | Before | After (merged) |
+|------|-------:|---------------:|
+| en   |  1,920 |          1,923 |
+| es   |      7 |             81 |
+| it   |      0 |             34 |
+| de   |      0 |             18 |
+| pt   |      2 |             11 |
+| ar   |      2 |              7 |
+| fr   |      0 |              2 |
+
+The miner now defaults to merge mode and writes `<lang>.mined.json.bak`
+before overwriting. `--replace` opts into hard overwrite. `--no-langdetect`
+restores the prior xx-skipping behavior.
+
+Tests: 62 passed across `tests/test_lexicon_sentiment.py`,
+`tests/test_lexicon_mining.py`, `tests/test_fast_lane.py`,
+`tests/test_archive_common.py`, `tests/test_historical_processing.py`.
+Three regression tests pin the HTML entity decode behavior.
+
+Deployment notes:
+
+- Runtime change to `lexicon_sentiment.py` requires NLP worker redeploy
+  (`scripts/deploy-fly-nlp-worker.sh`) before existing `fast_neutral` rows
+  improve. New rows ingested by the redeployed worker score correctly.
+- Re-mining schedule: rerun
+  `python -m scripts.mine_lexicon_vocab --min-freq 10` after every few
+  thousand new transformer rows. Future: tie to `nlp_progress` checkpoints.
+- Aggressive thresholds (min_freq=5, min_abs_mean=0.3) yield ~700 non-EN
+  terms but accept noisier surface forms (entity names, short articles);
+  hold for a second-pass after measuring ROI of the conservative cut.
+
+Commits:
+
+- `5b02e7c feat(nlp): add product-cell effective coverage report + baseline`
+- `6c6b253 fix(lexicon): decode HTML entities + langdetect xx rows in mining + scorer`
 
 ---
 
