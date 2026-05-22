@@ -134,9 +134,13 @@ Tests after hot/cold guardrail changes: `cd backend && .venv/bin/python -m pytes
 **Sentiment fusion (Opción A) end-to-end**
 - Migration 025: `theme_hourly_v2` + `theme_country_hourly_v2` gained `nlp_signal_count` + `avg_nlp_sentiment`.
 - Migration 026: `country_hourly_v2` matview swapped (build-populate-rename) with the same NLP coverage columns.
-- `app/services/sentiment_fusion.py` — `choose_sentiment(gdelt_raw, nlp_raw, coverage)` picks NLP when bucket coverage ≥ `BRIEFING_NLP_COVERAGE_THRESHOLD` (default 0.30) and rescales by `NLP_SENTIMENT_SCALE = 2.37` (calibrated from GDELT stddev 3.99 / NLP stddev 1.68 measured live).
-- Briefing API exposes `sentiment_source` (`"nlp"` | `"gdelt"`) + `nlp_coverage` on every country row + global stats.
-- `negative_sentiment` / `positive_sentiment` order by the chosen sentiment (computed in SQL via CASE), not always-GDELT.
+- Migration 033 (2026-05-22): same three tables gained `nlp_sentiment_weight_sum` + `nlp_confidence_sum` so readers can compute `SUM(s*c)/SUM(c)` instead of the flat AVG that diluted high-confidence transformer rows with low-confidence lexicon/fast_neutral rows.
+- `app/services/sentiment_fusion.py` — two helpers:
+  - `choose_sentiment(gdelt_raw, nlp_raw, coverage)` is the legacy flat-AVG path (kept for back-compat).
+  - `choose_sentiment_weighted(gdelt_raw, weight_sum, conf_sum, nlp_signal_count, signal_count, fallback_nlp_avg=...)` prefers the confidence-weighted ratio, then legacy flat NLP, then GDELT. Returns one of three source labels: `"nlp_weighted"` | `"nlp"` | `"gdelt"`.
+  - Both rescale by `NLP_SENTIMENT_SCALE = 2.37` (calibrated from GDELT stddev 3.99 / NLP stddev 1.68 measured live).
+- Briefing API exposes `sentiment_source` (`"nlp_weighted"` | `"nlp"` | `"gdelt"`) + `nlp_coverage` on every country row + global stats.
+- `negative_sentiment` / `positive_sentiment` order by the chosen sentiment (computed in SQL via CASE that prefers weighted ratio when `nlp_conf_sum > 0`, falls back to flat `nlp_avg`, then GDELT).
 
 **Heat ranking surface (#149 + #165 closed)**
 - New `heat_countries` section in briefing reads `country_heat_v2` and ranks by `atlas_heat`.
@@ -205,8 +209,8 @@ Tests after hot/cold guardrail changes: `cd backend && .venv/bin/python -m pytes
 
 ### Patterns added session 17
 
-- **Sentiment fusion**: never sub-in NLP for GDELT silently. Read both, choose via `choose_sentiment(gdelt_raw, nlp_raw, nlp_coverage)`, rescale NLP by `NLP_SENTIMENT_SCALE` so frontend ±0.1 threshold works for both sources. Helper lives in `app.services.sentiment_fusion` to avoid `briefing` → `main_v2` → `briefing.router` circular import.
-- **Pre-agg NLP coverage**: any new ingest pre-agg that has `avg_sentiment` must also have `nlp_signal_count INTEGER NOT NULL DEFAULT 0` and `avg_nlp_sentiment NUMERIC` populated via `COUNT(*) FILTER (WHERE nlp_sentiment IS NOT NULL)` and `AVG(nlp_sentiment) FILTER (WHERE nlp_sentiment IS NOT NULL)`. Tracked by shape tests in `test_ingest_pre_agg_nlp_coverage.py`.
+- **Sentiment fusion**: never sub-in NLP for GDELT silently. Read both, choose via `choose_sentiment_weighted(gdelt_raw, weight_sum, conf_sum, nlp_signal_count, signal_count, fallback_nlp_avg=nlp_avg)` (mig 033), or via legacy `choose_sentiment(gdelt_raw, nlp_raw, nlp_coverage)` for readers that have not migrated. Rescale NLP by `NLP_SENTIMENT_SCALE` so frontend ±0.1 threshold works for all sources. Helper lives in `app.services.sentiment_fusion` to avoid `briefing` → `main_v2` → `briefing.router` circular import.
+- **Pre-agg NLP coverage**: any new ingest pre-agg that has `avg_sentiment` must also have `nlp_signal_count INTEGER NOT NULL DEFAULT 0` and `avg_nlp_sentiment NUMERIC` populated via `COUNT(*) FILTER (WHERE nlp_sentiment IS NOT NULL)` and `AVG(nlp_sentiment) FILTER (WHERE nlp_sentiment IS NOT NULL)`. Migration 033 added `nlp_sentiment_weight_sum NUMERIC NOT NULL DEFAULT 0` + `nlp_confidence_sum NUMERIC NOT NULL DEFAULT 0`, populated via `SUM(nlp_sentiment * nlp_confidence) FILTER (WHERE nlp_sentiment IS NOT NULL AND nlp_confidence > 0)` and `SUM(nlp_confidence) FILTER (...)`. Tracked by shape tests in `test_ingest_pre_agg_nlp_coverage.py` (whitespace-tolerant regex match — do NOT pin exact alignment).
 - **Matview schema changes**: never DROP/CREATE in place when readers depend on the matview — use the build-populate-rename pattern from mig 026 (CREATE `_new` `WITH NO DATA` → CREATE UNIQUE INDEX → REFRESH → BEGIN/RENAME/RENAME indexes/COMMIT → DROP `_old`).
 - **Dead-table guardrails**: legacy mig 006 tables `signals_theme_hourly`, `signals_source_hourly`, `signals_country_hourly` are NOT written to. Any reader pointing at them is a bug. Shape tests in `test_briefing_performance_shape.py` keep this pinned.
 - **Honest ranking**: briefing now ships `top_countries` (volume) AND `heat_countries` (atlas_heat). Don't replace one with the other — every ranking lens answers a different question.
@@ -215,6 +219,16 @@ Tests after hot/cold guardrail changes: `cd backend && .venv/bin/python -m pytes
 - **Lexicon backfill plateau**: manual seeds cap at ~12% hit rate (most headlines factual). Don't expand vocab further by hand — pivot to #185 corpus-mining.
 - **Supabase MCP DML pattern**: never `RETURNING 1` on bulk DELETE (returns N rows of 1, blows context). Run silent DELETE + separate COUNT verify.
 - **Sentiment scale calibration**: NLP transformer raw stddev ~1.68 vs GDELT V2Tone raw stddev ~3.99. Ratio 2.37 stored in `NLP_SENTIMENT_SCALE`. Re-measure if NLP model swap happens (issue #162 multilingual already accounted for).
+
+### Patterns added 2026-05-22
+
+- **Effective NLP coverage measurement**: `backend/scripts/nlp_coverage_report.py` reports product-cell coverage (`country_hourly_v2`, `theme_country_hourly_v2`, `historical_topic_country_daily`) under the briefing fusion threshold. Use this metric (not raw row-level transformer ratio) when deciding whether to spend on worker throughput vs scoring quality.
+- **Confidence-weighted bucket sentiment**: when a pre-agg bucket has `SUM(nlp_confidence) > 0`, prefer `SUM(nlp_sentiment * nlp_confidence) / SUM(nlp_confidence)` over `AVG(nlp_sentiment) FILTER (...)`. Flat AVG dilutes transformer (avg conf 0.64) with lexicon (0.31) and fast_neutral (0.01) at equal per-row weight. Mig 033 captures this; new readers should consume the weighted ratio. Source label `"nlp_weighted"` distinguishes from legacy `"nlp"`.
+- **Transformer ≠ lexicon on same headline**: 70.8% sign agreement, 29.2% disagreement on a 1,888-row decided sample (2026-05-22 benchmark). Lexicon misses sarcasm, negation, multilingual scripts. Confidence weighting is the cheapest mitigation; pure-quality improvements require more transformer corpus (#184 / #163) or NLP model swaps.
+- **HTML entity decode at tokenisation**: upstream feeds emit `&#xE4;`, `&ouml;`, etc. Without `html.unescape`, the regex `\w+` fractures `verk&#xE4;ndet` into `verk` + `xe4` + `ndet`. Runtime scorer (`enrichment/lexicon_sentiment.py::_clean`) and miner (`scripts/mine_lexicon_vocab.py::_clean_headline`) both decode before tokenising. Any new tokeniser path must do the same.
+- **Langdetect for `xx` rows in miner**: XLM multilingual NLP stamps `source_lang='xx'` on 82% of transformer-tagged rows. The miner runs `langdetect.detect_langs` (seed 0; min confidence 0.85) on the cleaned headline and projects onto `SUPPORTED_LANGS`. `--no-langdetect` opts out, `--replace` opts out of merge mode (default merges into existing snapshot + writes `<lang>.mined.json.bak`).
+- **Supabase MCP DDL timeouts**: `apply_migration` and `execute_sql` have aggressive timeouts. Split heavy backfills into ≤6h windows; split matview build-populate-rename into 4 separate calls (CREATE WITH NO DATA + indexes via `apply_migration`, REFRESH via `execute_sql` because REFRESH cannot run inside a transaction, BEGIN/SWAP/COMMIT via `apply_migration`, DROP _old via `apply_migration`).
+- **Local hot/cold catch-up runtime**: `/Users/pedro/AtlasLocalWorker` (NOT `~/Desktop/...`) because macOS launchd blocks execution from Desktop-protected paths. LaunchAgent at `~/Library/LaunchAgents/com.atlas.local-hot-cold-catchup.plist` fires `RunAtLoad` + 6 daily schedule. Runner: `backend/scripts/local_hot_cold_catchup.py`.
 
 ## Specialized Agents
 
