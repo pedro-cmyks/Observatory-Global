@@ -1,5 +1,5 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-21 (processed history routing + historical source aggregates)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-22 (incremental hot/cold catch-up)
 
 ---
 
@@ -50,6 +50,34 @@ Infrastructure shipped:
 - `scripts/deploy-fly-api.sh` deploys `api-runtime` only to process group `app`; verified image size `257 MB`.
 - `scripts/deploy-fly-nlp-worker.sh` deploys `nlp-runtime` only to process group `nlp_worker`.
 - Current production has mixed images by design: `app` on lightweight API image, `nlp_worker` on heavy model image.
+
+### Incremental catch-up after local outage (2026-05-22)
+
+Pedro's computer was off during the intended `00:00-06:00 America/Bogota`
+maintenance window, so no local archive/backlog job ran automatically. There is
+currently no `cron`/`launchd` scheduler installed for Atlas local maintenance.
+
+Manual catch-up completed on 2026-05-22:
+
+- Planned hot rows older than 24h: `279,555`.
+- Exported archive: `/Users/pedro/AtlasArchive/incremental/2026-05-22-catchup`.
+- Archive verification: `8` manifest records, `279,555` rows, `0` failures, `0` overlaps.
+- Recomputed compact history by combining the original cutover archive with the incremental archive for overlapping days `2026-05-14` through `2026-05-20`, plus new day `2026-05-21`.
+- Historical processed totals after sync:
+  - `historical_topic_country_daily`: `25,187` rows, `2,407,625` represented signals, `2026-05-03` through `2026-05-21`.
+  - `historical_source_daily`: `179,253` rows, `2,407,625` represented signals, `2026-05-03` through `2026-05-21`.
+- Prune dry-run parity: `archive_rows=279,555`, `db_candidate_rows=279,555`.
+- Live prune completed: `deleted_rows=279,555`, `elapsed_seconds=29.31`.
+- Post-prune `VACUUM (ANALYZE) public.signals_v2` completed.
+- Post-prune verification:
+  - `signals_v2`: `176,636` rows, min timestamp `2026-05-21T12:33:32Z`.
+  - Catch-up archive ranges remaining in `signals_v2`: `0`.
+  - `/health`: healthy; `rows_ingested_last_15m=890`; `nlp.unprocessed_total≈168.6k`.
+  - Local SLA report for 24h: `100%` Atlas-owned enrichment (`168,573` fast-lane rows, `8,021` transformer rows).
+
+Small residual note: immediately after the catch-up, `archive_plan --older-than-hours 24`
+showed `42` rows at the moving cutoff edge. Leave these for the next scheduled/manual
+cycle; the large hot-store backlog is cleared.
 
 Issue `#193` should remain open until app-wide routing is shipped and smoke-tested. The briefing bridge is complete but not the full app-window routing scope.
 
