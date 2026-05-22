@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import html
 import logging
 import os
 import re
@@ -277,6 +278,17 @@ CONFIDENCE_CEILING = 0.5
 MIN_TOKENS = 3
 
 
+def _clean(text: str) -> str:
+    """Decode HTML numeric/named character references before tokenisation.
+
+    Upstream feeds emit `&#xE4;`, `&#auml;`, etc. instead of UTF-8. Without
+    decoding, the tokenizer splits `verk&#xE4;ndet` into `verk` + `xe4` +
+    `ndet`, which prevents lexicon hits and pushes the row into the
+    `fast_neutral` fallback. Mirrors the same step in scripts.mine_lexicon_vocab.
+    """
+    return html.unescape(text) if text else ""
+
+
 def _detect_lang(text: str, hint: str | None) -> str | None:
     """Resolve which lexicon to apply.
 
@@ -288,16 +300,17 @@ def _detect_lang(text: str, hint: str | None) -> str | None:
         lang = hint.lower()
         if lang in LEXICONS:
             return lang
-    if ARABIC_RE.search(text):
+    cleaned = _clean(text)
+    if ARABIC_RE.search(cleaned):
         return "ar"
-    if LATIN_RE.search(text):
+    if LATIN_RE.search(cleaned):
         return "en"
     return None
 
 
 def _score(text: str, lexicon: dict[str, float]) -> tuple[float, float, int]:
     """Compute (signed_score, confidence, token_count) for a single headline."""
-    tokens = [t.lower() for t in TOKEN_RE.findall(text)]
+    tokens = [t.lower() for t in TOKEN_RE.findall(_clean(text))]
     if len(tokens) < MIN_TOKENS:
         return 0.0, 0.0, len(tokens)
     raw = sum(lexicon.get(tok, 0.0) for tok in tokens)

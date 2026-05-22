@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import html
 import json
 import logging
 import os
@@ -32,6 +33,18 @@ from pathlib import Path
 from statistics import mean
 
 import asyncpg
+
+try:
+    # langdetect is non-deterministic by default; seed for reproducible mining.
+    from langdetect import DetectorFactory, detect_langs
+    from langdetect.lang_detect_exception import LangDetectException
+
+    DetectorFactory.seed = 0
+    _LANGDETECT_AVAILABLE = True
+except ImportError:  # pragma: no cover — keeps miner usable in stripped envs
+    detect_langs = None  # type: ignore[assignment]
+    LangDetectException = Exception  # type: ignore[assignment]
+    _LANGDETECT_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [mine-vocab] %(levelname)s %(message)s")
@@ -126,22 +139,73 @@ WHERE nlp_method = 'transformer'
 """
 
 
+def _clean_headline(text: str | None) -> str:
+    """Decode HTML entities so accented letters survive tokenisation.
+
+    Many upstream feeds emit numeric character references like `&#xE4;` or
+    `&#auml;` instead of UTF-8. The runtime tokenizer then fractures those
+    into garbage tokens (`verk` + `xe4` + `ndet`). Decoding entities once
+    before tokenisation fixes both miner and runtime scoring.
+    """
+    if not text:
+        return ""
+    return html.unescape(text)
+
+
 def _tokens(text: str) -> list[str]:
-    return [t.lower() for t in TOKEN_RE.findall(text or "")]
+    return [t.lower() for t in TOKEN_RE.findall(_clean_headline(text))]
 
 
-def _normalize_lang(raw: str | None) -> str | None:
-    """Project source_lang onto the supported set; None for languages we cannot tokenise."""
-    if not raw:
+def _detect_lang_from_headline(headline: str, min_confidence: float) -> str | None:
+    """Run langdetect on a headline; return supported ISO code or None.
+
+    Used when the stored `source_lang` is multilingual placeholder ('xx', 'und')
+    or empty. The XLM transformer pipeline stamps 'xx' on every row it scores,
+    so 82% of the transformer-tagged corpus is invisible to the miner unless we
+    recover language at mining time.
+    """
+    if not _LANGDETECT_AVAILABLE or not headline:
         return None
-    lang = raw.lower()
-    if lang in SUPPORTED_LANGS:
-        return lang
-    # xlm-shadow rows carry 'xx' as a multilingual placeholder; skip — we cannot
-    # attribute token weights without a real language tag.
-    if lang in {"xx", "und"}:
+    cleaned = _clean_headline(headline)
+    if not cleaned:
         return None
-    # Two-letter ISO outside the supported set: skip.
+    try:
+        guesses = detect_langs(cleaned)  # type: ignore[misc]
+    except LangDetectException:
+        return None
+    if not guesses:
+        return None
+    top = guesses[0]
+    if getattr(top, "prob", 0.0) < min_confidence:
+        return None
+    code = getattr(top, "lang", "").lower()
+    if code in SUPPORTED_LANGS:
+        return code
+    return None
+
+
+def _normalize_lang(
+    raw: str | None,
+    headline: str | None = None,
+    *,
+    detect_fallback: bool = True,
+    min_detect_confidence: float = 0.85,
+) -> str | None:
+    """Project source_lang onto the supported set; None for languages we cannot tokenise.
+
+    When `detect_fallback=True` and source_lang is empty or a multilingual
+    placeholder ('xx', 'und'), run langdetect on the headline. Detected codes
+    are projected onto SUPPORTED_LANGS; anything else returns None.
+    """
+    if raw:
+        lang = raw.lower()
+        if lang in SUPPORTED_LANGS:
+            return lang
+        if lang in {"xx", "und"} and detect_fallback and headline:
+            return _detect_lang_from_headline(headline, min_detect_confidence)
+        return None
+    if detect_fallback and headline:
+        return _detect_lang_from_headline(headline, min_detect_confidence)
     return None
 
 
@@ -152,7 +216,11 @@ async def _mine(
     min_abs_mean: float,
     output_dir: Path,
     dry_run: bool,
-) -> dict[str, int]:
+    *,
+    detect_fallback: bool = True,
+    min_detect_confidence: float = 0.85,
+    merge_existing: bool = True,
+) -> dict[str, dict[str, int]]:
     """Compute per-(lang, token) mean sentiment and emit JSON snapshots.
 
     Returns {lang: tokens_kept_count}.
@@ -165,13 +233,24 @@ async def _mine(
     doc_freq: dict[tuple[str, str], int] = defaultdict(int)
     total_rows = 0
     total_skipped_lang = 0
+    recovered_via_detect: dict[str, int] = defaultdict(int)
+    raw_lang_counts: dict[str, int] = defaultdict(int)
 
     async with conn.transaction():
         async for row in conn.cursor(PRIORITY_SELECT_SQL):
-            lang = _normalize_lang(row["source_lang"])
+            stored_raw = (row["source_lang"] or "").lower() or "(null)"
+            raw_lang_counts[stored_raw] += 1
+            lang = _normalize_lang(
+                row["source_lang"],
+                row["headline"],
+                detect_fallback=detect_fallback,
+                min_detect_confidence=min_detect_confidence,
+            )
             if lang is None:
                 total_skipped_lang += 1
                 continue
+            if stored_raw in {"xx", "und", "(null)"} and lang in SUPPORTED_LANGS:
+                recovered_via_detect[lang] += 1
             total_rows += 1
             stopwords = STOPWORDS_BY_LANG.get(lang, set())
             seen_in_row: set[str] = set()
@@ -187,7 +266,23 @@ async def _mine(
                 doc_freq[key] += 1
                 sentiment_sum[key] += float(row["nlp_sentiment"])
 
-    logger.info("Scanned %d transformer-tagged rows (skipped %d for lang)", total_rows, total_skipped_lang)
+    logger.info(
+        "Scanned %d transformer-tagged rows (skipped %d for lang)",
+        total_rows,
+        total_skipped_lang,
+    )
+    if detect_fallback and _LANGDETECT_AVAILABLE:
+        rec_summary = ", ".join(
+            f"{lang}={n}" for lang, n in sorted(recovered_via_detect.items(), key=lambda kv: -kv[1])
+        )
+        logger.info("Langdetect recovery from xx/und/null: %s", rec_summary or "(none)")
+    elif detect_fallback and not _LANGDETECT_AVAILABLE:
+        logger.warning("langdetect not installed — install it to recover xx/und rows")
+    top_raw = sorted(raw_lang_counts.items(), key=lambda kv: -kv[1])[:8]
+    logger.info(
+        "Raw source_lang distribution: %s",
+        ", ".join(f"{lang}={n}" for lang, n in top_raw),
+    )
 
     # Filter + bucket by language.
     per_lang: dict[str, dict[str, float]] = defaultdict(dict)
@@ -205,41 +300,102 @@ async def _mine(
         per_lang_stats[lang]["kept"] += 1
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    kept_per_lang: dict[str, int] = {}
+    kept_per_lang: dict[str, dict[str, int]] = {}
     for lang in SUPPORTED_LANGS:
-        snapshot = per_lang.get(lang, {})
-        kept_per_lang[lang] = len(snapshot)
+        new_snapshot = per_lang.get(lang, {})
+        path = output_dir / f"{lang}.mined.json"
+
+        existing: dict[str, float] = {}
+        if merge_existing and path.exists():
+            try:
+                existing = json.loads(path.read_text(encoding="utf-8"))
+                if not isinstance(existing, dict):
+                    logger.warning("%s.mined.json is not a dict; ignoring", lang)
+                    existing = {}
+            except Exception as exc:
+                logger.warning("Could not load existing %s.mined.json: %s", lang, exc)
+                existing = {}
+
+        if merge_existing:
+            replaced = sum(1 for tok in new_snapshot if tok in existing)
+            added = sum(1 for tok in new_snapshot if tok not in existing)
+            merged: dict[str, float] = {**existing, **new_snapshot}
+        else:
+            replaced = added = 0
+            merged = new_snapshot
+
         stats = per_lang_stats[lang]
         logger.info(
-            "%s: considered=%d kept=%d  examples=%s",
-            lang, stats["considered"], stats["kept"],
+            "%s: considered=%d kept_new=%d merged_total=%d (added=%d replaced=%d kept_old=%d) examples=%s",
+            lang,
+            stats["considered"],
+            stats["kept"],
+            len(merged),
+            added,
+            replaced,
+            max(0, len(existing) - replaced),
             ", ".join(
                 f"{k}({v:+.2f})"
-                for k, v in sorted(snapshot.items(), key=lambda kv: abs(kv[1]), reverse=True)[:6]
+                for k, v in sorted(new_snapshot.items(), key=lambda kv: abs(kv[1]), reverse=True)[:6]
             ),
         )
+        kept_per_lang[lang] = {
+            "new_terms": len(new_snapshot),
+            "merged_total": len(merged),
+            "added": added,
+            "replaced": replaced,
+        }
         if dry_run:
             continue
-        path = output_dir / f"{lang}.mined.json"
+        if merge_existing and path.exists() and existing:
+            backup_path = path.with_suffix(".json.bak")
+            backup_path.write_text(
+                json.dumps(existing, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
         # Stable on-disk format: sorted keys + final newline.
         path.write_text(
-            json.dumps(snapshot, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            json.dumps(merged, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
     return kept_per_lang
 
 
-async def _cli(min_freq: int, max_freq: int, min_abs_mean: float, dry_run: bool) -> None:
+async def _cli(
+    min_freq: int,
+    max_freq: int,
+    min_abs_mean: float,
+    dry_run: bool,
+    detect_fallback: bool,
+    min_detect_confidence: float,
+    merge_existing: bool,
+) -> None:
     db_url = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
     if not db_url:
         raise RuntimeError("DATABASE_URL or SUPABASE_DB_URL env var required")
     conn = await asyncpg.connect(db_url)
     try:
-        result = await _mine(conn, min_freq, max_freq, min_abs_mean, OUTPUT_DIR, dry_run)
+        result = await _mine(
+            conn,
+            min_freq,
+            max_freq,
+            min_abs_mean,
+            OUTPUT_DIR,
+            dry_run,
+            detect_fallback=detect_fallback,
+            min_detect_confidence=min_detect_confidence,
+            merge_existing=merge_existing,
+        )
     finally:
         await conn.close()
-    summary = ", ".join(f"{lang}={n}" for lang, n in sorted(result.items()))
-    logger.info("Mine complete (dry_run=%s) — %s", dry_run, summary)
+    summary = ", ".join(
+        f"{lang}={info['merged_total']}(+{info['added']})"
+        for lang, info in sorted(result.items())
+    )
+    logger.info(
+        "Mine complete (dry_run=%s merge=%s) — %s",
+        dry_run, merge_existing, summary,
+    )
 
 
 def _parse_args():
@@ -252,13 +408,30 @@ def _parse_args():
                         help="Minimum |mean_sentiment| required to keep a token (default 0.4).")
     parser.add_argument("--dry-run", action="store_true",
                         help="Skip writing JSON snapshots; only log per-language counts.")
+    parser.add_argument("--no-langdetect", action="store_true",
+                        help="Disable langdetect fallback (treat xx/und rows as skipped).")
+    parser.add_argument("--min-detect-confidence", type=float, default=0.85,
+                        help="Minimum langdetect top-guess probability to accept (default 0.85).")
+    parser.add_argument("--replace", action="store_true",
+                        help="Replace existing snapshots instead of merging (default merges and "
+                             "backs up the prior file as <lang>.mined.json.bak).")
     return parser.parse_args()
 
 
 def main():
     args = _parse_args()
     try:
-        asyncio.run(_cli(args.min_freq, args.max_freq, args.min_abs_mean, args.dry_run))
+        asyncio.run(
+            _cli(
+                args.min_freq,
+                args.max_freq,
+                args.min_abs_mean,
+                args.dry_run,
+                detect_fallback=not args.no_langdetect,
+                min_detect_confidence=args.min_detect_confidence,
+                merge_existing=not args.replace,
+            )
+        )
     except RuntimeError as exc:
         logger.error(str(exc))
         sys.exit(1)

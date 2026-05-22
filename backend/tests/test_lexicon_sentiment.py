@@ -108,6 +108,39 @@ def test_too_few_tokens_returns_zero():
     assert conf == 0
 
 
+# ── HTML entity decode regression (2026-05-22) ──────────────────────────────
+# Upstream feeds emit numeric/named character references (`&#xE4;`, `&auml;`).
+# Without html.unescape, the tokenizer fractures `verk&#xE4;ndet` into
+# garbage tokens (`verk` + `xe4` + `ndet`), preventing lexicon matches and
+# routing the row to `fast_neutral`. Regression test pins the decode step.
+def test_html_numeric_entities_decoded_before_scoring():
+    plain_score, _, _ = score_headline("Guerra y crisis devastan la región", source_lang="es")
+    entity_score, _, _ = score_headline(
+        "Guerra y crisis devastan la regi&#xF3;n", source_lang="es"
+    )
+    assert plain_score == entity_score
+    assert entity_score < 0
+
+
+def test_html_named_entities_decoded_before_scoring():
+    plain_score, _, _ = score_headline("Krieg und Krise zerstören die Stadt", source_lang="de")
+    named_entity_score, _, _ = score_headline(
+        "Krieg und Krise zerst&ouml;ren die Stadt", source_lang="de"
+    )
+    # Either lexicon hits both equivalently, or neither — the key invariant is
+    # that decoding does not produce a different tokenisation outcome.
+    assert plain_score == named_entity_score
+
+
+def test_html_entities_do_not_create_xhex_tokens():
+    # If decoding fails, lexicon would never see `region` and would treat
+    # `regi`, `xf3`, `n` as separate tokens. Score parity is the regression
+    # signal we care about.
+    plain, _, _ = score_headline("Caf\xe9 con leche y crisis", source_lang="es")
+    entity, _, _ = score_headline("Caf&#xe9; con leche y crisis", source_lang="es")
+    assert plain == entity
+
+
 # ── Lexicon coverage sanity ──────────────────────────────────────────────────
 def test_all_v1_languages_present():
     expected = {"en", "es", "fr", "pt", "ar"}

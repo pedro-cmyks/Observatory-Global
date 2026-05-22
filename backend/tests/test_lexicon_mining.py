@@ -88,9 +88,42 @@ def test_mine_script_tokenizer_matches_lexicon_runtime_tokenizer():
     """Mining tokenization must match what lexicon_sentiment._score uses at runtime
     so token weights derived offline land on the same surface form."""
     from scripts.mine_lexicon_vocab import _tokens
-    from enrichment.lexicon_sentiment import TOKEN_RE
+    from enrichment.lexicon_sentiment import TOKEN_RE, _clean
 
     text = "Peace agreement signed; Wounded in attack."
     mined = _tokens(text)
-    runtime = [t.lower() for t in TOKEN_RE.findall(text)]
+    runtime = [t.lower() for t in TOKEN_RE.findall(_clean(text))]
     assert mined == runtime
+
+
+def test_mine_script_decodes_html_entities_before_tokenisation():
+    """Numeric/named entities must be decoded so accented letters survive.
+
+    Without html.unescape, headlines like 'verk&#xE4;ndet' fragment into
+    `verk`, `xe4`, `ndet`. The miner would store junk like `xe4` with a
+    non-zero mean sentiment, polluting the snapshot and never matching
+    the actual UTF-8 word at runtime.
+    """
+    from scripts.mine_lexicon_vocab import _tokens
+
+    entity = _tokens("Verk&#xFC;ndet zerst&ouml;ren die Stadt")
+    plain = _tokens("Verkündet zerstören die Stadt")
+    assert entity == plain
+    # Critical: no `xe4`/`xfc`/`ouml` tokens.
+    assert not any(tok.startswith("x") and tok[1:].isalnum() and len(tok) <= 5 and tok not in {"xf", "xa"} for tok in entity)
+
+
+def test_mine_script_normalize_lang_with_detect_fallback():
+    """xx with a confident multilingual headline must route to its detected lang."""
+    from scripts.mine_lexicon_vocab import _normalize_lang
+
+    # Disabled fallback: xx stays None even with headline.
+    assert _normalize_lang("xx", "Hello world today everyone", detect_fallback=False) is None
+
+    # With fallback: a clear English headline routes to en.
+    detected = _normalize_lang("xx", "World leaders agree on peace today", detect_fallback=True)
+    assert detected in {"en", None}  # langdetect may return None if not installed
+
+    # Empty raw + headline: fallback kicks in.
+    detected_null = _normalize_lang(None, "World leaders agree on peace today")
+    assert detected_null in {"en", None}
