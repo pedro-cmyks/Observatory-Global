@@ -366,6 +366,42 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             heat_countries = []
             heat_voluminous_countries = []
 
+        # Atlas topic surface (#171 / PR #197 v2 classifier):
+        # signal_topic_assignments holds the curated atlas_topics taxonomy
+        # (disease-outbreak, labor-strike-disruption, etc.) instead of raw
+        # GDELT codes (WB_*, TAX_*). top_themes still ships the GDELT layer
+        # for back-compat; top_atlas_topics is the product-grade ranking
+        # that lets the briefing speak in concepts the user recognizes.
+        # PK (signal_id, topic_id, method, model_version) guarantees unique
+        # signal per (topic, version), so COUNT(*) == COUNT(DISTINCT signal_id)
+        # within each group — the cheap COUNT avoids a 200ms sort.
+        # Hot path measured at ~40 ms on 33k assignments (24h window).
+        has_atlas_assignments = await conn.fetchval(
+            "SELECT to_regclass('signal_topic_assignments') IS NOT NULL"
+        )
+        if has_atlas_assignments:
+            top_atlas_topics = await _fetch_section(
+                conn, degraded_segments, "top_atlas_topics", """
+                SELECT t.slug,
+                       t.label,
+                       t.parent_domain,
+                       COUNT(*)::bigint                                         AS signal_count,
+                       ROUND(AVG(a.confidence)::numeric, 3)::float              AS avg_confidence,
+                       COUNT(*) FILTER (WHERE a.confidence >= 0.75)::bigint     AS high_confidence_count,
+                       'signal_topic_assignments'                               AS source_table,
+                       a.model_version                                          AS model_version
+                FROM signal_topic_assignments a
+                JOIN atlas_topics t ON t.id = a.topic_id
+                WHERE a.method = 'lexicon'
+                  AND a.model_version = 'theme-hint-lex-v2'
+                  AND a.assigned_at > NOW() - ($1::int * INTERVAL '1 hour')
+                GROUP BY t.slug, t.label, t.parent_domain, a.model_version
+                ORDER BY signal_count DESC
+                LIMIT 10
+            """, hours)
+        else:
+            top_atlas_topics = []
+
         stats = await _fetch_section(conn, degraded_segments, "stats", """
             SELECT SUM(signal_count)::bigint                          AS total_signals,
                    COUNT(DISTINCT country_code)                       AS countries,
@@ -496,6 +532,20 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 for r in top_themes
             ],
             "top_themes_source": top_themes_source,
+            "top_atlas_topics": [
+                {
+                    "slug": r["slug"],
+                    "label": r["label"],
+                    "parent_domain": _record_get(r, "parent_domain"),
+                    "signal_count": int(r["signal_count"]),
+                    "avg_confidence": float(r["avg_confidence"]),
+                    "high_confidence_count": int(r["high_confidence_count"]),
+                    "source_table": _record_get(r, "source_table", "signal_topic_assignments"),
+                    "model_version": _record_get(r, "model_version", "theme-hint-lex-v2"),
+                }
+                for r in top_atlas_topics
+            ],
+            "top_atlas_topics_source": "signal_topic_assignments",
             "historical_coverage": {
                 "source": (
                     "historical_processed"
