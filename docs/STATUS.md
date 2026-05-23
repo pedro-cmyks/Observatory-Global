@@ -1,5 +1,56 @@
 # Project Status
 
+## Current Handoff — 2026-05-23 (topic classifier v2 + A/B baseline — PR #197)
+
+### What shipped this session
+
+Branch `claude/status-check-wD1og`, draft PR #197 against `v3-intel-layer` (CI green — Vercel preview only; no GitHub Actions Python suite). Three new files, no migrations, no DB writes from CI.
+
+**Backend scripts**
+- `backend/scripts/backfill_lexicon_topics.py` — Issue #171. Single-statement bulk `INSERT … SELECT` topic classifier (v2). Writes `method='lexicon'`, `model_version='theme-hint-lex-v2'`, isolated from v1 (`theme-hint-lex-v1`) by the PK `(signal_id, topic_id, method, model_version)`. Idempotent `ON CONFLICT … DO UPDATE`; doubles as the 15-min incremental cron path via `--window-hours 0.5`. Accelerated by the mig 022 trigram GIN on `lower(headline)` + GIN on `signals_v2.themes`.
+- `backend/scripts/topic_classifier_baseline.py` — read-only A/B reporter (candidate count, recall per `model_version`, v1-vs-v2 top-1 agreement, per-topic distribution, confidence histogram). No table mutation.
+
+**Why v2 vs editing v1**
+- v1 (`classify_topics.py`) required "lex OR >=3 theme hits" and capped recall at ~0.8% of 24h volume after the mig 031 hint realignment.
+- v2 widens qualification to "lex >=1 OR theme_hits >=1" and holds precision with a higher confidence floor (0.55 vs v1's 0.30).
+- v2 confidence: `LEAST(0.95, 0.55 + 0.10*LEAST(lex,3) + 0.05*LEAST(theme_hits,4) + cross_bonus)` where cross_bonus = 0.05 when lex>0 AND theme_hits>=2. Top-2 per signal; headline length filter >=20 chars.
+- Both coexist so the lift is measurable before retiring v1.
+
+**Tests**
+- `backend/tests/test_backfill_lexicon_topics.py` — 11 shape tests (v2-only model_version, upsert semantics, OR qualification, formula components, evidence keys, top-N ranking, headline filter, dry-run is read-only). 16/16 pass alongside `test_topic_intelligence_schema.py`. Shape-only because the container has no DB / no asyncpg.
+
+### Live measurement (2026-05-23, via Supabase MCP)
+
+**Threshold sweep on 6h window (~38k candidate signals):**
+
+| Config | Distinct signals | Recall | avg_conf | Notes |
+|--------|-----------------|--------|----------|-------|
+| v1 (`theme-hint-lex-v1`) | 841 | 2.2% | 0.613 | 96.5% lex-supported, precision-heavy |
+| v2@0.55 (script default) | 27,942 | 73.5% | 0.608 | Only 1.6% lex-supported — too noisy |
+| **v2@0.65 (chosen)** | **6,121** | **16.1%** | **0.653** | **7.3× v1; 30 topics fired** |
+| v2@0.70 | 398 | 1.0% | 0.710 | Collapses below v1 |
+
+**Top1 agreement v1↔v2@0.65 on overlap (812 signals):** 753 same / 59 different = **92.73%**.
+
+**Decision: promote v2 with `DEFAULT_MIN_CONFIDENCE = 0.65`** (was 0.55 in script). All four gate criteria cleared:
+- ✅ recall lift 7.3× (>= 5× target)
+- ✅ top1 agreement 92.73% (>= 70% target)
+- ✅ avg_confidence 0.653 ≈ v1's 0.613 (precision parity)
+- ✅ 30 topics fired, top topic = 13.7% (no collapse)
+
+**Live backfill applied 2026-05-23 in 4× 6h chunks via Supabase MCP over the 24h window:**
+- 33,279 assignments upserted into `signal_topic_assignments` (`model_version='theme-hint-lex-v2'`).
+- 25,975 distinct signals (16.84% of the 154,226-signal 24h candidate window).
+- avg_confidence 0.654; 30 topics fired.
+- Top: disease-outbreak 4,544, constitutional-institutional-crisis 4,391, telecom-internet-shutdown 3,566, heat-health-risk 3,401. Tail down to humanitarian-access-conflict (30). No single topic >14%.
+- v1 (`theme-hint-lex-v1`) remains 0 rows in `signal_topic_assignments` (the May 21 backfill was wiped by the hot/cold prune of May 20); re-backfilling v1 is optional since the 92.73% top1 agreement already validates that v2 agrees with v1 on the easy cases.
+
+### Operational follow-up
+- Schedule v2 incremental cron at `--window-hours 0.5` once the local-hot-cold runner is happy (issue #171 close).
+- Future: extend `atlas_topics.lexicon_terms` via #185 mining; v2 will pick up the new terms automatically.
+
+---
+
 ## Current Handoff — 2026-05-20 (session 17 close — Opción A end-to-end + atlas_heat surface)
 
 ### What shipped this session

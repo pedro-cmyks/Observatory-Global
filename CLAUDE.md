@@ -41,7 +41,7 @@ Older docs remain valid but subordinate:
 - Done: `/api/v2/heatmap`, `/api/v2/heat/countries`, `/api/v2/country/{code}`, `/api/v2/theme/{topic_slug}`, and `/api/v2/anomalies/themes` coverage envelopes.
 - Done: reusable frontend `CoverageBadge` in Heat and Theme Detail.
 
-Quality finding after full backfill: `general-monitoring` represents `1,559,990` of `2,128,070` historical signals. Historical storage/routing has enough data; next quality work is topic intelligence (#171/#167/#185).
+Quality finding after full backfill: `general-monitoring` represents `1,559,990` of `2,128,070` historical signals. Historical storage/routing has enough data; next quality work is topic intelligence (#171/#167/#185). First step shipped as PR #197 (classifier v2 + A/B baseline) — see "Atlas topic classifier v2" below; awaiting a live measurement run before promotion.
 
 ### Security RLS lockdown (migration 030)
 
@@ -66,6 +66,19 @@ Quality finding after full backfill: `general-monitoring` represents `1,559,990`
 - Top topics post-classifier: disease-outbreak (320), labor-strike-disruption (173), oil-gas-supply-risk (162), flood-landslide-disaster (157), armed-conflict-escalation (94). Distribution is balanced — no `general-monitoring` domination.
 - Tradeoff: precision-first (lex OR >=3 theme hits) keeps quality ~65% in spot checks at the cost of recall (~0.8% of 24h volume classified). Boosting recall requires the multilingual NLP swap (#162) and the deeper topic intelligence work (#167) — GDELT themes alone are not discriminative enough for fine topics.
 - Method/version tag for these assignments: `method='lexicon'`, `model_version='theme-hint-lex-v1'`. Future ML-based or analyst-corrected assignments use different tags and can coexist via the PK `(signal_id, topic_id, method, model_version)`.
+
+### Atlas topic classifier v2 (PR #197 — `backfill_lexicon_topics.py`, bulk SQL)
+
+- v2 is a recall-lift sibling of v1, NOT a replacement. Both coexist in `signal_topic_assignments` via the PK `(signal_id, topic_id, method, model_version)`: v1 = `theme-hint-lex-v1`, v2 = `theme-hint-lex-v2`. v1 keeps running until v2's lift is measured and the promotion gate clears.
+- `backend/scripts/backfill_lexicon_topics.py` implements #171: a single-statement `INSERT … SELECT` against `signals_v2` + `atlas_topics`, accelerated by the mig 022 trigram GIN on `lower(headline)` and the GIN on `signals_v2.themes`. Idempotent via `ON CONFLICT … DO UPDATE`, so it doubles as the incremental cron path (`--window-hours 0.5`).
+- Qualification widens from v1's "lex OR >=3 theme hits" to v2's "lex >=1 OR theme_hits >=1" — single-theme signals enter when a topic's lexicon is thin for that language. Recall is held by raising the confidence floor to 0.55 (v1 used 0.30).
+- v2 confidence: `LEAST(0.95, 0.55 + 0.10*LEAST(lex_count,3) + 0.05*LEAST(theme_hits,4) + (0.05 if lex>0 AND theme_hits>=2 else 0))`. Cap is 0.95 (reserves headroom above any auto-assignment for analyst confirmation). Top-2 per signal, headline length filter >=20 chars to drop aggregator/tweet stubs. Evidence jsonb records `matched_terms`, `theme_hits`, `hint_count`, and the component scores.
+- `backend/scripts/topic_classifier_baseline.py` is the read-only A/B reporter: candidate count, recall per `model_version` (distinct_signals / window total), v1-vs-v2 top-1 agreement, per-topic distribution, confidence histogram. Workflow: baseline -> dry-run -> backfill -> re-baseline.
+- Promotion gate (v2 -> production ranking): recall_pct >= 5x v1; top1_match_pct >= 70% on shared signals; >=60% precision on a 50-row spot-check of v2-only assignments; per-topic distribution does not collapse (>=20 topics with >=10 assignments in 24h). All four must pass before wiring v2 into API ranking or scheduling the 15-min cron.
+- Live A/B 2026-05-23 (6h window, Supabase MCP): v1 dry-run = 841 distinct signals (2.2% recall, 96.5% lex-supported, avg_conf 0.613). v2@0.55 dry-run = 27,942 sigs (73.5% recall, 1.6% lex — too noisy). v2@0.65 dry-run = 6,121 sigs (16.1% recall, **7.3x v1**, avg_conf 0.653). v2@0.70 collapses to 398 sigs (under v1). Sweet spot is 0.65; `DEFAULT_MIN_CONFIDENCE` raised from 0.55 -> 0.65 in `backfill_lexicon_topics.py`.
+- Top1 agreement v1↔v2@0.65 on the 812 overlap signals: **92.73%** (753 same, 59 different). Gate (>=70%) cleared by wide margin.
+- Live backfill executed 2026-05-23 over 24h in 4x 6h chunks via Supabase MCP: 33,279 rows upserted into `signal_topic_assignments`, 25,975 distinct signals, avg_conf 0.654, 30 topics fired. Top topic disease-outbreak = 4,544 (13.7%); no collapse. Recall vs 24h candidate window (154,226 signals): **16.84%** (≈21× the 0.8% baseline from `classify_topics.py` at mig 031 time).
+- v1 stays absent from `signal_topic_assignments` for now (the May 21 v1 backfill was wiped by the hot/cold prune of 2026-05-20). Re-running the legacy `classify_topics.py` against the current 24h is optional — v2's 92.7% top1 agreement on overlap is sufficient evidence the two converge on the easy cases.
 
 ### Operational rule
 
