@@ -1,6 +1,41 @@
 # Project Status
 
-## Current Handoff — 2026-05-23 (topic classifier v2 + A/B baseline — PR #197)
+## Current Handoff — 2026-05-23 (briefing exposes atlas topics + cron live)
+
+### What shipped this session
+
+Branch `feat/briefing-top-atlas-topics`. Two files modified (no migrations, no DB schema changes):
+
+**API**
+- `backend/app/routers/briefing.py` — `/api/v2/briefing` now returns `top_atlas_topics` parallel to legacy `top_themes`. Reads `signal_topic_assignments JOIN atlas_topics` with `COUNT(*)` (not `COUNT(DISTINCT signal_id)` — PK uniqueness lets us avoid the 200ms external sort; measured 40ms vs 225ms on 33k rows). Section degrades to `[]` via `to_regclass('signal_topic_assignments')` guard.
+- Response shape: `{ slug, label, parent_domain, signal_count, avg_confidence, high_confidence_count, source_table, model_version }`. Filters on `method='lexicon' AND model_version='theme-hint-lex-v2'` so v1 rows (when re-introduced) don't leak through.
+
+**Tests**
+- `backend/tests/test_briefing_performance_shape.py` — new test `test_briefing_top_atlas_topics_reads_signal_topic_assignments` pins SQL shape, blocks the `COUNT(DISTINCT)` perf trap, asserts `to_regclass` guard + product response keys.
+
+**Local cron infra (lives on Pedro's machine, not in repo)**
+- `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` — wraps `backfill_lexicon_topics.py --window-hours 0.5`. Pulls DATABASE_URL from Fly if not in env.
+- `~/Library/LaunchAgents/com.atlas.atlas-topic-classifier.plist` — `StartInterval=1800` (every 30 min), `RunAtLoad=true`. Loaded via `launchctl bootstrap gui/$UID`. First live run confirmed: 511 upserts, 396 distinct signals.
+
+### Why this matters
+
+Before this session: 33,279 v2 assignments sitting in `signal_topic_assignments` with ZERO API consumers. The v2 classifier output was effectively dead data — no surface in `/api/v2/briefing` or anywhere else. `top_themes` shipped raw GDELT codes (`WB_2670_JOBS`) instead of the curated atlas taxonomy (`labor-strike-disruption`). The atlas taxonomy is precisely what makes Atlas a "narrative intelligence console, not a GDELT wrapper" — exposing it via the briefing closes that loop.
+
+### Live verification (Supabase MCP)
+
+- Hot-path query EXPLAIN ANALYZE: 39ms on 33,279 assignments. Comfortable under the briefing per-section budget.
+- DB state after first cron tick: total v2 rows = 33,790 (up from 33,279 manual backfill), distinct signals = 26,371. Cron is writing.
+- Frontend rendering of `top_atlas_topics` is OUT OF SCOPE for this branch — the section is live in the API and ready for the frontend team to consume.
+
+### Operational notes
+
+- Two LaunchAgents now run on Pedro's machine: `com.atlas.local-hot-cold-catchup` (6x/day, archive + prune) and `com.atlas.atlas-topic-classifier` (every 30 min, atlas topic classification).
+- Logs at `/Users/pedro/AtlasLocalWorker/logs/atlas-topic-classifier.{out,err}.log`.
+- After editing `backend/scripts/backfill_lexicon_topics.py`, MUST `cp` into `/Users/pedro/AtlasLocalWorker/backend/scripts/` (separate copy, NOT a symlink).
+
+---
+
+## Previous Handoff — 2026-05-23 (topic classifier v2 + A/B baseline — PR #197)
 
 ### What shipped this session
 

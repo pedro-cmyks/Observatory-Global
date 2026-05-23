@@ -151,3 +151,30 @@ def test_briefing_insight_uses_fetch_section_degraded_pattern():
 
     assert "_fetch_section(conn, degraded_segments" in source
     assert 'logger.warning("briefing/insight db failed' in source
+
+
+def test_briefing_top_atlas_topics_reads_signal_topic_assignments():
+    """top_atlas_topics surfaces the curated atlas_topics taxonomy via
+    signal_topic_assignments (v2 classifier, PR #197). Hot-path SQL must
+    use COUNT(*) not COUNT(DISTINCT) — the PK guarantees uniqueness within
+    each (topic, model_version) group, and COUNT(DISTINCT) was measured at
+    225 ms vs 40 ms for COUNT(*) on 33k assignments. The fetch must run
+    through _fetch_section so an empty / missing table degrades to []."""
+    source = _get_briefing_source()
+
+    atlas_section = source[source.index('"top_atlas_topics"'):source.index('"top_atlas_topics_source"')]
+    assert "FROM signal_topic_assignments a" in source
+    assert "JOIN atlas_topics t ON t.id = a.topic_id" in source
+    assert "a.model_version = 'theme-hint-lex-v2'" in source
+    assert "COUNT(*)::bigint" in source
+    # Performance trap: DISTINCT forces an external sort. PK uniqueness
+    # means COUNT(*) and COUNT(DISTINCT signal_id) return the same value
+    # within (topic, model_version) groups.
+    assert "COUNT(DISTINCT a.signal_id)" not in source
+    # to_regclass guard so the fetch degrades to [] when table missing.
+    assert "to_regclass('signal_topic_assignments')" in source
+    # Response shape exposes the product fields, not GDELT raw codes.
+    assert '"slug": r["slug"]' in atlas_section
+    assert '"label": r["label"]' in atlas_section
+    assert '"signal_count": int(r["signal_count"])' in atlas_section
+    assert '"parent_domain"' in atlas_section
