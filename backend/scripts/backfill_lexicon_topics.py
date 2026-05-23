@@ -84,7 +84,13 @@ MODEL_NAME = "atlas-topic-hint-lex"
 MODEL_VERSION = "theme-hint-lex-v2"
 
 # Same min_confidence floor across CLI default and inline SQL filter.
-DEFAULT_MIN_CONFIDENCE = 0.55
+# Raised from 0.55 -> 0.65 after the 2026-05-23 live A/B against v1:
+# at 0.55 the script emitted ~50k assignments per 6h with 73% recall, but
+# only 1.6% of rows were lex-supported (mostly single-theme-hit at exactly
+# 0.60). 0.65 demands 2+ theme hits OR (1 lex + 1 theme); on the same
+# window it produced 6,121 distinct signals (7.3x v1 recall) with 92.7%
+# top1 agreement vs v1 on the overlap. See PR #197 for the full A/B.
+DEFAULT_MIN_CONFIDENCE = 0.65
 TOP_N_PER_SIGNAL = 2
 DEFAULT_MIN_HEADLINE_LEN = 20
 
