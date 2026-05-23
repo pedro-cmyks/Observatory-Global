@@ -1,5 +1,40 @@
 # Project Status
 
+## Current Handoff — 2026-05-23 (topic classifier v2 + A/B baseline — PR #197)
+
+### What shipped this session
+
+Branch `claude/status-check-wD1og`, draft PR #197 against `v3-intel-layer` (CI green — Vercel preview only; no GitHub Actions Python suite). Three new files, no migrations, no DB writes from CI.
+
+**Backend scripts**
+- `backend/scripts/backfill_lexicon_topics.py` — Issue #171. Single-statement bulk `INSERT … SELECT` topic classifier (v2). Writes `method='lexicon'`, `model_version='theme-hint-lex-v2'`, isolated from v1 (`theme-hint-lex-v1`) by the PK `(signal_id, topic_id, method, model_version)`. Idempotent `ON CONFLICT … DO UPDATE`; doubles as the 15-min incremental cron path via `--window-hours 0.5`. Accelerated by the mig 022 trigram GIN on `lower(headline)` + GIN on `signals_v2.themes`.
+- `backend/scripts/topic_classifier_baseline.py` — read-only A/B reporter (candidate count, recall per `model_version`, v1-vs-v2 top-1 agreement, per-topic distribution, confidence histogram). No table mutation.
+
+**Why v2 vs editing v1**
+- v1 (`classify_topics.py`) required "lex OR >=3 theme hits" and capped recall at ~0.8% of 24h volume after the mig 031 hint realignment.
+- v2 widens qualification to "lex >=1 OR theme_hits >=1" and holds precision with a higher confidence floor (0.55 vs v1's 0.30).
+- v2 confidence: `LEAST(0.95, 0.55 + 0.10*LEAST(lex,3) + 0.05*LEAST(theme_hits,4) + cross_bonus)` where cross_bonus = 0.05 when lex>0 AND theme_hits>=2. Top-2 per signal; headline length filter >=20 chars.
+- Both coexist so the lift is measurable before retiring v1.
+
+**Tests**
+- `backend/tests/test_backfill_lexicon_topics.py` — 11 shape tests (v2-only model_version, upsert semantics, OR qualification, formula components, evidence keys, top-N ranking, headline filter, dry-run is read-only). 16/16 pass alongside `test_topic_intelligence_schema.py`. Shape-only because the container has no DB / no asyncpg.
+
+### Not done yet (handoff)
+- **No live measurement.** The classifier has not run against Supabase. Pedro must run the validation workflow (baseline -> dry-run -> backfill -> re-baseline) with `DATABASE_URL` and paste the numbers into PR #197 / Issue #171.
+- **Promotion gate (all four required before wiring v2 into API ranking or scheduling the cron):** recall_pct >= 5x v1; `agreement.top1_match_pct` >= 70% on shared signals; >=60% precision on a 50-row spot-check of v2-only assignments; per-topic distribution does not collapse (>=20 topics with >=10 assignments in 24h).
+- v1 remains the source of truth and keeps running. `atlas_topics.lexicon_terms` untouched (that is #185 extended to topics — next).
+
+### Validation workflow (run locally with DATABASE_URL against Supabase)
+```bash
+python -m backend.scripts.topic_classifier_baseline --window-hours 24 > /tmp/before.json
+python -m backend.scripts.backfill_lexicon_topics --window-hours 24 --dry-run   # inspect distribution
+python -m backend.scripts.backfill_lexicon_topics --window-hours 24             # apply v2
+python -m backend.scripts.topic_classifier_baseline --window-hours 24 > /tmp/after.json
+diff <(jq '.recall_per_version' /tmp/before.json) <(jq '.recall_per_version' /tmp/after.json)
+```
+
+---
+
 ## Current Handoff — 2026-05-20 (session 17 close — Opción A end-to-end + atlas_heat surface)
 
 ### What shipped this session
