@@ -1,6 +1,65 @@
 # Project Status
 
-## Current Handoff — 2026-05-23 (mig 034 — atlas topic hint precision fix)
+## Current Handoff — 2026-05-23 (mig 035+035b — recall lift + global coverage audit)
+
+### What shipped this session
+
+Branch `feat/atlas-topic-hint-recall-mig-035`. Two migration files, data-only (no code changes).
+
+**Audit (Supabase MCP, 24h window)**:
+- 119,129 signals eligible (headline length >= 20)
+- 12,787 (10.73%) received any atlas_topic — **89% unclassified**
+- Of unclassified: 87% HAVE themes (classifier wasn't matching them), 64% in `xx` language (multilingual lex gap)
+- Pareto: 4 topics = 50% volume, 10 = 80%, 19 = 95% — diversity OK across 30 active topics / 10 domains
+
+**Migrations**
+- `backend/migrations/035_atlas_topic_hint_recall.sql` — adds GDELT codes that appear frequently in signals_v2 but weren't in any hint. Sample-verified precision per candidate; only added hints with >=75% sample precision.
+- `backend/migrations/035b_disease_outbreak_restore_medical.sql` — corrects a mistake in mig 035 that dropped MEDICAL from disease-outbreak by analogy with mig 034's heat-health-risk fix. MEDICAL is noisy for heat-health-risk but specific for disease-outbreak during a live Ebola outbreak.
+
+### Live measurement (Supabase MCP)
+
+Coverage **10.73% → 13.08%** (+2.35pp = +2,770 signals/24h classified).
+
+Per affected topic:
+
+| Topic | Pre sigs | Post sigs | Pre high_conf | Post high_conf | Notes |
+|---|---|---|---|---|---|
+| disease-outbreak | 5,246 | 4,719 | 142 | **590** | Ebola-specific hints lift confidence 4× |
+| armed-conflict-escalation | 2,121 | 3,165 | 1 | 21 | TERROR adds +1,044 sigs |
+| forced-displacement | 332 | 362 | 2 | 2 | EVACUATION small lift |
+| sanctions-diplomatic-pressure | 236 | 230 | 1 | 0 | WB_2473_DIPLOMACY |
+
+### Sample-verified hint methodology
+
+Tested precision per candidate hint via random sample of 24h headlines:
+
+| Hint | Volume/24h | Sample precision | Added? |
+|---|---|---|---|
+| TERROR | 3,899 | 4/4 conflict | ✅ armed-conflict |
+| WB_2473_DIPLOMACY_AND_NEGOTIATIONS | 982 | 4/4 diplomacy | ✅ sanctions-diplomatic |
+| EVACUATION | 574 | 3/4 evac | ✅ forced-displacement |
+| WB_2663_EBOLA | 967 | 10/10 Ebola | ✅ disease-outbreak |
+| TAX_DISEASE_EBOLA | 715 | 10/10 Ebola | ✅ disease-outbreak |
+| TAX_DISEASE_DISEASE | 2,001 | mostly disease | ✅ disease-outbreak |
+| CRISISLEX_T02_INJURED | 12,091 | ~30% conflict (accidents mixed) | ❌ rejected |
+| WB_2462_POLITICAL_VIOLENCE_AND_WAR | 1,012 | 2/4 (Airbus/Albanian noise) | ❌ rejected |
+| WB_2495_DETENTION_PRISON | 1,041 | 2/4 (random noise) | ❌ rejected |
+| CRISISLEX_C06_WATER_SANITATION | 673 | 1/4 (butchery/storage noise) | ❌ rejected |
+| SCANDAL | 970 | 1/4 (meta-news + humor) | ❌ rejected |
+| WB_2507_HUMAN_RIGHTS_ABUSES | 538 | 1/4 (random) | ❌ rejected |
+
+### Operational lesson (added to CLAUDE.md)
+
+Dropping a broad hint (like MEDICAL) requires per-topic precision measurement, not analogy. MEDICAL is 99% noise for heat-health-risk but 50% signal for disease-outbreak during an active outbreak. Mig 035's analogy reasoning cost 447 lex-supported disease assignments; mig 035b restored them.
+
+### Next recall levers
+
+- 64% of unclassified is `xx` language (multilingual lex gap). #185 extended to atlas_topics is the largest remaining lever.
+- 3 topics still at <10% lex_pct (election-legitimacy 6.3%, fuel-subsidy 10.4%, mining 12.5%) — candidates for similar audit pass.
+
+---
+
+## Previous Handoff — 2026-05-23 (mig 034 — atlas topic hint precision fix)
 
 ### What shipped this session
 
