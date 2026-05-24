@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+import inspect
+
+from app.services import thread_intelligence
 from app.services.thread_intelligence import (
     THREAD_EVIDENCE_SQL,
     THREADS_SQL,
@@ -9,6 +13,7 @@ from app.services.thread_intelligence import (
     build_thread_label,
     confidence_band,
     evidence_role,
+    fetch_threads,
     parse_thread_id,
 )
 
@@ -119,6 +124,43 @@ def test_evidence_role_classifies_by_syndication_count():
     assert evidence_role(4) == "repeated"
     assert evidence_role(5) == "syndicated"
     assert evidence_role(25) == "syndicated"
+
+
+def test_fetch_threads_accepts_external_connection():
+    """Milestone 2: briefing reuses its open connection by passing conn=...
+    Without this, every briefing request would acquire a second pool
+    connection just for the threads section."""
+    sig = inspect.signature(fetch_threads)
+    assert "conn" in sig.parameters
+    assert sig.parameters["conn"].default is None
+
+
+def test_fetch_threads_uses_supplied_connection_without_pool():
+    """When conn is supplied, fetch_threads must NOT touch db.pool."""
+
+    class FakeConn:
+        def __init__(self) -> None:
+            self.fetch_calls: list[tuple] = []
+
+        async def fetch(self, query, *args, **kwargs):
+            self.fetch_calls.append((query, args, kwargs))
+            return []
+
+    fake = FakeConn()
+    original_pool = getattr(thread_intelligence.db, "pool", None)
+    thread_intelligence.db.pool = None  # prove no pool access
+    try:
+        result = asyncio.run(
+            fetch_threads(hours=12, limit=5, conn=fake)
+        )
+    finally:
+        thread_intelligence.db.pool = original_pool
+
+    assert result == []
+    assert len(fake.fetch_calls) == 1
+    args = fake.fetch_calls[0][1]
+    assert args[0] == 12  # hours
+    assert args[1] == 5  # limit
 
 
 def test_serialize_evidence_includes_syndication_metadata():

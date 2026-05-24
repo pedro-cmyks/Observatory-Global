@@ -29,6 +29,11 @@ from app.services.sentiment_fusion import (  # noqa: E402 — kept here to group
     choose_sentiment_weighted,
     serialize_country_row,
 )
+from app.services.thread_intelligence import fetch_threads  # noqa: E402
+
+
+TOP_THREADS_CONTRACT = "living-narrative-threads-v0"
+TOP_THREADS_LIMIT = int(os.getenv("BRIEFING_TOP_THREADS_LIMIT", "10"))
 
 
 async def _fetch_section(
@@ -402,6 +407,25 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         else:
             top_atlas_topics = []
 
+        # Living Narrative Threads (Milestone 2): assemble the same product
+        # contract that /api/v2/threads serves so Brief leads with natural
+        # threads (label, why_now, changed_10h, confidence band) instead of
+        # raw atlas-topic counts. Reuses the briefing connection through
+        # fetch_threads(conn=...). Degrades to [] on any failure so the
+        # briefing payload still ships.
+        top_threads: list = []
+        if has_atlas_assignments:
+            try:
+                top_threads = await fetch_threads(
+                    hours=hours,
+                    limit=TOP_THREADS_LIMIT,
+                    conn=conn,
+                )
+            except Exception as exc:
+                degraded_segments.append("top_threads")
+                logger.warning("briefing section degraded: top_threads: %s", exc)
+                top_threads = []
+
         # Atlas hierarchy + co-occurrence (2026-05-23 narrative-cluster spec):
         # parent_domain (10 domains, 2-5 topics each) is the natural cluster
         # level. topics_by_domain agrees the same window as top_atlas_topics
@@ -655,6 +679,8 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 for r in top_atlas_topics
             ],
             "top_atlas_topics_source": "signal_topic_assignments",
+            "top_threads": top_threads,
+            "top_threads_contract": TOP_THREADS_CONTRACT,
             "topics_by_domain": [
                 {
                     "parent_domain": r["parent_domain"],
