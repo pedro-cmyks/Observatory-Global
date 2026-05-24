@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
@@ -281,7 +282,16 @@ def _as_list(value: Any) -> list[Any]:
         return value
     if isinstance(value, tuple):
         return list(value)
-    return list(value) if not isinstance(value, str) else [value]
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped.startswith("[") or stripped.startswith("{"):
+            try:
+                parsed = json.loads(stripped)
+            except json.JSONDecodeError:
+                return [value]
+            return parsed if isinstance(parsed, list) else [parsed]
+        return [value]
+    return list(value)
 
 
 def _record_get(row: Any, key: str, default: Any = None) -> Any:

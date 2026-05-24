@@ -113,6 +113,33 @@ def test_assemble_thread_contract():
     assert thread["related_threads"][0]["topic"] == "labor-strike-disruption"
 
 
+def test_assemble_thread_parses_jsonb_strings_from_asyncpg():
+    row = {
+        "topic_slug": "mining-royalty-risk",
+        "topic_label": "Mining royalty risk",
+        "signal_count": 80,
+        "source_count": 12,
+        "country_count": 3,
+        "avg_confidence": 0.78,
+        "changed_10h": 8,
+        "top_countries": ["CN", "US"],
+        "top_country_names": ["China", "United States"],
+        "top_sources": ["reuters.com"],
+        "top_entities": [],
+        "hourly_timeline": '[{"hour":"2026-05-24T10:00:00Z","count":12}]',
+        "related_topics": '[{"topic":"currency-debt-stress","co_signals":2}]',
+    }
+
+    thread = assemble_thread(row)
+
+    assert thread["hourly_timeline"] == [
+        {"hour": "2026-05-24T10:00:00Z", "count": 12}
+    ]
+    assert thread["related_threads"] == [
+        {"topic": "currency-debt-stress", "co_signals": 2}
+    ]
+
+
 def test_assemble_thread_exposes_quality_metadata_and_raw_entity_guardrails():
     row = {
         "topic_slug": "transport-corridor-disruption",
