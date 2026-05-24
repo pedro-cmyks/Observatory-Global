@@ -1,6 +1,73 @@
 # Project Status
 
-## Current Handoff — 2026-05-23 (briefing hierarchy + related topics + AI taxonomy spec)
+## Current Handoff — 2026-05-23 (Path A pilot — mig 036 multilingual lex)
+
+### What shipped this session
+
+Branch `feat/path-a-pilot-election-multilingual-lex`. One migration file, no code change.
+
+**GitHub roadmap**
+- Issue #202 — Path A: Multilingual lexicon expansion via LLM (atlas-topics) ← THIS pilot
+- Issue #203 — Path B: Bootstrap-trained encoder classifier
+- Issue #204 — Path C: LLM-assisted taxonomy revision (quarterly)
+- All three issues link to `docs/specs/2026-05-23-ai-assisted-taxonomy.md`.
+
+**Migration**
+- `backend/migrations/036_election_legitimacy_multilingual_lex.sql` — expands `atlas_topics.lexicon_terms` for `election-legitimacy-dispute` from 5 English terms to 43 terms across 8 languages (EN/ES/IT/PT/FR/DE/TR/EL).
+
+### Pilot methodology (validated for rollout)
+
+1. Topic selection: lex_pct < 20%, vol > 500/24h → `election-legitimacy-dispute` (6.3%, 1502/24h).
+2. SQL sample pull (Supabase MCP): 25 high-confidence positives, 30 theme-only negatives.
+3. Claude (the LLM in this implementation) reads samples and proposes 39 candidate substring matchers across the languages observed in the headlines.
+4. SQL verification per candidate: `LIKE` against 24h headlines for volume + 4-headline random sample for precision per heavy hitter.
+5. Rejected `scrutin` (matched "scrutiny", "escrutinável", ~25% precision). Accepted 38.
+6. Migration applied via `apply_migration`. Deleted 1,508 prior assignments. Re-backfilled 1,194 fresh assignments.
+
+### Live results
+
+| Metric | Pre mig 036 | Post mig 036 |
+|---|---|---|
+| election-legitimacy lex_pct | 6.3% | **31.6%** (5× lift, gate cleared) |
+| election-legitimacy high_conf | 5 | **27** (5×) |
+| election-legitimacy v2_sigs | 1,502 | 1,194 (noise filtered) |
+| Global coverage (24h) | 13.08% | 13.35% |
+
+**Term distribution post-pilot** (74% of lex hits came from multilingual terms):
+
+| Term | Lang | Hits |
+|---|---|---|
+| elecciones | ES | 156 |
+| elezioni | IT | 101 |
+| presidential primary | EN | 68 |
+| ballot | EN (existing) | 31 |
+| comicios | ES | 12 |
+| urnas | ES | 9 |
+| ... | mixed | tail of 1-2 hits each |
+
+### Methodology rollout candidates
+
+The 5 remaining topics with lex_pct < 20% and meaningful volume:
+
+| Topic | lex_pct | vol/24h |
+|---|---|---|
+| armed-conflict-escalation | 2.2% | 3,165 |
+| fuel-subsidy-unrest | 10.4% | 886 |
+| mining-royalty-risk | 12.5% | 120 |
+| housing-cost-pressure | 13.6% | 774 |
+| food-price-stress | 19.0% | 817 |
+
+Each is a single-session pass following the same workflow.
+
+### Operational state
+
+- Cron `com.atlas.atlas-topic-classifier.plist` keeps refreshing every 30 min — the new election-legitimacy terms are now part of every cycle.
+- No backend deploy needed (data-only mig). Mig is already live on Supabase.
+- 4 PRs merged today: #198 (briefing top_atlas_topics), #199 (mig 034 precision), #200 (mig 035 recall), #201 (hierarchy + related_topics). This is PR #205.
+
+---
+
+## Previous Handoff — 2026-05-23 (briefing hierarchy + related topics + AI taxonomy spec)
 
 ### What shipped this session
 
