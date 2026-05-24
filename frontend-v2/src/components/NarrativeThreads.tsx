@@ -2,10 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { timeRangeToHours } from '../lib/timeRanges'
-import { getThemeLabel } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
 import { getNarrativeFetchLimit, getNarrativesForDisplay } from '../lib/narrativeThreadLimits'
-import { getThemeCluster } from '../lib/themeHierarchy'
 import './NarrativeThreads.css'
 
 const THREAD_COLORS = [
@@ -22,19 +20,22 @@ interface TimelinePoint {
 }
 
 interface Narrative {
-    theme_code: string
+    thread_id: string
     label: string
+    anchor_topics: string[]
+    parent_domain: string | null
     signal_count: number
     country_count: number
     source_count: number
     first_seen: string | null
-    velocity: number
+    changed_10h: number
     trend: 'accelerating' | 'stable' | 'fading'
-    spread_pct: number
-    avg_sentiment: number
-    top_persons: string[]
+    confidence_pct: number
+    sentiment_swing_10h: number | null
+    top_entities: string[]
     hourly_timeline: TimelinePoint[]
     top_countries: string[]
+    top_country_names: string[]
     // Enrichment: public attention signals
     has_public_interest?: boolean
     trending_keywords?: string[]
@@ -83,6 +84,31 @@ const timeAgo = (isoString: string | null): string => {
     return `Started ${days}d ago`
 }
 
+const normalizeTrend = (trend: string): Narrative['trend'] => {
+    if (trend === 'surging') return 'accelerating'
+    if (trend === 'fading') return 'fading'
+    return 'stable'
+}
+
+const normalizeThread = (thread: any): Narrative => ({
+    thread_id: thread.thread_id,
+    label: thread.label || thread.summary || thread.thread_id,
+    anchor_topics: thread.anchor_topics || [],
+    parent_domain: thread.parent_domain || null,
+    signal_count: thread.signal_count || 0,
+    country_count: thread.country_count || 0,
+    source_count: thread.source_count || 0,
+    first_seen: thread.first_seen || null,
+    changed_10h: thread.changed_10h || 0,
+    trend: normalizeTrend(thread.trend),
+    confidence_pct: Math.round((thread.avg_confidence || 0) * 1000) / 10,
+    sentiment_swing_10h: thread.sentiment_swing_10h ?? null,
+    top_entities: thread.top_entities || thread.top_people || [],
+    hourly_timeline: thread.hourly_timeline || [],
+    top_countries: thread.top_countries || [],
+    top_country_names: thread.top_country_names || [],
+})
+
 interface NarrativeThreadsProps {
     onCountrySelect?: (code: string) => void
 }
@@ -105,11 +131,11 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
 
     const fetchNarratives = useCallback(async () => {
         try {
-            const res = await fetch(`/api/v2/narratives?hours=${cappedHours}&limit=${fetchLimit}`)
+            const res = await fetch(`/api/v2/threads?hours=${cappedHours}&limit=${fetchLimit}`)
             if (!res.ok) return
             const data = await res.json()
-            setNarratives(data.narratives || [])
-            if (data.effective_hours != null) setEffectiveHours(data.effective_hours)
+            setNarratives((data.threads || []).map(normalizeThread))
+            setEffectiveHours(data.hours ?? null)
         } catch (e) {
             console.error('[NarrativeThreads] Fetch error', e)
         } finally {
@@ -129,7 +155,8 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     const displayedNarratives = getNarrativesForDisplay(narratives, filter.country ?? undefined)
 
     const handleClick = (n: Narrative) => {
-        setFocus('theme', n.theme_code, getThemeLabel(n.theme_code))
+        const anchorTopic = n.anchor_topics[0] || n.thread_id.split('--')[0]
+        setFocus('theme', anchorTopic, n.label)
         if (n.top_countries.length > 0) {
             setMapFlyCountry(n.top_countries[0])
             onCountrySelect?.(n.top_countries[0])
@@ -193,23 +220,24 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 </div>
             )}
             {displayedNarratives.map(n => {
-                const isFocused = filter.theme === n.theme_code
+                const anchorTopic = n.anchor_topics[0] || n.thread_id.split('--')[0]
+                const isFocused = filter.theme === anchorTopic
                 // Dim conditions:
                 //  - a theme is locked AND it's not this row -> dim
                 //  - a country is locked AND this thread doesn't cover that country -> dim
-                const dimByTheme = !!filter.theme && filter.theme !== n.theme_code
+                const dimByTheme = !!filter.theme && filter.theme !== anchorTopic
                 const dimByCountry = !!filter.country && !n.top_countries.includes(filter.country)
                 const isDimmed = dimByTheme || dimByCountry
                 const trendArrow = n.trend === 'accelerating' ? '▲' : n.trend === 'fading' ? '▼' : '→'
                 // Plain-language hover hint; falls back to label when no description is available.
-                const rowHint = `${getThemeLabel(n.theme_code)}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries. Click to open the topic breakdown.`
-                const themeCluster = getThemeCluster(n.theme_code)
+                const rowHint = `${n.label}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries from ${n.source_count} sources. Click to open the topic breakdown.`
+                const domainLabel = (n.parent_domain || 'living thread').replace(/-/g, ' ')
 
                 const colorIdx = displayedNarratives.indexOf(n) % THREAD_COLORS.length
                 const threadColor = THREAD_COLORS[colorIdx]
                 return (
                     <div
-                        key={n.theme_code}
+                        key={n.thread_id}
                         className={`narrative-row ${isFocused ? 'focused' : ''} ${isDimmed ? 'dimmed' : ''}`}
                         data-tip={rowHint}
                         onClick={() => handleClick(n)}
@@ -218,12 +246,12 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                         {/* Row 1: Label + stats */}
                         <div className="narrative-header">
                             <div className="narrative-label">
-                                <span className={`sentiment-dot ${n.avg_sentiment > 0.1 ? 'pos' : n.avg_sentiment < -0.1 ? 'neg' : 'neu'}`} data-tip={`Avg sentiment: ${n.avg_sentiment > 0.1 ? 'positive (supportive framing)' : n.avg_sentiment < -0.1 ? 'negative (critical or conflict framing)' : 'neutral'}`} />
+                                <span className={`sentiment-dot ${n.sentiment_swing_10h && n.sentiment_swing_10h > 0.1 ? 'pos' : n.sentiment_swing_10h && n.sentiment_swing_10h < -0.1 ? 'neg' : 'neu'}`} data-tip={`10h sentiment swing: ${n.sentiment_swing_10h == null ? 'not available' : n.sentiment_swing_10h.toFixed(2)}`} />
                                 <span className={`trend-arrow ${n.trend}`}>{trendArrow}</span>
                                 <span className="narrative-label-text">
-                                    {getThemeLabel(n.theme_code)}
+                                    {n.label}
                                     <span className="narrative-cluster-label">
-                                        {themeCluster.label}
+                                        {domainLabel}
                                     </span>
                                     {n.top_countries.length > 0 && (
                                         <span className="narrative-label-country">
@@ -249,7 +277,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                 {n.top_countries.map(c => (
                                     <button key={c} className={`country-pip country-pip--btn${filter.country === c ? ' country-pip--active' : ''}`} onClick={e => handleCountryPipClick(e, c)} data-tip={`Focus on ${c}`}>{c}</button>
                                 ))}
-                                {n.top_persons.map(p => (
+                                {n.top_entities.map(p => (
                                     <span key={p} className="person-pip">{p}</span>
                                 ))}
                                 {n.has_public_interest && (
@@ -268,16 +296,16 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
 
                         {/* Row 3: Spread bar + trend */}
                         <div className="spread-row">
-                            <div className="narrative-grad-bar-track" data-tip="Geographic spread: how widely this topic is covered across countries. 100% = present in every country we track">
+                            <div className="narrative-grad-bar-track" data-tip="Atlas confidence: assignment confidence from the living-thread contract.">
                                 <div
                                     className="narrative-grad-bar-fill"
                                     style={{
-                                        width: `${Math.min(n.spread_pct, 100)}%`,
+                                        width: `${Math.min(n.confidence_pct, 100)}%`,
                                         background: threadColor.gradient,
                                     }}
                                 />
                             </div>
-                            <span className="spread-label" data-tip="Geographic spread: % of tracked countries covering this topic">{n.spread_pct}%</span>
+                            <span className="spread-label" data-tip="Atlas confidence for this living thread">{n.confidence_pct}%</span>
                             <span className={`trend-label ${n.trend}`} data-tip="Trend: Accelerating = volume growing, Fading = volume declining, Stable = consistent">
                                 {n.trend === 'accelerating' ? '▲ Accelerating' : n.trend === 'fading' ? '▼ Fading' : '→ Stable'}
                             </span>
