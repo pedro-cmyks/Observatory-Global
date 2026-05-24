@@ -1,5 +1,85 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-22 (confidence-weighted sentiment fusion)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-24 (topic taxonomy review + roadmap cleanup)
+
+---
+
+## Current handoff (2026-05-24) — Topic quality direction
+
+The repo is clean on `v3-intel-layer`; latest commit is
+`0049a86 feat(atlas-topics): mig 036 Path A pilot — multilingual lex (#205)`.
+
+Current data/product state:
+
+- Local hot/cold automation is installed and verified through
+  `com.atlas.local-hot-cold-catchup`; last recorded LaunchAgent exit code was `0`.
+- Hot store validation after automation: `signals_v2` had `173,925` rows,
+  compact historical tables represented `2,412,591` signals through `2026-05-21`,
+  and only `7` older-than-24h residual rows remained at the moving cutoff.
+- App-wide long-window routing is implemented, but `#193` should remain open
+  until deployed frontend visual smoke tests pass.
+- Storage/routing is no longer the blocker. The active bottleneck is topic
+  intelligence quality: too much historical volume still falls into
+  `general-monitoring`, and low-lex topics depend too heavily on GDELT theme
+  hints.
+
+Atlas-topic taxonomy state:
+
+- `docs/specs/2026-05-23-ai-assisted-taxonomy.md` is now partially implemented,
+  not just a spec. Path A shipped in migration 036 for
+  `election-legitimacy-dispute` and migration 037 for
+  `armed-conflict-escalation`.
+- Pilot result: lex_pct `6.3% -> 31.6%`, high_conf `5 -> 27`, and multilingual
+  terms drove `74%` of lex-match volume. This validates the SQL-driven workflow:
+  sample positives/negatives, propose terms from real headlines, verify volume
+  and precision via SQL, migrate only accepted terms, purge/re-backfill the topic,
+  then measure lift.
+- Migration 037 for `armed-conflict-escalation` was precision-first. It removed
+  noisy broad terms (`clashes`, `offensive`, `shelling`) and rejected broad
+  armed-incident terms after spot checks (`shots fired`, `opening fire`,
+  `firing at`, `ataque armado`, `battlefield`). Live purge + 24h re-backfill:
+  lex_pct `2.10% -> 6.56%`, high_conf `22 -> 85`, global v2 coverage `17.22%`.
+  This does not clear the 30% Path A gate, but avoids inflating conflict with
+  local crime, sports, entertainment, and metaphorical usage.
+- Migration 038 finished the remaining low-lex Path A rollout:
+  - `fuel-subsidy-unrest`: lex_pct `5.20% -> 37.12%`, high_conf `2 -> 136`.
+    Gate cleared cleanly on fuel price/fuel rate/petrol/diesel terms.
+  - `food-price-stress`: lex_pct `17.52% -> 4.63%`, high_conf `7 -> 10`.
+    This is a precision cleanup, not a recall win; removed noisy `shortage` and
+    `hunger` terms that matched non-food shortages and charity-drive headlines.
+  - `housing-cost-pressure`: lex_pct `10.16% -> 8.20%`, high_conf `0 -> 2`.
+    This is also precision-first; removed `mortgage` and `eviction` because
+    they matched tickers and non-household legal/land stories. Spanish housing
+    pressure terms are now present.
+  - `mining-royalty-risk`: lex_pct `12.33% -> 78.99%`, high_conf `0 -> 100`.
+    Gate cleared, but the live evidence is a coal-mine-disaster cluster, so
+    Path C should revisit whether this topic should become broader
+    mining/resource risk or split royalty/concession risk from mine disasters.
+- Global v2 topic coverage after full Path A rollout: `18.47%` of 24h eligible
+  signals.
+- Path B encoder classifier stays in design/shadow mode until a benchmark shows
+  at least `85%` precision; `90%` is the product target. Recall does not justify
+  promotion below that floor.
+- Path C taxonomy revision stays later/periodic. Do not build a user-facing
+  "this topic is wrong" correction affordance yet; use controlled benchmark
+  labels and SQL sample review first.
+
+Sentiment decision from analyst review:
+
+- Normal UI should expose one value: Atlas sentiment.
+- GDELT Tone remains useful as fallback, calibration input, benchmark, and
+  provenance, but should not appear as a competing product metric beside Atlas
+  sentiment.
+- Backend/source labels such as `gdelt`, `nlp`, and `nlp_weighted` can remain for
+  traceability and debugging; product copy should avoid making users compare
+  incompatible-looking systems.
+
+Next execution order:
+
+1. Commit and PR the completed Path A rollout (`037` + `038`) and docs.
+2. Run deployed frontend smoke tests for the app-wide long-window routing before
+   closing `#193`.
+3. Normalize product sentiment presentation around Atlas sentiment under `#183`.
+4. Build a small benchmark/precision harness before any Path B encoder work.
 
 ---
 

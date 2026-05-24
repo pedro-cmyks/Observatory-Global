@@ -37,6 +37,22 @@ Key files added in session 21 (processed historical sync — 2026-05-21):
 - `scripts/install-local-hot-cold-launchd.sh` — installs a minimal runtime under `/Users/pedro/AtlasLocalWorker` and loads `com.atlas.local-hot-cold-catchup`.
 - `infra/launchd/com.atlas.local-hot-cold-catchup.plist` — LaunchAgent schedule for `00:10` through `05:10` local time plus `RunAtLoad`.
 
+Key docs/files changed in session 22 (atlas-topic taxonomy quality — 2026-05-23/24):
+- `docs/specs/2026-05-23-ai-assisted-taxonomy.md` — AI-assisted taxonomy plan. Path A pilot is implemented; Paths B/C remain specs. Product decisions: one Atlas sentiment in the UI, GDELT Tone as fallback/calibration/provenance, Path B precision gate 85% minimum / 90% target, no user-facing topic-correction UI for now.
+- `backend/migrations/036_election_legitimacy_multilingual_lex.sql` — Path A pilot for `election-legitimacy-dispute`; lexicon terms expanded from 5 English terms to 43 multilingual terms after SQL volume checks and sample precision checks. Reject noisy stems like `scrutin`.
+- `backend/migrations/037_armed_conflict_multilingual_lex.sql` — precision-first Path A pass for `armed-conflict-escalation`; removed noisy broad terms (`clashes`, `offensive`, `shelling`) and added precise multilingual conflict terms. Did not clear the 30% lex_pct gate, but high_conf improved `22 -> 85`.
+- `backend/migrations/038_remaining_low_lex_multilingual_terms.sql` — completed Path A rollout for `fuel-subsidy-unrest`, `food-price-stress`, `housing-cost-pressure`, and `mining-royalty-risk`. Fuel and mining cleared the 30% gate; food/housing were precision cleanups.
+- `docs/roadmap/2026-05-21-data-operating-roadmap.md` — current execution order now routes next work to Path A rollout before Path B encoder work.
+
+Session 22 topic taxonomy state:
+- Path A pilot result: `election-legitimacy-dispute` lex_pct `6.3% -> 31.6%`, high_conf `5 -> 27`, multilingual terms drove `74%` of lex-match volume; global coverage moved `13.08% -> 13.35%`.
+- Armed-conflict partial result: lex_pct `2.10% -> 6.56%`, high_conf `22 -> 85`, global v2 coverage after re-backfill `17.22%`. Treat as partial because the 30% gate did not clear; do not re-add broad armed-incident terms just to raise recall.
+- Final Path A rollout result after migration 038: `fuel-subsidy-unrest` lex_pct `5.20% -> 37.12%`, high_conf `2 -> 136`; `food-price-stress` lex_pct `17.52% -> 4.63%`, high_conf `7 -> 10` after removing noisy `shortage`/`hunger`; `housing-cost-pressure` lex_pct `10.16% -> 8.20%`, high_conf `0 -> 2` after removing noisy `mortgage`/`eviction`; `mining-royalty-risk` lex_pct `12.33% -> 78.99%`, high_conf `0 -> 100` driven by a coal-mine-disaster cluster.
+- Global v2 topic coverage after full Path A rollout: `18.47%` of 24h eligible signals.
+- Open issues: #202 Path A, #203 Path B, #204 Path C. #202 remains open until all six low-lex topics are migrated.
+- Next taxonomy step: close/mark #202 complete after PR merge, then use Path C to evaluate splits for local armed incidents vs armed conflict, and mining royalty vs mining/resource-disaster risk.
+- Theme/topic guardrail: do not trust GDELT theme classification alone as proof of a significant Atlas topic. Topic changes must be validated against real headlines, lex_pct/high_conf movement, and precision spot checks.
+
 Session 20 data state:
 - Local archive root: `/Users/pedro/AtlasArchive`.
 - Clean cutover archive: `/Users/pedro/AtlasArchive/cutovers/2026-05-20`.
