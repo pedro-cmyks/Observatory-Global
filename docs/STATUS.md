@@ -1,6 +1,75 @@
 # Project Status
 
-## Current Handoff — 2026-05-23 (briefing exposes atlas topics + cron live)
+## Current Handoff — 2026-05-23 (mig 034 — atlas topic hint precision fix)
+
+### What shipped this session
+
+Branch `feat/atlas-topic-hint-precision-mig-034`. Single migration file, no code changes (data-only fix). Cron + briefing pick up the new hints automatically.
+
+**Migration**
+- `backend/migrations/034_atlas_topic_hint_precision.sql` — prunes overly-broad GDELT theme hints from 8 atlas_topics that were producing false positives, expands lexicon_terms 4-7 → 15-18 with natural-language phrases real headlines use.
+
+### Why this matters
+
+After PR #198 surfaced `top_atlas_topics` in the briefing, per-topic audit revealed catastrophic false-positive rates on the topics dominating the ranking:
+
+| Topic | Pre-034 sigs/24h | lex_pct | Worst hint |
+|---|---|---|---|
+| constitutional-institutional-crisis | 5,522 | 4.7% | `EPU_POLICY_GOVERNMENT` matches any government story |
+| telecom-internet-shutdown | 4,100 | 1.0% | `WB_133_INFORMATION_AND_COMMUNICATION_TECHNOLOGIES` matches any IT |
+| heat-health-risk | 3,584 | 1.1% | `MEDICAL` matches any medical headline |
+| currency-debt-stress | 2,338 | 0.0% | `TAX_ECON_PRICE` matches any equity/commodity price story |
+| disinformation-influence-operation | 1,988 | 2.8% | `WB_694_BROADCAST_AND_MEDIA` matches all media |
+| press-freedom-crackdown | 1,452 | 0.3% | `ARREST` matches any arrest story |
+| student-youth-protest | 1,060 | 0.3% | `EDUCATION` matches any school news |
+| forced-displacement | 239 | 0.0% | Hints fine, lex too narrow |
+
+Briefing was ranking topics by GDELT-pollution volume, not actual narrative density.
+
+### Live measurement post-034 (Supabase MCP)
+
+After applying mig 034 + deleting 20,283 stale v2 assignments + re-backfilling 24h in 4× 6h chunks (14,815 new rows):
+
+| Topic | Post-034 sigs/24h | lex_pct | Lift vs pre |
+|---|---|---|---|
+| forced-displacement | 307 | 26.1% | 0% → 26.1% |
+| heat-health-risk | 257 | **100%** | 1.1% → 100% |
+| currency-debt-stress | 212 | 84.9% | 0.0% → 84.9% |
+| constitutional-institutional-crisis | 178 | **100%** | 4.7% → 100% |
+| telecom-internet-shutdown | 102 | **100%** | 1.0% → 100% |
+| disinformation-influence-operation | 71 | **100%** | 2.8% → 100% |
+| student-youth-protest | 5 | **100%** | 0.3% → 100% |
+| press-freedom-crackdown | 3 | **100%** | 0.3% → 100% |
+
+5 of 8 topics now at 100% lex-supported (every assignment has a real headline match). Sharp recall drop is welcome — the dropped volume was almost entirely false positives that were drowning the briefing.
+
+### New honest top-10 atlas topics
+
+Briefing now surfaces actual narratives instead of theme-hint pollution:
+
+1. disease-outbreak (5,246) — 14.6% lex
+2. labor-strike-disruption (2,680) — 30.3% lex
+3. armed-conflict-escalation (2,121) — 4.6% lex
+4. flood-landslide-disaster (1,684) — 35.2% lex
+5. election-legitimacy-dispute (1,480) — 6.3% lex
+6. gang-control-urban-security (1,017) — 41.4% lex
+7. fuel-subsidy-unrest (853) — 10.4% lex
+8. transport-corridor-disruption (831) — 20.0% lex
+9. food-price-stress (810) — 19.0% lex
+10. housing-cost-pressure (767) — 13.6% lex
+
+### Operational rule established
+
+Added to CLAUDE.md: when adding a new topic to `atlas_topics`, after the first 24h backfill audit lex_pct. If lex_pct < 10% AND volume > 500/24h, the hint set has a precision leak — replace broad hints with narrower siblings (`MEDIA_CENSORSHIP` instead of `WB_694_BROADCAST_AND_MEDIA`).
+
+### Follow-up
+
+- The 30-min cron will keep maintaining quality automatically. No deploy needed (data-only change).
+- 3 topics still have <10% lex (armed-conflict 4.6%, election-legitimacy 6.3%, fuel-subsidy 10.4%) — could benefit from a similar hint+lex pass in a future iteration.
+
+---
+
+## Previous Handoff — 2026-05-23 (briefing exposes atlas topics + cron live)
 
 ### What shipped this session
 
