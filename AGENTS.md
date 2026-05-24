@@ -44,6 +44,13 @@ Key docs/files changed in session 22 (atlas-topic taxonomy quality — 2026-05-2
 - `backend/migrations/038_remaining_low_lex_multilingual_terms.sql` — completed Path A rollout for `fuel-subsidy-unrest`, `food-price-stress`, `housing-cost-pressure`, and `mining-royalty-risk`. Fuel and mining cleared the 30% gate; food/housing were precision cleanups.
 - `docs/roadmap/2026-05-21-data-operating-roadmap.md` — current execution order now routes next work to Path A rollout before Path B encoder work.
 
+Key docs added in session 23 (Living Narrative Threads canon — 2026-05-24):
+- `docs/specs/2026-05-24-living-narrative-threads.md` — product/data canon: user-facing Atlas should expose living Narrative Threads; `atlas_topics` is internal anchor vocabulary, not the visible taxonomy.
+- `docs/research/2026-05-24-app-panel-thread-audit.md` — panel-by-panel audit mapping Brief, Globe/Heat, NarrativeThreads, SignalStream, CountryBrief, ThemeDetail, PublicAttention, Workspace, and Search to the seven Atlas thread questions.
+- `docs/roadmap/2026-05-24-open-issues-thread-triage.md` — open issue triage into `canon`, `evolve`, `close-after-merge`, `parking`, `blocked`, and `stale-review`.
+- `docs/superpowers/plans/2026-05-24-living-narrative-threads.md` — implementation plan for the first read-only `/api/v2/threads` beta and compatible Brief/NarrativeThreads migration.
+- GitHub #207 — umbrella issue for the Living Narrative Threads data contract.
+
 Session 22 topic taxonomy state:
 - Path A pilot result: `election-legitimacy-dispute` lex_pct `6.3% -> 31.6%`, high_conf `5 -> 27`, multilingual terms drove `74%` of lex-match volume; global coverage moved `13.08% -> 13.35%`.
 - Armed-conflict partial result: lex_pct `2.10% -> 6.56%`, high_conf `22 -> 85`, global v2 coverage after re-backfill `17.22%`. Treat as partial because the 30% gate did not clear; do not re-add broad armed-incident terms just to raise recall.
@@ -52,6 +59,14 @@ Session 22 topic taxonomy state:
 - Open issues: #202 Path A, #203 Path B, #204 Path C. #202 remains open until all six low-lex topics are migrated.
 - Next taxonomy step: close/mark #202 complete after PR merge, then use Path C to evaluate splits for local armed incidents vs armed conflict, and mining royalty vs mining/resource-disaster risk.
 - Theme/topic guardrail: do not trust GDELT theme classification alone as proof of a significant Atlas topic. Topic changes must be validated against real headlines, lex_pct/high_conf movement, and precision spot checks.
+
+Session 23 Living Narrative Threads direction:
+- Atlas topics are internal anchors for measurement, backfills, precision gates, and benchmarks. Do not design the user-facing product around a fixed table of 10/30/130 topics.
+- The visible product model is living Narrative Threads: natural-language clusters that can emerge, split, merge, fade, and connect to related threads as evidence changes.
+- Every thread-capable surface should answer at least one of the seven Atlas questions: why this is moving now, what changed in the last 10h, where it is concentrated, which subthreads are forming, which sources are driving it, what evidence supports it, and what related thread it connects to.
+- First technical increment should be read-only and additive: build `/api/v2/threads` above existing `signal_topic_assignments`, `atlas_topics`, `signals_v2`, aggregate tables, source mix, and related-topic co-occurrence. Keep current theme-based UI fallbacks until smoke-tested.
+- Backend beta exists as `living-narrative-threads-v0`: `/api/v2/threads` and `/api/v2/threads/{thread_id}` in `backend/app/routers/threads.py`, assembled by `backend/app/services/thread_intelligence.py`. Review live output quality before wiring frontend panels.
+- Do not add user-facing topic correction UI yet. Controlled SQL review, benchmark labels, and precision gates remain the validation path.
 
 Session 20 data state:
 - Local archive root: `/Users/pedro/AtlasArchive`.

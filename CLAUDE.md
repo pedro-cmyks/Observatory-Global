@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-21 (processed history routing + historical source aggregates)
+Last updated: 2026-05-24 (Living Narrative Threads canon)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -19,6 +19,7 @@ Use `docs/roadmap/2026-05-21-data-operating-roadmap.md` as the current execution
 3. App-wide long-window routing through processed history.
 4. Hot-window NLP/topic/source quality.
 5. Coverage/provenance UI and visual manuals.
+6. Living Narrative Threads as the next product/data route.
 
 Older docs remain valid but subordinate:
 
@@ -27,6 +28,25 @@ Older docs remain valid but subordinate:
 - `docs/superpowers/specs/2026-05-21-processed-historical-routing-design.md`
 - `docs/roadmap/2026-05-19-topic-and-signal-class-attack.md`
 - `docs/roadmap/2026-05-16-productization-roadmap.md`
+
+Living Narrative Threads canon:
+
+- `docs/specs/2026-05-24-living-narrative-threads.md`
+- `docs/research/2026-05-24-app-panel-thread-audit.md`
+- `docs/roadmap/2026-05-24-open-issues-thread-triage.md`
+- `docs/superpowers/plans/2026-05-24-living-narrative-threads.md`
+
+Product rule: `atlas_topics` is an internal anchor vocabulary, not the user's
+primary mental model. User-facing surfaces should converge on living Narrative
+Threads that answer: why this is moving now, what changed in the last 10h,
+where it is concentrated, which subthreads are forming, which sources are
+driving it, what evidence supports it, and what related thread it connects to.
+The first technical increment exists as an additive read-only `/api/v2/threads`
+beta above existing topic assignments, aggregates, sources, and signal evidence.
+Contract: `living-narrative-threads-v0`. Implementation:
+`backend/app/services/thread_intelligence.py` + `backend/app/routers/threads.py`.
+Do not remove current theme fallbacks until live top-10 thread quality and
+deployed smoke tests pass.
 
 ### App-wide historical routing scope
 

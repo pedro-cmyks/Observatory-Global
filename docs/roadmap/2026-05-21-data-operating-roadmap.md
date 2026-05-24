@@ -11,6 +11,11 @@ Atlas should behave like a data product, not a raw news dump:
 3. **Every product-served signal has an honest processing method.** Transformer, lexicon, topic classifier, fast neutral fallback, and historical aggregate methods must be exposed rather than hidden.
 4. **Long windows work from processed history.** `1w` and `1m` app views should not pretend to query raw history after raw rows have been pruned.
 5. **The UI explains coverage and provenance.** Users should know whether they are seeing live hot data, processed history, partial coverage, social commentary, state media, or humanitarian evidence.
+6. **The product shows living Narrative Threads, not fixed-topic tables.**
+   `atlas_topics` is the internal anchor vocabulary; visible surfaces should
+   answer why a thread is moving, what changed in the last 10h, where it is
+   concentrated, which subthreads are forming, which sources drive it, what
+   evidence supports it, and what related thread it connects to.
 
 ## Current Source Of Truth
 
@@ -20,6 +25,9 @@ Atlas should behave like a data product, not a raw news dump:
 | Processed historical sync | `docs/superpowers/plans/2026-05-21-processed-historical-sync.md` | Partially shipped |
 | App-wide processed historical routing | `docs/superpowers/specs/2026-05-21-processed-historical-routing-design.md` | Approved direction, needs plan/execution |
 | Topic + signal-class quality | `docs/roadmap/2026-05-19-topic-and-signal-class-attack.md` | Active, but now subordinate to this roadmap |
+| Living Narrative Threads | `docs/specs/2026-05-24-living-narrative-threads.md` | Canonical next product/data layer |
+| App panel audit | `docs/research/2026-05-24-app-panel-thread-audit.md` | Current panel-by-panel thread migration map |
+| Open issue triage | `docs/roadmap/2026-05-24-open-issues-thread-triage.md` | Current issue canon/evolve/parking review |
 
 ## Phase 0 — Stabilize The Ground Truth
 
@@ -204,7 +212,50 @@ Atlas can then show when a narrative is media-led, public-led, social-led, or si
 - Narrative/public attention threads can link social/public signals to media topics without counting them as the same kind of evidence.
 - Humanitarian rows are visible beyond a token count.
 
-## Phase 5 — Product Presentation And Manuals
+## Phase 5 — Living Narrative Threads
+
+**Goal:** make the product reason in evidence-backed living threads instead of
+asking users to understand fixed internal topic labels.
+
+**Issues:** #207, #168, #173, #177, #183, #203, #204.
+
+**Work:**
+
+1. Treat `atlas_topics` as internal anchors, not UI taxonomy.
+2. Add a read-only backend thread assembler above existing data:
+   `signal_topic_assignments`, `atlas_topics`, `signals_v2`, aggregate tables,
+   source mix, and related-topic co-occurrence.
+3. [x] Expose beta `/api/v2/threads` and `/api/v2/threads/{thread_id}`.
+4. Add thread fields that directly answer the Atlas questions:
+   `why_now`, `changed_10h`, `geo_concentration`, `subthreads`,
+   `source_mix`, `evidence_samples`, `related_threads`, and `confidence`.
+5. Rewire Brief and NarrativeThreads through compatibility adapters before
+   replacing the current theme-based fallback.
+6. Make SignalStream evidence-role aware for selected threads.
+7. Evolve ThemeDetail into a ThreadDetail-compatible shell.
+
+**Creative solution:** keep the stable internal topic anchor layer, but let the
+visible story be generated from current evidence. This gives Atlas the
+discipline of a canon without making users learn the canon.
+
+**Done when:**
+
+- Brief can lead with living threads and explain why each is moving now.
+- NarrativeThreads rows have `thread_id`, natural labels, related threads, and
+  subthread affordances.
+- SignalStream can show why a signal supports a selected thread.
+- Country and entity focus views can show which threads are active in that
+  context.
+- Fixed atlas-topic labels remain available for provenance/debugging but are
+  not the primary user-facing model.
+
+**Status 2026-05-24:** first backend beta implemented without migrations. The
+contract is `living-narrative-threads-v0`, read-only, and assembled from
+existing hot-window atlas-topic assignments plus signal evidence. Next step is
+manual live review of the top 10 threads before wiring Brief or
+NarrativeThreads.
+
+## Phase 6 — Product Presentation And Manuals
 
 **Goal:** once the data is honest, make the product teachable.
 
@@ -254,3 +305,7 @@ These stay open but should not interrupt Phases 1-3 unless they become blockers:
 10. Normalize sentiment presentation around Atlas sentiment; keep GDELT Tone as internal fallback/calibration.
 11. Build a small benchmark/precision harness before Path B; do not promote encoder results below the 85-90% precision gate.
 12. Feed Path C with the taxonomy findings from Path A: split local armed incidents from armed conflict; rename/split mining royalty vs mining/resource-disaster risk; revisit food/housing once more multilingual evidence accumulates.
+13. [x] Canonize Living Narrative Threads as the next product/data route.
+14. Use #207 as the umbrella thread issue and evolve stale issue wording using `docs/roadmap/2026-05-24-open-issues-thread-triage.md`.
+15. [x] Implement beta `/api/v2/threads` from `docs/superpowers/plans/2026-05-24-living-narrative-threads.md`.
+16. Review live `/api/v2/threads?hours=24&limit=10` output for thread quality before frontend consumption.
