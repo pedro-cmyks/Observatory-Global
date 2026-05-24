@@ -156,24 +156,39 @@ LIMIT $2
 
 THREAD_EVIDENCE_SQL = """
 SELECT
-    s.id,
-    s.headline,
-    s.source_name,
-    s.source_url,
-    s.country_code,
-    COALESCE(c.name, s.country_code) AS country_name,
-    s.timestamp,
-    s.nlp_sentiment,
-    sta.confidence
-FROM signal_topic_assignments sta
-JOIN atlas_topics at ON at.id = sta.topic_id
-JOIN signals_v2 s ON s.id = sta.signal_id
-LEFT JOIN countries_v2 c ON c.code = s.country_code
-WHERE sta.model_version = 'theme-hint-lex-v2'
-  AND sta.assigned_at >= NOW() - ($1::int * INTERVAL '1 hour')
-  AND at.slug = $2::text
-  AND ($3::text[] IS NULL OR s.country_code = ANY($3::text[]))
-ORDER BY sta.confidence DESC, s.timestamp DESC
+    id,
+    headline,
+    source_name,
+    source_url,
+    country_code,
+    country_name,
+    timestamp,
+    nlp_sentiment,
+    confidence,
+    syndication_count
+FROM (
+    SELECT DISTINCT ON (LOWER(s.headline))
+        s.id,
+        s.headline,
+        s.source_name,
+        s.source_url,
+        s.country_code,
+        COALESCE(c.name, s.country_code) AS country_name,
+        s.timestamp,
+        s.nlp_sentiment,
+        sta.confidence,
+        COUNT(*) OVER (PARTITION BY LOWER(s.headline))::int AS syndication_count
+    FROM signal_topic_assignments sta
+    JOIN atlas_topics at ON at.id = sta.topic_id
+    JOIN signals_v2 s ON s.id = sta.signal_id
+    LEFT JOIN countries_v2 c ON c.code = s.country_code
+    WHERE sta.model_version = 'theme-hint-lex-v2'
+      AND sta.assigned_at >= NOW() - ($1::int * INTERVAL '1 hour')
+      AND at.slug = $2::text
+      AND ($3::text[] IS NULL OR s.country_code = ANY($3::text[]))
+    ORDER BY LOWER(s.headline), sta.confidence DESC, s.timestamp DESC
+) deduped
+ORDER BY confidence DESC, timestamp DESC
 LIMIT $4
 """
 
@@ -300,8 +315,17 @@ def assemble_thread(
     }
 
 
+def evidence_role(syndication_count: int) -> str:
+    if syndication_count >= 5:
+        return "syndicated"
+    if syndication_count >= 2:
+        return "repeated"
+    return "representative"
+
+
 def _serialize_evidence(row: Any) -> dict[str, Any]:
     timestamp = _record_get(row, "timestamp")
+    syndication = int(_record_get(row, "syndication_count") or 1)
     return {
         "id": str(_record_get(row, "id")),
         "headline": _record_get(row, "headline"),
@@ -312,7 +336,8 @@ def _serialize_evidence(row: Any) -> dict[str, Any]:
         "timestamp": timestamp.isoformat() if hasattr(timestamp, "isoformat") else timestamp,
         "sentiment": _record_get(row, "nlp_sentiment"),
         "confidence": _record_get(row, "confidence"),
-        "evidence_role": "representative",
+        "syndication_count": syndication,
+        "evidence_role": evidence_role(syndication),
     }
 
 
