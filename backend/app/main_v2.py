@@ -103,7 +103,7 @@ async def shutdown():
 from app.routers import (
     stats, trends, signals, themes, search,
     geo, workspace, briefing, indicators, wiki, events, narratives, heat,
-    nlp_corrections,
+    nlp_corrections, threads,
 )
 
 app.include_router(stats.router)
@@ -120,3 +120,4 @@ app.include_router(events.router)
 app.include_router(narratives.router)
 app.include_router(heat.router)
 app.include_router(nlp_corrections.router)
+app.include_router(threads.router)

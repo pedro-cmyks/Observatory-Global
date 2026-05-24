@@ -41,9 +41,12 @@ primary mental model. User-facing surfaces should converge on living Narrative
 Threads that answer: why this is moving now, what changed in the last 10h,
 where it is concentrated, which subthreads are forming, which sources are
 driving it, what evidence supports it, and what related thread it connects to.
-The first technical increment should be an additive read-only `/api/v2/threads`
-beta above existing topic assignments, aggregates, sources, and signal evidence;
-do not remove current theme fallbacks until deployed smoke tests pass.
+The first technical increment exists as an additive read-only `/api/v2/threads`
+beta above existing topic assignments, aggregates, sources, and signal evidence.
+Contract: `living-narrative-threads-v0`. Implementation:
+`backend/app/services/thread_intelligence.py` + `backend/app/routers/threads.py`.
+Do not remove current theme fallbacks until live top-10 thread quality and
+deployed smoke tests pass.
 
 ### App-wide historical routing scope
 

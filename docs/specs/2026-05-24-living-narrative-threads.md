@@ -146,6 +146,69 @@ Recommended first technical increment:
 4. Reuse existing `NarrativeThreads` UI but feed it thread-shaped data.
 5. Keep the old theme-based path as fallback until smoke-tested.
 
+## Beta Contract: `/api/v2/threads`
+
+The first technical increment is live in code as a read-only beta contract. It
+does not add tables and does not replace existing UI routes.
+
+Collection:
+
+```http
+GET /api/v2/threads?hours=24&limit=10
+```
+
+Response shape:
+
+```json
+{
+  "beta": true,
+  "hours": 24,
+  "contract": "living-narrative-threads-v0",
+  "threads": [
+    {
+      "thread_id": "fuel-subsidy-unrest--ng-pe",
+      "label": "Fuel subsidy unrest intensifies in Nigeria and Peru",
+      "summary": "Fuel subsidy unrest intensifies in Nigeria and Peru",
+      "anchor_topics": ["fuel-subsidy-unrest"],
+      "signal_count": 120,
+      "source_count": 18,
+      "country_count": 3,
+      "changed_10h": 47,
+      "sentiment_swing_10h": -0.24,
+      "top_countries": ["NG", "PE"],
+      "top_country_names": ["Nigeria", "Peru"],
+      "source_mix": {
+        "top_sources": ["reuters.com", "elcomercio.pe"],
+        "source_count": 18
+      },
+      "confidence": "high",
+      "why_now": "47 more signals in the last 10h, concentrated in Nigeria and Peru.",
+      "subthreads": [],
+      "related_threads": [],
+      "evidence_samples": []
+    }
+  ]
+}
+```
+
+Detail:
+
+```http
+GET /api/v2/threads/{thread_id}?hours=24
+```
+
+The detail endpoint returns the same thread object with up to eight
+representative `evidence_samples`.
+
+Current limitations:
+
+- Thread rows are assembled from atlas-topic anchors, so this is still a bridge,
+  not full clustering.
+- `subthreads` is reserved and empty until we add entity/geography/source
+  component detection.
+- `source_mix` starts with top sources and source count; voice lanes come next.
+- UI should consume this only after manual inspection of live top-10 output.
+
 ## Guardrails
 
 - GDELT themes are hints, not proof.

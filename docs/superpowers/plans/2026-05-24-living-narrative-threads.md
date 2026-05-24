@@ -327,7 +327,11 @@ Run: `cd backend && PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 .venv/bin/python -m pytest 
 
 Expected: PASS without requiring live database.
 
-## Task 6: Frontend Thread Types And Adapter
+## Deferred Task 6: Frontend Thread Types And Adapter
+
+Status 2026-05-24: deferred until live `/api/v2/threads?hours=24&limit=10`
+output is manually reviewed. This avoids wiring the UI to a beta assembler
+before validating that its top threads are coherent.
 
 **Files:**
 - Create: `frontend-v2/src/types/threads.ts`

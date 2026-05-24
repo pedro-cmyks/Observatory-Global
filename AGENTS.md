@@ -65,6 +65,7 @@ Session 23 Living Narrative Threads direction:
 - The visible product model is living Narrative Threads: natural-language clusters that can emerge, split, merge, fade, and connect to related threads as evidence changes.
 - Every thread-capable surface should answer at least one of the seven Atlas questions: why this is moving now, what changed in the last 10h, where it is concentrated, which subthreads are forming, which sources are driving it, what evidence supports it, and what related thread it connects to.
 - First technical increment should be read-only and additive: build `/api/v2/threads` above existing `signal_topic_assignments`, `atlas_topics`, `signals_v2`, aggregate tables, source mix, and related-topic co-occurrence. Keep current theme-based UI fallbacks until smoke-tested.
+- Backend beta exists as `living-narrative-threads-v0`: `/api/v2/threads` and `/api/v2/threads/{thread_id}` in `backend/app/routers/threads.py`, assembled by `backend/app/services/thread_intelligence.py`. Review live output quality before wiring frontend panels.
 - Do not add user-facing topic correction UI yet. Controlled SQL review, benchmark labels, and precision gates remain the validation path.
 
 Session 20 data state:

@@ -42,6 +42,10 @@ Living Threads canon:
   existing data (`signal_topic_assignments`, `atlas_topics`, `signals_v2`,
   aggregates, source mix, and related-topic co-occurrence), exposed as
   `/api/v2/threads` before any major UI redesign.
+- Backend beta is now implemented in code as `living-narrative-threads-v0`:
+  `/api/v2/threads` returns top thread candidates and
+  `/api/v2/threads/{thread_id}` returns detail with representative evidence.
+  It is read-only and uses existing hot-window data; no migration was added.
 
 Atlas-topic taxonomy state:
 
@@ -102,8 +106,8 @@ Next execution order:
    closing `#193`.
 4. Normalize product sentiment presentation around Atlas sentiment under `#183`.
 5. Build a small benchmark/precision harness before any Path B encoder work.
-6. Implement the read-only `/api/v2/threads` beta before rewiring Brief,
-   NarrativeThreads, SignalStream, or ThemeDetail.
+6. Review live `/api/v2/threads?hours=24&limit=10` output for coherence before
+   rewiring Brief, NarrativeThreads, SignalStream, or ThemeDetail.
 
 ---
 
