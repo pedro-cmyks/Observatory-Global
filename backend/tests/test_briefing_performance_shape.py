@@ -218,3 +218,22 @@ def test_briefing_related_topics_uses_cooccurrence_no_signals_v2_join():
     assert "signals_v2" not in co_block
     # Response shape: dict keyed by topic_slug
     assert 'r["topic_slug"]:' in source
+
+
+def test_briefing_exposes_top_threads_via_thread_intelligence():
+    """Milestone 2: Brief consumes the same living-narrative-threads contract
+    that /api/v2/threads serves so the leading product surface speaks in
+    threads (label, why_now, changed_10h, confidence band) instead of raw
+    atlas-topic counts. The section must reuse the briefing connection (no
+    second pool acquire per request) and degrade to [] on failure."""
+    source = _briefing_source()
+
+    assert "from app.services.thread_intelligence import fetch_threads" in source
+    assert 'TOP_THREADS_CONTRACT = "living-narrative-threads-v0"' in source
+
+    briefing_body = _get_briefing_source()
+    assert 'await fetch_threads(' in briefing_body
+    assert "conn=conn" in briefing_body
+    assert 'degraded_segments.append("top_threads")' in briefing_body
+    assert '"top_threads": top_threads' in briefing_body
+    assert '"top_threads_contract": TOP_THREADS_CONTRACT' in briefing_body

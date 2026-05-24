@@ -341,27 +341,54 @@ def _serialize_evidence(row: Any) -> dict[str, Any]:
     }
 
 
+async def _fetch_threads_with_conn(
+    conn: Any,
+    *,
+    hours: int,
+    limit: int,
+    topic_slug: str | None,
+    country_codes: list[str] | None,
+) -> list[dict[str, Any]]:
+    rows = await conn.fetch(
+        THREADS_SQL,
+        hours,
+        limit,
+        topic_slug,
+        country_codes or None,
+        timeout=8,
+    )
+    return [assemble_thread(row) for row in rows]
+
+
 async def fetch_threads(
     *,
     hours: int = 24,
     limit: int = 10,
     topic_slug: str | None = None,
     country_codes: list[str] | None = None,
+    conn: Any = None,
 ) -> list[dict[str, Any]]:
+    if conn is not None:
+        return await _fetch_threads_with_conn(
+            conn,
+            hours=hours,
+            limit=limit,
+            topic_slug=topic_slug,
+            country_codes=country_codes,
+        )
+
     if db.pool is None:
         logger.warning("thread intelligence requested without database pool")
         return []
 
-    async with db.pool.acquire() as conn:
-        rows = await conn.fetch(
-            THREADS_SQL,
-            hours,
-            limit,
-            topic_slug,
-            country_codes or None,
-            timeout=8,
+    async with db.pool.acquire() as own_conn:
+        return await _fetch_threads_with_conn(
+            own_conn,
+            hours=hours,
+            limit=limit,
+            topic_slug=topic_slug,
+            country_codes=country_codes,
         )
-    return [assemble_thread(row) for row in rows]
 
 
 async def fetch_thread_detail(
