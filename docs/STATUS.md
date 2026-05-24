@@ -1,6 +1,65 @@
 # Project Status
 
-## Current Handoff — 2026-05-23 (mig 035+035b — recall lift + global coverage audit)
+## Current Handoff — 2026-05-23 (briefing hierarchy + related topics + AI taxonomy spec)
+
+### What shipped this session
+
+Branch `feat/briefing-hierarchy-related-topics`. One backend file, one test file, one new spec doc, no migrations.
+
+**API**
+- `backend/app/routers/briefing.py` — `/api/v2/briefing` now returns:
+  - `topics_by_domain`: parent_domain → [topics] hierarchy (10 domains, 2-5 topics each)
+  - `related_topics`: topic_slug → [top-3 co-occurring topics] map (Jaccard-proxy strength)
+- Both queries only touch `signal_topic_assignments` (no signals_v2 join) — assigned_at is the time filter. Critical perf detail: the related_topics CTE without signals_v2 join runs in **47 ms**; with it, 605 ms (13× slowdown).
+
+**Tests**
+- `backend/tests/test_briefing_performance_shape.py` — two new shape tests pin the SQL shape, the assigned_at filter, the Jaccard formula, and block regressing back to the signals_v2 join. Full backend suite: **319 passed, 6 skipped**.
+
+**Spec**
+- `docs/specs/2026-05-23-ai-assisted-taxonomy.md` — three paths for AI-assisted taxonomy expansion. Not implemented yet. Sequencing recommends Path A (multilingual lex via LLM) first.
+
+### Why this matters
+
+Analyst question: "the variety of topics is very important, right? Could there be clustering, big themes contain subthemes? When a topic enters, does the system tell me this is related to those other topics?"
+
+Answer: the hierarchy already existed in `atlas_topics.parent_domain` but was not exposed in the API. The co-occurrence signal was also already in the data (1,698 signals had 2 topics in 24h, 18 had 3 — the v2 classifier allows top-2 per signal). This session exposes both without writing any new models or migrations.
+
+### Live data after deploy
+
+Top co-occurrence pairs (24h, currently in API):
+
+| Topic A | Topic B | Co-signals | Narrative |
+|---|---|---|---|
+| fuel-subsidy-unrest | labor-strike-disruption | 373 | Economic protest cluster |
+| food-price-stress | housing-cost-pressure | 210 | Cost-of-living |
+| water-stress-drought | flood-landslide-disaster | 149 | Water cycle disruption |
+| fuel-subsidy-unrest | food-price-stress | 123 | Inflation chain |
+| migration-border-pressure | forced-displacement | 95 | Migration |
+| armed-conflict-escalation | forced-displacement | 56 | War → refugees |
+
+These are conceptually coherent — co-occurrence detection works as a related-topic mechanism without any ML.
+
+### Sentiment vs. tone (analyst clarification)
+
+Same metric (avg polarity), different sources. The briefing already returns a `sentiment_source` label per row: `gdelt` (V2Tone), `nlp` (transformer), or `nlp_weighted` (confidence-weighted mix). The frontend may show the word "tone" in legacy places and "sentiment" in newer ones — both refer to the same numeric scale; the source label disambiguates provenance. Documented in CLAUDE.md.
+
+### AI taxonomy — current state and proposed path
+
+- **Current**: zero ML for topics. Rule-based (lex substring + theme intersection). Sentiment uses pre-trained `xlm-roberta-base`, never fine-tuned on Atlas data. NER and framing use pre-trained spaCy / distilroberta NLI — also never fine-tuned.
+- **Proposed (spec, not implemented)**:
+  - Path A: LLM expands `atlas_topics.lexicon_terms` per topic with multilingual variants. Single migration. 4 hours total. Targets the 64% `xx` recall gap.
+  - Path B: bootstrap-trained sentence encoder on the 21,919 high-confidence v2 assignments. New worker + new table. 2-3 weeks. Refines, doesn't replace, the lex classifier.
+  - Path C: LLM proposes taxonomy revisions (split/merge/add/retire topics) every 4-8 weeks based on the unclassified pool.
+- Sequencing: A first, then B once A confirms data richness, then C quarterly.
+
+### Operational state
+
+- Cron `com.atlas.atlas-topic-classifier.plist` still running every 30 min — feeds fresh assignments that flow into both top_atlas_topics, topics_by_domain, and related_topics.
+- Three open PRs from earlier today already merged (197, 198, 199, 200). This work is PR #201.
+
+---
+
+## Previous Handoff — 2026-05-23 (mig 035+035b — recall lift + global coverage audit)
 
 ### What shipped this session
 

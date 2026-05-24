@@ -402,6 +402,115 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         else:
             top_atlas_topics = []
 
+        # Atlas hierarchy + co-occurrence (2026-05-23 narrative-cluster spec):
+        # parent_domain (10 domains, 2-5 topics each) is the natural cluster
+        # level. topics_by_domain agrees the same window as top_atlas_topics
+        # but groups under domain so the briefing can render the taxonomy as
+        # a tree. related_topics is a co-occurrence map (topic -> top-3
+        # related) using a Jaccard-proxy score sqrt(|A|*|B|) so big topics
+        # don't always dominate the relations of small ones. Both queries
+        # only touch signal_topic_assignments (no signals_v2 join) — they
+        # use assigned_at instead of signals_v2.timestamp, which is fine
+        # because the cron's idempotent upsert refreshes assigned_at on
+        # every pass. Hot path: ~80 ms (topics_by_domain) + ~47 ms
+        # (related_topics).
+        if has_atlas_assignments:
+            topics_by_domain = await _fetch_section(
+                conn, degraded_segments, "topics_by_domain", """
+                WITH per_topic AS (
+                    SELECT t.parent_domain, t.slug, t.label,
+                           COUNT(*)::bigint                                         AS signal_count,
+                           ROUND(AVG(a.confidence)::numeric, 3)::float              AS avg_confidence,
+                           COUNT(*) FILTER (WHERE a.confidence >= 0.75)::bigint     AS high_confidence_count
+                    FROM signal_topic_assignments a
+                    JOIN atlas_topics t ON t.id = a.topic_id
+                    WHERE a.method = 'lexicon'
+                      AND a.model_version = 'theme-hint-lex-v2'
+                      AND a.assigned_at > NOW() - ($1::int * INTERVAL '1 hour')
+                    GROUP BY t.parent_domain, t.slug, t.label
+                )
+                SELECT parent_domain,
+                       SUM(signal_count)::bigint                                   AS domain_signal_count,
+                       COUNT(*)::int                                               AS topics_in_domain,
+                       jsonb_agg(
+                           jsonb_build_object(
+                               'slug', slug, 'label', label,
+                               'signal_count', signal_count,
+                               'avg_confidence', avg_confidence,
+                               'high_confidence_count', high_confidence_count
+                           ) ORDER BY signal_count DESC
+                       )                                                           AS topics
+                FROM per_topic
+                GROUP BY parent_domain
+                ORDER BY domain_signal_count DESC
+            """, hours)
+            related_topics = await _fetch_section(
+                conn, degraded_segments, "related_topics", """
+                WITH pairs AS (
+                    SELECT LEAST(a1.topic_id, a2.topic_id)    AS t_lo,
+                           GREATEST(a1.topic_id, a2.topic_id) AS t_hi,
+                           COUNT(*)::int                       AS co
+                    FROM signal_topic_assignments a1
+                    JOIN signal_topic_assignments a2
+                      ON a1.signal_id = a2.signal_id
+                     AND a1.topic_id < a2.topic_id
+                     AND a2.method = 'lexicon'
+                     AND a2.model_version = 'theme-hint-lex-v2'
+                     AND a2.assigned_at > NOW() - ($1::int * INTERVAL '1 hour')
+                    WHERE a1.method = 'lexicon'
+                      AND a1.model_version = 'theme-hint-lex-v2'
+                      AND a1.assigned_at > NOW() - ($1::int * INTERVAL '1 hour')
+                    GROUP BY t_lo, t_hi
+                ),
+                topic_totals AS (
+                    SELECT a.topic_id, COUNT(*)::int AS sigs
+                    FROM signal_topic_assignments a
+                    WHERE a.method = 'lexicon'
+                      AND a.model_version = 'theme-hint-lex-v2'
+                      AND a.assigned_at > NOW() - ($1::int * INTERVAL '1 hour')
+                    GROUP BY a.topic_id
+                ),
+                expanded AS (
+                    SELECT p.t_lo AS topic_id, p.t_hi AS other_id, p.co,
+                           p.co::float / NULLIF(SQRT(tl.sigs * th.sigs), 0) AS strength
+                    FROM pairs p
+                    JOIN topic_totals tl ON tl.topic_id = p.t_lo
+                    JOIN topic_totals th ON th.topic_id = p.t_hi
+                    UNION ALL
+                    SELECT p.t_hi, p.t_lo, p.co,
+                           p.co::float / NULLIF(SQRT(tl.sigs * th.sigs), 0)
+                    FROM pairs p
+                    JOIN topic_totals tl ON tl.topic_id = p.t_lo
+                    JOIN topic_totals th ON th.topic_id = p.t_hi
+                ),
+                ranked AS (
+                    SELECT e.topic_id, t.slug AS topic_slug,
+                           ot.slug AS other_slug, e.co,
+                           ROUND(e.strength::numeric, 3) AS strength,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY e.topic_id
+                               ORDER BY e.strength DESC, e.co DESC
+                           ) AS rnk
+                    FROM expanded e
+                    JOIN atlas_topics t  ON t.id  = e.topic_id
+                    JOIN atlas_topics ot ON ot.id = e.other_id
+                )
+                SELECT topic_slug,
+                       jsonb_agg(
+                           jsonb_build_object(
+                               'slug', other_slug,
+                               'co_signals', co,
+                               'strength', strength
+                           ) ORDER BY rnk
+                       ) AS related
+                FROM ranked
+                WHERE rnk <= 3
+                GROUP BY topic_slug
+            """, hours)
+        else:
+            topics_by_domain = []
+            related_topics = []
+
         stats = await _fetch_section(conn, degraded_segments, "stats", """
             SELECT SUM(signal_count)::bigint                          AS total_signals,
                    COUNT(DISTINCT country_code)                       AS countries,
@@ -546,6 +655,27 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 for r in top_atlas_topics
             ],
             "top_atlas_topics_source": "signal_topic_assignments",
+            "topics_by_domain": [
+                {
+                    "parent_domain": r["parent_domain"],
+                    "domain_signal_count": int(r["domain_signal_count"]),
+                    "topics_in_domain": int(r["topics_in_domain"]),
+                    "topics": (
+                        json.loads(r["topics"])
+                        if isinstance(_record_get(r, "topics"), str)
+                        else _record_get(r, "topics")
+                    ),
+                }
+                for r in topics_by_domain
+            ],
+            "related_topics": {
+                r["topic_slug"]: (
+                    json.loads(r["related"])
+                    if isinstance(_record_get(r, "related"), str)
+                    else _record_get(r, "related")
+                )
+                for r in related_topics
+            },
             "historical_coverage": {
                 "source": (
                     "historical_processed"

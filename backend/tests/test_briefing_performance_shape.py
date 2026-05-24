@@ -178,3 +178,43 @@ def test_briefing_top_atlas_topics_reads_signal_topic_assignments():
     assert '"label": r["label"]' in atlas_section
     assert '"signal_count": int(r["signal_count"])' in atlas_section
     assert '"parent_domain"' in atlas_section
+
+
+def test_briefing_topics_by_domain_groups_by_parent_domain():
+    """topics_by_domain exposes the atlas_topics taxonomy hierarchy
+    (parent_domain -> [topics]). Reuses the same window as top_atlas_topics
+    and groups via jsonb_agg into domain rows. Must only touch
+    signal_topic_assignments (no signals_v2 join) — assigned_at is the
+    right time filter."""
+    source = _get_briefing_source()
+
+    assert '"topics_by_domain"' in source
+    assert "GROUP BY parent_domain" in source
+    assert "jsonb_agg" in source
+    # SQL must filter by assigned_at, not by joining signals_v2
+    assert "AND a.assigned_at > NOW() - ($1::int * INTERVAL '1 hour')" in source
+    # Response shape: each row carries parent_domain + topics array
+    assert '"parent_domain": r["parent_domain"]' in source
+    assert '"topics_in_domain": int(r["topics_in_domain"])' in source
+    assert '"domain_signal_count": int(r["domain_signal_count"])' in source
+
+
+def test_briefing_related_topics_uses_cooccurrence_no_signals_v2_join():
+    """related_topics maps topic_slug -> top-3 co-occurring topics, ranked
+    by a Jaccard-proxy co / sqrt(|A|*|B|) so volume doesn't dominate.
+    The self-join over signal_topic_assignments MUST stay inside the
+    table (no signals_v2 join) — the timestamp lookup was measured at
+    605 ms vs 47 ms when filtering by assigned_at directly."""
+    source = _get_briefing_source()
+
+    assert '"related_topics"' in source
+    assert "WITH pairs AS" in source
+    assert "SQRT(tl.sigs * th.sigs)" in source
+    assert "WHERE rnk <= 3" in source
+    # The co-occurrence CTE block must not join signals_v2.
+    co_block_start = source.index("WITH pairs AS")
+    co_block_end = source.index("WHERE rnk <= 3", co_block_start)
+    co_block = source[co_block_start:co_block_end]
+    assert "signals_v2" not in co_block
+    # Response shape: dict keyed by topic_slug
+    assert 'r["topic_slug"]:' in source
