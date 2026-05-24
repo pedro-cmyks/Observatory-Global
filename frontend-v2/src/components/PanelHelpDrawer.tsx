@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BookOpen, HelpCircle, X } from 'lucide-react'
+import { BookOpen, HelpCircle, X } from '../lib/icons'
 import './PanelHelpDrawer.css'
 
 export type PanelHelpId =

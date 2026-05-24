@@ -81,26 +81,131 @@ def test_assemble_thread_contract():
     row = {
         "topic_slug": "fuel-subsidy-unrest",
         "topic_label": "Fuel subsidy unrest",
+        "parent_domain": "economy-livelihoods",
         "signal_count": 120,
         "source_count": 18,
         "country_count": 3,
         "avg_confidence": 0.81,
+        "first_seen": None,
         "changed_10h": 47,
         "sentiment_swing_10h": -0.24,
         "top_countries": ["NG", "PE"],
         "top_country_names": ["Nigeria", "Peru"],
         "top_sources": ["reuters.com", "elcomercio.pe"],
+        "top_entities": ["Bola Tinubu", "Dina Boluarte"],
+        "hourly_timeline": [{"hour": "2026-05-24T10:00:00Z", "count": 12}],
         "related_topics": [{"topic": "labor-strike-disruption", "score": 0.21}],
     }
     thread = assemble_thread(row)
     assert thread["thread_id"] == "fuel-subsidy-unrest--ng-pe"
     assert thread["anchor_topics"] == ["fuel-subsidy-unrest"]
+    assert thread["parent_domain"] == "economy-livelihoods"
     assert thread["confidence"] == "high"
+    assert thread["avg_confidence"] == 0.81
+    # 47 / 120 = 0.392 → surging (>= 5% delta)
+    assert thread["trend"] == "surging"
+    assert thread["top_entities"] == ["Bola Tinubu", "Dina Boluarte"]
+    assert thread["hourly_timeline"][0]["count"] == 12
     assert (
         thread["why_now"]
         == "47 more signals in the last 10h, concentrated in Nigeria and Peru."
     )
     assert thread["related_threads"][0]["topic"] == "labor-strike-disruption"
+
+
+def test_assemble_thread_exposes_quality_metadata_and_raw_entity_guardrails():
+    row = {
+        "topic_slug": "transport-corridor-disruption",
+        "topic_label": "Transport corridor disruption",
+        "parent_domain": "infrastructure",
+        "signal_count": 25,
+        "source_count": 4,
+        "country_count": 2,
+        "avg_confidence": 0.67,
+        "first_seen": None,
+        "changed_10h": 5,
+        "sentiment_swing_10h": 0.08,
+        "lex_count": 6,
+        "theme_count": 19,
+        "top_countries": ["US", "RB"],
+        "top_country_names": ["United States", "RB"],
+        "top_sources": ["zazoom.it", "reuters.com"],
+        "top_entities": ["Pacific Ocean", "El Niño"],
+        "hourly_timeline": [],
+        "related_topics": [],
+    }
+
+    thread = assemble_thread(row)
+
+    assert thread["top_people"] == []
+    assert thread["top_entities"] == ["Pacific Ocean", "El Niño"]
+    assert thread["quality"] == {
+        "lex_pct": 0.24,
+        "method_mix": {"lex": 6, "theme": 19},
+        "source_flags": {"aggregator_dominant": True},
+        "geo_flags": {"unresolved_country_code": True},
+        "entity_flags": {"raw_entity_field_untyped": True},
+    }
+
+
+def test_assemble_thread_quality_metadata_handles_zero_counts_and_clean_rows():
+    row = {
+        "topic_slug": "heat-health-risk",
+        "topic_label": "Heat and public health risk",
+        "signal_count": 0,
+        "source_count": 0,
+        "country_count": 0,
+        "avg_confidence": None,
+        "changed_10h": 0,
+        "lex_count": None,
+        "theme_count": None,
+        "top_countries": [],
+        "top_country_names": [],
+        "top_sources": ["reuters.com"],
+        "top_entities": [],
+    }
+
+    thread = assemble_thread(row)
+
+    assert thread["quality"]["lex_pct"] == 0
+    assert thread["quality"]["method_mix"] == {"lex": 0, "theme": 0}
+    assert thread["quality"]["source_flags"] == {"aggregator_dominant": False}
+    assert thread["quality"]["geo_flags"] == {"unresolved_country_code": False}
+    assert thread["quality"]["entity_flags"] == {"raw_entity_field_untyped": False}
+
+
+def test_trend_label_classifies_volume_delta():
+    from app.services.thread_intelligence import _trend_label
+    assert _trend_label(0, 100) == "stable"
+    assert _trend_label(10, 100) == "surging"  # 10% jump
+    assert _trend_label(-20, 100) == "fading"
+    assert _trend_label(2, 1000) == "stable"  # 0.2% noise
+    assert _trend_label(100, 0) == "stable"  # divide-by-zero guard
+
+
+def test_threads_sql_exposes_enriched_fields():
+    """M3a additions: parent_domain, first_seen, top_entities, hourly_timeline
+    must be SELECTed so the frontend NarrativeThreads card has parity with
+    the legacy /api/v2/narratives shape."""
+    assert "parent_domain" in THREADS_SQL
+    assert "first_seen" in THREADS_SQL
+    assert "top_entities" in THREADS_SQL
+    assert "hourly_timeline" in THREADS_SQL
+    assert "entity_lists" in THREADS_SQL
+    assert "timeline_base" in THREADS_SQL
+    # Performance: PK guarantees uniqueness within (topic, model_version)
+    # group, so COUNT(*) replaces COUNT(DISTINCT signal_id) in topic_agg.
+    # related_counts intentionally keeps DISTINCT because it joins back to
+    # signal_topic_assignments and may see the same signal twice.
+    assert "COUNT(*)::int AS signal_count" in THREADS_SQL
+
+
+def test_threads_sql_exposes_method_counts_for_quality_metadata():
+    assert "sta.evidence" in THREADS_SQL
+    assert "evidence->>'lex_count'" in THREADS_SQL
+    assert "evidence->>'theme_hits'" in THREADS_SQL
+    assert "ta.lex_count" in THREADS_SQL
+    assert "ta.theme_count" in THREADS_SQL
 
 
 def test_threads_sql_uses_assignments_and_atlas_topics():

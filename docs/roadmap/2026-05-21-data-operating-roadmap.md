@@ -26,8 +26,10 @@ Atlas should behave like a data product, not a raw news dump:
 | App-wide processed historical routing | `docs/superpowers/specs/2026-05-21-processed-historical-routing-design.md` | Approved direction, needs plan/execution |
 | Topic + signal-class quality | `docs/roadmap/2026-05-19-topic-and-signal-class-attack.md` | Active, but now subordinate to this roadmap |
 | Living Narrative Threads | `docs/specs/2026-05-24-living-narrative-threads.md` | Canonical next product/data layer |
+| Atlas Focus Model | `docs/specs/2026-05-24-atlas-focus-model.md` | Canonical focus hierarchy: thread, country, entity, signal, workspace |
 | App panel audit | `docs/research/2026-05-24-app-panel-thread-audit.md` | Current panel-by-panel thread migration map |
 | Open issue triage | `docs/roadmap/2026-05-24-open-issues-thread-triage.md` | Current issue canon/evolve/parking review |
+| Narrative Threads quality audit | `docs/research/2026-05-24-thread-quality-audit.md` | Current quality gate for `/api/v2/threads` before UI swap |
 
 ## Phase 0 — Stabilize The Ground Truth
 
@@ -229,10 +231,21 @@ asking users to understand fixed internal topic labels.
 4. Add thread fields that directly answer the Atlas questions:
    `why_now`, `changed_10h`, `geo_concentration`, `subthreads`,
    `source_mix`, `evidence_samples`, `related_threads`, and `confidence`.
-5. Rewire Brief and NarrativeThreads through compatibility adapters before
-   replacing the current theme-based fallback.
-6. Make SignalStream evidence-role aware for selected threads.
-7. Evolve ThemeDetail into a ThreadDetail-compatible shell.
+5. [x] Rewire Brief to include `top_threads` behind the existing briefing
+   contract.
+6. Patch `/api/v2/threads` quality metadata before any visible
+   NarrativeThreads swap:
+   - raw entity values must not be exposed as person chips;
+   - topic rows need `lex_pct` / method support flags;
+   - source and geography quality flags must travel with the thread;
+   - high-noise topics must be fixed or down-ranked.
+7. Rewire NarrativeThreads through a compatibility adapter only after the
+   quality gates in `docs/research/2026-05-24-thread-quality-audit.md` pass.
+8. Make SignalStream evidence-role aware for selected threads.
+9. Evolve ThemeDetail into a ThreadDetail-compatible shell.
+10. Evolve Person Focus into Entity Focus. The first useful entity surface is
+    not a richer mention counter; it is a thread participation view with typed
+    entities, roles, evidence, and quality flags.
 
 **Creative solution:** keep the stable internal topic anchor layer, but let the
 visible story be generated from current evidence. This gives Atlas the
@@ -243,17 +256,22 @@ discipline of a canon without making users learn the canon.
 - Brief can lead with living threads and explain why each is moving now.
 - NarrativeThreads rows have `thread_id`, natural labels, related threads, and
   subthread affordances.
+- Top-10 NarrativeThreads candidates pass random-sample and evidence precision
+  gates before frontend promotion.
 - SignalStream can show why a signal supports a selected thread.
 - Country and entity focus views can show which threads are active in that
   context.
+- Person/entity views stop implying that raw NER mentions are validated people.
 - Fixed atlas-topic labels remain available for provenance/debugging but are
   not the primary user-facing model.
 
-**Status 2026-05-24:** first backend beta implemented without migrations. The
-contract is `living-narrative-threads-v0`, read-only, and assembled from
-existing hot-window atlas-topic assignments plus signal evidence. Next step is
-manual live review of the top 10 threads before wiring Brief or
-NarrativeThreads.
+**Status 2026-05-24 PM:** M1 and M2 are merged. Production exposes
+`/api/v2/threads` and `/api/v2/briefing` includes `top_threads`. The visible
+`NarrativeThreads.tsx` UI still uses `/api/v2/narratives`, which is the correct
+holding pattern. A production quality audit found mixed precision: strong
+threads exist, but `gender-violence-rights` and `transport-corridor-disruption`
+are not ready for UI promotion, raw `top_entities` needs typing, and source /
+geography quality flags are required before M3b.
 
 ## Phase 6 — Product Presentation And Manuals
 
@@ -308,4 +326,13 @@ These stay open but should not interrupt Phases 1-3 unless they become blockers:
 13. [x] Canonize Living Narrative Threads as the next product/data route.
 14. Use #207 as the umbrella thread issue and evolve stale issue wording using `docs/roadmap/2026-05-24-open-issues-thread-triage.md`.
 15. [x] Implement beta `/api/v2/threads` from `docs/superpowers/plans/2026-05-24-living-narrative-threads.md`.
-16. Review live `/api/v2/threads?hours=24&limit=10` output for thread quality before frontend consumption.
+16. [x] Review live `/api/v2/threads?hours=24&limit=10` output for thread quality before frontend consumption.
+17. [x] Patch #211 into a quality-enriched backend PR: keep the useful timeline /
+    trend fields, hold or type raw entities, add topic/source/geography quality
+    flags, and add repeatable audit tooling.
+18. Only after the audit gates pass, swap `frontend-v2/src/components/NarrativeThreads.tsx`
+    to consume `/api/v2/threads`.
+19. [x] Implement the first Thread-First Focus Quality plan slice in
+    `docs/superpowers/plans/2026-05-24-thread-first-focus-quality.md`:
+    backend quality metadata, audit script, and additive frontend focus model
+    prep. M3b remains gated.

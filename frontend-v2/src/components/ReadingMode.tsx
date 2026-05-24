@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Download, Loader2, X } from 'lucide-react'
+import { Download, Loader2, X } from '../lib/icons'
 import type { PinnedItem } from '../contexts/WorkspaceContext'
 import { fetchItemSignals, buildDossierMarkdown, type DossierSection, type DossierSignal } from '../lib/exportFormatters'
 import { getThemeLabel } from '../lib/themeLabels'

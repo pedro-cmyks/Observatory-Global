@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Download, Link, FileText, Image, Table, Check } from 'lucide-react'
+import { Download, Link, FileText, Image, Table, Check } from '../lib/icons'
 import * as htmlToImage from 'html-to-image'
 import {
     buildThemeBriefingMarkdown,

@@ -22,3 +22,16 @@ def test_threads_router_exposes_beta_detail_endpoint():
 def test_main_registers_threads_router():
     assert "nlp_corrections, threads" in MAIN_SOURCE
     assert "app.include_router(threads.router)" in MAIN_SOURCE
+
+
+def test_threads_router_caches_responses_in_redis():
+    """Hot path: scoped CTE on signal_topic_assignments JOIN signals_v2 takes
+    ~700 ms on production-sized 24h windows. Cache the assembled payload so
+    repeat hits (Brief prefetch, frontend polling) skip the JOIN."""
+    assert "THREADS_CACHE_TTL" in ROUTER_SOURCE
+    assert "DETAIL_CACHE_TTL" in ROUTER_SOURCE
+    assert "_cache_get" in ROUTER_SOURCE
+    assert "_cache_set" in ROUTER_SOURCE
+    # Both endpoints must check cache before doing the DB hit.
+    assert 'cache_key = f"threads:list:' in ROUTER_SOURCE
+    assert 'cache_key = f"threads:detail:' in ROUTER_SOURCE

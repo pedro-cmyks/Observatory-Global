@@ -6,7 +6,7 @@ import { useWorkspace } from '../contexts/WorkspaceContext'
 import { selectVisibleKeyPersons } from '../lib/countryBriefPeople'
 import { buildGeoNarrative } from '../lib/geoNarrative'
 import { groupThemeTopics } from '../lib/themeHierarchy'
-import { Pin, PinOff } from 'lucide-react'
+import { Pin, PinOff } from '../lib/icons'
 import { CompareSearchModal } from './CompareSearchModal'
 import './EntityPanel.css'
 

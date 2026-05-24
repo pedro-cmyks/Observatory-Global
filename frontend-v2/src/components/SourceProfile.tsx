@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getThemeLabel } from '../lib/themeLabels'
 import { useWorkspace } from '../contexts/WorkspaceContext'
-import { Pin, PinOff } from 'lucide-react'
+import { Pin, PinOff } from '../lib/icons'
 import './SourceProfile.css'
 
 interface SourceProfileData {

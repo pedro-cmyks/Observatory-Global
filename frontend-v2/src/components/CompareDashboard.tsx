@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { X } from 'lucide-react'
+import { X } from '../lib/icons'
 import './CompareDashboard.css'
 
 interface CompareDashboardProps {
