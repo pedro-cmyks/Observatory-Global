@@ -3,7 +3,7 @@
 
 ---
 
-## Current handoff (2026-05-24) — Topic quality direction
+## Current handoff (2026-05-24) — Living Narrative Threads direction
 
 The repo is clean on `v3-intel-layer`; latest commit is
 `0049a86 feat(atlas-topics): mig 036 Path A pilot — multilingual lex (#205)`.
@@ -21,6 +21,27 @@ Current data/product state:
   intelligence quality: too much historical volume still falls into
   `general-monitoring`, and low-lex topics depend too heavily on GDELT theme
   hints.
+- Product direction has shifted from "display better fixed topics" to
+  **Living Narrative Threads**. `atlas_topics` remains the internal anchor
+  vocabulary for measurement, backfills, benchmarks, and precision gates, but
+  the user-facing UI should show natural, evidence-backed threads that can
+  split, merge, fade, and connect to related threads.
+
+Living Threads canon:
+
+- Spec: `docs/specs/2026-05-24-living-narrative-threads.md`.
+- Panel audit: `docs/research/2026-05-24-app-panel-thread-audit.md`.
+- Open-issue triage: `docs/roadmap/2026-05-24-open-issues-thread-triage.md`.
+- Technical plan: `docs/superpowers/plans/2026-05-24-living-narrative-threads.md`.
+- GitHub umbrella: #207 (`feat(threads): introduce living Narrative Threads data contract`).
+- The seven Atlas questions are now the product contract: why this is moving
+  now, what changed in the last 10h, where it is concentrated, which
+  subthreads are forming, which sources are driving it, what evidence supports
+  it, and what related thread it connects to.
+- First implementation should be a read-only beta thread assembler above
+  existing data (`signal_topic_assignments`, `atlas_topics`, `signals_v2`,
+  aggregates, source mix, and related-topic co-occurrence), exposed as
+  `/api/v2/threads` before any major UI redesign.
 
 Atlas-topic taxonomy state:
 
@@ -75,11 +96,14 @@ Sentiment decision from analyst review:
 
 Next execution order:
 
-1. Commit and PR the completed Path A rollout (`037` + `038`) and docs.
-2. Run deployed frontend smoke tests for the app-wide long-window routing before
+1. Merge the completed Path A rollout (`037` + `038`) and docs.
+2. Keep the Living Narrative Threads canon as the next product/data route.
+3. Run deployed frontend smoke tests for the app-wide long-window routing before
    closing `#193`.
-3. Normalize product sentiment presentation around Atlas sentiment under `#183`.
-4. Build a small benchmark/precision harness before any Path B encoder work.
+4. Normalize product sentiment presentation around Atlas sentiment under `#183`.
+5. Build a small benchmark/precision harness before any Path B encoder work.
+6. Implement the read-only `/api/v2/threads` beta before rewiring Brief,
+   NarrativeThreads, SignalStream, or ThemeDetail.
 
 ---
 
