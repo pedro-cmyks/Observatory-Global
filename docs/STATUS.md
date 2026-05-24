@@ -1,6 +1,183 @@
 # Project Status
 
-## Current Handoff — 2026-05-23 (Path A pilot — mig 036 multilingual lex)
+## Current Handoff — 2026-05-24 (Living Narrative Threads M1 + M2 + M3a)
+
+### What shipped this session
+
+Three branches, two merged to `v3-intel-layer`, one in open PR.
+
+| PR | Title | State | Branch |
+|---|---|---|---|
+| [#209](https://github.com/pedro-cmyks/Observatory-Global/pull/209) | feat(threads): living Narrative Threads beta (M1) | MERGED `9669755` | `codex/living-threads-canon` (deleted) |
+| [#210](https://github.com/pedro-cmyks/Observatory-Global/pull/210) | feat(briefing): top living Narrative Threads (M2) | MERGED `5d9ef8d` | `codex/brief-top-threads-m2` (deleted) |
+| [#211](https://github.com/pedro-cmyks/Observatory-Global/pull/211) | feat(threads): enrich response with parent_domain, entities, timeline (M3a) | OPEN, CLEAN, MERGEABLE, Vercel SUCCESS | `codex/threads-enrichment-m3a` |
+
+Issue [#207](https://github.com/pedro-cmyks/Observatory-Global/issues/207) umbrella commented after each milestone.
+
+### Milestone 1 — read-only `/api/v2/threads` beta (PR #209)
+
+- New service `backend/app/services/thread_intelligence.py` (~370 lines).
+- New router `backend/app/routers/threads.py` exposing:
+  - `GET /api/v2/threads?hours=N&limit=M`
+  - `GET /api/v2/threads/{thread_id}?hours=N`
+- Contract `living-narrative-threads-v0`. Thread fields: `thread_id`, `label`, `summary`, `anchor_topics`, `signal_count`, `source_count`, `country_count`, `changed_10h`, `sentiment_swing_10h`, `top_countries`, `top_country_names`, `top_sources`, `source_mix`, `confidence` band, `why_now`, `subthreads`, `related_threads`, `evidence_samples`.
+- `confidence_band()` classifier with thresholds `high / medium / thin / degraded` over evidence count, source diversity, geographic spread, and average assignment confidence.
+- Stable `thread_id` of the form `<topic-slug>--<cc1>-<cc2>-<cc3>` so the detail endpoint round-trips.
+- First live verification confirmed the endpoint contract, deduped evidence shape,
+  and movement fields. The later quality audit supersedes the initial optimistic
+  read of topic coherence.
+
+**Bug fixed before merge:** initial evidence sample for `armed-conflict-escalation` surfaced the same syndicated headline 25 times across US wire affiliates. `THREAD_EVIDENCE_SQL` now `DISTINCT ON (LOWER(headline))` inside a subquery, exposes `syndication_count` via window function, and the serializer reports `evidence_role` (`representative` / `repeated` / `syndicated`).
+
+### Milestone 2 — Brief consumes `top_threads` (PR #210)
+
+- `fetch_threads(conn=...)` refactor with new `_fetch_threads_with_conn` helper so the briefing handler reuses its open pool connection. The threads router and the briefing reader share a single executor.
+- Briefing handler calls `fetch_threads(hours=hours, limit=10, conn=conn)` after `top_atlas_topics` and degrades to `[]` via the same `degraded_segments` pattern used elsewhere.
+- Response gains `top_threads` and `top_threads_contract: "living-narrative-threads-v0"`.
+- Limit configurable via `BRIEFING_TOP_THREADS_LIMIT` (default 10).
+- Deployed to Fly (`atlas-api-pedro`) via `scripts/deploy-fly-api.sh`. Live `/api/v2/briefing?hours=24` returns `top_threads` populated and the thread contract correct. Other briefing segments may still degrade independently.
+
+### Milestone 3a — enrich `/api/v2/threads` for frontend parity (PR #211, open)
+
+After looking at the visible NarrativeThreads card on mobile, **clarified product direction**: `atlas_topics` are internal anchors, not the visible taxonomy. All Narrative Threads are live by definition because Atlas keeps ingesting and reprocessing signals. The existing `NarrativeThreads.tsx` is the visible product surface and the backend work is for enriching the data that feeds it, not adding parallel sections.
+
+M3a adds the fields required so M3b can swap `NarrativeThreads.tsx` from `/api/v2/narratives` (raw GDELT theme codes) to `/api/v2/threads` (atlas-enriched living threads) without losing any per-card slot:
+
+| New field | Drives |
+|---|---|
+| `parent_domain` (e.g. `conflict-security`) | Cluster badge replacing `getThemeCluster()` |
+| `avg_confidence` (float) | Numeric form of the existing % confidence pill |
+| `first_seen` (ISO timestamp) | `Started Xh ago` pill |
+| `top_entities` (raw values from `signals_v2.persons`) | Audit-only entity signal; not frontend-ready as a people chip |
+| `hourly_timeline` (JSONB array of `{hour, count}`) | Sparkline |
+| `trend` (`surging` / `stable` / `fading`) | Direction pill derived from `changed_10h / signal_count` ratio |
+
+**Performance work:**
+- `COUNT(*)` replaces `COUNT(DISTINCT signal_id)` in `topic_agg`. PK `(signal_id, topic_id, method, model_version)` already guarantees uniqueness within (topic, model_version) groups, so the DISTINCT was paying for a sort that returned the same value. EXPLAIN ANALYZE showed the `GroupAggregate` sort cost dominated.
+- The `scoped` CTE (`signal_topic_assignments` JOIN `signals_v2` JOIN `atlas_topics` over ~25k rows in 24h) is the floor cost at ~700ms in production.
+- Threads router gains Redis cache: 5min on `/threads`, 3min on `/threads/{id}`. Brief calls `fetch_threads(conn=...)` directly and is independently cached at 15min.
+
+**Tests:** 34 passed across `test_thread_intelligence`, `test_threads_router`, `test_briefing_performance_shape`. New coverage:
+- `assemble_thread_contract` verifies all 6 new fields land in the assembled dict.
+- `trend_label_classifies_volume_delta` covers surging/stable/fading + divide-by-zero guard.
+- `threads_sql_exposes_enriched_fields` locks SQL shape.
+- `threads_router_caches_responses_in_redis` pins cache keys + TTL constants.
+
+**Live verification on production data:**
+
+| topic_slug | parent_domain | signal_count | top_entities | timeline_points |
+|---|---|---|---|---|
+| armed-conflict-escalation | conflict-security | 7401 | donald trump, selina wang, andrew wolfe | 31 |
+| gang-control-urban-security | conflict-security | 2355 | donald trump, selina wang, kash patel | 31 |
+| gender-violence-rights | social-unrest-labor | 1490 | jesus christ, darren jones, keir starmer | 31 |
+| water-stress-drought | climate-disaster | 635 | el nino, vladimir putin, pacific ocean | 31 |
+| election-legitimacy-dispute | political-legitimacy | 1540 | ahmed tinubu, pedro sanchez, marie machado | 31 |
+
+### Quality issues identified before UI promotion
+
+1. **Entity typing in `signals_v2.persons`** — "jesus christ", "el nino", "pacific ocean" appear as `top_entities`. Some are not necessarily noise: `El Niño` and `Pacific Ocean` can be meaningful climate/geography entities. The defect is that they are stored/exposed through a person-like field without type. NER needs a person/place/organization/event/climate disambiguation pass.
+2. **Mobile UX** — signal stream growth pushes NarrativeThreads card off-screen on mobile. Needs sticky container, max-height with internal scroll, or carousel pattern, but this should wait until data quality gates are clear.
+3. **`countries_v2` data quality** — rows where `name == code` for non-FIPS codes (e.g. RB="RB", BW="BW"). Threads degrade gracefully via `COALESCE(c.name, s.country_code)` but labels read "intensifies in Italy and RB" when these enter top-2.
+4. **Aggregator dominance in `top_sources`** — `zazoom.it` (IT aggregator) tops 6 of 10 threads. Source ranking should weight against aggregator domains; currently shows highest-count source regardless of independence.
+5. **US dominance in `top_countries`** — same #149 volumetric bias leaks into thread geography. Threads should probably use a heat-voluminous-style adjusted ranking.
+6. **Label voice variation** — "X intensifies in Y and Z" repeated 10× per Brief is mechanical. Atlas voice should vary verb/structure per card.
+
+### Quality audit correction — 2026-05-24 PM
+
+`docs/research/2026-05-24-thread-quality-audit.md` supersedes the earlier quick
+read that "all 10 returned threads were coherent." A random sample shows mixed
+quality:
+
+- Strong or promising: `heat-health-risk`, `mining-royalty-risk` (but label
+  should become mining/resource risk), `sanctions-diplomatic-pressure`, and
+  selected `food-price-stress` evidence.
+- Needs tuning before UI promotion: `armed-conflict-escalation`,
+  `disease-outbreak`, `labor-strike-disruption`,
+  `election-legitimacy-dispute`, `water-stress-drought`,
+  `forced-displacement`.
+- Not ready for UI promotion: `gender-violence-rights` and
+  `transport-corridor-disruption`.
+
+Entity clarification: NER means Named Entity Recognition. `El Niño` and
+`Pacific Ocean` may be valid entities in climate contexts, but they are not
+persons. Do not expose `signals_v2.persons` as a generic frontend person chip
+row without entity typing.
+
+### Quality-first M3a patch — local implementation
+
+New product model docs:
+
+- `docs/specs/2026-05-24-atlas-focus-model.md` — defines Thread, Country,
+  Entity, Signal, and Workspace Focus. Main decision: Narrative/Thread Focus is
+  the strongest analytical unit; country and entity/person focus should become
+  lenses into active threads.
+- `docs/superpowers/plans/2026-05-24-thread-first-focus-quality.md` — next
+  implementation plan for patching #211 quality metadata, adding repeatable
+  thread audit, then preparing focus types/copy without swapping UI early.
+
+Implemented locally on branch `codex/threads-enrichment-m3a`:
+
+- `/api/v2/threads` assembly now exposes additive quality metadata:
+  `quality.lex_pct`, `quality.method_mix`, `quality.source_flags`,
+  `quality.geo_flags`, and `quality.entity_flags`.
+- `top_entities` remains raw audit-only compatibility data. New `top_people`
+  is intentionally `[]` until typed entity support exists.
+- `lex_pct` is derived from assignment `evidence.lex_count`, not from
+  `method='lexicon'`, because the v2 classifier writes all rows under the
+  `lexicon` method and stores actual lexical support in JSON evidence.
+- Added repeatable audit script:
+  `backend/scripts/thread_quality_report.py`.
+- Added frontend focus preparation only: `thread` and `entity` are valid focus
+  types, `person` remains compatible, and FocusSummaryPanel copy now frames
+  evidence/source/thread context without claiming typed entities.
+- Legacy backend safety: `thread` and `entity` live in `GlobalFilter`, but the
+  outbound legacy `focus` object still maps them to backend-safe `theme` and
+  `person` params until native Thread/Entity Focus endpoints exist.
+
+Still do not swap `NarrativeThreads.tsx` to `/api/v2/threads` until a fresh
+quality audit passes.
+
+### Next session — rerun quality audit, then decide Milestone 3b
+
+After deployment or local API verification with the new quality metadata,
+re-run:
+
+```bash
+cd backend
+./.venv/bin/python -m scripts.thread_quality_report \
+  --api-url http://localhost:8000 \
+  --hours 24 \
+  --limit 15 \
+  --out ../docs/research/thread-quality/YYYY-MM-DD-thread-quality-snapshot.md
+```
+
+Only then:
+
+Before M3b, merge #211 and redeploy Fly so `/api/v2/threads` serves the enriched response. Then:
+
+- `frontend-v2/src/components/NarrativeThreads.tsx`: replace `fetch('/api/v2/narratives?hours=N&limit=M')` with `fetch('/api/v2/threads?hours=N&limit=M')`. Map fields:
+  - `theme_code` → `thread_id`
+  - `getThemeLabel(theme_code)` → `label` (raw, no transform)
+  - `getThemeCluster(theme_code)` → `parent_domain`
+  - momentum → `trend` (`surging`/`stable`/`fading`)
+  - `top_countries` → `top_countries`
+  - signal count → `signal_count`
+  - entity chip row → only typed entities; do not map directly to `top_entities`
+  - sparkline → `hourly_timeline`
+  - "Started Xh ago" → `first_seen`
+  - % confidence → `avg_confidence`
+- Click handler default: keep `setFocus('theme', anchor_topic_slug, label)` so existing ThemeDetail still works. M4 introduces a real ThreadDetail panel per the spec audit.
+- Use `why_now` as tooltip on the card or inline subtitle.
+
+### Operational state
+
+- Cron `com.atlas.atlas-topic-classifier.plist` still running every 30 min — feeds fresh assignments into all three reads (`/api/v2/threads`, `/api/v2/briefing` → `top_threads`, `/api/v2/briefing` → `top_atlas_topics`).
+- Fly API live at `9669755 + 5d9ef8d` (M1 + M2). M3a not yet deployed (waiting on PR #211 merge).
+- Vercel auto-deploys frontend; no frontend changes shipped this session, so no Vercel deploy was triggered for the threads work.
+
+---
+
+## Previous Handoff — 2026-05-23 (Path A pilot — mig 036 multilingual lex)
 
 ### What shipped this session
 

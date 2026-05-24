@@ -9,11 +9,23 @@ logger = logging.getLogger(__name__)
 
 THREAD_MODEL_VERSION = "theme-hint-lex-v2"
 
+AGGREGATOR_DOMAINS = frozenset(
+    {
+        "zazoom.it",
+        "yahoo.com",
+        "msn.com",
+        "news.google.com",
+        "rediff.com",
+        "tvguide.co.uk",
+    }
+)
+
 THREADS_SQL = """
 WITH scoped AS (
     SELECT
         sta.signal_id,
         sta.topic_id,
+        sta.evidence,
         sta.confidence,
         at.slug AS topic_slug,
         at.label AS topic_label,
@@ -44,6 +56,13 @@ topic_agg AS (
         topic_label,
         parent_domain,
         COUNT(*)::int AS signal_count,
+        COUNT(*) FILTER (
+            WHERE COALESCE((evidence->>'lex_count')::int, 0) > 0
+        )::int AS lex_count,
+        COUNT(*) FILTER (
+            WHERE COALESCE((evidence->>'lex_count')::int, 0) = 0
+              AND COALESCE((evidence->>'theme_hits')::int, 0) > 0
+        )::int AS theme_count,
         COUNT(DISTINCT NULLIF(source_name, ''))::int AS source_count,
         COUNT(DISTINCT NULLIF(country_code, ''))::int AS country_count,
         AVG(confidence)::float AS avg_confidence,
@@ -192,6 +211,8 @@ SELECT
     ta.topic_label,
     ta.parent_domain,
     ta.signal_count,
+    ta.lex_count,
+    ta.theme_count,
     ta.source_count,
     ta.country_count,
     ta.avg_confidence,
@@ -341,6 +362,51 @@ def _trend_label(changed_10h: int, signal_count: int) -> str:
     return "stable"
 
 
+def _dominant_source_is_aggregator(top_sources: list[str]) -> bool:
+    if not top_sources:
+        return False
+    return top_sources[0].lower() in AGGREGATOR_DOMAINS
+
+
+def _has_unresolved_country_code(country_codes: list[str], country_names: list[str]) -> bool:
+    for code, name in zip(country_codes, country_names, strict=False):
+        if code and name and code.upper() == name.upper():
+            return True
+    return False
+
+
+def _quality_metadata(
+    *,
+    signal_count: int,
+    lex_count: int,
+    theme_count: int,
+    top_sources: list[str],
+    country_codes: list[str],
+    country_names: list[str],
+    top_entities: list[str],
+) -> dict[str, Any]:
+    lex_pct = round(lex_count / signal_count, 4) if signal_count > 0 else 0
+    return {
+        "lex_pct": lex_pct,
+        "method_mix": {
+            "lex": lex_count,
+            "theme": theme_count,
+        },
+        "source_flags": {
+            "aggregator_dominant": _dominant_source_is_aggregator(top_sources),
+        },
+        "geo_flags": {
+            "unresolved_country_code": _has_unresolved_country_code(
+                country_codes,
+                country_names,
+            ),
+        },
+        "entity_flags": {
+            "raw_entity_field_untyped": bool(top_entities),
+        },
+    }
+
+
 def assemble_thread(
     row: Any,
     *,
@@ -353,11 +419,14 @@ def assemble_thread(
     country_names = [str(name) for name in _as_list(_record_get(row, "top_country_names"))]
     changed_10h = int(_record_get(row, "changed_10h") or 0)
     signal_count = int(_record_get(row, "signal_count") or 0)
+    lex_count = int(_record_get(row, "lex_count") or 0)
+    theme_count = int(_record_get(row, "theme_count") or 0)
     source_count = int(_record_get(row, "source_count") or 0)
     country_count = int(_record_get(row, "country_count") or 0)
     avg_confidence = float(_record_get(row, "avg_confidence") or 0)
     first_seen = _record_get(row, "first_seen")
     top_entities = [str(person) for person in _as_list(_record_get(row, "top_entities"))]
+    top_sources = [str(source) for source in _as_list(_record_get(row, "top_sources"))]
     hourly_timeline = _as_list(_record_get(row, "hourly_timeline"))
     label = build_thread_label(
         anchor_label=topic_label,
@@ -381,13 +450,23 @@ def assemble_thread(
         "sentiment_swing_10h": _record_get(row, "sentiment_swing_10h"),
         "top_countries": country_codes,
         "top_country_names": country_names,
-        "top_sources": [str(source) for source in _as_list(_record_get(row, "top_sources"))],
+        "top_sources": top_sources,
+        "top_people": [],
         "top_entities": top_entities,
         "hourly_timeline": hourly_timeline,
         "source_mix": {
-            "top_sources": [str(source) for source in _as_list(_record_get(row, "top_sources"))],
+            "top_sources": top_sources,
             "source_count": source_count,
         },
+        "quality": _quality_metadata(
+            signal_count=signal_count,
+            lex_count=lex_count,
+            theme_count=theme_count,
+            top_sources=top_sources,
+            country_codes=country_codes,
+            country_names=country_names,
+            top_entities=top_entities,
+        ),
         "confidence": confidence_band(
             evidence_count=signal_count,
             source_count=source_count,

@@ -9,8 +9,9 @@ import { PanelSkeleton } from './PanelSkeleton'
 import './FocusSummaryPanel.css'
 
 export const FocusSummaryPanel: React.FC = () => {
-    const { focus, clearFocus, isActive } = useFocus()
+    const { focus, filter, clearFocus, isActive } = useFocus()
     const { summary, meta, loading } = useFocusData()
+    const showEntityMethodNote = focus.type === 'person' || !!filter.entity
 
     if (!isActive) {
         return null
@@ -29,6 +30,11 @@ export const FocusSummaryPanel: React.FC = () => {
                 <h2 className="focus-summary-title">
                     {focus.label || focus.value}
                 </h2>
+                {showEntityMethodNote && (
+                    <p className="focus-method-note">
+                        Entity mentions are untyped until the next Atlas entity pass; evidence is mention-based.
+                    </p>
+                )}
                 {loading ? (
                     <PanelSkeleton rows={2} />
                 ) : (
@@ -46,10 +52,10 @@ export const FocusSummaryPanel: React.FC = () => {
             {/* Scrollable Content */}
             {summary && (
                 <div className="focus-summary-content">
-                    {/* Related Topics */}
+                    {/* Related Threads / Topics */}
                     {summary.related_topics && summary.related_topics.length > 0 && (
                         <section className="focus-section">
-                            <h4>Related Topics</h4>
+                            <h4>Related Threads / Topics</h4>
                             <div className="focus-topics">
                                 {summary.related_topics.slice(0, 10).map((topic, i) => (
                                     <span key={i} className="focus-topic-chip" data-tip={`${topic.count} signals`}>
@@ -61,10 +67,10 @@ export const FocusSummaryPanel: React.FC = () => {
                         </section>
                     )}
 
-                    {/* Top Sources */}
+                    {/* Sources Driving This Focus */}
                     {summary.top_sources && summary.top_sources.length > 0 && (
                         <section className="focus-section">
-                            <h4>Top Sources</h4>
+                            <h4>Sources Driving This Focus</h4>
                             <div className="focus-sources">
                                 {summary.top_sources.slice(0, 6).map((source, i) => (
                                     <div key={i} className="focus-source-row">
@@ -76,10 +82,10 @@ export const FocusSummaryPanel: React.FC = () => {
                         </section>
                     )}
 
-                    {/* Recent Headlines */}
+                    {/* Evidence */}
                     {summary.headlines && summary.headlines.length > 0 && (
                         <section className="focus-section">
-                            <h4>Recent Coverage</h4>
+                            <h4>Evidence</h4>
                             <div className="focus-headlines">
                                 {summary.headlines.slice(0, 5).map((headline, i) => (
                                     <a

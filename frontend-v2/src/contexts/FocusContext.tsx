@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 import type { TimeRange } from '../lib/timeRanges'
 
-export type FocusType = 'theme' | 'person' | 'country' | 'source' | null
+export type FocusType = 'thread' | 'theme' | 'entity' | 'person' | 'country' | 'source' | null
 export type LockedBy = 'radar' | 'stream' | 'matrix' | 'anomaly' | null
 
 export interface FocusState {
@@ -26,8 +26,10 @@ export interface RegionFilter {
 export type StreamLevel = 'all' | 'critical' | 'elevated' | 'notable' | 'trend' | 'person' | 'maritime' | null
 
 export interface GlobalFilter {
+    thread: string | null
     country: string | null
     theme: string | null
+    entity: string | null
     person: string | null
     concept: ConceptFilter | null
     region: RegionFilter | null
@@ -39,8 +41,10 @@ export interface GlobalFilter {
 interface FocusContextValue {
     // New GlobalFilter state
     filter: GlobalFilter
+    setThread: (thread: string | null) => void
     setCountry: (country: string | null, source?: LockedBy) => void
     setTheme: (theme: string | null, source?: LockedBy) => void
+    setEntity: (entity: string | null) => void
     setPerson: (person: string | null) => void
     setConcept: (concept: ConceptFilter | null) => void
     setRegion: (region: RegionFilter | null) => void
@@ -59,8 +63,10 @@ interface FocusContextValue {
 }
 
 const defaultFilter: GlobalFilter = {
+    thread: null,
     country: null,
     theme: null,
+    entity: null,
     person: null,
     concept: null,
     region: null,
@@ -81,10 +87,28 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [filter, setFilter] = useState<GlobalFilter>(defaultFilter)
     const [mapFlyCountry, setMapFlyCountry] = useState<string | null>(null)
 
+    const setThread = useCallback((thread: string | null) => {
+        setFilter(prev => ({
+            ...prev,
+            thread,
+            entity: null,
+            person: null,
+            country: null,
+            theme: null,
+            concept: null,
+            region: null,
+            lockedBy: null,
+        }))
+        console.log(`[GlobalFilter] Set thread=${thread}`)
+    }, [])
+
     const setCountry = useCallback((country: string | null, source: LockedBy = null) => {
         setFilter(prev => ({ 
             ...prev, 
             country, 
+            thread: null,
+            entity: null,
+            person: null,
             lockedBy: country ? source : prev.theme ? prev.lockedBy : null 
         }))
         console.log(`[GlobalFilter] Set country=${country} by ${source || 'unknown'}`)
@@ -94,6 +118,9 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setFilter(prev => ({ 
             ...prev, 
             theme, 
+            thread: null,
+            entity: null,
+            person: null,
             lockedBy: theme ? source : prev.country ? prev.lockedBy : null 
         }))
         console.log(`[GlobalFilter] Set theme=${theme} by ${source || 'unknown'}`)
@@ -104,20 +131,63 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         console.log(`[GlobalFilter] Set timeRange=${timeRange}`)
     }, [])
 
+    const setEntity = useCallback((entity: string | null) => {
+        setFilter(prev => ({
+            ...prev,
+            entity,
+            person: null,
+            thread: null,
+            country: null,
+            theme: null,
+            concept: null,
+            region: null,
+            lockedBy: null,
+        }))
+        console.log(`[GlobalFilter] Set entity=${entity}`)
+    }, [])
+
     const setPerson = useCallback((person: string | null) => {
-        setFilter(prev => ({ ...prev, person, country: null, theme: null, concept: null, region: null, lockedBy: null }))
+        setFilter(prev => ({
+            ...prev,
+            person,
+            entity: person,
+            thread: null,
+            country: null,
+            theme: null,
+            concept: null,
+            region: null,
+            lockedBy: null,
+        }))
         console.log(`[GlobalFilter] Set person=${person}`)
     }, [])
 
     const setConcept = useCallback((concept: ConceptFilter | null) => {
         // Setting a concept also sets the primary theme for panels that only read filter.theme
         const primaryTheme = concept?.themes[0] ?? null
-        setFilter(prev => ({ ...prev, concept, theme: primaryTheme, person: null, lockedBy: null }))
+        setFilter(prev => ({
+            ...prev,
+            concept,
+            theme: primaryTheme,
+            thread: null,
+            entity: null,
+            person: null,
+            lockedBy: null,
+        }))
         console.log(`[GlobalFilter] Set concept=${concept?.slug} (${concept?.themes.length} themes)`)
     }, [])
 
     const setRegion = useCallback((region: RegionFilter | null) => {
-        setFilter(prev => ({ ...prev, region, country: null, person: null, theme: null, concept: null, lockedBy: null }))
+        setFilter(prev => ({
+            ...prev,
+            region,
+            thread: null,
+            country: null,
+            entity: null,
+            person: null,
+            theme: null,
+            concept: null,
+            lockedBy: null,
+        }))
         console.log(`[GlobalFilter] Set region=${region?.slug} (${region?.countries.length} countries)`)
     }, [])
 
@@ -126,35 +196,54 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }, [])
 
     const clearFilter = useCallback(() => {
-        setFilter(prev => ({ ...prev, country: null, theme: null, person: null, concept: null, region: null, lockedBy: null }))
+        setFilter(prev => ({
+            ...prev,
+            thread: null,
+            country: null,
+            theme: null,
+            entity: null,
+            person: null,
+            concept: null,
+            region: null,
+            lockedBy: null,
+        }))
         console.log('[GlobalFilter] Cleared')
     }, [])
 
     // Legacy API mappings
+    const threadAnchor = filter.thread?.split('--')[0] ?? null
+    const entityFocusValue = filter.person || filter.entity
     const focus: FocusState = {
-        type: filter.person ? 'person' : filter.country ? 'country' : filter.theme ? 'theme' : null,
-        value: filter.person || filter.country || filter.theme,
-        label: filter.person || filter.country || filter.theme
+        // Legacy backend endpoints currently accept theme/person/country/source.
+        // Keep thread/entity in GlobalFilter, but adapt outbound focus params
+        // until native Thread/Entity Focus endpoints exist.
+        type: threadAnchor ? 'theme' : entityFocusValue ? 'person' : filter.country ? 'country' : filter.theme ? 'theme' : null,
+        value: threadAnchor || entityFocusValue || filter.country || filter.theme,
+        label: filter.thread || entityFocusValue || filter.country || filter.theme
     }
 
     const setFocus = useCallback((type: FocusType, value: string, _label?: string) => { // eslint-disable-line @typescript-eslint/no-unused-vars
-        if (type === 'country') {
+        if (type === 'thread') {
+            setThread(value)
+        } else if (type === 'country') {
             setCountry(value)
         } else if (type === 'theme') {
             setTheme(value)
+        } else if (type === 'entity') {
+            setEntity(value)
         } else if (type === 'person') {
             setPerson(value)
         } else {
             clearFilter()
         }
-    }, [setCountry, setTheme, setPerson, clearFilter])
+    }, [setThread, setCountry, setTheme, setEntity, setPerson, clearFilter])
 
     const clearFocus = clearFilter
-    const isActive = filter.country !== null || filter.theme !== null || filter.person !== null || filter.concept !== null || filter.region !== null
+    const isActive = filter.thread !== null || filter.country !== null || filter.theme !== null || filter.entity !== null || filter.person !== null || filter.concept !== null || filter.region !== null
 
     return (
         <FocusContext.Provider value={{
-            filter, setCountry, setTheme, setPerson, setConcept, setRegion, setTimeRange, setStreamLevel, clearFilter,
+            filter, setThread, setCountry, setTheme, setEntity, setPerson, setConcept, setRegion, setTimeRange, setStreamLevel, clearFilter,
             mapFlyCountry, setMapFlyCountry,
             focus, setFocus, clearFocus, isActive
         }}>

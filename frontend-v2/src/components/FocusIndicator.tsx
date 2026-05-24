@@ -2,7 +2,9 @@ import { useFocus } from '../contexts/FocusContext'
 import './FocusIndicator.css'
 
 const typeLabels: Record<string, string> = {
+    thread: 'Thread',
     theme: 'Theme',
+    entity: 'Entity',
     person: 'Person',
     country: 'Country',
     source: 'Source'

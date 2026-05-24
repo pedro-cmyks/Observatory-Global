@@ -113,6 +113,67 @@ def test_assemble_thread_contract():
     assert thread["related_threads"][0]["topic"] == "labor-strike-disruption"
 
 
+def test_assemble_thread_exposes_quality_metadata_and_raw_entity_guardrails():
+    row = {
+        "topic_slug": "transport-corridor-disruption",
+        "topic_label": "Transport corridor disruption",
+        "parent_domain": "infrastructure",
+        "signal_count": 25,
+        "source_count": 4,
+        "country_count": 2,
+        "avg_confidence": 0.67,
+        "first_seen": None,
+        "changed_10h": 5,
+        "sentiment_swing_10h": 0.08,
+        "lex_count": 6,
+        "theme_count": 19,
+        "top_countries": ["US", "RB"],
+        "top_country_names": ["United States", "RB"],
+        "top_sources": ["zazoom.it", "reuters.com"],
+        "top_entities": ["Pacific Ocean", "El Niño"],
+        "hourly_timeline": [],
+        "related_topics": [],
+    }
+
+    thread = assemble_thread(row)
+
+    assert thread["top_people"] == []
+    assert thread["top_entities"] == ["Pacific Ocean", "El Niño"]
+    assert thread["quality"] == {
+        "lex_pct": 0.24,
+        "method_mix": {"lex": 6, "theme": 19},
+        "source_flags": {"aggregator_dominant": True},
+        "geo_flags": {"unresolved_country_code": True},
+        "entity_flags": {"raw_entity_field_untyped": True},
+    }
+
+
+def test_assemble_thread_quality_metadata_handles_zero_counts_and_clean_rows():
+    row = {
+        "topic_slug": "heat-health-risk",
+        "topic_label": "Heat and public health risk",
+        "signal_count": 0,
+        "source_count": 0,
+        "country_count": 0,
+        "avg_confidence": None,
+        "changed_10h": 0,
+        "lex_count": None,
+        "theme_count": None,
+        "top_countries": [],
+        "top_country_names": [],
+        "top_sources": ["reuters.com"],
+        "top_entities": [],
+    }
+
+    thread = assemble_thread(row)
+
+    assert thread["quality"]["lex_pct"] == 0
+    assert thread["quality"]["method_mix"] == {"lex": 0, "theme": 0}
+    assert thread["quality"]["source_flags"] == {"aggregator_dominant": False}
+    assert thread["quality"]["geo_flags"] == {"unresolved_country_code": False}
+    assert thread["quality"]["entity_flags"] == {"raw_entity_field_untyped": False}
+
+
 def test_trend_label_classifies_volume_delta():
     from app.services.thread_intelligence import _trend_label
     assert _trend_label(0, 100) == "stable"
@@ -137,6 +198,14 @@ def test_threads_sql_exposes_enriched_fields():
     # related_counts intentionally keeps DISTINCT because it joins back to
     # signal_topic_assignments and may see the same signal twice.
     assert "COUNT(*)::int AS signal_count" in THREADS_SQL
+
+
+def test_threads_sql_exposes_method_counts_for_quality_metadata():
+    assert "sta.evidence" in THREADS_SQL
+    assert "evidence->>'lex_count'" in THREADS_SQL
+    assert "evidence->>'theme_hits'" in THREADS_SQL
+    assert "ta.lex_count" in THREADS_SQL
+    assert "ta.theme_count" in THREADS_SQL
 
 
 def test_threads_sql_uses_assignments_and_atlas_topics():

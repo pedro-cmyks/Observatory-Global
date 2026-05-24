@@ -51,6 +51,13 @@
     color: #fff;
 }
 
+.focus-method-note {
+    margin: 8px 0 0;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #fbbf24;
+}
+
 .focus-summary-loading {
     margin-top: 8px;
     color: #6ba3d6;

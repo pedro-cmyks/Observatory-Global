@@ -1,8 +1,25 @@
 # Living Narrative Threads
 
 **Status:** canonical product direction for the next Atlas intelligence layer.
-**Date:** 2026-05-24.
+**Date:** 2026-05-24. Updated 2026-05-24 PM with implementation status M1+M2+M3a.
 **Scope:** product/data design; no backend schema is required by this document.
+
+## Implementation Status
+
+| Milestone | What | PR | State |
+|---|---|---|---|
+| M1 | Read-only `/api/v2/threads` + `/api/v2/threads/{id}` beta endpoints | [#209](https://github.com/pedro-cmyks/Observatory-Global/pull/209) | MERGED |
+| M2 | Brief consumes `top_threads` via `fetch_threads(conn=conn)` reuse | [#210](https://github.com/pedro-cmyks/Observatory-Global/pull/210) | MERGED |
+| M3a | `/api/v2/threads` enriched with `parent_domain`, `avg_confidence`, `first_seen`, raw entity signal, `hourly_timeline`, `trend` + Redis cache | [#211](https://github.com/pedro-cmyks/Observatory-Global/pull/211) | OPEN, NEEDS QUALITY PATCH |
+| M3b | Frontend `NarrativeThreads.tsx` swaps from `/api/v2/narratives` to `/api/v2/threads` | — | BLOCKED BY QUALITY GATES |
+| M4 | Real ThreadDetail panel + `'thread'` focus type in `FocusContext` | — | LATER |
+
+**Product clarification (2026-05-24 PM):** all Narrative Threads are live by
+definition because Atlas keeps ingesting and reprocessing signals. "Living" is
+descriptive, not a separate product category or UI surface. The existing
+`NarrativeThreads.tsx` is the visible product surface. Backend work enriches
+the data feeding it; M3b is a data-source swap only after quality gates pass,
+not a new panel.
 
 ## Decision
 
@@ -61,6 +78,11 @@ A living thread should eventually have this product contract:
 | `related_threads` | Adjacent threads linked by co-occurrence, entities, or geography. |
 | `confidence` | Confidence that the thread is coherent and evidence-supported. |
 | `why_now` | Plain-language reason for current movement. |
+
+Thread focus, country focus, entity focus, signal focus, and workspace focus
+are defined in `docs/specs/2026-05-24-atlas-focus-model.md`. The core rule is:
+countries and entities should become lenses into active threads, not isolated
+summary panels.
 
 The first implementation can compute most of this from existing tables:
 
@@ -208,6 +230,47 @@ Current limitations:
   component detection.
 - `source_mix` starts with top sources and source count; voice lanes come next.
 - UI should consume this only after manual inspection of live top-10 output.
+
+## M3a Enriched Fields (PR #211)
+
+The contract was extended additively for `NarrativeThreads.tsx` parity. Existing
+M1 clients continue to work; new clients gain the following per-thread fields:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `parent_domain` | string | Anchor topic's `atlas_topics.parent_domain` (e.g. `conflict-security`). Drives the cluster badge. |
+| `avg_confidence` | float (3 dp) | Mean atlas-assignment confidence across the thread's signals. Numeric backing for the existing % pill. |
+| `first_seen` | ISO timestamp | Earliest `signals_v2.timestamp` in the assigned window. Drives the `Started Xh ago` pill. |
+| `top_entities` | string[] (<=5) | Raw values from `unnest(signals_v2.persons)` grouped by topic. Useful for audit only until entities are typed. |
+| `top_people` | string[] | Intentionally empty until typed entity support exists. Prevents raw `persons` values from being treated as validated people. |
+| `hourly_timeline` | array of `{hour, count}` | Per-hour signal count for the assignment window. Drives the sparkline. |
+| `trend` | `surging` / `stable` / `fading` | Derived in Python from `changed_10h / signal_count` ratio. >= +5% → surging, <= -5% → fading, else stable. |
+| `quality` | object | Additive quality metadata: `lex_pct`, `method_mix`, `source_flags`, `geo_flags`, and `entity_flags`. Blocks frontend promotion when evidence is weak or untyped. |
+
+Performance notes:
+
+- `COUNT(*)` replaces `COUNT(DISTINCT signal_id)` in `topic_agg` because the
+  `signal_topic_assignments` PK already guarantees uniqueness within each
+  (topic, model_version) group.
+- The `scoped` CTE (assignments JOIN signals_v2 JOIN atlas_topics over ~25k 24h
+  rows) is the floor cost at ~700 ms in production.
+- Threads router caches responses in Redis: 5 min on `/threads`, 3 min on
+  `/threads/{id}`. Brief calls `fetch_threads(conn=...)` directly and is
+  independently cached at 15 min.
+
+Known data quality issues from the quality audit:
+
+- `signals_v2.persons` is not safe to expose as a person chip row without
+  typing. `El Niño` and `Pacific Ocean` can be valid climate/geographic
+  entities, but they are not persons. `Jesus Christ` may be a named phrase, but
+  it is not reliable evidence for a gender-rights thread.
+- `countries_v2` has rows where `name == code` for non-FIPS codes (e.g.
+  RB="RB", BW="BW"). Labels degrade gracefully via `COALESCE(c.name, s.country_code)`.
+- `top_sources` is dominated by aggregator domains like `zazoom.it`. Source
+  ranking should weight against aggregator domains.
+- `gender-violence-rights` and `transport-corridor-disruption` are not ready
+  for UI promotion. See
+  `docs/research/2026-05-24-thread-quality-audit.md`.
 
 ## Guardrails
 
