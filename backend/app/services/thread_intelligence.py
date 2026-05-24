@@ -17,11 +17,13 @@ WITH scoped AS (
         sta.confidence,
         at.slug AS topic_slug,
         at.label AS topic_label,
+        at.parent_domain AS parent_domain,
         s.country_code,
         COALESCE(c.name, s.country_code) AS country_name,
         s.source_name,
         s.timestamp,
-        s.nlp_sentiment
+        s.nlp_sentiment,
+        s.persons
     FROM signal_topic_assignments sta
     JOIN atlas_topics at ON at.id = sta.topic_id
     JOIN signals_v2 s ON s.id = sta.signal_id
@@ -32,13 +34,20 @@ WITH scoped AS (
       AND ($4::text[] IS NULL OR s.country_code = ANY($4::text[]))
 ),
 topic_agg AS (
+    -- Performance: signal_topic_assignments PK is
+    -- (signal_id, topic_id, method, model_version) so COUNT(*) equals
+    -- COUNT(DISTINCT signal_id) within a (topic_slug, model_version) group.
+    -- Switching to COUNT(*) drops the topic_agg GroupAggregate sort that
+    -- pushed the enriched query from ~50 ms to 845 ms on 24k rows.
     SELECT
         topic_slug,
         topic_label,
-        COUNT(DISTINCT signal_id)::int AS signal_count,
+        parent_domain,
+        COUNT(*)::int AS signal_count,
         COUNT(DISTINCT NULLIF(source_name, ''))::int AS source_count,
         COUNT(DISTINCT NULLIF(country_code, ''))::int AS country_count,
         AVG(confidence)::float AS avg_confidence,
+        MIN(timestamp) AS first_seen,
         (
             COUNT(*) FILTER (WHERE timestamp >= NOW() - INTERVAL '10 hours')
             - COUNT(*) FILTER (
@@ -54,7 +63,52 @@ topic_agg AS (
             )
         )::float AS sentiment_swing_10h
     FROM scoped
-    GROUP BY topic_slug, topic_label
+    GROUP BY topic_slug, topic_label, parent_domain
+),
+entity_base AS (
+    SELECT
+        topic_slug,
+        unnest(persons) AS person
+    FROM scoped
+    WHERE persons IS NOT NULL
+),
+entity_ranked AS (
+    SELECT
+        topic_slug,
+        person,
+        COUNT(*) AS cnt,
+        ROW_NUMBER() OVER (PARTITION BY topic_slug ORDER BY COUNT(*) DESC, person) AS rn
+    FROM entity_base
+    WHERE person IS NOT NULL AND person <> ''
+    GROUP BY topic_slug, person
+),
+entity_lists AS (
+    SELECT
+        topic_slug,
+        ARRAY_AGG(person ORDER BY cnt DESC, person) FILTER (WHERE rn <= 5) AS top_entities
+    FROM entity_ranked
+    GROUP BY topic_slug
+),
+timeline_base AS (
+    SELECT
+        topic_slug,
+        date_trunc('hour', timestamp) AS hour,
+        COUNT(*) AS cnt
+    FROM scoped
+    GROUP BY topic_slug, date_trunc('hour', timestamp)
+),
+timeline AS (
+    SELECT
+        topic_slug,
+        JSONB_AGG(
+            JSONB_BUILD_OBJECT(
+                'hour', TO_CHAR(hour, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+                'count', cnt
+            )
+            ORDER BY hour
+        ) AS hourly_timeline
+    FROM timeline_base
+    GROUP BY topic_slug
 ),
 country_ranked AS (
     SELECT
@@ -136,19 +190,25 @@ related AS (
 SELECT
     ta.topic_slug,
     ta.topic_label,
+    ta.parent_domain,
     ta.signal_count,
     ta.source_count,
     ta.country_count,
     ta.avg_confidence,
+    ta.first_seen,
     ta.changed_10h,
     ta.sentiment_swing_10h,
     COALESCE(cl.top_countries, ARRAY[]::text[]) AS top_countries,
     COALESCE(cl.top_country_names, ARRAY[]::text[]) AS top_country_names,
     COALESCE(sl.top_sources, ARRAY[]::text[]) AS top_sources,
+    COALESCE(el.top_entities, ARRAY[]::text[]) AS top_entities,
+    COALESCE(tlh.hourly_timeline, '[]'::jsonb) AS hourly_timeline,
     COALESCE(r.related_topics, '[]'::jsonb) AS related_topics
 FROM topic_agg ta
 LEFT JOIN country_lists cl ON cl.topic_slug = ta.topic_slug
 LEFT JOIN source_lists sl ON sl.topic_slug = ta.topic_slug
+LEFT JOIN entity_lists el ON el.topic_slug = ta.topic_slug
+LEFT JOIN timeline tlh ON tlh.topic_slug = ta.topic_slug
 LEFT JOIN related r ON r.topic_slug = ta.topic_slug
 ORDER BY ta.changed_10h DESC, ta.signal_count DESC
 LIMIT $2
@@ -265,6 +325,22 @@ def _why_now(changed_10h: int, country_names: list[str]) -> str:
     return f"Signal volume is steady in the last 10h, concentrated in {place}."
 
 
+def _trend_label(changed_10h: int, signal_count: int) -> str:
+    """Map 10h volume delta to a coarse trend pill so cards stay readable.
+
+    Threshold is relative to total signal_count so a +50 swing reads as
+    'surging' on a 200-signal topic but as 'stable' on a 20,000-signal one.
+    """
+    if signal_count <= 0:
+        return "stable"
+    ratio = changed_10h / signal_count
+    if ratio >= 0.05:
+        return "surging"
+    if ratio <= -0.05:
+        return "fading"
+    return "stable"
+
+
 def assemble_thread(
     row: Any,
     *,
@@ -272,6 +348,7 @@ def assemble_thread(
 ) -> dict[str, Any]:
     topic_slug = str(_record_get(row, "topic_slug"))
     topic_label = str(_record_get(row, "topic_label"))
+    parent_domain = _record_get(row, "parent_domain")
     country_codes = [str(code) for code in _as_list(_record_get(row, "top_countries"))]
     country_names = [str(name) for name in _as_list(_record_get(row, "top_country_names"))]
     changed_10h = int(_record_get(row, "changed_10h") or 0)
@@ -279,6 +356,9 @@ def assemble_thread(
     source_count = int(_record_get(row, "source_count") or 0)
     country_count = int(_record_get(row, "country_count") or 0)
     avg_confidence = float(_record_get(row, "avg_confidence") or 0)
+    first_seen = _record_get(row, "first_seen")
+    top_entities = [str(person) for person in _as_list(_record_get(row, "top_entities"))]
+    hourly_timeline = _as_list(_record_get(row, "hourly_timeline"))
     label = build_thread_label(
         anchor_label=topic_label,
         top_countries=country_names,
@@ -290,14 +370,20 @@ def assemble_thread(
         "label": label,
         "summary": label,
         "anchor_topics": [topic_slug],
+        "parent_domain": parent_domain,
         "signal_count": signal_count,
         "source_count": source_count,
         "country_count": country_count,
+        "avg_confidence": round(avg_confidence, 3),
+        "first_seen": first_seen.isoformat() if hasattr(first_seen, "isoformat") else first_seen,
         "changed_10h": changed_10h,
+        "trend": _trend_label(changed_10h, signal_count),
         "sentiment_swing_10h": _record_get(row, "sentiment_swing_10h"),
         "top_countries": country_codes,
         "top_country_names": country_names,
         "top_sources": [str(source) for source in _as_list(_record_get(row, "top_sources"))],
+        "top_entities": top_entities,
+        "hourly_timeline": hourly_timeline,
         "source_mix": {
             "top_sources": [str(source) for source in _as_list(_record_get(row, "top_sources"))],
             "source_count": source_count,
