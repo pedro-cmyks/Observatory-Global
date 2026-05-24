@@ -135,7 +135,7 @@ Root causes are routing/grain mismatches, not missing storage.
 
 **Goal:** newly ingested data should become product-usable during the hot window.
 
-**Issues:** #184, #185, #171, #167, #164.
+**Issues:** #184, #185, #171, #167, #164, #202, #203, #204.
 
 **Work:**
 
@@ -154,6 +154,13 @@ Root causes are routing/grain mismatches, not missing storage.
    - Production API-only deploy updated only `app` and produced a `257 MB` image.
    - `nlp_worker` stayed on the heavy image and continued `Sentiment[xlm-v1]`, `NER[xlm-v1]`, `Framing[xlm-v1]` cycles.
 6. Treat external live providers such as AISStream as degradable dependencies with bounded retry logs and UI/provider health state (#196).
+7. Continue AI-assisted atlas-topic taxonomy work from `docs/specs/2026-05-23-ai-assisted-taxonomy.md`:
+   - [x] Path A pilot for `election-legitimacy-dispute` via migration 036 (#202): lex_pct `6.3% -> 31.6%`, high_conf `5 -> 27`, multilingual terms drove `74%` of lex-match volume.
+   - [x] Path A precision-first pass for `armed-conflict-escalation` via migration 037 (#202): noisy broad terms pruned; lex_pct `2.10% -> 6.56%`, high_conf `22 -> 85`; did not clear the 30% gate.
+   - [x] Path A remaining rollout via migration 038 (#202): `fuel-subsidy-unrest` cleared gate (`5.20% -> 37.12%`, high_conf `2 -> 136`); `mining-royalty-risk` cleared gate on a coal-mine-disaster cluster (`12.33% -> 78.99%`, high_conf `0 -> 100`); `food-price-stress` and `housing-cost-pressure` became stricter but did not clear the gate.
+   - [ ] Path B encoder classifier remains shadow/design only until measured precision reaches at least `85%`, with `90%` as the product target (#203).
+   - [ ] Path C taxonomy revision remains later/quarterly; do not add user-facing topic correction UI yet (#204).
+8. Product sentiment decision: expose one Atlas sentiment in normal UI. Keep GDELT Tone as fallback/calibration/provenance, not as a competing user-facing metric.
 
 **Creative solution:** use "progressive certainty" instead of binary processed/unprocessed. A row can start with fast-neutral + topic hint, then later receive transformer sentiment, NER, framing, and topic refinement. The UI should show the best available method and coverage.
 
@@ -161,6 +168,7 @@ Root causes are routing/grain mismatches, not missing storage.
 
 - Hot-window product-served rows are 90-100% processed by Atlas-owned methods.
 - `general-monitoring` no longer dominates historical/topic surfaces without explanation.
+- Topic promotion uses real headline samples and precision gates; GDELT theme hints alone are never treated as proof that a topic is meaningful.
 - NLP worker throughput is tuned from real pressure, not guessed limits.
 - API deploys stay fast and independent from the heavy NLP worker image.
 
@@ -240,4 +248,9 @@ These stay open but should not interrupt Phases 1-3 unless they become blockers:
 4. [x] Execute app-wide routing + coverage badge.
 5. [x] Fix `#194` long-window `top_sources`.
 6. [x] Install local incremental hot/cold catch-up automation.
-7. Return to NLP/topic quality: `#171`, `#167`, `#185`, `#184`.
+7. [x] Pilot Path A multilingual atlas-topic lex expansion on `election-legitimacy-dispute` (#202).
+8. [x] Run precision-first Path A pass on `armed-conflict-escalation` (#202); record as partial because it did not clear the 30% lex_pct gate.
+9. [x] Finish Path A rollout on `fuel-subsidy-unrest`, `food-price-stress`, `housing-cost-pressure`, and `mining-royalty-risk`.
+10. Normalize sentiment presentation around Atlas sentiment; keep GDELT Tone as internal fallback/calibration.
+11. Build a small benchmark/precision harness before Path B; do not promote encoder results below the 85-90% precision gate.
+12. Feed Path C with the taxonomy findings from Path A: split local armed incidents from armed conflict; rename/split mining royalty vs mining/resource-disaster risk; revisit food/housing once more multilingual evidence accumulates.
