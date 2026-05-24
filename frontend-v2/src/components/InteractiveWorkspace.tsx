@@ -1,7 +1,7 @@
 import { useDeferredValue, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ForceGraph2D from 'react-force-graph-2d'
 import type { ForceGraphMethods } from 'react-force-graph-2d'
-import { BookOpen, Download, ExternalLink, Filter, FolderKanban, List, Loader2, Network, Pin, PinOff, Search, X } from 'lucide-react'
+import { BookOpen, Download, ExternalLink, Filter, FolderKanban, List, Loader2, Network, Pin, PinOff, Search, X } from '../lib/icons'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import {
     WORKSPACE_LINK_KINDS,

@@ -3,7 +3,7 @@ import {
     Briefcase, Landmark, Swords, Stethoscope, Laptop, Siren,
     HandMetal, Vote, Zap, Waves, Languages, FileText, User, Newspaper,
     Leaf, Users
-} from 'lucide-react';
+} from './icons';
 
 export const themeLabels: Record<string, string> = {
     // World Bank — governance & institutions

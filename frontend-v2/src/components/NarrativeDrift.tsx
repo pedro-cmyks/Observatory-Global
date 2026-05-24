@@ -96,7 +96,7 @@ export function NarrativeDrift({ themeCode, countryCode, days = 14 }: NarrativeD
                             fontSize={10} 
                             tickLine={false}
                             axisLine={false}
-                            tickFormatter={(val) => (val * 10).toFixed(0)}
+                            tickFormatter={(val: number) => (val * 10).toFixed(0)}
                         />
                         <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }} />
                         <Line 

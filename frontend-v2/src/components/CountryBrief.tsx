@@ -3,7 +3,7 @@ import { IndicatorTooltip, VolumeIndicator } from './IndicatorTooltip';
 import { useCrisis } from '../contexts/CrisisContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import { useFocus } from '../contexts/FocusContext';
-import { Download, Pin, PinOff } from 'lucide-react';
+import { Download, Pin, PinOff } from '../lib/icons';
 import './CountryBrief.css';
 import { getThemeLabel } from '../lib/themeLabels';
 import { selectVisibleKeyPersons, type KeyPerson } from '../lib/countryBriefPeople';

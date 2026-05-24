@@ -2,12 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MapGL from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
-import { DeckGLOverlay } from './components/DeckGLOverlay'
-import { ScatterplotLayer, ArcLayer } from '@deck.gl/layers'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import './App.css'
-import { calculateNodeRadius, getThemedArcColors } from './lib/mapUtils'
-import { createTerminatorLayer } from './layers/TerminatorLayer'
 import { useCrisis } from './contexts/CrisisContext'
 import { useTheme } from './contexts/ThemeContext'
 import { SearchBar } from './components/SearchBar'
@@ -29,7 +25,7 @@ import { SourceProfile } from './components/SourceProfile'
 import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext'
 import { InvestigationWorkspace } from './components/InvestigationWorkspace'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
-import { Globe, ClipboardList, FolderOpen, HelpCircle, BookmarkPlus } from 'lucide-react'
+import { Globe, ClipboardList, FolderOpen, HelpCircle, BookmarkPlus } from './lib/icons'
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
 import { resolveCountryName } from './lib/countryNames'
 import type { PublicAttentionOrigin } from './lib/publicAttention'
@@ -56,12 +52,90 @@ import { useSavedWatches } from './hooks/useSavedWatches'
 
 
 
-interface Flow {
-  source: [number, number]
-  target: [number, number]
-  sourceCountry: string
-  targetCountry: string
-  strength: number
+interface FeatureCollection {
+  type: 'FeatureCollection'
+  features: any[]
+}
+
+const emptyFeatureCollection = (): FeatureCollection => ({ type: 'FeatureCollection', features: [] })
+const DEG_TO_RAD = Math.PI / 180
+
+function getDayOfYear(date: Date): number {
+  const start = new Date(date.getFullYear(), 0, 0)
+  return Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+}
+
+function calculateTerminatorPolygon(date: Date = new Date(), lngOffsetDeg = 0): number[][] {
+  const dayOfYear = getDayOfYear(date)
+  const declination = -23.45 * Math.cos((360 / 365) * (dayOfYear + 10) * DEG_TO_RAD)
+  const utcHours = date.getUTCHours() + date.getUTCMinutes() / 60
+  const solarNoonLng = -((utcHours - 12) * 15)
+  const terminatorLine: number[][] = []
+
+  for (let lat = -90; lat <= 90; lat += 2) {
+    const latRad = lat * DEG_TO_RAD
+    const declRad = declination * DEG_TO_RAD
+    const cosH = -Math.tan(latRad) * Math.tan(declRad)
+    let lng: number
+
+    if (cosH < -1) {
+      lng = solarNoonLng + 180
+    } else if (cosH > 1) {
+      lng = solarNoonLng
+    } else {
+      const hourAngle = Math.acos(Math.max(-1, Math.min(1, cosH))) / DEG_TO_RAD
+      lng = solarNoonLng + hourAngle
+    }
+
+    lng += lngOffsetDeg
+    while (lng > 180) lng -= 360
+    while (lng < -180) lng += 360
+    terminatorLine.push([lng, lat])
+  }
+
+  const nightSide = solarNoonLng > 0 ? -180 : 180
+  return [...terminatorLine, [nightSide, 90], [nightSide, -90], terminatorLine[0]]
+}
+
+function buildTerminatorData(visible: boolean): FeatureCollection {
+  if (!visible) return emptyFeatureCollection()
+  const now = new Date()
+  return {
+    type: 'FeatureCollection',
+    features: [0, 3.5, 7, 10.5, 14].map((offset, index) => ({
+      type: 'Feature',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [calculateTerminatorPolygon(now, offset)],
+      },
+      properties: {
+        opacity: [0.52, 0.28, 0.14, 0.07, 0.03][index],
+      },
+    })),
+  }
+}
+
+function setGeoJsonData(map: any, sourceId: string, data: FeatureCollection) {
+  const source = map.getSource(sourceId)
+  if (source?.setData) {
+    source.setData(data)
+    return
+  }
+  if (!source) {
+    map.addSource(sourceId, { type: 'geojson', data })
+  }
+}
+
+function ensureLayer(map: any, layer: any) {
+  if (!map.getLayer(layer.id)) {
+    map.addLayer(layer)
+  }
+}
+
+function setLayerVisibility(map: any, layerId: string, visible: boolean) {
+  if (map.getLayer(layerId)) {
+    map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none')
+  }
 }
 
 interface CountryDetail {
@@ -132,142 +206,6 @@ class MapErrorBoundary extends React.Component<{ children: React.ReactNode }, Ma
   }
 }
 
-// Extracted layer building function to prevent re-renders breaking Layer IDs
-function buildLayers({
-  enhancedNodes, visibleFlows, showFlows,
-  isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator,
-  selectedCountryCode, timeRange, showAircraft, aircraftData,
-  showVessels, vesselData, activeChokepoints, themeFocused, acledConflicts
-}: any) {
-  const terminatorLayers = createTerminatorLayer({
-    visible: showTerminator && !crisisEnabled,
-  })
-
-  const hasActiveCp = activeChokepoints.length > 0
-
-  return [
-    // Terminator layers (soft twilight gradient, bottommost)
-    ...terminatorLayers,
-
-    // Chokepoint zones — geographic rings at strategic straits
-    showVessels && new ScatterplotLayer({
-      id: `chokepoint-zones-${isGlobe ? 'globe' : 'flat'}`,
-      data: CHOKEPOINTS,
-      getPosition: (d: Chokepoint) => [d.lon, d.lat],
-      getRadius: (d: Chokepoint) => d.radiusKm * 1000,
-      radiusUnits: 'meters',
-      getFillColor: (d: Chokepoint) => {
-        if (activeChokepoints.includes(d.id)) return [0, 220, 200, 18]
-        return hasActiveCp ? [80, 80, 80, 6] : [0, 180, 160, 10]
-      },
-      getLineColor: (d: Chokepoint) => {
-        if (activeChokepoints.includes(d.id)) return [0, 255, 210, 160]
-        return hasActiveCp ? [80, 80, 80, 20] : [0, 180, 160, 45]
-      },
-      stroked: true,
-      lineWidthMinPixels: 1,
-      lineWidthMaxPixels: 2,
-      pickable: true,
-      updateTriggers: {
-        getFillColor: [activeChokepoints],
-        getLineColor: [activeChokepoints],
-      },
-    }),
-
-    // Aircraft Layer — altitude-coded; filtered to focused country or cruise-only globally
-    showAircraft && new ScatterplotLayer({
-      id: `aircraft-${isGlobe ? 'globe' : 'flat'}`,
-      data: aircraftData,
-      getPosition: (d: any) => [d.longitude, d.latitude, d.baro_altitude || 0],
-      getFillColor: (d: any) => {
-        const alt = d.baro_altitude || 0
-        if (alt > 10000) return [255, 255, 255, 200]  // cruise: white
-        if (alt > 5000) return [255, 210, 80, 180]  // mid: amber
-        return [255, 140, 40, 160]  // low: orange
-      },
-      getRadius: (d: any) => (d.baro_altitude || 0) > 10000 ? 2 : 3,
-      radiusUnits: 'pixels',
-      radiusMinPixels: 1,
-      radiusMaxPixels: 4,
-      pickable: true,
-    }),
-
-    // Vessel Layer — maritime traffic near geopolitical chokepoints
-    showVessels && new ScatterplotLayer({
-      id: `vessels-${isGlobe ? 'globe' : 'flat'}`,
-      data: vesselData,
-      getPosition: (d: any) => [d.longitude, d.latitude, 0],
-      getFillColor: (d: any) => d.speed > 10 ? [0, 220, 200, 230] : [0, 180, 160, 150],
-      getRadius: (d: any) => d.speed > 14 ? 4 : 3,
-      radiusUnits: 'pixels',
-      radiusMinPixels: 2,
-      radiusMaxPixels: 5,
-      pickable: true,
-    }),
-
-    // Flow arcs
-    (showFlows || !!selectedCountryCode || themeFocused) && new ArcLayer({
-      id: `flows-${isGlobe ? 'globe' : 'flat'}`,
-      data: visibleFlows,
-      getSourcePosition: (d: Flow) => d.source,
-      getTargetPosition: (d: Flow) => d.target,
-      getSourceColor: (d: Flow) => getThemedArcColors(themeId, d.strength).source,
-      getTargetColor: (d: Flow) => getThemedArcColors(themeId, d.strength).target,
-      getWidth: () => 1.5,
-      opacity: 0.4,
-      greatCircle: true,
-      pickable: true,
-      updateTriggers: {
-        getSourceColor: [themeId],
-        getTargetColor: [themeId],
-        data: [timeRange]
-      },
-    }),
-
-    // Anomaly Pulse Ring
-    new ScatterplotLayer({
-      id: `nodes-anomaly-pulse-${isGlobe ? 'globe' : 'flat'}`,
-      data: enhancedNodes.filter((n: any) => n.isAnomaly),
-      getPosition: (d: any) => [d.lon, d.lat],
-      getRadius: (d: any) => calculateNodeRadius(d.signalCount, sizeBoost) * 1.5,
-      getFillColor: [239, 68, 68, 0],
-      getLineColor: [239, 68, 68, 255],
-      lineWidthMinPixels: 2,
-      stroked: true,
-      pickable: false,
-      updateTriggers: {
-        getRadius: [sizeBoost],
-      },
-    }),
-
-    // ACLED Conflicts Layer — Renders intense 'X' or 'Pulse' at conflict sites
-    acledConflicts && acledConflicts.length > 0 && new ScatterplotLayer({
-      id: `acled-conflicts-${isGlobe ? 'globe' : 'flat'}`,
-      data: acledConflicts,
-      getPosition: (d: any) => [d.location.longitude, d.location.latitude],
-      // Intensity based on fatalities
-      getRadius: (d: any) => Math.min(Math.max(4, Math.sqrt(d.fatalities || 1) * 3), 15) * sizeBoost,
-      getFillColor: (d: any) => {
-        // Red for battles/explosions, Orange for riots
-        if (d.type.includes('Battle') || d.type.includes('Explosion')) return [239, 68, 68, 220]
-        if (d.type.includes('Riot') || d.type.includes('Protest')) return [249, 115, 22, 200]
-        return [234, 179, 8, 180] // Yellow for other
-      },
-      getLineColor: [255, 255, 255, 80],
-      stroked: true,
-      lineWidthMinPixels: 1,
-      radiusUnits: 'pixels',
-      radiusMinPixels: 4,
-      pickable: true,
-      updateTriggers: {
-        getRadius: [sizeBoost]
-      }
-    }),
-
-    // Node dots removed — country territory click via Mapbox fill layer handles selection
-  ].filter(Boolean)
-}
-
 // Static coordinate fallback for countries that may not appear in live signals
 const COUNTRY_COORDS: Record<string, [number, number]> = {
   AF: [65, 33], AL: [20, 41], DZ: [3, 28], AO: [18, -12], AR: [-64, -34], AM: [45, 40], AU: [133, -27], AT: [14, 47],
@@ -334,7 +272,7 @@ function AppContent() {
     : undefined
   // const [timeWindow, setTimeWindow] = useState(24) // Replaced by context
   const [viewState, setViewState] = useState(INITIAL_VIEW)
-  const [tooltip, setTooltip] = useState<TooltipData | null>(null)
+  const [tooltip] = useState<TooltipData | null>(null)
 
   // Comparison & Overlay states
   const [selectedSourceProfile, setSelectedSourceProfile] = useState<string | null>(null)
@@ -744,20 +682,252 @@ function AppContent() {
     }
   }, [showHeatmap, mapReady])
 
-  // Memoize completely stabilized array block to crush Globe re-render flicker
-  const layers = useMemo(() => {
-    const builtLayers = buildLayers({
-      enhancedNodes, visibleFlows, showFlows,
-      isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator,
-      selectedCountryCode, timeRange,
-      showAircraft, aircraftData: filteredAircraftData,
-      showVessels, vesselData,
-      activeChokepoints,
-      themeFocused: !!filter.theme,
-      acledConflicts
+  const nativeOverlayData = useMemo(() => {
+    const activeChokepointSet = new Set(activeChokepoints)
+    const flowsVisible = showFlows || !!selectedCountryCode || !!filter.theme
+    return {
+      flows: flowsVisible ? {
+        type: 'FeatureCollection' as const,
+        features: visibleFlows.map(flow => ({
+          type: 'Feature',
+          geometry: { type: 'LineString', coordinates: [flow.source, flow.target] },
+          properties: {
+            strength: flow.strength || 0,
+            sourceCountry: flow.sourceCountry,
+            targetCountry: flow.targetCountry,
+          },
+        })),
+      } : emptyFeatureCollection(),
+      anomaly: {
+        type: 'FeatureCollection' as const,
+        features: enhancedNodes.filter((node: any) => node.isAnomaly).map((node: any) => ({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [node.lon, node.lat] },
+          properties: {
+            signalCount: node.signalCount || 0,
+            radius: Math.min(Math.max(6, Math.sqrt(node.signalCount || 1) * (sizeBoost ? 1.5 : 0.8)), 24),
+          },
+        })),
+      },
+      chokepoints: showVessels ? {
+        type: 'FeatureCollection' as const,
+        features: CHOKEPOINTS.map(cp => ({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [cp.lon, cp.lat] },
+          properties: {
+            ...cp,
+            active: activeChokepointSet.has(cp.id),
+            vesselCount: chokepointCounts[cp.id] || 0,
+          },
+        })),
+      } : emptyFeatureCollection(),
+      aircraft: showAircraft ? {
+        type: 'FeatureCollection' as const,
+        features: filteredAircraftData.map((aircraft: any) => ({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [aircraft.longitude, aircraft.latitude] },
+          properties: {
+            callsign: aircraft.callsign || 'Unknown',
+            origin_country: aircraft.origin_country || '',
+            alt: aircraft.baro_altitude || 0,
+            true_track: aircraft.true_track,
+          },
+        })),
+      } : emptyFeatureCollection(),
+      vessels: showVessels ? {
+        type: 'FeatureCollection' as const,
+        features: vesselData.map((vessel: any) => ({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [vessel.longitude, vessel.latitude] },
+          properties: {
+            name: vessel.name || 'Unknown vessel',
+            mmsi: vessel.mmsi || '',
+            speed: vessel.speed || 0,
+            heading: vessel.heading,
+          },
+        })),
+      } : emptyFeatureCollection(),
+      acled: {
+        type: 'FeatureCollection' as const,
+        features: (acledConflicts || [])
+          .filter((event: any) => event.location?.longitude != null && event.location?.latitude != null)
+          .map((event: any) => ({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [event.location.longitude, event.location.latitude] },
+            properties: {
+              type: event.type || '',
+              fatalities: event.fatalities || 0,
+              radius: Math.min(Math.max(4, Math.sqrt(event.fatalities || 1) * 3), 15) * (sizeBoost ? 1.25 : 1),
+            },
+          })),
+      },
+      terminator: buildTerminatorData(showTerminator && !crisisEnabled),
+    }
+  }, [
+    activeChokepoints,
+    acledConflicts,
+    chokepointCounts,
+    enhancedNodes,
+    filter.theme,
+    filteredAircraftData,
+    selectedCountryCode,
+    showAircraft,
+    showFlows,
+    showTerminator,
+    showVessels,
+    sizeBoost,
+    vesselData,
+    visibleFlows,
+    crisisEnabled,
+  ])
+
+  useEffect(() => {
+    const map = mapRef.current?.getMap()
+    if (!map || !mapReady) return
+
+    setGeoJsonData(map, 'atlas-flows', nativeOverlayData.flows)
+    setGeoJsonData(map, 'atlas-anomaly', nativeOverlayData.anomaly)
+    setGeoJsonData(map, 'atlas-chokepoints', nativeOverlayData.chokepoints)
+    setGeoJsonData(map, 'atlas-aircraft', nativeOverlayData.aircraft)
+    setGeoJsonData(map, 'atlas-vessels', nativeOverlayData.vessels)
+    setGeoJsonData(map, 'atlas-acled', nativeOverlayData.acled)
+    setGeoJsonData(map, 'atlas-terminator', nativeOverlayData.terminator)
+
+    ensureLayer(map, {
+      id: 'atlas-terminator-fill',
+      type: 'fill',
+      source: 'atlas-terminator',
+      paint: {
+        'fill-color': 'rgba(0, 8, 25, 1)',
+        'fill-opacity': ['coalesce', ['get', 'opacity'], 0],
+      },
     })
-    return builtLayers
-  }, [enhancedNodes, visibleFlows, showFlows, isGlobe, sizeBoost, themeId, crisisEnabled, showTerminator, selectedCountryCode, timeRange, showAircraft, filteredAircraftData, showVessels, vesselData, activeChokepoints, filter.theme, acledConflicts])
+    ensureLayer(map, {
+      id: 'atlas-flows-line',
+      type: 'line',
+      source: 'atlas-flows',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': themeId === 'retro-radar' ? 'rgba(74, 222, 128, 0.55)' : 'rgba(100, 140, 180, 0.52)',
+        'line-width': ['interpolate', ['linear'], ['coalesce', ['get', 'strength'], 0], 0, 0.8, 1, 3],
+        'line-opacity': 0.45,
+      },
+    })
+    ensureLayer(map, {
+      id: 'atlas-anomaly-ring',
+      type: 'circle',
+      source: 'atlas-anomaly',
+      paint: {
+        'circle-radius': ['coalesce', ['get', 'radius'], 8],
+        'circle-color': 'rgba(239, 68, 68, 0)',
+        'circle-stroke-color': 'rgba(239, 68, 68, 0.95)',
+        'circle-stroke-width': 2,
+      },
+    })
+    ensureLayer(map, {
+      id: 'atlas-chokepoints-circle',
+      type: 'circle',
+      source: 'atlas-chokepoints',
+      paint: {
+        'circle-radius': ['case', ['get', 'active'], 18, 11],
+        'circle-color': ['case', ['get', 'active'], 'rgba(0, 220, 200, 0.16)', 'rgba(0, 180, 160, 0.08)'],
+        'circle-stroke-color': ['case', ['get', 'active'], 'rgba(0, 255, 210, 0.8)', 'rgba(0, 180, 160, 0.35)'],
+        'circle-stroke-width': ['case', ['get', 'active'], 2, 1],
+      },
+    })
+    ensureLayer(map, {
+      id: 'atlas-aircraft-circle',
+      type: 'circle',
+      source: 'atlas-aircraft',
+      paint: {
+        'circle-radius': ['case', ['>', ['coalesce', ['get', 'alt'], 0], 10000], 2, 3],
+        'circle-color': [
+          'case',
+          ['>', ['coalesce', ['get', 'alt'], 0], 10000],
+          'rgba(255, 255, 255, 0.78)',
+          ['>', ['coalesce', ['get', 'alt'], 0], 5000],
+          'rgba(255, 210, 80, 0.72)',
+          'rgba(255, 140, 40, 0.68)',
+        ],
+      },
+    })
+    ensureLayer(map, {
+      id: 'atlas-vessels-circle',
+      type: 'circle',
+      source: 'atlas-vessels',
+      paint: {
+        'circle-radius': ['case', ['>', ['coalesce', ['get', 'speed'], 0], 14], 4, 3],
+        'circle-color': ['case', ['>', ['coalesce', ['get', 'speed'], 0], 10], 'rgba(0, 220, 200, 0.9)', 'rgba(0, 180, 160, 0.6)'],
+      },
+    })
+    ensureLayer(map, {
+      id: 'atlas-acled-circle',
+      type: 'circle',
+      source: 'atlas-acled',
+      paint: {
+        'circle-radius': ['coalesce', ['get', 'radius'], 5],
+        'circle-color': [
+          'case',
+          ['in', 'Battle', ['coalesce', ['get', 'type'], '']],
+          'rgba(239, 68, 68, 0.86)',
+          ['in', 'Explosion', ['coalesce', ['get', 'type'], '']],
+          'rgba(239, 68, 68, 0.86)',
+          ['in', 'Riot', ['coalesce', ['get', 'type'], '']],
+          'rgba(249, 115, 22, 0.78)',
+          'rgba(234, 179, 8, 0.7)',
+        ],
+        'circle-stroke-color': 'rgba(255, 255, 255, 0.32)',
+        'circle-stroke-width': 1,
+      },
+    })
+
+    setLayerVisibility(map, 'atlas-flows-line', showFlows || !!selectedCountryCode || !!filter.theme)
+    setLayerVisibility(map, 'atlas-anomaly-ring', !crisisEnabled)
+    setLayerVisibility(map, 'atlas-chokepoints-circle', showVessels)
+    setLayerVisibility(map, 'atlas-aircraft-circle', showAircraft)
+    setLayerVisibility(map, 'atlas-vessels-circle', showVessels)
+    setLayerVisibility(map, 'atlas-acled-circle', (acledConflicts?.length ?? 0) > 0)
+    setLayerVisibility(map, 'atlas-terminator-fill', showTerminator && !crisisEnabled)
+  }, [
+    acledConflicts,
+    crisisEnabled,
+    filter.theme,
+    mapReady,
+    nativeOverlayData,
+    selectedCountryCode,
+    showAircraft,
+    showFlows,
+    showTerminator,
+    showVessels,
+    themeId,
+  ])
+
+  useEffect(() => {
+    const map = mapRef.current?.getMap()
+    if (!map || !mapReady) return
+
+    const handleChokepointClick = (e: any) => {
+      const feature = e.features?.[0]
+      if (!feature) return
+      const cp = CHOKEPOINTS.find(item => item.id === feature.properties?.id)
+      if (!cp) return
+      setSelectedChokepoint(prev => prev?.id === cp.id ? null : cp)
+      setMapFlyCountry(cp.primaryCountry)
+    }
+    const enter = () => { map.getCanvas().style.cursor = 'pointer' }
+    const leave = () => { map.getCanvas().style.cursor = '' }
+
+    map.on('click', 'atlas-chokepoints-circle', handleChokepointClick)
+    map.on('mouseenter', 'atlas-chokepoints-circle', enter)
+    map.on('mouseleave', 'atlas-chokepoints-circle', leave)
+
+    return () => {
+      if (!map.getLayer('atlas-chokepoints-circle')) return
+      map.off('click', 'atlas-chokepoints-circle', handleChokepointClick)
+      map.off('mouseenter', 'atlas-chokepoints-circle', enter)
+      map.off('mouseleave', 'atlas-chokepoints-circle', leave)
+    }
+  }, [mapReady, setMapFlyCountry])
 
   // Total signals for stats
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
@@ -1101,48 +1271,6 @@ function AppContent() {
                   setMapReady(true)
                 }}
               >
-                <DeckGLOverlay
-                  interleaved={true}
-                  layers={layers}
-                  getTooltip={({ object, layer }) => {
-                    if (!object) return null
-                    if (layer?.id?.startsWith('flows')) return null
-                    if (layer?.id?.startsWith('chokepoint-zones')) {
-                      const cp = object as Chokepoint
-                      const count = chokepointCounts[cp.id] || 0
-                      const active = activeChokepoints.includes(cp.id)
-                      return `${cp.name}${active ? ' ◈' : ''}\n${count > 0 ? `${count} vessels tracked` : 'No vessels tracked yet'}\n${cp.description}`
-                    }
-                    if (layer?.id?.startsWith('aircraft')) {
-                      const altFt = object.baro_altitude ? Math.round(object.baro_altitude / 0.3048) : 0
-                      const hdg = object.true_track !== null ? `HDG: ${Math.round(object.true_track)}°` : ''
-                      return `${object.callsign || 'Unknown'} (${object.origin_country})\nAlt: ${(object.baro_altitude || 0).toLocaleString()}m / ${altFt.toLocaleString()}ft\n${hdg}`
-                    }
-                    if (layer?.id?.startsWith('vessels')) {
-                      const spd = object.speed != null ? `${object.speed} kn` : '—'
-                      const hdg = object.heading && object.heading < 360 ? `  HDG: ${Math.round(object.heading)}°` : ''
-                      return `${object.name}\nMMSI ${object.mmsi}  ·  ${spd}${hdg}`
-                    }
-                    return null
-                  }}
-                  onHover={(info: any) => {
-                    if (!info.object) {
-                      setTooltip(null)
-                      return
-                    }
-                    if (info.layer?.id?.startsWith('flows')) {
-                      setTooltip({ type: 'flow', x: info.x, y: info.y, data: info.object })
-                    }
-                  }}
-                  onClick={(info: any) => {
-                    if (!info.object || !info.layer) return
-                    if (info.layer.id?.startsWith('chokepoint-zones')) {
-                      const cp = info.object as Chokepoint
-                      setSelectedChokepoint(prev => prev?.id === cp.id ? null : cp)
-                      setMapFlyCountry(cp.primaryCountry)
-                    }
-                  }}
-                />
               </MapGL>
               <div className="globe-vignette" />
             </MapErrorBoundary>

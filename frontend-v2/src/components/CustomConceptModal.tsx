@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Plus, Search } from 'lucide-react'
+import { X, Plus, Search } from '../lib/icons'
 import { getThemeLabel } from '../lib/themeLabels'
 import type { CustomConcept } from '../hooks/useCustomConcepts'
 import './CustomConceptModal.css'

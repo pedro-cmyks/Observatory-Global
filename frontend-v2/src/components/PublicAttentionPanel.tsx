@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ExternalLink, Pin, PinOff } from 'lucide-react'
+import { ExternalLink, Pin, PinOff } from '../lib/icons'
 import { getThemeLabel } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
 import { timeRangeToHours, type TimeRange } from '../lib/timeRanges'

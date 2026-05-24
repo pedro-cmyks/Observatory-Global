@@ -6,6 +6,11 @@
     "module": "ESNext",
     "types": ["node"],
     "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "vite": ["src/types/vite-config-stub.d.ts"],
+      "@vitejs/plugin-react": ["src/types/vite-config-stub.d.ts"]
+    },
 
     /* Bundler mode */
     "moduleResolution": "bundler",

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Search } from 'lucide-react'
+import { Search } from '../lib/icons'
 import './CompareSearchModal.css'
 
 interface TopCountry { code: string; name: string; count: number }
