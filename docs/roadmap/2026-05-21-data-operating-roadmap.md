@@ -225,7 +225,7 @@ asking users to understand fixed internal topic labels.
 2. Add a read-only backend thread assembler above existing data:
    `signal_topic_assignments`, `atlas_topics`, `signals_v2`, aggregate tables,
    source mix, and related-topic co-occurrence.
-3. Expose beta `/api/v2/threads` and `/api/v2/threads/{thread_id}`.
+3. [x] Expose beta `/api/v2/threads` and `/api/v2/threads/{thread_id}`.
 4. Add thread fields that directly answer the Atlas questions:
    `why_now`, `changed_10h`, `geo_concentration`, `subthreads`,
    `source_mix`, `evidence_samples`, `related_threads`, and `confidence`.
@@ -248,6 +248,12 @@ discipline of a canon without making users learn the canon.
   context.
 - Fixed atlas-topic labels remain available for provenance/debugging but are
   not the primary user-facing model.
+
+**Status 2026-05-24:** first backend beta implemented without migrations. The
+contract is `living-narrative-threads-v0`, read-only, and assembled from
+existing hot-window atlas-topic assignments plus signal evidence. Next step is
+manual live review of the top 10 threads before wiring Brief or
+NarrativeThreads.
 
 ## Phase 6 — Product Presentation And Manuals
 
@@ -301,4 +307,5 @@ These stay open but should not interrupt Phases 1-3 unless they become blockers:
 12. Feed Path C with the taxonomy findings from Path A: split local armed incidents from armed conflict; rename/split mining royalty vs mining/resource-disaster risk; revisit food/housing once more multilingual evidence accumulates.
 13. [x] Canonize Living Narrative Threads as the next product/data route.
 14. Use #207 as the umbrella thread issue and evolve stale issue wording using `docs/roadmap/2026-05-24-open-issues-thread-triage.md`.
-15. Implement beta `/api/v2/threads` from `docs/superpowers/plans/2026-05-24-living-narrative-threads.md`.
+15. [x] Implement beta `/api/v2/threads` from `docs/superpowers/plans/2026-05-24-living-narrative-threads.md`.
+16. Review live `/api/v2/threads?hours=24&limit=10` output for thread quality before frontend consumption.
