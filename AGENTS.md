@@ -81,7 +81,8 @@ Key docs/files changed in session 25 (Path C + projection note — 2026-05-25):
 - `docs/research/atlas-paper/2026-05-25-atlas-v2-labeling-guide.md` — Phase 1 label guide for `atlas-topic-benchmark-v2`.
 - `docs/research/atlas-paper/phase-1-validation/README.md` — Phase 1 workspace route: raw batches, pilot labels, future gold labels, reports, and progress snapshots.
 - `docs/research/atlas-paper/phase-1-validation/review-packets/2026-05-25-atlas-v2-stratified-batch-01.review.md` — human adjudication packet joining raw batch 01 evidence with assistant-pilot suggestions and reviewer fields.
-- `backend/scripts/atlas_label_workflow.py` — Phase 1 file workflow helper. Modes: `split`, `progress`, `merge`, and `review-packet`.
+- `docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl` — machine-editable review template with `assistant_*` suggestions and blank `reviewer_*` fields.
+- `backend/scripts/atlas_label_workflow.py` — Phase 1 file workflow helper. Modes: `split`, `progress`, `merge`, `review-packet`, and `review-template`.
 - `backend/scripts/atlas_validation_report.py` — renders benchmark score JSON into Markdown plus SVG report charts for the paper/validation track.
 - `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.jsonl` — first v2 stratified sample, 256 rows across 30 active topics and four buckets.
 - `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.md` — manifest for the first v2 stratified sample.

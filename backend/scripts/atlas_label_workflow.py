@@ -8,6 +8,7 @@ It keeps the paper/validation workflow reproducible:
 - `progress` reports how many rows have labels.
 - `merge` combines batch files back into one JSONL file for scoring.
 - `review-packet` renders a human adjudication packet from raw rows and pilot labels.
+- `review-template` writes machine-editable reviewer rows for adjudication.
 """
 
 from __future__ import annotations
@@ -134,6 +135,69 @@ def _pilot_summary(label: dict[str, Any] | None) -> str:
     return "\n".join(f"- `{name}`: {_md_value(value)}" for name, value in fields)
 
 
+def _assistant_label_fields(label: dict[str, Any] | None) -> dict[str, Any]:
+    if not label:
+        return {
+            "assistant_decision": None,
+            "assistant_scope": None,
+            "assistant_evidence_role": None,
+            "assistant_error_type": None,
+            "assistant_parent_thread": None,
+            "assistant_child_thread": None,
+            "assistant_supported_questions": [],
+            "assistant_notes": None,
+        }
+
+    return {
+        "assistant_decision": label.get("gold_decision"),
+        "assistant_scope": label.get("gold_scope"),
+        "assistant_evidence_role": label.get("gold_evidence_role"),
+        "assistant_error_type": label.get("gold_error_type"),
+        "assistant_parent_thread": label.get("gold_parent_thread"),
+        "assistant_child_thread": label.get("gold_child_thread"),
+        "assistant_supported_questions": label.get("gold_supported_questions") or [],
+        "assistant_notes": label.get("notes"),
+    }
+
+
+def build_review_template_row(
+    *,
+    raw_row: dict[str, Any],
+    pilot_label: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Build one machine-editable adjudication row.
+
+    The assistant fields are suggestions only. Reviewer fields stay blank so the
+    file cannot be mistaken for gold labels before human adjudication.
+    """
+
+    return {
+        "signal_id": raw_row["signal_id"],
+        "schema_version": raw_row.get("schema_version"),
+        "headline": raw_row.get("headline"),
+        "assigned_topic_label": raw_row.get("assigned_topic_label"),
+        "assigned_topic_slug": raw_row.get("assigned_topic_slug"),
+        "confidence": raw_row.get("confidence"),
+        "country_code": raw_row.get("country_code"),
+        "source_name": raw_row.get("source_name"),
+        "source_family": raw_row.get("source_family"),
+        "source_lang": raw_row.get("source_lang"),
+        "sample_bucket": raw_row.get("sample_bucket"),
+        "evidence": raw_row.get("evidence"),
+        **_assistant_label_fields(pilot_label),
+        "accept_assistant_label": None,
+        "reviewer_decision": None,
+        "reviewer_scope": None,
+        "reviewer_evidence_role": None,
+        "reviewer_error_type": None,
+        "reviewer_parent_thread": None,
+        "reviewer_child_thread": None,
+        "reviewer_supported_questions": [],
+        "reviewer_notes": None,
+        "label_quality": "review-template",
+    }
+
+
 def _row_review_section(
     *,
     index: int,
@@ -226,6 +290,31 @@ def render_review_packet(
     return output_path
 
 
+def write_review_template(
+    *,
+    raw_path: Path,
+    labels_path: Path,
+    output_path: Path,
+) -> Path:
+    raw_rows = read_jsonl(raw_path)
+    pilot_labels = rows_by_signal_id(labels_path)
+    template_rows: list[dict[str, Any]] = []
+
+    for raw_row in raw_rows:
+        signal_id = raw_row.get("signal_id")
+        if not isinstance(signal_id, int):
+            raise ValueError(f"row in {raw_path} is missing integer signal_id")
+        template_rows.append(
+            build_review_template_row(
+                raw_row=raw_row,
+                pilot_label=pilot_labels.get(signal_id),
+            )
+        )
+
+    write_jsonl(output_path, template_rows)
+    return output_path
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Atlas labeling workflow helper")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -253,6 +342,14 @@ def _parse_args() -> argparse.Namespace:
     review.add_argument("--output", type=Path, required=True)
     review.add_argument("--title", required=True)
 
+    review_template = subparsers.add_parser(
+        "review-template",
+        help="Write a machine-editable JSONL adjudication template",
+    )
+    review_template.add_argument("--raw", type=Path, required=True)
+    review_template.add_argument("--labels", type=Path, required=True)
+    review_template.add_argument("--output", type=Path, required=True)
+
     return parser.parse_args()
 
 
@@ -279,6 +376,15 @@ def main() -> None:
             labels_path=args.labels,
             output_path=args.output,
             title=args.title,
+        )
+        print(json.dumps({"output": str(output_path)}, indent=2))
+        return
+
+    if args.command == "review-template":
+        output_path = write_review_template(
+            raw_path=args.raw,
+            labels_path=args.labels,
+            output_path=args.output,
         )
         print(json.dumps({"output": str(output_path)}, indent=2))
         return

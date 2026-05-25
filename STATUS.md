@@ -130,6 +130,10 @@ Current data/product state:
   It joins raw evidence with assistant-pilot suggestions and blank reviewer
   fields for decision, semantic scope, evidence role, parent/child thread,
   supported questions, and notes.
+- Batch 01 also has a machine-editable review template:
+  `docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl`.
+  It keeps `assistant_*` suggestions separate from blank `reviewer_*` fields so
+  pilot labels cannot accidentally become gold evidence.
 - Report visuals are now generated outside the product UI by
   `backend/scripts/atlas_validation_report.py`. The first visual report is
   `docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01/assistant-pilot-batch-01.md`

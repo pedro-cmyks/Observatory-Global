@@ -227,6 +227,9 @@ labels for batches 02-08.
   with assistant-pilot suggestions and leaves reviewer fields for decision,
   semantic scope, evidence role, parent/child thread candidates, supported
   questions, and notes.
+- `backend/scripts/atlas_label_workflow.py review-template` writes the same
+  adjudication route as JSONL, keeping `assistant_*` suggestions separate from
+  blank `reviewer_*` fields for machine-readable review.
 - #203 remains active because assistant-pilot labels are still not gold. The
   next step is human adjudication, then reviewed/gold scoring.
 - #207 should use the adjudicated semantic-scope and supported-question labels

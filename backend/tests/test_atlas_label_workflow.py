@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 
 from scripts.atlas_label_workflow import (
+    build_review_template_row,
     label_progress,
     merge_batches,
     render_review_packet,
     split_batches,
+    write_review_template,
 )
 
 
@@ -142,3 +144,55 @@ def test_render_review_packet_handles_missing_pilot_label(tmp_path):
     )
 
     assert "No assistant-pilot label found" in output_path.read_text()
+
+
+def test_build_review_template_row_keeps_assistant_and_reviewer_fields_separate():
+    row = build_review_template_row(
+        raw_row={
+            "signal_id": 101,
+            "schema_version": "atlas-topic-benchmark-v2",
+            "headline": "Canal strike disrupts cargo movement",
+            "assigned_topic_slug": "transport-corridor-disruption",
+            "evidence": {"matched_terms": ["canal"]},
+        },
+        pilot_label={
+            "gold_decision": "correct",
+            "gold_scope": "child_thread",
+            "gold_evidence_role": "primary_event",
+            "gold_error_type": None,
+            "gold_parent_thread": "maritime-logistics",
+            "gold_child_thread": "panama-canal-disruption",
+            "gold_supported_questions": ["why_moving_now"],
+            "notes": "Assistant pilot label.",
+        },
+    )
+
+    assert row["assistant_decision"] == "correct"
+    assert row["assistant_scope"] == "child_thread"
+    assert row["reviewer_decision"] is None
+    assert row["reviewer_supported_questions"] == []
+    assert row["label_quality"] == "review-template"
+
+
+def test_write_review_template_outputs_jsonl(tmp_path):
+    raw_path = tmp_path / "raw.jsonl"
+    labels_path = tmp_path / "labels.jsonl"
+    output_path = tmp_path / "review-template.jsonl"
+    raw_path.write_text(
+        json.dumps(
+            {
+                "signal_id": 101,
+                "headline": "Canal strike disrupts cargo movement",
+                "assigned_topic_slug": "transport-corridor-disruption",
+            }
+        )
+        + "\n"
+    )
+    labels_path.write_text(json.dumps({"signal_id": 101, "gold_decision": "correct"}) + "\n")
+
+    write_review_template(raw_path=raw_path, labels_path=labels_path, output_path=output_path)
+
+    [row] = [json.loads(line) for line in output_path.read_text().splitlines()]
+    assert row["signal_id"] == 101
+    assert row["assistant_decision"] == "correct"
+    assert row["reviewer_decision"] is None

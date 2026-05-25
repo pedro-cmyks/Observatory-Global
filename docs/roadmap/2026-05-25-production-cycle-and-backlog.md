@@ -267,9 +267,11 @@ Phase 1 started:
   `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.md`.
 - Human review packet for assistant-pilot batch 01:
   `docs/research/atlas-paper/phase-1-validation/review-packets/2026-05-25-atlas-v2-stratified-batch-01.review.md`.
+- Machine-editable review template for assistant-pilot batch 01:
+  `docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl`.
 
-Next action: adjudicate assistant-pilot batch 01 from the review packet, label
-batches 02-08, then run the v2 score over reviewed/gold labels to produce
+Next action: adjudicate assistant-pilot batch 01 from the review packet/template,
+label batches 02-08, then run the v2 score over reviewed/gold labels to produce
 semantic-scope, evidence-role, and supported-question distributions.
 
 Visual validation route:
@@ -280,6 +282,8 @@ Visual validation route:
   `backend/scripts/atlas_validation_report.py`.
 - Generate reviewer packets from raw rows plus pilot labels using
   `backend/scripts/atlas_label_workflow.py review-packet`.
+- Generate machine-editable adjudication templates using
+  `backend/scripts/atlas_label_workflow.py review-template`.
 - Do not promote these charts into the production UI until reviewed/gold labels
   show that the metric is stable and useful.
 

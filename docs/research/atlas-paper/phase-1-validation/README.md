@@ -21,13 +21,15 @@ This is a validation workspace, not a final paper folder.
    `docs/research/atlas-paper/phase-1-validation/labels/assistant-pilot/`
 4. Human review/adjudication packets:
    `docs/research/atlas-paper/phase-1-validation/review-packets/`
-5. Future adjudicated labels:
+5. Machine-editable review templates:
+   `docs/research/atlas-paper/phase-1-validation/review-templates/`
+6. Future adjudicated labels:
    `docs/research/atlas-paper/phase-1-validation/labels/gold/`
-6. Score reports:
+7. Score reports:
    `docs/research/atlas-paper/phase-1-validation/reports/`
-7. Visual validation reports:
+8. Visual validation reports:
    `docs/research/atlas-paper/phase-1-validation/reports/<run-name>/`
-8. Progress snapshots:
+9. Progress snapshots:
    `docs/research/atlas-paper/phase-1-validation/progress*.json`
 
 ## Current Artifacts
@@ -44,6 +46,8 @@ This is a validation workspace, not a final paper folder.
   `docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01/assistant-pilot-batch-01.md`
 - Human review packet:
   `docs/research/atlas-paper/phase-1-validation/review-packets/2026-05-25-atlas-v2-stratified-batch-01.review.md`
+- Machine-editable review template:
+  `docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl`
 
 ## Label Quality Levels
 
@@ -86,6 +90,15 @@ backend/.venv/bin/python backend/scripts/atlas_label_workflow.py review-packet \
   --title "Atlas V2 Batch 01 Human Review Packet"
 ```
 
+Generate a machine-editable review template:
+
+```bash
+backend/.venv/bin/python backend/scripts/atlas_label_workflow.py review-template \
+  --raw docs/research/atlas-paper/phase-1-validation/batches/2026-05-25-atlas-v2-stratified-batch-01.jsonl \
+  --labels docs/research/atlas-paper/phase-1-validation/labels/assistant-pilot/2026-05-25-atlas-v2-stratified-batch-01.assistant-pilot.jsonl \
+  --output docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl
+```
+
 Merge future gold batches:
 
 ```bash
@@ -115,7 +128,8 @@ backend/.venv/bin/python backend/scripts/atlas_validation_report.py \
 
 ## Next Work
 
-1. Use the batch 01 review packet to adjudicate assistant-pilot labels.
+1. Use the batch 01 review packet and JSONL template to adjudicate
+   assistant-pilot labels.
 2. Decide whether to turn the adjudicated result into `reviewed` or `gold`.
 3. Continue labeling batches 02-08.
 4. Merge reviewed/gold labels.

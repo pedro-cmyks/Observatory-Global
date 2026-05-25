@@ -110,6 +110,8 @@ Validation workspace:
 assistant-pilot labels and a score report, but those are not gold labels. The
 batch 01 review packet is
 `docs/research/atlas-paper/phase-1-validation/review-packets/2026-05-25-atlas-v2-stratified-batch-01.review.md`.
+The machine-editable batch 01 review template is
+`docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl`.
 Next action is adjudication plus labels for batches 02-08, not another taxonomy
 patch.
 Visual validation reports are generated outside the product UI by

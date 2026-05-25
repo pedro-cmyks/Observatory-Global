@@ -147,3 +147,28 @@ Next decision:
 - Human review should either accept the assistant-pilot label, correct it into
   a reviewed label file, or mark the row as uncertain. Only reviewed/adjudicated
   labels can become paper-grade `gold` evidence.
+
+## 2026-05-25 — Machine-Editable Review Template For Batch 01
+
+Input:
+
+- Raw batch:
+  `docs/research/atlas-paper/phase-1-validation/batches/2026-05-25-atlas-v2-stratified-batch-01.jsonl`
+- Assistant-pilot labels:
+  `docs/research/atlas-paper/phase-1-validation/labels/assistant-pilot/2026-05-25-atlas-v2-stratified-batch-01.assistant-pilot.jsonl`
+
+Output:
+
+- `docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl`
+
+Purpose:
+
+- Provide a machine-editable companion to the Markdown review packet.
+- Keep `assistant_*` suggestion fields separate from blank `reviewer_*` fields.
+- Avoid converting assistant-pilot labels into reviewed/gold labels by accident.
+
+Next decision:
+
+- Fill reviewer fields after human adjudication. A future conversion step can
+  then produce a reviewed/gold JSONL file for scoring without copying values out
+  of Markdown.
