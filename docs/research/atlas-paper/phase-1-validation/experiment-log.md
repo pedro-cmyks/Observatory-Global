@@ -85,3 +85,29 @@ Interpretation:
   context rows, parent-thread candidates, and primary-context mismatches.
 - The score should not be treated as a production-quality measurement until
   labels are reviewed.
+
+## 2026-05-25 — Visual Validation Report For Assistant Pilot Batch 01
+
+Input:
+
+- `docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01-score.json`
+
+Output:
+
+- `docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01/assistant-pilot-batch-01.md`
+- `docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01/assistant-pilot-batch-01-scope.svg`
+- `docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01/assistant-pilot-batch-01-evidence-role.svg`
+- `docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01/assistant-pilot-batch-01-supported-questions.svg`
+- `docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01/assistant-pilot-batch-01-topic-precision.svg`
+
+Purpose:
+
+- Keep the research visuals outside the production UI.
+- Make tables and charts reproducible from score JSON.
+- Provide report-ready artifacts that can later support the paper after labels
+  are reviewed/adjudicated.
+
+Guardrail:
+
+- These charts are based on assistant-pilot labels. They are workflow evidence,
+  not paper-grade model evidence.

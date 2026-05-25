@@ -218,3 +218,8 @@ Phase 1 artifacts now exist:
 
 Immediate #203 action is reviewing assistant-pilot batch 01 and continuing
 labels for batches 02-08.
+
+Visual validation reports now live under
+`docs/research/atlas-paper/phase-1-validation/reports/`. Keep these separate
+from the production UI until labels are reviewed/gold and the metric proves
+stable.

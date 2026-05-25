@@ -572,6 +572,8 @@ Phase 1 artifacts now available:
   `docs/research/atlas-paper/phase-1-validation/README.md`
 - Experiment log:
   `docs/research/atlas-paper/phase-1-validation/experiment-log.md`
+- First visual validation report:
+  `docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01/assistant-pilot-batch-01.md`
 
 ## Initial Bibliography
 

@@ -110,6 +110,9 @@ Validation workspace:
 assistant-pilot labels and a score report, but those are not gold labels. Next
 action is review/adjudication plus labels for batches 02-08, not another
 taxonomy patch.
+Visual validation reports are generated outside the product UI by
+`backend/scripts/atlas_validation_report.py` and stored under
+`docs/research/atlas-paper/phase-1-validation/reports/`.
 
 Equal Earth / equal-area projection is tracked separately as #212 and ADR-0005.
 It is product-architecture parking for Atlas's worldview, not part of the

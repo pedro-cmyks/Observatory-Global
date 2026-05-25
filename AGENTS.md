@@ -80,6 +80,7 @@ Key docs/files changed in session 25 (Path C + projection note — 2026-05-25):
 - `docs/research/atlas-paper/2026-05-25-atlas-narrative-intelligence-state-of-art-and-validation-plan.md` — research-paper track: state of the art, thesis, research questions, hypotheses, baselines, ablations, data/label plan, metrics, and evidence required before writing a publishable paper.
 - `docs/research/atlas-paper/2026-05-25-atlas-v2-labeling-guide.md` — Phase 1 label guide for `atlas-topic-benchmark-v2`.
 - `docs/research/atlas-paper/phase-1-validation/README.md` — Phase 1 workspace route: raw batches, pilot labels, future gold labels, reports, and progress snapshots.
+- `backend/scripts/atlas_validation_report.py` — renders benchmark score JSON into Markdown plus SVG report charts for the paper/validation track.
 - `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.jsonl` — first v2 stratified sample, 256 rows across 30 active topics and four buckets.
 - `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.md` — manifest for the first v2 stratified sample.
 
@@ -99,6 +100,7 @@ Session 22 topic taxonomy state:
 - Paper-track guardrail: do not write a final paper before evidence exists. The next work is v2 label guide, stratified benchmark, baseline comparisons, ablations, read-only thread graph report, and reviewer usefulness/error-discovery validation.
 - Phase 1 guardrail: the first v2 sample is unlabeled. Do not draw model-quality conclusions from it until labels are filled and scored.
 - Assistant-pilot label guardrail: labels under `phase-1-validation/labels/assistant-pilot/` are for workflow testing only. Do not cite them as gold/paper-grade evidence before human review/adjudication.
+- Visual-report guardrail: keep research charts in `docs/research/atlas-paper/phase-1-validation/reports/`; do not promote them to the production UI until reviewed/gold labels show stable model value.
 - Quality guardrail: do not treat assignment volume as product quality. After migrations 040-041, several topics intentionally became thin (`food-price-stress`, `transport-corridor-disruption`, `forced-displacement`) rather than noisy. Keep them available as evidence-backed anchors, but do not promote them visually until volume/sample precision improves.
 - Theme/topic guardrail: do not trust GDELT theme classification alone as proof of a significant Atlas topic. Topic changes must be validated against real headlines, lex_pct/high_conf movement, and precision spot checks.
 

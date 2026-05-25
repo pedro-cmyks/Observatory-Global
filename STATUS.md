@@ -125,6 +125,11 @@ Current data/product state:
   The 256-row sample is split into 8 raw batches. Batch 01 has assistant-pilot
   labels and a score report, but those labels are explicitly not gold labels
   until reviewed/adjudicated.
+- Report visuals are now generated outside the product UI by
+  `backend/scripts/atlas_validation_report.py`. The first visual report is
+  `docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01/assistant-pilot-batch-01.md`
+  with SVG charts for semantic scope, evidence role, supported questions, and
+  per-topic precision.
 
 Living Threads canon:
 

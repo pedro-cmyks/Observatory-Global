@@ -23,7 +23,9 @@ This is a validation workspace, not a final paper folder.
    `docs/research/atlas-paper/phase-1-validation/labels/gold/`
 5. Score reports:
    `docs/research/atlas-paper/phase-1-validation/reports/`
-6. Progress snapshots:
+6. Visual validation reports:
+   `docs/research/atlas-paper/phase-1-validation/reports/<run-name>/`
+7. Progress snapshots:
    `docs/research/atlas-paper/phase-1-validation/progress*.json`
 
 ## Current Artifacts
@@ -36,6 +38,8 @@ This is a validation workspace, not a final paper folder.
 - Assistant pilot labels: batch 01 only, 32 rows.
 - Assistant pilot score:
   `docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01-score.json`
+- Assistant pilot visual report:
+  `docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01/assistant-pilot-batch-01.md`
 
 ## Label Quality Levels
 
@@ -84,6 +88,17 @@ backend/.venv/bin/python backend/scripts/topic_benchmark_harness.py score \
   --output docs/research/atlas-paper/phase-1-validation/reports/atlas-v2-stratified.gold-score.json
 ```
 
+Render a visual report from a score:
+
+```bash
+backend/.venv/bin/python backend/scripts/atlas_validation_report.py \
+  --score docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01-score.json \
+  --output-dir docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01 \
+  --title "Atlas V2 Assistant Pilot Batch 01 Validation Report" \
+  --label-quality assistant-pilot \
+  --report-name assistant-pilot-batch-01
+```
+
 ## Next Work
 
 1. Review assistant-pilot batch 01.
@@ -91,4 +106,6 @@ backend/.venv/bin/python backend/scripts/topic_benchmark_harness.py score \
 3. Continue labeling batches 02-08.
 4. Merge reviewed/gold labels.
 5. Score the full sample.
-6. Use the score to define the first read-only Narrative Thread Graph report.
+6. Render visual validation reports for reviewed/gold scores.
+7. Use the score and visual report to define the first read-only Narrative
+   Thread Graph report.
