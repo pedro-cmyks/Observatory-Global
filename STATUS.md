@@ -1,12 +1,25 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-24 (topic taxonomy review + roadmap cleanup)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-25 (production-cycle canon + backlog restart)
 
 ---
 
-## Current handoff (2026-05-24) — Living Narrative Threads direction
+## Current handoff (2026-05-25) — backlog-first production cycle
 
-The repo is clean on `v3-intel-layer`; latest commit is
-`0049a86 feat(atlas-topics): mig 036 Path A pilot — multilingual lex (#205)`.
+The repo is clean on `v3-intel-layer`. The latest production code before this
+documentation pass is `d568772 fix(frontend): open living thread focus from
+narratives`.
+
+New operating canon:
+
+- Roadmap: `docs/roadmap/2026-05-25-production-cycle-and-backlog.md`.
+- The UI is now treated as a detector of contract/data-quality failures, not as
+  an invitation to open ad hoc polish issues.
+- Frontend work interrupts the data backlog only when the visible product is
+  contradicting itself or misrepresenting data.
+- Visual feedback should be batched from recorded walkthroughs: video -> issue
+  batch -> focused UX PR.
+- The next active work block is data/product backlog, starting with Path C
+  taxonomy quality and live thread-evidence mismatches.
 
 Current data/product state:
 
@@ -26,6 +39,14 @@ Current data/product state:
   vocabulary for measurement, backfills, benchmarks, and precision gates, but
   the user-facing UI should show natural, evidence-backed threads that can
   split, merge, fade, and connect to related threads.
+- Production now exposes living threads in the visible Narrative Threads panel:
+  `frontend-v2/src/components/NarrativeThreads.tsx` consumes `/api/v2/threads`,
+  and selected rows open `ThreadFocusPanel`, which consumes
+  `/api/v2/threads/{thread_id}`. This fixed the prior mismatch where a row could
+  show hundreds of signals while `ThemeDetail` showed `0`.
+- Remaining thread quality issue: current live evidence shows
+  `mining-royalty-risk` is capturing a coal-mine-disaster cluster. This is a
+  Path C taxonomy problem, not a UI problem.
 
 Living Threads canon:
 
@@ -100,14 +121,14 @@ Sentiment decision from analyst review:
 
 Next execution order:
 
-1. Merge the completed Path A rollout (`037` + `038`) and docs.
-2. Keep the Living Narrative Threads canon as the next product/data route.
-3. Run deployed frontend smoke tests for the app-wide long-window routing before
-   closing `#193`.
-4. Normalize product sentiment presentation around Atlas sentiment under `#183`.
-5. Build a small benchmark/precision harness before any Path B encoder work.
-6. Review live `/api/v2/threads?hours=24&limit=10` output for coherence before
-   rewiring Brief, NarrativeThreads, SignalStream, or ThemeDetail.
+1. Close or update stale issue state from the production-cycle canon.
+2. Start Path C taxonomy quality with live thread-evidence mismatches:
+   `mining-royalty-risk` vs coal mine disaster is the first candidate.
+3. Build the Path B benchmark/precision harness before any encoder promotion.
+4. Run deployed app-wide long-window smoke tests before closing `#193`.
+5. Normalize product sentiment presentation around one Atlas sentiment under
+   `#183`.
+6. Evolve Entity Focus into thread participation, not raw mention display.
 
 ---
 

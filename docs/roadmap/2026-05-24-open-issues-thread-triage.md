@@ -1,6 +1,8 @@
 # Open Issues Triage For Living Threads
 
 **Date:** 2026-05-24.
+**Updated:** 2026-05-25 after PR #211, frontend thread-focus deploy, and
+production-cycle canon.
 **Basis:** open GitHub issues reviewed with `gh issue list --state open --limit 120`.
 
 ## Triage Labels
@@ -20,6 +22,7 @@ These issues should drive the next roadmap phase:
 
 | Issue | Triage | Direction |
 |---|---|---|
+| #207 Living Narrative Threads data contract | canon | Keep as umbrella until thread contract, focus path, evidence roles, and downstream surfaces are coherent. Backend and first visible frontend slice are live. |
 | #168 public attention threads and semantic links | canon | Reframe as voice lanes and related public-attention threads, not peer reporting. |
 | #173 Evidence Route panel | canon | Becomes the analyst path: thread -> evidence -> workspace -> dossier. |
 | #177 Signal Stream relevance/noise | canon | Upgrade to thread evidence ranking and evidence roles. |
@@ -43,7 +46,6 @@ These issues remain useful but should be updated before implementation:
 | #176 entity drilldown hygiene | evolve | Entity pages should show which threads the entity participates in. |
 | #178 stream inspection time | evolve | Include evidence freshness vs publication/render time in thread evidence. |
 | #179 map legend | evolve | Legend should explain active thread/geography/source layers. |
-| #202 Path A lex expansion | close-after-merge | Complete after PR #206 merges; future lex work feeds anchors, not UI taxonomy. |
 
 ## Close After Verification Or Merge
 
@@ -51,7 +53,7 @@ These issues remain useful but should be updated before implementation:
 |---|---|---|
 | #191 processed historical sync | close-after-merge | Close if maintainers accept local hot/cold automation and compact sync as complete umbrella. |
 | #192 processed-only historical tables | close-after-merge | Close if guardrail is accepted as implemented. |
-| #202 Path A lex expansion | close-after-merge | Close after PR #206 merge and issue comment references final metrics. |
+| #202 Path A lex expansion | close-after-verification | Migrations 036-038 are live. Close after final issue comment records six-topic rollout metrics and states future lex work feeds internal anchors. |
 
 ## Parking Lot
 
@@ -74,7 +76,7 @@ These are still valid, but should not interrupt the living-thread route:
 | #159 Event Mentions propagation | parking | Research lane. |
 | #161 GDELT DOC 2.0 | parking | Query-time enrichment lane. |
 | #164 ADR-0004 NLP strategy | parking | Historical context; likely close after review if all action migrated. |
-| #185 corpus-mine vocab | parking | Useful but no longer the main topic route after Path A. |
+| #185 corpus-mine vocab | active-later | Feed this into Path B/C benchmark work; do not use it as visible taxonomy work. |
 | #196 AISStream TLS degradation | parking | Provider health item. |
 
 ## Blocked
@@ -108,3 +110,23 @@ It links:
 
 Do not create separate issues per panel until the first `/api/v2/threads` beta
 contract exists.
+
+## 2026-05-25 Production-Cycle Update
+
+The first `/api/v2/threads` beta and visible Narrative Threads consumption are
+now live. The route is no longer "build the thread endpoint"; it is:
+
+1. close or update completed umbrella issues;
+2. fix data/taxonomy quality before more visual polish;
+3. batch visual feedback from recorded walkthroughs;
+4. reserve immediate frontend changes for truth/contract mismatches.
+
+Immediate active issue order:
+
+1. #204 Path C taxonomy revision: start with the mining/resource disaster
+   mismatch.
+2. #203 Path B encoder classifier: build benchmark/precision harness before any
+   promotion.
+3. #193 processed historical routing: deployed visual smoke before closure.
+4. #176 Entity Focus: thread participation and role hygiene.
+5. #177 Signal Stream: evidence-role ranking for selected threads.

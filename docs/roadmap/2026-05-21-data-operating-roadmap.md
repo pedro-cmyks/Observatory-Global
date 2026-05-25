@@ -30,6 +30,7 @@ Atlas should behave like a data product, not a raw news dump:
 | App panel audit | `docs/research/2026-05-24-app-panel-thread-audit.md` | Current panel-by-panel thread migration map |
 | Open issue triage | `docs/roadmap/2026-05-24-open-issues-thread-triage.md` | Current issue canon/evolve/parking review |
 | Narrative Threads quality audit | `docs/research/2026-05-24-thread-quality-audit.md` | Current quality gate for `/api/v2/threads` before UI swap |
+| Production cycle / backlog canon | `docs/roadmap/2026-05-25-production-cycle-and-backlog.md` | Active rule: backlog/data first, visual review batched |
 
 ## Phase 0 — Stabilize The Ground Truth
 
@@ -265,13 +266,16 @@ discipline of a canon without making users learn the canon.
 - Fixed atlas-topic labels remain available for provenance/debugging but are
   not the primary user-facing model.
 
-**Status 2026-05-24 PM:** M1 and M2 are merged. Production exposes
-`/api/v2/threads` and `/api/v2/briefing` includes `top_threads`. The visible
-`NarrativeThreads.tsx` UI still uses `/api/v2/narratives`, which is the correct
-holding pattern. A production quality audit found mixed precision: strong
-threads exist, but `gender-violence-rights` and `transport-corridor-disruption`
-are not ready for UI promotion, raw `top_entities` needs typing, and source /
-geography quality flags are required before M3b.
+**Status 2026-05-25:** M1/M2/M3a plus the first visible M3b slice are merged.
+Production exposes `/api/v2/threads`, `/api/v2/briefing` includes
+`top_threads`, `NarrativeThreads.tsx` consumes `/api/v2/threads`, and selected
+rows open `ThreadFocusPanel` through `/api/v2/threads/{thread_id}`. This fixed
+the prior frontend/backend mismatch where a visible row could show hundreds of
+signals while `ThemeDetail` showed zero.
+
+The next blocker is not UI wiring. It is thread/taxonomy quality. Live evidence
+shows `mining-royalty-risk` currently behaves like a coal mine disaster cluster,
+so Path C should split or rename that anchor before further visual polish.
 
 ## Phase 6 — Product Presentation And Manuals
 
@@ -330,9 +334,16 @@ These stay open but should not interrupt Phases 1-3 unless they become blockers:
 17. [x] Patch #211 into a quality-enriched backend PR: keep the useful timeline /
     trend fields, hold or type raw entities, add topic/source/geography quality
     flags, and add repeatable audit tooling.
-18. Only after the audit gates pass, swap `frontend-v2/src/components/NarrativeThreads.tsx`
-    to consume `/api/v2/threads`.
+18. [x] Swap `frontend-v2/src/components/NarrativeThreads.tsx` to consume
+    `/api/v2/threads`.
 19. [x] Implement the first Thread-First Focus Quality plan slice in
     `docs/superpowers/plans/2026-05-24-thread-first-focus-quality.md`:
     backend quality metadata, audit script, and additive frontend focus model
     prep. M3b remains gated.
+20. [x] Add a living-thread focus path so selected thread rows use
+    `/api/v2/threads/{thread_id}` instead of legacy `ThemeDetail`.
+21. [x] Canonize the production cycle: backlog/data first, visual reviews as
+    batched walkthrough feedback.
+22. Start Path C taxonomy quality with the mining/resource disaster mismatch.
+23. Build the Path B benchmark harness before encoder promotion.
+24. Run deployed app-wide long-window smoke tests before closing `#193`.

@@ -51,6 +51,13 @@ Key docs added in session 23 (Living Narrative Threads canon — 2026-05-24):
 - `docs/superpowers/plans/2026-05-24-living-narrative-threads.md` — implementation plan for the first read-only `/api/v2/threads` beta and compatible Brief/NarrativeThreads migration.
 - GitHub #207 — umbrella issue for the Living Narrative Threads data contract.
 
+Key docs/code changed in session 24 (production-cycle canon — 2026-05-25):
+- `docs/roadmap/2026-05-25-production-cycle-and-backlog.md` — active operating canon: backlog/data first, contract smokes second, visual feedback batched from recorded walkthroughs. Frontend work should interrupt only when Atlas is visibly contradicting the data or showing a broken contract.
+- `frontend-v2/src/components/NarrativeThreads.tsx` now consumes `/api/v2/threads` for the visible Narrative Threads panel.
+- `frontend-v2/src/components/ThreadFocusPanel.tsx` opens selected living threads via `/api/v2/threads/{thread_id}` so row counts, focus counts, countries, sources, movement, and evidence agree.
+- `backend/app/services/thread_intelligence.py` parses asyncpg JSONB strings for `hourly_timeline` and `related_threads`; do not regress these fields back to JSON strings.
+- Next active work should return to data quality/backlog: Path C taxonomy split/rename for `mining-royalty-risk` vs coal mine disaster, Path B benchmark harness, Entity Focus hygiene, source lanes, and deployed long-window smoke for #193.
+
 Session 22 topic taxonomy state:
 - Path A pilot result: `election-legitimacy-dispute` lex_pct `6.3% -> 31.6%`, high_conf `5 -> 27`, multilingual terms drove `74%` of lex-match volume; global coverage moved `13.08% -> 13.35%`.
 - Armed-conflict partial result: lex_pct `2.10% -> 6.56%`, high_conf `22 -> 85`, global v2 coverage after re-backfill `17.22%`. Treat as partial because the 30% gate did not clear; do not re-add broad armed-incident terms just to raise recall.
@@ -67,6 +74,12 @@ Session 23 Living Narrative Threads direction:
 - First technical increment should be read-only and additive: build `/api/v2/threads` above existing `signal_topic_assignments`, `atlas_topics`, `signals_v2`, aggregate tables, source mix, and related-topic co-occurrence. Keep current theme-based UI fallbacks until smoke-tested.
 - Backend beta exists as `living-narrative-threads-v0`: `/api/v2/threads` and `/api/v2/threads/{thread_id}` in `backend/app/routers/threads.py`, assembled by `backend/app/services/thread_intelligence.py`. Review live output quality before wiring frontend panels.
 - Do not add user-facing topic correction UI yet. Controlled SQL review, benchmark labels, and precision gates remain the validation path.
+
+Session 24 production-cycle direction:
+- Do not turn every visual issue into immediate frontend work. The UI is a detector of data/contract problems, but the current priority is closing backlog and improving data quality.
+- Immediate frontend fixes are appropriate only when the app is lying or contradicting itself, such as a thread row showing hundreds of signals while the focus panel shows zero.
+- Pure visual polish should be batched after Pedro records review videos. Convert the video into a short issue batch and implement it as a focused UX PR.
+- Before starting a major work block, re-check open GitHub issues and classify them as `active-now`, `close/update`, `parking`, `blocked`, or `superseded`.
 
 Session 20 data state:
 - Local archive root: `/Users/pedro/AtlasArchive`.
