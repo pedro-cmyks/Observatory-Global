@@ -105,6 +105,12 @@ Current data/product state:
   envelope -> product surfaces. The next Path B step is semantic/evidence-role
   labeling and a read-only Narrative Thread Graph report, not another
   topic-specific patch.
+- The research-paper track has started in
+  `docs/research/atlas-paper/2026-05-25-atlas-narrative-intelligence-state-of-art-and-validation-plan.md`.
+  This is not a paper draft yet. It is the state-of-the-art and validation plan:
+  related work, research thesis, research questions, hypotheses, baselines,
+  ablations, data/label plan, metrics, and evidence required before writing a
+  publishable manuscript.
 
 Living Threads canon:
 
@@ -203,14 +209,16 @@ Next execution order:
    noise, and which Atlas questions the row/thread can support.
 2. Extend the Path B harness schema with `gold_scope`, `gold_evidence_role`,
    parent/child thread candidates, and supported Atlas questions.
-3. Prototype a read-only Narrative Thread Graph report above existing data
+3. Create the v2 label guide and larger stratified sample required by the
+   Atlas paper validation plan.
+4. Prototype a read-only Narrative Thread Graph report above existing data
    before adding persistent tables or training an encoder.
-4. Keep encoder/ranking promotion blocked until the benchmark clears the 85%
+5. Keep encoder/ranking promotion blocked until the benchmark clears the 85%
    floor, with 90% as the product target.
-5. Run deployed app-wide long-window smoke tests before closing `#193`.
-6. Normalize product sentiment presentation around one Atlas sentiment under
+6. Run deployed app-wide long-window smoke tests before closing `#193`.
+7. Normalize product sentiment presentation around one Atlas sentiment under
    `#183`.
-7. Evolve Entity Focus into thread participation, not raw mention display.
+8. Evolve Entity Focus into thread participation, not raw mention display.
 
 ---
 

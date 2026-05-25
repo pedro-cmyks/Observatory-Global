@@ -126,6 +126,11 @@ Narrative classification root cause:
   the UI exposes the graph through focus lenses. The next Path B step is to
   label semantic scope and evidence role, then generate a read-only Narrative
   Thread Graph report before adding persistent tables or promoting an encoder.
+- Research-paper track:
+  `docs/research/atlas-paper/2026-05-25-atlas-narrative-intelligence-state-of-art-and-validation-plan.md`.
+  Do not write a final paper yet. Produce evidence first: v2 label guide,
+  stratified benchmark, baseline comparisons, ablations, thread graph report,
+  and reviewer usefulness/error-discovery validation.
 
 ## Previous Session Context (2026-05-21, data operating roadmap)
 

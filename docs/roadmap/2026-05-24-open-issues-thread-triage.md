@@ -195,3 +195,16 @@ Immediate active issue order:
 - #207 next action: use a read-only Narrative Thread Graph report to test
   relations, movement drivers, evidence roles, and quality envelopes before
   adding persistent graph tables or deeper UI changes.
+
+## 2026-05-25 Atlas Paper Track Update
+
+- Research plan:
+  `docs/research/atlas-paper/2026-05-25-atlas-narrative-intelligence-state-of-art-and-validation-plan.md`.
+- The paper track should not become product copy. It is a validation program:
+  state of the art, research questions, hypotheses, baselines, ablations,
+  metrics, and evidence requirements.
+- #203 should produce the label/evaluation artifacts needed for the paper.
+- #207 should produce the read-only Narrative Thread Graph report needed for
+  the paper.
+- #204 should feed taxonomy/scope failures into the same evaluation program
+  rather than accumulating isolated topic-specific fixes.

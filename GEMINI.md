@@ -93,6 +93,12 @@ threads; quality envelopes explain confidence; product surfaces are lenses over
 that graph. Next Path B work should label semantic scope and evidence role and
 generate a read-only Narrative Thread Graph report before persistent tables or
 encoder promotion.
+Research-paper track:
+`docs/research/atlas-paper/2026-05-25-atlas-narrative-intelligence-state-of-art-and-validation-plan.md`.
+This is a validation program, not a product explainer. A final paper should wait
+until Atlas has v2 label guides, stratified benchmarks, baseline comparisons,
+ablation reports, thread graph reports, and reviewer usefulness/error-discovery
+evidence.
 
 Equal Earth / equal-area projection is tracked separately as #212 and ADR-0005.
 It is product-architecture parking for Atlas's worldview, not part of the

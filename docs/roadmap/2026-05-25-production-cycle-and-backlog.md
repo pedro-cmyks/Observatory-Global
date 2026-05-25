@@ -202,6 +202,8 @@ Next quality dependency:
   `docs/research/topic-quality/2026-05-25-narrative-intelligence-field-review.md`.
 - Active model framework:
   `docs/specs/2026-05-25-atlas-narrative-intelligence-framework.md`.
+- Research-paper validation plan:
+  `docs/research/atlas-paper/2026-05-25-atlas-narrative-intelligence-state-of-art-and-validation-plan.md`.
 - The next dependency is not another topic-specific repair. It is a model-level
   correction: separate domains, parent threads, child threads, entity threads,
   evidence rows, and contextual mentions before training or ranking changes.
@@ -233,6 +235,25 @@ Next implementation sequence:
 
 Do not add persistent thread graph tables until the report and harness show the
 object model is stable.
+
+### Research Paper Track
+
+The paper track is now explicit but subordinate to evidence generation. The
+project should not write a final paper yet. It should first produce the artifacts
+that would make a paper defensible:
+
+1. a v2 label guide with examples;
+2. a larger stratified benchmark sample;
+3. scope/evidence/question score reports;
+4. baseline comparisons against topic-only, flat clustering, temporal topic,
+   event-centric, and attention/source models;
+5. at least one ablation report;
+6. a read-only Narrative Thread Graph report;
+7. evidence that answerability correlates with reviewer usefulness or error
+   discovery.
+
+This route keeps Atlas anchored in state-of-the-art work while preserving the
+current engineering priority: make the model measurable before expanding the UI.
 
 ## Guardrails
 

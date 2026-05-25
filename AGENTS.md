@@ -77,6 +77,7 @@ Key docs/files changed in session 25 (Path C + projection note — 2026-05-25):
 - `docs/research/topic-quality/2026-05-25-atlas-quality-models-market-and-product.md` — market/repo review of quality metrics; recommends answerability-first Atlas quality around the seven product questions.
 - `docs/research/topic-quality/2026-05-25-narrative-intelligence-field-review.md` — external field review of event-centric narrative graphs, narrative maps, dynamic topic modeling, topic tracking, media framing, attention platforms, StoryAtlas-style visualization, and interactive narrative analytics.
 - `docs/specs/2026-05-25-atlas-narrative-intelligence-framework.md` — active model canon: Atlas is both narrative intelligence model and visualizer; next work is semantic/evidence-role labels plus a read-only Narrative Thread Graph report before persistent tables or encoder promotion.
+- `docs/research/atlas-paper/2026-05-25-atlas-narrative-intelligence-state-of-art-and-validation-plan.md` — research-paper track: state of the art, thesis, research questions, hypotheses, baselines, ablations, data/label plan, metrics, and evidence required before writing a publishable paper.
 
 Session 22 topic taxonomy state:
 - Path A pilot result: `election-legitimacy-dispute` lex_pct `6.3% -> 31.6%`, high_conf `5 -> 27`, multilingual terms drove `74%` of lex-match volume; global coverage moved `13.08% -> 13.35%`.
@@ -91,6 +92,7 @@ Session 22 topic taxonomy state:
 - Root-cause guardrail: do not keep solving benchmark failures topic-by-topic before modeling semantic role. Future labels should distinguish `domain`, `parent_thread`, `child_thread`, `entity_thread`, `evidence`, `context_signal`, and `noise`.
 - Quality-model guardrail: metrics should trace to the seven Atlas questions. Assignment precision alone is insufficient; Atlas quality should combine answerability, evidence, scope, source, movement, and coverage.
 - Narrative-intelligence framework guardrail: Atlas is not a fixed topic dashboard or pure topic model. Treat `atlas_topics` as internal anchors; expose living parent/child/entity Narrative Threads with typed relations, movement drivers, evidence roles, and quality envelopes.
+- Paper-track guardrail: do not write a final paper before evidence exists. The next work is v2 label guide, stratified benchmark, baseline comparisons, ablations, read-only thread graph report, and reviewer usefulness/error-discovery validation.
 - Quality guardrail: do not treat assignment volume as product quality. After migrations 040-041, several topics intentionally became thin (`food-price-stress`, `transport-corridor-disruption`, `forced-displacement`) rather than noisy. Keep them available as evidence-backed anchors, but do not promote them visually until volume/sample precision improves.
 - Theme/topic guardrail: do not trust GDELT theme classification alone as proof of a significant Atlas topic. Topic changes must be validated against real headlines, lex_pct/high_conf movement, and precision spot checks.
 
