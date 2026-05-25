@@ -1,6 +1,6 @@
 # GEMINI Code Assistant Context — Observatory Global (Atlas)
 
-Last updated: 2026-05-25 (production-cycle canon + phase zero cleanup)
+Last updated: 2026-05-25 (Path B benchmark harness)
 
 This document gives the Gemini AI assistant the current, accurate context for the Observatory Global project. Treat this as the source of truth for deployment topology, architecture, and conventions.
 
@@ -40,11 +40,12 @@ Current visible Narrative Threads slice:
 - `backend/app/services/thread_intelligence.py` parses asyncpg JSONB strings for
   `hourly_timeline` and `related_threads`; do not regress those fields to JSON strings.
 
-Next active order after phase zero: #204 Path C taxonomy quality (first slice is
-migration 039, keeping slug `mining-royalty-risk` stable while correcting the
-visible label/description toward mining/resource safety crisis), #203 Path B
-benchmark harness, #193 deployed app-wide long-window smoke, #176 Entity Focus,
-and #177 Signal Stream/source lanes. #191, #192, and #202 are closed.
+Next active order after phase zero: #203 Path B labeled validation, #204 broader
+Path C taxonomy quality, #193 deployed app-wide long-window smoke, #176 Entity
+Focus, and #177 Signal Stream/source lanes. #191, #192, and #202 are closed.
+Path C first slice shipped as migration 039, keeping slug `mining-royalty-risk`
+stable while correcting the visible label/description toward mining/resource
+safety crisis.
 
 All-topic quality audit state: `backend/scripts/topic_quality_audit.py` is the
 repeatable read-only audit tool; the 30-topic audit is documented in
@@ -52,6 +53,14 @@ repeatable read-only audit tool; the 30-topic audit is documented in
 Migrations 040-041 intentionally shrink noisy topics. Do not restore broad hints
 or terms just to recover volume; quality-first means thin precise topics are
 preferable to large noisy topics.
+
+Path B benchmark harness exists as `backend/scripts/topic_benchmark_harness.py`
+with `sample` and `score` modes. First sample:
+`docs/research/topic-quality/benchmark-samples/2026-05-25-path-b-priority-topics.jsonl`
+contains 103 rows across seven priority topics. Doc:
+`docs/research/topic-quality/2026-05-25-path-b-benchmark-harness.md`. Do not
+promote encoder/ranking changes until labeled samples clear 85% precision
+minimum; 90% is the product target.
 
 Equal Earth / equal-area projection is tracked separately as #212 and ADR-0005.
 It is product-architecture parking for Atlas's worldview, not part of the
@@ -88,7 +97,7 @@ current data sprint.
 
 **Important scope correction for #193:** backend app-wide `1w`/`1m` routing is implemented for `/heat/countries`, `/country/{code}`, `/theme/{topic_slug}`, and `/anomalies/themes`; `/heatmap` is explicitly deprecated in favor of `/heat/countries`; frontend `CoverageBadge` is wired into Heat and Theme Detail. `#193` should stay open until visual smoke tests pass through the deployed frontend. `#194` long-window `top_sources` is fixed with `historical_source_daily`; live plan after `VACUUM` is ~40 ms index-only scan, `Heap Fetches: 0`.
 
-**Next session priorities:** (1) start #204 Path C taxonomy quality with `mining-royalty-risk` vs coal mine/resource-disaster evidence, (2) build #203 Path B benchmark harness and labeled validation path, (3) visual smoke test app-wide historical routing and close #193 only after deployed UI verification, (4) return to #176/#177/#185 for Entity Focus, Signal Stream/source lanes, and topic/NLP quality. `general-monitoring` remains a quality smell in historical aggregates; storage/routing is no longer the main blocker.
+**Next session priorities:** (1) label and score the #203 Path B 103-row benchmark sample, (2) use failing topics to drive taxonomy/lexicon repair before model promotion, (3) visual smoke test app-wide historical routing and close #193 only after deployed UI verification, (4) return to #176/#177/#185 for Entity Focus, Signal Stream/source lanes, and topic/NLP quality. `general-monitoring` remains a quality smell in historical aggregates; storage/routing is no longer the main blocker.
 
 **Fly image split (#195):** `Dockerfile` now has `api-runtime` and `nlp-runtime` targets. Use `scripts/deploy-fly-api.sh` for API-only deploys (`--build-target api-runtime --process-groups app`) and `scripts/deploy-fly-nlp-worker.sh` for NLP/model deploys (`--build-target nlp-runtime --process-groups nlp_worker`). Production verification: API-only deploy produced a `257 MB` image and updated only the `app` machine; `nlp_worker` stayed on the heavy image and continued `Sentiment[xlm-v1]`, `NER[xlm-v1]`, `Framing[xlm-v1]`.
 

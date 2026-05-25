@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-25 (production-cycle canon + phase zero cleanup)
+Last updated: 2026-05-25 (Path B benchmark harness)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -35,8 +35,14 @@ Current visible Narrative Threads slice:
 
 Active execution order after phase zero:
 
-1. #204 Path C taxonomy quality. First slice is migration 039: keep slug `mining-royalty-risk` stable, but correct label/description toward mining/resource safety crisis after live evidence showed coal mine/resource-disaster dominance.
-2. #203 Path B benchmark harness and labeled validation path; precision gate is 85% minimum, 90% target. This is now the main dependency after the all-topic audit because sample precision needs to become measured instead of manually inferred.
+1. #203 Path B labeled validation path. The read-only harness exists; the next
+   step is to label the 103-row priority sample and score it. Precision gate is
+   85% minimum, 90% target. This is the main dependency because sample
+   precision must be measured instead of manually inferred.
+2. #204 Path C taxonomy quality remains open for broader revision. First slice
+   shipped as migration 039: keep slug `mining-royalty-risk` stable, but
+   correct label/description toward mining/resource safety crisis after live
+   evidence showed coal mine/resource-disaster dominance.
 3. #193 deployed app-wide long-window smoke; keep open until the deployed frontend proves `1w`/`1m` consistency.
 4. #176 Entity Focus hygiene: entities are lenses over threads, not raw mention cards.
 5. #177 Signal Stream/source lanes and evidence provenance.
@@ -58,6 +64,19 @@ All-topic quality audit state:
 - Migrations 040-041 intentionally shrink noisy topics. Do not restore broad
   hints/terms just to recover volume; quality-first means thin precise topics
   are preferable to large noisy topics.
+
+Path B benchmark harness state:
+
+- `backend/scripts/topic_benchmark_harness.py` is the read-only benchmark tool.
+  It has `sample` and `score` modes.
+- First sample:
+  `docs/research/topic-quality/benchmark-samples/2026-05-25-path-b-priority-topics.jsonl`
+  with 103 rows across armed conflict, disease, food, displacement, gender
+  violence, labor, and transport.
+- Documentation:
+  `docs/research/topic-quality/2026-05-25-path-b-benchmark-harness.md`.
+- Do not promote encoder/ranking changes below the 85% precision floor; target
+  90% before treating topic quality as product-grade.
 
 ## Previous Session Context (2026-05-21, data operating roadmap)
 

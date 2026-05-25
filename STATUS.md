@@ -1,13 +1,13 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-25 (production-cycle canon + backlog restart)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-25 (Path B benchmark harness)
 
 ---
 
 ## Current handoff (2026-05-25) — backlog-first production cycle
 
-The repo is clean on `v3-intel-layer`. The latest production code before this
-documentation pass is `d568772 fix(frontend): open living thread focus from
-narratives`.
+The repo is on `v3-intel-layer`. The latest pushed production commit before the
+Path B harness work is `99af056 feat(taxonomy): audit and tighten topic
+quality`.
 
 New operating canon:
 
@@ -18,8 +18,9 @@ New operating canon:
   contradicting itself or misrepresenting data.
 - Visual feedback should be batched from recorded walkthroughs: video -> issue
   batch -> focused UX PR.
-- The next active work block is data/product backlog, starting with Path C
-  taxonomy quality and live thread-evidence mismatches.
+- The active work block is data/product backlog. Path C first-pass taxonomy
+  cleanup is shipped; Path B now has a read-only benchmark harness and first
+  103-row priority sample awaiting labels.
 - Equal Earth / equal-area projection is now tracked separately as #212 and
   ADR-0005. It is important for Atlas's worldview, but parked outside the
   current data sprint.
@@ -59,6 +60,13 @@ Current data/product state:
   It audits all 30 active atlas topics with a repeatable script and applies
   migrations 040-041 to prefer smaller, lex-supported topics over broad noisy
   theme-driven volume.
+- Path B benchmark harness is documented in
+  `docs/research/topic-quality/2026-05-25-path-b-benchmark-harness.md`.
+  The new read-only script `backend/scripts/topic_benchmark_harness.py`
+  generates label-ready JSONL and scores labeled rows against the 85% minimum /
+  90% target precision gate. First sample artifact:
+  `docs/research/topic-quality/benchmark-samples/2026-05-25-path-b-priority-topics.jsonl`
+  with 103 rows across seven priority topics.
 
 Living Threads canon:
 
@@ -131,9 +139,10 @@ Atlas-topic taxonomy state:
   - Residual risk: `armed-conflict-escalation` remains large and theme-heavy,
     but sampled evidence is mostly real conflict; route it to Path B benchmark
     labels or a dedicated multilingual conflict pass, not blind suppression.
-- Path B encoder classifier stays in design/shadow mode until a benchmark shows
-  at least `85%` precision; `90%` is the product target. Recall does not justify
-  promotion below that floor.
+- Path B encoder classifier stays in design/shadow mode. The benchmark harness
+  now exists, but no encoder score or ranking change should ship until labeled
+  samples show at least `85%` precision; `90%` is the product target. Recall
+  does not justify promotion below that floor.
 - Path C taxonomy revision stays later/periodic. Do not build a user-facing
   "this topic is wrong" correction affordance yet; use controlled benchmark
   labels and SQL sample review first.
@@ -150,15 +159,14 @@ Sentiment decision from analyst review:
 
 Next execution order:
 
-1. Close or update stale issue state from the production-cycle canon.
-2. Start Path C taxonomy quality with live thread-evidence mismatches:
-   `mining-royalty-risk` vs coal mine disaster is the first candidate. First
-   conservative fix: migration 039 label/description correction.
-3. Build the Path B benchmark/precision harness before any encoder promotion.
-4. Run deployed app-wide long-window smoke tests before closing `#193`.
-5. Normalize product sentiment presentation around one Atlas sentiment under
+1. Label the Path B 103-row priority sample and score it with
+   `backend/scripts/topic_benchmark_harness.py score`.
+2. Use any topic below the 85% floor to drive the next taxonomy/lexicon repair
+   before changing ranking or training an encoder.
+3. Run deployed app-wide long-window smoke tests before closing `#193`.
+4. Normalize product sentiment presentation around one Atlas sentiment under
    `#183`.
-6. Evolve Entity Focus into thread participation, not raw mention display.
+5. Evolve Entity Focus into thread participation, not raw mention display.
 
 ---
 

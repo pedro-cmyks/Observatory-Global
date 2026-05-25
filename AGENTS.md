@@ -66,6 +66,10 @@ Key docs/files changed in session 25 (Path C + projection note — 2026-05-25):
 - `docs/research/topic-quality/2026-05-25-atlas-topic-quality-audit.md` — all 30 active atlas topics audited over live 24h assignments. Product principle: prefer smaller precise topics over broad noisy topics because errors compound through threads/focus/entities/sentiment.
 - `backend/migrations/040_topic_quality_precision_pass.sql` — pruned broad/noisy hints and terms for gender violence, labor strikes, transport corridors, disease outbreak, food prices, displacement, humanitarian access, disinformation, and migration/border pressure.
 - `backend/migrations/041_topic_quality_lex_first_followup.sql` — made labor, transport, forced displacement, and water stress lex-first after post-040 validation showed theme-only leakage remained.
+- `backend/scripts/topic_benchmark_harness.py` — Path B read-only benchmark harness. `sample` generates label-ready JSONL from production assignments; `score` reports overall/per-topic precision with gates.
+- `backend/tests/test_topic_benchmark_harness.py` — harness unit tests for label schema, JSONL scoring, and precision gates.
+- `docs/research/topic-quality/2026-05-25-path-b-benchmark-harness.md` — Path B harness documentation and first sample plan.
+- `docs/research/topic-quality/benchmark-samples/2026-05-25-path-b-priority-topics.jsonl` — first 103-row priority sample across seven risky/recently changed topics.
 
 Session 22 topic taxonomy state:
 - Path A pilot result: `election-legitimacy-dispute` lex_pct `6.3% -> 31.6%`, high_conf `5 -> 27`, multilingual terms drove `74%` of lex-match volume; global coverage moved `13.08% -> 13.35%`.
@@ -73,7 +77,8 @@ Session 22 topic taxonomy state:
 - Final Path A rollout result after migration 038: `fuel-subsidy-unrest` lex_pct `5.20% -> 37.12%`, high_conf `2 -> 136`; `food-price-stress` lex_pct `17.52% -> 4.63%`, high_conf `7 -> 10` after removing noisy `shortage`/`hunger`; `housing-cost-pressure` lex_pct `10.16% -> 8.20%`, high_conf `0 -> 2` after removing noisy `mortgage`/`eviction`; `mining-royalty-risk` lex_pct `12.33% -> 78.99%`, high_conf `0 -> 100` driven by a coal-mine-disaster cluster.
 - Global v2 topic coverage after full Path A rollout: `18.47%` of 24h eligible signals.
 - Open issues: #203 Path B and #204 Path C. #202 is closed after migrations 036-038.
-- Next taxonomy step: apply/verify migration 039, then use Path C/B labels to decide whether royalty/concession deserves a separate anchor from mining/resource safety crisis.
+- Next taxonomy step: use Path B labels and broader Path C samples to decide whether royalty/concession deserves a separate anchor from mining/resource safety crisis. Migration 039 already corrected the visible mining/resource safety label while keeping slug compatibility.
+- Path B current step: label and score `docs/research/topic-quality/benchmark-samples/2026-05-25-path-b-priority-topics.jsonl`; do not promote encoder or ranking changes until measured precision clears the 85% floor, with 90% as product target.
 - Quality guardrail: do not treat assignment volume as product quality. After migrations 040-041, several topics intentionally became thin (`food-price-stress`, `transport-corridor-disruption`, `forced-displacement`) rather than noisy. Keep them available as evidence-backed anchors, but do not promote them visually until volume/sample precision improves.
 - Theme/topic guardrail: do not trust GDELT theme classification alone as proof of a significant Atlas topic. Topic changes must be validated against real headlines, lex_pct/high_conf movement, and precision spot checks.
 

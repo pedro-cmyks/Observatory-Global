@@ -180,8 +180,13 @@ Second Path C slice:
 
 Next quality dependency:
 
-- #203 Path B benchmark harness should turn manual sample precision into a
-  measurable gate before broader taxonomy/model promotion.
+- #203 Path B benchmark harness now exists as
+  `backend/scripts/topic_benchmark_harness.py`.
+- First label-ready sample:
+  `docs/research/topic-quality/benchmark-samples/2026-05-25-path-b-priority-topics.jsonl`
+  with 103 rows across seven priority topics.
+- The next step is labeling and scoring the sample. Manual sample precision is
+  now a measurable gate before broader taxonomy/model promotion.
 
 ## Guardrails
 

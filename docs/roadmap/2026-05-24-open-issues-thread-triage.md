@@ -124,10 +124,10 @@ now live. The route is no longer "build the thread endpoint"; it is:
 
 Immediate active issue order:
 
-1. #204 Path C taxonomy revision: start with the mining/resource disaster
-   mismatch.
-2. #203 Path B encoder classifier: build benchmark/precision harness before any
-   promotion.
+1. #203 Path B encoder classifier: label and score the first benchmark sample
+   before any promotion.
+2. #204 Path C taxonomy revision: continue broader taxonomy repair after the
+   mining/resource disaster first slice.
 3. #193 processed historical routing: deployed visual smoke before closure.
 4. #176 Entity Focus: thread participation and role hygiene.
 5. #177 Signal Stream: evidence-role ranking for selected threads.
@@ -154,3 +154,13 @@ Immediate active issue order:
 - #204 remains open for the broader Path C cycle, but the immediate dependency
   now shifts to #203 benchmark labels so sample precision can become a measured
   gate.
+
+## 2026-05-25 Path B Benchmark Harness Update
+
+- `backend/scripts/topic_benchmark_harness.py` added as the read-only sample and
+  score harness.
+- First label-ready sample:
+  `docs/research/topic-quality/benchmark-samples/2026-05-25-path-b-priority-topics.jsonl`.
+- Harness documentation:
+  `docs/research/topic-quality/2026-05-25-path-b-benchmark-harness.md`.
+- Next issue action for #203 is labeling/scoring, not model promotion.
