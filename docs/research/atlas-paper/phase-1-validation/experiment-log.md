@@ -172,3 +172,33 @@ Next decision:
 - Fill reviewer fields after human adjudication. A future conversion step can
   then produce a reviewed/gold JSONL file for scoring without copying values out
   of Markdown.
+
+## 2026-05-25 — Review Progress And Finalization Commands
+
+Output:
+
+- `docs/research/atlas-paper/phase-1-validation/progress-review-batch-01.json`
+
+Current progress:
+
+| Metric | Value |
+|---|---:|
+| Total rows | 32 |
+| Ready rows | 0 |
+| Remaining rows | 32 |
+| Accepted assistant rows | 0 |
+| Reviewer-corrected rows | 0 |
+
+Interpretation:
+
+- This is the expected state before human adjudication.
+- No assistant-pilot label has been accepted as reviewed/gold evidence.
+- No scoreable reviewed/gold file was generated.
+
+New workflow commands:
+
+- `review-progress` reports whether a review template has enough decisions to
+  become scoreable.
+- `finalize-review` converts completed rows into scoreable labels with
+  `gold_*` fields and a `label_quality` of either `reviewed` or `gold`.
+- `--require-complete` blocks accidental partial reviewed/gold outputs.

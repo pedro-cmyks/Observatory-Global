@@ -9,6 +9,8 @@ It keeps the paper/validation workflow reproducible:
 - `merge` combines batch files back into one JSONL file for scoring.
 - `review-packet` renders a human adjudication packet from raw rows and pilot labels.
 - `review-template` writes machine-editable reviewer rows for adjudication.
+- `review-progress` reports adjudication readiness for review templates.
+- `finalize-review` converts completed review templates into scoreable labels.
 """
 
 from __future__ import annotations
@@ -17,6 +19,17 @@ import argparse
 import json
 from pathlib import Path
 from typing import Any, Iterable
+
+VALID_LABEL_QUALITIES = {"reviewed", "gold"}
+FINAL_LABEL_FIELDS = {
+    "decision": "gold_decision",
+    "scope": "gold_scope",
+    "evidence_role": "gold_evidence_role",
+    "error_type": "gold_error_type",
+    "parent_thread": "gold_parent_thread",
+    "child_thread": "gold_child_thread",
+    "supported_questions": "gold_supported_questions",
+}
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -315,6 +328,143 @@ def write_review_template(
     return output_path
 
 
+def _has_value(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, list):
+        return bool(value)
+    return True
+
+
+def _accepted_assistant(row: dict[str, Any]) -> bool:
+    return row.get("accept_assistant_label") is True
+
+
+def _reviewer_field(row: dict[str, Any], name: str) -> Any:
+    return row.get(f"reviewer_{name}")
+
+
+def _assistant_field(row: dict[str, Any], name: str) -> Any:
+    return row.get(f"assistant_{name}")
+
+
+def _resolved_review_value(row: dict[str, Any], name: str) -> Any:
+    reviewer_value = _reviewer_field(row, name)
+    if _has_value(reviewer_value):
+        return reviewer_value
+    if _accepted_assistant(row):
+        return _assistant_field(row, name)
+    return None
+
+
+def review_template_progress(paths: Iterable[Path]) -> dict[str, Any]:
+    files: list[dict[str, Any]] = []
+    total_rows = 0
+    ready_rows = 0
+    accepted_assistant_rows = 0
+    reviewer_corrected_rows = 0
+
+    for path in sorted(paths):
+        rows = read_jsonl(path)
+        file_ready = 0
+        file_accepted = 0
+        file_corrected = 0
+        for row in rows:
+            decision = _resolved_review_value(row, "decision")
+            if _has_value(decision):
+                file_ready += 1
+            if _accepted_assistant(row):
+                file_accepted += 1
+            if _has_value(row.get("reviewer_decision")):
+                file_corrected += 1
+
+        row_count = len(rows)
+        total_rows += row_count
+        ready_rows += file_ready
+        accepted_assistant_rows += file_accepted
+        reviewer_corrected_rows += file_corrected
+        files.append(
+            {
+                "path": str(path),
+                "rows": row_count,
+                "ready": file_ready,
+                "remaining": row_count - file_ready,
+                "accepted_assistant": file_accepted,
+                "reviewer_corrected": file_corrected,
+            }
+        )
+
+    return {
+        "files": files,
+        "total_rows": total_rows,
+        "ready_rows": ready_rows,
+        "remaining_rows": total_rows - ready_rows,
+        "accepted_assistant_rows": accepted_assistant_rows,
+        "reviewer_corrected_rows": reviewer_corrected_rows,
+        "progress_pct": round(ready_rows / total_rows, 4) if total_rows else None,
+    }
+
+
+def _finalized_review_row(row: dict[str, Any], *, label_quality: str) -> dict[str, Any] | None:
+    decision = _resolved_review_value(row, "decision")
+    if not _has_value(decision):
+        return None
+
+    finalized = {
+        key: value
+        for key, value in row.items()
+        if not key.startswith("assistant_")
+        and not key.startswith("reviewer_")
+        and key not in {"accept_assistant_label", "label_quality"}
+    }
+    finalized["label_quality"] = label_quality
+    finalized["review_source"] = (
+        "assistant_accepted" if _accepted_assistant(row) else "reviewer_adjudicated"
+    )
+
+    for review_name, gold_name in FINAL_LABEL_FIELDS.items():
+        value = _resolved_review_value(row, review_name)
+        if review_name == "supported_questions" and value is None:
+            value = []
+        finalized[gold_name] = value
+
+    return finalized
+
+
+def finalize_review_template(
+    *,
+    input_path: Path,
+    output_path: Path,
+    label_quality: str,
+    require_complete: bool,
+) -> dict[str, Any]:
+    if label_quality not in VALID_LABEL_QUALITIES:
+        raise ValueError(f"label_quality must be one of {sorted(VALID_LABEL_QUALITIES)}")
+
+    rows = read_jsonl(input_path)
+    finalized_rows: list[dict[str, Any]] = []
+    for row in rows:
+        finalized = _finalized_review_row(row, label_quality=label_quality)
+        if finalized:
+            finalized_rows.append(finalized)
+
+    if require_complete and len(finalized_rows) != len(rows):
+        missing = len(rows) - len(finalized_rows)
+        raise ValueError(f"review template is incomplete: {missing} rows missing decisions")
+
+    write_jsonl(output_path, finalized_rows)
+    return {
+        "input": str(input_path),
+        "output": str(output_path),
+        "input_rows": len(rows),
+        "written_rows": len(finalized_rows),
+        "remaining_rows": len(rows) - len(finalized_rows),
+        "label_quality": label_quality,
+    }
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Atlas labeling workflow helper")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -349,6 +499,21 @@ def _parse_args() -> argparse.Namespace:
     review_template.add_argument("--raw", type=Path, required=True)
     review_template.add_argument("--labels", type=Path, required=True)
     review_template.add_argument("--output", type=Path, required=True)
+
+    review_progress = subparsers.add_parser(
+        "review-progress",
+        help="Report adjudication readiness for review template JSONL files",
+    )
+    review_progress.add_argument("paths", type=Path, nargs="+")
+
+    finalize = subparsers.add_parser(
+        "finalize-review",
+        help="Convert completed review template rows into scoreable labels",
+    )
+    finalize.add_argument("--input", type=Path, required=True)
+    finalize.add_argument("--output", type=Path, required=True)
+    finalize.add_argument("--label-quality", choices=sorted(VALID_LABEL_QUALITIES), required=True)
+    finalize.add_argument("--require-complete", action="store_true")
 
     return parser.parse_args()
 
@@ -387,6 +552,20 @@ def main() -> None:
             output_path=args.output,
         )
         print(json.dumps({"output": str(output_path)}, indent=2))
+        return
+
+    if args.command == "review-progress":
+        print(json.dumps(review_template_progress(args.paths), indent=2, sort_keys=True))
+        return
+
+    if args.command == "finalize-review":
+        result = finalize_review_template(
+            input_path=args.input,
+            output_path=args.output,
+            label_quality=args.label_quality,
+            require_complete=args.require_complete,
+        )
+        print(json.dumps(result, indent=2, sort_keys=True))
         return
 
     row_count = merge_batches(

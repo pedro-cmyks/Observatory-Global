@@ -134,6 +134,11 @@ Current data/product state:
   `docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl`.
   It keeps `assistant_*` suggestions separate from blank `reviewer_*` fields so
   pilot labels cannot accidentally become gold evidence.
+- Review progress/finalization is now scripted:
+  `backend/scripts/atlas_label_workflow.py review-progress` and
+  `finalize-review`. Current batch 01 progress is recorded at
+  `docs/research/atlas-paper/phase-1-validation/progress-review-batch-01.json`
+  with `0/32` rows ready, which is expected before human adjudication.
 - Report visuals are now generated outside the product UI by
   `backend/scripts/atlas_validation_report.py`. The first visual report is
   `docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01/assistant-pilot-batch-01.md`

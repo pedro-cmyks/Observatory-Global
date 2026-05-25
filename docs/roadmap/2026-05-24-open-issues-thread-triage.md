@@ -230,6 +230,10 @@ labels for batches 02-08.
 - `backend/scripts/atlas_label_workflow.py review-template` writes the same
   adjudication route as JSONL, keeping `assistant_*` suggestions separate from
   blank `reviewer_*` fields for machine-readable review.
+- `backend/scripts/atlas_label_workflow.py review-progress` and
+  `finalize-review` now close the loop from adjudication template to scoreable
+  reviewed/gold labels. Current batch 01 progress is `0/32` ready, so no
+  assistant-pilot labels have been promoted.
 - #203 remains active because assistant-pilot labels are still not gold. The
   next step is human adjudication, then reviewed/gold scoring.
 - #207 should use the adjudicated semantic-scope and supported-question labels

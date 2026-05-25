@@ -4,9 +4,11 @@ import json
 
 from scripts.atlas_label_workflow import (
     build_review_template_row,
+    finalize_review_template,
     label_progress,
     merge_batches,
     render_review_packet,
+    review_template_progress,
     split_batches,
     write_review_template,
 )
@@ -196,3 +198,115 @@ def test_write_review_template_outputs_jsonl(tmp_path):
     assert row["signal_id"] == 101
     assert row["assistant_decision"] == "correct"
     assert row["reviewer_decision"] is None
+
+
+def test_review_template_progress_counts_ready_rows(tmp_path):
+    review = tmp_path / "review.jsonl"
+    review.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "signal_id": 1,
+                        "accept_assistant_label": True,
+                        "assistant_decision": "correct",
+                    }
+                ),
+                json.dumps({"signal_id": 2, "reviewer_decision": "incorrect"}),
+                json.dumps({"signal_id": 3}),
+            ]
+        )
+        + "\n"
+    )
+
+    report = review_template_progress([review])
+
+    assert report["total_rows"] == 3
+    assert report["ready_rows"] == 2
+    assert report["remaining_rows"] == 1
+    assert report["accepted_assistant_rows"] == 1
+    assert report["reviewer_corrected_rows"] == 1
+
+
+def test_finalize_review_template_writes_scoreable_labels(tmp_path):
+    review = tmp_path / "review.jsonl"
+    output = tmp_path / "reviewed.jsonl"
+    review.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "signal_id": 1,
+                        "headline": "Accepted assistant row",
+                        "assigned_topic_slug": "transport-corridor-disruption",
+                        "accept_assistant_label": True,
+                        "assistant_decision": "correct",
+                        "assistant_scope": "child_thread",
+                        "assistant_evidence_role": "primary_event",
+                        "assistant_error_type": None,
+                        "assistant_parent_thread": "transport",
+                        "assistant_child_thread": "canal-disruption",
+                        "assistant_supported_questions": ["why_moving"],
+                        "reviewer_decision": None,
+                        "label_quality": "review-template",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "signal_id": 2,
+                        "headline": "Reviewer corrected row",
+                        "assigned_topic_slug": "transport-corridor-disruption",
+                        "accept_assistant_label": False,
+                        "assistant_decision": "correct",
+                        "reviewer_decision": "incorrect",
+                        "reviewer_scope": "noise",
+                        "reviewer_evidence_role": "not_evidence",
+                        "reviewer_error_type": "off_topic",
+                        "reviewer_parent_thread": None,
+                        "reviewer_child_thread": None,
+                        "reviewer_supported_questions": [],
+                        "label_quality": "review-template",
+                    }
+                ),
+                json.dumps({"signal_id": 3, "reviewer_decision": None}),
+            ]
+        )
+        + "\n"
+    )
+
+    result = finalize_review_template(
+        input_path=review,
+        output_path=output,
+        label_quality="reviewed",
+        require_complete=False,
+    )
+
+    rows = [json.loads(line) for line in output.read_text().splitlines()]
+    assert result["written_rows"] == 2
+    assert result["remaining_rows"] == 1
+    assert rows[0]["gold_decision"] == "correct"
+    assert rows[0]["gold_scope"] == "child_thread"
+    assert rows[0]["review_source"] == "assistant_accepted"
+    assert rows[1]["gold_decision"] == "incorrect"
+    assert rows[1]["gold_error_type"] == "off_topic"
+    assert rows[1]["review_source"] == "reviewer_adjudicated"
+    assert "assistant_decision" not in rows[0]
+    assert "reviewer_decision" not in rows[0]
+
+
+def test_finalize_review_template_can_require_complete_review(tmp_path):
+    review = tmp_path / "review.jsonl"
+    output = tmp_path / "reviewed.jsonl"
+    review.write_text(json.dumps({"signal_id": 1, "reviewer_decision": None}) + "\n")
+
+    try:
+        finalize_review_template(
+            input_path=review,
+            output_path=output,
+            label_quality="gold",
+            require_complete=True,
+        )
+    except ValueError as exc:
+        assert "incomplete" in str(exc)
+    else:
+        raise AssertionError("expected incomplete review to raise")
