@@ -169,3 +169,8 @@ Immediate active issue order:
   #203 is typed repair/design, not model promotion.
 - Typed failures split into mechanical noise and hierarchy work. Broad concepts
   that fail a specific child anchor can still be valid parent/entity threads.
+- Root cause audit:
+  `docs/research/topic-quality/2026-05-25-narrative-classification-root-cause-audit.md`.
+  Next issue action is model-level: distinguish domain, parent thread, child
+  thread, entity thread, evidence, context signal, and noise before adding more
+  topic-specific patches.

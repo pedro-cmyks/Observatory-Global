@@ -1,6 +1,6 @@
 # GEMINI Code Assistant Context — Observatory Global (Atlas)
 
-Last updated: 2026-05-25 (Path B benchmark harness)
+Last updated: 2026-05-25 (narrative classification root cause)
 
 This document gives the Gemini AI assistant the current, accurate context for the Observatory Global project. Treat this as the source of truth for deployment topology, architecture, and conventions.
 
@@ -68,6 +68,13 @@ with overall precision `80.85%`, below the 85% floor. Result doc:
 Typed failures now matter: `substring_noise` is a mechanical repair, but
 `parent_thread_candidate` and `scope_mismatch` should feed nested Narrative
 Threads rather than cause broad concepts to be deleted.
+Root cause audit:
+`docs/research/topic-quality/2026-05-25-narrative-classification-root-cause-audit.md`.
+The core diagnosis is model-level, not topic-specific: the current assignment
+layer is carrying domains, parent threads, child threads, entity threads,
+evidence rows, and contextual mentions at the same time. Next work should
+measure semantic role and evidence role before applying more topic-specific
+repairs.
 
 Equal Earth / equal-area projection is tracked separately as #212 and ADR-0005.
 It is product-architecture parking for Atlas's worldview, not part of the

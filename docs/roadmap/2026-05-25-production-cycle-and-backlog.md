@@ -194,6 +194,11 @@ Next quality dependency:
 - Do not treat every failed assignment as noise. Some failures are broad
   parent/entity thread candidates, such as `Panama Canal`, that should feed a
   parent -> child Narrative Threads model rather than a hard lexicon purge.
+- Root cause audit:
+  `docs/research/topic-quality/2026-05-25-narrative-classification-root-cause-audit.md`.
+- The next dependency is not another topic-specific repair. It is a model-level
+  correction: separate domains, parent threads, child threads, entity threads,
+  evidence rows, and contextual mentions before training or ranking changes.
 
 ## Guardrails
 

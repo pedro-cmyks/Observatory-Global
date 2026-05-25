@@ -1,5 +1,5 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-25 (Path B benchmark harness)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-25 (narrative classification root cause)
 
 ---
 
@@ -75,6 +75,13 @@ Current data/product state:
   failed. The important product finding is typed failure: some rows are true
   substring/off-topic noise, but others are parent-thread candidates or scope
   mismatches that should feed nested Narrative Threads rather than be deleted.
+- Root cause audit is documented in
+  `docs/research/topic-quality/2026-05-25-narrative-classification-root-cause-audit.md`.
+  The core diagnosis is model-level: Atlas is asking one internal assignment
+  layer to represent domains, parent threads, child threads, entity threads,
+  evidence rows, and contextual mentions at the same time. Further work should
+  evaluate semantic role and evidence level before making topic-specific
+  repairs.
 
 Living Threads canon:
 
@@ -167,16 +174,17 @@ Sentiment decision from analyst review:
 
 Next execution order:
 
-1. Use typed Path B failures to separate mechanical precision repairs from
-   living-thread hierarchy work:
-   `substring_noise` can be fixed directly; `parent_thread_candidate` and
-   `scope_mismatch` should inform parent -> child Narrative Threads.
-2. Keep encoder/ranking promotion blocked until the benchmark clears the 85%
+1. Upgrade the benchmark/model audit from topic correctness to semantic role:
+   domain, parent thread, child thread, entity thread, evidence, context signal,
+   and noise.
+2. Prototype read-only parent -> child Narrative Thread hierarchy above
+   existing data before adding persistent tables or training an encoder.
+3. Keep encoder/ranking promotion blocked until the benchmark clears the 85%
    floor, with 90% as the product target.
-3. Run deployed app-wide long-window smoke tests before closing `#193`.
-4. Normalize product sentiment presentation around one Atlas sentiment under
+4. Run deployed app-wide long-window smoke tests before closing `#193`.
+5. Normalize product sentiment presentation around one Atlas sentiment under
    `#183`.
-5. Evolve Entity Focus into thread participation, not raw mention display.
+6. Evolve Entity Focus into thread participation, not raw mention display.
 
 ---
 

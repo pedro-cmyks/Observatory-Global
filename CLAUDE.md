@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-25 (Path B benchmark harness)
+Last updated: 2026-05-25 (narrative classification root cause)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -93,6 +93,20 @@ Path B benchmark harness state:
   Example: `Panama Canal` can be a valid broad/entity thread, but not evidence
   for `transport-corridor-disruption` unless the signal shows closure, drought,
   blockade, delay, shipping disruption, or operational impact.
+
+Narrative classification root cause:
+
+- Canonical audit:
+  `docs/research/topic-quality/2026-05-25-narrative-classification-root-cause-audit.md`.
+- Do not continue topic-by-topic patching as the default response to benchmark
+  failures. The root issue is that one assignment layer is currently carrying
+  domains, parent threads, child threads, entity threads, evidence rows, and
+  contextual mentions.
+- The next model step is to measure semantic role and evidence role:
+  `domain`, `parent_thread`, `child_thread`, `entity_thread`, `evidence`,
+  `context_signal`, `noise`.
+- Keep `atlas_topics` as internal anchors. The visible product should organize
+  parent -> child Narrative Threads and entity lenses above those anchors.
 
 ## Previous Session Context (2026-05-21, data operating roadmap)
 
