@@ -1,6 +1,6 @@
 # GEMINI Code Assistant Context — Observatory Global (Atlas)
 
-Last updated: 2026-05-21 (processed history routing + historical source aggregates)
+Last updated: 2026-05-25 (production-cycle canon + phase zero cleanup)
 
 This document gives the Gemini AI assistant the current, accurate context for the Observatory Global project. Treat this as the source of truth for deployment topology, architecture, and conventions.
 
@@ -9,6 +9,42 @@ This document gives the Gemini AI assistant the current, accurate context for th
 ## What this project is
 
 **Observatory Global (internal name: Atlas)** is a narrative intelligence system. It tracks how topics and news narratives propagate across global media sources, surfaces geographic drift, sentiment patterns, and conflict signals. It is NOT a news reader: the value is HOW and WHERE the world covers topics, not what happened.
+
+---
+
+## Current operating canon
+
+Use these docs as the active source of truth before starting new work:
+
+- `docs/roadmap/2026-05-25-production-cycle-and-backlog.md`
+- `docs/roadmap/2026-05-21-data-operating-roadmap.md`
+- `docs/roadmap/2026-05-24-open-issues-thread-triage.md`
+- `docs/specs/2026-05-24-living-narrative-threads.md`
+
+Atlas should expose living Narrative Threads to users. `atlas_topics` is an
+internal anchor vocabulary for measurement, backfills, benchmarks, and precision
+gates; it is not the visible product taxonomy. The visible app should answer:
+why this is moving now, what changed in the last 10h, where it is concentrated,
+which subthreads are forming, which sources are driving it, what evidence
+supports it, and what related thread it connects to.
+
+Production cycle: backlog/data first, contract smoke second, visual feedback in
+batches from Pedro's recorded walkthroughs. Frontend work interrupts the data
+backlog only when Atlas is visibly contradicting itself or showing a broken
+contract.
+
+Current visible Narrative Threads slice:
+
+- `frontend-v2/src/components/NarrativeThreads.tsx` consumes `/api/v2/threads`.
+- `frontend-v2/src/components/ThreadFocusPanel.tsx` consumes `/api/v2/threads/{thread_id}`.
+- `backend/app/services/thread_intelligence.py` parses asyncpg JSONB strings for
+  `hourly_timeline` and `related_threads`; do not regress those fields to JSON strings.
+
+Next active order after phase zero: #204 Path C taxonomy quality
+(`mining-royalty-risk` vs coal mine/resource disaster first), #203 Path B
+benchmark harness, #193 deployed app-wide long-window smoke, #176 Entity Focus,
+and #177 Signal Stream/source lanes. #191, #192, and #202 are closeable once
+their completion comments are posted.
 
 ---
 
@@ -29,19 +65,19 @@ This document gives the Gemini AI assistant the current, accurate context for th
 
 **Session 20 hot/cold archive update:** The hot/cold operating model is now operationally tested. Local archive root is `/Users/pedro/AtlasArchive`; clean cutover archive is `/Users/pedro/AtlasArchive/cutovers/2026-05-20`. Verified export covers `2026-05-03T00:00:00Z` through `2026-05-20T03:33:29Z`, with 18 manifest records, 2,128,070 rows, ~368M compressed, 0 checksum failures, and 0 overlapping ranges. New scripts: `backend/scripts/archive_verify.py`, `backend/scripts/archive_plan.py`, `backend/scripts/prune_archived_signals.py`. Verified prune dry-run from Fly nlp_worker `0803426f142468` passed exactly: `archive_rows=2,128,070`, `db_candidate_rows=2,128,070`, `range_count=18`, `executed=false`. Live prune completed after Pedro's explicit approval: `deleted_rows=2,128,070`, `elapsed_seconds=139.13`, archived range remaining `0`, exact `signals_v2` count `259,360`. The prune script only touched `signals_v2`; product aggregate tables, correction tables, topic tables, and NLP audit/progress tables stay in Supabase. `/health.total_signals` now reflects historical aggregate volume from `country_hourly_v2`, not raw hot-store row count.
 
-**Processed historical sync direction:** Supabase should serve processed historical product surfaces, not raw historical rows. Raw historical signals stay in `/Users/pedro/AtlasArchive`; the local processor will produce compact daily aggregates, coverage metadata, and evidence samples, then sync those outputs to Supabase. Spec: `docs/superpowers/specs/2026-05-21-processed-historical-sync-design.md`. Plan: `docs/superpowers/plans/2026-05-21-processed-historical-sync.md`. Tracking issues: #191, #192, #193. Related issues commented: #164, #167, #171, #184, #185. Fly remains responsible for hot-window SLA; local compute handles historical/backlog processing; Supabase stays lightweight.
+**Processed historical sync direction:** Supabase serves processed historical product surfaces, not raw historical rows. Raw historical signals stay in `/Users/pedro/AtlasArchive`; the local processor produces compact daily aggregates, coverage metadata, and evidence samples, then syncs those outputs to Supabase. Spec: `docs/superpowers/specs/2026-05-21-processed-historical-sync-design.md`. Plan: `docs/superpowers/plans/2026-05-21-processed-historical-sync.md`. Issues #191 and #192 are implemented/closeable; #193 remains open for deployed frontend visual smoke. Related issues commented: #164, #167, #171, #184, #185. Fly remains responsible for hot-window SLA; local compute handles historical/backlog processing; Supabase stays lightweight.
 
 **Processed historical sync implementation started:** Added `backend/migrations/029_historical_processed_tables.sql`, `backend/scripts/historical_process_partition.py`, `backend/scripts/historical_sync.py`, `backend/tests/test_historical_processing.py`, and first artifact `docs/research/processed-historical-sync/2026-05-19-topic-country.json`. Smoke processed `185,163` archived rows into `1,728` daily topic/country aggregate rows; sync dry-run accepted `1,728` rows. Supabase MCP OAuth is configured, migration `029` was applied through Supabase MCP, and the first artifact was synced live using Fly runtime `DATABASE_URL`: `1,728` rows in `historical_topic_country_daily`, summing to `185,163` signals for `2026-05-19` / `atlas-hist-v1`.
 
 **Processed historical cutover backfill complete:** Added `backend/scripts/historical_backfill.py` as the idempotent orchestrator. It processed and synced `2026-05-03` through partial `2026-05-20` from `/Users/pedro/AtlasArchive/cutovers/2026-05-20` into compact Supabase history. Live report: `22,711` aggregate rows, `2,128,070` represented signals, `236` countries, `11` topics, avg topic coverage `0.8052`, avg NLP sentiment coverage `0.1695`, model `atlas-hist-v1`. This exactly matches the verified archive row count.
 
-**Current data coordination roadmap:** Use `docs/roadmap/2026-05-21-data-operating-roadmap.md` as the active execution order. It coordinates the hot/cold model, processed historical sync, app-wide long-window routing, hot-window NLP/topic/source quality, and the later coverage/provenance UI work. Older roadmaps remain useful background but should not override this ordering.
+**Current data coordination roadmap:** Use `docs/roadmap/2026-05-25-production-cycle-and-backlog.md` plus `docs/roadmap/2026-05-21-data-operating-roadmap.md` as the active execution order. They coordinate the hot/cold model, processed historical sync, app-wide long-window routing, hot-window NLP/topic/source quality, living threads, and later coverage/provenance UI work. Older roadmaps remain useful background but should not override this ordering.
 
 **Processed historical app bridge:** `/api/v2/briefing?hours>24` now routes `top_themes` to `historical_topic_country_daily` and `top_sources` to `historical_source_daily` when available. `/brief` renders a compact historical processed coverage note. Source aggregate sync adds `161,871` daily source rows representing the same `2,128,070` archived signals.
 
 **Important scope correction for #193:** backend app-wide `1w`/`1m` routing is implemented for `/heat/countries`, `/country/{code}`, `/theme/{topic_slug}`, and `/anomalies/themes`; `/heatmap` is explicitly deprecated in favor of `/heat/countries`; frontend `CoverageBadge` is wired into Heat and Theme Detail. `#193` should stay open until visual smoke tests pass through the deployed frontend. `#194` long-window `top_sources` is fixed with `historical_source_daily`; live plan after `VACUUM` is ~40 ms index-only scan, `Heap Fetches: 0`.
 
-**Next session priorities:** (1) visual smoke test app-wide historical routing and close #193 only after UI verification, (2) return to #171/#167/#185/#184 for topic/NLP quality — especially `general-monitoring`, now `1,559,990` of `2,128,070` historical signals, (3) handle AIS degraded TLS provider (#196).
+**Next session priorities:** (1) start #204 Path C taxonomy quality with `mining-royalty-risk` vs coal mine/resource-disaster evidence, (2) build #203 Path B benchmark harness and labeled validation path, (3) visual smoke test app-wide historical routing and close #193 only after deployed UI verification, (4) return to #176/#177/#185 for Entity Focus, Signal Stream/source lanes, and topic/NLP quality. `general-monitoring` remains a quality smell in historical aggregates; storage/routing is no longer the main blocker.
 
 **Fly image split (#195):** `Dockerfile` now has `api-runtime` and `nlp-runtime` targets. Use `scripts/deploy-fly-api.sh` for API-only deploys (`--build-target api-runtime --process-groups app`) and `scripts/deploy-fly-nlp-worker.sh` for NLP/model deploys (`--build-target nlp-runtime --process-groups nlp_worker`). Production verification: API-only deploy produced a `257 MB` image and updated only the `app` machine; `nlp_worker` stayed on the heavy image and continued `Sentiment[xlm-v1]`, `NER[xlm-v1]`, `Framing[xlm-v1]`.
 

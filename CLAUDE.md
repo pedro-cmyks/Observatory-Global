@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-24 (Living Narrative Threads canon)
+Last updated: 2026-05-25 (production-cycle canon + phase zero cleanup)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -8,7 +8,44 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
-## Current Session Context (2026-05-21, data operating roadmap)
+## Current Session Context (2026-05-25, production-cycle canon)
+
+### Phase zero operating truth
+
+Use these docs as the active ground truth before opening new work:
+
+- `docs/roadmap/2026-05-25-production-cycle-and-backlog.md`
+- `docs/roadmap/2026-05-21-data-operating-roadmap.md`
+- `docs/roadmap/2026-05-24-open-issues-thread-triage.md`
+
+The production loop is backlog/data first, contract smoke second, and visual
+feedback batched from Pedro's recorded walkthroughs. The UI is a detector of
+data/contract failures, not a reason to create ad hoc polish issues. Interrupt
+the backlog only when the app visibly contradicts the data, such as a thread row
+showing hundreds of signals while its focus panel shows zero.
+
+Current visible Narrative Threads slice:
+
+- `frontend-v2/src/components/NarrativeThreads.tsx` consumes `/api/v2/threads`.
+- `frontend-v2/src/components/ThreadFocusPanel.tsx` opens `/api/v2/threads/{thread_id}`.
+- `backend/app/services/thread_intelligence.py` must keep parsing asyncpg JSONB
+  strings for `hourly_timeline` and `related_threads`.
+- Legacy theme fallbacks remain for older panels, but the visible Narrative
+  Threads panel is already on the living thread contract.
+
+Active execution order after phase zero:
+
+1. #204 Path C taxonomy quality, starting with `mining-royalty-risk` vs coal mine/resource-disaster evidence.
+2. #203 Path B benchmark harness and labeled validation path; precision gate is 85% minimum, 90% target.
+3. #193 deployed app-wide long-window smoke; keep open until the deployed frontend proves `1w`/`1m` consistency.
+4. #176 Entity Focus hygiene: entities are lenses over threads, not raw mention cards.
+5. #177 Signal Stream/source lanes and evidence provenance.
+
+Completed/closeable after documentation: #191, #192, and #202. Do not reopen
+Path A rollout unless new metrics show regression; future topic quality work
+routes through #204/#203/#185.
+
+## Previous Session Context (2026-05-21, data operating roadmap)
 
 ### Coordination roadmap
 
@@ -45,8 +82,8 @@ The first technical increment exists as an additive read-only `/api/v2/threads`
 beta above existing topic assignments, aggregates, sources, and signal evidence.
 Contract: `living-narrative-threads-v0`. Implementation:
 `backend/app/services/thread_intelligence.py` + `backend/app/routers/threads.py`.
-Do not remove current theme fallbacks until live top-10 thread quality and
-deployed smoke tests pass.
+The first visible frontend slice is live in `NarrativeThreads` +
+`ThreadFocusPanel`; keep older theme fallbacks for panels not yet migrated.
 
 ### App-wide historical routing scope
 
