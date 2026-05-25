@@ -232,7 +232,21 @@ LEFT JOIN source_lists sl ON sl.topic_slug = ta.topic_slug
 LEFT JOIN entity_lists el ON el.topic_slug = ta.topic_slug
 LEFT JOIN timeline tlh ON tlh.topic_slug = ta.topic_slug
 LEFT JOIN related r ON r.topic_slug = ta.topic_slug
-ORDER BY ta.changed_10h DESC, ta.signal_count DESC
+ORDER BY
+    CASE
+        WHEN ta.signal_count >= 50
+          AND ta.source_count >= 5
+          AND ta.avg_confidence >= 0.65
+          AND (ta.lex_count::float / NULLIF(ta.signal_count, 0)) >= 0.30
+        THEN 0
+        WHEN ta.signal_count >= 25
+          AND ta.source_count >= 3
+          AND ta.avg_confidence >= 0.60
+        THEN 1
+        ELSE 2
+    END,
+    ta.changed_10h DESC,
+    ta.signal_count DESC
 LIMIT $2
 """
 

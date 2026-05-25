@@ -166,6 +166,23 @@ product/data mismatch:
 Audit doc:
 `docs/research/2026-05-25-path-c-mining-resource-taxonomy-audit.md`.
 
+Second Path C slice:
+
+- Added `backend/scripts/topic_quality_audit.py`.
+- Audited all 30 active topics in
+  `docs/research/topic-quality/2026-05-25-atlas-topic-quality-audit.md`.
+- Applied migrations 040-041 to reduce visible false positives. The quality
+  rule is now explicit: smaller precise topics are better than large noisy
+  topics.
+- Proposed future thread/data quality indicator with components for evidence
+  support, sample precision, source breadth, geo coherence, and movement
+  integrity.
+
+Next quality dependency:
+
+- #203 Path B benchmark harness should turn manual sample precision into a
+  measurable gate before broader taxonomy/model promotion.
+
 ## Guardrails
 
 - Do not trust GDELT themes as proof of significance.

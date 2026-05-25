@@ -54,6 +54,11 @@ Current data/product state:
   `docs/research/2026-05-25-path-c-mining-resource-taxonomy-audit.md`.
   Migration `039_mining_resource_safety_label.sql` keeps slug compatibility but
   updates the human-facing label/description to mining/resource safety crisis.
+- Full all-topic quality audit is documented in
+  `docs/research/topic-quality/2026-05-25-atlas-topic-quality-audit.md`.
+  It audits all 30 active atlas topics with a repeatable script and applies
+  migrations 040-041 to prefer smaller, lex-supported topics over broad noisy
+  theme-driven volume.
 
 Living Threads canon:
 
@@ -109,6 +114,23 @@ Atlas-topic taxonomy state:
     the visible anchor label/description to mining/resource safety crisis.
 - Global v2 topic coverage after full Path A rollout: `18.47%` of 24h eligible
   signals.
+- Path C quality pass after all-topic audit:
+  - Added `backend/scripts/topic_quality_audit.py` for repeatable read-only
+    topic quality audits.
+  - Migration 040 pruned broad/noisy hints and terms on gender violence, labor
+    strikes, transport corridors, disease outbreak, food prices, displacement,
+    humanitarian access, disinformation, and migration/border pressure.
+  - Migration 041 made labor, transport, forced displacement, and water stress
+    lex-first after post-040 validation showed theme-only volume still leaking.
+  - Final post-041 notable improvements: `gender-violence-rights` moved from
+    1,266 mostly noisy rows at 0.08% lex to 261 rows at 100% lex;
+    `disease-outbreak` moved from 2,687 mixed rows at 9.83% lex to 830 rows at
+    94.46% lex. Several topics intentionally became `thin` rather than noisy:
+    `food-price-stress`, `transport-corridor-disruption`, and
+    `forced-displacement`.
+  - Residual risk: `armed-conflict-escalation` remains large and theme-heavy,
+    but sampled evidence is mostly real conflict; route it to Path B benchmark
+    labels or a dedicated multilingual conflict pass, not blind suppression.
 - Path B encoder classifier stays in design/shadow mode until a benchmark shows
   at least `85%` precision; `90%` is the product target. Recall does not justify
   promotion below that floor.

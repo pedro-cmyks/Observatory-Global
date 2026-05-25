@@ -62,6 +62,10 @@ Key docs/files changed in session 25 (Path C + projection note — 2026-05-25):
 - `docs/adrs/ADR-0005-equal-area-projection-mode.md` — Equal Earth / equal-area projection is product-architecture parking (#212), important to Atlas worldview but not allowed to interrupt the current data-quality sprint.
 - `docs/research/2026-05-25-path-c-mining-resource-taxonomy-audit.md` — live Path C audit: `mining-royalty-risk` is a coherent high-confidence mining safety/resource-disaster cluster, not primarily royalty/concession evidence.
 - `backend/migrations/039_mining_resource_safety_label.sql` — conservative Path C first migration: keep slug `mining-royalty-risk` stable for API/history compatibility, update label/description toward mining/resource safety crisis.
+- `backend/scripts/topic_quality_audit.py` — repeatable read-only all-topic quality audit. Outputs JSON artifacts with volume, lex_pct, theme-only share, confidence, source/country breadth, top terms, evidence samples, and coarse risk flags.
+- `docs/research/topic-quality/2026-05-25-atlas-topic-quality-audit.md` — all 30 active atlas topics audited over live 24h assignments. Product principle: prefer smaller precise topics over broad noisy topics because errors compound through threads/focus/entities/sentiment.
+- `backend/migrations/040_topic_quality_precision_pass.sql` — pruned broad/noisy hints and terms for gender violence, labor strikes, transport corridors, disease outbreak, food prices, displacement, humanitarian access, disinformation, and migration/border pressure.
+- `backend/migrations/041_topic_quality_lex_first_followup.sql` — made labor, transport, forced displacement, and water stress lex-first after post-040 validation showed theme-only leakage remained.
 
 Session 22 topic taxonomy state:
 - Path A pilot result: `election-legitimacy-dispute` lex_pct `6.3% -> 31.6%`, high_conf `5 -> 27`, multilingual terms drove `74%` of lex-match volume; global coverage moved `13.08% -> 13.35%`.
@@ -70,6 +74,7 @@ Session 22 topic taxonomy state:
 - Global v2 topic coverage after full Path A rollout: `18.47%` of 24h eligible signals.
 - Open issues: #203 Path B and #204 Path C. #202 is closed after migrations 036-038.
 - Next taxonomy step: apply/verify migration 039, then use Path C/B labels to decide whether royalty/concession deserves a separate anchor from mining/resource safety crisis.
+- Quality guardrail: do not treat assignment volume as product quality. After migrations 040-041, several topics intentionally became thin (`food-price-stress`, `transport-corridor-disruption`, `forced-displacement`) rather than noisy. Keep them available as evidence-backed anchors, but do not promote them visually until volume/sample precision improves.
 - Theme/topic guardrail: do not trust GDELT theme classification alone as proof of a significant Atlas topic. Topic changes must be validated against real headlines, lex_pct/high_conf movement, and precision spot checks.
 
 Session 23 Living Narrative Threads direction:

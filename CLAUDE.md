@@ -36,7 +36,7 @@ Current visible Narrative Threads slice:
 Active execution order after phase zero:
 
 1. #204 Path C taxonomy quality. First slice is migration 039: keep slug `mining-royalty-risk` stable, but correct label/description toward mining/resource safety crisis after live evidence showed coal mine/resource-disaster dominance.
-2. #203 Path B benchmark harness and labeled validation path; precision gate is 85% minimum, 90% target.
+2. #203 Path B benchmark harness and labeled validation path; precision gate is 85% minimum, 90% target. This is now the main dependency after the all-topic audit because sample precision needs to become measured instead of manually inferred.
 3. #193 deployed app-wide long-window smoke; keep open until the deployed frontend proves `1w`/`1m` consistency.
 4. #176 Entity Focus hygiene: entities are lenses over threads, not raw mention cards.
 5. #177 Signal Stream/source lanes and evidence provenance.
@@ -48,6 +48,16 @@ routes through #204/#203/#185.
 Equal Earth / equal-area projection is tracked separately as #212 and ADR-0005.
 It is product-architecture parking for Atlas's worldview, not part of the
 current data sprint.
+
+All-topic quality audit state:
+
+- `backend/scripts/topic_quality_audit.py` is the repeatable read-only audit
+  tool.
+- `docs/research/topic-quality/2026-05-25-atlas-topic-quality-audit.md` records
+  the 30-topic audit and quality-score direction.
+- Migrations 040-041 intentionally shrink noisy topics. Do not restore broad
+  hints/terms just to recover volume; quality-first means thin precise topics
+  are preferable to large noisy topics.
 
 ## Previous Session Context (2026-05-21, data operating roadmap)
 

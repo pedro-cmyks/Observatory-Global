@@ -235,6 +235,14 @@ def test_threads_sql_exposes_method_counts_for_quality_metadata():
     assert "ta.theme_count" in THREADS_SQL
 
 
+def test_threads_sql_downranks_thin_threads_before_velocity_sort():
+    """Thin topics should remain available but not lead Narrative Threads just
+    because their 10h delta is high."""
+    assert "ta.signal_count >= 50" in THREADS_SQL
+    assert "(ta.lex_count::float / NULLIF(ta.signal_count, 0)) >= 0.30" in THREADS_SQL
+    assert "ta.changed_10h DESC" in THREADS_SQL
+
+
 def test_threads_sql_uses_assignments_and_atlas_topics():
     assert "signal_topic_assignments" in THREADS_SQL
     assert "atlas_topics" in THREADS_SQL

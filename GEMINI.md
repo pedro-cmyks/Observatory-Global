@@ -46,6 +46,13 @@ visible label/description toward mining/resource safety crisis), #203 Path B
 benchmark harness, #193 deployed app-wide long-window smoke, #176 Entity Focus,
 and #177 Signal Stream/source lanes. #191, #192, and #202 are closed.
 
+All-topic quality audit state: `backend/scripts/topic_quality_audit.py` is the
+repeatable read-only audit tool; the 30-topic audit is documented in
+`docs/research/topic-quality/2026-05-25-atlas-topic-quality-audit.md`.
+Migrations 040-041 intentionally shrink noisy topics. Do not restore broad hints
+or terms just to recover volume; quality-first means thin precise topics are
+preferable to large noisy topics.
+
 Equal Earth / equal-area projection is tracked separately as #212 and ADR-0005.
 It is product-architecture parking for Atlas's worldview, not part of the
 current data sprint.

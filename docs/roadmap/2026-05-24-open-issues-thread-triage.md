@@ -141,3 +141,16 @@ Immediate active issue order:
 - `backend/migrations/039_mining_resource_safety_label.sql` is the conservative
   first Path C migration: keep slug compatibility, correct the visible mining
   anchor label/description.
+
+## 2026-05-25 All-Topic Quality Update
+
+- `backend/scripts/topic_quality_audit.py` added as a repeatable read-only audit
+  tool for all active atlas topics.
+- Full 30-topic audit documented in
+  `docs/research/topic-quality/2026-05-25-atlas-topic-quality-audit.md`.
+- Migrations 040-041 applied a precision-first pass. Some topics intentionally
+  became thin rather than noisy; this is a product-quality improvement, not a
+  regression.
+- #204 remains open for the broader Path C cycle, but the immediate dependency
+  now shifts to #203 benchmark labels so sample precision can become a measured
+  gate.

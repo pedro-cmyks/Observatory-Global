@@ -1,0 +1,5893 @@
+{
+  "generated_at": "2026-05-25T05:31:23.021636+00:00",
+  "model_version": "theme-hint-lex-v2",
+  "hours": 24,
+  "topic_count": 30,
+  "topics": [
+    {
+      "slug": "armed-conflict-escalation",
+      "label": "Armed conflict escalation",
+      "parent_domain": "conflict-security",
+      "assignments": 6033,
+      "avg_confidence": 0.6597,
+      "lex_pct": 0.065,
+      "theme_only_pct": 0.935,
+      "source_count": 2361,
+      "country_count": 142,
+      "changed_10h": -2072,
+      "preliminary_quality": "review",
+      "risk_flags": [
+        "theme_heavy"
+      ],
+      "top_sources": [
+        {
+          "count": 35,
+          "source": "dostor.org"
+        },
+        {
+          "count": 37,
+          "source": "vesti.ru"
+        },
+        {
+          "count": 38,
+          "source": "haberler.com"
+        },
+        {
+          "count": 39,
+          "source": "indiatimes.com"
+        },
+        {
+          "count": 99,
+          "source": "zazoom.it"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 349,
+          "country": "PK"
+        },
+        {
+          "count": 628,
+          "country": "IR"
+        },
+        {
+          "count": 698,
+          "country": "RU"
+        },
+        {
+          "count": 768,
+          "country": "US"
+        },
+        {
+          "count": 913,
+          "country": "UA"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "armed conflict",
+          "count": 90
+        },
+        {
+          "term": "bombardement",
+          "count": 17
+        },
+        {
+          "term": "bombardeo",
+          "count": 38
+        },
+        {
+          "term": "drone attack",
+          "count": 30
+        },
+        {
+          "term": "luftangriff",
+          "count": 11
+        },
+        {
+          "term": "missile attack",
+          "count": 132
+        },
+        {
+          "term": "missile attacks",
+          "count": 69
+        },
+        {
+          "term": "rebels",
+          "count": 16
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Russia launches heavy missile strikes on Kyiv after Ukraine drone attack",
+          "source": "ktsa.com",
+          "country": "UA",
+          "confidence": 0.95,
+          "lex_count": 3,
+          "theme_hits": 2,
+          "matched_terms": [
+            "drone attack",
+            "missile strike",
+            "missile strikes"
+          ],
+          "timestamp": "2026-05-24T07:00:00+00:00"
+        },
+        {
+          "headline": "Israeli airstrikes kill civilians in southern Lebanon, including women and a child",
+          "source": "english.wafa.ps",
+          "country": "LS",
+          "confidence": 0.95,
+          "lex_count": 2,
+          "theme_hits": 4,
+          "matched_terms": [
+            "airstrike",
+            "airstrikes"
+          ],
+          "timestamp": "2026-05-24T13:15:00+00:00"
+        },
+        {
+          "headline": "Missile strikes pound Kyiv after Russia vows retaliation",
+          "source": "thefrontierpost.com",
+          "country": "UA",
+          "confidence": 0.9,
+          "lex_count": 2,
+          "theme_hits": 2,
+          "matched_terms": [
+            "missile strike",
+            "missile strikes"
+          ],
+          "timestamp": "2026-05-24T06:45:00+00:00"
+        },
+        {
+          "headline": "Russian strikes on Kyiv kill 1, injure 23",
+          "source": "pajhwok.com",
+          "country": "UA",
+          "confidence": 0.9,
+          "lex_count": 2,
+          "theme_hits": 2,
+          "matched_terms": [
+            "russian strike",
+            "russian strikes"
+          ],
+          "timestamp": "2026-05-24T08:45:00+00:00"
+        },
+        {
+          "headline": "Un soldado sin vida y siete heridos tras ataque con drones en Norte de Santander",
+          "source": "eluniversal.com.co",
+          "country": "CO",
+          "confidence": 0.9,
+          "lex_count": 2,
+          "theme_hits": 2,
+          "matched_terms": [
+            "ataque con dron",
+            "ataque con drones"
+          ],
+          "timestamp": "2026-05-25T01:00:00+00:00"
+        },
+        {
+          "headline": "Ukraine Imposed Sanctions on Occupiers Responsible for Missile Strikes against Our Country and on Russia's Military Maritime Logistics",
+          "source": "globalsecurity.org",
+          "country": "UA",
+          "confidence": 0.9,
+          "lex_count": 2,
+          "theme_hits": 2,
+          "matched_terms": [
+            "missile strike",
+            "missile strikes"
+          ],
+          "timestamp": "2026-05-24T15:45:00+00:00"
+        },
+        {
+          "headline": "School, residential buildings hit as Russia pounds Ukraine capital Kyiv with missiles, drones; 1 dead",
+          "source": "indiatimes.com",
+          "country": "RU",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T06:00:00+00:00"
+        },
+        {
+          "headline": "RELACJA. 1551. dzie&#x144; wojny na Ukrainie",
+          "source": "wpolityce.pl",
+          "country": "RU",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T10:15:00+00:00"
+        },
+        {
+          "headline": "\"BLA is taking up arms to fight against Pak,\" says Defence Expert",
+          "source": "pakistantelegraph.com",
+          "country": "PK",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-25T01:00:00+00:00"
+        },
+        {
+          "headline": "&#x412;&#x421; &#x420;&#x43E;&#x441;&#x441;&#x438;&#x438; &#x43D;&#x430;&#x43D;&#x435;&#x441;&#x43B;&#x438; &#x43C;&#x430;&#x441;&#x441;&#x438;&#x440;&#x43E;&#x432;&#x430;&#x43D;&#x43D;&#x44B;&#x439; &#x443;&#x434;&#x430;&#x440; &#x43F;&#x43E; &#x41A;&#x438;&#x435;&#x432;&#x443;. &#x412;&#x43E;&#x435;&#x43D;&#x43D;&#x430;&#x44F; &#x43E;&#x43F;&#x435;&#x440;&#x430;&#x446;&#x438;&#x44F;, &#x434;&#x435;&#x43D;&#x44C; 1551-&#x439;",
+          "source": "news.mail.ru",
+          "country": "RU",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T06:00:00+00:00"
+        },
+        {
+          "headline": "Iran deal appears closer as US officials cite progress with negotiations",
+          "source": "12news.com",
+          "country": "PK",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T14:30:00+00:00"
+        },
+        {
+          "headline": "&#x412;&#x438;&#x434;&#x435;&#x43E;: &#x438;&#x43D;&#x43E;&#x441;&#x442;&#x440;&#x430;&#x43D;&#x43D;&#x44B;&#x435; &#x436;&#x443;&#x440;&#x43D;&#x430;&#x43B;&#x438;&#x441;&#x442;&#x44B; &#x43F;&#x440;&#x438;&#x431;&#x44B;&#x43B;&#x438; &#x43D;&#x430;&#xA0;&#x43C;&#x435;&#x441;&#x442;&#x43E; &#x442;&#x435;&#x440;&#x430;&#x43A;&#x442;&#x430; &#x412;&#x421;&#x423;",
+          "source": "5-tv.ru",
+          "country": "UA",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T10:45:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "gang-control-urban-security",
+      "label": "Gang control and urban security",
+      "parent_domain": "conflict-security",
+      "assignments": 2054,
+      "avg_confidence": 0.6517,
+      "lex_pct": 0.1066,
+      "theme_only_pct": 0.8934,
+      "source_count": 1142,
+      "country_count": 109,
+      "changed_10h": -1105,
+      "preliminary_quality": "monitor",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 17,
+          "source": "aninews.in"
+        },
+        {
+          "count": 18,
+          "source": "rediff.com"
+        },
+        {
+          "count": 21,
+          "source": "inewsgr.com"
+        },
+        {
+          "count": 31,
+          "source": "indiatimes.com"
+        },
+        {
+          "count": 35,
+          "source": "zazoom.it"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 76,
+          "country": "IT"
+        },
+        {
+          "count": 104,
+          "country": "TR"
+        },
+        {
+          "count": 221,
+          "country": "GB"
+        },
+        {
+          "count": 257,
+          "country": "IN"
+        },
+        {
+          "count": 352,
+          "country": "US"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "cartel",
+          "count": 29
+        },
+        {
+          "term": "extortion",
+          "count": 10
+        },
+        {
+          "term": "gang",
+          "count": 186
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Delhi Police arrests five operatives linked to gangster Kapil Sangwan extortion network",
+          "source": "cambodiantimes.com",
+          "country": "IN",
+          "confidence": 0.9,
+          "lex_count": 2,
+          "theme_hits": 2,
+          "matched_terms": [
+            "gang",
+            "extortion"
+          ],
+          "timestamp": "2026-05-24T14:00:00+00:00"
+        },
+        {
+          "headline": "Delhi Police arrests five operatives linked to gangster Kapil Sangwan extortion network",
+          "source": "aninews.in",
+          "country": "IN",
+          "confidence": 0.9,
+          "lex_count": 2,
+          "theme_hits": 2,
+          "matched_terms": [
+            "gang",
+            "extortion"
+          ],
+          "timestamp": "2026-05-24T13:45:00+00:00"
+        },
+        {
+          "headline": "Delhi Police foils extortion-linked firing plot with arrest of five linked to Kapil Sangwan gang",
+          "source": "prokerala.com",
+          "country": "IN",
+          "confidence": 0.9,
+          "lex_count": 2,
+          "theme_hits": 2,
+          "matched_terms": [
+            "gang",
+            "extortion"
+          ],
+          "timestamp": "2026-05-24T12:45:00+00:00"
+        },
+        {
+          "headline": "Delhi Police arrests five operatives linked to gangster Kapil Sangwan extortion network",
+          "source": "indiatimes.com",
+          "country": "IN",
+          "confidence": 0.9,
+          "lex_count": 2,
+          "theme_hits": 2,
+          "matched_terms": [
+            "gang",
+            "extortion"
+          ],
+          "timestamp": "2026-05-24T12:45:00+00:00"
+        },
+        {
+          "headline": "Delhi Police Foil Extortion Attempt, Arrest Gang Sharpshooters",
+          "source": "rediff.com",
+          "country": "IN",
+          "confidence": 0.9,
+          "lex_count": 2,
+          "theme_hits": 2,
+          "matched_terms": [
+            "gang",
+            "extortion"
+          ],
+          "timestamp": "2026-05-24T13:00:00+00:00"
+        },
+        {
+          "headline": "Goa Sextortion Gang Mastermind Salman khan Used Women Villas and Fake Raids to Target Businessmen &#x917;&#x94B;&#x935;&#x93E; &#x915;&#x947; &#x938;&#x947;&#x915;&#x94D;&#x938;&#x91F;&#x949;&#x930;&#x94D;&#x936;&#x928; &#x917;&#x948;&#x902;&#x917; &#x915;&#x93E; &#x938;&#x930;&#x917;&#x928;&#x93E; &#x938;&#x932;&#x92E;&#x93E;&#x928;, &#x905;&#x92E;&#x940;&#x930;&#x94B;&#x902; &#x915;&#x93E; &#x915;&#x930;&#x924;&#x93E; &#x936;&#x93F;&#x915;&#x93E;&#x930;; &#x915;&#x939;&#x93E;&#x928;&#x940; &#x92A;&#x942;&#x930;&#x940; &#x92B;&#x93F;&#x932;&#x94D;&#x92E;&#x940;, Uttarakhand Hindi News",
+          "source": "livehindustan.com",
+          "country": "IN",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "gang",
+            "extortion"
+          ],
+          "timestamp": "2026-05-25T03:30:00+00:00"
+        },
+        {
+          "headline": "Kolejny sukces &#x141;atwoganga! Zebra&#x142; 12 mln na leczenie dziecka i jedzie dalej",
+          "source": "niedziela.pl",
+          "country": "PL",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "gang"
+          ],
+          "timestamp": "2026-05-24T10:15:00+00:00"
+        },
+        {
+          "headline": "&#x3A4;&#x3C3;&#x3B9;&#x3C6;&#x3BB;&#x3B9;&#x3BA;&#x3AC;&#x3B4;&#x3B5;&#x3C2; &#x392;&#x3BF;&#x3C1;&#x3B9;&#x3B6;&#x3AF;&#x3C9;&#x3BD;: &#x3A4;&#x3BF; \"&#x3B1;&#x3BC;&#x3B1;&#x3C1;&#x3C4;&#x3C9;&#x3BB;&#x3CC;\" &#x3C0;&#x3B1;&#x3C1;&#x3B5;&#x3BB;&#x3B8;&#x3CC;&#x3BD; &#x3C4;&#x3C9;&#x3BD; &#x3C4;&#x3C1;&#x3B9;&#x3CE;&#x3BD; &#x3BC;&#x3B5;&#x3B3;&#x3B1;&#x3BB;&#x3BF;&#x3B2;&#x3BF;&#x3C3;&#x3BA;&#x3CE;&#x3BD; &#x3C0;&#x3BF;&#x3C5;...",
+          "source": "thetoc.gr",
+          "country": "GR",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T12:00:00+00:00"
+        },
+        {
+          "headline": "Nasconde un pugnale sotto al tappetino dell' auto | condanna definitiva per pluripregiudicato",
+          "source": "zazoom.it",
+          "country": "IT",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T12:45:00+00:00"
+        },
+        {
+          "headline": "Tiersch&#xFC;tzer fordert h&#xE4;rtere Strafen f&#xFC;r illegalen Welpenhandel",
+          "source": "berliner-kurier.de",
+          "country": "DE",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T05:15:00+00:00"
+        },
+        {
+          "headline": "Nasire Best, el joven muerto en la Casa Blanca, ten&#xED;a historial de problemas mentales y detenciones previas",
+          "source": "hoy.com.do",
+          "country": "US",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T15:30:00+00:00"
+        },
+        {
+          "headline": "Once detenidos por convocar \"kedadas\" ilegales de coches y carreras clandestinas en el sur de Madrid",
+          "source": "libertaddigital.com",
+          "country": "ES",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T09:15:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "election-legitimacy-dispute",
+      "label": "Election legitimacy dispute",
+      "parent_domain": "political-legitimacy",
+      "assignments": 1579,
+      "avg_confidence": 0.6666,
+      "lex_pct": 0.278,
+      "theme_only_pct": 0.722,
+      "source_count": 930,
+      "country_count": 100,
+      "changed_10h": -221,
+      "preliminary_quality": "monitor",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 13,
+          "source": "naslovi.net"
+        },
+        {
+          "count": 14,
+          "source": "indiatimes.com"
+        },
+        {
+          "count": 14,
+          "source": "philenews.com"
+        },
+        {
+          "count": 21,
+          "source": "dailypost.ng"
+        },
+        {
+          "count": 90,
+          "source": "zazoom.it"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 105,
+          "country": "NG"
+        },
+        {
+          "count": 112,
+          "country": "CY"
+        },
+        {
+          "count": 142,
+          "country": "IN"
+        },
+        {
+          "count": 186,
+          "country": "TR"
+        },
+        {
+          "count": 207,
+          "country": "IT"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "ballot",
+          "count": 27
+        },
+        {
+          "term": "comicios",
+          "count": 6
+        },
+        {
+          "term": "elecciones",
+          "count": 146
+        },
+        {
+          "term": "elezioni",
+          "count": 196
+        },
+        {
+          "term": "papeleta",
+          "count": 2
+        },
+        {
+          "term": "presidential primary",
+          "count": 48
+        },
+        {
+          "term": "urnas",
+          "count": 16
+        },
+        {
+          "term": "vote count",
+          "count": 3
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Chipre acude a las urnas en unas elecciones marcadas por el descontento y la incertidumbre",
+          "source": "euronews.com",
+          "country": "GR",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "elecciones",
+            "urnas"
+          ],
+          "timestamp": "2026-05-24T18:30:00+00:00"
+        },
+        {
+          "headline": "Arrancan elecciones presidenciales de Colombia 2026: abren urnas en el exterior",
+          "source": "pulzo.com",
+          "country": "CO",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "elecciones",
+            "urnas"
+          ],
+          "timestamp": "2026-05-25T01:15:00+00:00"
+        },
+        {
+          "headline": "As&#xED; ser&#xE1;n las papeletas de las elecciones 2027, seg&#xFA;n el CNE",
+          "source": "expreso.ec",
+          "country": "EC",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "elecciones",
+            "papeleta"
+          ],
+          "timestamp": "2026-05-24T18:30:00+00:00"
+        },
+        {
+          "headline": "Elecciones regionales y municipales: 94 % de mesas de sufragio fueron instaladas para los comicios primarios",
+          "source": "rpp.pe",
+          "country": "PE",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "elecciones",
+            "comicios"
+          ],
+          "timestamp": "2026-05-25T00:30:00+00:00"
+        },
+        {
+          "headline": "La Jornada: Valida INE 60 urnas electr&#xF3;nicas para los comicios del 7 de junio en Coahuila",
+          "source": "jornada.com.mx",
+          "country": "MX",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "comicios",
+            "urnas"
+          ],
+          "timestamp": "2026-05-24T12:45:00+00:00"
+        },
+        {
+          "headline": "CNE aprueba papeletas para elecciones seccionales y CPCCS 2026",
+          "source": "eldiario.ec",
+          "country": "EC",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "elecciones",
+            "papeleta"
+          ],
+          "timestamp": "2026-05-24T17:30:00+00:00"
+        },
+        {
+          "headline": "Evo Morales le pidi&#xF3; al presidente Rodrigo Paz que llame a elecciones \"para que no haya muertos\"",
+          "source": "diariopanorama.com",
+          "country": "BO",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "elecciones"
+          ],
+          "timestamp": "2026-05-24T21:30:00+00:00"
+        },
+        {
+          "headline": "Colombia: qu&#xE9; dicen las &#xFA;ltimas encuestas a una semana de las elecciones presidenciales que definir&#xE1;n al sucesor de Petro",
+          "source": "t13.cl",
+          "country": "CO",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "elecciones"
+          ],
+          "timestamp": "2026-05-24T23:30:00+00:00"
+        },
+        {
+          "headline": "ADC urges unity, peace ahead of presidential primaries",
+          "source": "dailypost.ng",
+          "country": "NG",
+          "confidence": 0.7,
+          "lex_count": 0,
+          "theme_hits": 3,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T21:30:00+00:00"
+        },
+        {
+          "headline": "Letters: Separatists can just leave if they don't love Canada",
+          "source": "edmontonexaminer.com",
+          "country": "CA",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T13:15:00+00:00"
+        },
+        {
+          "headline": "Galarreta, previo al debate t&#xE9;cnico: \"El equipo de Juntos por el Per&#xFA; tiene exministros de Castillo\" | POLITICA",
+          "source": "diariocorreo.pe",
+          "country": "PE",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-25T01:00:00+00:00"
+        },
+        {
+          "headline": "Todo mal tiene un castigo, ya sea con  las leyes, o castigo divino",
+          "source": "sipse.com",
+          "country": "MX",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T17:30:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "labor-strike-disruption",
+      "label": "Labor strike disruption",
+      "parent_domain": "social-unrest-labor",
+      "assignments": 1148,
+      "avg_confidence": 0.6521,
+      "lex_pct": 0.0436,
+      "theme_only_pct": 0.9564,
+      "source_count": 802,
+      "country_count": 93,
+      "changed_10h": 477,
+      "preliminary_quality": "review",
+      "risk_flags": [
+        "theme_heavy"
+      ],
+      "top_sources": [
+        {
+          "count": 6,
+          "source": "baomoi.com"
+        },
+        {
+          "count": 6,
+          "source": "cadena3.com"
+        },
+        {
+          "count": 6,
+          "source": "chinadaily.com.cn"
+        },
+        {
+          "count": 8,
+          "source": "el-balad.com"
+        },
+        {
+          "count": 10,
+          "source": "indiatimes.com"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 55,
+          "country": "IN"
+        },
+        {
+          "count": 58,
+          "country": "ES"
+        },
+        {
+          "count": 70,
+          "country": "GB"
+        },
+        {
+          "count": 84,
+          "country": "CA"
+        },
+        {
+          "count": 271,
+          "country": "US"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "greve",
+          "count": 1
+        },
+        {
+          "term": "huelga",
+          "count": 26
+        },
+        {
+          "term": "labour union",
+          "count": 1
+        },
+        {
+          "term": "sciopero",
+          "count": 6
+        },
+        {
+          "term": "sindicato",
+          "count": 12
+        },
+        {
+          "term": "strike over wages",
+          "count": 1
+        },
+        {
+          "term": "union backlash",
+          "count": 1
+        },
+        {
+          "term": "union leader",
+          "count": 1
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Docentes har&#xE1;n una huelga de una semana en todo el pa&#xED;s",
+          "source": "agenciafe.com",
+          "country": "AR",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "huelga"
+          ],
+          "timestamp": "2026-05-24T18:30:00+00:00"
+        },
+        {
+          "headline": "Claves de la hist&#xF3;rica huelga convocada en Samsung",
+          "source": "elcaribe.com.do",
+          "country": "KR",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "huelga"
+          ],
+          "timestamp": "2026-05-24T21:15:00+00:00"
+        },
+        {
+          "headline": "Una huelga sanitaria en la que, por el momento, pierden todos | Noticias La Tribuna de Albacete",
+          "source": "latribunadealbacete.es",
+          "country": "ES",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "huelga"
+          ],
+          "timestamp": "2026-05-25T04:45:00+00:00"
+        },
+        {
+          "headline": "Licenziamenti Kito Chain la solidariet&#xE0; dei lavoratori | quasi tutti sono in sciopero",
+          "source": "zazoom.it",
+          "country": "IT",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "sciopero"
+          ],
+          "timestamp": "2026-05-24T08:15:00+00:00"
+        },
+        {
+          "headline": "M&#xE1;s de 10.000 trabajadoras de la limpieza ir&#xE1;n a la huelga indefinida desde el 26 de mayo tras fracasar la mediaci&#xF3;n en el SAMA",
+          "source": "arainfo.org",
+          "country": "MX",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "huelga"
+          ],
+          "timestamp": "2026-05-24T17:15:00+00:00"
+        },
+        {
+          "headline": "NAB could hire up to 1000 more staff in India and Vietnam offshoring, amid union backlash",
+          "source": "afr.com",
+          "country": "IN",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "union backlash"
+          ],
+          "timestamp": "2026-05-24T22:00:00+00:00"
+        },
+        {
+          "headline": "\"Ik had elke bocht het gevoel dat ik de muur in zou gaan\" - Charles Leclerc volledig gefrustreerd in Canada",
+          "source": "racexpress.nl",
+          "country": "CA",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T16:30:00+00:00"
+        },
+        {
+          "headline": "Andr&#xE9;s Cepeda reaccion&#xF3; tras ser confundido con Iv&#xE1;n Cepeda &#x2013; Publimetro Colombia",
+          "source": "publimetro.co",
+          "country": "CO",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-25T03:30:00+00:00"
+        },
+        {
+          "headline": "&#x5D4;&#x5D6;&#x5DE;&#x5E8;&#x5EA; &#x5E9;&#x5D7;&#x5D5;&#x5E9;&#x5E4;&#x5EA; &#x5D1;&#x5D0;&#x5D5;&#x5DE;&#x5E5; &#x5D0;&#x5EA; &#x5D4;&#x5DE;&#x5E9;&#x5D1;&#x5E8; &#x5D1;&#x5D7;&#x5D9;&#x5D9;&#x5D4;: \"&#x5DE;&#x5D2;&#x5E8;&#x5D3;&#x5EA; &#x5DE;&#x5D4;&#x5E8;&#x5E6;&#x5E4;&#x5D4; &#x5E1;&#x5D9;&#x5D1;&#x5D5;&#x5EA; &#x5DC;&#x5D4;&#x5D9;&#x5E9;&#x5D0;&#x5E8;\"",
+          "source": "13tv.co.il",
+          "country": "IL",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T14:15:00+00:00"
+        },
+        {
+          "headline": "Frank McKenna on Trump, Mulroney, and Canadian diplomacy",
+          "source": "wellandtribune.ca",
+          "country": "CA",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T16:45:00+00:00"
+        },
+        {
+          "headline": "Publicis' $3B LiveRamp Deal Signals Much Bigger Shift In The Industry",
+          "source": "bandt.com.au",
+          "country": "CH",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-25T01:30:00+00:00"
+        },
+        {
+          "headline": "Jemele Hill Lectures America: Spencer Pratt's Candidacy 'Says More About Us' Than Him &#x2013; Twitchy",
+          "source": "twitchy.com",
+          "country": "GH",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-25T01:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "flood-landslide-disaster",
+      "label": "Flood and landslide disaster",
+      "parent_domain": "climate-disaster",
+      "assignments": 883,
+      "avg_confidence": 0.6535,
+      "lex_pct": 0.1302,
+      "theme_only_pct": 0.8698,
+      "source_count": 668,
+      "country_count": 93,
+      "changed_10h": -131,
+      "preliminary_quality": "monitor",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 5,
+          "source": "az-online.de"
+        },
+        {
+          "count": 7,
+          "source": "indiatimes.com"
+        },
+        {
+          "count": 8,
+          "source": "dostor.org"
+        },
+        {
+          "count": 9,
+          "source": "tribunnews.com"
+        },
+        {
+          "count": 13,
+          "source": "zazoom.it"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 44,
+          "country": "IN"
+        },
+        {
+          "count": 46,
+          "country": "IT"
+        },
+        {
+          "count": 57,
+          "country": "GB"
+        },
+        {
+          "count": 66,
+          "country": "DE"
+        },
+        {
+          "count": 111,
+          "country": "US"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "evacuation",
+          "count": 29
+        },
+        {
+          "term": "flood",
+          "count": 51
+        },
+        {
+          "term": "heavy rain",
+          "count": 28
+        },
+        {
+          "term": "landslide",
+          "count": 8
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Impact Day: Flood watch with heavy rains possible Sunday",
+          "source": "wdsu.com",
+          "country": "US",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "flood",
+            "heavy rain"
+          ],
+          "timestamp": "2026-05-24T14:45:00+00:00"
+        },
+        {
+          "headline": "Kenya's climate laws mask deep failures as counties struggle with floods, waste",
+          "source": "standardmedia.co.ke",
+          "country": "KE",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "flood"
+          ],
+          "timestamp": "2026-05-24T10:30:00+00:00"
+        },
+        {
+          "headline": "NWS issues flash flood watch for portions of West Virginia, Kentucky and Ohio",
+          "source": "wchstv.com",
+          "country": "US",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "flood"
+          ],
+          "timestamp": "2026-05-24T22:15:00+00:00"
+        },
+        {
+          "headline": "Authorities urgently try to stop California chemical tank explosion; 50,000 under evacuation orders",
+          "source": "abc7chicago.com",
+          "country": "US",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "evacuation"
+          ],
+          "timestamp": "2026-05-24T13:45:00+00:00"
+        },
+        {
+          "headline": "IMD issues Yellow alert across multiple districts including Kochi; warns of heavy rain and thunderstorms until May 28",
+          "source": "keralakaumudi.com",
+          "country": "IN",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "heavy rain"
+          ],
+          "timestamp": "2026-05-24T12:15:00+00:00"
+        },
+        {
+          "headline": "Assam: IMD predicts heavy rainfall likely over Guwahati city in 2-3 days, public advised to remain alert",
+          "source": "cambodiantimes.com",
+          "country": "IN",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "heavy rain"
+          ],
+          "timestamp": "2026-05-24T14:00:00+00:00"
+        },
+        {
+          "headline": "&#xE2B;&#xE19;&#xE38;&#xE48;&#xE21; &#xE01;&#xE30;&#xE25;&#xE32; &#xE1B;&#xE23;&#xE30;&#xE01;&#xE32;&#xE28;&#xE2B;&#xE22;&#xE38;&#xE14;&#xE23;&#xE31;&#xE1A;&#xE07;&#xE32;&#xE19; &#xE40;&#xE1C;&#xE22;&#xE2A;&#xE32;&#xE40;&#xE2B;&#xE15;&#xE38;&#xE40;&#xE25;&#xE37;&#xE2D;&#xE01;&#xE25;&#xE32;&#xE40;&#xE27;&#xE17;&#xE35;&#xE04;&#xE2D;&#xE19;&#xE40;&#xE2A;&#xE34;&#xE23;&#xE4C;&#xE15;&#xE41;&#xE1A;&#xE1A;&#xE22;&#xE32;&#xE27; &#xE46;",
+          "source": "kapook.com",
+          "country": "CA",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T16:15:00+00:00"
+        },
+        {
+          "headline": "&#x623;&#x645;&#x646; &#x637;&#x646;&#x62C;&#x629; &#x64A;&#x62A;&#x641;&#x627;&#x639;&#x644; &#x645;&#x639; &#x641;&#x64A;&#x62F;&#x64A;&#x648; \"&#x62D;&#x627;&#x62F;&#x62B; &#x62E;&#x637;&#x64A;&#x631;\" &#x642;&#x631;&#x628; &#x627;&#x644;&#x645;&#x644;&#x639;&#x628; &#x627;&#x644;&#x643;&#x628;&#x64A;&#x631;",
+          "source": "akhbarona.com",
+          "country": "MA",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T21:15:00+00:00"
+        },
+        {
+          "headline": "Perubahan Iklim Ancam Kepunahan Sebagian Besar Tumbuhan pada Akhir Abad Ini",
+          "source": "republika.co.id",
+          "country": "US",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T09:30:00+00:00"
+        },
+        {
+          "headline": "Qu&#xE9; pas&#xF3; y qu&#xE9; famosos fueron afectados por vuelo cancelado a Corea",
+          "source": "milenio.com",
+          "country": "MX",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T23:30:00+00:00"
+        },
+        {
+          "headline": "&#xC131;&#xB3D9;&#xAD6C;, &#xD0C4;&#xC18C;&#xC911;&#xB9BD;&#xB7;&#xAE30;&#xD6C4;&#xC704;&#xAE30; &#xC801;&#xC751;&#xB300;&#xCC45; '&#xC21C;&#xD56D;'... 2025&#xB144;&#xB3C4; &#xC774;&#xD589; &#xC810;&#xAC80; &#xACB0;&#xACFC; '&#xC6B0;&#xC218;'",
+          "source": "heraldcorp.com",
+          "country": "KR",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T23:30:00+00:00"
+        },
+        {
+          "headline": "Iraqi crude tanker clears Gulf of Oman as Hormuz closure keeps most ships trapped",
+          "source": "investinglive.com",
+          "country": "IR",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-25T01:15:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "disease-outbreak",
+      "label": "Disease outbreak",
+      "parent_domain": "public-health",
+      "assignments": 826,
+      "avg_confidence": 0.7302,
+      "lex_pct": 0.9443,
+      "theme_only_pct": 0.0557,
+      "source_count": 559,
+      "country_count": 61,
+      "changed_10h": -75,
+      "preliminary_quality": "promising",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 7,
+          "source": "euronews.com"
+        },
+        {
+          "count": 8,
+          "source": "baomoi.com"
+        },
+        {
+          "count": 8,
+          "source": "indiatimes.com"
+        },
+        {
+          "count": 9,
+          "source": "newkerala.com"
+        },
+        {
+          "count": 9,
+          "source": "yahoo.com"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 62,
+          "country": "RW"
+        },
+        {
+          "count": 69,
+          "country": "CG"
+        },
+        {
+          "count": 94,
+          "country": "BD"
+        },
+        {
+          "count": 147,
+          "country": "UG"
+        },
+        {
+          "count": 151,
+          "country": "CD"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "ebola",
+          "count": 613
+        },
+        {
+          "term": "epidemic",
+          "count": 3
+        },
+        {
+          "term": "hantavirus",
+          "count": 41
+        },
+        {
+          "term": "measles",
+          "count": 13
+        },
+        {
+          "term": "outbreak",
+          "count": 232
+        },
+        {
+          "term": "public health emergency",
+          "count": 13
+        },
+        {
+          "term": "vaccination",
+          "count": 3
+        },
+        {
+          "term": "virus",
+          "count": 94
+        }
+      ],
+      "samples": [
+        {
+          "headline": "With Hantavirus Patients Quarantined In the U.S. and a Fast-Spreading Ebola Outbreak In Africa, What Should Americans Know? We Talked to an Infectious Disease Expert.",
+          "source": "atlantablackstar.com",
+          "country": "CD",
+          "confidence": 0.9,
+          "lex_count": 4,
+          "theme_hits": 1,
+          "matched_terms": [
+            "outbreak",
+            "virus",
+            "ebola",
+            "hantavirus"
+          ],
+          "timestamp": "2026-05-24T19:00:00+00:00"
+        },
+        {
+          "headline": "India issues travel advisory as WHO declares Ebola outbreak a public health emergency",
+          "source": "indianexpress.com",
+          "country": "UG",
+          "confidence": 0.95,
+          "lex_count": 3,
+          "theme_hits": 2,
+          "matched_terms": [
+            "outbreak",
+            "public health emergency",
+            "ebola"
+          ],
+          "timestamp": "2026-05-24T06:45:00+00:00"
+        },
+        {
+          "headline": "WHO declares Ebola outbreak 'public health emergency' of international concern",
+          "source": "webindia123.com",
+          "country": "UG",
+          "confidence": 0.95,
+          "lex_count": 3,
+          "theme_hits": 2,
+          "matched_terms": [
+            "outbreak",
+            "public health emergency",
+            "ebola"
+          ],
+          "timestamp": "2026-05-24T06:45:00+00:00"
+        },
+        {
+          "headline": "WHO declares Ebola outbreak 'public health emergency' of international concern",
+          "source": "aninews.in",
+          "country": "IN",
+          "confidence": 0.95,
+          "lex_count": 3,
+          "theme_hits": 2,
+          "matched_terms": [
+            "outbreak",
+            "public health emergency",
+            "ebola"
+          ],
+          "timestamp": "2026-05-24T06:00:00+00:00"
+        },
+        {
+          "headline": "WHO declares Ebola outbreak 'public health emergency' of international concern",
+          "source": "bignewsnetwork.com",
+          "country": "UG",
+          "confidence": 0.95,
+          "lex_count": 3,
+          "theme_hits": 2,
+          "matched_terms": [
+            "outbreak",
+            "public health emergency",
+            "ebola"
+          ],
+          "timestamp": "2026-05-24T06:00:00+00:00"
+        },
+        {
+          "headline": "WHO Declares Ebola Outbreak 'Public Health Emergency' Of International Concern",
+          "source": "dailyexcelsior.com",
+          "country": "UG",
+          "confidence": 0.95,
+          "lex_count": 3,
+          "theme_hits": 2,
+          "matched_terms": [
+            "outbreak",
+            "public health emergency",
+            "ebola"
+          ],
+          "timestamp": "2026-05-24T06:30:00+00:00"
+        },
+        {
+          "headline": "U.S. vulnerable to threats like hantavirus - The Bradford Era",
+          "source": "bradfordera.com",
+          "country": "US",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "virus",
+            "hantavirus"
+          ],
+          "timestamp": "2026-05-25T04:15:00+00:00"
+        },
+        {
+          "headline": "T&#x103;ng c&#x1B0;&#x1EDD;ng ph&#xF2;ng ch&#x1ED1;ng Ebola, l&#x1B0;u &#xFD; tr&#x1B0;&#x1EDD;ng h&#x1EE3;p nh&#x1EAD;p c&#x1EA3;nh t&#x1EEB; n&#x1B0;&#x1EDB;c c&#xF3; d&#x1ECB;ch trong 21 ng&#xE0;y",
+          "source": "baochinhphu.vn",
+          "country": "VN",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "ebola"
+          ],
+          "timestamp": "2026-05-24T11:15:00+00:00"
+        },
+        {
+          "headline": "P&#xE5; plats i ebolautbrottet: Riskerar att spridas",
+          "source": "expressen.se",
+          "country": "UG",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "ebola"
+          ],
+          "timestamp": "2026-05-24T13:30:00+00:00"
+        },
+        {
+          "headline": "More than 500 children have died in an outbreak that the world is virtually ignoring",
+          "source": "kunr.org",
+          "country": "BD",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "outbreak"
+          ],
+          "timestamp": "2026-05-24T15:45:00+00:00"
+        },
+        {
+          "headline": "DR Congo Ebola cases rise amid distrust, armed conflict zone",
+          "source": "wyomingpublicmedia.org",
+          "country": "CD",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "ebola"
+          ],
+          "timestamp": "2026-05-24T18:45:00+00:00"
+        },
+        {
+          "headline": "Ebola in Africa, cresce l'allarme: dieci Paesi a rischio mentre l'epidemia si espande in Congo",
+          "source": "online-news.it",
+          "country": "ZA",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "ebola"
+          ],
+          "timestamp": "2026-05-25T03:15:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "water-stress-drought",
+      "label": "Water stress and drought",
+      "parent_domain": "climate-disaster",
+      "assignments": 823,
+      "avg_confidence": 0.653,
+      "lex_pct": 0.0899,
+      "theme_only_pct": 0.9101,
+      "source_count": 627,
+      "country_count": 99,
+      "changed_10h": -224,
+      "preliminary_quality": "review",
+      "risk_flags": [
+        "theme_heavy"
+      ],
+      "top_sources": [
+        {
+          "count": 7,
+          "source": "aiwaegypt.com"
+        },
+        {
+          "count": 7,
+          "source": "indiatimes.com"
+        },
+        {
+          "count": 7,
+          "source": "newkerala.com"
+        },
+        {
+          "count": 11,
+          "source": "tribunnews.com"
+        },
+        {
+          "count": 17,
+          "source": "dostor.org"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 35,
+          "country": "TR"
+        },
+        {
+          "count": 56,
+          "country": "GB"
+        },
+        {
+          "count": 57,
+          "country": "AU"
+        },
+        {
+          "count": 78,
+          "country": "IN"
+        },
+        {
+          "count": 87,
+          "country": "US"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "drought",
+          "count": 19
+        },
+        {
+          "term": "dry season",
+          "count": 52
+        },
+        {
+          "term": "reservoir",
+          "count": 3
+        }
+      ],
+      "samples": [
+        {
+          "headline": "As America Faces Severe Droughts, Lawns are Under Scrutiny",
+          "source": "newsweek.com",
+          "country": "US",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "drought"
+          ],
+          "timestamp": "2026-05-24T14:00:00+00:00"
+        },
+        {
+          "headline": "Will Lake Mead &#x2013; largest US reservoir &#x2013; reach record lows?",
+          "source": "earthsky.org",
+          "country": "MX",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "reservoir"
+          ],
+          "timestamp": "2026-05-24T12:15:00+00:00"
+        },
+        {
+          "headline": "Yakima River farmers accept early water cuts as drought deepens",
+          "source": "chronline.com",
+          "country": "US",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "drought"
+          ],
+          "timestamp": "2026-05-24T15:45:00+00:00"
+        },
+        {
+          "headline": "Rivanna River Company works to adapt amid Virginia drought",
+          "source": "29news.com",
+          "country": "US",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "drought"
+          ],
+          "timestamp": "2026-05-24T23:30:00+00:00"
+        },
+        {
+          "headline": "24 more Virginia localities added to USDA drought disaster list",
+          "source": "wcyb.com",
+          "country": "US",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "drought"
+          ],
+          "timestamp": "2026-05-24T07:30:00+00:00"
+        },
+        {
+          "headline": "Rivanna River Company works to adapt amid Virginia drought",
+          "source": "whsv.com",
+          "country": "US",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "drought"
+          ],
+          "timestamp": "2026-05-25T01:00:00+00:00"
+        },
+        {
+          "headline": "Perubahan Iklim Ancam Kepunahan Sebagian Besar Tumbuhan pada Akhir Abad Ini",
+          "source": "republika.co.id",
+          "country": "US",
+          "confidence": 0.7,
+          "lex_count": 0,
+          "theme_hits": 3,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T09:30:00+00:00"
+        },
+        {
+          "headline": "Wojna na Ukrainie. Rosjanie uderzyli w klasztor, w kt&#xF3;rym s&#x105; polscy dominikanie",
+          "source": "dorzeczy.pl",
+          "country": "UA",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T17:45:00+00:00"
+        },
+        {
+          "headline": "Australia's data centre boom must not outrun power, water and public trust",
+          "source": "itwire.com",
+          "country": "AU",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T13:15:00+00:00"
+        },
+        {
+          "headline": "&#xC131;&#xB3D9;&#xAD6C;, &#xD0C4;&#xC18C;&#xC911;&#xB9BD;&#xB7;&#xAE30;&#xD6C4;&#xC704;&#xAE30; &#xC801;&#xC751;&#xB300;&#xCC45; '&#xC21C;&#xD56D;'... 2025&#xB144;&#xB3C4; &#xC774;&#xD589; &#xC810;&#xAC80; &#xACB0;&#xACFC; '&#xC6B0;&#xC218;'",
+          "source": "heraldcorp.com",
+          "country": "KR",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T23:30:00+00:00"
+        },
+        {
+          "headline": "O MIRANTE | Praias fluviais do M&#xE9;dio Tejo recuperam e prometem Ver&#xE3;o em seguran&#xE7;a",
+          "source": "omirante.pt",
+          "country": "PL",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T12:30:00+00:00"
+        },
+        {
+          "headline": "&#xBF;Cu&#xE1;ndo vuelve el agua?: Aguas Andinas detalla el horario de reposici&#xF3;n para las ocho comunas afectadas",
+          "source": "pudahuel.cl",
+          "country": "BO",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T17:30:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "fuel-subsidy-unrest",
+      "label": "Fuel subsidy unrest",
+      "parent_domain": "economic-stress",
+      "assignments": 632,
+      "avg_confidence": 0.6884,
+      "lex_pct": 0.3813,
+      "theme_only_pct": 0.6187,
+      "source_count": 456,
+      "country_count": 78,
+      "changed_10h": -35,
+      "preliminary_quality": "promising",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 7,
+          "source": "yahoo.com"
+        },
+        {
+          "count": 7,
+          "source": "zazoom.it"
+        },
+        {
+          "count": 8,
+          "source": "aninews.in"
+        },
+        {
+          "count": 8,
+          "source": "calcuttanews.net"
+        },
+        {
+          "count": 14,
+          "source": "indiatimes.com"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 31,
+          "country": "DE"
+        },
+        {
+          "count": 34,
+          "country": "GB"
+        },
+        {
+          "count": 60,
+          "country": "CA"
+        },
+        {
+          "count": 64,
+          "country": "US"
+        },
+        {
+          "count": 134,
+          "country": "IN"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "carburant",
+          "count": 21
+        },
+        {
+          "term": "diesel price",
+          "count": 41
+        },
+        {
+          "term": "diesel prices",
+          "count": 32
+        },
+        {
+          "term": "fuel price",
+          "count": 85
+        },
+        {
+          "term": "fuel price hike",
+          "count": 64
+        },
+        {
+          "term": "fuel prices",
+          "count": 18
+        },
+        {
+          "term": "gas prices",
+          "count": 85
+        },
+        {
+          "term": "petrol diesel price",
+          "count": 5
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Fuel Price Hike: &#xBA8;&#xBBE;&#xB9F;&#xBC1; &#xBAE;&#xBC1;&#xBB4;&#xBC1;&#xBB5;&#xBA4;&#xBC1;&#xBAE;&#xBCD; &#xBAA;&#xBC6;&#xB9F;&#xBCD;&#xBB0;&#xBCB;&#xBB2;&#xBCD;, &#xB9F;&#xBC0;&#xB9A;&#xBB2;&#xBCD; &#xBB5;&#xBBF;&#xBB2;&#xBC8; 4&#xBB5;&#xBA4;&#xBC1; &#xBAE;&#xBC1;&#xBB1;&#xBC8;&#xBAF;&#xBBE;&#xB95; &#xB89;&#xBAF;&#xBB0;&#xBCD;&#xBB5;&#xBC1;. Fuel Price Hike: Petrol and diesel prices raised for the 4th time nationwide",
+          "source": "maalaimalar.com",
+          "country": "IN",
+          "confidence": 0.95,
+          "lex_count": 4,
+          "theme_hits": 2,
+          "matched_terms": [
+            "diesel price",
+            "fuel price",
+            "fuel price hike",
+            "diesel prices"
+          ],
+          "timestamp": "2026-05-25T02:30:00+00:00"
+        },
+        {
+          "headline": "Fuel Price Hike Live: Petrol, diesel prices increased for fourth time this month",
+          "source": "moneycontrol.com",
+          "country": "IN",
+          "confidence": 0.9,
+          "lex_count": 4,
+          "theme_hits": 1,
+          "matched_terms": [
+            "diesel price",
+            "fuel price",
+            "fuel price hike",
+            "diesel prices"
+          ],
+          "timestamp": "2026-05-25T02:30:00+00:00"
+        },
+        {
+          "headline": "Fuel Price Hike: Petrol & Diesel Prices Raised By &#x20B9;2.61-2.71 Per Litre For 4th Time In 2 Weeks; Rates Hit Highest Since 2022",
+          "source": "freepressjournal.in",
+          "country": "IN",
+          "confidence": 0.9,
+          "lex_count": 4,
+          "theme_hits": 1,
+          "matched_terms": [
+            "diesel price",
+            "fuel price",
+            "fuel price hike",
+            "diesel prices"
+          ],
+          "timestamp": "2026-05-25T04:30:00+00:00"
+        },
+        {
+          "headline": "Petrol, Diesel prices today, May 25: Fuel prices up again! Check prices in Delhi, Mumbai, Hyderabad, Kolkata",
+          "source": "businesstoday.in",
+          "country": "IN",
+          "confidence": 0.9,
+          "lex_count": 4,
+          "theme_hits": 1,
+          "matched_terms": [
+            "diesel price",
+            "fuel price",
+            "fuel prices",
+            "diesel prices"
+          ],
+          "timestamp": "2026-05-25T03:15:00+00:00"
+        },
+        {
+          "headline": "Petrol Price Increase: Another fuel price hike coming? BPCL says rise 'inevitable' if crisis continues",
+          "source": "indiatimes.com",
+          "country": "IN",
+          "confidence": 0.9,
+          "lex_count": 3,
+          "theme_hits": 1,
+          "matched_terms": [
+            "fuel price",
+            "fuel price hike",
+            "petrol price"
+          ],
+          "timestamp": "2026-05-24T07:15:00+00:00"
+        },
+        {
+          "headline": "Petrol and diesel prices rise again petrol crosses 102 in Lucknow know rates in other districts UP Petrol Diesel Price: &#x92A;&#x947;&#x91F;&#x94D;&#x930;&#x94B;&#x932;-&#x921;&#x940;&#x91C;&#x932; &#x92B;&#x93F;&#x930; &#x92E;&#x939;&#x902;&#x917;&#x93E;, &#x932;&#x916;&#x928;&#x90A; &#x92E;&#x947;&#x902; &#x92A;&#x947;&#x91F;&#x94D;&#x930;&#x94B;&#x932; 102 &#x930;&#x941;&#x92A;&#x92F;&#x947; &#x915;&#x947; &#x92A;&#x93E;&#x930;, &#x91C;&#x93E;&#x928;&#x947;&#x902; &#x905;&#x928;&#x94D;&#x92F; &#x91C;&#x93F;&#x932;&#x94B;&#x902; &#x915;&#x93E; &#x930;&#x947;&#x91F;, Uttar-pradesh Hindi News",
+          "source": "livehindustan.com",
+          "country": "IN",
+          "confidence": 0.9,
+          "lex_count": 3,
+          "theme_hits": 1,
+          "matched_terms": [
+            "diesel price",
+            "petrol diesel price",
+            "diesel prices"
+          ],
+          "timestamp": "2026-05-25T03:30:00+00:00"
+        },
+        {
+          "headline": "Fuel price hike: rice and oil producers in Kangayam are on a wait-and-watch mode",
+          "source": "thehindu.com",
+          "country": "IN",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "fuel price",
+            "fuel price hike"
+          ],
+          "timestamp": "2026-05-24T14:23:00+00:00"
+        },
+        {
+          "headline": "Why India may not be done with petrol, diesel price hikes yet | Explained",
+          "source": "hindustantimes.com",
+          "country": "IR",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "diesel price"
+          ],
+          "timestamp": "2026-05-25T05:00:00+00:00"
+        },
+        {
+          "headline": "Corvette ZR1X vs Bugatti Chiron Drag and Roll Races",
+          "source": "egmcartech.com",
+          "country": "US",
+          "confidence": 0.7,
+          "lex_count": 0,
+          "theme_hits": 3,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T18:00:00+00:00"
+        },
+        {
+          "headline": "El dipuTesla lleg&#xF3; al TC2000: pas&#xF3; por Salta y sorprendi&#xF3; a propios y extra&#xF1;os",
+          "source": "mdzol.com",
+          "country": "AR",
+          "confidence": 0.7,
+          "lex_count": 0,
+          "theme_hits": 3,
+          "matched_terms": [],
+          "timestamp": "2026-05-25T01:15:00+00:00"
+        },
+        {
+          "headline": "&#x5D4;&#x5D6;&#x5DE;&#x5E8;&#x5EA; &#x5E9;&#x5D7;&#x5D5;&#x5E9;&#x5E4;&#x5EA; &#x5D1;&#x5D0;&#x5D5;&#x5DE;&#x5E5; &#x5D0;&#x5EA; &#x5D4;&#x5DE;&#x5E9;&#x5D1;&#x5E8; &#x5D1;&#x5D7;&#x5D9;&#x5D9;&#x5D4;: \"&#x5DE;&#x5D2;&#x5E8;&#x5D3;&#x5EA; &#x5DE;&#x5D4;&#x5E8;&#x5E6;&#x5E4;&#x5D4; &#x5E1;&#x5D9;&#x5D1;&#x5D5;&#x5EA; &#x5DC;&#x5D4;&#x5D9;&#x5E9;&#x5D0;&#x5E8;\"",
+          "source": "13tv.co.il",
+          "country": "IL",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T14:15:00+00:00"
+        },
+        {
+          "headline": "Cannes 2026 buzz: Aishwarya Rai's appearance overshadows Alia Bhatt?",
+          "source": "samaa.tv",
+          "country": "FR",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T06:15:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "gender-violence-rights",
+      "label": "Gender violence and rights",
+      "parent_domain": "social-unrest-labor",
+      "assignments": 261,
+      "avg_confidence": 0.6565,
+      "lex_pct": 1.0,
+      "theme_only_pct": 0.0,
+      "source_count": 209,
+      "country_count": 30,
+      "changed_10h": -144,
+      "preliminary_quality": "promising",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 3,
+          "source": "asianimage.co.uk"
+        },
+        {
+          "count": 3,
+          "source": "bssnews.net"
+        },
+        {
+          "count": 3,
+          "source": "lynnnews.co.uk"
+        },
+        {
+          "count": 4,
+          "source": "thedailystar.net"
+        },
+        {
+          "count": 6,
+          "source": "indiatimes.com"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 8,
+          "country": "BD"
+        },
+        {
+          "count": 13,
+          "country": "AT"
+        },
+        {
+          "count": 16,
+          "country": "ES"
+        },
+        {
+          "count": 20,
+          "country": "IN"
+        },
+        {
+          "count": 146,
+          "country": "GB"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "femicidio",
+          "count": 3
+        },
+        {
+          "term": "feminicidio",
+          "count": 6
+        },
+        {
+          "term": "rape",
+          "count": 238
+        },
+        {
+          "term": "raped",
+          "count": 17
+        },
+        {
+          "term": "reproductive rights",
+          "count": 1
+        },
+        {
+          "term": "sexual assault",
+          "count": 10
+        },
+        {
+          "term": "violence against women",
+          "count": 3
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Minor raped, murdered in J&K's Budgam district",
+          "source": "prokerala.com",
+          "country": "IN",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape",
+            "raped"
+          ],
+          "timestamp": "2026-05-24T15:00:00+00:00"
+        },
+        {
+          "headline": "Minister says girls raped by boys spared jail 'deserve justice' and sentences need to be urgently reviewed",
+          "source": "yahoo.com",
+          "country": "GB",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape",
+            "raped"
+          ],
+          "timestamp": "2026-05-24T10:15:00+00:00"
+        },
+        {
+          "headline": "Two men who allegedly raped and beheaded a female nursing student arrested",
+          "source": "premiumtimesng.com",
+          "country": "NG",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape",
+            "raped"
+          ],
+          "timestamp": "2026-05-24T18:00:00+00:00"
+        },
+        {
+          "headline": "Sold by mother for Rs 16k & 10 saris, 12-year-old raped by 'buyer', auto driver | Lucknow News",
+          "source": "indiatimes.com",
+          "country": "IN",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape",
+            "raped"
+          ],
+          "timestamp": "2026-05-24T23:45:00+00:00"
+        },
+        {
+          "headline": "Her body was found behind a school after being stabbed and raped: How sketch finally helped nail her 'killer'",
+          "source": "dailymail.com",
+          "country": "US",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape",
+            "raped"
+          ],
+          "timestamp": "2026-05-24T16:45:00+00:00"
+        },
+        {
+          "headline": "12-year-old girl allegedly raped, murdered in Budgam",
+          "source": "kashmirreader.com",
+          "country": "IN",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape",
+            "raped"
+          ],
+          "timestamp": "2026-05-24T22:30:00+00:00"
+        },
+        {
+          "headline": "Police Arrest Two Over Alleged Rape, Murder Of Nursing Student In Imo",
+          "source": "channelstv.com",
+          "country": "NG",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape"
+          ],
+          "timestamp": "2026-05-24T14:15:00+00:00"
+        },
+        {
+          "headline": "Rape victim says decision to spare her attackers jail was like 'rock in my face'",
+          "source": "somersetcountygazette.co.uk",
+          "country": "GB",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape"
+          ],
+          "timestamp": "2026-05-24T09:45:00+00:00"
+        },
+        {
+          "headline": "Rape victim says decision to spare her attackers jail was like 'rock in my face'",
+          "source": "darlingtonandstocktontimes.co.uk",
+          "country": "GB",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape"
+          ],
+          "timestamp": "2026-05-24T11:00:00+00:00"
+        },
+        {
+          "headline": "Prayagraj Principal Gang-Rape FIR | Bishop Maurice Edgar Dan",
+          "source": "bhaskar.com",
+          "country": "IN",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape"
+          ],
+          "timestamp": "2026-05-24T17:30:00+00:00"
+        },
+        {
+          "headline": "Rape victim says decision to spare her attackers jail was like 'rock in my face'",
+          "source": "richmondandtwickenhamtimes.co.uk",
+          "country": "GB",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape"
+          ],
+          "timestamp": "2026-05-24T09:30:00+00:00"
+        },
+        {
+          "headline": "One to die in Meherpur child rape case",
+          "source": "bssnews.net",
+          "country": "BD",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape"
+          ],
+          "timestamp": "2026-05-24T13:15:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "forced-displacement",
+      "label": "Forced displacement",
+      "parent_domain": "migration-humanitarian",
+      "assignments": 255,
+      "avg_confidence": 0.652,
+      "lex_pct": 0.0941,
+      "theme_only_pct": 0.9059,
+      "source_count": 217,
+      "country_count": 55,
+      "changed_10h": -60,
+      "preliminary_quality": "review",
+      "risk_flags": [
+        "theme_heavy"
+      ],
+      "top_sources": [
+        {
+          "count": 2,
+          "source": "aif.ru"
+        },
+        {
+          "count": 3,
+          "source": "index.hr"
+        },
+        {
+          "count": 3,
+          "source": "nzcity.co.nz"
+        },
+        {
+          "count": 3,
+          "source": "ukrinform.ua"
+        },
+        {
+          "count": 11,
+          "source": "zazoom.it"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 16,
+          "country": "IN"
+        },
+        {
+          "count": 18,
+          "country": "IR"
+        },
+        {
+          "count": 20,
+          "country": "IL"
+        },
+        {
+          "count": 24,
+          "country": "US"
+        },
+        {
+          "count": 28,
+          "country": "UA"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "asylum seekers",
+          "count": 4
+        },
+        {
+          "term": "evacuation order",
+          "count": 11
+        },
+        {
+          "term": "exodus",
+          "count": 4
+        },
+        {
+          "term": "forced displacement",
+          "count": 1
+        },
+        {
+          "term": "mass evacuation",
+          "count": 2
+        },
+        {
+          "term": "refugee camp",
+          "count": 2
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Interactive map details how many asylum seekers are living in your area",
+          "source": "belfastlive.co.uk",
+          "country": "GB",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "asylum seekers"
+          ],
+          "timestamp": "2026-05-24T17:15:00+00:00"
+        },
+        {
+          "headline": "Authorities urgently try to stop California chemical tank explosion; 50,000 under evacuation orders",
+          "source": "abc30.com",
+          "country": "US",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "evacuation order"
+          ],
+          "timestamp": "2026-05-24T21:15:00+00:00"
+        },
+        {
+          "headline": "Gillard remains in the gutter over asylum seekers (and she feels fine)",
+          "source": "antonyloewenstein.com",
+          "country": "IQ",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "asylum seekers"
+          ],
+          "timestamp": "2026-05-24T19:00:00+00:00"
+        },
+        {
+          "headline": "Israeli strikes kill six in southern Lebanon amid fresh evacuation orders&#xA0; - Dominican Republic Post &#x2013; Caribbean News, Business, Travel & Culture",
+          "source": "dominicanrepublicpost.com",
+          "country": "LS",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "evacuation order"
+          ],
+          "timestamp": "2026-05-24T21:30:00+00:00"
+        },
+        {
+          "headline": "Israeli strikes kill six in southern Lebanon amid fresh evacuation orders&#xA0; - Grenada Chronicle &#x2013; Daily Grenada And Caribbean News",
+          "source": "grenadachronicle.com",
+          "country": "LS",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "evacuation order"
+          ],
+          "timestamp": "2026-05-24T22:30:00+00:00"
+        },
+        {
+          "headline": "Israeli fire kills parents and their baby in Gaza refugee camp, officials say",
+          "source": "scmp.com",
+          "country": "IL",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "refugee camp"
+          ],
+          "timestamp": "2026-05-24T17:45:00+00:00"
+        },
+        {
+          "headline": "Authorities urgently try to stop California chemical tank explosion; 50,000 under evacuation orders",
+          "source": "abc7chicago.com",
+          "country": "US",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "evacuation order"
+          ],
+          "timestamp": "2026-05-24T13:45:00+00:00"
+        },
+        {
+          "headline": "&#x627;&#x644;&#x62C;&#x632;&#x627;&#x626;&#x631; &#x628;&#x64A;&#x646; &#x623;&#x643;&#x628;&#x631; &#x645;&#x633;&#x62A;&#x648;&#x631;&#x62F;&#x64A; &#x627;&#x644;&#x633;&#x643;&#x631;",
+          "source": "akhbarelyoum.dz",
+          "country": "IR",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T21:00:00+00:00"
+        },
+        {
+          "headline": "24Kurier.pl - Dziewczyny pokolenia &#x201E;Kolumb&#xF3;w\". Mi&#x142;o&#x15B;&#x107; nie tylko do Ojczyzny",
+          "source": "24kurier.pl",
+          "country": "PL",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T18:00:00+00:00"
+        },
+        {
+          "headline": "Una parella i el seu nad&#xF3; moren a Gaza en el bombardeig d'Israel al camp de refugiats de Nuseirat",
+          "source": "3cat.cat",
+          "country": "IL",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T17:30:00+00:00"
+        },
+        {
+          "headline": "L&#xED;bano contabilizou 11 mortos em ataque israelita no s&#xE1;bado",
+          "source": "dnoticias.pt",
+          "country": "LS",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T18:30:00+00:00"
+        },
+        {
+          "headline": "El Senado de Bolivia derog&#xF3; la ley que regulaba el estado de excepci&#xF3;n en plena escalada de protestas y bloqueos",
+          "source": "infobae.com",
+          "country": "BO",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T22:45:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "housing-cost-pressure",
+      "label": "Housing cost pressure",
+      "parent_domain": "economic-stress",
+      "assignments": 247,
+      "avg_confidence": 0.6577,
+      "lex_pct": 0.2146,
+      "theme_only_pct": 0.7854,
+      "source_count": 200,
+      "country_count": 48,
+      "changed_10h": 50,
+      "preliminary_quality": "monitor",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 4,
+          "source": "boerse-social.com"
+        },
+        {
+          "count": 4,
+          "source": "openpr.com"
+        },
+        {
+          "count": 4,
+          "source": "scoop.co.nz"
+        },
+        {
+          "count": 6,
+          "source": "udayavani.com"
+        },
+        {
+          "count": 6,
+          "source": "zol.com.cn"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 17,
+          "country": "GB"
+        },
+        {
+          "count": 18,
+          "country": "SE"
+        },
+        {
+          "count": 19,
+          "country": "CN"
+        },
+        {
+          "count": 23,
+          "country": "ES"
+        },
+        {
+          "count": 23,
+          "country": "IN"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "alquileres",
+          "count": 7
+        },
+        {
+          "term": "crisis de vivienda",
+          "count": 2
+        },
+        {
+          "term": "desahucio",
+          "count": 9
+        },
+        {
+          "term": "house prices",
+          "count": 8
+        },
+        {
+          "term": "housing crisis",
+          "count": 7
+        },
+        {
+          "term": "precios del alquiler",
+          "count": 5
+        },
+        {
+          "term": "rising rents",
+          "count": 5
+        },
+        {
+          "term": "vivienda digna",
+          "count": 7
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Spain's housing crisis: Thousands hit Madrid streets to protest rising rents and home prices |",
+          "source": "indiatimes.com",
+          "country": "ES",
+          "confidence": 0.9,
+          "lex_count": 3,
+          "theme_hits": 1,
+          "matched_terms": [
+            "housing crisis",
+            "rising rents",
+            "home prices"
+          ],
+          "timestamp": "2026-05-24T13:15:00+00:00"
+        },
+        {
+          "headline": "Miles de personas se manifiestan en Madrid para exigir una vivienda digna y alquileres m&#xE1;s baratos",
+          "source": "vozpopuli.com",
+          "country": "ES",
+          "confidence": 0.9,
+          "lex_count": 2,
+          "theme_hits": 2,
+          "matched_terms": [
+            "alquileres",
+            "vivienda digna"
+          ],
+          "timestamp": "2026-05-24T12:15:00+00:00"
+        },
+        {
+          "headline": "Tenants protest 'extreme rent increases' and 'ignored maintenance requests'",
+          "source": "toronto.citynews.ca",
+          "country": "CA",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "rent increase",
+            "rent increases"
+          ],
+          "timestamp": "2026-05-25T01:15:00+00:00"
+        },
+        {
+          "headline": "New Hanover County sees over 4,000 evictions filed in single year as affordable housing crisis grows",
+          "source": "carolinacoastonline.com",
+          "country": "US",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "housing crisis",
+            "affordable housing"
+          ],
+          "timestamp": "2026-05-24T23:15:00+00:00"
+        },
+        {
+          "headline": "Miles de personas reclaman que bajen los precios del alquiler: &#xAB;Trabajamos para vivir, no para pagar&#xBB;",
+          "source": "laverdad.es",
+          "country": "ES",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "precios del alquiler"
+          ],
+          "timestamp": "2026-05-24T13:30:00+00:00"
+        },
+        {
+          "headline": "Miles de personas claman en Madrid por una vivienda digna y llaman a una huelga general",
+          "source": "expansion.com",
+          "country": "SE",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "vivienda digna"
+          ],
+          "timestamp": "2026-05-24T14:30:00+00:00"
+        },
+        {
+          "headline": "Camera plunged 850 feet into a remote Greenland fjord captures elusive deep-sea creatures",
+          "source": "yahoo.com",
+          "country": "GL",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T15:00:00+00:00"
+        },
+        {
+          "headline": "All to know about Chappel in Essex and why you should visit",
+          "source": "dunmowbroadcast.co.uk",
+          "country": "GB",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T07:30:00+00:00"
+        },
+        {
+          "headline": "El sindicato de Inquilinas llama a desobedecer a los caseros &#xAB;ante la dictadura del rentismo&#xBB;",
+          "source": "menorca.info",
+          "country": "SE",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T12:00:00+00:00"
+        },
+        {
+          "headline": "ASB: Strait Closure May Squeeze NZ Far Beyond Fuel",
+          "source": "scoop.co.nz",
+          "country": "NZ",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-25T04:15:00+00:00"
+        },
+        {
+          "headline": "UK borrowers warned about 'waiting for perfect time' after new change",
+          "source": "chroniclelive.co.uk",
+          "country": "GB",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-25T04:45:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "transport-corridor-disruption",
+      "label": "Transport corridor disruption",
+      "parent_domain": "technology-infrastructure",
+      "assignments": 244,
+      "avg_confidence": 0.6506,
+      "lex_pct": 0.0328,
+      "theme_only_pct": 0.9672,
+      "source_count": 218,
+      "country_count": 61,
+      "changed_10h": -61,
+      "preliminary_quality": "review",
+      "risk_flags": [
+        "theme_heavy"
+      ],
+      "top_sources": [
+        {
+          "count": 3,
+          "source": "korabel.ru"
+        },
+        {
+          "count": 3,
+          "source": "pravda.com.ua"
+        },
+        {
+          "count": 4,
+          "source": "hellenicshippingnews.com"
+        },
+        {
+          "count": 4,
+          "source": "romadailynews.it"
+        },
+        {
+          "count": 5,
+          "source": "zazoom.it"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 14,
+          "country": "IR"
+        },
+        {
+          "count": 15,
+          "country": "IT"
+        },
+        {
+          "count": 15,
+          "country": "UA"
+        },
+        {
+          "count": 18,
+          "country": "CN"
+        },
+        {
+          "count": 18,
+          "country": "RU"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "maritime corridor",
+          "count": 1
+        },
+        {
+          "term": "panama canal",
+          "count": 1
+        },
+        {
+          "term": "rail disruption",
+          "count": 2
+        },
+        {
+          "term": "road blockade",
+          "count": 2
+        },
+        {
+          "term": "strait closure",
+          "count": 2
+        }
+      ],
+      "samples": [
+        {
+          "headline": "ProRail fined &#x20AC;2.75 million over rail disruptions as NS earns strong performance review",
+          "source": "nltimes.nl",
+          "country": "NL",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "rail disruption"
+          ],
+          "timestamp": "2026-05-25T05:00:00+00:00"
+        },
+        {
+          "headline": "A Multi-Stop Panama Adventure: How Families Can Add to a Panama Canal Visit",
+          "source": "newsroompanama.com",
+          "country": "PM",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "panama canal"
+          ],
+          "timestamp": "2026-05-25T03:45:00+00:00"
+        },
+        {
+          "headline": "Ratlam Residents Protest And Road Blockade Over Worsening Water Crisis",
+          "source": "freepressjournal.in",
+          "country": "IN",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "road blockade"
+          ],
+          "timestamp": "2026-05-24T19:00:00+00:00"
+        },
+        {
+          "headline": "ASB: Strait Closure May Squeeze NZ Far Beyond Fuel",
+          "source": "scoop.co.nz",
+          "country": "NZ",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "strait closure"
+          ],
+          "timestamp": "2026-05-25T04:15:00+00:00"
+        },
+        {
+          "headline": "NRC Warns Of Rail Disruptions After Attacks In Plateau, Bauchi",
+          "source": "leadership.ng",
+          "country": "NG",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rail disruption"
+          ],
+          "timestamp": "2026-05-24T09:30:00+00:00"
+        },
+        {
+          "headline": "FG to Expand Deep Blue Project to Bakassi, Other Vulnerable Maritime Corridors &#x2013; THISDAYLIVE",
+          "source": "thisdaylive.com",
+          "country": "NG",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "maritime corridor"
+          ],
+          "timestamp": "2026-05-25T03:45:00+00:00"
+        },
+        {
+          "headline": "Magdalen New Cut Bridge in Watlington could reopen next week",
+          "source": "edp24.co.uk",
+          "country": "GB",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T12:15:00+00:00"
+        },
+        {
+          "headline": "Alc&#xE1;cer do Sal: Via alternativa &#xE0; ponte de S. Rom&#xE3;o j&#xE1; est&#xE1; conclu&#xED;da e com tr&#xE2;nsito condicionado",
+          "source": "sapo.pt",
+          "country": "PL",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T14:15:00+00:00"
+        },
+        {
+          "headline": "&#x412; &#x42F;&#x440;&#x43E;&#x441;&#x43B;&#x430;&#x432;&#x43B;&#x435; &#x43F;&#x440;&#x438;&#x448;&#x432;&#x430;&#x440;&#x442;&#x43E;&#x432;&#x430;&#x43B;&#x430;&#x441;&#x44C; &#xAB;&#x41A;&#x43D;&#x44F;&#x436;&#x43D;&#x430; &#x410;&#x43D;&#x430;&#x441;&#x442;&#x430;&#x441;&#x438;&#x44F;&#xBB;: &#x43A;&#x440;&#x443;&#x438;&#x437;&#x44B; &#x43E;&#x442; 23 &#x442;&#x44B;&#x441;&#x44F;&#x447; &#x440;&#x443;&#x431;&#x43B;&#x435;&#x439;",
+          "source": "progorod76.ru",
+          "country": "RU",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T11:15:00+00:00"
+        },
+        {
+          "headline": "Kolaps na pojedinim dionicama: Poja&#x10D;an saobra&#x107;aj i kilometarske kolone prema granici",
+          "source": "hayat.ba",
+          "country": "BK",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T14:30:00+00:00"
+        },
+        {
+          "headline": "Viabilit&#xE0; Roma Regione Lazio del del 24-05-2026 ore 10",
+          "source": "zazoom.it",
+          "country": "IT",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T09:15:00+00:00"
+        },
+        {
+          "headline": "Realitatea.NET | Oile rom&#xE2;ne&#x219;ti ajung &#xEE;n Algeria cu avionul. Primul zbor cargo, finalizat &#xEE;n dou&#x103; ore &#x219;i jum&#x103;tate",
+          "source": "realitatea.net",
+          "country": "RO",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T14:30:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "heat-health-risk",
+      "label": "Heat and public health risk",
+      "parent_domain": "public-health",
+      "assignments": 236,
+      "avg_confidence": 0.6589,
+      "lex_pct": 1.0,
+      "theme_only_pct": 0.0,
+      "source_count": 129,
+      "country_count": 15,
+      "changed_10h": -75,
+      "preliminary_quality": "promising",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 6,
+          "source": "aninews.in"
+        },
+        {
+          "count": 7,
+          "source": "thehindu.com"
+        },
+        {
+          "count": 10,
+          "source": "bhaskar.com"
+        },
+        {
+          "count": 13,
+          "source": "indiatimes.com"
+        },
+        {
+          "count": 13,
+          "source": "newkerala.com"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 2,
+          "country": "FR"
+        },
+        {
+          "count": 4,
+          "country": "PK"
+        },
+        {
+          "count": 7,
+          "country": "SA"
+        },
+        {
+          "count": 84,
+          "country": "GB"
+        },
+        {
+          "count": 128,
+          "country": "IN"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "dehydration",
+          "count": 1
+        },
+        {
+          "term": "extreme heat",
+          "count": 10
+        },
+        {
+          "term": "heat wave",
+          "count": 2
+        },
+        {
+          "term": "heatstroke",
+          "count": 17
+        },
+        {
+          "term": "heatwave",
+          "count": 195
+        },
+        {
+          "term": "scorching",
+          "count": 15
+        },
+        {
+          "term": "sweltering",
+          "count": 12
+        }
+      ],
+      "samples": [
+        {
+          "headline": "How Indian Zoos Are Protecting Animals from Extreme Heatwaves with Coolers, Fruits and Showers",
+          "source": "openthemagazine.com",
+          "country": "IN",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "extreme heat",
+            "heatwave"
+          ],
+          "timestamp": "2026-05-24T09:45:00+00:00"
+        },
+        {
+          "headline": "Scorching heatwave: Ranchi residents struggle with acute water crisis as tanker supply falls short",
+          "source": "webindia123.com",
+          "country": "IN",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "heatwave",
+            "scorching"
+          ],
+          "timestamp": "2026-05-24T12:00:00+00:00"
+        },
+        {
+          "headline": "Heatwave leaves homeless battling hunger, dehydration",
+          "source": "thehindu.com",
+          "country": "IN",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "heatwave",
+            "dehydration"
+          ],
+          "timestamp": "2026-05-24T14:53:57+00:00"
+        },
+        {
+          "headline": "Scorching heatwave: Ranchi residents struggle with acute water crisis as tanker supply falls short",
+          "source": "calcuttanews.net",
+          "country": "IN",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "heatwave",
+            "scorching"
+          ],
+          "timestamp": "2026-05-24T14:30:00+00:00"
+        },
+        {
+          "headline": "40 dead in Andhra, Telangana over two days due to heatstroke; heatwave kills hundreds of bats, cattle",
+          "source": "theweek.in",
+          "country": "IN",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "heatstroke",
+            "heatwave"
+          ],
+          "timestamp": "2026-05-24T09:15:00+00:00"
+        },
+        {
+          "headline": "Extreme heat grips Rajasthan: Jaisalmer temperatures soar past 46C; heatwave warnings issued",
+          "source": "webindia123.com",
+          "country": "IN",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "extreme heat",
+            "heatwave"
+          ],
+          "timestamp": "2026-05-24T12:00:00+00:00"
+        },
+        {
+          "headline": "UK Weather: Heatwave could hit record-breaking highs | Harwich and Manningtree Standard",
+          "source": "harwichandmanningtreestandard.co.uk",
+          "country": "GB",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "heatwave"
+          ],
+          "timestamp": "2026-05-24T09:15:00+00:00"
+        },
+        {
+          "headline": "Muslims begin the annual Hajj in sweltering heat against a backdrop of war concerns",
+          "source": "news4jax.com",
+          "country": "ID",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "sweltering"
+          ],
+          "timestamp": "2026-05-25T05:15:00+00:00"
+        },
+        {
+          "headline": "Heatwave 'can't stop' dancing York Big Issue vendor",
+          "source": "gazetteherald.co.uk",
+          "country": "GB",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "heatwave"
+          ],
+          "timestamp": "2026-05-24T16:00:00+00:00"
+        },
+        {
+          "headline": "heatwave alert in delhi punjab haryana as temperature may reach 47 degree &#x917;&#x930;&#x94D;&#x92E;&#x940; &#x915;&#x94B; &#x932;&#x947;&#x915;&#x930; &#x921;&#x930;&#x93E;&#x928;&#x947; &#x935;&#x93E;&#x932;&#x93E; &#x905;&#x932;&#x930;&#x94D;&#x91F;, 47 &#x921;&#x93F;&#x917;&#x94D;&#x930;&#x940; &#x924;&#x915; &#x92A;&#x939;&#x941;&#x902;&#x91A;&#x928;&#x947; &#x935;&#x93E;&#x932;&#x93E; &#x939;&#x948; &#x924;&#x93E;&#x92A;&#x92E;&#x93E;&#x928;; &#x939;&#x94B; &#x91C;&#x93E;&#x90F;&#x902; &#x938;&#x93E;&#x935;&#x927;&#x93E;&#x928;, Weather Hindi News",
+          "source": "livehindustan.com",
+          "country": "IN",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "heatwave"
+          ],
+          "timestamp": "2026-05-24T05:45:00+00:00"
+        },
+        {
+          "headline": "UK Weather: Heatwave could hit record-breaking highs | Braintree and Witham Times",
+          "source": "braintreeandwithamtimes.co.uk",
+          "country": "GB",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "heatwave"
+          ],
+          "timestamp": "2026-05-24T08:00:00+00:00"
+        },
+        {
+          "headline": "UK Weather: Heatwave could hit record-breaking highs",
+          "source": "harrowtimes.co.uk",
+          "country": "GB",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "heatwave"
+          ],
+          "timestamp": "2026-05-24T08:45:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "mining-royalty-risk",
+      "label": "Mining and resource safety crisis",
+      "parent_domain": "resources-energy",
+      "assignments": 232,
+      "avg_confidence": 0.7726,
+      "lex_pct": 0.9095,
+      "theme_only_pct": 0.0905,
+      "source_count": 215,
+      "country_count": 17,
+      "changed_10h": -8,
+      "preliminary_quality": "promising",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 2,
+          "source": "businesstimes.com.sg"
+        },
+        {
+          "count": 2,
+          "source": "channelnewsasia.com"
+        },
+        {
+          "count": 3,
+          "source": "stockhouse.com"
+        },
+        {
+          "count": 3,
+          "source": "yahoo.com"
+        },
+        {
+          "count": 6,
+          "source": "asiaone.com"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 2,
+          "country": "NG"
+        },
+        {
+          "count": 2,
+          "country": "RU"
+        },
+        {
+          "count": 6,
+          "country": "CA"
+        },
+        {
+          "count": 7,
+          "country": "AU"
+        },
+        {
+          "count": 202,
+          "country": "CN"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "coal mine",
+          "count": 187
+        },
+        {
+          "term": "coal mine explosion",
+          "count": 115
+        },
+        {
+          "term": "lithium mine",
+          "count": 1
+        },
+        {
+          "term": "mine blast",
+          "count": 61
+        },
+        {
+          "term": "mine explosion",
+          "count": 116
+        },
+        {
+          "term": "mining royalties",
+          "count": 2
+        }
+      ],
+      "samples": [
+        {
+          "headline": "PM mourns deaths in coal mine explosion in China",
+          "source": "bssnews.net",
+          "country": "CN",
+          "confidence": 0.9,
+          "lex_count": 3,
+          "theme_hits": 1,
+          "matched_terms": [
+            "coal mine",
+            "mine explosion",
+            "coal mine explosion"
+          ],
+          "timestamp": "2026-05-24T13:15:00+00:00"
+        },
+        {
+          "headline": "Lee offers condolences over deadly China coal mine explosion",
+          "source": "koreaherald.com",
+          "country": "CN",
+          "confidence": 0.9,
+          "lex_count": 3,
+          "theme_hits": 1,
+          "matched_terms": [
+            "coal mine",
+            "mine explosion",
+            "coal mine explosion"
+          ],
+          "timestamp": "2026-05-24T10:15:00+00:00"
+        },
+        {
+          "headline": "Authorities investigate after China coal mine explosion kills at least 82",
+          "source": "chelmsfordweeklynews.co.uk",
+          "country": "CN",
+          "confidence": 0.85,
+          "lex_count": 3,
+          "theme_hits": 0,
+          "matched_terms": [
+            "coal mine",
+            "mine explosion",
+            "coal mine explosion"
+          ],
+          "timestamp": "2026-05-24T17:45:00+00:00"
+        },
+        {
+          "headline": "Authorities investigate after China coal mine explosion kills at least 82",
+          "source": "salisburyjournal.co.uk",
+          "country": "CN",
+          "confidence": 0.85,
+          "lex_count": 3,
+          "theme_hits": 0,
+          "matched_terms": [
+            "coal mine",
+            "mine explosion",
+            "coal mine explosion"
+          ],
+          "timestamp": "2026-05-24T20:00:00+00:00"
+        },
+        {
+          "headline": "Authorities investigate after China coal mine explosion kills at least 82",
+          "source": "ludlowadvertiser.co.uk",
+          "country": "CN",
+          "confidence": 0.85,
+          "lex_count": 3,
+          "theme_hits": 0,
+          "matched_terms": [
+            "coal mine",
+            "mine explosion",
+            "coal mine explosion"
+          ],
+          "timestamp": "2026-05-24T18:45:00+00:00"
+        },
+        {
+          "headline": "Authorities investigate after China coal mine explosion kills at least 82",
+          "source": "redditchadvertiser.co.uk",
+          "country": "CN",
+          "confidence": 0.85,
+          "lex_count": 3,
+          "theme_hits": 0,
+          "matched_terms": [
+            "coal mine",
+            "mine explosion",
+            "coal mine explosion"
+          ],
+          "timestamp": "2026-05-24T18:45:00+00:00"
+        },
+        {
+          "headline": "China mine blast tests limits of Xi's energy push",
+          "source": "indiatimes.com",
+          "country": "CN",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "mine blast"
+          ],
+          "timestamp": "2026-05-24T20:15:00+00:00"
+        },
+        {
+          "headline": "China lowers death toll in coal mine disaster to 82",
+          "source": "canberratimes.com.au",
+          "country": "AU",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "coal mine"
+          ],
+          "timestamp": "2026-05-24T07:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "currency-debt-stress",
+      "label": "Currency and debt stress",
+      "parent_domain": "economic-stress",
+      "assignments": 201,
+      "avg_confidence": 0.656,
+      "lex_pct": 0.5174,
+      "theme_only_pct": 0.4826,
+      "source_count": 104,
+      "country_count": 43,
+      "changed_10h": 23,
+      "preliminary_quality": "promising",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 4,
+          "source": "kompas.com"
+        },
+        {
+          "count": 4,
+          "source": "tribunnews.com"
+        },
+        {
+          "count": 4,
+          "source": "yahoo.com"
+        },
+        {
+          "count": 4,
+          "source": "zazoom.it"
+        },
+        {
+          "count": 67,
+          "source": "argaam.com"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 16,
+          "country": "US"
+        },
+        {
+          "count": 17,
+          "country": "TR"
+        },
+        {
+          "count": 18,
+          "country": "ID"
+        },
+        {
+          "count": 19,
+          "country": "MX"
+        },
+        {
+          "count": 43,
+          "country": "SA"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "central bank",
+          "count": 12
+        },
+        {
+          "term": "exchange rate",
+          "count": 4
+        },
+        {
+          "term": "lira",
+          "count": 26
+        },
+        {
+          "term": "naira",
+          "count": 1
+        },
+        {
+          "term": "peso",
+          "count": 39
+        },
+        {
+          "term": "ruble",
+          "count": 3
+        },
+        {
+          "term": "rupiah",
+          "count": 21
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Sri Lanka's exchange rate dilemma: Don't blame toothless Central Bank",
+          "source": "ft.lk",
+          "country": "LK",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "central bank",
+            "exchange rate"
+          ],
+          "timestamp": "2026-05-24T23:00:00+00:00"
+        },
+        {
+          "headline": "Sri Lanka's exchange rate dilemma: Don't blame toothless Central Bank",
+          "source": "ft.lk",
+          "country": "LK",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "central bank",
+            "exchange rate"
+          ],
+          "timestamp": "2026-05-24T23:00:00+00:00"
+        },
+        {
+          "headline": "Gelombang PHK Massal, KSPI Ungkap Imbas Inflasi Harga Minyak dan Rupiah Melemah  : Okezone Economy",
+          "source": "okezone.com",
+          "country": "ID",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "rupiah"
+          ],
+          "timestamp": "2026-05-24T13:30:00+00:00"
+        },
+        {
+          "headline": "Kurban derileri &#xFC;lke ekonomisine 20 milyar lira katk&#x131; sa&#x11F;l&#x131;yor",
+          "source": "konhaber.com",
+          "country": "TR",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "lira"
+          ],
+          "timestamp": "2026-05-24T18:00:00+00:00"
+        },
+        {
+          "headline": "Avc&#x131;lar'da depodan 1 milyon lira de&#x11F;erinde malzeme h&#x131;rs&#x131;zl&#x131;&#x11F;&#x131; iddias&#x131;",
+          "source": "haberler.com",
+          "country": "TR",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "lira"
+          ],
+          "timestamp": "2026-05-24T10:30:00+00:00"
+        },
+        {
+          "headline": "Turizme 200 milyar liral&#x131;k bayram dopingi: Otellerde yo&#x11F;unluk zirveye &#xE7;&#x131;kt&#x131;, ek seferler ba&#x15F;lad&#x131;",
+          "source": "ahaber.com.tr",
+          "country": "TR",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "lira"
+          ],
+          "timestamp": "2026-05-24T09:15:00+00:00"
+        },
+        {
+          "headline": "Nunca me va a dejar de parecer gracioso como los políticos que vende la idea de repartir la riqueza cuando llegan al poder se vuelven ricos y no reparten ni un peso de lo de ellos jajaja",
+          "source": "reddit/r/colombia",
+          "country": "CO",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "peso"
+          ],
+          "timestamp": "2026-05-24T12:41:58+00:00"
+        },
+        {
+          "headline": "Ruth desvi&#xF3; m&#xE1;s de 900 mil pesos del ISSSTE a una cuenta ajena al instituto y ahora no podr&#xE1; ser funcionaria por al menos 10 a&#xF1;os",
+          "source": "elimparcial.com",
+          "country": "MX",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "peso"
+          ],
+          "timestamp": "2026-05-24T23:15:00+00:00"
+        },
+        {
+          "headline": "&#x623;&#x631;&#x642;&#x627;&#x645; : &#x645;&#x639;&#x644;&#x648;&#x645;&#x627;&#x62A; &#x627;&#x644;&#x634;&#x631;&#x643;&#x629;  - &#x643;&#x64A;&#x627;&#x646; &#x627;&#x644;&#x633;&#x639;&#x648;&#x62F;&#x64A;&#x629;",
+          "source": "argaam.com",
+          "country": "SA",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-25T02:30:00+00:00"
+        },
+        {
+          "headline": "&#x623;&#x631;&#x642;&#x627;&#x645; : &#x645;&#x639;&#x644;&#x648;&#x645;&#x627;&#x62A; &#x627;&#x644;&#x634;&#x631;&#x643;&#x629;  - &#x623;&#x646;&#x627;&#x628;&#x64A;&#x628; &#x627;&#x644;&#x633;&#x639;&#x648;&#x62F;&#x64A;&#x629;",
+          "source": "argaam.com",
+          "country": "SA",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T05:45:00+00:00"
+        },
+        {
+          "headline": "&#x623;&#x631;&#x642;&#x627;&#x645; : &#x645;&#x639;&#x644;&#x648;&#x645;&#x627;&#x62A; &#x627;&#x644;&#x634;&#x631;&#x643;&#x629;  - &#x643;&#x64A;&#x627;&#x646; &#x627;&#x644;&#x633;&#x639;&#x648;&#x62F;&#x64A;&#x629;",
+          "source": "argaam.com",
+          "country": "SA",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T05:45:00+00:00"
+        },
+        {
+          "headline": "Fisco | 120mila pignoramenti sui conti focus su Lombardia e Lazio",
+          "source": "zazoom.it",
+          "country": "IT",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T15:30:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "constitutional-institutional-crisis",
+      "label": "Constitutional or institutional crisis",
+      "parent_domain": "political-legitimacy",
+      "assignments": 195,
+      "avg_confidence": 0.6595,
+      "lex_pct": 1.0,
+      "theme_only_pct": 0.0,
+      "source_count": 177,
+      "country_count": 16,
+      "changed_10h": 65,
+      "preliminary_quality": "promising",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 2,
+          "source": "al-monitor.com"
+        },
+        {
+          "count": 2,
+          "source": "cnn.com"
+        },
+        {
+          "count": 2,
+          "source": "dailykos.com"
+        },
+        {
+          "count": 2,
+          "source": "dailypioneer.com"
+        },
+        {
+          "count": 2,
+          "source": "dw.com"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 4,
+          "country": "RU"
+        },
+        {
+          "count": 6,
+          "country": "RP"
+        },
+        {
+          "count": 18,
+          "country": "IN"
+        },
+        {
+          "count": 22,
+          "country": "TR"
+        },
+        {
+          "count": 129,
+          "country": "US"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "dictator",
+          "count": 7
+        },
+        {
+          "term": "impeach",
+          "count": 8
+        },
+        {
+          "term": "impeachment",
+          "count": 7
+        },
+        {
+          "term": "ousted",
+          "count": 25
+        },
+        {
+          "term": "state of emergency",
+          "count": 106
+        },
+        {
+          "term": "supreme court",
+          "count": 47
+        },
+        {
+          "term": "unconstitutional",
+          "count": 2
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Adiong: No to online participation of Dela Rosa in VP Sara's impeachment trial",
+          "source": "mindanews.com",
+          "country": "RP",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "impeachment",
+            "impeach"
+          ],
+          "timestamp": "2026-05-24T19:45:00+00:00"
+        },
+        {
+          "headline": "Sara Duterte Impeachment Trial Seen Reshaping 2028 Philippine Presidential Race, Analyst Says",
+          "source": "tribune.net.ph",
+          "country": "RP",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "impeachment",
+            "impeach"
+          ],
+          "timestamp": "2026-05-24T09:45:00+00:00"
+        },
+        {
+          "headline": "Impeachment raising PH risks &#x2013; BMI analysts",
+          "source": "manilatimes.net",
+          "country": "RP",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "impeachment",
+            "impeach"
+          ],
+          "timestamp": "2026-05-24T18:45:00+00:00"
+        },
+        {
+          "headline": "Impeachment of the Day: Impeachment of Todd Blanche for Abuse of Power, Vindictive Prosecution, and Deprivation of Constitutional Rights in the Prosecution of Kilmar Abrego Garc&#xED;a",
+          "source": "dailykos.com",
+          "country": "US",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "impeachment",
+            "impeach"
+          ],
+          "timestamp": "2026-05-24T08:15:00+00:00"
+        },
+        {
+          "headline": "Impeachment Hero and Senate Candidate Alex Vindman Endorses Run Everywhere Project",
+          "source": "dailykos.com",
+          "country": "US",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "impeachment",
+            "impeach"
+          ],
+          "timestamp": "2026-05-24T20:15:00+00:00"
+        },
+        {
+          "headline": "Leviste: HOR must pursue flood control controversy, not just VP Sara impeachment",
+          "source": "manilatimes.net",
+          "country": "RP",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "impeachment",
+            "impeach"
+          ],
+          "timestamp": "2026-05-24T08:30:00+00:00"
+        },
+        {
+          "headline": "California chemical tank has cracked causing state of emergency, thousands to evacuate",
+          "source": "kccu.org",
+          "country": "US",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "state of emergency"
+          ],
+          "timestamp": "2026-05-25T00:00:00+00:00"
+        },
+        {
+          "headline": "RIGHT SPEAK: Justice is Coming for Victims of Dangerous Illegal-Migrant Truckers; Supreme Court: Freight Brokers Can Be Sued for Hiring Unsafe Truckers",
+          "source": "rightspeak.net",
+          "country": "US",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "supreme court"
+          ],
+          "timestamp": "2026-05-24T08:30:00+00:00"
+        },
+        {
+          "headline": "Turkish riot police enter opposition headquarters to evict ousted leadership",
+          "source": "thehindu.com",
+          "country": "TR",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "ousted"
+          ],
+          "timestamp": "2026-05-24T14:22:35+00:00"
+        },
+        {
+          "headline": "California chemical tank has cracked causing state of emergency, thousands to evacuate",
+          "source": "kpbs.org",
+          "country": "US",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "state of emergency"
+          ],
+          "timestamp": "2026-05-24T23:00:00+00:00"
+        },
+        {
+          "headline": "Trump now clashing with a Supreme Court that usually gives him what he wants",
+          "source": "alternet.org",
+          "country": "US",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "supreme court"
+          ],
+          "timestamp": "2026-05-24T15:00:00+00:00"
+        },
+        {
+          "headline": "California chemical tank has cracked causing state of emergency, thousands to evacuate",
+          "source": "wyomingpublicmedia.org",
+          "country": "US",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "state of emergency"
+          ],
+          "timestamp": "2026-05-24T23:15:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "sanctions-diplomatic-pressure",
+      "label": "Sanctions and diplomatic pressure",
+      "parent_domain": "political-legitimacy",
+      "assignments": 169,
+      "avg_confidence": 0.6515,
+      "lex_pct": 0.9882,
+      "theme_only_pct": 0.0118,
+      "source_count": 137,
+      "country_count": 29,
+      "changed_10h": -51,
+      "preliminary_quality": "promising",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 3,
+          "source": "iraqsun.com"
+        },
+        {
+          "count": 3,
+          "source": "moneycontrol.com"
+        },
+        {
+          "count": 3,
+          "source": "punchng.com"
+        },
+        {
+          "count": 5,
+          "source": "globalsecurity.org"
+        },
+        {
+          "count": 8,
+          "source": "indiatimes.com"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 8,
+          "country": "EG"
+        },
+        {
+          "count": 8,
+          "country": "US"
+        },
+        {
+          "count": 22,
+          "country": "IL"
+        },
+        {
+          "count": 22,
+          "country": "IN"
+        },
+        {
+          "count": 50,
+          "country": "IR"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "embassy",
+          "count": 55
+        },
+        {
+          "term": "negotiations",
+          "count": 55
+        },
+        {
+          "term": "sanctions",
+          "count": 38
+        },
+        {
+          "term": "treaty",
+          "count": 19
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Rumors Of Nepali Journalists Being Bribed Are Baseless Chinese Embassy",
+          "source": "ratopati.com",
+          "country": "NP",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "embassy"
+          ],
+          "timestamp": "2026-05-24T18:30:00+00:00"
+        },
+        {
+          "headline": "Qatar, Arab and Islamic nations condemn Somaliland move to open 'embassy' in Jerusalem - Read Qatar Tribune on the go for unrivalled news coverage",
+          "source": "qatar-tribune.com",
+          "country": "IL",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "embassy"
+          ],
+          "timestamp": "2026-05-24T14:00:00+00:00"
+        },
+        {
+          "headline": "T&#xFC;rkiye, regional actors slam Somaliland over Jerusalem 'embassy'",
+          "source": "hurriyetdailynews.com",
+          "country": "IL",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "embassy"
+          ],
+          "timestamp": "2026-05-24T12:45:00+00:00"
+        },
+        {
+          "headline": "How Iran uses nuclear negotiations to gain strategic advantage",
+          "source": "clevelandjewishnews.com",
+          "country": "IL",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "negotiations"
+          ],
+          "timestamp": "2026-05-24T12:30:00+00:00"
+        },
+        {
+          "headline": "How Iran uses nuclear negotiations to gain strategic advantage",
+          "source": "jns.org",
+          "country": "IL",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "negotiations"
+          ],
+          "timestamp": "2026-05-24T13:45:00+00:00"
+        },
+        {
+          "headline": "Iran deal appears closer as US officials cite progress with negotiations",
+          "source": "12news.com",
+          "country": "PK",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "negotiations"
+          ],
+          "timestamp": "2026-05-24T14:30:00+00:00"
+        },
+        {
+          "headline": "Sayyid Badr, counterparts condemn opening of so-called Somaliland embassy",
+          "source": "timesofoman.com",
+          "country": "SO",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "embassy"
+          ],
+          "timestamp": "2026-05-24T16:45:00+00:00"
+        },
+        {
+          "headline": "U.S. Embassy in Abuja, Lagos, to be closed for Memorial Day holiday",
+          "source": "dailypost.ng",
+          "country": "NG",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "embassy"
+          ],
+          "timestamp": "2026-05-24T14:15:00+00:00"
+        },
+        {
+          "headline": "Jordan, 15 nations condemn opening of Somaliland embassy in occupied Jerusalem",
+          "source": "jordantimes.com",
+          "country": "IL",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "embassy"
+          ],
+          "timestamp": "2026-05-24T16:00:00+00:00"
+        },
+        {
+          "headline": "US Embassy, Lagos Consulate announce closure - Blueprint Newspapers Limited",
+          "source": "blueprint.ng",
+          "country": "NG",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "embassy"
+          ],
+          "timestamp": "2026-05-24T19:30:00+00:00"
+        },
+        {
+          "headline": "While Rubio wooed India on trade, Iran's embassy was telling Delhi a very different story",
+          "source": "moneycontrol.com",
+          "country": "IR",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "embassy"
+          ],
+          "timestamp": "2026-05-24T12:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "corruption-investigation",
+      "label": "Corruption investigation",
+      "parent_domain": "political-legitimacy",
+      "assignments": 119,
+      "avg_confidence": 0.7492,
+      "lex_pct": 0.9412,
+      "theme_only_pct": 0.0588,
+      "source_count": 116,
+      "country_count": 18,
+      "changed_10h": 67,
+      "preliminary_quality": "promising",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 1,
+          "source": "abc.net.au"
+        },
+        {
+          "count": 1,
+          "source": "adn.com"
+        },
+        {
+          "count": 2,
+          "source": "dw.com"
+        },
+        {
+          "count": 2,
+          "source": "en.tempo.co"
+        },
+        {
+          "count": 2,
+          "source": "reddit/r/Nigeria"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 3,
+          "country": "CY"
+        },
+        {
+          "count": 4,
+          "country": "FR"
+        },
+        {
+          "count": 4,
+          "country": "US"
+        },
+        {
+          "count": 8,
+          "country": "IN"
+        },
+        {
+          "count": 79,
+          "country": "GB"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "bribery",
+          "count": 2
+        },
+        {
+          "term": "corruption",
+          "count": 31
+        },
+        {
+          "term": "embezzlement",
+          "count": 79
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Peter Murrell expected in court on embezzlement charges",
+          "source": "cotswoldjournal.co.uk",
+          "country": "GB",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "embezzlement"
+          ],
+          "timestamp": "2026-05-25T04:15:00+00:00"
+        },
+        {
+          "headline": "Peter Murrell expected in court on embezzlement charges",
+          "source": "richmondandtwickenhamtimes.co.uk",
+          "country": "GB",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "embezzlement"
+          ],
+          "timestamp": "2026-05-25T04:15:00+00:00"
+        },
+        {
+          "headline": "Peter Murrell expected in court on embezzlement charges",
+          "source": "cravenherald.co.uk",
+          "country": "GB",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "embezzlement"
+          ],
+          "timestamp": "2026-05-25T02:15:00+00:00"
+        },
+        {
+          "headline": "Peter Murrell expected in court on embezzlement charges",
+          "source": "dumbartonreporter.co.uk",
+          "country": "GB",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "embezzlement"
+          ],
+          "timestamp": "2026-05-25T04:15:00+00:00"
+        },
+        {
+          "headline": "Peter Murrell expected in court on embezzlement charges",
+          "source": "andoveradvertiser.co.uk",
+          "country": "GB",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "embezzlement"
+          ],
+          "timestamp": "2026-05-25T04:45:00+00:00"
+        },
+        {
+          "headline": "Peter Murrell expected in court on embezzlement charges",
+          "source": "readingchronicle.co.uk",
+          "country": "GB",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "embezzlement"
+          ],
+          "timestamp": "2026-05-25T02:15:00+00:00"
+        },
+        {
+          "headline": "ICW Doubts Indonesia's New Export Rule Will Curb Corruption",
+          "source": "en.tempo.co",
+          "country": "ID",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "corruption"
+          ],
+          "timestamp": "2026-05-24T13:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "agriculture-crop-risk",
+      "label": "Agriculture and crop risk",
+      "parent_domain": "climate-disaster",
+      "assignments": 97,
+      "avg_confidence": 0.6727,
+      "lex_pct": 0.8969,
+      "theme_only_pct": 0.1031,
+      "source_count": 82,
+      "country_count": 25,
+      "changed_10h": -20,
+      "preliminary_quality": "promising",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 2,
+          "source": "andhrajyothy.com"
+        },
+        {
+          "count": 3,
+          "source": "aginfo.net"
+        },
+        {
+          "count": 3,
+          "source": "countytimes.co.uk"
+        },
+        {
+          "count": 3,
+          "source": "thehindu.com"
+        },
+        {
+          "count": 4,
+          "source": "indiatimes.com"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 5,
+          "country": "CN"
+        },
+        {
+          "count": 11,
+          "country": "GB"
+        },
+        {
+          "count": 13,
+          "country": "US"
+        },
+        {
+          "count": 18,
+          "country": "CA"
+        },
+        {
+          "count": 19,
+          "country": "IN"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "crop failure",
+          "count": 1
+        },
+        {
+          "term": "farmers",
+          "count": 72
+        },
+        {
+          "term": "fertilizer",
+          "count": 7
+        },
+        {
+          "term": "harvest",
+          "count": 9
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Farmers harvest hope through community Agribusiness advisors",
+          "source": "malawi24.com",
+          "country": "MW",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "harvest",
+            "farmers"
+          ],
+          "timestamp": "2026-05-24T20:00:00+00:00"
+        },
+        {
+          "headline": "2026 farming season: Senator Barau to distribute free 53,040 bags of fertilizer to farmers, others in Kano North",
+          "source": "nationalaccordnewspaper.com",
+          "country": "NG",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "fertilizer",
+            "farmers"
+          ],
+          "timestamp": "2026-05-24T11:00:00+00:00"
+        },
+        {
+          "headline": "Esplanade Gersik weekly farmers market should be revived, says deputy minister",
+          "source": "theborneopost.com",
+          "country": "MY",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "farmers"
+          ],
+          "timestamp": "2026-05-24T16:45:00+00:00"
+        },
+        {
+          "headline": "7 tips beef farmers can learn from dairy farmers",
+          "source": "fwi.co.uk",
+          "country": "GB",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "farmers"
+          ],
+          "timestamp": "2026-05-25T00:30:00+00:00"
+        },
+        {
+          "headline": "Georgia Farmers Called to Lead - AG INFORMATION NETWORK OF THE WEST",
+          "source": "aginfo.net",
+          "country": "US",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "farmers"
+          ],
+          "timestamp": "2026-05-24T07:15:00+00:00"
+        },
+        {
+          "headline": "Oxfordshire farmers feeling effects of conflict in Iran",
+          "source": "heraldseries.co.uk",
+          "country": "GB",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "farmers"
+          ],
+          "timestamp": "2026-05-24T12:45:00+00:00"
+        },
+        {
+          "headline": "Ministry to assist rubber farmers to increase productivity, income",
+          "source": "en.antaranews.com",
+          "country": "ID",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "farmers"
+          ],
+          "timestamp": "2026-05-24T06:01:13+00:00"
+        },
+        {
+          "headline": "&#xC30;&#xC3E;&#xC37;&#xC4D;&#xC1F;&#xC4D;&#xC30;&#xC02;&#xC32;&#xC4B; &#xC07;&#xC2C;&#xC4D;&#xC2C;&#xC02;&#xC26;&#xC3F; &#xC2A;&#xC21;&#xC41;&#xC24;&#xC41;&#xC28;&#xC4D;&#xC28; &#xC30;&#xC48;&#xC24;&#xC41;&#xC32;&#xC41; : &#xC0E;&#xC02;&#xC2A;&#xC40; &#xC15;&#xC4A;&#xC02;&#xC21;&#xC3E; &#xC35;&#xC3F;&#xC36;&#xC4D;&#xC35;&#xC47;&#xC36;&#xC4D;&#xC35;&#xC30;&#xC4D; &#xC30;&#xC46;&#xC21;&#xC4D;&#xC21;&#xC3F; | BJP Slams Telangana Congress Over Paddy Procurement Crisis, Konda Vishweshwar Reddy Announces Farmers Protest Yatra VVNP",
+          "source": "andhrajyothy.com",
+          "country": "IN",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "farmers"
+          ],
+          "timestamp": "2026-05-24T17:15:00+00:00"
+        },
+        {
+          "headline": "Farmers, conservationists and rural communities unite against Alto",
+          "source": "countyweeklynews.ca",
+          "country": "CA",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "farmers"
+          ],
+          "timestamp": "2026-05-25T00:45:00+00:00"
+        },
+        {
+          "headline": "&#x62C;&#x631;&#x64A;&#x62F;&#x629; &#x627;&#x644;&#x628;&#x644;&#x627;&#x62F;            | &#x645;&#x633;&#x624;&#x648;&#x644;: &#x62A;&#x639;&#x62F;&#x64A;&#x644;&#x627;&#x62A; &#x645;&#x631;&#x62A;&#x642;&#x628;&#x629; &#x633;&#x62A;&#x631;&#x641;&#x639; &#x62D;&#x62C;&#x645; &#x627;&#x644;&#x627;&#x633;&#x62A;&#x62B;&#x645;&#x627;&#x631; &#x641;&#x64A; &#x627;&#x644;&#x639;&#x631;&#x627;&#x642;",
+          "source": "albiladpress.com",
+          "country": "IQ",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T11:15:00+00:00"
+        },
+        {
+          "headline": "&#x62D;&#x627;&#x644;&#x629; &#x627;&#x644;&#x637;&#x642;&#x633; &#x641;&#x64A; &#x645;&#x635;&#x631; &#x62E;&#x644;&#x627;&#x644; &#x639;&#x64A;&#x62F; &#x627;&#x644;&#x623;&#x636;&#x62D;&#x649;.. &#x627;&#x631;&#x62A;&#x641;&#x627;&#x639; &#x62C;&#x62F;&#x64A;&#x62F; &#x641;&#x64A; &#x62F;&#x631;&#x62C;&#x627;&#x62A; &#x627;&#x644;&#x62D;&#x631;&#x627;&#x631;&#x629;",
+          "source": "dostor.org",
+          "country": "EG",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T10:30:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "oil-gas-supply-risk",
+      "label": "Oil and gas supply risk",
+      "parent_domain": "resources-energy",
+      "assignments": 82,
+      "avg_confidence": 0.6591,
+      "lex_pct": 0.7073,
+      "theme_only_pct": 0.2927,
+      "source_count": 74,
+      "country_count": 26,
+      "changed_10h": -9,
+      "preliminary_quality": "promising",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 2,
+          "source": "cairnspost.com.au"
+        },
+        {
+          "count": 2,
+          "source": "dailypost.ng"
+        },
+        {
+          "count": 2,
+          "source": "indiatimes.com"
+        },
+        {
+          "count": 2,
+          "source": "livehindustan.com"
+        },
+        {
+          "count": 3,
+          "source": "hellenicshippingnews.com"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 4,
+          "country": "AE"
+        },
+        {
+          "count": 4,
+          "country": "CN"
+        },
+        {
+          "count": 5,
+          "country": "AU"
+        },
+        {
+          "count": 6,
+          "country": "US"
+        },
+        {
+          "count": 18,
+          "country": "IN"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "gas supply",
+          "count": 5
+        },
+        {
+          "term": "lng",
+          "count": 31
+        },
+        {
+          "term": "oil export",
+          "count": 2
+        },
+        {
+          "term": "pipeline",
+          "count": 16
+        },
+        {
+          "term": "refinery",
+          "count": 4
+        }
+      ],
+      "samples": [
+        {
+          "headline": "&#x130;ran Sava&#x15F;&#x131; Sonras&#x131; &#x130;lk LNG Sevkiyat&#x131; Hindistan'a",
+          "source": "haberaktuel.com",
+          "country": "IR",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "lng"
+          ],
+          "timestamp": "2026-05-24T06:00:00+00:00"
+        },
+        {
+          "headline": "Vessels carrying Middle East oil, LNG exit Hormuz, head for Pakistan, China",
+          "source": "arabnews.com",
+          "country": "CN",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "lng"
+          ],
+          "timestamp": "2026-05-25T01:45:00+00:00"
+        },
+        {
+          "headline": "Maynilad rushes repair of damaged pipeline as parts of Metro Manila, Cavite experience service interruptions",
+          "source": "manilatimes.net",
+          "country": "RP",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "pipeline"
+          ],
+          "timestamp": "2026-05-25T05:00:00+00:00"
+        },
+        {
+          "headline": "&#x3A3;&#x3C4;&#x3B5;&#x3BD;&#x3AC; &#x3C4;&#x3BF;&#x3C5; &#x39F;&#x3C1;&#x3BC;&#x3BF;&#x3CD;&#x3B6;: &#x388;&#x3BD;&#x3B1; &#x3B4;&#x3B5;&#x3BE;&#x3B1;&#x3BC;&#x3B5;&#x3BD;&#x3CC;&#x3C0;&#x3BB;&#x3BF;&#x3B9;&#x3BF; LNG &#x3C4;&#x3B1; &#x3B4;&#x3B9;&#x3AD;&#x3C3;&#x3C7;&#x3B9;&#x3C3;&#x3B5; &#x3BA;&#x3B1;&#x3B9; &#x3BA;&#x3B9;&#x3BD;&#x3B5;&#x3AF;&#x3C4;&#x3B1;&#x3B9; &#x3C0;&#x3C1;&#x3BF;&#x3C2; &#x399;&#x3BD;&#x3B4;&#x3AF;&#x3B1; &#x3B3;&#x3B9;&#x3B1; &#x3C0;&#x3C1;&#x3CE;&#x3C4;&#x3B7; &#x3C6;&#x3BF;&#x3C1;&#x3AC; &#x3B1;&#x3C0;&#x3CC; &#x3C4;&#x3B7;&#x3BD; &#x3AD;&#x3BD;&#x3B1;&#x3C1;&#x3BE;&#x3B7; &#x3C4;&#x3BF;&#x3C5; &#x3C0;&#x3BF;&#x3BB;&#x3AD;&#x3BC;&#x3BF;&#x3C5;",
+          "source": "voria.gr",
+          "country": "IR",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "lng"
+          ],
+          "timestamp": "2026-05-24T19:45:00+00:00"
+        },
+        {
+          "headline": "Eni secures long-term Indonesia LNG agreements",
+          "source": "tradearabia.com",
+          "country": "ID",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "lng"
+          ],
+          "timestamp": "2026-05-24T08:30:00+00:00"
+        },
+        {
+          "headline": "UAE State Oil Company Head Says Hormuz Bypass Pipeline Nearly 50 Percent Complete",
+          "source": "zerohedge.com",
+          "country": "AE",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "pipeline"
+          ],
+          "timestamp": "2026-05-24T17:30:00+00:00"
+        },
+        {
+          "headline": "Govt expands verification of CNG, LNG, Hydrogen dispensers",
+          "source": "ibcworldnews.com",
+          "country": "IN",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "lng"
+          ],
+          "timestamp": "2026-05-24T14:00:00+00:00"
+        },
+        {
+          "headline": "LNG Tanker Exits Hormuz For India For First Time Since War Began",
+          "source": "gcaptain.com",
+          "country": "IN",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "lng"
+          ],
+          "timestamp": "2026-05-24T16:14:37+00:00"
+        },
+        {
+          "headline": "Race win for Athena Pathway while GB1 forced to sit out day 2 of America's Cup Preliminary Regatta",
+          "source": "sail-world.com",
+          "country": "IT",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T11:00:00+00:00"
+        },
+        {
+          "headline": "Le Passage. Le SAHALP fait d&#xE9;couvrir le moulin de Payssel",
+          "source": "ladepeche.fr",
+          "country": "FR",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-25T05:00:00+00:00"
+        },
+        {
+          "headline": "Biofuel Bunker Snapshot: Conventional VLSFO prices weigh on B30 blend prices | Hellenic Shipping News Worldwide",
+          "source": "hellenicshippingnews.com",
+          "country": "PL",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T21:45:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "energy-grid-instability",
+      "label": "Energy grid instability",
+      "parent_domain": "resources-energy",
+      "assignments": 73,
+      "avg_confidence": 0.6507,
+      "lex_pct": 0.9178,
+      "theme_only_pct": 0.0822,
+      "source_count": 47,
+      "country_count": 16,
+      "changed_10h": 0,
+      "preliminary_quality": "promising",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 3,
+          "source": "antaranews.com"
+        },
+        {
+          "count": 3,
+          "source": "kompas.com"
+        },
+        {
+          "count": 4,
+          "source": "analisadaily.com"
+        },
+        {
+          "count": 4,
+          "source": "bisnis.com"
+        },
+        {
+          "count": 7,
+          "source": "tribunnews.com"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 2,
+          "country": "CN"
+        },
+        {
+          "count": 2,
+          "country": "IQ"
+        },
+        {
+          "count": 4,
+          "country": "IN"
+        },
+        {
+          "count": 7,
+          "country": "US"
+        },
+        {
+          "count": 45,
+          "country": "ID"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "blackout",
+          "count": 55
+        },
+        {
+          "term": "power outage",
+          "count": 12
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Mai dire Blackout | Dall'Indonesia a Hormuz come si controlla l'energia",
+          "source": "zazoom.it",
+          "country": "US",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "blackout"
+          ],
+          "timestamp": "2026-05-24T06:30:00+00:00"
+        },
+        {
+          "headline": "Bareskrim Pastikan Blackout Sumatera Bukan karena Sabotase",
+          "source": "kompas.com",
+          "country": "ID",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ],
+          "timestamp": "2026-05-25T05:00:00+00:00"
+        },
+        {
+          "headline": "Dalami Blackout Sumatera, Penyidik Bareskrim Polri Sita Konduktor Putus dari Sutet di Jambi",
+          "source": "jawapos.com",
+          "country": "ID",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ],
+          "timestamp": "2026-05-24T09:15:00+00:00"
+        },
+        {
+          "headline": "Oh Ternyata, Ini Penyebab Blackout Listrik di Sumatra",
+          "source": "jpnn.com",
+          "country": "ID",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ],
+          "timestamp": "2026-05-25T02:15:00+00:00"
+        },
+        {
+          "headline": "Usut Tuntas Blackout Sumatera, PLN Didesak Benahi Sistem Listrik Nasional",
+          "source": "tribunnews.com",
+          "country": "ID",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ],
+          "timestamp": "2026-05-24T12:45:00+00:00"
+        },
+        {
+          "headline": "Listrik Sumatra Sudah Normal Lagi, Polisi Bongkar Dugaan Penyebab Blackout",
+          "source": "viva.co.id",
+          "country": "ID",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ],
+          "timestamp": "2026-05-25T04:45:00+00:00"
+        },
+        {
+          "headline": "&#x62C;&#x631;&#x64A;&#x62F;&#x629; &#x627;&#x644;&#x628;&#x644;&#x627;&#x62F;            | &#x645;&#x633;&#x624;&#x648;&#x644;: &#x62A;&#x639;&#x62F;&#x64A;&#x644;&#x627;&#x62A; &#x645;&#x631;&#x62A;&#x642;&#x628;&#x629; &#x633;&#x62A;&#x631;&#x641;&#x639; &#x62D;&#x62C;&#x645; &#x627;&#x644;&#x627;&#x633;&#x62A;&#x62B;&#x645;&#x627;&#x631; &#x641;&#x64A; &#x627;&#x644;&#x639;&#x631;&#x627;&#x642;",
+          "source": "albiladpress.com",
+          "country": "IQ",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T11:15:00+00:00"
+        },
+        {
+          "headline": "114 &#x645;&#x644;&#x64A;&#x627;&#x631; &#x62F;&#x648;&#x644;&#x627;&#x631; &#x62D;&#x62C;&#x645; &#x627;&#x644;&#x627;&#x633;&#x62A;&#x62B;&#x645;&#x627;&#x631;&#x627;&#x62A; &#x641;&#x64A; &#x627;&#x644;&#x639;&#x631;&#x627;&#x642;",
+          "source": "non14.net",
+          "country": "IQ",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T12:45:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "telecom-internet-shutdown",
+      "label": "Telecom or internet shutdown",
+      "parent_domain": "technology-infrastructure",
+      "assignments": 69,
+      "avg_confidence": 0.6514,
+      "lex_pct": 1.0,
+      "theme_only_pct": 0.0,
+      "source_count": 44,
+      "country_count": 20,
+      "changed_10h": 7,
+      "preliminary_quality": "promising",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 3,
+          "source": "antaranews.com"
+        },
+        {
+          "count": 3,
+          "source": "kompas.com"
+        },
+        {
+          "count": 4,
+          "source": "analisadaily.com"
+        },
+        {
+          "count": 4,
+          "source": "bisnis.com"
+        },
+        {
+          "count": 7,
+          "source": "tribunnews.com"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 2,
+          "country": "DE"
+        },
+        {
+          "count": 2,
+          "country": "IN"
+        },
+        {
+          "count": 2,
+          "country": "IR"
+        },
+        {
+          "count": 3,
+          "country": "CN"
+        },
+        {
+          "count": 43,
+          "country": "ID"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "blackout",
+          "count": 53
+        },
+        {
+          "term": "connectivity",
+          "count": 7
+        },
+        {
+          "term": "internet blackout",
+          "count": 1
+        },
+        {
+          "term": "signal jam",
+          "count": 3
+        },
+        {
+          "term": "sim card",
+          "count": 2
+        },
+        {
+          "term": "vpn",
+          "count": 4
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Iran's Internet Blackout Enters 13th Week as Digital Isolation Deepens",
+          "source": "irannewsupdate.com",
+          "country": "IR",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout",
+            "internet blackout"
+          ],
+          "timestamp": "2026-05-24T09:30:00+00:00"
+        },
+        {
+          "headline": "Bareskrim Pastikan Blackout Sumatera Bukan karena Sabotase",
+          "source": "kompas.com",
+          "country": "ID",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ],
+          "timestamp": "2026-05-25T05:00:00+00:00"
+        },
+        {
+          "headline": "Dalami Blackout Sumatera, Penyidik Bareskrim Polri Sita Konduktor Putus dari Sutet di Jambi",
+          "source": "jawapos.com",
+          "country": "ID",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ],
+          "timestamp": "2026-05-24T09:15:00+00:00"
+        },
+        {
+          "headline": "Oh Ternyata, Ini Penyebab Blackout Listrik di Sumatra",
+          "source": "jpnn.com",
+          "country": "ID",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ],
+          "timestamp": "2026-05-25T02:15:00+00:00"
+        },
+        {
+          "headline": "Usut Tuntas Blackout Sumatera, PLN Didesak Benahi Sistem Listrik Nasional",
+          "source": "tribunnews.com",
+          "country": "ID",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ],
+          "timestamp": "2026-05-24T12:45:00+00:00"
+        },
+        {
+          "headline": "Listrik Sumatra Sudah Normal Lagi, Polisi Bongkar Dugaan Penyebab Blackout",
+          "source": "viva.co.id",
+          "country": "ID",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ],
+          "timestamp": "2026-05-25T04:45:00+00:00"
+        },
+        {
+          "headline": "LBH Medan Desak PLN Ganti Rugi Jutaan Pelanggan Usai Blackout Listrik Sumbagut",
+          "source": "medanbisnisdaily.com",
+          "country": "ID",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ],
+          "timestamp": "2026-05-25T02:15:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "migration-border-pressure",
+      "label": "Migration and border pressure",
+      "parent_domain": "migration-humanitarian",
+      "assignments": 40,
+      "avg_confidence": 0.6737,
+      "lex_pct": 0.975,
+      "theme_only_pct": 0.025,
+      "source_count": 38,
+      "country_count": 14,
+      "changed_10h": -25,
+      "preliminary_quality": "monitor",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 1,
+          "source": "aninews.in"
+        },
+        {
+          "count": 1,
+          "source": "antonyloewenstein.com"
+        },
+        {
+          "count": 1,
+          "source": "bangladeshsun.com"
+        },
+        {
+          "count": 2,
+          "source": "cnn.com"
+        },
+        {
+          "count": 2,
+          "source": "indiatimes.com"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 2,
+          "country": "GB"
+        },
+        {
+          "count": 2,
+          "country": "NL"
+        },
+        {
+          "count": 2,
+          "country": "SY"
+        },
+        {
+          "count": 12,
+          "country": "US"
+        },
+        {
+          "count": 13,
+          "country": "IN"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "asylum",
+          "count": 13
+        },
+        {
+          "term": "asylum seekers",
+          "count": 4
+        },
+        {
+          "term": "deportation",
+          "count": 25
+        },
+        {
+          "term": "mass deportation",
+          "count": 3
+        },
+        {
+          "term": "migrant caravan",
+          "count": 1
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Interactive map details how many asylum seekers are living in your area",
+          "source": "belfastlive.co.uk",
+          "country": "GB",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "asylum",
+            "asylum seekers"
+          ],
+          "timestamp": "2026-05-24T17:15:00+00:00"
+        },
+        {
+          "headline": "Gillard remains in the gutter over asylum seekers (and she feels fine)",
+          "source": "antonyloewenstein.com",
+          "country": "IQ",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "asylum",
+            "asylum seekers"
+          ],
+          "timestamp": "2026-05-24T19:00:00+00:00"
+        },
+        {
+          "headline": "What happened to the Trump administration's in-your-face mass deportations?",
+          "source": "yahoo.com",
+          "country": "SY",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "deportation",
+            "mass deportation"
+          ],
+          "timestamp": "2026-05-25T00:45:00+00:00"
+        },
+        {
+          "headline": "Interactive map shows number of asylum seekers in Surrey with Ukrainians making up 80%",
+          "source": "getsurrey.co.uk",
+          "country": "UA",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "asylum",
+            "asylum seekers"
+          ],
+          "timestamp": "2026-05-24T08:30:00+00:00"
+        },
+        {
+          "headline": "What happened to Trump's in-your-face mass deportations?",
+          "source": "cnn.com",
+          "country": "US",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "deportation",
+            "mass deportation"
+          ],
+          "timestamp": "2026-05-24T14:00:00+00:00"
+        },
+        {
+          "headline": "Immigration Policy or the Politics of Fear Against Asylum Seekers and Vulnerable Migrants?",
+          "source": "salient.org.nz",
+          "country": "NZ",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "asylum",
+            "asylum seekers"
+          ],
+          "timestamp": "2026-05-25T00:45:00+00:00"
+        },
+        {
+          "headline": "Syrians Who Converted To Christian Faith Threatened In Dutch Asylum Center After Baptism",
+          "source": "worthynews.com",
+          "country": "NL",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "asylum"
+          ],
+          "timestamp": "2026-05-24T21:00:00+00:00"
+        },
+        {
+          "headline": "UK Court Orders Deportation Of Nigerian Convicted Of Multiple Attempted Rapes After Long Legal Battle",
+          "source": "saharareporters.com",
+          "country": "GB",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "deportation"
+          ],
+          "timestamp": "2026-05-24T20:45:00+00:00"
+        },
+        {
+          "headline": "West Bengal directs setting up holding centres for illegal foreigners awaiting deportation",
+          "source": "webindia123.com",
+          "country": "BD",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "deportation"
+          ],
+          "timestamp": "2026-05-24T12:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "disinformation-influence-operation",
+      "label": "Disinformation and influence operation",
+      "parent_domain": "information-environment",
+      "assignments": 33,
+      "avg_confidence": 0.65,
+      "lex_pct": 1.0,
+      "theme_only_pct": 0.0,
+      "source_count": 30,
+      "country_count": 18,
+      "changed_10h": -15,
+      "preliminary_quality": "review",
+      "risk_flags": [
+        "low_confidence"
+      ],
+      "top_sources": [
+        {
+          "count": 1,
+          "source": "cbsnews.com"
+        },
+        {
+          "count": 1,
+          "source": "channelafrica.co.za"
+        },
+        {
+          "count": 2,
+          "source": "cnn.com"
+        },
+        {
+          "count": 2,
+          "source": "punchng.com"
+        },
+        {
+          "count": 2,
+          "source": "zazoom.it"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 2,
+          "country": "CH"
+        },
+        {
+          "count": 3,
+          "country": "GB"
+        },
+        {
+          "count": 3,
+          "country": "IN"
+        },
+        {
+          "count": 3,
+          "country": "UG"
+        },
+        {
+          "count": 5,
+          "country": "IR"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "deepfake",
+          "count": 7
+        },
+        {
+          "term": "disinformation",
+          "count": 2
+        },
+        {
+          "term": "fake news",
+          "count": 6
+        },
+        {
+          "term": "misinformation",
+          "count": 6
+        },
+        {
+          "term": "propaganda",
+          "count": 12
+        }
+      ],
+      "samples": [
+        {
+          "headline": "The Liver Doc diagnoses India's fatty liver crisis: Fight misinformation and get tested for Hepatitis viruses | Health and Wellness News",
+          "source": "indianexpress.com",
+          "country": "IN",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "misinformation"
+          ],
+          "timestamp": "2026-05-25T03:15:00+00:00"
+        },
+        {
+          "headline": "How Iran could be outmaneuvering the U.S. in the online propaganda world",
+          "source": "cbsnews.com",
+          "country": "IR",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "propaganda"
+          ],
+          "timestamp": "2026-05-24T18:00:00+00:00"
+        },
+        {
+          "headline": "\"D&#xE5;ligt om den bara anv&#xE4;nds som propagandamedel\" &#x2013; Hufvudstadsbladet",
+          "source": "hbl.fi",
+          "country": "FI",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "propaganda"
+          ],
+          "timestamp": "2026-05-24T05:45:00+00:00"
+        },
+        {
+          "headline": "Locals near epicenter of the Ebola crisis express fear and concerns about misinformation",
+          "source": "cnn.com",
+          "country": "UG",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "misinformation"
+          ],
+          "timestamp": "2026-05-24T09:00:00+00:00"
+        },
+        {
+          "headline": "&#xAB;Dans un monde o&#xF9; tout peut &#xEA;tre falsifi&#xE9;, qu'est-ce que la confiance?&#xBB; Face aux deepfakes, cette bague imagine une nouvelle mani&#xE8;re de prouver son identit&#xE9; en ligne",
+          "source": "letemps.ch",
+          "country": "CH",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "deepfake"
+          ],
+          "timestamp": "2026-05-24T10:45:00+00:00"
+        },
+        {
+          "headline": "Synthetic Identities Now Bigger Threat Than Deepfakes, Expert Warns",
+          "source": "newsghana.com.gh",
+          "country": "GH",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "deepfake"
+          ],
+          "timestamp": "2026-05-24T22:30:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "trade-export-restriction",
+      "label": "Trade and export restriction",
+      "parent_domain": "economic-stress",
+      "assignments": 30,
+      "avg_confidence": 0.6517,
+      "lex_pct": 1.0,
+      "theme_only_pct": 0.0,
+      "source_count": 27,
+      "country_count": 13,
+      "changed_10h": 2,
+      "preliminary_quality": "monitor",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 1,
+          "source": "afr.com"
+        },
+        {
+          "count": 1,
+          "source": "azernews.az"
+        },
+        {
+          "count": 2,
+          "source": "indiatimes.com"
+        },
+        {
+          "count": 2,
+          "source": "livemint.com"
+        },
+        {
+          "count": 2,
+          "source": "yahoo.com"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 2,
+          "country": "CA"
+        },
+        {
+          "count": 2,
+          "country": "CN"
+        },
+        {
+          "count": 3,
+          "country": "PK"
+        },
+        {
+          "count": 6,
+          "country": "IN"
+        },
+        {
+          "count": 8,
+          "country": "US"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "customs",
+          "count": 7
+        },
+        {
+          "term": "export ban",
+          "count": 1
+        },
+        {
+          "term": "tariff",
+          "count": 22
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Cameroon to block mobile devices that are not on its customs system",
+          "source": "developingtelecoms.com",
+          "country": "CM",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "customs"
+          ],
+          "timestamp": "2026-05-25T02:45:00+00:00"
+        },
+        {
+          "headline": "RIGHT SPEAK: DHS Chief Wants to Halt Customs Processing at All Airports in 'sanctuary cities' including NYC &#x2014; and Even Sean Duffy is Pushing Back; Homeland Security's Plan to Squeeze International Flights",
+          "source": "rightspeak.net",
+          "country": "US",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "customs"
+          ],
+          "timestamp": "2026-05-24T08:30:00+00:00"
+        },
+        {
+          "headline": "Sugar export ban stays, but India clears 8,606 tonnes for US shipment",
+          "source": "moneycontrol.com",
+          "country": "US",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "export ban"
+          ],
+          "timestamp": "2026-05-24T16:15:00+00:00"
+        },
+        {
+          "headline": "China eliminates tariffs on Africa to outmaneuver Trump",
+          "source": "livemint.com",
+          "country": "KE",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "tariff"
+          ],
+          "timestamp": "2026-05-24T08:45:00+00:00"
+        },
+        {
+          "headline": "Sabah, Labuan power tariff hike should be half",
+          "source": "dailyexpress.com.my",
+          "country": "MY",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "tariff"
+          ],
+          "timestamp": "2026-05-24T05:15:00+00:00"
+        },
+        {
+          "headline": "US Secretary State Rubio Visits India Post Tariff War; 25 May Current Affairs",
+          "source": "bhaskar.com",
+          "country": "IN",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "tariff"
+          ],
+          "timestamp": "2026-05-25T02:30:00+00:00"
+        },
+        {
+          "headline": "Forget soybeans and tariffs: the real US-China trade war is over AI",
+          "source": "afr.com",
+          "country": "CN",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "tariff"
+          ],
+          "timestamp": "2026-05-24T09:15:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "humanitarian-access-conflict",
+      "label": "Humanitarian access under conflict",
+      "parent_domain": "migration-humanitarian",
+      "assignments": 25,
+      "avg_confidence": 0.656,
+      "lex_pct": 0.32,
+      "theme_only_pct": 0.68,
+      "source_count": 22,
+      "country_count": 14,
+      "changed_10h": -1,
+      "preliminary_quality": "monitor",
+      "risk_flags": [],
+      "top_sources": [
+        {
+          "count": 1,
+          "source": "057.ua"
+        },
+        {
+          "count": 1,
+          "source": "1in.am"
+        },
+        {
+          "count": 1,
+          "source": "arabherald.com"
+        },
+        {
+          "count": 2,
+          "source": "scmp.com"
+        },
+        {
+          "count": 3,
+          "source": "drimble.nl"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 1,
+          "country": "AM"
+        },
+        {
+          "count": 1,
+          "country": "CU"
+        },
+        {
+          "count": 3,
+          "country": "FR"
+        },
+        {
+          "count": 5,
+          "country": "NL"
+        },
+        {
+          "count": 6,
+          "country": "IL"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "aid convoy",
+          "count": 5
+        },
+        {
+          "term": "refugee camp",
+          "count": 3
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Israeli Airstrike in Gaza Refugee Camp Kills Infant and Parents Amid Fragile Ceasefire",
+          "source": "econotimes.com",
+          "country": "IL",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "refugee camp"
+          ],
+          "timestamp": "2026-05-24T14:45:00+00:00"
+        },
+        {
+          "headline": "UAE aid convoys deliver 930 tonnes of relief to Gaza before Eid Al Adha",
+          "source": "thenationalnews.com",
+          "country": "IL",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "aid convoy"
+          ],
+          "timestamp": "2026-05-24T15:00:00+00:00"
+        },
+        {
+          "headline": "Israeli fire kills parents and their baby in Gaza refugee camp, officials say",
+          "source": "scmp.com",
+          "country": "IL",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "refugee camp"
+          ],
+          "timestamp": "2026-05-24T17:45:00+00:00"
+        },
+        {
+          "headline": "Israeli fire kills parents and their baby in Gaza refugee camp, officials say",
+          "source": "scmp.com",
+          "country": "GZ",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "refugee camp"
+          ],
+          "timestamp": "2026-05-24T17:04:53+00:00"
+        },
+        {
+          "headline": "Feds investigate Hasan Piker, Medea Benjamin over Cuba aid convoys: report",
+          "source": "nypost.com",
+          "country": "CU",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "aid convoy"
+          ],
+          "timestamp": "2026-05-24T23:15:00+00:00"
+        },
+        {
+          "headline": "Four UAE aid convoys enter Gaza under 'Operation Chivalrous Knight 3'",
+          "source": "arabherald.com",
+          "country": "IL",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "aid convoy"
+          ],
+          "timestamp": "2026-05-24T08:00:00+00:00"
+        },
+        {
+          "headline": "Entflohener Psychiatrie-Patient in Frankreich festgenommen",
+          "source": "welt.de",
+          "country": "FR",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T16:15:00+00:00"
+        },
+        {
+          "headline": "Caen por cometer faltas: estaban pr&#xF3;fugos por drogas",
+          "source": "puentelibre.mx",
+          "country": "MX",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T23:00:00+00:00"
+        },
+        {
+          "headline": "&#x41F;&#x440;&#x435;&#x437;&#x438;&#x434;&#x435;&#x43D;&#x442; &#x424;&#x438;&#x43D;&#x43B;&#x44F;&#x43D;&#x434;&#x438;&#x438; &#x440;&#x430;&#x441;&#x441;&#x43A;&#x430;&#x437;&#x430;&#x43B;, &#x43A;&#x43E;&#x433;&#x434;&#x430; &#x43C;&#x43E;&#x436;&#x435;&#x442; &#x431;&#x44B;&#x442;&#x44C; &#x43E;&#x442;&#x43A;&#x440;&#x44B;&#x442;&#x430; &#x433;&#x440;&#x430;&#x43D;&#x438;&#x446;&#x430; &#x441; &#x420;&#x424;",
+          "source": "eurointegration.com.ua",
+          "country": "FI",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T21:30:00+00:00"
+        },
+        {
+          "headline": "Entflohener Psychiatrie-Patient in Frankreich festgenommen",
+          "source": "badische-zeitung.de",
+          "country": "FR",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T17:30:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "cyberattack-infrastructure",
+      "label": "Cyberattack on infrastructure",
+      "parent_domain": "technology-infrastructure",
+      "assignments": 24,
+      "avg_confidence": 0.6521,
+      "lex_pct": 0.2917,
+      "theme_only_pct": 0.7083,
+      "source_count": 24,
+      "country_count": 15,
+      "changed_10h": -8,
+      "preliminary_quality": "thin",
+      "risk_flags": [
+        "thin_volume"
+      ],
+      "top_sources": [
+        {
+          "count": 1,
+          "source": "1prime.ru"
+        },
+        {
+          "count": 1,
+          "source": "agencianova.com"
+        },
+        {
+          "count": 1,
+          "source": "bhaskar.com"
+        },
+        {
+          "count": 1,
+          "source": "dagensps.se"
+        },
+        {
+          "count": 1,
+          "source": "deraktionaer.de"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 2,
+          "country": "RP"
+        },
+        {
+          "count": 2,
+          "country": "RU"
+        },
+        {
+          "count": 2,
+          "country": "TR"
+        },
+        {
+          "count": 3,
+          "country": "IR"
+        },
+        {
+          "count": 5,
+          "country": "US"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "cyberattack",
+          "count": 1
+        },
+        {
+          "term": "data breach",
+          "count": 1
+        },
+        {
+          "term": "hackers",
+          "count": 5
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Kash Patel's \"Based Apparel\" E-Commerce Website Taken Offline After Targeted Malware Cyberattack",
+          "source": "techstory.in",
+          "country": "IR",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "cyberattack"
+          ],
+          "timestamp": "2026-05-24T23:15:00+00:00"
+        },
+        {
+          "headline": "London iPhone Theft Leads to China Threats; Hackers Stop After Apple ID Removal",
+          "source": "bhaskar.com",
+          "country": "GB",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "hackers"
+          ],
+          "timestamp": "2026-05-25T02:30:00+00:00"
+        },
+        {
+          "headline": "Los ciberataques de hackers norcoreanos y chinos se ampl&#xED;an a bancos para robar dinero",
+          "source": "elconfidencialdigital.com",
+          "country": "CN",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "hackers"
+          ],
+          "timestamp": "2026-05-24T07:15:00+00:00"
+        },
+        {
+          "headline": "Iran-linked hackers targeted US, Israel and UAE, Palo Alto Networks says",
+          "source": "jpost.com",
+          "country": "IR",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "hackers"
+          ],
+          "timestamp": "2026-05-24T17:21:11+00:00"
+        },
+        {
+          "headline": "Nancy Guthrie Case: 'Mastermind hackers' or 'street level thugs'? Former detective comes up with 'wrench attack' theory as investigators scramble for breakthrough",
+          "source": "indiatimes.com",
+          "country": "US",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "hackers"
+          ],
+          "timestamp": "2026-05-24T07:15:00+00:00"
+        },
+        {
+          "headline": "Hackers iran&#xED;es se hicieron pasar por reclutadores para espiar a empresas de aviaci&#xF3;n y energ&#xED;a",
+          "source": "agencianova.com",
+          "country": "IR",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "hackers"
+          ],
+          "timestamp": "2026-05-24T05:15:00+00:00"
+        },
+        {
+          "headline": "SEC and PNP join forces to combat online investment scams in Central Luzon",
+          "source": "manilatimes.net",
+          "country": "RP",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T18:45:00+00:00"
+        },
+        {
+          "headline": "BlackBerry taps Malaysia as hub to boost Asia cybersecurity business",
+          "source": "nikkei.com",
+          "country": "MY",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T08:45:00+00:00"
+        },
+        {
+          "headline": "&#xAB;&#x412;&#x430;&#x448;&#x443; &#x43A;&#x432;&#x430;&#x440;&#x442;&#x438;&#x440;&#x443; &#x43E;&#x442;&#x43A;&#x43B;&#x44E;&#x447;&#x430;&#x442; &#x437;&#x430;&#x432;&#x442;&#x440;&#x430;&#xBB;: &#x43C;&#x43E;&#x448;&#x435;&#x43D;&#x43D;&#x438;&#x43A;&#x438; &#x43D;&#x430;&#x436;&#x438;&#x432;&#x430;&#x44E;&#x442;&#x441;&#x44F; &#x43D;&#x430; &#x441;&#x435;&#x437;&#x43E;&#x43D;&#x43D;&#x44B;&#x445; &#x43E;&#x442;&#x43A;&#x43B;&#x44E;&#x447;&#x435;&#x43D;&#x438;&#x44F;&#x445; &#x433;&#x43E;&#x440;&#x44F;&#x447;&#x435;&#x439; &#x432;&#x43E;&#x434;&#x44B;",
+          "source": "sib.fm",
+          "country": "TR",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-24T16:30:00+00:00"
+        },
+        {
+          "headline": "Britain's AI watchdog becomes global model for managing emerging risks (OPENAI:Private)",
+          "source": "seekingalpha.com",
+          "country": "US",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": [],
+          "timestamp": "2026-05-25T00:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "food-price-stress",
+      "label": "Food price stress",
+      "parent_domain": "economic-stress",
+      "assignments": 10,
+      "avg_confidence": 0.725,
+      "lex_pct": 1.0,
+      "theme_only_pct": 0.0,
+      "source_count": 10,
+      "country_count": 3,
+      "changed_10h": 1,
+      "preliminary_quality": "thin",
+      "risk_flags": [
+        "thin_volume"
+      ],
+      "top_sources": [
+        {
+          "count": 1,
+          "source": "bmmagazine.co.uk"
+        },
+        {
+          "count": 1,
+          "source": "cityam.com"
+        },
+        {
+          "count": 1,
+          "source": "kilburntimes.co.uk"
+        },
+        {
+          "count": 1,
+          "source": "ktvz.com"
+        },
+        {
+          "count": 1,
+          "source": "ludlowadvertiser.co.uk"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 1,
+          "country": "GH"
+        },
+        {
+          "count": 3,
+          "country": "US"
+        },
+        {
+          "count": 6,
+          "country": "GB"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "food inflation",
+          "count": 1
+        },
+        {
+          "term": "food insecurity",
+          "count": 1
+        },
+        {
+          "term": "food price",
+          "count": 8
+        },
+        {
+          "term": "food prices",
+          "count": 4
+        }
+      ],
+      "samples": [
+        {
+          "headline": "High Food Prices Do Not Enrich Farmers, Expert Says",
+          "source": "newsghana.com.gh",
+          "country": "GH",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "food prices",
+            "food price"
+          ],
+          "timestamp": "2026-05-24T09:45:00+00:00"
+        },
+        {
+          "headline": "Industry chiefs slam packaging tax that will push food prices higher",
+          "source": "cityam.com",
+          "country": "GB",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "food prices",
+            "food price"
+          ],
+          "timestamp": "2026-05-24T13:00:00+00:00"
+        },
+        {
+          "headline": "Central Oregon's outdoor recreation offers affordable option as travel and food prices soar",
+          "source": "ktvz.com",
+          "country": "US",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "food prices",
+            "food price"
+          ],
+          "timestamp": "2026-05-24T23:45:00+00:00"
+        },
+        {
+          "headline": "Food Prices to Rise as &#xA3;2bn EPR Packaging Tax Goes Ahead",
+          "source": "bmmagazine.co.uk",
+          "country": "GB",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "food prices",
+            "food price"
+          ],
+          "timestamp": "2026-05-25T03:00:00+00:00"
+        },
+        {
+          "headline": "Government food price caps would be 'preposterous and idiotic', say supermarkets",
+          "source": "thetottenhamindependent.co.uk",
+          "country": "GB",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "food price"
+          ],
+          "timestamp": "2026-05-24T09:30:00+00:00"
+        },
+        {
+          "headline": "A New Food Inflation Shock May Be Coming&#x2014; And Fertilizer Prices Are The Warning Sign",
+          "source": "yahoo.com",
+          "country": "US",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "food inflation"
+          ],
+          "timestamp": "2026-05-24T08:15:00+00:00"
+        },
+        {
+          "headline": "Government food price caps would be 'preposterous and idiotic', say supermarkets",
+          "source": "kilburntimes.co.uk",
+          "country": "GB",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "food price"
+          ],
+          "timestamp": "2026-05-24T09:30:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "press-freedom-crackdown",
+      "label": "Press freedom crackdown",
+      "parent_domain": "information-environment",
+      "assignments": 1,
+      "avg_confidence": 0.65,
+      "lex_pct": 1.0,
+      "theme_only_pct": 0.0,
+      "source_count": 1,
+      "country_count": 1,
+      "changed_10h": -1,
+      "preliminary_quality": "thin",
+      "risk_flags": [
+        "thin_volume"
+      ],
+      "top_sources": [
+        {
+          "count": 1,
+          "source": "journalismpakistan.com"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 1,
+          "country": "PK"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "press freedom",
+          "count": 1
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Press freedom review: Journalists navigate crackdowns, cuts, and digital risks",
+          "source": "journalismpakistan.com",
+          "country": "PK",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "press freedom"
+          ],
+          "timestamp": "2026-05-24T12:30:00+00:00"
+        }
+      ]
+    },
+    {
+      "slug": "student-youth-protest",
+      "label": "Student and youth protest",
+      "parent_domain": "social-unrest-labor",
+      "assignments": 1,
+      "avg_confidence": 0.65,
+      "lex_pct": 1.0,
+      "theme_only_pct": 0.0,
+      "source_count": 1,
+      "country_count": 1,
+      "changed_10h": 0,
+      "preliminary_quality": "thin",
+      "risk_flags": [
+        "thin_volume"
+      ],
+      "top_sources": [
+        {
+          "count": 1,
+          "source": "guardian.co.tt"
+        }
+      ],
+      "top_countries": [
+        {
+          "count": 1,
+          "country": "TD"
+        }
+      ],
+      "top_terms": [
+        {
+          "term": "walkout",
+          "count": 1
+        }
+      ],
+      "samples": [
+        {
+          "headline": "Opposition weighs next move after Parliament walkout",
+          "source": "guardian.co.tt",
+          "country": "TD",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "walkout"
+          ],
+          "timestamp": "2026-05-24T07:00:00+00:00"
+        }
+      ]
+    }
+  ]
+}
