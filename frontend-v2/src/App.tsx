@@ -32,7 +32,8 @@ import type { PublicAttentionOrigin } from './lib/publicAttention'
 import { prefetchBriefing } from './lib/briefingPrefetch'
 
 // Terminal Panels
-import { NarrativeThreads } from './components/NarrativeThreads'
+import { NarrativeThreads, type LivingThreadSelection } from './components/NarrativeThreads'
+import { ThreadFocusPanel } from './components/ThreadFocusPanel'
 import { SignalStream } from './components/SignalStream'
 import { OnboardingCoachmark } from './components/OnboardingCoachmark'
 import { CorrelationMatrix } from './components/CorrelationMatrix'
@@ -249,6 +250,7 @@ function AppContent() {
   const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null)
   type SelectedTheme = { theme: string, originCountry?: string, originCountryName?: string, originAttention?: PublicAttentionOrigin }
   const [selectedTheme, setSelectedTheme] = useState<SelectedTheme | null>(null)
+  const [selectedThread, setSelectedThread] = useState<LivingThreadSelection | null>(null)
   const [themeBackStack, setThemeBackStack] = useState<SelectedTheme[]>([])
   const [selectedPublicAttention, setSelectedPublicAttention] = useState<PublicAttentionSelection | null>(null)
   const [selectedChokepoint, setSelectedChokepoint] = useState<Chokepoint | null>(null)
@@ -392,6 +394,7 @@ function AppContent() {
   // Click handlers
   function handleCountryClick(countryCode: string) {
     setSelectedPublicAttention(null)
+    setSelectedThread(null)
     setSelectedCountryCode(countryCode)
     setSelectedCountry({
       countryCode,
@@ -407,6 +410,7 @@ function AppContent() {
   // Theme selection handlers
   const handleThemeSelect = (theme: string, countryCode?: string, countryName?: string, originAttention?: PublicAttentionOrigin) => {
     setSelectedPublicAttention(null)
+    setSelectedThread(null)
     setTheme(theme)
     const nextTheme = { theme, originCountry: countryCode, originCountryName: countryName, originAttention }
     setSelectedTheme(prev => {
@@ -422,6 +426,7 @@ function AppContent() {
     const title = item.title.replace(/_/g, ' ').trim()
     setSelectedPublicAttention({ ...item, title })
     setSelectedTheme(null)
+    setSelectedThread(null)
     setRightPanelThemeCountry(null)
     setSelectedCountry(null)
     setSelectedCountryCode(null)
@@ -1293,11 +1298,12 @@ function AppContent() {
         {/* Panel 2: SIGNAL STREAM — the intel hub, swaps based on active context */}
         {(() => {
           const isPerson = focus.type === 'person' && !!focus.value
-          const isTheme = !!selectedTheme && !isPerson
-          const isCountry = !!selectedCountryCode && !isPerson && !isTheme
+          const isThread = !!selectedThread && !isPerson
+          const isTheme = !!selectedTheme && !isPerson && !isThread
+          const isCountry = !!selectedCountryCode && !isPerson && !isTheme && !isThread
           const isPublicAttention = !!selectedPublicAttention && !isPerson && !isCountry && !isTheme
           const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme && !isPublicAttention
-          const closeAll = () => { setSelectedTheme(null); setThemeBackStack([]); setSelectedPublicAttention(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null) }
+          const closeAll = () => { setSelectedTheme(null); setSelectedThread(null); setThemeBackStack([]); setSelectedPublicAttention(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null) }
           // Smart back: one step up, not all the way to stream
           const handleStreamBack = () => {
             if (prevStreamCtx?.type === 'chokepoint') {
@@ -1336,7 +1342,7 @@ function AppContent() {
           const selectedCountryName = selectedCountryCode
             ? resolveCountryName(selectedCountryCode, selectedCountry?.name)
             : ''
-          const isBlankState = !isPerson && !isCountry && !isTheme && !isPublicAttention && !isChokepoint
+          const isBlankState = !isPerson && !isCountry && !isTheme && !isThread && !isPublicAttention && !isChokepoint
           let panelTitle = isBlankState ? (
             <>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1359,6 +1365,10 @@ function AppContent() {
               {themeBackStack.length > 0 ? `← ${themeBackStack[0].theme.replace(/_/g, ' ').slice(0, 20)}` : '← STREAM'}
             </button>
             <span style={{ color: '#94a3b8' }}>{selectedTheme!.theme.replace(/_/g, ' ').slice(0, 26)}</span>
+          </>
+          if (isThread) panelTitle = <>
+            <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
+            <span style={{ color: '#2dd4bf' }}>{selectedThread!.label.slice(0, 32)}</span>
           </>
           if (isCountry) panelTitle = <>
             <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>{backLabel}</button>
@@ -1398,6 +1408,14 @@ function AppContent() {
                     onClose={closeAll}
                     onThemeSelect={(theme, attentionContext) => handleThemeSelect(theme, undefined, undefined, attentionContext)}
                     onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
+                  />
+                ) : isThread ? (
+                  <ThreadFocusPanel
+                    thread={selectedThread!}
+                    hours={timeRangeToHours(timeRange)}
+                    onClose={closeAll}
+                    onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
+                    onSourceClick={(source) => setSelectedSourceProfile(source)}
                   />
                 ) : isCountry ? (
                   <CountryBrief inline
@@ -1461,7 +1479,21 @@ function AppContent() {
           </div>
           <div className="panel-content">
             <PanelErrorBoundary panelName="NARRATIVE THREADS">
-              <NarrativeThreads onCountrySelect={(code) => {
+              <NarrativeThreads
+                activeThreadId={selectedThread?.thread_id}
+                onThreadSelect={(thread) => {
+                  setSelectedTheme(null)
+                  setTheme(null)
+                  setSelectedCountry(null)
+                  setSelectedCountryCode(null)
+                  setSelectedPublicAttention(null)
+                  setSelectedChokepoint(null)
+                  setRightPanelThemeCountry(null)
+                  clearFocus()
+                  setSelectedThread(thread)
+                  if (thread.top_countries[0]) setMapFlyCountry(thread.top_countries[0])
+                }}
+                onCountrySelect={(code) => {
                 if (selectedTheme) {
                   setPrevStreamCtx({
                     type: 'theme',

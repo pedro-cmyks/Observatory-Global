@@ -137,6 +137,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
 }
 
 .narrative-cluster-label {
@@ -286,6 +287,10 @@
     white-space: nowrap;
     min-width: 36px;
     text-align: right;
+}
+
+.spread-label--confidence {
+    min-width: 92px;
 }
 
 .trend-label {
