@@ -111,6 +111,15 @@ Current data/product state:
   related work, research thesis, research questions, hypotheses, baselines,
   ablations, data/label plan, metrics, and evidence required before writing a
   publishable manuscript.
+- Phase 1 validation artifacts now exist:
+  - Labeling guide:
+    `docs/research/atlas-paper/2026-05-25-atlas-v2-labeling-guide.md`.
+  - Unlabeled stratified sample:
+    `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.jsonl`.
+  - Sample manifest:
+    `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.md`.
+  The sample has `256` rows across all `30` active topics and four buckets:
+  `lex_high_conf`, `lex_low_conf`, `theme_high_conf`, and `theme_low_conf`.
 
 Living Threads canon:
 
@@ -209,8 +218,8 @@ Next execution order:
    noise, and which Atlas questions the row/thread can support.
 2. Extend the Path B harness schema with `gold_scope`, `gold_evidence_role`,
    parent/child thread candidates, and supported Atlas questions.
-3. Create the v2 label guide and larger stratified sample required by the
-   Atlas paper validation plan.
+3. Label the first v2 stratified sample and score scope/evidence/question
+   distributions.
 4. Prototype a read-only Narrative Thread Graph report above existing data
    before adding persistent tables or training an encoder.
 5. Keep encoder/ranking promotion blocked until the benchmark clears the 85%

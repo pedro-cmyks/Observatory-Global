@@ -50,9 +50,11 @@ Each JSONL row is one candidate assignment:
   "assigned_topic_label": "Armed conflict escalation",
   "headline": "Missile strikes pound Kyiv after Russia vows retaliation",
   "source_name": "thefrontierpost.com",
+  "source_family": "api",
+  "source_lang": "en",
   "country_code": "UA",
   "confidence": 0.9,
-  "sample_bucket": "lex_supported",
+  "sample_bucket": "lex_high_conf",
   "evidence": {
     "lex_count": 2,
     "matched_terms": ["missile strike", "missile strikes"]
@@ -143,6 +145,20 @@ Allowed `gold_supported_questions` values:
 | `evidence_support` | What evidence supports it? |
 | `related_thread` | What related thread does it connect to? |
 
+## Sample Buckets
+
+New samples use four buckets:
+
+| Bucket | Meaning |
+|---|---|
+| `lex_high_conf` | Lexicon-supported assignment with confidence >= 0.75. |
+| `lex_low_conf` | Lexicon-supported assignment with confidence < 0.75. |
+| `theme_high_conf` | Theme-only assignment with confidence >= 0.75. |
+| `theme_low_conf` | Theme-only assignment with confidence < 0.75. |
+
+The first benchmark sample below used the older two-bucket split
+(`lex_supported`, `theme_only`). It remains score-compatible.
+
 ## First Benchmark Sample
 
 Generated artifact:
@@ -192,8 +208,9 @@ default behavior should target `pass_target`.
 
 ## Next Step
 
-1. Relabel or supplement the 103-row priority sample with semantic scope,
-   evidence role, parent/child candidates, and supported Atlas questions.
+1. Use
+   `docs/research/atlas-paper/2026-05-25-atlas-v2-labeling-guide.md`
+   to label the next stratified sample.
 2. Score it with the harness.
 3. If any promoted topic fails the 85% floor, keep it behind review/thin ranking
    and fix taxonomy/terms first.

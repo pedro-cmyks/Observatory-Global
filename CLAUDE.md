@@ -131,6 +131,13 @@ Narrative classification root cause:
   Do not write a final paper yet. Produce evidence first: v2 label guide,
   stratified benchmark, baseline comparisons, ablations, thread graph report,
   and reviewer usefulness/error-discovery validation.
+- Phase 1 artifacts:
+  `docs/research/atlas-paper/2026-05-25-atlas-v2-labeling-guide.md`,
+  `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.jsonl`,
+  and
+  `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.md`.
+  Next action is to label the 256-row sample and score semantic scope,
+  evidence role, and supported Atlas questions.
 
 ## Previous Session Context (2026-05-21, data operating roadmap)
 

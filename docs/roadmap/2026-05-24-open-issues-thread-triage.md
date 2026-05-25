@@ -208,3 +208,11 @@ Immediate active issue order:
   the paper.
 - #204 should feed taxonomy/scope failures into the same evaluation program
   rather than accumulating isolated topic-specific fixes.
+
+Phase 1 artifacts now exist:
+
+- `docs/research/atlas-paper/2026-05-25-atlas-v2-labeling-guide.md`
+- `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.jsonl`
+- `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.md`
+
+Immediate #203 action is labeling/scoring this sample.

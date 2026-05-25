@@ -255,6 +255,18 @@ that would make a paper defensible:
 This route keeps Atlas anchored in state-of-the-art work while preserving the
 current engineering priority: make the model measurable before expanding the UI.
 
+Phase 1 started:
+
+- Labeling guide:
+  `docs/research/atlas-paper/2026-05-25-atlas-v2-labeling-guide.md`.
+- First v2 stratified sample:
+  `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.jsonl`.
+- Sample manifest:
+  `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.md`.
+
+Next action: label the 256-row sample, then run the v2 score to produce
+semantic-scope, evidence-role, and supported-question distributions.
+
 ## Guardrails
 
 - Do not trust GDELT themes as proof of significance.

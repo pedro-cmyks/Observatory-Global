@@ -79,19 +79,28 @@ scoped AS (
         tt.label,
         s.headline,
         s.source_name,
+        s.source_family,
+        s.source_lang,
         s.country_code,
         sta.confidence,
         sta.evidence,
         CASE
-            WHEN COALESCE((sta.evidence->>'lex_count')::int, 0) > 0 THEN 'lex_supported'
-            ELSE 'theme_only'
+            WHEN COALESCE((sta.evidence->>'lex_count')::int, 0) > 0
+                 AND sta.confidence >= 0.75 THEN 'lex_high_conf'
+            WHEN COALESCE((sta.evidence->>'lex_count')::int, 0) > 0
+                 THEN 'lex_low_conf'
+            WHEN sta.confidence >= 0.75 THEN 'theme_high_conf'
+            ELSE 'theme_low_conf'
         END AS sample_bucket,
         ROW_NUMBER() OVER (
             PARTITION BY tt.slug,
                          CASE
                              WHEN COALESCE((sta.evidence->>'lex_count')::int, 0) > 0
-                             THEN 'lex_supported'
-                             ELSE 'theme_only'
+                                  AND sta.confidence >= 0.75 THEN 'lex_high_conf'
+                             WHEN COALESCE((sta.evidence->>'lex_count')::int, 0) > 0
+                                  THEN 'lex_low_conf'
+                             WHEN sta.confidence >= 0.75 THEN 'theme_high_conf'
+                             ELSE 'theme_low_conf'
                          END
             ORDER BY md5(sta.signal_id::text)
         ) AS rn
@@ -108,6 +117,8 @@ SELECT
     label,
     headline,
     source_name,
+    source_family,
+    source_lang,
     country_code,
     confidence,
     evidence,
@@ -138,6 +149,8 @@ def build_benchmark_item(
     topic_label: str,
     headline: str,
     source_name: str | None,
+    source_family: str | None,
+    source_lang: str | None,
     country_code: str | None,
     confidence: float | None,
     evidence: dict[str, Any] | str | None,
@@ -158,6 +171,8 @@ def build_benchmark_item(
         "assigned_topic_label": topic_label,
         "headline": headline,
         "source_name": source_name,
+        "source_family": source_family,
+        "source_lang": source_lang,
         "country_code": country_code,
         "confidence": round(float(confidence or 0), 4),
         "sample_bucket": sample_bucket,
@@ -325,6 +340,8 @@ async def fetch_sample(
             topic_label=row["label"],
             headline=row["headline"],
             source_name=row["source_name"],
+            source_family=row["source_family"],
+            source_lang=row["source_lang"],
             country_code=row["country_code"],
             confidence=row["confidence"],
             evidence=row["evidence"],

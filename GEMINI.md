@@ -99,6 +99,13 @@ This is a validation program, not a product explainer. A final paper should wait
 until Atlas has v2 label guides, stratified benchmarks, baseline comparisons,
 ablation reports, thread graph reports, and reviewer usefulness/error-discovery
 evidence.
+Phase 1 artifacts now exist: label guide
+`docs/research/atlas-paper/2026-05-25-atlas-v2-labeling-guide.md`, 256-row
+sample
+`docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.jsonl`,
+and sample manifest
+`docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.md`.
+Next action is labeling/scoring, not another taxonomy patch.
 
 Equal Earth / equal-area projection is tracked separately as #212 and ADR-0005.
 It is product-architecture parking for Atlas's worldview, not part of the

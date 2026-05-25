@@ -551,13 +551,23 @@ Do not write a final paper until these artifacts exist:
 
 ## Immediate Next Work
 
-1. Create a v2 label guide with examples.
-2. Generate a larger stratified sample using `topic_benchmark_harness.py`.
+1. Label the first v2 stratified sample using
+   `docs/research/atlas-paper/2026-05-25-atlas-v2-labeling-guide.md`.
+2. Score the labeled sample using `topic_benchmark_harness.py`.
 3. Supplement labels with semantic scope, evidence role, parent/child thread,
    and supported questions.
 4. Build a read-only report that aggregates v2 labels into answerability
    metrics.
 5. Only then decide which baseline to implement first.
+
+Phase 1 artifacts now available:
+
+- Labeling guide:
+  `docs/research/atlas-paper/2026-05-25-atlas-v2-labeling-guide.md`
+- Unlabeled stratified sample:
+  `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.jsonl`
+- Sample manifest:
+  `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.md`
 
 ## Initial Bibliography
 
