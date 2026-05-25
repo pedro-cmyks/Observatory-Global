@@ -133,11 +133,12 @@ Narrative classification root cause:
   and reviewer usefulness/error-discovery validation.
 - Phase 1 artifacts:
   `docs/research/atlas-paper/2026-05-25-atlas-v2-labeling-guide.md`,
+  `docs/research/atlas-paper/phase-1-validation/README.md`,
   `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.jsonl`,
   and
   `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.md`.
-  Next action is to label the 256-row sample and score semantic scope,
-  evidence role, and supported Atlas questions.
+  Batch 01 has assistant-pilot labels and a score report, but those are not gold
+  labels. Next action is review/adjudication plus labels for batches 02-08.
 
 ## Previous Session Context (2026-05-21, data operating roadmap)
 

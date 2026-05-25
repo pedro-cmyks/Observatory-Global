@@ -259,13 +259,16 @@ Phase 1 started:
 
 - Labeling guide:
   `docs/research/atlas-paper/2026-05-25-atlas-v2-labeling-guide.md`.
+- Validation workspace:
+  `docs/research/atlas-paper/phase-1-validation/README.md`.
 - First v2 stratified sample:
   `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.jsonl`.
 - Sample manifest:
   `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.md`.
 
-Next action: label the 256-row sample, then run the v2 score to produce
-semantic-scope, evidence-role, and supported-question distributions.
+Next action: review assistant-pilot batch 01, label batches 02-08, then run the
+v2 score over reviewed/gold labels to produce semantic-scope, evidence-role, and
+supported-question distributions.
 
 ## Guardrails
 

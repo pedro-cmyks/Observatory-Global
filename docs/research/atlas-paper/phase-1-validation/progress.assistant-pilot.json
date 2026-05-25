@@ -1,0 +1,14 @@
+{
+  "files": [
+    {
+      "labeled": 32,
+      "path": "docs/research/atlas-paper/phase-1-validation/labels/assistant-pilot/2026-05-25-atlas-v2-stratified-batch-01.assistant-pilot.jsonl",
+      "remaining": 0,
+      "rows": 32
+    }
+  ],
+  "labeled_rows": 32,
+  "progress_pct": 1.0,
+  "remaining_rows": 0,
+  "total_rows": 32
+}

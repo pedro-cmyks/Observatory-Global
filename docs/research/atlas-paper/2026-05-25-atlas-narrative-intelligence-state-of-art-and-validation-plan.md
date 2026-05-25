@@ -568,6 +568,10 @@ Phase 1 artifacts now available:
   `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.jsonl`
 - Sample manifest:
   `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.md`
+- Phase 1 validation workspace:
+  `docs/research/atlas-paper/phase-1-validation/README.md`
+- Experiment log:
+  `docs/research/atlas-paper/phase-1-validation/experiment-log.md`
 
 ## Initial Bibliography
 

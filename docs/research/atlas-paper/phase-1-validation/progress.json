@@ -1,0 +1,56 @@
+{
+  "files": [
+    {
+      "labeled": 0,
+      "path": "docs/research/atlas-paper/phase-1-validation/batches/2026-05-25-atlas-v2-stratified-batch-01.jsonl",
+      "remaining": 32,
+      "rows": 32
+    },
+    {
+      "labeled": 0,
+      "path": "docs/research/atlas-paper/phase-1-validation/batches/2026-05-25-atlas-v2-stratified-batch-02.jsonl",
+      "remaining": 32,
+      "rows": 32
+    },
+    {
+      "labeled": 0,
+      "path": "docs/research/atlas-paper/phase-1-validation/batches/2026-05-25-atlas-v2-stratified-batch-03.jsonl",
+      "remaining": 32,
+      "rows": 32
+    },
+    {
+      "labeled": 0,
+      "path": "docs/research/atlas-paper/phase-1-validation/batches/2026-05-25-atlas-v2-stratified-batch-04.jsonl",
+      "remaining": 32,
+      "rows": 32
+    },
+    {
+      "labeled": 0,
+      "path": "docs/research/atlas-paper/phase-1-validation/batches/2026-05-25-atlas-v2-stratified-batch-05.jsonl",
+      "remaining": 32,
+      "rows": 32
+    },
+    {
+      "labeled": 0,
+      "path": "docs/research/atlas-paper/phase-1-validation/batches/2026-05-25-atlas-v2-stratified-batch-06.jsonl",
+      "remaining": 32,
+      "rows": 32
+    },
+    {
+      "labeled": 0,
+      "path": "docs/research/atlas-paper/phase-1-validation/batches/2026-05-25-atlas-v2-stratified-batch-07.jsonl",
+      "remaining": 32,
+      "rows": 32
+    },
+    {
+      "labeled": 0,
+      "path": "docs/research/atlas-paper/phase-1-validation/batches/2026-05-25-atlas-v2-stratified-batch-08.jsonl",
+      "remaining": 32,
+      "rows": 32
+    }
+  ],
+  "labeled_rows": 0,
+  "progress_pct": 0.0,
+  "remaining_rows": 256,
+  "total_rows": 256
+}

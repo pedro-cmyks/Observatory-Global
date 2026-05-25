@@ -105,7 +105,11 @@ sample
 `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.jsonl`,
 and sample manifest
 `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.md`.
-Next action is labeling/scoring, not another taxonomy patch.
+Validation workspace:
+`docs/research/atlas-paper/phase-1-validation/README.md`. Batch 01 has
+assistant-pilot labels and a score report, but those are not gold labels. Next
+action is review/adjudication plus labels for batches 02-08, not another
+taxonomy patch.
 
 Equal Earth / equal-area projection is tracked separately as #212 and ADR-0005.
 It is product-architecture parking for Atlas's worldview, not part of the

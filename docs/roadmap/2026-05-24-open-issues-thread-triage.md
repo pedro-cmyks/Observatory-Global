@@ -212,7 +212,9 @@ Immediate active issue order:
 Phase 1 artifacts now exist:
 
 - `docs/research/atlas-paper/2026-05-25-atlas-v2-labeling-guide.md`
+- `docs/research/atlas-paper/phase-1-validation/README.md`
 - `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.jsonl`
 - `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.md`
 
-Immediate #203 action is labeling/scoring this sample.
+Immediate #203 action is reviewing assistant-pilot batch 01 and continuing
+labels for batches 02-08.

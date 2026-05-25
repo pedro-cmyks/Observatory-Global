@@ -120,6 +120,11 @@ Current data/product state:
     `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.md`.
   The sample has `256` rows across all `30` active topics and four buckets:
   `lex_high_conf`, `lex_low_conf`, `theme_high_conf`, and `theme_low_conf`.
+- Phase 1 validation workspace:
+  `docs/research/atlas-paper/phase-1-validation/README.md`.
+  The 256-row sample is split into 8 raw batches. Batch 01 has assistant-pilot
+  labels and a score report, but those labels are explicitly not gold labels
+  until reviewed/adjudicated.
 
 Living Threads canon:
 
@@ -218,8 +223,8 @@ Next execution order:
    noise, and which Atlas questions the row/thread can support.
 2. Extend the Path B harness schema with `gold_scope`, `gold_evidence_role`,
    parent/child thread candidates, and supported Atlas questions.
-3. Label the first v2 stratified sample and score scope/evidence/question
-   distributions.
+3. Review assistant-pilot batch 01, then continue labeling batches 02-08.
+   Keep `assistant-pilot`, `reviewed`, and `gold` label quality separate.
 4. Prototype a read-only Narrative Thread Graph report above existing data
    before adding persistent tables or training an encoder.
 5. Keep encoder/ranking promotion blocked until the benchmark clears the 85%
