@@ -174,3 +174,7 @@ Immediate active issue order:
   Next issue action is model-level: distinguish domain, parent thread, child
   thread, entity thread, evidence, context signal, and noise before adding more
   topic-specific patches.
+- Market/product quality review:
+  `docs/research/topic-quality/2026-05-25-atlas-quality-models-market-and-product.md`.
+  #203/#207 validation should become answerability-first: each metric should
+  trace to one of the seven Atlas questions.

@@ -82,6 +82,11 @@ Current data/product state:
   evidence rows, and contextual mentions at the same time. Further work should
   evaluate semantic role and evidence level before making topic-specific
   repairs.
+- Market/product quality review is documented in
+  `docs/research/topic-quality/2026-05-25-atlas-quality-models-market-and-product.md`.
+  Atlas quality should be answerability-first: measure whether the system can
+  answer the seven Atlas questions with relevant evidence, correct semantic
+  scope, enough coverage, and clear uncertainty.
 
 Living Threads canon:
 
@@ -174,9 +179,10 @@ Sentiment decision from analyst review:
 
 Next execution order:
 
-1. Upgrade the benchmark/model audit from topic correctness to semantic role:
+1. Upgrade the benchmark/model audit from topic correctness to semantic role
+   and answerability:
    domain, parent thread, child thread, entity thread, evidence, context signal,
-   and noise.
+   noise, and which Atlas questions the row/thread can support.
 2. Prototype read-only parent -> child Narrative Thread hierarchy above
    existing data before adding persistent tables or training an encoder.
 3. Keep encoder/ranking promotion blocked until the benchmark clears the 85%

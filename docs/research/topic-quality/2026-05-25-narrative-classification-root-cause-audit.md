@@ -7,6 +7,7 @@ Inputs:
 
 - `docs/specs/2026-05-24-living-narrative-threads.md`
 - `docs/research/topic-quality/2026-05-25-path-b-priority-label-results.md`
+- `docs/research/topic-quality/2026-05-25-atlas-quality-models-market-and-product.md`
 - `backend/app/services/thread_intelligence.py`
 - `backend/scripts/backfill_lexicon_topics.py`
 - `docs/specs/2026-05-23-ai-assisted-taxonomy.md`
@@ -357,3 +358,7 @@ The next sprint should be a model-level correction:
 > classification by semantic role and evidence level.
 
 This is the root cause path out of repetitive patching.
+
+The quality model should be answerability-first: Atlas should measure whether
+each thread can answer the seven Atlas questions with relevant evidence,
+correct semantic scope, enough coverage, and clear uncertainty.

@@ -107,6 +107,11 @@ Narrative classification root cause:
   `context_signal`, `noise`.
 - Keep `atlas_topics` as internal anchors. The visible product should organize
   parent -> child Narrative Threads and entity lenses above those anchors.
+- Market/product quality review:
+  `docs/research/topic-quality/2026-05-25-atlas-quality-models-market-and-product.md`.
+  Quality should be answerability-first: measure whether Atlas answers its
+  seven product questions with relevant evidence, correct semantic scope,
+  enough coverage, and clear uncertainty.
 
 ## Previous Session Context (2026-05-21, data operating roadmap)
 

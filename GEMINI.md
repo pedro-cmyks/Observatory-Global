@@ -75,6 +75,11 @@ layer is carrying domains, parent threads, child threads, entity threads,
 evidence rows, and contextual mentions at the same time. Next work should
 measure semantic role and evidence role before applying more topic-specific
 repairs.
+Market/product quality review:
+`docs/research/topic-quality/2026-05-25-atlas-quality-models-market-and-product.md`.
+Quality should be answerability-first: does Atlas answer the seven product
+questions with relevant evidence, correct semantic scope, sufficient coverage,
+and clear uncertainty?
 
 Equal Earth / equal-area projection is tracked separately as #212 and ADR-0005.
 It is product-architecture parking for Atlas's worldview, not part of the
