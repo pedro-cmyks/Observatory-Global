@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import json
 
-from scripts.atlas_label_workflow import label_progress, merge_batches, split_batches
+from scripts.atlas_label_workflow import (
+    label_progress,
+    merge_batches,
+    render_review_packet,
+    split_batches,
+)
 
 
 def test_split_batches_writes_numbered_jsonl_files(tmp_path):
@@ -60,3 +65,80 @@ def test_merge_batches_concatenates_sorted_files(tmp_path):
 
     assert row_count == 2
     assert [json.loads(line)["signal_id"] for line in output.read_text().splitlines()] == [1, 2]
+
+
+def test_render_review_packet_joins_raw_rows_and_pilot_labels(tmp_path):
+    raw_path = tmp_path / "raw.jsonl"
+    labels_path = tmp_path / "labels.jsonl"
+    output_path = tmp_path / "review.md"
+    raw_path.write_text(
+        json.dumps(
+            {
+                "signal_id": 101,
+                "headline": "Canal strike disrupts cargo movement",
+                "assigned_topic_label": "Transport corridor disruption",
+                "assigned_topic_slug": "transport-corridor-disruption",
+                "country_code": "PA",
+                "source_name": "example.test",
+                "source_family": "gdelt",
+                "source_lang": "en",
+                "sample_bucket": "lex_high_conf",
+                "confidence": 0.8,
+                "evidence": {
+                    "formula": "theme-hint-lex-v2",
+                    "matched_terms": ["canal", "cargo"],
+                    "lex_count": 2,
+                    "theme_hits": 1,
+                    "hint_count": 2,
+                },
+            }
+        )
+        + "\n"
+    )
+    labels_path.write_text(
+        json.dumps(
+            {
+                "signal_id": 101,
+                "gold_decision": "correct",
+                "gold_scope": "child_thread",
+                "gold_evidence_role": "primary_event",
+                "gold_error_type": None,
+                "gold_parent_thread": "maritime-logistics",
+                "gold_child_thread": "panama-canal-disruption",
+                "gold_supported_questions": ["why_moving_now", "where_concentrated"],
+                "notes": "Assistant pilot label.",
+            }
+        )
+        + "\n"
+    )
+
+    rendered = render_review_packet(
+        raw_path=raw_path,
+        labels_path=labels_path,
+        output_path=output_path,
+        title="Review Packet",
+    )
+
+    text = rendered.read_text()
+    assert "# Review Packet" in text
+    assert "Canal strike disrupts cargo movement" in text
+    assert "`scope`: child_thread" in text
+    assert "`reviewer_decision`:" in text
+    assert "panama-canal-disruption" in text
+
+
+def test_render_review_packet_handles_missing_pilot_label(tmp_path):
+    raw_path = tmp_path / "raw.jsonl"
+    labels_path = tmp_path / "labels.jsonl"
+    output_path = tmp_path / "review.md"
+    raw_path.write_text(json.dumps({"signal_id": 101, "headline": "Unlabeled row"}) + "\n")
+    labels_path.write_text(json.dumps({"signal_id": 202, "gold_decision": "correct"}) + "\n")
+
+    render_review_packet(
+        raw_path=raw_path,
+        labels_path=labels_path,
+        output_path=output_path,
+        title="Review Packet",
+    )
+
+    assert "No assistant-pilot label found" in output_path.read_text()

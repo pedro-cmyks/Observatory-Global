@@ -219,6 +219,19 @@ Phase 1 artifacts now exist:
 Immediate #203 action is reviewing assistant-pilot batch 01 and continuing
 labels for batches 02-08.
 
+## 2026-05-25 Phase 1 Review-Packet Update
+
+- Batch 01 now has a human review/adjudication packet:
+  `docs/research/atlas-paper/phase-1-validation/review-packets/2026-05-25-atlas-v2-stratified-batch-01.review.md`.
+- `backend/scripts/atlas_label_workflow.py review-packet` joins raw batch rows
+  with assistant-pilot suggestions and leaves reviewer fields for decision,
+  semantic scope, evidence role, parent/child thread candidates, supported
+  questions, and notes.
+- #203 remains active because assistant-pilot labels are still not gold. The
+  next step is human adjudication, then reviewed/gold scoring.
+- #207 should use the adjudicated semantic-scope and supported-question labels
+  to shape the read-only Narrative Thread Graph report.
+
 Visual validation reports now live under
 `docs/research/atlas-paper/phase-1-validation/reports/`. Keep these separate
 from the production UI until labels are reviewed/gold and the metric proves

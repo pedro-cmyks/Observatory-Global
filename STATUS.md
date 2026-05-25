@@ -125,6 +125,11 @@ Current data/product state:
   The 256-row sample is split into 8 raw batches. Batch 01 has assistant-pilot
   labels and a score report, but those labels are explicitly not gold labels
   until reviewed/adjudicated.
+- Batch 01 now has a human review/adjudication packet:
+  `docs/research/atlas-paper/phase-1-validation/review-packets/2026-05-25-atlas-v2-stratified-batch-01.review.md`.
+  It joins raw evidence with assistant-pilot suggestions and blank reviewer
+  fields for decision, semantic scope, evidence role, parent/child thread,
+  supported questions, and notes.
 - Report visuals are now generated outside the product UI by
   `backend/scripts/atlas_validation_report.py`. The first visual report is
   `docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01/assistant-pilot-batch-01.md`
@@ -228,7 +233,7 @@ Next execution order:
    noise, and which Atlas questions the row/thread can support.
 2. Extend the Path B harness schema with `gold_scope`, `gold_evidence_role`,
    parent/child thread candidates, and supported Atlas questions.
-3. Review assistant-pilot batch 01, then continue labeling batches 02-08.
+3. Adjudicate the batch 01 review packet, then continue labeling batches 02-08.
    Keep `assistant-pilot`, `reviewed`, and `gold` label quality separate.
 4. Prototype a read-only Narrative Thread Graph report above existing data
    before adding persistent tables or training an encoder.

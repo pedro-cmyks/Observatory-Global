@@ -111,3 +111,39 @@ Guardrail:
 
 - These charts are based on assistant-pilot labels. They are workflow evidence,
   not paper-grade model evidence.
+
+## 2026-05-25 — Human Review Packet For Batch 01
+
+Input:
+
+- Raw batch:
+  `docs/research/atlas-paper/phase-1-validation/batches/2026-05-25-atlas-v2-stratified-batch-01.jsonl`
+- Assistant-pilot labels:
+  `docs/research/atlas-paper/phase-1-validation/labels/assistant-pilot/2026-05-25-atlas-v2-stratified-batch-01.assistant-pilot.jsonl`
+
+Output:
+
+- `docs/research/atlas-paper/phase-1-validation/review-packets/2026-05-25-atlas-v2-stratified-batch-01.review.md`
+
+Command:
+
+```bash
+backend/.venv/bin/python backend/scripts/atlas_label_workflow.py review-packet \
+  --raw docs/research/atlas-paper/phase-1-validation/batches/2026-05-25-atlas-v2-stratified-batch-01.jsonl \
+  --labels docs/research/atlas-paper/phase-1-validation/labels/assistant-pilot/2026-05-25-atlas-v2-stratified-batch-01.assistant-pilot.jsonl \
+  --output docs/research/atlas-paper/phase-1-validation/review-packets/2026-05-25-atlas-v2-stratified-batch-01.review.md \
+  --title "Atlas V2 Batch 01 Human Review Packet"
+```
+
+Purpose:
+
+- Make the adjudication step explicit and reproducible.
+- Keep raw evidence and assistant-pilot suggestions side by side.
+- Give reviewers blank fields for decision, scope, evidence role,
+  parent/child thread candidates, supported questions, and notes.
+
+Next decision:
+
+- Human review should either accept the assistant-pilot label, correct it into
+  a reviewed label file, or mark the row as uncertain. Only reviewed/adjudicated
+  labels can become paper-grade `gold` evidence.
