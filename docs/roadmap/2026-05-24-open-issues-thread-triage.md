@@ -29,7 +29,7 @@ These issues should drive the next roadmap phase:
 | #183 sentiment source badge + heat panel | canon | Product rule: one Atlas sentiment; provenance can stay secondary. |
 | #193 app windows to processed history | canon | Keep open until deployed visual smoke tests pass. |
 | #203 Path B encoder classifier | canon | Shadow/benchmark only; 85% minimum precision, 90% target. |
-| #204 Path C taxonomy revision | canon | Evolves into living-thread taxonomy review, not quarterly fixed-topic expansion only. |
+| #204 Path C taxonomy revision | active-now | First slice corrects mining/resource label after live evidence showed coal mine/resource-disaster dominance. |
 
 ## Evolve
 
@@ -78,6 +78,7 @@ These are still valid, but should not interrupt the living-thread route:
 | #164 ADR-0004 NLP strategy | parking | Historical context; likely close after review if all action migrated. |
 | #185 corpus-mine vocab | active-later | Feed this into Path B/C benchmark work; do not use it as visible taxonomy work. |
 | #196 AISStream TLS degradation | parking | Provider health item. |
+| #212 Equal Earth projection mode | parking | Product-architecture item for equal-area worldview; documented in ADR-0005, not part of current data sprint. |
 
 ## Blocked
 
@@ -130,3 +131,13 @@ Immediate active issue order:
 3. #193 processed historical routing: deployed visual smoke before closure.
 4. #176 Entity Focus: thread participation and role hygiene.
 5. #177 Signal Stream: evidence-role ranking for selected threads.
+
+## 2026-05-25 Path C / Projection Update
+
+- #212 opened for Equal Earth / equal-area projection exploration. It is
+  relevant to Atlas's worldview but parked outside the active data backlog.
+- #204 first slice started with
+  `docs/research/2026-05-25-path-c-mining-resource-taxonomy-audit.md`.
+- `backend/migrations/039_mining_resource_safety_label.sql` is the conservative
+  first Path C migration: keep slug compatibility, correct the visible mining
+  anchor label/description.

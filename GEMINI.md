@@ -40,11 +40,15 @@ Current visible Narrative Threads slice:
 - `backend/app/services/thread_intelligence.py` parses asyncpg JSONB strings for
   `hourly_timeline` and `related_threads`; do not regress those fields to JSON strings.
 
-Next active order after phase zero: #204 Path C taxonomy quality
-(`mining-royalty-risk` vs coal mine/resource disaster first), #203 Path B
+Next active order after phase zero: #204 Path C taxonomy quality (first slice is
+migration 039, keeping slug `mining-royalty-risk` stable while correcting the
+visible label/description toward mining/resource safety crisis), #203 Path B
 benchmark harness, #193 deployed app-wide long-window smoke, #176 Entity Focus,
-and #177 Signal Stream/source lanes. #191, #192, and #202 are closeable once
-their completion comments are posted.
+and #177 Signal Stream/source lanes. #191, #192, and #202 are closed.
+
+Equal Earth / equal-area projection is tracked separately as #212 and ADR-0005.
+It is product-architecture parking for Atlas's worldview, not part of the
+current data sprint.
 
 ---
 

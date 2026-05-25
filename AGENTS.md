@@ -58,13 +58,18 @@ Key docs/code changed in session 24 (production-cycle canon — 2026-05-25):
 - `backend/app/services/thread_intelligence.py` parses asyncpg JSONB strings for `hourly_timeline` and `related_threads`; do not regress these fields back to JSON strings.
 - Next active work should return to data quality/backlog: Path C taxonomy split/rename for `mining-royalty-risk` vs coal mine disaster, Path B benchmark harness, Entity Focus hygiene, source lanes, and deployed long-window smoke for #193.
 
+Key docs/files changed in session 25 (Path C + projection note — 2026-05-25):
+- `docs/adrs/ADR-0005-equal-area-projection-mode.md` — Equal Earth / equal-area projection is product-architecture parking (#212), important to Atlas worldview but not allowed to interrupt the current data-quality sprint.
+- `docs/research/2026-05-25-path-c-mining-resource-taxonomy-audit.md` — live Path C audit: `mining-royalty-risk` is a coherent high-confidence mining safety/resource-disaster cluster, not primarily royalty/concession evidence.
+- `backend/migrations/039_mining_resource_safety_label.sql` — conservative Path C first migration: keep slug `mining-royalty-risk` stable for API/history compatibility, update label/description toward mining/resource safety crisis.
+
 Session 22 topic taxonomy state:
 - Path A pilot result: `election-legitimacy-dispute` lex_pct `6.3% -> 31.6%`, high_conf `5 -> 27`, multilingual terms drove `74%` of lex-match volume; global coverage moved `13.08% -> 13.35%`.
 - Armed-conflict partial result: lex_pct `2.10% -> 6.56%`, high_conf `22 -> 85`, global v2 coverage after re-backfill `17.22%`. Treat as partial because the 30% gate did not clear; do not re-add broad armed-incident terms just to raise recall.
 - Final Path A rollout result after migration 038: `fuel-subsidy-unrest` lex_pct `5.20% -> 37.12%`, high_conf `2 -> 136`; `food-price-stress` lex_pct `17.52% -> 4.63%`, high_conf `7 -> 10` after removing noisy `shortage`/`hunger`; `housing-cost-pressure` lex_pct `10.16% -> 8.20%`, high_conf `0 -> 2` after removing noisy `mortgage`/`eviction`; `mining-royalty-risk` lex_pct `12.33% -> 78.99%`, high_conf `0 -> 100` driven by a coal-mine-disaster cluster.
 - Global v2 topic coverage after full Path A rollout: `18.47%` of 24h eligible signals.
-- Open issues: #202 Path A, #203 Path B, #204 Path C. #202 remains open until all six low-lex topics are migrated.
-- Next taxonomy step: close/mark #202 complete after PR merge, then use Path C to evaluate splits for local armed incidents vs armed conflict, and mining royalty vs mining/resource-disaster risk.
+- Open issues: #203 Path B and #204 Path C. #202 is closed after migrations 036-038.
+- Next taxonomy step: apply/verify migration 039, then use Path C/B labels to decide whether royalty/concession deserves a separate anchor from mining/resource safety crisis.
 - Theme/topic guardrail: do not trust GDELT theme classification alone as proof of a significant Atlas topic. Topic changes must be validated against real headlines, lex_pct/high_conf movement, and precision spot checks.
 
 Session 23 Living Narrative Threads direction:

@@ -20,6 +20,9 @@ New operating canon:
   batch -> focused UX PR.
 - The next active work block is data/product backlog, starting with Path C
   taxonomy quality and live thread-evidence mismatches.
+- Equal Earth / equal-area projection is now tracked separately as #212 and
+  ADR-0005. It is important for Atlas's worldview, but parked outside the
+  current data sprint.
 
 Current data/product state:
 
@@ -47,6 +50,10 @@ Current data/product state:
 - Remaining thread quality issue: current live evidence shows
   `mining-royalty-risk` is capturing a coal-mine-disaster cluster. This is a
   Path C taxonomy problem, not a UI problem.
+- Path C first slice is documented in
+  `docs/research/2026-05-25-path-c-mining-resource-taxonomy-audit.md`.
+  Migration `039_mining_resource_safety_label.sql` keeps slug compatibility but
+  updates the human-facing label/description to mining/resource safety crisis.
 
 Living Threads canon:
 
@@ -98,8 +105,8 @@ Atlas-topic taxonomy state:
     pressure terms are now present.
   - `mining-royalty-risk`: lex_pct `12.33% -> 78.99%`, high_conf `0 -> 100`.
     Gate cleared, but the live evidence is a coal-mine-disaster cluster, so
-    Path C should revisit whether this topic should become broader
-    mining/resource risk or split royalty/concession risk from mine disasters.
+    Path C first-pass migration 039 keeps slug compatibility while correcting
+    the visible anchor label/description to mining/resource safety crisis.
 - Global v2 topic coverage after full Path A rollout: `18.47%` of 24h eligible
   signals.
 - Path B encoder classifier stays in design/shadow mode until a benchmark shows
@@ -123,7 +130,8 @@ Next execution order:
 
 1. Close or update stale issue state from the production-cycle canon.
 2. Start Path C taxonomy quality with live thread-evidence mismatches:
-   `mining-royalty-risk` vs coal mine disaster is the first candidate.
+   `mining-royalty-risk` vs coal mine disaster is the first candidate. First
+   conservative fix: migration 039 label/description correction.
 3. Build the Path B benchmark/precision harness before any encoder promotion.
 4. Run deployed app-wide long-window smoke tests before closing `#193`.
 5. Normalize product sentiment presentation around one Atlas sentiment under

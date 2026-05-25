@@ -129,6 +129,17 @@ For backend API-only changes:
 These should not interrupt the current data backlog unless they become visible
 truth issues: #134, #140, #147, #148, #152, #173, #178, #179.
 
+### Map Projection / Worldview
+
+Issue #212 tracks Equal Earth / equal-area projection exploration. This is a
+separate but Atlas-relevant product architecture item: Atlas should not treat
+Mercator distortion as neutral truth. It is documented in
+`docs/adrs/ADR-0005-equal-area-projection-mode.md`.
+
+Keep it parked for now. It should enter a visual review batch after the current
+data-quality backlog, unless projection work becomes necessary to fix a concrete
+map contract problem.
+
 ### Provider / Source Lane
 
 These belong to the source-lane/Voice Mix block: #160, #168, #172, #180, #158,
@@ -143,12 +154,17 @@ product/data mismatch:
 2. Flag threads where label and evidence disagree.
 3. First candidate: split or rename `mining-royalty-risk` because the current
    high-confidence cluster is coal mine disaster, not royalty/concession risk.
-4. Decide whether the internal anchor should become:
-   - `mining-resource-disaster`,
-   - `mining-safety-crisis`,
-   - or a broader `mining-resource-risk` with separate royalty/concession
-     subthread.
-5. Apply controlled migration and re-backfill only after headline sample review.
+4. First audit result: the cluster is real but the label is wrong. It is mining
+   safety / resource-disaster coverage, currently dominated by a China coal mine
+   explosion.
+5. First conservative migration: `backend/migrations/039_mining_resource_safety_label.sql`
+   keeps slug `mining-royalty-risk` stable but changes the human-facing label
+   and description toward `Mining and resource safety crisis`.
+6. Defer a true split until Path B labels or a larger Path C sample shows
+   independent royalty/concession volume.
+
+Audit doc:
+`docs/research/2026-05-25-path-c-mining-resource-taxonomy-audit.md`.
 
 ## Guardrails
 
@@ -158,4 +174,3 @@ product/data mismatch:
 - Do not add user-facing correction UI yet.
 - Do not let visual polish displace data quality work.
 - Do not close historical routing issues until deployed frontend smoke passes.
-

@@ -35,7 +35,7 @@ Current visible Narrative Threads slice:
 
 Active execution order after phase zero:
 
-1. #204 Path C taxonomy quality, starting with `mining-royalty-risk` vs coal mine/resource-disaster evidence.
+1. #204 Path C taxonomy quality. First slice is migration 039: keep slug `mining-royalty-risk` stable, but correct label/description toward mining/resource safety crisis after live evidence showed coal mine/resource-disaster dominance.
 2. #203 Path B benchmark harness and labeled validation path; precision gate is 85% minimum, 90% target.
 3. #193 deployed app-wide long-window smoke; keep open until the deployed frontend proves `1w`/`1m` consistency.
 4. #176 Entity Focus hygiene: entities are lenses over threads, not raw mention cards.
@@ -44,6 +44,10 @@ Active execution order after phase zero:
 Completed/closeable after documentation: #191, #192, and #202. Do not reopen
 Path A rollout unless new metrics show regression; future topic quality work
 routes through #204/#203/#185.
+
+Equal Earth / equal-area projection is tracked separately as #212 and ADR-0005.
+It is product-architecture parking for Atlas's worldview, not part of the
+current data sprint.
 
 ## Previous Session Context (2026-05-21, data operating roadmap)
 
