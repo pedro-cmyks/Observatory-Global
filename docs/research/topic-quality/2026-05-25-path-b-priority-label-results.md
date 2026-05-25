@@ -9,6 +9,12 @@ Labeled sample:
 Score:
 `docs/research/topic-quality/benchmark-scores/2026-05-25-path-b-priority-topics-score.json`
 
+Note: the original sample was generated before the v2 semantic/evidence-role
+schema. It remains score-compatible, and the score artifact was regenerated with
+`atlas-topic-benchmark-v2`; `by_scope`, `by_evidence_role`, and
+`by_supported_question` are empty until the sample is supplemented with v2
+labels.
+
 ## Result
 
 The first labeled benchmark did **not** clear the Atlas product-quality gate.
@@ -90,7 +96,9 @@ assignment. Repairs should be typed:
 
 ## Next Actions
 
-1. Add typed benchmark labels to future samples.
+1. Supplement this sample or the next sample with v2 semantic labels:
+   `gold_scope`, `gold_evidence_role`, parent/child thread candidates, and
+   supported Atlas questions.
 2. Use `substring_noise` rows for immediate precision repairs.
 3. Use `parent_thread_candidate` rows to design nested Narrative Threads:
    parent focus -> related child threads -> evidence.

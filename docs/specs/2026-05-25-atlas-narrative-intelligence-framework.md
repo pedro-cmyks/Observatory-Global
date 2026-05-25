@@ -30,14 +30,26 @@ The field review in
 `docs/research/topic-quality/2026-05-25-narrative-intelligence-field-review.md`
 found useful adjacent models:
 
-- event-centric narrative graphs;
-- narrative maps;
-- dynamic topic modeling;
-- topic detection and tracking;
-- media framing analysis;
-- media attention platforms such as Media Cloud;
-- interactive narrative analytics;
-- narrative visualization systems such as StoryAtlas.
+- event-centric narrative graphs and extraction surveys
+  ([Narrative extraction survey](https://link.springer.com/article/10.1007/s10462-022-10338-7),
+  [event-based news narrative extraction](https://arxiv.org/abs/2302.08351));
+- narrative maps
+  ([Narrative Maps](https://arxiv.org/abs/2009.04508),
+  [narrative maps and framing](https://arxiv.org/abs/2405.02677));
+- dynamic topic modeling
+  ([Dynamic Topic Models](https://www.cs.columbia.edu/~blei/papers/BleiLafferty2006a.pdf),
+  [BERTopic topics over time](https://maartengr.github.io/BERTopic/getting_started/topicsovertime/topicsovertime.html));
+- topic detection and tracking
+  ([TDT topic overview](https://www.nist.gov/itl/iad/mig/topic-detection-and-tracking-tdt));
+- media framing analysis
+  ([media framing survey](https://aclanthology.org/2024.acl-long.822/));
+- media attention platforms such as Media Cloud
+  ([MIT overview](https://www.media.mit.edu/projects/media-cloud/overview/),
+  [ICWSM platform paper](https://ojs.aaai.org/index.php/ICWSM/article/view/18127));
+- interactive narrative analytics
+  ([Interactive Narrative Analytics](https://arxiv.org/abs/2601.11459));
+- narrative visualization systems such as StoryAtlas
+  ([StoryAtlas](https://chi.anp.casl.cal.msu.edu/2024/05/02/explore-storyatlas/)).
 
 The common lesson is that narratives are not flat labels. They are graph-like,
 temporal, source-dependent, evidence-backed structures.
@@ -162,7 +174,11 @@ pretending that raw volume equals truth.
 ## Benchmark Schema Direction
 
 Path B should evolve from binary topic correctness into semantic/evidence role
-labels. Future labeled rows should support fields like:
+labels. This follows the narrative-extraction literature's emphasis on
+annotation schemes, narrative elements, relation extraction, and standard
+evaluation frameworks rather than raw clustering alone
+([Santana et al. 2023](https://link.springer.com/article/10.1007/s10462-022-10338-7)).
+Future labeled rows should support fields like:
 
 ```json
 {

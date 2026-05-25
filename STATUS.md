@@ -19,8 +19,9 @@ New operating canon:
 - Visual feedback should be batched from recorded walkthroughs: video -> issue
   batch -> focused UX PR.
 - The active work block is data/product backlog. Path C first-pass taxonomy
-  cleanup is shipped; Path B now has a read-only benchmark harness and first
-  103-row priority sample awaiting labels.
+  cleanup is shipped; Path B now has a read-only benchmark harness, first
+  103-row priority sample, first labeled score, and v2 semantic/evidence-role
+  label schema.
 - Equal Earth / equal-area projection is now tracked separately as #212 and
   ADR-0005. It is important for Atlas's worldview, but parked outside the
   current data sprint.
@@ -64,7 +65,11 @@ Current data/product state:
   `docs/research/topic-quality/2026-05-25-path-b-benchmark-harness.md`.
   The new read-only script `backend/scripts/topic_benchmark_harness.py`
   generates label-ready JSONL and scores labeled rows against the 85% minimum /
-  90% target precision gate. First sample artifact:
+  90% target precision gate. The harness schema is now
+  `atlas-topic-benchmark-v2`, adding `gold_scope`, `gold_evidence_role`,
+  parent/child thread candidates, and `gold_supported_questions` so the
+  benchmark can measure semantic role and answerability, not only topic
+  correctness. First sample artifact:
   `docs/research/topic-quality/benchmark-samples/2026-05-25-path-b-priority-topics.jsonl`
   with 103 rows across seven priority topics.
 - First Path B labels are documented in

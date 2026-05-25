@@ -44,7 +44,7 @@ Each JSONL row is one candidate assignment:
 
 ```json
 {
-  "schema_version": "atlas-topic-benchmark-v1",
+  "schema_version": "atlas-topic-benchmark-v2",
   "signal_id": 4439755,
   "assigned_topic_slug": "armed-conflict-escalation",
   "assigned_topic_label": "Armed conflict escalation",
@@ -60,6 +60,11 @@ Each JSONL row is one candidate assignment:
   "gold_decision": null,
   "gold_topic_slug": null,
   "gold_error_type": null,
+  "gold_scope": null,
+  "gold_evidence_role": null,
+  "gold_parent_thread": null,
+  "gold_child_thread": null,
+  "gold_supported_questions": [],
   "notes": null
 }
 ```
@@ -88,6 +93,55 @@ Optional `gold_error_type`:
 | `primary_context_mismatch` | The matched topic appears as background, while another topic is primary. |
 | `insufficient_context` | The headline alone is too thin to label confidently. |
 | `off_topic` | The row is unrelated to the assigned topic and not useful as a parent candidate. |
+
+Optional semantic/evidence fields:
+
+| Field | Meaning |
+|---|---|
+| `gold_scope` | What the row really represents: domain, parent thread, child thread, entity thread, evidence, context, or noise. |
+| `gold_evidence_role` | How the row supports analysis: primary event, follow-up, background, reaction, analysis, public attention, source amplification, or not evidence. |
+| `gold_parent_thread` | Analyst-readable parent thread candidate when the row is broader than the assigned topic. |
+| `gold_child_thread` | Analyst-readable child thread candidate when the row is specific enough to form a subthread. |
+| `gold_supported_questions` | Which Atlas questions the row can support. |
+
+Allowed `gold_scope` values:
+
+| Value | Meaning |
+|---|---|
+| `domain` | Broad measurement domain, useful as an internal anchor but not a visible thread by itself. |
+| `parent_thread` | Broad living thread that may contain more specific child threads. |
+| `child_thread` | Specific current storyline with evidence and movement. |
+| `entity_thread` | Entity-centered participation lens. |
+| `geo_context` | Geography context, not direct thread evidence. |
+| `source_context` | Source/provenance context, not direct thread evidence. |
+| `evidence` | Direct evidence for the assigned thread. |
+| `context_signal` | Relevant background but not primary evidence. |
+| `noise` | Not useful for Atlas thread modeling. |
+
+Allowed `gold_evidence_role` values:
+
+| Value | Meaning |
+|---|---|
+| `primary_event` | Directly describes the event or change driving the thread. |
+| `followup` | Follow-up coverage on an already established thread. |
+| `background` | Historical or contextual support. |
+| `reaction` | Official, public, market, or institutional response. |
+| `analysis` | Analytical interpretation rather than primary reporting. |
+| `public_attention` | Search, wiki, social, or attention signal. |
+| `source_amplification` | Evidence of spread/syndication/source behavior. |
+| `not_evidence` | Should not support the thread. |
+
+Allowed `gold_supported_questions` values:
+
+| Value | Atlas question |
+|---|---|
+| `why_moving` | Why is this moving now? |
+| `what_changed` | What changed in the last 10h? |
+| `where_concentrated` | Where is it concentrated? |
+| `subthreads_forming` | Which subthreads are forming? |
+| `sources_driving` | Which sources are driving it? |
+| `evidence_support` | What evidence supports it? |
+| `related_thread` | What related thread does it connect to? |
 
 ## First Benchmark Sample
 
@@ -119,6 +173,10 @@ The scoring function reports:
 - overall precision;
 - per-topic precision;
 - `unclear` counts outside the precision denominator;
+- error-type distribution;
+- semantic-scope distribution;
+- evidence-role distribution;
+- supported-question distribution;
 - gate classification.
 
 Gate:
@@ -134,8 +192,11 @@ default behavior should target `pass_target`.
 
 ## Next Step
 
-1. Label the 103-row priority sample.
+1. Relabel or supplement the 103-row priority sample with semantic scope,
+   evidence role, parent/child candidates, and supported Atlas questions.
 2. Score it with the harness.
 3. If any promoted topic fails the 85% floor, keep it behind review/thin ranking
    and fix taxonomy/terms first.
-4. Only after this loop is reliable should Path B train a multilingual encoder.
+4. Use the scope/role/question distributions to generate a read-only Narrative
+   Thread Graph report.
+5. Only after this loop is reliable should Path B train a multilingual encoder.

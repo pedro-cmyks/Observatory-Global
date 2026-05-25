@@ -61,6 +61,9 @@ contains 103 rows across seven priority topics. Doc:
 `docs/research/topic-quality/2026-05-25-path-b-benchmark-harness.md`. Do not
 promote encoder/ranking changes until labeled samples clear 85% precision
 minimum; 90% is the product target.
+Current harness schema is `atlas-topic-benchmark-v2`, adding semantic scope,
+evidence role, parent/child thread candidates, and supported Atlas questions.
+Use v2 labels for new samples; v1 score files remain readable for continuity.
 First labeled score:
 `docs/research/topic-quality/benchmark-scores/2026-05-25-path-b-priority-topics-score.json`
 with overall precision `80.85%`, below the 85% floor. Result doc:

@@ -22,7 +22,7 @@ from typing import Any, Iterable
 import asyncpg
 
 
-BENCHMARK_SCHEMA_VERSION = "atlas-topic-benchmark-v1"
+BENCHMARK_SCHEMA_VERSION = "atlas-topic-benchmark-v2"
 MODEL_VERSION = "theme-hint-lex-v2"
 VALID_DECISIONS = {"correct", "incorrect", "unclear"}
 VALID_ERROR_TYPES = {
@@ -32,6 +32,36 @@ VALID_ERROR_TYPES = {
     "primary_context_mismatch",
     "insufficient_context",
     "off_topic",
+}
+VALID_SCOPES = {
+    "domain",
+    "parent_thread",
+    "child_thread",
+    "entity_thread",
+    "geo_context",
+    "source_context",
+    "evidence",
+    "context_signal",
+    "noise",
+}
+VALID_EVIDENCE_ROLES = {
+    "primary_event",
+    "followup",
+    "background",
+    "reaction",
+    "analysis",
+    "public_attention",
+    "source_amplification",
+    "not_evidence",
+}
+VALID_SUPPORTED_QUESTIONS = {
+    "why_moving",
+    "what_changed",
+    "where_concentrated",
+    "subthreads_forming",
+    "sources_driving",
+    "evidence_support",
+    "related_thread",
 }
 
 
@@ -135,6 +165,11 @@ def build_benchmark_item(
         "gold_decision": None,
         "gold_topic_slug": None,
         "gold_error_type": None,
+        "gold_scope": None,
+        "gold_evidence_role": None,
+        "gold_parent_thread": None,
+        "gold_child_thread": None,
+        "gold_supported_questions": [],
         "notes": None,
     }
 
@@ -162,6 +197,40 @@ def _summarize_counts(counts: dict[str, int], gate: PrecisionGate) -> dict[str, 
     }
 
 
+def _count_value(target: dict[str, int], value: str | None) -> None:
+    if value:
+        target[value] = target.get(value, 0) + 1
+
+
+def _validate_optional_label(
+    *,
+    item: dict[str, Any],
+    field: str,
+    valid_values: set[str],
+) -> str | None:
+    value = item.get(field)
+    if value is None:
+        return None
+    if value not in valid_values:
+        raise ValueError(f"Invalid {field}: {value!r}")
+    return value
+
+
+def _validate_supported_questions(item: dict[str, Any]) -> list[str]:
+    raw_questions = item.get("gold_supported_questions")
+    if raw_questions is None:
+        return []
+    if not isinstance(raw_questions, list):
+        raise ValueError("gold_supported_questions must be a list")
+
+    questions: list[str] = []
+    for question in raw_questions:
+        if question not in VALID_SUPPORTED_QUESTIONS:
+            raise ValueError(f"Invalid gold_supported_questions value: {question!r}")
+        questions.append(question)
+    return questions
+
+
 def score_labeled_items(
     items: Iterable[dict[str, Any] | str],
     *,
@@ -171,6 +240,9 @@ def score_labeled_items(
     overall = _empty_counts()
     by_topic_counts: dict[str, dict[str, int]] = {}
     by_error_type: dict[str, int] = {}
+    by_scope: dict[str, int] = {}
+    by_evidence_role: dict[str, int] = {}
+    by_supported_question: dict[str, int] = {}
 
     for raw in items:
         item = _coerce_item(raw)
@@ -182,9 +254,25 @@ def score_labeled_items(
         error_type = item.get("gold_error_type")
         if error_type is not None and error_type not in VALID_ERROR_TYPES:
             raise ValueError(f"Invalid gold_error_type: {error_type!r}")
+        scope = _validate_optional_label(
+            item=item,
+            field="gold_scope",
+            valid_values=VALID_SCOPES,
+        )
+        evidence_role = _validate_optional_label(
+            item=item,
+            field="gold_evidence_role",
+            valid_values=VALID_EVIDENCE_ROLES,
+        )
+        supported_questions = _validate_supported_questions(item)
 
         topic_slug = item.get("assigned_topic_slug") or "unknown"
         topic_counts = by_topic_counts.setdefault(topic_slug, _empty_counts())
+        _count_value(by_scope, scope)
+        _count_value(by_evidence_role, evidence_role)
+        for question in supported_questions:
+            by_supported_question[question] = by_supported_question.get(question, 0) + 1
+
         if decision == "unclear":
             overall["unclear"] += 1
             topic_counts["unclear"] += 1
@@ -205,6 +293,9 @@ def score_labeled_items(
             for slug, counts in sorted(by_topic_counts.items())
         },
         "by_error_type": dict(sorted(by_error_type.items())),
+        "by_scope": dict(sorted(by_scope.items())),
+        "by_evidence_role": dict(sorted(by_evidence_role.items())),
+        "by_supported_question": dict(sorted(by_supported_question.items())),
     }
 
 

@@ -70,6 +70,11 @@ Path B benchmark harness state:
 - `backend/scripts/topic_benchmark_harness.py` is the read-only benchmark tool.
   It has `sample` and `score` modes. The score report now also counts typed
   failures through optional `gold_error_type`.
+- Current schema is `atlas-topic-benchmark-v2`. New samples include
+  `gold_scope`, `gold_evidence_role`, `gold_parent_thread`,
+  `gold_child_thread`, and `gold_supported_questions`. Old v1 JSONL remains
+  score-compatible, but new labels should use v2 so Path B can measure semantic
+  role and answerability.
 - First sample:
   `docs/research/topic-quality/benchmark-samples/2026-05-25-path-b-priority-topics.jsonl`
   with 103 rows across armed conflict, disease, food, displacement, gender

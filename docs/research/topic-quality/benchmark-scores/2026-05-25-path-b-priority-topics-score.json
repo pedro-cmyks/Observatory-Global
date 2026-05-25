@@ -7,6 +7,9 @@
     "scope_mismatch": 8,
     "substring_noise": 3
   },
+  "by_evidence_role": {},
+  "by_scope": {},
+  "by_supported_question": {},
   "by_topic": {
     "armed-conflict-escalation": {
       "correct": 16,
@@ -77,5 +80,5 @@
     "precision": 0.8085,
     "unclear": 9
   },
-  "schema_version": "atlas-topic-benchmark-v1"
+  "schema_version": "atlas-topic-benchmark-v2"
 }

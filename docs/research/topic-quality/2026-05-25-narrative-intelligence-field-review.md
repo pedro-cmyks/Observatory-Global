@@ -30,9 +30,12 @@ parts, then define Atlas's own harness around answerability.
 Relevant work:
 
 - "Narrative Graph: Telling Evolving Stories Based on Event-centric Temporal
-  Knowledge Graph"
+  Knowledge Graph" ([PubMed](https://pubmed.ncbi.nlm.nih.gov/37128597/))
 - Event knowledge graph research
+  ([review](https://www.mdpi.com/2076-3417/13/22/12338))
 - Event extraction and event-relation extraction surveys
+  ([ScienceDirect survey](https://www.sciencedirect.com/science/article/pii/S266665102100005X),
+  [event-based news narrative extraction](https://arxiv.org/abs/2302.08351))
 
 Core idea:
 
@@ -62,9 +65,9 @@ signal -> event candidate -> event cluster -> child thread -> parent thread
 Relevant work:
 
 - "Narrative Maps: An Algorithmic Approach to Represent and Extract
-  Information Narratives"
+  Information Narratives" ([arXiv](https://arxiv.org/abs/2009.04508))
 - "Evaluating the Ability of Computationally Extracted Narrative Maps to
-  Encode Media Framing"
+  Encode Media Framing" ([arXiv](https://arxiv.org/abs/2405.02677))
 
 Core idea:
 
@@ -98,8 +101,10 @@ evidence = cited map point
 Relevant work:
 
 - Blei and Lafferty dynamic topic models
+  ([PDF](https://www.cs.columbia.edu/~blei/papers/BleiLafferty2006a.pdf))
 - BERTopic topics-over-time
-- Dynamic embedded topic models
+  ([docs](https://maartengr.github.io/BERTopic/getting_started/topicsovertime/topicsovertime.html))
+- BERTopic paper ([arXiv](https://arxiv.org/abs/2203.05794))
 
 Core idea:
 
@@ -133,8 +138,10 @@ Do not use it as the full Atlas model.
 Relevant work:
 
 - Topic Detection and Tracking (TDT)
+  ([NIST overview](https://www.nist.gov/itl/iad/mig/topic-detection-and-tracking-tdt))
 - Temporal information retrieval
 - Event-based news narrative extraction surveys
+  ([arXiv](https://arxiv.org/abs/2302.08351))
 
 Core idea:
 
@@ -165,9 +172,11 @@ narrative intelligence layer.
 
 Relevant work:
 
-- computational media framing surveys;
+- computational media framing surveys
+  ([ACL 2024 survey](https://aclanthology.org/2024.acl-long.822/));
 - Media Frames Corpus;
-- event-centric framing work;
+- event-centric framing work
+  ([WNU 2024 paper](https://aclanthology.org/2024.wnu-1.15.pdf));
 - mixed-method computational frame analysis.
 
 Core idea:
@@ -202,7 +211,10 @@ source and frame contrast second
 Relevant work:
 
 - Media Cloud
+  ([MIT overview](https://www.media.mit.edu/projects/media-cloud/overview/),
+  [Berkman Klein](https://cyber.harvard.edu/research/mediacloud))
 - Media Cloud ICWSM paper
+  ([AAAI ICWSM](https://ojs.aaai.org/index.php/ICWSM/article/view/18127))
 
 Core idea:
 
@@ -235,7 +247,9 @@ Use attention mapping as a first-class component:
 Relevant work:
 
 - StoryAtlas from Cultural Heritage Informatics Initiative
+  ([project page](https://chi.anp.casl.cal.msu.edu/2024/05/02/explore-storyatlas/))
 - Visualizing narrative patterns in online news media
+  ([Multimedia Tools and Applications](https://link.springer.com/article/10.1007/s11042-019-08186-9))
 
 Core idea:
 
@@ -269,7 +283,7 @@ Atlas should make the visual grammar part of the model:
 Relevant work:
 
 - "Interactive Narrative Analytics: Bridging Computational Narrative Extraction
-  and Human Sensemaking"
+  and Human Sensemaking" ([arXiv](https://arxiv.org/abs/2601.11459))
 
 Core idea:
 

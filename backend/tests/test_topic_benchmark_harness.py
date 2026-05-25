@@ -37,6 +37,11 @@ def test_build_benchmark_item_outputs_label_ready_record():
         "gold_decision": None,
         "gold_topic_slug": None,
         "gold_error_type": None,
+        "gold_scope": None,
+        "gold_evidence_role": None,
+        "gold_parent_thread": None,
+        "gold_child_thread": None,
+        "gold_supported_questions": [],
         "notes": None,
     }
 
@@ -78,6 +83,9 @@ def test_score_labeled_items_computes_per_topic_precision_and_gates():
         "gate": "pass_target",
     }
     assert report["by_error_type"] == {}
+    assert report["by_scope"] == {}
+    assert report["by_evidence_role"] == {}
+    assert report["by_supported_question"] == {}
 
 
 def test_score_labeled_items_reports_error_type_distribution():
@@ -111,6 +119,79 @@ def test_score_labeled_items_reports_error_type_distribution():
         "parent_thread_candidate": 1,
         "substring_noise": 1,
     }
+
+
+def test_score_labeled_items_reports_scope_role_and_answerability_distribution():
+    rows = [
+        {
+            "assigned_topic_slug": "mining-royalty-risk",
+            "gold_decision": "correct",
+            "gold_scope": "child_thread",
+            "gold_evidence_role": "primary_event",
+            "gold_supported_questions": [
+                "why_moving",
+                "where_concentrated",
+                "evidence_support",
+            ],
+        },
+        {
+            "assigned_topic_slug": "transport-corridor-disruption",
+            "gold_decision": "incorrect",
+            "gold_scope": "parent_thread",
+            "gold_evidence_role": "background",
+            "gold_supported_questions": ["related_thread"],
+        },
+    ]
+
+    report = score_labeled_items(rows)
+
+    assert report["by_scope"] == {"child_thread": 1, "parent_thread": 1}
+    assert report["by_evidence_role"] == {"background": 1, "primary_event": 1}
+    assert report["by_supported_question"] == {
+        "evidence_support": 1,
+        "related_thread": 1,
+        "where_concentrated": 1,
+        "why_moving": 1,
+    }
+
+
+def test_score_labeled_items_rejects_invalid_scope_role_and_question():
+    invalid_scope = [{"assigned_topic_slug": "x", "gold_decision": "correct", "gold_scope": "topic"}]
+    invalid_role = [
+        {
+            "assigned_topic_slug": "x",
+            "gold_decision": "correct",
+            "gold_evidence_role": "rumor",
+        }
+    ]
+    invalid_question = [
+        {
+            "assigned_topic_slug": "x",
+            "gold_decision": "correct",
+            "gold_supported_questions": ["why"],
+        }
+    ]
+
+    try:
+        score_labeled_items(invalid_scope)
+    except ValueError as exc:
+        assert "Invalid gold_scope" in str(exc)
+    else:
+        raise AssertionError("Expected invalid gold_scope to raise")
+
+    try:
+        score_labeled_items(invalid_role)
+    except ValueError as exc:
+        assert "Invalid gold_evidence_role" in str(exc)
+    else:
+        raise AssertionError("Expected invalid gold_evidence_role to raise")
+
+    try:
+        score_labeled_items(invalid_question)
+    except ValueError as exc:
+        assert "Invalid gold_supported_questions" in str(exc)
+    else:
+        raise AssertionError("Expected invalid gold_supported_questions to raise")
 
 
 def test_precision_gate_has_minimum_and_target_thresholds():
