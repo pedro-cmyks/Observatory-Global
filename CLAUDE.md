@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-25 (narrative classification root cause)
+Last updated: 2026-05-25 (narrative intelligence framework)
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -112,6 +112,15 @@ Narrative classification root cause:
   Quality should be answerability-first: measure whether Atlas answers its
   seven product questions with relevant evidence, correct semantic scope,
   enough coverage, and clear uncertainty.
+- External narrative-intelligence field review:
+  `docs/research/topic-quality/2026-05-25-narrative-intelligence-field-review.md`.
+- Active model framework:
+  `docs/specs/2026-05-25-atlas-narrative-intelligence-framework.md`.
+  Atlas is both model and visualizer: signals become evidence, evidence supports
+  parent/child/entity Narrative Threads, relations connect those threads, and
+  the UI exposes the graph through focus lenses. The next Path B step is to
+  label semantic scope and evidence role, then generate a read-only Narrative
+  Thread Graph report before adding persistent tables or promoting an encoder.
 
 ## Previous Session Context (2026-05-21, data operating roadmap)
 

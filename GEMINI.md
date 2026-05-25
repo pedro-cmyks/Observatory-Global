@@ -1,6 +1,6 @@
 # GEMINI Code Assistant Context — Observatory Global (Atlas)
 
-Last updated: 2026-05-25 (narrative classification root cause)
+Last updated: 2026-05-25 (narrative intelligence framework)
 
 This document gives the Gemini AI assistant the current, accurate context for the Observatory Global project. Treat this as the source of truth for deployment topology, architecture, and conventions.
 
@@ -80,6 +80,16 @@ Market/product quality review:
 Quality should be answerability-first: does Atlas answer the seven product
 questions with relevant evidence, correct semantic scope, sufficient coverage,
 and clear uncertainty?
+External narrative-intelligence field review:
+`docs/research/topic-quality/2026-05-25-narrative-intelligence-field-review.md`.
+Active Atlas framework:
+`docs/specs/2026-05-25-atlas-narrative-intelligence-framework.md`.
+Atlas is now defined as both model and visualizer: signals become evidence;
+evidence supports parent/child/entity Narrative Threads; relations connect
+threads; quality envelopes explain confidence; product surfaces are lenses over
+that graph. Next Path B work should label semantic scope and evidence role and
+generate a read-only Narrative Thread Graph report before persistent tables or
+encoder promotion.
 
 Equal Earth / equal-area projection is tracked separately as #212 and ADR-0005.
 It is product-architecture parking for Atlas's worldview, not part of the

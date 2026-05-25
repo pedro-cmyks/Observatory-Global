@@ -75,6 +75,8 @@ Key docs/files changed in session 25 (Path C + projection note — 2026-05-25):
 - `docs/research/topic-quality/2026-05-25-path-b-priority-label-results.md` — analysis of typed failures: substring noise, scope mismatch, parent-thread candidate, primary-context mismatch, insufficient context, off-topic.
 - `docs/research/topic-quality/2026-05-25-narrative-classification-root-cause-audit.md` — model-level diagnosis: current assignment layer collapses domains, parent threads, child threads, entity threads, evidence rows, and contextual mentions.
 - `docs/research/topic-quality/2026-05-25-atlas-quality-models-market-and-product.md` — market/repo review of quality metrics; recommends answerability-first Atlas quality around the seven product questions.
+- `docs/research/topic-quality/2026-05-25-narrative-intelligence-field-review.md` — external field review of event-centric narrative graphs, narrative maps, dynamic topic modeling, topic tracking, media framing, attention platforms, StoryAtlas-style visualization, and interactive narrative analytics.
+- `docs/specs/2026-05-25-atlas-narrative-intelligence-framework.md` — active model canon: Atlas is both narrative intelligence model and visualizer; next work is semantic/evidence-role labels plus a read-only Narrative Thread Graph report before persistent tables or encoder promotion.
 
 Session 22 topic taxonomy state:
 - Path A pilot result: `election-legitimacy-dispute` lex_pct `6.3% -> 31.6%`, high_conf `5 -> 27`, multilingual terms drove `74%` of lex-match volume; global coverage moved `13.08% -> 13.35%`.
@@ -87,6 +89,7 @@ Session 22 topic taxonomy state:
 - Path B nuance: do not delete broad concepts just because they fail a specific child assignment. `Panama Canal` can be a valid parent/entity thread, but it is only `transport-corridor-disruption` evidence when the headline shows closure, drought, blockade, delay, shipping disruption, or operational impact.
 - Root-cause guardrail: do not keep solving benchmark failures topic-by-topic before modeling semantic role. Future labels should distinguish `domain`, `parent_thread`, `child_thread`, `entity_thread`, `evidence`, `context_signal`, and `noise`.
 - Quality-model guardrail: metrics should trace to the seven Atlas questions. Assignment precision alone is insufficient; Atlas quality should combine answerability, evidence, scope, source, movement, and coverage.
+- Narrative-intelligence framework guardrail: Atlas is not a fixed topic dashboard or pure topic model. Treat `atlas_topics` as internal anchors; expose living parent/child/entity Narrative Threads with typed relations, movement drivers, evidence roles, and quality envelopes.
 - Quality guardrail: do not treat assignment volume as product quality. After migrations 040-041, several topics intentionally became thin (`food-price-stress`, `transport-corridor-disruption`, `forced-displacement`) rather than noisy. Keep them available as evidence-backed anchors, but do not promote them visually until volume/sample precision improves.
 - Theme/topic guardrail: do not trust GDELT theme classification alone as proof of a significant Atlas topic. Topic changes must be validated against real headlines, lex_pct/high_conf movement, and precision spot checks.
 

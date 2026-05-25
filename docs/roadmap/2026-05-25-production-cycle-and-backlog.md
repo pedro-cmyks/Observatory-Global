@@ -198,11 +198,41 @@ Next quality dependency:
   `docs/research/topic-quality/2026-05-25-narrative-classification-root-cause-audit.md`.
 - Market/product quality review:
   `docs/research/topic-quality/2026-05-25-atlas-quality-models-market-and-product.md`.
+- External field review:
+  `docs/research/topic-quality/2026-05-25-narrative-intelligence-field-review.md`.
+- Active model framework:
+  `docs/specs/2026-05-25-atlas-narrative-intelligence-framework.md`.
 - The next dependency is not another topic-specific repair. It is a model-level
   correction: separate domains, parent threads, child threads, entity threads,
   evidence rows, and contextual mentions before training or ranking changes.
 - Validation should be answerability-first: can Atlas answer the seven product
   questions with evidence, scope, coverage, and uncertainty?
+
+### Atlas Narrative Intelligence Framework
+
+Atlas should be treated as both model and visualizer. The model converts
+signals into evidence-backed Narrative Threads; the visualizer exposes those
+threads through the globe, Narrative Threads, focus panels, source integrity,
+stream, and workspace.
+
+The framework adopts the useful parts of event-centric narrative graphs,
+narrative maps, dynamic topic models, topic detection/tracking, media framing,
+attention mapping, and interactive narrative analytics. Atlas should not copy
+any one of those systems. Its product harness is answerability: whether a
+thread can answer the seven Atlas questions with coherent evidence and a clear
+quality envelope.
+
+Next implementation sequence:
+
+1. Extend Path B labels beyond `gold_relevant` into semantic scope and evidence
+   role.
+2. Sample a larger cross-thread benchmark, not only risky individual topics.
+3. Generate a read-only Narrative Thread Graph report from existing data.
+4. Score graph candidates against the seven-question harness.
+5. Promote only quality-cleared objects into `/api/v2/threads`.
+
+Do not add persistent thread graph tables until the report and harness show the
+object model is stable.
 
 ## Guardrails
 

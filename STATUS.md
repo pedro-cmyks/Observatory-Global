@@ -1,5 +1,5 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-25 (narrative classification root cause)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-05-25 (narrative intelligence framework)
 
 ---
 
@@ -87,6 +87,19 @@ Current data/product state:
   Atlas quality should be answerability-first: measure whether the system can
   answer the seven Atlas questions with relevant evidence, correct semantic
   scope, enough coverage, and clear uncertainty.
+- External field review is documented in
+  `docs/research/topic-quality/2026-05-25-narrative-intelligence-field-review.md`.
+  Adjacent models include event-centric narrative graphs, narrative maps,
+  dynamic topic modeling, topic tracking, media framing, Media Cloud-style
+  attention analysis, StoryAtlas-style visualization, and interactive narrative
+  analytics.
+- The active Atlas model canon is now
+  `docs/specs/2026-05-25-atlas-narrative-intelligence-framework.md`.
+  Atlas is defined as a live narrative intelligence model and visualizer:
+  signals -> evidence -> parent/child/entity threads -> relations -> quality
+  envelope -> product surfaces. The next Path B step is semantic/evidence-role
+  labeling and a read-only Narrative Thread Graph report, not another
+  topic-specific patch.
 
 Living Threads canon:
 
@@ -183,14 +196,16 @@ Next execution order:
    and answerability:
    domain, parent thread, child thread, entity thread, evidence, context signal,
    noise, and which Atlas questions the row/thread can support.
-2. Prototype read-only parent -> child Narrative Thread hierarchy above
-   existing data before adding persistent tables or training an encoder.
-3. Keep encoder/ranking promotion blocked until the benchmark clears the 85%
+2. Extend the Path B harness schema with `gold_scope`, `gold_evidence_role`,
+   parent/child thread candidates, and supported Atlas questions.
+3. Prototype a read-only Narrative Thread Graph report above existing data
+   before adding persistent tables or training an encoder.
+4. Keep encoder/ranking promotion blocked until the benchmark clears the 85%
    floor, with 90% as the product target.
-4. Run deployed app-wide long-window smoke tests before closing `#193`.
-5. Normalize product sentiment presentation around one Atlas sentiment under
+5. Run deployed app-wide long-window smoke tests before closing `#193`.
+6. Normalize product sentiment presentation around one Atlas sentiment under
    `#183`.
-6. Evolve Entity Focus into thread participation, not raw mention display.
+7. Evolve Entity Focus into thread participation, not raw mention display.
 
 ---
 

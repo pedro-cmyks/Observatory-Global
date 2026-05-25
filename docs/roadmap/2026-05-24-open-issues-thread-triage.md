@@ -1,8 +1,8 @@
 # Open Issues Triage For Living Threads
 
 **Date:** 2026-05-24.
-**Updated:** 2026-05-25 after PR #211, frontend thread-focus deploy, and
-production-cycle canon.
+**Updated:** 2026-05-25 after PR #211, frontend thread-focus deploy,
+production-cycle canon, and narrative-intelligence framework.
 **Basis:** open GitHub issues reviewed with `gh issue list --state open --limit 120`.
 
 ## Triage Labels
@@ -178,3 +178,20 @@ Immediate active issue order:
   `docs/research/topic-quality/2026-05-25-atlas-quality-models-market-and-product.md`.
   #203/#207 validation should become answerability-first: each metric should
   trace to one of the seven Atlas questions.
+
+## 2026-05-25 Narrative Intelligence Framework Update
+
+- External field review:
+  `docs/research/topic-quality/2026-05-25-narrative-intelligence-field-review.md`.
+- Active model framework:
+  `docs/specs/2026-05-25-atlas-narrative-intelligence-framework.md`.
+- Atlas should be treated as both model and visualizer. The model converts
+  signals into evidence-backed parent/child/entity Narrative Threads; the
+  visualizer exposes those threads through the globe, thread list, focus panels,
+  source integrity, stream, and workspace.
+- #203 next action: extend benchmark labels from binary topic relevance into
+  semantic scope, evidence role, parent/child thread candidates, and supported
+  Atlas questions.
+- #207 next action: use a read-only Narrative Thread Graph report to test
+  relations, movement drivers, evidence roles, and quality envelopes before
+  adding persistent graph tables or deeper UI changes.
