@@ -163,4 +163,9 @@ Immediate active issue order:
   `docs/research/topic-quality/benchmark-samples/2026-05-25-path-b-priority-topics.jsonl`.
 - Harness documentation:
   `docs/research/topic-quality/2026-05-25-path-b-benchmark-harness.md`.
-- Next issue action for #203 is labeling/scoring, not model promotion.
+- First labeled score:
+  `docs/research/topic-quality/benchmark-scores/2026-05-25-path-b-priority-topics-score.json`.
+- Overall precision is `80.85%`, below the 85% floor. Next issue action for
+  #203 is typed repair/design, not model promotion.
+- Typed failures split into mechanical noise and hierarchy work. Broad concepts
+  that fail a specific child anchor can still be valid parent/entity threads.

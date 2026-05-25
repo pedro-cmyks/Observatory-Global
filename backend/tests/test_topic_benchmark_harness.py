@@ -36,6 +36,7 @@ def test_build_benchmark_item_outputs_label_ready_record():
         "evidence": {"lex_count": 2, "matched_terms": ["outbreak", "ebola"]},
         "gold_decision": None,
         "gold_topic_slug": None,
+        "gold_error_type": None,
         "notes": None,
     }
 
@@ -75,6 +76,40 @@ def test_score_labeled_items_computes_per_topic_precision_and_gates():
         "unclear": 1,
         "precision": 1.0,
         "gate": "pass_target",
+    }
+    assert report["by_error_type"] == {}
+
+
+def test_score_labeled_items_reports_error_type_distribution():
+    rows = [
+        {
+            "assigned_topic_slug": "gender-violence-rights",
+            "gold_decision": "incorrect",
+            "gold_error_type": "substring_noise",
+        },
+        {
+            "assigned_topic_slug": "transport-corridor-disruption",
+            "gold_decision": "incorrect",
+            "gold_error_type": "parent_thread_candidate",
+        },
+        {
+            "assigned_topic_slug": "labor-strike-disruption",
+            "gold_decision": "unclear",
+            "gold_error_type": "insufficient_context",
+        },
+        {
+            "assigned_topic_slug": "disease-outbreak",
+            "gold_decision": "correct",
+            "gold_error_type": "scope_mismatch",
+        },
+    ]
+
+    report = score_labeled_items(rows)
+
+    assert report["by_error_type"] == {
+        "insufficient_context": 1,
+        "parent_thread_candidate": 1,
+        "substring_noise": 1,
     }
 
 

@@ -59,6 +59,7 @@ Each JSONL row is one candidate assignment:
   },
   "gold_decision": null,
   "gold_topic_slug": null,
+  "gold_error_type": null,
   "notes": null
 }
 ```
@@ -76,6 +77,17 @@ Optional `gold_topic_slug`:
 - same as `assigned_topic_slug` for confirmed rows;
 - another topic slug if the assignment is wrong but a better Atlas topic exists;
 - `null` if it is noise or outside current taxonomy.
+
+Optional `gold_error_type`:
+
+| Value | Meaning |
+|---|---|
+| `substring_noise` | The match is an artifact of substring matching, such as `rape` inside `parapente`. |
+| `scope_mismatch` | The signal belongs to a broader/neighboring concept but not the assigned specific thread. |
+| `parent_thread_candidate` | The term may deserve a parent/entity thread, but not this specific assignment. |
+| `primary_context_mismatch` | The matched topic appears as background, while another topic is primary. |
+| `insufficient_context` | The headline alone is too thin to label confidently. |
+| `off_topic` | The row is unrelated to the assigned topic and not useful as a parent candidate. |
 
 ## First Benchmark Sample
 

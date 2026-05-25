@@ -1,0 +1,81 @@
+{
+  "by_error_type": {
+    "insufficient_context": 5,
+    "off_topic": 3,
+    "parent_thread_candidate": 4,
+    "primary_context_mismatch": 4,
+    "scope_mismatch": 8,
+    "substring_noise": 3
+  },
+  "by_topic": {
+    "armed-conflict-escalation": {
+      "correct": 16,
+      "gate": "fail",
+      "incorrect": 7,
+      "labeled": 23,
+      "precision": 0.6957,
+      "unclear": 1
+    },
+    "disease-outbreak": {
+      "correct": 22,
+      "gate": "pass_target",
+      "incorrect": 0,
+      "labeled": 22,
+      "precision": 1.0,
+      "unclear": 2
+    },
+    "food-price-stress": {
+      "correct": 9,
+      "gate": "pass_target",
+      "incorrect": 1,
+      "labeled": 10,
+      "precision": 0.9,
+      "unclear": 0
+    },
+    "forced-displacement": {
+      "correct": 9,
+      "gate": "fail",
+      "incorrect": 2,
+      "labeled": 11,
+      "precision": 0.8182,
+      "unclear": 1
+    },
+    "gender-violence-rights": {
+      "correct": 9,
+      "gate": "fail",
+      "incorrect": 3,
+      "labeled": 12,
+      "precision": 0.75,
+      "unclear": 0
+    },
+    "labor-strike-disruption": {
+      "correct": 5,
+      "gate": "fail",
+      "incorrect": 2,
+      "labeled": 7,
+      "precision": 0.7143,
+      "unclear": 5
+    },
+    "transport-corridor-disruption": {
+      "correct": 6,
+      "gate": "fail",
+      "incorrect": 3,
+      "labeled": 9,
+      "precision": 0.6667,
+      "unclear": 0
+    }
+  },
+  "gate": {
+    "minimum": 0.85,
+    "target": 0.9
+  },
+  "overall": {
+    "correct": 76,
+    "gate": "fail",
+    "incorrect": 18,
+    "labeled": 94,
+    "precision": 0.8085,
+    "unclear": 9
+  },
+  "schema_version": "atlas-topic-benchmark-v1"
+}

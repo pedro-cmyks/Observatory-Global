@@ -67,6 +67,14 @@ Current data/product state:
   90% target precision gate. First sample artifact:
   `docs/research/topic-quality/benchmark-samples/2026-05-25-path-b-priority-topics.jsonl`
   with 103 rows across seven priority topics.
+- First Path B labels are documented in
+  `docs/research/topic-quality/2026-05-25-path-b-priority-label-results.md`.
+  Overall precision was `80.85%`, below the 85% floor. `disease-outbreak`
+  (`100%`) and `food-price-stress` (`90%`) passed target; armed conflict,
+  forced displacement, gender violence, labor strikes, and transport corridors
+  failed. The important product finding is typed failure: some rows are true
+  substring/off-topic noise, but others are parent-thread candidates or scope
+  mismatches that should feed nested Narrative Threads rather than be deleted.
 
 Living Threads canon:
 
@@ -159,10 +167,12 @@ Sentiment decision from analyst review:
 
 Next execution order:
 
-1. Label the Path B 103-row priority sample and score it with
-   `backend/scripts/topic_benchmark_harness.py score`.
-2. Use any topic below the 85% floor to drive the next taxonomy/lexicon repair
-   before changing ranking or training an encoder.
+1. Use typed Path B failures to separate mechanical precision repairs from
+   living-thread hierarchy work:
+   `substring_noise` can be fixed directly; `parent_thread_candidate` and
+   `scope_mismatch` should inform parent -> child Narrative Threads.
+2. Keep encoder/ranking promotion blocked until the benchmark clears the 85%
+   floor, with 90% as the product target.
 3. Run deployed app-wide long-window smoke tests before closing `#193`.
 4. Normalize product sentiment presentation around one Atlas sentiment under
    `#183`.

@@ -68,15 +68,31 @@ All-topic quality audit state:
 Path B benchmark harness state:
 
 - `backend/scripts/topic_benchmark_harness.py` is the read-only benchmark tool.
-  It has `sample` and `score` modes.
+  It has `sample` and `score` modes. The score report now also counts typed
+  failures through optional `gold_error_type`.
 - First sample:
   `docs/research/topic-quality/benchmark-samples/2026-05-25-path-b-priority-topics.jsonl`
   with 103 rows across armed conflict, disease, food, displacement, gender
   violence, labor, and transport.
+- First labeled sample:
+  `docs/research/topic-quality/benchmark-samples/2026-05-25-path-b-priority-topics-labeled.jsonl`.
+- First score:
+  `docs/research/topic-quality/benchmark-scores/2026-05-25-path-b-priority-topics-score.json`.
+- Result doc:
+  `docs/research/topic-quality/2026-05-25-path-b-priority-label-results.md`.
+- First result: overall precision `80.85%`, below the 85% floor. Disease
+  outbreak passed target at `100%`; food price stress passed target at `90%`.
+  The failures are not all noise: typed errors distinguish `substring_noise`,
+  `scope_mismatch`, `parent_thread_candidate`, `primary_context_mismatch`,
+  `insufficient_context`, and `off_topic`.
 - Documentation:
   `docs/research/topic-quality/2026-05-25-path-b-benchmark-harness.md`.
 - Do not promote encoder/ranking changes below the 85% precision floor; target
   90% before treating topic quality as product-grade.
+- Do not delete broad concepts only because they fail a specific child anchor.
+  Example: `Panama Canal` can be a valid broad/entity thread, but not evidence
+  for `transport-corridor-disruption` unless the signal shows closure, drought,
+  blockade, delay, shipping disruption, or operational impact.
 
 ## Previous Session Context (2026-05-21, data operating roadmap)
 

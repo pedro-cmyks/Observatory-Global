@@ -61,6 +61,13 @@ contains 103 rows across seven priority topics. Doc:
 `docs/research/topic-quality/2026-05-25-path-b-benchmark-harness.md`. Do not
 promote encoder/ranking changes until labeled samples clear 85% precision
 minimum; 90% is the product target.
+First labeled score:
+`docs/research/topic-quality/benchmark-scores/2026-05-25-path-b-priority-topics-score.json`
+with overall precision `80.85%`, below the 85% floor. Result doc:
+`docs/research/topic-quality/2026-05-25-path-b-priority-label-results.md`.
+Typed failures now matter: `substring_noise` is a mechanical repair, but
+`parent_thread_candidate` and `scope_mismatch` should feed nested Narrative
+Threads rather than cause broad concepts to be deleted.
 
 Equal Earth / equal-area projection is tracked separately as #212 and ADR-0005.
 It is product-architecture parking for Atlas's worldview, not part of the
@@ -97,7 +104,7 @@ current data sprint.
 
 **Important scope correction for #193:** backend app-wide `1w`/`1m` routing is implemented for `/heat/countries`, `/country/{code}`, `/theme/{topic_slug}`, and `/anomalies/themes`; `/heatmap` is explicitly deprecated in favor of `/heat/countries`; frontend `CoverageBadge` is wired into Heat and Theme Detail. `#193` should stay open until visual smoke tests pass through the deployed frontend. `#194` long-window `top_sources` is fixed with `historical_source_daily`; live plan after `VACUUM` is ~40 ms index-only scan, `Heap Fetches: 0`.
 
-**Next session priorities:** (1) label and score the #203 Path B 103-row benchmark sample, (2) use failing topics to drive taxonomy/lexicon repair before model promotion, (3) visual smoke test app-wide historical routing and close #193 only after deployed UI verification, (4) return to #176/#177/#185 for Entity Focus, Signal Stream/source lanes, and topic/NLP quality. `general-monitoring` remains a quality smell in historical aggregates; storage/routing is no longer the main blocker.
+**Next session priorities:** (1) use typed #203 benchmark failures to separate mechanical precision fixes from parent/child Narrative Thread hierarchy work, (2) keep encoder/ranking promotion blocked until measured precision clears 85%, (3) visual smoke test app-wide historical routing and close #193 only after deployed UI verification, (4) return to #176/#177/#185 for Entity Focus, Signal Stream/source lanes, and topic/NLP quality. `general-monitoring` remains a quality smell in historical aggregates; storage/routing is no longer the main blocker.
 
 **Fly image split (#195):** `Dockerfile` now has `api-runtime` and `nlp-runtime` targets. Use `scripts/deploy-fly-api.sh` for API-only deploys (`--build-target api-runtime --process-groups app`) and `scripts/deploy-fly-nlp-worker.sh` for NLP/model deploys (`--build-target nlp-runtime --process-groups nlp_worker`). Production verification: API-only deploy produced a `257 MB` image and updated only the `app` machine; `nlp_worker` stayed on the heavy image and continued `Sentiment[xlm-v1]`, `NER[xlm-v1]`, `Framing[xlm-v1]`.
 

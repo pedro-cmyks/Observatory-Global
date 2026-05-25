@@ -185,8 +185,15 @@ Next quality dependency:
 - First label-ready sample:
   `docs/research/topic-quality/benchmark-samples/2026-05-25-path-b-priority-topics.jsonl`
   with 103 rows across seven priority topics.
-- The next step is labeling and scoring the sample. Manual sample precision is
+- First labeled score:
+  `docs/research/topic-quality/benchmark-scores/2026-05-25-path-b-priority-topics-score.json`.
+- Result analysis:
+  `docs/research/topic-quality/2026-05-25-path-b-priority-label-results.md`.
+- Overall precision is `80.85%`, below the 85% floor. Manual sample precision is
   now a measurable gate before broader taxonomy/model promotion.
+- Do not treat every failed assignment as noise. Some failures are broad
+  parent/entity thread candidates, such as `Panama Canal`, that should feed a
+  parent -> child Narrative Threads model rather than a hard lexicon purge.
 
 ## Guardrails
 

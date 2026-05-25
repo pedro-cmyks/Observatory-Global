@@ -25,6 +25,14 @@ import asyncpg
 BENCHMARK_SCHEMA_VERSION = "atlas-topic-benchmark-v1"
 MODEL_VERSION = "theme-hint-lex-v2"
 VALID_DECISIONS = {"correct", "incorrect", "unclear"}
+VALID_ERROR_TYPES = {
+    "substring_noise",
+    "scope_mismatch",
+    "parent_thread_candidate",
+    "primary_context_mismatch",
+    "insufficient_context",
+    "off_topic",
+}
 
 
 SAMPLE_SQL = """
@@ -126,6 +134,7 @@ def build_benchmark_item(
         "evidence": evidence_payload,
         "gold_decision": None,
         "gold_topic_slug": None,
+        "gold_error_type": None,
         "notes": None,
     }
 
@@ -161,6 +170,7 @@ def score_labeled_items(
     active_gate = gate or PrecisionGate()
     overall = _empty_counts()
     by_topic_counts: dict[str, dict[str, int]] = {}
+    by_error_type: dict[str, int] = {}
 
     for raw in items:
         item = _coerce_item(raw)
@@ -169,15 +179,22 @@ def score_labeled_items(
             continue
         if decision not in VALID_DECISIONS:
             raise ValueError(f"Invalid gold_decision: {decision!r}")
+        error_type = item.get("gold_error_type")
+        if error_type is not None and error_type not in VALID_ERROR_TYPES:
+            raise ValueError(f"Invalid gold_error_type: {error_type!r}")
 
         topic_slug = item.get("assigned_topic_slug") or "unknown"
         topic_counts = by_topic_counts.setdefault(topic_slug, _empty_counts())
         if decision == "unclear":
             overall["unclear"] += 1
             topic_counts["unclear"] += 1
+            if error_type:
+                by_error_type[error_type] = by_error_type.get(error_type, 0) + 1
             continue
         overall[decision] += 1
         topic_counts[decision] += 1
+        if decision == "incorrect" and error_type:
+            by_error_type[error_type] = by_error_type.get(error_type, 0) + 1
 
     return {
         "schema_version": BENCHMARK_SCHEMA_VERSION,
@@ -187,6 +204,7 @@ def score_labeled_items(
             slug: _summarize_counts(counts, active_gate)
             for slug, counts in sorted(by_topic_counts.items())
         },
+        "by_error_type": dict(sorted(by_error_type.items())),
     }
 
 

@@ -70,6 +70,9 @@ Key docs/files changed in session 25 (Path C + projection note — 2026-05-25):
 - `backend/tests/test_topic_benchmark_harness.py` — harness unit tests for label schema, JSONL scoring, and precision gates.
 - `docs/research/topic-quality/2026-05-25-path-b-benchmark-harness.md` — Path B harness documentation and first sample plan.
 - `docs/research/topic-quality/benchmark-samples/2026-05-25-path-b-priority-topics.jsonl` — first 103-row priority sample across seven risky/recently changed topics.
+- `docs/research/topic-quality/benchmark-samples/2026-05-25-path-b-priority-topics-labeled.jsonl` — first labeled Path B sample.
+- `docs/research/topic-quality/benchmark-scores/2026-05-25-path-b-priority-topics-score.json` — first score: overall precision `80.85%`, below the 85% floor.
+- `docs/research/topic-quality/2026-05-25-path-b-priority-label-results.md` — analysis of typed failures: substring noise, scope mismatch, parent-thread candidate, primary-context mismatch, insufficient context, off-topic.
 
 Session 22 topic taxonomy state:
 - Path A pilot result: `election-legitimacy-dispute` lex_pct `6.3% -> 31.6%`, high_conf `5 -> 27`, multilingual terms drove `74%` of lex-match volume; global coverage moved `13.08% -> 13.35%`.
@@ -78,7 +81,8 @@ Session 22 topic taxonomy state:
 - Global v2 topic coverage after full Path A rollout: `18.47%` of 24h eligible signals.
 - Open issues: #203 Path B and #204 Path C. #202 is closed after migrations 036-038.
 - Next taxonomy step: use Path B labels and broader Path C samples to decide whether royalty/concession deserves a separate anchor from mining/resource safety crisis. Migration 039 already corrected the visible mining/resource safety label while keeping slug compatibility.
-- Path B current step: label and score `docs/research/topic-quality/benchmark-samples/2026-05-25-path-b-priority-topics.jsonl`; do not promote encoder or ranking changes until measured precision clears the 85% floor, with 90% as product target.
+- Path B current step: use the first labeled score to separate mechanical precision repairs from parent/child Narrative Thread hierarchy work; do not promote encoder or ranking changes until measured precision clears the 85% floor, with 90% as product target.
+- Path B nuance: do not delete broad concepts just because they fail a specific child assignment. `Panama Canal` can be a valid parent/entity thread, but it is only `transport-corridor-disruption` evidence when the headline shows closure, drought, blockade, delay, shipping disruption, or operational impact.
 - Quality guardrail: do not treat assignment volume as product quality. After migrations 040-041, several topics intentionally became thin (`food-price-stress`, `transport-corridor-disruption`, `forced-displacement`) rather than noisy. Keep them available as evidence-backed anchors, but do not promote them visually until volume/sample precision improves.
 - Theme/topic guardrail: do not trust GDELT theme classification alone as proof of a significant Atlas topic. Topic changes must be validated against real headlines, lex_pct/high_conf movement, and precision spot checks.
 
