@@ -271,11 +271,16 @@ Phase 1 started:
   `docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl`.
 - Review progress snapshot:
   `docs/research/atlas-paper/phase-1-validation/progress-review-batch-01.json`
-  currently shows `0/32` rows ready before human adjudication.
+  now shows `32/32` rows ready after Markdown adjudication.
+- Reviewed batch 01 score:
+  `docs/research/atlas-paper/phase-1-validation/reports/reviewed-batch-01-score.json`.
+  Overall precision is `53.33%`, below the `85%` minimum gate.
+- Normalization report:
+  `docs/research/atlas-paper/phase-1-validation/reports/batch-01-md-review-normalization.json`
+  records `7` warnings from Markdown normalization.
 
-Next action: adjudicate assistant-pilot batch 01 from the review packet/template,
-run `review-progress`, convert completed rows with `finalize-review`, label
-batches 02-08, then run the v2 score over reviewed/gold labels to produce
+Next action: review the batch 01 normalization warnings, continue batches 02-08,
+then run the v2 score over the broader reviewed/gold sample to produce
 semantic-scope, evidence-role, and supported-question distributions.
 
 Visual validation route:
@@ -290,6 +295,8 @@ Visual validation route:
   `backend/scripts/atlas_label_workflow.py review-template`.
 - Track adjudication readiness with `review-progress`; convert completed review
   rows to scoreable labels with `finalize-review --require-complete`.
+- `apply-review-packet` supports reviewer answers entered in the Markdown packet,
+  but any normalization warnings must be reviewed before paper-grade `gold`.
 - Do not promote these charts into the production UI until reviewed/gold labels
   show that the metric is stable and useful.
 

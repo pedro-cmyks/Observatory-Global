@@ -202,3 +202,64 @@ New workflow commands:
 - `finalize-review` converts completed rows into scoreable labels with
   `gold_*` fields and a `label_quality` of either `reviewed` or `gold`.
 - `--require-complete` blocks accidental partial reviewed/gold outputs.
+
+## 2026-05-26 — Batch 01 Markdown Review Applied
+
+Inputs:
+
+- Review packet:
+  `docs/research/atlas-paper/phase-1-validation/review-packets/2026-05-25-atlas-v2-stratified-batch-01.review.md`
+- Review template:
+  `docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl`
+
+Outputs:
+
+- Updated review template:
+  `docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl`
+- Normalization report:
+  `docs/research/atlas-paper/phase-1-validation/reports/batch-01-md-review-normalization.json`
+- Reviewed labels:
+  `docs/research/atlas-paper/phase-1-validation/labels/reviewed/2026-05-25-atlas-v2-stratified-batch-01.reviewed.jsonl`
+- Reviewed score:
+  `docs/research/atlas-paper/phase-1-validation/reports/reviewed-batch-01-score.json`
+- Reviewed visual report:
+  `docs/research/atlas-paper/phase-1-validation/reports/reviewed-batch-01/reviewed-batch-01.md`
+
+Review progress after applying Markdown answers:
+
+| Metric | Value |
+|---|---:|
+| Total rows | 32 |
+| Ready rows | 32 |
+| Remaining rows | 0 |
+| Accepted assistant rows | 23 |
+| Reviewer-corrected rows | 9 |
+| Normalization warnings | 7 |
+
+Reviewed score:
+
+| Metric | Value |
+|---|---:|
+| Labeled denominator | 30 |
+| Correct | 16 |
+| Incorrect | 14 |
+| Unclear | 2 |
+| Precision | 53.33% |
+| Gate | fail |
+
+Per-topic precision:
+
+| Topic | Precision | Note |
+|---|---:|---|
+| `agriculture-crop-risk` | 25.00% | Severe scope/context leakage. |
+| `armed-conflict-escalation` | 66.67% | Better but still below precision gate. |
+| `constitutional-institutional-crisis` | 57.14% | Mixed evidence and scope failures. |
+
+Interpretation:
+
+- This is now `reviewed`, not `gold`.
+- The batch supports the model-level diagnosis: failures are dominated by
+  semantic scope and primary-context mismatch, not only substring noise.
+- Do not promote model/ranking changes from this batch. Continue batches 02-08
+  and review the 7 normalization warnings before declaring any paper-grade
+  result.

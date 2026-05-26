@@ -82,8 +82,10 @@ Key docs/files changed in session 25 (Path C + projection note — 2026-05-25):
 - `docs/research/atlas-paper/phase-1-validation/README.md` — Phase 1 workspace route: raw batches, pilot labels, future gold labels, reports, and progress snapshots.
 - `docs/research/atlas-paper/phase-1-validation/review-packets/2026-05-25-atlas-v2-stratified-batch-01.review.md` — human adjudication packet joining raw batch 01 evidence with assistant-pilot suggestions and reviewer fields.
 - `docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl` — machine-editable review template with `assistant_*` suggestions and blank `reviewer_*` fields.
-- `docs/research/atlas-paper/phase-1-validation/progress-review-batch-01.json` — review progress snapshot; current batch 01 state is `0/32` ready before human adjudication.
-- `backend/scripts/atlas_label_workflow.py` — Phase 1 file workflow helper. Modes: `split`, `progress`, `merge`, `review-packet`, `review-template`, `review-progress`, and `finalize-review`.
+- `docs/research/atlas-paper/phase-1-validation/progress-review-batch-01.json` — review progress snapshot; current batch 01 state is `32/32` ready after Markdown adjudication.
+- `docs/research/atlas-paper/phase-1-validation/reports/batch-01-md-review-normalization.json` — normalization report after applying Pedro's Markdown review answers; current warning count is 7.
+- `docs/research/atlas-paper/phase-1-validation/reports/reviewed-batch-01-score.json` — first reviewed score: `53.33%` precision, below the 85% minimum gate.
+- `backend/scripts/atlas_label_workflow.py` — Phase 1 file workflow helper. Modes: `split`, `progress`, `merge`, `review-packet`, `review-template`, `review-progress`, `finalize-review`, and `apply-review-packet`.
 - `backend/scripts/atlas_validation_report.py` — renders benchmark score JSON into Markdown plus SVG report charts for the paper/validation track.
 - `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.jsonl` — first v2 stratified sample, 256 rows across 30 active topics and four buckets.
 - `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.md` — manifest for the first v2 stratified sample.
@@ -105,6 +107,7 @@ Session 22 topic taxonomy state:
 - Phase 1 guardrail: the first v2 sample is unlabeled. Do not draw model-quality conclusions from it until labels are filled and scored.
 - Assistant-pilot label guardrail: labels under `phase-1-validation/labels/assistant-pilot/` are for workflow testing only. Use review packets to adjudicate them; do not cite them as gold/paper-grade evidence before human review/adjudication.
 - Review-template guardrail: do not run `finalize-review` without human-filled `reviewer_*` fields or explicit `accept_assistant_label=true`; use `--require-complete` before paper-grade scoring.
+- Markdown-review guardrail: `apply-review-packet` may normalize human text such as multi-value fields; review the normalization report before treating the output as `gold`.
 - Visual-report guardrail: keep research charts in `docs/research/atlas-paper/phase-1-validation/reports/`; do not promote them to the production UI until reviewed/gold labels show stable model value.
 - Quality guardrail: do not treat assignment volume as product quality. After migrations 040-041, several topics intentionally became thin (`food-price-stress`, `transport-corridor-disruption`, `forced-displacement`) rather than noisy. Keep them available as evidence-backed anchors, but do not promote them visually until volume/sample precision improves.
 - Theme/topic guardrail: do not trust GDELT theme classification alone as proof of a significant Atlas topic. Topic changes must be validated against real headlines, lex_pct/high_conf movement, and precision spot checks.

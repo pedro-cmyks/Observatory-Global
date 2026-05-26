@@ -1,0 +1,69 @@
+{
+  "by_error_type": {
+    "insufficient_context": 1,
+    "off_topic": 3,
+    "primary_context_mismatch": 9,
+    "scope_mismatch": 1,
+    "substring_noise": 2
+  },
+  "by_evidence_role": {
+    "analysis": 6,
+    "background": 5,
+    "followup": 2,
+    "not_evidence": 2,
+    "primary_event": 11,
+    "reaction": 5
+  },
+  "by_scope": {
+    "child_thread": 19,
+    "context_signal": 7,
+    "noise": 2,
+    "parent_thread": 3
+  },
+  "by_supported_question": {
+    "evidence_support": 20,
+    "related_thread": 15,
+    "what_changed": 4,
+    "where_concentrated": 12,
+    "why_moving": 2
+  },
+  "by_topic": {
+    "agriculture-crop-risk": {
+      "correct": 2,
+      "gate": "fail",
+      "incorrect": 6,
+      "labeled": 8,
+      "precision": 0.25,
+      "unclear": 1
+    },
+    "armed-conflict-escalation": {
+      "correct": 10,
+      "gate": "fail",
+      "incorrect": 5,
+      "labeled": 15,
+      "precision": 0.6667,
+      "unclear": 1
+    },
+    "constitutional-institutional-crisis": {
+      "correct": 4,
+      "gate": "fail",
+      "incorrect": 3,
+      "labeled": 7,
+      "precision": 0.5714,
+      "unclear": 0
+    }
+  },
+  "gate": {
+    "minimum": 0.85,
+    "target": 0.9
+  },
+  "overall": {
+    "correct": 16,
+    "gate": "fail",
+    "incorrect": 14,
+    "labeled": 30,
+    "precision": 0.5333,
+    "unclear": 2
+  },
+  "schema_version": "atlas-topic-benchmark-v2"
+}

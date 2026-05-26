@@ -50,6 +50,14 @@ This is a validation workspace, not a final paper folder.
   `docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl`
 - Review progress snapshot:
   `docs/research/atlas-paper/phase-1-validation/progress-review-batch-01.json`
+- Reviewed labels:
+  `docs/research/atlas-paper/phase-1-validation/labels/reviewed/2026-05-25-atlas-v2-stratified-batch-01.reviewed.jsonl`
+- Reviewed score:
+  `docs/research/atlas-paper/phase-1-validation/reports/reviewed-batch-01-score.json`
+- Reviewed visual report:
+  `docs/research/atlas-paper/phase-1-validation/reports/reviewed-batch-01/reviewed-batch-01.md`
+- Markdown normalization report:
+  `docs/research/atlas-paper/phase-1-validation/reports/batch-01-md-review-normalization.json`
 
 ## Label Quality Levels
 
@@ -109,6 +117,16 @@ backend/.venv/bin/python backend/scripts/atlas_label_workflow.py review-progress
   > docs/research/atlas-paper/phase-1-validation/progress-review-batch-01.json
 ```
 
+Apply reviewer answers from a Markdown review packet into the JSONL template:
+
+```bash
+backend/.venv/bin/python backend/scripts/atlas_label_workflow.py apply-review-packet \
+  --packet docs/research/atlas-paper/phase-1-validation/review-packets/2026-05-25-atlas-v2-stratified-batch-01.review.md \
+  --template docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl \
+  --output docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl \
+  --report docs/research/atlas-paper/phase-1-validation/reports/batch-01-md-review-normalization.json
+```
+
 Finalize a completed review template into scoreable labels:
 
 ```bash
@@ -148,14 +166,10 @@ backend/.venv/bin/python backend/scripts/atlas_validation_report.py \
 
 ## Next Work
 
-1. Use the batch 01 review packet and JSONL template to adjudicate
-   assistant-pilot labels.
-2. Run `review-progress` until all rows are ready.
-3. Convert the completed template into `reviewed` or `gold` labels with
-   `finalize-review`.
-4. Continue labeling batches 02-08.
-5. Merge reviewed/gold labels.
-6. Score the full sample.
-7. Render visual validation reports for reviewed/gold scores.
-8. Use the score and visual report to define the first read-only Narrative
+1. Review the 7 normalization warnings before treating batch 01 as final gold.
+2. Continue labeling batches 02-08.
+3. Merge reviewed/gold labels.
+4. Score the full sample.
+5. Render visual validation reports for reviewed/gold scores.
+6. Use the score and visual report to define the first read-only Narrative
    Thread Graph report.

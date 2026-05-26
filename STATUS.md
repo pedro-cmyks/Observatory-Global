@@ -137,8 +137,17 @@ Current data/product state:
 - Review progress/finalization is now scripted:
   `backend/scripts/atlas_label_workflow.py review-progress` and
   `finalize-review`. Current batch 01 progress is recorded at
-  `docs/research/atlas-paper/phase-1-validation/progress-review-batch-01.json`
-  with `0/32` rows ready, which is expected before human adjudication.
+  `docs/research/atlas-paper/phase-1-validation/progress-review-batch-01.json`.
+- Batch 01 Markdown adjudication was applied on 2026-05-26 with
+  `apply-review-packet`. Current status is `32/32` rows ready: `23` accepted
+  assistant suggestions and `9` reviewer-corrected rows. Normalization report:
+  `docs/research/atlas-paper/phase-1-validation/reports/batch-01-md-review-normalization.json`
+  with `7` warnings.
+- Batch 01 reviewed score:
+  `docs/research/atlas-paper/phase-1-validation/reports/reviewed-batch-01-score.json`.
+  Overall precision is `53.33%` (`16` correct, `14` incorrect, `2` unclear,
+  denominator `30`), below the `85%` minimum gate. Treat this as reviewed
+  internal evidence, not paper-grade gold.
 - Report visuals are now generated outside the product UI by
   `backend/scripts/atlas_validation_report.py`. The first visual report is
   `docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01/assistant-pilot-batch-01.md`

@@ -114,8 +114,12 @@ The machine-editable batch 01 review template is
 `docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl`.
 Review progress/finalization is scripted through
 `backend/scripts/atlas_label_workflow.py review-progress` and `finalize-review`;
-current batch 01 progress is `0/32` ready at
+current batch 01 progress is `32/32` ready at
 `docs/research/atlas-paper/phase-1-validation/progress-review-batch-01.json`.
+First reviewed score is `53.33%` precision in
+`docs/research/atlas-paper/phase-1-validation/reports/reviewed-batch-01-score.json`,
+with 7 normalization warnings in
+`docs/research/atlas-paper/phase-1-validation/reports/batch-01-md-review-normalization.json`.
 Next action is adjudication plus labels for batches 02-08, not another taxonomy
 patch.
 Visual validation reports are generated outside the product UI by

@@ -44,15 +44,15 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
-- `reviewer_decision`:
-- `reviewer_scope`:
-- `reviewer_evidence_role`:
-- `reviewer_error_type`:
-- `reviewer_parent_thread`:
-- `reviewer_child_thread`:
-- `reviewer_supported_questions`:
-- `reviewer_notes`:
+- `accept_assistant_label`: false
+- `reviewer_decision`: incorrect
+- `reviewer_scope`: child_thread
+- `reviewer_evidence_role`: background
+- `reviewer_error_type`: substring_noise
+- `reviewer_parent_thread`: Community advisory , community, agriculture, agriculture community. agriculture bussines
+- `reviewer_child_thread`: -
+- `reviewer_supported_questions`: related_thread
+- `reviewer_notes`:  headline more inclined towards the business side of things, more than the farmer's, even though the farmer sector is mentioned.
 
 
 ## 2. Signal 4617019
@@ -86,14 +86,14 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
-- `reviewer_decision`:
-- `reviewer_scope`:
-- `reviewer_evidence_role`:
-- `reviewer_error_type`:
-- `reviewer_parent_thread`:
-- `reviewer_child_thread`:
-- `reviewer_supported_questions`:
+- `accept_assistant_label`:false
+- `reviewer_decision`: correct
+- `reviewer_scope`: parent_thread
+- `reviewer_evidence_role`: reaction
+- `reviewer_error_type`: -
+- `reviewer_parent_thread`: -
+- `reviewer_child_thread`: farmer-policy-support
+- `reviewer_supported_questions`: evidence_support
 - `reviewer_notes`:
 
 
@@ -128,15 +128,15 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
-- `reviewer_decision`:
-- `reviewer_scope`:
-- `reviewer_evidence_role`:
-- `reviewer_error_type`:
-- `reviewer_parent_thread`:
-- `reviewer_child_thread`:
-- `reviewer_supported_questions`:
-- `reviewer_notes`:
+- `accept_assistant_label`: false
+- `reviewer_decision`: unclear
+- `reviewer_scope`: context_signal
+- `reviewer_evidence_role`: reaction, background
+- `reviewer_error_type`: primary_context_mismatch
+- `reviewer_parent_thread`: Indian congress , farmer protest, agriculture-crop-risk
+- `reviewer_child_thread`:  telangana-paddy-procurement-farmer-protest
+- `reviewer_supported_questions`: where_concentrated, evidence_support
+- `reviewer_notes`: matching only one word cannot determine the outcome. It doesn't give enough context.
 
 
 ## 4. Signal 4582545
@@ -170,15 +170,15 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
-- `reviewer_decision`:
-- `reviewer_scope`:
-- `reviewer_evidence_role`:
-- `reviewer_error_type`:
-- `reviewer_parent_thread`:
-- `reviewer_child_thread`:
-- `reviewer_supported_questions`:
-- `reviewer_notes`:
+- `accept_assistant_label`: false
+- `reviewer_decision`: incorrect
+- `reviewer_scope`: context_signal, entity_thread
+- `reviewer_evidence_role`: analysis, primary_event
+- `reviewer_error_type`: primary_context_mismatch
+- `reviewer_parent_thread`: Indian Finance Ministery, agriculture , oil and gas, foreing exchange
+- `reviewer_child_thread`: Nirmala Sitharaman
+- `reviewer_supported_questions`:related_thread
+- `reviewer_notes`: There's a mismatch on acronyms and contractions. For instance, in this case, FN refers to Finance Minister, and Forex refers to Foreign Exchange.
 
 
 ## 5. Signal 4494624
@@ -212,15 +212,15 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
-- `reviewer_decision`:
-- `reviewer_scope`:
-- `reviewer_evidence_role`:
-- `reviewer_error_type`:
-- `reviewer_parent_thread`:
-- `reviewer_child_thread`:
-- `reviewer_supported_questions`:
-- `reviewer_notes`:
+- `accept_assistant_label`: false
+- `reviewer_decision`: incorrect
+- `reviewer_scope`: child_thread
+- `reviewer_evidence_role`: reaction, background
+- `reviewer_error_type`: scope_mismatch
+- `reviewer_parent_thread`: local-farmers-market
+- `reviewer_child_thread`: -
+- `reviewer_supported_questions`: related_thread
+- `reviewer_notes`: farmers market is agriculture-adjacent but not crop-risk/stress evidence.
 
 
 ## 6. Signal 4510678
@@ -254,14 +254,14 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
-- `reviewer_decision`:
-- `reviewer_scope`:
-- `reviewer_evidence_role`:
-- `reviewer_error_type`:
-- `reviewer_parent_thread`:
-- `reviewer_child_thread`:
-- `reviewer_supported_questions`:
+- `accept_assistant_label`: false
+- `reviewer_decision`: correct
+- `reviewer_scope`: child_thread
+- `reviewer_evidence_role`: background
+- `reviewer_error_type`: -
+- `reviewer_parent_thread`: agriculture tecnology
+- `reviewer_child_thread`: smart irrigation
+- `reviewer_supported_questions`:related_thread , evidence_support
 - `reviewer_notes`:
 
 
@@ -296,15 +296,15 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
-- `reviewer_decision`:
-- `reviewer_scope`:
-- `reviewer_evidence_role`:
-- `reviewer_error_type`:
-- `reviewer_parent_thread`:
-- `reviewer_child_thread`:
-- `reviewer_supported_questions`:
-- `reviewer_notes`:
+- `accept_assistant_label`: false
+- `reviewer_decision`: incorrect
+- `reviewer_scope`: context_signal
+- `reviewer_evidence_role`: analysis
+- `reviewer_error_type`: primary_context_mismatch
+- `reviewer_parent_thread`: NG elections, farming and agriculture
+- `reviewer_child_thread`: Mohammed Umaru Bago
+- `reviewer_supported_questions`: evidence_support, related_thread
+- `reviewer_notes`: Can a person be a thread? Even though farming is mentioned, farming is not what's driving this headline
 
 
 ## 8. Signal 4522013
@@ -338,15 +338,15 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
-- `reviewer_decision`:
-- `reviewer_scope`:
-- `reviewer_evidence_role`:
-- `reviewer_error_type`:
-- `reviewer_parent_thread`:
-- `reviewer_child_thread`:
-- `reviewer_supported_questions`:
-- `reviewer_notes`:
+- `accept_assistant_label`: false
+- `reviewer_decision`: incorrect
+- `reviewer_scope`: child_thread, context_signal
+- `reviewer_evidence_role`:  primary_event
+- `reviewer_error_type`: off_topic
+- `reviewer_parent_thread`: kenya ministry of defence, enviorment, sutainability
+- `reviewer_child_thread`: -
+- `reviewer_supported_questions`: related_thread
+- `reviewer_notes`: mangrove/coastal livelihoods item is environmental, not agriculture crop-risk evidence.
 
 
 ## 9. Signal 4510751
@@ -380,15 +380,15 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
-- `reviewer_decision`:
-- `reviewer_scope`:
-- `reviewer_evidence_role`:
-- `reviewer_error_type`:
-- `reviewer_parent_thread`:
-- `reviewer_child_thread`:
-- `reviewer_supported_questions`:
-- `reviewer_notes`:
+- `accept_assistant_label`: false
+- `reviewer_decision`: incorrect
+- `reviewer_scope`: parent thread
+- `reviewer_evidence_role`: primary_event, analysis
+- `reviewer_error_type`: off_topic
+- `reviewer_parent_thread`: climate risk
+- `reviewer_child_thread`: -
+- `reviewer_supported_questions`: evidence_support, why_moving
+- `reviewer_notes`:The headline is talking about climate phenomena, not agriculture and crop risk, even though they could be related. Climate phenomena could impact the crops, but it's not implied in the headline.
 
 
 ## 10. Signal 4481387
@@ -422,7 +422,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`: true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -464,7 +464,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`: true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -506,7 +506,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`: true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -548,7 +548,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`: true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -590,7 +590,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`:true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -632,7 +632,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`:true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -674,7 +674,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`: true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -716,7 +716,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`:true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -758,7 +758,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`:true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -801,7 +801,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 ### Reviewer Adjudication
 
 - `accept_assistant_label`:
-- `reviewer_decision`:
+- `reviewer_decision`: true
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
 - `reviewer_error_type`:
@@ -842,7 +842,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`: true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -884,7 +884,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`:true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -926,7 +926,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`: true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -968,7 +968,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`:true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -1010,7 +1010,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`:true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -1052,7 +1052,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`:true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -1094,7 +1094,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`:true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -1136,7 +1136,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`:true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -1178,7 +1178,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`:true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -1220,7 +1220,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`:true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -1262,7 +1262,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`:true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -1304,7 +1304,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`:true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:
@@ -1346,7 +1346,7 @@ suggestions only; they are not paper-grade gold labels until reviewed.
 
 ### Reviewer Adjudication
 
-- `accept_assistant_label`:
+- `accept_assistant_label`:true
 - `reviewer_decision`:
 - `reviewer_scope`:
 - `reviewer_evidence_role`:

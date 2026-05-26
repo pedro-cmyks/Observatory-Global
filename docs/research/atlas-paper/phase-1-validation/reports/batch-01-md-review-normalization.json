@@ -1,0 +1,76 @@
+{
+  "output": "docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl",
+  "packet": "docs/research/atlas-paper/phase-1-validation/review-packets/2026-05-25-atlas-v2-stratified-batch-01.review.md",
+  "parsed_markdown_rows": 32,
+  "progress": {
+    "accepted_assistant_rows": 23,
+    "files": [
+      {
+        "accepted_assistant": 23,
+        "path": "docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl",
+        "ready": 32,
+        "remaining": 0,
+        "reviewer_corrected": 9,
+        "rows": 32
+      }
+    ],
+    "progress_pct": 1.0,
+    "ready_rows": 32,
+    "remaining_rows": 0,
+    "reviewer_corrected_rows": 9,
+    "total_rows": 32
+  },
+  "rows": 32,
+  "template": "docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-01.review-template.jsonl",
+  "warning_count": 7,
+  "warnings": [
+    {
+      "chosen": "reaction",
+      "field": "reviewer_evidence_role",
+      "signal_id": 4498053,
+      "value": "reaction, background",
+      "warning": "Multiple valid labels supplied; first valid value chosen."
+    },
+    {
+      "chosen": "context_signal",
+      "field": "reviewer_scope",
+      "signal_id": 4582545,
+      "value": "context_signal, entity_thread",
+      "warning": "Multiple valid labels supplied; first valid value chosen."
+    },
+    {
+      "chosen": "analysis",
+      "field": "reviewer_evidence_role",
+      "signal_id": 4582545,
+      "value": "analysis, primary_event",
+      "warning": "Multiple valid labels supplied; first valid value chosen."
+    },
+    {
+      "chosen": "reaction",
+      "field": "reviewer_evidence_role",
+      "signal_id": 4494624,
+      "value": "reaction, background",
+      "warning": "Multiple valid labels supplied; first valid value chosen."
+    },
+    {
+      "chosen": "child_thread",
+      "field": "reviewer_scope",
+      "signal_id": 4522013,
+      "value": "child_thread, context_signal",
+      "warning": "Multiple valid labels supplied; first valid value chosen."
+    },
+    {
+      "chosen": "primary_event",
+      "field": "reviewer_evidence_role",
+      "signal_id": 4510751,
+      "value": "primary_event, analysis",
+      "warning": "Multiple valid labels supplied; first valid value chosen."
+    },
+    {
+      "field": "reviewer_decision",
+      "signal_id": 4582736,
+      "value": "true",
+      "warning": "Interpreted reviewer_decision=true as accept_assistant_label=true."
+    }
+  ]
+}

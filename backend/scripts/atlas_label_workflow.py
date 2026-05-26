@@ -11,16 +11,67 @@ It keeps the paper/validation workflow reproducible:
 - `review-template` writes machine-editable reviewer rows for adjudication.
 - `review-progress` reports adjudication readiness for review templates.
 - `finalize-review` converts completed review templates into scoreable labels.
+- `apply-review-packet` copies Markdown reviewer answers into a JSONL template.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any, Iterable
 
 VALID_LABEL_QUALITIES = {"reviewed", "gold"}
+VALID_DECISIONS = {"correct", "incorrect", "unclear"}
+VALID_ERROR_TYPES = {
+    "substring_noise",
+    "scope_mismatch",
+    "parent_thread_candidate",
+    "primary_context_mismatch",
+    "insufficient_context",
+    "off_topic",
+}
+VALID_SCOPES = {
+    "domain",
+    "parent_thread",
+    "child_thread",
+    "entity_thread",
+    "geo_context",
+    "source_context",
+    "evidence",
+    "context_signal",
+    "noise",
+}
+VALID_EVIDENCE_ROLES = {
+    "primary_event",
+    "followup",
+    "background",
+    "reaction",
+    "analysis",
+    "public_attention",
+    "source_amplification",
+    "not_evidence",
+}
+VALID_SUPPORTED_QUESTIONS = {
+    "why_moving",
+    "what_changed",
+    "where_concentrated",
+    "subthreads_forming",
+    "sources_driving",
+    "evidence_support",
+    "related_thread",
+}
+LABEL_ALIASES = {
+    "parent thread": "parent_thread",
+    "child thread": "child_thread",
+    "context signal": "context_signal",
+    "entity thread": "entity_thread",
+    "geo context": "geo_context",
+    "source context": "source_context",
+    "primary event": "primary_event",
+    "not evidence": "not_evidence",
+}
 FINAL_LABEL_FIELDS = {
     "decision": "gold_decision",
     "scope": "gold_scope",
@@ -41,6 +92,11 @@ def write_jsonl(path: Path, rows: Iterable[dict[str, Any]]) -> None:
     path.write_text(
         "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows)
     )
+
+
+def write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
 
 
 def split_batches(
@@ -465,6 +521,215 @@ def finalize_review_template(
     }
 
 
+def _blankish(value: Any) -> bool:
+    if value is None:
+        return True
+    if not isinstance(value, str):
+        return False
+    return value.strip() in {"", "-"}
+
+
+def _split_values(value: str) -> list[str]:
+    return [part.strip() for part in value.split(",") if part.strip() and part.strip() != "-"]
+
+
+def _normalize_label(
+    *,
+    value: str | None,
+    valid_values: set[str],
+    field: str,
+    signal_id: int,
+    warnings: list[dict[str, Any]],
+) -> str | None:
+    if value is None or _blankish(value):
+        return None
+
+    normalized_parts = []
+    for part in _split_values(value):
+        label = LABEL_ALIASES.get(part.lower(), part.lower().replace(" ", "_"))
+        normalized_parts.append(label)
+
+    valid_parts = [part for part in normalized_parts if part in valid_values]
+    if not valid_parts:
+        warnings.append(
+            {
+                "signal_id": signal_id,
+                "field": field,
+                "value": value,
+                "warning": "No valid label found; value ignored.",
+            }
+        )
+        return None
+
+    if len(valid_parts) > 1:
+        warnings.append(
+            {
+                "signal_id": signal_id,
+                "field": field,
+                "value": value,
+                "chosen": valid_parts[0],
+                "warning": "Multiple valid labels supplied; first valid value chosen.",
+            }
+        )
+    return valid_parts[0]
+
+
+def _normalize_questions(
+    *,
+    value: str | None,
+    signal_id: int,
+    warnings: list[dict[str, Any]],
+) -> list[str]:
+    if value is None or _blankish(value):
+        return []
+
+    questions: list[str] = []
+    for part in _split_values(value):
+        normalized = LABEL_ALIASES.get(part.lower(), part.lower().replace(" ", "_"))
+        if normalized in VALID_SUPPORTED_QUESTIONS:
+            questions.append(normalized)
+        else:
+            warnings.append(
+                {
+                    "signal_id": signal_id,
+                    "field": "reviewer_supported_questions",
+                    "value": part,
+                    "warning": "Unsupported question ignored.",
+                }
+            )
+    return questions
+
+
+def _normalize_bool(value: str | None) -> bool | None:
+    if value is None or _blankish(value):
+        return None
+    lowered = value.strip().lower()
+    if lowered == "true":
+        return True
+    if lowered == "false":
+        return False
+    return None
+
+
+def _normalize_free_text(value: str | None) -> str | None:
+    if value is None or _blankish(value):
+        return None
+    return value.strip()
+
+
+def parse_review_packet(path: Path) -> dict[int, dict[str, str]]:
+    text = path.read_text()
+    parts = re.split(r"(?m)^## (\d+)\. Signal (\d+)\s*$", text)
+    parsed: dict[int, dict[str, str]] = {}
+    for index in range(1, len(parts), 3):
+        signal_id = int(parts[index + 1])
+        body = parts[index + 2]
+        fields: dict[str, str] = {}
+        for match in re.finditer(r"(?m)^- `([^`]+)`: ?(.*)$", body):
+            fields[match.group(1)] = match.group(2).strip()
+        parsed[signal_id] = fields
+    return parsed
+
+
+def apply_review_packet(
+    *,
+    packet_path: Path,
+    template_path: Path,
+    output_path: Path,
+    report_path: Path | None = None,
+) -> dict[str, Any]:
+    packet_rows = parse_review_packet(packet_path)
+    template_rows = read_jsonl(template_path)
+    warnings: list[dict[str, Any]] = []
+    updated_rows: list[dict[str, Any]] = []
+
+    for row in template_rows:
+        signal_id = row.get("signal_id")
+        if not isinstance(signal_id, int):
+            raise ValueError(f"row in {template_path} is missing integer signal_id")
+        fields = packet_rows.get(signal_id)
+        if not fields:
+            warnings.append(
+                {
+                    "signal_id": signal_id,
+                    "warning": "No matching Markdown review section found.",
+                }
+            )
+            updated_rows.append(row)
+            continue
+
+        accept = _normalize_bool(fields.get("accept_assistant_label"))
+        reviewer_decision_raw = fields.get("reviewer_decision")
+        if accept is None and reviewer_decision_raw and reviewer_decision_raw.lower() == "true":
+            accept = True
+            reviewer_decision_raw = None
+            warnings.append(
+                {
+                    "signal_id": signal_id,
+                    "field": "reviewer_decision",
+                    "value": "true",
+                    "warning": "Interpreted reviewer_decision=true as accept_assistant_label=true.",
+                }
+            )
+
+        row["accept_assistant_label"] = accept
+        row["reviewer_decision"] = _normalize_label(
+            value=reviewer_decision_raw,
+            valid_values=VALID_DECISIONS,
+            field="reviewer_decision",
+            signal_id=signal_id,
+            warnings=warnings,
+        )
+        row["reviewer_scope"] = _normalize_label(
+            value=fields.get("reviewer_scope"),
+            valid_values=VALID_SCOPES,
+            field="reviewer_scope",
+            signal_id=signal_id,
+            warnings=warnings,
+        )
+        row["reviewer_evidence_role"] = _normalize_label(
+            value=fields.get("reviewer_evidence_role"),
+            valid_values=VALID_EVIDENCE_ROLES,
+            field="reviewer_evidence_role",
+            signal_id=signal_id,
+            warnings=warnings,
+        )
+        row["reviewer_error_type"] = _normalize_label(
+            value=fields.get("reviewer_error_type"),
+            valid_values=VALID_ERROR_TYPES,
+            field="reviewer_error_type",
+            signal_id=signal_id,
+            warnings=warnings,
+        )
+        row["reviewer_parent_thread"] = _normalize_free_text(
+            fields.get("reviewer_parent_thread")
+        )
+        row["reviewer_child_thread"] = _normalize_free_text(fields.get("reviewer_child_thread"))
+        row["reviewer_supported_questions"] = _normalize_questions(
+            value=fields.get("reviewer_supported_questions"),
+            signal_id=signal_id,
+            warnings=warnings,
+        )
+        row["reviewer_notes"] = _normalize_free_text(fields.get("reviewer_notes"))
+        updated_rows.append(row)
+
+    write_jsonl(output_path, updated_rows)
+    progress = review_template_progress([output_path])
+    report = {
+        "packet": str(packet_path),
+        "template": str(template_path),
+        "output": str(output_path),
+        "rows": len(updated_rows),
+        "parsed_markdown_rows": len(packet_rows),
+        "warning_count": len(warnings),
+        "warnings": warnings,
+        "progress": progress,
+    }
+    if report_path:
+        write_json(report_path, report)
+    return report
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Atlas labeling workflow helper")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -514,6 +779,15 @@ def _parse_args() -> argparse.Namespace:
     finalize.add_argument("--output", type=Path, required=True)
     finalize.add_argument("--label-quality", choices=sorted(VALID_LABEL_QUALITIES), required=True)
     finalize.add_argument("--require-complete", action="store_true")
+
+    apply_packet = subparsers.add_parser(
+        "apply-review-packet",
+        help="Copy Markdown reviewer answers into a JSONL review template",
+    )
+    apply_packet.add_argument("--packet", type=Path, required=True)
+    apply_packet.add_argument("--template", type=Path, required=True)
+    apply_packet.add_argument("--output", type=Path, required=True)
+    apply_packet.add_argument("--report", type=Path)
 
     return parser.parse_args()
 
@@ -566,6 +840,16 @@ def main() -> None:
             require_complete=args.require_complete,
         )
         print(json.dumps(result, indent=2, sort_keys=True))
+        return
+
+    if args.command == "apply-review-packet":
+        report = apply_review_packet(
+            packet_path=args.packet,
+            template_path=args.template,
+            output_path=args.output,
+            report_path=args.report,
+        )
+        print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
         return
 
     row_count = merge_batches(

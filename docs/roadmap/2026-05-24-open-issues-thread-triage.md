@@ -232,8 +232,11 @@ labels for batches 02-08.
   blank `reviewer_*` fields for machine-readable review.
 - `backend/scripts/atlas_label_workflow.py review-progress` and
   `finalize-review` now close the loop from adjudication template to scoreable
-  reviewed/gold labels. Current batch 01 progress is `0/32` ready, so no
-  assistant-pilot labels have been promoted.
+  reviewed/gold labels. Current batch 01 progress is `32/32` ready after
+  Markdown adjudication; first reviewed precision is `53.33%`, below the gate.
+- `apply-review-packet` supports answers entered in the Markdown packet. Batch
+  01 produced 7 normalization warnings, so it is reviewed internal evidence,
+  not paper-grade gold yet.
 - #203 remains active because assistant-pilot labels are still not gold. The
   next step is human adjudication, then reviewed/gold scoring.
 - #207 should use the adjudicated semantic-scope and supported-question labels

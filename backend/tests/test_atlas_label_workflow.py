@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 from scripts.atlas_label_workflow import (
+    apply_review_packet,
     build_review_template_row,
     finalize_review_template,
     label_progress,
@@ -310,3 +311,83 @@ def test_finalize_review_template_can_require_complete_review(tmp_path):
         assert "incomplete" in str(exc)
     else:
         raise AssertionError("expected incomplete review to raise")
+
+
+def test_apply_review_packet_updates_template_and_reports_warnings(tmp_path):
+    packet = tmp_path / "review.md"
+    template = tmp_path / "template.jsonl"
+    output = tmp_path / "updated.jsonl"
+    report = tmp_path / "report.json"
+    packet.write_text(
+        """# Review
+
+## 1. Signal 101
+
+### Reviewer Adjudication
+
+- `accept_assistant_label`: false
+- `reviewer_decision`: incorrect
+- `reviewer_scope`: context_signal, entity_thread
+- `reviewer_evidence_role`: analysis, primary_event
+- `reviewer_error_type`: primary_context_mismatch
+- `reviewer_parent_thread`: agriculture-input-cost-pressure
+- `reviewer_child_thread`: -
+- `reviewer_supported_questions`: related_thread, evidence_support
+- `reviewer_notes`: Useful reviewer note.
+
+## 2. Signal 202
+
+### Reviewer Adjudication
+
+- `accept_assistant_label`:
+- `reviewer_decision`: true
+- `reviewer_scope`:
+- `reviewer_evidence_role`:
+- `reviewer_error_type`:
+- `reviewer_parent_thread`:
+- `reviewer_child_thread`:
+- `reviewer_supported_questions`:
+- `reviewer_notes`:
+"""
+    )
+    template.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "signal_id": 101,
+                        "assistant_decision": "correct",
+                        "reviewer_decision": None,
+                    }
+                ),
+                json.dumps(
+                    {
+                        "signal_id": 202,
+                        "assistant_decision": "correct",
+                        "reviewer_decision": None,
+                    }
+                ),
+            ]
+        )
+        + "\n"
+    )
+
+    result = apply_review_packet(
+        packet_path=packet,
+        template_path=template,
+        output_path=output,
+        report_path=report,
+    )
+
+    rows = [json.loads(line) for line in output.read_text().splitlines()]
+    assert rows[0]["reviewer_decision"] == "incorrect"
+    assert rows[0]["reviewer_scope"] == "context_signal"
+    assert rows[0]["reviewer_evidence_role"] == "analysis"
+    assert rows[0]["reviewer_supported_questions"] == [
+        "related_thread",
+        "evidence_support",
+    ]
+    assert rows[1]["accept_assistant_label"] is True
+    assert result["progress"]["ready_rows"] == 2
+    assert result["warning_count"] == 3
+    assert json.loads(report.read_text())["warning_count"] == 3
