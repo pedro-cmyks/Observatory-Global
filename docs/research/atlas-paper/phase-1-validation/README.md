@@ -40,6 +40,7 @@ This is a validation workspace, not a final paper folder.
   `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.md`
 - Raw batches: 8 files, 32 rows each, 256 total rows.
 - Assistant pilot labels: batch 01 only, 32 rows.
+- Assistant pilot labels: batch 01 and batch 02, 32 rows each.
 - Assistant pilot score:
   `docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01-score.json`
 - Assistant pilot visual report:
@@ -58,6 +59,14 @@ This is a validation workspace, not a final paper folder.
   `docs/research/atlas-paper/phase-1-validation/reports/reviewed-batch-01/reviewed-batch-01.md`
 - Markdown normalization report:
   `docs/research/atlas-paper/phase-1-validation/reports/batch-01-md-review-normalization.json`
+- Batch 02 assistant-pilot labels:
+  `docs/research/atlas-paper/phase-1-validation/labels/assistant-pilot/2026-05-25-atlas-v2-stratified-batch-02.assistant-pilot.jsonl`
+- Batch 02 review packet:
+  `docs/research/atlas-paper/phase-1-validation/review-packets/2026-05-25-atlas-v2-stratified-batch-02.review.md`
+- Batch 02 review template:
+  `docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-02.review-template.jsonl`
+- Batch 02 review progress:
+  `docs/research/atlas-paper/phase-1-validation/progress-review-batch-02.json`
 
 ## Label Quality Levels
 
@@ -164,12 +173,32 @@ backend/.venv/bin/python backend/scripts/atlas_validation_report.py \
   --report-name assistant-pilot-batch-01
 ```
 
+Open the local adjudication UI for batch 02:
+
+```bash
+backend/.venv/bin/python backend/scripts/atlas_review_server.py \
+  --template docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-02.review-template.jsonl \
+  --port 8765
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8765
+```
+
+The local UI writes directly to the review template. It shows one row at a time,
+keeps assistant hints as `assistant_*`, and writes reviewer choices to
+`reviewer_*`.
+
 ## Next Work
 
 1. Review the 7 normalization warnings before treating batch 01 as final gold.
-2. Continue labeling batches 02-08.
-3. Merge reviewed/gold labels.
-4. Score the full sample.
-5. Render visual validation reports for reviewed/gold scores.
-6. Use the score and visual report to define the first read-only Narrative
+2. Adjudicate batch 02 through the local review UI.
+3. Apply/finalize batch 02 and compare assistant hints vs reviewer decisions.
+4. Continue labeling batches 03-08.
+5. Merge reviewed/gold labels.
+6. Score the full sample.
+7. Render visual validation reports for reviewed/gold scores.
+8. Use the score and visual report to define the first read-only Narrative
    Thread Graph report.

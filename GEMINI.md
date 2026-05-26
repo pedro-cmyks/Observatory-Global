@@ -120,8 +120,12 @@ First reviewed score is `53.33%` precision in
 `docs/research/atlas-paper/phase-1-validation/reports/reviewed-batch-01-score.json`,
 with 7 normalization warnings in
 `docs/research/atlas-paper/phase-1-validation/reports/batch-01-md-review-normalization.json`.
-Next action is adjudication plus labels for batches 02-08, not another taxonomy
-patch.
+Batch 02 is prepared with assistant hints and local UI:
+`docs/research/atlas-paper/phase-1-validation/labels/assistant-pilot/2026-05-25-atlas-v2-stratified-batch-02.assistant-pilot.jsonl`,
+`docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-02.review-template.jsonl`,
+and `backend/scripts/atlas_review_server.py`. Next action is adjudicating batch
+02 and comparing assistant hints against reviewer decisions, not another
+taxonomy patch.
 Visual validation reports are generated outside the product UI by
 `backend/scripts/atlas_validation_report.py` and stored under
 `docs/research/atlas-paper/phase-1-validation/reports/`.

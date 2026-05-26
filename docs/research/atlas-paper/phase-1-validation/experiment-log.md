@@ -263,3 +263,44 @@ Interpretation:
 - Do not promote model/ranking changes from this batch. Continue batches 02-08
   and review the 7 normalization warnings before declaring any paper-grade
   result.
+
+## 2026-05-26 — Batch 02 Prepared With Local Review UI
+
+New tool:
+
+- `backend/scripts/atlas_review_server.py`
+
+Purpose:
+
+- Serve a local one-row-at-a-time adjudication UI at `localhost`.
+- Show assistant-pilot labels as hints, not truth.
+- Save reviewer choices directly into the JSONL review template.
+- Make closed fields selectable through buttons/checkboxes and keep free text
+  only for parent thread, child thread, and notes.
+
+Batch 02 artifacts:
+
+- Assistant-pilot labels:
+  `docs/research/atlas-paper/phase-1-validation/labels/assistant-pilot/2026-05-25-atlas-v2-stratified-batch-02.assistant-pilot.jsonl`
+- Review packet:
+  `docs/research/atlas-paper/phase-1-validation/review-packets/2026-05-25-atlas-v2-stratified-batch-02.review.md`
+- Review template:
+  `docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-02.review-template.jsonl`
+- Progress:
+  `docs/research/atlas-paper/phase-1-validation/progress-review-batch-02.json`
+
+Current batch 02 state:
+
+| Metric | Value |
+|---|---:|
+| Total rows | 32 |
+| Ready rows | 0 |
+| Remaining rows | 32 |
+| Assistant hints | 32 |
+
+Why keep hints:
+
+- They let us compare assistant interpretation against reviewer interpretation.
+- They help identify whether failure is model/assistant interpretation,
+  ambiguous evidence, or reviewer disagreement.
+- They must stay separate from `reviewer_*` fields until explicitly accepted.

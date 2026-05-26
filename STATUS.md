@@ -148,6 +148,17 @@ Current data/product state:
   Overall precision is `53.33%` (`16` correct, `14` incorrect, `2` unclear,
   denominator `30`), below the `85%` minimum gate. Treat this as reviewed
   internal evidence, not paper-grade gold.
+- Batch 02 is prepared for adjudication with assistant hints:
+  `docs/research/atlas-paper/phase-1-validation/labels/assistant-pilot/2026-05-25-atlas-v2-stratified-batch-02.assistant-pilot.jsonl`,
+  `docs/research/atlas-paper/phase-1-validation/review-packets/2026-05-25-atlas-v2-stratified-batch-02.review.md`,
+  and
+  `docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-02.review-template.jsonl`.
+  Current progress is `0/32` ready at
+  `docs/research/atlas-paper/phase-1-validation/progress-review-batch-02.json`.
+- Local adjudication UI exists at `backend/scripts/atlas_review_server.py`.
+  Start it with the batch 02 template and open `http://127.0.0.1:8765`.
+  It shows one row at a time, displays assistant hints, and writes reviewer
+  fields directly to the JSONL template.
 - Report visuals are now generated outside the product UI by
   `backend/scripts/atlas_validation_report.py`. The first visual report is
   `docs/research/atlas-paper/phase-1-validation/reports/assistant-pilot-batch-01/assistant-pilot-batch-01.md`

@@ -318,12 +318,12 @@ def _row_review_section(
 def render_review_packet(
     *,
     raw_path: Path,
-    labels_path: Path,
+    labels_path: Path | None,
     output_path: Path,
     title: str,
 ) -> Path:
     raw_rows = read_jsonl(raw_path)
-    pilot_labels = rows_by_signal_id(labels_path)
+    pilot_labels = rows_by_signal_id(labels_path) if labels_path else {}
     sections = [
         f"# {title}",
         "",
@@ -362,11 +362,11 @@ def render_review_packet(
 def write_review_template(
     *,
     raw_path: Path,
-    labels_path: Path,
+    labels_path: Path | None,
     output_path: Path,
 ) -> Path:
     raw_rows = read_jsonl(raw_path)
-    pilot_labels = rows_by_signal_id(labels_path)
+    pilot_labels = rows_by_signal_id(labels_path) if labels_path else {}
     template_rows: list[dict[str, Any]] = []
 
     for raw_row in raw_rows:
@@ -753,7 +753,7 @@ def _parse_args() -> argparse.Namespace:
         help="Render a Markdown adjudication packet from raw rows and pilot labels",
     )
     review.add_argument("--raw", type=Path, required=True)
-    review.add_argument("--labels", type=Path, required=True)
+    review.add_argument("--labels", type=Path)
     review.add_argument("--output", type=Path, required=True)
     review.add_argument("--title", required=True)
 
@@ -762,7 +762,7 @@ def _parse_args() -> argparse.Namespace:
         help="Write a machine-editable JSONL adjudication template",
     )
     review_template.add_argument("--raw", type=Path, required=True)
-    review_template.add_argument("--labels", type=Path, required=True)
+    review_template.add_argument("--labels", type=Path)
     review_template.add_argument("--output", type=Path, required=True)
 
     review_progress = subparsers.add_parser(

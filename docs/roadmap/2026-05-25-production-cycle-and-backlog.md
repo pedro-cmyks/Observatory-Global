@@ -278,10 +278,15 @@ Phase 1 started:
 - Normalization report:
   `docs/research/atlas-paper/phase-1-validation/reports/batch-01-md-review-normalization.json`
   records `7` warnings from Markdown normalization.
+- Batch 02 is prepared with assistant hints and a local adjudication UI:
+  `docs/research/atlas-paper/phase-1-validation/labels/assistant-pilot/2026-05-25-atlas-v2-stratified-batch-02.assistant-pilot.jsonl`,
+  `docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-02.review-template.jsonl`,
+  and `backend/scripts/atlas_review_server.py`.
 
-Next action: review the batch 01 normalization warnings, continue batches 02-08,
-then run the v2 score over the broader reviewed/gold sample to produce
-semantic-scope, evidence-role, and supported-question distributions.
+Next action: adjudicate batch 02 in the local UI, compare assistant hints
+against reviewer choices, then run the v2 score over the broader reviewed/gold
+sample to produce semantic-scope, evidence-role, and supported-question
+distributions.
 
 Visual validation route:
 
@@ -297,6 +302,9 @@ Visual validation route:
   rows to scoreable labels with `finalize-review --require-complete`.
 - `apply-review-packet` supports reviewer answers entered in the Markdown packet,
   but any normalization warnings must be reviewed before paper-grade `gold`.
+- Use `backend/scripts/atlas_review_server.py` for faster local adjudication.
+  It keeps `assistant_*` hints and `reviewer_*` decisions separate so model/user
+  disagreement can be measured.
 - Do not promote these charts into the production UI until reviewed/gold labels
   show that the metric is stable and useful.
 

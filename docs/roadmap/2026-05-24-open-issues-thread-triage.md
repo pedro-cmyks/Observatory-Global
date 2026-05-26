@@ -237,6 +237,10 @@ labels for batches 02-08.
 - `apply-review-packet` supports answers entered in the Markdown packet. Batch
   01 produced 7 normalization warnings, so it is reviewed internal evidence,
   not paper-grade gold yet.
+- Batch 02 is prepared with assistant hints plus local UI in
+  `backend/scripts/atlas_review_server.py`. This keeps model/assistant
+  interpretation visible as a hint while preserving independent reviewer fields
+  for comparison.
 - #203 remains active because assistant-pilot labels are still not gold. The
   next step is human adjudication, then reviewed/gold scoring.
 - #207 should use the adjudicated semantic-scope and supported-question labels
