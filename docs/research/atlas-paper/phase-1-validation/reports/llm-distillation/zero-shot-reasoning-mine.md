@@ -1,0 +1,67 @@
+# LLM zero-shot reasoning mining — Sonnet 4.6 over batches 01+02 gold
+
+Schema: `atlas-llm-reasoning-mine-v1`
+Mode filter: `zero_shot` · Rows considered: 64
+
+## Reading this report
+
+- `top_agree_terms` shows the frequent unigram signals the LLM cited when it confirmed the Atlas assignment. These hint at the lexical vocabulary the Atlas classifier could safely incorporate.
+- `top_disagree_terms` shows the frequent signals the LLM cited when it diverged from Atlas. These hint at distractor vocabulary the Atlas classifier may be over-weighting, or at signals that flip the headline scope.
+- `disagree_targets` lists the slug the LLM picked when it disagreed with Atlas. `none` indicates the LLM judged no topic fit.
+- This is a zero-API-cost first pass over existing predictions. Treat as input to a manual migration review, NOT as an automated rule.
+
+## Per-topic mining
+
+### `armed-conflict-escalation`
+
+- rows: 16 · agree: 10 · disagree: 6 · agreement: 62.5%
+- top agree terms: `armed` (10), `conflict` (10), `escalation` (10), `ukraine` (5), `missile` (3), `attacks` (3), `hezbollah` (3), `direct` (3), `russia` (2), `indicate` (2), `israeli` (2), `strikes` (2), `drone` (2), `killing` (2), `evidence` (2)
+- top disagree terms: `geopolitical` (3), `diplomatic` (2), `sanctions` (2), `pressure` (2), `reports` (1), `rising` (1), `ebola` (1), `cases` (1), `congo` (1), `making` (1), `disease` (1), `outbreak` (1), `primary` (1), `mla` (1), `resignations` (1)
+- top agree bigrams: `armed conflict` (10), `conflict escalation` (10), `missile attacks` (2), `attacks ukraine` (2), `ukraine russia` (2), `russia indicate` (2), `direct evidence` (2), `evidence armed` (2)
+- top disagree bigrams: `reports rising` (1), `rising ebola` (1), `ebola cases` (1), `cases congo` (1), `congo making` (1), `making disease` (1), `disease outbreak` (1), `outbreak primary` (1)
+- disagree targets: `none` (2), `sanctions-diplomatic-pressure` (2), `disease-outbreak` (1), `constitutional-institutional-crisis` (1)
+
+### `corruption-investigation`
+
+- rows: 12 · agree: 11 · disagree: 1 · agreement: 91.7%
+- top agree terms: `corruption` (10), `anti-corruption` (6), `facing` (5), `investigation` (5), `peter` (4), `murrell` (4), `embezzlement` (4), `charges` (4), `court` (4), `financial` (4), `misconduct` (4), `case` (4), `oversight` (3), `resignation` (3), `clear` (2)
+- top disagree terms: `capture` (1), `suspected` (1), `extortionist` (1), `nine` (1), `arrest` (1), `warrants` (1), `urban` (1), `zone` (1), `indicating` (1), `gang` (1), `criminal` (1), `security` (1), `issue` (1)
+- top agree bigrams: `peter murrell` (4), `murrell facing` (4), `facing embezzlement` (4), `embezzlement charges` (4), `charges court` (4), `corruption financial` (4), `financial misconduct` (4), `misconduct investigation` (4)
+- top disagree bigrams: `capture suspected` (1), `suspected extortionist` (1), `extortionist nine` (1), `nine arrest` (1), `arrest warrants` (1), `warrants urban` (1), `urban zone` (1), `zone indicating` (1)
+- disagree targets: `gang-control-urban-security` (1)
+
+### `currency-debt-stress`
+
+- rows: 12 · agree: 7 · disagree: 5 · agreement: 58.3%
+- top agree terms: `stress` (6), `currency` (5), `policy` (4), `bank` (4), `exchange` (3), `central` (3), `debt` (3), `sri` (2), `lanka` (2), `rate` (2), `monetary` (2), `imf` (2), `capacity` (1), `indicating` (1), `issues` (1)
+- top disagree terms: `prices` (2), `labor` (2), `suggesting` (2), `public` (2), `mass` (1), `layoffs` (1), `phk` (1), `linked` (1), `inflation` (1), `oil` (1), `weak` (1), `rupiah` (1), `kspi` (1), `union` (1), `involvement` (1)
+- top agree bigrams: `central bank` (3), `sri lanka` (2), `lanka exchange` (2), `exchange rate` (2), `rate policy` (2), `policy central` (2), `currency stress` (2), `monetary policy` (2)
+- top disagree bigrams: `mass layoffs` (1), `layoffs phk` (1), `phk linked` (1), `linked inflation` (1), `inflation oil` (1), `oil prices` (1), `prices weak` (1), `weak rupiah` (1)
+- disagree targets: `labor-strike-disruption` (1), `energy-grid-instability` (1), `corruption-investigation` (1), `none` (1), `food-price-stress` (1)
+
+### `agriculture-crop-risk`
+
+- rows: 9 · agree: 3 · disagree: 6 · agreement: 33.3%
+- top agree terms: `farmers` (3), `agricultural` (3), `crop` (3), `risk` (3), `support` (2), `focuses` (1), `agribusiness` (1), `advisory` (1), `development` (1), `management` (1), `malawi` (1), `receiving` (1), `insufficient` (1), `legislative` (1), `policy` (1)
+- top disagree terms: `water` (4), `stress` (3), `matching` (3), `risk` (3), `crisis` (3), `taxonomy` (3), `fuel` (2), `closely` (2), `local` (2), `specific` (2), `mentions` (1), `fertilizer` (1), `challenges` (1), `alongside` (1), `forex` (1)
+- top agree bigrams: `crop risk` (3), `support agricultural` (2), `focuses farmers` (1), `farmers agribusiness` (1), `agribusiness advisory` (1), `advisory support` (1), `agricultural development` (1), `development crop` (1)
+- top disagree bigrams: `water stress` (2), `specific crisis` (2), `crisis risk` (2), `risk taxonomy` (2), `mentions fuel` (1), `fuel fertilizer` (1), `fertilizer challenges` (1), `challenges alongside` (1)
+- disagree targets: `none` (3), `water-stress-drought` (2), `fuel-subsidy-unrest` (1)
+
+### `constitutional-institutional-crisis`
+
+- rows: 8 · agree: 5 · disagree: 3 · agreement: 62.5%
+- top agree terms: `institutional` (5), `constitutional` (4), `impeachment` (3), `philippines` (2), `president` (2), `signals` (2), `proceedings` (1), `represent` (1), `crisis` (1), `affecting` (1), `country` (1), `risk` (1), `trial` (1), `vice` (1), `core` (1)
+- top disagree terms: `chemical` (2), `tank` (2), `crack` (2), `causing` (2), `evacuation` (2), `industrial` (2), `disaster` (2), `closest` (2), `flood-landslide-disaster` (2), `though` (2), `covers` (1), `political` (1), `endorsement` (1), `senate` (1), `candidate` (1)
+- top agree bigrams: `constitutional institutional` (2), `impeachment proceedings` (1), `proceedings philippines` (1), `philippines represent` (1), `represent constitutional` (1), `institutional crisis` (1), `crisis affecting` (1), `affecting country` (1)
+- top disagree bigrams: `chemical tank` (2), `tank crack` (2), `crack causing` (2), `causing evacuation` (2), `evacuation industrial` (2), `industrial disaster` (2), `disaster closest` (2), `closest flood-landslide-disaster` (2)
+- disagree targets: `flood-landslide-disaster` (2), `none` (1)
+
+### `cyberattack-infrastructure`
+
+- rows: 7 · agree: 2 · disagree: 5 · agreement: 28.6%
+- top agree terms: `hackers` (1), `targeting` (1), `iphone` (1), `users` (1), `stolen` (1), `devices` (1), `apple` (1), `threats` (1), `digital` (1), `security` (1), `attacks` (1), `explicitly` (1), `malware` (1), `cyberattack` (1), `took` (1)
+- top disagree terms: `fraud` (3), `infrastructure` (2), `corruption` (2), `investigation` (2), `development` (1), `africa` (1), `doesn` (1), `fit` (1), `specific` (1), `crisis` (1), `risk` (1), `taxonomy` (1), `data` (1), `breach` (1), `lawsuit` (1)
+- top agree bigrams: `hackers targeting` (1), `targeting iphone` (1), `iphone users` (1), `users stolen` (1), `stolen devices` (1), `devices apple` (1), `apple threats` (1), `threats digital` (1)
+- top disagree bigrams: `corruption investigation` (2), `infrastructure development` (1), `development africa` (1), `africa doesn` (1), `doesn fit` (1), `fit specific` (1), `specific crisis` (1), `crisis risk` (1)
+- disagree targets: `none` (2), `corruption-investigation` (2), `disinformation-influence-operation` (1)
