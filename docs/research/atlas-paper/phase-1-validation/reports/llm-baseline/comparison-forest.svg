@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="580" viewBox="0 0 1000 580">
+<rect width="100%" height="100%" fill="#071016"/>
+<text x="24" y="32" fill="#d7fbe8" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">Atlas v2 vs Sonnet 4.6 — combined batches 01+02</text>
+<text x="24" y="54" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="12">precision with 95% CI · Wilson per topic · stratified bootstrap overall</text>
+<circle cx="24" cy="76" r="6" fill="#75aaff"/>
+<text x="36" y="80" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="12">Atlas v2 (lex + theme)</text>
+<circle cx="254" cy="76" r="6" fill="#5ee6a8"/>
+<text x="266" y="80" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="12">LLM zero-shot</text>
+<circle cx="484" cy="76" r="6" fill="#f1bf5b"/>
+<text x="496" y="80" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="12">LLM few-shot</text>
+<line x1="230.0" y1="84" x2="230.0" y2="510" stroke="#1c2f3d" stroke-width="1"/>
+<text x="230.0" y="528" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">0.00</text>
+<line x1="402.5" y1="84" x2="402.5" y2="510" stroke="#1c2f3d" stroke-width="1"/>
+<text x="402.5" y="528" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">0.25</text>
+<line x1="575.0" y1="84" x2="575.0" y2="510" stroke="#1c2f3d" stroke-width="1"/>
+<text x="575.0" y="528" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">0.50</text>
+<line x1="747.5" y1="84" x2="747.5" y2="510" stroke="#1c2f3d" stroke-width="1"/>
+<text x="747.5" y="528" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">0.75</text>
+<line x1="920.0" y1="84" x2="920.0" y2="510" stroke="#1c2f3d" stroke-width="1"/>
+<text x="920.0" y="528" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">1.00</text>
+<line x1="816.5" y1="84" x2="816.5" y2="510" stroke="#f1bf5b" stroke-width="1" stroke-dasharray="4 4" opacity="0.7"/>
+<text x="820.5" y="94" fill="#f1bf5b" font-family="Inter, Arial, sans-serif" font-size="10">min 0.85</text>
+<line x1="851.0" y1="84" x2="851.0" y2="510" stroke="#5ee6a8" stroke-width="1" stroke-dasharray="4 4" opacity="0.7"/>
+<text x="855.0" y="94" fill="#5ee6a8" font-family="Inter, Arial, sans-serif" font-size="10">target 0.90</text>
+<text x="24" y="104" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="600">armed-conflict-escalation</text>
+<text x="218" y="102" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=15</text>
+<line x1="517.799" y1="96" x2="815.2579999999999" y2="96" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="517.799" y1="91" x2="517.799" y2="101" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="815.2579999999999" y1="91" x2="815.2579999999999" y2="101" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<circle cx="690.0229999999999" cy="96" r="4" fill="#75aaff"/>
+<text x="928" y="100" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">66.7%</text>
+<text x="218" y="118" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=15</text>
+<line x1="779.309" y1="112" x2="920.0" y2="112" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="779.309" y1="107" x2="779.309" y2="117" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="920.0" y1="107" x2="920.0" y2="117" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<circle cx="920.0" cy="112" r="4" fill="#5ee6a8"/>
+<text x="928" y="116" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">100.0%</text>
+<text x="218" y="134" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=15</text>
+<line x1="779.309" y1="128" x2="920.0" y2="128" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<line x1="779.309" y1="123" x2="779.309" y2="133" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<line x1="920.0" y1="123" x2="920.0" y2="133" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<circle cx="920.0" cy="128" r="4" fill="#f1bf5b"/>
+<text x="928" y="132" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">100.0%</text>
+<text x="24" y="164" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="600">corruption-investigation</text>
+<text x="218" y="162" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=12</text>
+<line x1="610.8800000000001" y1="156" x2="887.5699999999999" y2="156" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="610.8800000000001" y1="151" x2="610.8800000000001" y2="161" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="887.5699999999999" y1="151" x2="887.5699999999999" y2="161" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<circle cx="804.977" cy="156" r="4" fill="#75aaff"/>
+<text x="928" y="160" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">83.3%</text>
+<text x="218" y="178" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=12</text>
+<line x1="675.809" y1="172" x2="909.7189999999999" y2="172" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="675.809" y1="167" x2="675.809" y2="177" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="909.7189999999999" y1="167" x2="909.7189999999999" y2="177" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<circle cx="862.523" cy="172" r="4" fill="#5ee6a8"/>
+<text x="928" y="176" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">91.7%</text>
+<text x="218" y="194" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=12</text>
+<line x1="675.809" y1="188" x2="909.7189999999999" y2="188" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<line x1="675.809" y1="183" x2="675.809" y2="193" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<line x1="909.7189999999999" y1="183" x2="909.7189999999999" y2="193" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<circle cx="862.523" cy="188" r="4" fill="#f1bf5b"/>
+<text x="928" y="192" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">91.7%</text>
+<text x="24" y="224" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="600">currency-debt-stress</text>
+<text x="218" y="222" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=11</text>
+<line x1="474.122" y1="216" x2="815.327" y2="216" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="474.122" y1="211" x2="474.122" y2="221" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="815.327" y1="211" x2="815.327" y2="221" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<circle cx="669.116" cy="216" r="4" fill="#75aaff"/>
+<text x="928" y="220" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">63.6%</text>
+<text x="218" y="238" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=11</text>
+<line x1="741.428" y1="232" x2="920.0" y2="232" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="741.428" y1="227" x2="741.428" y2="237" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="920.0" y1="227" x2="920.0" y2="237" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<circle cx="920.0" cy="232" r="4" fill="#5ee6a8"/>
+<text x="928" y="236" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">100.0%</text>
+<text x="218" y="254" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=11</text>
+<line x1="590.87" y1="248" x2="884.534" y2="248" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<line x1="590.87" y1="243" x2="590.87" y2="253" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<line x1="884.534" y1="243" x2="884.534" y2="253" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<circle cx="794.558" cy="248" r="4" fill="#f1bf5b"/>
+<text x="928" y="252" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">81.8%</text>
+<text x="24" y="284" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="600">agriculture-crop-risk</text>
+<text x="218" y="282" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=8</text>
+<line x1="279.335" y1="276" x2="637.5830000000001" y2="276" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="279.335" y1="271" x2="279.335" y2="281" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="637.5830000000001" y1="271" x2="637.5830000000001" y2="281" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<circle cx="402.5" cy="276" r="4" fill="#75aaff"/>
+<text x="928" y="280" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">25.0%</text>
+<text x="218" y="298" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=8</text>
+<line x1="512.4169999999999" y1="292" x2="870.665" y2="292" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="512.4169999999999" y1="287" x2="512.4169999999999" y2="297" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="870.665" y1="287" x2="870.665" y2="297" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<circle cx="747.5" cy="292" r="4" fill="#5ee6a8"/>
+<text x="928" y="296" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">75.0%</text>
+<text x="218" y="314" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=8</text>
+<line x1="512.4169999999999" y1="308" x2="870.665" y2="308" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<line x1="512.4169999999999" y1="303" x2="512.4169999999999" y2="313" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<line x1="870.665" y1="303" x2="870.665" y2="313" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<circle cx="747.5" cy="308" r="4" fill="#f1bf5b"/>
+<text x="928" y="312" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">75.0%</text>
+<text x="24" y="344" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="600">constitutional-institutional-crisis</text>
+<text x="218" y="342" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=8</text>
+<line x1="440.933" y1="336" x2="825.608" y2="336" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="440.933" y1="331" x2="440.933" y2="341" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="825.608" y1="331" x2="825.608" y2="341" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<circle cx="661.25" cy="336" r="4" fill="#75aaff"/>
+<text x="928" y="340" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">62.5%</text>
+<text x="218" y="358" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=8</text>
+<line x1="696.164" y1="352" x2="920.0" y2="352" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="696.164" y1="347" x2="696.164" y2="357" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="920.0" y1="347" x2="920.0" y2="357" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<circle cx="920.0" cy="352" r="4" fill="#5ee6a8"/>
+<text x="928" y="356" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">100.0%</text>
+<text x="218" y="374" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=8</text>
+<line x1="696.164" y1="368" x2="920.0" y2="368" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<line x1="696.164" y1="363" x2="696.164" y2="373" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<line x1="920.0" y1="363" x2="920.0" y2="373" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<circle cx="920.0" cy="368" r="4" fill="#f1bf5b"/>
+<text x="928" y="372" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">100.0%</text>
+<text x="24" y="404" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="600">cyberattack-infrastructure</text>
+<text x="218" y="402" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=7</text>
+<line x1="286.718" y1="396" x2="672.3589999999999" y2="396" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="286.718" y1="391" x2="286.718" y2="401" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="672.3589999999999" y1="391" x2="672.3589999999999" y2="401" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<circle cx="427.13300000000004" cy="396" r="4" fill="#75aaff"/>
+<text x="928" y="400" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">28.6%</text>
+<text x="218" y="418" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=7</text>
+<line x1="675.533" y1="412" x2="920.0" y2="412" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="675.533" y1="407" x2="675.533" y2="417" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="920.0" y1="407" x2="920.0" y2="417" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<circle cx="920.0" cy="412" r="4" fill="#5ee6a8"/>
+<text x="928" y="416" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">100.0%</text>
+<text x="218" y="434" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=7</text>
+<line x1="565.961" y1="428" x2="902.267" y2="428" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<line x1="565.961" y1="423" x2="565.961" y2="433" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<line x1="902.267" y1="423" x2="902.267" y2="433" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<circle cx="821.399" cy="428" r="4" fill="#f1bf5b"/>
+<text x="928" y="432" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">85.7%</text>
+<text x="24" y="472" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="600">OVERALL (bootstrap CI)</text>
+<text x="218" y="470" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=61</text>
+<line x1="558.0260000000001" y1="464" x2="716.381" y2="464" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="558.0260000000001" y1="459" x2="558.0260000000001" y2="469" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="716.381" y1="459" x2="716.381" y2="469" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<circle cx="637.2379999999999" cy="464" r="4" fill="#75aaff"/>
+<text x="928" y="468" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">59.0%</text>
+<text x="218" y="486" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=61</text>
+<line x1="852.1039999999999" y1="480" x2="920.0" y2="480" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="852.1039999999999" y1="475" x2="852.1039999999999" y2="485" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="920.0" y1="475" x2="920.0" y2="485" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<circle cx="886.052" cy="480" r="4" fill="#5ee6a8"/>
+<text x="928" y="484" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">95.1%</text>
+<text x="218" y="502" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=61</text>
+<line x1="795.593" y1="496" x2="897.3679999999999" y2="496" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<line x1="795.593" y1="491" x2="795.593" y2="501" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<line x1="897.3679999999999" y1="491" x2="897.3679999999999" y2="501" stroke="#f1bf5b" stroke-width="2" opacity="0.6"/>
+<circle cx="852.1039999999999" cy="496" r="4" fill="#f1bf5b"/>
+<text x="928" y="500" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="11">90.2%</text>
+</svg>

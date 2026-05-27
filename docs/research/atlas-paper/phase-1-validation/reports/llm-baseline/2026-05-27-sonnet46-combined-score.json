@@ -1,0 +1,108 @@
+{
+  "schema_version": "atlas-llm-baseline-v1",
+  "modes": {
+    "zero_shot": {
+      "labeled": 61,
+      "errors": 0,
+      "gold_unlabeled_skipped": 3,
+      "llm_matches_gold_correct": 58,
+      "llm_matches_atlas_assigned": 37,
+      "llm_precision_vs_gold": 0.9508,
+      "llm_agreement_with_atlas": 0.6066,
+      "confusion": {
+        "tp": 35,
+        "fn": 1,
+        "fp_other": 2,
+        "tn_none": 23
+      },
+      "by_topic": {
+        "agriculture-crop-risk": {
+          "labeled": 8,
+          "llm_correct": 6,
+          "llm_match_atlas": 2
+        },
+        "armed-conflict-escalation": {
+          "labeled": 15,
+          "llm_correct": 15,
+          "llm_match_atlas": 10
+        },
+        "constitutional-institutional-crisis": {
+          "labeled": 8,
+          "llm_correct": 8,
+          "llm_match_atlas": 5
+        },
+        "corruption-investigation": {
+          "labeled": 12,
+          "llm_correct": 11,
+          "llm_match_atlas": 11
+        },
+        "currency-debt-stress": {
+          "labeled": 11,
+          "llm_correct": 11,
+          "llm_match_atlas": 7
+        },
+        "cyberattack-infrastructure": {
+          "labeled": 7,
+          "llm_correct": 7,
+          "llm_match_atlas": 2
+        }
+      }
+    },
+    "few_shot": {
+      "labeled": 61,
+      "errors": 0,
+      "gold_unlabeled_skipped": 3,
+      "llm_matches_gold_correct": 55,
+      "llm_matches_atlas_assigned": 38,
+      "llm_precision_vs_gold": 0.9016,
+      "llm_agreement_with_atlas": 0.623,
+      "confusion": {
+        "tp": 34,
+        "fn": 2,
+        "fp_other": 4,
+        "tn_none": 21
+      },
+      "by_topic": {
+        "agriculture-crop-risk": {
+          "labeled": 8,
+          "llm_correct": 6,
+          "llm_match_atlas": 2
+        },
+        "armed-conflict-escalation": {
+          "labeled": 15,
+          "llm_correct": 15,
+          "llm_match_atlas": 10
+        },
+        "constitutional-institutional-crisis": {
+          "labeled": 8,
+          "llm_correct": 8,
+          "llm_match_atlas": 5
+        },
+        "corruption-investigation": {
+          "labeled": 12,
+          "llm_correct": 11,
+          "llm_match_atlas": 11
+        },
+        "currency-debt-stress": {
+          "labeled": 11,
+          "llm_correct": 9,
+          "llm_match_atlas": 7
+        },
+        "cyberattack-infrastructure": {
+          "labeled": 7,
+          "llm_correct": 6,
+          "llm_match_atlas": 3
+        }
+      }
+    }
+  },
+  "inputs": [
+    "docs/research/atlas-paper/phase-1-validation/labels/reviewed/2026-05-25-atlas-v2-stratified-batch-01.reviewed.jsonl",
+    "docs/research/atlas-paper/phase-1-validation/labels/reviewed-batch-02/2026-05-25-atlas-v2-stratified-batch-02.reviewed.jsonl"
+  ],
+  "model": "claude-sonnet-4-6",
+  "topics_snapshot": "backend/data/atlas_topics_snapshot_2026-05-25.json",
+  "topic_count": 30,
+  "temperature": 0.0,
+  "max_tokens": 400
+}

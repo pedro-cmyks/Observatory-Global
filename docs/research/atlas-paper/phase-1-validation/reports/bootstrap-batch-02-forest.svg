@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="172" viewBox="0 0 920 172">
+<rect width="100%" height="100%" fill="#071016"/>
+<text x="24" y="32" fill="#d7fbe8" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">Atlas v2 batch 02 — bootstrap CI</text>
+<text x="24" y="54" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="12">precision with 95% CI · Wilson per topic · stratified bootstrap overall</text>
+<line x1="220.0" y1="74" x2="220.0" y2="112" stroke="#1c2f3d" stroke-width="1"/>
+<text x="220.0" y="130" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">0.00</text>
+<line x1="375.0" y1="74" x2="375.0" y2="112" stroke="#1c2f3d" stroke-width="1"/>
+<text x="375.0" y="130" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">0.25</text>
+<line x1="530.0" y1="74" x2="530.0" y2="112" stroke="#1c2f3d" stroke-width="1"/>
+<text x="530.0" y="130" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">0.50</text>
+<line x1="685.0" y1="74" x2="685.0" y2="112" stroke="#1c2f3d" stroke-width="1"/>
+<text x="685.0" y="130" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">0.75</text>
+<line x1="840.0" y1="74" x2="840.0" y2="112" stroke="#1c2f3d" stroke-width="1"/>
+<text x="840.0" y="130" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">1.00</text>
+<line x1="747.0" y1="74" x2="747.0" y2="112" stroke="#f1bf5b" stroke-width="1" stroke-dasharray="4 4" opacity="0.7"/>
+<text x="751.0" y="84" fill="#f1bf5b" font-family="Inter, Arial, sans-serif" font-size="10">min 0.85</text>
+<line x1="778.0" y1="74" x2="778.0" y2="112" stroke="#5ee6a8" stroke-width="1" stroke-dasharray="4 4" opacity="0.7"/>
+<text x="782.0" y="84" fill="#5ee6a8" font-family="Inter, Arial, sans-serif" font-size="10">target 0.90</text>
+<text x="24" y="97" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">OVERALL</text>
+<text x="208" y="97" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=0</text>
+<line x1="220.0" y1="93.0" x2="220.0" y2="93.0" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="220.0" y1="87.0" x2="220.0" y2="99.0" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="220.0" y1="87.0" x2="220.0" y2="99.0" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<circle cx="220.0" cy="93.0" r="5" fill="#75aaff"/>
+<text x="848" y="97" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">0.0%</text>
+</svg>

@@ -1,0 +1,127 @@
+{
+  "schema_version": "atlas-topics-snapshot-v1",
+  "snapshot_date": "2026-05-25",
+  "source": "docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.jsonl",
+  "topics": [
+    {
+      "slug": "agriculture-crop-risk",
+      "label": "Agriculture and crop risk"
+    },
+    {
+      "slug": "armed-conflict-escalation",
+      "label": "Armed conflict escalation"
+    },
+    {
+      "slug": "constitutional-institutional-crisis",
+      "label": "Constitutional or institutional crisis"
+    },
+    {
+      "slug": "corruption-investigation",
+      "label": "Corruption investigation"
+    },
+    {
+      "slug": "currency-debt-stress",
+      "label": "Currency and debt stress"
+    },
+    {
+      "slug": "cyberattack-infrastructure",
+      "label": "Cyberattack on infrastructure"
+    },
+    {
+      "slug": "disease-outbreak",
+      "label": "Disease outbreak"
+    },
+    {
+      "slug": "disinformation-influence-operation",
+      "label": "Disinformation and influence operation"
+    },
+    {
+      "slug": "election-legitimacy-dispute",
+      "label": "Election legitimacy dispute"
+    },
+    {
+      "slug": "energy-grid-instability",
+      "label": "Energy grid instability"
+    },
+    {
+      "slug": "flood-landslide-disaster",
+      "label": "Flood and landslide disaster"
+    },
+    {
+      "slug": "food-price-stress",
+      "label": "Food price stress"
+    },
+    {
+      "slug": "forced-displacement",
+      "label": "Forced displacement"
+    },
+    {
+      "slug": "fuel-subsidy-unrest",
+      "label": "Fuel subsidy unrest"
+    },
+    {
+      "slug": "gang-control-urban-security",
+      "label": "Gang control and urban security"
+    },
+    {
+      "slug": "gender-violence-rights",
+      "label": "Gender violence and rights"
+    },
+    {
+      "slug": "heat-health-risk",
+      "label": "Heat and public health risk"
+    },
+    {
+      "slug": "housing-cost-pressure",
+      "label": "Housing cost pressure"
+    },
+    {
+      "slug": "humanitarian-access-conflict",
+      "label": "Humanitarian access under conflict"
+    },
+    {
+      "slug": "labor-strike-disruption",
+      "label": "Labor strike disruption"
+    },
+    {
+      "slug": "migration-border-pressure",
+      "label": "Migration and border pressure"
+    },
+    {
+      "slug": "mining-royalty-risk",
+      "label": "Mining and resource safety crisis"
+    },
+    {
+      "slug": "oil-gas-supply-risk",
+      "label": "Oil and gas supply risk"
+    },
+    {
+      "slug": "press-freedom-crackdown",
+      "label": "Press freedom crackdown"
+    },
+    {
+      "slug": "sanctions-diplomatic-pressure",
+      "label": "Sanctions and diplomatic pressure"
+    },
+    {
+      "slug": "student-youth-protest",
+      "label": "Student and youth protest"
+    },
+    {
+      "slug": "telecom-internet-shutdown",
+      "label": "Telecom or internet shutdown"
+    },
+    {
+      "slug": "trade-export-restriction",
+      "label": "Trade and export restriction"
+    },
+    {
+      "slug": "transport-corridor-disruption",
+      "label": "Transport corridor disruption"
+    },
+    {
+      "slug": "water-stress-drought",
+      "label": "Water stress and drought"
+    }
+  ]
+}
