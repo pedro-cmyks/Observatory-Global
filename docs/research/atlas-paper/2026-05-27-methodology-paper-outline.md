@@ -1,12 +1,31 @@
-# Atlas methodology paper — outline and validation map
+# Paper 1 — Evidence-role topic classification + distillation methodology
 
 Date: 2026-05-27
 Status: canon (active)
+Series framing: this is **Paper 1 of the Atlas methodology series**.
+See `docs/research/atlas-paper/2026-05-27-atlas-papers-master-plan.md`
+for the full series index (Papers 1-8 covering ingestion, source
+quality, NLP, sentiment, topic classification, heat, threads,
+temporal model, visualization, and open-set topic discovery).
 Supersedes for outline purposes: `2026-05-25-atlas-narrative-intelligence-state-of-art-and-validation-plan.md` (which remains the source for state-of-the-art and research questions)
 
-## 1. Decision: paper type
+## 1. Decision: paper type and scope within the series
 
-Three possible paper types were considered:
+The Atlas system covers a dozen methodological decision classes
+(see the master plan). A single mega-paper would be 50+ pages and
+hard to peer review. The series approach lets each paper target a
+specific decision class and a specific venue.
+
+**Paper 1 scope (this document):** the topic-classification layer of
+Atlas. This includes the evidence-role schema, the audit and
+benchmark workflow, baseline comparisons against LLM zero-shot /
+few-shot, statistical scoring, and the LLM-distillation loop that
+feeds insights back into the rule-based classifier. Other
+decision classes (source quality, sentiment fusion, atlas heat,
+thread aggregation, temporal model, visualization, open-set
+discovery) are deferred to Papers 2-8 of the series.
+
+Three possible paper types were considered for Paper 1:
 
 | Type | Contribution claim | Heavy validation requirement |
 |---|---|---|
@@ -17,7 +36,8 @@ Three possible paper types were considered:
 **Choice: methodology / NLP**, because it is closest to the work already in
 the repository (`topic_quality_audit.py`, `topic_benchmark_harness.py`,
 `benchmark_bootstrap.py`, `llm_baseline_classifier.py`, the Phase 1 review
-workflow). The product and engineering papers can be derivative work later.
+workflow). The product and engineering papers correspond to later
+papers in the series (Papers 4, 6, 7).
 
 ## 2. Working title
 
@@ -163,3 +183,23 @@ LLM zero-shot / few-shot baselines.
 - Atlas topic snapshot is committed
   (`backend/data/atlas_topics_snapshot_2026-05-25.json`); regenerate
   when the production taxonomy changes.
+
+## 10. Relationship to the rest of the series
+
+Paper 1 establishes the schema (`atlas-topic-benchmark-v2`) and the
+statistical evaluation conventions used across the series:
+
+- Wilson interval per topic, stratified bootstrap overall (see
+  `benchmark_bootstrap.py`).
+- Cohen's kappa with bootstrap CI for inter-annotator agreement
+  (see `kappa_calculator.py`).
+- LLM-as-classifier baseline and LLM-as-annotator gold expansion
+  (see `llm_baseline_classifier.py`, `llm_annotator.py`).
+- Reasoning-mining distillation (see `llm_reasoning_mine.py`).
+
+Subsequent papers reuse these tools and extend the schema where
+needed (for example, the thread-level paper will add per-thread
+fields for the seven analyst questions, and the sentiment paper
+will add per-headline sentiment labels). The decision to ship
+Paper 1 first is documented in the master plan: every later paper
+benefits from having the topic-classification layer validated.
