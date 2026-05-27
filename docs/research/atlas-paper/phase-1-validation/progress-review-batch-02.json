@@ -1,18 +1,18 @@
 {
-  "accepted_assistant_rows": 0,
+  "accepted_assistant_rows": 24,
   "files": [
     {
-      "accepted_assistant": 0,
+      "accepted_assistant": 24,
       "path": "docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-02.review-template.jsonl",
-      "ready": 0,
-      "remaining": 32,
-      "reviewer_corrected": 0,
+      "ready": 32,
+      "remaining": 0,
+      "reviewer_corrected": 10,
       "rows": 32
     }
   ],
-  "progress_pct": 0.0,
-  "ready_rows": 0,
-  "remaining_rows": 32,
-  "reviewer_corrected_rows": 0,
+  "progress_pct": 1.0,
+  "ready_rows": 32,
+  "remaining_rows": 0,
+  "reviewer_corrected_rows": 10,
   "total_rows": 32
 }
