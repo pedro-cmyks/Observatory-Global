@@ -122,3 +122,85 @@ removes the human-throughput bottleneck without sacrificing rigor.
 - LLM consensus can share a systematic blind spot. The 0% topics
   (mining-royalty etc.) should still get a human adjudication pass to
   confirm the LLMs are right and Atlas is wrong, not the reverse.
+
+---
+
+## Update: cross-vendor panel (added GPT-4.1, 2026-05-28)
+
+Pedro funded an OpenAI key to add a non-Claude model and break the
+shared-lineage caveat. GPT-4.1 ran as a fourth independent annotator
+(same prompt). The annotator tool gained an OpenAI provider path
+(`_is_openai_model`, chat.completions) alongside Anthropic.
+
+### Cross-vendor agreement holds
+
+Pairwise Cohen kappa with GPT-4.1 added:
+
+| Pair | kappa | band |
+|---|---:|---|
+| opus47 vs haiku45 | 0.704 | substantial |
+| sonnet46 vs haiku45 | 0.693 | substantial |
+| haiku45 vs gpt41 | 0.646 | substantial |
+| pedro vs gpt41 | 0.638 | substantial |
+| sonnet46 vs opus47 | 0.624 | substantial |
+| opus47 vs gpt41 | 0.614 | substantial |
+| pedro vs opus47 | 0.574 | moderate |
+| pedro vs sonnet46 | 0.549 | moderate |
+| pedro vs haiku45 | 0.544 | moderate |
+| sonnet46 vs gpt41 | 0.532 | moderate |
+
+- Fleiss all-5: 0.623 (substantial)
+- Fleiss LLM-only (4 models, 2 vendors): 0.629 (substantial)
+
+Cross-vendor GPT-Claude pairs (0.53-0.65) land in the same range as
+within-Claude pairs (0.62-0.70). The non-Claude model does NOT break
+the consensus — it largely joins it. This addresses the
+shared-lineage caveat: LLM annotator reliability is not a Claude
+artifact.
+
+### A strictness axis appears
+
+GPT-4.1 is more lenient than the Claude models:
+
+| Annotator | correct | incorrect | partial |
+|---|---:|---:|---:|
+| pedro | 36 | 25 | 0 |
+| gpt41 | 126 | 102 | 25 |
+| haiku45 | 95 | 85 | 45 |
+| opus47 | 86 | 120 | 38 |
+| sonnet46 | 84 | 105 | 54 |
+
+`pedro vs gpt41` (0.638) is the strongest human pair — higher than any
+human-Claude pair. Pedro and GPT-4.1 both sit on the lenient end; the
+three Claude models sit on the strict end. So the human is not a pure
+outlier — he aligns with the lenient annotator camp. Annotator
+strictness is a real axis, and the precision estimate depends on where
+the reference sits on it.
+
+### Atlas precision across all references (post-044)
+
+| Reference | N | Precision | Wilson 95% CI |
+|---|---:|---:|---|
+| pedro (human, lenient, 6 topics) | 61 | 73.77% | [61.56%, 83.16%] |
+| sonnet46 alone (strict) | 243 | 38.68% | [32.78%, 44.94%] |
+| 3-Claude consensus (>=2/3, strict) | 212 | 42.45% | [35.99%, 49.18%] |
+| 4-model consensus (>=3/4, mixed) | 180 | **48.33%** | **[41.14%, 55.59%]** |
+
+The defensible headline band for Atlas v2 full-taxonomy precision is
+**~42-48% under multi-LLM consensus** (the exact value depends on
+panel strictness), versus ~74% on the human's cleaner six-topic
+subset. The four-model consensus (48.33%, two vendors) is the single
+most defensible point estimate: broadest panel, cross-vendor, full
+taxonomy, tight-ish CI.
+
+### Updated decision
+
+- Primary benchmark gold = multi-vendor LLM majority (Sonnet 4.6 +
+  Opus 4.7 + Haiku 4.5 + GPT-4.1), >=3/4 agreement.
+- Always report which panel and the Fleiss kappa, because the
+  strictness axis moves the number by ~6pp between all-Claude and
+  Claude+GPT panels.
+- The strictness axis itself is a paper finding: annotator leniency
+  is a measurable confound in narrative-classification benchmarks,
+  and a single annotator (human or model) cannot anchor a precision
+  claim.

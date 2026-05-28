@@ -35,6 +35,15 @@ except ImportError as exc:  # pragma: no cover
     print(f"missing dependency: {exc}", file=sys.stderr)
     sys.exit(2)
 
+try:
+    import openai
+except ImportError:  # pragma: no cover
+    openai = None
+
+
+def _is_openai_model(model: str) -> bool:
+    return model.startswith(("gpt", "o1", "o3", "o4", "chatgpt"))
+
 
 SCHEMA_VERSION = "atlas-llm-annotator-v1"
 DEFAULT_MODEL = "claude-sonnet-4-6"
@@ -198,19 +207,34 @@ def _parse_response(text: str) -> dict[str, Any]:
 
 
 def _call_llm(
-    client: "anthropic.Anthropic",
+    client: Any,
     *,
     model: str,
     user_prompt: str,
     max_tokens: int,
-    temperature: float,
+    temperature: float | None,
     retries: int,
     backoff_seconds: float,
 ) -> tuple[str, int, str | None]:
+    is_openai = _is_openai_model(model)
     last_error: str | None = None
     for attempt in range(1, retries + 1):
         try:
-            create_kwargs: dict[str, Any] = {
+            if is_openai:
+                create_kwargs: dict[str, Any] = {
+                    "model": model,
+                    "max_tokens": max_tokens,
+                    "messages": [
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                }
+                if temperature is not None:
+                    create_kwargs["temperature"] = temperature
+                response = client.chat.completions.create(**create_kwargs)
+                text = response.choices[0].message.content or ""
+                return text, attempt, None
+            create_kwargs = {
                 "model": model,
                 "max_tokens": max_tokens,
                 "system": SYSTEM_PROMPT,
@@ -335,17 +359,29 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = _parse_args()
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        print("ANTHROPIC_API_KEY not set", file=sys.stderr)
-        sys.exit(2)
 
     rows = _read_jsonl(args.input)
     if args.max_rows is not None:
         rows = rows[: args.max_rows]
 
     skip = _existing_signal_ids(args.output) if args.resume else set()
-    client = anthropic.Anthropic(api_key=api_key)
+
+    if _is_openai_model(args.model):
+        if openai is None:
+            print("openai SDK not installed", file=sys.stderr)
+            sys.exit(2)
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            print("OPENAI_API_KEY not set", file=sys.stderr)
+            sys.exit(2)
+        client: Any = openai.OpenAI(api_key=api_key, timeout=60.0)
+    else:
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            print("ANTHROPIC_API_KEY not set", file=sys.stderr)
+            sys.exit(2)
+        client = anthropic.Anthropic(api_key=api_key)
+
     temperature = None if args.no_temperature else args.temperature
 
     written = 0

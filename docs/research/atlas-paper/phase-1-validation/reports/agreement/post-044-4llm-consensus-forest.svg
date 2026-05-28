@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="1132" viewBox="0 0 920 1132">
+<rect width="100%" height="100%" fill="#071016"/>
+<text x="24" y="32" fill="#d7fbe8" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">Atlas v2 post-044 vs 4-LLM consensus (N=180, 2 vendors)</text>
+<text x="24" y="54" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="12">precision with 95% CI · Wilson per topic · stratified bootstrap overall</text>
+<line x1="220.0" y1="74" x2="220.0" y2="1072" stroke="#1c2f3d" stroke-width="1"/>
+<text x="220.0" y="1090" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">0.00</text>
+<line x1="375.0" y1="74" x2="375.0" y2="1072" stroke="#1c2f3d" stroke-width="1"/>
+<text x="375.0" y="1090" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">0.25</text>
+<line x1="530.0" y1="74" x2="530.0" y2="1072" stroke="#1c2f3d" stroke-width="1"/>
+<text x="530.0" y="1090" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">0.50</text>
+<line x1="685.0" y1="74" x2="685.0" y2="1072" stroke="#1c2f3d" stroke-width="1"/>
+<text x="685.0" y="1090" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">0.75</text>
+<line x1="840.0" y1="74" x2="840.0" y2="1072" stroke="#1c2f3d" stroke-width="1"/>
+<text x="840.0" y="1090" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">1.00</text>
+<line x1="747.0" y1="74" x2="747.0" y2="1072" stroke="#f1bf5b" stroke-width="1" stroke-dasharray="4 4" opacity="0.7"/>
+<text x="751.0" y="84" fill="#f1bf5b" font-family="Inter, Arial, sans-serif" font-size="10">min 0.85</text>
+<line x1="778.0" y1="74" x2="778.0" y2="1072" stroke="#5ee6a8" stroke-width="1" stroke-dasharray="4 4" opacity="0.7"/>
+<text x="782.0" y="84" fill="#5ee6a8" font-family="Inter, Arial, sans-serif" font-size="10">target 0.90</text>
+<text x="24" y="97" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">election-legitimacy-dispute</text>
+<text x="208" y="97" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=14</text>
+<line x1="227.874" y1="93.0" x2="415.114" y2="93.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="227.874" y1="87.0" x2="227.874" y2="99.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="415.114" y1="87.0" x2="415.114" y2="99.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="264.26800000000003" cy="93.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="97" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">7.1%</text>
+<text x="24" y="129" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">oil-gas-supply-risk</text>
+<text x="208" y="129" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=11</text>
+<line x1="393.66200000000003" y1="125.0" x2="708.126" y2="125.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="393.66200000000003" y1="119.0" x2="393.66200000000003" y2="131.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="708.126" y1="119.0" x2="708.126" y2="131.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="558.21" cy="125.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="129" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">54.5%</text>
+<text x="24" y="161" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">corruption-investigation</text>
+<text x="208" y="161" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=10</text>
+<line x1="523.924" y1="157.0" x2="804.846" y2="157.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="523.924" y1="151.0" x2="523.924" y2="163.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="804.846" y1="151.0" x2="804.846" y2="163.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="716.0" cy="157.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="161" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">80.0%</text>
+<text x="24" y="193" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">flood-landslide-disaster</text>
+<text x="208" y="193" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=9</text>
+<line x1="439.60400000000004" y1="189.0" x2="765.228" y2="189.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="439.60400000000004" y1="183.0" x2="439.60400000000004" y2="195.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="765.228" y1="183.0" x2="765.228" y2="195.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="633.354" cy="189.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="193" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">66.7%</text>
+<text x="24" y="225" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">housing-cost-pressure</text>
+<text x="208" y="225" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=9</text>
+<line x1="439.60400000000004" y1="221.0" x2="765.228" y2="221.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="439.60400000000004" y1="215.0" x2="439.60400000000004" y2="227.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="765.228" y1="215.0" x2="765.228" y2="227.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="633.354" cy="221.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="225" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">66.7%</text>
+<text x="24" y="257" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">agriculture-crop-risk</text>
+<text x="208" y="257" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=8</text>
+<line x1="264.33" y1="253.0" x2="586.2339999999999" y2="253.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="264.33" y1="247.0" x2="264.33" y2="259.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="586.2339999999999" y1="247.0" x2="586.2339999999999" y2="259.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="375.0" cy="253.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="257" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">25.0%</text>
+<text x="24" y="289" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">armed-conflict-escalation</text>
+<text x="208" y="289" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=8</text>
+<line x1="353.424" y1="285.0" x2="706.576" y2="285.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="353.424" y1="279.0" x2="353.424" y2="291.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="706.576" y1="279.0" x2="706.576" y2="291.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="530.0" cy="285.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="289" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">50.0%</text>
+<text x="24" y="321" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">gang-control-urban-security</text>
+<text x="208" y="321" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=8</text>
+<line x1="264.33" y1="317.0" x2="586.2339999999999" y2="317.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="264.33" y1="311.0" x2="264.33" y2="323.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="586.2339999999999" y1="311.0" x2="586.2339999999999" y2="323.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="375.0" cy="317.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="321" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">25.0%</text>
+<text x="24" y="353" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">heat-health-risk</text>
+<text x="208" y="353" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=8</text>
+<line x1="264.33" y1="349.0" x2="586.2339999999999" y2="349.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="264.33" y1="343.0" x2="264.33" y2="355.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="586.2339999999999" y1="343.0" x2="586.2339999999999" y2="355.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="375.0" cy="349.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="353" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">25.0%</text>
+<text x="24" y="385" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">currency-debt-stress</text>
+<text x="208" y="385" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=7</text>
+<line x1="318.084" y1="381.0" x2="684.69" y2="381.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="318.084" y1="375.0" x2="318.084" y2="387.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="684.69" y1="375.0" x2="684.69" y2="387.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="485.73199999999997" cy="381.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="385" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">42.9%</text>
+<text x="24" y="417" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">cyberattack-infrastructure</text>
+<text x="208" y="417" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=7</text>
+<line x1="521.8779999999999" y1="413.0" x2="824.066" y2="413.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="521.8779999999999" y1="407.0" x2="521.8779999999999" y2="419.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="824.066" y1="407.0" x2="824.066" y2="419.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<circle cx="751.4019999999999" cy="413.0" r="5" fill="#5ee6a8"/>
+<text x="848" y="417" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">85.7%</text>
+<text x="24" y="449" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">disease-outbreak</text>
+<text x="208" y="449" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=7</text>
+<line x1="620.3340000000001" y1="445.0" x2="840.0" y2="445.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="620.3340000000001" y1="439.0" x2="620.3340000000001" y2="451.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="840.0" y1="439.0" x2="840.0" y2="451.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<circle cx="840.0" cy="445.0" r="5" fill="#5ee6a8"/>
+<text x="848" y="449" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">100.0%</text>
+<text x="24" y="481" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">gender-violence-rights</text>
+<text x="208" y="481" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=7</text>
+<line x1="620.3340000000001" y1="477.0" x2="840.0" y2="477.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="620.3340000000001" y1="471.0" x2="620.3340000000001" y2="483.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="840.0" y1="471.0" x2="840.0" y2="483.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<circle cx="840.0" cy="477.0" r="5" fill="#5ee6a8"/>
+<text x="848" y="481" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">100.0%</text>
+<text x="24" y="513" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">constitutional-institutional-crisis</text>
+<text x="208" y="513" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=6</text>
+<line x1="490.63" y1="509.0" x2="821.338" y2="509.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="490.63" y1="503.0" x2="490.63" y2="515.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="821.338" y1="503.0" x2="821.338" y2="515.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="736.6460000000001" cy="509.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="513" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">83.3%</text>
+<text x="24" y="545" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">humanitarian-access-conflict</text>
+<text x="208" y="545" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=6</text>
+<line x1="220.0" y1="541.0" x2="461.986" y2="541.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="220.0" y1="535.0" x2="220.0" y2="547.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="461.986" y1="535.0" x2="461.986" y2="547.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="220.0" cy="541.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="545" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">0.0%</text>
+<text x="24" y="577" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">migration-border-pressure</text>
+<text x="208" y="577" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=6</text>
+<line x1="490.63" y1="573.0" x2="821.338" y2="573.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="490.63" y1="567.0" x2="490.63" y2="579.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="821.338" y1="567.0" x2="821.338" y2="579.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="736.6460000000001" cy="573.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="577" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">83.3%</text>
+<text x="24" y="609" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">energy-grid-instability</text>
+<text x="208" y="609" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=5</text>
+<line x1="363.034" y1="605.0" x2="767.088" y2="605.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="363.034" y1="599.0" x2="363.034" y2="611.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="767.088" y1="599.0" x2="767.088" y2="611.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="592.0" cy="605.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="609" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">60.0%</text>
+<text x="24" y="641" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">fuel-subsidy-unrest</text>
+<text x="208" y="641" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=5</text>
+<line x1="220.0" y1="637.0" x2="489.39" y2="637.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="220.0" y1="631.0" x2="220.0" y2="643.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="489.39" y1="631.0" x2="489.39" y2="643.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="220.0" cy="637.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="641" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">0.0%</text>
+<text x="24" y="673" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">labor-strike-disruption</text>
+<text x="208" y="673" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=5</text>
+<line x1="363.034" y1="669.0" x2="767.088" y2="669.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="363.034" y1="663.0" x2="363.034" y2="675.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="767.088" y1="663.0" x2="767.088" y2="675.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="592.0" cy="669.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="673" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">60.0%</text>
+<text x="24" y="705" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">mining-royalty-risk</text>
+<text x="208" y="705" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=5</text>
+<line x1="220.0" y1="701.0" x2="489.39" y2="701.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="220.0" y1="695.0" x2="220.0" y2="707.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="489.39" y1="695.0" x2="489.39" y2="707.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="220.0" cy="701.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="705" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">0.0%</text>
+<text x="24" y="737" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">food-price-stress</text>
+<text x="208" y="737" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=4</text>
+<line x1="536.262" y1="733.0" x2="840.0" y2="733.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="536.262" y1="727.0" x2="536.262" y2="739.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="840.0" y1="727.0" x2="840.0" y2="739.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<circle cx="840.0" cy="733.0" r="5" fill="#5ee6a8"/>
+<text x="848" y="737" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">100.0%</text>
+<text x="24" y="769" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">sanctions-diplomatic-pressure</text>
+<text x="208" y="769" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=4</text>
+<line x1="220.0" y1="765.0" x2="523.738" y2="765.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="220.0" y1="759.0" x2="220.0" y2="771.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="523.738" y1="759.0" x2="523.738" y2="771.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="220.0" cy="765.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="769" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">0.0%</text>
+<text x="24" y="801" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">trade-export-restriction</text>
+<text x="208" y="801" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=4</text>
+<line x1="248.272" y1="797.0" x2="653.6279999999999" y2="797.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="248.272" y1="791.0" x2="248.272" y2="803.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="653.6279999999999" y1="791.0" x2="653.6279999999999" y2="803.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="375.0" cy="797.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="801" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">25.0%</text>
+<text x="24" y="833" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">transport-corridor-disruption</text>
+<text x="208" y="833" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=4</text>
+<line x1="248.272" y1="829.0" x2="653.6279999999999" y2="829.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="248.272" y1="823.0" x2="248.272" y2="835.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="653.6279999999999" y1="823.0" x2="653.6279999999999" y2="835.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="375.0" cy="829.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="833" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">25.0%</text>
+<text x="24" y="865" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">water-stress-drought</text>
+<text x="208" y="865" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=4</text>
+<line x1="248.272" y1="861.0" x2="653.6279999999999" y2="861.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="248.272" y1="855.0" x2="248.272" y2="867.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="653.6279999999999" y1="855.0" x2="653.6279999999999" y2="867.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="375.0" cy="861.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="865" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">25.0%</text>
+<text x="24" y="897" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">disinformation-influence-operation</text>
+<text x="208" y="897" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=3</text>
+<line x1="258.13" y1="893.0" x2="711.226" y2="893.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="258.13" y1="887.0" x2="258.13" y2="899.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="711.226" y1="887.0" x2="711.226" y2="899.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="426.64599999999996" cy="893.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="897" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">33.3%</text>
+<text x="24" y="929" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">student-youth-protest</text>
+<text x="208" y="929" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=3</text>
+<line x1="258.13" y1="925.0" x2="711.226" y2="925.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="258.13" y1="919.0" x2="258.13" y2="931.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="711.226" y1="919.0" x2="711.226" y2="931.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="426.64599999999996" cy="925.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="929" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">33.3%</text>
+<text x="24" y="961" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">forced-displacement</text>
+<text x="208" y="961" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=1</text>
+<line x1="348.03" y1="957.0" x2="840.0" y2="957.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="348.03" y1="951.0" x2="348.03" y2="963.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="840.0" y1="951.0" x2="840.0" y2="963.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<circle cx="840.0" cy="957.0" r="5" fill="#5ee6a8"/>
+<text x="848" y="961" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">100.0%</text>
+<text x="24" y="993" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">press-freedom-crackdown</text>
+<text x="208" y="993" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=1</text>
+<line x1="348.03" y1="989.0" x2="840.0" y2="989.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="348.03" y1="983.0" x2="348.03" y2="995.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="840.0" y1="983.0" x2="840.0" y2="995.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<circle cx="840.0" cy="989.0" r="5" fill="#5ee6a8"/>
+<text x="848" y="993" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">100.0%</text>
+<text x="24" y="1025" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">telecom-internet-shutdown</text>
+<text x="208" y="1025" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=1</text>
+<line x1="220.0" y1="1021.0" x2="711.97" y2="1021.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="220.0" y1="1015.0" x2="220.0" y2="1027.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="711.97" y1="1015.0" x2="711.97" y2="1027.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="220.0" cy="1021.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="1025" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">0.0%</text>
+<text x="24" y="1057" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">OVERALL</text>
+<text x="208" y="1057" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=180</text>
+<line x1="485.236" y1="1053.0" x2="554.118" y2="1053.0" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="485.236" y1="1047.0" x2="485.236" y2="1059.0" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="554.118" y1="1047.0" x2="554.118" y2="1059.0" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<circle cx="519.646" cy="1053.0" r="5" fill="#75aaff"/>
+<text x="848" y="1057" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">48.3%</text>
+</svg>
