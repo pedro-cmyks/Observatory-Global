@@ -1,0 +1,250 @@
+{
+  "schema_version": "atlas-multi-annotator-v1",
+  "categories": [
+    "correct",
+    "incorrect",
+    "partial"
+  ],
+  "annotators": [
+    "pedro",
+    "sonnet46",
+    "opus47",
+    "haiku45",
+    "gpt41",
+    "gpt4o",
+    "gpt4omini"
+  ],
+  "distributions": {
+    "pedro": {
+      "total": 61,
+      "correct": 36,
+      "incorrect": 25,
+      "partial": 0
+    },
+    "sonnet46": {
+      "total": 243,
+      "correct": 84,
+      "incorrect": 105,
+      "partial": 54
+    },
+    "opus47": {
+      "total": 244,
+      "correct": 86,
+      "incorrect": 120,
+      "partial": 38
+    },
+    "haiku45": {
+      "total": 225,
+      "correct": 95,
+      "incorrect": 85,
+      "partial": 45
+    },
+    "gpt41": {
+      "total": 244,
+      "correct": 122,
+      "incorrect": 98,
+      "partial": 24
+    },
+    "gpt4o": {
+      "total": 239,
+      "correct": 108,
+      "incorrect": 118,
+      "partial": 13
+    },
+    "gpt4omini": {
+      "total": 204,
+      "correct": 89,
+      "incorrect": 115,
+      "partial": 0
+    }
+  },
+  "pairwise_cohen_kappa": [
+    {
+      "annotator_a": "pedro",
+      "annotator_b": "sonnet46",
+      "overlap": 61,
+      "kappa": 0.5488,
+      "observed_agreement": 0.7377,
+      "landis_koch_band": "moderate"
+    },
+    {
+      "annotator_a": "pedro",
+      "annotator_b": "opus47",
+      "overlap": 61,
+      "kappa": 0.5736,
+      "observed_agreement": 0.7541,
+      "landis_koch_band": "moderate"
+    },
+    {
+      "annotator_a": "pedro",
+      "annotator_b": "haiku45",
+      "overlap": 54,
+      "kappa": 0.5439,
+      "observed_agreement": 0.7222,
+      "landis_koch_band": "moderate"
+    },
+    {
+      "annotator_a": "pedro",
+      "annotator_b": "gpt41",
+      "overlap": 59,
+      "kappa": 0.6377,
+      "observed_agreement": 0.7966,
+      "landis_koch_band": "substantial"
+    },
+    {
+      "annotator_a": "pedro",
+      "annotator_b": "gpt4o",
+      "overlap": 60,
+      "kappa": 0.7686,
+      "observed_agreement": 0.8833,
+      "landis_koch_band": "substantial"
+    },
+    {
+      "annotator_a": "pedro",
+      "annotator_b": "gpt4omini",
+      "overlap": 52,
+      "kappa": 0.7355,
+      "observed_agreement": 0.8654,
+      "landis_koch_band": "substantial"
+    },
+    {
+      "annotator_a": "sonnet46",
+      "annotator_b": "opus47",
+      "overlap": 240,
+      "kappa": 0.6243,
+      "observed_agreement": 0.7625,
+      "landis_koch_band": "substantial"
+    },
+    {
+      "annotator_a": "sonnet46",
+      "annotator_b": "haiku45",
+      "overlap": 221,
+      "kappa": 0.6933,
+      "observed_agreement": 0.8009,
+      "landis_koch_band": "substantial"
+    },
+    {
+      "annotator_a": "sonnet46",
+      "annotator_b": "gpt41",
+      "overlap": 240,
+      "kappa": 0.5319,
+      "observed_agreement": 0.7042,
+      "landis_koch_band": "moderate"
+    },
+    {
+      "annotator_a": "sonnet46",
+      "annotator_b": "gpt4o",
+      "overlap": 235,
+      "kappa": 0.5861,
+      "observed_agreement": 0.7447,
+      "landis_koch_band": "moderate"
+    },
+    {
+      "annotator_a": "sonnet46",
+      "annotator_b": "gpt4omini",
+      "overlap": 200,
+      "kappa": 0.4946,
+      "observed_agreement": 0.685,
+      "landis_koch_band": "moderate"
+    },
+    {
+      "annotator_a": "opus47",
+      "annotator_b": "haiku45",
+      "overlap": 223,
+      "kappa": 0.7043,
+      "observed_agreement": 0.8117,
+      "landis_koch_band": "substantial"
+    },
+    {
+      "annotator_a": "opus47",
+      "annotator_b": "gpt41",
+      "overlap": 242,
+      "kappa": 0.6138,
+      "observed_agreement": 0.7645,
+      "landis_koch_band": "substantial"
+    },
+    {
+      "annotator_a": "opus47",
+      "annotator_b": "gpt4o",
+      "overlap": 238,
+      "kappa": 0.6449,
+      "observed_agreement": 0.7899,
+      "landis_koch_band": "substantial"
+    },
+    {
+      "annotator_a": "opus47",
+      "annotator_b": "gpt4omini",
+      "overlap": 201,
+      "kappa": 0.5955,
+      "observed_agreement": 0.7662,
+      "landis_koch_band": "moderate"
+    },
+    {
+      "annotator_a": "haiku45",
+      "annotator_b": "gpt41",
+      "overlap": 224,
+      "kappa": 0.6457,
+      "observed_agreement": 0.7812,
+      "landis_koch_band": "substantial"
+    },
+    {
+      "annotator_a": "haiku45",
+      "annotator_b": "gpt4o",
+      "overlap": 223,
+      "kappa": 0.6343,
+      "observed_agreement": 0.7758,
+      "landis_koch_band": "substantial"
+    },
+    {
+      "annotator_a": "haiku45",
+      "annotator_b": "gpt4omini",
+      "overlap": 190,
+      "kappa": 0.5333,
+      "observed_agreement": 0.7158,
+      "landis_koch_band": "moderate"
+    },
+    {
+      "annotator_a": "gpt41",
+      "annotator_b": "gpt4o",
+      "overlap": 238,
+      "kappa": 0.727,
+      "observed_agreement": 0.8445,
+      "landis_koch_band": "substantial"
+    },
+    {
+      "annotator_a": "gpt41",
+      "annotator_b": "gpt4omini",
+      "overlap": 202,
+      "kappa": 0.5741,
+      "observed_agreement": 0.7624,
+      "landis_koch_band": "moderate"
+    },
+    {
+      "annotator_a": "gpt4o",
+      "annotator_b": "gpt4omini",
+      "overlap": 197,
+      "kappa": 0.7051,
+      "observed_agreement": 0.8426,
+      "landis_koch_band": "substantial"
+    }
+  ],
+  "fleiss_kappa_all": {
+    "n_items": 45,
+    "n_annotators": 7,
+    "kappa": 0.6302816901408452,
+    "mean_observed_agreement": 0.782010582010582,
+    "expected_agreement": 0.4103905265810028,
+    "landis_koch_band": "substantial"
+  },
+  "fleiss_kappa_llm_only": {
+    "n_items": 183,
+    "n_annotators": 6,
+    "kappa": 0.6349845810642356,
+    "mean_observed_agreement": 0.7785063752276873,
+    "expected_agreement": 0.3931937850239382,
+    "landis_koch_band": "substantial"
+  },
+  "consensus_subset_size": 45,
+  "unanimous_items": 26,
+  "unanimous_rate": 0.5778
+}
