@@ -1,0 +1,35 @@
+{
+  "schema_version": "atlas-consensus-corpus-v1",
+  "models": [
+    "deepseekchat_initial",
+    "gpt41_initial",
+    "gpt4o_initial",
+    "gpt4omini_initial",
+    "haiku45_initial",
+    "opus47_initial",
+    "sonnet46_initial"
+  ],
+  "n_models": 7,
+  "majority_threshold": 4,
+  "n_signals_common": 247,
+  "consensus_agreement_histogram": {
+    "2": 5,
+    "3": 25,
+    "4": 28,
+    "5": 40,
+    "6": 44,
+    "7": 105
+  },
+  "consensus_decision_counts": {
+    "incorrect": 114,
+    "correct": 93,
+    "no_majority": 30,
+    "partial": 10
+  },
+  "is_evidence_balance": {
+    "not_evidence": 114,
+    "evidence": 93,
+    "ambiguous": 40
+  },
+  "n_rows_with_human_gold": 0
+}

@@ -1,0 +1,86 @@
+{
+  "schema_version": "atlas-phase-b-scope-gate-probe-v2",
+  "corpus": "docs/research/atlas-paper/phase-1-validation/labels/consensus/2026-05-28-7llm-consensus-corpus.jsonl",
+  "n_rows_binary": 207,
+  "n_evidence": 93,
+  "n_not_evidence": 114,
+  "seed": 0,
+  "n_folds": 5,
+  "n_bootstrap": 2000,
+  "hash_dim": 16384,
+  "note": "Feasibility probe on binary consensus rows. Positive class = evidence (gate keeps). base_rate_precision is the no-op keep-all precision = current Atlas precision on this decided subset. keep_at_precision_X = max recall while keeping >=X precision. numpy-only; metrics self-tested against sklearn references.",
+  "results": [
+    {
+      "feature_set": "atlas_conf",
+      "n": 207,
+      "n_positive": 93,
+      "base_rate_precision": 0.4493,
+      "roc_auc": 0.7388,
+      "roc_auc_ci95": [
+        0.6641,
+        0.8046
+      ],
+      "pr_auc": 0.6691,
+      "pr_auc_ci95": [
+        0.5532,
+        0.7713
+      ],
+      "keep_at_precision_0.90": {
+        "max_recall": 0.0108,
+        "threshold": 0.986
+      },
+      "keep_at_precision_0.85": {
+        "max_recall": 0.0108,
+        "threshold": 0.986
+      }
+    },
+    {
+      "feature_set": "charngram",
+      "n": 207,
+      "n_positive": 93,
+      "base_rate_precision": 0.4493,
+      "roc_auc": 0.7777,
+      "roc_auc_ci95": [
+        0.7108,
+        0.839
+      ],
+      "pr_auc": 0.7646,
+      "pr_auc_ci95": [
+        0.6799,
+        0.8407
+      ],
+      "keep_at_precision_0.90": {
+        "max_recall": 0.3118,
+        "threshold": 0.5778
+      },
+      "keep_at_precision_0.85": {
+        "max_recall": 0.3118,
+        "threshold": 0.5778
+      }
+    },
+    {
+      "feature_set": "charngram+conf",
+      "n": 207,
+      "n_positive": 93,
+      "base_rate_precision": 0.4493,
+      "roc_auc": 0.8183,
+      "roc_auc_ci95": [
+        0.7543,
+        0.874
+      ],
+      "pr_auc": 0.7659,
+      "pr_auc_ci95": [
+        0.6625,
+        0.8538
+      ],
+      "keep_at_precision_0.90": {
+        "max_recall": 0.1613,
+        "threshold": 0.8441
+      },
+      "keep_at_precision_0.85": {
+        "max_recall": 0.2796,
+        "threshold": 0.7704
+      }
+    }
+  ]
+}
