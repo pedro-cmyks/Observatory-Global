@@ -9,7 +9,7 @@ Min vocab confidence threshold: 0.85
 |---|---:|
 | Topics covered | 30 |
 | Topics with proposed additions | 30 |
-| Total new terms proposed | 445 |
+| Total new terms proposed | 423 |
 | Total negative terms to monitor | 150 |
 | Existing terms flagged for removal review | 0 |
 
@@ -28,7 +28,7 @@ Min vocab confidence threshold: 0.85
 ### `agriculture-crop-risk`
 
 - LLM-Atlas agreement on reviewed sample: 33.3%
-- existing lexicon size: 0
+- existing lexicon size: 5
 - vocab mining proposed: 15 positive, 5 negative
 - terms to add (high-confidence, not yet in lexicon): 15
   - `crop failure risk` [en] conf=0.93 — Directly signals agricultural production loss due to environmental or disease factors.
@@ -56,7 +56,7 @@ Min vocab confidence threshold: 0.85
 ### `armed-conflict-escalation`
 
 - LLM-Atlas agreement on reviewed sample: 62.5%
-- existing lexicon size: 0
+- existing lexicon size: 48
 - vocab mining proposed: 15 positive, 5 negative
 - terms to add (high-confidence, not yet in lexicon): 15
   - `military offensive launched` [en] conf=0.93 — Directly signals the start of armed escalation in a conflict zone.
@@ -84,7 +84,7 @@ Min vocab confidence threshold: 0.85
 ### `corruption-investigation`
 
 - LLM-Atlas agreement on reviewed sample: 91.7%
-- existing lexicon size: 0
+- existing lexicon size: 5
 - vocab mining proposed: 15 positive, 5 negative
 - terms to add (high-confidence, not yet in lexicon): 15
   - `corruption probe` [en] conf=0.95 — Directly signals an active investigation into corrupt conduct.
@@ -109,38 +109,10 @@ Min vocab confidence threshold: 0.85
   - `lucha contra la corrupción` [es] — Broad political rhetoric about fighting corruption, not a specific investigation.
   - `corruption scandal` [en] — Often refers to political fallout or opinion pieces rather than an active legal investigation.
 
-### `currency-debt-stress`
-
-- LLM-Atlas agreement on reviewed sample: 58.3%
-- existing lexicon size: 0
-- vocab mining proposed: 15 positive, 5 negative
-- terms to add (high-confidence, not yet in lexicon): 15
-  - `currency crisis` [en] conf=0.95 — Directly signals a currency stress event in headlines.
-  - `sovereign debt default` [en] conf=0.97 — Explicitly describes a government failing to meet debt obligations.
-  - `debt restructuring talks` [en] conf=0.93 — Indicates a country negotiating to reorganize its debt burden.
-  - `peso se desploma` [es] conf=0.94 — Describes a sharp collapse of the peso currency in Spanish headlines.
-  - `crisis de deuda soberana` [es] conf=0.96 — Directly names a sovereign debt crisis in Spanish.
-  - `reestructuración de deuda` [es] conf=0.92 — Refers to debt restructuring negotiations in Spanish-language news.
-  - `crise cambial` [pt] conf=0.94 — Portuguese term for exchange-rate or currency crisis.
-  - `dívida soberana em risco` [pt] conf=0.93 — Signals sovereign debt at risk of default in Portuguese.
-  - `moratória da dívida` [pt] conf=0.95 — Refers to a debt moratorium or payment suspension in Portuguese.
-  - `crisi del debito sovrano` [it] conf=0.95 — Italian phrase directly naming a sovereign debt crisis.
-  - `crollo della lira` [it] conf=0.91 — Describes a collapse of a lira-denominated currency in Italian headlines.
-  - `crise de la dette` [fr] conf=0.94 — French phrase for debt crisis, commonly used in financial headlines.
-  - `dépréciation monétaire` [fr] conf=0.92 — Refers to currency depreciation stress in French-language news.
-  - `staatsschuldenkrise` [de] conf=0.96 — German compound noun directly meaning sovereign debt crisis.
-  - `währungsverfall` [de] conf=0.93 — German term for currency collapse or severe depreciation.
-- negative monitors (5):
-  - `interest rate hike` [en] — Usually signals central bank monetary policy decisions, not debt stress per se.
-  - `budget deficit` [en] — Refers to fiscal planning shortfalls, not necessarily acute debt or currency stress.
-  - `inflation rate` [en] — Primarily signals price-level reporting, not currency or debt crisis events.
-  - `bond yield` [en] — Often appears in routine market-data headlines rather than crisis coverage.
-  - `deuda educativa` [es] — Uses 'deuda' but refers to educational debt or obligations, not sovereign finance.
-
 ### `cyberattack-infrastructure`
 
 - LLM-Atlas agreement on reviewed sample: 28.6%
-- existing lexicon size: 0
+- existing lexicon size: 5
 - vocab mining proposed: 15 positive, 5 negative
 - terms to add (high-confidence, not yet in lexicon): 15
   - `cyberattack on power grid` [en] conf=0.97 — Directly describes a cyberattack targeting electrical infrastructure.
@@ -165,63 +137,9 @@ Min vocab confidence threshold: 0.85
   - `infrastructure investment` [en] — Economic or political topic about spending, unrelated to cyberattacks.
   - `power grid upgrade` [en] — Refers to modernization projects, not attacks on the grid.
 
-### `disinformation-influence-operation`
-
-- existing lexicon size: 0
-- vocab mining proposed: 15 positive, 5 negative
-- terms to add (high-confidence, not yet in lexicon): 15
-  - `influence operation` [en] conf=0.95 — Direct label for coordinated state or non-state manipulation campaigns.
-  - `disinformation campaign` [en] conf=0.95 — Specific phrase for organized spread of false information.
-  - `coordinated inauthentic behavior` [en] conf=0.97 — Platform-specific term for detected influence operations.
-  - `campaña de desinformación` [es] conf=0.95 — Spanish equivalent of disinformation campaign, highly specific.
-  - `operación de influencia` [es] conf=0.93 — Spanish term for influence operation targeting public opinion.
-  - `campanha de desinformação` [pt] conf=0.95 — Portuguese phrase directly describing disinformation campaigns.
-  - `operação de influência` [pt] conf=0.93 — Portuguese term for coordinated influence operations.
-  - `campagna di disinformazione` [it] conf=0.95 — Italian phrase for organized disinformation efforts.
-  - `operazione di influenza` [it] conf=0.90 — Italian term for influence operations targeting narratives.
-  - `campagne de désinformation` [fr] conf=0.95 — French phrase for disinformation campaigns, highly specific.
-  - `opération d'influence` [fr] conf=0.93 — French term for state-linked or covert influence operations.
-  - `desinformationskampagne` [de] conf=0.95 — German compound noun directly describing disinformation campaigns.
-  - `einflussoperation` [de] conf=0.92 — German term for coordinated influence operations.
-  - `fake news network` [en] conf=0.88 — Refers to organized infrastructure for spreading fabricated stories.
-  - `manipulation de l'information` [fr] conf=0.90 — French phrase for deliberate information manipulation operations.
-- negative monitors (5):
-  - `influencer` [en] — Usually refers to social media content creators, not influence operations.
-  - `fake news` [en] — Overused phrase often applied to political disputes rather than documented disinformation operations.
-  - `propaganda` [en] — Broad term frequently used in historical, advertising, or general political contexts unrelated to specific operations.
-  - `misinformation` [en] — Often covers accidental false information spread, not coordinated influence operations.
-  - `noticias falsas` [es] — Spanish 'fake news' is frequently used in partisan political rhetoric rather than reporting on actual operations.
-
-### `election-legitimacy-dispute`
-
-- existing lexicon size: 0
-- vocab mining proposed: 15 positive, 5 negative
-- terms to add (high-confidence, not yet in lexicon): 15
-  - `election fraud claims` [en] conf=0.93 — Directly signals disputed election legitimacy via fraud allegations.
-  - `stolen election` [en] conf=0.91 — Core phrase used when a candidate or party contests election results.
-  - `disputed election results` [en] conf=0.94 — Explicitly describes a legitimacy challenge to electoral outcomes.
-  - `fraude electoral` [es] conf=0.93 — Spanish equivalent of electoral fraud, central to legitimacy disputes.
-  - `resultados impugnados` [es] conf=0.90 — Means 'contested results', directly indicating an election legitimacy dispute.
-  - `elección ilegítima` [es] conf=0.88 — Phrase explicitly labeling an election as illegitimate.
-  - `fraude nas eleições` [pt] conf=0.92 — Portuguese phrase for electoral fraud, core to legitimacy disputes.
-  - `resultado eleitoral contestado` [pt] conf=0.91 — Directly describes a contested electoral result in Portuguese.
-  - `brogli elettorali` [it] conf=0.92 — Italian term for electoral fraud, strongly tied to legitimacy disputes.
-  - `risultati contestati elezioni` [it] conf=0.90 — Italian phrase for contested election results.
-  - `fraude électorale` [fr] conf=0.93 — French term for electoral fraud, directly signals legitimacy dispute.
-  - `résultats électoraux contestés` [fr] conf=0.91 — French phrase explicitly describing disputed election results.
-  - `wahlfälschung` [de] conf=0.93 — German word for election fraud, core indicator of legitimacy disputes.
-  - `wahlergebnis angefochten` [de] conf=0.91 — German phrase meaning 'election result challenged', directly on-topic.
-  - `wahlbetrug vorwürfe` [de] conf=0.90 — German for 'election fraud allegations', strongly tied to legitimacy disputes.
-- negative monitors (5):
-  - `election campaign` [en] — Refers to pre-election campaigning, not a legitimacy dispute after voting.
-  - `voter turnout` [en] — Describes participation rates, not a challenge to election legitimacy.
-  - `election day` [en] — Refers to the voting event itself, not a post-election legitimacy contest.
-  - `fraude fiscal` [es] — 'Fraude fiscal' means tax fraud in Spanish, unrelated to elections despite containing 'fraude'.
-  - `wahlrecht` [de] — Means 'voting rights' or 'electoral law' in German, not a legitimacy dispute.
-
 ### `energy-grid-instability`
 
-- existing lexicon size: 0
+- existing lexicon size: 5
 - vocab mining proposed: 15 positive, 5 negative
 - terms to add (high-confidence, not yet in lexicon): 15
   - `power grid failure` [en] conf=0.95 — Directly describes electrical grid breakdown events.
@@ -248,7 +166,7 @@ Min vocab confidence threshold: 0.85
 
 ### `flood-landslide-disaster`
 
-- existing lexicon size: 0
+- existing lexicon size: 5
 - vocab mining proposed: 15 positive, 5 negative
 - terms to add (high-confidence, not yet in lexicon): 15
   - `flash flood kills` [en] conf=0.95 — Directly signals a deadly flood disaster event in headlines.
@@ -273,36 +191,9 @@ Min vocab confidence threshold: 0.85
   - `inondation de données` [fr] — French metaphor for data overflow in tech contexts, not a flood disaster.
   - `erdrutschsieg` [de] — German compound meaning landslide victory in elections, not a natural disaster.
 
-### `food-price-stress`
-
-- existing lexicon size: 0
-- vocab mining proposed: 15 positive, 5 negative
-- terms to add (high-confidence, not yet in lexicon): 15
-  - `food prices surge` [en] conf=0.93 — Directly signals rising food costs as the headline subject.
-  - `grocery bills rising` [en] conf=0.91 — Specifically captures consumer stress from supermarket price increases.
-  - `cost of food soars` [en] conf=0.90 — Unambiguously describes escalating food expenditure pressure.
-  - `precios de alimentos` [es] conf=0.89 — Spanish phrase for food prices, core signal for this topic.
-  - `cesta de la compra cara` [es] conf=0.88 — Refers to expensive shopping basket, a direct food-cost stress indicator in Spanish media.
-  - `inflación alimentaria` [es] conf=0.90 — Food inflation in Spanish, strongly tied to this topic.
-  - `preços dos alimentos sobem` [pt] conf=0.91 — Portuguese phrase for rising food prices, primary topic signal.
-  - `custo da alimentação` [pt] conf=0.87 — Cost of food/nutrition in Portuguese, directly relevant.
-  - `caro fare la spesa` [it] conf=0.88 — Italian phrase meaning expensive grocery shopping, clear food-price stress signal.
-  - `prezzi alimentari aumentano` [it] conf=0.90 — Italian for rising food prices, unambiguous topic match.
-  - `hausse des prix alimentaires` [fr] conf=0.92 — French for rise in food prices, directly indicates this topic.
-  - `inflation alimentaire` [fr] conf=0.91 — Food inflation in French, strongly signals this topic.
-  - `lebensmittelpreise steigen` [de] conf=0.92 — German for rising food prices, a direct and specific topic signal.
-  - `teurer einkaufen` [de] conf=0.86 — German phrase meaning more expensive shopping, signals consumer food-cost stress.
-  - `nahrungsmittelpreise erhöhen` [de] conf=0.89 — German for increasing food/nutrition prices, clearly on-topic.
-- negative monitors (5):
-  - `food festival` [en] — Matches 'food' but refers to cultural events, not price stress.
-  - `restaurant prices` [en] — Often covers dining-out trends or reviews rather than household food-cost stress.
-  - `oil prices` [en] — Could co-occur with food topics but primarily signals energy/fuel market stories.
-  - `precio del petróleo` [es] — Spanish for oil price; shares 'precio' with food-price terms but covers energy markets.
-  - `prix du marché` [fr] — French for market prices; too generic and frequently refers to financial markets, not food.
-
 ### `fuel-subsidy-unrest`
 
-- existing lexicon size: 0
+- existing lexicon size: 36
 - vocab mining proposed: 15 positive, 5 negative
 - terms to add (high-confidence, not yet in lexicon): 15
   - `fuel subsidy protest` [en] conf=0.95 — Directly signals unrest over fuel subsidy cuts or changes.
@@ -329,7 +220,7 @@ Min vocab confidence threshold: 0.85
 
 ### `gang-control-urban-security`
 
-- existing lexicon size: 0
+- existing lexicon size: 5
 - vocab mining proposed: 15 positive, 5 negative
 - terms to add (high-confidence, not yet in lexicon): 15
   - `gang control neighborhood` [en] conf=0.88 — Directly describes gangs asserting territorial dominance in urban areas.
@@ -354,36 +245,9 @@ Min vocab confidence threshold: 0.85
   - `pandilla deportiva` [es] — 'Pandilla' can colloquially mean a sports fan group in some contexts, not criminal gangs.
   - `bande dessinée` [fr] — Means 'comic strip' in French; 'bande' matches gang terms but topic is entertainment, not security.
 
-### `gender-violence-rights`
-
-- existing lexicon size: 0
-- vocab mining proposed: 15 positive, 5 negative
-- terms to add (high-confidence, not yet in lexicon): 15
-  - `violencia de género` [es] conf=0.97 — Standard Spanish phrase for gender-based violence, almost always the primary subject when it appears.
-  - `feminicidio` [es] conf=0.96 — Refers specifically to femicide, a core gender-violence crime topic in Spanish-language news.
-  - `violência doméstica` [pt] conf=0.95 — Portuguese term for domestic violence, strongly tied to gender-violence reporting.
-  - `violência contra a mulher` [pt] conf=0.97 — Direct Portuguese phrase meaning violence against women, unambiguously on-topic.
-  - `violenza di genere` [it] conf=0.96 — Italian equivalent of gender-based violence, primary subject indicator in Italian headlines.
-  - `femminicidio` [it] conf=0.96 — Italian term for femicide, directly signals gender-violence topic.
-  - `violences conjugales` [fr] conf=0.95 — French phrase for spousal/domestic violence, strongly on-topic in French news.
-  - `féminicide` [fr] conf=0.97 — French term for femicide, unambiguously signals gender-violence reporting.
-  - `häusliche gewalt` [de] conf=0.95 — German phrase for domestic violence, primary indicator of this topic in German headlines.
-  - `geschlechtsbezogene gewalt` [de] conf=0.94 — German phrase for gender-based violence, directly on-topic.
-  - `domestic abuse conviction` [en] conf=0.93 — Specific English phrase tying legal outcomes to domestic/gender violence cases.
-  - `gender-based violence` [en] conf=0.97 — Core English term for this topic, almost always the primary subject when it appears.
-  - `femicide rate` [en] conf=0.95 — English phrase about femicide statistics, directly on-topic.
-  - `restraining order domestic` [en] conf=0.88 — Signals domestic violence legal proceedings in English headlines.
-  - `violencia machista` [es] conf=0.95 — Spanish phrase for male-chauvinist violence against women, strongly on-topic.
-- negative monitors (5):
-  - `gender pay gap` [en] — Relates to economic inequality, not violence or rights abuses; would false-positive on gender topic.
-  - `domestic policy` [en] — 'Domestic' here means national/internal policy, not domestic violence.
-  - `violencia callejera` [es] — Refers to street crime in general, not specifically gender-based violence.
-  - `droits de l'homme` [fr] — Means 'human rights' broadly, not specifically gender violence or women's rights.
-  - `gewalt im sport` [de] — Refers to violence in sports contexts, not gender-based violence.
-
 ### `heat-health-risk`
 
-- existing lexicon size: 0
+- existing lexicon size: 15
 - vocab mining proposed: 15 positive, 5 negative
 - terms to add (high-confidence, not yet in lexicon): 15
   - `heat-related illness` [en] conf=0.95 — Directly signals health harm caused by high temperatures.
@@ -408,36 +272,9 @@ Min vocab confidence threshold: 0.85
   - `chaleur économie` [fr] — Heat economy in French typically refers to energy sector, not health risk.
   - `hitze sport` [de] — Heat and sport in German usually covers athletic performance, not public health emergencies.
 
-### `housing-cost-pressure`
-
-- existing lexicon size: 0
-- vocab mining proposed: 15 positive, 5 negative
-- terms to add (high-confidence, not yet in lexicon): 15
-  - `rent affordability crisis` [en] conf=0.95 — Directly signals housing cost pressure as the primary subject.
-  - `housing costs soar` [en] conf=0.93 — Explicitly describes rising housing expenses in headlines.
-  - `mortgage burden` [en] conf=0.88 — Refers specifically to financial strain from home loan costs.
-  - `alquiler inasequible` [es] conf=0.92 — Spanish for 'unaffordable rent', directly signals housing cost pressure.
-  - `precio de la vivienda sube` [es] conf=0.91 — Describes rising housing prices as the main subject in Spanish headlines.
-  - `crise do arrendamento` [pt] conf=0.93 — Portuguese for 'rental crisis', a direct indicator of housing cost pressure.
-  - `custo da habitação` [pt] conf=0.90 — Portuguese phrase meaning 'housing cost', central to this topic.
-  - `affitti insostenibili` [it] conf=0.92 — Italian for 'unsustainable rents', directly signals housing affordability strain.
-  - `caro affitti` [it] conf=0.89 — Italian colloquial phrase for expensive rents, common in housing-cost headlines.
-  - `crise du logement` [fr] conf=0.93 — French for 'housing crisis', a primary indicator of this topic.
-  - `loyers en hausse` [fr] conf=0.91 — French phrase meaning 'rising rents', directly signals housing cost pressure.
-  - `mietpreise steigen` [de] conf=0.93 — German for 'rental prices rising', a direct housing cost pressure signal.
-  - `wohnkosten explodieren` [de] conf=0.92 — German for 'housing costs exploding', strongly indicates this topic.
-  - `housing affordability` [en] conf=0.90 — Standard English phrase used in headlines about housing cost strain.
-  - `wohnungsnot` [de] conf=0.88 — German term for housing shortage/distress, closely tied to cost pressure coverage.
-- negative monitors (5):
-  - `housing market` [en] — Too broad; often refers to investment trends, sales volumes, or construction activity rather than cost pressure.
-  - `real estate boom` [en] — Usually signals investor or economic growth stories, not affordability hardship.
-  - `vivienda social` [es] — Refers to social/public housing policy, not necessarily cost pressure on renters or buyers.
-  - `immobilier` [fr] — Generic French real-estate term; matches investment, luxury, and commercial property stories unrelated to cost pressure.
-  - `hypothèque` [fr] — French for 'mortgage' in a legal/financial context; often appears in banking or fraud stories rather than housing cost pressure.
-
 ### `humanitarian-access-conflict`
 
-- existing lexicon size: 0
+- existing lexicon size: 9
 - vocab mining proposed: 15 positive, 5 negative
 - terms to add (high-confidence, not yet in lexicon): 15
   - `humanitarian corridor blocked` [en] conf=0.93 — Directly signals denial of humanitarian access in a conflict zone.
@@ -462,36 +299,9 @@ Min vocab confidence threshold: 0.85
   - `ayuda humanitaria acuerdo` [es] — Diplomatic aid agreements may not involve active conflict access obstruction.
   - `hilfslieferung naturkatastrophe` [de] — Aid delivery in natural disasters shares vocabulary but is a distinct topic from conflict access.
 
-### `labor-strike-disruption`
-
-- existing lexicon size: 0
-- vocab mining proposed: 15 positive, 5 negative
-- terms to add (high-confidence, not yet in lexicon): 15
-  - `workers go on strike` [en] conf=0.95 — Directly signals a labor strike action in a headline.
-  - `strike disrupts service` [en] conf=0.93 — Combines strike action with its disruptive consequence.
-  - `union walkout` [en] conf=0.90 — Specific labor action term indicating workers leaving their posts.
-  - `huelga general` [es] conf=0.95 — General strike in Spanish, a primary labor disruption signal.
-  - `trabajadores en huelga` [es] conf=0.92 — Workers on strike in Spanish, directly indicates labor stoppage.
-  - `paro laboral` [es] conf=0.88 — Labor stoppage in Spanish, specific to work disruption events.
-  - `greve dos trabalhadores` [pt] conf=0.94 — Workers' strike in Portuguese, directly signals labor disruption.
-  - `paralisação geral` [pt] conf=0.91 — General work stoppage in Portuguese, indicates widespread strike.
-  - `sciopero generale` [it] conf=0.95 — General strike in Italian, a strong primary topic indicator.
-  - `lavoratori in sciopero` [it] conf=0.92 — Workers on strike in Italian, directly signals labor action.
-  - `grève des travailleurs` [fr] conf=0.94 — Workers' strike in French, directly indicates labor disruption.
-  - `mouvement de grève` [fr] conf=0.90 — Strike movement in French, specific to organized labor action.
-  - `streik legt betrieb lahm` [de] conf=0.93 — Strike shuts down operations in German, signals disruption clearly.
-  - `warnstreik` [de] conf=0.89 — Warning strike in German, a specific labor action term.
-  - `gewerkschaft streik` [de] conf=0.88 — Union strike in German, directly ties labor organization to action.
-- negative monitors (5):
-  - `hunger strike` [en] — Refers to a protest fast, not a labor work stoppage.
-  - `bowling strike` [en] — Sports term unrelated to labor action.
-  - `airstrike` [en] — Military attack term that matches 'strike' but is entirely unrelated to labor.
-  - `huelga de hambre` [es] — Hunger strike in Spanish refers to a protest fast, not a labor walkout.
-  - `sciopero della fame` [it] — Hunger strike in Italian, not a labor work disruption event.
-
 ### `migration-border-pressure`
 
-- existing lexicon size: 0
+- existing lexicon size: 10
 - vocab mining proposed: 15 positive, 5 negative
 - terms to add (high-confidence, not yet in lexicon): 15
   - `border crossings surge` [en] conf=0.93 — Directly signals increased irregular migration at a border.
@@ -518,7 +328,7 @@ Min vocab confidence threshold: 0.85
 
 ### `mining-royalty-risk`
 
-- existing lexicon size: 0
+- existing lexicon size: 34
 - vocab mining proposed: 15 positive, 5 negative
 - terms to add (high-confidence, not yet in lexicon): 15
   - `mine collapse deaths` [en] conf=0.93 — Directly signals a fatal mining safety incident.
@@ -545,7 +355,7 @@ Min vocab confidence threshold: 0.85
 
 ### `oil-gas-supply-risk`
 
-- existing lexicon size: 0
+- existing lexicon size: 5
 - vocab mining proposed: 15 positive, 5 negative
 - terms to add (high-confidence, not yet in lexicon): 15
   - `gas supply disruption` [en] conf=0.93 — Directly signals a threat to natural gas availability in headlines.
@@ -570,36 +380,9 @@ Min vocab confidence threshold: 0.85
   - `gasolinera` [es] — Spanish for gas station; matches retail fuel stories, not supply risk.
   - `pétrole en bourse` [fr] — French for oil on the stock exchange; matches financial market stories, not supply disruption.
 
-### `press-freedom-crackdown`
-
-- existing lexicon size: 0
-- vocab mining proposed: 15 positive, 5 negative
-- terms to add (high-confidence, not yet in lexicon): 15
-  - `journalist arrested` [en] conf=0.93 — Directly signals a reporter detained by authorities, a core press-freedom crackdown event.
-  - `press freedom crackdown` [en] conf=0.98 — Exact label phrase; unambiguously marks this topic.
-  - `reporter jailed` [en] conf=0.91 — Imprisonment of a journalist is a primary indicator of press suppression.
-  - `periodista detenido` [es] conf=0.93 — Spanish for 'journalist detained', directly signals press-freedom crackdown.
-  - `libertad de prensa` [es] conf=0.88 — Spanish phrase for 'press freedom', commonly used in headlines about media repression.
-  - `censura a medios` [es] conf=0.90 — Spanish for 'media censorship', strongly tied to press-freedom crackdown stories.
-  - `jornalista preso` [pt] conf=0.93 — Portuguese for 'journalist imprisoned', a direct indicator of press suppression.
-  - `liberdade de imprensa ameaçada` [pt] conf=0.91 — Portuguese phrase meaning 'press freedom threatened', specific to this topic.
-  - `censura à imprensa` [pt] conf=0.90 — Portuguese for 'press censorship', closely tied to crackdown on media.
-  - `giornalista arrestato` [it] conf=0.93 — Italian for 'journalist arrested', a direct signal of press-freedom crackdown.
-  - `libertà di stampa` [it] conf=0.88 — Italian for 'freedom of the press', frequently used in crackdown headlines.
-  - `liberté de la presse` [fr] conf=0.88 — French for 'freedom of the press', a standard phrase in media-repression headlines.
-  - `journaliste emprisonné` [fr] conf=0.93 — French for 'journalist imprisoned', directly marks press-freedom crackdown events.
-  - `pressefreiheit eingeschränkt` [de] conf=0.92 — German for 'press freedom restricted', a precise indicator of this topic.
-  - `journalist verhaftet` [de] conf=0.93 — German for 'journalist arrested', strongly signals a press-freedom crackdown story.
-- negative monitors (5):
-  - `freedom of speech` [en] — Broad civil-liberties phrase that more often covers political protests or social-media bans, not specifically press crackdowns.
-  - `media bias` [en] — Usually refers to editorial slant debates, not government suppression of journalists.
-  - `fake news` [en] — Predominantly used in misinformation or political rhetoric contexts, not press-freedom crackdowns.
-  - `censura` [es] — Single generic word matches internet censorship, film censorship, and many unrelated content-moderation stories.
-  - `medienrecht` [de] — German for 'media law' covers routine regulatory and copyright stories, not specifically crackdowns on press freedom.
-
 ### `sanctions-diplomatic-pressure`
 
-- existing lexicon size: 0
+- existing lexicon size: 5
 - vocab mining proposed: 15 positive, 5 negative
 - terms to add (high-confidence, not yet in lexicon): 15
   - `economic sanctions imposed` [en] conf=0.93 — Directly signals a sanctions action as the headline's main subject.
@@ -624,63 +407,9 @@ Min vocab confidence threshold: 0.85
   - `presión` [es] — Generic Spanish word for pressure; matches sports, medical, and social stories far more often than diplomacy.
   - `isolation` [en] — Frequently used in public health, psychology, and social contexts rather than geopolitical isolation.
 
-### `student-youth-protest`
-
-- existing lexicon size: 0
-- vocab mining proposed: 15 positive, 5 negative
-- terms to add (high-confidence, not yet in lexicon): 15
-  - `student protest` [en] conf=0.95 — Directly signals student-led protest action in headlines.
-  - `campus walkout` [en] conf=0.92 — Specific student protest tactic on university or school grounds.
-  - `youth demonstration` [en] conf=0.88 — Explicitly links young people to street protest activity.
-  - `protesta estudiantil` [es] conf=0.95 — Direct Spanish equivalent of student protest, highly specific.
-  - `marcha universitaria` [es] conf=0.90 — University march is a common framing for student protest in Spanish-language headlines.
-  - `huelga estudiantil` [es] conf=0.92 — Student strike is a core youth protest action in Spanish-speaking contexts.
-  - `protesto estudantil` [pt] conf=0.95 — Direct Portuguese equivalent of student protest.
-  - `greve dos estudantes` [pt] conf=0.91 — Students' strike is a frequent framing in Brazilian and Portuguese news.
-  - `manifestação jovens` [pt] conf=0.87 — Youth demonstration phrasing common in Portuguese-language headlines.
-  - `protesta studentesca` [it] conf=0.93 — Standard Italian phrase for student protest in news headlines.
-  - `corteo studentesco` [it] conf=0.90 — Student march/procession is a typical Italian headline term for youth protest.
-  - `manifestation lycéens` [fr] conf=0.92 — High-school student demonstration is a classic French protest framing.
-  - `grève étudiante` [fr] conf=0.93 — Student strike is a well-established French headline phrase for youth protest.
-  - `studentenprotest` [de] conf=0.94 — Compound German noun directly denoting student protest events.
-  - `schülerstreik` [de] conf=0.91 — Pupil/school-student strike, common in German coverage of youth climate and political protests.
-- negative monitors (5):
-  - `student loan` [en] — Matches 'student' but refers to financial policy, not protest activity.
-  - `youth unemployment` [en] — Concerns young people but is an economic indicator story, not a protest event.
-  - `campus shooting` [en] — Occurs on campus and may involve students but is a crime/violence story, not protest.
-  - `jugend festival` [de] — Youth festival matches 'youth' but indicates a cultural event, not a protest.
-  - `bourse étudiante` [fr] — Student scholarship/grant story matches 'étudiant' context but is an education-finance topic, not protest.
-
-### `trade-export-restriction`
-
-- existing lexicon size: 0
-- vocab mining proposed: 15 positive, 5 negative
-- terms to add (high-confidence, not yet in lexicon): 15
-  - `export ban` [en] conf=0.93 — Directly signals a government-imposed restriction on exports.
-  - `trade embargo` [en] conf=0.92 — Specific term for a formal trade restriction between countries.
-  - `export controls tightened` [en] conf=0.91 — Signals regulatory tightening of export licensing rules.
-  - `restricciones a la exportación` [es] conf=0.93 — Spanish phrase directly meaning export restrictions.
-  - `veda de exportaciones` [es] conf=0.90 — Spanish term for an export ban or prohibition.
-  - `restrições às exportações` [pt] conf=0.93 — Portuguese phrase directly meaning export restrictions.
-  - `proibição de exportação` [pt] conf=0.91 — Portuguese term for an export prohibition or ban.
-  - `restrizioni all'esportazione` [it] conf=0.93 — Italian phrase directly meaning export restrictions.
-  - `divieto di esportazione` [it] conf=0.91 — Italian term for an export ban or prohibition.
-  - `restrictions aux exportations` [fr] conf=0.93 — French phrase directly meaning export restrictions.
-  - `embargo commercial` [fr] conf=0.90 — French term for a trade embargo between parties.
-  - `exportbeschränkungen` [de] conf=0.93 — German compound noun directly meaning export restrictions.
-  - `ausfuhrverbot` [de] conf=0.91 — German term for an export ban or prohibition.
-  - `tariff barriers imposed` [en] conf=0.88 — Signals imposition of trade-restricting tariff barriers.
-  - `handelsbeschränkungen verhängt` [de] conf=0.90 — German phrase meaning trade restrictions imposed, directly on-topic.
-- negative monitors (5):
-  - `export growth` [en] — Refers to positive trade performance, not restrictions.
-  - `free trade agreement` [en] — Signals trade liberalisation, the opposite of restrictions.
-  - `export promotion` [en] — Refers to government efforts to boost exports, not restrict them.
-  - `trade deal signed` [en] — Indicates a new trade agreement, not a restriction or ban.
-  - `embargo artístico` [es] — Embargo in Spanish cultural contexts refers to media holds or artistic embargoes, not trade policy.
-
 ### `transport-corridor-disruption`
 
-- existing lexicon size: 0
+- existing lexicon size: 16
 - vocab mining proposed: 15 positive, 5 negative
 - terms to add (high-confidence, not yet in lexicon): 15
   - `rail corridor blocked` [en] conf=0.92 — Directly signals a transport corridor disruption on rail infrastructure.
@@ -707,7 +436,7 @@ Min vocab confidence threshold: 0.85
 
 ### `water-stress-drought`
 
-- existing lexicon size: 0
+- existing lexicon size: 5
 - vocab mining proposed: 15 positive, 5 negative
 - terms to add (high-confidence, not yet in lexicon): 15
   - `water stress` [en] conf=0.95 — Direct technical term for insufficient water supply relative to demand.
@@ -732,12 +461,194 @@ Min vocab confidence threshold: 0.85
   - `seca de ideias` [pt] — Idiomatic Portuguese phrase meaning lack of ideas, not physical drought.
   - `trockenheit im humor` [de] — German metaphor for dry humor, not related to actual drought conditions.
 
-### `disease-outbreak`
+### `currency-debt-stress`
 
-- existing lexicon size: 0
+- LLM-Atlas agreement on reviewed sample: 58.3%
+- existing lexicon size: 18
 - vocab mining proposed: 15 positive, 5 negative
 - terms to add (high-confidence, not yet in lexicon): 14
-  - `disease outbreak` [en] conf=0.95 — Direct phrase for epidemic events in English headlines.
+  - `sovereign debt default` [en] conf=0.97 — Explicitly describes a government failing to meet debt obligations.
+  - `debt restructuring talks` [en] conf=0.93 — Indicates a country negotiating to reorganize its debt burden.
+  - `peso se desploma` [es] conf=0.94 — Describes a sharp collapse of the peso currency in Spanish headlines.
+  - `crisis de deuda soberana` [es] conf=0.96 — Directly names a sovereign debt crisis in Spanish.
+  - `reestructuración de deuda` [es] conf=0.92 — Refers to debt restructuring negotiations in Spanish-language news.
+  - `crise cambial` [pt] conf=0.94 — Portuguese term for exchange-rate or currency crisis.
+  - `dívida soberana em risco` [pt] conf=0.93 — Signals sovereign debt at risk of default in Portuguese.
+  - `moratória da dívida` [pt] conf=0.95 — Refers to a debt moratorium or payment suspension in Portuguese.
+  - `crisi del debito sovrano` [it] conf=0.95 — Italian phrase directly naming a sovereign debt crisis.
+  - `crollo della lira` [it] conf=0.91 — Describes a collapse of a lira-denominated currency in Italian headlines.
+  - `crise de la dette` [fr] conf=0.94 — French phrase for debt crisis, commonly used in financial headlines.
+  - `dépréciation monétaire` [fr] conf=0.92 — Refers to currency depreciation stress in French-language news.
+  - `staatsschuldenkrise` [de] conf=0.96 — German compound noun directly meaning sovereign debt crisis.
+  - `währungsverfall` [de] conf=0.93 — German term for currency collapse or severe depreciation.
+- negative monitors (5):
+  - `interest rate hike` [en] — Usually signals central bank monetary policy decisions, not debt stress per se.
+  - `budget deficit` [en] — Refers to fiscal planning shortfalls, not necessarily acute debt or currency stress.
+  - `inflation rate` [en] — Primarily signals price-level reporting, not currency or debt crisis events.
+  - `bond yield` [en] — Often appears in routine market-data headlines rather than crisis coverage.
+  - `deuda educativa` [es] — Uses 'deuda' but refers to educational debt or obligations, not sovereign finance.
+
+### `disinformation-influence-operation`
+
+- existing lexicon size: 9
+- vocab mining proposed: 15 positive, 5 negative
+- terms to add (high-confidence, not yet in lexicon): 14
+  - `disinformation campaign` [en] conf=0.95 — Specific phrase for organized spread of false information.
+  - `coordinated inauthentic behavior` [en] conf=0.97 — Platform-specific term for detected influence operations.
+  - `campaña de desinformación` [es] conf=0.95 — Spanish equivalent of disinformation campaign, highly specific.
+  - `operación de influencia` [es] conf=0.93 — Spanish term for influence operation targeting public opinion.
+  - `campanha de desinformação` [pt] conf=0.95 — Portuguese phrase directly describing disinformation campaigns.
+  - `operação de influência` [pt] conf=0.93 — Portuguese term for coordinated influence operations.
+  - `campagna di disinformazione` [it] conf=0.95 — Italian phrase for organized disinformation efforts.
+  - `operazione di influenza` [it] conf=0.90 — Italian term for influence operations targeting narratives.
+  - `campagne de désinformation` [fr] conf=0.95 — French phrase for disinformation campaigns, highly specific.
+  - `opération d'influence` [fr] conf=0.93 — French term for state-linked or covert influence operations.
+  - `desinformationskampagne` [de] conf=0.95 — German compound noun directly describing disinformation campaigns.
+  - `einflussoperation` [de] conf=0.92 — German term for coordinated influence operations.
+  - `fake news network` [en] conf=0.88 — Refers to organized infrastructure for spreading fabricated stories.
+  - `manipulation de l'information` [fr] conf=0.90 — French phrase for deliberate information manipulation operations.
+- negative monitors (5):
+  - `influencer` [en] — Usually refers to social media content creators, not influence operations.
+  - `fake news` [en] — Overused phrase often applied to political disputes rather than documented disinformation operations.
+  - `propaganda` [en] — Broad term frequently used in historical, advertising, or general political contexts unrelated to specific operations.
+  - `misinformation` [en] — Often covers accidental false information spread, not coordinated influence operations.
+  - `noticias falsas` [es] — Spanish 'fake news' is frequently used in partisan political rhetoric rather than reporting on actual operations.
+
+### `housing-cost-pressure`
+
+- existing lexicon size: 28
+- vocab mining proposed: 15 positive, 5 negative
+- terms to add (high-confidence, not yet in lexicon): 14
+  - `rent affordability crisis` [en] conf=0.95 — Directly signals housing cost pressure as the primary subject.
+  - `housing costs soar` [en] conf=0.93 — Explicitly describes rising housing expenses in headlines.
+  - `mortgage burden` [en] conf=0.88 — Refers specifically to financial strain from home loan costs.
+  - `alquiler inasequible` [es] conf=0.92 — Spanish for 'unaffordable rent', directly signals housing cost pressure.
+  - `precio de la vivienda sube` [es] conf=0.91 — Describes rising housing prices as the main subject in Spanish headlines.
+  - `crise do arrendamento` [pt] conf=0.93 — Portuguese for 'rental crisis', a direct indicator of housing cost pressure.
+  - `custo da habitação` [pt] conf=0.90 — Portuguese phrase meaning 'housing cost', central to this topic.
+  - `affitti insostenibili` [it] conf=0.92 — Italian for 'unsustainable rents', directly signals housing affordability strain.
+  - `caro affitti` [it] conf=0.89 — Italian colloquial phrase for expensive rents, common in housing-cost headlines.
+  - `crise du logement` [fr] conf=0.93 — French for 'housing crisis', a primary indicator of this topic.
+  - `loyers en hausse` [fr] conf=0.91 — French phrase meaning 'rising rents', directly signals housing cost pressure.
+  - `mietpreise steigen` [de] conf=0.93 — German for 'rental prices rising', a direct housing cost pressure signal.
+  - `wohnkosten explodieren` [de] conf=0.92 — German for 'housing costs exploding', strongly indicates this topic.
+  - `wohnungsnot` [de] conf=0.88 — German term for housing shortage/distress, closely tied to cost pressure coverage.
+- negative monitors (5):
+  - `housing market` [en] — Too broad; often refers to investment trends, sales volumes, or construction activity rather than cost pressure.
+  - `real estate boom` [en] — Usually signals investor or economic growth stories, not affordability hardship.
+  - `vivienda social` [es] — Refers to social/public housing policy, not necessarily cost pressure on renters or buyers.
+  - `immobilier` [fr] — Generic French real-estate term; matches investment, luxury, and commercial property stories unrelated to cost pressure.
+  - `hypothèque` [fr] — French for 'mortgage' in a legal/financial context; often appears in banking or fraud stories rather than housing cost pressure.
+
+### `labor-strike-disruption`
+
+- existing lexicon size: 24
+- vocab mining proposed: 15 positive, 5 negative
+- terms to add (high-confidence, not yet in lexicon): 14
+  - `workers go on strike` [en] conf=0.95 — Directly signals a labor strike action in a headline.
+  - `strike disrupts service` [en] conf=0.93 — Combines strike action with its disruptive consequence.
+  - `union walkout` [en] conf=0.90 — Specific labor action term indicating workers leaving their posts.
+  - `huelga general` [es] conf=0.95 — General strike in Spanish, a primary labor disruption signal.
+  - `trabajadores en huelga` [es] conf=0.92 — Workers on strike in Spanish, directly indicates labor stoppage.
+  - `greve dos trabalhadores` [pt] conf=0.94 — Workers' strike in Portuguese, directly signals labor disruption.
+  - `paralisação geral` [pt] conf=0.91 — General work stoppage in Portuguese, indicates widespread strike.
+  - `sciopero generale` [it] conf=0.95 — General strike in Italian, a strong primary topic indicator.
+  - `lavoratori in sciopero` [it] conf=0.92 — Workers on strike in Italian, directly signals labor action.
+  - `grève des travailleurs` [fr] conf=0.94 — Workers' strike in French, directly indicates labor disruption.
+  - `mouvement de grève` [fr] conf=0.90 — Strike movement in French, specific to organized labor action.
+  - `streik legt betrieb lahm` [de] conf=0.93 — Strike shuts down operations in German, signals disruption clearly.
+  - `warnstreik` [de] conf=0.89 — Warning strike in German, a specific labor action term.
+  - `gewerkschaft streik` [de] conf=0.88 — Union strike in German, directly ties labor organization to action.
+- negative monitors (5):
+  - `hunger strike` [en] — Refers to a protest fast, not a labor work stoppage.
+  - `bowling strike` [en] — Sports term unrelated to labor action.
+  - `airstrike` [en] — Military attack term that matches 'strike' but is entirely unrelated to labor.
+  - `huelga de hambre` [es] — Hunger strike in Spanish refers to a protest fast, not a labor walkout.
+  - `sciopero della fame` [it] — Hunger strike in Italian, not a labor work disruption event.
+
+### `press-freedom-crackdown`
+
+- existing lexicon size: 15
+- vocab mining proposed: 15 positive, 5 negative
+- terms to add (high-confidence, not yet in lexicon): 14
+  - `press freedom crackdown` [en] conf=0.98 — Exact label phrase; unambiguously marks this topic.
+  - `reporter jailed` [en] conf=0.91 — Imprisonment of a journalist is a primary indicator of press suppression.
+  - `periodista detenido` [es] conf=0.93 — Spanish for 'journalist detained', directly signals press-freedom crackdown.
+  - `libertad de prensa` [es] conf=0.88 — Spanish phrase for 'press freedom', commonly used in headlines about media repression.
+  - `censura a medios` [es] conf=0.90 — Spanish for 'media censorship', strongly tied to press-freedom crackdown stories.
+  - `jornalista preso` [pt] conf=0.93 — Portuguese for 'journalist imprisoned', a direct indicator of press suppression.
+  - `liberdade de imprensa ameaçada` [pt] conf=0.91 — Portuguese phrase meaning 'press freedom threatened', specific to this topic.
+  - `censura à imprensa` [pt] conf=0.90 — Portuguese for 'press censorship', closely tied to crackdown on media.
+  - `giornalista arrestato` [it] conf=0.93 — Italian for 'journalist arrested', a direct signal of press-freedom crackdown.
+  - `libertà di stampa` [it] conf=0.88 — Italian for 'freedom of the press', frequently used in crackdown headlines.
+  - `liberté de la presse` [fr] conf=0.88 — French for 'freedom of the press', a standard phrase in media-repression headlines.
+  - `journaliste emprisonné` [fr] conf=0.93 — French for 'journalist imprisoned', directly marks press-freedom crackdown events.
+  - `pressefreiheit eingeschränkt` [de] conf=0.92 — German for 'press freedom restricted', a precise indicator of this topic.
+  - `journalist verhaftet` [de] conf=0.93 — German for 'journalist arrested', strongly signals a press-freedom crackdown story.
+- negative monitors (5):
+  - `freedom of speech` [en] — Broad civil-liberties phrase that more often covers political protests or social-media bans, not specifically press crackdowns.
+  - `media bias` [en] — Usually refers to editorial slant debates, not government suppression of journalists.
+  - `fake news` [en] — Predominantly used in misinformation or political rhetoric contexts, not press-freedom crackdowns.
+  - `censura` [es] — Single generic word matches internet censorship, film censorship, and many unrelated content-moderation stories.
+  - `medienrecht` [de] — German for 'media law' covers routine regulatory and copyright stories, not specifically crackdowns on press freedom.
+
+### `student-youth-protest`
+
+- existing lexicon size: 15
+- vocab mining proposed: 15 positive, 5 negative
+- terms to add (high-confidence, not yet in lexicon): 14
+  - `campus walkout` [en] conf=0.92 — Specific student protest tactic on university or school grounds.
+  - `youth demonstration` [en] conf=0.88 — Explicitly links young people to street protest activity.
+  - `protesta estudiantil` [es] conf=0.95 — Direct Spanish equivalent of student protest, highly specific.
+  - `marcha universitaria` [es] conf=0.90 — University march is a common framing for student protest in Spanish-language headlines.
+  - `huelga estudiantil` [es] conf=0.92 — Student strike is a core youth protest action in Spanish-speaking contexts.
+  - `protesto estudantil` [pt] conf=0.95 — Direct Portuguese equivalent of student protest.
+  - `greve dos estudantes` [pt] conf=0.91 — Students' strike is a frequent framing in Brazilian and Portuguese news.
+  - `manifestação jovens` [pt] conf=0.87 — Youth demonstration phrasing common in Portuguese-language headlines.
+  - `protesta studentesca` [it] conf=0.93 — Standard Italian phrase for student protest in news headlines.
+  - `corteo studentesco` [it] conf=0.90 — Student march/procession is a typical Italian headline term for youth protest.
+  - `manifestation lycéens` [fr] conf=0.92 — High-school student demonstration is a classic French protest framing.
+  - `grève étudiante` [fr] conf=0.93 — Student strike is a well-established French headline phrase for youth protest.
+  - `studentenprotest` [de] conf=0.94 — Compound German noun directly denoting student protest events.
+  - `schülerstreik` [de] conf=0.91 — Pupil/school-student strike, common in German coverage of youth climate and political protests.
+- negative monitors (5):
+  - `student loan` [en] — Matches 'student' but refers to financial policy, not protest activity.
+  - `youth unemployment` [en] — Concerns young people but is an economic indicator story, not a protest event.
+  - `campus shooting` [en] — Occurs on campus and may involve students but is a crime/violence story, not protest.
+  - `jugend festival` [de] — Youth festival matches 'youth' but indicates a cultural event, not a protest.
+  - `bourse étudiante` [fr] — Student scholarship/grant story matches 'étudiant' context but is an education-finance topic, not protest.
+
+### `trade-export-restriction`
+
+- existing lexicon size: 5
+- vocab mining proposed: 15 positive, 5 negative
+- terms to add (high-confidence, not yet in lexicon): 14
+  - `trade embargo` [en] conf=0.92 — Specific term for a formal trade restriction between countries.
+  - `export controls tightened` [en] conf=0.91 — Signals regulatory tightening of export licensing rules.
+  - `restricciones a la exportación` [es] conf=0.93 — Spanish phrase directly meaning export restrictions.
+  - `veda de exportaciones` [es] conf=0.90 — Spanish term for an export ban or prohibition.
+  - `restrições às exportações` [pt] conf=0.93 — Portuguese phrase directly meaning export restrictions.
+  - `proibição de exportação` [pt] conf=0.91 — Portuguese term for an export prohibition or ban.
+  - `restrizioni all'esportazione` [it] conf=0.93 — Italian phrase directly meaning export restrictions.
+  - `divieto di esportazione` [it] conf=0.91 — Italian term for an export ban or prohibition.
+  - `restrictions aux exportations` [fr] conf=0.93 — French phrase directly meaning export restrictions.
+  - `embargo commercial` [fr] conf=0.90 — French term for a trade embargo between parties.
+  - `exportbeschränkungen` [de] conf=0.93 — German compound noun directly meaning export restrictions.
+  - `ausfuhrverbot` [de] conf=0.91 — German term for an export ban or prohibition.
+  - `tariff barriers imposed` [en] conf=0.88 — Signals imposition of trade-restricting tariff barriers.
+  - `handelsbeschränkungen verhängt` [de] conf=0.90 — German phrase meaning trade restrictions imposed, directly on-topic.
+- negative monitors (5):
+  - `export growth` [en] — Refers to positive trade performance, not restrictions.
+  - `free trade agreement` [en] — Signals trade liberalisation, the opposite of restrictions.
+  - `export promotion` [en] — Refers to government efforts to boost exports, not restrict them.
+  - `trade deal signed` [en] — Indicates a new trade agreement, not a restriction or ban.
+  - `embargo artístico` [es] — Embargo in Spanish cultural contexts refers to media holds or artistic embargoes, not trade policy.
+
+### `disease-outbreak`
+
+- existing lexicon size: 16
+- vocab mining proposed: 15 positive, 5 negative
+- terms to add (high-confidence, not yet in lexicon): 13
   - `epidemic spreads` [en] conf=0.92 — Signals active spread of a disease in news context.
   - `cases of infection` [en] conf=0.85 — Commonly used in outbreak reporting to quantify spread.
   - `brote de enfermedad` [es] conf=0.95 — Direct Spanish equivalent of 'disease outbreak'.
@@ -762,10 +673,9 @@ Min vocab confidence threshold: 0.85
 
 ### `forced-displacement`
 
-- existing lexicon size: 0
+- existing lexicon size: 17
 - vocab mining proposed: 15 positive, 5 negative
-- terms to add (high-confidence, not yet in lexicon): 14
-  - `forced displacement` [en] conf=0.95 — Direct label for the topic, commonly used in humanitarian reporting.
+- terms to add (high-confidence, not yet in lexicon): 13
   - `internally displaced persons` [en] conf=0.93 — Specific UN term for people displaced within their own country.
   - `desplazamiento forzado` [es] conf=0.95 — Standard Spanish term for forced displacement used in Latin American and Spanish news.
   - `desplazados internos` [es] conf=0.90 — Spanish equivalent of internally displaced persons, directly signals the topic.
@@ -788,39 +698,12 @@ Min vocab confidence threshold: 0.85
 - rejected below confidence threshold (1):
   - `population déracinée` [fr] conf=0.82
 
-### `telecom-internet-shutdown`
-
-- existing lexicon size: 0
-- vocab mining proposed: 15 positive, 5 negative
-- terms to add (high-confidence, not yet in lexicon): 14
-  - `internet shutdown` [en] conf=0.97 — Direct phrase for government-ordered internet cutoffs.
-  - `internet blackout` [en] conf=0.93 — Common journalistic term for total internet access denial.
-  - `telecom blackout` [en] conf=0.91 — Refers specifically to telecommunications service cutoffs.
-  - `corte de internet` [es] conf=0.95 — Spanish phrase for internet shutdown used in Latin American and Spanish news.
-  - `apagón de internet` [es] conf=0.94 — Spanish 'internet blackout' term widely used for connectivity shutdowns.
-  - `bloqueo de telecomunicaciones` [es] conf=0.89 — Refers to telecom blocking actions by authorities in Spanish-language headlines.
-  - `bloqueio de internet` [pt] conf=0.93 — Portuguese term for internet blocking, commonly used in shutdown coverage.
-  - `apagão de telecomunicações` [pt] conf=0.88 — Portuguese 'telecom blackout' phrase indicating service disruption by authorities.
-  - `interruzione internet` [it] conf=0.93 — Italian phrase for internet interruption or shutdown.
-  - `blackout delle telecomunicazioni` [it] conf=0.90 — Italian term for telecom blackout events.
-  - `coupure internet` [fr] conf=0.94 — French term for internet cutoff, used in shutdown reporting.
-  - `coupure des télécommunications` [fr] conf=0.91 — French phrase for telecom service cutoff by authorities.
-  - `internetsperre` [de] conf=0.93 — German compound word specifically meaning internet blockade or shutdown.
-  - `internet abgeschaltet` [de] conf=0.90 — German phrase meaning 'internet switched off', used in shutdown headlines.
-- negative monitors (5):
-  - `power outage` [en] — Refers to electrical blackouts, not telecom/internet shutdowns specifically.
-  - `network upgrade` [en] — Describes planned infrastructure improvements, not politically motivated shutdowns.
-  - `streaming outage` [en] — Usually refers to platform-specific service disruptions like Netflix, not government shutdowns.
-  - `apagón eléctrico` [es] — Spanish for electrical blackout, not a telecom or internet shutdown.
-  - `panne de réseau` [fr] — French for generic network failure, often technical/accidental rather than a deliberate shutdown.
-
 ### `constitutional-institutional-crisis`
 
 - LLM-Atlas agreement on reviewed sample: 62.5%
-- existing lexicon size: 0
+- existing lexicon size: 18
 - vocab mining proposed: 15 positive, 5 negative
-- terms to add (high-confidence, not yet in lexicon): 13
-  - `constitutional crisis` [en] conf=0.95 — Direct phrase for a breakdown in constitutional order.
+- terms to add (high-confidence, not yet in lexicon): 12
   - `impeachment proceedings` [en] conf=0.87 — Signals a formal institutional challenge to executive authority.
   - `crise constitutionnelle` [fr] conf=0.95 — French direct equivalent of constitutional crisis.
   - `dissolution du parlement` [fr] conf=0.85 — Parliamentary dissolution is a key marker of institutional crisis.
@@ -842,3 +725,98 @@ Min vocab confidence threshold: 0.85
 - rejected below confidence threshold (2):
   - `checks and balances undermined` [en] conf=0.82
   - `dissolution of parliament` [en] conf=0.84
+
+### `election-legitimacy-dispute`
+
+- existing lexicon size: 43
+- vocab mining proposed: 15 positive, 5 negative
+- terms to add (high-confidence, not yet in lexicon): 12
+  - `election fraud claims` [en] conf=0.93 — Directly signals disputed election legitimacy via fraud allegations.
+  - `stolen election` [en] conf=0.91 — Core phrase used when a candidate or party contests election results.
+  - `disputed election results` [en] conf=0.94 — Explicitly describes a legitimacy challenge to electoral outcomes.
+  - `resultados impugnados` [es] conf=0.90 — Means 'contested results', directly indicating an election legitimacy dispute.
+  - `elección ilegítima` [es] conf=0.88 — Phrase explicitly labeling an election as illegitimate.
+  - `fraude nas eleições` [pt] conf=0.92 — Portuguese phrase for electoral fraud, core to legitimacy disputes.
+  - `resultado eleitoral contestado` [pt] conf=0.91 — Directly describes a contested electoral result in Portuguese.
+  - `risultati contestati elezioni` [it] conf=0.90 — Italian phrase for contested election results.
+  - `résultats électoraux contestés` [fr] conf=0.91 — French phrase explicitly describing disputed election results.
+  - `wahlfälschung` [de] conf=0.93 — German word for election fraud, core indicator of legitimacy disputes.
+  - `wahlergebnis angefochten` [de] conf=0.91 — German phrase meaning 'election result challenged', directly on-topic.
+  - `wahlbetrug vorwürfe` [de] conf=0.90 — German for 'election fraud allegations', strongly tied to legitimacy disputes.
+- negative monitors (5):
+  - `election campaign` [en] — Refers to pre-election campaigning, not a legitimacy dispute after voting.
+  - `voter turnout` [en] — Describes participation rates, not a challenge to election legitimacy.
+  - `election day` [en] — Refers to the voting event itself, not a post-election legitimacy contest.
+  - `fraude fiscal` [es] — 'Fraude fiscal' means tax fraud in Spanish, unrelated to elections despite containing 'fraude'.
+  - `wahlrecht` [de] — Means 'voting rights' or 'electoral law' in German, not a legitimacy dispute.
+
+### `food-price-stress`
+
+- existing lexicon size: 26
+- vocab mining proposed: 15 positive, 5 negative
+- terms to add (high-confidence, not yet in lexicon): 12
+  - `food prices surge` [en] conf=0.93 — Directly signals rising food costs as the headline subject.
+  - `grocery bills rising` [en] conf=0.91 — Specifically captures consumer stress from supermarket price increases.
+  - `cost of food soars` [en] conf=0.90 — Unambiguously describes escalating food expenditure pressure.
+  - `cesta de la compra cara` [es] conf=0.88 — Refers to expensive shopping basket, a direct food-cost stress indicator in Spanish media.
+  - `preços dos alimentos sobem` [pt] conf=0.91 — Portuguese phrase for rising food prices, primary topic signal.
+  - `custo da alimentação` [pt] conf=0.87 — Cost of food/nutrition in Portuguese, directly relevant.
+  - `caro fare la spesa` [it] conf=0.88 — Italian phrase meaning expensive grocery shopping, clear food-price stress signal.
+  - `prezzi alimentari aumentano` [it] conf=0.90 — Italian for rising food prices, unambiguous topic match.
+  - `hausse des prix alimentaires` [fr] conf=0.92 — French for rise in food prices, directly indicates this topic.
+  - `lebensmittelpreise steigen` [de] conf=0.92 — German for rising food prices, a direct and specific topic signal.
+  - `teurer einkaufen` [de] conf=0.86 — German phrase meaning more expensive shopping, signals consumer food-cost stress.
+  - `nahrungsmittelpreise erhöhen` [de] conf=0.89 — German for increasing food/nutrition prices, clearly on-topic.
+- negative monitors (5):
+  - `food festival` [en] — Matches 'food' but refers to cultural events, not price stress.
+  - `restaurant prices` [en] — Often covers dining-out trends or reviews rather than household food-cost stress.
+  - `oil prices` [en] — Could co-occur with food topics but primarily signals energy/fuel market stories.
+  - `precio del petróleo` [es] — Spanish for oil price; shares 'precio' with food-price terms but covers energy markets.
+  - `prix du marché` [fr] — French for market prices; too generic and frequently refers to financial markets, not food.
+
+### `telecom-internet-shutdown`
+
+- existing lexicon size: 17
+- vocab mining proposed: 15 positive, 5 negative
+- terms to add (high-confidence, not yet in lexicon): 12
+  - `telecom blackout` [en] conf=0.91 — Refers specifically to telecommunications service cutoffs.
+  - `corte de internet` [es] conf=0.95 — Spanish phrase for internet shutdown used in Latin American and Spanish news.
+  - `apagón de internet` [es] conf=0.94 — Spanish 'internet blackout' term widely used for connectivity shutdowns.
+  - `bloqueo de telecomunicaciones` [es] conf=0.89 — Refers to telecom blocking actions by authorities in Spanish-language headlines.
+  - `bloqueio de internet` [pt] conf=0.93 — Portuguese term for internet blocking, commonly used in shutdown coverage.
+  - `apagão de telecomunicações` [pt] conf=0.88 — Portuguese 'telecom blackout' phrase indicating service disruption by authorities.
+  - `interruzione internet` [it] conf=0.93 — Italian phrase for internet interruption or shutdown.
+  - `blackout delle telecomunicazioni` [it] conf=0.90 — Italian term for telecom blackout events.
+  - `coupure internet` [fr] conf=0.94 — French term for internet cutoff, used in shutdown reporting.
+  - `coupure des télécommunications` [fr] conf=0.91 — French phrase for telecom service cutoff by authorities.
+  - `internetsperre` [de] conf=0.93 — German compound word specifically meaning internet blockade or shutdown.
+  - `internet abgeschaltet` [de] conf=0.90 — German phrase meaning 'internet switched off', used in shutdown headlines.
+- negative monitors (5):
+  - `power outage` [en] — Refers to electrical blackouts, not telecom/internet shutdowns specifically.
+  - `network upgrade` [en] — Describes planned infrastructure improvements, not politically motivated shutdowns.
+  - `streaming outage` [en] — Usually refers to platform-specific service disruptions like Netflix, not government shutdowns.
+  - `apagón eléctrico` [es] — Spanish for electrical blackout, not a telecom or internet shutdown.
+  - `panne de réseau` [fr] — French for generic network failure, often technical/accidental rather than a deliberate shutdown.
+
+### `gender-violence-rights`
+
+- existing lexicon size: 18
+- vocab mining proposed: 15 positive, 5 negative
+- terms to add (high-confidence, not yet in lexicon): 11
+  - `violência doméstica` [pt] conf=0.95 — Portuguese term for domestic violence, strongly tied to gender-violence reporting.
+  - `violência contra a mulher` [pt] conf=0.97 — Direct Portuguese phrase meaning violence against women, unambiguously on-topic.
+  - `violenza di genere` [it] conf=0.96 — Italian equivalent of gender-based violence, primary subject indicator in Italian headlines.
+  - `femminicidio` [it] conf=0.96 — Italian term for femicide, directly signals gender-violence topic.
+  - `violences conjugales` [fr] conf=0.95 — French phrase for spousal/domestic violence, strongly on-topic in French news.
+  - `féminicide` [fr] conf=0.97 — French term for femicide, unambiguously signals gender-violence reporting.
+  - `häusliche gewalt` [de] conf=0.95 — German phrase for domestic violence, primary indicator of this topic in German headlines.
+  - `geschlechtsbezogene gewalt` [de] conf=0.94 — German phrase for gender-based violence, directly on-topic.
+  - `domestic abuse conviction` [en] conf=0.93 — Specific English phrase tying legal outcomes to domestic/gender violence cases.
+  - `femicide rate` [en] conf=0.95 — English phrase about femicide statistics, directly on-topic.
+  - `restraining order domestic` [en] conf=0.88 — Signals domestic violence legal proceedings in English headlines.
+- negative monitors (5):
+  - `gender pay gap` [en] — Relates to economic inequality, not violence or rights abuses; would false-positive on gender topic.
+  - `domestic policy` [en] — 'Domestic' here means national/internal policy, not domestic violence.
+  - `violencia callejera` [es] — Refers to street crime in general, not specifically gender-based violence.
+  - `droits de l'homme` [fr] — Means 'human rights' broadly, not specifically gender violence or women's rights.
+  - `gewalt im sport` [de] — Refers to violence in sports contexts, not gender-based violence.

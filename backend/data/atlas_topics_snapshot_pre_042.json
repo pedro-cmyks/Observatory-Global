@@ -1,0 +1,817 @@
+{
+  "schema_version": "atlas-topics-snapshot-v1",
+  "snapshot_date": "2026-05-27",
+  "source": "Supabase MCP execute_sql pre-042",
+  "topics": [
+    {
+      "slug": "agriculture-crop-risk",
+      "label": "Agriculture and crop risk",
+      "lexicon_terms": [
+        "crop failure",
+        "harvest",
+        "fertilizer",
+        "pest outbreak",
+        "farmers"
+      ],
+      "gdelt_theme_hints": [
+        "AGRICULTURE",
+        "FOOD_SECURITY",
+        "ENV_CLIMATECHANGE"
+      ]
+    },
+    {
+      "slug": "armed-conflict-escalation",
+      "label": "Armed conflict escalation",
+      "lexicon_terms": [
+        "armed conflict",
+        "airstrike",
+        "militia",
+        "rebels",
+        "airstrikes",
+        "drone attack",
+        "drone attacks",
+        "drone strike",
+        "drone strikes",
+        "missile attack",
+        "missile attacks",
+        "missile strike",
+        "missile strikes",
+        "russian strike",
+        "russian strikes",
+        "enemy shelling",
+        "artillery shelling",
+        "border clashes",
+        "offensive campaign",
+        "air raid",
+        "bombardeo",
+        "bombardeos",
+        "enfrentamientos",
+        "enfrentamiento armado",
+        "ataque con dron",
+        "ataque con drones",
+        "ataque con misiles",
+        "ataque de drone",
+        "ataque com drone",
+        "bombardeio",
+        "attaque armée",
+        "frappe aérienne",
+        "frappe aerienne",
+        "bombardement",
+        "tirs de roquette",
+        "drones du hezbollah",
+        "drohnenangriff",
+        "luftangriff",
+        "raketenangriff",
+        "bewaffneter angriff",
+        "hava saldırısı",
+        "hava saldirisi",
+        "füze saldırısı",
+        "fuze saldirisi",
+        "silahlı saldırı",
+        "silahli saldiri",
+        "çatışma",
+        "catisma"
+      ],
+      "gdelt_theme_hints": [
+        "ARMEDCONFLICT",
+        "MILITARY",
+        "KILL",
+        "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+        "CRISISLEX_C03_DEAD_WOUNDED",
+        "TERROR"
+      ]
+    },
+    {
+      "slug": "constitutional-institutional-crisis",
+      "label": "Constitutional or institutional crisis",
+      "lexicon_terms": [
+        "constitutional crisis",
+        "supreme court",
+        "impeachment",
+        "state of emergency",
+        "parliament dissolved",
+        "coup attempt",
+        "martial law",
+        "presidential decree",
+        "court ruling overturned",
+        "ousted",
+        "congress dissolved",
+        "judicial review",
+        "autocratic",
+        "dictator",
+        "unconstitutional",
+        "impeach",
+        "suspended constitution",
+        "dissolves parliament"
+      ],
+      "gdelt_theme_hints": [
+        "GOVERNMENT",
+        "COURT",
+        "WB_840_JUSTICE"
+      ]
+    },
+    {
+      "slug": "corruption-investigation",
+      "label": "Corruption investigation",
+      "lexicon_terms": [
+        "corruption",
+        "bribery",
+        "embezzlement",
+        "procurement scandal",
+        "kickback"
+      ],
+      "gdelt_theme_hints": [
+        "CORRUPTION",
+        "INVESTIGATION",
+        "COURT",
+        "WB_840_JUSTICE"
+      ]
+    },
+    {
+      "slug": "currency-debt-stress",
+      "label": "Currency and debt stress",
+      "lexicon_terms": [
+        "currency crisis",
+        "debt default",
+        "imf bailout",
+        "foreign reserves",
+        "devaluation",
+        "peso",
+        "lira",
+        "naira",
+        "rupiah",
+        "ruble",
+        "hyperinflation",
+        "central bank",
+        "exchange rate",
+        "sovereign debt",
+        "default risk",
+        "debt restructuring",
+        "currency collapse",
+        "imf loan"
+      ],
+      "gdelt_theme_hints": [
+        "ECON_INFLATION",
+        "ECON_BANKRUPTCY",
+        "EPU_ECONOMY_HISTORIC"
+      ]
+    },
+    {
+      "slug": "cyberattack-infrastructure",
+      "label": "Cyberattack on infrastructure",
+      "lexicon_terms": [
+        "cyberattack",
+        "ransomware",
+        "data breach",
+        "critical infrastructure",
+        "hackers"
+      ],
+      "gdelt_theme_hints": [
+        "CYBER_ATTACK",
+        "TECHNOLOGY",
+        "INFRASTRUCTURE",
+        "WB_133_INFORMATION_AND_COMMUNICATION_TECHNOLOGIES"
+      ]
+    },
+    {
+      "slug": "disease-outbreak",
+      "label": "Disease outbreak",
+      "lexicon_terms": [
+        "outbreak",
+        "epidemic",
+        "virus",
+        "vaccination",
+        "public health emergency",
+        "ebola",
+        "cholera",
+        "measles",
+        "dengue",
+        "mpox",
+        "hantavirus",
+        "avian flu",
+        "bird flu",
+        "h5n1",
+        "disease outbreak",
+        "viral outbreak"
+      ],
+      "gdelt_theme_hints": [
+        "WB_2663_EBOLA",
+        "TAX_DISEASE_EBOLA",
+        "TAX_DISEASE_DISEASE"
+      ]
+    },
+    {
+      "slug": "disinformation-influence-operation",
+      "label": "Disinformation and influence operation",
+      "lexicon_terms": [
+        "disinformation",
+        "misinformation",
+        "fake news",
+        "deepfake",
+        "propaganda",
+        "influence operation",
+        "information operation",
+        "coordinated inauthentic",
+        "foreign influence campaign"
+      ],
+      "gdelt_theme_hints": [
+        "SOC_POINTSOFVIEW",
+        "TAX_FNCACT",
+        "MEDIA_SOCIAL"
+      ]
+    },
+    {
+      "slug": "election-legitimacy-dispute",
+      "label": "Election legitimacy dispute",
+      "lexicon_terms": [
+        "election fraud",
+        "contested election",
+        "vote count",
+        "electoral court",
+        "ballot",
+        "election integrity",
+        "vote recount",
+        "presidential primary",
+        "election interference",
+        "election denial",
+        "polls closed",
+        "voter suppression",
+        "electoral college",
+        "elecciones",
+        "comicios",
+        "urnas",
+        "papeleta",
+        "fraude electoral",
+        "tribunal electoral",
+        "campaña electoral",
+        "dimisión presidente",
+        "renuncia presidente",
+        "elezioni",
+        "frode elettorale",
+        "brogli elettorali",
+        "eleição",
+        "eleições",
+        "fraude eleitoral",
+        "tribunal eleitoral",
+        "urnas eleitorais",
+        "élections",
+        "élection",
+        "fraude électorale",
+        "bureau de vote",
+        "wahlbetrug",
+        "wahlmanipulation",
+        "bundestagswahl",
+        "stimmabgabe",
+        "seçim iptal",
+        "yerel seçim",
+        "cumhurbaşkanlığı seçim",
+        "εκλογές",
+        "εκλογικ"
+      ],
+      "gdelt_theme_hints": [
+        "ELECTION",
+        "GOVERNMENT",
+        "PROTEST",
+        "EPU_POLICY_POLITICAL",
+        "GENERAL_GOVERNMENT"
+      ]
+    },
+    {
+      "slug": "energy-grid-instability",
+      "label": "Energy grid instability",
+      "lexicon_terms": [
+        "power outage",
+        "blackout",
+        "grid failure",
+        "energy rationing",
+        "electricity shortage"
+      ],
+      "gdelt_theme_hints": [
+        "ENERGY",
+        "INFRASTRUCTURE",
+        "ENV_CLIMATECHANGE",
+        "WB_507_ENERGY_AND_EXTRACTIVES"
+      ]
+    },
+    {
+      "slug": "flood-landslide-disaster",
+      "label": "Flood and landslide disaster",
+      "lexicon_terms": [
+        "flood",
+        "landslide",
+        "heavy rain",
+        "evacuation",
+        "mudslide"
+      ],
+      "gdelt_theme_hints": [
+        "UNGP_DISASTER",
+        "DISASTER_RESPONSE",
+        "ENV_CLIMATECHANGE",
+        "MANMADE_DISASTER_IMPLIED",
+        "UNGP_FORESTS_RIVERS_OCEANS"
+      ]
+    },
+    {
+      "slug": "food-price-stress",
+      "label": "Food price stress",
+      "lexicon_terms": [
+        "food prices",
+        "bread price",
+        "rice price",
+        "food inflation",
+        "food price",
+        "bread prices",
+        "rice prices",
+        "grocery prices",
+        "rising food",
+        "staple food",
+        "food insecurity",
+        "canasta basica",
+        "canasta básica",
+        "precios alimentos",
+        "precio alimentos",
+        "precios de alimentos",
+        "inflacion alimentaria",
+        "inflación alimentaria",
+        "alimentos caros",
+        "precios comida",
+        "prix alimentaires",
+        "inflation alimentaire",
+        "preise lebensmittel",
+        "lebensmittelpreise",
+        "gida fiyat",
+        "gıda fiyat"
+      ],
+      "gdelt_theme_hints": [
+        "FOOD_SECURITY"
+      ]
+    },
+    {
+      "slug": "forced-displacement",
+      "label": "Forced displacement",
+      "lexicon_terms": [
+        "internally displaced",
+        "forced displacement",
+        "evacuated families",
+        "displacement camp",
+        "displacement crisis",
+        "migrants stranded",
+        "asylum seekers",
+        "refugee camp",
+        "idp camp",
+        "humanitarian corridor",
+        "exodus",
+        "displaced persons",
+        "refugees fleeing",
+        "refugees flee",
+        "fled fighting",
+        "mass evacuation",
+        "evacuation order"
+      ],
+      "gdelt_theme_hints": []
+    },
+    {
+      "slug": "fuel-subsidy-unrest",
+      "label": "Fuel subsidy unrest",
+      "lexicon_terms": [
+        "fuel subsidy",
+        "gasoline price",
+        "diesel price",
+        "transport strike",
+        "fuel protest",
+        "fuel price",
+        "fuel prices",
+        "fuel price hike",
+        "fuel rates",
+        "petrol price",
+        "petrol prices",
+        "petrol diesel price",
+        "petrol-diesel price",
+        "diesel prices",
+        "rising petrol",
+        "rising diesel",
+        "gas prices",
+        "subsidio combustible",
+        "subsidio gasolina",
+        "precio gasolina",
+        "precios gasolina",
+        "precio de gasolina",
+        "precios de gasolina",
+        "precio diesel",
+        "precio diésel",
+        "precios combustibles",
+        "aumento gasolina",
+        "aumento combustibles",
+        "combustibles",
+        "prix carburant",
+        "carburant",
+        "carburants",
+        "benzinpreise",
+        "preise benzin",
+        "akaryakıt",
+        "akaryakit"
+      ],
+      "gdelt_theme_hints": [
+        "ECON_INFLATION",
+        "PROTEST",
+        "STRIKE",
+        "TAX_ECON_PRICE"
+      ]
+    },
+    {
+      "slug": "gang-control-urban-security",
+      "label": "Gang control and urban security",
+      "lexicon_terms": [
+        "gang",
+        "cartel",
+        "extortion",
+        "prison riot",
+        "urban violence"
+      ],
+      "gdelt_theme_hints": [
+        "CRIME",
+        "TAX_TERROR",
+        "ARREST",
+        "SOC_GENERALCRIME"
+      ]
+    },
+    {
+      "slug": "gender-violence-rights",
+      "label": "Gender violence and rights",
+      "lexicon_terms": [
+        "femicide",
+        "femicidio",
+        "feminicidio",
+        "gender violence",
+        "gender-based violence",
+        "violence against women",
+        "violencia de genero",
+        "violencia de género",
+        "violencia machista",
+        "domestic violence",
+        "sexual assault",
+        "rape",
+        "raped",
+        "women rights",
+        "women's rights",
+        "reproductive rights",
+        "derechos reproductivos",
+        "abortion rights"
+      ],
+      "gdelt_theme_hints": []
+    },
+    {
+      "slug": "heat-health-risk",
+      "label": "Heat and public health risk",
+      "lexicon_terms": [
+        "heat wave",
+        "extreme heat",
+        "heatstroke",
+        "public health warning",
+        "thermal stress",
+        "heatwave",
+        "scorching",
+        "record temperature",
+        "heat dome",
+        "heat advisory",
+        "heat alert",
+        "dehydration",
+        "sunstroke",
+        "heatwave deaths",
+        "sweltering"
+      ],
+      "gdelt_theme_hints": [
+        "ENV_CLIMATECHANGE",
+        "UNGP_DISASTER",
+        "HEALTH"
+      ]
+    },
+    {
+      "slug": "housing-cost-pressure",
+      "label": "Housing cost pressure",
+      "lexicon_terms": [
+        "rent increase",
+        "housing crisis",
+        "affordable housing",
+        "rent increases",
+        "rising rents",
+        "rental prices",
+        "housing affordability",
+        "home prices",
+        "house prices",
+        "crisis vivienda",
+        "crisis de vivienda",
+        "precio vivienda",
+        "precios vivienda",
+        "precio de vivienda",
+        "precios de vivienda",
+        "precios del alquiler",
+        "alquileres",
+        "desahucio",
+        "vivienda protegida",
+        "vivienda digna",
+        "logement abordable",
+        "crise logement",
+        "prix logement",
+        "mietpreise",
+        "mieten steigen",
+        "konut fiyat",
+        "kira artışı",
+        "kira artisi"
+      ],
+      "gdelt_theme_hints": [
+        "ECON_INFLATION",
+        "SOC_ECONCOSTOFLIVING",
+        "PROTEST",
+        "TAX_ECON_PRICE",
+        "WB_695_POVERTY"
+      ]
+    },
+    {
+      "slug": "humanitarian-access-conflict",
+      "label": "Humanitarian access under conflict",
+      "lexicon_terms": [
+        "humanitarian corridor",
+        "aid convoy",
+        "relief access",
+        "humanitarian access",
+        "aid access",
+        "blocked aid",
+        "aid blockade",
+        "refugee camp",
+        "relief convoy"
+      ],
+      "gdelt_theme_hints": [
+        "DISASTER_RESPONSE",
+        "REFUGEES",
+        "CRISISLEX_C03_DEAD_WOUNDED",
+        "CRISISLEX_CRISISLEXREC"
+      ]
+    },
+    {
+      "slug": "labor-strike-disruption",
+      "label": "Labor strike disruption",
+      "lexicon_terms": [
+        "wage dispute",
+        "walkout",
+        "labor protest",
+        "labour protest",
+        "workers strike",
+        "worker strike",
+        "nurses strike",
+        "teachers strike",
+        "lecturers strike",
+        "strike over pay",
+        "strike over wages",
+        "industrial action",
+        "trade union",
+        "labor union",
+        "labour union",
+        "union leader",
+        "union members",
+        "union backlash",
+        "huelga",
+        "paro laboral",
+        "sindicato",
+        "grève",
+        "sciopero",
+        "greve"
+      ],
+      "gdelt_theme_hints": []
+    },
+    {
+      "slug": "migration-border-pressure",
+      "label": "Migration and border pressure",
+      "lexicon_terms": [
+        "asylum",
+        "asylum seekers",
+        "deportation",
+        "mass deportation",
+        "migrant caravan",
+        "border crossing",
+        "border pressure",
+        "migrants stranded",
+        "refugees fleeing",
+        "refugees flee"
+      ],
+      "gdelt_theme_hints": [
+        "MIGRATION",
+        "REFUGEES",
+        "HUMAN_RIGHTS",
+        "EPU_CATS_MIGRATION_FEAR_FEAR"
+      ]
+    },
+    {
+      "slug": "mining-royalty-risk",
+      "label": "Mining and resource safety crisis",
+      "lexicon_terms": [
+        "mining royalty",
+        "copper royalty",
+        "mining permit",
+        "resource nationalism",
+        "mining royalties",
+        "mining concession",
+        "mining concessions",
+        "mining permits",
+        "mining tax",
+        "mining taxes",
+        "mining project",
+        "mining law",
+        "mining investment",
+        "copper mine",
+        "lithium mine",
+        "coal mine",
+        "mine explosion",
+        "coal mine explosion",
+        "mine blast",
+        "royalty minera",
+        "regalia minera",
+        "concesion minera",
+        "concesión minera",
+        "concesiones mineras",
+        "permiso minero",
+        "mineria ilegal",
+        "minería ilegal",
+        "mina de carbon",
+        "mina de carbón",
+        "explotacion minera",
+        "explotación minera",
+        "redevance minière",
+        "concession minière",
+        "permis minier"
+      ],
+      "gdelt_theme_hints": [
+        "ECON_TRADE",
+        "TAX_FNCACT",
+        "ENV_MINING",
+        "WB_507_ENERGY_AND_EXTRACTIVES"
+      ]
+    },
+    {
+      "slug": "oil-gas-supply-risk",
+      "label": "Oil and gas supply risk",
+      "lexicon_terms": [
+        "pipeline",
+        "oil export",
+        "gas supply",
+        "lng",
+        "refinery"
+      ],
+      "gdelt_theme_hints": [
+        "ENERGY",
+        "ECON_TRADE",
+        "SANCTION",
+        "WB_507_ENERGY_AND_EXTRACTIVES",
+        "MARITIME"
+      ]
+    },
+    {
+      "slug": "press-freedom-crackdown",
+      "label": "Press freedom crackdown",
+      "lexicon_terms": [
+        "journalist arrested",
+        "press freedom",
+        "media censorship",
+        "newsroom raid",
+        "reporter detained",
+        "journalist killed",
+        "journalist jailed",
+        "gag order",
+        "media crackdown",
+        "reporter killed",
+        "newspaper banned",
+        "broadcaster shut",
+        "rsf report",
+        "editor jailed",
+        "correspondent detained"
+      ],
+      "gdelt_theme_hints": [
+        "MEDIA_CENSORSHIP",
+        "HUMAN_RIGHTS"
+      ]
+    },
+    {
+      "slug": "sanctions-diplomatic-pressure",
+      "label": "Sanctions and diplomatic pressure",
+      "lexicon_terms": [
+        "sanctions",
+        "diplomatic pressure",
+        "embassy",
+        "treaty",
+        "negotiations"
+      ],
+      "gdelt_theme_hints": [
+        "SANCTION",
+        "TAX_DIPLOMACY",
+        "TREATY",
+        "EPU_POLICY_POLITICAL",
+        "WB_2473_DIPLOMACY_AND_NEGOTIATIONS"
+      ]
+    },
+    {
+      "slug": "student-youth-protest",
+      "label": "Student and youth protest",
+      "lexicon_terms": [
+        "student protest",
+        "campus protest",
+        "youth movement",
+        "tuition protest",
+        "students rally",
+        "students march",
+        "school strike",
+        "university protest",
+        "campus occupation",
+        "walkout",
+        "youth uprising",
+        "education protest",
+        "tuition hike protest",
+        "students clash",
+        "student union"
+      ],
+      "gdelt_theme_hints": [
+        "PROTEST",
+        "SOC_POINTSOFVIEW"
+      ]
+    },
+    {
+      "slug": "telecom-internet-shutdown",
+      "label": "Telecom or internet shutdown",
+      "lexicon_terms": [
+        "internet shutdown",
+        "telecom outage",
+        "network disruption",
+        "censorship",
+        "connectivity",
+        "blackout",
+        "internet blackout",
+        "mobile shutdown",
+        "sim card",
+        "vpn",
+        "undersea cable",
+        "fiber cut",
+        "signal jam",
+        "disconnected",
+        "dark internet",
+        "throttled internet",
+        "social media block"
+      ],
+      "gdelt_theme_hints": [
+        "MEDIA_CENSORSHIP",
+        "HUMAN_RIGHTS",
+        "TECHNOLOGY"
+      ]
+    },
+    {
+      "slug": "trade-export-restriction",
+      "label": "Trade and export restriction",
+      "lexicon_terms": [
+        "export ban",
+        "tariff",
+        "trade dispute",
+        "customs",
+        "shipping restriction"
+      ],
+      "gdelt_theme_hints": [
+        "ECON_TRADE",
+        "SANCTION",
+        "TAX_DIPLOMACY",
+        "ECON_TAXATION"
+      ]
+    },
+    {
+      "slug": "transport-corridor-disruption",
+      "label": "Transport corridor disruption",
+      "lexicon_terms": [
+        "port disruption",
+        "road blockade",
+        "rail strike",
+        "bridge collapse",
+        "panama canal",
+        "suez canal",
+        "shipping lane",
+        "shipping corridor",
+        "maritime corridor",
+        "maritime chokepoint",
+        "strait closure",
+        "port closure",
+        "rail disruption",
+        "railway disruption",
+        "border crossing closed",
+        "supply route blocked"
+      ],
+      "gdelt_theme_hints": []
+    },
+    {
+      "slug": "water-stress-drought",
+      "label": "Water stress and drought",
+      "lexicon_terms": [
+        "drought",
+        "water rationing",
+        "reservoir",
+        "water shortage",
+        "dry season"
+      ],
+      "gdelt_theme_hints": []
+    }
+  ]
+}

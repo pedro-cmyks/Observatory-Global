@@ -13,7 +13,7 @@
 BEGIN;
 
 -- agriculture-crop-risk (Agriculture and crop risk)
---   existing lexicon size: 0
+--   existing lexicon size: 5
 --   proposed adds: 15
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
@@ -22,7 +22,7 @@ SET lexicon_terms = ARRAY(
 WHERE slug = 'agriculture-crop-risk';
 
 -- armed-conflict-escalation (Armed conflict escalation)
---   existing lexicon size: 0
+--   existing lexicon size: 48
 --   proposed adds: 15
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
@@ -31,16 +31,16 @@ SET lexicon_terms = ARRAY(
 WHERE slug = 'armed-conflict-escalation';
 
 -- constitutional-institutional-crisis (Constitutional or institutional crisis)
---   existing lexicon size: 0
---   proposed adds: 13
+--   existing lexicon size: 18
+--   proposed adds: 12
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
-    SELECT DISTINCT unnest(lexicon_terms || ARRAY['constitutional crisis', 'impeachment proceedings', 'crise constitutionnelle', 'dissolution du parlement', 'crisis constitucional', 'golpe institucional', 'crise institucional', 'ruptura constitucional', 'crisi istituzionale', 'crisi costituzionale', 'verfassungskrise', 'staatskrise', 'destitución presidencial'])
+    SELECT DISTINCT unnest(lexicon_terms || ARRAY['impeachment proceedings', 'crise constitutionnelle', 'dissolution du parlement', 'crisis constitucional', 'golpe institucional', 'crise institucional', 'ruptura constitucional', 'crisi istituzionale', 'crisi costituzionale', 'verfassungskrise', 'staatskrise', 'destitución presidencial'])
 )
 WHERE slug = 'constitutional-institutional-crisis';
 
 -- corruption-investigation (Corruption investigation)
---   existing lexicon size: 0
+--   existing lexicon size: 5
 --   proposed adds: 15
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
@@ -49,16 +49,16 @@ SET lexicon_terms = ARRAY(
 WHERE slug = 'corruption-investigation';
 
 -- currency-debt-stress (Currency and debt stress)
---   existing lexicon size: 0
---   proposed adds: 15
+--   existing lexicon size: 18
+--   proposed adds: 14
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
-    SELECT DISTINCT unnest(lexicon_terms || ARRAY['currency crisis', 'sovereign debt default', 'debt restructuring talks', 'peso se desploma', 'crisis de deuda soberana', 'reestructuración de deuda', 'crise cambial', 'dívida soberana em risco', 'moratória da dívida', 'crisi del debito sovrano', 'crollo della lira', 'crise de la dette', 'dépréciation monétaire', 'staatsschuldenkrise', 'währungsverfall'])
+    SELECT DISTINCT unnest(lexicon_terms || ARRAY['sovereign debt default', 'debt restructuring talks', 'peso se desploma', 'crisis de deuda soberana', 'reestructuración de deuda', 'crise cambial', 'dívida soberana em risco', 'moratória da dívida', 'crisi del debito sovrano', 'crollo della lira', 'crise de la dette', 'dépréciation monétaire', 'staatsschuldenkrise', 'währungsverfall'])
 )
 WHERE slug = 'currency-debt-stress';
 
 -- cyberattack-infrastructure (Cyberattack on infrastructure)
---   existing lexicon size: 0
+--   existing lexicon size: 5
 --   proposed adds: 15
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
@@ -67,34 +67,34 @@ SET lexicon_terms = ARRAY(
 WHERE slug = 'cyberattack-infrastructure';
 
 -- disease-outbreak (Disease outbreak)
---   existing lexicon size: 0
---   proposed adds: 14
+--   existing lexicon size: 16
+--   proposed adds: 13
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
-    SELECT DISTINCT unnest(lexicon_terms || ARRAY['disease outbreak', 'epidemic spreads', 'cases of infection', 'brote de enfermedad', 'epidemia de', 'surto de doença', 'casos confirmados de', 'focolaio di', 'epidemia in corso', 'épidémie de', 'foyer épidémique', 'ausbruch der krankheit', 'infektionswelle', 'seuchenausbruch'])
+    SELECT DISTINCT unnest(lexicon_terms || ARRAY['epidemic spreads', 'cases of infection', 'brote de enfermedad', 'epidemia de', 'surto de doença', 'casos confirmados de', 'focolaio di', 'epidemia in corso', 'épidémie de', 'foyer épidémique', 'ausbruch der krankheit', 'infektionswelle', 'seuchenausbruch'])
 )
 WHERE slug = 'disease-outbreak';
 
 -- disinformation-influence-operation (Disinformation and influence operation)
---   existing lexicon size: 0
---   proposed adds: 15
+--   existing lexicon size: 9
+--   proposed adds: 14
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
-    SELECT DISTINCT unnest(lexicon_terms || ARRAY['influence operation', 'disinformation campaign', 'coordinated inauthentic behavior', 'campaña de desinformación', 'operación de influencia', 'campanha de desinformação', 'operação de influência', 'campagna di disinformazione', 'operazione di influenza', 'campagne de désinformation', 'opération d''influence', 'desinformationskampagne', 'einflussoperation', 'fake news network', 'manipulation de l''information'])
+    SELECT DISTINCT unnest(lexicon_terms || ARRAY['disinformation campaign', 'coordinated inauthentic behavior', 'campaña de desinformación', 'operación de influencia', 'campanha de desinformação', 'operação de influência', 'campagna di disinformazione', 'operazione di influenza', 'campagne de désinformation', 'opération d''influence', 'desinformationskampagne', 'einflussoperation', 'fake news network', 'manipulation de l''information'])
 )
 WHERE slug = 'disinformation-influence-operation';
 
 -- election-legitimacy-dispute (Election legitimacy dispute)
---   existing lexicon size: 0
---   proposed adds: 15
+--   existing lexicon size: 43
+--   proposed adds: 12
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
-    SELECT DISTINCT unnest(lexicon_terms || ARRAY['election fraud claims', 'stolen election', 'disputed election results', 'fraude electoral', 'resultados impugnados', 'elección ilegítima', 'fraude nas eleições', 'resultado eleitoral contestado', 'brogli elettorali', 'risultati contestati elezioni', 'fraude électorale', 'résultats électoraux contestés', 'wahlfälschung', 'wahlergebnis angefochten', 'wahlbetrug vorwürfe'])
+    SELECT DISTINCT unnest(lexicon_terms || ARRAY['election fraud claims', 'stolen election', 'disputed election results', 'resultados impugnados', 'elección ilegítima', 'fraude nas eleições', 'resultado eleitoral contestado', 'risultati contestati elezioni', 'résultats électoraux contestés', 'wahlfälschung', 'wahlergebnis angefochten', 'wahlbetrug vorwürfe'])
 )
 WHERE slug = 'election-legitimacy-dispute';
 
 -- energy-grid-instability (Energy grid instability)
---   existing lexicon size: 0
+--   existing lexicon size: 5
 --   proposed adds: 15
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
@@ -103,7 +103,7 @@ SET lexicon_terms = ARRAY(
 WHERE slug = 'energy-grid-instability';
 
 -- flood-landslide-disaster (Flood and landslide disaster)
---   existing lexicon size: 0
+--   existing lexicon size: 5
 --   proposed adds: 15
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
@@ -112,25 +112,25 @@ SET lexicon_terms = ARRAY(
 WHERE slug = 'flood-landslide-disaster';
 
 -- food-price-stress (Food price stress)
---   existing lexicon size: 0
---   proposed adds: 15
+--   existing lexicon size: 26
+--   proposed adds: 12
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
-    SELECT DISTINCT unnest(lexicon_terms || ARRAY['food prices surge', 'grocery bills rising', 'cost of food soars', 'precios de alimentos', 'cesta de la compra cara', 'inflación alimentaria', 'preços dos alimentos sobem', 'custo da alimentação', 'caro fare la spesa', 'prezzi alimentari aumentano', 'hausse des prix alimentaires', 'inflation alimentaire', 'lebensmittelpreise steigen', 'teurer einkaufen', 'nahrungsmittelpreise erhöhen'])
+    SELECT DISTINCT unnest(lexicon_terms || ARRAY['food prices surge', 'grocery bills rising', 'cost of food soars', 'cesta de la compra cara', 'preços dos alimentos sobem', 'custo da alimentação', 'caro fare la spesa', 'prezzi alimentari aumentano', 'hausse des prix alimentaires', 'lebensmittelpreise steigen', 'teurer einkaufen', 'nahrungsmittelpreise erhöhen'])
 )
 WHERE slug = 'food-price-stress';
 
 -- forced-displacement (Forced displacement)
---   existing lexicon size: 0
---   proposed adds: 14
+--   existing lexicon size: 17
+--   proposed adds: 13
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
-    SELECT DISTINCT unnest(lexicon_terms || ARRAY['forced displacement', 'internally displaced persons', 'desplazamiento forzado', 'desplazados internos', 'deslocamento forçado', 'deslocados internos', 'sfollati interni', 'sfollamento forzato', 'déplacement forcé', 'déplacés internes', 'zwangsvertreibung', 'binnenvertriebene', 'mass displacement crisis', 'vertreibung von zivilisten'])
+    SELECT DISTINCT unnest(lexicon_terms || ARRAY['internally displaced persons', 'desplazamiento forzado', 'desplazados internos', 'deslocamento forçado', 'deslocados internos', 'sfollati interni', 'sfollamento forzato', 'déplacement forcé', 'déplacés internes', 'zwangsvertreibung', 'binnenvertriebene', 'mass displacement crisis', 'vertreibung von zivilisten'])
 )
 WHERE slug = 'forced-displacement';
 
 -- fuel-subsidy-unrest (Fuel subsidy unrest)
---   existing lexicon size: 0
+--   existing lexicon size: 36
 --   proposed adds: 15
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
@@ -139,7 +139,7 @@ SET lexicon_terms = ARRAY(
 WHERE slug = 'fuel-subsidy-unrest';
 
 -- gang-control-urban-security (Gang control and urban security)
---   existing lexicon size: 0
+--   existing lexicon size: 5
 --   proposed adds: 15
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
@@ -148,16 +148,16 @@ SET lexicon_terms = ARRAY(
 WHERE slug = 'gang-control-urban-security';
 
 -- gender-violence-rights (Gender violence and rights)
---   existing lexicon size: 0
---   proposed adds: 15
+--   existing lexicon size: 18
+--   proposed adds: 11
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
-    SELECT DISTINCT unnest(lexicon_terms || ARRAY['violencia de género', 'feminicidio', 'violência doméstica', 'violência contra a mulher', 'violenza di genere', 'femminicidio', 'violences conjugales', 'féminicide', 'häusliche gewalt', 'geschlechtsbezogene gewalt', 'domestic abuse conviction', 'gender-based violence', 'femicide rate', 'restraining order domestic', 'violencia machista'])
+    SELECT DISTINCT unnest(lexicon_terms || ARRAY['violência doméstica', 'violência contra a mulher', 'violenza di genere', 'femminicidio', 'violences conjugales', 'féminicide', 'häusliche gewalt', 'geschlechtsbezogene gewalt', 'domestic abuse conviction', 'femicide rate', 'restraining order domestic'])
 )
 WHERE slug = 'gender-violence-rights';
 
 -- heat-health-risk (Heat and public health risk)
---   existing lexicon size: 0
+--   existing lexicon size: 15
 --   proposed adds: 15
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
@@ -166,16 +166,16 @@ SET lexicon_terms = ARRAY(
 WHERE slug = 'heat-health-risk';
 
 -- housing-cost-pressure (Housing cost pressure)
---   existing lexicon size: 0
---   proposed adds: 15
+--   existing lexicon size: 28
+--   proposed adds: 14
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
-    SELECT DISTINCT unnest(lexicon_terms || ARRAY['rent affordability crisis', 'housing costs soar', 'mortgage burden', 'alquiler inasequible', 'precio de la vivienda sube', 'crise do arrendamento', 'custo da habitação', 'affitti insostenibili', 'caro affitti', 'crise du logement', 'loyers en hausse', 'mietpreise steigen', 'wohnkosten explodieren', 'housing affordability', 'wohnungsnot'])
+    SELECT DISTINCT unnest(lexicon_terms || ARRAY['rent affordability crisis', 'housing costs soar', 'mortgage burden', 'alquiler inasequible', 'precio de la vivienda sube', 'crise do arrendamento', 'custo da habitação', 'affitti insostenibili', 'caro affitti', 'crise du logement', 'loyers en hausse', 'mietpreise steigen', 'wohnkosten explodieren', 'wohnungsnot'])
 )
 WHERE slug = 'housing-cost-pressure';
 
 -- humanitarian-access-conflict (Humanitarian access under conflict)
---   existing lexicon size: 0
+--   existing lexicon size: 9
 --   proposed adds: 15
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
@@ -184,16 +184,16 @@ SET lexicon_terms = ARRAY(
 WHERE slug = 'humanitarian-access-conflict';
 
 -- labor-strike-disruption (Labor strike disruption)
---   existing lexicon size: 0
---   proposed adds: 15
+--   existing lexicon size: 24
+--   proposed adds: 14
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
-    SELECT DISTINCT unnest(lexicon_terms || ARRAY['workers go on strike', 'strike disrupts service', 'union walkout', 'huelga general', 'trabajadores en huelga', 'paro laboral', 'greve dos trabalhadores', 'paralisação geral', 'sciopero generale', 'lavoratori in sciopero', 'grève des travailleurs', 'mouvement de grève', 'streik legt betrieb lahm', 'warnstreik', 'gewerkschaft streik'])
+    SELECT DISTINCT unnest(lexicon_terms || ARRAY['workers go on strike', 'strike disrupts service', 'union walkout', 'huelga general', 'trabajadores en huelga', 'greve dos trabalhadores', 'paralisação geral', 'sciopero generale', 'lavoratori in sciopero', 'grève des travailleurs', 'mouvement de grève', 'streik legt betrieb lahm', 'warnstreik', 'gewerkschaft streik'])
 )
 WHERE slug = 'labor-strike-disruption';
 
 -- migration-border-pressure (Migration and border pressure)
---   existing lexicon size: 0
+--   existing lexicon size: 10
 --   proposed adds: 15
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
@@ -202,7 +202,7 @@ SET lexicon_terms = ARRAY(
 WHERE slug = 'migration-border-pressure';
 
 -- mining-royalty-risk (Mining and resource safety crisis)
---   existing lexicon size: 0
+--   existing lexicon size: 34
 --   proposed adds: 15
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
@@ -211,7 +211,7 @@ SET lexicon_terms = ARRAY(
 WHERE slug = 'mining-royalty-risk';
 
 -- oil-gas-supply-risk (Oil and gas supply risk)
---   existing lexicon size: 0
+--   existing lexicon size: 5
 --   proposed adds: 15
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
@@ -220,16 +220,16 @@ SET lexicon_terms = ARRAY(
 WHERE slug = 'oil-gas-supply-risk';
 
 -- press-freedom-crackdown (Press freedom crackdown)
---   existing lexicon size: 0
---   proposed adds: 15
+--   existing lexicon size: 15
+--   proposed adds: 14
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
-    SELECT DISTINCT unnest(lexicon_terms || ARRAY['journalist arrested', 'press freedom crackdown', 'reporter jailed', 'periodista detenido', 'libertad de prensa', 'censura a medios', 'jornalista preso', 'liberdade de imprensa ameaçada', 'censura à imprensa', 'giornalista arrestato', 'libertà di stampa', 'liberté de la presse', 'journaliste emprisonné', 'pressefreiheit eingeschränkt', 'journalist verhaftet'])
+    SELECT DISTINCT unnest(lexicon_terms || ARRAY['press freedom crackdown', 'reporter jailed', 'periodista detenido', 'libertad de prensa', 'censura a medios', 'jornalista preso', 'liberdade de imprensa ameaçada', 'censura à imprensa', 'giornalista arrestato', 'libertà di stampa', 'liberté de la presse', 'journaliste emprisonné', 'pressefreiheit eingeschränkt', 'journalist verhaftet'])
 )
 WHERE slug = 'press-freedom-crackdown';
 
 -- sanctions-diplomatic-pressure (Sanctions and diplomatic pressure)
---   existing lexicon size: 0
+--   existing lexicon size: 5
 --   proposed adds: 15
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
@@ -238,34 +238,34 @@ SET lexicon_terms = ARRAY(
 WHERE slug = 'sanctions-diplomatic-pressure';
 
 -- student-youth-protest (Student and youth protest)
---   existing lexicon size: 0
---   proposed adds: 15
+--   existing lexicon size: 15
+--   proposed adds: 14
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
-    SELECT DISTINCT unnest(lexicon_terms || ARRAY['student protest', 'campus walkout', 'youth demonstration', 'protesta estudiantil', 'marcha universitaria', 'huelga estudiantil', 'protesto estudantil', 'greve dos estudantes', 'manifestação jovens', 'protesta studentesca', 'corteo studentesco', 'manifestation lycéens', 'grève étudiante', 'studentenprotest', 'schülerstreik'])
+    SELECT DISTINCT unnest(lexicon_terms || ARRAY['campus walkout', 'youth demonstration', 'protesta estudiantil', 'marcha universitaria', 'huelga estudiantil', 'protesto estudantil', 'greve dos estudantes', 'manifestação jovens', 'protesta studentesca', 'corteo studentesco', 'manifestation lycéens', 'grève étudiante', 'studentenprotest', 'schülerstreik'])
 )
 WHERE slug = 'student-youth-protest';
 
 -- telecom-internet-shutdown (Telecom or internet shutdown)
---   existing lexicon size: 0
---   proposed adds: 14
+--   existing lexicon size: 17
+--   proposed adds: 12
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
-    SELECT DISTINCT unnest(lexicon_terms || ARRAY['internet shutdown', 'internet blackout', 'telecom blackout', 'corte de internet', 'apagón de internet', 'bloqueo de telecomunicaciones', 'bloqueio de internet', 'apagão de telecomunicações', 'interruzione internet', 'blackout delle telecomunicazioni', 'coupure internet', 'coupure des télécommunications', 'internetsperre', 'internet abgeschaltet'])
+    SELECT DISTINCT unnest(lexicon_terms || ARRAY['telecom blackout', 'corte de internet', 'apagón de internet', 'bloqueo de telecomunicaciones', 'bloqueio de internet', 'apagão de telecomunicações', 'interruzione internet', 'blackout delle telecomunicazioni', 'coupure internet', 'coupure des télécommunications', 'internetsperre', 'internet abgeschaltet'])
 )
 WHERE slug = 'telecom-internet-shutdown';
 
 -- trade-export-restriction (Trade and export restriction)
---   existing lexicon size: 0
---   proposed adds: 15
+--   existing lexicon size: 5
+--   proposed adds: 14
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
-    SELECT DISTINCT unnest(lexicon_terms || ARRAY['export ban', 'trade embargo', 'export controls tightened', 'restricciones a la exportación', 'veda de exportaciones', 'restrições às exportações', 'proibição de exportação', 'restrizioni all''esportazione', 'divieto di esportazione', 'restrictions aux exportations', 'embargo commercial', 'exportbeschränkungen', 'ausfuhrverbot', 'tariff barriers imposed', 'handelsbeschränkungen verhängt'])
+    SELECT DISTINCT unnest(lexicon_terms || ARRAY['trade embargo', 'export controls tightened', 'restricciones a la exportación', 'veda de exportaciones', 'restrições às exportações', 'proibição de exportação', 'restrizioni all''esportazione', 'divieto di esportazione', 'restrictions aux exportations', 'embargo commercial', 'exportbeschränkungen', 'ausfuhrverbot', 'tariff barriers imposed', 'handelsbeschränkungen verhängt'])
 )
 WHERE slug = 'trade-export-restriction';
 
 -- transport-corridor-disruption (Transport corridor disruption)
---   existing lexicon size: 0
+--   existing lexicon size: 16
 --   proposed adds: 15
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(
@@ -274,7 +274,7 @@ SET lexicon_terms = ARRAY(
 WHERE slug = 'transport-corridor-disruption';
 
 -- water-stress-drought (Water stress and drought)
---   existing lexicon size: 0
+--   existing lexicon size: 5
 --   proposed adds: 15
 UPDATE atlas_topics
 SET lexicon_terms = ARRAY(

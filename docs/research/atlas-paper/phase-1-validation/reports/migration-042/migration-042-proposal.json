@@ -3,13 +3,13 @@
   "min_vocab_confidence": 0.85,
   "topics_total": 30,
   "topics_with_proposed_adds": 30,
-  "total_terms_to_add": 445,
+  "total_terms_to_add": 423,
   "total_terms_to_monitor": 150,
   "total_terms_to_flag_for_removal": 0,
   "by_topic": {
     "agriculture-crop-risk": {
       "label": "Agriculture and crop risk",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 5,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -227,7 +227,7 @@
     },
     "armed-conflict-escalation": {
       "label": "Armed conflict escalation",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 48,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -445,16 +445,10 @@
     },
     "constitutional-institutional-crisis": {
       "label": "Constitutional or institutional crisis",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 18,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
-        {
-          "term": "constitutional crisis",
-          "lang": "en",
-          "confidence": 0.95,
-          "why": "Direct phrase for a breakdown in constitutional order."
-        },
         {
           "term": "impeachment proceedings",
           "lang": "en",
@@ -666,7 +660,7 @@
     },
     "corruption-investigation": {
       "label": "Corruption investigation",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 5,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -884,16 +878,10 @@
     },
     "currency-debt-stress": {
       "label": "Currency and debt stress",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 18,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
-        {
-          "term": "currency crisis",
-          "lang": "en",
-          "confidence": 0.95,
-          "why": "Directly signals a currency stress event in headlines."
-        },
         {
           "term": "sovereign debt default",
           "lang": "en",
@@ -1102,7 +1090,7 @@
     },
     "cyberattack-infrastructure": {
       "label": "Cyberattack on infrastructure",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 5,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -1320,16 +1308,10 @@
     },
     "disease-outbreak": {
       "label": "Disease outbreak",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 16,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
-        {
-          "term": "disease outbreak",
-          "lang": "en",
-          "confidence": 0.95,
-          "why": "Direct phrase for epidemic events in English headlines."
-        },
         {
           "term": "epidemic spreads",
           "lang": "en",
@@ -1458,16 +1440,10 @@
     },
     "disinformation-influence-operation": {
       "label": "Disinformation and influence operation",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 9,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
-        {
-          "term": "influence operation",
-          "lang": "en",
-          "confidence": 0.95,
-          "why": "Direct label for coordinated state or non-state manipulation campaigns."
-        },
         {
           "term": "disinformation campaign",
           "lang": "en",
@@ -1594,7 +1570,7 @@
     },
     "election-legitimacy-dispute": {
       "label": "Election legitimacy dispute",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 43,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -1615,12 +1591,6 @@
           "lang": "en",
           "confidence": 0.94,
           "why": "Explicitly describes a legitimacy challenge to electoral outcomes."
-        },
-        {
-          "term": "fraude electoral",
-          "lang": "es",
-          "confidence": 0.93,
-          "why": "Spanish equivalent of electoral fraud, central to legitimacy disputes."
         },
         {
           "term": "resultados impugnados",
@@ -1647,22 +1617,10 @@
           "why": "Directly describes a contested electoral result in Portuguese."
         },
         {
-          "term": "brogli elettorali",
-          "lang": "it",
-          "confidence": 0.92,
-          "why": "Italian term for electoral fraud, strongly tied to legitimacy disputes."
-        },
-        {
           "term": "risultati contestati elezioni",
           "lang": "it",
           "confidence": 0.9,
           "why": "Italian phrase for contested election results."
-        },
-        {
-          "term": "fraude électorale",
-          "lang": "fr",
-          "confidence": 0.93,
-          "why": "French term for electoral fraud, directly signals legitimacy dispute."
         },
         {
           "term": "résultats électoraux contestés",
@@ -1730,7 +1688,7 @@
     },
     "energy-grid-instability": {
       "label": "Energy grid instability",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 5,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -1866,7 +1824,7 @@
     },
     "flood-landslide-disaster": {
       "label": "Flood and landslide disaster",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 5,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -2002,7 +1960,7 @@
     },
     "food-price-stress": {
       "label": "Food price stress",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 26,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -2025,22 +1983,10 @@
           "why": "Unambiguously describes escalating food expenditure pressure."
         },
         {
-          "term": "precios de alimentos",
-          "lang": "es",
-          "confidence": 0.89,
-          "why": "Spanish phrase for food prices, core signal for this topic."
-        },
-        {
           "term": "cesta de la compra cara",
           "lang": "es",
           "confidence": 0.88,
           "why": "Refers to expensive shopping basket, a direct food-cost stress indicator in Spanish media."
-        },
-        {
-          "term": "inflación alimentaria",
-          "lang": "es",
-          "confidence": 0.9,
-          "why": "Food inflation in Spanish, strongly tied to this topic."
         },
         {
           "term": "preços dos alimentos sobem",
@@ -2071,12 +2017,6 @@
           "lang": "fr",
           "confidence": 0.92,
           "why": "French for rise in food prices, directly indicates this topic."
-        },
-        {
-          "term": "inflation alimentaire",
-          "lang": "fr",
-          "confidence": 0.91,
-          "why": "Food inflation in French, strongly signals this topic."
         },
         {
           "term": "lebensmittelpreise steigen",
@@ -2138,16 +2078,10 @@
     },
     "forced-displacement": {
       "label": "Forced displacement",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 17,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
-        {
-          "term": "forced displacement",
-          "lang": "en",
-          "confidence": 0.95,
-          "why": "Direct label for the topic, commonly used in humanitarian reporting."
-        },
         {
           "term": "internally displaced persons",
           "lang": "en",
@@ -2276,7 +2210,7 @@
     },
     "fuel-subsidy-unrest": {
       "label": "Fuel subsidy unrest",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 36,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -2412,7 +2346,7 @@
     },
     "gang-control-urban-security": {
       "label": "Gang control and urban security",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 5,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -2548,22 +2482,10 @@
     },
     "gender-violence-rights": {
       "label": "Gender violence and rights",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 18,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
-        {
-          "term": "violencia de género",
-          "lang": "es",
-          "confidence": 0.97,
-          "why": "Standard Spanish phrase for gender-based violence, almost always the primary subject when it appears."
-        },
-        {
-          "term": "feminicidio",
-          "lang": "es",
-          "confidence": 0.96,
-          "why": "Refers specifically to femicide, a core gender-violence crime topic in Spanish-language news."
-        },
         {
           "term": "violência doméstica",
           "lang": "pt",
@@ -2619,12 +2541,6 @@
           "why": "Specific English phrase tying legal outcomes to domestic/gender violence cases."
         },
         {
-          "term": "gender-based violence",
-          "lang": "en",
-          "confidence": 0.97,
-          "why": "Core English term for this topic, almost always the primary subject when it appears."
-        },
-        {
           "term": "femicide rate",
           "lang": "en",
           "confidence": 0.95,
@@ -2635,12 +2551,6 @@
           "lang": "en",
           "confidence": 0.88,
           "why": "Signals domestic violence legal proceedings in English headlines."
-        },
-        {
-          "term": "violencia machista",
-          "lang": "es",
-          "confidence": 0.95,
-          "why": "Spanish phrase for male-chauvinist violence against women, strongly on-topic."
         }
       ],
       "terms_to_monitor": [
@@ -2684,7 +2594,7 @@
     },
     "heat-health-risk": {
       "label": "Heat and public health risk",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 15,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -2820,7 +2730,7 @@
     },
     "housing-cost-pressure": {
       "label": "Housing cost pressure",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 28,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -2903,12 +2813,6 @@
           "why": "German for 'housing costs exploding', strongly indicates this topic."
         },
         {
-          "term": "housing affordability",
-          "lang": "en",
-          "confidence": 0.9,
-          "why": "Standard English phrase used in headlines about housing cost strain."
-        },
-        {
           "term": "wohnungsnot",
           "lang": "de",
           "confidence": 0.88,
@@ -2956,7 +2860,7 @@
     },
     "humanitarian-access-conflict": {
       "label": "Humanitarian access under conflict",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 9,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -3092,7 +2996,7 @@
     },
     "labor-strike-disruption": {
       "label": "Labor strike disruption",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 24,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -3125,12 +3029,6 @@
           "lang": "es",
           "confidence": 0.92,
           "why": "Workers on strike in Spanish, directly indicates labor stoppage."
-        },
-        {
-          "term": "paro laboral",
-          "lang": "es",
-          "confidence": 0.88,
-          "why": "Labor stoppage in Spanish, specific to work disruption events."
         },
         {
           "term": "greve dos trabalhadores",
@@ -3228,7 +3126,7 @@
     },
     "migration-border-pressure": {
       "label": "Migration and border pressure",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 10,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -3364,7 +3262,7 @@
     },
     "mining-royalty-risk": {
       "label": "Mining and resource safety crisis",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 34,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -3500,7 +3398,7 @@
     },
     "oil-gas-supply-risk": {
       "label": "Oil and gas supply risk",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 5,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -3636,16 +3534,10 @@
     },
     "press-freedom-crackdown": {
       "label": "Press freedom crackdown",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 15,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
-        {
-          "term": "journalist arrested",
-          "lang": "en",
-          "confidence": 0.93,
-          "why": "Directly signals a reporter detained by authorities, a core press-freedom crackdown event."
-        },
         {
           "term": "press freedom crackdown",
           "lang": "en",
@@ -3772,7 +3664,7 @@
     },
     "sanctions-diplomatic-pressure": {
       "label": "Sanctions and diplomatic pressure",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 5,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -3908,16 +3800,10 @@
     },
     "student-youth-protest": {
       "label": "Student and youth protest",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 15,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
-        {
-          "term": "student protest",
-          "lang": "en",
-          "confidence": 0.95,
-          "why": "Directly signals student-led protest action in headlines."
-        },
         {
           "term": "campus walkout",
           "lang": "en",
@@ -4044,22 +3930,10 @@
     },
     "telecom-internet-shutdown": {
       "label": "Telecom or internet shutdown",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 17,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
-        {
-          "term": "internet shutdown",
-          "lang": "en",
-          "confidence": 0.97,
-          "why": "Direct phrase for government-ordered internet cutoffs."
-        },
-        {
-          "term": "internet blackout",
-          "lang": "en",
-          "confidence": 0.93,
-          "why": "Common journalistic term for total internet access denial."
-        },
         {
           "term": "telecom blackout",
           "lang": "en",
@@ -4174,16 +4048,10 @@
     },
     "trade-export-restriction": {
       "label": "Trade and export restriction",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 5,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
-        {
-          "term": "export ban",
-          "lang": "en",
-          "confidence": 0.93,
-          "why": "Directly signals a government-imposed restriction on exports."
-        },
         {
           "term": "trade embargo",
           "lang": "en",
@@ -4310,7 +4178,7 @@
     },
     "transport-corridor-disruption": {
       "label": "Transport corridor disruption",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 16,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
@@ -4446,7 +4314,7 @@
     },
     "water-stress-drought": {
       "label": "Water stress and drought",
-      "existing_lexicon_count": 0,
+      "existing_lexicon_count": 5,
       "vocab_positive_proposed": 15,
       "vocab_negative_proposed": 5,
       "terms_to_add": [
