@@ -8,6 +8,54 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
+## Current Session Context (2026-05-28, Paper 1 validation + precision roadmap)
+
+Active objective: raise Atlas v2 topic-classification precision from the
+measured **~51% (balanced 6-model LLM consensus, full 30-topic taxonomy)**
+to the target **90-95%**. Plan in
+`docs/research/atlas-paper/2026-05-28-precision-to-90-roadmap.md`.
+
+Rule editing is exhausted (migrations 040-044). Distillation arc proven:
+- mig 042 (423 lexicon additions): +0.0pp precision (recall instrument).
+- mig 043 (3 gold-guided lexicon removals): +6.55pp.
+- mig 044 (2 gold-guided theme-hint removals): +8.20pp.
+- Reachability ceiling for rule edits: ~74% on human 6-topic gold,
+  ~51% full-taxonomy consensus. Remaining errors are scope mismatch
+  (context vs evidence) — architectural, not rule-fixable.
+
+LLM zero-shot baseline (Sonnet 4.6) hit **95.08%** on human gold, proving
+90%+ reachable with a semantic/scope-aware classifier. v3 plan = scope-aware
+learned classifier distilled from the multi-vendor LLM annotator panel.
+
+Annotator methodology (Paper 1 contribution): 7-annotator panel (Pedro +
+Sonnet 4.6 + Opus 4.7 + Haiku 4.5 + GPT-4.1 + GPT-4o + GPT-4o-mini).
+Within-vendor Fleiss ~0.67-0.68, cross-vendor lower; the human clusters
+with OpenAI (pedro/gpt4o kappa 0.769) far more than with Claude
+(0.54-0.57). Annotator strictness is a vendor-correlated confound;
+single-annotator precision claims are unreliable. Primary benchmark gold
+is now balanced multi-vendor LLM consensus (>=4/6), reported with
+per-vendor Fleiss + no-majority rate.
+
+New research tooling in `backend/scripts/` (tested, no production coupling):
+`benchmark_bootstrap.py`, `llm_baseline_classifier.py`,
+`llm_baseline_compare.py`, `llm_annotator.py` (multi-provider Anthropic +
+OpenAI, `--no-temperature` for opus-4-7), `kappa_calculator.py`,
+`multi_annotator_agreement.py`, `llm_reasoning_mine.py`,
+`llm_topic_vocab_mine.py`, `propose_migration_042.py`,
+`restore_and_reclassify_reviewed.py`. Snapshots:
+`backend/data/atlas_topics_snapshot_{pre_042,post_042,post_044}.json`.
+
+`OPENAI_API_KEY` in gitignored `.env` (placeholder in `.env.example`); key
+shared in plaintext in chat — rotate when convenient. Signals older than 24h
+hot window prune to `/Users/pedro/AtlasArchive`;
+`restore_and_reclassify_reviewed.py` rehydrates specific signal_ids for
+re-benchmarking. API spend this work: Anthropic $4.58 + OpenAI $0.90 = $5.48.
+
+Paper docs: `docs/research/atlas-paper/2026-05-27-atlas-papers-master-plan.md`
+(8-paper series), `2026-05-27-methodology-paper-outline.md` (Paper 1),
+`2026-05-28-precision-to-90-roadmap.md`, plus phase-1-validation reports
+under `docs/research/atlas-paper/phase-1-validation/reports/`.
+
 ## Current Session Context (2026-05-25, production-cycle canon)
 
 ### Phase zero operating truth

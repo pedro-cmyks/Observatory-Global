@@ -1,6 +1,96 @@
 # Project Status
 
-## Current Handoff — 2026-05-24 (Living Narrative Threads M1 + M2 + M3a)
+## Current Handoff — 2026-05-28 (Paper 1 validation: precision arc + annotator reliability)
+
+### Objective
+
+Push Atlas v2 topic-classification precision from the measured
+**~51% (balanced 6-model LLM consensus, full taxonomy)** to the
+target **90-95%**. The path is documented in
+`docs/research/atlas-paper/2026-05-28-precision-to-90-roadmap.md`.
+Rule edits are exhausted; the next step is a scope-aware learned
+classifier distilled from the multi-vendor LLM panel.
+
+### What shipped this session (2026-05-27/28)
+
+Branch `v3-intel-layer`. ~16 commits. API spend: Anthropic $4.58 +
+OpenAI $0.90 = $5.48 (budget $15).
+
+New reproducible research tooling (`backend/scripts/`, all tested):
+- `benchmark_bootstrap.py` — Wilson + stratified bootstrap CIs, forest plots.
+- `llm_baseline_classifier.py` — LLM zero/few-shot classifier baseline.
+- `llm_baseline_compare.py` — Atlas vs LLM comparison + forest plot.
+- `llm_annotator.py` — LLM-as-annotator; multi-provider (Anthropic + OpenAI
+  via `_is_openai_model`), `--no-temperature` for opus-4-7.
+- `kappa_calculator.py` — Cohen's kappa + bootstrap CI.
+- `multi_annotator_agreement.py` — pairwise Cohen + Fleiss across N annotators.
+- `llm_reasoning_mine.py` — zero-API distillation pass over predictions.
+- `llm_topic_vocab_mine.py` — multilingual vocab mining per topic.
+- `propose_migration_042.py` — aggregates mining into a migration draft.
+- `restore_and_reclassify_reviewed.py` — restores archived gold signals and
+  re-classifies in-Python under any taxonomy snapshot.
+- Tests: 57+ passing across the new scripts.
+
+Production migrations applied via Supabase MCP (all live):
+- 042 — 423 multilingual lexicon additions. Precision effect on gold: +0.0pp.
+- 043 — 3 gold-guided lexicon removals. +6.55pp.
+- 044 — 2 gold-guided theme-hint removals. +8.20pp.
+
+Precision arc on reviewed gold (N=61):
+- pre-042: 59.02% [46.50, 70.46]
+- post-042: 59.02% (additions are a recall instrument, not precision)
+- post-043: 65.57% [53.05, 76.25]
+- post-044: 73.77% [61.56, 83.16]
+Per-topic jumps: cyberattack 28.6%->100%, constitutional 62.5%->87.5%,
+agriculture 25%->50%.
+
+Annotator reliability (the methodology contribution):
+- Built a 7-annotator panel: Pedro + Sonnet 4.6 + Opus 4.7 + Haiku 4.5
+  + GPT-4.1 + GPT-4o + GPT-4o-mini.
+- Within-vendor Fleiss: Claude 0.670, OpenAI 0.681 (both substantial).
+  All-6-LLM Fleiss 0.635. Cross-vendor pairs 0.49-0.65.
+- Vendor camps: the human clusters with OpenAI (pedro/gpt4o 0.769) far
+  more than with Claude (0.54-0.57). Annotator strictness is a
+  measurable, vendor-correlated confound.
+- gpt-4o-mini is a weak annotator (44/256 parse errors).
+
+Atlas precision by reference (post-044, the headline table):
+| Reference | N | Precision | Wilson CI |
+|---|---:|---:|---|
+| pedro (lenient, 6 topics) | 61 | 73.77% | [61.56, 83.16] |
+| 3-Claude consensus | 212 | 42.45% | [35.99, 49.18] |
+| 4-model consensus | 180 | 48.33% | [41.14, 55.59] |
+| 6-model balanced (>=4/6) | 189 | 50.79% | [43.72, 57.83] |
+
+The LLM zero-shot baseline hit 95.08% on the human gold — proof that
+90%+ is reachable with a semantic/scope-aware classifier, which is the
+v3 plan.
+
+### Key docs from this session
+
+- `docs/research/atlas-paper/2026-05-27-atlas-papers-master-plan.md` — 8-paper series.
+- `docs/research/atlas-paper/2026-05-27-methodology-paper-outline.md` — Paper 1 outline.
+- `docs/research/atlas-paper/2026-05-28-precision-to-90-roadmap.md` — the path to 90-95%.
+- `docs/research/atlas-paper/phase-1-validation/reports/migration-042/post-042-lift.md` — distillation arc + reachability decomposition.
+- `docs/research/atlas-paper/phase-1-validation/reports/agreement/annotator-reliability-resolution.md` — annotator panel finding.
+- `docs/research/atlas-paper/phase-1-validation/reports/agreement/vendor-camp-finding.md` — vendor camps + strictness axis.
+
+### Secrets
+
+`OPENAI_API_KEY` added to gitignored `.env` (placeholder in `.env.example`).
+Key was shared in plaintext in chat — recommend rotating it when convenient.
+
+### Next session (no blockers)
+
+Execute the precision-to-90 roadmap, Phase A: scale the multi-vendor
+LLM-consensus labeling from 256 to ~5k stratified rows (persist scope +
+evidence_role), then Phase B prototype an embedding+head scope-aware
+classifier and score it against the 6-model consensus benchmark.
+Promotion gate: consensus precision >= 90%, CI lower bound clears 85%.
+
+---
+
+## Previous Handoff — 2026-05-24 (Living Narrative Threads M1 + M2 + M3a)
 
 ### What shipped this session
 
