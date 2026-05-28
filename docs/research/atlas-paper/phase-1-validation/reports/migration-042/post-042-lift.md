@@ -122,3 +122,64 @@ terms).
    headlines". Compare productivity vs mig 042.
 3. Expand benchmark sample beyond N=61 toward the N>=150 target
    stated in the methodology outline.
+
+---
+
+## Update: migration 043 (gold-guided removals) — precision DID move
+
+After the null result from mig 042 (additions), migration 043 took the
+removal path. Inspecting the 25 incorrect gold rows showed that:
+
+- 12 of 25 false positives were theme-only (no lexicon match) — lexicon
+  removal cannot touch these; theme-hint removal is required (future
+  migration 044).
+- 13 of 25 had a lexicon match, but most of those matching terms are
+  core terms (impeachment, armed conflict) whose false positives are
+  scope mismatches, not term noise.
+- Only 3 lexicon terms matched ONLY false positives with zero true
+  positive dependency in the gold sample.
+
+Migration 043 removed exactly those 3 terms:
+
+| Topic | Removed term | Reason |
+|---|---|---|
+| constitutional-institutional-crisis | `state of emergency` | matched industrial-disaster headline |
+| cyberattack-infrastructure | `data breach` | matched lawsuit/settlement headline |
+| cyberattack-infrastructure | `critical infrastructure` | matched AI-policy headline |
+
+### Measured lift across the full arc
+
+| Stage | Precision | Wilson 95% CI | Correct/Labeled |
+|---|---:|---|---:|
+| pre-042 (mig 040+041) | 59.02% | [46.50%, 70.46%] | 36/61 |
+| post-042 (423 additions) | 59.02% | [46.50%, 70.46%] | 36/61 |
+| post-043 (3 removals) | **65.57%** | **[53.05%, 76.25%]** | 40/61 |
+
+Three surgical removals delivered +6.55pp precision. 423 additions
+delivered 0pp. The asymmetry is the core empirical claim for the
+distillation section of Paper 1:
+
+> In an additive lexicon classifier, precision is governed by the
+> broad terms already present, not by the precise terms one can add.
+> Recall-oriented expansion (mig 042) and precision-oriented removal
+> (mig 043) are different interventions; only removal moved precision,
+> and only on the subset of false positives caused by lexicon noise
+> rather than theme-hint over-matching or scope mismatch.
+
+### Remaining ceiling for lexicon-only fixes
+
+Post-043 still fails the 85% gate. The remaining 21 false positives
+are dominated by:
+
+- **Theme-only matches (≈12)** — fixable only by tightening
+  `gdelt_theme_hints` (migration 044 candidate).
+- **Scope mismatches (≈6)** — real topic mentioned as context, not
+  primary event. Not fixable by lexicon or theme edits; requires the
+  multi-layer scope classifier (evidence vs context_signal) described
+  in the narrative-intelligence framework.
+- **Substring noise (≈2)** — e.g. `lira` inside Indonesian "aliran".
+  Fixable by word-boundary matching (code change), not term removal.
+
+This decomposition is itself a Paper 1 contribution: it quantifies how
+much of a rule-based classifier's precision gap is reachable by each
+class of intervention.

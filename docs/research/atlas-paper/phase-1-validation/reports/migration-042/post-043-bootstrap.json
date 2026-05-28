@@ -1,0 +1,88 @@
+{
+  "schema_version": "atlas-bootstrap-ci-v1",
+  "inputs": [
+    "/tmp/post043_for_bootstrap.jsonl"
+  ],
+  "n_resamples": 10000,
+  "confidence_level": 0.95,
+  "seed": 20260527,
+  "gate": {
+    "minimum": 0.85,
+    "target": 0.9
+  },
+  "overall": {
+    "labeled": 61,
+    "correct": 40,
+    "incorrect": 21,
+    "unclear": 0,
+    "precision": 0.6557,
+    "wilson_ci_low": 0.5305,
+    "wilson_ci_high": 0.7625,
+    "bootstrap_ci_low": 0.541,
+    "bootstrap_ci_high": 0.7705,
+    "bootstrap_median": 0.6557,
+    "gate": "fail"
+  },
+  "by_topic": {
+    "agriculture-crop-risk": {
+      "labeled": 8,
+      "correct": 2,
+      "incorrect": 6,
+      "unclear": 0,
+      "precision": 0.25,
+      "wilson_ci_low": 0.0715,
+      "wilson_ci_high": 0.5907,
+      "gate": "fail"
+    },
+    "armed-conflict-escalation": {
+      "labeled": 15,
+      "correct": 10,
+      "incorrect": 5,
+      "unclear": 0,
+      "precision": 0.6667,
+      "wilson_ci_low": 0.4171,
+      "wilson_ci_high": 0.8482,
+      "gate": "fail"
+    },
+    "constitutional-institutional-crisis": {
+      "labeled": 8,
+      "correct": 7,
+      "incorrect": 1,
+      "unclear": 0,
+      "precision": 0.875,
+      "wilson_ci_low": 0.5291,
+      "wilson_ci_high": 0.9776,
+      "gate": "pass_minimum"
+    },
+    "corruption-investigation": {
+      "labeled": 12,
+      "correct": 10,
+      "incorrect": 2,
+      "unclear": 0,
+      "precision": 0.8333,
+      "wilson_ci_low": 0.552,
+      "wilson_ci_high": 0.953,
+      "gate": "fail"
+    },
+    "currency-debt-stress": {
+      "labeled": 11,
+      "correct": 7,
+      "incorrect": 4,
+      "unclear": 0,
+      "precision": 0.6364,
+      "wilson_ci_low": 0.3538,
+      "wilson_ci_high": 0.8483,
+      "gate": "fail"
+    },
+    "cyberattack-infrastructure": {
+      "labeled": 7,
+      "correct": 4,
+      "incorrect": 3,
+      "unclear": 0,
+      "precision": 0.5714,
+      "wilson_ci_low": 0.2505,
+      "wilson_ci_high": 0.8418,
+      "gate": "fail"
+    }
+  }
+}
