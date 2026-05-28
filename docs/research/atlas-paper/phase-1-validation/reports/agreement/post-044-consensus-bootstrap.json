@@ -1,0 +1,328 @@
+{
+  "schema_version": "atlas-bootstrap-ci-v1",
+  "inputs": [
+    "/tmp/consensus_bootstrap.jsonl"
+  ],
+  "n_resamples": 10000,
+  "confidence_level": 0.95,
+  "seed": 20260527,
+  "gate": {
+    "minimum": 0.85,
+    "target": 0.9
+  },
+  "overall": {
+    "labeled": 212,
+    "correct": 90,
+    "incorrect": 122,
+    "unclear": 0,
+    "precision": 0.4245,
+    "wilson_ci_low": 0.3599,
+    "wilson_ci_high": 0.4918,
+    "bootstrap_ci_low": 0.3726,
+    "bootstrap_ci_high": 0.4811,
+    "bootstrap_median": 0.4245,
+    "gate": "fail"
+  },
+  "by_topic": {
+    "agriculture-crop-risk": {
+      "labeled": 9,
+      "correct": 3,
+      "incorrect": 6,
+      "unclear": 0,
+      "precision": 0.3333,
+      "wilson_ci_low": 0.1206,
+      "wilson_ci_high": 0.6458,
+      "gate": "fail"
+    },
+    "armed-conflict-escalation": {
+      "labeled": 8,
+      "correct": 4,
+      "incorrect": 4,
+      "unclear": 0,
+      "precision": 0.5,
+      "wilson_ci_low": 0.2152,
+      "wilson_ci_high": 0.7848,
+      "gate": "fail"
+    },
+    "constitutional-institutional-crisis": {
+      "labeled": 8,
+      "correct": 6,
+      "incorrect": 2,
+      "unclear": 0,
+      "precision": 0.75,
+      "wilson_ci_low": 0.4093,
+      "wilson_ci_high": 0.9285,
+      "gate": "fail"
+    },
+    "corruption-investigation": {
+      "labeled": 12,
+      "correct": 8,
+      "incorrect": 4,
+      "unclear": 0,
+      "precision": 0.6667,
+      "wilson_ci_low": 0.3906,
+      "wilson_ci_high": 0.8619,
+      "gate": "fail"
+    },
+    "currency-debt-stress": {
+      "labeled": 11,
+      "correct": 4,
+      "incorrect": 7,
+      "unclear": 0,
+      "precision": 0.3636,
+      "wilson_ci_low": 0.1517,
+      "wilson_ci_high": 0.6462,
+      "gate": "fail"
+    },
+    "cyberattack-infrastructure": {
+      "labeled": 8,
+      "correct": 6,
+      "incorrect": 2,
+      "unclear": 0,
+      "precision": 0.75,
+      "wilson_ci_low": 0.4093,
+      "wilson_ci_high": 0.9285,
+      "gate": "fail"
+    },
+    "disease-outbreak": {
+      "labeled": 9,
+      "correct": 7,
+      "incorrect": 2,
+      "unclear": 0,
+      "precision": 0.7778,
+      "wilson_ci_low": 0.4526,
+      "wilson_ci_high": 0.9368,
+      "gate": "fail"
+    },
+    "disinformation-influence-operation": {
+      "labeled": 4,
+      "correct": 1,
+      "incorrect": 3,
+      "unclear": 0,
+      "precision": 0.25,
+      "wilson_ci_low": 0.0456,
+      "wilson_ci_high": 0.6994,
+      "gate": "fail"
+    },
+    "election-legitimacy-dispute": {
+      "labeled": 14,
+      "correct": 1,
+      "incorrect": 13,
+      "unclear": 0,
+      "precision": 0.0714,
+      "wilson_ci_low": 0.0127,
+      "wilson_ci_high": 0.3147,
+      "gate": "fail"
+    },
+    "energy-grid-instability": {
+      "labeled": 6,
+      "correct": 3,
+      "incorrect": 3,
+      "unclear": 0,
+      "precision": 0.5,
+      "wilson_ci_low": 0.1876,
+      "wilson_ci_high": 0.8124,
+      "gate": "fail"
+    },
+    "flood-landslide-disaster": {
+      "labeled": 9,
+      "correct": 6,
+      "incorrect": 3,
+      "unclear": 0,
+      "precision": 0.6667,
+      "wilson_ci_low": 0.3542,
+      "wilson_ci_high": 0.8794,
+      "gate": "fail"
+    },
+    "food-price-stress": {
+      "labeled": 6,
+      "correct": 4,
+      "incorrect": 2,
+      "unclear": 0,
+      "precision": 0.6667,
+      "wilson_ci_low": 0.3,
+      "wilson_ci_high": 0.9032,
+      "gate": "fail"
+    },
+    "forced-displacement": {
+      "labeled": 2,
+      "correct": 1,
+      "incorrect": 1,
+      "unclear": 0,
+      "precision": 0.5,
+      "wilson_ci_low": 0.0945,
+      "wilson_ci_high": 0.9055,
+      "gate": "fail"
+    },
+    "fuel-subsidy-unrest": {
+      "labeled": 9,
+      "correct": 0,
+      "incorrect": 9,
+      "unclear": 0,
+      "precision": 0.0,
+      "wilson_ci_low": 0.0,
+      "wilson_ci_high": 0.2992,
+      "gate": "fail"
+    },
+    "gang-control-urban-security": {
+      "labeled": 9,
+      "correct": 2,
+      "incorrect": 7,
+      "unclear": 0,
+      "precision": 0.2222,
+      "wilson_ci_low": 0.0632,
+      "wilson_ci_high": 0.5474,
+      "gate": "fail"
+    },
+    "gender-violence-rights": {
+      "labeled": 7,
+      "correct": 7,
+      "incorrect": 0,
+      "unclear": 0,
+      "precision": 1.0,
+      "wilson_ci_low": 0.6457,
+      "wilson_ci_high": 1.0,
+      "gate": "pass_target"
+    },
+    "heat-health-risk": {
+      "labeled": 8,
+      "correct": 2,
+      "incorrect": 6,
+      "unclear": 0,
+      "precision": 0.25,
+      "wilson_ci_low": 0.0715,
+      "wilson_ci_high": 0.5907,
+      "gate": "fail"
+    },
+    "housing-cost-pressure": {
+      "labeled": 9,
+      "correct": 6,
+      "incorrect": 3,
+      "unclear": 0,
+      "precision": 0.6667,
+      "wilson_ci_low": 0.3542,
+      "wilson_ci_high": 0.8794,
+      "gate": "fail"
+    },
+    "humanitarian-access-conflict": {
+      "labeled": 7,
+      "correct": 0,
+      "incorrect": 7,
+      "unclear": 0,
+      "precision": 0.0,
+      "wilson_ci_low": 0.0,
+      "wilson_ci_high": 0.3543,
+      "gate": "fail"
+    },
+    "labor-strike-disruption": {
+      "labeled": 5,
+      "correct": 3,
+      "incorrect": 2,
+      "unclear": 0,
+      "precision": 0.6,
+      "wilson_ci_low": 0.2307,
+      "wilson_ci_high": 0.8824,
+      "gate": "fail"
+    },
+    "migration-border-pressure": {
+      "labeled": 7,
+      "correct": 5,
+      "incorrect": 2,
+      "unclear": 0,
+      "precision": 0.7143,
+      "wilson_ci_low": 0.3589,
+      "wilson_ci_high": 0.9178,
+      "gate": "fail"
+    },
+    "mining-royalty-risk": {
+      "labeled": 9,
+      "correct": 0,
+      "incorrect": 9,
+      "unclear": 0,
+      "precision": 0.0,
+      "wilson_ci_low": 0.0,
+      "wilson_ci_high": 0.2992,
+      "gate": "fail"
+    },
+    "oil-gas-supply-risk": {
+      "labeled": 11,
+      "correct": 6,
+      "incorrect": 5,
+      "unclear": 0,
+      "precision": 0.5455,
+      "wilson_ci_low": 0.2801,
+      "wilson_ci_high": 0.7873,
+      "gate": "fail"
+    },
+    "press-freedom-crackdown": {
+      "labeled": 1,
+      "correct": 1,
+      "incorrect": 0,
+      "unclear": 0,
+      "precision": 1.0,
+      "wilson_ci_low": 0.2065,
+      "wilson_ci_high": 1.0,
+      "gate": "pass_target"
+    },
+    "sanctions-diplomatic-pressure": {
+      "labeled": 8,
+      "correct": 0,
+      "incorrect": 8,
+      "unclear": 0,
+      "precision": 0.0,
+      "wilson_ci_low": 0.0,
+      "wilson_ci_high": 0.3244,
+      "gate": "fail"
+    },
+    "student-youth-protest": {
+      "labeled": 3,
+      "correct": 1,
+      "incorrect": 2,
+      "unclear": 0,
+      "precision": 0.3333,
+      "wilson_ci_low": 0.0615,
+      "wilson_ci_high": 0.7923,
+      "gate": "fail"
+    },
+    "telecom-internet-shutdown": {
+      "labeled": 1,
+      "correct": 0,
+      "incorrect": 1,
+      "unclear": 0,
+      "precision": 0.0,
+      "wilson_ci_low": 0.0,
+      "wilson_ci_high": 0.7935,
+      "gate": "fail"
+    },
+    "trade-export-restriction": {
+      "labeled": 4,
+      "correct": 1,
+      "incorrect": 3,
+      "unclear": 0,
+      "precision": 0.25,
+      "wilson_ci_low": 0.0456,
+      "wilson_ci_high": 0.6994,
+      "gate": "fail"
+    },
+    "transport-corridor-disruption": {
+      "labeled": 4,
+      "correct": 1,
+      "incorrect": 3,
+      "unclear": 0,
+      "precision": 0.25,
+      "wilson_ci_low": 0.0456,
+      "wilson_ci_high": 0.6994,
+      "gate": "fail"
+    },
+    "water-stress-drought": {
+      "labeled": 4,
+      "correct": 1,
+      "incorrect": 3,
+      "unclear": 0,
+      "precision": 0.25,
+      "wilson_ci_low": 0.0456,
+      "wilson_ci_high": 0.6994,
+      "gate": "fail"
+    }
+  }
+}

@@ -210,13 +210,16 @@ def _call_llm(
     last_error: str | None = None
     for attempt in range(1, retries + 1):
         try:
-            response = client.messages.create(
-                model=model,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                system=SYSTEM_PROMPT,
-                messages=[{"role": "user", "content": user_prompt}],
-            )
+            create_kwargs: dict[str, Any] = {
+                "model": model,
+                "max_tokens": max_tokens,
+                "system": SYSTEM_PROMPT,
+                "messages": [{"role": "user", "content": user_prompt}],
+            }
+            # Some models (e.g. opus-4-7) reject the temperature parameter.
+            if temperature is not None:
+                create_kwargs["temperature"] = temperature
+            response = client.messages.create(**create_kwargs)
             text = "".join(
                 block.text for block in response.content if getattr(block, "type", None) == "text"
             )
@@ -321,6 +324,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--provenance", default=DEFAULT_PROVENANCE)
     parser.add_argument("--max-tokens", type=int, default=DEFAULT_MAX_TOKENS)
     parser.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE)
+    parser.add_argument("--no-temperature", action="store_true",
+                        help="Omit the temperature parameter (required for opus-4-7).")
     parser.add_argument("--max-rows", type=int, default=None)
     parser.add_argument("--retries", type=int, default=DEFAULT_RETRIES)
     parser.add_argument("--backoff-seconds", type=float, default=DEFAULT_BACKOFF_SECONDS)
@@ -341,6 +346,7 @@ def main() -> None:
 
     skip = _existing_signal_ids(args.output) if args.resume else set()
     client = anthropic.Anthropic(api_key=api_key)
+    temperature = None if args.no_temperature else args.temperature
 
     written = 0
     for row in rows:
@@ -353,7 +359,7 @@ def main() -> None:
             model=args.model,
             provenance=args.provenance,
             max_tokens=args.max_tokens,
-            temperature=args.temperature,
+            temperature=temperature,
             retries=args.retries,
             backoff_seconds=args.backoff_seconds,
         )
