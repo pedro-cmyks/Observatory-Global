@@ -1,0 +1,3961 @@
+{
+  "schema_version": "atlas-post042-reclassify-v1",
+  "min_confidence": 0.65,
+  "min_headline_len": 20,
+  "top_n": 2,
+  "topics_used": 30,
+  "gold_total": 216,
+  "labeled": 216,
+  "skipped_unclear": 0,
+  "missing_signal": 0,
+  "post042_correct": 103,
+  "post042_incorrect": 113,
+  "post042_precision": 0.4769,
+  "by_topic": {
+    "agriculture-crop-risk": {
+      "labeled": 8,
+      "post042_correct": 4,
+      "post042_incorrect": 4,
+      "post042_precision": 0.5
+    },
+    "armed-conflict-escalation": {
+      "labeled": 13,
+      "post042_correct": 9,
+      "post042_incorrect": 4,
+      "post042_precision": 0.6923
+    },
+    "constitutional-institutional-crisis": {
+      "labeled": 6,
+      "post042_correct": 5,
+      "post042_incorrect": 1,
+      "post042_precision": 0.8333
+    },
+    "corruption-investigation": {
+      "labeled": 12,
+      "post042_correct": 10,
+      "post042_incorrect": 2,
+      "post042_precision": 0.8333
+    },
+    "currency-debt-stress": {
+      "labeled": 9,
+      "post042_correct": 3,
+      "post042_incorrect": 6,
+      "post042_precision": 0.3333
+    },
+    "cyberattack-infrastructure": {
+      "labeled": 8,
+      "post042_correct": 6,
+      "post042_incorrect": 2,
+      "post042_precision": 0.75
+    },
+    "disease-outbreak": {
+      "labeled": 8,
+      "post042_correct": 8,
+      "post042_incorrect": 0,
+      "post042_precision": 1.0
+    },
+    "disinformation-influence-operation": {
+      "labeled": 3,
+      "post042_correct": 1,
+      "post042_incorrect": 2,
+      "post042_precision": 0.3333
+    },
+    "election-legitimacy-dispute": {
+      "labeled": 15,
+      "post042_correct": 1,
+      "post042_incorrect": 14,
+      "post042_precision": 0.0667
+    },
+    "energy-grid-instability": {
+      "labeled": 7,
+      "post042_correct": 3,
+      "post042_incorrect": 4,
+      "post042_precision": 0.4286
+    },
+    "flood-landslide-disaster": {
+      "labeled": 11,
+      "post042_correct": 6,
+      "post042_incorrect": 5,
+      "post042_precision": 0.5455
+    },
+    "food-price-stress": {
+      "labeled": 7,
+      "post042_correct": 5,
+      "post042_incorrect": 2,
+      "post042_precision": 0.7143
+    },
+    "forced-displacement": {
+      "labeled": 2,
+      "post042_correct": 1,
+      "post042_incorrect": 1,
+      "post042_precision": 0.5
+    },
+    "fuel-subsidy-unrest": {
+      "labeled": 11,
+      "post042_correct": 0,
+      "post042_incorrect": 11,
+      "post042_precision": 0.0
+    },
+    "gang-control-urban-security": {
+      "labeled": 12,
+      "post042_correct": 4,
+      "post042_incorrect": 8,
+      "post042_precision": 0.3333
+    },
+    "gender-violence-rights": {
+      "labeled": 7,
+      "post042_correct": 7,
+      "post042_incorrect": 0,
+      "post042_precision": 1.0
+    },
+    "heat-health-risk": {
+      "labeled": 8,
+      "post042_correct": 4,
+      "post042_incorrect": 4,
+      "post042_precision": 0.5
+    },
+    "housing-cost-pressure": {
+      "labeled": 10,
+      "post042_correct": 6,
+      "post042_incorrect": 4,
+      "post042_precision": 0.6
+    },
+    "humanitarian-access-conflict": {
+      "labeled": 6,
+      "post042_correct": 1,
+      "post042_incorrect": 5,
+      "post042_precision": 0.1667
+    },
+    "labor-strike-disruption": {
+      "labeled": 5,
+      "post042_correct": 3,
+      "post042_incorrect": 2,
+      "post042_precision": 0.6
+    },
+    "migration-border-pressure": {
+      "labeled": 8,
+      "post042_correct": 3,
+      "post042_incorrect": 5,
+      "post042_precision": 0.375
+    },
+    "mining-royalty-risk": {
+      "labeled": 6,
+      "post042_correct": 0,
+      "post042_incorrect": 6,
+      "post042_precision": 0.0
+    },
+    "oil-gas-supply-risk": {
+      "labeled": 12,
+      "post042_correct": 6,
+      "post042_incorrect": 6,
+      "post042_precision": 0.5
+    },
+    "press-freedom-crackdown": {
+      "labeled": 1,
+      "post042_correct": 1,
+      "post042_incorrect": 0,
+      "post042_precision": 1.0
+    },
+    "sanctions-diplomatic-pressure": {
+      "labeled": 7,
+      "post042_correct": 2,
+      "post042_incorrect": 5,
+      "post042_precision": 0.2857
+    },
+    "student-youth-protest": {
+      "labeled": 3,
+      "post042_correct": 1,
+      "post042_incorrect": 2,
+      "post042_precision": 0.3333
+    },
+    "telecom-internet-shutdown": {
+      "labeled": 1,
+      "post042_correct": 0,
+      "post042_incorrect": 1,
+      "post042_precision": 0.0
+    },
+    "trade-export-restriction": {
+      "labeled": 3,
+      "post042_correct": 1,
+      "post042_incorrect": 2,
+      "post042_precision": 0.3333
+    },
+    "transport-corridor-disruption": {
+      "labeled": 4,
+      "post042_correct": 1,
+      "post042_incorrect": 3,
+      "post042_precision": 0.25
+    },
+    "water-stress-drought": {
+      "labeled": 3,
+      "post042_correct": 1,
+      "post042_incorrect": 2,
+      "post042_precision": 0.3333
+    }
+  },
+  "per_row": [
+    {
+      "signal_id": 4510843,
+      "gold_decision": "partial",
+      "assigned_slug": "agriculture-crop-risk",
+      "post042_predictions": [
+        {
+          "slug": "agriculture-crop-risk",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "harvest",
+            "farmers"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4498053,
+      "gold_decision": "correct",
+      "assigned_slug": "agriculture-crop-risk",
+      "post042_predictions": [
+        {
+          "slug": "agriculture-crop-risk",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "farmers"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4582545,
+      "gold_decision": "incorrect",
+      "assigned_slug": "agriculture-crop-risk",
+      "post042_predictions": [
+        {
+          "slug": "agriculture-crop-risk",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "fertilizer"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4494624,
+      "gold_decision": "incorrect",
+      "assigned_slug": "agriculture-crop-risk",
+      "post042_predictions": [
+        {
+          "slug": "agriculture-crop-risk",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "farmers"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4510678,
+      "gold_decision": "correct",
+      "assigned_slug": "agriculture-crop-risk",
+      "post042_predictions": [
+        {
+          "slug": "agriculture-crop-risk",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4492910,
+      "gold_decision": "incorrect",
+      "assigned_slug": "agriculture-crop-risk",
+      "post042_predictions": [
+        {
+          "slug": "agriculture-crop-risk",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4522013,
+      "gold_decision": "incorrect",
+      "assigned_slug": "agriculture-crop-risk",
+      "post042_predictions": [
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4510751,
+      "gold_decision": "incorrect",
+      "assigned_slug": "agriculture-crop-risk",
+      "post042_predictions": [
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4481387,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "missile attack",
+            "missile attacks"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4598592,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "drone attack",
+            "drone attacks"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4480654,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "missile attack",
+            "missile attacks"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4474418,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "airstrike"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4498744,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "bombardeo"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4496783,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "missile attack"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4606349,
+      "gold_decision": "incorrect",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "rebels"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4495116,
+      "gold_decision": "incorrect",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.75,
+          "lex_count": 0,
+          "theme_hits": 4,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4582736,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.75,
+          "lex_count": 0,
+          "theme_hits": 4,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4479742,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.75,
+          "lex_count": 0,
+          "theme_hits": 4,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4581717,
+      "gold_decision": "incorrect",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4598700,
+      "gold_decision": "incorrect",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4531517,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4505533,
+      "gold_decision": "correct",
+      "assigned_slug": "constitutional-institutional-crisis",
+      "post042_predictions": [
+        {
+          "slug": "constitutional-institutional-crisis",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "impeachment",
+            "impeach"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4512261,
+      "gold_decision": "incorrect",
+      "assigned_slug": "constitutional-institutional-crisis",
+      "post042_predictions": [
+        {
+          "slug": "constitutional-institutional-crisis",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "impeachment",
+            "impeach"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4550146,
+      "gold_decision": "correct",
+      "assigned_slug": "constitutional-institutional-crisis",
+      "post042_predictions": [
+        {
+          "slug": "constitutional-institutional-crisis",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "impeachment",
+            "impeach"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4528307,
+      "gold_decision": "incorrect",
+      "assigned_slug": "constitutional-institutional-crisis",
+      "post042_predictions": [],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4483495,
+      "gold_decision": "correct",
+      "assigned_slug": "constitutional-institutional-crisis",
+      "post042_predictions": [
+        {
+          "slug": "constitutional-institutional-crisis",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "ousted"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4521953,
+      "gold_decision": "incorrect",
+      "assigned_slug": "constitutional-institutional-crisis",
+      "post042_predictions": [],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4543811,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "embezzlement"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4543809,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "embezzlement"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4535658,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "embezzlement"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4544053,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "embezzlement"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4577853,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "corruption"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4554085,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "corruption"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4575098,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "corruption"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4556366,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "corruption"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4614976,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4607603,
+      "gold_decision": "incorrect",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4614982,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4506995,
+      "gold_decision": "incorrect",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4521891,
+      "gold_decision": "correct",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "central bank",
+            "exchange rate"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4521961,
+      "gold_decision": "correct",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "central bank",
+            "exchange rate"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4563415,
+      "gold_decision": "correct",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "imf bailout"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4552542,
+      "gold_decision": "incorrect",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "lira"
+          ]
+        },
+        {
+          "slug": "energy-grid-instability",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4525331,
+      "gold_decision": "incorrect",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "peso"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4576880,
+      "gold_decision": "incorrect",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4537928,
+      "gold_decision": "incorrect",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4489113,
+      "gold_decision": "incorrect",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4564854,
+      "gold_decision": "incorrect",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        },
+        {
+          "slug": "fuel-subsidy-unrest",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4566704,
+      "gold_decision": "incorrect",
+      "assigned_slug": "cyberattack-infrastructure",
+      "post042_predictions": [],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4538209,
+      "gold_decision": "incorrect",
+      "assigned_slug": "cyberattack-infrastructure",
+      "post042_predictions": [
+        {
+          "slug": "cyberattack-infrastructure",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "hackers"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4610012,
+      "gold_decision": "incorrect",
+      "assigned_slug": "cyberattack-infrastructure",
+      "post042_predictions": [],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4523286,
+      "gold_decision": "incorrect",
+      "assigned_slug": "cyberattack-infrastructure",
+      "post042_predictions": [
+        {
+          "slug": "cyberattack-infrastructure",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "cyberattack"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4505431,
+      "gold_decision": "incorrect",
+      "assigned_slug": "cyberattack-infrastructure",
+      "post042_predictions": [],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4553970,
+      "gold_decision": "incorrect",
+      "assigned_slug": "cyberattack-infrastructure",
+      "post042_predictions": [
+        {
+          "slug": "constitutional-institutional-crisis",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "supreme court"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4605853,
+      "gold_decision": "incorrect",
+      "assigned_slug": "cyberattack-infrastructure",
+      "post042_predictions": [],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4581194,
+      "gold_decision": "incorrect",
+      "assigned_slug": "cyberattack-infrastructure",
+      "post042_predictions": [],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4543796,
+      "gold_decision": "correct",
+      "assigned_slug": "disease-outbreak",
+      "post042_predictions": [
+        {
+          "slug": "disease-outbreak",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "virus",
+            "hantavirus"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4518597,
+      "gold_decision": "correct",
+      "assigned_slug": "disease-outbreak",
+      "post042_predictions": [
+        {
+          "slug": "disease-outbreak",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "outbreak",
+            "ebola"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4510793,
+      "gold_decision": "correct",
+      "assigned_slug": "disease-outbreak",
+      "post042_predictions": [
+        {
+          "slug": "disease-outbreak",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "outbreak",
+            "ebola"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4480402,
+      "gold_decision": "correct",
+      "assigned_slug": "disease-outbreak",
+      "post042_predictions": [
+        {
+          "slug": "disease-outbreak",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "ebola"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4488539,
+      "gold_decision": "correct",
+      "assigned_slug": "disease-outbreak",
+      "post042_predictions": [
+        {
+          "slug": "disease-outbreak",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "outbreak"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4542013,
+      "gold_decision": "correct",
+      "assigned_slug": "disease-outbreak",
+      "post042_predictions": [
+        {
+          "slug": "disease-outbreak",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "ebola"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4490185,
+      "gold_decision": "correct",
+      "assigned_slug": "disease-outbreak",
+      "post042_predictions": [
+        {
+          "slug": "disease-outbreak",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4488037,
+      "gold_decision": "correct",
+      "assigned_slug": "disease-outbreak",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        },
+        {
+          "slug": "disease-outbreak",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4573895,
+      "gold_decision": "incorrect",
+      "assigned_slug": "disinformation-influence-operation",
+      "post042_predictions": [
+        {
+          "slug": "disinformation-influence-operation",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "misinformation"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4539560,
+      "gold_decision": "incorrect",
+      "assigned_slug": "disinformation-influence-operation",
+      "post042_predictions": [
+        {
+          "slug": "disease-outbreak",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "virus"
+          ]
+        },
+        {
+          "slug": "disinformation-influence-operation",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "misinformation"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4501050,
+      "gold_decision": "correct",
+      "assigned_slug": "disinformation-influence-operation",
+      "post042_predictions": [
+        {
+          "slug": "disinformation-influence-operation",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "propaganda"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4506586,
+      "gold_decision": "incorrect",
+      "assigned_slug": "election-legitimacy-dispute",
+      "post042_predictions": [
+        {
+          "slug": "election-legitimacy-dispute",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "elezioni"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4577212,
+      "gold_decision": "incorrect",
+      "assigned_slug": "election-legitimacy-dispute",
+      "post042_predictions": [
+        {
+          "slug": "election-legitimacy-dispute",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "elecciones"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4504745,
+      "gold_decision": "incorrect",
+      "assigned_slug": "election-legitimacy-dispute",
+      "post042_predictions": [
+        {
+          "slug": "election-legitimacy-dispute",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "elecciones"
+          ]
+        },
+        {
+          "slug": "fuel-subsidy-unrest",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4499348,
+      "gold_decision": "incorrect",
+      "assigned_slug": "election-legitimacy-dispute",
+      "post042_predictions": [
+        {
+          "slug": "election-legitimacy-dispute",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "presidential primary"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4517932,
+      "gold_decision": "correct",
+      "assigned_slug": "election-legitimacy-dispute",
+      "post042_predictions": [
+        {
+          "slug": "election-legitimacy-dispute",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "elecciones"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4526263,
+      "gold_decision": "incorrect",
+      "assigned_slug": "election-legitimacy-dispute",
+      "post042_predictions": [
+        {
+          "slug": "election-legitimacy-dispute",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "elecciones"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4614350,
+      "gold_decision": "incorrect",
+      "assigned_slug": "election-legitimacy-dispute",
+      "post042_predictions": [
+        {
+          "slug": "election-legitimacy-dispute",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "elezioni"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4480280,
+      "gold_decision": "incorrect",
+      "assigned_slug": "election-legitimacy-dispute",
+      "post042_predictions": [
+        {
+          "slug": "election-legitimacy-dispute",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "elezioni"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4493159,
+      "gold_decision": "incorrect",
+      "assigned_slug": "election-legitimacy-dispute",
+      "post042_predictions": [
+        {
+          "slug": "election-legitimacy-dispute",
+          "confidence": 0.75,
+          "lex_count": 0,
+          "theme_hits": 4,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4492707,
+      "gold_decision": "incorrect",
+      "assigned_slug": "election-legitimacy-dispute",
+      "post042_predictions": [
+        {
+          "slug": "election-legitimacy-dispute",
+          "confidence": 0.75,
+          "lex_count": 0,
+          "theme_hits": 4,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4493153,
+      "gold_decision": "incorrect",
+      "assigned_slug": "election-legitimacy-dispute",
+      "post042_predictions": [
+        {
+          "slug": "election-legitimacy-dispute",
+          "confidence": 0.75,
+          "lex_count": 0,
+          "theme_hits": 4,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4623804,
+      "gold_decision": "partial",
+      "assigned_slug": "election-legitimacy-dispute",
+      "post042_predictions": [
+        {
+          "slug": "election-legitimacy-dispute",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4476086,
+      "gold_decision": "incorrect",
+      "assigned_slug": "election-legitimacy-dispute",
+      "post042_predictions": [
+        {
+          "slug": "election-legitimacy-dispute",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4533334,
+      "gold_decision": "incorrect",
+      "assigned_slug": "election-legitimacy-dispute",
+      "post042_predictions": [
+        {
+          "slug": "election-legitimacy-dispute",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4515235,
+      "gold_decision": "incorrect",
+      "assigned_slug": "election-legitimacy-dispute",
+      "post042_predictions": [
+        {
+          "slug": "election-legitimacy-dispute",
+          "confidence": 0.7,
+          "lex_count": 0,
+          "theme_hits": 3,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4556479,
+      "gold_decision": "correct",
+      "assigned_slug": "energy-grid-instability",
+      "post042_predictions": [
+        {
+          "slug": "energy-grid-instability",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ]
+        },
+        {
+          "slug": "telecom-internet-shutdown",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4548345,
+      "gold_decision": "correct",
+      "assigned_slug": "energy-grid-instability",
+      "post042_predictions": [
+        {
+          "slug": "energy-grid-instability",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ]
+        },
+        {
+          "slug": "telecom-internet-shutdown",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4537058,
+      "gold_decision": "correct",
+      "assigned_slug": "energy-grid-instability",
+      "post042_predictions": [
+        {
+          "slug": "energy-grid-instability",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ]
+        },
+        {
+          "slug": "telecom-internet-shutdown",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4563634,
+      "gold_decision": "incorrect",
+      "assigned_slug": "energy-grid-instability",
+      "post042_predictions": [
+        {
+          "slug": "energy-grid-instability",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        },
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4560439,
+      "gold_decision": "incorrect",
+      "assigned_slug": "energy-grid-instability",
+      "post042_predictions": [
+        {
+          "slug": "energy-grid-instability",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4477164,
+      "gold_decision": "incorrect",
+      "assigned_slug": "energy-grid-instability",
+      "post042_predictions": [
+        {
+          "slug": "energy-grid-instability",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        },
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4616905,
+      "gold_decision": "incorrect",
+      "assigned_slug": "energy-grid-instability",
+      "post042_predictions": [
+        {
+          "slug": "energy-grid-instability",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        },
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4558564,
+      "gold_decision": "incorrect",
+      "assigned_slug": "flood-landslide-disaster",
+      "post042_predictions": [
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "heavy rain"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4602071,
+      "gold_decision": "correct",
+      "assigned_slug": "flood-landslide-disaster",
+      "post042_predictions": [
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "flood",
+            "heavy rain"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4484284,
+      "gold_decision": "correct",
+      "assigned_slug": "flood-landslide-disaster",
+      "post042_predictions": [
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "flood",
+            "heavy rain"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4605164,
+      "gold_decision": "correct",
+      "assigned_slug": "flood-landslide-disaster",
+      "post042_predictions": [
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "flood",
+            "heavy rain"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4617302,
+      "gold_decision": "correct",
+      "assigned_slug": "flood-landslide-disaster",
+      "post042_predictions": [
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "flood"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4552558,
+      "gold_decision": "correct",
+      "assigned_slug": "flood-landslide-disaster",
+      "post042_predictions": [
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "flood"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4518961,
+      "gold_decision": "correct",
+      "assigned_slug": "flood-landslide-disaster",
+      "post042_predictions": [
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "flood"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4476031,
+      "gold_decision": "incorrect",
+      "assigned_slug": "flood-landslide-disaster",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        },
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "evacuation"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4493261,
+      "gold_decision": "incorrect",
+      "assigned_slug": "flood-landslide-disaster",
+      "post042_predictions": [
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4609158,
+      "gold_decision": "incorrect",
+      "assigned_slug": "flood-landslide-disaster",
+      "post042_predictions": [
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4526350,
+      "gold_decision": "incorrect",
+      "assigned_slug": "flood-landslide-disaster",
+      "post042_predictions": [
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4525873,
+      "gold_decision": "incorrect",
+      "assigned_slug": "food-price-stress",
+      "post042_predictions": [
+        {
+          "slug": "food-price-stress",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "food prices",
+            "food price"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4474074,
+      "gold_decision": "correct",
+      "assigned_slug": "food-price-stress",
+      "post042_predictions": [
+        {
+          "slug": "food-price-stress",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "food prices",
+            "food price"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4538800,
+      "gold_decision": "correct",
+      "assigned_slug": "food-price-stress",
+      "post042_predictions": [
+        {
+          "slug": "food-price-stress",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "food prices",
+            "food price"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4620263,
+      "gold_decision": "correct",
+      "assigned_slug": "food-price-stress",
+      "post042_predictions": [
+        {
+          "slug": "food-price-stress",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "food price"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4573483,
+      "gold_decision": "incorrect",
+      "assigned_slug": "food-price-stress",
+      "post042_predictions": [
+        {
+          "slug": "agriculture-crop-risk",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "farmers"
+          ]
+        },
+        {
+          "slug": "food-price-stress",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rising food"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4620854,
+      "gold_decision": "correct",
+      "assigned_slug": "food-price-stress",
+      "post042_predictions": [
+        {
+          "slug": "food-price-stress",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "food price"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4566512,
+      "gold_decision": "incorrect",
+      "assigned_slug": "forced-displacement",
+      "post042_predictions": [
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "evacuation"
+          ]
+        },
+        {
+          "slug": "forced-displacement",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "evacuation order"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4497234,
+      "gold_decision": "correct",
+      "assigned_slug": "forced-displacement",
+      "post042_predictions": [
+        {
+          "slug": "migration-border-pressure",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "asylum",
+            "asylum seekers"
+          ]
+        },
+        {
+          "slug": "forced-displacement",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "asylum seekers"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4483494,
+      "gold_decision": "incorrect",
+      "assigned_slug": "fuel-subsidy-unrest",
+      "post042_predictions": [
+        {
+          "slug": "fuel-subsidy-unrest",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "fuel price",
+            "fuel price hike"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4533978,
+      "gold_decision": "incorrect",
+      "assigned_slug": "fuel-subsidy-unrest",
+      "post042_predictions": [
+        {
+          "slug": "fuel-subsidy-unrest",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "fuel price",
+            "fuel prices"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4518613,
+      "gold_decision": "incorrect",
+      "assigned_slug": "fuel-subsidy-unrest",
+      "post042_predictions": [
+        {
+          "slug": "fuel-subsidy-unrest",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "fuel price",
+            "fuel price hike"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4561114,
+      "gold_decision": "incorrect",
+      "assigned_slug": "fuel-subsidy-unrest",
+      "post042_predictions": [
+        {
+          "slug": "fuel-subsidy-unrest",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "fuel price",
+            "fuel price hike"
+          ]
+        },
+        {
+          "slug": "agriculture-crop-risk",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "farmers"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4545889,
+      "gold_decision": "incorrect",
+      "assigned_slug": "fuel-subsidy-unrest",
+      "post042_predictions": [
+        {
+          "slug": "fuel-subsidy-unrest",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "diesel price"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4505594,
+      "gold_decision": "incorrect",
+      "assigned_slug": "fuel-subsidy-unrest",
+      "post042_predictions": [
+        {
+          "slug": "fuel-subsidy-unrest",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "gas prices"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4559005,
+      "gold_decision": "incorrect",
+      "assigned_slug": "fuel-subsidy-unrest",
+      "post042_predictions": [
+        {
+          "slug": "fuel-subsidy-unrest",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "diesel price"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4473909,
+      "gold_decision": "incorrect",
+      "assigned_slug": "fuel-subsidy-unrest",
+      "post042_predictions": [
+        {
+          "slug": "fuel-subsidy-unrest",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "gas prices"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4482202,
+      "gold_decision": "incorrect",
+      "assigned_slug": "fuel-subsidy-unrest",
+      "post042_predictions": [
+        {
+          "slug": "fuel-subsidy-unrest",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4613575,
+      "gold_decision": "incorrect",
+      "assigned_slug": "fuel-subsidy-unrest",
+      "post042_predictions": [
+        {
+          "slug": "fuel-subsidy-unrest",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4501250,
+      "gold_decision": "incorrect",
+      "assigned_slug": "fuel-subsidy-unrest",
+      "post042_predictions": [
+        {
+          "slug": "fuel-subsidy-unrest",
+          "confidence": 0.7,
+          "lex_count": 0,
+          "theme_hits": 3,
+          "matched_terms": []
+        },
+        {
+          "slug": "housing-cost-pressure",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4480699,
+      "gold_decision": "correct",
+      "assigned_slug": "gang-control-urban-security",
+      "post042_predictions": [
+        {
+          "slug": "gang-control-urban-security",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "gang"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4481981,
+      "gold_decision": "correct",
+      "assigned_slug": "gang-control-urban-security",
+      "post042_predictions": [
+        {
+          "slug": "gang-control-urban-security",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "gang"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4480824,
+      "gold_decision": "correct",
+      "assigned_slug": "gang-control-urban-security",
+      "post042_predictions": [
+        {
+          "slug": "gang-control-urban-security",
+          "confidence": 0.9,
+          "lex_count": 2,
+          "theme_hits": 2,
+          "matched_terms": [
+            "gang",
+            "extortion"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4486189,
+      "gold_decision": "correct",
+      "assigned_slug": "gang-control-urban-security",
+      "post042_predictions": [
+        {
+          "slug": "gang-control-urban-security",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "gang"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4533488,
+      "gold_decision": "incorrect",
+      "assigned_slug": "gang-control-urban-security",
+      "post042_predictions": [
+        {
+          "slug": "gang-control-urban-security",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "gang"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4543610,
+      "gold_decision": "incorrect",
+      "assigned_slug": "gang-control-urban-security",
+      "post042_predictions": [
+        {
+          "slug": "gang-control-urban-security",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "gang"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4500619,
+      "gold_decision": "incorrect",
+      "assigned_slug": "gang-control-urban-security",
+      "post042_predictions": [
+        {
+          "slug": "gang-control-urban-security",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "gang"
+          ]
+        },
+        {
+          "slug": "gender-violence-rights",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4524557,
+      "gold_decision": "incorrect",
+      "assigned_slug": "gang-control-urban-security",
+      "post042_predictions": [
+        {
+          "slug": "gang-control-urban-security",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "gang"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4489824,
+      "gold_decision": "incorrect",
+      "assigned_slug": "gang-control-urban-security",
+      "post042_predictions": [
+        {
+          "slug": "gang-control-urban-security",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4570315,
+      "gold_decision": "incorrect",
+      "assigned_slug": "gang-control-urban-security",
+      "post042_predictions": [
+        {
+          "slug": "gang-control-urban-security",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4571273,
+      "gold_decision": "incorrect",
+      "assigned_slug": "gang-control-urban-security",
+      "post042_predictions": [
+        {
+          "slug": "gang-control-urban-security",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4510514,
+      "gold_decision": "incorrect",
+      "assigned_slug": "gang-control-urban-security",
+      "post042_predictions": [
+        {
+          "slug": "gang-control-urban-security",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4581632,
+      "gold_decision": "correct",
+      "assigned_slug": "gender-violence-rights",
+      "post042_predictions": [
+        {
+          "slug": "gender-violence-rights",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape",
+            "raped"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4602087,
+      "gold_decision": "correct",
+      "assigned_slug": "gender-violence-rights",
+      "post042_predictions": [
+        {
+          "slug": "gender-violence-rights",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape",
+            "raped"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4485693,
+      "gold_decision": "correct",
+      "assigned_slug": "gender-violence-rights",
+      "post042_predictions": [
+        {
+          "slug": "gender-violence-rights",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape",
+            "raped"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4501015,
+      "gold_decision": "correct",
+      "assigned_slug": "gender-violence-rights",
+      "post042_predictions": [
+        {
+          "slug": "gender-violence-rights",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape",
+            "raped"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4481407,
+      "gold_decision": "correct",
+      "assigned_slug": "gender-violence-rights",
+      "post042_predictions": [
+        {
+          "slug": "gender-violence-rights",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4476405,
+      "gold_decision": "correct",
+      "assigned_slug": "gender-violence-rights",
+      "post042_predictions": [
+        {
+          "slug": "gang-control-urban-security",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        },
+        {
+          "slug": "gender-violence-rights",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4478545,
+      "gold_decision": "correct",
+      "assigned_slug": "gender-violence-rights",
+      "post042_predictions": [
+        {
+          "slug": "gender-violence-rights",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "rape"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4490445,
+      "gold_decision": "correct",
+      "assigned_slug": "heat-health-risk",
+      "post042_predictions": [
+        {
+          "slug": "heat-health-risk",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "heatwave",
+            "dehydration"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4481955,
+      "gold_decision": "correct",
+      "assigned_slug": "heat-health-risk",
+      "post042_predictions": [
+        {
+          "slug": "heat-health-risk",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "heatwave",
+            "scorching"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4623568,
+      "gold_decision": "incorrect",
+      "assigned_slug": "heat-health-risk",
+      "post042_predictions": [
+        {
+          "slug": "heat-health-risk",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "heatwave",
+            "scorching"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4534626,
+      "gold_decision": "correct",
+      "assigned_slug": "heat-health-risk",
+      "post042_predictions": [
+        {
+          "slug": "heat-health-risk",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "heatwave",
+            "scorching"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4602208,
+      "gold_decision": "partial",
+      "assigned_slug": "heat-health-risk",
+      "post042_predictions": [
+        {
+          "slug": "heat-health-risk",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "sweltering"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4613051,
+      "gold_decision": "partial",
+      "assigned_slug": "heat-health-risk",
+      "post042_predictions": [
+        {
+          "slug": "heat-health-risk",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "sweltering"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4610001,
+      "gold_decision": "correct",
+      "assigned_slug": "heat-health-risk",
+      "post042_predictions": [
+        {
+          "slug": "heat-health-risk",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "heatwave"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4547258,
+      "gold_decision": "partial",
+      "assigned_slug": "heat-health-risk",
+      "post042_predictions": [
+        {
+          "slug": "heat-health-risk",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "sweltering"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4476377,
+      "gold_decision": "correct",
+      "assigned_slug": "housing-cost-pressure",
+      "post042_predictions": [
+        {
+          "slug": "housing-cost-pressure",
+          "confidence": 0.9,
+          "lex_count": 3,
+          "theme_hits": 1,
+          "matched_terms": [
+            "housing crisis",
+            "rising rents",
+            "home prices"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4523327,
+      "gold_decision": "correct",
+      "assigned_slug": "housing-cost-pressure",
+      "post042_predictions": [
+        {
+          "slug": "housing-cost-pressure",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "housing crisis",
+            "affordable housing"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4532597,
+      "gold_decision": "correct",
+      "assigned_slug": "housing-cost-pressure",
+      "post042_predictions": [
+        {
+          "slug": "housing-cost-pressure",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "rent increase",
+            "rent increases"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4479478,
+      "gold_decision": "correct",
+      "assigned_slug": "housing-cost-pressure",
+      "post042_predictions": [
+        {
+          "slug": "housing-cost-pressure",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "precios del alquiler"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4554071,
+      "gold_decision": "correct",
+      "assigned_slug": "housing-cost-pressure",
+      "post042_predictions": [
+        {
+          "slug": "housing-cost-pressure",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "housing crisis"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4525829,
+      "gold_decision": "partial",
+      "assigned_slug": "housing-cost-pressure",
+      "post042_predictions": [
+        {
+          "slug": "housing-cost-pressure",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "house prices"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4484980,
+      "gold_decision": "correct",
+      "assigned_slug": "housing-cost-pressure",
+      "post042_predictions": [
+        {
+          "slug": "labor-strike-disruption",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "huelga",
+            "huelga general"
+          ]
+        },
+        {
+          "slug": "housing-cost-pressure",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "vivienda digna"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4534478,
+      "gold_decision": "incorrect",
+      "assigned_slug": "housing-cost-pressure",
+      "post042_predictions": [
+        {
+          "slug": "fuel-subsidy-unrest",
+          "confidence": 0.7,
+          "lex_count": 0,
+          "theme_hits": 3,
+          "matched_terms": []
+        },
+        {
+          "slug": "housing-cost-pressure",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4485729,
+      "gold_decision": "incorrect",
+      "assigned_slug": "housing-cost-pressure",
+      "post042_predictions": [
+        {
+          "slug": "fuel-subsidy-unrest",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        },
+        {
+          "slug": "housing-cost-pressure",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4571916,
+      "gold_decision": "incorrect",
+      "assigned_slug": "housing-cost-pressure",
+      "post042_predictions": [
+        {
+          "slug": "housing-cost-pressure",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4523329,
+      "gold_decision": "incorrect",
+      "assigned_slug": "humanitarian-access-conflict",
+      "post042_predictions": [
+        {
+          "slug": "humanitarian-access-conflict",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "aid convoy"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4484162,
+      "gold_decision": "correct",
+      "assigned_slug": "humanitarian-access-conflict",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "airstrike"
+          ]
+        },
+        {
+          "slug": "humanitarian-access-conflict",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "refugee camp"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4493774,
+      "gold_decision": "incorrect",
+      "assigned_slug": "humanitarian-access-conflict",
+      "post042_predictions": [
+        {
+          "slug": "humanitarian-access-conflict",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4570613,
+      "gold_decision": "incorrect",
+      "assigned_slug": "humanitarian-access-conflict",
+      "post042_predictions": [
+        {
+          "slug": "humanitarian-access-conflict",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4624552,
+      "gold_decision": "incorrect",
+      "assigned_slug": "humanitarian-access-conflict",
+      "post042_predictions": [
+        {
+          "slug": "humanitarian-access-conflict",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4563668,
+      "gold_decision": "incorrect",
+      "assigned_slug": "humanitarian-access-conflict",
+      "post042_predictions": [
+        {
+          "slug": "humanitarian-access-conflict",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4607754,
+      "gold_decision": "correct",
+      "assigned_slug": "labor-strike-disruption",
+      "post042_predictions": [
+        {
+          "slug": "labor-strike-disruption",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "huelga",
+            "sindicato"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4606026,
+      "gold_decision": "incorrect",
+      "assigned_slug": "labor-strike-disruption",
+      "post042_predictions": [
+        {
+          "slug": "labor-strike-disruption",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "labor union"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4518648,
+      "gold_decision": "incorrect",
+      "assigned_slug": "labor-strike-disruption",
+      "post042_predictions": [
+        {
+          "slug": "labor-strike-disruption",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "union backlash"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4502729,
+      "gold_decision": "correct",
+      "assigned_slug": "labor-strike-disruption",
+      "post042_predictions": [
+        {
+          "slug": "labor-strike-disruption",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "huelga"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4571267,
+      "gold_decision": "correct",
+      "assigned_slug": "labor-strike-disruption",
+      "post042_predictions": [
+        {
+          "slug": "labor-strike-disruption",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "sciopero"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4578115,
+      "gold_decision": "correct",
+      "assigned_slug": "migration-border-pressure",
+      "post042_predictions": [
+        {
+          "slug": "migration-border-pressure",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "asylum",
+            "asylum seekers"
+          ]
+        },
+        {
+          "slug": "forced-displacement",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "asylum seekers"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4610485,
+      "gold_decision": "correct",
+      "assigned_slug": "migration-border-pressure",
+      "post042_predictions": [
+        {
+          "slug": "migration-border-pressure",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "asylum"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4513665,
+      "gold_decision": "partial",
+      "assigned_slug": "migration-border-pressure",
+      "post042_predictions": [
+        {
+          "slug": "migration-border-pressure",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "asylum"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4530045,
+      "gold_decision": "correct",
+      "assigned_slug": "migration-border-pressure",
+      "post042_predictions": [
+        {
+          "slug": "migration-border-pressure",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "migrant caravan"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4602552,
+      "gold_decision": "incorrect",
+      "assigned_slug": "migration-border-pressure",
+      "post042_predictions": [
+        {
+          "slug": "migration-border-pressure",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4510827,
+      "gold_decision": "incorrect",
+      "assigned_slug": "mining-royalty-risk",
+      "post042_predictions": [
+        {
+          "slug": "mining-royalty-risk",
+          "confidence": 0.85,
+          "lex_count": 3,
+          "theme_hits": 0,
+          "matched_terms": [
+            "coal mine",
+            "mine explosion",
+            "coal mine explosion"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4581962,
+      "gold_decision": "incorrect",
+      "assigned_slug": "mining-royalty-risk",
+      "post042_predictions": [
+        {
+          "slug": "mining-royalty-risk",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "coal mine"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4556690,
+      "gold_decision": "incorrect",
+      "assigned_slug": "mining-royalty-risk",
+      "post042_predictions": [
+        {
+          "slug": "mining-royalty-risk",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "mine blast"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4566930,
+      "gold_decision": "incorrect",
+      "assigned_slug": "mining-royalty-risk",
+      "post042_predictions": [
+        {
+          "slug": "mining-royalty-risk",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4532078,
+      "gold_decision": "incorrect",
+      "assigned_slug": "mining-royalty-risk",
+      "post042_predictions": [
+        {
+          "slug": "mining-royalty-risk",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4542339,
+      "gold_decision": "incorrect",
+      "assigned_slug": "mining-royalty-risk",
+      "post042_predictions": [
+        {
+          "slug": "mining-royalty-risk",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4558559,
+      "gold_decision": "correct",
+      "assigned_slug": "oil-gas-supply-risk",
+      "post042_predictions": [
+        {
+          "slug": "oil-gas-supply-risk",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "lng"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4573343,
+      "gold_decision": "incorrect",
+      "assigned_slug": "oil-gas-supply-risk",
+      "post042_predictions": [
+        {
+          "slug": "oil-gas-supply-risk",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "refinery"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4551873,
+      "gold_decision": "correct",
+      "assigned_slug": "oil-gas-supply-risk",
+      "post042_predictions": [
+        {
+          "slug": "oil-gas-supply-risk",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "lng"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4560957,
+      "gold_decision": "correct",
+      "assigned_slug": "oil-gas-supply-risk",
+      "post042_predictions": [
+        {
+          "slug": "oil-gas-supply-risk",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "lng"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4578186,
+      "gold_decision": "correct",
+      "assigned_slug": "oil-gas-supply-risk",
+      "post042_predictions": [
+        {
+          "slug": "oil-gas-supply-risk",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "lng"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4534950,
+      "gold_decision": "correct",
+      "assigned_slug": "oil-gas-supply-risk",
+      "post042_predictions": [
+        {
+          "slug": "oil-gas-supply-risk",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "lng"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4582690,
+      "gold_decision": "incorrect",
+      "assigned_slug": "oil-gas-supply-risk",
+      "post042_predictions": [
+        {
+          "slug": "oil-gas-supply-risk",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "refinery"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4480793,
+      "gold_decision": "incorrect",
+      "assigned_slug": "oil-gas-supply-risk",
+      "post042_predictions": [
+        {
+          "slug": "oil-gas-supply-risk",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "lng"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4547587,
+      "gold_decision": "incorrect",
+      "assigned_slug": "oil-gas-supply-risk",
+      "post042_predictions": [
+        {
+          "slug": "oil-gas-supply-risk",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4517192,
+      "gold_decision": "incorrect",
+      "assigned_slug": "oil-gas-supply-risk",
+      "post042_predictions": [
+        {
+          "slug": "oil-gas-supply-risk",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4566309,
+      "gold_decision": "correct",
+      "assigned_slug": "oil-gas-supply-risk",
+      "post042_predictions": [
+        {
+          "slug": "oil-gas-supply-risk",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4576937,
+      "gold_decision": "incorrect",
+      "assigned_slug": "oil-gas-supply-risk",
+      "post042_predictions": [
+        {
+          "slug": "oil-gas-supply-risk",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4581478,
+      "gold_decision": "correct",
+      "assigned_slug": "press-freedom-crackdown",
+      "post042_predictions": [
+        {
+          "slug": "press-freedom-crackdown",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "press freedom"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4620471,
+      "gold_decision": "partial",
+      "assigned_slug": "sanctions-diplomatic-pressure",
+      "post042_predictions": [
+        {
+          "slug": "sanctions-diplomatic-pressure",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "negotiations"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4481920,
+      "gold_decision": "correct",
+      "assigned_slug": "sanctions-diplomatic-pressure",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        },
+        {
+          "slug": "sanctions-diplomatic-pressure",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "negotiations"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4605907,
+      "gold_decision": "incorrect",
+      "assigned_slug": "sanctions-diplomatic-pressure",
+      "post042_predictions": [
+        {
+          "slug": "sanctions-diplomatic-pressure",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "negotiations"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4551461,
+      "gold_decision": "correct",
+      "assigned_slug": "sanctions-diplomatic-pressure",
+      "post042_predictions": [
+        {
+          "slug": "sanctions-diplomatic-pressure",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "sanctions"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4526764,
+      "gold_decision": "incorrect",
+      "assigned_slug": "sanctions-diplomatic-pressure",
+      "post042_predictions": [
+        {
+          "slug": "sanctions-diplomatic-pressure",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4578066,
+      "gold_decision": "partial",
+      "assigned_slug": "sanctions-diplomatic-pressure",
+      "post042_predictions": [
+        {
+          "slug": "sanctions-diplomatic-pressure",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4624171,
+      "gold_decision": "incorrect",
+      "assigned_slug": "sanctions-diplomatic-pressure",
+      "post042_predictions": [
+        {
+          "slug": "sanctions-diplomatic-pressure",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4581761,
+      "gold_decision": "correct",
+      "assigned_slug": "student-youth-protest",
+      "post042_predictions": [
+        {
+          "slug": "student-youth-protest",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "student protest"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4610297,
+      "gold_decision": "incorrect",
+      "assigned_slug": "student-youth-protest",
+      "post042_predictions": [
+        {
+          "slug": "labor-strike-disruption",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "walkout"
+          ]
+        },
+        {
+          "slug": "student-youth-protest",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "walkout"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4620227,
+      "gold_decision": "incorrect",
+      "assigned_slug": "student-youth-protest",
+      "post042_predictions": [
+        {
+          "slug": "labor-strike-disruption",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "walkout"
+          ]
+        },
+        {
+          "slug": "student-youth-protest",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "walkout"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4546205,
+      "gold_decision": "incorrect",
+      "assigned_slug": "telecom-internet-shutdown",
+      "post042_predictions": [
+        {
+          "slug": "energy-grid-instability",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ]
+        },
+        {
+          "slug": "telecom-internet-shutdown",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4492086,
+      "gold_decision": "correct",
+      "assigned_slug": "trade-export-restriction",
+      "post042_predictions": [
+        {
+          "slug": "trade-export-restriction",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "export ban"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4563844,
+      "gold_decision": "incorrect",
+      "assigned_slug": "trade-export-restriction",
+      "post042_predictions": [
+        {
+          "slug": "trade-export-restriction",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "tariff"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4574219,
+      "gold_decision": "incorrect",
+      "assigned_slug": "trade-export-restriction",
+      "post042_predictions": [
+        {
+          "slug": "trade-export-restriction",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "customs"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4543928,
+      "gold_decision": "correct",
+      "assigned_slug": "transport-corridor-disruption",
+      "post042_predictions": [
+        {
+          "slug": "housing-cost-pressure",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        },
+        {
+          "slug": "transport-corridor-disruption",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "strait closure"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4577881,
+      "gold_decision": "incorrect",
+      "assigned_slug": "transport-corridor-disruption",
+      "post042_predictions": [
+        {
+          "slug": "transport-corridor-disruption",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "road blockade"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4570505,
+      "gold_decision": "partial",
+      "assigned_slug": "transport-corridor-disruption",
+      "post042_predictions": [
+        {
+          "slug": "transport-corridor-disruption",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "shipping lane"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4550131,
+      "gold_decision": "incorrect",
+      "assigned_slug": "transport-corridor-disruption",
+      "post042_predictions": [
+        {
+          "slug": "transport-corridor-disruption",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "maritime corridor"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4606087,
+      "gold_decision": "correct",
+      "assigned_slug": "water-stress-drought",
+      "post042_predictions": [
+        {
+          "slug": "heat-health-risk",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "heatwave"
+          ]
+        },
+        {
+          "slug": "water-stress-drought",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "water shortage"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4542518,
+      "gold_decision": "incorrect",
+      "assigned_slug": "water-stress-drought",
+      "post042_predictions": [
+        {
+          "slug": "water-stress-drought",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "dry season"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4523163,
+      "gold_decision": "incorrect",
+      "assigned_slug": "water-stress-drought",
+      "post042_predictions": [
+        {
+          "slug": "water-stress-drought",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "drought"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4620390,
+      "gold_decision": "correct",
+      "assigned_slug": "food-price-stress",
+      "post042_predictions": [
+        {
+          "slug": "food-price-stress",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "food price"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4550541,
+      "gold_decision": "incorrect",
+      "assigned_slug": "migration-border-pressure",
+      "post042_predictions": [
+        {
+          "slug": "migration-border-pressure",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4550635,
+      "gold_decision": "incorrect",
+      "assigned_slug": "migration-border-pressure",
+      "post042_predictions": [
+        {
+          "slug": "migration-border-pressure",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4552312,
+      "gold_decision": "incorrect",
+      "assigned_slug": "migration-border-pressure",
+      "post042_predictions": [
+        {
+          "slug": "migration-border-pressure",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    }
+  ]
+}

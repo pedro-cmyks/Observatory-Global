@@ -45,6 +45,15 @@ def _is_openai_model(model: str) -> bool:
     return model.startswith(("gpt", "o1", "o3", "o4", "chatgpt"))
 
 
+def _is_deepseek_model(model: str) -> bool:
+    return model.startswith("deepseek")
+
+
+def _uses_chat_completions(model: str) -> bool:
+    """DeepSeek is OpenAI-compatible, so both use the chat.completions API."""
+    return _is_openai_model(model) or _is_deepseek_model(model)
+
+
 SCHEMA_VERSION = "atlas-llm-annotator-v1"
 DEFAULT_MODEL = "claude-sonnet-4-6"
 DEFAULT_MAX_TOKENS = 600
@@ -216,11 +225,11 @@ def _call_llm(
     retries: int,
     backoff_seconds: float,
 ) -> tuple[str, int, str | None]:
-    is_openai = _is_openai_model(model)
+    is_chat = _uses_chat_completions(model)
     last_error: str | None = None
     for attempt in range(1, retries + 1):
         try:
-            if is_openai:
+            if is_chat:
                 create_kwargs: dict[str, Any] = {
                     "model": model,
                     "max_tokens": max_tokens,
@@ -366,7 +375,18 @@ def main() -> None:
 
     skip = _existing_signal_ids(args.output) if args.resume else set()
 
-    if _is_openai_model(args.model):
+    if _is_deepseek_model(args.model):
+        if openai is None:
+            print("openai SDK not installed (required for DeepSeek)", file=sys.stderr)
+            sys.exit(2)
+        api_key = os.environ.get("DEEPSEEK_API_KEY")
+        if not api_key:
+            print("DEEPSEEK_API_KEY not set", file=sys.stderr)
+            sys.exit(2)
+        client: Any = openai.OpenAI(
+            api_key=api_key, base_url="https://api.deepseek.com", timeout=60.0
+        )
+    elif _is_openai_model(args.model):
         if openai is None:
             print("openai SDK not installed", file=sys.stderr)
             sys.exit(2)
@@ -374,7 +394,7 @@ def main() -> None:
         if not api_key:
             print("OPENAI_API_KEY not set", file=sys.stderr)
             sys.exit(2)
-        client: Any = openai.OpenAI(api_key=api_key, timeout=60.0)
+        client = openai.OpenAI(api_key=api_key, timeout=60.0)
     else:
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:

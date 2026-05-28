@@ -102,3 +102,60 @@ is concentrated, not random.
 - Headline Atlas number for Paper 1: **50.79% precision, CI
   [43.72%, 57.83%]**, balanced 6-model consensus, full 30-topic
   taxonomy, with the strictness-axis caveat stated explicitly.
+
+---
+
+## Update: third vendor (DeepSeek, 2026-05-28)
+
+Pedro added a DeepSeek key — a third, genuinely independent training
+lineage (Chinese lab, no shared lineage with Anthropic or OpenAI).
+`deepseek-chat` ran as a seventh annotator via the OpenAI-compatible
+endpoint (`llm_annotator.py` gained `_is_deepseek_model` +
+`base_url=https://api.deepseek.com`).
+
+deepseek-chat profile: 90 correct / 166 incorrect / 0 partial / 0
+errors. Strict (low correct rate) but binary (never used `partial`).
+
+Notable pairwise Cohen kappa:
+- deepseek vs gpt4omini: 0.809 (almost perfect) — both strict + binary
+- deepseek vs gpt4o: 0.711
+- deepseek vs pedro: 0.621
+- deepseek vs opus47: 0.596
+- deepseek vs gpt41: 0.520
+- deepseek vs sonnet46: 0.512
+- deepseek vs haiku45: 0.502
+
+Two axes are now visible, not one:
+1. Vendor lineage (Anthropic / OpenAI / DeepSeek).
+2. Partial usage (some annotators use the `partial` category, others
+   are binary correct/incorrect). DeepSeek + gpt4o-mini + Pedro are
+   binary; the Claude models + gpt-4.1 use partial. The binary group
+   agrees strongly with each other (deepseek/gpt4omini 0.809)
+   regardless of vendor. So annotation style is driven by both vendor
+   and a binary-vs-graded methodology axis.
+
+Three-vendor agreement holds:
+- Fleiss all-8 (incl. human): 0.614
+- Fleiss LLM-only (7 models, 3 vendors): 0.626 (substantial)
+
+Adding a third independent vendor keeps the LLM consensus substantial.
+LLM annotator reliability is not a single-vendor or shared-lineage
+artifact — it survives across Anthropic, OpenAI, and DeepSeek.
+
+### Most robust Atlas precision estimate (3-vendor, 7-model)
+
+| Reference | N | Precision | Wilson 95% CI |
+|---|---:|---:|---|
+| pedro (lenient, 6 topics) | 61 | 73.77% | [61.56%, 83.16%] |
+| 3-Claude consensus | 212 | 42.45% | [35.99%, 49.18%] |
+| 6-model consensus (2 vendors) | 189 | 50.79% | [43.72%, 57.83%] |
+| **7-model consensus (3 vendors, >=4/7)** | **216** | **47.69%** | **[41.12%, 54.33%]** |
+
+The 7-model, 3-vendor consensus (47.69%, 216 rows, 88% decisive,
+CI [41.12%, 54.33%]) is the most defensible single estimate: broadest
+and most independent panel, full 30-topic taxonomy. Atlas v2
+full-taxonomy precision sits in the **~42-51% band**, point estimate
+~48% under the most independent panel. The headline for Paper 1 stands:
+the rule-based classifier is far below the 90-95% target, and the gap
+is reachable only by moving to a semantic/scope-aware classifier (LLM
+zero-shot proved 95% on the human gold).
