@@ -59,8 +59,17 @@ Atlas precision by reference (post-044, the headline table):
 |---|---:|---:|---|
 | pedro (lenient, 6 topics) | 61 | 73.77% | [61.56, 83.16] |
 | 3-Claude consensus | 212 | 42.45% | [35.99, 49.18] |
-| 4-model consensus | 180 | 48.33% | [41.14, 55.59] |
-| 6-model balanced (>=4/6) | 189 | 50.79% | [43.72, 57.83] |
+| 6-model balanced (2 vendors, >=4/6) | 189 | 50.79% | [43.72, 57.83] |
+| 7-model (3 vendors, >=4/7) | 216 | 47.69% | [41.12, 54.33] |
+
+Most defensible single estimate: **7-model 3-vendor consensus 47.69%**
+(216 rows, 88% decisive). Full-taxonomy precision band ~42-51%.
+
+Third vendor added: DeepSeek (`deepseek-chat`, independent Chinese
+lineage). 3-vendor LLM-only Fleiss 0.626 (substantial) — reliability
+holds across Anthropic + OpenAI + DeepSeek. A second annotation axis
+emerged: binary-vs-graded (DeepSeek + gpt4o-mini + Pedro are binary;
+Claude + gpt-4.1 use `partial`); deepseek/gpt4omini kappa 0.809.
 
 The LLM zero-shot baseline hit 95.08% on the human gold — proof that
 90%+ is reachable with a semantic/scope-aware classifier, which is the

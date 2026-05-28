@@ -27,14 +27,19 @@ LLM zero-shot baseline (Sonnet 4.6) hit **95.08%** on human gold, proving
 90%+ reachable with a semantic/scope-aware classifier. v3 plan = scope-aware
 learned classifier distilled from the multi-vendor LLM annotator panel.
 
-Annotator methodology (Paper 1 contribution): 7-annotator panel (Pedro +
-Sonnet 4.6 + Opus 4.7 + Haiku 4.5 + GPT-4.1 + GPT-4o + GPT-4o-mini).
-Within-vendor Fleiss ~0.67-0.68, cross-vendor lower; the human clusters
-with OpenAI (pedro/gpt4o kappa 0.769) far more than with Claude
-(0.54-0.57). Annotator strictness is a vendor-correlated confound;
+Annotator methodology (Paper 1 contribution): 8-annotator panel across
+3 vendors (Pedro + Sonnet 4.6 + Opus 4.7 + Haiku 4.5 + GPT-4.1 + GPT-4o
++ GPT-4o-mini + DeepSeek-chat). Within-vendor Fleiss ~0.67-0.68,
+3-vendor LLM-only Fleiss 0.626 (substantial). Two axes: vendor lineage
+AND binary-vs-graded (DeepSeek + gpt4o-mini + Pedro never use `partial`;
+deepseek/gpt4omini kappa 0.809). The human clusters with the lenient/
+binary camp (pedro/gpt4o 0.769) far more than with Claude (0.54-0.57).
+Annotator strictness is a vendor- and methodology-correlated confound;
 single-annotator precision claims are unreliable. Primary benchmark gold
-is now balanced multi-vendor LLM consensus (>=4/6), reported with
-per-vendor Fleiss + no-majority rate.
+= multi-vendor LLM consensus (>=4/7), reported with per-vendor Fleiss +
+no-majority rate. Most defensible Atlas estimate: 7-model 3-vendor
+consensus **47.69%** (N=216, Wilson CI [41.12, 54.33]); full-taxonomy
+band ~42-51%.
 
 New research tooling in `backend/scripts/` (tested, no production coupling):
 `benchmark_bootstrap.py`, `llm_baseline_classifier.py`,
