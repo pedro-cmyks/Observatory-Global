@@ -1,0 +1,88 @@
+{
+  "schema_version": "atlas-bootstrap-ci-v1",
+  "inputs": [
+    "/tmp/post044_for_bootstrap.jsonl"
+  ],
+  "n_resamples": 10000,
+  "confidence_level": 0.95,
+  "seed": 20260527,
+  "gate": {
+    "minimum": 0.85,
+    "target": 0.9
+  },
+  "overall": {
+    "labeled": 61,
+    "correct": 45,
+    "incorrect": 16,
+    "unclear": 0,
+    "precision": 0.7377,
+    "wilson_ci_low": 0.6156,
+    "wilson_ci_high": 0.8316,
+    "bootstrap_ci_low": 0.6393,
+    "bootstrap_ci_high": 0.8361,
+    "bootstrap_median": 0.7377,
+    "gate": "fail"
+  },
+  "by_topic": {
+    "agriculture-crop-risk": {
+      "labeled": 8,
+      "correct": 4,
+      "incorrect": 4,
+      "unclear": 0,
+      "precision": 0.5,
+      "wilson_ci_low": 0.2152,
+      "wilson_ci_high": 0.7848,
+      "gate": "fail"
+    },
+    "armed-conflict-escalation": {
+      "labeled": 15,
+      "correct": 10,
+      "incorrect": 5,
+      "unclear": 0,
+      "precision": 0.6667,
+      "wilson_ci_low": 0.4171,
+      "wilson_ci_high": 0.8482,
+      "gate": "fail"
+    },
+    "constitutional-institutional-crisis": {
+      "labeled": 8,
+      "correct": 7,
+      "incorrect": 1,
+      "unclear": 0,
+      "precision": 0.875,
+      "wilson_ci_low": 0.5291,
+      "wilson_ci_high": 0.9776,
+      "gate": "pass_minimum"
+    },
+    "corruption-investigation": {
+      "labeled": 12,
+      "correct": 10,
+      "incorrect": 2,
+      "unclear": 0,
+      "precision": 0.8333,
+      "wilson_ci_low": 0.552,
+      "wilson_ci_high": 0.953,
+      "gate": "fail"
+    },
+    "currency-debt-stress": {
+      "labeled": 11,
+      "correct": 7,
+      "incorrect": 4,
+      "unclear": 0,
+      "precision": 0.6364,
+      "wilson_ci_low": 0.3538,
+      "wilson_ci_high": 0.8483,
+      "gate": "fail"
+    },
+    "cyberattack-infrastructure": {
+      "labeled": 7,
+      "correct": 7,
+      "incorrect": 0,
+      "unclear": 0,
+      "precision": 1.0,
+      "wilson_ci_low": 0.6457,
+      "wilson_ci_high": 1.0,
+      "gate": "pass_target"
+    }
+  }
+}

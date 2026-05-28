@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="364" viewBox="0 0 920 364">
+<rect width="100%" height="100%" fill="#071016"/>
+<text x="24" y="32" fill="#d7fbe8" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">Atlas v2 post-044 — bootstrap CI (N=61 gold)</text>
+<text x="24" y="54" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="12">precision with 95% CI · Wilson per topic · stratified bootstrap overall</text>
+<line x1="220.0" y1="74" x2="220.0" y2="304" stroke="#1c2f3d" stroke-width="1"/>
+<text x="220.0" y="322" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">0.00</text>
+<line x1="375.0" y1="74" x2="375.0" y2="304" stroke="#1c2f3d" stroke-width="1"/>
+<text x="375.0" y="322" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">0.25</text>
+<line x1="530.0" y1="74" x2="530.0" y2="304" stroke="#1c2f3d" stroke-width="1"/>
+<text x="530.0" y="322" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">0.50</text>
+<line x1="685.0" y1="74" x2="685.0" y2="304" stroke="#1c2f3d" stroke-width="1"/>
+<text x="685.0" y="322" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">0.75</text>
+<line x1="840.0" y1="74" x2="840.0" y2="304" stroke="#1c2f3d" stroke-width="1"/>
+<text x="840.0" y="322" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">1.00</text>
+<line x1="747.0" y1="74" x2="747.0" y2="304" stroke="#f1bf5b" stroke-width="1" stroke-dasharray="4 4" opacity="0.7"/>
+<text x="751.0" y="84" fill="#f1bf5b" font-family="Inter, Arial, sans-serif" font-size="10">min 0.85</text>
+<line x1="778.0" y1="74" x2="778.0" y2="304" stroke="#5ee6a8" stroke-width="1" stroke-dasharray="4 4" opacity="0.7"/>
+<text x="782.0" y="84" fill="#5ee6a8" font-family="Inter, Arial, sans-serif" font-size="10">target 0.90</text>
+<text x="24" y="97" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">armed-conflict-escalation</text>
+<text x="208" y="97" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=15</text>
+<line x1="478.60200000000003" y1="93.0" x2="745.884" y2="93.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="478.60200000000003" y1="87.0" x2="478.60200000000003" y2="99.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="745.884" y1="87.0" x2="745.884" y2="99.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="633.354" cy="93.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="97" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">66.7%</text>
+<text x="24" y="129" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">corruption-investigation</text>
+<text x="208" y="129" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=12</text>
+<line x1="562.24" y1="125.0" x2="810.86" y2="125.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="562.24" y1="119.0" x2="562.24" y2="131.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="810.86" y1="119.0" x2="810.86" y2="131.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="736.6460000000001" cy="125.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="129" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">83.3%</text>
+<text x="24" y="161" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">currency-debt-stress</text>
+<text x="208" y="161" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=11</text>
+<line x1="439.356" y1="157.0" x2="745.946" y2="157.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="439.356" y1="151.0" x2="439.356" y2="163.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="745.946" y1="151.0" x2="745.946" y2="163.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="614.568" cy="157.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="161" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">63.6%</text>
+<text x="24" y="193" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">agriculture-crop-risk</text>
+<text x="208" y="193" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=8</text>
+<line x1="353.424" y1="189.0" x2="706.576" y2="189.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="353.424" y1="183.0" x2="353.424" y2="195.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<line x1="706.576" y1="183.0" x2="706.576" y2="195.0" stroke="#ff6d7a" stroke-width="2" opacity="0.6"/>
+<circle cx="530.0" cy="189.0" r="5" fill="#ff6d7a"/>
+<text x="848" y="193" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">50.0%</text>
+<text x="24" y="225" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">constitutional-institutional-crisis</text>
+<text x="208" y="225" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=8</text>
+<line x1="548.042" y1="221.0" x2="826.112" y2="221.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="548.042" y1="215.0" x2="548.042" y2="227.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="826.112" y1="215.0" x2="826.112" y2="227.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<circle cx="762.5" cy="221.0" r="5" fill="#5ee6a8"/>
+<text x="848" y="225" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">87.5%</text>
+<text x="24" y="257" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">cyberattack-infrastructure</text>
+<text x="208" y="257" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=7</text>
+<line x1="620.3340000000001" y1="253.0" x2="840.0" y2="253.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="620.3340000000001" y1="247.0" x2="620.3340000000001" y2="259.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<line x1="840.0" y1="247.0" x2="840.0" y2="259.0" stroke="#5ee6a8" stroke-width="2" opacity="0.6"/>
+<circle cx="840.0" cy="253.0" r="5" fill="#5ee6a8"/>
+<text x="848" y="257" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">100.0%</text>
+<text x="24" y="289" fill="#dbe8f2" font-family="Inter, Arial, sans-serif" font-size="13">OVERALL</text>
+<text x="208" y="289" fill="#7f93a4" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="end">n=61</text>
+<line x1="616.366" y1="285.0" x2="738.382" y2="285.0" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="616.366" y1="279.0" x2="616.366" y2="291.0" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<line x1="738.382" y1="279.0" x2="738.382" y2="291.0" stroke="#75aaff" stroke-width="2" opacity="0.6"/>
+<circle cx="677.374" cy="285.0" r="5" fill="#75aaff"/>
+<text x="848" y="289" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="12">73.8%</text>
+</svg>

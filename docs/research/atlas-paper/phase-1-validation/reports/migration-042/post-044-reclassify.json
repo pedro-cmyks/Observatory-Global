@@ -1,0 +1,1079 @@
+{
+  "schema_version": "atlas-post042-reclassify-v1",
+  "min_confidence": 0.65,
+  "min_headline_len": 20,
+  "top_n": 2,
+  "topics_used": 30,
+  "gold_total": 64,
+  "labeled": 61,
+  "skipped_unclear": 3,
+  "missing_signal": 0,
+  "post042_correct": 45,
+  "post042_incorrect": 16,
+  "post042_precision": 0.7377,
+  "by_topic": {
+    "agriculture-crop-risk": {
+      "labeled": 8,
+      "post042_correct": 4,
+      "post042_incorrect": 4,
+      "post042_precision": 0.5
+    },
+    "armed-conflict-escalation": {
+      "labeled": 15,
+      "post042_correct": 10,
+      "post042_incorrect": 5,
+      "post042_precision": 0.6667
+    },
+    "constitutional-institutional-crisis": {
+      "labeled": 8,
+      "post042_correct": 7,
+      "post042_incorrect": 1,
+      "post042_precision": 0.875
+    },
+    "corruption-investigation": {
+      "labeled": 12,
+      "post042_correct": 10,
+      "post042_incorrect": 2,
+      "post042_precision": 0.8333
+    },
+    "currency-debt-stress": {
+      "labeled": 11,
+      "post042_correct": 7,
+      "post042_incorrect": 4,
+      "post042_precision": 0.6364
+    },
+    "cyberattack-infrastructure": {
+      "labeled": 7,
+      "post042_correct": 7,
+      "post042_incorrect": 0,
+      "post042_precision": 1.0
+    }
+  },
+  "per_row": [
+    {
+      "signal_id": 4510843,
+      "gold_decision": "incorrect",
+      "assigned_slug": "agriculture-crop-risk",
+      "post042_predictions": [
+        {
+          "slug": "agriculture-crop-risk",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "harvest",
+            "farmers"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4617019,
+      "gold_decision": "correct",
+      "assigned_slug": "agriculture-crop-risk",
+      "post042_predictions": [
+        {
+          "slug": "agriculture-crop-risk",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "farmers"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4498053,
+      "skipped_unclear": true,
+      "predictions": [
+        {
+          "slug": "agriculture-crop-risk",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "farmers"
+          ]
+        }
+      ]
+    },
+    {
+      "signal_id": 4582545,
+      "gold_decision": "incorrect",
+      "assigned_slug": "agriculture-crop-risk",
+      "post042_predictions": [
+        {
+          "slug": "agriculture-crop-risk",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "fertilizer"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4494624,
+      "gold_decision": "incorrect",
+      "assigned_slug": "agriculture-crop-risk",
+      "post042_predictions": [
+        {
+          "slug": "agriculture-crop-risk",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "farmers"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4510678,
+      "gold_decision": "correct",
+      "assigned_slug": "agriculture-crop-risk",
+      "post042_predictions": [
+        {
+          "slug": "agriculture-crop-risk",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4492910,
+      "gold_decision": "incorrect",
+      "assigned_slug": "agriculture-crop-risk",
+      "post042_predictions": [
+        {
+          "slug": "agriculture-crop-risk",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4522013,
+      "gold_decision": "incorrect",
+      "assigned_slug": "agriculture-crop-risk",
+      "post042_predictions": [
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4510751,
+      "gold_decision": "incorrect",
+      "assigned_slug": "agriculture-crop-risk",
+      "post042_predictions": [
+        {
+          "slug": "flood-landslide-disaster",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4481387,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "missile attack",
+            "missile attacks"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4598592,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "drone attack",
+            "drone attacks"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4480654,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "missile attack",
+            "missile attacks"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4474418,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "airstrike"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4505201,
+      "gold_decision": "incorrect",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "disease-outbreak",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "ebola"
+          ]
+        },
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "armed conflict"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4498744,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "bombardeo"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4496783,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "missile attack"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4606349,
+      "gold_decision": "incorrect",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "rebels"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4495116,
+      "gold_decision": "incorrect",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.75,
+          "lex_count": 0,
+          "theme_hits": 4,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4582736,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.75,
+          "lex_count": 0,
+          "theme_hits": 4,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4479742,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.75,
+          "lex_count": 0,
+          "theme_hits": 4,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4493319,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.75,
+          "lex_count": 0,
+          "theme_hits": 4,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4581717,
+      "gold_decision": "incorrect",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4598700,
+      "gold_decision": "incorrect",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4531517,
+      "gold_decision": "correct",
+      "assigned_slug": "armed-conflict-escalation",
+      "post042_predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4603780,
+      "skipped_unclear": true,
+      "predictions": [
+        {
+          "slug": "armed-conflict-escalation",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ]
+    },
+    {
+      "signal_id": 4505533,
+      "gold_decision": "correct",
+      "assigned_slug": "constitutional-institutional-crisis",
+      "post042_predictions": [
+        {
+          "slug": "constitutional-institutional-crisis",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "impeachment",
+            "impeach"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4510419,
+      "gold_decision": "correct",
+      "assigned_slug": "constitutional-institutional-crisis",
+      "post042_predictions": [
+        {
+          "slug": "constitutional-institutional-crisis",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "impeachment",
+            "impeach"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4512261,
+      "gold_decision": "incorrect",
+      "assigned_slug": "constitutional-institutional-crisis",
+      "post042_predictions": [
+        {
+          "slug": "constitutional-institutional-crisis",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "impeachment",
+            "impeach"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4550146,
+      "gold_decision": "correct",
+      "assigned_slug": "constitutional-institutional-crisis",
+      "post042_predictions": [
+        {
+          "slug": "constitutional-institutional-crisis",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "impeachment",
+            "impeach"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4528307,
+      "gold_decision": "incorrect",
+      "assigned_slug": "constitutional-institutional-crisis",
+      "post042_predictions": [],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4483495,
+      "gold_decision": "correct",
+      "assigned_slug": "constitutional-institutional-crisis",
+      "post042_predictions": [
+        {
+          "slug": "constitutional-institutional-crisis",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "ousted"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4521953,
+      "gold_decision": "incorrect",
+      "assigned_slug": "constitutional-institutional-crisis",
+      "post042_predictions": [],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4486065,
+      "gold_decision": "correct",
+      "assigned_slug": "constitutional-institutional-crisis",
+      "post042_predictions": [
+        {
+          "slug": "constitutional-institutional-crisis",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "supreme court"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4543811,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "embezzlement"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4543809,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "embezzlement"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4535658,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "embezzlement"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4544053,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "embezzlement"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4577853,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "corruption"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4554085,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "corruption"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4575098,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "corruption"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4556366,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "corruption"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4614976,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4607603,
+      "gold_decision": "incorrect",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4614982,
+      "gold_decision": "correct",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4506995,
+      "gold_decision": "incorrect",
+      "assigned_slug": "corruption-investigation",
+      "post042_predictions": [
+        {
+          "slug": "corruption-investigation",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4521891,
+      "gold_decision": "correct",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "central bank",
+            "exchange rate"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4574777,
+      "gold_decision": "correct",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.75,
+          "lex_count": 2,
+          "theme_hits": 0,
+          "matched_terms": [
+            "central bank",
+            "exchange rate"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4521961,
+      "gold_decision": "correct",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.8,
+          "lex_count": 2,
+          "theme_hits": 1,
+          "matched_terms": [
+            "central bank",
+            "exchange rate"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4479801,
+      "gold_decision": "incorrect",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.8,
+          "lex_count": 1,
+          "theme_hits": 2,
+          "matched_terms": [
+            "rupiah"
+          ]
+        },
+        {
+          "slug": "fuel-subsidy-unrest",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4563415,
+      "gold_decision": "correct",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "imf bailout"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4552542,
+      "gold_decision": "incorrect",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "lira"
+          ]
+        },
+        {
+          "slug": "energy-grid-instability",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "blackout"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4565835,
+      "gold_decision": "correct",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "peso"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4525331,
+      "gold_decision": "incorrect",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "peso"
+          ]
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4576880,
+      "gold_decision": "correct",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4537928,
+      "skipped_unclear": true,
+      "predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ]
+    },
+    {
+      "signal_id": 4489113,
+      "gold_decision": "correct",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4564854,
+      "gold_decision": "incorrect",
+      "assigned_slug": "currency-debt-stress",
+      "post042_predictions": [
+        {
+          "slug": "currency-debt-stress",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        },
+        {
+          "slug": "fuel-subsidy-unrest",
+          "confidence": 0.65,
+          "lex_count": 0,
+          "theme_hits": 2,
+          "matched_terms": []
+        }
+      ],
+      "post042_correct": false
+    },
+    {
+      "signal_id": 4566704,
+      "gold_decision": "incorrect",
+      "assigned_slug": "cyberattack-infrastructure",
+      "post042_predictions": [],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4538209,
+      "gold_decision": "correct",
+      "assigned_slug": "cyberattack-infrastructure",
+      "post042_predictions": [
+        {
+          "slug": "cyberattack-infrastructure",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "hackers"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4610012,
+      "gold_decision": "incorrect",
+      "assigned_slug": "cyberattack-infrastructure",
+      "post042_predictions": [],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4523286,
+      "gold_decision": "correct",
+      "assigned_slug": "cyberattack-infrastructure",
+      "post042_predictions": [
+        {
+          "slug": "cyberattack-infrastructure",
+          "confidence": 0.7,
+          "lex_count": 1,
+          "theme_hits": 1,
+          "matched_terms": [
+            "cyberattack"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4505431,
+      "gold_decision": "incorrect",
+      "assigned_slug": "cyberattack-infrastructure",
+      "post042_predictions": [],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4553970,
+      "gold_decision": "incorrect",
+      "assigned_slug": "cyberattack-infrastructure",
+      "post042_predictions": [
+        {
+          "slug": "constitutional-institutional-crisis",
+          "confidence": 0.65,
+          "lex_count": 1,
+          "theme_hits": 0,
+          "matched_terms": [
+            "supreme court"
+          ]
+        }
+      ],
+      "post042_correct": true
+    },
+    {
+      "signal_id": 4605853,
+      "gold_decision": "incorrect",
+      "assigned_slug": "cyberattack-infrastructure",
+      "post042_predictions": [],
+      "post042_correct": true
+    }
+  ]
+}

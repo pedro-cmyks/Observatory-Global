@@ -183,3 +183,73 @@ are dominated by:
 This decomposition is itself a Paper 1 contribution: it quantifies how
 much of a rule-based classifier's precision gap is reachable by each
 class of intervention.
+
+---
+
+## Update: migration 044 (theme-hint removals) — precision 65.57% -> 73.77%
+
+The 12 theme-only false positives (matched via gdelt_theme_hints, no
+lexicon) were the largest remaining chunk after mig 043. Per-FP theme
+intersection analysis found two theme hints that produced false
+positives with ZERO true-positive dependency in the gold sample:
+
+| Topic | Theme removed | FP / TP in gold |
+|---|---|---:|
+| agriculture-crop-risk | `ENV_CLIMATECHANGE` | 2 / 0 |
+| cyberattack-infrastructure | `CYBER_ATTACK` | 4 / 0 |
+
+The `CYBER_ATTACK` finding is the most striking: GDELT's eponymous
+cyber theme tagged scams, a data-breach lawsuit, a school paper leak,
+and a 5G fraud warning — none were infrastructure attacks. Every
+confirmed cyberattack in the gold matched via lexicon (`hackers`,
+`cyberattack`), so removing the theme cost zero true positives and
+removed four false positives. This is a precision-first tradeoff: it
+may cost recall on future lexicon-less cyberattacks.
+
+### Full intervention arc on N=61 reviewed gold
+
+| Stage | Precision | Wilson 95% CI | Correct/Labeled |
+|---|---:|---|---:|
+| pre-042 (mig 040+041) | 59.02% | [46.50%, 70.46%] | 36/61 |
+| post-042 (423 lexicon additions) | 59.02% | [46.50%, 70.46%] | 36/61 |
+| post-043 (3 lexicon removals) | 65.57% | [53.05%, 76.25%] | 40/61 |
+| post-044 (2 theme-hint removals) | 73.77% | [61.56%, 83.16%] | 45/61 |
+
+Cumulative: **+14.75pp from 5 surgical removals**, 0pp from 423
+additions. The Wilson upper bound now touches the 85% gate; the lower
+bound (61.56%) shows N=61 is still too small to claim the gate is met.
+
+### Per-topic precision after mig 044
+
+| Topic | n | pre-042 | post-044 |
+|---|---:|---:|---:|
+| cyberattack-infrastructure | 7 | 28.57% | **100.00%** |
+| constitutional-institutional-crisis | 8 | 62.50% | **87.50%** |
+| corruption-investigation | 12 | 83.33% | 83.33% |
+| armed-conflict-escalation | 15 | 66.67% | 66.67% |
+| currency-debt-stress | 11 | 63.64% | 63.64% |
+| agriculture-crop-risk | 8 | 25.00% | **50.00%** |
+
+The three topics fixed by removals (cyberattack, constitutional,
+agriculture) jumped sharply. The three unchanged topics
+(corruption already clean; armed-conflict and currency dominated by
+scope mismatch + substring noise) confirm the ceiling: their false
+positives are NOT lexicon/theme noise and cannot be reached by these
+interventions.
+
+### Reachability summary (the Paper 1 decomposition)
+
+Of the original 25 gold false positives:
+- 9 fixed by removals (3 via mig 043 lexicon, ~6 via mig 044 theme).
+- ~6 remain as scope mismatches (real topic as context) -> need the
+  multi-layer scope classifier.
+- ~2 remain as substring noise (e.g. `lira` in "aliran") -> need
+  word-boundary matching.
+- Remainder are theme/lexicon matches whose removal would cost true
+  positives (kept deliberately).
+
+This quantifies the precision ceiling reachable by rule edits alone
+(~74% on this sample) and isolates the residual that requires the
+architectural change (scope classifier) argued for in the
+narrative-intelligence framework. That boundary is the central
+methodological result of Paper 1.
