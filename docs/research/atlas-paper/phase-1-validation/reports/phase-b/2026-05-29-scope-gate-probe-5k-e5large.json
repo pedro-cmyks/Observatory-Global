@@ -1,0 +1,158 @@
+{
+  "schema_version": "atlas-phase-b-scope-gate-probe-v2",
+  "corpus": "docs/research/atlas-paper/phase-1-validation/labels/consensus/2026-05-28-3vendor-5k-consensus-corpus.jsonl",
+  "n_rows_binary": 4911,
+  "n_evidence": 1850,
+  "n_not_evidence": 3061,
+  "seed": 0,
+  "n_folds": 5,
+  "n_bootstrap": 2000,
+  "hash_dim": 16384,
+  "note": "Feasibility probe on binary consensus rows. Positive class = evidence (gate keeps). base_rate_precision is the no-op keep-all precision = current Atlas precision on this decided subset. keep_at_precision_X = max recall while keeping >=X precision. numpy-only; metrics self-tested against sklearn references.",
+  "results": [
+    {
+      "feature_set": "atlas_conf",
+      "n": 4911,
+      "n_positive": 1850,
+      "base_rate_precision": 0.3767,
+      "roc_auc": 0.7479,
+      "roc_auc_ci95": [
+        0.7351,
+        0.7613
+      ],
+      "pr_auc": 0.5971,
+      "pr_auc_ci95": [
+        0.5724,
+        0.6211
+      ],
+      "keep_at_precision_0.90": {
+        "max_recall": 0.0178,
+        "threshold": 0.9727
+      },
+      "keep_at_precision_0.85": {
+        "max_recall": 0.02,
+        "threshold": 0.8899
+      }
+    },
+    {
+      "feature_set": "charngram",
+      "n": 4911,
+      "n_positive": 1850,
+      "base_rate_precision": 0.3767,
+      "roc_auc": 0.8978,
+      "roc_auc_ci95": [
+        0.8893,
+        0.9061
+      ],
+      "pr_auc": 0.8567,
+      "pr_auc_ci95": [
+        0.8426,
+        0.8705
+      ],
+      "keep_at_precision_0.90": {
+        "max_recall": 0.5108,
+        "threshold": 0.7054
+      },
+      "keep_at_precision_0.85": {
+        "max_recall": 0.6141,
+        "threshold": 0.6338
+      }
+    },
+    {
+      "feature_set": "charngram+conf",
+      "n": 4911,
+      "n_positive": 1850,
+      "base_rate_precision": 0.3767,
+      "roc_auc": 0.9258,
+      "roc_auc_ci95": [
+        0.9186,
+        0.9331
+      ],
+      "pr_auc": 0.8879,
+      "pr_auc_ci95": [
+        0.8738,
+        0.9015
+      ],
+      "keep_at_precision_0.90": {
+        "max_recall": 0.64,
+        "threshold": 0.6981
+      },
+      "keep_at_precision_0.85": {
+        "max_recall": 0.7508,
+        "threshold": 0.616
+      }
+    },
+    {
+      "feature_set": "openai_emb",
+      "n": 4911,
+      "n_positive": 1850,
+      "base_rate_precision": 0.3767,
+      "roc_auc": 0.9273,
+      "roc_auc_ci95": [
+        0.9196,
+        0.9346
+      ],
+      "pr_auc": 0.8881,
+      "pr_auc_ci95": [
+        0.8739,
+        0.9014
+      ],
+      "keep_at_precision_0.90": {
+        "max_recall": 0.6686,
+        "threshold": 0.9656
+      },
+      "keep_at_precision_0.85": {
+        "max_recall": 0.7876,
+        "threshold": 0.7845
+      }
+    },
+    {
+      "feature_set": "openai_emb+conf",
+      "n": 4911,
+      "n_positive": 1850,
+      "base_rate_precision": 0.3767,
+      "roc_auc": 0.9362,
+      "roc_auc_ci95": [
+        0.929,
+        0.9431
+      ],
+      "pr_auc": 0.9016,
+      "pr_auc_ci95": [
+        0.8887,
+        0.914
+      ],
+      "keep_at_precision_0.90": {
+        "max_recall": 0.6973,
+        "threshold": 0.9569
+      },
+      "keep_at_precision_0.85": {
+        "max_recall": 0.8303,
+        "threshold": 0.686
+      }
+    },
+    {
+      "feature_set": "openai_emb+charngram+conf",
+      "n": 4911,
+      "n_positive": 1850,
+      "base_rate_precision": 0.3767,
+      "roc_auc": 0.9358,
+      "roc_auc_ci95": [
+        0.9292,
+        0.9423
+      ],
+      "pr_auc": 0.9026,
+      "pr_auc_ci95": [
+        0.8899,
+        0.9149
+      ],
+      "keep_at_precision_0.90": {
+        "max_recall": 0.6816,
+        "threshold": 0.6869
+      },
+      "keep_at_precision_0.85": {
+        "max_recall": 0.78,
+        "threshold": 0.6013
+      }
+    }
+  ]
+}

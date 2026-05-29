@@ -38,7 +38,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import phase_b_scope_gate_probe as G  # noqa: E402
 
 MIN_TOPIC_POSITIVES = 10  # below this, a per-topic threshold is not trustworthy
-EMBED_MODEL = "text-embedding-3-small"
+DEFAULT_EMBED_MODEL = "text-embedding-3-small"
 
 
 def _threshold_at_precision(
@@ -77,6 +77,8 @@ def main() -> None:
     ap.add_argument("--out", type=Path, default=base / "models/2026-05-29-scope-gate-v1.json")
     ap.add_argument("--report", type=Path, default=base / "models/2026-05-29-scope-gate-v1.calibration.json")
     ap.add_argument("--target-precision", type=float, default=0.90)
+    ap.add_argument("--embed-model", default=DEFAULT_EMBED_MODEL,
+                    help="Embedding model id recorded in the gate (must match the --embeddings source).")
     args = ap.parse_args()
 
     G._selftest()
@@ -133,7 +135,7 @@ def main() -> None:
         "trained": "2026-05-29",
         "feature_spec": {
             "order": ["embedding", "atlas_confidence", "atlas_matched_terms"],
-            "embedding_model": EMBED_MODEL,
+            "embedding_model": args.embed_model,
             "embedding_dim": int(emb.shape[1]),
             "embedding_text": "headline | assigned_topic_label",
             "total_dim": int(X.shape[1]),

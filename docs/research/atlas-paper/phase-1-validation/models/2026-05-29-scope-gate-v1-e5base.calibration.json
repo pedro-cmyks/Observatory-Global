@@ -1,0 +1,272 @@
+{
+  "schema": "atlas-scope-gate-v1-calibration",
+  "corpus": "docs/research/atlas-paper/phase-1-validation/labels/consensus/2026-05-28-3vendor-5k-consensus-corpus.jsonl",
+  "n_rows": 4911,
+  "n_evidence": 1850,
+  "base_rate_precision": 0.3767,
+  "target_precision": 0.9,
+  "oof_roc_auc": 0.9402,
+  "global_operating_point": {
+    "threshold": 0.87826,
+    "precision": 0.9,
+    "recall": 0.7492,
+    "kept": 1540
+  },
+  "per_topic": {
+    "agriculture-crop-risk": {
+      "n": 139,
+      "n_positive": 62,
+      "mode": "calibrated",
+      "threshold": 0.9999,
+      "precision": 1.0,
+      "recall": 0.0323,
+      "kept": 2
+    },
+    "armed-conflict-escalation": {
+      "n": 280,
+      "n_positive": 172,
+      "mode": "calibrated",
+      "threshold": 0.47887,
+      "precision": 0.9,
+      "recall": 0.7849,
+      "kept": 150
+    },
+    "constitutional-institutional-crisis": {
+      "n": 169,
+      "n_positive": 28,
+      "mode": "abstain",
+      "threshold": null,
+      "reason": "cannot reach 90% precision at any threshold"
+    },
+    "corruption-investigation": {
+      "n": 132,
+      "n_positive": 114,
+      "mode": "calibrated",
+      "threshold": 0.03508,
+      "precision": 0.9106,
+      "recall": 0.9825,
+      "kept": 123
+    },
+    "currency-debt-stress": {
+      "n": 187,
+      "n_positive": 38,
+      "mode": "calibrated",
+      "threshold": 0.99994,
+      "precision": 1.0,
+      "recall": 0.1053,
+      "kept": 4
+    },
+    "cyberattack-infrastructure": {
+      "n": 171,
+      "n_positive": 30,
+      "mode": "abstain",
+      "threshold": null,
+      "reason": "cannot reach 90% precision at any threshold"
+    },
+    "disease-outbreak": {
+      "n": 289,
+      "n_positive": 275,
+      "mode": "calibrated",
+      "threshold": 0.00141,
+      "precision": 0.9516,
+      "recall": 1.0,
+      "kept": 289
+    },
+    "disinformation-influence-operation": {
+      "n": 51,
+      "n_positive": 34,
+      "mode": "calibrated",
+      "threshold": 0.57361,
+      "precision": 0.9032,
+      "recall": 0.8235,
+      "kept": 31
+    },
+    "election-legitimacy-dispute": {
+      "n": 318,
+      "n_positive": 38,
+      "mode": "calibrated",
+      "threshold": 0.9976,
+      "precision": 0.9091,
+      "recall": 0.2632,
+      "kept": 11
+    },
+    "energy-grid-instability": {
+      "n": 91,
+      "n_positive": 33,
+      "mode": "calibrated",
+      "threshold": 0.87657,
+      "precision": 0.9048,
+      "recall": 0.5758,
+      "kept": 21
+    },
+    "flood-landslide-disaster": {
+      "n": 307,
+      "n_positive": 106,
+      "mode": "calibrated",
+      "threshold": 0.86329,
+      "precision": 0.9167,
+      "recall": 0.8302,
+      "kept": 96
+    },
+    "food-price-stress": {
+      "n": 49,
+      "n_positive": 45,
+      "mode": "calibrated",
+      "threshold": 0.01877,
+      "precision": 0.9184,
+      "recall": 1.0,
+      "kept": 49
+    },
+    "forced-displacement": {
+      "n": 115,
+      "n_positive": 60,
+      "mode": "calibrated",
+      "threshold": 0.86269,
+      "precision": 0.9107,
+      "recall": 0.85,
+      "kept": 56
+    },
+    "fuel-subsidy-unrest": {
+      "n": 424,
+      "n_positive": 5,
+      "mode": "fallback_global",
+      "threshold": 0.87826,
+      "reason": "only 5 positives (< 10)"
+    },
+    "gang-control-urban-security": {
+      "n": 309,
+      "n_positive": 59,
+      "mode": "calibrated",
+      "threshold": 0.91069,
+      "precision": 0.902,
+      "recall": 0.7797,
+      "kept": 51
+    },
+    "gender-violence-rights": {
+      "n": 152,
+      "n_positive": 109,
+      "mode": "calibrated",
+      "threshold": 0.15046,
+      "precision": 0.9052,
+      "recall": 0.9633,
+      "kept": 116
+    },
+    "heat-health-risk": {
+      "n": 130,
+      "n_positive": 116,
+      "mode": "calibrated",
+      "threshold": 0.01401,
+      "precision": 0.9274,
+      "recall": 0.9914,
+      "kept": 124
+    },
+    "housing-cost-pressure": {
+      "n": 280,
+      "n_positive": 131,
+      "mode": "calibrated",
+      "threshold": 0.6676,
+      "precision": 0.92,
+      "recall": 0.8779,
+      "kept": 125
+    },
+    "humanitarian-access-conflict": {
+      "n": 148,
+      "n_positive": 12,
+      "mode": "abstain",
+      "threshold": null,
+      "reason": "cannot reach 90% precision at any threshold"
+    },
+    "labor-strike-disruption": {
+      "n": 149,
+      "n_positive": 96,
+      "mode": "calibrated",
+      "threshold": 0.97784,
+      "precision": 0.9032,
+      "recall": 0.5833,
+      "kept": 62
+    },
+    "migration-border-pressure": {
+      "n": 129,
+      "n_positive": 100,
+      "mode": "calibrated",
+      "threshold": 0.20554,
+      "precision": 0.9109,
+      "recall": 0.92,
+      "kept": 101
+    },
+    "mining-royalty-risk": {
+      "n": 158,
+      "n_positive": 0,
+      "mode": "fallback_global",
+      "threshold": 0.87826,
+      "reason": "only 0 positives (< 10)"
+    },
+    "oil-gas-supply-risk": {
+      "n": 214,
+      "n_positive": 30,
+      "mode": "calibrated",
+      "threshold": 0.99999,
+      "precision": 1.0,
+      "recall": 0.0333,
+      "kept": 1
+    },
+    "press-freedom-crackdown": {
+      "n": 1,
+      "n_positive": 1,
+      "mode": "fallback_global",
+      "threshold": 0.87826,
+      "reason": "only 1 positives (< 10)"
+    },
+    "sanctions-diplomatic-pressure": {
+      "n": 185,
+      "n_positive": 36,
+      "mode": "calibrated",
+      "threshold": 0.98883,
+      "precision": 0.9375,
+      "recall": 0.4167,
+      "kept": 16
+    },
+    "student-youth-protest": {
+      "n": 7,
+      "n_positive": 3,
+      "mode": "fallback_global",
+      "threshold": 0.87826,
+      "reason": "only 3 positives (< 10)"
+    },
+    "telecom-internet-shutdown": {
+      "n": 112,
+      "n_positive": 44,
+      "mode": "calibrated",
+      "threshold": 0.98866,
+      "precision": 0.9167,
+      "recall": 0.25,
+      "kept": 12
+    },
+    "trade-export-restriction": {
+      "n": 133,
+      "n_positive": 33,
+      "mode": "calibrated",
+      "threshold": 0.88342,
+      "precision": 0.913,
+      "recall": 0.6364,
+      "kept": 23
+    },
+    "transport-corridor-disruption": {
+      "n": 16,
+      "n_positive": 5,
+      "mode": "fallback_global",
+      "threshold": 0.87826,
+      "reason": "only 5 positives (< 10)"
+    },
+    "water-stress-drought": {
+      "n": 66,
+      "n_positive": 35,
+      "mode": "calibrated",
+      "threshold": 0.6307,
+      "precision": 0.9032,
+      "recall": 0.8,
+      "kept": 31
+    }
+  },
+  "note": "Thresholds + precision/recall measured on pooled 5-fold OOF predictions (honest). Persisted weights are the final fit on all rows. mode=calibrated: topic hits target precision; mode=fallback_global: too few positives, uses global threshold; mode=abstain: cannot reach target at any threshold."
+}

@@ -130,6 +130,44 @@ threshold calibration (Phase C) can trade coverage per topic. Embedding
 cost at inference is ~$0.00002/signal (or swap to a local multilingual
 sentence encoder once the env is off iCloud).
 
+## Local encoder ($0/signal) — production efficiency (2026-05-29)
+
+OpenAI embeddings cost ~$0.00002/signal forever + an external dependency.
+The production goal is $0 marginal cost (the gate is meant to REPLACE
+per-signal LLM cost, not reintroduce it). So we tested local multilingual
+encoders (hosted in the Fly nlp_worker, which already runs torch) on the
+same 4,911 rows.
+
+| encoder | dim | keep@0.90 recall | $/signal | +Fly RAM |
+|---|---|---|---|---|
+| OpenAI text-embedding-3-small | 1536 | **84.3%** | ~$0.00002 | none (+API dep) |
+| **multilingual-e5-base (local)** | 768 | **74.9%** | **$0** | ~280MB |
+| multilingual-e5-large (local) | 1024 | 69.7% | $0 | ~560MB |
+
+- **e5-large is worse than e5-base** here: at N=4,911 the 1024-dim model
+  overfits the high-precision tail. Bigger is not better at this data size.
+- **e5-base is the local winner**: 74.9% coverage at 90% precision, $0
+  marginal, smallest RAM footprint. ~9pp less coverage than OpenAI.
+- Decision: ship the **e5-base gate** as the production encoder
+  (`models/2026-05-29-scope-gate-v1-e5base.json`, OOF AUC 0.940, embedding
+  model `intfloat/multilingual-e5-base`). Per-topic calibration: 22
+  calibrated, 3 abstain, 5 fallback (vs OpenAI 25/0/5). The OpenAI gate
+  (`scope-gate-v1.json`, 84.3%) stays as the higher-coverage option if the
+  ~$1/mo + dependency is ever acceptable; swapping is a seconds-long
+  retrain.
+
+Cost context: Fly is ~$14/mo, 73% of which is the worker's "Additional
+RAM" (4GB). e5-base (+280MB) likely fits the existing 4GB → ~$0 marginal;
+if it needs a bump it is small. Reusing the worker's already-loaded XLM-R
+(mean-pool) would be $0-RAM but is a weaker sentence encoder — e5-base is
+the better quality/cost point.
+
+Infra note: local ML dev was blocked by iCloud evicting the venv's torch/
+transformers (Desktop is iCloud-synced, disk ~88% full — `brctl` lost the
+race, dataless count rose under download). Fixed permanently with an
+off-iCloud venv at `/Users/pedro/AtlasLocalWorker/mlvenv` (torch 2.12 +
+transformers 5.9, MPS). Embedding caches are gitignored (regenerable).
+
 ## Artifacts
 
 - Sample: `docs/research/topic-quality/benchmark-samples/2026-05-28-atlas-v2-stratified-5k.jsonl` (5,557)
