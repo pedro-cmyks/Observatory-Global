@@ -1,0 +1,29 @@
+{
+  "schema_version": "atlas-consensus-corpus-v1",
+  "models": [
+    "deepseekchat_5k",
+    "gpt41_5k",
+    "sonnet46_5k"
+  ],
+  "n_models": 3,
+  "majority_threshold": 2,
+  "n_signals_common": 5507,
+  "consensus_agreement_histogram": {
+    "1": 284,
+    "2": 1188,
+    "3": 4035
+  },
+  "consensus_decision_counts": {
+    "correct": 1850,
+    "incorrect": 3061,
+    "partial": 304,
+    "no_majority": 284,
+    "unclear": 8
+  },
+  "is_evidence_balance": {
+    "evidence": 1850,
+    "not_evidence": 3061,
+    "ambiguous": 596
+  },
+  "n_rows_with_human_gold": 0
+}

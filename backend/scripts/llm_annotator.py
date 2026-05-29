@@ -163,13 +163,17 @@ def _parse_response(text: str) -> dict[str, Any]:
     if decision not in VALID_DECISIONS:
         raise ValueError(f"invalid decision: {decision!r}")
 
+    # Be lenient on scope / evidence_role: some models (e.g. gpt-4.1) put a
+    # valid value in the wrong field (scope='insufficient_context',
+    # evidence_role='context_signal'). Coerce invalid values to None instead
+    # of discarding the whole annotation — the `decision` is the core label.
     scope = payload.get("scope")
-    if scope not in VALID_SCOPES and scope is not None:
-        raise ValueError(f"invalid scope: {scope!r}")
+    if scope not in VALID_SCOPES:
+        scope = None
 
     evidence_role = payload.get("evidence_role")
-    if evidence_role not in VALID_EVIDENCE_ROLES and evidence_role is not None:
-        raise ValueError(f"invalid evidence_role: {evidence_role!r}")
+    if evidence_role not in VALID_EVIDENCE_ROLES:
+        evidence_role = None
 
     error_type = payload.get("error_type")
     if error_type is not None and error_type not in VALID_ERROR_TYPES:

@@ -29,10 +29,6 @@ from typing import Any
 
 SCHEMA_VERSION = "atlas-consensus-corpus-v1"
 
-# A signal needs at least this many LLM votes agreeing on the modal decision
-# to be treated as a consensus label (7 annotators -> simple majority is 4).
-DEFAULT_MAJORITY = 4
-
 # Feature/context fields copied verbatim from the annotation rows.
 CONTEXT_FIELDS = (
     "headline",
@@ -72,34 +68,43 @@ def _mode_with_count(values: list[str]) -> tuple[str | None, int]:
     return val, count
 
 
-def build_corpus(input_dir: Path, majority: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    files = sorted(glob.glob(str(input_dir / "*stratified-256*.jsonl")))
+def build_corpus(
+    input_dir: Path, majority: int | None, pattern: str
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    files = sorted(glob.glob(str(input_dir / pattern)))
     if not files:
-        raise SystemExit(f"no annotation files matched in {input_dir}")
+        raise SystemExit(f"no annotation files matched {pattern!r} in {input_dir}")
 
-    # model_provenance -> {signal_id -> row}
-    per_model: dict[str, dict[int, dict[str, Any]]] = {}
+    # model_provenance -> {(signal_id, topic_slug) -> row}. The unit is the
+    # (signal, topic) ASSIGNMENT, not the signal: a signal can carry two Atlas
+    # topic assignments (top-2), and each is judged separately against its own
+    # topic. Keying by signal_id alone would mis-merge those two judgments.
+    per_model: dict[str, dict[tuple[int, str], dict[str, Any]]] = {}
     for f in files:
         rows = _read_jsonl(Path(f))
         prov = rows[0]["annotator_provenance"]
-        # `resume` runs can append duplicate signal_ids; last write wins.
-        by_id = {int(r["signal_id"]): r for r in rows}
-        per_model[prov] = by_id
+        # `resume` runs can append duplicate keys; last write wins.
+        by_key = {(int(r["signal_id"]), r.get("assigned_topic_slug")): r for r in rows}
+        per_model[prov] = by_key
 
     models = sorted(per_model)
+    # Default majority = simple majority of the panel size (3 models -> 2,
+    # 7 models -> 4).
+    if majority is None:
+        majority = len(models) // 2 + 1
     common = set.intersection(*(set(m.keys()) for m in per_model.values()))
 
     corpus: list[dict[str, Any]] = []
-    for sid in sorted(common):
+    for key in sorted(common):
         # Any model's row carries the shared context + human gold.
-        ref = per_model[models[0]][sid]
+        ref = per_model[models[0]][key]
 
         votes: dict[str, dict[str, Any]] = {}
         decisions: list[str] = []
         scopes: list[str] = []
         roles: list[str] = []
         for prov in models:
-            r = per_model[prov][sid]
+            r = per_model[prov][key]
             d = r.get("annotator_decision")
             votes[prov] = {
                 "decision": d,
@@ -127,7 +132,7 @@ def build_corpus(input_dir: Path, majority: int) -> tuple[list[dict[str, Any]], 
         else:  # partial / unclear / no_majority -> excluded from binary target
             is_evidence = None
 
-        row: dict[str, Any] = {"signal_id": sid}
+        row: dict[str, Any] = {"signal_id": int(ref["signal_id"])}
         for k in CONTEXT_FIELDS:
             row[k] = ref.get(k)
         # Atlas v2's own assignment confidence + matched-term count — free
@@ -190,15 +195,18 @@ def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Build multi-vendor consensus training corpus.")
     base = Path("docs/research/atlas-paper/phase-1-validation")
     p.add_argument("--input-dir", type=Path, default=base / "labels/llm-annotator")
+    p.add_argument("--pattern", default="*stratified-256*.jsonl",
+                   help="Glob (within --input-dir) selecting the per-model annotation files.")
     p.add_argument("--out", type=Path, default=base / "labels/consensus/2026-05-28-7llm-consensus-corpus.jsonl")
     p.add_argument("--summary", type=Path, default=base / "labels/consensus/2026-05-28-7llm-consensus-corpus.summary.json")
-    p.add_argument("--majority", type=int, default=DEFAULT_MAJORITY)
+    p.add_argument("--majority", type=int, default=None,
+                   help="Min agreeing votes for consensus (default: simple majority of panel size).")
     return p.parse_args()
 
 
 def main() -> None:
     args = _parse_args()
-    corpus, summary = build_corpus(args.input_dir, args.majority)
+    corpus, summary = build_corpus(args.input_dir, args.majority, args.pattern)
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("w", encoding="utf-8") as fh:
