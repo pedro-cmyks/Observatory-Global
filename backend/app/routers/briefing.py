@@ -393,6 +393,11 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                        COUNT(*)::bigint                                         AS signal_count,
                        ROUND(AVG(a.confidence)::numeric, 3)::float              AS avg_confidence,
                        COUNT(*) FILTER (WHERE a.confidence >= 0.75)::bigint     AS high_confidence_count,
+                       -- Scope gate (mig 045): gated_signal_count = assignments the
+                       -- 90%-precision gate keeps; gate_scored_count = how many were
+                       -- scored (coverage = gated/scored). Additive, non-breaking.
+                       COUNT(*) FILTER (WHERE a.gate_kept)::bigint              AS gated_signal_count,
+                       COUNT(*) FILTER (WHERE a.gate_kept IS NOT NULL)::bigint  AS gate_scored_count,
                        'signal_topic_assignments'                               AS source_table,
                        a.model_version                                          AS model_version
                 FROM signal_topic_assignments a
@@ -673,6 +678,8 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                     "signal_count": int(r["signal_count"]),
                     "avg_confidence": float(r["avg_confidence"]),
                     "high_confidence_count": int(r["high_confidence_count"]),
+                    "gated_signal_count": int(_record_get(r, "gated_signal_count", 0) or 0),
+                    "gate_scored_count": int(_record_get(r, "gate_scored_count", 0) or 0),
                     "source_table": _record_get(r, "source_table", "signal_topic_assignments"),
                     "model_version": _record_get(r, "model_version", "theme-hint-lex-v2"),
                 }
