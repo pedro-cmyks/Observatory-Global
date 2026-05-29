@@ -1,5 +1,53 @@
 # Project Status
 
+## Current Handoff — 2026-05-29 (Scope gate DEPLOYED — Atlas precision to 90%)
+
+The scope-aware learned classifier (issue #203 Path B, now closed) is
+**built, validated, and live in production** as a precision scope gate.
+
+### Outcome
+
+A learned gate over `[multilingual-e5-base embedding || atlas_confidence ||
+atlas_matched_terms]` decides keep/abstain per Atlas assignment, calibrated
+per-topic to **>=90% precision**. This clears the precision wall the rule
+classifier could not (rules capped ~51% full-taxonomy; residual errors are
+scope mismatches, not rule-fixable). keep@90%-precision recall: e5-base
+**74.9%** (production, $0/signal), OpenAI 3-small 84.3% (option),
+char-ngram 64.0%, Atlas-confidence 1.8%.
+
+### Live in production
+
+- **Migration 045**: `gate_score/gate_kept/gate_model` + partial index on
+  `signal_topic_assignments` (additive, reversible, RLS unchanged).
+- **Backfill**: 15,692/15,692 assignments scored, 4,520 kept (29%).
+  Clean topics keep ~all (disease 100%, heat-health 98%); noisy topics shrink
+  to their high-precision core (election-legitimacy 1%, fuel-subsidy 0%).
+- **API**: `/api/v2/briefing` `top_atlas_topics` ships `gated_signal_count`
+  + `gate_scored_count` (additive, non-breaking). Deployed to Fly
+  `atlas-api-pedro`; live smoke confirmed. Commits eefbe41 -> ee71215.
+
+### Tooling (backend/scripts/)
+
+`build_consensus_corpus.py`, `phase_b_scope_gate_probe.py` (numpy-only,
+self-tested metrics), `train_scope_gate.py`, `embed_corpus_openai.py`,
+`embed_corpus_local.py`, `score_assignments_gate.py`. Gate artifacts in
+`docs/research/atlas-paper/phase-1-validation/models/`.
+
+### Env / cost (see CLAUDE.md for detail)
+
+- ML/DB scripts run from the **off-iCloud venv `/Users/pedro/AtlasLocalWorker/mlvenv`**
+  (the `backend/.venv` on iCloud-synced `~/Desktop` stalls on dataless
+  imports). `DATABASE_URL` (Supabase pooler) is in gitignored `.env`.
+- LLM spend $32.45 cumulative (one-time training labels). Inference
+  $0/signal (local e5). Fly unchanged.
+
+### Remaining (non-blocking)
+
+1. Frontend gated-vs-raw + coverage display (adjacent to #183).
+2. Incremental cron gate-scoring step in the local runner.
+
+---
+
 ## Current Handoff — 2026-05-28 (Paper 1 validation: precision arc + annotator reliability)
 
 ### Objective

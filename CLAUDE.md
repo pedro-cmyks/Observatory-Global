@@ -8,6 +8,93 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
+## Current Session Context (2026-05-29, scope gate DEPLOYED to production)
+
+The scope-aware learned classifier (issue #203 Path B) is **built,
+validated, and live in production**. It shipped as a precision **scope gate**
+(keep/abstain) rather than the original recall merge, because validation
+confirmed scope mismatch is the dominant residual error. Issue #203 closed
+with a full delivery writeup.
+
+### What the gate is
+
+A logistic classifier over `[sentence-embedding || atlas_confidence ||
+atlas_matched_terms]` that judges whether an Atlas topic assignment is real
+evidence (keep) or context/noise (abstain). Production encoder =
+**`intfloat/multilingual-e5-base`** (local, **$0/signal**). keep@90%-precision
+recall: e5-base 74.9% (AUC 0.940) vs OpenAI text-embedding-3-small 84.3%
+(AUC 0.956) vs char-ngram 64.0% vs Atlas-confidence-alone 1.8%. e5-large was
+*worse* than e5-base (overfits the tail at N=4,911). Per-topic calibrated to
+>=90% precision (global fallback for thin topics).
+
+### Pipeline (Phase A -> C, all on `v3-intel-layer`)
+
+1. 3-vendor LLM consensus corpus: 5,557-row stratified sample (from live
+   `signal_topic_assignments`) annotated by claude-sonnet-4-6 + gpt-4.1 +
+   deepseek-chat -> 5,507 consensus assignments, keyed by
+   (signal_id, topic_slug); 4,911 binary `is_evidence` rows.
+   Builder: `backend/scripts/build_consensus_corpus.py`.
+2. Probe + train: `phase_b_scope_gate_probe.py` (numpy-only, metrics
+   self-tested), `train_scope_gate.py` (OOF calibration + final fit).
+3. Embedders: `embed_corpus_openai.py` (API), `embed_corpus_local.py`
+   (e5 via transformers, MPS).
+4. Gate artifacts: `docs/research/atlas-paper/phase-1-validation/models/`
+   — `2026-05-29-scope-gate-v1-e5base.json` (production, $0) and
+   `2026-05-29-scope-gate-v1.json` (OpenAI, 84% coverage option). Swapping
+   encoders is a seconds-long retrain.
+
+### Production state (LIVE)
+
+- **Migration 045** (`backend/migrations/045_scope_gate_decision_columns.sql`):
+  nullable `gate_score/gate_kept/gate_model` + partial index on
+  `signal_topic_assignments`. Additive, reversible, RLS unchanged. Applied
+  live via asyncpg (Supabase MCP was 502'ing).
+- **`score_assignments_gate.py`**: local batch scorer (off-iCloud mlvenv).
+  Backfill done: 15,692/15,692 scored, 4,520 kept (29%). Clean topics keep
+  ~all (disease 100%, heat-health 98%); noisy topics shrink to their
+  high-precision core (election-legitimacy 1%, fuel-subsidy 0%).
+- **`briefing.py`** `top_atlas_topics`: ships `gated_signal_count` +
+  `gate_scored_count` (additive, non-breaking; raw `signal_count` + ranking
+  unchanged). Deployed to Fly `atlas-api-pedro` (image 257 MB); live smoke
+  on `/api/v2/briefing?hours=72` confirmed.
+- Commits eefbe41 -> ee71215.
+
+### CRITICAL environment + cost notes
+
+- **iCloud eviction**: the repo lives under `~/Desktop` (iCloud-synced) and
+  the disk is ~88% full, so iCloud evicts venv `.so`/`.py` files to dataless
+  placeholders -> importing torch/transformers/sklearn/asyncpg from
+  `backend/.venv` **stalls at 0% CPU** (diagnose with
+  `faulthandler.dump_traceback_later`). `brctl download` loses the race.
+  **Fix in place**: an off-iCloud venv at **`/Users/pedro/AtlasLocalWorker/mlvenv`**
+  (torch 2.12 + transformers 5.9 + asyncpg + numpy, MPS). Use THIS venv for
+  any ML/DB script (embedding, gate scoring, DB writes). The numpy-only
+  research scripts can use `backend/.venv` but it may also be evicted.
+- **DATABASE_URL**: the Supabase session-pooler URI is in the gitignored
+  `.env` (`postgres.vfemszzlzwchcjveifjp@aws-1-us-east-2.pooler.supabase.com:5432`,
+  `?sslmode=require`). Local `.env` POSTGRES_* are Docker dev creds (not
+  Supabase). Extract with
+  `export DATABASE_URL=$(grep -E '^DATABASE_URL=' .env | sed -E 's/^DATABASE_URL=//')`.
+- **Embedding caches** (`*-embeddings.jsonl`, ~60-145MB) are gitignored;
+  regenerate via `embed_corpus_{openai,local}.py`.
+- **LLM spend ledger**: `docs/research/atlas-paper/2026-05-28-atlas-llm-spend-ledger.md`.
+  Cumulative (vendor-billed): Anthropic $23.09 + OpenAI $9.11 + DeepSeek
+  $0.25 = **$32.45** (one-time, training labels). Inference $0/signal (local
+  e5). Fly ~$14/mo, 73% = worker Additional RAM; gate scorer runs local so
+  no Fly bump.
+
+### Remaining (not blocking; gate is live)
+
+1. Frontend: render gated vs raw + coverage in the dashboard/brief
+   (user-facing; Vercel auto-deploys). Adjacent to #183.
+2. Incremental cron: add `mlvenv python score_assignments_gate.py
+   --window-hours 0.5` to the local atlas-classifier runner after
+   `backfill_lexicon_topics.py`, and resync scripts to
+   `/Users/pedro/AtlasLocalWorker/backend/scripts/`. (Atlas classifier cron
+   appears stopped since 2026-05-27 — no new assignments currently.)
+3. Optional: recall-refiner variant (`0.6*lex + 0.4*encoder`) was the
+   original #203 plan, deprioritized in favor of the precision gate.
+
 ## Current Session Context (2026-05-28, Paper 1 validation + precision roadmap)
 
 Active objective: raise Atlas v2 topic-classification precision from the
