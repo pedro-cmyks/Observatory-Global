@@ -87,13 +87,48 @@ self-tested vs sklearn. Positive class = evidence (gate keeps).
 
 ## Cost / provenance
 
-3-vendor annotation of ~5.5k rows: approx Anthropic $26 + OpenAI $14 +
-DeepSeek $2 ~= **$42** (within the $45-90 authorized envelope; token-based
-estimate, not vendor-billed exact). Sonnet ~3x slower per call than
-gpt-4.1/deepseek (latency, not rate-limit). Parser hardened mid-run:
+3-vendor annotation of ~5.5k rows: **~$27** Phase A (vendor-billed:
+cumulative across all Atlas LLM work is Anthropic $23.09 + OpenAI $9.11 +
+DeepSeek $0.25 = **$32.45**, of which ~$5.48 was the prior methodology
+study). Well under the $45-90 authorized envelope. Sonnet ~3x slower per
+call than gpt-4.1/deepseek (latency, not rate-limit). Full ledger:
+`docs/research/atlas-paper/2026-05-28-atlas-llm-spend-ledger.md`. Parser hardened mid-run:
 invalid `scope`/`evidence_role` now coerce to None instead of discarding
 the whole annotation (gpt-4.1 was field-swapping `insufficient_context` /
 `context_signal`).
+
+## Semantic arm (2026-05-29) — the lift the roadmap predicted
+
+Added a hosted multilingual encoder (OpenAI `text-embedding-3-small`,
+1536-dim) over the same "headline | topic_label" string, on the same 4,911
+binary rows. Hosted API sidesteps the local torch/transformers iCloud
+stall; cost <$0.01.
+
+| feature set | ROC-AUC (CI95) | keep@0.90 recall | keep@0.85 recall |
+|---|---|---|---|
+| charngram+conf (lexical) | 0.926 | 64.0% | 75.1% |
+| openai_emb | 0.949 [0.942, 0.955] | 79.9% | 87.3% |
+| **openai_emb+conf** | **0.956 [0.951, 0.962]** | **84.3%** | **89.3%** |
+| openai_emb+charngram+conf | 0.946 [0.939, 0.951] | 71.1% | 82.0% |
+
+Reading:
+1. **Semantic features deliver the predicted lift.** keep@0.90 recall goes
+   from 64.0% (lexical) to **84.3%** (emb+conf). The gate now keeps a
+   90%-precise slice covering **84% of all true evidence** — only 16%
+   abstained. At 85% precision it covers 89%. This is production-grade
+   precision-first behaviour.
+2. **char n-grams become redundant once you have embeddings.** Adding the
+   16k-dim sparse char-ngram features to the 1536-dim dense embedding
+   *hurts* (keep@0.90 71.1% vs 84.3% for emb+conf) — the sparse features
+   dilute the dense signal at the high-precision tail. The winning,
+   simplest gate is **embedding + Atlas confidence**.
+3. Best gate report: `reports/phase-b/2026-05-29-scope-gate-probe-5k-semantic.json`.
+
+Production recommendation: the v3 scope gate is `openai_emb + atlas_conf`
+logistic, thresholded for 90% keep-precision (~84% coverage). Per-topic
+threshold calibration (Phase C) can trade coverage per topic. Embedding
+cost at inference is ~$0.00002/signal (or swap to a local multilingual
+sentence encoder once the env is off iCloud).
 
 ## Artifacts
 

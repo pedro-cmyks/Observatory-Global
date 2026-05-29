@@ -267,6 +267,19 @@ def _atlas_feats(rows: list[dict[str, Any]]) -> np.ndarray:
     return np.column_stack([conf, mt])
 
 
+def _load_embeddings(path: Path) -> dict[tuple[int, str], np.ndarray]:
+    out: dict[tuple[int, str], np.ndarray] = {}
+    for l in path.read_text(encoding="utf-8").splitlines():
+        l = l.strip()
+        if not l:
+            continue
+        r = json.loads(l)
+        out[(int(r["signal_id"]), r.get("assigned_topic_slug"))] = np.asarray(
+            r["embedding"], dtype=np.float64
+        )
+    return out
+
+
 def _evaluate(name: str, X: np.ndarray, y: np.ndarray, standardize: bool) -> dict[str, Any]:
     p = _pooled_oof(X, y, standardize)
     return {
@@ -288,6 +301,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Phase B scope-gate feasibility probe (numpy-only).")
     ap.add_argument("--corpus", type=Path, default=base / "labels/consensus/2026-05-28-7llm-consensus-corpus.jsonl")
     ap.add_argument("--out", type=Path, default=base / "reports/phase-b/2026-05-28-scope-gate-probe.json")
+    ap.add_argument("--embeddings", type=Path, default=None,
+                    help="Optional JSONL {signal_id, assigned_topic_slug, embedding} to add semantic feature sets.")
     ap.add_argument("--selftest", action="store_true", help="Run metric self-tests and exit.")
     args = ap.parse_args()
 
@@ -309,6 +324,23 @@ def main() -> None:
         _evaluate("charngram", ngram, y, standardize=False),
         _evaluate("charngram+conf", np.hstack([ngram, atlas]), y, standardize=False),
     ]
+
+    if args.embeddings:
+        emb_map = _load_embeddings(args.embeddings)
+        keys = [(int(r["signal_id"]), r.get("assigned_topic_slug")) for r in rows]
+        mask = np.array([k in emb_map for k in keys])
+        if int(mask.sum()) == 0:
+            print("WARNING: no embeddings matched corpus rows — skipping semantic sets")
+        else:
+            emb = np.vstack([emb_map[k] for k in keys if k in emb_map])
+            ym, atlasm, ngramm = y[mask], atlas[mask], ngram[mask]
+            print(f"embeddings matched {int(mask.sum())}/{len(rows)} rows (dim={emb.shape[1]})")
+            results.append(_evaluate("openai_emb", emb, ym, standardize=True))
+            results.append(_evaluate("openai_emb+conf", np.hstack([emb, atlasm]), ym, standardize=True))
+            results.append(
+                _evaluate("openai_emb+charngram+conf",
+                          np.hstack([emb, ngramm, atlasm]), ym, standardize=False)
+            )
 
     report = {
         "schema_version": "atlas-phase-b-scope-gate-probe-v2",
