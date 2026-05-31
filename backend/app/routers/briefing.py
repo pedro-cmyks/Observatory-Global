@@ -721,16 +721,37 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                     "label": r["label"],
                     "parent_domain": _record_get(r, "parent_domain"),
                     "signal_count": int(r["signal_count"]),
-                    "avg_confidence": float(r["avg_confidence"]),
+                    "avg_confidence": (
+                        float(r["avg_confidence"])
+                        if _record_get(r, "avg_confidence") is not None else None
+                    ),
                     "high_confidence_count": int(r["high_confidence_count"]),
                     "gated_signal_count": int(_record_get(r, "gated_signal_count", 0) or 0),
                     "gate_scored_count": int(_record_get(r, "gate_scored_count", 0) or 0),
                     "source_table": _record_get(r, "source_table", "signal_topic_assignments"),
                     "model_version": _record_get(r, "model_version", "theme-hint-lex-v2"),
+                    # New optional fields populated when the emergent layer
+                    # supplied this row; null/empty for the static atlas
+                    # fallback.
+                    "description": _record_get(r, "description"),
+                    "velocity": (
+                        int(r["velocity"])
+                        if _record_get(r, "velocity") is not None else None
+                    ),
+                    "top_country_codes": list(_record_get(r, "top_country_codes") or []),
+                    "cohesion": (
+                        float(r["cohesion"])
+                        if _record_get(r, "cohesion") is not None else None
+                    ),
+                    "vendor_agreement": _record_get(r, "vendor_agreement"),
                 }
                 for r in top_atlas_topics
             ],
-            "top_atlas_topics_source": "signal_topic_assignments",
+            "top_atlas_topics_source": (
+                _record_get(top_atlas_topics[0], "source_table",
+                            "signal_topic_assignments")
+                if top_atlas_topics else "signal_topic_assignments"
+            ),
             "top_threads": top_threads,
             "top_threads_contract": TOP_THREADS_CONTRACT,
             "topics_by_domain": [
