@@ -1,0 +1,17 @@
+{
+  "schema": "atlas-emergent-precision-gate-v1-calibration",
+  "corpus": "docs/research/atlas-paper/phase-1-validation/labels/consensus/2026-05-28-3vendor-5k-consensus-corpus.jsonl",
+  "embeddings": "docs/research/atlas-paper/phase-1-validation/labels/consensus/2026-05-29-3vendor-5k-e5-embeddings.jsonl",
+  "n_rows": 4911,
+  "n_evidence": 1850,
+  "base_rate_precision": 0.3767,
+  "target_precision": 0.9,
+  "oof_roc_auc": 0.9461,
+  "global_operating_point": {
+    "threshold": 0.87376,
+    "precision": 0.9003,
+    "recall": 0.7908,
+    "kept": 1625
+  },
+  "note": "Threshold + precision/recall measured on pooled 5-fold OOF predictions (honest). Persisted weights are the final fit on all rows. Single global threshold — no per-topic table — because at inference the gate scores arbitrary HDBSCAN centroids with no atlas-topic identity."
+}
