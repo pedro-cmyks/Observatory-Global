@@ -1,12 +1,86 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-25 (narrative intelligence framework)
+Last updated: 2026-05-30 (Phase 2 emergent layer wired into the brief).
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
 ## Project Overview
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
+
+## Current Session Context (2026-05-30, emergent layer Phase 2 LIVE)
+
+The emergent topic discovery layer is wired end-to-end and shipped to
+production. Full handoff lives at
+`docs/state/2026-05-30-phase-2-emergent-wiring-handoff.md`; this block
+is the pointer.
+
+### What is now live
+
+- **Migration 046** (`backend/migrations/046_emergent_clusters.sql`)
+  applied to Supabase. `emergent_clusters` table with RLS + 3
+  secondary indexes.
+- **`/api/v2/briefing.top_atlas_topics`** now sources from the latest
+  `emergent_clusters` snapshot when available, falling back to the
+  static `signal_topic_assignments` ranking when no snapshot is fresh.
+  Field-mapped to the existing frontend contract so the brief
+  Watchlist surface renders unchanged.
+- **`GET /api/v2/theme/cluster-<id>`** new branch in `themes.py` →
+  `_emergent_cluster_detail` resolves cluster rows by id, joins
+  `signals_v2` against the persisted `sample_signal_ids`, returns the
+  same theme-detail shape so `ThemeDetail` panel renders without
+  changes.
+- **`GET /api/v2/emergent`** dedicated inspector endpoint.
+- **`backend/scripts/snapshot_emergent_topics.py`** writes one row per
+  surviving cluster, computes velocity vs the most recent prior
+  snapshot, translates HDBSCAN local indices → `signals_v2.id` before
+  persisting.
+- First production snapshot written at `2026-05-31T03:35:13Z`: 16
+  surviving clusters from 11,539 dedup'd signals.
+
+### Atlas-topic cron is healthy
+
+Earlier handoffs noted "stopped since 2026-05-27". Verified
+2026-05-30 22:05: launchd runs `com.atlas.atlas-topic-classifier`
+every 30 min including the gate-scoring step. Confirmed via
+`launchctl list | grep atlas` + tailing
+`~/AtlasLocalWorker/logs/atlas-topic-classifier.{err,out}.log`.
+
+### Suggested next-session priorities
+
+See `docs/state/2026-05-30-context-gap-inventory-proposal.md` for the
+diagnosis and proposal.
+
+1. **Inventory tool + lighter CLAUDE.md.** `scripts/project_inventory.py`
+   producing `docs/state/PROJECT_INVENTORY.md` (endpoints, frontend ↔
+   API map, cron state, recent commits). Plus `docs/ARCHITECTURE.md`
+   with a small Mermaid data-flow diagram. Plus `claude-md-management`
+   compaction pass.
+2. **Phase 3 cron** for emergent snapshots (launchd at 00/06/12/18
+   UTC) + daily 3-vendor calibration job at 03:00.
+3. **Phase 5** translation layer (`signal_translations` table +
+   `/api/v2/translate` endpoint + bilingual frontend display).
+4. **Phase 6** `dynamic_topics` lifecycle to replace the static
+   `atlas_topics` table as the canonical taxonomy.
+
+### Quick orientation commands
+
+```bash
+# Verify cron health
+launchctl list | grep atlas
+
+# Verify production brief sources from emergent layer
+curl -s 'https://atlas-api-pedro.fly.dev/api/v2/briefing?hours=24' \
+  | jq '.top_atlas_topics[0].source_table'
+# expected: "emergent_clusters"
+
+# Inspect latest snapshot
+psql "$DATABASE_URL" -c "
+  SELECT label, n_signals, raw_signal_count, velocity, top_country_codes
+  FROM emergent_clusters
+  WHERE snapshot_at = (SELECT MAX(snapshot_at) FROM emergent_clusters)
+  ORDER BY velocity DESC NULLS LAST, n_signals DESC LIMIT 10;"
+```
 
 ## Current Session Context (2026-05-29, scope gate DEPLOYED to production)
 

@@ -232,6 +232,155 @@ async def get_theme_drift(
         logger.error(f"Error fetching theme drift for {theme_code}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+async def _emergent_cluster_detail(
+    conn,
+    *,
+    cluster_row,
+    hours: int,
+    country_code: Optional[str] = None,
+):
+    """Theme-detail payload for an emergent cluster surfaced by the brief.
+
+    The brief Watchlist sources its rows from the latest `emergent_clusters`
+    snapshot (HDBSCAN cluster, ≥90%-precision-gated, DeepSeek labeled).
+    Clicking a row navigates to /api/v2/theme/cluster-<id>; this branch
+    resolves it by joining `signals_v2` against the cluster's persisted
+    `sample_signal_ids` (the kept-set preview the snapshot recorded). v1
+    sample size is small (~8) so the topSources/countryBreakdown/timeline
+    stats are computed from the preview, not the full cluster — flagged
+    via the `emergent_cluster_preview_sample` warning.
+    """
+    await conn.execute("SET statement_timeout = 15000")
+    sample_ids = list(cluster_row["sample_signal_ids"] or [])
+    raw_total = int(cluster_row["raw_signal_count"] or 0)
+    gated_total = int(cluster_row["n_signals"] or 0)
+    base_payload = {
+        "theme": f"cluster-{cluster_row['id']}",
+        "label": cluster_row["label"],
+        "description": cluster_row["description"],
+        "country": country_code,
+        "hours": hours,
+        "total": gated_total,
+        "rawTotal": raw_total,
+        "gated": gated_total,
+        "snapshotAt": cluster_row["snapshot_at"].isoformat()
+            if cluster_row["snapshot_at"] else None,
+        "velocity": int(cluster_row["velocity"])
+            if cluster_row["velocity"] is not None else None,
+        "cohesion": float(cluster_row["cohesion"])
+            if cluster_row["cohesion"] is not None else None,
+        "source": "emergent_clusters",
+        "relatedThemes": [],
+        "countryFraming": [],
+        "relatedConcepts": [],
+    }
+    if not sample_ids:
+        return {
+            **base_payload,
+            "signalSample": 0,
+            "avgSentiment": 0,
+            "signals": [],
+            "graphSignals": [],
+            "countryBreakdown": [
+                {"code": c, "count": 0, "sentiment": 0.0}
+                for c in (cluster_row["top_country_codes"] or [])
+            ],
+            "topSources": [],
+            "topPersons": [],
+            "timeline": [],
+            "warnings": ["emergent_cluster_empty_sample"],
+        }
+
+    where = ["s.id = ANY($1::bigint[])"]
+    params: list = [sample_ids]
+    if country_code:
+        where.append("s.country_code = $2")
+        params.append(country_code)
+    where_clause = " AND ".join(where)
+
+    signals = await conn.fetch(f"""
+        SELECT s.timestamp, s.country_code, s.source_name, s.source_url,
+               s.sentiment, s.headline, s.themes, s.persons
+        FROM signals_v2 s
+        WHERE {where_clause}
+        ORDER BY s.timestamp DESC
+    """, *params)
+
+    sample = len(signals)
+    avg_sentiment = (
+        sum(float(s["sentiment"] or 0) for s in signals) / sample if sample else 0
+    )
+
+    country_counts: dict = {}
+    source_counts: dict = {}
+    timeline_counts: dict = {}
+    person_counts: dict = {}
+    for s in signals:
+        cc = s["country_code"]
+        if cc:
+            country_counts.setdefault(cc, []).append(float(s["sentiment"] or 0))
+        sn = s["source_name"]
+        if sn:
+            source_counts.setdefault(sn, []).append(float(s["sentiment"] or 0))
+        ts = s["timestamp"]
+        if ts:
+            hour_bucket = ts.replace(minute=0, second=0, microsecond=0)
+            timeline_counts.setdefault(hour_bucket, []).append(float(s["sentiment"] or 0))
+        for p in (s["persons"] or []):
+            person_counts[p] = person_counts.get(p, 0) + 1
+
+    top_persons = [
+        {"name": p, "count": c}
+        for p, c in sorted(person_counts.items(), key=lambda x: x[1], reverse=True)
+        if _is_valid_person(p)
+    ][:10]
+
+    country_breakdown = [
+        {"code": cc, "count": len(vs), "sentiment": sum(vs) / len(vs)}
+        for cc, vs in sorted(country_counts.items(), key=lambda x: len(x[1]), reverse=True)
+    ][:15]
+    top_sources = [
+        {
+            "name": extract_domain(sn),
+            "count": len(vs),
+            "sentiment": sum(vs) / len(vs),
+            "family": classify_source(sn or ""),
+        }
+        for sn, vs in sorted(source_counts.items(), key=lambda x: len(x[1]), reverse=True)
+    ][:20]
+    timeline = [
+        {"hour": h.isoformat(), "count": len(vs), "sentiment": sum(vs) / len(vs)}
+        for h, vs in sorted(timeline_counts.items())
+    ]
+
+    def _sig(r):
+        return {
+            "timestamp": r["timestamp"].isoformat() if r["timestamp"] else None,
+            "country": r["country_code"],
+            "source": r["source_name"],
+            "url": r["source_url"],
+            "headline": r["headline"],
+            "sentiment": float(r["sentiment"] or 0),
+            "otherThemes": (r["themes"] or [])[:5],
+            "persons": (r["persons"] or [])[:5],
+        }
+
+    signal_rows = [_sig(r) for r in signals]
+
+    return {
+        **base_payload,
+        "signalSample": sample,
+        "avgSentiment": round(avg_sentiment, 3),
+        "signals": signal_rows,
+        "graphSignals": signal_rows,
+        "countryBreakdown": country_breakdown,
+        "topSources": top_sources,
+        "topPersons": top_persons,
+        "timeline": timeline,
+        "warnings": ["emergent_cluster_preview_sample"],
+    }
+
+
 async def _atlas_topic_detail(
     conn,
     *,
@@ -517,6 +666,31 @@ async def get_theme_details(
                         "sourceDiversity": round(float(stats["source_diversity"] or 0), 4),
                     },
                 }
+
+            # Emergent cluster slug: 'cluster-<id>'. Surfaced by the brief
+            # Watchlist from the latest emergent_clusters snapshot (mig 046).
+            # Resolves to the persisted preview sample so ThemeDetail renders
+            # the cluster's headlines without re-running clustering.
+            if theme_code.lower().startswith("cluster-") and theme_code[len("cluster-"):].isdigit():
+                cluster_id = int(theme_code[len("cluster-"):])
+                has_emergent = await conn.fetchval(
+                    "SELECT to_regclass('emergent_clusters') IS NOT NULL"
+                )
+                if has_emergent:
+                    cluster_row = await conn.fetchrow(
+                        "SELECT id, label, description, snapshot_at, "
+                        "snapshot_window_h, sample_signal_ids, top_country_codes, "
+                        "n_signals, raw_signal_count, velocity, cohesion "
+                        "FROM emergent_clusters WHERE id = $1",
+                        cluster_id,
+                    )
+                    if cluster_row:
+                        return await _emergent_cluster_detail(
+                            conn,
+                            cluster_row=cluster_row,
+                            hours=hours,
+                            country_code=country_code.upper() if country_code else None,
+                        )
 
             # Atlas-topic slug on a hot window. The historical branch above only
             # fires for long windows; here an atlas slug (e.g. "disease-outbreak")

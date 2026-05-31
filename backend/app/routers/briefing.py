@@ -384,7 +384,57 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         has_atlas_assignments = await conn.fetchval(
             "SELECT to_regclass('signal_topic_assignments') IS NOT NULL"
         )
-        if has_atlas_assignments:
+        has_emergent_clusters = await conn.fetchval(
+            "SELECT to_regclass('emergent_clusters') IS NOT NULL"
+        )
+
+        # Topic surface: prefer the emergent layer (HDBSCAN + ≥90%-precision
+        # gate + DeepSeek labels, mig 046, spec
+        # docs/superpowers/specs/2026-05-29-emergent-topic-discovery-design.md)
+        # when a fresh snapshot is available. Falls back to the static
+        # atlas_topics ranking pre-snapshot or during a snapshot pipeline
+        # outage so the brief Watchlist never goes empty.
+        #
+        # Mapped to the existing top_atlas_topics frontend contract so the
+        # brief renders unchanged: signal_count = raw cluster size,
+        # gated_signal_count = post-gate kept, gate_scored_count = raw size
+        # (every cluster member was scored by the gate). slug = 'cluster-<id>'
+        # resolves in /api/v2/theme/{slug} via the cluster-N detail branch.
+        top_atlas_topics: list = []
+        if has_emergent_clusters:
+            snap_row = await conn.fetchrow(
+                "SELECT MAX(snapshot_at) AS snap FROM emergent_clusters "
+                "WHERE snapshot_at > NOW() - ($1::int * INTERVAL '1 hour')",
+                hours,
+            )
+            snap = snap_row["snap"] if snap_row else None
+            if snap is not None:
+                top_atlas_topics = await _fetch_section(
+                    conn, degraded_segments, "top_atlas_topics", """
+                    SELECT
+                        ('cluster-' || id::text)                AS slug,
+                        label,
+                        NULL::text                              AS parent_domain,
+                        raw_signal_count::bigint                AS signal_count,
+                        NULL::float                             AS avg_confidence,
+                        n_signals::bigint                       AS high_confidence_count,
+                        n_signals::bigint                       AS gated_signal_count,
+                        raw_signal_count::bigint                AS gate_scored_count,
+                        'emergent_clusters'                     AS source_table,
+                        'emergent-snapshot-v1'                  AS model_version,
+                        description,
+                        velocity,
+                        top_country_codes,
+                        cohesion,
+                        vendor_agreement
+                    FROM emergent_clusters
+                    WHERE snapshot_at = $1
+                    ORDER BY velocity DESC NULLS LAST, n_signals DESC
+                    LIMIT 10
+                """, snap)
+
+        if not top_atlas_topics and has_atlas_assignments:
+            # Fallback: original static atlas_topics ranking. Same contract.
             top_atlas_topics = await _fetch_section(
                 conn, degraded_segments, "top_atlas_topics", """
                 SELECT t.slug,
@@ -393,9 +443,6 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                        COUNT(*)::bigint                                         AS signal_count,
                        ROUND(AVG(a.confidence)::numeric, 3)::float              AS avg_confidence,
                        COUNT(*) FILTER (WHERE a.confidence >= 0.75)::bigint     AS high_confidence_count,
-                       -- Scope gate (mig 045): gated_signal_count = assignments the
-                       -- 90%-precision gate keeps; gate_scored_count = how many were
-                       -- scored (coverage = gated/scored). Additive, non-breaking.
                        COUNT(*) FILTER (WHERE a.gate_kept)::bigint              AS gated_signal_count,
                        COUNT(*) FILTER (WHERE a.gate_kept IS NOT NULL)::bigint  AS gate_scored_count,
                        'signal_topic_assignments'                               AS source_table,
@@ -409,8 +456,6 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 ORDER BY signal_count DESC
                 LIMIT 10
             """, hours)
-        else:
-            top_atlas_topics = []
 
         # Living Narrative Threads (Milestone 2): assemble the same product
         # contract that /api/v2/threads serves so Brief leads with natural
