@@ -46,38 +46,50 @@ every 30 min including the gate-scoring step. Confirmed via
 `launchctl list | grep atlas` + tailing
 `~/AtlasLocalWorker/logs/atlas-topic-classifier.{err,out}.log`.
 
-### Important correction discovered late in this session
+### Threads wiring (2026-05-31) — closed
 
-The Phase 2 wiring above lands the emergent feed in
-`/api/v2/briefing.top_atlas_topics`, which is consumed by the
-**Briefing modal Watchlist** (`Briefing.tsx`) and the **/brief
-newspaper page** (`BriefNewspaper.tsx`). Pedro confirmed via mobile
-screenshot that the **Narrative Threads section on `/app`** — the
-primary visible panel — is fed by a different endpoint
-(`/api/v2/threads` → `backend/app/services/thread_intelligence.py`).
-The emergent clusters do NOT yet appear in Narrative Threads. Wiring
-them in is the top next-session item. Full notes in
-`docs/state/2026-05-30-phase-2-emergent-wiring-handoff.md`.
+Pedro caught the Phase 2 surface miss via mobile screenshot
+(2026-05-30). `/api/v2/threads` was the unwired panel. Resolved this
+session:
+
+- `backend/app/services/thread_intelligence.py` now ships
+  `assemble_emergent_thread` + `_fetch_emergent_threads_with_conn`.
+  `fetch_threads` merges atlas + emergent (sorted by `signal_count`
+  DESC) and the `emergent-cluster-<id>` `thread_id` prefix routes
+  `fetch_thread_detail` through `_fetch_emergent_thread_detail`.
+- Production verified at `https://atlas-api-pedro.fly.dev/api/v2/threads?hours=24`
+  returns merged threads (atlas + 1 emergent at signal_count 74 with
+  the current snapshot), `contract=living-narrative-threads-v0`. Detail
+  dispatch returns 200 for both prefixes (`emergent-cluster-17` and an
+  atlas thread).
+- `backend/tests/test_threads_emergent_augment_shape.py` freezes the
+  contract (6 shape guardrails; 28/28 tests across threads + emergent
+  + briefing).
+
+Known follow-up: evidence headlines come through HTML-entity-encoded
+(`&#xNNNN;`) in `_serialize_evidence`. Pre-existing issue affecting
+both atlas and emergent paths; `html.unescape` on the headline is the
+small fix.
 
 ### Suggested next-session priorities
 
 See `docs/state/2026-05-30-context-gap-inventory-proposal.md` for the
 diagnosis and proposal.
 
-1. **Wire `emergent_clusters` into `/api/v2/threads`** so the visible
-   Narrative Threads panel on `/app` actually shows the emergent
-   topics. Two paths (Augment first, Replace later — see handoff doc).
-2. **Inventory tool + lighter CLAUDE.md.** `scripts/project_inventory.py`
+1. **Inventory tool + lighter CLAUDE.md.** `scripts/project_inventory.py`
    producing `docs/state/PROJECT_INVENTORY.md` (endpoints, frontend ↔
    API map, cron state, recent commits). Plus `docs/ARCHITECTURE.md`
    with a small Mermaid data-flow diagram. Plus `claude-md-management`
    compaction pass.
-3. **Phase 3 cron** for emergent snapshots (launchd at 00/06/12/18
+2. **Phase 3 cron** for emergent snapshots (launchd at 00/06/12/18
    UTC) + daily 3-vendor calibration job at 03:00.
-4. **Phase 5** translation layer (`signal_translations` table +
+3. **Phase 5** translation layer (`signal_translations` table +
    `/api/v2/translate` endpoint + bilingual frontend display).
-5. **Phase 6** `dynamic_topics` lifecycle to replace the static
+4. **Phase 6** `dynamic_topics` lifecycle to replace the static
    `atlas_topics` table as the canonical taxonomy.
+5. Polish: `html.unescape` on `_serialize_evidence` headlines; bump
+   `sample_signal_ids` cap from 8 to ~24 in the snapshot script; add
+   frontend rendering of `velocity` to brief Watchlist row markup.
 
 ### Quick orientation commands
 
