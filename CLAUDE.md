@@ -46,21 +46,37 @@ every 30 min including the gate-scoring step. Confirmed via
 `launchctl list | grep atlas` + tailing
 `~/AtlasLocalWorker/logs/atlas-topic-classifier.{err,out}.log`.
 
+### Important correction discovered late in this session
+
+The Phase 2 wiring above lands the emergent feed in
+`/api/v2/briefing.top_atlas_topics`, which is consumed by the
+**Briefing modal Watchlist** (`Briefing.tsx`) and the **/brief
+newspaper page** (`BriefNewspaper.tsx`). Pedro confirmed via mobile
+screenshot that the **Narrative Threads section on `/app`** — the
+primary visible panel — is fed by a different endpoint
+(`/api/v2/threads` → `backend/app/services/thread_intelligence.py`).
+The emergent clusters do NOT yet appear in Narrative Threads. Wiring
+them in is the top next-session item. Full notes in
+`docs/state/2026-05-30-phase-2-emergent-wiring-handoff.md`.
+
 ### Suggested next-session priorities
 
 See `docs/state/2026-05-30-context-gap-inventory-proposal.md` for the
 diagnosis and proposal.
 
-1. **Inventory tool + lighter CLAUDE.md.** `scripts/project_inventory.py`
+1. **Wire `emergent_clusters` into `/api/v2/threads`** so the visible
+   Narrative Threads panel on `/app` actually shows the emergent
+   topics. Two paths (Augment first, Replace later — see handoff doc).
+2. **Inventory tool + lighter CLAUDE.md.** `scripts/project_inventory.py`
    producing `docs/state/PROJECT_INVENTORY.md` (endpoints, frontend ↔
    API map, cron state, recent commits). Plus `docs/ARCHITECTURE.md`
    with a small Mermaid data-flow diagram. Plus `claude-md-management`
    compaction pass.
-2. **Phase 3 cron** for emergent snapshots (launchd at 00/06/12/18
+3. **Phase 3 cron** for emergent snapshots (launchd at 00/06/12/18
    UTC) + daily 3-vendor calibration job at 03:00.
-3. **Phase 5** translation layer (`signal_translations` table +
+4. **Phase 5** translation layer (`signal_translations` table +
    `/api/v2/translate` endpoint + bilingual frontend display).
-4. **Phase 6** `dynamic_topics` lifecycle to replace the static
+5. **Phase 6** `dynamic_topics` lifecycle to replace the static
    `atlas_topics` table as the canonical taxonomy.
 
 ### Quick orientation commands

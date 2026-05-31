@@ -121,13 +121,47 @@ frontend contract; the response is mapped:
 - **No cron yet for emergent snapshots.** Phase 3 wires the launchd
   job (00/06/12/18 UTC) plus the daily 3-vendor calibration at 03:00.
 
+## CORRECTION — wrong surface targeted this session
+
+After Pedro reviewed the deployed app on his phone, he pointed out a
+context-gap miss: this session wired the emergent feed into the
+**Briefing modal Watchlist** and the **/brief newspaper page**, NOT
+into the **Narrative Threads** section that is the primary visible
+panel on `/app`. The screenshot he sent shows a thread list rendered
+by `NarrativeThreads.tsx` (which consumes `/api/v2/threads` →
+`backend/app/services/thread_intelligence.py`), not the briefing.
+
+`thread_intelligence.py` builds threads from atlas-topic anchors using
+`assemble_thread` + `confidence_band` + `_trend_label` + `_why_now` +
+`build_thread_id`. The emergent clusters do not flow into this path
+yet. So even though emergent_clusters is now powering the briefing's
+top_atlas_topics block, the visible Narrative Threads list on the
+mobile app is still computed from the static atlas pipeline.
+
+**This is exactly the context-gap problem documented in the inventory
+proposal.** The fix surfaces a NEW priority for the next session
+(below).
+
 ## Next priorities (suggested order)
 
-1. **Project inventory tool + lighter CLAUDE.md** (see
-   `docs/state/2026-05-30-context-gap-inventory-proposal.md`). This is
-   meta-work that pays off across every future session. Should be the
-   first item.
-2. **Phase 3 — cron for emergent snapshots.** Add
+1. **Wire `emergent_clusters` into `/api/v2/threads`** — the actual
+   visible surface. Two paths:
+   - **Augment**: `fetch_threads` returns atlas threads PLUS emergent
+     threads (each emergent cluster becomes a thread row with
+     fields mapped to the thread contract — confidence_band derived
+     from gate_threshold, trend from velocity, why_now from cluster
+     description). Non-breaking.
+   - **Replace**: route /api/v2/threads entirely through
+     emergent_clusters, deprecate the atlas-anchored thread_intelligence
+     code path. Cleaner but bigger; do this once Phase 6
+     `dynamic_topics` lifecycle is also built so emergent threads have
+     persistent identity + first_seen for the "Started Xh ago" string.
+   - Recommended: ship Augment first, evaluate, then plan the
+     Replace path.
+2. **Project inventory tool + lighter CLAUDE.md** (see
+   `docs/state/2026-05-30-context-gap-inventory-proposal.md`). The
+   miss above is the second-this-session example of why this matters.
+3. **Phase 3 — cron for emergent snapshots.** Add
    `run-emergent-snapshot.sh` to AtlasLocalWorker + launchd plist at
    4× daily cadence. Daily 3-vendor calibration job at 03:00.
 3. **Phase 5 — translation layer.** `signal_translations` table +
