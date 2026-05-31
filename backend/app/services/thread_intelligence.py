@@ -530,6 +530,236 @@ def _serialize_evidence(row: Any) -> dict[str, Any]:
     }
 
 
+EMERGENT_CLUSTER_THREAD_PREFIX = "emergent-cluster-"
+
+
+def assemble_emergent_thread(
+    cluster_row: Any,
+    sample_signals: list[Any],
+    gate_threshold: float | None = None,
+) -> dict[str, Any]:
+    """Map an `emergent_clusters` row + its sample signals to the living
+    thread contract used by the atlas-anchored path.
+
+    Mirrors `assemble_thread` so `NarrativeThreads.tsx` renders emergent
+    and atlas threads identically. Atlas-specific fields that do not yet
+    have an emergent equivalent (`parent_domain`, real `first_seen`,
+    `sentiment_swing_10h`) are left None until Phase 6's `dynamic_topics`
+    lifecycle provides them.
+
+    Mapping:
+      thread_id        = f"emergent-cluster-{id}"  (detail dispatch prefix)
+      anchor_topics    = [f"cluster-{id}"]
+      label / summary  = cluster.label / cluster.description
+      signal_count     = n_signals (post-gate kept)
+      avg_confidence   = gate_threshold  (proxy; every kept member
+                         already passed the >=90% precision gate)
+      changed_10h      = velocity (delta vs prior snapshot, ~6h apart;
+                         same sign semantics as atlas's 10h delta)
+      trend / why_now  = reuse the atlas helpers on velocity.
+    """
+    cluster_id = int(_record_get(cluster_row, "id"))
+    label_text = str(_record_get(cluster_row, "label") or f"cluster {cluster_id}")
+    description = _record_get(cluster_row, "description")
+    signal_count = int(_record_get(cluster_row, "n_signals") or 0)
+    velocity_raw = _record_get(cluster_row, "velocity")
+    velocity = int(velocity_raw) if velocity_raw is not None else 0
+    cohesion = _record_get(cluster_row, "cohesion")
+    snap_at = _record_get(cluster_row, "snapshot_at")
+    country_codes = [
+        str(code) for code in (_record_get(cluster_row, "top_country_codes") or [])
+    ]
+
+    sources: dict[str, int] = {}
+    persons: dict[str, int] = {}
+    timeline: dict[str, list[float]] = {}
+    for sig in sample_signals:
+        source_name = _record_get(sig, "source_name")
+        if source_name:
+            sources[source_name] = sources.get(source_name, 0) + 1
+        for person in (_as_list(_record_get(sig, "persons")) or []):
+            persons[str(person)] = persons.get(str(person), 0) + 1
+        ts = _record_get(sig, "timestamp")
+        if ts and hasattr(ts, "replace"):
+            hour_iso = ts.replace(minute=0, second=0, microsecond=0).isoformat()
+            timeline.setdefault(hour_iso, []).append(
+                float(_record_get(sig, "nlp_sentiment") or 0)
+            )
+
+    top_sources = sorted(sources, key=lambda k: sources[k], reverse=True)[:5]
+    top_entities = sorted(persons, key=lambda k: persons[k], reverse=True)[:10]
+    hourly_timeline = [
+        {
+            "hour": hour,
+            "count": len(vs),
+            "avg_sentiment": (sum(vs) / len(vs)) if vs else 0,
+        }
+        for hour, vs in sorted(timeline.items())
+    ]
+
+    source_count = len(sources)
+    country_count = len(country_codes)
+    avg_conf = float(gate_threshold) if gate_threshold is not None else 0.9
+
+    return {
+        "thread_id": f"{EMERGENT_CLUSTER_THREAD_PREFIX}{cluster_id}",
+        "label": label_text,
+        "summary": description or label_text,
+        "anchor_topics": [f"cluster-{cluster_id}"],
+        "parent_domain": None,
+        "signal_count": signal_count,
+        "source_count": source_count,
+        "country_count": country_count,
+        "avg_confidence": round(avg_conf, 3),
+        "first_seen": snap_at.isoformat() if hasattr(snap_at, "isoformat") else snap_at,
+        "changed_10h": velocity,
+        "trend": _trend_label(velocity, signal_count),
+        "sentiment_swing_10h": None,
+        "top_countries": country_codes,
+        # Name resolution stays on the frontend (countryNames lib).
+        "top_country_names": country_codes,
+        "top_sources": top_sources,
+        "top_people": [],
+        "top_entities": top_entities,
+        "hourly_timeline": hourly_timeline,
+        "source_mix": {
+            "top_sources": top_sources,
+            "source_count": source_count,
+        },
+        "quality": _quality_metadata(
+            signal_count=signal_count,
+            lex_count=0,
+            theme_count=0,
+            top_sources=top_sources,
+            country_codes=country_codes,
+            country_names=country_codes,
+            top_entities=top_entities,
+        ),
+        "confidence": confidence_band(
+            evidence_count=signal_count,
+            source_count=source_count,
+            geo_count=country_count,
+            assignment_confidence=avg_conf,
+        ),
+        "why_now": _why_now(velocity, country_codes),
+        "subthreads": [],
+        "related_threads": [],
+        "evidence_samples": [_serialize_evidence(sig) for sig in sample_signals],
+        "cluster_cohesion": float(cohesion) if cohesion is not None else None,
+        "source": "emergent_clusters",
+    }
+
+
+_EMERGENT_SAMPLE_SIGNALS_SQL = """
+    SELECT id, headline, source_name, source_url, country_code,
+           NULL::text       AS country_name,
+           timestamp,
+           persons,
+           sentiment        AS nlp_sentiment,
+           1::int           AS syndication_count,
+           NULL::float      AS confidence
+    FROM signals_v2
+    WHERE id = ANY($1::bigint[])
+    ORDER BY timestamp DESC
+"""
+
+
+async def _fetch_emergent_threads_with_conn(
+    conn: Any,
+    *,
+    hours: int,
+    limit: int,
+) -> list[dict[str, Any]]:
+    """Surface the latest `emergent_clusters` snapshot as living threads.
+
+    Returns [] when:
+      - the emergent_clusters table is missing (pre-mig 046 deploys),
+      - no snapshot landed within the requested `hours` window,
+      - the cluster sample_signal_ids set is empty.
+
+    The atlas path is unaffected by any failure here; the caller merges
+    whatever survives.
+    """
+    has_table = await conn.fetchval(
+        "SELECT to_regclass('emergent_clusters') IS NOT NULL"
+    )
+    if not has_table:
+        return []
+    snap_row = await conn.fetchrow(
+        f"SELECT MAX(snapshot_at) AS snap FROM emergent_clusters "
+        f"WHERE snapshot_at > NOW() - INTERVAL '{int(hours)} hours'"
+    )
+    snap = snap_row["snap"] if snap_row else None
+    if snap is None:
+        return []
+    cluster_rows = await conn.fetch(
+        """
+        SELECT id, label, description, snapshot_at, snapshot_window_h,
+               sample_signal_ids, top_country_codes, n_signals,
+               raw_signal_count, velocity, cohesion, gate_threshold
+        FROM emergent_clusters
+        WHERE snapshot_at = $1
+        ORDER BY velocity DESC NULLS LAST, n_signals DESC
+        LIMIT $2
+        """,
+        snap,
+        limit,
+        timeout=8,
+    )
+    threads: list[dict[str, Any]] = []
+    for cluster in cluster_rows:
+        sample_ids = list(cluster["sample_signal_ids"] or [])
+        sample_signals = []
+        if sample_ids:
+            sample_signals = await conn.fetch(
+                _EMERGENT_SAMPLE_SIGNALS_SQL, sample_ids, timeout=8,
+            )
+        gate_thr = cluster["gate_threshold"]
+        threads.append(assemble_emergent_thread(
+            cluster,
+            list(sample_signals),
+            gate_threshold=float(gate_thr) if gate_thr is not None else None,
+        ))
+    return threads
+
+
+async def _fetch_emergent_thread_detail(
+    conn: Any,
+    *,
+    cluster_id: int,
+) -> dict[str, Any] | None:
+    """Detail-fetch variant for a single emergent cluster thread."""
+    has_table = await conn.fetchval(
+        "SELECT to_regclass('emergent_clusters') IS NOT NULL"
+    )
+    if not has_table:
+        return None
+    cluster = await conn.fetchrow(
+        """
+        SELECT id, label, description, snapshot_at, snapshot_window_h,
+               sample_signal_ids, top_country_codes, n_signals,
+               raw_signal_count, velocity, cohesion, gate_threshold
+        FROM emergent_clusters WHERE id = $1
+        """,
+        cluster_id,
+        timeout=8,
+    )
+    if cluster is None:
+        return None
+    sample_ids = list(cluster["sample_signal_ids"] or [])
+    sample_signals = []
+    if sample_ids:
+        sample_signals = await conn.fetch(
+            _EMERGENT_SAMPLE_SIGNALS_SQL, sample_ids, timeout=8,
+        )
+    gate_thr = cluster["gate_threshold"]
+    return assemble_emergent_thread(
+        cluster,
+        list(sample_signals),
+        gate_threshold=float(gate_thr) if gate_thr is not None else None,
+    )
+
+
 async def _fetch_threads_with_conn(
     conn: Any,
     *,
@@ -557,27 +787,48 @@ async def fetch_threads(
     country_codes: list[str] | None = None,
     conn: Any = None,
 ) -> list[dict[str, Any]]:
-    if conn is not None:
-        return await _fetch_threads_with_conn(
-            conn,
+    """Returns atlas-anchored threads merged with emergent-cluster threads
+    from the latest `emergent_clusters` snapshot, sorted by signal_count
+    and trimmed to `limit`.
+
+    When the caller filters by `topic_slug` or `country_codes`, the
+    emergent path is skipped — those filters target the atlas taxonomy
+    (atlas slugs / atlas country aggregates) and have no emergent
+    analog yet. Emergent threads have their own detail dispatch via the
+    `emergent-cluster-<id>` thread_id prefix.
+    """
+    is_atlas_filtered = bool(topic_slug or country_codes)
+
+    async def _merged(active_conn: Any) -> list[dict[str, Any]]:
+        atlas = await _fetch_threads_with_conn(
+            active_conn,
             hours=hours,
             limit=limit,
             topic_slug=topic_slug,
             country_codes=country_codes,
         )
+        if is_atlas_filtered:
+            return atlas
+        try:
+            emergent = await _fetch_emergent_threads_with_conn(
+                active_conn, hours=hours, limit=limit,
+            )
+        except Exception as exc:
+            logger.warning("emergent threads degraded: %s", exc)
+            emergent = []
+        combined = atlas + emergent
+        combined.sort(key=lambda t: int(t.get("signal_count") or 0), reverse=True)
+        return combined[:limit]
+
+    if conn is not None:
+        return await _merged(conn)
 
     if db.pool is None:
         logger.warning("thread intelligence requested without database pool")
         return []
 
     async with db.pool.acquire() as own_conn:
-        return await _fetch_threads_with_conn(
-            own_conn,
-            hours=hours,
-            limit=limit,
-            topic_slug=topic_slug,
-            country_codes=country_codes,
-        )
+        return await _merged(own_conn)
 
 
 async def fetch_thread_detail(
@@ -585,6 +836,20 @@ async def fetch_thread_detail(
     thread_id: str,
     hours: int = 24,
 ) -> dict[str, Any] | None:
+    # Emergent cluster threads route through their own detail builder.
+    # The shape returned matches `assemble_emergent_thread`, so the
+    # ThreadFocusPanel renders the same fields as the atlas branch.
+    if thread_id.startswith(EMERGENT_CLUSTER_THREAD_PREFIX):
+        cluster_id_str = thread_id[len(EMERGENT_CLUSTER_THREAD_PREFIX):]
+        if not cluster_id_str.isdigit():
+            return None
+        if db.pool is None:
+            return None
+        async with db.pool.acquire() as conn:
+            return await _fetch_emergent_thread_detail(
+                conn, cluster_id=int(cluster_id_str),
+            )
+
     topic_slug, country_codes = parse_thread_id(thread_id)
     threads = await fetch_threads(
         hours=hours,
