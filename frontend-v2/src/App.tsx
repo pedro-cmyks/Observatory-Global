@@ -441,9 +441,16 @@ function AppContent() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const attention = params.get('attention')
-    if (!attention) return
     const theme = params.get('theme')
     const country = params.get('country') || undefined
+    // Brief → console deep-link without attention: open the theme detail on mount.
+    // Atlas-topic slugs (e.g. "disease-outbreak") resolve to the gated theme view.
+    if (theme && !attention) {
+      handleThemeSelect(theme, country, country ? resolveCountryName(country) : undefined)
+      if (country) setMapFlyCountry(country)
+      return
+    }
+    if (!attention) return
     const title = attention.replace(/_/g, ' ').trim()
     if (theme) {
       setSelectedPublicAttention(null)

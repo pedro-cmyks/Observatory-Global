@@ -15,6 +15,16 @@ interface BriefingData {
     negative_sentiment: { code: string; name: string; sentiment: number; signals: number }[]
     positive_sentiment: { code: string; name: string; sentiment: number; signals: number }[]
     top_themes: { theme: string; count: number }[]
+    top_atlas_topics?: {
+        slug: string
+        label: string
+        parent_domain?: string
+        signal_count: number
+        avg_confidence?: number
+        high_confidence_count?: number
+        gated_signal_count?: number
+        gate_scored_count?: number
+    }[]
     top_sources: { source: string; count: number }[]
     theme_country?: { theme: string; countries: { code: string; name: string; count: number }[] }[]
 }
@@ -154,18 +164,48 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect, prefe
                     </div>
                 </div>
 
-                <div className="briefing-section">
-                    <h3>Top Themes</h3>
-                    <div className="theme-chips">
-                        {data.top_themes.slice(0, 6).map(t => (
-                            <div key={t.theme} className="theme-chip" onClick={() => { onThemeSelect(t.theme); onClose() }}>
-                                <span>{getThemeIcon(t.theme)}</span>
-                                <span>{getThemeLabel(t.theme)}</span>
-                                <span className="chip-count">{t.count}</span>
-                            </div>
-                        ))}
+                {data.top_atlas_topics && data.top_atlas_topics.length > 0 ? (
+                    <div className="briefing-section">
+                        <h3>Watchlist</h3>
+                        <div className="atlas-topic-list">
+                            {data.top_atlas_topics.slice(0, 6).map(t => {
+                                const raw = t.signal_count
+                                const scored = t.gate_scored_count ?? 0
+                                const gated = t.gated_signal_count ?? 0
+                                const pending = scored === 0
+                                return (
+                                    <div key={t.slug} className="atlas-topic-row" onClick={() => { onThemeSelect(t.slug); onClose() }}>
+                                        <span className="atlas-topic-label">{t.label}</span>
+                                        {pending ? (
+                                            <span className="atlas-topic-metric">
+                                                <span className="atlas-topic-count">{raw.toLocaleString()}</span>
+                                                <span className="atlas-topic-pending">unfiltered</span>
+                                            </span>
+                                        ) : (
+                                            <span className="atlas-topic-metric">
+                                                <span className="atlas-topic-count">{gated.toLocaleString()}</span>
+                                                <span className="atlas-topic-sub">of {raw.toLocaleString()} matched</span>
+                                            </span>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="briefing-section">
+                        <h3>Top Themes</h3>
+                        <div className="theme-chips">
+                            {data.top_themes.slice(0, 6).map(t => (
+                                <div key={t.theme} className="theme-chip" onClick={() => { onThemeSelect(t.theme); onClose() }}>
+                                    <span>{getThemeIcon(t.theme)}</span>
+                                    <span>{getThemeLabel(t.theme)}</span>
+                                    <span className="chip-count">{t.count}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {data.theme_country && data.theme_country.length > 0 && (
                     <div className="briefing-section">

@@ -182,6 +182,81 @@
     font-size: 10px;
 }
 
+.atlas-topics-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.gate-badge {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--color-accent-primary, #1D9E75);
+    background: rgba(29, 158, 117, 0.12);
+    border: 1px solid rgba(29, 158, 117, 0.35);
+    border-radius: 10px;
+    padding: 2px 7px;
+    cursor: help;
+}
+
+.atlas-topic-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.atlas-topic-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 7px 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.atlas-topic-row:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.atlas-topic-label {
+    flex: 1;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.atlas-topic-metric {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.atlas-topic-count {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-accent-primary, #1D9E75);
+    font-variant-numeric: tabular-nums;
+}
+
+.atlas-topic-sub {
+    font-size: 10px;
+    color: #777;
+    font-variant-numeric: tabular-nums;
+}
+
+.atlas-topic-pending {
+    font-size: 10px;
+    color: #b08948;
+    font-style: italic;
+}
+
 .theme-country-map {
     display: flex;
     flex-direction: column;

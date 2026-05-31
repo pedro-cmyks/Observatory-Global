@@ -56,6 +56,16 @@ interface BriefingData {
         topic_coverage?: number | null
         sentiment_coverage?: number | null
     }[]
+    top_atlas_topics?: {
+        slug: string
+        label: string
+        parent_domain?: string
+        signal_count: number
+        avg_confidence?: number
+        high_confidence_count?: number
+        gated_signal_count?: number
+        gate_scored_count?: number
+    }[]
     top_themes_source?: string
     historical_coverage?: {
         source: 'hot' | 'historical_processed'
@@ -663,6 +673,46 @@ export function BriefNewspaper() {
                     })()}
 
                     <div className="brief-rule thin" />
+
+                    {/* ATLAS TOPICS — gated product taxonomy (global view) */}
+                    {!countryFilter && data.top_atlas_topics && data.top_atlas_topics.length > 0 && (
+                        <>
+                            <section className="brief-atlas-topics">
+                                <div className="brief-atlas-head">
+                                    <h3 className="brief-bottom-heading">Watchlist</h3>
+                                </div>
+                                <div className="brief-atlas-list">
+                                    {data.top_atlas_topics.slice(0, 8).map(t => {
+                                        const raw = t.signal_count
+                                        const scored = t.gate_scored_count ?? 0
+                                        const gated = t.gated_signal_count ?? 0
+                                        const pending = scored === 0
+                                        return (
+                                            <button
+                                                key={t.slug}
+                                                className="brief-atlas-row"
+                                                onClick={() => goToAtlas(atlasThemeParams(t.slug))}
+                                            >
+                                                <span className="brief-atlas-label">{t.label}</span>
+                                                {pending ? (
+                                                    <span className="brief-atlas-metric">
+                                                        <span className="brief-atlas-count">{raw.toLocaleString()}</span>
+                                                        <span className="brief-atlas-pending">unfiltered</span>
+                                                    </span>
+                                                ) : (
+                                                    <span className="brief-atlas-metric">
+                                                        <span className="brief-atlas-count">{gated.toLocaleString()}</span>
+                                                        <span className="brief-atlas-sub">of {raw.toLocaleString()} matched</span>
+                                                    </span>
+                                                )}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            </section>
+                            <div className="brief-rule thin" />
+                        </>
+                    )}
 
                     {/* THEME SECTIONS — main editorial body */}
                     <section className="brief-body">

@@ -232,6 +232,183 @@ async def get_theme_drift(
         logger.error(f"Error fetching theme drift for {theme_code}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+async def _atlas_topic_detail(
+    conn,
+    *,
+    topic_id: int,
+    slug: str,
+    label: str,
+    hours: int,
+    country_code: Optional[str] = None,
+):
+    """Theme-detail payload for an Atlas topic slug, scored by the scope gate.
+
+    The /api/v2/theme/{theme_code} hot path treats theme_code as a GDELT code
+    (`$1 = ANY(themes)`). Atlas slugs (e.g. "disease-outbreak") are not GDELT
+    codes, so on hot windows they resolve here instead: signals come from
+    signal_topic_assignments (theme-hint-lex-v2) and, once the scope gate has
+    scored them, only gate-kept assignments are shown — the same precise
+    evidence the briefing's gated_signal_count advertises. Before the gate has
+    scored a topic (gate_scored = 0) we fall back to all assignments and flag
+    the panel gate-pending. Returns the get_theme_details shape so ThemeDetail
+    renders unchanged, plus gated/raw/coverage extras.
+    """
+    await conn.execute("SET statement_timeout = 15000")
+    where = [
+        "a.topic_id = $1",
+        "a.method = 'lexicon'",
+        "a.model_version = 'theme-hint-lex-v2'",
+        f"a.assigned_at > NOW() - INTERVAL '{int(hours)} hours'",
+    ]
+    params: list = [topic_id]
+    if country_code:
+        where.append("s.country_code = $2")
+        params.append(country_code)
+    where_clause = " AND ".join(where)
+
+    counts = await conn.fetchrow(f"""
+        SELECT COUNT(*)::bigint                                       AS raw,
+               COUNT(*) FILTER (WHERE a.gate_kept)::bigint            AS gated,
+               COUNT(*) FILTER (WHERE a.gate_kept IS NOT NULL)::bigint AS scored
+        FROM signal_topic_assignments a
+        JOIN signals_v2 s ON s.id = a.signal_id
+        WHERE {where_clause}
+    """, *params)
+    raw_n = int(counts["raw"] or 0) if counts else 0
+    gated_n = int(counts["gated"] or 0) if counts else 0
+    scored_n = int(counts["scored"] or 0) if counts else 0
+    gate_pending = scored_n == 0
+    # Once scored, show only the gate-kept (precise) evidence; otherwise all.
+    kept_clause = "" if gate_pending else " AND a.gate_kept"
+
+    signals = await conn.fetch(f"""
+        SELECT s.timestamp, s.country_code, s.source_name, s.source_url,
+               s.sentiment, s.headline, s.themes, s.persons,
+               a.gate_score, a.gate_kept
+        FROM signal_topic_assignments a
+        JOIN signals_v2 s ON s.id = a.signal_id
+        WHERE {where_clause}{kept_clause}
+        ORDER BY s.timestamp DESC
+        LIMIT 200
+    """, *params)
+
+    country_breakdown = await conn.fetch(f"""
+        SELECT s.country_code,
+               COUNT(*)::bigint AS count,
+               AVG(s.sentiment) AS avg_sentiment
+        FROM signal_topic_assignments a
+        JOIN signals_v2 s ON s.id = a.signal_id
+        WHERE {where_clause}{kept_clause} AND s.country_code IS NOT NULL
+        GROUP BY s.country_code
+        ORDER BY count DESC
+        LIMIT 15
+    """, *params)
+
+    timeline = await conn.fetch(f"""
+        SELECT date_trunc('hour', s.timestamp) AS hour,
+               COUNT(*)::bigint AS count,
+               AVG(s.sentiment) AS avg_sentiment
+        FROM signal_topic_assignments a
+        JOIN signals_v2 s ON s.id = a.signal_id
+        WHERE {where_clause}{kept_clause}
+        GROUP BY hour
+        ORDER BY hour
+    """, *params)
+
+    top_sources = await conn.fetch(f"""
+        SELECT s.source_name,
+               COUNT(*)::bigint AS count,
+               AVG(s.sentiment) AS avg_sentiment
+        FROM signal_topic_assignments a
+        JOIN signals_v2 s ON s.id = a.signal_id
+        WHERE {where_clause}{kept_clause} AND s.source_name IS NOT NULL
+        GROUP BY s.source_name
+        ORDER BY count DESC
+        LIMIT 20
+    """, *params)
+
+    sample = len(signals)
+    avg_sentiment = (
+        sum(float(s["sentiment"] or 0) for s in signals) / sample if sample else 0
+    )
+
+    person_counts: dict = {}
+    for s in signals:
+        for p in (s["persons"] or []):
+            person_counts[p] = person_counts.get(p, 0) + 1
+    top_persons = [
+        {"name": p, "count": c}
+        for p, c in sorted(person_counts.items(), key=lambda x: x[1], reverse=True)
+        if _is_valid_person(p)
+    ][:10]
+
+    related_counts: dict = {}
+    for s in signals:
+        for t in (s["themes"] or []):
+            related_counts[t] = related_counts.get(t, 0) + 1
+    related_themes = [
+        {"theme": t, "count": c}
+        for t, c in sorted(related_counts.items(), key=lambda x: x[1], reverse=True)
+    ][:10]
+
+    def _sig(r):
+        return {
+            "timestamp": r["timestamp"].isoformat() if r["timestamp"] else None,
+            "country": r["country_code"],
+            "source": r["source_name"],
+            "url": r["source_url"],
+            "headline": r["headline"],
+            "sentiment": float(r["sentiment"] or 0),
+            "otherThemes": (r["themes"] or [])[:5],
+            "persons": (r["persons"] or [])[:5],
+            "gateScore": float(r["gate_score"]) if r["gate_score"] is not None else None,
+            "gateKept": bool(r["gate_kept"]) if r["gate_kept"] is not None else None,
+        }
+
+    signal_rows = [_sig(r) for r in signals]
+    warnings = ["atlas_topic_gated"] + (["gate_pending"] if gate_pending else [])
+
+    return {
+        "theme": slug,
+        "label": label,
+        "country": country_code,
+        "hours": hours,
+        "total": raw_n if gate_pending else gated_n,
+        "rawTotal": raw_n,
+        "gated": gated_n,
+        "gateScored": scored_n,
+        "gateCoverage": round(gated_n / scored_n, 4) if scored_n else None,
+        "gatePending": gate_pending,
+        "signalSample": sample,
+        "avgSentiment": round(avg_sentiment, 3),
+        "signals": signal_rows,
+        "graphSignals": signal_rows,
+        "countryBreakdown": [
+            {"code": r["country_code"], "count": int(r["count"]), "sentiment": float(r["avg_sentiment"] or 0)}
+            for r in country_breakdown
+        ],
+        "relatedThemes": related_themes,
+        "topSources": [
+            {
+                "name": extract_domain(r["source_name"]),
+                "count": int(r["count"]),
+                "sentiment": float(r["avg_sentiment"] or 0),
+                "family": classify_source(r["source_name"] or ""),
+            }
+            for r in top_sources
+        ],
+        "topPersons": top_persons,
+        "timeline": [
+            {"hour": t["hour"].isoformat(), "count": int(t["count"]), "sentiment": float(t["avg_sentiment"] or 0)}
+            for t in timeline
+        ],
+        "countryFraming": [],
+        "relatedConcepts": [],
+        "source": "signal_topic_assignments_gated",
+        "warnings": warnings,
+    }
+
+
 @router.get("/api/v2/theme/{theme_code}")
 async def get_theme_details(
     theme_code: str,
@@ -340,6 +517,26 @@ async def get_theme_details(
                         "sourceDiversity": round(float(stats["source_diversity"] or 0), 4),
                     },
                 }
+
+            # Atlas-topic slug on a hot window. The historical branch above only
+            # fires for long windows; here an atlas slug (e.g. "disease-outbreak")
+            # is not a GDELT code, so resolve it against the gated assignments
+            # instead of the $1 = ANY(themes) GDELT path below. UPPER_SNAKE GDELT
+            # codes never contain "-", so the hyphen reliably marks an atlas slug.
+            if "-" in theme_code:
+                topic_row = await conn.fetchrow(
+                    "SELECT id, slug, label FROM atlas_topics WHERE slug = $1",
+                    theme_code.lower(),
+                )
+                if topic_row:
+                    return await _atlas_topic_detail(
+                        conn,
+                        topic_id=topic_row["id"],
+                        slug=topic_row["slug"],
+                        label=topic_row["label"],
+                        hours=hours,
+                        country_code=country_code.upper() if country_code else None,
+                    )
 
             await conn.execute("SET statement_timeout = 25000")
             # Build WHERE clause based on filters

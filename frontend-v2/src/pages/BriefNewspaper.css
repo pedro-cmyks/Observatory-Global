@@ -527,6 +527,103 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+.brief-atlas-topics {
+    margin: 0 0 4px;
+}
+
+.brief-atlas-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.brief-atlas-head .brief-bottom-heading {
+    margin: 0;
+    padding: 0;
+    border: none;
+}
+
+.brief-gate-badge {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-accent-primary, #1D9E75);
+    background: rgba(29, 158, 117, 0.1);
+    border: 1px solid rgba(29, 158, 117, 0.35);
+    border-radius: 10px;
+    padding: 2px 8px;
+    cursor: help;
+}
+
+.brief-atlas-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px 18px;
+}
+
+.brief-atlas-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    background: none;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 6px 2px;
+    cursor: pointer;
+    text-align: left;
+    transition: color 0.12s, background 0.12s;
+}
+
+.brief-atlas-row:hover { background: rgba(29, 158, 117, 0.06); }
+
+.brief-atlas-label {
+    flex: 1;
+    font-family: Georgia, serif;
+    font-size: 13px;
+    color: #cbd5e1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.brief-atlas-row:hover .brief-atlas-label { color: #f1f5f9; }
+
+.brief-atlas-metric {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.brief-atlas-count {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-accent-primary, #1D9E75);
+    font-variant-numeric: tabular-nums;
+}
+
+.brief-atlas-sub {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 9px;
+    color: #64748b;
+    font-variant-numeric: tabular-nums;
+}
+
+.brief-atlas-pending {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 9px;
+    color: #b08948;
+    font-style: italic;
+}
+
+@media (max-width: 640px) {
+    .brief-atlas-list { grid-template-columns: 1fr; }
+}
+
 .brief-bottom-country {
     background: none;
     border: none;

@@ -246,6 +246,7 @@ function formatThemeWords(value: string): string {
     return value
         .replace(/_AND_/g, ' & ')
         .replace(/_/g, ' ')
+        .replace(/-/g, ' ')
         .replace(/\b([A-Z]+)\d+\b/g, '$1')
         .replace(/\s+/g, ' ')
         .toLowerCase()
