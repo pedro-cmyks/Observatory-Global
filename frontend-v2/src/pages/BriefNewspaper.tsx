@@ -65,6 +65,9 @@ interface BriefingData {
         high_confidence_count?: number
         gated_signal_count?: number
         gate_scored_count?: number
+        velocity?: number | null
+        description?: string | null
+        top_country_codes?: string[]
     }[]
     top_themes_source?: string
     historical_coverage?: {
@@ -702,6 +705,11 @@ export function BriefNewspaper() {
                                                 ) : (
                                                     <span className="brief-atlas-metric">
                                                         <span className="brief-atlas-count">{gated.toLocaleString()}</span>
+                                                        {t.velocity != null && t.velocity !== 0 && (
+                                                            <span className={`brief-atlas-vel ${t.velocity > 0 ? 'brief-atlas-vel-up' : 'brief-atlas-vel-down'}`}>
+                                                                {t.velocity > 0 ? `▲ +${t.velocity}` : `▼ ${t.velocity}`}
+                                                            </span>
+                                                        )}
                                                         <span className="brief-atlas-sub">of {raw.toLocaleString()} matched</span>
                                                     </span>
                                                 )}

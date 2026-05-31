@@ -159,7 +159,8 @@ def _cluster(embs: np.ndarray, min_cluster_size: int, min_samples: int,
     return labels
 
 
-def _cluster_stats(labels: np.ndarray, embs: np.ndarray, rows: list[dict]):
+def _cluster_stats(labels: np.ndarray, embs: np.ndarray, rows: list[dict],
+                   top_k: int = 8):
     by: dict[int, list[int]] = {}
     for i, lab in enumerate(labels):
         if lab == -1:
@@ -173,7 +174,7 @@ def _cluster_stats(labels: np.ndarray, embs: np.ndarray, rows: list[dict]):
         centroid /= max(float(np.linalg.norm(centroid)), 1e-9)
         cos = members_emb @ centroid
         order = np.argsort(-cos)
-        top_idxs = [int(idxs[j]) for j in order[:8]]
+        top_idxs = [int(idxs[j]) for j in order[:top_k]]
         countries: Counter = Counter()
         for j in idxs:
             cc = rows[int(j)]["country_code"]
@@ -218,7 +219,8 @@ def _gate_scores(gate: dict, signal_embs: np.ndarray, centroid: np.ndarray) -> n
     return 1.0 / (1.0 + np.exp(-z))
 
 
-def _apply_gate(clusters: list[dict], embs: np.ndarray, gate: dict, min_kept: int) -> list[dict]:
+def _apply_gate(clusters: list[dict], embs: np.ndarray, gate: dict, min_kept: int,
+                top_k: int = 8) -> list[dict]:
     """Score every cluster member, keep score >= threshold.
 
     Mutates each cluster dict in place: adds raw_size, kept_size,
@@ -251,7 +253,7 @@ def _apply_gate(clusters: list[dict], embs: np.ndarray, gate: dict, min_kept: in
         cos = kept_embs @ new_c
         order = np.argsort(-cos)
         c["cohesion"] = float(cos.mean())
-        c["top_signal_idxs"] = [int(kept_idxs[j]) for j in order[:8]]
+        c["top_signal_idxs"] = [int(kept_idxs[j]) for j in order[:top_k]]
         survivors.append(c)
     survivors.sort(key=lambda c: c["kept_size"], reverse=True)
     return survivors

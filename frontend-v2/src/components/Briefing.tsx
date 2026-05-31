@@ -24,6 +24,9 @@ interface BriefingData {
         high_confidence_count?: number
         gated_signal_count?: number
         gate_scored_count?: number
+        velocity?: number | null
+        description?: string | null
+        top_country_codes?: string[]
     }[]
     top_sources: { source: string; count: number }[]
     theme_country?: { theme: string; countries: { code: string; name: string; count: number }[] }[]
@@ -184,6 +187,11 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect, prefe
                                         ) : (
                                             <span className="atlas-topic-metric">
                                                 <span className="atlas-topic-count">{gated.toLocaleString()}</span>
+                                                {t.velocity != null && t.velocity !== 0 && (
+                                                    <span className={`atlas-topic-vel ${t.velocity > 0 ? 'atlas-topic-vel-up' : 'atlas-topic-vel-down'}`}>
+                                                        {t.velocity > 0 ? `▲ +${t.velocity}` : `▼ ${t.velocity}`}
+                                                    </span>
+                                                )}
                                                 <span className="atlas-topic-sub">of {raw.toLocaleString()} matched</span>
                                             </span>
                                         )}

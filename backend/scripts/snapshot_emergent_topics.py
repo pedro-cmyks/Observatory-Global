@@ -49,6 +49,11 @@ from backend.scripts.emergent_poc import (
 
 
 CENTROID_MATCH_THRESHOLD = 0.85
+# Cluster preview size persisted per snapshot. POC default is 8 (stdout
+# friendly); the production snapshot persists more headlines so the thread
+# focus panel + cluster-N theme detail can render richer evidence without
+# re-running clustering.
+SAMPLE_TOP_K = 24
 DEFAULT_GATE = Path(
     "docs/research/atlas-paper/phase-1-validation/models/2026-05-30-emergent-precision-gate-v1.json"
 )
@@ -184,7 +189,7 @@ async def _write_snapshot(
     for c, dl in zip(clusters, ds_labels):
         kept_cen = _kept_centroid(c, embs)
         velocity = _compute_velocity(c, kept_cen, prior)
-        raw_sample_local = _row_raw_sample(embs, c["all_idxs"])
+        raw_sample_local = _row_raw_sample(embs, c["all_idxs"], k=SAMPLE_TOP_K)
         # _cluster_stats / _apply_gate emit LOCAL row indices, not signal ids.
         # Translate to signals_v2.id before persisting so downstream readers
         # (e.g. /api/v2/theme/cluster-N) can JOIN signals_v2 by id directly.
@@ -276,7 +281,7 @@ async def main() -> None:
     raw_count = int(((labels != -1).any()) and (int(labels.max()) + 1))
     print(f"  {raw_count} raw clusters | {n_noise} noise ({100*n_noise/len(labels):.1f}%)", file=sys.stderr)
 
-    all_clusters = _cluster_stats(labels, embs, rows)
+    all_clusters = _cluster_stats(labels, embs, rows, top_k=SAMPLE_TOP_K)
     if not all_clusters:
         print("no clusters", file=sys.stderr)
         await conn.close()
@@ -287,7 +292,7 @@ async def main() -> None:
         f"gate threshold={gate['_threshold']:.3f}  min_kept={args.min_kept}",
         file=sys.stderr,
     )
-    gated = _apply_gate(all_clusters, embs, gate, args.min_kept)
+    gated = _apply_gate(all_clusters, embs, gate, args.min_kept, top_k=SAMPLE_TOP_K)
     print(f"  {len(gated)} survive after precision filter", file=sys.stderr)
     clusters = gated[: args.top_clusters]
 

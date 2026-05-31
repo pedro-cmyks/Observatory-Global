@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import json
 import logging
 from typing import Any
@@ -515,9 +516,14 @@ def evidence_role(syndication_count: int) -> str:
 def _serialize_evidence(row: Any) -> dict[str, Any]:
     timestamp = _record_get(row, "timestamp")
     syndication = int(_record_get(row, "syndication_count") or 1)
+    raw_headline = _record_get(row, "headline")
+    # signals_v2.headline is stored with XML numeric entities intact
+    # (`&#x041D;...`). Unescape on the way out so the brief, the threads
+    # focus panel, and any consumer renders human-readable text.
+    headline = html.unescape(raw_headline) if raw_headline else raw_headline
     return {
         "id": str(_record_get(row, "id")),
-        "headline": _record_get(row, "headline"),
+        "headline": headline,
         "source": _record_get(row, "source_name"),
         "url": _record_get(row, "source_url"),
         "country_code": _record_get(row, "country_code"),

@@ -1,3 +1,4 @@
+import html
 import json
 import os
 from datetime import datetime, timezone
@@ -359,7 +360,7 @@ async def _emergent_cluster_detail(
             "country": r["country_code"],
             "source": r["source_name"],
             "url": r["source_url"],
-            "headline": r["headline"],
+            "headline": html.unescape(r["headline"]) if r["headline"] else r["headline"],
             "sentiment": float(r["sentiment"] or 0),
             "otherThemes": (r["themes"] or [])[:5],
             "persons": (r["persons"] or [])[:5],
@@ -506,7 +507,7 @@ async def _atlas_topic_detail(
             "country": r["country_code"],
             "source": r["source_name"],
             "url": r["source_url"],
-            "headline": r["headline"],
+            "headline": html.unescape(r["headline"]) if r["headline"] else r["headline"],
             "sentiment": float(r["sentiment"] or 0),
             "otherThemes": (r["themes"] or [])[:5],
             "persons": (r["persons"] or [])[:5],

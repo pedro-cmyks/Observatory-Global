@@ -620,6 +620,21 @@
     font-style: italic;
 }
 
+.brief-atlas-vel {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.brief-atlas-vel-up {
+    color: #4ade80;
+}
+
+.brief-atlas-vel-down {
+    color: #f87171;
+}
+
 @media (max-width: 640px) {
     .brief-atlas-list { grid-template-columns: 1fr; }
 }
