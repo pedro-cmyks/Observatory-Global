@@ -105,3 +105,7 @@ backend/enrichment/lexicons/*.mined.json.bak
 
 # Embedding caches (large, regenerable via scripts/embed_corpus_{openai,local}.py)
 *-embeddings.jsonl
+
+# Obsidian vault config (per-user state)
+.obsidian/
+docs/.obsidian/
