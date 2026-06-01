@@ -37,6 +37,11 @@ gating, annotator agreement, and the future paper series.
   `noise` under consensus — emergent clusters carry significant off-topic
   membership, so the role layer is a precision/coverage filter, not just a
   re-label of cluster membership.
+- [[2026-06-01-coverage-root-cause-lexicon-recall]] — the 17.77% gate kept rate
+  is not gate over-abstention. 91% of the evidence-role gold set (and 93% of
+  true primary_evidence) has no lexicon assignment at all. Coverage is a
+  candidate-recall problem; the emergent-cluster + evidence-role student is the
+  coverage engine. Do not lower the scope-gate threshold to chase coverage.
 
 ## Reports and artifacts
 

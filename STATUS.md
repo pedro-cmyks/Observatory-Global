@@ -93,11 +93,25 @@ Operational changes now verified:
   `git diff --check` reports no whitespace errors. Current student status is
   `ready_for_student_training`.
 
+- Coverage root-cause diagnosis (read-only, no gate changes):
+  `docs/research/topic-quality/2026-06-01-coverage-root-cause-lexicon-recall.md`.
+  The `17.77%` kept rate is not gate over-abstention. Decile 1 (`gate_score`
+  0.0-0.1) is ~75% of scored volume at avg score `0.013` — genuine
+  near-zero-confidence lexicon noise, correctly abstained. Cross-checking the
+  `605`-row evidence-role gold set: `551/605` (`91.1%`) gold rows and
+  `269/288` (`93.4%`) true `primary_evidence` rows have **no lexicon
+  assignment at all**. The bottleneck is candidate recall, not the gate.
+  Lowering the threshold cannot recover the 91% of real evidence that never
+  enters the pipeline. Coverage and the evidence-role pilot are the same
+  problem; the emergent-cluster + evidence-role student path is the coverage
+  engine, not a separate paper track.
+
 Next operational work:
 
 - Add the daily 3-vendor calibration job at 03:00.
-- Improve scope-gate coverage without dropping below the 90% precision target;
-  current 24h kept rate is only `17.77%` of scored assignments.
+- Do NOT lower the scope-gate threshold to chase coverage; the gate is well
+  calibrated on what it receives. Treat the emergent-cluster + evidence-role
+  path as the coverage engine instead.
 - Continue the evidence-role pilot with teacher labeling, consensus, and local
   student evaluation before promoting any production read path.
 - Decide whether to copy OpenAI/Anthropic keys into the local worker env for
