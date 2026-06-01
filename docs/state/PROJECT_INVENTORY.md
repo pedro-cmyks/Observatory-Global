@@ -1,6 +1,6 @@
 # Project Inventory
 
-Generated: 2026-06-01T11:30:25.082218+00:00  
+Generated: 2026-06-01T12:50:11.329662+00:00
 Regen: `python scripts/project_inventory.py`
 
 ## Endpoints (backend)
@@ -125,12 +125,16 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 
 | Label | Program | Schedule | RunAtLoad | Last log mtime | Last log line |
 |---|---|---|---|---|---|
-| `com.atlas.atlas-topic-classifier` | `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` | every 1800s | True | 2026-06-01T11:02:45.912024+00:00 | } |
-| `com.atlas.emergent-snapshot` | `/Users/pedro/AtlasLocalWorker/run-emergent-snapshot.sh` | 0:00, 6:00, 12:00, 18:00 | True | 2026-06-01T11:00:01.366086+00:00 | grep: /Users/pedro/Desktop/PEDRO/Cursos/ObservatorioGlobal/.env: Operation not permitted |
+| `com.atlas.atlas-topic-classifier` | `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` | every 1800s | True | 2026-06-01T12:34:38.847646+00:00 | } |
+| `com.atlas.emergent-snapshot` | `/Users/pedro/AtlasLocalWorker/run-emergent-snapshot.sh` | 0:00, 6:00, 12:00, 18:00 | True | 2026-06-01T12:46:12.409762+00:00 | } |
 | `com.atlas.local-hot-cold-catchup` | `/Users/pedro/AtlasLocalWorker/run-local-hot-cold-catchup.sh` | 0:10, 1:10, 2:10, 3:10, 4:10, 5:10 | True | 2026-06-01T10:10:49.523263+00:00 | } |
 
 ## Recent commits (last 2 weeks)
 
+- `3e3c516 2026-06-01 fix(ops): run emergent snapshot cron off desktop`
+- `955f8da 2026-06-01 docs(obsidian): add session hygiene maps`
+- `e6ccca5 2026-06-01 docs(obsidian): add 000-INDEX.md vault entry point + gitignore .obsidian/`
+- `86df741 2026-06-01 docs: inventory tool + ARCHITECTURE refresh + CLAUDE.md compact`
 - `7cd9dc4 2026-05-31 feat(threads): bilingual evidence in ThreadFocusPanel`
 - `bf3d8f2 2026-05-31 feat(translate): lazy headline translation layer (Phase 5)`
 - `c0b4cee 2026-05-31 docs: close threads-wiring milestone in CLAUDE.md`
@@ -207,7 +211,3 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 - `5b02e7c 2026-05-22 feat(nlp): add product-cell effective coverage report + baseline`
 - `f1870c8 2026-05-22 feat(history): automate local hot-cold catchup`
 - `21148a1 2026-05-22 docs(status): record incremental hot-cold catch-up`
-- `c1fcc2a 2026-05-21 chore(fly): split api and nlp runtime images`
-- `a7e417b 2026-05-21 feat(history): preaggregate historical briefing sources`
-- `d9a070e 2026-05-21 feat(history): surface historical coverage metadata`
-- `5e2f9f5 2026-05-21 feat(history): route atlas topic detail from processed history`

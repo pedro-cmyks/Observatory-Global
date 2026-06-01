@@ -24,6 +24,8 @@ and production runtime constraints.
 - Raw historical archive remains local under `/Users/pedro/AtlasArchive`.
 - Runnable cron/ML workers live under `/Users/pedro/AtlasLocalWorker`, not the
   Desktop checkout.
+- Cron credentials live in `/Users/pedro/AtlasLocalWorker/.env`; launchd
+  runners must not read the Desktop repo `.env` unless explicitly debugging.
 - Use `scripts/project_inventory.py` to refresh cron and endpoint truth before
   trusting old handoffs.
 - New public schema tables should enable RLS in the same migration.
@@ -35,5 +37,7 @@ and production runtime constraints.
 - `backend/scripts/historical_process_partition.py`
 - `backend/scripts/historical_sync.py`
 - `backend/scripts/snapshot_emergent_topics.py`
+- `scripts/run-emergent-snapshot.sh`
+- `scripts/install-emergent-snapshot-launchd.sh`
 - `scripts/project_inventory.py`
 - `infra/launchd/`

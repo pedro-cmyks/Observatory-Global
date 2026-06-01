@@ -93,6 +93,19 @@ Key docs/files changed in session 25 (Path C + projection note — 2026-05-25):
 - `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.jsonl` — first v2 stratified sample, 256 rows across 30 active topics and four buckets.
 - `docs/research/topic-quality/benchmark-samples/2026-05-25-atlas-v2-stratified-sample.md` — manifest for the first v2 stratified sample.
 
+Key docs/files changed in session 26 (context hygiene + emergent cron — 2026-06-01):
+- `SESSION_LOG.md` — restored a high-level 2026-05-22 through 2026-05-31 work summary so late-May work is visible outside `CLAUDE.md`.
+- `docs/000-INDEX.md` — Obsidian vault entry point now links the main MOCs.
+- `docs/maps/Data Operations.md` — data ops MOC. Includes the guardrail that cron credentials live in `/Users/pedro/AtlasLocalWorker/.env`, not the Desktop repo `.env`.
+- `docs/maps/Narrative Intelligence.md` — Living Narrative Threads and emergent-cluster MOC.
+- `docs/maps/Validation and Paper Track.md` — benchmark, annotator, scope-gate, and paper-evidence MOC.
+- `docs/maps/Frontend Product Surfaces.md` — existing UI surfaces and backend contracts MOC.
+- `scripts/run-emergent-snapshot.sh` — launchd-safe emergent snapshot runner. Reads `/Users/pedro/AtlasLocalWorker/.env`; Desktop `.env` is only an explicit debug escape hatch.
+- `scripts/install-emergent-snapshot-launchd.sh` — installs/syncs the emergent runtime, model artifact, private worker `.env`, and LaunchAgent.
+- `infra/launchd/com.atlas.emergent-snapshot.plist` — versioned LaunchAgent for 00/06/12/18 local emergent snapshots.
+- `backend/tests/test_emergent_snapshot_runner.py` — shape guardrails for the runner, installer, and plist.
+- `docs/state/PROJECT_INVENTORY.md` — regenerated after cron fix; `com.atlas.emergent-snapshot` no longer reports the Desktop `.env` permission failure as its latest log line.
+
 Session 22 topic taxonomy state:
 - Path A pilot result: `election-legitimacy-dispute` lex_pct `6.3% -> 31.6%`, high_conf `5 -> 27`, multilingual terms drove `74%` of lex-match volume; global coverage moved `13.08% -> 13.35%`.
 - Armed-conflict partial result: lex_pct `2.10% -> 6.56%`, high_conf `22 -> 85`, global v2 coverage after re-backfill `17.22%`. Treat as partial because the 30% gate did not clear; do not re-add broad armed-incident terms just to raise recall.

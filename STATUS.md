@@ -1,5 +1,44 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-05-25 (narrative intelligence framework)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-06-01 (emergent cron + docs hygiene)
+
+---
+
+## Current handoff (2026-06-01) — emergent cron and documentation hygiene
+
+The repo is still on `v3-intel-layer`. The latest documented hygiene commit is
+`955f8da docs(obsidian): add session hygiene maps`.
+
+Operational changes now verified:
+
+- Duplicate invalid Git refs created by iCloud-style filename suffixes were
+  moved to `.git/refs-invalid-backup/2026-06-01/`; `git status`, `git log`, and
+  `git show-ref` work again.
+- `SESSION_LOG.md` now has a 2026-05-22 through 2026-05-31 summary block.
+- Obsidian MOCs now live under `docs/maps/` and are linked from
+  `docs/000-INDEX.md`.
+- `scripts/run-emergent-snapshot.sh`,
+  `scripts/install-emergent-snapshot-launchd.sh`, and
+  `infra/launchd/com.atlas.emergent-snapshot.plist` are versioned.
+- `com.atlas.emergent-snapshot` now runs from `/Users/pedro/AtlasLocalWorker`
+  and reads credentials from `/Users/pedro/AtlasLocalWorker/.env` (mode `600`),
+  not from the Desktop repo `.env`.
+- Verification run on 2026-06-01: the emergent cron pulled 15,000 signals,
+  deduped to 13,031 headlines, found 12 raw HDBSCAN clusters, kept 9 after the
+  precision gate, labeled via DeepSeek, wrote 9 `emergent_clusters` rows, and
+  exited with `LastExitStatus = 0`.
+- `docs/state/PROJECT_INVENTORY.md` was regenerated after the cron fix. Its
+  cron row for `com.atlas.emergent-snapshot` now points to the worker runner
+  with a fresh log timestamp instead of the old Desktop `.env` permission
+  error.
+
+Next operational work:
+
+- Add the daily 3-vendor calibration job at 03:00.
+- Decide whether to tune the emergent cron size after a few runs; this run spent
+  several minutes in HDBSCAN with 13,031 deduped headlines, which is acceptable
+  but worth watching.
+- Keep the docs hygiene loop small: regenerate `PROJECT_INVENTORY.md`, update
+  the affected MOC, and keep `CLAUDE.md` as current-state pointers.
 
 ---
 

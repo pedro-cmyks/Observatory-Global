@@ -141,6 +141,9 @@ Verify with `launchctl list | grep atlas` and tail
   hangs torch/transformers/asyncpg imports at 0% CPU. All cron-fired
   Python (atlas-topic, emergent snapshot, scope-gate scoring) MUST run
   from the off-iCloud venv.
+- **Cron secrets live off-Desktop** in `/Users/pedro/AtlasLocalWorker/.env`.
+  Launchd runners must not read the Desktop repo `.env`; macOS privacy controls
+  can block those reads with `Operation not permitted`.
 - **Read paths degrade**, not error: missing `emergent_clusters` /
   `signal_topic_assignments` / `historical_topic_country_daily` →
   endpoints return empty arrays + typed warnings

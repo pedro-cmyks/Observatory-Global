@@ -230,7 +230,7 @@ def render(
     lines: list[str] = []
     lines.append("# Project Inventory")
     lines.append("")
-    lines.append(f"Generated: {datetime.now(timezone.utc).isoformat()}  ")
+    lines.append(f"Generated: {datetime.now(timezone.utc).isoformat()}")
     lines.append("Regen: `python scripts/project_inventory.py`")
     lines.append("")
 

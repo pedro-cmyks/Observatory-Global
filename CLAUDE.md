@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-05-30 (Phase 2 emergent layer wired into the brief).
+Last updated: 2026-06-01 (emergent snapshot cron verified + docs hygiene).
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -8,7 +8,7 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
-## Current Session Context (2026-05-30, emergent layer Phase 2 LIVE)
+## Current Session Context (2026-06-01, emergent layer Phase 3 cron LIVE)
 
 The emergent topic discovery layer is wired end-to-end and shipped to
 production. Full handoff lives at
@@ -37,6 +37,20 @@ is the pointer.
   persisting.
 - First production snapshot written at `2026-05-31T03:35:13Z`: 16
   surviving clusters from 11,539 dedup'd signals.
+- **Phase 3 cron is installed and verified.**
+  `scripts/run-emergent-snapshot.sh`,
+  `scripts/install-emergent-snapshot-launchd.sh`, and
+  `infra/launchd/com.atlas.emergent-snapshot.plist` are now versioned.
+  The installed runner lives at
+  `/Users/pedro/AtlasLocalWorker/run-emergent-snapshot.sh` and reads
+  credentials from `/Users/pedro/AtlasLocalWorker/.env` (mode `600`),
+  not from the Desktop repo `.env`.
+- Verification run on 2026-06-01:
+  `com.atlas.emergent-snapshot` pulled 15,000 hot signals, deduped to
+  13,031 headlines, embedded with e5-base, found 12 raw HDBSCAN
+  clusters, kept 9 after the precision gate, labeled via DeepSeek, and
+  wrote 9 `emergent_clusters` rows. `launchctl list
+  com.atlas.emergent-snapshot` reported `LastExitStatus = 0`.
 
 ### Atlas-topic cron is healthy
 
@@ -76,18 +90,13 @@ small fix.
 See `docs/state/2026-05-30-context-gap-inventory-proposal.md` for the
 diagnosis and proposal.
 
-1. **Inventory tool + lighter CLAUDE.md.** `scripts/project_inventory.py`
-   producing `docs/state/PROJECT_INVENTORY.md` (endpoints, frontend ↔
-   API map, cron state, recent commits). Plus `docs/ARCHITECTURE.md`
-   with a small Mermaid data-flow diagram. Plus `claude-md-management`
-   compaction pass.
-2. **Phase 3 cron** for emergent snapshots (launchd at 00/06/12/18
-   UTC) + daily 3-vendor calibration job at 03:00.
-3. **Phase 5** translation layer (`signal_translations` table +
+1. **Daily 3-vendor calibration job at 03:00.** The 4x/day emergent
+   snapshot cron is live; calibration is still pending.
+2. **Phase 5** translation layer (`signal_translations` table +
    `/api/v2/translate` endpoint + bilingual frontend display).
-4. **Phase 6** `dynamic_topics` lifecycle to replace the static
+3. **Phase 6** `dynamic_topics` lifecycle to replace the static
    `atlas_topics` table as the canonical taxonomy.
-5. Polish: `html.unescape` on `_serialize_evidence` headlines; bump
+4. Polish: `html.unescape` on `_serialize_evidence` headlines; bump
    `sample_signal_ids` cap from 8 to ~24 in the snapshot script; add
    frontend rendering of `velocity` to brief Watchlist row markup.
 
