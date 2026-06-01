@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-06-01 (emergent snapshot cron verified + docs hygiene).
+Last updated: 2026-06-01 (external archive storage + emergent cron/docs hygiene).
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -8,7 +8,25 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
-## Current Session Context (2026-06-01, emergent layer Phase 3 cron LIVE)
+## Current Session Context (2026-06-01, external storage + emergent layer Phase 3 cron LIVE)
+
+### Local storage relocation
+
+- Atlas raw archive storage has moved to the 2TB external disk:
+  `/Volumes/Ext/Atlas/Archive`.
+- `/Users/pedro/AtlasArchive` is intentionally a symlink to that external
+  archive path so existing scripts and docs continue to work.
+- `scripts/run-local-hot-cold-catchup.sh` now defaults to:
+  - archive root: `/Volumes/Ext/Atlas/Archive`
+  - processed historical output: `/Volumes/Ext/Atlas/Processed`
+- The runner exits with status `2` if the configured archive root is under
+  `/Volumes/*` and the external volume is not mounted.
+- The installed worker copy at
+  `/Users/pedro/AtlasLocalWorker/run-local-hot-cold-catchup.sh` was synced from
+  the repo runner.
+- Verification on 2026-06-01: all `59` archive manifest directories under the
+  symlink verified successfully, covering `272` manifest records and
+  `3,947,759` represented rows.
 
 The emergent topic discovery layer is wired end-to-end and shipped to
 production. Full handoff lives at

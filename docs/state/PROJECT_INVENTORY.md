@@ -1,6 +1,6 @@
 # Project Inventory
 
-Generated: 2026-06-01T12:50:11.329662+00:00
+Generated: 2026-06-01T13:06:51.151830+00:00
 Regen: `python scripts/project_inventory.py`
 
 ## Endpoints (backend)
@@ -125,13 +125,13 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 
 | Label | Program | Schedule | RunAtLoad | Last log mtime | Last log line |
 |---|---|---|---|---|---|
-| `com.atlas.atlas-topic-classifier` | `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` | every 1800s | True | 2026-06-01T12:34:38.847646+00:00 | } |
+| `com.atlas.atlas-topic-classifier` | `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` | every 1800s | True | 2026-06-01T13:05:21.751403+00:00 | } |
 | `com.atlas.emergent-snapshot` | `/Users/pedro/AtlasLocalWorker/run-emergent-snapshot.sh` | 0:00, 6:00, 12:00, 18:00 | True | 2026-06-01T12:46:12.409762+00:00 | } |
 | `com.atlas.local-hot-cold-catchup` | `/Users/pedro/AtlasLocalWorker/run-local-hot-cold-catchup.sh` | 0:10, 1:10, 2:10, 3:10, 4:10, 5:10 | True | 2026-06-01T10:10:49.523263+00:00 | } |
 
 ## Recent commits (last 2 weeks)
 
-- `3e3c516 2026-06-01 fix(ops): run emergent snapshot cron off desktop`
+- `f6d524d 2026-06-01 fix(ops): run emergent snapshot cron off desktop`
 - `955f8da 2026-06-01 docs(obsidian): add session hygiene maps`
 - `e6ccca5 2026-06-01 docs(obsidian): add 000-INDEX.md vault entry point + gitignore .obsidian/`
 - `86df741 2026-06-01 docs: inventory tool + ARCHITECTURE refresh + CLAUDE.md compact`

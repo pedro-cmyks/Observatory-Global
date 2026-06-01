@@ -106,6 +106,13 @@ Key docs/files changed in session 26 (context hygiene + emergent cron — 2026-0
 - `backend/tests/test_emergent_snapshot_runner.py` — shape guardrails for the runner, installer, and plist.
 - `docs/state/PROJECT_INVENTORY.md` — regenerated after cron fix; `com.atlas.emergent-snapshot` no longer reports the Desktop `.env` permission failure as its latest log line.
 
+Key files changed in session 27 (external archive storage — 2026-06-01):
+- `/Users/pedro/AtlasArchive` is now a symlink to `/Volumes/Ext/Atlas/Archive`; the raw archive physically lives on the external 2TB disk.
+- `scripts/run-local-hot-cold-catchup.sh` — defaults archive writes to `/Volumes/Ext/Atlas/Archive`, processed artifacts to `/Volumes/Ext/Atlas/Processed`, and exits with status `2` if the external volume is missing.
+- `/Users/pedro/AtlasLocalWorker/run-local-hot-cold-catchup.sh` — installed worker copy synced from the repo runner after the external-storage change.
+- `backend/tests/test_local_hot_cold_external_archive_runner.py` — shape guardrails for the external archive defaults and missing-mount failure.
+- Verification passed for `59` archive manifest directories, `272` manifest records, and `3,947,759` represented rows through the `/Users/pedro/AtlasArchive` symlink.
+
 Session 22 topic taxonomy state:
 - Path A pilot result: `election-legitimacy-dispute` lex_pct `6.3% -> 31.6%`, high_conf `5 -> 27`, multilingual terms drove `74%` of lex-match volume; global coverage moved `13.08% -> 13.35%`.
 - Armed-conflict partial result: lex_pct `2.10% -> 6.56%`, high_conf `22 -> 85`, global v2 coverage after re-backfill `17.22%`. Treat as partial because the 30% gate did not clear; do not re-add broad armed-incident terms just to raise recall.
@@ -144,7 +151,8 @@ Session 24 production-cycle direction:
 - Before starting a major work block, re-check open GitHub issues and classify them as `active-now`, `close/update`, `parking`, `blocked`, or `superseded`.
 
 Session 20 data state:
-- Local archive root: `/Users/pedro/AtlasArchive`.
+- Local archive compatibility path: `/Users/pedro/AtlasArchive`.
+- Physical archive root as of 2026-06-01: `/Volumes/Ext/Atlas/Archive`.
 - Clean cutover archive: `/Users/pedro/AtlasArchive/cutovers/2026-05-20`.
 - Verified export window: `2026-05-03T00:00:00Z` through `2026-05-20T03:33:29Z`.
 - Verified archive: 18 manifest records, 2,128,070 rows, ~368M local compressed size, 0 checksum failures, 0 overlaps.
@@ -153,7 +161,7 @@ Session 20 data state:
 - Guardrail: do NOT manually delete historical rows. Use `archive_verify.py` first, then `prune_archived_signals.py` dry-run. Keep product aggregate tables, correction tables, topic tables, and NLP audit/progress tables in Supabase. `/health.total_signals` reflects historical aggregate volume, not raw hot-store row count.
 
 Session 21 processed historical sync direction:
-- Raw historical archive remains local at `/Users/pedro/AtlasArchive`; do not rehydrate full raw history into Supabase.
+- Raw historical archive remains local, now physically on the external disk at `/Volumes/Ext/Atlas/Archive` with `/Users/pedro/AtlasArchive` as compatibility symlink; do not rehydrate full raw history into Supabase.
 - Supabase should store compact processed historical outputs: daily topic/country/source aggregates, coverage metadata, run metadata, and small evidence samples.
 - Fly handles hot 24h ingestion/enrichment SLA. Pedro's local machine handles historical/backlog processing and syncs compact outputs back to Supabase.
 - Tracking issues: #191 (local archive -> processed historical sync), #192 (processed-only historical tables), #193 (route `1w`/`1m` app windows to processed historical tables). Related issues commented: #164, #167, #171, #184, #185.
@@ -163,7 +171,7 @@ Session 21 processed historical sync direction:
 - Long-window API bridge status: `/api/v2/briefing?hours>24` routes `top_themes` to `historical_topic_country_daily` and `/brief` renders historical processed coverage metadata. Current coverage report after full backfill: `22,711` aggregate rows, `2,128,070` represented signals, `236` countries, `11` topics, avg topic coverage `0.8052`, avg NLP sentiment coverage `0.1695`.
 - App-wide routing status: `/api/v2/heat/countries`, `/api/v2/country/{code}`, `/api/v2/theme/{topic_slug}`, and `/api/v2/anomalies/themes` route long windows through processed history with coverage metadata; `/api/v2/heatmap` is explicitly deprecated in favor of `/api/v2/heat/countries`; frontend `CoverageBadge` is wired into Heat and Theme Detail.
 - Long-window briefing source status (#194): `/api/v2/briefing?hours>24` routes `top_sources` to `historical_source_daily`. Full source backfill synced `161,871` daily source aggregate rows representing `2,128,070` archived signals. Live query plan after `VACUUM`: ~40 ms, index-only scan, `Heap Fetches: 0`.
-- Local hot/cold automation status: installed LaunchAgent `com.atlas.local-hot-cold-catchup` runs from `/Users/pedro/AtlasLocalWorker`, not the Desktop repo, because macOS blocks launchd access to Desktop-protected paths. Last verified install exited `0`; after incremental catch-up, `signals_v2` had `173,925` hot rows and compact historical tables represented `2,412,591` signals through `2026-05-21`.
+- Local hot/cold automation status: installed LaunchAgent `com.atlas.local-hot-cold-catchup` runs from `/Users/pedro/AtlasLocalWorker`, not the Desktop repo, because macOS blocks launchd access to Desktop-protected paths. As of 2026-06-01, the runner writes cold archive data to `/Volumes/Ext/Atlas/Archive` and processed history to `/Volumes/Ext/Atlas/Processed`; it fails loudly if the external mount is missing.
 - Scope correction: do not close #193 based only on backend/API work. #193 remains open until app-wide visual smoke tests pass through the deployed frontend.
 - Quality finding: `general-monitoring` represents `1,559,990` of `2,128,070` historical signals, so storage is no longer the blocker; topic intelligence quality (#171/#167/#185) is.
 

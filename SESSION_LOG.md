@@ -103,6 +103,14 @@ This block summarizes the intense late-May work that previously lived mostly in
   `docs/state/PROJECT_INVENTORY.md`.
 - Replaced the old architecture doc with `docs/ARCHITECTURE.md` and added
   `docs/000-INDEX.md` as the Obsidian vault entry point.
+- Moved Atlas cold archive storage to the external disk at
+  `/Volumes/Ext/Atlas/Archive`, keeping `/Users/pedro/AtlasArchive` as a
+  symlink for compatibility.
+- Updated the hot/cold runner so archive writes default to the external disk,
+  processed historical outputs default to `/Volumes/Ext/Atlas/Processed`, and a
+  missing external mount fails loudly instead of filling the internal disk.
+- Verified all `59` archive manifest directories through the symlink:
+  `272` manifest records and `3,947,759` represented rows.
 
 ### Key conclusion
 Atlas moved from a static-topic dashboard toward a narrative-intelligence

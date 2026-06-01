@@ -21,7 +21,12 @@ and production runtime constraints.
 
 ## Operational guardrails
 
-- Raw historical archive remains local under `/Users/pedro/AtlasArchive`.
+- Raw historical archive remains local but physically lives on the external disk
+  at `/Volumes/Ext/Atlas/Archive`; `/Users/pedro/AtlasArchive` is a compatibility
+  symlink.
+- Processed historical artifacts default to `/Volumes/Ext/Atlas/Processed`.
+- The hot/cold runner must fail loudly when `/Volumes/Ext` is not mounted rather
+  than falling back to the internal disk.
 - Runnable cron/ML workers live under `/Users/pedro/AtlasLocalWorker`, not the
   Desktop checkout.
 - Cron credentials live in `/Users/pedro/AtlasLocalWorker/.env`; launchd

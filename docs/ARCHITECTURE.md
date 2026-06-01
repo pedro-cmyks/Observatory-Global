@@ -126,6 +126,17 @@ flowchart LR
 Verify with `launchctl list | grep atlas` and tail
 `/Users/pedro/AtlasLocalWorker/logs/*.log`.
 
+## Local Storage
+
+- Raw historical archive physical root: `/Volumes/Ext/Atlas/Archive`.
+- Compatibility path: `/Users/pedro/AtlasArchive` symlinked to the external
+  archive root.
+- Processed historical artifacts: `/Volumes/Ext/Atlas/Processed`.
+- Local worker runtime: `/Users/pedro/AtlasLocalWorker`.
+- `scripts/run-local-hot-cold-catchup.sh` refuses to run when the external
+  `/Volumes/Ext` mount is missing, so a scheduled catch-up cannot silently fill
+  the internal disk.
+
 ## Key design constraints
 
 - **Precision discipline applies at two layers** with the same
@@ -144,6 +155,9 @@ Verify with `launchctl list | grep atlas` and tail
 - **Cron secrets live off-Desktop** in `/Users/pedro/AtlasLocalWorker/.env`.
   Launchd runners must not read the Desktop repo `.env`; macOS privacy controls
   can block those reads with `Operation not permitted`.
+- **Cold storage lives off the internal disk** at
+  `/Volumes/Ext/Atlas/Archive`; keep `/Users/pedro/AtlasArchive` as a symlink
+  compatibility path rather than writing new archive data to the internal disk.
 - **Read paths degrade**, not error: missing `emergent_clusters` /
   `signal_topic_assignments` / `historical_topic_country_daily` →
   endpoints return empty arrays + typed warnings

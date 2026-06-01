@@ -1,9 +1,9 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-06-01 (emergent cron + docs hygiene)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-06-01 (external storage + emergent cron/docs hygiene)
 
 ---
 
-## Current handoff (2026-06-01) — emergent cron and documentation hygiene
+## Current handoff (2026-06-01) — external storage, emergent cron, and documentation hygiene
 
 The repo is still on `v3-intel-layer`. The latest documented hygiene commit is
 `955f8da docs(obsidian): add session hygiene maps`.
@@ -30,10 +30,23 @@ Operational changes now verified:
   cron row for `com.atlas.emergent-snapshot` now points to the worker runner
   with a fresh log timestamp instead of the old Desktop `.env` permission
   error.
+- Raw archive storage now lives on the external 2TB disk at
+  `/Volumes/Ext/Atlas/Archive`; `/Users/pedro/AtlasArchive` is a symlink kept
+  for compatibility with existing scripts.
+- `scripts/run-local-hot-cold-catchup.sh` and the installed worker copy now
+  default archive writes to `/Volumes/Ext/Atlas/Archive` and processed-history
+  artifacts to `/Volumes/Ext/Atlas/Processed`.
+- The hot/cold runner now refuses to run if the external `/Volumes/Ext` mount is
+  missing, preventing accidental fallback writes to the internal disk.
+- External archive verification on 2026-06-01 passed for `59` manifest
+  directories, `272` manifest records, and `3,947,759` represented rows.
 
 Next operational work:
 
 - Add the daily 3-vendor calibration job at 03:00.
+- Watch external disk availability before hot/cold catch-up runs; if the disk is
+  unplugged, the runner should fail loudly instead of filling the internal
+  drive.
 - Decide whether to tune the emergent cron size after a few runs; this run spent
   several minutes in HDBSCAN with 13,031 deduped headlines, which is acceptable
   but worth watching.
