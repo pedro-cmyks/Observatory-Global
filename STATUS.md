@@ -55,10 +55,16 @@ Operational changes now verified:
   `docs/superpowers/specs/2026-06-01-narrative-cluster-evidence-roles-design.md`.
   The goal is to keep `verified` claims at `>=90%` precision while recovering
   `>=80%` visible coverage through `candidate` and `context_rich` tiers.
-- First evidence-role teacher packet:
-  `docs/research/atlas-paper/phase-1-validation/evidence-role/teacher-packets/2026-06-01-evidence-role-teacher-packet.jsonl`.
-  It contains `133` rows, below the 300-row planning threshold because the
-  latest persisted snapshot exposes only that many sampled cluster signals.
+- Evidence-role teacher packet regenerated with a multi-snapshot window:
+  `backend/scripts/evidence_role_sampler.py` now takes `--since-days N`
+  (default `7`) and dedups by `(cluster_label, signal_id)` across all
+  snapshots in the window, instead of only reading the latest snapshot.
+  Current packet at
+  `docs/research/atlas-paper/phase-1-validation/evidence-role/teacher-packets/2026-06-01-evidence-role-teacher-packet.jsonl`
+  contains `646` rows (was `133` from a single snapshot), comfortably above
+  the 300-row planning threshold. The 4x/day cron keeps growing this pool
+  toward the 1,000-1,500 row target without requiring HDBSCAN parameter
+  changes.
 - Evidence-role teacher smoke now has three vendors: DeepSeek
   (`deepseek-chat`), OpenAI (`gpt-4.1`), and Anthropic
   (`claude-sonnet-4-6`). OpenAI/Anthropic keys were found in the root `.env`

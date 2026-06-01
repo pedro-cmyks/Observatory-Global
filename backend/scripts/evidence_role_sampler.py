@@ -15,17 +15,10 @@ from scripts.evidence_role_schema import write_jsonl
 PACKET_SCHEMA_VERSION = "atlas-evidence-role-packet-v1"
 
 SAMPLE_SQL = """
-WITH latest AS (
-    SELECT MAX(snapshot_at) AS snapshot_at
-    FROM emergent_clusters
-    WHERE snapshot_at > NOW() - ($1::int * INTERVAL '1 hour')
-),
-clusters AS (
+WITH window_clusters AS (
     SELECT ec.*
     FROM emergent_clusters ec
-    JOIN latest l ON l.snapshot_at = ec.snapshot_at
-    ORDER BY ec.n_signals DESC, ec.raw_signal_count DESC
-    LIMIT $2
+    WHERE ec.snapshot_at > NOW() - ($1::int * INTERVAL '1 day')
 ),
 cluster_signals AS (
     SELECT
@@ -37,7 +30,20 @@ cluster_signals AS (
         ec.n_signals,
         ec.cohesion,
         unnest(ec.sample_signal_ids) AS signal_id
-    FROM clusters ec
+    FROM window_clusters ec
+),
+deduped AS (
+    SELECT DISTINCT ON (cs.cluster_label, cs.signal_id)
+        cs.cluster_pk,
+        cs.snapshot_at,
+        cs.cluster_label,
+        cs.cluster_description,
+        cs.raw_signal_count,
+        cs.n_signals,
+        cs.cohesion,
+        cs.signal_id
+    FROM cluster_signals cs
+    ORDER BY cs.cluster_label, cs.signal_id, cs.snapshot_at DESC
 ),
 candidate AS (
     SELECT DISTINCT ON (sta.signal_id)
@@ -48,21 +54,21 @@ candidate AS (
         sta.gate_score,
         sta.gate_kept,
         COALESCE(sta.evidence->'matched_terms', '[]'::jsonb) AS matched_terms
-    FROM cluster_signals cs
-    LEFT JOIN signal_topic_assignments sta ON sta.signal_id = cs.signal_id
+    FROM deduped d
+    LEFT JOIN signal_topic_assignments sta ON sta.signal_id = d.signal_id
     JOIN atlas_topics at ON at.id = sta.topic_id
     WHERE sta.method = 'lexicon'
       AND sta.model_version = 'theme-hint-lex-v2'
     ORDER BY sta.signal_id, sta.gate_score DESC NULLS LAST, sta.confidence DESC
 )
 SELECT
-    cs.cluster_pk,
-    cs.snapshot_at,
-    cs.cluster_label,
-    cs.cluster_description,
-    cs.raw_signal_count,
-    cs.n_signals,
-    cs.cohesion,
+    d.cluster_pk,
+    d.snapshot_at,
+    d.cluster_label,
+    d.cluster_description,
+    d.raw_signal_count,
+    d.n_signals,
+    d.cohesion,
     s.id AS signal_id,
     s.headline,
     s.source_name,
@@ -74,12 +80,12 @@ SELECT
     c.gate_score,
     c.gate_kept,
     c.matched_terms,
-    'sample_signal_id'::text AS sample_reason
-FROM cluster_signals cs
-JOIN signals_v2 s ON s.id = cs.signal_id
+    'cluster_label_dedup'::text AS sample_reason
+FROM deduped d
+JOIN signals_v2 s ON s.id = d.signal_id
 LEFT JOIN candidate c ON c.signal_id = s.id
-ORDER BY cs.n_signals DESC, cs.cluster_pk, s.id
-LIMIT $3;
+ORDER BY d.n_signals DESC, d.cluster_label, s.id
+LIMIT $2;
 """
 
 
@@ -147,7 +153,7 @@ async def run(args: argparse.Namespace) -> list[dict[str, Any]]:
 
     conn = await asyncpg.connect(db_url)
     try:
-        rows = await conn.fetch(SAMPLE_SQL, args.hours, args.clusters, args.limit)
+        rows = await conn.fetch(SAMPLE_SQL, args.since_days, args.limit)
     finally:
         await conn.close()
     return [build_teacher_packet_row(dict(row)) for row in rows]
@@ -157,9 +163,18 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Sample cluster/signal rows for evidence-role teacher labeling."
     )
-    parser.add_argument("--hours", type=int, default=24)
-    parser.add_argument("--clusters", type=int, default=30)
-    parser.add_argument("--limit", type=int, default=500)
+    parser.add_argument(
+        "--since-days",
+        type=int,
+        default=7,
+        help="Pull cluster signals from all snapshots within the last N days.",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=2000,
+        help="Maximum rows emitted after (cluster_label, signal_id) dedup.",
+    )
     parser.add_argument("--output", type=Path, required=True)
     return parser.parse_args()
 

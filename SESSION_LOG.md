@@ -126,6 +126,10 @@ This block summarizes the intense late-May work that previously lived mostly in
   signals using DeepSeek, OpenAI, and Anthropic. The consensus builder produced
   10 gold rows and 0 disagreements; student readiness remains
   `needs_more_labels` until the pilot has at least 100 consensus rows.
+- Switched the evidence-role sampler to a multi-snapshot window: `--since-days`
+  + `(cluster_label, signal_id)` dedup across all `emergent_clusters` snapshots
+  in the window. Packet grew from `133` to `646` rows on the existing data,
+  and will keep accumulating from the 4x/day cron toward the 1,000-1,500 target.
 
 ### Key conclusion
 Atlas moved from a static-topic dashboard toward a narrative-intelligence

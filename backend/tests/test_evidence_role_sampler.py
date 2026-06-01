@@ -55,3 +55,9 @@ def test_sampler_sql_reads_emergent_clusters_signals_and_assignments():
     assert "JOIN signals_v2 s" in SAMPLE_SQL
     assert "LEFT JOIN signal_topic_assignments sta" in SAMPLE_SQL
     assert "sample_signal_ids" in SAMPLE_SQL
+
+
+def test_sampler_sql_uses_since_days_window_and_label_dedup():
+    assert "INTERVAL '1 day'" in SAMPLE_SQL
+    assert "DISTINCT ON (cs.cluster_label, cs.signal_id)" in SAMPLE_SQL
+    assert "cluster_label_dedup" in SAMPLE_SQL
