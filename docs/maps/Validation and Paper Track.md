@@ -42,6 +42,11 @@ gating, annotator agreement, and the future paper series.
   true primary_evidence) has no lexicon assignment at all. Coverage is a
   candidate-recall problem; the emergent-cluster + evidence-role student is the
   coverage engine. Do not lower the scope-gate threshold to chase coverage.
+- Standing lexicon-recall baseline (`lexicon_recall_baseline.py`): 8.9% overall
+  candidate recall, 6.6% on `primary_evidence`, and lexicon recall on `noise`
+  (13.2%) is higher than on `primary_evidence` — the generator is biased toward
+  off-topic candidates. This is the number the embedding cluster-membership
+  generator must beat.
 
 ## Reports and artifacts
 
@@ -64,3 +69,4 @@ gating, annotator agreement, and the future paper series.
 - `backend/scripts/train_scope_gate.py`
 - `backend/scripts/score_assignments_gate.py`
 - `backend/scripts/gate_coverage_report.py`
+- `backend/scripts/lexicon_recall_baseline.py`

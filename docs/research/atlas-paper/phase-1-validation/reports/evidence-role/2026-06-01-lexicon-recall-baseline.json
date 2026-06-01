@@ -1,0 +1,65 @@
+{
+  "schema_version": "atlas-lexicon-recall-baseline-v1",
+  "generated_at": "2026-06-01T20:09:22.411858+00:00",
+  "model_version": "theme-hint-lex-v2",
+  "gold_source": "../docs/research/atlas-paper/phase-1-validation/labels/evidence-role-consensus/2026-06-01-consensus.jsonl",
+  "overall": {
+    "gold_rows": 605,
+    "with_lexicon_candidate": 54,
+    "missing_candidate": 551,
+    "candidate_recall": 0.0893
+  },
+  "primary_evidence": {
+    "gold_rows": 288,
+    "with_lexicon_candidate": 19,
+    "candidate_recall": 0.066
+  },
+  "by_role": [
+    {
+      "role": "primary_evidence",
+      "gold_rows": 288,
+      "with_lexicon_candidate": 19,
+      "missing_candidate": 269,
+      "candidate_recall": 0.066
+    },
+    {
+      "role": "noise",
+      "gold_rows": 227,
+      "with_lexicon_candidate": 30,
+      "missing_candidate": 197,
+      "candidate_recall": 0.1322
+    },
+    {
+      "role": "context",
+      "gold_rows": 54,
+      "with_lexicon_candidate": 3,
+      "missing_candidate": 51,
+      "candidate_recall": 0.0556
+    },
+    {
+      "role": "reaction",
+      "gold_rows": 23,
+      "with_lexicon_candidate": 1,
+      "missing_candidate": 22,
+      "candidate_recall": 0.0435
+    },
+    {
+      "role": "analysis",
+      "gold_rows": 11,
+      "with_lexicon_candidate": 1,
+      "missing_candidate": 10,
+      "candidate_recall": 0.0909
+    },
+    {
+      "role": "entity_reference",
+      "gold_rows": 2,
+      "with_lexicon_candidate": 0,
+      "missing_candidate": 2,
+      "candidate_recall": 0.0
+    }
+  ],
+  "interpretation": {
+    "candidate_recall": "fraction of gold signals for which the lexicon candidate generator produced any topic assignment; the scope gate can only keep/abstain on signals that have a candidate",
+    "baseline_to_beat": "the embedding-based cluster-membership candidate generator should raise primary_evidence candidate_recall well above this baseline without regressing verified precision"
+  }
+}

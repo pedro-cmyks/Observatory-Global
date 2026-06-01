@@ -84,5 +84,30 @@ mechanism, not a separate paper-validation track.
   local evidence-role student and measure visible-coverage tiers
   (`verified` / `candidate` / `context_rich` / `suppressed`) against the
   `>=90%` verified-precision target.
-- Optionally, quantify the lexicon recall gap as a standing metric so the
-  candidate-generator migration has a baseline to beat.
+- Quantify the lexicon recall gap as a standing metric so the
+  candidate-generator migration has a baseline to beat. **Done** —
+  `backend/scripts/lexicon_recall_baseline.py` joins the gold set to live
+  lexicon assignments and reports candidate recall overall and per role.
+
+## Standing baseline (2026-06-01)
+
+`backend/scripts/lexicon_recall_baseline.py --gold .../2026-06-01-consensus.jsonl`
+→ `reports/evidence-role/2026-06-01-lexicon-recall-baseline.json`:
+
+| consensus role  | gold rows | with candidate | recall |
+|-----------------|----------:|---------------:|-------:|
+| **overall**     | 605       | 54             | 8.9%   |
+| primary_evidence| 288       | 19             | 6.6%   |
+| noise           | 227       | 30             | 13.2%  |
+| context         | 54        | 3              | 5.6%   |
+| reaction        | 23        | 1              | 4.3%   |
+| analysis        | 11        | 1              | 9.1%   |
+| entity_reference| 2         | 0              | 0.0%   |
+
+The headline numbers reproduce the diagnosis (8.9% overall, 6.6% on
+primary_evidence). The sharper finding: lexicon recall on `noise`
+(`13.2%`) is **higher** than on `primary_evidence` (`6.6%`). The lexicon
+generator is not merely low-recall — it is biased toward producing
+candidates for off-topic signals more often than for true evidence. The
+embedding cluster-membership generator must beat `6.6%` primary_evidence
+recall without regressing verified precision.

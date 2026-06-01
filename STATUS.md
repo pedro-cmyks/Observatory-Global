@@ -106,6 +106,15 @@ Operational changes now verified:
   problem; the emergent-cluster + evidence-role student path is the coverage
   engine, not a separate paper track.
 
+- Standing lexicon-recall baseline (read-only):
+  `backend/scripts/lexicon_recall_baseline.py` →
+  `reports/evidence-role/2026-06-01-lexicon-recall-baseline.json`. Against the
+  605-row gold set: `8.9%` overall candidate recall, `6.6%` on
+  `primary_evidence`. Sharper finding: lexicon recall on `noise` (`13.2%`) is
+  **higher** than on `primary_evidence` (`6.6%`) — the generator is biased
+  toward off-topic candidates. The embedding cluster-membership generator must
+  beat `6.6%` primary_evidence recall without regressing verified precision.
+
 Next operational work:
 
 - Add the daily 3-vendor calibration job at 03:00.
