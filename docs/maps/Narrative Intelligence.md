@@ -12,6 +12,8 @@ Threads and emergent narrative discovery.
   cluster/thread classification design.
 - [[2026-06-01-narrative-cluster-evidence-roles]] — implementation plan for
   the file-based evidence-role pilot.
+- Evidence-role pilot artifacts:
+  `docs/research/atlas-paper/phase-1-validation/evidence-role/`.
 - [[2026-05-24-app-panel-thread-audit]] — panel-by-panel mapping to the seven
   Atlas questions.
 

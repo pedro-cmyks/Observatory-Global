@@ -51,6 +51,10 @@ Operational changes now verified:
   teacher label contract, and `backend/scripts/evidence_role_sampler.py` samples
   read-only `(cluster, signal)` rows from the latest `emergent_clusters`
   snapshot for offline teacher labeling.
+- Evidence-role teacher-student pilot started from
+  `docs/superpowers/specs/2026-06-01-narrative-cluster-evidence-roles-design.md`.
+  The goal is to keep `verified` claims at `>=90%` precision while recovering
+  `>=80%` visible coverage through `candidate` and `context_rich` tiers.
 - First evidence-role teacher packet:
   `docs/research/atlas-paper/phase-1-validation/evidence-role/teacher-packets/2026-06-01-evidence-role-teacher-packet.jsonl`.
   It contains `133` rows, below the 300-row planning threshold because the

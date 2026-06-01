@@ -14,6 +14,8 @@ gating, annotator agreement, and the future paper series.
 - [[2026-06-01-narrative-cluster-evidence-roles]] — implementation plan for
   teacher packets, consensus labels, student reporting, and coverage metrics.
 - [[2026-05-25-atlas-v2-labeling-guide]] — semantic/evidence-role label guide.
+- Evidence-role teacher/student reports:
+  `docs/research/atlas-paper/phase-1-validation/reports/evidence-role/`.
 
 ## Validation findings
 
@@ -26,12 +28,16 @@ gating, annotator agreement, and the future paper series.
 - Gate quality must be read as precision plus coverage. Use
   `backend/scripts/gate_coverage_report.py` to monitor how many live
   assignments are scored, kept, abstained, or still unscored.
+- Evidence-role quality should distinguish `verified`, `candidate`,
+  `context_rich`, and `suppressed` tiers so Atlas can recover visible coverage
+  without lowering the verified precision target.
 
 ## Reports and artifacts
 
 - `docs/research/atlas-paper/phase-1-validation/reports/`
 - `docs/research/atlas-paper/phase-1-validation/reports/agreement/`
 - `docs/research/atlas-paper/phase-1-validation/reports/phase-b/`
+- `docs/research/atlas-paper/phase-1-validation/reports/evidence-role/`
 - `docs/research/atlas-paper/phase-1-validation/models/`
 - `docs/research/topic-quality/`
 

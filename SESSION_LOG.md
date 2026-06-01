@@ -117,6 +117,11 @@ This block summarizes the intense late-May work that previously lived mostly in
   `docs/research/atlas-paper/phase-1-validation/reports/gate-coverage/`:
   `16,878` assignments, `16,878` scored, `2,999` kept, `13,879` abstained,
   kept rate `17.77%`, unscored `0`.
+- Started the Narrative Cluster Evidence Roles pilot plan: teacher LLMs provide
+  roles, rationales, and reason codes offline; a local student model is the
+  intended production classifier. The pilot explicitly separates `verified`,
+  `candidate`, `context_rich`, and `suppressed` tiers so coverage can improve
+  without lowering the verified precision target.
 
 ### Key conclusion
 Atlas moved from a static-topic dashboard toward a narrative-intelligence
