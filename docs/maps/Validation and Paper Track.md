@@ -11,6 +11,8 @@ gating, annotator agreement, and the future paper series.
   90-95%.
 - [[2026-06-01-narrative-cluster-evidence-roles-design]] — teacher-student
   design for classifying evidence roles inside narrative clusters.
+- [[2026-06-01-narrative-cluster-evidence-roles]] — implementation plan for
+  teacher packets, consensus labels, student reporting, and coverage metrics.
 - [[2026-05-25-atlas-v2-labeling-guide]] — semantic/evidence-role label guide.
 
 ## Validation findings

@@ -10,6 +10,8 @@ Threads and emergent narrative discovery.
 - [[2026-05-29-emergent-topic-discovery-design]] — emergent discovery layer.
 - [[2026-06-01-narrative-cluster-evidence-roles-design]] — role-aware
   cluster/thread classification design.
+- [[2026-06-01-narrative-cluster-evidence-roles]] — implementation plan for
+  the file-based evidence-role pilot.
 - [[2026-05-24-app-panel-thread-audit]] — panel-by-panel mapping to the seven
   Atlas questions.
 

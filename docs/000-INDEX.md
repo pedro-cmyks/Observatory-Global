@@ -29,6 +29,11 @@ below resolve via Obsidian's fuzzy search regardless of folder.
 
 ## Active design specs
 
+- [[2026-06-01-narrative-cluster-evidence-roles-design]] — teacher-student
+  evidence-role layer for classifying signals inside narrative clusters.
+- [[2026-06-01-narrative-cluster-evidence-roles]] — implementation plan for
+  the evidence-role pilot, teacher packet, consensus labels, student report,
+  and Obsidian documentation path.
 - [[2026-05-29-emergent-topic-discovery-design]] — emergent layer
   (HDBSCAN + ≥90%-precision gate + DeepSeek labels), per-cluster
   precision filter, translation layer, self-curating
