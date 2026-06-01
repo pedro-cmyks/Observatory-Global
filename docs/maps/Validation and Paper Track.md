@@ -9,6 +9,8 @@ gating, annotator agreement, and the future paper series.
 - [[2026-05-27-methodology-paper-outline]] — Paper 1 outline.
 - [[2026-05-28-precision-to-90-roadmap]] — path from static-topic precision to
   90-95%.
+- [[2026-06-01-narrative-cluster-evidence-roles-design]] — teacher-student
+  design for classifying evidence roles inside narrative clusters.
 - [[2026-05-25-atlas-v2-labeling-guide]] — semantic/evidence-role label guide.
 
 ## Validation findings
