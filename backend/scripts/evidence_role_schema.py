@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -56,25 +57,38 @@ def normalize_reason_codes(codes: Iterable[str]) -> list[str]:
     return normalized
 
 
+def _validate_bool(value: Any, field_name: str) -> bool:
+    if not isinstance(value, bool):
+        raise ValueError(f"{field_name} must be a boolean")
+    return value
+
+
 def validate_teacher_label(row: dict[str, Any]) -> dict[str, Any]:
     missing = sorted(REQUIRED_TEACHER_FIELDS - set(row))
     if missing:
         raise ValueError(f"missing teacher field(s): {', '.join(missing)}")
+
+    schema_version = row.get("schema_version", EVIDENCE_ROLE_SCHEMA_VERSION)
+    if schema_version != EVIDENCE_ROLE_SCHEMA_VERSION:
+        raise ValueError(f"invalid schema_version: {schema_version}")
 
     role = str(row["role"]).strip()
     if role not in ROLES:
         raise ValueError(f"invalid evidence role: {role}")
 
     confidence = float(row["role_confidence"])
-    if confidence < 0.0 or confidence > 1.0:
+    if not math.isfinite(confidence) or confidence < 0.0 or confidence > 1.0:
         raise ValueError("role_confidence must be between 0 and 1")
 
     validated = dict(row)
-    validated["schema_version"] = row.get("schema_version", EVIDENCE_ROLE_SCHEMA_VERSION)
+    validated["schema_version"] = schema_version
     validated["role"] = role
     validated["role_confidence"] = round(confidence, 4)
-    validated["belongs_to_cluster"] = bool(row["belongs_to_cluster"])
-    validated["supports_cluster_claim"] = bool(row["supports_cluster_claim"])
+    validated["belongs_to_cluster"] = _validate_bool(row["belongs_to_cluster"], "belongs_to_cluster")
+    validated["supports_cluster_claim"] = _validate_bool(
+        row["supports_cluster_claim"],
+        "supports_cluster_claim",
+    )
     validated["reason_codes"] = normalize_reason_codes(row.get("reason_codes") or [])
     return validated
 

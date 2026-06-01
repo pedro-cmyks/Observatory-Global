@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 
 import pytest
 
@@ -68,6 +69,36 @@ def test_normalize_reason_codes_dedupes_and_sorts_known_codes():
         "off_topic",
         "same_actor",
     ]
+
+
+def test_validate_teacher_label_rejects_non_boolean_flags_nan_and_schema_drift():
+    row = {
+        "schema_version": EVIDENCE_ROLE_SCHEMA_VERSION,
+        "signal_id": 101,
+        "cluster_id": "snap/1",
+        "headline": "Headline",
+        "cluster_label": "Cluster",
+        "role": "context",
+        "role_confidence": 0.5,
+        "belongs_to_cluster": True,
+        "supports_cluster_claim": False,
+        "reason_codes": ["same_actor"],
+        "rationale": "Reason",
+        "teacher_model": "model",
+        "teacher_vendor": "vendor",
+    }
+
+    with pytest.raises(ValueError, match="belongs_to_cluster must be a boolean"):
+        validate_teacher_label(dict(row, belongs_to_cluster="false"))
+
+    with pytest.raises(ValueError, match="supports_cluster_claim must be a boolean"):
+        validate_teacher_label(dict(row, supports_cluster_claim="no"))
+
+    with pytest.raises(ValueError, match="role_confidence must be between 0 and 1"):
+        validate_teacher_label(dict(row, role_confidence=math.nan))
+
+    with pytest.raises(ValueError, match="invalid schema_version"):
+        validate_teacher_label(dict(row, schema_version="atlas-evidence-role-teacher-v0"))
 
 
 def test_role_and_reason_sets_are_stable_for_teacher_prompts():
