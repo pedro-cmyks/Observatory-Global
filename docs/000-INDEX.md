@@ -11,6 +11,12 @@ below resolve via Obsidian's fuzzy search regardless of folder.
   DB tables / cron / recent commits. Regen via
   `python scripts/project_inventory.py`.
 - [[STATUS]] — long-running operational status doc.
+- [[Data Operations]] — storage, crons, historical sync, and runtime guardrails.
+- [[Narrative Intelligence]] — Living Narrative Threads, emergent clusters, and
+  product/model canon.
+- [[Validation and Paper Track]] — benchmark, annotator, precision-gate, and
+  paper evidence map.
+- [[Frontend Product Surfaces]] — which UI panels consume which contracts.
 
 ## Latest handoffs
 

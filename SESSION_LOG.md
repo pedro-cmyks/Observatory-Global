@@ -1,5 +1,136 @@
 # Atlas — Session Log
 
+## 2026-05-22 to 2026-05-31 (sessions 19-31 — Data quality, narrative threads, validation, emergent layer)
+
+### Session type: Data operations, taxonomy quality, research validation, production wiring, documentation hygiene
+
+### What happened
+This block summarizes the intense late-May work that previously lived mostly in
+`CLAUDE.md`, handoff docs, commit history, and research artifacts.
+
+**2026-05-22 — hot/cold automation + NLP coverage**
+- Automated the local hot/cold catch-up flow around
+  `backend/scripts/local_hot_cold_catchup.py`, with launchd-safe execution from
+  `/Users/pedro/AtlasLocalWorker` instead of the Desktop checkout.
+- Added effective NLP coverage reporting and confidence-weighted sentiment
+  fusion across hot pre-aggregates.
+- Fixed HTML entity decoding and `xx` language handling in lexicon mining and
+  scoring paths.
+
+**2026-05-23 — Atlas topic classifier v2 and multilingual Path A**
+- Promoted the bulk SQL atlas-topic classifier v2 path:
+  `backend/scripts/backfill_lexicon_topics.py`, `signal_topic_assignments`, and
+  `/api/v2/briefing.top_atlas_topics`.
+- Applied migrations 034-035b to prune noisy GDELT hints, expand precise
+  lexicons, and restore disease-outbreak medical hints after sample checks.
+- Started AI-assisted taxonomy Path A with migration 036 for
+  `election-legitimacy-dispute`.
+
+**2026-05-24 — Living Narrative Threads becomes product canon**
+- Completed Path A multilingual rollout with migration 038 and closed the first
+  atlas-topic lexicon expansion track.
+- Implemented the Living Narrative Threads beta:
+  `backend/app/routers/threads.py`,
+  `backend/app/services/thread_intelligence.py`, and the `/api/v2/threads`
+  contract.
+- Wired `frontend-v2/src/components/NarrativeThreads.tsx` and
+  `ThreadFocusPanel.tsx` to the thread contract so the visible panel no longer
+  routes through static theme detail by default.
+- Canonized the backlog-first production cycle: frontend work interrupts only
+  when the UI contradicts the data or breaks a contract.
+
+**2026-05-25 to 2026-05-26 — Path B/Path C validation workflow**
+- Corrected the mining/resource safety anchor with migration 039 while keeping
+  slug compatibility.
+- Audited all 30 atlas topics and tightened noisy terms/hints through
+  migrations 040-041.
+- Built `backend/scripts/topic_benchmark_harness.py` and moved the benchmark
+  schema toward answerability, semantic scope, evidence role, and parent/child
+  thread candidates.
+- Started the Atlas paper/validation track: labeling guide, stratified sample,
+  review packets, review templates, local review UI, and visual validation
+  reports.
+
+**2026-05-27 — paper track and rule-edit ceiling**
+- Built LLM annotator tooling, kappa/agreement tools, bootstrap confidence
+  intervals, and Sonnet baseline comparisons.
+- Applied migration 042 from LLM multilingual vocab mining, then measured that
+  broad lexicon additions did not improve precision.
+- Wrote the paper master plan and methodology-paper outline. The operating
+  conclusion: do not write the final paper before evidence, baselines, and
+  ablations exist.
+
+**2026-05-28 — multi-vendor consensus and precision roadmap**
+- Expanded validation to a multi-vendor annotator panel across Claude, OpenAI,
+  DeepSeek, and Pedro labels.
+- Documented the main finding: Atlas static topic precision was around the
+  42-51% band under full-taxonomy consensus, and remaining errors were mainly
+  scope mismatch, not missing vocabulary.
+- Applied migrations 043-044 for gold-guided precision removals; rule edits
+  helped but hit a ceiling. The next architecture became a learned scope gate.
+
+**2026-05-29 — learned scope gate shipped to production**
+- Built and deployed a scope-aware keep/abstain classifier over
+  `[sentence embedding || atlas confidence || matched terms]`.
+- Production encoder is local `intfloat/multilingual-e5-base`, running from
+  `/Users/pedro/AtlasLocalWorker/mlvenv` at `$0/signal`.
+- Applied migration 045 (`gate_score`, `gate_kept`, `gate_model`) and wired
+  gated counts into `/api/v2/briefing`.
+- Closed #203 with the gate live in production.
+
+**2026-05-30 — emergent topic discovery and context-gap diagnosis**
+- Built the emergent topic discovery POC and production path:
+  `backend/scripts/snapshot_emergent_topics.py`,
+  `backend/migrations/046_emergent_clusters.sql`, `/api/v2/emergent`, and
+  `cluster-<id>` theme detail routing.
+- Wired emergent clusters into the Brief Watchlist first.
+- Pedro identified the context miss: the primary visible app surface was
+  `NarrativeThreads.tsx` via `/api/v2/threads`, not the Brief Watchlist. This
+  triggered the explicit context-gap diagnosis and inventory proposal.
+
+**2026-05-31 — threads/emergent completion + translation layer**
+- Augmented `/api/v2/threads` with emergent cluster rows and added detail
+  dispatch for `emergent-cluster-<id>`.
+- Added lazy headline translation with `backend/migrations/047_signal_translations.sql`,
+  `/api/v2/translate`, `/api/v2/translate/batch`, and bilingual evidence in
+  `ThreadFocusPanel`.
+- Closed the threads-wiring milestone in `CLAUDE.md`.
+
+**2026-06-01 documentation hygiene follow-up**
+- Compacted `CLAUDE.md` and archived older chronological blocks into
+  `docs/state/archive/CLAUDE-history-2026-05.md`.
+- Added `scripts/project_inventory.py` and generated
+  `docs/state/PROJECT_INVENTORY.md`.
+- Replaced the old architecture doc with `docs/ARCHITECTURE.md` and added
+  `docs/000-INDEX.md` as the Obsidian vault entry point.
+
+### Key conclusion
+Atlas moved from a static-topic dashboard toward a narrative-intelligence
+system with three linked layers:
+
+1. curated atlas-topic anchors,
+2. learned precision gates over evidence,
+3. emergent clusters and Living Narrative Threads as the user-facing model.
+
+The documentation system now needs to behave like an operating map, not a
+chronological scrapbook.
+
+### Current documentation map
+- `docs/000-INDEX.md` — Obsidian entry point.
+- `docs/ARCHITECTURE.md` — human-maintained system diagram.
+- `docs/state/PROJECT_INVENTORY.md` — machine-generated endpoint/API/table/cron
+  inventory.
+- `docs/state/archive/CLAUDE-history-2026-05.md` — archived session context.
+- `docs/maps/` — human-curated Obsidian MOCs for data ops, narrative
+  intelligence, validation/paper work, and frontend surfaces.
+
+### Next
+Keep the hygiene loop small: after meaningful changes, regenerate
+`PROJECT_INVENTORY.md`, update the affected MOC, and keep `CLAUDE.md` focused
+on current state plus pointers.
+
+---
+
 ## 2026-05-16 (session 18 — Video UX review + productization roadmap)
 
 ### Session type: UX research, issue triage, roadmap planning
