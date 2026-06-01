@@ -1,5 +1,5 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-06-01 (external storage + emergent cron/docs hygiene)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-06-01 (external storage + evidence-role pilot)
 
 ---
 
@@ -46,12 +46,23 @@ Operational changes now verified:
   (`16,878` assignments, `100%` scored, `2,999` kept, `13,879`
   abstained, kept rate `17.77%`). This confirms the next quality problem is
   coverage/abstention, not scoring freshness.
+- Evidence-role pilot Task 1/2 is underway to address coverage without lowering
+  the 90% precision bar. `backend/scripts/evidence_role_schema.py` defines the
+  teacher label contract, and `backend/scripts/evidence_role_sampler.py` samples
+  read-only `(cluster, signal)` rows from the latest `emergent_clusters`
+  snapshot for offline teacher labeling.
+- First evidence-role teacher packet:
+  `docs/research/atlas-paper/phase-1-validation/evidence-role/teacher-packets/2026-06-01-evidence-role-teacher-packet.jsonl`.
+  It contains `133` rows, below the 300-row planning threshold because the
+  latest persisted snapshot exposes only that many sampled cluster signals.
 
 Next operational work:
 
 - Add the daily 3-vendor calibration job at 03:00.
 - Improve scope-gate coverage without dropping below the 90% precision target;
   current 24h kept rate is only `17.77%` of scored assignments.
+- Continue the evidence-role pilot with teacher labeling, consensus, and local
+  student evaluation before promoting any production read path.
 - Watch external disk availability before hot/cold catch-up runs; if the disk is
   unplugged, the runner should fail loudly instead of filling the internal
   drive.
