@@ -58,9 +58,13 @@ Operational changes now verified:
 - Evidence-role teacher smoke exists for DeepSeek only:
   `docs/research/atlas-paper/phase-1-validation/labels/evidence-role-teacher/2026-06-01-deepseek-smoke.jsonl`
   (`10` rows). `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` are not present in
-  `/Users/pedro/AtlasLocalWorker/.env`, so no multi-vendor consensus artifact
-  has been generated yet. The consensus builder refuses to treat a single
-  teacher as training gold (`insufficient_teachers`).
+  `/Users/pedro/AtlasLocalWorker/.env`, so no multi-vendor consensus exists
+  yet. A single-teacher insufficient consensus pass produced `0` gold rows and
+  `10` disagreement/insufficient rows under
+  `docs/research/atlas-paper/phase-1-validation/labels/evidence-role-consensus/`.
+  The student readiness report is
+  `docs/research/atlas-paper/phase-1-validation/reports/evidence-role/2026-06-01-student-readiness.json`
+  with status `needs_more_labels`.
 
 Next operational work:
 
