@@ -94,6 +94,8 @@ flowchart LR
    writes `gate_score / gate_kept / gate_model`. Per-topic thresholds
    calibrated to ≥90% precision on a 4,911-row 3-vendor consensus
    corpus; e5-base embeddings on MPS. AUC 0.940, OOF recall 0.749.
+   `backend/scripts/gate_coverage_report.py` is the read-only companion
+   for monitoring scored/kept/abstained/unscored coverage by window.
 
 3. **Emergent layer (data-driven taxonomy).** 4× daily snapshot pulls
    24h of headlines, dedupes + cleans + embeds with the same

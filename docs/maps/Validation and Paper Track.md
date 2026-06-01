@@ -19,6 +19,9 @@ gating, annotator agreement, and the future paper series.
   precision claims are not reliable enough.
 - The learned scope gate is the production precision lever; it decides
   keep/abstain on topic assignments.
+- Gate quality must be read as precision plus coverage. Use
+  `backend/scripts/gate_coverage_report.py` to monitor how many live
+  assignments are scored, kept, abstained, or still unscored.
 
 ## Reports and artifacts
 
@@ -39,3 +42,4 @@ gating, annotator agreement, and the future paper series.
 - `backend/scripts/benchmark_bootstrap.py`
 - `backend/scripts/train_scope_gate.py`
 - `backend/scripts/score_assignments_gate.py`
+- `backend/scripts/gate_coverage_report.py`

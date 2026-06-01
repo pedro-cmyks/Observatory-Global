@@ -111,6 +111,12 @@ This block summarizes the intense late-May work that previously lived mostly in
   missing external mount fails loudly instead of filling the internal disk.
 - Verified all `59` archive manifest directories through the symlink:
   `272` manifest records and `3,947,759` represented rows.
+- Added `backend/scripts/gate_coverage_report.py` so gate quality can be tracked
+  as precision plus coverage/abstention, not precision alone.
+- First 24h live report saved under
+  `docs/research/atlas-paper/phase-1-validation/reports/gate-coverage/`:
+  `16,878` assignments, `16,878` scored, `2,999` kept, `13,879` abstained,
+  kept rate `17.77%`, unscored `0`.
 
 ### Key conclusion
 Atlas moved from a static-topic dashboard toward a narrative-intelligence

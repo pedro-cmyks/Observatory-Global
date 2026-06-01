@@ -40,10 +40,18 @@ Operational changes now verified:
   missing, preventing accidental fallback writes to the internal disk.
 - External archive verification on 2026-06-01 passed for `59` manifest
   directories, `272` manifest records, and `3,947,759` represented rows.
+- Scope-gate coverage telemetry is now explicit via
+  `backend/scripts/gate_coverage_report.py`. First saved 24h report:
+  `docs/research/atlas-paper/phase-1-validation/reports/gate-coverage/2026-06-01-gate-coverage-24h.json`
+  (`16,878` assignments, `100%` scored, `2,999` kept, `13,879`
+  abstained, kept rate `17.77%`). This confirms the next quality problem is
+  coverage/abstention, not scoring freshness.
 
 Next operational work:
 
 - Add the daily 3-vendor calibration job at 03:00.
+- Improve scope-gate coverage without dropping below the 90% precision target;
+  current 24h kept rate is only `17.77%` of scored assignments.
 - Watch external disk availability before hot/cold catch-up runs; if the disk is
   unplugged, the runner should fail loudly instead of filling the internal
   drive.
