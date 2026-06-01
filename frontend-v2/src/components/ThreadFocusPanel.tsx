@@ -60,6 +60,7 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
     const [detail, setDetail] = useState<ThreadDetail | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [translations, setTranslations] = useState<Record<string, string>>({})
 
     useEffect(() => {
         const controller = new AbortController()
@@ -79,6 +80,39 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
             })
         return () => controller.abort()
     }, [thread, hours])
+
+    // Lazy translation: when evidence samples land, ask the backend for
+    // English versions. Backend caches per (signal_id, target_lang) so
+    // repeat opens of the same panel are free. Renders original
+    // headline regardless; the translation appears in italic underneath
+    // when ready and only when it differs from the source.
+    useEffect(() => {
+        const samples = detail?.evidence_samples
+        if (!samples || samples.length === 0) return
+        const ids = samples
+            .map(s => Number(s.id))
+            .filter(n => Number.isFinite(n) && n > 0)
+        if (ids.length === 0) return
+        const controller = new AbortController()
+        fetch('/api/v2/translate/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ signal_ids: ids, to: 'en' }),
+            signal: controller.signal,
+        })
+            .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+            .then(payload => {
+                const next: Record<string, string> = {}
+                for (const t of (payload?.translations || [])) {
+                    if (t.translated && typeof t.signal_id !== 'undefined') {
+                        next[String(t.signal_id)] = t.translated
+                    }
+                }
+                setTranslations(next)
+            })
+            .catch(() => { /* silent — frontend falls back to original */ })
+        return () => controller.abort()
+    }, [detail?.evidence_samples])
 
     const active: ThreadDetail = detail || thread
     const displayTrend = (active as any).trend === 'surging' ? 'accelerating' : active.trend
@@ -150,12 +184,19 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
                             <div className="thread-focus-muted">Evidence samples are still being assembled for this thread.</div>
                         ) : (
                             <div className="thread-focus-evidence">
-                                {(active.evidence_samples || []).slice(0, 6).map((sample: ThreadEvidence) => (
-                                    <a key={sample.id} href={sample.url || '#'} target="_blank" rel="noopener noreferrer">
-                                        <strong>{sample.headline}</strong>
-                                        <span>{sample.source} · {sample.country_name || sample.country_code || 'Global'} · {sample.evidence_role || 'evidence'}</span>
-                                    </a>
-                                ))}
+                                {(active.evidence_samples || []).slice(0, 6).map((sample: ThreadEvidence) => {
+                                    const tr = translations[sample.id]
+                                    const showTranslation = tr && tr !== sample.headline
+                                    return (
+                                        <a key={sample.id} href={sample.url || '#'} target="_blank" rel="noopener noreferrer">
+                                            <strong>{sample.headline}</strong>
+                                            {showTranslation && (
+                                                <em className="thread-focus-evidence-translation">{tr}</em>
+                                            )}
+                                            <span>{sample.source} · {sample.country_name || sample.country_code || 'Global'} · {sample.evidence_role || 'evidence'}</span>
+                                        </a>
+                                    )
+                                })}
                             </div>
                         )}
                     </div>
