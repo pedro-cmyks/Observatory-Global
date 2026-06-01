@@ -110,13 +110,14 @@ diagnosis and proposal.
 
 1. **Daily 3-vendor calibration job at 03:00.** The 4x/day emergent
    snapshot cron is live; calibration is still pending.
-2. **Phase 5** translation layer (`signal_translations` table +
-   `/api/v2/translate` endpoint + bilingual frontend display).
-3. **Phase 6** `dynamic_topics` lifecycle to replace the static
+2. **Phase 6** `dynamic_topics` lifecycle to replace the static
    `atlas_topics` table as the canonical taxonomy.
-4. Polish: `html.unescape` on `_serialize_evidence` headlines; bump
+3. Polish: `html.unescape` on `_serialize_evidence` headlines; bump
    `sample_signal_ids` cap from 8 to ~24 in the snapshot script; add
    frontend rendering of `velocity` to brief Watchlist row markup.
+4. Translation follow-up: Phase 5 is implemented (`signal_translations`,
+   `/api/v2/translate`, `/api/v2/translate/batch`, bilingual
+   `ThreadFocusPanel`); only tune UX/caching if live review shows friction.
 
 ### Quick orientation commands
 
