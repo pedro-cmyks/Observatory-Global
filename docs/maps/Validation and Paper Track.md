@@ -31,6 +31,12 @@ gating, annotator agreement, and the future paper series.
 - Evidence-role quality should distinguish `verified`, `candidate`,
   `context_rich`, and `suppressed` tiers so Atlas can recover visible coverage
   without lowering the verified precision target.
+- 2026-06-01 three-vendor evidence-role pass over 646 sampled cluster signals:
+  605 consensus gold rows, 93.7% agreement, status
+  `ready_for_student_training`. ~37.5% of sampled emergent-cluster signals are
+  `noise` under consensus — emergent clusters carry significant off-topic
+  membership, so the role layer is a precision/coverage filter, not just a
+  re-label of cluster membership.
 
 ## Reports and artifacts
 

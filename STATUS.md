@@ -71,13 +71,27 @@ Operational changes now verified:
   and used for this manual run; `/Users/pedro/AtlasLocalWorker/.env` still only
   has DeepSeek because that worker is intentionally separated from the
   iCloud-backed repo/Torch environment.
-- Multi-vendor evidence-role consensus produced `10` gold rows and `0`
-  disagreements under
-  `docs/research/atlas-paper/phase-1-validation/labels/evidence-role-consensus/`.
-  The student readiness report is
+- Multi-vendor evidence-role consensus over the full `646`-row packet
+  (DeepSeek + OpenAI `gpt-4.1` + Anthropic `claude-sonnet-4-6`) produced
+  `605` gold rows and `41` disagreements (`93.7%` 3-vendor agreement) under
+  `docs/research/atlas-paper/phase-1-validation/labels/evidence-role-consensus/2026-06-01-consensus.jsonl`.
+  The student readiness report
   `docs/research/atlas-paper/phase-1-validation/reports/evidence-role/2026-06-01-student-readiness.json`
-  with `10` training rows (`8` noise, `2` primary_evidence) and status
-  `needs_more_labels`.
+  now reports `605` training rows and status `ready_for_student_training`.
+  Role distribution: `primary_evidence 288` (47.6%), `noise 227` (37.5%),
+  `context 54`, `reaction 23`, `analysis 11`, `entity_reference 2`.
+- Key finding: ~`37.5%` of sampled emergent-cluster signals are `noise` under
+  3-vendor consensus. This quantifies that emergent clusters carry significant
+  off-topic membership, and supports the role layer as a coverage/precision
+  filter rather than trusting raw cluster membership.
+- The `41` disagreements are mostly 3-way splits (`context`/`noise`/
+  `primary_evidence`, `25` of `41`) — the borderline evidence-vs-context-vs-
+  noise cases the student will either learn or abstain on.
+- Evidence-role pilot verification (plan Task 7): focused unit tests pass
+  (`18` passed across schema/sampler/teacher/consensus/student), `py_compile`
+  clean on all five scripts, no secrets found in generated artifacts, and
+  `git diff --check` reports no whitespace errors. Current student status is
+  `ready_for_student_training`.
 
 Next operational work:
 

@@ -1,9 +1,13 @@
 {
   "schema_version": "atlas-evidence-role-student-report-v1",
-  "training_rows": 10,
+  "training_rows": 605,
   "role_counts": {
-    "noise": 8,
-    "primary_evidence": 2
+    "noise": 227,
+    "primary_evidence": 288,
+    "context": 54,
+    "analysis": 11,
+    "reaction": 23,
+    "entity_reference": 2
   },
-  "status": "needs_more_labels"
+  "status": "ready_for_student_training"
 }

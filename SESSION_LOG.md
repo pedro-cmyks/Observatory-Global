@@ -130,6 +130,13 @@ This block summarizes the intense late-May work that previously lived mostly in
   + `(cluster_label, signal_id)` dedup across all `emergent_clusters` snapshots
   in the window. Packet grew from `133` to `646` rows on the existing data,
   and will keep accumulating from the 4x/day cron toward the 1,000-1,500 target.
+- Ran the full three-vendor teacher pass over the 646-row packet (DeepSeek,
+  OpenAI gpt-4.1, Anthropic claude-sonnet-4-6). Consensus produced 605 gold
+  rows and 41 disagreements (93.7% agreement); the student readiness report
+  flipped from `needs_more_labels` to `ready_for_student_training`. Role mix:
+  288 primary_evidence, 227 noise, 54 context, 23 reaction, 11 analysis,
+  2 entity_reference. The 37.5% noise share quantifies off-topic membership
+  inside emergent clusters and motivates the role layer as a precision filter.
 
 ### Key conclusion
 Atlas moved from a static-topic dashboard toward a narrative-intelligence
