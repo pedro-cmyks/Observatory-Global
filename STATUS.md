@@ -59,16 +59,19 @@ Operational changes now verified:
   `docs/research/atlas-paper/phase-1-validation/evidence-role/teacher-packets/2026-06-01-evidence-role-teacher-packet.jsonl`.
   It contains `133` rows, below the 300-row planning threshold because the
   latest persisted snapshot exposes only that many sampled cluster signals.
-- Evidence-role teacher smoke exists for DeepSeek only:
-  `docs/research/atlas-paper/phase-1-validation/labels/evidence-role-teacher/2026-06-01-deepseek-smoke.jsonl`
-  (`10` rows). `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` are not present in
-  `/Users/pedro/AtlasLocalWorker/.env`, so no multi-vendor consensus exists
-  yet. A single-teacher insufficient consensus pass produced `0` gold rows and
-  `10` disagreement/insufficient rows under
+- Evidence-role teacher smoke now has three vendors: DeepSeek
+  (`deepseek-chat`), OpenAI (`gpt-4.1`), and Anthropic
+  (`claude-sonnet-4-6`). OpenAI/Anthropic keys were found in the root `.env`
+  and used for this manual run; `/Users/pedro/AtlasLocalWorker/.env` still only
+  has DeepSeek because that worker is intentionally separated from the
+  iCloud-backed repo/Torch environment.
+- Multi-vendor evidence-role consensus produced `10` gold rows and `0`
+  disagreements under
   `docs/research/atlas-paper/phase-1-validation/labels/evidence-role-consensus/`.
   The student readiness report is
   `docs/research/atlas-paper/phase-1-validation/reports/evidence-role/2026-06-01-student-readiness.json`
-  with status `needs_more_labels`.
+  with `10` training rows (`8` noise, `2` primary_evidence) and status
+  `needs_more_labels`.
 
 Next operational work:
 
@@ -77,8 +80,9 @@ Next operational work:
   current 24h kept rate is only `17.77%` of scored assignments.
 - Continue the evidence-role pilot with teacher labeling, consensus, and local
   student evaluation before promoting any production read path.
-- Add OpenAI/Anthropic keys to the worker env or provide equivalent teacher
-  outputs before using the consensus labels for training/evaluation.
+- Decide whether to copy OpenAI/Anthropic keys into the local worker env for
+  scheduled evidence-role calibration, or keep multi-vendor teacher runs as
+  manual repo-local jobs sourced from root `.env`.
 - Watch external disk availability before hot/cold catch-up runs; if the disk is
   unplugged, the runner should fail loudly instead of filling the internal
   drive.

@@ -122,6 +122,10 @@ This block summarizes the intense late-May work that previously lived mostly in
   intended production classifier. The pilot explicitly separates `verified`,
   `candidate`, `context_rich`, and `suppressed` tiers so coverage can improve
   without lowering the verified precision target.
+- Ran the first three-vendor evidence-role smoke over 10 sampled cluster
+  signals using DeepSeek, OpenAI, and Anthropic. The consensus builder produced
+  10 gold rows and 0 disagreements; student readiness remains
+  `needs_more_labels` until the pilot has at least 100 consensus rows.
 
 ### Key conclusion
 Atlas moved from a static-topic dashboard toward a narrative-intelligence

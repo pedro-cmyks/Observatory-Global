@@ -18,6 +18,10 @@ from scripts.evidence_role_schema import (
 )
 
 
+REQUEST_TIMEOUT_SECONDS = 120.0
+MAX_API_ATTEMPTS = 3
+
+
 def build_teacher_prompt(packet: dict[str, Any]) -> str:
     roles = ", ".join(sorted(ROLES))
     reason_codes = ", ".join(sorted(REASON_CODES))
@@ -64,16 +68,15 @@ async def call_deepseek(prompt: str, model: str) -> str:
     api_key = os.getenv("DEEPSEEK_API_KEY")
     if not api_key:
         raise SystemExit("DEEPSEEK_API_KEY is required for --provider deepseek")
-    async with httpx.AsyncClient(timeout=45.0) as client:
-        res = await client.post(
-            "https://api.deepseek.com/chat/completions",
-            headers={"Authorization": f"Bearer {api_key}"},
-            json={
-                "model": model,
-                "temperature": 0,
-                "messages": [{"role": "user", "content": prompt}],
-            },
-        )
+    res = await _post_with_retries(
+        "https://api.deepseek.com/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}"},
+        payload={
+            "model": model,
+            "temperature": 0,
+            "messages": [{"role": "user", "content": prompt}],
+        },
+    )
     res.raise_for_status()
     return res.json()["choices"][0]["message"].get("content") or ""
 
@@ -84,16 +87,15 @@ async def call_openai(prompt: str, model: str) -> str:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise SystemExit("OPENAI_API_KEY is required for --provider openai")
-    async with httpx.AsyncClient(timeout=45.0) as client:
-        res = await client.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers={"Authorization": f"Bearer {api_key}"},
-            json={
-                "model": model,
-                "temperature": 0,
-                "messages": [{"role": "user", "content": prompt}],
-            },
-        )
+    res = await _post_with_retries(
+        "https://api.openai.com/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}"},
+        payload={
+            "model": model,
+            "temperature": 0,
+            "messages": [{"role": "user", "content": prompt}],
+        },
+    )
     res.raise_for_status()
     return res.json()["choices"][0]["message"].get("content") or ""
 
@@ -104,27 +106,47 @@ async def call_anthropic(prompt: str, model: str) -> str:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         raise SystemExit("ANTHROPIC_API_KEY is required for --provider anthropic")
-    async with httpx.AsyncClient(timeout=45.0) as client:
-        res = await client.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
-            json={
-                "model": model,
-                "max_tokens": 500,
-                "temperature": 0,
-                "messages": [{"role": "user", "content": prompt}],
-            },
-        )
+    res = await _post_with_retries(
+        "https://api.anthropic.com/v1/messages",
+        headers={
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        },
+        payload={
+            "model": model,
+            "max_tokens": 500,
+            "temperature": 0,
+            "messages": [{"role": "user", "content": prompt}],
+        },
+    )
     res.raise_for_status()
     return "".join(
         block.get("text", "")
         for block in res.json().get("content", [])
         if block.get("type") == "text"
     )
+
+
+async def _post_with_retries(
+    url: str,
+    *,
+    headers: dict[str, str],
+    payload: dict[str, Any],
+) -> Any:
+    import httpx
+
+    last_error: Exception | None = None
+    for attempt in range(1, MAX_API_ATTEMPTS + 1):
+        try:
+            async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_SECONDS) as client:
+                return await client.post(url, headers=headers, json=payload)
+        except (httpx.TimeoutException, httpx.TransportError) as exc:
+            last_error = exc
+            if attempt == MAX_API_ATTEMPTS:
+                break
+            await asyncio.sleep(float(attempt))
+    raise RuntimeError(f"teacher API request failed after {MAX_API_ATTEMPTS} attempts") from last_error
 
 
 async def label_one(packet: dict[str, Any], *, provider: str, model: str) -> dict[str, Any]:
