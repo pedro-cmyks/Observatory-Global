@@ -23,6 +23,15 @@
   (eviction stalls; anthropic import once took 505s) to a dedicated local venv
   `/Users/pedro/AtlasLocalWorker/atlasvenv`. Repair if evicted:
   `pip install --force-reinstall --no-deps <pkg>`.
+- **RQ1 improvement methods (all 4 measured/built)**: M1 scope gate 41%→70%
+  precision (`score_gold_gate.py`); M2 evidence-role student v1 primary precision
+  78% + v2 DB-features near-null (lever is gold+cluster purity, not features);
+  M1↔M2 bridge: 90% of gate-kept errors are recoverable evidence; M3 theme-hint
+  tail 20% precision, drop→48% (`topic_remediation_report.py`). Improvement doc:
+  `docs/research/atlas-paper/phase-1-validation/2026-06-02-rq1-improvement-methods.md`.
+- **3-vendor calibration cron** `com.atlas.threevendor-calibration` (03:00 daily)
+  installed: runner + plist + additive installer; worker `.env` gained OpenAI +
+  Anthropic keys (mode 600); smoke run Fleiss kappa 0.520 (n=67), rc=0.
 
 ## 2026-05-22 to 2026-05-31 (sessions 19-31 — Data quality, narrative threads, validation, emergent layer)
 

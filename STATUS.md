@@ -198,9 +198,19 @@ Operational changes now verified:
   (snapshots at 05:00/11:00 today, 17:00/23:00 yesterday; 81 cluster rows / 7
   snapshots). Evidence-role gold held at 605 (no new teacher pass this cycle).
 
-Next operational work:
+- **3-vendor calibration cron installed (2026-06-02).** Daily 03:00 launchd agent
+  `com.atlas.threevendor-calibration` samples a fresh atlas-v2 benchmark slice,
+  runs the deepseek-chat/gpt-4.1/claude-sonnet-4-6 annotator panel, and writes an
+  inter-annotator agreement report (drift monitor). Repo: `scripts/run-3vendor-calibration.sh`,
+  `scripts/install-3vendor-calibration-launchd.sh`,
+  `infra/launchd/com.atlas.threevendor-calibration.plist`. Worker `.env` now holds
+  all three vendor keys + DATABASE_URL (mode 600, off-iCloud); runner uses the
+  off-iCloud `atlasvenv`. Reports land in `/Users/pedro/AtlasLocalWorker/calibration/`
+  (outside the repo). Smoke run 2026-06-02 (n=67): Fleiss kappa 0.520, pairwise
+  0.48–0.61, rc=0. The installer is additive on the worker `.env` (appends only
+  missing keys — never clobbers, unlike the emergent installer).
 
-- Add the daily 3-vendor calibration job at 03:00.
+Next operational work:
 - Do NOT lower the scope-gate threshold to chase coverage; the gate is well
   calibrated on what it receives. Treat the emergent-cluster + evidence-role
   path as the coverage engine instead.
