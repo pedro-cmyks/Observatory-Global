@@ -1,6 +1,6 @@
 # Project Inventory
 
-Generated: 2026-06-01T13:06:51.151830+00:00
+Generated: 2026-06-02T19:08:10.654508+00:00
 Regen: `python scripts/project_inventory.py`
 
 ## Endpoints (backend)
@@ -102,6 +102,8 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 | `atlas_topics` | `backend/migrations/019_atlas_topic_intelligence.sql` | — |
 | `country_baseline_stats` | `backend/migrations/003_anomaly_baseline.sql` | — |
 | `data_lifecycle_config` | `backend/migrations/004_data_lifecycle_config.sql` | — |
+| `dynamic_topic_members` | `backend/migrations/048_dynamic_topics.sql` | — |
+| `dynamic_topics` | `backend/migrations/048_dynamic_topics.sql` | — |
 | `emergent_clusters` | `backend/migrations/046_emergent_clusters.sql` | `backend/app/routers/emergent.py` |
 | `historical_archive_coverage` | `backend/migrations/029_historical_processed_tables.sql` | — |
 | `historical_evidence_samples` | `backend/migrations/029_historical_processed_tables.sql` | — |
@@ -125,12 +127,45 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 
 | Label | Program | Schedule | RunAtLoad | Last log mtime | Last log line |
 |---|---|---|---|---|---|
-| `com.atlas.atlas-topic-classifier` | `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` | every 1800s | True | 2026-06-01T13:05:21.751403+00:00 | } |
-| `com.atlas.emergent-snapshot` | `/Users/pedro/AtlasLocalWorker/run-emergent-snapshot.sh` | 0:00, 6:00, 12:00, 18:00 | True | 2026-06-01T12:46:12.409762+00:00 | } |
-| `com.atlas.local-hot-cold-catchup` | `/Users/pedro/AtlasLocalWorker/run-local-hot-cold-catchup.sh` | 0:10, 1:10, 2:10, 3:10, 4:10, 5:10 | True | 2026-06-01T10:10:49.523263+00:00 | } |
+| `com.atlas.atlas-topic-classifier` | `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` | every 1800s | True | 2026-06-02T18:39:51.123195+00:00 | } |
+| `com.atlas.emergent-snapshot` | `/Users/pedro/AtlasLocalWorker/run-emergent-snapshot.sh` | 0:00, 6:00, 12:00, 18:00 | True | 2026-06-02T18:52:57.492419+00:00 | } |
+| `com.atlas.local-hot-cold-catchup` | `/Users/pedro/AtlasLocalWorker/run-local-hot-cold-catchup.sh` | 0:10, 1:10, 2:10, 3:10, 4:10, 5:10 | True | 2026-06-02T11:24:01.617128+00:00 | asyncpg.exceptions.ConnectionDoesNotExistError: connection was closed in the middle of operation |
+| `com.atlas.threevendor-calibration` | `/Users/pedro/AtlasLocalWorker/run-3vendor-calibration.sh` | — | False | — |  |
 
 ## Recent commits (last 2 weeks)
 
+- `b0803c6 2026-06-02 feat(phase6): guarded dynamic topic dedup`
+- `8dfd9f0 2026-06-02 feat(phase6): incremental dynamic_topics lifecycle wired into the snapshot cron`
+- `ddab9a0 2026-06-02 feat(phase6): evidence-role student noise gate for dynamic_topics`
+- `3bcb563 2026-06-02 feat(phase6): dynamic_topics shadow lifecycle (Sub-A)`
+- `c463171 2026-06-02 feat(phase6): emergent topic identity resolver (Sub-A', read-only)`
+- `927fda5 2026-06-02 feat(infra): daily 3-vendor calibration cron at 03:00`
+- `65be407 2026-06-02 feat(validation): evidence-role student v2 (DB features) -- near-null result`
+- `a24b9e4 2026-06-02 feat(validation): M3 remediation -- theme-hint tail + worst-topic gating`
+- `fe47ba9 2026-06-02 feat(validation): M1<->M2 bridge -- gate-kept errors are recoverable evidence`
+- `3c53f9c 2026-06-02 feat(validation): M2 -- train real evidence-role student v1`
+- `c9f3e01 2026-06-02 feat(validation): quantify M1 -- scope gate lifts precision 41% -> 70%`
+- `231733b 2026-06-02 docs(paper): RQ1 improvement methods grounded in failure anatomy`
+- `0f82272 2026-06-02 feat(validation): RQ1 final result at scale (n~660)`
+- `73b08a2 2026-06-02 feat(validation): scale RQ1 benchmark to 691 rows with 3-vendor consensus`
+- `6370bcf 2026-06-01 fix(threads): drop redundant momentum verb from thread label`
+- `77828cd 2026-06-01 feat(validation): add lexicon recall baseline metric`
+- `8edea59 2026-06-01 docs(research): diagnose coverage root-cause as lexicon recall`
+- `81f83ed 2026-06-01 feat(validation): three-vendor evidence role gold set (605 rows)`
+- `bb6a46e 2026-06-01 feat(validation): widen evidence role sampler window`
+- `6b2e7fc 2026-06-01 feat(validation): complete evidence role multi-vendor smoke`
+- `cb29ef7 2026-06-01 docs(obsidian): connect evidence role pilot`
+- `7a8ec51 2026-06-01 feat(validation): add evidence role student readiness report`
+- `ad660ac 2026-06-01 feat(validation): build evidence role teacher consensus`
+- `f6c73a7 2026-06-01 feat(validation): add evidence role teacher runner`
+- `109d6d6 2026-06-01 feat(validation): sample evidence role teacher packet`
+- `9e3c66b 2026-06-01 fix(validation): harden evidence role schema`
+- `caa1700 2026-06-01 feat(validation): add evidence role schema`
+- `c2dde0d 2026-06-01 docs(plan): implement evidence role pilot`
+- `553e74a 2026-06-01 docs(spec): design narrative evidence role layer`
+- `cbd495f 2026-06-01 feat(ops): report scope gate coverage`
+- `7a66b3a 2026-06-01 docs: align next priorities after translation phase`
+- `afeaa4b 2026-06-01 fix(ops): move hot-cold archive to external disk`
 - `f6d524d 2026-06-01 fix(ops): run emergent snapshot cron off desktop`
 - `955f8da 2026-06-01 docs(obsidian): add session hygiene maps`
 - `e6ccca5 2026-06-01 docs(obsidian): add 000-INDEX.md vault entry point + gitignore .obsidian/`
@@ -179,35 +214,3 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 - `2f432ac 2026-05-25 feat(research): add atlas v2 labeling guide and sample`
 - `c9d0324 2026-05-25 docs(research): start atlas narrative intelligence paper track`
 - `5d54269 2026-05-25 feat(taxonomy): add answerability labels to benchmark harness`
-- `d2ab71b 2026-05-25 docs(threads): define atlas narrative intelligence framework`
-- `e374fc9 2026-05-25 docs(quality): define atlas answerability model`
-- `f610fa7 2026-05-25 docs(taxonomy): audit narrative classification root cause`
-- `6f253fd 2026-05-25 docs(taxonomy): score path b benchmark labels`
-- `e3a9952 2026-05-25 feat(taxonomy): add topic benchmark harness`
-- `99af056 2026-05-25 feat(taxonomy): audit and tighten topic quality`
-- `047f521 2026-05-25 feat(taxonomy): correct mining resource safety anchor`
-- `d25498b 2026-05-24 docs(agents): align phase zero operating canon`
-- `c727a45 2026-05-24 docs(roadmap): canonize backlog-first production cycle`
-- `d568772 2026-05-24 fix(frontend): open living thread focus from narratives`
-- `673a6d2 2026-05-24 fix(frontend): feed narrative panel from living threads`
-- `af40caa 2026-05-24 fix(threads): parse jsonb arrays in thread responses`
-- `2942bd8 2026-05-24 Merge pull request #211 from pedro-cmyks/codex/threads-enrichment-m3a`
-- `454ac8c 2026-05-24 fix(frontend): replace deck overlays with maplibre layers`
-- `e00d12b 2026-05-24 feat(threads): add quality-gated focus model`
-- `3a674c2 2026-05-24 feat(threads): enrich response with parent_domain, entities, timeline (M3a)`
-- `5d9ef8d 2026-05-24 feat(briefing): expose top living Narrative Threads (Milestone 2) (#210)`
-- `9669755 2026-05-24 feat(threads): add living Narrative Threads beta (#209)`
-- `7a985ac 2026-05-24 feat(atlas-topics): complete Path A multilingual rollout (#206)`
-- `0049a86 2026-05-23 feat(atlas-topics): mig 036 Path A pilot — multilingual lex (#205)`
-- `b667eb5 2026-05-23 feat(briefing): expose atlas hierarchy + related topics (#201)`
-- `781c196 2026-05-23 fix(atlas-topics): mig 035+035b expand hints for recall (#200)`
-- `558aad4 2026-05-23 fix(atlas-topics): mig 034 prune noisy hints + expand lex (#199)`
-- `1c59eb5 2026-05-23 feat(briefing): expose top_atlas_topics from v2 classifier (#198)`
-- `2831195 2026-05-23 feat(topic-classifier): v2 bulk SQL classifier + live A/B promotion (#197)`
-- `7d267ec 2026-05-22 docs(claude): record migration 033 weighted fusion + 2026-05-22 patterns`
-- `13b9770 2026-05-22 feat(sentiment): confidence-weighted NLP fusion across hot pre-aggregates`
-- `85b9a9f 2026-05-22 docs(status): record lexicon HTML entity fix + coverage baseline finding`
-- `6c6b253 2026-05-22 fix(lexicon): decode HTML entities + langdetect xx rows in mining + scorer`
-- `5b02e7c 2026-05-22 feat(nlp): add product-cell effective coverage report + baseline`
-- `f1870c8 2026-05-22 feat(history): automate local hot-cold catchup`
-- `21148a1 2026-05-22 docs(status): record incremental hot-cold catch-up`

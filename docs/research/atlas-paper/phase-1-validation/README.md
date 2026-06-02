@@ -191,14 +191,38 @@ The local UI writes directly to the review template. It shows one row at a time,
 keeps assistant hints as `assistant_*`, and writes reviewer choices to
 `reviewer_*`.
 
+Deprecated local Ollama comparison, kept only for reproducibility:
+
+```bash
+backend/.venv/bin/python backend/scripts/atlas_ollama_pilot.py \
+  --input docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-02.review-template.jsonl \
+  --output docs/research/atlas-paper/phase-1-validation/reports/ollama-local/2026-06-02-batch-02-llama32-1b.jsonl \
+  --report docs/research/atlas-paper/phase-1-validation/reports/ollama-local/2026-06-02-batch-02-llama32-1b-report.json \
+  --limit 20 \
+  --model llama3.2:1b
+```
+
+This writes separate `ollama_*` fields and resolved `gold_*` comparison fields.
+It does not modify review templates.
+
+Decision: do not use local Ollama models on Pedro's M1 as Atlas judges, label
+teachers, or reviewer substitutes. The 2026-06-02 `llama3.2:1b` pilot reached
+only 25% decision accuracy on 20 reviewed batch 02 rows. Keep the script and
+artifacts as historical evidence; restart this route only with a materially new
+model/hardware hypothesis and a fresh benchmark.
+
 ## Next Work
 
-1. Review the 7 normalization warnings before treating batch 01 as final gold.
-2. Adjudicate batch 02 through the local review UI.
-3. Apply/finalize batch 02 and compare assistant hints vs reviewer decisions.
-4. Continue labeling batches 03-08.
-5. Merge reviewed/gold labels.
-6. Score the full sample.
-7. Render visual validation reports for reviewed/gold scores.
-8. Use the score and visual report to define the first read-only Narrative
+1. Keep batch 01 and batch 02 as reviewed diagnostic evidence, not paper-grade
+   proof; both remain below the 85% minimum precision gate.
+2. Use the reviewed batch 02 labels for assistant-vs-reviewer and local-model
+   comparison, but do not treat local Ollama output as gold or hints.
+3. Continue the paper track with larger consensus-gold batches and the measured
+   improvement levers: scope gate, evidence-role student, dynamic topic
+   self-curation, and per-topic remediation.
+4. Merge reviewed/gold labels only after the current batch's normalization
+   report and score have been inspected.
+5. Score the full sample.
+6. Render visual validation reports for reviewed/gold scores.
+7. Use the score and visual report to define the first read-only Narrative
    Thread Graph report.

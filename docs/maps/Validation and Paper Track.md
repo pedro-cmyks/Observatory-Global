@@ -23,6 +23,9 @@ gating, annotator agreement, and the future paper series.
 - [[2026-05-25-atlas-v2-labeling-guide]] — semantic/evidence-role label guide.
 - Evidence-role teacher/student reports:
   `docs/research/atlas-paper/phase-1-validation/reports/evidence-role/`.
+- [[2026-06-02-local-ollama-deprecation]] — local Ollama route is deprecated
+  for Atlas judging/teacher labels after the `llama3.2:1b` M1 pilot failed the
+  validation bar.
 
 ## Validation findings
 
@@ -63,6 +66,10 @@ gating, annotator agreement, and the future paper series.
   (13.2%) is higher than on `primary_evidence` — the generator is biased toward
   off-topic candidates. This is the number the embedding cluster-membership
   generator must beat.
+- Local Ollama on Pedro's current M1 is not a valid label teacher or judge:
+  `llama3.2:1b` scored 25% decision accuracy on 20 reviewed batch 02 rows.
+  Keep `ollama_*` outputs as reproducibility artifacts only; never merge them
+  into `assistant_*`, `reviewer_*`, or `gold_*`.
 
 ## Reports and artifacts
 
@@ -70,6 +77,7 @@ gating, annotator agreement, and the future paper series.
 - `docs/research/atlas-paper/phase-1-validation/reports/agreement/`
 - `docs/research/atlas-paper/phase-1-validation/reports/phase-b/`
 - `docs/research/atlas-paper/phase-1-validation/reports/evidence-role/`
+- `docs/research/atlas-paper/phase-1-validation/reports/ollama-local/`
 - `docs/research/atlas-paper/phase-1-validation/models/`
 - `docs/research/topic-quality/`
 
@@ -86,3 +94,4 @@ gating, annotator agreement, and the future paper series.
 - `backend/scripts/score_assignments_gate.py`
 - `backend/scripts/gate_coverage_report.py`
 - `backend/scripts/lexicon_recall_baseline.py`
+- `backend/scripts/atlas_ollama_pilot.py`

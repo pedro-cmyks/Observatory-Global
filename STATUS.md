@@ -256,9 +256,25 @@ Operational changes now verified:
   6 active / 12 candidate / 3 deprecated, 5 roundups, 1 high-noise topic.
   Follow-up: canonical product cutover last, in a dedicated session.
 
+- **Local Ollama validation route deprecated (2026-06-02).**
+  `backend/scripts/atlas_ollama_pilot.py` remains as a reproducibility runner
+  only. It writes separate `ollama_*` fields and resolved `gold_*` comparison
+  fields without mutating review templates. The `llama3.2:1b` M1 pilot on 20
+  reviewed batch 02 rows scored 25% decision accuracy, 25% scope accuracy, and
+  11.76% evidence-role accuracy, so local Ollama must not be used as an Atlas
+  judge, label teacher, reviewer substitute, assistant hint source, or gold
+  generator.
+
 - Cron health (verified 2026-06-02): `com.atlas.emergent-snapshot` running 4x/day
   (snapshots at 05:00/11:00 today, 17:00/23:00 yesterday; 81 cluster rows / 7
   snapshots). Evidence-role gold held at 605 (no new teacher pass this cycle).
+
+- Cron issue to triage before product cutover: `com.atlas.local-hot-cold-catchup`
+  is loaded but has `last exit code = 1`; the 2026-06-02 00:10 run failed with
+  `asyncpg.exceptions.ConnectionDoesNotExistError: connection was closed in the
+  middle of operation` during `archive_export`. External disk mount is present
+  (`/Volumes/Ext`). Treat this as retry/idempotency or DB-connection resilience
+  work before relying on the next overnight maintenance window.
 
 - **3-vendor calibration cron installed (2026-06-02).** Daily 03:00 launchd agent
   `com.atlas.threevendor-calibration` samples a fresh atlas-v2 benchmark slice,

@@ -113,6 +113,22 @@ Key files changed in session 27 (external archive storage — 2026-06-01):
 - `backend/tests/test_local_hot_cold_external_archive_runner.py` — shape guardrails for the external archive defaults and missing-mount failure.
 - Verification passed for `59` archive manifest directories, `272` manifest records, and `3,947,759` represented rows through the `/Users/pedro/AtlasArchive` symlink.
 
+Key docs/code changed in session 28 (Phase 6 dynamic topics shadow lifecycle — 2026-06-02):
+- `backend/migrations/048_dynamic_topics.sql` — shadow `dynamic_topics` + `dynamic_topic_members` schema.
+- `backend/migrations/049_dynamic_topics_noise_rate.sql` — topic-level student noise-rate gate.
+- `backend/migrations/050_emergent_cluster_noise_cache.sql` — per-cluster `emergent_clusters.role_noise_rate` cache so student scoring happens once per cluster.
+- `backend/scripts/project_dynamic_topics.py` — default incremental lifecycle writer. Hydrates existing topics by replaying members, ingests only new emergent clusters, gates active promotion by regex roundup + local student noise, and runs conservative merge/dedup only under `--rebuild`.
+- `scripts/run-emergent-snapshot.sh` — guarded tail step runs `project_dynamic_topics.py` after each emergent snapshot from `/Users/pedro/AtlasLocalWorker`; lifecycle inference is local e5 + student, `$0` API.
+- `docs/research/topic-quality/2026-06-02-dynamic-topics-shadow-result.md` — current Phase 6 shadow result and guardrails.
+- Verified shadow rebuild on 2026-06-02: `101` clusters / `9` snapshots -> `21` topics, `6 active / 12 candidate / 3 deprecated`, `5` roundups, `1` high-noise topic, `n_merged_topics=0`.
+- Verified incremental no-op after rebuild: `n_new_clusters=0`, `inserted=0`, `updated=0`, `members=0`.
+
+Key docs/code changed in session 28 (local Ollama deprecation — 2026-06-02):
+- `backend/scripts/atlas_ollama_pilot.py` — read-only local Ollama benchmark runner; writes separate `ollama_*` fields and resolved `gold_*` comparison fields, never mutates review templates.
+- `backend/tests/test_atlas_ollama_pilot.py` — parser/gold-resolution/report tests.
+- `docs/research/atlas-paper/phase-1-validation/2026-06-02-local-ollama-deprecation.md` — decision record: do not use local Ollama models on Pedro's current M1 as Atlas judges, label teachers, reviewer substitutes, or gold generators.
+- Pilot evidence: `llama3.2:1b` on 20 reviewed batch 02 rows reached `25%` decision accuracy, `25%` scope accuracy, and `11.76%` evidence-role accuracy; keep artifacts only for reproducibility.
+
 Session 22 topic taxonomy state:
 - Path A pilot result: `election-legitimacy-dispute` lex_pct `6.3% -> 31.6%`, high_conf `5 -> 27`, multilingual terms drove `74%` of lex-match volume; global coverage moved `13.08% -> 13.35%`.
 - Armed-conflict partial result: lex_pct `2.10% -> 6.56%`, high_conf `22 -> 85`, global v2 coverage after re-backfill `17.22%`. Treat as partial because the 30% gate did not clear; do not re-add broad armed-incident terms just to raise recall.

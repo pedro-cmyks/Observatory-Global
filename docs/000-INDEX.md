@@ -54,6 +54,8 @@ below resolve via Obsidian's fuzzy search regardless of folder.
   classification precision from ~51% → 90%.
 - [[2026-06-02-dynamic-topics-shadow-result]] — Phase 6 shadow lifecycle,
   student noise-rate gate, incremental cron, and guarded merge/dedup result.
+- [[2026-06-02-local-ollama-deprecation]] — negative local Ollama validation
+  result; do not use M1-local Ollama as Atlas judge, teacher, or gold source.
 
 ## Roadmaps
 

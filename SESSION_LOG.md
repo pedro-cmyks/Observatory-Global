@@ -26,6 +26,24 @@ has a safe rebuild-only dedup path. Canonical product cutover should be a
 dedicated session with contract smokes before any product surface reads
 `dynamic_topics`.
 
+## 2026-06-02 — Local Ollama validation route deprecated
+
+### What happened
+- Documented and tested `backend/scripts/atlas_ollama_pilot.py`, a read-only
+  local Ollama benchmark runner that writes separate `ollama_*` fields and
+  resolved `gold_*` comparison fields without mutating review templates.
+- Logged the 2026-06-02 `llama3.2:1b` pilot against 20 reviewed batch 02 rows:
+  decision accuracy 25%, scope accuracy 25%, evidence-role accuracy 11.76%,
+  with 3 invalid prediction rows after tolerant parsing.
+- Updated the validation README, experiment log, Obsidian validation map, and
+  status docs so this route is not rediscovered as an open opportunity.
+
+### Decision
+Local Ollama on Pedro's current M1 is deprecated for Atlas judging, teacher
+labels, reviewer substitution, assistant hints, and gold generation. Keep the
+script and artifacts only for reproducibility or low-stakes prompt/JSON plumbing
+tests.
+
 ## 2026-06-01/02 — RQ1 at scale + thread-label fix + venv off iCloud
 
 ### What happened

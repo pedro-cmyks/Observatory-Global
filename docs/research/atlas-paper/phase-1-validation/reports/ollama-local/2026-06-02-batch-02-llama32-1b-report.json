@@ -1,0 +1,32 @@
+{
+  "decision": {
+    "accuracy": 0.25,
+    "compared": 20,
+    "matched": 5
+  },
+  "error_rows": 0,
+  "error_type": {
+    "accuracy": null,
+    "compared": 0,
+    "matched": 0
+  },
+  "evidence_role": {
+    "accuracy": 0.1176,
+    "compared": 17,
+    "matched": 2
+  },
+  "input": "../docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-02.review-template.jsonl",
+  "invalid_prediction_rows": 3,
+  "limit": 20,
+  "model": "llama3.2:1b",
+  "output": "../docs/research/atlas-paper/phase-1-validation/reports/ollama-local/2026-06-02-batch-02-llama32-1b.jsonl",
+  "rows": 20,
+  "schema_version": "atlas-ollama-pilot-v1",
+  "scope": {
+    "accuracy": 0.25,
+    "compared": 20,
+    "matched": 5
+  },
+  "scoreable_rows": 20,
+  "scoreable_source_rows": 32
+}

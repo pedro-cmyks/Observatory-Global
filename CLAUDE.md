@@ -103,19 +103,27 @@ Known follow-up: evidence headlines come through HTML-entity-encoded
 both atlas and emergent paths; `html.unescape` on the headline is the
 small fix.
 
-### Suggested next-session priorities
+### Current state and next-session priorities
 
 See `docs/state/2026-05-30-context-gap-inventory-proposal.md` for the
 diagnosis and proposal.
 
-1. **Daily 3-vendor calibration job at 03:00.** The 4x/day emergent
-   snapshot cron is live; calibration is still pending.
-2. **Phase 6** `dynamic_topics` lifecycle to replace the static
-   `atlas_topics` table as the canonical taxonomy.
-3. Polish: `html.unescape` on `_serialize_evidence` headlines; bump
+1. **Phase 6 status:** `dynamic_topics` is shadow-live after the emergent
+   snapshot cron. It hydrates incrementally, uses local e5 + evidence-role
+   student noise gating (`$0` API), caches per-cluster noise in
+   `emergent_clusters.role_noise_rate`, and has guarded rebuild-only
+   merge/dedup. Product surfaces still do **not** read `dynamic_topics`.
+2. **Next major block:** canonical cutover planning for product reads from
+   `dynamic_topics`. Keep it as a dedicated session with contract smokes before
+   changing visible surfaces.
+3. **Validation guardrail:** local Ollama on Pedro's M1 is deprecated for Atlas
+   judging/teacher labels after the 2026-06-02 `llama3.2:1b` pilot scored 25%
+   decision accuracy on 20 reviewed batch 02 rows. Keep outputs in `ollama_*`
+   fields only.
+4. Polish: `html.unescape` on `_serialize_evidence` headlines; bump
    `sample_signal_ids` cap from 8 to ~24 in the snapshot script; add
    frontend rendering of `velocity` to brief Watchlist row markup.
-4. Translation follow-up: Phase 5 is implemented (`signal_translations`,
+5. Translation follow-up: Phase 5 is implemented (`signal_translations`,
    `/api/v2/translate`, `/api/v2/translate/batch`, bilingual
    `ThreadFocusPanel`); only tune UX/caching if live review shows friction.
 

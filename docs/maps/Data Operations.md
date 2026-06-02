@@ -38,6 +38,10 @@ and production runtime constraints.
 - `dynamic_topics` merge/dedup is rebuild-only. Do not put centroid-only dedup
   in the incremental cron; dense centroids can chain-collapse unrelated topics
   and roundups.
+- Current hot/cold note (2026-06-02): `com.atlas.local-hot-cold-catchup` is
+  loaded but last exited `1` after an asyncpg connection reset during
+  `archive_export`; `/Volumes/Ext` is mounted. Triage DB retry/idempotency
+  before assuming the next overnight maintenance window is healthy.
 - Use `scripts/project_inventory.py` to refresh cron and endpoint truth before
   trusting old handoffs.
 - New public schema tables should enable RLS in the same migration.

@@ -294,9 +294,17 @@ Current batch 02 state:
 | Metric | Value |
 |---|---:|
 | Total rows | 32 |
-| Ready rows | 0 |
-| Remaining rows | 32 |
+| Reviewed/gold rows | 32 |
+| Scoreable labeled rows | 31 |
+| Reviewed precision | 64.52% |
+| Gate | fail |
 | Assistant hints | 32 |
+
+Reviewed artifacts:
+
+- `docs/research/atlas-paper/phase-1-validation/labels/reviewed-batch-02/2026-05-25-atlas-v2-stratified-batch-02.reviewed.jsonl`
+- `docs/research/atlas-paper/phase-1-validation/reports/reviewed-batch-02-score.json`
+- `docs/research/atlas-paper/phase-1-validation/reports/reviewed-batch-02/reviewed-batch-02.md`
 
 Why keep hints:
 
@@ -304,3 +312,57 @@ Why keep hints:
 - They help identify whether failure is model/assistant interpretation,
   ambiguous evidence, or reviewer disagreement.
 - They must stay separate from `reviewer_*` fields until explicitly accepted.
+
+## 2026-06-02 — Local Ollama Pilot Against Batch 02 Review Rows
+
+Purpose:
+
+- Test whether a narrow local model can classify Atlas validation rows well
+  enough to reduce API dependency.
+- Keep local model output separate from `assistant_*` and `reviewer_*` fields.
+- Compare only against rows with resolved review labels: reviewer fields first,
+  or assistant hints only when `accept_assistant_label=true`.
+
+Command:
+
+```bash
+backend/.venv/bin/python backend/scripts/atlas_ollama_pilot.py \
+  --input docs/research/atlas-paper/phase-1-validation/review-templates/2026-05-25-atlas-v2-stratified-batch-02.review-template.jsonl \
+  --output docs/research/atlas-paper/phase-1-validation/reports/ollama-local/2026-06-02-batch-02-llama32-1b.jsonl \
+  --report docs/research/atlas-paper/phase-1-validation/reports/ollama-local/2026-06-02-batch-02-llama32-1b-report.json \
+  --limit 20 \
+  --model llama3.2:1b \
+  --timeout 45 \
+  --num-predict 180 \
+  --num-ctx 1024
+```
+
+Outputs:
+
+- `docs/research/atlas-paper/phase-1-validation/reports/ollama-local/2026-06-02-batch-02-llama32-1b.jsonl`
+- `docs/research/atlas-paper/phase-1-validation/reports/ollama-local/2026-06-02-batch-02-llama32-1b-report.json`
+
+Score summary:
+
+| Metric | Value |
+|---|---:|
+| Model | `llama3.2:1b` |
+| Rows | 20 |
+| Decision matches | 5 / 20 |
+| Decision accuracy | 25.00% |
+| Scope matches | 5 / 20 |
+| Scope accuracy | 25.00% |
+| Evidence-role matches | 2 / 17 |
+| Evidence-role accuracy | 11.76% |
+| Invalid prediction rows after tolerant parsing | 3 |
+
+Interpretation:
+
+- The local model is operationally viable for tiny experiments on the M1, but
+  not accurate enough to use as a local judge or training teacher for Atlas.
+- A 1B model can follow the JSON contract imperfectly, but it over-rejects many
+  rows and confuses scope/evidence-role labels.
+- Decision: deprecate the local Ollama route for Atlas validation and judging.
+  Keep the script/artifacts for reproducibility only.
+- Decision note:
+  `docs/research/atlas-paper/phase-1-validation/2026-06-02-local-ollama-deprecation.md`
