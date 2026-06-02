@@ -222,8 +222,18 @@ Operational changes now verified:
   emergent identities are geographic "X News Roundup" artifacts. Spec:
   `docs/superpowers/specs/2026-06-02-emergent-topic-identity-resolver-design.md`;
   result: `docs/research/topic-quality/2026-06-02-dynamic-topics-shadow-result.md`.
-  SHADOW only — no product read path. Next: wire student noise gate + incremental
-  cron hydration; canonical cutover last.
+  SHADOW only — no product read path.
+
+- **Phase 6 quality gate v2 — student noise rate (2026-06-02).** Migration
+  `049` adds `dynamic_topics.noise_rate`; `project_dynamic_topics.py --student-model`
+  scores each topic's member sample headlines through the evidence-role student
+  (mean `noise` fraction) and gates promotion on `noise_rate < 0.50`. Validated
+  complementary to the label regex: the student caught **"Economic and Social
+  Trends" (n=770, noise 0.82)** — the largest cluster, an unlabeled grab-bag no
+  regex would flag — while the regex still catches explicitly-labeled roundups
+  with low noise ("Mixed News Headlines" 0.08). Result: **4 active** (all noise
+  ≤0.39) / 12 candidate / 5 deprecated. Next: incremental cron hydration (replace
+  `--rebuild`); canonical cutover last.
 
 - Cron health (verified 2026-06-02): `com.atlas.emergent-snapshot` running 4x/day
   (snapshots at 05:00/11:00 today, 17:00/23:00 yesterday; 81 cluster rows / 7

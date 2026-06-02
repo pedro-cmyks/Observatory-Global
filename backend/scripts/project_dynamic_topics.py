@@ -48,6 +48,7 @@ class LifecycleConfig:
     persist_min: int = 2        # snapshots to be promotable
     cohesion_min: float = 0.50  # mean member cohesion to promote
     volume_min: int = 30        # aggregate kept signals to promote
+    noise_max: float = 0.50     # max student noise-rate to promote (quality gate)
     stale_k: int = 2            # active -> deprecated after K unseen ticks
     retire_m: int = 4           # deprecated -> retired after M unseen ticks
 
@@ -68,17 +69,20 @@ def next_state(
     is_roundup: bool,
     since_seen: int,
     cfg: LifecycleConfig,
+    noise_rate: float | None = None,
 ) -> str:
     """Pure state transition for one snapshot tick."""
+    quality_ok = noise_rate is None or noise_rate < cfg.noise_max
     qualifies = (
         n_snapshots >= cfg.persist_min
         and mean_cohesion >= cfg.cohesion_min
         and agg_n_signals >= cfg.volume_min
         and not is_roundup
+        and quality_ok
     )
     if seen_now:
-        if is_roundup:
-            return "candidate"  # roundups are never promoted; demote if active
+        if is_roundup or not quality_ok:
+            return "candidate"  # roundup or high-noise: never promoted; demote if active
         if qualifies:
             return "active"
         if state in ("deprecated", "retired"):
@@ -103,10 +107,10 @@ class Topic:
     __slots__ = (
         "id", "identity_key", "state", "label_counts", "centroid", "first_seen",
         "last_seen", "snapshots", "agg_n_signals", "cohesions", "roundup_votes",
-        "n_labels", "since_seen", "members", "dirty", "new",
+        "n_labels", "since_seen", "members", "dirty", "new", "noises",
     )
 
-    def __init__(self, identity_key, label, centroid, snap, n_signals, cohesion):
+    def __init__(self, identity_key, label, centroid, snap, n_signals, cohesion, noise=None):
         from collections import Counter
         self.id: int | None = None
         self.identity_key = identity_key
@@ -118,6 +122,7 @@ class Topic:
         self.snapshots = {snap}
         self.agg_n_signals = int(n_signals)
         self.cohesions = [float(cohesion)] if cohesion is not None else []
+        self.noises = [float(noise)] if noise is not None else []
         self.roundup_votes = 1 if is_roundup_label(label) else 0
         self.n_labels = 1
         self.since_seen = 0
@@ -146,6 +151,10 @@ class Topic:
     def label(self) -> str:
         return self.label_counts.most_common(1)[0][0] if self.label_counts else ""
 
+    @property
+    def noise_rate(self) -> float | None:
+        return round(float(np.mean(self.noises)), 4) if self.noises else None
+
     def attach(self, cluster: dict[str, Any], snap, score: float) -> None:
         self.centroid = running_mean(self.centroid, self.n_member_clusters, np.array(cluster["centroid"]))
         self.last_seen = max(self.last_seen, snap)
@@ -159,6 +168,8 @@ class Topic:
             self.label_counts[clabel] += 1
         if is_roundup_label(clabel):
             self.roundup_votes += 1
+        if cluster.get("noise") is not None:
+            self.noises.append(float(cluster["noise"]))
         self.members.append({"cluster_id": cluster["id"], "snapshot_at": snap, "match_score": score})
         self.dirty = True
 
@@ -188,7 +199,7 @@ def process_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], s
             t = Topic(
                 identity_key=f"dyn-{c['snapshot_at']}-{c['cluster_id']}",
                 label=c["label"], centroid=c["centroid"], snap=snap,
-                n_signals=c["n_signals"], cohesion=c.get("cohesion"),
+                n_signals=c["n_signals"], cohesion=c.get("cohesion"), noise=c.get("noise"),
             )
             # constructor seeds aggregates from this cluster; record its member row
             t.members.append({"cluster_id": c["id"], "snapshot_at": snap, "match_score": 1.0})
@@ -203,6 +214,7 @@ def process_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], s
             t.state, seen_now=seen, n_snapshots=len(t.snapshots),
             mean_cohesion=t.mean_cohesion, agg_n_signals=t.agg_n_signals,
             is_roundup=t.is_roundup, since_seen=t.since_seen, cfg=cfg,
+            noise_rate=t.noise_rate,
         )
         if new_state != t.state:
             t.state = new_state
@@ -214,7 +226,8 @@ def process_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], s
 
 async def load_clusters(conn) -> list[dict[str, Any]]:
     rows = await conn.fetch(
-        "SELECT id, snapshot_at, cluster_id, label, n_signals, cohesion, centroid_vec "
+        "SELECT id, snapshot_at, cluster_id, label, n_signals, cohesion, "
+        "sample_signal_ids, centroid_vec "
         "FROM emergent_clusters WHERE centroid_vec IS NOT NULL ORDER BY snapshot_at, cluster_id"
     )
     return [
@@ -223,10 +236,43 @@ async def load_clusters(conn) -> list[dict[str, Any]]:
             "cluster_id": r["cluster_id"], "label": r["label"],
             "n_signals": int(r["n_signals"] or 0),
             "cohesion": float(r["cohesion"]) if r["cohesion"] is not None else None,
+            "sample_signal_ids": [int(x) for x in (r["sample_signal_ids"] or [])],
             "centroid": np.array(r["centroid_vec"], dtype=np.float64),
+            "noise": None,  # filled by score_clusters_noise when a student is given
         }
         for r in rows
     ]
+
+
+async def score_clusters_noise(conn, clusters: list[dict[str, Any]], model_path: str) -> None:
+    """Attach per-cluster evidence-role noise fraction (in place).
+
+    Embeds each cluster's sample headlines with e5, runs the local student,
+    and sets cluster['noise'] = fraction predicted 'noise'. Needs torch.
+    """
+    import json
+    from scripts.score_assignments_gate import _build_embedder
+    from scripts.bridge_gate_student_scope import _student_predict
+
+    model = json.loads(open(model_path, encoding="utf-8").read())
+    all_ids = sorted({sid for c in clusters for sid in c["sample_signal_ids"]})
+    if not all_ids:
+        return
+    rows = await conn.fetch(
+        "SELECT id, headline FROM signals_v2 WHERE id = ANY($1::bigint[])", all_ids
+    )
+    headline = {int(r["id"]): (r["headline"] or "").strip() for r in rows}
+
+    embed, _ = _build_embedder(model["embedding_model"])
+    for c in clusters:
+        texts = [headline.get(sid, "") for sid in c["sample_signal_ids"] if headline.get(sid)]
+        if not texts:
+            c["noise"] = None
+            continue
+        head_emb = embed([f"query: {t}" for t in texts])
+        label_emb = embed([f"query: {(c['label'] or '').strip()}"] * len(texts))
+        roles, _ = _student_predict(model, head_emb, label_emb)
+        c["noise"] = round(sum(1 for r in roles if r == "noise") / len(roles), 4)
 
 
 async def ingested_cluster_ids(conn) -> set[int]:
@@ -257,12 +303,12 @@ async def persist(conn, topics: list[Topic]) -> dict[str, int]:
             row = await conn.fetchrow(
                 "INSERT INTO dynamic_topics (identity_key, state, label, centroid_vec, "
                 "first_seen, last_seen, n_snapshots, agg_n_signals, mean_cohesion, "
-                "is_roundup, snapshots_since_seen, last_state_change) "
-                "VALUES ($1,$2,$3,$4,$5::timestamptz,$6::timestamptz,$7,$8,$9,$10,$11,NOW()) "
+                "is_roundup, snapshots_since_seen, noise_rate, last_state_change) "
+                "VALUES ($1,$2,$3,$4,$5::timestamptz,$6::timestamptz,$7,$8,$9,$10,$11,$12,NOW()) "
                 "ON CONFLICT (identity_key) DO NOTHING RETURNING id",
                 t.identity_key, t.state, t.label, [float(x) for x in t.centroid],
                 first_seen, last_seen, len(t.snapshots), t.agg_n_signals,
-                cohesion, t.is_roundup, t.since_seen,
+                cohesion, t.is_roundup, t.since_seen, t.noise_rate,
             )
             if row:
                 t.id = int(row["id"])
@@ -272,11 +318,12 @@ async def persist(conn, topics: list[Topic]) -> dict[str, int]:
             await conn.execute(
                 "UPDATE dynamic_topics SET state=$2, label=$3, centroid_vec=$4, "
                 "last_seen=$5::timestamptz, n_snapshots=$6, agg_n_signals=$7, mean_cohesion=$8, "
-                "is_roundup=$9, snapshots_since_seen=$10, updated_at=NOW(), "
+                "is_roundup=$9, snapshots_since_seen=$10, noise_rate=$11, updated_at=NOW(), "
                 "last_state_change=CASE WHEN state IS DISTINCT FROM $2 THEN NOW() ELSE last_state_change END "
                 "WHERE id=$1",
                 t.id, t.state, t.label, [float(x) for x in t.centroid], last_seen,
                 len(t.snapshots), t.agg_n_signals, cohesion, t.is_roundup, t.since_seen,
+                t.noise_rate,
             )
             written["updated"] += 1
         if t.id is not None:
@@ -309,6 +356,8 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
     conn = await asyncpg.connect(db)
     try:
         clusters = await load_clusters(conn)
+        if args.student_model:
+            await score_clusters_noise(conn, clusters, args.student_model)
         topics: list[Topic] = []  # shadow rebuild starts fresh in-memory
         snapshot_groups = group_by_snapshot(clusters)
         processed_snaps = 0
@@ -321,6 +370,8 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
             "n_topics": len(topics),
             "by_state": _state_counts(topics),
             "roundups": sum(1 for t in topics if t.is_roundup),
+            "high_noise": sum(1 for t in topics if (t.noise_rate or 0) >= cfg.noise_max),
+            "scored_noise": args.student_model is not None,
             "dry_run": args.dry_run,
         }
         if not args.dry_run:
@@ -343,6 +394,7 @@ def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Project emergent_clusters into dynamic_topics (shadow).")
     ap.add_argument("--dry-run", action="store_true", help="compute without writing")
     ap.add_argument("--rebuild", action="store_true", help="rebuild from all snapshots (TRUNCATE first)")
+    ap.add_argument("--student-model", help="path to evidence-role student json for the noise quality gate")
     return ap.parse_args()
 
 

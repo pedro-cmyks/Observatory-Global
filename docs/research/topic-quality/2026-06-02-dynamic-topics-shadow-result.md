@@ -56,10 +56,39 @@ Active (the data-driven taxonomy): "Economic and Social Trends",
    DeepSeek labeling needs work, or (better) the student noise gate filters
    them downstream.
 
+## Quality gate v2 — evidence-role student noise rate (2026-06-02)
+
+Wired the student noise rate as the principled quality gate
+(`--student-model`, migration 049 adds `dynamic_topics.noise_rate`). For
+each topic, every member cluster's sample headlines are scored by the local
+student (e5 + logistic); `noise_rate` = mean fraction predicted `noise`.
+Promotion to `active` now also requires `noise_rate < 0.50`, and an active
+topic that turns high-noise is demoted.
+
+Rebuild with the gate: **4 active** / 12 candidate / 5 deprecated.
+
+| topic | n | noise | gate |
+|---|---:|---:|---|
+| Russia Warns on Baltic and Zaporizhzhia | 224 | 0.03 | active |
+| Local News and Politics | 163 | 0.24 | active |
+| Infrastructure and Public Services | 152 | 0.19 | active |
+| Agostina Vega Found Dead | 135 | 0.39 | active |
+| **Economic and Social Trends** | 770 | **0.82** | suppressed (NOISE) |
+| Brazil / Turkey / Romanian News Roundup, Mixed, Daily | — | 0.08–0.48 | suppressed (RU) |
+
+**The two gates are complementary, validated:** the regex catches
+explicitly-labeled roundups even when their student-noise is low (e.g.
+"Mixed News Headlines" noise 0.08), while the student catches *unlabeled*
+grab-bags the regex misses — most notably "Economic and Social Trends"
+(n=770, noise 0.82), the single largest cluster, which no label rule would
+have flagged. Together they leave 4 genuinely coherent, low-noise active
+topics. Noise distribution is bimodal (8 topics ~0, a tail to 0.82), so the
+0.50 threshold cleanly isolates the egregious grab-bag without demoting real
+specific topics like "Agostina Vega Found Dead" (0.39).
+
 ## Decision / next increment
 
-Sub-A is done and validated in shadow. Next: wire the **evidence-role
-student noise rate** as the real quality gate (replacing label regex), and
-add the incremental cron path (hydrate existing dynamic_topics from the DB
-and match new snapshots, instead of `--rebuild`). Canonical product cutover
-stays last.
+Sub-A + quality gate done and validated in shadow. Next: the incremental
+cron path (hydrate existing dynamic_topics from the DB and match each new
+snapshot, instead of `--rebuild`) so the lifecycle runs after every emergent
+snapshot. Then merge/dedup refinement and, last, canonical product cutover.
