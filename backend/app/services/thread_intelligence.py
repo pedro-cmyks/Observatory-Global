@@ -350,7 +350,10 @@ def parse_thread_id(thread_id: str) -> tuple[str, list[str]]:
     return anchor_slug, country_codes
 
 
-def build_thread_label(*, anchor_label: str, top_countries: list[str], changed_10h: int) -> str:
+def build_thread_label(*, anchor_label: str, top_countries: list[str]) -> str:
+    # Momentum is shown by the trend pill (accelerating/stable/fading); the
+    # label stays a neutral topic+place phrase to avoid a second, contradictory
+    # momentum signal in the title.
     if len(top_countries) >= 2:
         place = f"{top_countries[0]} and {top_countries[1]}"
     elif top_countries:
@@ -358,8 +361,7 @@ def build_thread_label(*, anchor_label: str, top_countries: list[str], changed_1
     else:
         place = "multiple regions"
 
-    verb = "intensifies" if changed_10h > 0 else "continues"
-    return f"{anchor_label} {verb} in {place}"
+    return f"{anchor_label} in {place}"
 
 
 def _why_now(changed_10h: int, country_names: list[str]) -> str:
@@ -456,7 +458,6 @@ def assemble_thread(
     label = build_thread_label(
         anchor_label=topic_label,
         top_countries=country_names,
-        changed_10h=changed_10h,
     )
 
     return {

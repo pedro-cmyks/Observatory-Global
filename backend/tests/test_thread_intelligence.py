@@ -72,9 +72,8 @@ def test_build_thread_label_uses_topic_and_geography():
     label = build_thread_label(
         anchor_label="Fuel subsidy unrest",
         top_countries=["Nigeria", "Peru"],
-        changed_10h=42,
     )
-    assert label == "Fuel subsidy unrest intensifies in Nigeria and Peru"
+    assert label == "Fuel subsidy unrest in Nigeria and Peru"
 
 
 def test_assemble_thread_contract():
