@@ -1,0 +1,407 @@
+{
+  "schema_version": "atlas-emergent-topic-identity-v1",
+  "n_clusters": 81,
+  "n_snapshots": 7,
+  "skipped_null_centroid": 0,
+  "threshold_sweep": [
+    {
+      "n_identities": 16,
+      "n_persistent": 15,
+      "n_singletons": 1,
+      "mean_lifespan": 5.062,
+      "max_lifespan": 7,
+      "threshold": 0.7,
+      "global_n_groups": 1,
+      "intra_identity_spread": 0.0799,
+      "signal_diag": {
+        "matched_pairs": 65,
+        "label_cosine_mean": 0.8227,
+        "label_agree_rate_ge_0.8": 0.5846,
+        "jaccard_mean": 0.0,
+        "jaccard_nonzero_rate": 0.0
+      }
+    },
+    {
+      "n_identities": 16,
+      "n_persistent": 15,
+      "n_singletons": 1,
+      "mean_lifespan": 5.062,
+      "max_lifespan": 7,
+      "threshold": 0.75,
+      "global_n_groups": 1,
+      "intra_identity_spread": 0.0799,
+      "signal_diag": {
+        "matched_pairs": 65,
+        "label_cosine_mean": 0.8227,
+        "label_agree_rate_ge_0.8": 0.5846,
+        "jaccard_mean": 0.0,
+        "jaccard_nonzero_rate": 0.0
+      }
+    },
+    {
+      "n_identities": 16,
+      "n_persistent": 15,
+      "n_singletons": 1,
+      "mean_lifespan": 5.062,
+      "max_lifespan": 7,
+      "threshold": 0.8,
+      "global_n_groups": 1,
+      "intra_identity_spread": 0.0799,
+      "signal_diag": {
+        "matched_pairs": 65,
+        "label_cosine_mean": 0.8227,
+        "label_agree_rate_ge_0.8": 0.5846,
+        "jaccard_mean": 0.0,
+        "jaccard_nonzero_rate": 0.0
+      }
+    },
+    {
+      "n_identities": 21,
+      "n_persistent": 15,
+      "n_singletons": 6,
+      "mean_lifespan": 3.857,
+      "max_lifespan": 7,
+      "threshold": 0.85,
+      "global_n_groups": 2,
+      "intra_identity_spread": 0.0653,
+      "signal_diag": {
+        "matched_pairs": 60,
+        "label_cosine_mean": 0.8234,
+        "label_agree_rate_ge_0.8": 0.6,
+        "jaccard_mean": 0.0,
+        "jaccard_nonzero_rate": 0.0
+      }
+    },
+    {
+      "n_identities": 31,
+      "n_persistent": 15,
+      "n_singletons": 16,
+      "mean_lifespan": 2.613,
+      "max_lifespan": 7,
+      "threshold": 0.9,
+      "global_n_groups": 11,
+      "intra_identity_spread": 0.0373,
+      "signal_diag": {
+        "matched_pairs": 50,
+        "label_cosine_mean": 0.841,
+        "label_agree_rate_ge_0.8": 0.72,
+        "jaccard_mean": 0.0,
+        "jaccard_nonzero_rate": 0.0
+      }
+    },
+    {
+      "n_identities": 43,
+      "n_persistent": 12,
+      "n_singletons": 31,
+      "mean_lifespan": 1.884,
+      "max_lifespan": 7,
+      "threshold": 0.95,
+      "global_n_groups": 42,
+      "intra_identity_spread": 0.0121,
+      "signal_diag": {
+        "matched_pairs": 38,
+        "label_cosine_mean": 0.8492,
+        "label_agree_rate_ge_0.8": 0.7895,
+        "jaccard_mean": 0.0,
+        "jaccard_nonzero_rate": 0.0
+      }
+    }
+  ],
+  "knee_threshold": 0.85,
+  "chosen_threshold": 0.85,
+  "n_identities_at_chosen": 21,
+  "static_atlas_topics_note": "compare n_identities vs the static atlas_topics count to gauge coverage gap",
+  "identity_timelines": [
+    {
+      "representative_label": "Economic and Social Trends",
+      "first_seen": "2026-05-31T03:35:13.064623+00:00",
+      "last_seen": "2026-06-02T11:00:03.718232+00:00",
+      "n_snapshots": 7,
+      "n_member_clusters": 7,
+      "agg_n_signals": 636,
+      "member_labels": [
+        "Economic and Social Trends",
+        "Iran Nuclear Talks Stance",
+        "Iran Threats to US",
+        "Iran-US Tensions and Oil Prices",
+        "Israel-Hezbollah Conflict Escalation",
+        "Trump Iran Deal and Israel",
+        "Greek Political Turmoil"
+      ]
+    },
+    {
+      "representative_label": "Public Safety and Crime",
+      "first_seen": "2026-05-31T03:35:13.064623+00:00",
+      "last_seen": "2026-06-02T11:00:03.718232+00:00",
+      "n_snapshots": 7,
+      "n_member_clusters": 7,
+      "agg_n_signals": 453,
+      "member_labels": [
+        "Public Safety and Crime",
+        "Brazil News Roundup",
+        "News Headlines Overview",
+        "Brazil News Roundup",
+        "Brazil News Roundup",
+        "Mixed News Headlines",
+        "Mixed News Headlines"
+      ]
+    },
+    {
+      "representative_label": "PSG Victory Riots",
+      "first_seen": "2026-05-31T03:35:13.064623+00:00",
+      "last_seen": "2026-06-02T11:00:03.718232+00:00",
+      "n_snapshots": 7,
+      "n_member_clusters": 7,
+      "agg_n_signals": 304,
+      "member_labels": [
+        "PSG Victory Riots",
+        "Drone Incident and Reactions",
+        "Romanian News Roundup",
+        "Drone Incident and Geopolitical Tensions",
+        "Drone Incident at Galați",
+        "Vietnamese News Headlines",
+        "România și Moldova: Actualități"
+      ]
+    },
+    {
+      "representative_label": "Mixed News Headlines",
+      "first_seen": "2026-05-31T03:35:13.064623+00:00",
+      "last_seen": "2026-06-02T11:00:03.718232+00:00",
+      "n_snapshots": 6,
+      "n_member_clusters": 6,
+      "agg_n_signals": 313,
+      "member_labels": [
+        "Mixed News Headlines",
+        "Gold Prices in Arab Countries",
+        "Regional Conflicts and Security",
+        "أخبار مصرية متنوعة",
+        "Saudi Company Profiles",
+        "Middle East News Roundup"
+      ]
+    },
+    {
+      "representative_label": "Traffic Accidents and Scandals",
+      "first_seen": "2026-05-31T03:35:13.064623+00:00",
+      "last_seen": "2026-06-02T11:00:03.718232+00:00",
+      "n_snapshots": 6,
+      "n_member_clusters": 6,
+      "agg_n_signals": 348,
+      "member_labels": [
+        "Traffic Accidents and Scandals",
+        "Güncel Olaylar ve Trajediler",
+        "Turkish News Headlines",
+        "Turkish Politics and Scandals",
+        "Sports and Politics News",
+        "Turkey News Roundup"
+      ]
+    },
+    {
+      "representative_label": "Local News and Politics",
+      "first_seen": "2026-05-31T14:52:42.706632+00:00",
+      "last_seen": "2026-06-02T11:00:03.718232+00:00",
+      "n_snapshots": 5,
+      "n_member_clusters": 5,
+      "agg_n_signals": 163,
+      "member_labels": [
+        "Local News and Politics",
+        "Noticias Locales Variadas",
+        "Iraqi News and Culture",
+        "Ecotrax Fiji Railway Cycling",
+        "Noticias Regionales Variadas"
+      ]
+    },
+    {
+      "representative_label": "Orchard Portfolio Sale",
+      "first_seen": "2026-05-31T03:35:13.064623+00:00",
+      "last_seen": "2026-06-02T05:00:07.462024+00:00",
+      "n_snapshots": 5,
+      "n_member_clusters": 5,
+      "agg_n_signals": 107,
+      "member_labels": [
+        "Orchard Portfolio Sale",
+        "Institutional Trading Activity",
+        "Stock Price Movements",
+        "Q1 2026 Earnings Transcripts",
+        "Securities Class Actions"
+      ]
+    },
+    {
+      "representative_label": "Russia Warns on Baltic and Zaporizhzhia",
+      "first_seen": "2026-05-31T03:35:13.064623+00:00",
+      "last_seen": "2026-06-02T11:00:03.718232+00:00",
+      "n_snapshots": 5,
+      "n_member_clusters": 5,
+      "agg_n_signals": 203,
+      "member_labels": [
+        "Russia Warns on Baltic and Zaporizhzhia",
+        "Russian and Ukrainian Drone Strikes",
+        "Trump Abandons Weaponization Fund",
+        "Russian Air Strikes on Kyiv and Dnipro",
+        "Russian Attack on Ukraine June 2"
+      ]
+    },
+    {
+      "representative_label": "Daily News Roundup",
+      "first_seen": "2026-05-31T03:35:13.064623+00:00",
+      "last_seen": "2026-06-02T11:00:03.718232+00:00",
+      "n_snapshots": 5,
+      "n_member_clusters": 5,
+      "agg_n_signals": 96,
+      "member_labels": [
+        "Daily News Roundup",
+        "Gas Prices Drop",
+        "Russian Shadow Fleet Interceptions",
+        "Giá Vàng Giảm Mạnh",
+        "Vietnamese News Roundup"
+      ]
+    },
+    {
+      "representative_label": "Infrastructure and Public Services",
+      "first_seen": "2026-05-31T14:52:42.706632+00:00",
+      "last_seen": "2026-06-02T11:00:03.718232+00:00",
+      "n_snapshots": 4,
+      "n_member_clusters": 4,
+      "agg_n_signals": 127,
+      "member_labels": [
+        "Infrastructure and Public Services",
+        "News Headlines Compilation",
+        "Indonesia Daily Updates June 2026",
+        "Prabowo MBG School Visit"
+      ]
+    },
+    {
+      "representative_label": "Virginia Bus Crash",
+      "first_seen": "2026-05-31T03:35:13.064623+00:00",
+      "last_seen": "2026-06-02T05:00:07.462024+00:00",
+      "n_snapshots": 4,
+      "n_member_clusters": 4,
+      "agg_n_signals": 100,
+      "member_labels": [
+        "Virginia Bus Crash",
+        "TMC MPs Attacked in Bengal",
+        "Florida Sues OpenAI",
+        "Iowa Domestic Shooting Spree"
+      ]
+    },
+    {
+      "representative_label": "Trump Headlines Freedom 250",
+      "first_seen": "2026-05-31T03:35:13.064623+00:00",
+      "last_seen": "2026-06-02T05:00:07.462024+00:00",
+      "n_snapshots": 4,
+      "n_member_clusters": 4,
+      "agg_n_signals": 96,
+      "member_labels": [
+        "Trump Headlines Freedom 250",
+        "Israel Captures Beaufort Castle",
+        "Trump Mediates Israel-Hezbollah Ceasefire",
+        "Trump Blasts Netanyahu Over Lebanon"
+      ]
+    },
+    {
+      "representative_label": "Agostina Vega Found Dead",
+      "first_seen": "2026-05-31T03:35:13.064623+00:00",
+      "last_seen": "2026-06-02T05:00:07.462024+00:00",
+      "n_snapshots": 4,
+      "n_member_clusters": 4,
+      "agg_n_signals": 121,
+      "member_labels": [
+        "Agostina Vega Found Dead",
+        "Fatal Teen Car Chases",
+        "Health and Safety Incidents",
+        "Terremoto Magnitudo 6.2 Calabria"
+      ]
+    },
+    {
+      "representative_label": "Meteor Sonic Boom",
+      "first_seen": "2026-05-31T03:35:13.064623+00:00",
+      "last_seen": "2026-06-02T05:00:07.462024+00:00",
+      "n_snapshots": 3,
+      "n_member_clusters": 3,
+      "agg_n_signals": 53,
+      "member_labels": [
+        "Meteor Sonic Boom",
+        "NFL Player Trades and Signings",
+        "Major Russian Strikes on Ukraine"
+      ]
+    },
+    {
+      "representative_label": "PSG Victory Riots",
+      "first_seen": "2026-05-31T03:35:13.064623+00:00",
+      "last_seen": "2026-06-02T05:00:07.462024+00:00",
+      "n_snapshots": 3,
+      "n_member_clusters": 3,
+      "agg_n_signals": 75,
+      "member_labels": [
+        "PSG Victory Riots",
+        "PSG Victory Riots",
+        "Trump's $1.8B Fund Paused"
+      ]
+    },
+    {
+      "representative_label": "Vancouver Real Estate Listings",
+      "first_seen": "2026-06-02T05:00:07.462024+00:00",
+      "last_seen": "2026-06-02T05:00:07.462024+00:00",
+      "n_snapshots": 1,
+      "n_member_clusters": 1,
+      "agg_n_signals": 29,
+      "member_labels": [
+        "Vancouver Real Estate Listings"
+      ]
+    },
+    {
+      "representative_label": "Australia's First Female Astronaut",
+      "first_seen": "2026-06-01T23:00:06.443379+00:00",
+      "last_seen": "2026-06-01T23:00:06.443379+00:00",
+      "n_snapshots": 1,
+      "n_member_clusters": 1,
+      "agg_n_signals": 24,
+      "member_labels": [
+        "Australia's First Female Astronaut"
+      ]
+    },
+    {
+      "representative_label": "Trump Iran Action Criminal",
+      "first_seen": "2026-06-01T23:00:06.443379+00:00",
+      "last_seen": "2026-06-01T23:00:06.443379+00:00",
+      "n_snapshots": 1,
+      "n_member_clusters": 1,
+      "agg_n_signals": 27,
+      "member_labels": [
+        "Trump Iran Action Criminal"
+      ]
+    },
+    {
+      "representative_label": "Platner Explicit Texts Scandal",
+      "first_seen": "2026-05-31T03:35:13.064623+00:00",
+      "last_seen": "2026-05-31T03:35:13.064623+00:00",
+      "n_snapshots": 1,
+      "n_member_clusters": 1,
+      "agg_n_signals": 19,
+      "member_labels": [
+        "Platner Explicit Texts Scandal"
+      ]
+    },
+    {
+      "representative_label": "Pope's AI Encyclical",
+      "first_seen": "2026-05-31T03:35:13.064623+00:00",
+      "last_seen": "2026-05-31T03:35:13.064623+00:00",
+      "n_snapshots": 1,
+      "n_member_clusters": 1,
+      "agg_n_signals": 20,
+      "member_labels": [
+        "Pope's AI Encyclical"
+      ]
+    },
+    {
+      "representative_label": "Frankie Valli Tour Cancellation",
+      "first_seen": "2026-05-31T03:35:13.064623+00:00",
+      "last_seen": "2026-05-31T03:35:13.064623+00:00",
+      "n_snapshots": 1,
+      "n_member_clusters": 1,
+      "agg_n_signals": 21,
+      "member_labels": [
+        "Frankie Valli Tour Cancellation"
+      ]
+    }
+  ]
+}

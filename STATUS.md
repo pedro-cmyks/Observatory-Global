@@ -194,6 +194,20 @@ Operational changes now verified:
   more gold + cleaner clusters (M4), not per-row features. Artifact:
   `reports/evidence-role/2026-06-02-student-v2-eval.json`.
 
+- **Phase 6 Sub-A' — emergent topic identity validated (2026-06-02).**
+  `emergent_topic_identity_resolver.py` (read-only) groups the 81
+  `emergent_clusters` across 7 snapshots into stable topic identities by
+  centroid cosine (sequential time-ordered linking, threshold sweep). Result:
+  **15 recurring topics, threshold-robust** across 0.70–0.90 → cross-snapshot
+  identity is coherent. Operating threshold **0.85** (knee). Identity signal:
+  centroid primary, label confirmatory (cos ~0.83), member-overlap discarded
+  (Jaccard 0.0 cross-snapshot). 15 recurring emergent topics vs **30 active
+  `atlas_topics`** → static taxonomy ~2× bloated (ties to M3 dead topics). Some
+  persistent identities are roundup artifacts → lifecycle must still suppress
+  them. Decision: proceed to Sub-A schema (keyed on stable id + persistence +
+  roundup flag). Spec: `docs/superpowers/specs/2026-06-02-emergent-topic-identity-resolver-design.md`;
+  report: `docs/research/topic-quality/2026-06-02-emergent-topic-identity.{json,md}`.
+
 - Cron health (verified 2026-06-02): `com.atlas.emergent-snapshot` running 4x/day
   (snapshots at 05:00/11:00 today, 17:00/23:00 yesterday; 81 cluster rows / 7
   snapshots). Evidence-role gold held at 605 (no new teacher pass this cycle).
