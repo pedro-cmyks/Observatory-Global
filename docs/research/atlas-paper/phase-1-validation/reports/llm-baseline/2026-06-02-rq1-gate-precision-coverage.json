@@ -1,0 +1,65 @@
+{
+  "schema_version": "atlas-rq1-gate-precision-coverage-v1",
+  "gate_id": "atlas-scope-gate-v1-e5base",
+  "n_gold_scored": 660,
+  "baseline_no_gate": {
+    "coverage": 1.0,
+    "precision_kept": 0.4091
+  },
+  "gate_operating_point": {
+    "kept": 246,
+    "coverage": 0.3727,
+    "precision_kept": 0.7033
+  },
+  "threshold_sweep": [
+    {
+      "threshold": 0.5,
+      "kept": 298,
+      "coverage": 0.4515,
+      "precision_kept": 0.6577
+    },
+    {
+      "threshold": 0.6,
+      "kept": 283,
+      "coverage": 0.4288,
+      "precision_kept": 0.6749
+    },
+    {
+      "threshold": 0.7,
+      "kept": 275,
+      "coverage": 0.4167,
+      "precision_kept": 0.6836
+    },
+    {
+      "threshold": 0.8,
+      "kept": 248,
+      "coverage": 0.3758,
+      "precision_kept": 0.6855
+    },
+    {
+      "threshold": 0.85,
+      "kept": 230,
+      "coverage": 0.3485,
+      "precision_kept": 0.687
+    },
+    {
+      "threshold": 0.878,
+      "kept": 220,
+      "coverage": 0.3333,
+      "precision_kept": 0.7091
+    },
+    {
+      "threshold": 0.9,
+      "kept": 210,
+      "coverage": 0.3182,
+      "precision_kept": 0.7095
+    },
+    {
+      "threshold": 0.95,
+      "kept": 180,
+      "coverage": 0.2727,
+      "precision_kept": 0.7833
+    }
+  ],
+  "note": "Truth = 3-vendor consensus gold_decision (correct=1, incorrect/partial=0, unclear dropped). Operating point uses the gate's per-topic thresholds; sweep uses a single global threshold."
+}

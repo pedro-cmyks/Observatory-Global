@@ -147,8 +147,12 @@ Operational changes now verified:
   the 0%-precision tail (fuel-subsidy-unrest, mining-royalty-risk, …). Doc:
   `docs/research/atlas-paper/phase-1-validation/2026-06-02-rq1-improvement-methods.md`;
   composition artifact `reports/llm-baseline/2026-06-02-rq1-error-composition.json`.
-  **Immediate next experiment:** score the 660-row consensus gold through the
-  scope gate → precision-vs-coverage table (M1 quantified).
+  **M1 quantified (2026-06-02):** scoring the 660-row gold through the scope gate
+  offline (`score_gold_gate.py`, e5-base, no DB writes) lifts precision
+  **40.9% → 70.3%** at 37.3% coverage (and 78.3% @ 27.3% at threshold 0.95). The
+  gate is confirmed as the dominant precision lever; residual gap to the LLM
+  upper bound is `scope_mismatch` (M2's target). Artifact:
+  `reports/llm-baseline/2026-06-02-rq1-gate-precision-coverage.json`.
 
 Next operational work:
 

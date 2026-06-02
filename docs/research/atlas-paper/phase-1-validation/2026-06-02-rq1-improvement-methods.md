@@ -74,10 +74,21 @@ precision *of the kept set* should rise from 41.6% toward the LLM range, trading
 coverage for precision. This is the single biggest lever because off_topic is the
 largest error bucket.
 
-**How to validate (next experiment, runnable now).** Re-score the 660 gold rows
-with the scope gate; report precision-on-kept and kept-rate. The claim "the gate
-raises precision to ≥X% at Y% coverage" becomes a measured table, not an
-assertion. Script path: `score_assignments_gate.py` over the consensus gold.
+**Measured result (2026-06-02).** Scoring the 660-row consensus gold through the
+gate offline (`score_gold_gate.py`, e5-base, no DB writes;
+`reports/llm-baseline/2026-06-02-rq1-gate-precision-coverage.json`):
+
+| operating point | precision (kept) | coverage |
+|---|---:|---:|
+| no gate (baseline) | 40.9% | 100% |
+| gate @ per-topic thresholds | **70.3%** | 37.3% |
+| global threshold 0.95 | **78.3%** | 27.3% |
+
+The gate lifts precision **+29 points (41% → 70%)** by abstaining the off_topic
+and noise-scope buckets, and reaches the LLM zero-shot range (~78%) at ~27%
+coverage. M1 is confirmed as the dominant precision lever. The residual gap to
+the LLM upper bound is concentrated in `scope_mismatch` rows the gate keeps
+(right domain, wrong granularity) — exactly M2's target.
 
 **Important boundary.** Do NOT *lower* the gate threshold to chase coverage (see
 `docs/research/topic-quality/2026-06-01-coverage-root-cause-lexicon-recall.md`).
@@ -140,9 +151,14 @@ scored at all*. Together they are the precision+coverage pair.
 > scope_mismatch as correctly-graded context. We measure each lever against the
 > same 3-vendor consensus gold.
 
-## 5. Immediate next experiment
+## 5. Status and next experiment
 
-Run M1's validation: score the 660-row consensus gold through the scope gate and
-produce a precision-vs-coverage table. That converts M1 from a proposal into the
-paper's first quantified improvement result, and sets the precision ceiling that
-M2/M3 then push further.
+**M1 done and quantified** (§3, +29 points). The paper now has its first
+measured improvement result: the learned scope gate raises single-layer
+precision from 41% to 70% at 37% coverage.
+
+**Next:** quantify M2. Score the same gold through the evidence-role student
+(once trained) and show that `scope_mismatch` rows the gate keeps are recovered
+as correctly-typed `context`/`reaction`/`analysis` rather than precision misses —
+closing the residual gap to the LLM upper bound while restoring coverage. Then M3
+(retire/gate the 0%-precision topics) for the macro-average lift.
