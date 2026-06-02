@@ -10,6 +10,7 @@ SOURCE_ENV="${ATLAS_SOURCE_ENV:-$ROOT_DIR/.env}"
 TARGET_ENV="$WORKER_HOME/.env"
 MODEL_DIR="$WORKER_HOME/models"
 MODEL_NAME="2026-05-30-emergent-precision-gate-v1.json"
+STUDENT_MODEL_NAME="2026-06-02-evidence-role-student-v1.json"
 
 mkdir -p "$HOME/Library/LaunchAgents" "$WORKER_HOME/backend" "$WORKER_HOME/logs" "$MODEL_DIR"
 
@@ -21,17 +22,26 @@ if [[ -f "$ROOT_DIR/docs/research/atlas-paper/phase-1-validation/models/$MODEL_N
   cp "$ROOT_DIR/docs/research/atlas-paper/phase-1-validation/models/$MODEL_NAME" "$MODEL_DIR/$MODEL_NAME"
 fi
 
+# Phase 6 dynamic_topics quality gate: deploy the evidence-role student model.
+if [[ -f "$ROOT_DIR/docs/research/atlas-paper/phase-1-validation/models/$STUDENT_MODEL_NAME" ]]; then
+  cp "$ROOT_DIR/docs/research/atlas-paper/phase-1-validation/models/$STUDENT_MODEL_NAME" "$MODEL_DIR/$STUDENT_MODEL_NAME"
+fi
+
+# Additive env merge: append only keys missing from the worker .env. Never
+# clobber existing keys (the worker .env also holds OpenAI/Anthropic keys for
+# the 3-vendor calibration cron).
+umask 077
+touch "$TARGET_ENV"
+chmod 600 "$TARGET_ENV"
 if [[ -r "$SOURCE_ENV" ]]; then
-  umask 077
-  {
-    grep -E '^DATABASE_URL=' "$SOURCE_ENV" | tail -n 1 || true
-    grep -E '^DEEPSEEK_API_KEY=' "$SOURCE_ENV" | tail -n 1 || true
-  } > "$TARGET_ENV.tmp"
-  mv "$TARGET_ENV.tmp" "$TARGET_ENV"
-  chmod 600 "$TARGET_ENV"
+  for key in DATABASE_URL DEEPSEEK_API_KEY; do
+    if ! grep -qE "^${key}=" "$TARGET_ENV"; then
+      line="$(grep -E "^${key}=" "$SOURCE_ENV" | tail -n 1 || true)"
+      [[ -n "$line" ]] && printf '%s\n' "$line" >> "$TARGET_ENV"
+    fi
+  done
 else
   echo "Warning: source env not readable: $SOURCE_ENV" >&2
-  echo "Create $TARGET_ENV with DATABASE_URL and DEEPSEEK_API_KEY before launchd runs." >&2
 fi
 
 cp "$SOURCE_PLIST" "$TARGET_PLIST"

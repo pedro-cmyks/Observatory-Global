@@ -18,6 +18,7 @@ BACKEND_DIR="$ROOT_DIR/backend"
 LOG_DIR="${ATLAS_LOCAL_LOG_DIR:-$ROOT_DIR/logs}"
 MLVENV="${ATLAS_MLVENV:-/Users/pedro/AtlasLocalWorker/mlvenv}"
 GATE_JSON="${ATLAS_EMERGENT_GATE:-/Users/pedro/AtlasLocalWorker/models/2026-05-30-emergent-precision-gate-v1.json}"
+STUDENT_JSON="${ATLAS_EVIDENCE_STUDENT:-/Users/pedro/AtlasLocalWorker/models/2026-06-02-evidence-role-student-v1.json}"
 LOCAL_ENV="${ATLAS_LOCAL_ENV:-$ROOT_DIR/.env}"
 FLY_APP="${ATLAS_FLY_APP:-atlas-api-pedro}"
 
@@ -87,3 +88,14 @@ cd "$ROOT_DIR"
   --top-clusters "$TOP_CLUSTERS" \
   --gate "$GATE_JSON" \
   "$@"
+
+# Phase 6: fold the just-written snapshot into the dynamic_topics lifecycle.
+# Incremental + idempotent + $0 API (local student/e5; per-cluster noise cached
+# once). Guarded so a lifecycle failure never fails the snapshot cron.
+if [[ -f "$STUDENT_JSON" ]]; then
+  ( cd "$BACKEND_DIR" && "$MLVENV/bin/python" -m scripts.project_dynamic_topics \
+      --student-model "$STUDENT_JSON" ) \
+    || echo "[emergent-snapshot] dynamic_topics projection failed (non-fatal)" >&2
+else
+  echo "[emergent-snapshot] student model missing ($STUDENT_JSON); skipping dynamic_topics" >&2
+fi

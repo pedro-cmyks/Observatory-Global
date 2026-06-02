@@ -232,8 +232,19 @@ Operational changes now verified:
   Trends" (n=770, noise 0.82)** — the largest cluster, an unlabeled grab-bag no
   regex would flag — while the regex still catches explicitly-labeled roundups
   with low noise ("Mixed News Headlines" 0.08). Result: **4 active** (all noise
-  ≤0.39) / 12 candidate / 5 deprecated. Next: incremental cron hydration (replace
-  `--rebuild`); canonical cutover last.
+  ≤0.39) / 12 candidate / 5 deprecated.
+
+- **Phase 6 incremental cron wiring (2026-06-02).** `project_dynamic_topics.py`
+  now hydrates existing topics from the DB (replays members) and processes only
+  not-yet-ingested snapshots — default mode is incremental; `--rebuild` is the
+  full shadow rebuild. Wired into `run-emergent-snapshot.sh` as a guarded tail
+  step (`|| true`), so the lifecycle folds each new snapshot in right after it is
+  written. **Cost control:** the whole lifecycle is $0 API — student + e5 are
+  local; per-cluster noise is cached in `emergent_clusters.role_noise_rate`
+  (migration 050) and scored exactly once, never recomputed. Worker deploy via
+  the emergent installer (now additive on `.env`, never clobbers calibration
+  keys; copies the student model). Verified idempotent no-op on the worker
+  (n_new=0 → 0 writes). Next: merge/dedup; canonical product cutover last.
 
 - Cron health (verified 2026-06-02): `com.atlas.emergent-snapshot` running 4x/day
   (snapshots at 05:00/11:00 today, 17:00/23:00 yesterday; 81 cluster rows / 7

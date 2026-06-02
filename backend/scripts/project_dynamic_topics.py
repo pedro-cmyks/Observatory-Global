@@ -227,7 +227,7 @@ def process_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], s
 async def load_clusters(conn) -> list[dict[str, Any]]:
     rows = await conn.fetch(
         "SELECT id, snapshot_at, cluster_id, label, n_signals, cohesion, "
-        "sample_signal_ids, centroid_vec "
+        "sample_signal_ids, centroid_vec, role_noise_rate "
         "FROM emergent_clusters WHERE centroid_vec IS NOT NULL ORDER BY snapshot_at, cluster_id"
     )
     return [
@@ -238,7 +238,8 @@ async def load_clusters(conn) -> list[dict[str, Any]]:
             "cohesion": float(r["cohesion"]) if r["cohesion"] is not None else None,
             "sample_signal_ids": [int(x) for x in (r["sample_signal_ids"] or [])],
             "centroid": np.array(r["centroid_vec"], dtype=np.float64),
-            "noise": None,  # filled by score_clusters_noise when a student is given
+            # cached per-cluster noise ($0: computed once, never recomputed)
+            "noise": float(r["role_noise_rate"]) if r["role_noise_rate"] is not None else None,
         }
         for r in rows
     ]
@@ -254,8 +255,12 @@ async def score_clusters_noise(conn, clusters: list[dict[str, Any]], model_path:
     from scripts.score_assignments_gate import _build_embedder
     from scripts.bridge_gate_student_scope import _student_predict
 
+    # only score clusters with no cached noise -> bounded, $0 API, never recomputed
+    todo = [c for c in clusters if c.get("noise") is None]
+    if not todo:
+        return
     model = json.loads(open(model_path, encoding="utf-8").read())
-    all_ids = sorted({sid for c in clusters for sid in c["sample_signal_ids"]})
+    all_ids = sorted({sid for c in todo for sid in c["sample_signal_ids"]})
     if not all_ids:
         return
     rows = await conn.fetch(
@@ -264,20 +269,71 @@ async def score_clusters_noise(conn, clusters: list[dict[str, Any]], model_path:
     headline = {int(r["id"]): (r["headline"] or "").strip() for r in rows}
 
     embed, _ = _build_embedder(model["embedding_model"])
-    for c in clusters:
+    for c in todo:
         texts = [headline.get(sid, "") for sid in c["sample_signal_ids"] if headline.get(sid)]
         if not texts:
-            c["noise"] = None
             continue
         head_emb = embed([f"query: {t}" for t in texts])
         label_emb = embed([f"query: {(c['label'] or '').strip()}"] * len(texts))
         roles, _ = _student_predict(model, head_emb, label_emb)
         c["noise"] = round(sum(1 for r in roles if r == "noise") / len(roles), 4)
+        await conn.execute(
+            "UPDATE emergent_clusters SET role_noise_rate=$2 WHERE id=$1", c["id"], c["noise"]
+        )
 
 
 async def ingested_cluster_ids(conn) -> set[int]:
     rows = await conn.fetch("SELECT emergent_cluster_id FROM dynamic_topic_members")
     return {int(r["emergent_cluster_id"]) for r in rows}
+
+
+async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tuple[list[Topic], set[int]]:
+    """Rebuild in-memory topics from the DB by replaying their members.
+
+    Replaying through Topic+attach reconstructs centroid/aggregates exactly,
+    so the incremental run starts from true state without persisting Counters.
+    """
+    trows = await conn.fetch(
+        "SELECT id, identity_key, state, snapshots_since_seen FROM dynamic_topics"
+    )
+    mrows = await conn.fetch(
+        "SELECT dynamic_topic_id, emergent_cluster_id, snapshot_at "
+        "FROM dynamic_topic_members ORDER BY snapshot_at"
+    )
+    members: dict[int, list[dict[str, Any]]] = {}
+    done: set[int] = set()
+    for m in mrows:
+        cid = int(m["emergent_cluster_id"])
+        done.add(cid)
+        members.setdefault(int(m["dynamic_topic_id"]), []).append(
+            {"cluster_id": cid, "snapshot_at": m["snapshot_at"].isoformat()}
+        )
+
+    topics: list[Topic] = []
+    for tr in trows:
+        mem = members.get(int(tr["id"]), [])
+        mem = [m for m in mem if m["cluster_id"] in clusters_by_id]
+        if not mem:
+            continue
+        mem.sort(key=lambda m: m["snapshot_at"])
+        first = clusters_by_id[mem[0]["cluster_id"]]
+        t = Topic(
+            identity_key=tr["identity_key"], label=first["label"], centroid=first["centroid"],
+            snap=mem[0]["snapshot_at"], n_signals=first["n_signals"],
+            cohesion=first.get("cohesion"), noise=first.get("noise"),
+        )
+        t.members.append({"cluster_id": first["id"], "snapshot_at": mem[0]["snapshot_at"], "match_score": 1.0})
+        for m in mem[1:]:
+            c = clusters_by_id[m["cluster_id"]]
+            t.attach(c, m["snapshot_at"], 1.0)
+        t.id = int(tr["id"])
+        t.state = tr["state"]
+        t.since_seen = int(tr["snapshots_since_seen"] or 0)
+        t.new = False
+        t.members = []   # already persisted
+        t.dirty = False  # only re-persist if touched this run
+        topics.append(t)
+    return topics, done
 
 
 def group_by_snapshot(clusters: list[dict[str, Any]]) -> list[tuple[str, list[dict[str, Any]]]]:
@@ -347,25 +403,31 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
     db = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
     if not db:
         raise SystemExit("DATABASE_URL required")
-    if not args.rebuild:
-        raise SystemExit(
-            "incremental hydration from existing dynamic_topics is the cron-wiring "
-            "increment; for the Sub-A shadow build use --rebuild"
-        )
     cfg = LifecycleConfig()
     conn = await asyncpg.connect(db)
     try:
         clusters = await load_clusters(conn)
         if args.student_model:
             await score_clusters_noise(conn, clusters, args.student_model)
-        topics: list[Topic] = []  # shadow rebuild starts fresh in-memory
-        snapshot_groups = group_by_snapshot(clusters)
+
+        if args.rebuild:
+            topics: list[Topic] = []
+            done: set[int] = set()
+        else:
+            clusters_by_id = {c["id"]: c for c in clusters}
+            topics, done = await hydrate_topics(conn, clusters_by_id)
+
+        # only snapshots with at least one not-yet-ingested cluster are new
+        new_clusters = [c for c in clusters if c["id"] not in done]
         processed_snaps = 0
-        for snap, snap_clusters in snapshot_groups:
+        for snap, snap_clusters in group_by_snapshot(new_clusters):
             process_snapshot(topics, snap_clusters, snap, cfg)
             processed_snaps += 1
+
         summary: dict[str, Any] = {
+            "mode": "rebuild" if args.rebuild else "incremental",
             "n_clusters": len(clusters),
+            "n_new_clusters": len(new_clusters),
             "n_snapshots_processed": processed_snaps,
             "n_topics": len(topics),
             "by_state": _state_counts(topics),
