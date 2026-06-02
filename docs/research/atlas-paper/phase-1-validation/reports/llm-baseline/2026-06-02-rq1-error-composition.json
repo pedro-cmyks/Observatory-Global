@@ -1,0 +1,22 @@
+{
+  "schema_version": "atlas-rq1-error-composition-v1",
+  "generated_at": "2026-06-02T11:28:21.351042+00:00",
+  "gold": "2026-06-02-atlas-v2-batch-03.consensus-gold.jsonl",
+  "n_incorrect": 334,
+  "error_type_counts": {
+    "off_topic": 139,
+    "scope_mismatch": 94,
+    "None": 93,
+    "primary_context_mismatch": 5,
+    "substring_noise": 2,
+    "insufficient_context": 1
+  },
+  "scope_counts": {
+    "domain": 183,
+    "noise": 114,
+    "None": 32,
+    "parent_thread": 2,
+    "entity_thread": 2,
+    "context_signal": 1
+  }
+}

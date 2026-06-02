@@ -13,6 +13,10 @@ gating, annotator agreement, and the future paper series.
   design for classifying evidence roles inside narrative clusters.
 - [[2026-06-01-narrative-cluster-evidence-roles]] — implementation plan for
   teacher packets, consensus labels, student reporting, and coverage metrics.
+- [[2026-06-02-rq1-improvement-methods]] — RQ1 contribution: how to raise the
+  41.6% single-layer precision. Failure anatomy (off_topic 41.6%,
+  scope_mismatch 28.1%, substring_noise only 0.6%) → scope gate (M1) +
+  evidence-role layer (M2) + per-topic remediation (M3) as the precision levers.
 - [[2026-05-25-atlas-v2-labeling-guide]] — semantic/evidence-role label guide.
 - Evidence-role teacher/student reports:
   `docs/research/atlas-paper/phase-1-validation/reports/evidence-role/`.

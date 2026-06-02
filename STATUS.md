@@ -138,6 +138,18 @@ Operational changes now verified:
   keep repo `.venv` for pytest only. Quick repair if iCloud evicts a package:
   `pip install --force-reinstall --no-deps <pkg>`.
 
+- **RQ1 improvement methods documented (2026-06-02).** Each paper must propose
+  how to raise the measured number, not just report it. Failure anatomy of the
+  334 incorrect rows: `off_topic` 41.6%, `scope_mismatch` 28.1%, and classic
+  `substring_noise` only **0.6%** — the failure is semantic, not lexical. Levers:
+  M1 learned scope gate abstains off_topic (biggest bucket); M2 evidence-role
+  layer re-types scope_mismatch as graded context; M3 per-topic remediation for
+  the 0%-precision tail (fuel-subsidy-unrest, mining-royalty-risk, …). Doc:
+  `docs/research/atlas-paper/phase-1-validation/2026-06-02-rq1-improvement-methods.md`;
+  composition artifact `reports/llm-baseline/2026-06-02-rq1-error-composition.json`.
+  **Immediate next experiment:** score the 660-row consensus gold through the
+  scope gate → precision-vs-coverage table (M1 quantified).
+
 Next operational work:
 
 - Add the daily 3-vendor calibration job at 03:00.
