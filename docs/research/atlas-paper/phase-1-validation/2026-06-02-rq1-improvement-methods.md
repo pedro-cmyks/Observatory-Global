@@ -176,6 +176,32 @@ scored at all*. Together they are the precision+coverage pair.
 > scope_mismatch as correctly-graded context. We measure each lever against the
 > same 3-vendor consensus gold.
 
+## 4.1 M1↔M2 bridge — are the gate's residual errors recoverable? (measured)
+
+The two levers are complementary, not redundant: the **gate handles relevance**
+(abstains off_topic) and the **student handles granularity** (grades the rest).
+To test that the gate's *residual* errors are recoverable rather than garbage,
+score the batch-03 gold with both and cross-tab against the annotator error type
+(`bridge_gate_student_scope.py`; `reports/llm-baseline/2026-06-02-gate-student-bridge.json`):
+
+| population | n | student non-noise rate |
+|---|---:|---:|
+| **gate-kept AND consensus-incorrect** | 73 | **90.4%** |
+| incorrect, error = scope_mismatch | 135 | **90.4%** |
+| incorrect, error = off_topic | 145 | 71.0% |
+
+**Reading.** Of the errors the gate keeps, 90% are typed by the student as
+non-noise (60/73 primary_evidence, plus context/analysis) — they are real
+evidence at the wrong granularity, recoverable as graded `candidate`/`context_rich`
+tiers rather than counted as precision misses. scope_mismatch rows confirm this at
+90% non-noise. **Honest limitation:** off_topic rows are still 71% non-noise — the
+headline-only student v1 over-assigns primary_evidence and does not suppress
+off_topic well on its own. That is exactly why off_topic is the *gate's* job (it
+abstains most of them before the student sees them) and why student v2 needs the
+cluster-membership features (centroid cosine, gate_score) to sharpen noise
+suppression. The combined pipeline — gate for relevance, student for role — is
+what closes the gap to the LLM upper bound.
+
 ## 5. Status and next experiment
 
 **M1 done and quantified** (§3, +29 points). The paper now has its first

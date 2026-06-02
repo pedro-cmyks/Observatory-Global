@@ -166,6 +166,15 @@ Operational changes now verified:
   `reports/evidence-role/2026-06-02-student-v1-eval.json`,
   `models/2026-06-02-evidence-role-student-v1.json`.
 
+- **M1↔M2 bridge measured (2026-06-02).** `bridge_gate_student_scope.py` scores
+  batch-03 with both gate + student. Of the 73 rows the gate keeps but consensus
+  marks incorrect, the student types **90.4% as non-noise** (60 primary_evidence)
+  — the residual gate errors are recoverable evidence at wrong granularity, not
+  garbage. scope_mismatch rows: 90.4% non-noise. Honest limit: off_topic still
+  71% non-noise (headline-only student over-assigns primary; off_topic is the
+  gate's job, and student v2 needs cluster-membership features). Artifact:
+  `reports/llm-baseline/2026-06-02-gate-student-bridge.json`.
+
 Next operational work:
 
 - Add the daily 3-vendor calibration job at 03:00.

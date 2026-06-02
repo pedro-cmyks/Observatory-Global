@@ -1,0 +1,54 @@
+{
+  "schema_version": "atlas-gate-student-bridge-v1",
+  "device": "mps",
+  "n_gold": 660,
+  "n_incorrect": 390,
+  "n_gate_kept_incorrect": 73,
+  "student_role_dist_on_gate_kept_incorrect": {
+    "n": 73,
+    "non_noise": 66,
+    "non_noise_rate": 0.9041,
+    "role_dist": {
+      "primary_evidence": 60,
+      "context": 4,
+      "noise": 7,
+      "analysis": 2
+    }
+  },
+  "incorrect_by_annotator_error_type": {
+    "scope_mismatch": {
+      "n": 135,
+      "non_noise": 122,
+      "non_noise_rate": 0.9037,
+      "role_dist": {
+        "primary_evidence": 113,
+        "context": 7,
+        "noise": 13,
+        "analysis": 2
+      }
+    },
+    "off_topic": {
+      "n": 145,
+      "non_noise": 103,
+      "non_noise_rate": 0.7103,
+      "role_dist": {
+        "noise": 42,
+        "primary_evidence": 94,
+        "context": 8,
+        "reaction": 1
+      }
+    },
+    "no_majority": {
+      "n": 101,
+      "non_noise": 88,
+      "non_noise_rate": 0.8713,
+      "role_dist": {
+        "primary_evidence": 78,
+        "noise": 13,
+        "context": 9,
+        "analysis": 1
+      }
+    }
+  },
+  "interpretation": "If scope_mismatch rows show a high non_noise_rate while off_topic rows show a low one, the residual gate-kept errors are recoverable graded evidence (M2), not garbage — closing the gap to the LLM upper bound."
+}
