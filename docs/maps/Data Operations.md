@@ -40,8 +40,10 @@ and production runtime constraints.
   and roundups.
 - Current hot/cold note (2026-06-02): `com.atlas.local-hot-cold-catchup` is
   loaded but last exited `1` after an asyncpg connection reset during
-  `archive_export`; `/Volumes/Ext` is mounted. Triage DB retry/idempotency
-  before assuming the next overnight maintenance window is healthy.
+  `archive_export`; `/Volumes/Ext` is mounted. Retry/backoff is patched and
+  synced to `/Users/pedro/AtlasLocalWorker/backend/scripts/`; worker dry-run
+  passed. Verify the next scheduled overnight run before treating the cron as
+  green.
 - Use `scripts/project_inventory.py` to refresh cron and endpoint truth before
   trusting old handoffs.
 - New public schema tables should enable RLS in the same migration.

@@ -273,8 +273,12 @@ Operational changes now verified:
   is loaded but has `last exit code = 1`; the 2026-06-02 00:10 run failed with
   `asyncpg.exceptions.ConnectionDoesNotExistError: connection was closed in the
   middle of operation` during `archive_export`. External disk mount is present
-  (`/Volumes/Ext`). Treat this as retry/idempotency or DB-connection resilience
-  work before relying on the next overnight maintenance window.
+  (`/Volumes/Ext`). Patch applied 2026-06-02: archive export batches now retry
+  transient DB connection loss up to 3 attempts with exponential backoff, and
+  `/Users/pedro/AtlasLocalWorker/backend/scripts/` was synced manually without
+  kickstarting the prune runner. Worker-layout dry-run passed (`planned_rows=8`,
+  execute=false). Pending: verify the next scheduled overnight run resets
+  launchd `last exit code` to 0.
 
 - **3-vendor calibration cron installed (2026-06-02).** Daily 03:00 launchd agent
   `com.atlas.threevendor-calibration` samples a fresh atlas-v2 benchmark slice,

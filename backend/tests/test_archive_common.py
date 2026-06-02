@@ -3,6 +3,9 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
+import asyncpg
+import pytest
+
 from scripts.archive_common import (
     ARCHIVE_VERSION,
     ArchiveFilters,
@@ -21,11 +24,17 @@ from scripts.prune_archived_signals import covered_manifest_ranges
 from scripts.archive_query import query_archive
 from scripts.local_archive_worker import is_inside_window, parse_clock
 from scripts.local_hot_cold_catchup import (
+    _export_range_with_retries,
     collect_rows_for_day,
     days_touched_by_records,
     discover_archive_roots,
 )
 from scripts.nlp_sla_report import BREAKDOWN_SQL, coverage_pct
+
+
+@pytest.fixture
+def anyio_backend():
+    return "asyncio"
 
 
 def test_partition_path_is_date_and_family_scoped(tmp_path):
@@ -217,6 +226,70 @@ def test_archive_verify_detects_overlapping_manifest_ranges(tmp_path):
     assert result["ok"] is False
     assert result["failed_records"] == 0
     assert result["overlap_count"] == 1
+
+
+@pytest.mark.anyio
+async def test_export_range_with_retries_retries_transient_connection_loss(tmp_path):
+    calls = []
+    sleeps = []
+
+    async def fake_exporter(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            raise asyncpg.ConnectionDoesNotExistError(
+                "connection was closed in the middle of operation"
+            )
+        return 123
+
+    async def fake_sleep(seconds):
+        sleeps.append(seconds)
+
+    rows = await _export_range_with_retries(
+        exporter=fake_exporter,
+        sleeper=fake_sleep,
+        archive_dir=tmp_path,
+        from_ts=parse_timestamp("2026-06-02T00:00:00Z"),
+        to_ts=parse_timestamp("2026-06-02T01:00:00Z"),
+        source_family=None,
+        dry_run=False,
+        batch_size=1000,
+        attempts=2,
+        base_delay_seconds=0.25,
+    )
+
+    assert rows == 123
+    assert len(calls) == 2
+    assert sleeps == [0.25]
+
+
+@pytest.mark.anyio
+async def test_export_range_with_retries_raises_after_attempts(tmp_path):
+    calls = []
+
+    async def fake_exporter(**kwargs):
+        calls.append(kwargs)
+        raise asyncpg.ConnectionDoesNotExistError(
+            "connection was closed in the middle of operation"
+        )
+
+    async def fake_sleep(_seconds):
+        return None
+
+    with pytest.raises(asyncpg.ConnectionDoesNotExistError):
+        await _export_range_with_retries(
+            exporter=fake_exporter,
+            sleeper=fake_sleep,
+            archive_dir=tmp_path,
+            from_ts=parse_timestamp("2026-06-02T00:00:00Z"),
+            to_ts=parse_timestamp("2026-06-02T01:00:00Z"),
+            source_family=None,
+            dry_run=False,
+            batch_size=1000,
+            attempts=2,
+            base_delay_seconds=0.25,
+        )
+
+    assert len(calls) == 2
 
 
 def test_prune_ranges_only_include_manifest_ranges_before_cutoff(tmp_path):

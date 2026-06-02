@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import os
 import uuid
 from dataclasses import dataclass
@@ -44,6 +45,11 @@ from scripts.prune_archived_signals import prune_archived
 DEFAULT_ARCHIVE_ROOT = "/Users/pedro/AtlasArchive"
 DEFAULT_OUTPUT_DIR = "docs/research/processed-historical-sync"
 DEFAULT_APP_NAME = "atlas-api-pedro"
+EXPORT_RETRY_ATTEMPTS = 3
+EXPORT_RETRY_BASE_DELAY_SECONDS = 5.0
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -195,6 +201,64 @@ async def vacuum_signals(database_url: str) -> None:
         await conn.close()
 
 
+def _is_transient_export_error(exc: BaseException) -> bool:
+    return isinstance(
+        exc,
+        (
+            asyncpg.ConnectionDoesNotExistError,
+            asyncpg.PostgresConnectionError,
+            ConnectionResetError,
+            OSError,
+        ),
+    )
+
+
+async def _export_range_with_retries(
+    *,
+    archive_dir: Path,
+    from_ts: datetime,
+    to_ts: datetime,
+    source_family: str | None,
+    dry_run: bool,
+    batch_size: int,
+    attempts: int = EXPORT_RETRY_ATTEMPTS,
+    base_delay_seconds: float = EXPORT_RETRY_BASE_DELAY_SECONDS,
+    exporter=export_range,
+    sleeper=asyncio.sleep,
+) -> int:
+    """Retry one archive export batch after transient DB connection loss."""
+    last_exc: BaseException | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return await exporter(
+                archive_dir=archive_dir,
+                from_ts=from_ts,
+                to_ts=to_ts,
+                source_family=source_family,
+                dry_run=dry_run,
+                batch_size=batch_size,
+            )
+        except BaseException as exc:
+            if not _is_transient_export_error(exc) or attempt >= attempts:
+                raise
+            last_exc = exc
+            delay = base_delay_seconds * (2 ** (attempt - 1))
+            logger.warning(
+                "Transient archive export failure for %s -> %s (attempt %s/%s): %s; "
+                "retrying in %.1fs",
+                from_ts.isoformat(),
+                to_ts.isoformat(),
+                attempt,
+                attempts,
+                exc,
+                delay,
+            )
+            await sleeper(delay)
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("Archive export retry loop exited unexpectedly")
+
+
 def _new_incremental_dir(archive_root: Path, now: datetime, run_id: str | None) -> Path:
     suffix = run_id or uuid.uuid4().hex[:8]
     return archive_root / "incremental" / f"{now.date().isoformat()}-{suffix}"
@@ -256,7 +320,7 @@ async def run_catchup(args: argparse.Namespace) -> dict[str, Any]:
     for batch in plan["batches"]:
         if int(batch["row_count"]) <= 0:
             continue
-        rows = await export_range(
+        rows = await _export_range_with_retries(
             archive_dir=incremental_dir,
             from_ts=parse_timestamp(batch["from"]),
             to_ts=parse_timestamp(batch["to"]),
