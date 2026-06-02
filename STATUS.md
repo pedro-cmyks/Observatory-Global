@@ -208,6 +208,23 @@ Operational changes now verified:
   roundup flag). Spec: `docs/superpowers/specs/2026-06-02-emergent-topic-identity-resolver-design.md`;
   report: `docs/research/topic-quality/2026-06-02-emergent-topic-identity.{json,md}`.
 
+- **Phase 6 Sub-A — dynamic_topics shadow lifecycle built (2026-06-02).**
+  Migration `048_dynamic_topics.sql` applied (dynamic_topics + members, RLS
+  locked). `project_dynamic_topics.py --rebuild` collapses emergent_clusters
+  across snapshots into stable identities (centroid ≥0.85, running-mean) and
+  runs a quality-gated state machine (candidate→active needs persist≥2 +
+  cohesion≥0.5 + signals≥30 + not-roundup; roundups never promoted; stale→
+  deprecated→retired). 9 unit tests. Shadow rebuild (89 clusters, 8 snapshots):
+  5 active / 11 candidate (5 roundup) / 5 deprecated. Findings: mechanism works;
+  label-regex roundup gate is weak (catches explicit grab-bags, generic-broad
+  slip); cohesion ~0.95 everywhere so it can't discriminate; **robust gate =
+  evidence-role student noise rate (next increment)**. ~half the persistent
+  emergent identities are geographic "X News Roundup" artifacts. Spec:
+  `docs/superpowers/specs/2026-06-02-emergent-topic-identity-resolver-design.md`;
+  result: `docs/research/topic-quality/2026-06-02-dynamic-topics-shadow-result.md`.
+  SHADOW only — no product read path. Next: wire student noise gate + incremental
+  cron hydration; canonical cutover last.
+
 - Cron health (verified 2026-06-02): `com.atlas.emergent-snapshot` running 4x/day
   (snapshots at 05:00/11:00 today, 17:00/23:00 yesterday; 81 cluster rows / 7
   snapshots). Evidence-role gold held at 605 (no new teacher pass this cycle).
