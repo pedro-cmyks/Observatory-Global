@@ -382,6 +382,154 @@ async def _emergent_cluster_detail(
     }
 
 
+async def _dynamic_topic_detail(
+    conn,
+    *,
+    topic_row,
+    sample_ids: list[int],
+    top_country_codes: list[str],
+    hours: int,
+    country_code: Optional[str] = None,
+):
+    """Theme-detail payload for the dynamic_topics canonical watchlist.
+
+    Dynamic topics are lifecycle-managed groups of one or more emergent
+    clusters. The detail view uses the persisted member preview samples, so it
+    stays API-free and avoids re-running clustering when a watchlist row is
+    clicked.
+    """
+    await conn.execute("SET statement_timeout = 15000")
+    gated_total = int(topic_row["agg_n_signals"] or 0)
+    noise_rate = (
+        float(topic_row["noise_rate"])
+        if topic_row["noise_rate"] is not None else None
+    )
+    base_payload = {
+        "theme": f"dynamic-topic-{topic_row['id']}",
+        "label": topic_row["label"],
+        "description": None,
+        "country": country_code,
+        "hours": hours,
+        "total": gated_total,
+        "rawTotal": gated_total,
+        "gated": gated_total,
+        "snapshotAt": topic_row["last_seen"].isoformat()
+            if topic_row["last_seen"] else None,
+        "velocity": None,
+        "cohesion": float(topic_row["mean_cohesion"])
+            if topic_row["mean_cohesion"] is not None else None,
+        "noiseRate": noise_rate,
+        "source": "dynamic_topics",
+        "relatedThemes": [],
+        "countryFraming": [],
+        "relatedConcepts": [],
+    }
+    if not sample_ids:
+        return {
+            **base_payload,
+            "signalSample": 0,
+            "avgSentiment": 0,
+            "signals": [],
+            "graphSignals": [],
+            "countryBreakdown": [
+                {"code": c, "count": 0, "sentiment": 0.0}
+                for c in top_country_codes
+            ],
+            "topSources": [],
+            "topPersons": [],
+            "timeline": [],
+            "warnings": ["dynamic_topic_empty_sample"],
+        }
+
+    where = ["s.id = ANY($1::bigint[])"]
+    params: list = [sample_ids]
+    if country_code:
+        where.append("s.country_code = $2")
+        params.append(country_code)
+    where_clause = " AND ".join(where)
+
+    signals = await conn.fetch(f"""
+        SELECT s.timestamp, s.country_code, s.source_name, s.source_url,
+               s.sentiment, s.headline, s.themes, s.persons
+        FROM signals_v2 s
+        WHERE {where_clause}
+        ORDER BY s.timestamp DESC
+    """, *params)
+
+    sample = len(signals)
+    avg_sentiment = (
+        sum(float(s["sentiment"] or 0) for s in signals) / sample if sample else 0
+    )
+
+    country_counts: dict = {}
+    source_counts: dict = {}
+    timeline_counts: dict = {}
+    person_counts: dict = {}
+    for s in signals:
+        cc = s["country_code"]
+        if cc:
+            country_counts.setdefault(cc, []).append(float(s["sentiment"] or 0))
+        sn = s["source_name"]
+        if sn:
+            source_counts.setdefault(sn, []).append(float(s["sentiment"] or 0))
+        ts = s["timestamp"]
+        if ts:
+            hour_bucket = ts.replace(minute=0, second=0, microsecond=0)
+            timeline_counts.setdefault(hour_bucket, []).append(float(s["sentiment"] or 0))
+        for p in (s["persons"] or []):
+            person_counts[p] = person_counts.get(p, 0) + 1
+
+    top_persons = [
+        {"name": p, "count": c}
+        for p, c in sorted(person_counts.items(), key=lambda x: x[1], reverse=True)
+        if _is_valid_person(p)
+    ][:10]
+    country_breakdown = [
+        {"code": cc, "count": len(vs), "sentiment": sum(vs) / len(vs)}
+        for cc, vs in sorted(country_counts.items(), key=lambda x: len(x[1]), reverse=True)
+    ][:15]
+    top_sources = [
+        {
+            "name": extract_domain(sn),
+            "count": len(vs),
+            "sentiment": sum(vs) / len(vs),
+            "family": classify_source(sn or ""),
+        }
+        for sn, vs in sorted(source_counts.items(), key=lambda x: len(x[1]), reverse=True)
+    ][:20]
+    timeline = [
+        {"hour": h.isoformat(), "count": len(vs), "sentiment": sum(vs) / len(vs)}
+        for h, vs in sorted(timeline_counts.items())
+    ]
+
+    def _sig(r):
+        return {
+            "timestamp": r["timestamp"].isoformat() if r["timestamp"] else None,
+            "country": r["country_code"],
+            "source": r["source_name"],
+            "url": r["source_url"],
+            "headline": html.unescape(r["headline"]) if r["headline"] else r["headline"],
+            "sentiment": float(r["sentiment"] or 0),
+            "otherThemes": (r["themes"] or [])[:5],
+            "persons": (r["persons"] or [])[:5],
+        }
+
+    signal_rows = [_sig(r) for r in signals]
+
+    return {
+        **base_payload,
+        "signalSample": sample,
+        "avgSentiment": round(avg_sentiment, 3),
+        "signals": signal_rows,
+        "graphSignals": signal_rows,
+        "countryBreakdown": country_breakdown,
+        "topSources": top_sources,
+        "topPersons": top_persons,
+        "timeline": timeline,
+        "warnings": ["dynamic_topic_member_preview_sample"],
+    }
+
+
 async def _atlas_topic_detail(
     conn,
     *,
@@ -668,10 +816,71 @@ async def get_theme_details(
                     },
                 }
 
+            # Dynamic topic slug: 'dynamic-topic-<id>'. Surfaced by the brief
+            # Watchlist once the self-curated lifecycle has active rows.
+            # Resolves through the dynamic topic's member clusters so clicks
+            # keep rendering in ThemeDetail without re-running clustering.
+            if (
+                theme_code.lower().startswith("dynamic-topic-")
+                and theme_code[len("dynamic-topic-"):].isdigit()
+            ):
+                topic_id = int(theme_code[len("dynamic-topic-"):])
+                has_dynamic = await conn.fetchval(
+                    "SELECT to_regclass('dynamic_topics') IS NOT NULL"
+                )
+                has_dynamic_members = await conn.fetchval(
+                    "SELECT to_regclass('dynamic_topic_members') IS NOT NULL"
+                )
+                has_emergent = await conn.fetchval(
+                    "SELECT to_regclass('emergent_clusters') IS NOT NULL"
+                )
+                if has_dynamic and has_dynamic_members and has_emergent:
+                    topic_row = await conn.fetchrow("""
+                        SELECT
+                            dt.id,
+                            dt.label,
+                            dt.agg_n_signals,
+                            dt.mean_cohesion,
+                            dt.noise_rate,
+                            dt.last_seen,
+                            COALESCE((
+                                SELECT array_agg(DISTINCT sid.signal_id)
+                                FROM dynamic_topic_members dtm
+                                JOIN emergent_clusters ec
+                                  ON ec.id = dtm.emergent_cluster_id
+                                LEFT JOIN LATERAL unnest(ec.sample_signal_ids)
+                                  AS sid(signal_id) ON TRUE
+                                WHERE dtm.dynamic_topic_id = dt.id
+                                  AND sid.signal_id IS NOT NULL
+                            ), ARRAY[]::bigint[]) AS sample_signal_ids,
+                            COALESCE((
+                                SELECT array_agg(DISTINCT cc.country_code)
+                                FROM dynamic_topic_members dtm
+                                JOIN emergent_clusters ec
+                                  ON ec.id = dtm.emergent_cluster_id
+                                LEFT JOIN LATERAL unnest(ec.top_country_codes)
+                                  AS cc(country_code) ON TRUE
+                                WHERE dtm.dynamic_topic_id = dt.id
+                                  AND cc.country_code IS NOT NULL
+                            ), ARRAY[]::text[]) AS top_country_codes
+                        FROM dynamic_topics dt
+                        WHERE dt.id = $1
+                          AND dt.state = 'active'
+                    """, topic_id)
+                    if topic_row:
+                        return await _dynamic_topic_detail(
+                            conn,
+                            topic_row=topic_row,
+                            sample_ids=list(topic_row["sample_signal_ids"] or []),
+                            top_country_codes=list(topic_row["top_country_codes"] or []),
+                            hours=hours,
+                            country_code=country_code.upper() if country_code else None,
+                        )
+
             # Emergent cluster slug: 'cluster-<id>'. Surfaced by the brief
-            # Watchlist from the latest emergent_clusters snapshot (mig 046).
-            # Resolves to the persisted preview sample so ThemeDetail renders
-            # the cluster's headlines without re-running clustering.
+            # Watchlist fallback from the latest emergent_clusters snapshot
+            # (mig 046). Resolves to the persisted preview sample so ThemeDetail
+            # renders the cluster's headlines without re-running clustering.
             if theme_code.lower().startswith("cluster-") and theme_code[len("cluster-"):].isdigit():
                 cluster_id = int(theme_code[len("cluster-"):])
                 has_emergent = await conn.fetchval(

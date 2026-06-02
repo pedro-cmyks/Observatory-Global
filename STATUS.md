@@ -1,5 +1,5 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-06-02 (Phase 6 dynamic topics shadow lifecycle)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-06-02 (Phase 6 dynamic topics backend cutover)
 
 ---
 
@@ -254,7 +254,23 @@ Operational changes now verified:
   roundups from merge participation so grab-bags cannot absorb real topics.
   Verified rebuild with 101 clusters / 9 snapshots: 21 topics, `n_merged_topics=0`,
   6 active / 12 candidate / 3 deprecated, 5 roundups, 1 high-noise topic.
-  Follow-up: canonical product cutover last, in a dedicated session.
+  Follow-up complete below: backend product reads now prefer dynamic topics.
+
+- **Phase 6 backend canonical read path (2026-06-02).** `/api/v2/threads`
+  now treats active `dynamic_topics` as canonical when available; atlas/static
+  and raw emergent rows remain fallback sources. `/api/v2/briefing.top_atlas_topics`
+  now prefers `dynamic_topics` and exposes `source_table="dynamic_topics"`,
+  `model_version="dynamic-topics-v1"`, and `noise_rate`. Watchlist slugs are
+  `dynamic-topic-<id>` and `/api/v2/theme/dynamic-topic-<id>` resolves them
+  through member emergent-cluster samples so existing `ThemeDetail` clicks keep
+  working without frontend contract changes. Local live smoke, sourced from the
+  worker `.env`, returned `dynamic-topic-10` ("Russia Warns on Baltic and
+  Zaporizhzhia") as top thread/watchlist item: `signal_count=287`,
+  `noise_rate=0.0218`, detail `source=dynamic_topics`, `signalSample=141`.
+  `/api/v2/briefing` still reports degraded segment `theme_country`, which is a
+  separate pre-existing briefing section issue, not the dynamic-topic cutover.
+  Remaining before calling product fully shipped: deploy backend and do a
+  frontend/browser smoke through the Watchlist and Narrative Threads panels.
 
 - **Local Ollama validation route deprecated (2026-06-02).**
   `backend/scripts/atlas_ollama_pilot.py` remains as a reproducibility runner
@@ -296,8 +312,11 @@ Next operational work:
 - Do NOT lower the scope-gate threshold to chase coverage; the gate is well
   calibrated on what it receives. Treat the emergent-cluster + evidence-role
   path as the coverage engine instead.
+- Deploy the backend canonical dynamic-topic read path and run frontend/browser
+  smokes through `/brief`, Watchlist clicks, Narrative Threads, and
+  ThreadFocusPanel.
 - Continue the evidence-role pilot with teacher labeling, consensus, and local
-  student evaluation before promoting any production read path.
+  student evaluation before promoting broader coverage changes.
 - Decide whether to copy OpenAI/Anthropic keys into the local worker env for
   scheduled evidence-role calibration, or keep multi-vendor teacher runs as
   manual repo-local jobs sourced from root `.env`.

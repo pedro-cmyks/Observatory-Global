@@ -537,6 +537,7 @@ def _serialize_evidence(row: Any) -> dict[str, Any]:
     }
 
 
+DYNAMIC_TOPIC_THREAD_PREFIX = "dynamic-topic-"
 EMERGENT_CLUSTER_THREAD_PREFIX = "emergent-cluster-"
 
 
@@ -669,6 +670,219 @@ _EMERGENT_SAMPLE_SIGNALS_SQL = """
     WHERE id = ANY($1::bigint[])
     ORDER BY timestamp DESC
 """
+
+
+_DYNAMIC_TOPICS_SQL = """
+SELECT
+    dt.id,
+    dt.identity_key,
+    dt.label,
+    dt.first_seen,
+    dt.last_seen,
+    dt.agg_n_signals,
+    dt.mean_cohesion,
+    dt.noise_rate,
+    COALESCE(MAX(ec.velocity), 0)::int AS changed_10h,
+    ARRAY(
+        SELECT DISTINCT code
+        FROM dynamic_topic_members dtm2
+        JOIN emergent_clusters ec2 ON ec2.id = dtm2.emergent_cluster_id
+        CROSS JOIN LATERAL unnest(COALESCE(ec2.top_country_codes, ARRAY[]::text[])) AS code
+        WHERE dtm2.dynamic_topic_id = dt.id
+        LIMIT 5
+    ) AS top_country_codes,
+    ARRAY(
+        SELECT DISTINCT sid
+        FROM dynamic_topic_members dtm3
+        JOIN emergent_clusters ec3 ON ec3.id = dtm3.emergent_cluster_id
+        CROSS JOIN LATERAL unnest(COALESCE(ec3.sample_signal_ids, ARRAY[]::bigint[])) AS sid
+        WHERE dtm3.dynamic_topic_id = dt.id
+        LIMIT 24
+    ) AS sample_signal_ids
+FROM dynamic_topics dt
+LEFT JOIN dynamic_topic_members dtm ON dtm.dynamic_topic_id = dt.id
+LEFT JOIN emergent_clusters ec ON ec.id = dtm.emergent_cluster_id
+WHERE dt.state = 'active'
+  AND dt.last_seen > NOW() - ($1::int * INTERVAL '1 hour')
+GROUP BY dt.id
+ORDER BY dt.agg_n_signals DESC, dt.last_seen DESC
+LIMIT $2
+"""
+
+
+_DYNAMIC_TOPIC_DETAIL_SQL = """
+SELECT
+    dt.id,
+    dt.identity_key,
+    dt.label,
+    dt.first_seen,
+    dt.last_seen,
+    dt.agg_n_signals,
+    dt.mean_cohesion,
+    dt.noise_rate,
+    COALESCE(MAX(ec.velocity), 0)::int AS changed_10h,
+    ARRAY(
+        SELECT DISTINCT code
+        FROM dynamic_topic_members dtm2
+        JOIN emergent_clusters ec2 ON ec2.id = dtm2.emergent_cluster_id
+        CROSS JOIN LATERAL unnest(COALESCE(ec2.top_country_codes, ARRAY[]::text[])) AS code
+        WHERE dtm2.dynamic_topic_id = dt.id
+        LIMIT 5
+    ) AS top_country_codes,
+    ARRAY(
+        SELECT DISTINCT sid
+        FROM dynamic_topic_members dtm3
+        JOIN emergent_clusters ec3 ON ec3.id = dtm3.emergent_cluster_id
+        CROSS JOIN LATERAL unnest(COALESCE(ec3.sample_signal_ids, ARRAY[]::bigint[])) AS sid
+        WHERE dtm3.dynamic_topic_id = dt.id
+        LIMIT 32
+    ) AS sample_signal_ids
+FROM dynamic_topics dt
+LEFT JOIN dynamic_topic_members dtm ON dtm.dynamic_topic_id = dt.id
+LEFT JOIN emergent_clusters ec ON ec.id = dtm.emergent_cluster_id
+WHERE dt.id = $1
+  AND dt.state = 'active'
+GROUP BY dt.id
+"""
+
+
+def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[str, Any]:
+    topic_id = int(_record_get(topic_row, "id"))
+    label_text = str(_record_get(topic_row, "label") or f"dynamic topic {topic_id}")
+    signal_count = int(_record_get(topic_row, "agg_n_signals") or 0)
+    changed_10h = int(_record_get(topic_row, "changed_10h") or 0)
+    noise_rate = _record_get(topic_row, "noise_rate")
+    avg_conf = 1.0 - float(noise_rate) if noise_rate is not None else 0.9
+    cohesion = _record_get(topic_row, "mean_cohesion")
+    first_seen = _record_get(topic_row, "first_seen")
+    country_codes = [str(code) for code in (_record_get(topic_row, "top_country_codes") or [])]
+
+    sources: dict[str, int] = {}
+    persons: dict[str, int] = {}
+    timeline: dict[str, list[float]] = {}
+    for sig in sample_signals:
+        source_name = _record_get(sig, "source_name")
+        if source_name:
+            sources[source_name] = sources.get(source_name, 0) + 1
+        for person in (_as_list(_record_get(sig, "persons")) or []):
+            persons[str(person)] = persons.get(str(person), 0) + 1
+        ts = _record_get(sig, "timestamp")
+        if ts and hasattr(ts, "replace"):
+            hour_iso = ts.replace(minute=0, second=0, microsecond=0).isoformat()
+            timeline.setdefault(hour_iso, []).append(
+                float(_record_get(sig, "nlp_sentiment") or 0)
+            )
+
+    top_sources = sorted(sources, key=lambda k: sources[k], reverse=True)[:5]
+    top_entities = sorted(persons, key=lambda k: persons[k], reverse=True)[:10]
+    hourly_timeline = [
+        {
+            "hour": hour,
+            "count": len(vs),
+            "avg_sentiment": (sum(vs) / len(vs)) if vs else 0,
+        }
+        for hour, vs in sorted(timeline.items())
+    ]
+    source_count = len(sources)
+    country_count = len(country_codes)
+
+    return {
+        "thread_id": f"{DYNAMIC_TOPIC_THREAD_PREFIX}{topic_id}",
+        "label": label_text,
+        "summary": label_text,
+        "anchor_topics": [str(_record_get(topic_row, "identity_key") or f"dynamic-topic-{topic_id}")],
+        "parent_domain": None,
+        "signal_count": signal_count,
+        "source_count": source_count,
+        "country_count": country_count,
+        "avg_confidence": round(max(min(avg_conf, 1.0), 0.0), 3),
+        "first_seen": first_seen.isoformat() if hasattr(first_seen, "isoformat") else first_seen,
+        "changed_10h": changed_10h,
+        "trend": _trend_label(changed_10h, signal_count),
+        "sentiment_swing_10h": None,
+        "top_countries": country_codes,
+        "top_country_names": country_codes,
+        "top_sources": top_sources,
+        "top_people": [],
+        "top_entities": top_entities,
+        "hourly_timeline": hourly_timeline,
+        "source_mix": {
+            "top_sources": top_sources,
+            "source_count": source_count,
+        },
+        "quality": {
+            "lex_pct": 0,
+            "method_mix": {"dynamic": signal_count},
+            "source_flags": {"aggregator_dominant": _dominant_source_is_aggregator(top_sources)},
+            "geo_flags": {"unresolved_country_code": bool(country_codes)},
+            "entity_flags": {"raw_entity_field_untyped": bool(top_entities)},
+            "noise_rate": float(noise_rate) if noise_rate is not None else None,
+        },
+        "confidence": confidence_band(
+            evidence_count=signal_count,
+            source_count=source_count,
+            geo_count=country_count,
+            assignment_confidence=avg_conf,
+        ),
+        "why_now": _why_now(changed_10h, country_codes),
+        "subthreads": [],
+        "related_threads": [],
+        "evidence_samples": [_serialize_evidence(sig) for sig in sample_signals],
+        "cluster_cohesion": float(cohesion) if cohesion is not None else None,
+        "source": "dynamic_topics",
+    }
+
+
+async def _fetch_dynamic_threads_with_conn(
+    conn: Any,
+    *,
+    hours: int,
+    limit: int,
+) -> list[dict[str, Any]]:
+    has_topics = await conn.fetchval(
+        "SELECT to_regclass('dynamic_topics') IS NOT NULL"
+    )
+    has_members = await conn.fetchval(
+        "SELECT to_regclass('dynamic_topic_members') IS NOT NULL"
+    )
+    if not has_topics or not has_members:
+        return []
+    topic_rows = await conn.fetch(_DYNAMIC_TOPICS_SQL, hours, limit, timeout=8)
+    threads: list[dict[str, Any]] = []
+    for topic in topic_rows:
+        sample_ids = list(topic["sample_signal_ids"] or [])
+        sample_signals = []
+        if sample_ids:
+            sample_signals = await conn.fetch(
+                _EMERGENT_SAMPLE_SIGNALS_SQL, sample_ids, timeout=8,
+            )
+        threads.append(assemble_dynamic_thread(topic, list(sample_signals)))
+    return threads
+
+
+async def _fetch_dynamic_thread_detail(
+    conn: Any,
+    *,
+    dynamic_topic_id: int,
+) -> dict[str, Any] | None:
+    has_topics = await conn.fetchval(
+        "SELECT to_regclass('dynamic_topics') IS NOT NULL"
+    )
+    has_members = await conn.fetchval(
+        "SELECT to_regclass('dynamic_topic_members') IS NOT NULL"
+    )
+    if not has_topics or not has_members:
+        return None
+    topic = await conn.fetchrow(_DYNAMIC_TOPIC_DETAIL_SQL, dynamic_topic_id, timeout=8)
+    if topic is None:
+        return None
+    sample_ids = list(topic["sample_signal_ids"] or [])
+    sample_signals = []
+    if sample_ids:
+        sample_signals = await conn.fetch(
+            _EMERGENT_SAMPLE_SIGNALS_SQL, sample_ids, timeout=8,
+        )
+    return assemble_dynamic_thread(topic, list(sample_signals))
 
 
 async def _fetch_emergent_threads_with_conn(
@@ -807,6 +1021,15 @@ async def fetch_threads(
     is_atlas_filtered = bool(topic_slug or country_codes)
 
     async def _merged(active_conn: Any) -> list[dict[str, Any]]:
+        dynamic: list[dict[str, Any]] = []
+        if not is_atlas_filtered:
+            try:
+                dynamic = await _fetch_dynamic_threads_with_conn(
+                    active_conn, hours=hours, limit=limit,
+                )
+            except Exception as exc:
+                logger.warning("dynamic topics degraded: %s", exc)
+                dynamic = []
         atlas = await _fetch_threads_with_conn(
             active_conn,
             hours=hours,
@@ -816,14 +1039,21 @@ async def fetch_threads(
         )
         if is_atlas_filtered:
             return atlas
-        try:
-            emergent = await _fetch_emergent_threads_with_conn(
-                active_conn, hours=hours, limit=limit,
-            )
-        except Exception as exc:
-            logger.warning("emergent threads degraded: %s", exc)
-            emergent = []
-        combined = atlas + emergent
+        if dynamic:
+            # dynamic_topics is canonical when active rows exist; atlas and raw
+            # emergent rows remain fallback sources to avoid reintroducing
+            # static-taxonomy noise above the self-curated lifecycle.
+            dynamic.sort(key=lambda t: int(t.get("signal_count") or 0), reverse=True)
+            return dynamic[:limit]
+        else:
+            try:
+                emergent = await _fetch_emergent_threads_with_conn(
+                    active_conn, hours=hours, limit=limit,
+                )
+            except Exception as exc:
+                logger.warning("emergent threads degraded: %s", exc)
+                emergent = []
+        combined = emergent + atlas
         combined.sort(key=lambda t: int(t.get("signal_count") or 0), reverse=True)
         return combined[:limit]
 
@@ -843,6 +1073,17 @@ async def fetch_thread_detail(
     thread_id: str,
     hours: int = 24,
 ) -> dict[str, Any] | None:
+    if thread_id.startswith(DYNAMIC_TOPIC_THREAD_PREFIX):
+        topic_id_str = thread_id[len(DYNAMIC_TOPIC_THREAD_PREFIX):]
+        if not topic_id_str.isdigit():
+            return None
+        if db.pool is None:
+            return None
+        async with db.pool.acquire() as conn:
+            return await _fetch_dynamic_thread_detail(
+                conn, dynamic_topic_id=int(topic_id_str),
+            )
+
     # Emergent cluster threads route through their own detail builder.
     # The shape returned matches `assemble_emergent_thread`, so the
     # ThreadFocusPanel renders the same fields as the atlas branch.

@@ -123,6 +123,15 @@ Key docs/code changed in session 28 (Phase 6 dynamic topics shadow lifecycle —
 - Verified shadow rebuild on 2026-06-02: `101` clusters / `9` snapshots -> `21` topics, `6 active / 12 candidate / 3 deprecated`, `5` roundups, `1` high-noise topic, `n_merged_topics=0`.
 - Verified incremental no-op after rebuild: `n_new_clusters=0`, `inserted=0`, `updated=0`, `members=0`.
 
+Key docs/code changed in session 29 (Phase 6 backend canonical cutover — 2026-06-02):
+- `backend/app/services/thread_intelligence.py` — `/api/v2/threads` now prefers active `dynamic_topics` when available; atlas-topic and raw emergent-cluster rows remain fallbacks. `dynamic-topic-<id>` dispatch is supported for thread detail.
+- `backend/app/routers/briefing.py` — `top_atlas_topics` now prefers `dynamic_topics` (`source_table=dynamic_topics`, `model_version=dynamic-topics-v1`, `noise_rate`) before raw `emergent_clusters` and static atlas assignments.
+- `backend/app/routers/themes.py` — `/api/v2/theme/dynamic-topic-<id>` resolves Watchlist clicks through member `emergent_clusters.sample_signal_ids`, preserving the existing `ThemeDetail` contract without re-running clustering or calling paid APIs.
+- `backend/tests/test_threads_emergent_augment_shape.py`, `backend/tests/test_briefing_performance_shape.py`, and `backend/tests/test_theme_insight_shape.py` — contract guardrails for dynamic-topic canonical reads and Watchlist clickability.
+- `docs/superpowers/plans/2026-06-02-dynamic-topics-canonical-cutover.md` — backend-first cutover plan.
+- Local live smoke on 2026-06-02: `/api/v2/threads?hours=24&limit=5` returned `dynamic-topic-*` rows; `/api/v2/briefing?hours=24` returned `top_atlas_topics_source=dynamic_topics`; `/api/v2/theme/dynamic-topic-10?hours=24` returned `source=dynamic_topics`, `total=287`, `signalSample=141`.
+- Remaining before full product shipment: deploy backend and browser-smoke `/brief`, Watchlist clicks, Narrative Threads, and ThreadFocusPanel. Observed degraded briefing segment `theme_country` is separate from dynamic-topic cutover.
+
 Key docs/code changed in session 28 (local Ollama deprecation — 2026-06-02):
 - `backend/scripts/atlas_ollama_pilot.py` — read-only local Ollama benchmark runner; writes separate `ollama_*` fields and resolved `gold_*` comparison fields, never mutates review templates.
 - `backend/tests/test_atlas_ollama_pilot.py` — parser/gold-resolution/report tests.

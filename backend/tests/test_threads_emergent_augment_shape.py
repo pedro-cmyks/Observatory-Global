@@ -26,6 +26,24 @@ def test_emergent_thread_prefix_constant():
     assert 'EMERGENT_CLUSTER_THREAD_PREFIX = "emergent-cluster-"' in source
 
 
+def test_dynamic_topic_thread_prefix_constant():
+    source = _src()
+    assert 'DYNAMIC_TOPIC_THREAD_PREFIX = "dynamic-topic-"' in source
+
+
+def test_dynamic_topic_fetcher_reads_active_dynamic_topics():
+    source = _src()
+    assert "async def _fetch_dynamic_threads_with_conn(" in source
+    block = source[
+        source.index("async def _fetch_dynamic_threads_with_conn("):
+        source.index("async def _fetch_emergent_threads_with_conn(")
+    ]
+    assert "to_regclass('dynamic_topics')" in block
+    assert "dynamic_topic_members" in block
+    assert "dt.state = 'active'" in source
+    assert "dt.noise_rate" in source
+
+
 def test_assemble_emergent_thread_defined():
     source = _src()
     assert "def assemble_emergent_thread(" in source
@@ -80,7 +98,10 @@ def test_fetch_threads_merges_atlas_and_emergent():
     # Inner sort on signal_count is the merge contract.
     next_def = source.index("async def fetch_thread_detail(")
     block = source[merged_start:next_def]
+    assert "_fetch_dynamic_threads_with_conn" in block
     assert "_fetch_emergent_threads_with_conn" in block
+    assert "return dynamic[:limit]" in block
+    assert "dynamic_topics is canonical when active rows exist" in block
     assert 'sort(key=lambda t: int(t.get("signal_count") or 0), reverse=True)' in block
     # Atlas-only when filtered by topic/country
     assert "is_atlas_filtered" in block
@@ -90,5 +111,7 @@ def test_fetch_thread_detail_dispatches_on_prefix():
     source = _src()
     detail_start = source.index("async def fetch_thread_detail(")
     block = source[detail_start:]
+    assert "thread_id.startswith(DYNAMIC_TOPIC_THREAD_PREFIX)" in block
+    assert "_fetch_dynamic_thread_detail" in block
     assert "thread_id.startswith(EMERGENT_CLUSTER_THREAD_PREFIX)" in block
     assert "_fetch_emergent_thread_detail" in block

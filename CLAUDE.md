@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-06-01 (external archive storage + emergent cron/docs hygiene).
+Last updated: 2026-06-02 (Phase 6 dynamic topics backend cutover).
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -8,7 +8,32 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
-## Current Session Context (2026-06-01, external storage + emergent layer Phase 3 cron LIVE)
+## Current Session Context (2026-06-02, dynamic topics backend cutover)
+
+### Phase 6 dynamic topics read path
+
+- `dynamic_topics` is no longer shadow-only for local backend reads.
+  `/api/v2/threads` now prefers active `dynamic_topics` when available;
+  atlas-topic and raw emergent-cluster rows remain fallbacks.
+- `/api/v2/briefing.top_atlas_topics` now prefers `dynamic_topics` and exposes
+  `source_table="dynamic_topics"`, `model_version="dynamic-topics-v1"`, and
+  `noise_rate`. Raw `emergent_clusters` and static atlas assignments remain
+  fallback sources.
+- `/api/v2/theme/dynamic-topic-<id>` resolves Watchlist clicks through member
+  `emergent_clusters.sample_signal_ids`, preserving the existing
+  `ThemeDetail` contract without re-running clustering or calling paid APIs.
+- Local smoke on 2026-06-02 through `/Users/pedro/AtlasLocalWorker/.env`:
+  `/api/v2/threads?hours=24&limit=5` returned top `dynamic-topic-*` rows;
+  `/api/v2/briefing?hours=24` returned
+  `top_atlas_topics_source=dynamic_topics`; `/api/v2/theme/dynamic-topic-10`
+  returned "Russia Warns on Baltic and Zaporizhzhia",
+  `source=dynamic_topics`, `total=287`, `signalSample=141`.
+- Remaining before calling it fully shipped: deploy backend and browser-smoke
+  `/brief`, Watchlist clicks, Narrative Threads, and ThreadFocusPanel. The
+  observed degraded briefing segment `theme_country` is separate from this
+  cutover.
+
+## Prior Session Context (2026-06-01, external storage + emergent layer Phase 3 cron LIVE)
 
 ### Local storage relocation
 
@@ -108,14 +133,15 @@ small fix.
 See `docs/state/2026-05-30-context-gap-inventory-proposal.md` for the
 diagnosis and proposal.
 
-1. **Phase 6 status:** `dynamic_topics` is shadow-live after the emergent
-   snapshot cron. It hydrates incrementally, uses local e5 + evidence-role
-   student noise gating (`$0` API), caches per-cluster noise in
-   `emergent_clusters.role_noise_rate`, and has guarded rebuild-only
-   merge/dedup. Product surfaces still do **not** read `dynamic_topics`.
-2. **Next major block:** canonical cutover planning for product reads from
-   `dynamic_topics`. Keep it as a dedicated session with contract smokes before
-   changing visible surfaces.
+1. **Phase 6 status:** `dynamic_topics` hydrates incrementally after the
+   emergent snapshot cron, uses local e5 + evidence-role student noise gating
+   (`$0` API), caches per-cluster noise in
+   `emergent_clusters.role_noise_rate`, has guarded rebuild-only merge/dedup,
+   and is now the preferred local backend source for `/api/v2/threads` and
+   `/api/v2/briefing.top_atlas_topics`.
+2. **Next major block:** deploy the backend cutover and browser-smoke `/brief`,
+   Watchlist clicks, Narrative Threads, and ThreadFocusPanel before declaring
+   full product shipment.
 3. **Validation guardrail:** local Ollama on Pedro's M1 is deprecated for Atlas
    judging/teacher labels after the 2026-06-02 `llama3.2:1b` pilot scored 25%
    decision accuracy on 20 reviewed batch 02 rows. Keep outputs in `ollama_*`
@@ -133,10 +159,10 @@ diagnosis and proposal.
 # Verify cron health
 launchctl list | grep atlas
 
-# Verify production brief sources from emergent layer
+# Verify local/backend brief source after dynamic-topic cutover
 curl -s 'https://atlas-api-pedro.fly.dev/api/v2/briefing?hours=24' \
   | jq '.top_atlas_topics[0].source_table'
-# expected: "emergent_clusters"
+# expected after deploy: "dynamic_topics"
 
 # Inspect latest snapshot
 psql "$DATABASE_URL" -c "

@@ -1,5 +1,39 @@
 # Atlas — Session Log
 
+## 2026-06-02 — Phase 6 backend canonical cutover
+
+### What happened
+- Moved the backend read path from shadow-only `dynamic_topics` to canonical
+  fallback-first product reads:
+  `/api/v2/threads` prefers active `dynamic_topics`; raw emergent clusters and
+  atlas-topic threads remain fallbacks.
+- Updated `/api/v2/briefing.top_atlas_topics` to prefer `dynamic_topics`
+  (`source_table=dynamic_topics`, `model_version=dynamic-topics-v1`,
+  `noise_rate`) before raw `emergent_clusters` and static atlas assignments.
+- Added `/api/v2/theme/dynamic-topic-<id>` so existing Watchlist clicks still
+  open `ThemeDetail`; the detail payload is built from member
+  `emergent_clusters.sample_signal_ids` and does not call paid APIs.
+- Fixed the dynamic detail branch against the real migration schema:
+  `dynamic_topic_members.dynamic_topic_id` +
+  `dynamic_topic_members.emergent_cluster_id`.
+
+### Validation
+- Focused backend tests: 63 passed across threads, briefing shape, theme slug
+  guardrails, and dynamic topic lifecycle tests.
+- Live local smokes against Supabase through the worker `.env`:
+  `/api/v2/threads?hours=24&limit=5` returned only `dynamic-topic-*` rows at
+  the top; `/api/v2/briefing?hours=24` returned
+  `top_atlas_topics_source=dynamic_topics`; `/api/v2/theme/dynamic-topic-10`
+  returned label "Russia Warns on Baltic and Zaporizhzhia",
+  `source=dynamic_topics`, `total=287`, and `signalSample=141`.
+
+### Decision
+Backend canonical cutover is implemented locally but not yet deployed. Next
+step is backend deploy plus frontend/browser smoke through `/brief`,
+Watchlist clicks, Narrative Threads, and ThreadFocusPanel. The only degraded
+briefing segment observed in smoke was `theme_country`, a separate pre-existing
+section issue.
+
 ## 2026-06-02 — Phase 6 dynamic_topics self-curation
 
 ### What happened
@@ -20,11 +54,10 @@
   run reported `n_new_clusters=0`, `inserted=0`, `updated=0`, `members=0`.
 
 ### Decision
-Phase 6 is still shadow-only. The self-curating lifecycle now runs after each
-emergent snapshot with $0 API inference, caches per-cluster student noise, and
-has a safe rebuild-only dedup path. Canonical product cutover should be a
-dedicated session with contract smokes before any product surface reads
-`dynamic_topics`.
+The self-curating lifecycle now runs after each emergent snapshot with $0 API
+inference, caches per-cluster student noise, and has a safe rebuild-only dedup
+path. This section was originally shadow-only; the later 2026-06-02 backend
+canonical cutover above is the current read-path state.
 
 ## 2026-06-02 — Local Ollama validation route deprecated
 

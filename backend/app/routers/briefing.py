@@ -384,24 +384,57 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         has_atlas_assignments = await conn.fetchval(
             "SELECT to_regclass('signal_topic_assignments') IS NOT NULL"
         )
+        has_dynamic_topics = await conn.fetchval(
+            "SELECT to_regclass('dynamic_topics') IS NOT NULL"
+        )
+        has_dynamic_topic_members = await conn.fetchval(
+            "SELECT to_regclass('dynamic_topic_members') IS NOT NULL"
+        )
         has_emergent_clusters = await conn.fetchval(
             "SELECT to_regclass('emergent_clusters') IS NOT NULL"
         )
 
-        # Topic surface: prefer the emergent layer (HDBSCAN + ≥90%-precision
-        # gate + DeepSeek labels, mig 046, spec
-        # docs/superpowers/specs/2026-05-29-emergent-topic-discovery-design.md)
-        # when a fresh snapshot is available. Falls back to the static
-        # atlas_topics ranking pre-snapshot or during a snapshot pipeline
-        # outage so the brief Watchlist never goes empty.
+        # Topic surface: prefer the self-curated dynamic_topics lifecycle when
+        # active rows exist, then raw emergent_clusters, then static
+        # atlas_topics. This keeps the product read path quality-gated while
+        # preserving fallbacks if the lifecycle or snapshot cron is empty.
         #
         # Mapped to the existing top_atlas_topics frontend contract so the
-        # brief renders unchanged: signal_count = raw cluster size,
-        # gated_signal_count = post-gate kept, gate_scored_count = raw size
-        # (every cluster member was scored by the gate). slug = 'cluster-<id>'
-        # resolves in /api/v2/theme/{slug} via the cluster-N detail branch.
+        # brief renders unchanged. Dynamic rows use slug = 'dynamic-topic-<id>',
+        # which resolves in /api/v2/theme/{slug}; raw cluster fallback still
+        # uses slug = 'cluster-<id>'.
         top_atlas_topics: list = []
-        if has_emergent_clusters:
+        if has_dynamic_topics and has_dynamic_topic_members:
+            top_atlas_topics = await _fetch_section(
+                conn, degraded_segments, "top_atlas_topics", """
+                SELECT
+                    ('dynamic-topic-' || dt.id::text)                  AS slug,
+                    dt.label,
+                    NULL::text                                         AS parent_domain,
+                    dt.agg_n_signals::bigint                           AS signal_count,
+                    CASE
+                        WHEN dt.noise_rate IS NULL THEN NULL::float
+                        ELSE (1 - dt.noise_rate)::float
+                    END                                                AS avg_confidence,
+                    dt.agg_n_signals::bigint                           AS high_confidence_count,
+                    dt.agg_n_signals::bigint                           AS gated_signal_count,
+                    dt.agg_n_signals::bigint                           AS gate_scored_count,
+                    'dynamic_topics'                                   AS source_table,
+                    'dynamic-topics-v1'                                AS model_version,
+                    NULL::text                                         AS description,
+                    NULL::int                                          AS velocity,
+                    ARRAY[]::text[]                                    AS top_country_codes,
+                    dt.mean_cohesion::float                            AS cohesion,
+                    NULL::float                                        AS vendor_agreement,
+                    dt.noise_rate::float                               AS noise_rate
+                FROM dynamic_topics dt
+                WHERE dt.state = 'active'
+                  AND dt.last_seen > NOW() - ($1::int * INTERVAL '1 hour')
+                ORDER BY dt.agg_n_signals DESC, dt.last_seen DESC
+                LIMIT 10
+            """, hours)
+
+        if not top_atlas_topics and has_emergent_clusters:
             snap_row = await conn.fetchrow(
                 "SELECT MAX(snapshot_at) AS snap FROM emergent_clusters "
                 "WHERE snapshot_at > NOW() - ($1::int * INTERVAL '1 hour')",
@@ -426,7 +459,8 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                         velocity,
                         top_country_codes,
                         cohesion,
-                        vendor_agreement
+                        vendor_agreement,
+                        NULL::float AS noise_rate
                     FROM emergent_clusters
                     WHERE snapshot_at = $1
                     ORDER BY velocity DESC NULLS LAST, n_signals DESC
@@ -446,7 +480,8 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                        COUNT(*) FILTER (WHERE a.gate_kept)::bigint              AS gated_signal_count,
                        COUNT(*) FILTER (WHERE a.gate_kept IS NOT NULL)::bigint  AS gate_scored_count,
                        'signal_topic_assignments'                               AS source_table,
-                       a.model_version                                          AS model_version
+                       a.model_version                                          AS model_version,
+                       NULL::float                                              AS noise_rate
                 FROM signal_topic_assignments a
                 JOIN atlas_topics t ON t.id = a.topic_id
                 WHERE a.method = 'lexicon'
@@ -744,6 +779,10 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                         if _record_get(r, "cohesion") is not None else None
                     ),
                     "vendor_agreement": _record_get(r, "vendor_agreement"),
+                    "noise_rate": (
+                        float(r["noise_rate"])
+                        if _record_get(r, "noise_rate") is not None else None
+                    ),
                 }
                 for r in top_atlas_topics
             ],

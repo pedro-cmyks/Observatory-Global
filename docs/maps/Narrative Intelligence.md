@@ -35,17 +35,21 @@ The visible product should answer:
 
 ## Current implementation
 
-- `/api/v2/threads` merges atlas-topic threads and emergent cluster threads.
+- `/api/v2/threads` prefers active `dynamic_topics` when they exist; atlas-topic
+  threads and raw emergent-cluster threads remain fallbacks.
 - `/api/v2/threads/{thread_id}` dispatches by prefix:
-  `emergent-cluster-<id>` uses emergent detail; atlas ids use the atlas thread
-  path.
+  `dynamic-topic-<id>` uses dynamic topic detail, `emergent-cluster-<id>` uses
+  emergent detail, and atlas ids use the atlas thread path.
 - `/api/v2/briefing.top_atlas_topics` is a Watchlist feed, not the only
-  narrative surface.
+  narrative surface. It now prefers `dynamic_topics` and exposes `noise_rate`
+  before falling back to raw `emergent_clusters` or static atlas assignments.
+- `/api/v2/theme/dynamic-topic-<id>` opens dynamic topic evidence in the
+  existing theme-detail contract, using member emergent-cluster samples.
 - `/api/v2/theme/cluster-<id>` opens emergent cluster evidence in the existing
   theme-detail contract.
-- `dynamic_topics` is shadow-only. The lifecycle runs after each emergent
-  snapshot, but no product surface reads it yet; canonical cutover remains a
-  dedicated future session.
+- `dynamic_topics` lifecycle still runs after each emergent snapshot from the
+  worker cron with local e5 + student scoring ($0 API). Backend cutover is
+  locally validated; remaining product step is deploy + browser smoke.
 
 ## Key files
 

@@ -1,6 +1,6 @@
 # Project Inventory
 
-Generated: 2026-06-02T19:08:10.654508+00:00
+Generated: 2026-06-02T20:04:05.614727+00:00
 Regen: `python scripts/project_inventory.py`
 
 ## Endpoints (backend)
@@ -127,13 +127,15 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 
 | Label | Program | Schedule | RunAtLoad | Last log mtime | Last log line |
 |---|---|---|---|---|---|
-| `com.atlas.atlas-topic-classifier` | `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` | every 1800s | True | 2026-06-02T18:39:51.123195+00:00 | } |
+| `com.atlas.atlas-topic-classifier` | `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` | every 1800s | True | 2026-06-02T19:41:33.507719+00:00 | } |
 | `com.atlas.emergent-snapshot` | `/Users/pedro/AtlasLocalWorker/run-emergent-snapshot.sh` | 0:00, 6:00, 12:00, 18:00 | True | 2026-06-02T18:52:57.492419+00:00 | } |
 | `com.atlas.local-hot-cold-catchup` | `/Users/pedro/AtlasLocalWorker/run-local-hot-cold-catchup.sh` | 0:10, 1:10, 2:10, 3:10, 4:10, 5:10 | True | 2026-06-02T11:24:01.617128+00:00 | asyncpg.exceptions.ConnectionDoesNotExistError: connection was closed in the middle of operation |
 | `com.atlas.threevendor-calibration` | `/Users/pedro/AtlasLocalWorker/run-3vendor-calibration.sh` | — | False | — |  |
 
 ## Recent commits (last 2 weeks)
 
+- `8e1a621 2026-06-02 fix(ops): retry transient hot-cold export disconnects`
+- `ac0ed14 2026-06-02 docs: close phase6 and ollama validation handoff`
 - `b0803c6 2026-06-02 feat(phase6): guarded dynamic topic dedup`
 - `8dfd9f0 2026-06-02 feat(phase6): incremental dynamic_topics lifecycle wired into the snapshot cron`
 - `ddab9a0 2026-06-02 feat(phase6): evidence-role student noise gate for dynamic_topics`
@@ -212,5 +214,3 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 - `9c29690 2026-05-25 feat(research): render atlas validation reports`
 - `5fb3293 2026-05-25 feat(research): organize phase 1 atlas validation workflow`
 - `2f432ac 2026-05-25 feat(research): add atlas v2 labeling guide and sample`
-- `c9d0324 2026-05-25 docs(research): start atlas narrative intelligence paper track`
-- `5d54269 2026-05-25 feat(taxonomy): add answerability labels to benchmark harness`

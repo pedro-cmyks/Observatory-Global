@@ -180,6 +180,17 @@ def test_briefing_top_atlas_topics_reads_signal_topic_assignments():
     assert '"parent_domain"' in atlas_section
 
 
+def test_briefing_prefers_dynamic_topics_before_emergent_clusters():
+    source = _get_briefing_source()
+
+    dynamic_pos = source.index("FROM dynamic_topics")
+    emergent_pos = source.index("FROM emergent_clusters")
+    assert dynamic_pos < emergent_pos
+    assert "'dynamic_topics'" in source
+    assert "dt.state = 'active'" in source
+    assert "noise_rate" in source
+
+
 def test_briefing_topics_by_domain_groups_by_parent_domain():
     """topics_by_domain exposes the atlas_topics taxonomy hierarchy
     (parent_domain -> [topics]). Reuses the same window as top_atlas_topics

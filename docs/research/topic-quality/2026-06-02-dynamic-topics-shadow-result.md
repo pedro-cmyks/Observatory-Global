@@ -1,7 +1,7 @@
 # dynamic_topics Shadow Lifecycle — Result (Phase 6, Sub-A)
 
 **Date:** 2026-06-02
-**Status:** built + validated in shadow (no product read path).
+**Status:** lifecycle built; backend canonical read path locally validated.
 **Migration:** `048_dynamic_topics.sql` (applied). Writer:
 `backend/scripts/project_dynamic_topics.py` (`--rebuild`).
 
@@ -127,10 +127,36 @@ roundups, 1 high-noise topic. This is the desired behavior for the current
 data: dedup exists, but it refuses unsafe merges when there are no real
 duplicates.
 
+## Backend canonical read path (2026-06-02)
+
+The first product read cutover is now implemented locally:
+
+- `/api/v2/threads` prefers active `dynamic_topics` when available. Atlas-topic
+  and raw emergent-cluster rows remain fallbacks.
+- `/api/v2/briefing.top_atlas_topics` prefers `dynamic_topics` before raw
+  `emergent_clusters` and static atlas assignments. Rows expose
+  `source_table="dynamic_topics"`, `model_version="dynamic-topics-v1"`, and
+  `noise_rate`.
+- `/api/v2/theme/dynamic-topic-<id>` resolves Watchlist clicks through member
+  `emergent_clusters.sample_signal_ids`, so the existing `ThemeDetail` contract
+  renders unchanged and no clustering or paid API call runs on click.
+
+Live local smoke against Supabase through the worker `.env`:
+
+| endpoint | result |
+|---|---|
+| `/api/v2/threads?hours=24&limit=5` | top rows are `dynamic-topic-*` |
+| `/api/v2/briefing?hours=24` | `top_atlas_topics_source=dynamic_topics`; top slug `dynamic-topic-10` |
+| `/api/v2/theme/dynamic-topic-10?hours=24` | label "Russia Warns on Baltic and Zaporizhzhia"; `source=dynamic_topics`; `total=287`; `signalSample=141` |
+
+Observed caveat: `/api/v2/briefing` still reports degraded segment
+`theme_country`. That is a separate pre-existing briefing section issue; the
+dynamic-topic read path itself returned correctly.
+
 ## Decision / next increment
 
-Phase 6 shadow lifecycle is now self-curating in live cron, cost-bounded, and
-protected against unsafe centroid-only dedup. Canonical product cutover remains
-last and should be a dedicated session: product surfaces can read
-`dynamic_topics` only after a final contract/smoke pass confirms that visible
-threads improve over the current atlas/emergent hybrid.
+Phase 6 lifecycle is self-curating in live cron, cost-bounded, protected
+against unsafe centroid-only dedup, and now locally wired into the backend
+read path. Remaining before calling it fully shipped: deploy backend and run a
+browser smoke through `/brief`, Watchlist clicks, Narrative Threads, and
+ThreadFocusPanel.
