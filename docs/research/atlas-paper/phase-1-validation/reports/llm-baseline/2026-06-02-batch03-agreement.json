@@ -1,0 +1,78 @@
+{
+  "schema_version": "atlas-multi-annotator-v1",
+  "categories": [
+    "correct",
+    "incorrect",
+    "partial"
+  ],
+  "annotators": [
+    "deepseek",
+    "openai",
+    "anthropic"
+  ],
+  "distributions": {
+    "deepseek": {
+      "total": 666,
+      "correct": 270,
+      "incorrect": 396,
+      "partial": 0
+    },
+    "openai": {
+      "total": 666,
+      "correct": 303,
+      "incorrect": 289,
+      "partial": 74
+    },
+    "anthropic": {
+      "total": 657,
+      "correct": 230,
+      "incorrect": 312,
+      "partial": 115
+    }
+  },
+  "pairwise_cohen_kappa": [
+    {
+      "annotator_a": "deepseek",
+      "annotator_b": "openai",
+      "overlap": 666,
+      "kappa": 0.623,
+      "observed_agreement": 0.7898,
+      "landis_koch_band": "substantial"
+    },
+    {
+      "annotator_a": "deepseek",
+      "annotator_b": "anthropic",
+      "overlap": 657,
+      "kappa": 0.6224,
+      "observed_agreement": 0.7823,
+      "landis_koch_band": "substantial"
+    },
+    {
+      "annotator_a": "openai",
+      "annotator_b": "anthropic",
+      "overlap": 657,
+      "kappa": 0.6393,
+      "observed_agreement": 0.7778,
+      "landis_koch_band": "substantial"
+    }
+  ],
+  "fleiss_kappa_all": {
+    "n_items": 657,
+    "n_annotators": 3,
+    "kappa": 0.6251413040863939,
+    "mean_observed_agreement": 0.7833587011669203,
+    "expected_agreement": 0.4220721002481182,
+    "landis_koch_band": "substantial"
+  },
+  "fleiss_kappa_llm_only": {
+    "n_items": 657,
+    "n_annotators": 3,
+    "kappa": 0.6251413040863939,
+    "mean_observed_agreement": 0.7833587011669203,
+    "expected_agreement": 0.4220721002481182,
+    "landis_koch_band": "substantial"
+  },
+  "consensus_subset_size": 657,
+  "unanimous_items": 458,
+  "unanimous_rate": 0.6971
+}
