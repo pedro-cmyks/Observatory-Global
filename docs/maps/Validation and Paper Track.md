@@ -17,6 +17,9 @@ gating, annotator agreement, and the future paper series.
   41.6% single-layer precision. Failure anatomy (off_topic 41.6%,
   scope_mismatch 28.1%, substring_noise only 0.6%) → scope gate (M1) +
   evidence-role layer (M2) + per-topic remediation (M3) as the precision levers.
+  M1 measured: gate lifts precision 41%→70% (37% coverage). M2 v1 measured:
+  local student (no LLM at inference) primary_evidence precision 78%, noise
+  recall 71% on honest 5-fold CV.
 - [[2026-05-25-atlas-v2-labeling-guide]] — semantic/evidence-role label guide.
 - Evidence-role teacher/student reports:
   `docs/research/atlas-paper/phase-1-validation/reports/evidence-role/`.

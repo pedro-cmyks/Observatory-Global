@@ -108,9 +108,34 @@ context/related rather than wrong assignments, and lets the product surface them
 in the right tier (verified vs context_rich) instead of hiding or mis-counting
 them.
 
-**Status.** Teacher-student pilot underway: 605-row evidence-role gold
-(Fleiss-grade 3-vendor consensus) ready; the local e5-base + logistic student is
-the production classifier. This is also the coverage engine (see M4).
+**Measured result — student v1 (2026-06-02).** Trained the local
+multinomial-logistic student on the 603-row evidence-role consensus gold
+(`train_evidence_role_student.py`; e5-base headline embedding + headline↔cluster_label
+cosine; honest stratified 5-fold CV;
+`reports/evidence-role/2026-06-02-student-v1-eval.json`,
+model `models/2026-06-02-evidence-role-student-v1.json`):
+
+| role | precision | recall | support |
+|---|---:|---:|---:|
+| primary_evidence | **78.2%** | 77.4% | 288 |
+| noise | 69.8% | **71.4%** | 227 |
+| reaction | 65.5% | 82.6% | 23 |
+| context | 36.5% | 35.2% | 54 |
+| analysis | 60.0% | 27.3% | 11 |
+
+Accuracy 70.6%, macro-F1 0.59. No LLM at inference. Cluster tiering over the 29
+gold clusters: 27 verified / 1 candidate / 1 context_rich.
+
+Read: a headline-only local student already separates primary_evidence
+(78% precision) and noise (71% recall) — a strong v1 floor against the LLM-teacher
+gold. `context`/`analysis` are weak (small support, semantically fuzzy, confused
+with noise/primary). Per-signal primary precision (78%) is below the 90% verified
+target, but the `verified` tier requires ≥2 high-score (≥0.85) primaries per
+cluster, a stricter cluster-level bar. Path to 90%: richer features (cluster
+centroid, gate_score, source/country — deferred to v2), role_score-threshold
+calibration, and more gold (toward 1,000–1,500 via the 4x/day cron).
+
+**Status.** Student v1 done. This model is also the coverage engine (see M4).
 
 ### M3 — Per-topic remediation (targets the catastrophic tail)
 
@@ -157,8 +182,11 @@ scored at all*. Together they are the precision+coverage pair.
 measured improvement result: the learned scope gate raises single-layer
 precision from 41% to 70% at 37% coverage.
 
-**Next:** quantify M2. Score the same gold through the evidence-role student
-(once trained) and show that `scope_mismatch` rows the gate keeps are recovered
-as correctly-typed `context`/`reaction`/`analysis` rather than precision misses —
-closing the residual gap to the LLM upper bound while restoring coverage. Then M3
-(retire/gate the 0%-precision topics) for the macro-average lift.
+**M2 v1 done** (§3): local student, primary_evidence precision 78%, noise recall
+71%, no LLM at inference. **Next for M2:** (a) run the student over the RQ1
+batch-03 `scope_mismatch` rows the gate keeps and show they get non-noise roles
+(i.e. they are real evidence at the wrong granularity, recoverable as graded
+context rather than precision misses); (b) v2 features (centroid, gate_score,
+source, country) + role-score calibration to push primary precision toward 90%;
+(c) grow the gold toward 1,000–1,500. Then M3 (retire/gate the 0%-precision
+topics) for the macro-average lift.

@@ -154,6 +154,18 @@ Operational changes now verified:
   upper bound is `scope_mismatch` (M2's target). Artifact:
   `reports/llm-baseline/2026-06-02-rq1-gate-precision-coverage.json`.
 
+- **M2 student v1 trained (2026-06-02).** `train_evidence_role_student.py` now
+  trains a real local multinomial-logistic student (e5-base headline embedding +
+  headline↔cluster_label cosine; no LLM at inference) on the 603-row evidence-role
+  consensus gold, evaluated by honest stratified 5-fold CV. primary_evidence
+  precision **78.2%** / recall 77.4%; noise recall **71.4%**; accuracy 70.6%,
+  macro-F1 0.59. `context`/`analysis` weak (small support). Below the 90% verified
+  target at signal level, but the `verified` tier needs ≥2 strong primaries per
+  cluster. Path to 90%: v2 features (centroid/gate_score/source/country),
+  role-score calibration, more gold. Artifacts:
+  `reports/evidence-role/2026-06-02-student-v1-eval.json`,
+  `models/2026-06-02-evidence-role-student-v1.json`.
+
 Next operational work:
 
 - Add the daily 3-vendor calibration job at 03:00.

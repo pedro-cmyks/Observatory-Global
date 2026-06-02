@@ -1,0 +1,129 @@
+{
+  "schema_version": "atlas-evidence-role-student-report-v2",
+  "n_training_rows": 603,
+  "role_counts": {
+    "analysis": 11,
+    "context": 54,
+    "noise": 227,
+    "primary_evidence": 288,
+    "reaction": 23
+  },
+  "dropped_rare_classes": {
+    "entity_reference": 2
+  },
+  "cv": {
+    "n_splits": 5,
+    "classification_report": {
+      "analysis": {
+        "precision": 0.6,
+        "recall": 0.2727272727272727,
+        "f1-score": 0.375,
+        "support": 11.0
+      },
+      "context": {
+        "precision": 0.36538461538461536,
+        "recall": 0.35185185185185186,
+        "f1-score": 0.3584905660377358,
+        "support": 54.0
+      },
+      "noise": {
+        "precision": 0.6982758620689655,
+        "recall": 0.7136563876651982,
+        "f1-score": 0.7058823529411765,
+        "support": 227.0
+      },
+      "primary_evidence": {
+        "precision": 0.7824561403508772,
+        "recall": 0.7743055555555556,
+        "f1-score": 0.7783595113438045,
+        "support": 288.0
+      },
+      "reaction": {
+        "precision": 0.6551724137931034,
+        "recall": 0.8260869565217391,
+        "f1-score": 0.7307692307692307,
+        "support": 23.0
+      },
+      "accuracy": 0.7064676616915423,
+      "macro avg": {
+        "precision": 0.6202578063195123,
+        "recall": 0.5877256048643236,
+        "f1-score": 0.5897003322183896,
+        "support": 603.0
+      },
+      "weighted avg": {
+        "precision": 0.7052333729000305,
+        "recall": 0.7064676616915423,
+        "f1-score": 0.704301851174781,
+        "support": 603.0
+      }
+    },
+    "confusion_matrix": {
+      "labels": [
+        "analysis",
+        "context",
+        "noise",
+        "primary_evidence",
+        "reaction"
+      ],
+      "matrix": [
+        [
+          3,
+          1,
+          3,
+          3,
+          1
+        ],
+        [
+          0,
+          19,
+          19,
+          14,
+          2
+        ],
+        [
+          2,
+          18,
+          162,
+          44,
+          1
+        ],
+        [
+          0,
+          12,
+          47,
+          223,
+          6
+        ],
+        [
+          0,
+          2,
+          1,
+          1,
+          19
+        ]
+      ]
+    },
+    "primary_evidence_precision": 0.7825,
+    "primary_evidence_recall": 0.7743,
+    "noise_recall": 0.7137,
+    "macro_f1": 0.5897,
+    "accuracy": 0.7065,
+    "role_score_mean": 0.8879
+  },
+  "cluster_tiers": {
+    "n_clusters": 29,
+    "tier_counts": {
+      "verified": 27,
+      "candidate": 1,
+      "context_rich": 1
+    },
+    "visible_cluster_coverage": 1.0
+  },
+  "model_out": "../docs/research/atlas-paper/phase-1-validation/models/2026-06-02-evidence-role-student-v1.json",
+  "targets": {
+    "verified_precision": 0.9,
+    "visible_coverage": 0.8
+  },
+  "status": "trained_v1"
+}
