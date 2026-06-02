@@ -185,6 +185,15 @@ Operational changes now verified:
   theme-hint lexicon at the source). Artifact:
   `reports/llm-baseline/2026-06-02-rq1-topic-remediation.json`.
 
+- **Student v2 (DB-enriched) — near-null result (2026-06-02).**
+  `train_evidence_role_student_v2.py` adds cluster cosine(label/description/centroid_vec),
+  cohesion, log n_signals, country_match, source_family, is_english (782 feats, 29
+  clusters joined). vs v1: primary precision **flat at 78.2%**, noise recall
+  +1.3pts, accuracy +0.7pts, macro-F1 slightly down. Centroid cosine is a weak
+  discriminator because noise members sit inside the same cluster. Lever to 90% is
+  more gold + cleaner clusters (M4), not per-row features. Artifact:
+  `reports/evidence-role/2026-06-02-student-v2-eval.json`.
+
 - Cron health (verified 2026-06-02): `com.atlas.emergent-snapshot` running 4x/day
   (snapshots at 05:00/11:00 today, 17:00/23:00 yesterday; 81 cluster rows / 7
   snapshots). Evidence-role gold held at 605 (no new teacher pass this cycle).

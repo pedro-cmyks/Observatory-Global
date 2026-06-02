@@ -135,7 +135,21 @@ cluster, a stricter cluster-level bar. Path to 90%: richer features (cluster
 centroid, gate_score, source/country — deferred to v2), role_score-threshold
 calibration, and more gold (toward 1,000–1,500 via the 4x/day cron).
 
-**Status.** Student v1 done. This model is also the coverage engine (see M4).
+**Student v2 — DB-enriched features (2026-06-02, honest near-null result).**
+Added the design's cluster + provenance features (cosine to cluster
+label/description/**centroid_vec**, cohesion, log n_signals, country_match,
+source_family one-hot, is_english; `train_evidence_role_student_v2.py`,
+`reports/evidence-role/2026-06-02-student-v2-eval.json`, 29 clusters joined, 782
+features). Result vs v1: primary_evidence precision **78.2% (flat)**, noise recall
+71.4%→72.7%, accuracy 70.6%→71.3%, macro-F1 0.590→0.572. The rich features barely
+move the needle. **Why:** the centroid is the mean of the *same* cluster the
+signal belongs to, so noise members also score high cosine-to-centroid — it is a
+weak discriminator for in-cluster noise. **Conclusion:** the lever to 90% is not
+per-row feature engineering; it is (a) more gold (toward 1,000–1,500) and (b)
+cleaner clusters / a better candidate generator (M4), which also removes the
+in-cluster noise that caps primary precision at ~78%.
+
+**Status.** Student v1 + v2 done. The model is also the coverage engine (see M4).
 
 ### M3 — Per-topic remediation (targets the catastrophic tail)
 
