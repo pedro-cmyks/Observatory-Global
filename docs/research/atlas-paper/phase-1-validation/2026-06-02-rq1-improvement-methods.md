@@ -155,8 +155,43 @@ stories (high off_topic). Per-topic action: tighten or retire the lexicon,
 require co-occurrence / negative terms, or raise the per-topic gate threshold.
 A 0% topic should be gated near-fully until its definition is fixed.
 
-**Expected lift.** Removing or gating the worst ~6 topics lifts the macro average
-materially because they contribute mostly false positives.
+**Measured result (2026-06-02, `topic_remediation_report.py`;
+`reports/llm-baseline/2026-06-02-rq1-topic-remediation.json`).**
+
+*Match source* — the off_topic tail comes from GDELT theme hints, confirmed:
+
+| match source | n | precision |
+|---|---:|---:|
+| lex+theme | 173 | 51.5% |
+| lex_only | 314 | 46.5% |
+| **theme_only** (lex_count=0, theme_hits>0) | 173 | **20.2%** |
+
+theme_only (pure GDELT-theme-hint, no lexicon term) is ~2.5× more likely to be
+wrong. **M3a:** dropping theme_only matches lifts precision **40.9% → 48.3%** at
+74% coverage — a mechanical fix, no model. The learned gate (M1) already does a
+softer version of this; making it an explicit candidate-generation rule is cheap
+insurance.
+
+*Worst topics (n≥8)* — **M3b** targets:
+
+| topic | n | precision |
+|---|---:|---:|
+| mining-royalty-risk | 23 | 0% |
+| fuel-subsidy-unrest | 36 | 2.8% |
+| humanitarian-access-conflict | 22 | 4.5% |
+| student-youth-protest | 12 | 8.3% |
+| election-legitimacy-dispute | 35 | 8.6% |
+| currency-debt-stress | 27 | 11.1% |
+
+These contribute almost only false positives; retire or near-fully gate them
+until their lexicons are rebuilt. **Expected lift:** removing/gating the worst
+~6 topics raises the macro average materially.
+
+**Self-healing note.** The durable fix for both M3a and M3b is to stop relying on
+hand-maintained GDELT-theme-hint lexicons at all: the Phase 6 `dynamic_topics` +
+emergent self-curation path lets topics be created, scored, and retired
+automatically from embedding clusters, so the low-precision theme-hint tail is
+removed at the source rather than patched per-topic.
 
 ### M4 — Embedding candidate generator (precision's coverage counterpart)
 

@@ -1,0 +1,105 @@
+{
+  "schema_version": "atlas-rq1-topic-remediation-v1",
+  "n_scored": 660,
+  "baseline_precision": 0.4091,
+  "precision_by_match_source": {
+    "lex_only": {
+      "n": 314,
+      "correct": 146,
+      "precision": 0.465
+    },
+    "lex+theme": {
+      "n": 173,
+      "correct": 89,
+      "precision": 0.5145
+    },
+    "theme_only": {
+      "n": 173,
+      "correct": 35,
+      "precision": 0.2023
+    }
+  },
+  "what_if_drop_theme_only": {
+    "kept": 487,
+    "coverage": 0.7379,
+    "precision": 0.4825
+  },
+  "worst_topics": [
+    {
+      "slug": "mining-royalty-risk",
+      "n": 23,
+      "correct": 0,
+      "precision": 0.0
+    },
+    {
+      "slug": "fuel-subsidy-unrest",
+      "n": 36,
+      "correct": 1,
+      "precision": 0.0278
+    },
+    {
+      "slug": "humanitarian-access-conflict",
+      "n": 22,
+      "correct": 1,
+      "precision": 0.0455
+    },
+    {
+      "slug": "student-youth-protest",
+      "n": 12,
+      "correct": 1,
+      "precision": 0.0833
+    },
+    {
+      "slug": "election-legitimacy-dispute",
+      "n": 35,
+      "correct": 3,
+      "precision": 0.0857
+    },
+    {
+      "slug": "currency-debt-stress",
+      "n": 27,
+      "correct": 3,
+      "precision": 0.1111
+    },
+    {
+      "slug": "forced-displacement",
+      "n": 13,
+      "correct": 2,
+      "precision": 0.1538
+    },
+    {
+      "slug": "gang-control-urban-security",
+      "n": 35,
+      "correct": 7,
+      "precision": 0.2
+    },
+    {
+      "slug": "telecom-internet-shutdown",
+      "n": 13,
+      "correct": 3,
+      "precision": 0.2308
+    },
+    {
+      "slug": "constitutional-institutional-crisis",
+      "n": 22,
+      "correct": 6,
+      "precision": 0.2727
+    },
+    {
+      "slug": "oil-gas-supply-risk",
+      "n": 32,
+      "correct": 9,
+      "precision": 0.2812
+    },
+    {
+      "slug": "sanctions-diplomatic-pressure",
+      "n": 10,
+      "correct": 3,
+      "precision": 0.3
+    }
+  ],
+  "remediation": {
+    "M3a": "Hard-gate or down-weight theme_only matches (lex_count==0, theme_hits>0); they are the low-precision GDELT-theme-hint tail.",
+    "M3b": "Retire or near-fully gate the 0%-precision topics until their lexicon/definition is fixed."
+  }
+}

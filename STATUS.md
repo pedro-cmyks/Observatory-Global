@@ -175,6 +175,20 @@ Operational changes now verified:
   gate's job, and student v2 needs cluster-membership features). Artifact:
   `reports/llm-baseline/2026-06-02-gate-student-bridge.json`.
 
+- **M3 remediation measured (2026-06-02).** `topic_remediation_report.py`
+  confirms the off_topic tail is GDELT-theme-hint driven: `theme_only` matches
+  (lex_count=0, theme_hits>0) precision **20.2%** vs lex_backed ~48%. M3a:
+  dropping theme_only lifts precision **40.9% → 48.3%** at 74% coverage (no
+  model). M3b: retire/gate the 0%-precision topics (mining-royalty-risk 0%,
+  fuel-subsidy-unrest 2.8%, humanitarian-access 4.5%, election-legitimacy 8.6%).
+  Durable fix = Phase 6 dynamic_topics + emergent self-curation (remove the
+  theme-hint lexicon at the source). Artifact:
+  `reports/llm-baseline/2026-06-02-rq1-topic-remediation.json`.
+
+- Cron health (verified 2026-06-02): `com.atlas.emergent-snapshot` running 4x/day
+  (snapshots at 05:00/11:00 today, 17:00/23:00 yesterday; 81 cluster rows / 7
+  snapshots). Evidence-role gold held at 605 (no new teacher pass this cycle).
+
 Next operational work:
 
 - Add the daily 3-vendor calibration job at 03:00.
