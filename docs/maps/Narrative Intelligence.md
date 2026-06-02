@@ -8,6 +8,10 @@ Threads and emergent narrative discovery.
 - [[2026-05-25-atlas-narrative-intelligence-framework]] — active model canon.
 - [[2026-05-24-living-narrative-threads]] — thread contract and product model.
 - [[2026-05-29-emergent-topic-discovery-design]] — emergent discovery layer.
+- [[2026-06-02-emergent-topic-identity-resolver-design]] — Phase 6
+  `dynamic_topics` identity and lifecycle design.
+- [[2026-06-02-dynamic-topics-shadow-result]] — shadow lifecycle result,
+  student noise-rate gate, incremental cron, and conservative merge/dedup.
 - [[2026-06-01-narrative-cluster-evidence-roles-design]] — role-aware
   cluster/thread classification design.
 - [[2026-06-01-narrative-cluster-evidence-roles]] — implementation plan for
@@ -39,6 +43,9 @@ The visible product should answer:
   narrative surface.
 - `/api/v2/theme/cluster-<id>` opens emergent cluster evidence in the existing
   theme-detail contract.
+- `dynamic_topics` is shadow-only. The lifecycle runs after each emergent
+  snapshot, but no product surface reads it yet; canonical cutover remains a
+  dedicated future session.
 
 ## Key files
 
@@ -47,6 +54,10 @@ The visible product should answer:
 - `backend/app/routers/briefing.py`
 - `backend/app/routers/themes.py`
 - `backend/app/routers/emergent.py`
+- `backend/scripts/project_dynamic_topics.py`
+- `backend/migrations/048_dynamic_topics.sql`
+- `backend/migrations/049_dynamic_topics_noise_rate.sql`
+- `backend/migrations/050_emergent_cluster_noise_cache.sql`
 - `frontend-v2/src/components/NarrativeThreads.tsx`
 - `frontend-v2/src/components/ThreadFocusPanel.tsx`
 - `frontend-v2/src/components/ThemeDetail.tsx`

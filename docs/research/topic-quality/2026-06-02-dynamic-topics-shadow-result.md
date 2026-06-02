@@ -86,9 +86,51 @@ topics. Noise distribution is bimodal (8 topics ~0, a tail to 0.82), so the
 0.50 threshold cleanly isolates the egregious grab-bag without demoting real
 specific topics like "Agostina Vega Found Dead" (0.39).
 
+## Incremental cron path (2026-06-02)
+
+The writer now defaults to incremental mode. It hydrates existing
+`dynamic_topics` from the DB by replaying persisted
+`dynamic_topic_members`, then processes only emergent clusters that do not
+already have a member row. `--rebuild` remains the full shadow rebuild path.
+
+The existing `com.atlas.emergent-snapshot` cron is the trigger: the guarded
+tail step in `scripts/run-emergent-snapshot.sh` runs
+`project_dynamic_topics.py` after each snapshot. No new cron was added. The
+step runs from `/Users/pedro/AtlasLocalWorker` with the local `mlvenv`.
+
+Cost guardrail: lifecycle scoring is **$0 API**. The evidence-role student and
+e5 embedder are local. Migration 050 caches
+`emergent_clusters.role_noise_rate`, so each cluster's sample headlines are
+scored once and later incremental runs skip cached clusters. Verified no-op
+incremental run after rebuild: `n_new_clusters=0`, `inserted=0`, `updated=0`,
+`members=0`.
+
+## Merge/dedup refinement (2026-06-02)
+
+Merge/dedup is now wired into the `--rebuild` consolidation path, not the live
+incremental cron. The first naive idea — centroid single-linkage at 0.90 —
+was rejected by dry-run evidence: Atlas centroids are dense enough that
+unrelated topics such as bus crashes, portfolios, politics, and roundups sit
+above 0.90 and chain-collapse into grab-bags.
+
+The implemented merge is conservative:
+
+- centroid cosine must pass the merge threshold,
+- labels must be compatible (`SequenceMatcher` ratio >= 0.80 after
+  normalization, or exact normalized match),
+- any topic whose current representative label is a roundup is excluded from
+  merge participation.
+
+Latest verified rebuild after the guard (101 clusters, 9 snapshots): **21
+topics**, `n_merged_topics=0`, 6 active / 12 candidate / 3 deprecated, 5
+roundups, 1 high-noise topic. This is the desired behavior for the current
+data: dedup exists, but it refuses unsafe merges when there are no real
+duplicates.
+
 ## Decision / next increment
 
-Sub-A + quality gate done and validated in shadow. Next: the incremental
-cron path (hydrate existing dynamic_topics from the DB and match each new
-snapshot, instead of `--rebuild`) so the lifecycle runs after every emergent
-snapshot. Then merge/dedup refinement and, last, canonical product cutover.
+Phase 6 shadow lifecycle is now self-curating in live cron, cost-bounded, and
+protected against unsafe centroid-only dedup. Canonical product cutover remains
+last and should be a dedicated session: product surfaces can read
+`dynamic_topics` only after a final contract/smoke pass confirms that visible
+threads improve over the current atlas/emergent hybrid.

@@ -34,6 +34,8 @@ below resolve via Obsidian's fuzzy search regardless of folder.
 - [[2026-06-01-narrative-cluster-evidence-roles]] — implementation plan for
   the evidence-role pilot, teacher packet, consensus labels, student report,
   and Obsidian documentation path.
+- [[2026-06-02-emergent-topic-identity-resolver-design]] — Phase 6 identity
+  resolver and `dynamic_topics` lifecycle design.
 - [[2026-05-29-emergent-topic-discovery-design]] — emergent layer
   (HDBSCAN + ≥90%-precision gate + DeepSeek labels), per-cluster
   precision filter, translation layer, self-curating
@@ -50,6 +52,8 @@ below resolve via Obsidian's fuzzy search regardless of folder.
 - [[2026-05-27-methodology-paper-outline]] — Paper 1 outline.
 - [[2026-05-28-precision-to-90-roadmap]] — roadmap to push Atlas
   classification precision from ~51% → 90%.
+- [[2026-06-02-dynamic-topics-shadow-result]] — Phase 6 shadow lifecycle,
+  student noise-rate gate, incremental cron, and guarded merge/dedup result.
 
 ## Roadmaps
 

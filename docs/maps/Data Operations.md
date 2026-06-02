@@ -31,6 +31,13 @@ and production runtime constraints.
   Desktop checkout.
 - Cron credentials live in `/Users/pedro/AtlasLocalWorker/.env`; launchd
   runners must not read the Desktop repo `.env` unless explicitly debugging.
+- `com.atlas.emergent-snapshot` also runs the shadow `dynamic_topics` lifecycle
+  after each successful snapshot. This step must stay local-only: e5 + student
+  inference run in `mlvenv`, `emergent_clusters.role_noise_rate` is cached once
+  per cluster, and no paid API calls are introduced by the lifecycle.
+- `dynamic_topics` merge/dedup is rebuild-only. Do not put centroid-only dedup
+  in the incremental cron; dense centroids can chain-collapse unrelated topics
+  and roundups.
 - Use `scripts/project_inventory.py` to refresh cron and endpoint truth before
   trusting old handoffs.
 - New public schema tables should enable RLS in the same migration.
@@ -42,6 +49,7 @@ and production runtime constraints.
 - `backend/scripts/historical_process_partition.py`
 - `backend/scripts/historical_sync.py`
 - `backend/scripts/snapshot_emergent_topics.py`
+- `backend/scripts/project_dynamic_topics.py`
 - `scripts/run-emergent-snapshot.sh`
 - `scripts/install-emergent-snapshot-launchd.sh`
 - `scripts/project_inventory.py`

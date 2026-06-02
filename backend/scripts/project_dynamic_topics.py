@@ -25,6 +25,7 @@ import asyncio
 import os
 import re
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 from typing import Any
 
 import numpy as np
@@ -172,6 +173,79 @@ class Topic:
             self.noises.append(float(cluster["noise"]))
         self.members.append({"cluster_id": cluster["id"], "snapshot_at": snap, "match_score": score})
         self.dirty = True
+
+    def absorb(self, other: "Topic") -> None:
+        """Merge another near-duplicate topic into this identity."""
+        old_members = self.n_member_clusters
+        other_members = other.n_member_clusters
+        if old_members + other_members:
+            self.centroid = (
+                (self.centroid * old_members + other.centroid * other_members)
+                / max(old_members + other_members, 1)
+            )
+        self.first_seen = min(self.first_seen, other.first_seen)
+        self.last_seen = max(self.last_seen, other.last_seen)
+        self.snapshots.update(other.snapshots)
+        self.agg_n_signals += other.agg_n_signals
+        self.cohesions.extend(other.cohesions)
+        self.noises.extend(other.noises)
+        self.roundup_votes += other.roundup_votes
+        self.n_labels += other.n_labels
+        self.label_counts.update(other.label_counts)
+        self.since_seen = min(self.since_seen, other.since_seen)
+        if self.state != "active" and other.state == "active":
+            self.state = "active"
+        self.members.extend(other.members)
+        self.dirty = True
+
+
+MERGE_THRESHOLD = 0.90  # stricter than linking; label guard prevents broad vector-chain collapse
+MERGE_LABEL_MIN = 0.80
+
+
+def labels_compatible(a: str | None, b: str | None) -> bool:
+    """Return true when labels are close enough to be the same user topic."""
+    if not a or not b:
+        return False
+    norm_a = re.sub(r"[^a-z0-9]+", " ", a.lower()).strip()
+    norm_b = re.sub(r"[^a-z0-9]+", " ", b.lower()).strip()
+    if not norm_a or not norm_b:
+        return False
+    if norm_a == norm_b:
+        return True
+    return SequenceMatcher(None, norm_a, norm_b).ratio() >= MERGE_LABEL_MIN
+
+
+def merge_duplicates(topics: list[Topic], threshold: float = MERGE_THRESHOLD) -> list[Topic]:
+    """Merge topics whose centroids and labels are both near-duplicates.
+
+    The older identity (earlier first_seen) survives and absorbs the other.
+    Roundups are excluded so broad grab-bag identities cannot bridge otherwise
+    distinct topics through dense centroid neighborhoods.
+    """
+    merged = True
+    while merged:
+        merged = False
+        n = len(topics)
+        for i in range(n):
+            for j in range(i + 1, n):
+                left, right = topics[i], topics[j]
+                if left.is_roundup or right.is_roundup:
+                    continue
+                if not labels_compatible(left.label, right.label):
+                    continue
+                if cosine(left.centroid, right.centroid) >= threshold:
+                    if left.first_seen <= right.first_seen:
+                        survivor, victim = left, right
+                    else:
+                        survivor, victim = right, left
+                    survivor.absorb(victim)
+                    topics.remove(victim)
+                    merged = True
+                    break
+            if merged:
+                break
+    return topics
 
 
 def process_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], snap, cfg: LifecycleConfig) -> list[Topic]:
@@ -424,12 +498,19 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
             process_snapshot(topics, snap_clusters, snap, cfg)
             processed_snaps += 1
 
+        merges = 0
+        if args.rebuild:
+            before_merge = len(topics)
+            topics = merge_duplicates(topics)
+            merges = before_merge - len(topics)
+
         summary: dict[str, Any] = {
             "mode": "rebuild" if args.rebuild else "incremental",
             "n_clusters": len(clusters),
             "n_new_clusters": len(new_clusters),
             "n_snapshots_processed": processed_snaps,
             "n_topics": len(topics),
+            "n_merged_topics": merges,
             "by_state": _state_counts(topics),
             "roundups": sum(1 for t in topics if t.is_roundup),
             "high_noise": sum(1 for t in topics if (t.noise_rate or 0) >= cfg.noise_max),

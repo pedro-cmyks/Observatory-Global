@@ -1,5 +1,31 @@
 # Atlas — Session Log
 
+## 2026-06-02 — Phase 6 dynamic_topics self-curation
+
+### What happened
+- Continued Phase 6 after the student noise-rate gate and incremental cron
+  wiring.
+- Completed merge/dedup as a conservative `--rebuild` consolidation step in
+  `backend/scripts/project_dynamic_topics.py`. The first centroid-only
+  single-linkage design was rejected by dry-run evidence because Atlas
+  emergent centroids are dense: unrelated real topics and roundup artifacts
+  can sit above cosine 0.90 and chain-collapse.
+- Final merge rule requires centroid similarity plus compatible normalized
+  labels, and excludes roundups from merge participation so grab-bags cannot
+  absorb real topics.
+- Applied a shadow rebuild with the guarded merge: 101 clusters / 9 snapshots
+  -> 21 dynamic topics, `n_merged_topics=0`, 6 active / 12 candidate /
+  3 deprecated, 5 roundups, 1 high-noise topic, 101 member rows.
+- Verified the live cron path remains idempotent after rebuild: incremental
+  run reported `n_new_clusters=0`, `inserted=0`, `updated=0`, `members=0`.
+
+### Decision
+Phase 6 is still shadow-only. The self-curating lifecycle now runs after each
+emergent snapshot with $0 API inference, caches per-cluster student noise, and
+has a safe rebuild-only dedup path. Canonical product cutover should be a
+dedicated session with contract smokes before any product surface reads
+`dynamic_topics`.
+
 ## 2026-06-01/02 — RQ1 at scale + thread-label fix + venv off iCloud
 
 ### What happened

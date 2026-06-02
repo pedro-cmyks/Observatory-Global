@@ -1,5 +1,5 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-06-01 (external storage + evidence-role pilot)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-06-02 (Phase 6 dynamic topics shadow lifecycle)
 
 ---
 
@@ -244,7 +244,17 @@ Operational changes now verified:
   (migration 050) and scored exactly once, never recomputed. Worker deploy via
   the emergent installer (now additive on `.env`, never clobbers calibration
   keys; copies the student model). Verified idempotent no-op on the worker
-  (n_new=0 → 0 writes). Next: merge/dedup; canonical product cutover last.
+  (n_new=0 → 0 writes).
+
+- **Phase 6 merge/dedup refinement (2026-06-02).** Merge is wired only into the
+  `--rebuild` consolidation path, not the live incremental cron. A naive
+  centroid-only single-linkage merge at 0.90 was rejected after dry-run evidence
+  showed dense centroids chain-collapse unrelated topics and roundups. The final
+  merge requires centroid similarity **and** compatible labels, and excludes
+  roundups from merge participation so grab-bags cannot absorb real topics.
+  Verified rebuild with 101 clusters / 9 snapshots: 21 topics, `n_merged_topics=0`,
+  6 active / 12 candidate / 3 deprecated, 5 roundups, 1 high-noise topic.
+  Follow-up: canonical product cutover last, in a dedicated session.
 
 - Cron health (verified 2026-06-02): `com.atlas.emergent-snapshot` running 4x/day
   (snapshots at 05:00/11:00 today, 17:00/23:00 yesterday; 81 cluster rows / 7

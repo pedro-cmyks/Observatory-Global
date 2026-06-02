@@ -1,7 +1,7 @@
 # Emergent Topic Identity Resolver — Design (Phase 6, Sub-A')
 
 Date: 2026-06-02
-Status: spec (active)
+Status: implemented in shadow through Sub-A / quality gate / incremental cron / guarded rebuild dedup
 Series: Phase 6 (`dynamic_topics` lifecycle), increment 1 of 6.
 
 ## Context
@@ -33,6 +33,24 @@ to the DB; no production surface changes.
 
 Non-goals: no schema, no writes, no lifecycle state machine, no product
 read-path change. Those are later Phase 6 increments.
+
+## Implementation status (2026-06-02)
+
+This spec's identity-risk investigation led to the Phase 6 shadow lifecycle:
+
+- `048_dynamic_topics.sql` adds `dynamic_topics` and
+  `dynamic_topic_members`.
+- `049_dynamic_topics_noise_rate.sql` adds topic-level student noise gating.
+- `050_emergent_cluster_noise_cache.sql` caches per-cluster noise in
+  `emergent_clusters.role_noise_rate`.
+- `backend/scripts/project_dynamic_topics.py` now supports full `--rebuild`
+  and default incremental mode.
+- The existing emergent snapshot cron runs the incremental lifecycle after
+  each snapshot from `/Users/pedro/AtlasLocalWorker`.
+- Merge/dedup exists only in the rebuild path and requires centroid similarity
+  plus compatible labels; roundups are excluded from merge participation.
+
+No product read path has been cut over. `dynamic_topics` remains shadow-only.
 
 ## Architecture
 
