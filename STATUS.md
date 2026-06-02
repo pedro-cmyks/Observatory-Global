@@ -115,6 +115,29 @@ Operational changes now verified:
   toward off-topic candidates. The embedding cluster-membership generator must
   beat `6.6%` primary_evidence recall without regressing verified precision.
 
+- **RQ1 answered at scale (2026-06-02).** Paper 1 RQ1 (hand-crafted GDELT
+  classifier vs LLM zero/few-shot) re-run on a 691-row stratified benchmark
+  (batch-03, 7d window) with a 3-vendor LLM-annotator consensus gold
+  (deepseek-chat, gpt-4.1, claude-sonnet-4-6; Fleiss kappa `0.625`,
+  660 usable / 31 ties). Precision: Atlas v2 **41.6%** [37.8, 45.5];
+  LLM zero-shot **78.6%** [75.3, 81.7]; LLM few-shot **81.1%** [77.7, 84.0].
+  CIs tightened from ~±12pts (n=61 pilot) to ~±4pts. The single-layer
+  classifier roughly halves achievable precision — the paper's thesis holds
+  with statistical force. Honest caveat: LLM fell from the pilot's 95% to ~80%
+  on the larger/harder sample; none pass the 90% gate. Artifacts:
+  `reports/llm-baseline/2026-06-02-comparison-atlas-vs-llm-n660.{json,md,svg}`,
+  gold `labels/2026-06-02-atlas-v2-batch-03.consensus-gold.jsonl`,
+  builder `backend/scripts/build_annotator_consensus_gold.py`.
+
+- **Infra: LLM/heavy-import venv moved off iCloud.** The repo `.venv` lives on
+  the iCloud-synced Desktop; large packages (anthropic, openai) get evicted and
+  first use stalls minutes (anthropic import once took `505s`) or throws
+  `No module named anthropic.types.model`. Durable fix: dedicated local venv at
+  `/Users/pedro/AtlasLocalWorker/atlasvenv` (Python 3.12; anthropic 0.96,
+  openai 2.38, asyncpg, numpy). Use it for all LLM/annotator/baseline jobs;
+  keep repo `.venv` for pytest only. Quick repair if iCloud evicts a package:
+  `pip install --force-reinstall --no-deps <pkg>`.
+
 Next operational work:
 
 - Add the daily 3-vendor calibration job at 03:00.

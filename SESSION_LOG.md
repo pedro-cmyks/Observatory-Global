@@ -1,5 +1,29 @@
 # Atlas — Session Log
 
+## 2026-06-01/02 — RQ1 at scale + thread-label fix + venv off iCloud
+
+### What happened
+- **Thread label fix** (`6370bcf`): dropped the redundant momentum verb
+  (`intensifies`/`continues`) from `build_thread_label`; the trend pill
+  (accelerating/stable/fading) is now the sole momentum signal. Removed the
+  unused `changed_10h` param. 20/20 thread tests pass.
+- **osiris cloned** to `Cursos/osiris` as a reference repo (data-aggregation
+  patterns), alongside `worldmonitor`. Not wired into Atlas.
+- **Lexicon recall baseline** (`77828cd`): `lexicon_recall_baseline.py` turns
+  the coverage diagnosis into a standing metric. 8.9% overall candidate recall,
+  6.6% on primary_evidence; noise recall (13.2%) > primary_evidence.
+- **RQ1 answered at scale** (`73b08a2` + this commit): 691-row stratified
+  benchmark (batch-03) → 3-vendor LLM-annotator panel (deepseek-chat, gpt-4.1,
+  claude-sonnet-4-6), 691/691 each → majority-vote consensus gold (660 usable,
+  Fleiss kappa 0.625) via new `build_annotator_consensus_gold.py` → LLM
+  zero/few-shot classifier (1382 predictions) → `llm_baseline_compare`.
+  Result: Atlas v2 **41.6%** vs LLM zero-shot **78.6%** / few-shot **81.1%**,
+  Wilson CIs ~±4pts (vs ±12 at n=61). Thesis holds with statistical force.
+- **Infra**: moved LLM/heavy-import work off the iCloud-synced repo `.venv`
+  (eviction stalls; anthropic import once took 505s) to a dedicated local venv
+  `/Users/pedro/AtlasLocalWorker/atlasvenv`. Repair if evicted:
+  `pip install --force-reinstall --no-deps <pkg>`.
+
 ## 2026-05-22 to 2026-05-31 (sessions 19-31 — Data quality, narrative threads, validation, emergent layer)
 
 ### Session type: Data operations, taxonomy quality, research validation, production wiring, documentation hygiene

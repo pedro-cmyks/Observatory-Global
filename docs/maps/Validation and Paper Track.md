@@ -23,6 +23,15 @@ gating, annotator agreement, and the future paper series.
   scope mismatches.
 - Multi-vendor consensus is the defensible benchmark path; single-annotator
   precision claims are not reliable enough.
+- **RQ1 answered at scale (2026-06-02, n~660, 3-vendor consensus gold,
+  Fleiss kappa 0.625).** Atlas v2 (lex+theme) precision **41.6%**
+  [37.8, 45.5]; LLM zero-shot **78.6%** [75.3, 81.7]; LLM few-shot
+  **81.1%** [77.7, 84.0]. Tight Wilson/bootstrap CIs (~±4pts vs ±12 on the
+  n=61 pilot). The single-layer classifier roughly halves achievable
+  precision — the paper's core thesis holds with statistical force. Honest
+  caveat: LLM precision fell from the n=61 pilot's 95% to ~80% on the larger,
+  harder stratified sample; none pass the 90% gate, but the Atlas-vs-LLM gap
+  is robust. Report: `reports/llm-baseline/2026-06-02-comparison-atlas-vs-llm-n660.md`.
 - The learned scope gate is the production precision lever; it decides
   keep/abstain on topic assignments.
 - Gate quality must be read as precision plus coverage. Use

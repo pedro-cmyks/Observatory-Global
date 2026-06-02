@@ -1,0 +1,347 @@
+{
+  "schema_version": "atlas-llm-baseline-v1",
+  "modes": {
+    "zero_shot": {
+      "labeled": 652,
+      "errors": 9,
+      "gold_unlabeled_skipped": 30,
+      "llm_matches_gold_correct": 510,
+      "llm_matches_atlas_assigned": 370,
+      "llm_precision_vs_gold": 0.7822,
+      "llm_agreement_with_atlas": 0.5675,
+      "confusion": {
+        "tp": 249,
+        "fn": 21,
+        "fp_other": 121,
+        "tn_none": 261
+      },
+      "by_topic": {
+        "agriculture-crop-risk": {
+          "labeled": 29,
+          "llm_correct": 23,
+          "llm_match_atlas": 16
+        },
+        "armed-conflict-escalation": {
+          "labeled": 46,
+          "llm_correct": 42,
+          "llm_match_atlas": 34
+        },
+        "constitutional-institutional-crisis": {
+          "labeled": 22,
+          "llm_correct": 13,
+          "llm_match_atlas": 15
+        },
+        "corruption-investigation": {
+          "labeled": 26,
+          "llm_correct": 25,
+          "llm_match_atlas": 22
+        },
+        "currency-debt-stress": {
+          "labeled": 27,
+          "llm_correct": 20,
+          "llm_match_atlas": 6
+        },
+        "cyberattack-infrastructure": {
+          "labeled": 14,
+          "llm_correct": 7,
+          "llm_match_atlas": 12
+        },
+        "disease-outbreak": {
+          "labeled": 33,
+          "llm_correct": 30,
+          "llm_match_atlas": 27
+        },
+        "disinformation-influence-operation": {
+          "labeled": 11,
+          "llm_correct": 7,
+          "llm_match_atlas": 10
+        },
+        "election-legitimacy-dispute": {
+          "labeled": 35,
+          "llm_correct": 28,
+          "llm_match_atlas": 8
+        },
+        "energy-grid-instability": {
+          "labeled": 18,
+          "llm_correct": 12,
+          "llm_match_atlas": 12
+        },
+        "flood-landslide-disaster": {
+          "labeled": 36,
+          "llm_correct": 32,
+          "llm_match_atlas": 17
+        },
+        "food-price-stress": {
+          "labeled": 17,
+          "llm_correct": 10,
+          "llm_match_atlas": 15
+        },
+        "forced-displacement": {
+          "labeled": 13,
+          "llm_correct": 10,
+          "llm_match_atlas": 1
+        },
+        "fuel-subsidy-unrest": {
+          "labeled": 29,
+          "llm_correct": 15,
+          "llm_match_atlas": 13
+        },
+        "gang-control-urban-security": {
+          "labeled": 35,
+          "llm_correct": 32,
+          "llm_match_atlas": 10
+        },
+        "gender-violence-rights": {
+          "labeled": 21,
+          "llm_correct": 18,
+          "llm_match_atlas": 17
+        },
+        "heat-health-risk": {
+          "labeled": 13,
+          "llm_correct": 4,
+          "llm_match_atlas": 13
+        },
+        "housing-cost-pressure": {
+          "labeled": 27,
+          "llm_correct": 27,
+          "llm_match_atlas": 14
+        },
+        "humanitarian-access-conflict": {
+          "labeled": 22,
+          "llm_correct": 21,
+          "llm_match_atlas": 0
+        },
+        "labor-strike-disruption": {
+          "labeled": 23,
+          "llm_correct": 19,
+          "llm_match_atlas": 23
+        },
+        "migration-border-pressure": {
+          "labeled": 28,
+          "llm_correct": 26,
+          "llm_match_atlas": 18
+        },
+        "mining-royalty-risk": {
+          "labeled": 23,
+          "llm_correct": 6,
+          "llm_match_atlas": 17
+        },
+        "oil-gas-supply-risk": {
+          "labeled": 32,
+          "llm_correct": 25,
+          "llm_match_atlas": 14
+        },
+        "press-freedom-crackdown": {
+          "labeled": 7,
+          "llm_correct": 4,
+          "llm_match_atlas": 7
+        },
+        "sanctions-diplomatic-pressure": {
+          "labeled": 10,
+          "llm_correct": 6,
+          "llm_match_atlas": 7
+        },
+        "student-youth-protest": {
+          "labeled": 12,
+          "llm_correct": 12,
+          "llm_match_atlas": 1
+        },
+        "telecom-internet-shutdown": {
+          "labeled": 13,
+          "llm_correct": 11,
+          "llm_match_atlas": 1
+        },
+        "trade-export-restriction": {
+          "labeled": 12,
+          "llm_correct": 10,
+          "llm_match_atlas": 9
+        },
+        "transport-corridor-disruption": {
+          "labeled": 6,
+          "llm_correct": 5,
+          "llm_match_atlas": 2
+        },
+        "water-stress-drought": {
+          "labeled": 12,
+          "llm_correct": 10,
+          "llm_match_atlas": 9
+        }
+      }
+    },
+    "few_shot": {
+      "labeled": 622,
+      "errors": 39,
+      "gold_unlabeled_skipped": 30,
+      "llm_matches_gold_correct": 501,
+      "llm_matches_atlas_assigned": 345,
+      "llm_precision_vs_gold": 0.8055,
+      "llm_agreement_with_atlas": 0.5547,
+      "confusion": {
+        "tp": 241,
+        "fn": 17,
+        "fp_other": 104,
+        "tn_none": 260
+      },
+      "by_topic": {
+        "agriculture-crop-risk": {
+          "labeled": 29,
+          "llm_correct": 23,
+          "llm_match_atlas": 14
+        },
+        "armed-conflict-escalation": {
+          "labeled": 47,
+          "llm_correct": 44,
+          "llm_match_atlas": 35
+        },
+        "constitutional-institutional-crisis": {
+          "labeled": 22,
+          "llm_correct": 14,
+          "llm_match_atlas": 14
+        },
+        "corruption-investigation": {
+          "labeled": 26,
+          "llm_correct": 26,
+          "llm_match_atlas": 23
+        },
+        "currency-debt-stress": {
+          "labeled": 27,
+          "llm_correct": 21,
+          "llm_match_atlas": 5
+        },
+        "cyberattack-infrastructure": {
+          "labeled": 14,
+          "llm_correct": 7,
+          "llm_match_atlas": 12
+        },
+        "disease-outbreak": {
+          "labeled": 33,
+          "llm_correct": 31,
+          "llm_match_atlas": 28
+        },
+        "disinformation-influence-operation": {
+          "labeled": 11,
+          "llm_correct": 7,
+          "llm_match_atlas": 10
+        },
+        "election-legitimacy-dispute": {
+          "labeled": 35,
+          "llm_correct": 28,
+          "llm_match_atlas": 8
+        },
+        "energy-grid-instability": {
+          "labeled": 18,
+          "llm_correct": 12,
+          "llm_match_atlas": 12
+        },
+        "flood-landslide-disaster": {
+          "labeled": 36,
+          "llm_correct": 32,
+          "llm_match_atlas": 17
+        },
+        "food-price-stress": {
+          "labeled": 17,
+          "llm_correct": 11,
+          "llm_match_atlas": 16
+        },
+        "forced-displacement": {
+          "labeled": 13,
+          "llm_correct": 8,
+          "llm_match_atlas": 3
+        },
+        "fuel-subsidy-unrest": {
+          "labeled": 35,
+          "llm_correct": 20,
+          "llm_match_atlas": 14
+        },
+        "gang-control-urban-security": {
+          "labeled": 21,
+          "llm_correct": 20,
+          "llm_match_atlas": 4
+        },
+        "gender-violence-rights": {
+          "labeled": 16,
+          "llm_correct": 15,
+          "llm_match_atlas": 14
+        },
+        "heat-health-risk": {
+          "labeled": 8,
+          "llm_correct": 8,
+          "llm_match_atlas": 4
+        },
+        "housing-cost-pressure": {
+          "labeled": 20,
+          "llm_correct": 20,
+          "llm_match_atlas": 9
+        },
+        "humanitarian-access-conflict": {
+          "labeled": 17,
+          "llm_correct": 16,
+          "llm_match_atlas": 0
+        },
+        "labor-strike-disruption": {
+          "labeled": 23,
+          "llm_correct": 21,
+          "llm_match_atlas": 21
+        },
+        "migration-border-pressure": {
+          "labeled": 28,
+          "llm_correct": 26,
+          "llm_match_atlas": 18
+        },
+        "mining-royalty-risk": {
+          "labeled": 23,
+          "llm_correct": 6,
+          "llm_match_atlas": 17
+        },
+        "oil-gas-supply-risk": {
+          "labeled": 31,
+          "llm_correct": 25,
+          "llm_match_atlas": 13
+        },
+        "press-freedom-crackdown": {
+          "labeled": 7,
+          "llm_correct": 5,
+          "llm_match_atlas": 6
+        },
+        "sanctions-diplomatic-pressure": {
+          "labeled": 10,
+          "llm_correct": 7,
+          "llm_match_atlas": 6
+        },
+        "student-youth-protest": {
+          "labeled": 12,
+          "llm_correct": 12,
+          "llm_match_atlas": 1
+        },
+        "telecom-internet-shutdown": {
+          "labeled": 13,
+          "llm_correct": 11,
+          "llm_match_atlas": 1
+        },
+        "trade-export-restriction": {
+          "labeled": 12,
+          "llm_correct": 10,
+          "llm_match_atlas": 9
+        },
+        "transport-corridor-disruption": {
+          "labeled": 6,
+          "llm_correct": 5,
+          "llm_match_atlas": 2
+        },
+        "water-stress-drought": {
+          "labeled": 12,
+          "llm_correct": 10,
+          "llm_match_atlas": 9
+        }
+      }
+    }
+  },
+  "inputs": [
+    "../docs/research/atlas-paper/phase-1-validation/labels/2026-06-02-atlas-v2-batch-03.consensus-gold.jsonl"
+  ],
+  "model": "claude-sonnet-4-6",
+  "topics_snapshot": "data/atlas_topics_snapshot_post_044.json",
+  "topic_count": 30,
+  "temperature": 0.0,
+  "max_tokens": 400
+}
