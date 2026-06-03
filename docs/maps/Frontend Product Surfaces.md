@@ -15,6 +15,14 @@ data work lands in the existing UI instead of creating duplicate panels.
 - [[2026-05-24-app-panel-thread-audit]] — surface audit against the seven Atlas
   questions.
 
+## Launch surfaces
+
+- Workbench early-access gate:
+  `frontend-v2/src/components/InteractiveWorkspace.tsx` (preview overlay) +
+  `/api/v2/waitlist`. Design: [[2026-06-03-workbench-waitlist-gate-design]].
+  Gate logic in `InvestigationWorkspace.tsx`; production-only, bypass with
+  `VITE_ENABLE_WORKBENCH=true`.
+
 ## Primary surfaces
 
 - Brief modal Watchlist:

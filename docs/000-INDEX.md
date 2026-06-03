@@ -29,6 +29,9 @@ below resolve via Obsidian's fuzzy search regardless of folder.
 
 ## Active design specs
 
+- [[2026-06-03-workbench-waitlist-gate-design]] — interactive early-access
+  waitlist gate for the public MVP Workbench launch (`/api/v2/waitlist`,
+  real-data counter, Supabase-backed).
 - [[2026-06-01-narrative-cluster-evidence-roles-design]] — teacher-student
   evidence-role layer for classifying signals inside narrative clusters.
 - [[2026-06-01-narrative-cluster-evidence-roles]] — implementation plan for
