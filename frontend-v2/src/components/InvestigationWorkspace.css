@@ -719,3 +719,64 @@
 .workspace-toggle-tab.pulse-hint {
     animation: ws-tab-pulse 2s ease-out infinite;
 }
+
+.workspace-waitlist-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.workspace-waitlist-count {
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent, #38bdf8);
+    opacity: 0.85;
+}
+
+.workspace-waitlist-input,
+.workspace-waitlist-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(15, 23, 42, 0.55);
+    color: inherit;
+    font: inherit;
+    font-size: 14px;
+}
+
+.workspace-waitlist-textarea {
+    resize: vertical;
+    min-height: 44px;
+}
+
+.workspace-waitlist-input:focus,
+.workspace-waitlist-textarea:focus {
+    outline: none;
+    border-color: var(--accent, #38bdf8);
+}
+
+/* honeypot: removed from layout and from assistive tech, but still in DOM */
+.workspace-waitlist-honeypot {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+.workspace-waitlist-error {
+    font-size: 13px;
+    color: #f87171;
+}
+
+.workspace-waitlist-success {
+    color: #4ade80;
+}
+
+.workspace-waitlist-footer {
+    margin-top: 16px;
+}

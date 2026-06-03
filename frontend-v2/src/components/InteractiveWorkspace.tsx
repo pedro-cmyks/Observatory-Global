@@ -13,6 +13,7 @@ import {
 } from '../lib/workspaceGraph'
 import type { PinnedItemType } from '../contexts/WorkspaceContext'
 import { ReadingMode } from './ReadingMode'
+import { WorkbenchWaitlistGate } from './WorkbenchWaitlistGate'
 import './InvestigationWorkspace.css'
 
 interface InteractiveWorkspaceProps {
@@ -674,40 +675,7 @@ export function InteractiveWorkspace({ onNavigate, lockedForPublicPreview = fals
                     )}
                 </div>
                 {lockedForPublicPreview && (
-                    <div className="workspace-preview-overlay" role="dialog" aria-modal="true" aria-labelledby="workspace-preview-title">
-                        <div className="workspace-preview-panel">
-                            <span className="workspace-preview-kicker">Workbench preview</span>
-                            <h3 id="workspace-preview-title">Coming soon</h3>
-                            <p>
-                                The Atlas Workbench is where saved threads, sources, countries, and notes
-                                become an investigation map. We are tightening this workflow before opening
-                                it publicly.
-                            </p>
-                            <p className="workspace-preview-note">
-                                Interested in testing it? Send a note and we will use that signal to decide
-                                how much to prioritize the Workbench for the MVP.
-                            </p>
-                            <div className="workspace-preview-actions">
-                                <a
-                                    className="workspace-preview-primary"
-                                    href="mailto:pedrovillegascsj@gmail.com?subject=Atlas%20Workbench%20early%20access&body=I%20want%20early%20access%20to%20the%20Atlas%20Workbench.%0A%0AWhat%20I%20would%20use%20it%20for%3A%20"
-                                >
-                                    Request early access
-                                </a>
-                                <a
-                                    className="workspace-preview-secondary"
-                                    href="https://ko-fi.com/observatoryglobalatlas"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    Support Atlas
-                                </a>
-                                <button type="button" className="workspace-preview-ghost" onClick={() => setIsOpen(false)}>
-                                    Keep exploring
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    <WorkbenchWaitlistGate onKeepExploring={() => setIsOpen(false)} />
                 )}
             </section>
             {readingMode && <ReadingMode items={items} onClose={() => setReadingMode(false)} />}
