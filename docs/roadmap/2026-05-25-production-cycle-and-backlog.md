@@ -147,8 +147,15 @@ These belong to the source-lane/Voice Mix block: #160, #168, #172, #180, #158,
 
 ## Next Work Block
 
-Start with **Path C taxonomy quality** because it is the clearest current
-product/data mismatch:
+2026-06-03 update: the active work block has moved from individual Path C topic
+repair into the research-to-product loop documented in
+`docs/roadmap/2026-06-03-research-model-product-roadmap.md`. Finish the Paper 1
+documentation pass first, then deploy and browser-smoke the dynamic-topic
+cutover. Path C details below remain historical context and input to the Paper 1
+model-failure analysis.
+
+Prior block: start with **Path C taxonomy quality** because it is the clearest
+current product/data mismatch:
 
 1. Audit live top `/api/v2/threads?hours=24&limit=20`.
 2. Flag threads where label and evidence disagree.

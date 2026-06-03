@@ -801,7 +801,9 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         "trend": _trend_label(changed_10h, signal_count),
         "sentiment_swing_10h": None,
         "top_countries": country_codes,
-        "top_country_names": country_codes,
+        # Dynamic topics currently store country codes only. Leave names empty so
+        # the frontend resolves display names instead of rendering ID + ID.
+        "top_country_names": [],
         "top_sources": top_sources,
         "top_people": [],
         "top_entities": top_entities,
@@ -814,7 +816,7 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
             "lex_pct": 0,
             "method_mix": {"dynamic": signal_count},
             "source_flags": {"aggregator_dominant": _dominant_source_is_aggregator(top_sources)},
-            "geo_flags": {"unresolved_country_code": bool(country_codes)},
+            "geo_flags": {"unresolved_country_code": False},
             "entity_flags": {"raw_entity_field_untyped": bool(top_entities)},
             "noise_rate": float(noise_rate) if noise_rate is not None else None,
         },

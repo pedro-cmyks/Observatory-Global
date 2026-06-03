@@ -11,6 +11,12 @@ usable and whether it reveals meaningful semantic/evidence failures.
 
 This is a validation workspace, not a final paper folder.
 
+2026-06-03 status: Paper 1 RQ1 has moved from pilot evidence to a scale result.
+The current headline benchmark is the 660-row usable 3-vendor consensus-gold run
+from 2026-06-02. The reviewed batch 01/02 artifacts remain useful diagnostic
+human-reviewed evidence, but the paper headline should use the consensus-gold
+RQ1 result plus the measured improvement levers.
+
 ## Route
 
 1. Source sample:
@@ -213,16 +219,17 @@ model/hardware hypothesis and a fresh benchmark.
 
 ## Next Work
 
-1. Keep batch 01 and batch 02 as reviewed diagnostic evidence, not paper-grade
-   proof; both remain below the 85% minimum precision gate.
-2. Use the reviewed batch 02 labels for assistant-vs-reviewer and local-model
-   comparison, but do not treat local Ollama output as gold or hints.
-3. Continue the paper track with larger consensus-gold batches and the measured
-   improvement levers: scope gate, evidence-role student, dynamic topic
-   self-curation, and per-topic remediation.
-4. Merge reviewed/gold labels only after the current batch's normalization
-   report and score have been inspected.
-5. Score the full sample.
-6. Render visual validation reports for reviewed/gold scores.
+1. Keep batch 01 and batch 02 as reviewed diagnostic evidence, not headline
+   paper proof; both remain below the 85% minimum precision gate.
+2. Use the 2026-06-02 3-vendor consensus-gold benchmark as the current Paper 1
+   RQ1 headline.
+3. Convert the RQ1 result into a draft-ready result section: Atlas v2 vs LLM
+   zero-shot vs LLM few-shot, error composition, and confidence intervals.
+4. Add the improvement pathway to the draft: M1 scope gate, M2 evidence-role
+   student, M3 topic remediation, M4 dynamic topics.
+5. Use reviewed batch 02 for assistant-vs-reviewer and local-model comparison,
+   but do not treat local Ollama output as gold or hints.
+6. Add temporal generalization and ablation baselines only after the current
+   Paper 1 result skeleton is written.
 7. Use the score and visual report to define the first read-only Narrative
    Thread Graph report.

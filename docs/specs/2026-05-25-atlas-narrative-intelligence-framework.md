@@ -20,6 +20,12 @@ This is the core product definition:
 > Atlas is a live narrative intelligence model and visualizer that turns global
 > media signals into answerable, evidence-backed Narrative Threads.
 
+2026-06-03 product purpose clarification: Atlas's practical target is
+information disorder. It helps users see how narratives emerge, spread, mutate,
+and get amplified across sources and geographies. The product should make it
+harder to confuse volume with truth by separating movement, source amplification,
+evidence, context, and noise.
+
 Atlas is not a fixed topic dashboard. `atlas_topics` remains an internal anchor
 vocabulary for measurement, benchmarks, backfills, and precision gates. The
 visible object is the living Narrative Thread.

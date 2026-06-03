@@ -9,7 +9,7 @@ below resolve via Obsidian's fuzzy search regardless of folder.
 - [[ARCHITECTURE]] — data-flow diagram + API surfaces + cron table.
 - [[PROJECT_INVENTORY]] — machine-verified endpoints / frontend ↔ API /
   DB tables / cron / recent commits. Regen via
-  `python scripts/project_inventory.py`.
+  `python3 scripts/project_inventory.py`.
 - [[STATUS]] — long-running operational status doc.
 - [[Data Operations]] — storage, crons, historical sync, and runtime guardrails.
 - [[Narrative Intelligence]] — Living Narrative Threads, emergent clusters, and
@@ -48,12 +48,21 @@ below resolve via Obsidian's fuzzy search regardless of folder.
 
 ## Research
 
+- [[2026-06-03-research-model-product-roadmap]] — current route connecting
+  Paper 1, model correction, dynamic-topic verification, and Atlas's
+  information-disorder purpose.
+- [[2026-06-03-paper-1-result-skeleton]] — draft-ready Paper 1 result skeleton
+  with RQ1 numbers, improvement levers, limitations, and figure checklist.
 - [[2026-05-27-atlas-papers-master-plan]] — 8-paper series outline.
 - [[2026-05-27-methodology-paper-outline]] — Paper 1 outline.
 - [[2026-05-28-precision-to-90-roadmap]] — roadmap to push Atlas
   classification precision from ~51% → 90%.
 - [[2026-06-02-dynamic-topics-shadow-result]] — Phase 6 shadow lifecycle,
   student noise-rate gate, incremental cron, and guarded merge/dedup result.
+- [[2026-06-03-dynamic-topics-product-smoke]] — deployed backend + browser
+  smoke for `/brief`, Watchlist, Narrative Threads, and ThreadFocusPanel.
+- [[2026-06-03-frontend-surface-data-map]] — route/panel/data-contract map for
+  visible, hidden, partial, and dynamic-topic-fed frontend surfaces.
 - [[2026-06-02-local-ollama-deprecation]] — negative local Ollama validation
   result; do not use M1-local Ollama as Atlas judge, teacher, or gold source.
 
@@ -76,5 +85,5 @@ below resolve via Obsidian's fuzzy search regardless of folder.
 - The folder is also a git-tracked markdown tree; everything lives in
   the same Observatory Global repository. The Obsidian `.obsidian/`
   config directory is gitignored.
-- Re-run `python scripts/project_inventory.py` whenever the code
+- Re-run `python3 scripts/project_inventory.py` whenever the code
   changes meaningfully; the rest of the vault is human-curated.

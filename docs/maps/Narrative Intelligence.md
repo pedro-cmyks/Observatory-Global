@@ -6,6 +6,8 @@ Threads and emergent narrative discovery.
 ## Start here
 
 - [[2026-05-25-atlas-narrative-intelligence-framework]] — active model canon.
+- [[2026-06-03-research-model-product-roadmap]] — current route from Paper 1
+  evidence to model correction and product verification.
 - [[2026-05-24-living-narrative-threads]] — thread contract and product model.
 - [[2026-05-29-emergent-topic-discovery-design]] — emergent discovery layer.
 - [[2026-06-02-emergent-topic-identity-resolver-design]] — Phase 6
@@ -22,6 +24,10 @@ Threads and emergent narrative discovery.
   Atlas questions.
 
 ## Product contract
+
+Atlas's current product purpose is information-disorder sensemaking: expose how
+narratives emerge, move, mutate, and get amplified so users do not mistake raw
+volume for verified truth.
 
 The visible product should answer:
 
@@ -48,8 +54,9 @@ The visible product should answer:
 - `/api/v2/theme/cluster-<id>` opens emergent cluster evidence in the existing
   theme-detail contract.
 - `dynamic_topics` lifecycle still runs after each emergent snapshot from the
-  worker cron with local e5 + student scoring ($0 API). Backend cutover is
-  locally validated; remaining product step is deploy + browser smoke.
+  worker cron with local e5 + student scoring ($0 API). Backend cutover is now
+  deployed and browser-smoked. Smoke report:
+  `docs/research/topic-quality/2026-06-03-dynamic-topics-product-smoke.md`.
 
 ## Key files
 

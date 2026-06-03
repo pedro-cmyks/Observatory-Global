@@ -43,7 +43,7 @@ All papers in the series share:
 
 ### Paper 1 — Evidence-role topic classification + distillation methodology
 
-**Status:** active. Outline doc:
+**Status:** active; RQ1 measured at scale, manuscript still open. Outline doc:
 `docs/research/atlas-paper/2026-05-27-methodology-paper-outline.md`.
 
 **Core claim:** A single-layer topic classifier collapses semantic
@@ -53,18 +53,26 @@ production inference at zero per-call cost.
 
 **Evidence already collected:**
 - Reviewed gold N=61 (batches 01+02).
-- Atlas v2 precision 59.02% (Wilson CI [46.50%, 70.46%]).
-- LLM zero-shot Sonnet 4.6 precision 95.08% (CI lower 86.51%).
-- LLM few-shot precision 90.16%.
-- Cohen's kappa Pedro vs Sonnet 4.6 = 0.549 (moderate).
+- 3-vendor consensus-gold benchmark: 660 usable rows / 31 ties,
+  Fleiss kappa `0.625`.
+- Atlas v2 precision `41.6%` [37.8, 45.5].
+- LLM zero-shot precision `78.6%` [75.3, 81.7].
+- LLM few-shot precision `81.1%` [77.7, 84.0].
+- Error anatomy: `off_topic` and `scope_mismatch` dominate; substring noise is
+  only `0.6%` of incorrect rows.
+- Scope gate lift measured: `41%` -> `70%` precision on scored rows.
+- Evidence-role student v1 measured: `78.2%` primary_evidence precision,
+  `71.4%` noise recall, no LLM at inference.
 - Distillation candidates surfaced per topic (reasoning mining).
 
 **Evidence still missing for submission:**
-- Migration 042 applied; re-benchmark Atlas v2 with lift measured.
-- N raised to >= 150 reviewed pairs across more topics.
-- Anchoring effect measurement (30 blind rows).
+- Result-bearing draft skeleton with current tables and figures.
 - Temporal generalization hold-out week.
-- BERTopic / lex-only / theme-only baselines.
+- BERTopic / lex-only / theme-only ablation baselines.
+- Anchoring effect measurement if the paper keeps the assistant-hint workflow as
+  a central claim.
+- Limitations language separating reviewed diagnostic labels, consensus gold,
+  and local Ollama negative evidence.
 
 **Target venues:** EMNLP industry, ACL Findings, NLP4PI workshop.
 

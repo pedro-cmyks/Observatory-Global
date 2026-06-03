@@ -1,12 +1,14 @@
 # Paper 1 — Evidence-role topic classification + distillation methodology
 
 Date: 2026-05-27
-Status: canon (active)
+Status: canon (active; RQ1 measured at scale on 2026-06-02, manuscript not yet closed)
 Series framing: this is **Paper 1 of the Atlas methodology series**.
 See `docs/research/atlas-paper/2026-05-27-atlas-papers-master-plan.md`
 for the full series index (Papers 1-8 covering ingestion, source
 quality, NLP, sentiment, topic classification, heat, threads,
 temporal model, visualization, and open-set topic discovery).
+Current result skeleton:
+`docs/research/atlas-paper/2026-06-03-paper-1-result-skeleton.md`.
 Supersedes for outline purposes: `2026-05-25-atlas-narrative-intelligence-state-of-art-and-validation-plan.md` (which remains the source for state-of-the-art and research questions)
 
 ## 1. Decision: paper type and scope within the series
@@ -53,6 +55,15 @@ propose an evidence-role schema (`atlas-topic-benchmark-v2`), a
 reproducible audit and benchmark workflow, and a stratified labeled
 sample that allows direct comparison of GDELT-based classifiers and
 LLM zero-shot / few-shot baselines.
+
+2026-06-02 update: RQ1 now has a scale result. On a 660-row usable
+3-vendor consensus-gold benchmark, Atlas v2 scored `41.6%` precision,
+LLM zero-shot scored `78.6%`, and LLM few-shot scored `81.1%`. The main
+failure modes were semantic (`off_topic` and `scope_mismatch`), while
+classic substring noise was only `0.6%` of incorrect rows. Paper 1 should
+therefore frame Atlas's next model step as a measured correction path:
+scope gate, evidence-role student, topic remediation, and dynamic topic
+self-curation.
 
 ## 4. Research questions
 
@@ -152,12 +163,17 @@ LLM zero-shot / few-shot baselines.
 | Item | State | Next action |
 |---|---|---|
 | Stratified sample (256 rows, 30 topics) | ✓ | Use as draw pool |
-| Reviewed batches | 2 (N=64 total, N=61 labeled) | Continue to N≥250 |
+| Reviewed batches | 2 (N=64 total, N=61 labeled) | Keep as diagnostic human-reviewed evidence |
+| 3-vendor consensus gold | ✓ N=660 usable / 31 ties | Use as Paper 1 headline RQ1 evidence |
 | Per-topic Wilson CI | ✓ via `benchmark_bootstrap.py` | None |
 | Stratified bootstrap overall CI | ✓ | None |
-| LLM zero-shot baseline | scaffolded today | Live run pending |
-| LLM few-shot baseline | scaffolded today | Live run pending |
-| Cohen's κ vs. LLM annotator | not started | Design subset of 50 rows; blind reviewer + LLM |
+| LLM zero-shot baseline | ✓ 78.6% on N=660 | Keep table/figure current |
+| LLM few-shot baseline | ✓ 81.1% on N=660 | Keep table/figure current |
+| Multi-annotator agreement | ✓ Fleiss kappa 0.625 | Continue daily calibration monitor |
+| Scope gate improvement | ✓ 41%→70% precision at 37% coverage | Add as Paper 1 improvement result |
+| Evidence-role student | ✓ primary_evidence precision 78.2% | Add as measured M2, not final promotion |
+| Dynamic topics self-curation | ✓ local canonical cutover implemented | Treat as M4 future/product bridge |
+| Cohen's κ vs. human reviewer | partial earlier comparison | Revisit only if needed for limitations |
 | Anchoring effect | not started | 30 blind rows in next batch |
 | Temporal generalization | not started | Hold-out week, re-score |
 | Error taxonomy | ✓ from existing scores | None |

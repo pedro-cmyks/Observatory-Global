@@ -9,6 +9,11 @@ gating, annotator agreement, and the future paper series.
 - [[2026-05-27-methodology-paper-outline]] — Paper 1 outline.
 - [[2026-05-28-precision-to-90-roadmap]] — path from static-topic precision to
   90-95%.
+- [[2026-06-03-research-model-product-roadmap]] — current route connecting
+  Paper 1, model correction, dynamic-topic product verification, and the
+  anti-information-disorder product purpose.
+- [[2026-06-03-paper-1-result-skeleton]] — Paper 1 draft skeleton with current
+  RQ1 result, result tables, improvement levers, limitations, and figure list.
 - [[2026-06-01-narrative-cluster-evidence-roles-design]] — teacher-student
   design for classifying evidence roles inside narrative clusters.
 - [[2026-06-01-narrative-cluster-evidence-roles]] — implementation plan for
@@ -29,6 +34,9 @@ gating, annotator agreement, and the future paper series.
 
 ## Validation findings
 
+- Paper 1 is not closed as a manuscript. RQ1 is closed enough as a measured
+  milestone to guide model decisions: the next step is a result-bearing draft
+  skeleton, not more ad hoc topic repair.
 - Rule editing helped but hit a ceiling; remaining failures are mainly semantic
   scope mismatches.
 - Multi-vendor consensus is the defensible benchmark path; single-annotator

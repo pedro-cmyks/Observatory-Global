@@ -1,5 +1,139 @@
 # Atlas — Session Log
 
+## 2026-06-03 — Research-to-product roadmap clarified
+
+### What happened
+- Documented the current route in
+  `docs/roadmap/2026-06-03-research-model-product-roadmap.md`.
+- Added `docs/research/atlas-paper/2026-06-03-paper-1-result-skeleton.md` so
+  Paper 1 has a draft-ready results structure instead of only an outline.
+- Clarified that Paper 1 is not closed as a manuscript, but RQ1 is measured at
+  sufficient scale to guide the model-improvement roadmap.
+- Updated the Paper 1 outline, master paper plan, validation README, Obsidian
+  index, Narrative Intelligence MOC, Validation/Paper MOC, production-cycle
+  roadmap, and narrative-intelligence framework.
+- Captured Atlas's product purpose as information-disorder sensemaking: show how
+  narratives move, which sources amplify them, what evidence supports them, and
+  what should be treated as context or noise.
+
+### Decision
+- Finish the Paper 1 documentation/result skeleton first.
+- Then deploy the backend canonical `dynamic_topics` cutover and run the full
+  browser smoke through `/brief`, Watchlist clicks, Narrative Threads, and
+  ThreadFocusPanel.
+
+## 2026-06-03 — Dynamic topics deployed and product-smoked
+
+### What happened
+- Ran focused backend tests from `backend/`: `63 passed` across thread,
+  briefing, theme slug, and dynamic-topic lifecycle guardrails.
+- Deployed the backend with `scripts/deploy-fly-api.sh`; image size `259 MB`,
+  deployed only process group `app` (`1/3` machines), machine
+  `d8d2e46fe07e78` healthy.
+- Fly `/health` returned healthy with DB ok and fresh ingest.
+- API smokes confirmed `dynamic_topics` canonical reads:
+  `/api/v2/threads` top rows are `dynamic-topic-*`;
+  `/api/v2/briefing?hours=24` returned
+  `top_atlas_topics_source=dynamic_topics`; `/api/v2/theme/dynamic-topic-10`
+  returned `source=dynamic_topics`, `total=313`, `signalSample=76`.
+- Browser-smoked the deployed frontend:
+  `/brief` rendered dynamic Watchlist rows; clicking a Watchlist row opened
+  `/app?theme=dynamic-topic-10&entry=brief`; clicking Narrative Threads opened
+  ThreadFocusPanel with `350` signals, `5` countries, `11` sources, movement,
+  and evidence.
+- Saved smoke report:
+  `docs/research/topic-quality/2026-06-03-dynamic-topics-product-smoke.md`.
+
+### Follow-up findings
+- ThemeDetail `HOT WINDOW` copy contradicted the dynamic topic signal count by
+  saying there was no measurable coverage while the panel showed `313` signals.
+- ThreadFocusPanel duplicated country chip codes visually (`IDID`, `BRBR`, ...).
+- Dynamic topic entity labels still include raw/repeated strings.
+- The onboarding tour appeared over the first `/app` entry and had to be
+  dismissed for a clean smoke screenshot.
+
+### Decision
+The dynamic-topic backend/product contract cutover is shipped. Next work should
+be a focused UI/data-quality pass on contradictory insight copy, country chip
+rendering, and entity hygiene.
+
+## 2026-06-03 — Dynamic topics smoke follow-up fixes
+
+### What happened
+- Fixed dynamic-topic ThemeDetail insight copy locally. For
+  `dynamic-topic-*`, the component now skips the static GDELT-theme insight
+  endpoint and builds the `HOT WINDOW` summary from the same dynamic-topic
+  detail payload that drives totals, countries, sources, sentiment, and evidence.
+- Fixed duplicated dynamic-thread country chips locally. Dynamic-thread backend
+  payloads no longer send country codes as `top_country_names`, so the frontend
+  country resolver does not render `IDID`, `BRBR`, etc.
+- Added a backend regression test for the country-name payload behavior and a
+  frontend source-shape test documenting the dynamic-topic insight branch.
+- Updated the product smoke report with fixed vs still-open findings.
+
+### Validation
+- Focused backend route/contract tests: `51 passed`.
+- `git diff --check`: clean.
+- Frontend `tsc -b`, focused Vitest/source-shape checks, ESLint, and separate
+  Vite production bundling hung in this local Node environment before producing
+  diagnostics. Frontend build/browser re-smoke remains pending before deploy.
+
+### Decision
+The contradictory dynamic-topic insight copy and duplicated country chips are
+fixed locally. Raw/repeated entity strings remain open for the Entity
+Focus/model-quality lane.
+
+## 2026-06-03 — Frontend surface/data map
+
+### What happened
+- Regenerated `docs/state/PROJECT_INVENTORY.md` with `python3
+  scripts/project_inventory.py` so endpoint, frontend-callsite, cron, and recent
+  commit maps reflect the current repo.
+- Audited `frontend-v2` routes, `App.tsx` mounted panels, fetch callsites,
+  context providers, and unmounted/legacy components.
+- Added `docs/frontend/2026-06-03-frontend-surface-data-map.md` as the human
+  operating map for visible surfaces, hidden/partial surfaces, dynamic-topic
+  connection points, and contract ownership.
+- Linked the new map from `docs/maps/Frontend Product Surfaces.md` and
+  `docs/000-INDEX.md`.
+
+### Findings
+- Dynamic topics now feed the main product through Brief Watchlist,
+  NarrativeThreads, ThreadFocusPanel, and ThemeDetail dynamic branches.
+- Globe/country heat, CorrelationMatrix, AnomalyPanel, and SourceIntegrity are
+  adjacent evidence/context surfaces, not dynamic-topic ownership surfaces.
+- `/brief` Watchlist rows are dynamic-topic aware, but headline snippets still
+  fetch `/api/v2/signals?theme=<slug>`; for `dynamic-topic-*`, that should move
+  to `/api/v2/theme/dynamic-topic-*` samples.
+- Several components exist but are not mounted in the current product path:
+  `DiscoveryPanel`, `AtlasHeatList`, `CrisisDashboard`, `CrisisToggle`,
+  `FocusSummaryPanel`, and placeholder panels.
+
+### Decision
+Use the frontend surface/data map before wiring new model outputs. The next
+frontend contract fix should be dynamic-topic snippets in `/brief`, followed by
+a stable frontend build/browser re-smoke and then Entity Focus hygiene.
+
+## 2026-06-03 — MVP Workbench public preview gate
+
+### What happened
+- Added a production-only public preview lock for the Workbench. In production,
+  outside localhost, opening the workspace now shows the board blurred with a
+  "Coming soon" panel, a `Request early access` mailto CTA, and a secondary
+  `Support Atlas` CTA.
+- Kept the Workbench fully usable for local development and data validation on
+  localhost. The production gate can also be bypassed with
+  `VITE_ENABLE_WORKBENCH=true` for controlled previews.
+- Documented the Workbench's MVP status in the frontend surface/data map.
+
+### Decision
+For the next MVP launch, ship Atlas with Brief, Globe, Narrative Threads,
+ThreadFocusPanel, ThemeDetail, Source Integrity, and public attention surfaces
+available. Treat Workbench as the product's strongest future investigation
+surface, but do not expose the raw full interaction publicly until the workflow
+is understandable and stable. Use early-access clicks/emails as a lean
+validation signal for whether to prioritize the Workbench next.
+
 ## 2026-06-02 — Phase 6 backend canonical cutover
 
 ### What happened

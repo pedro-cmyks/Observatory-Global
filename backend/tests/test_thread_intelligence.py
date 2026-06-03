@@ -8,6 +8,7 @@ from app.services.thread_intelligence import (
     THREAD_EVIDENCE_SQL,
     THREADS_SQL,
     _serialize_evidence,
+    assemble_dynamic_thread,
     assemble_thread,
     build_thread_id,
     build_thread_label,
@@ -198,6 +199,30 @@ def test_assemble_thread_quality_metadata_handles_zero_counts_and_clean_rows():
     assert thread["quality"]["source_flags"] == {"aggregator_dominant": False}
     assert thread["quality"]["geo_flags"] == {"unresolved_country_code": False}
     assert thread["quality"]["entity_flags"] == {"raw_entity_field_untyped": False}
+
+
+def test_assemble_dynamic_thread_does_not_duplicate_country_codes_as_names():
+    row = {
+        "id": 17,
+        "identity_key": "dyn-17",
+        "label": "Infrastructure and Public Services",
+        "agg_n_signals": 350,
+        "changed_10h": 25,
+        "noise_rate": 0.1938,
+        "mean_cohesion": 0.94,
+        "first_seen": None,
+        "top_country_codes": ["ID", "BR", "CA"],
+    }
+
+    thread = assemble_dynamic_thread(row, [])
+
+    assert thread["top_countries"] == ["ID", "BR", "CA"]
+    assert thread["top_country_names"] == []
+    assert "IDID" not in "".join(
+        f"{code}{name}" for code, name in zip(
+            thread["top_countries"], thread["top_country_names"], strict=False
+        )
+    )
 
 
 def test_trend_label_classifies_volume_delta():

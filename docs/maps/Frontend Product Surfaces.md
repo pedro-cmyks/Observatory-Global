@@ -5,6 +5,9 @@ data work lands in the existing UI instead of creating duplicate panels.
 
 ## Start here
 
+- [[2026-06-03-frontend-surface-data-map]] — current route/panel/data-contract
+  map for `/`, `/brief`, `/app`, visible vs hidden surfaces, and dynamic-topic
+  connection points.
 - [[PROJECT_INVENTORY]] — generated frontend-to-API map.
 - [[ARCHITECTURE]] — high-level API to frontend data flow.
 - [[2026-05-25-production-cycle-and-backlog]] — rule for when frontend work
@@ -26,6 +29,22 @@ data work lands in the existing UI instead of creating duplicate panels.
   `/api/v2/threads/{thread_id}` and `/api/v2/translate/batch`.
 - Theme/cluster detail:
   `frontend-v2/src/components/ThemeDetail.tsx` uses `/api/v2/theme/{slug}`.
+
+## Current connection rules
+
+- Dynamic narrative threads are owned by `NarrativeThreads` +
+  `ThreadFocusPanel`, with Brief Watchlist and dynamic-topic ThemeDetail as
+  secondary entry points.
+- Globe/country heat is not a dynamic-topic view; it is country-level signal
+  activity and should not be read as topic truth.
+- Source Integrity is currently a concentration proxy; use it for
+  disinformation/source-amplification reasoning, but do not treat it as a
+  source-trust classifier.
+- `/brief` Watchlist rows are dynamic-topic aware, but dynamic-topic headline
+  snippets should prefer `/api/v2/theme/dynamic-topic-*` over
+  `/api/v2/signals?theme=dynamic-topic-*`.
+- Hidden/unmounted panels should not receive new data work until they are
+  deliberately revived.
 
 ## Guardrails
 

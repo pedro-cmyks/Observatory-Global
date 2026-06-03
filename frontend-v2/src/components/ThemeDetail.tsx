@@ -90,6 +90,27 @@ interface AttentionSearchData {
     themes?: Array<{ theme: string; total_signals: number }>
 }
 
+function buildDynamicTopicInsight(data: ThemeData): string {
+    const topCountries = data.countryBreakdown
+        .slice(0, 3)
+        .map(c => `${resolveCountryName(c.code)} (${c.count.toLocaleString()} signals)`)
+        .join(', ')
+    const topSources = data.topSources
+        .slice(0, 3)
+        .map(s => s.name)
+        .join(', ')
+    const tone = data.avgSentiment > 0.5
+        ? 'positive'
+        : data.avgSentiment < -0.5
+            ? 'negative'
+            : 'mixed'
+
+    return [
+        `This dynamic narrative thread is active in the selected window with ${data.total.toLocaleString()} signals${topCountries ? `, led by ${topCountries}` : ''}.`,
+        `Coverage tone is ${tone} (${data.avgSentiment.toFixed(2)}), and the current evidence sample spans ${data.signals.length.toLocaleString()} recent items${topSources ? ` from sources including ${topSources}` : ''}.`,
+    ].join('\n\n')
+}
+
 function formatAttentionCount(n?: number): string {
     if (!n) return '0'
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}m`
@@ -112,6 +133,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     )
     const detailRef = useRef<HTMLDivElement>(null)
     const { pinItem, unpinItem, isPinned, setIsOpen: openWorkspace } = useWorkspace()
+    const isDynamicTopic = theme.toLowerCase().startsWith('dynamic-topic-')
 
     // Public attention signals
     const [trendMatch, setTrendMatch] = useState<{ has_public_interest: boolean; matches: Array<{ keyword: string; country_code: string }> } | null>(null)
@@ -189,6 +211,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     // Fetch AI insight async after main data loads
     useEffect(() => {
         if (!theme) return
+        if (isDynamicTopic) return
         setInsightLoading(true)
         setInsightFailed(false)
         setInsightError(null)
@@ -206,7 +229,15 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
             })
             .catch(() => { setInsightFailed(true); setInsightError(null) })
             .finally(() => setInsightLoading(false))
-    }, [theme, hours])
+    }, [theme, hours, isDynamicTopic])
+
+    useEffect(() => {
+        if (!isDynamicTopic) return
+        setInsightLoading(false)
+        setInsightFailed(false)
+        setInsightError(null)
+        setInsight(data ? buildDynamicTopicInsight(data) : null)
+    }, [isDynamicTopic, data])
 
     const getSentimentColor = (s: number) =>
         s > 0.1 ? '#4ade80' : s < -0.1 ? '#f87171' : '#fbbf24'

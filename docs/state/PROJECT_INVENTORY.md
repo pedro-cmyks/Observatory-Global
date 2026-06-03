@@ -1,6 +1,6 @@
 # Project Inventory
 
-Generated: 2026-06-02T20:04:05.614727+00:00
+Generated: 2026-06-03T14:04:58.510082+00:00
 Regen: `python scripts/project_inventory.py`
 
 ## Endpoints (backend)
@@ -85,7 +85,7 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 | `/api/v2/signals` | `frontend-v2/src/components/ChokepointPanel.tsx`<br/>`frontend-v2/src/components/CountryBrief.tsx`<br/>`frontend-v2/src/components/SignalStream.tsx`<br/>`frontend-v2/src/hooks/useSavedWatches.ts`<br/>`frontend-v2/src/lib/exportFormatters.ts`<br/>`frontend-v2/src/pages/BriefNewspaper.tsx` |
 | `/api/v2/source/` | `frontend-v2/src/components/SourceProfile.tsx`<br/>`frontend-v2/src/contexts/WorkspaceContext.tsx` |
 | `/api/v2/stats` | `frontend-v2/src/App.tsx` |
-| `/api/v2/theme/` | `frontend-v2/src/components/CountryThemePanel.tsx`<br/>`frontend-v2/src/components/ExportMenu.tsx`<br/>`frontend-v2/src/components/NarrativeDrift.tsx`<br/>`frontend-v2/src/components/ThemeDetail.tsx`<br/>`frontend-v2/src/contexts/WorkspaceContext.tsx` |
+| `/api/v2/theme/` | `frontend-v2/src/components/CountryThemePanel.tsx`<br/>`frontend-v2/src/components/ExportMenu.tsx`<br/>`frontend-v2/src/components/NarrativeDrift.tsx`<br/>`frontend-v2/src/components/ThemeDetail.tsx`<br/>`frontend-v2/src/contexts/WorkspaceContext.tsx`<br/>`frontend-v2/src/lib/themeDetailDynamicInsight.test.ts` |
 | `/api/v2/threads` | `frontend-v2/src/components/NarrativeThreads.tsx` |
 | `/api/v2/threads/` | `frontend-v2/src/components/ThreadFocusPanel.tsx` |
 | `/api/v2/translate/batch` | `frontend-v2/src/components/ThreadFocusPanel.tsx` |
@@ -127,13 +127,14 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 
 | Label | Program | Schedule | RunAtLoad | Last log mtime | Last log line |
 |---|---|---|---|---|---|
-| `com.atlas.atlas-topic-classifier` | `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` | every 1800s | True | 2026-06-02T19:41:33.507719+00:00 | } |
-| `com.atlas.emergent-snapshot` | `/Users/pedro/AtlasLocalWorker/run-emergent-snapshot.sh` | 0:00, 6:00, 12:00, 18:00 | True | 2026-06-02T18:52:57.492419+00:00 | } |
-| `com.atlas.local-hot-cold-catchup` | `/Users/pedro/AtlasLocalWorker/run-local-hot-cold-catchup.sh` | 0:10, 1:10, 2:10, 3:10, 4:10, 5:10 | True | 2026-06-02T11:24:01.617128+00:00 | asyncpg.exceptions.ConnectionDoesNotExistError: connection was closed in the middle of operation |
-| `com.atlas.threevendor-calibration` | `/Users/pedro/AtlasLocalWorker/run-3vendor-calibration.sh` | — | False | — |  |
+| `com.atlas.atlas-topic-classifier` | `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` | every 1800s | True | 2026-06-03T13:34:58.363764+00:00 | } |
+| `com.atlas.emergent-snapshot` | `/Users/pedro/AtlasLocalWorker/run-emergent-snapshot.sh` | 0:00, 6:00, 12:00, 18:00 | True | 2026-06-03T11:05:13.547947+00:00 | } |
+| `com.atlas.local-hot-cold-catchup` | `/Users/pedro/AtlasLocalWorker/run-local-hot-cold-catchup.sh` | 0:10, 1:10, 2:10, 3:10, 4:10, 5:10 | True | 2026-06-03T10:11:01.032397+00:00 | } |
+| `com.atlas.threevendor-calibration` | `/Users/pedro/AtlasLocalWorker/run-3vendor-calibration.sh` | — | False | 2026-06-03T08:16:03.098547+00:00 | 2026-06-03T08:16:03Z calibration done -> /Users/pedro/AtlasLocalWorker/calibration/2026-06-03-calib-agreement.json |
 
 ## Recent commits (last 2 weeks)
 
+- `8be3181 2026-06-02 feat(phase6): read product threads from dynamic topics`
 - `8e1a621 2026-06-02 fix(ops): retry transient hot-cold export disconnects`
 - `ac0ed14 2026-06-02 docs: close phase6 and ollama validation handoff`
 - `b0803c6 2026-06-02 feat(phase6): guarded dynamic topic dedup`
@@ -213,4 +214,3 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 - `82ef06d 2026-05-25 feat(research): add atlas label review packets`
 - `9c29690 2026-05-25 feat(research): render atlas validation reports`
 - `5fb3293 2026-05-25 feat(research): organize phase 1 atlas validation workflow`
-- `2f432ac 2026-05-25 feat(research): add atlas v2 labeling guide and sample`
