@@ -41,8 +41,8 @@ export function WorkbenchWaitlistGate({ onKeepExploring }: WorkbenchWaitlistGate
 
   const countLabel =
     count !== null && count >= COUNT_DISPLAY_THRESHOLD
-      ? `Ya van ${count} en la lista`
-      : 'Beta privada · primeros accesos'
+      ? `${count} already on the list`
+      : 'Private beta · early access'
 
   return (
     <div
@@ -52,17 +52,18 @@ export function WorkbenchWaitlistGate({ onKeepExploring }: WorkbenchWaitlistGate
       aria-labelledby="workspace-preview-title"
     >
       <div className="workspace-preview-panel">
-        <span className="workspace-preview-kicker">Workbench · beta privada</span>
-        <h3 id="workspace-preview-title">Sé de los primeros en usarlo</h3>
+        <span className="workspace-preview-kicker">Workbench · private beta</span>
+        <h3 id="workspace-preview-title">Be among the first to use it</h3>
         <p>
-          Atlas no te dice qué creer. Te muestra cómo se mueve la información, de
-          dónde viene y cómo cambia con el tiempo. El Workbench es donde armas esa
-          investigación: unes narrativas, fuentes y países en un solo mapa.
+          Atlas doesn't tell you what to believe. It shows you how information
+          moves, where it comes from, and how it changes over time. The Workbench
+          is where you build that investigation — connecting narratives, sources,
+          and countries on a single map.
         </p>
 
         {status === 'success' ? (
           <p className="workspace-preview-note workspace-waitlist-success">
-            Estás dentro. Te escribimos pronto con tu acceso.
+            You're in. We'll email you soon with your access.
           </p>
         ) : (
           <form className="workspace-waitlist-form" onSubmit={handleSubmit}>
@@ -70,18 +71,18 @@ export function WorkbenchWaitlistGate({ onKeepExploring }: WorkbenchWaitlistGate
             <input
               type="email"
               required
-              placeholder="tu@correo.com"
+              placeholder="you@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="workspace-waitlist-input"
-              aria-label="Correo electrónico"
+              aria-label="Email address"
             />
             <textarea
-              placeholder="¿Para qué lo usarías? (opcional)"
+              placeholder="What would you use it for? (optional)"
               value={useCase}
               onChange={(e) => setUseCase(e.target.value)}
               className="workspace-waitlist-textarea"
-              aria-label="Para qué lo usarías"
+              aria-label="What would you use it for"
               rows={2}
             />
             {/* honeypot: visually hidden, real users never fill it */}
@@ -95,7 +96,7 @@ export function WorkbenchWaitlistGate({ onKeepExploring }: WorkbenchWaitlistGate
             />
             {status === 'error' && (
               <span className="workspace-waitlist-error">
-                No se pudo enviar. Revisa el correo e intenta de nuevo.
+                Couldn't send. Check your email and try again.
               </span>
             )}
             <button
@@ -103,7 +104,7 @@ export function WorkbenchWaitlistGate({ onKeepExploring }: WorkbenchWaitlistGate
               className="workspace-preview-primary"
               disabled={status === 'submitting'}
             >
-              {status === 'submitting' ? 'Enviando…' : 'Pedir acceso'}
+              {status === 'submitting' ? 'Sending…' : 'Request access'}
             </button>
           </form>
         )}
@@ -115,7 +116,7 @@ export function WorkbenchWaitlistGate({ onKeepExploring }: WorkbenchWaitlistGate
             target="_blank"
             rel="noopener noreferrer"
           >
-            Apoyar Atlas
+            Support Atlas
           </a>
           <button type="button" className="workspace-preview-ghost" onClick={onKeepExploring}>
             Keep exploring
