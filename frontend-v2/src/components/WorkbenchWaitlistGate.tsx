@@ -31,10 +31,10 @@ export function WorkbenchWaitlistGate({ onKeepExploring }: WorkbenchWaitlistGate
     e.preventDefault()
     if (status === 'submitting') return
     setStatus('submitting')
-    const { ok } = await postWaitlist({ email, use_case: useCase || undefined, company })
-    if (ok) {
-      setStatus('success')
-    } else {
+    try {
+      const { ok } = await postWaitlist({ email, use_case: useCase || undefined, company })
+      setStatus(ok ? 'success' : 'error')
+    } catch {
       setStatus('error')
     }
   }
@@ -92,7 +92,6 @@ export function WorkbenchWaitlistGate({ onKeepExploring }: WorkbenchWaitlistGate
               value={company}
               onChange={(e) => setCompany(e.target.value)}
               className="workspace-waitlist-honeypot"
-              aria-hidden="true"
             />
             {status === 'error' && (
               <span className="workspace-waitlist-error">

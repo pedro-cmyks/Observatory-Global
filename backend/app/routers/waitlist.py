@@ -43,6 +43,12 @@ def is_valid_email(email: str) -> bool:
 
 
 def _client_ip(request: Request) -> str:
+    # Fly.io sets Fly-Client-IP on the edge; clients cannot spoof it. Prefer it
+    # over the user-controllable X-Forwarded-For so the rate limit can't be
+    # bypassed by rotating a forged header.
+    fly_ip = request.headers.get("fly-client-ip")
+    if fly_ip:
+        return fly_ip.strip()
     fwd = request.headers.get("x-forwarded-for")
     if fwd:
         return fwd.split(",")[0].strip()
@@ -56,7 +62,12 @@ def _rate_limited(ip: str) -> bool:
         _rate_log[ip] = hits
         return True
     hits.append(now)
-    _rate_log[ip] = hits
+    # Evict fully-expired IPs so the dict cannot grow without bound under
+    # IP rotation; only IPs with live hits are retained.
+    if hits:
+        _rate_log[ip] = hits
+    elif ip in _rate_log:
+        del _rate_log[ip]
     return False
 
 
@@ -86,7 +97,7 @@ async def join_waitlist(payload: WaitlistPayload, request: Request):
         raise HTTPException(status_code=422, detail="invalid email")
 
     use_case = (payload.use_case or "").strip() or None
-    referrer = request.headers.get("referer")
+    referrer = (request.headers.get("referer") or "")[:2048] or None
 
     async with db.pool.acquire() as conn:
         if await conn.fetchval("SELECT to_regclass('workbench_waitlist')") is None:
