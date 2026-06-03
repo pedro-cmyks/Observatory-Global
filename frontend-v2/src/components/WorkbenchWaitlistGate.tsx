@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { getWaitlistCount, postWaitlist } from '../lib/waitlist'
 
 const COUNT_DISPLAY_THRESHOLD = 25
@@ -44,7 +45,7 @@ export function WorkbenchWaitlistGate({ onKeepExploring }: WorkbenchWaitlistGate
       ? `${count} already on the list`
       : 'Private beta · early access'
 
-  return (
+  return createPortal(
     <div
       className="workspace-preview-overlay"
       role="dialog"
@@ -123,6 +124,7 @@ export function WorkbenchWaitlistGate({ onKeepExploring }: WorkbenchWaitlistGate
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
