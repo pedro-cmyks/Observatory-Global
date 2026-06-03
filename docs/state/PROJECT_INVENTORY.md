@@ -1,6 +1,6 @@
 # Project Inventory
 
-Generated: 2026-06-03T14:04:58.510082+00:00
+Generated: 2026-06-03T16:23:01.635313+00:00
 Regen: `python scripts/project_inventory.py`
 
 ## Endpoints (backend)
@@ -54,6 +54,8 @@ Regen: `python scripts/project_inventory.py`
 | GET | `/api/v2/trends/match` | `backend/app/routers/trends.py` | `get_trends_theme_match` | `trends_v2` |
 | GET | `/api/v2/trends/search` | `backend/app/routers/trends.py` | `get_trending_searches` | `trends_v2` |
 | GET | `/api/v2/vessels` | `backend/app/routers/geo.py` | `get_vessels` | — |
+| POST | `/api/v2/waitlist` | `backend/app/routers/waitlist.py` | `join_waitlist` | `workbench_waitlist` |
+| GET | `/api/v2/waitlist/count` | `backend/app/routers/waitlist.py` | `waitlist_count` | `workbench_waitlist` |
 | GET | `/api/v2/wiki/match` | `backend/app/routers/wiki.py` | `get_wiki_theme_match` | `wiki_pageviews_v2` |
 | GET | `/api/v2/wiki/top` | `backend/app/routers/wiki.py` | `get_wiki_top_articles` | `wiki_pageviews_v2` |
 | GET | `/api/v3/crisis/signals` | `backend/app/routers/signals.py` | `get_crisis_signals` | `signals_v2` |
@@ -92,6 +94,8 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 | `/api/v2/trends/match` | `frontend-v2/src/components/ThemeDetail.tsx` |
 | `/api/v2/trends/search` | `frontend-v2/src/lib/publicAttention.test.ts`<br/>`frontend-v2/src/lib/publicAttention.ts` |
 | `/api/v2/vessels` | `frontend-v2/src/App.tsx` |
+| `/api/v2/waitlist` | `frontend-v2/src/lib/waitlist.ts` |
+| `/api/v2/waitlist/count` | `frontend-v2/src/lib/waitlist.ts` |
 | `/api/v2/wiki/match` | `frontend-v2/src/components/ThemeDetail.tsx` |
 | `/api/v2/wiki/top` | `frontend-v2/src/lib/publicAttention.test.ts`<br/>`frontend-v2/src/lib/publicAttention.ts` |
 
@@ -122,18 +126,29 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 | `signals_theme_hourly` | `backend/migrations/006_aggregates.sql` | `backend/app/routers/briefing.py`<br/>`backend/app/routers/narratives.py`<br/>`backend/app/routers/trends.py`<br/>`backend/app/routers/workspace.py` |
 | `theme_country_hourly_v2` | `backend/migrations/010_theme_country_hourly.sql` | `backend/app/routers/narratives.py` |
 | `topic_learning_examples` | `backend/migrations/019_atlas_topic_intelligence.sql` | — |
+| `workbench_waitlist` | `backend/migrations/051_workbench_waitlist.sql` | `backend/app/routers/waitlist.py` |
 
 ## Cron jobs (launchd)
 
 | Label | Program | Schedule | RunAtLoad | Last log mtime | Last log line |
 |---|---|---|---|---|---|
-| `com.atlas.atlas-topic-classifier` | `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` | every 1800s | True | 2026-06-03T13:34:58.363764+00:00 | } |
+| `com.atlas.atlas-topic-classifier` | `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` | every 1800s | True | 2026-06-03T16:08:43.468747+00:00 | } |
 | `com.atlas.emergent-snapshot` | `/Users/pedro/AtlasLocalWorker/run-emergent-snapshot.sh` | 0:00, 6:00, 12:00, 18:00 | True | 2026-06-03T11:05:13.547947+00:00 | } |
 | `com.atlas.local-hot-cold-catchup` | `/Users/pedro/AtlasLocalWorker/run-local-hot-cold-catchup.sh` | 0:10, 1:10, 2:10, 3:10, 4:10, 5:10 | True | 2026-06-03T10:11:01.032397+00:00 | } |
 | `com.atlas.threevendor-calibration` | `/Users/pedro/AtlasLocalWorker/run-3vendor-calibration.sh` | — | False | 2026-06-03T08:16:03.098547+00:00 | 2026-06-03T08:16:03Z calibration done -> /Users/pedro/AtlasLocalWorker/calibration/2026-06-03-calib-agreement.json |
 
 ## Recent commits (last 2 weeks)
 
+- `1af31fa 2026-06-03 merge: workbench early-access waitlist gate`
+- `36c432f 2026-06-03 fix(waitlist): harden rate-limit (Fly-Client-IP, evict idle IPs), cap referrer, robust submit error handling`
+- `eaa94dc 2026-06-03 feat(waitlist): interactive Workbench early-access overlay`
+- `ceec1c8 2026-06-03 feat(waitlist): frontend waitlist API lib`
+- `95c4e48 2026-06-03 feat(waitlist): POST/GET endpoints, honeypot, rate limit, register router`
+- `16a4a39 2026-06-03 feat(waitlist): email normalize + validate helpers (TDD)`
+- `b83e345 2026-06-03 feat(waitlist): add workbench_waitlist table (migration 051)`
+- `e7524e1 2026-06-03 docs(plan): workbench early-access waitlist gate implementation plan`
+- `77db97d 2026-06-03 docs(spec): workbench early-access waitlist gate design`
+- `09285d9 2026-06-03 feat(phase6): dynamic-topic smoke follow-up fixes + frontend surface map`
 - `8be3181 2026-06-02 feat(phase6): read product threads from dynamic topics`
 - `8e1a621 2026-06-02 fix(ops): retry transient hot-cold export disconnects`
 - `ac0ed14 2026-06-02 docs: close phase6 and ollama validation handoff`
@@ -204,13 +219,3 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 - `162bcc9 2026-05-27 docs(research): close 2026-05-27 session — migration 042 applied to prod`
 - `d7f3b45 2026-05-27 feat(research): llm multilingual vocab mining and migration 042 draft`
 - `d9b723e 2026-05-27 docs(research): atlas papers master plan (series of 8 papers)`
-- `01d5afb 2026-05-27 feat(research): llm annotator, kappa, and reasoning distillation`
-- `6807df8 2026-05-27 feat(research): bootstrap CIs and Sonnet 4.6 baseline for atlas benchmark`
-- `ca3bb3b 2026-05-27 feat(research): score reviewed atlas batch two`
-- `a08324c 2026-05-26 feat(research): prepare batch two review ui`
-- `ff07162 2026-05-26 feat(research): score reviewed atlas batch one`
-- `855c698 2026-05-25 feat(research): finalize atlas review workflow`
-- `30beca8 2026-05-25 feat(research): add atlas review templates`
-- `82ef06d 2026-05-25 feat(research): add atlas label review packets`
-- `9c29690 2026-05-25 feat(research): render atlas validation reports`
-- `5fb3293 2026-05-25 feat(research): organize phase 1 atlas validation workflow`

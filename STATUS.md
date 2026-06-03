@@ -1,5 +1,58 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-06-02 (Phase 6 dynamic topics backend cutover)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-06-03 (Workbench early-access waitlist gate shipped)
+
+---
+
+## Current handoff (2026-06-03) — Workbench early-access waitlist gate (shipped)
+
+Product pivot context: Atlas leads the public MVP with the Workbench
+(investigation workspace), framed as information-disorder sensemaking — expose
+how narratives move/change, not classify true/false. The Workbench stays gated
+(Option A); the gate itself became interactive.
+
+Shipped this session (branch `feat/workbench-waitlist` merged to
+`v3-intel-layer` at merge commit `1af31fa`, feature branch deleted):
+
+- **Migration 051** `workbench_waitlist` (RLS-locked, `email` + `use_case` +
+  server-derived `referrer`, `UNIQUE(email)`). Applied + verified in Supabase.
+- **Backend** `backend/app/routers/waitlist.py`: `POST /api/v2/waitlist`
+  (Pydantic, honeypot `company` field → silent success, soft per-IP rate limit
+  keyed on **Fly-Client-IP** with idle-IP eviction, `is_valid_email` +
+  `normalize_email`, idempotent `ON CONFLICT (email) DO NOTHING`,
+  `to_regclass` guard, never reveals existence) and
+  `GET /api/v2/waitlist/count` (aggregate `COUNT(*)` only — never returns
+  emails). Registered in `main_v2.py`. Tests: `test_waitlist_email_validation`
+  (8) + `test_waitlist_router_shape` (8), 16/16.
+- **Frontend** `lib/waitlist.ts` (`postWaitlist`/`getWaitlistCount`, relative
+  `/api/v2` fetch — no supabase-js) + `WorkbenchWaitlistGate.tsx` interactive
+  overlay (email + optional use_case, hidden honeypot, success/error/submitting
+  states with try/catch, **real-data counter**: shows `Ya van N` only at N≥25
+  else qualitative copy — no fabricated numbers, anti-disinformation stance,
+  separate `Apoyar Atlas` ko-fi CTA, `mailto:` removed). Replaced the static
+  overlay block in `InteractiveWorkspace.tsx`; styles in
+  `InvestigationWorkspace.css`.
+- **Review loop:** final security/privacy review found 3 blockers
+  (spoofable X-Forwarded-For rate limit, unbounded `_rate_log`, submit stuck on
+  network error) + 2 minor — all fixed and re-verified.
+
+Deploy + production smoke (2026-06-03):
+- Backend deployed via `scripts/deploy-fly-api.sh` (app group), Fly `/health`
+  healthy, db_ok.
+- API smoke: count `0 → POST {ok:true} → 1`; honeypot POST returns `{ok:true}`
+  and wrote **no** row; invalid email → `422`; smoke row verified in DB then
+  deleted (table back to 0).
+- Frontend on Vercel (`observatory-global.vercel.app`): served bundle's
+  `InteractiveWorkspace` chunk contains the new overlay copy
+  (`Pedir acceso`, `beta privada`, `primeros en usarlo`, `waitlist/count`);
+  `/api/v2/waitlist/count` resolves through the Vercel `/api/*` rewrite.
+
+Spec: `docs/superpowers/specs/2026-06-03-workbench-waitlist-gate-design.md`.
+Plan: `docs/superpowers/plans/2026-06-03-workbench-waitlist-gate.md`.
+
+Next product track (deferred, its own brainstorm/spec): platform-wide
+language/positioning coherence pass — align landing + walkthrough + microcopy to
+the single thesis (see where information comes from, how it moves, what changes;
+see outside your bubble). Not blended into this gate work.
 
 ---
 

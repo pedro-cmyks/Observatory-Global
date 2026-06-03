@@ -1,5 +1,35 @@
 # Atlas — Session Log
 
+## 2026-06-03 — Workbench early-access waitlist gate shipped
+
+### What happened
+- Reframed the production focus around the Workbench as the public MVP lead
+  surface (information-disorder sensemaking pivot). Chose Option A: keep the
+  Workbench gated, make the gate interactive.
+- Synced production first: pushed 37 unpushed commits + committed/pushed the
+  Jun-3 smoke follow-up work so GitHub matched Fly (Fly was already current).
+- Brainstormed → spec'd → planned → executed via subagent-driven development on
+  branch `feat/workbench-waitlist` (6 implementation commits, one per task).
+- Migration 051 `workbench_waitlist` (RLS), backend `/api/v2/waitlist` +
+  `/api/v2/waitlist/count`, frontend `lib/waitlist.ts` +
+  `WorkbenchWaitlistGate.tsx` replacing the static mailto overlay.
+- Final review caught 3 blockers (spoofable rate limit, unbounded rate-log,
+  submit stuck on network error) + 2 minor; all fixed and re-verified.
+- Merged to `v3-intel-layer` (`1af31fa`), deployed backend to Fly, pushed to
+  trigger Vercel.
+
+### Validation
+- Backend: 16/16 waitlist tests; two clean `npm run build` runs.
+- Production smoke: count `0 → POST → 1`; honeypot wrote no row; invalid email
+  `422`; DB row verified then cleaned. Vercel bundle confirmed to contain the
+  new overlay copy and `/api/v2/waitlist/count` resolves through the proxy.
+
+### Decision
+The waitlist gate is shipped. Counter uses real data only (threshold 25, else
+qualitative copy) — no fabricated numbers, consistent with the anti-disinformation
+stance. Next product track is a dedicated platform-wide language/positioning
+coherence pass (landing + walkthrough + microcopy), specced separately.
+
 ## 2026-06-03 — Research-to-product roadmap clarified
 
 ### What happened
