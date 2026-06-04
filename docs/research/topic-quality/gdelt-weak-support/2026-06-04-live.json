@@ -1,0 +1,3198 @@
+{
+  "schema_version": "atlas-gdelt-weak-support-v1",
+  "generated_at": "2026-06-04T21:04:40.622697+00:00",
+  "window_hours": 24,
+  "limit": 10,
+  "thread_count": 8,
+  "audits": [
+    {
+      "thread_id": "dynamic-topic-10",
+      "label": "Russia-Ukraine War Updates",
+      "signal_count": 461,
+      "country_count": 20,
+      "source_count": 0,
+      "noise_rate": 0.0746,
+      "expected_domains": [
+        "conflict",
+        "policy"
+      ],
+      "top_gdelt_themes": [
+        {
+          "theme": "TAX_WORLDLANGUAGES_UKRAINIAN",
+          "count": 38,
+          "domains": []
+        },
+        {
+          "theme": "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+          "count": 32,
+          "domains": [
+            "conflict"
+          ]
+        },
+        {
+          "theme": "TAX_FNCACT_PRESIDENT",
+          "count": 29,
+          "domains": []
+        },
+        {
+          "theme": "TAX_WORLDLANGUAGES_RUSSIA",
+          "count": 26,
+          "domains": []
+        },
+        {
+          "theme": "DRONES",
+          "count": 26,
+          "domains": []
+        },
+        {
+          "theme": "CRISISLEX_C07_SAFETY",
+          "count": 22,
+          "domains": [
+            "conflict",
+            "disaster"
+          ]
+        },
+        {
+          "theme": "TAX_ETHNICITY_UKRAINIAN",
+          "count": 19,
+          "domains": []
+        },
+        {
+          "theme": "WB_2471_PEACEKEEPING",
+          "count": 18,
+          "domains": [
+            "conflict",
+            "policy"
+          ]
+        },
+        {
+          "theme": "UNGP_FORESTS_RIVERS_OCEANS",
+          "count": 16,
+          "domains": [
+            "policy",
+            "rights"
+          ]
+        },
+        {
+          "theme": "GENERAL_HEALTH",
+          "count": 16,
+          "domains": [
+            "health"
+          ]
+        },
+        {
+          "theme": "CRISISLEX_T11_UPDATESSYMPATHY",
+          "count": 15,
+          "domains": [
+            "conflict",
+            "disaster"
+          ]
+        },
+        {
+          "theme": "USPEC_POLITICS_GENERAL1",
+          "count": 15,
+          "domains": [
+            "policy"
+          ]
+        }
+      ],
+      "top_domains": [
+        {
+          "domain": "conflict",
+          "count": 88
+        },
+        {
+          "domain": "policy",
+          "count": 80
+        },
+        {
+          "domain": "disaster",
+          "count": 65
+        },
+        {
+          "domain": "economy",
+          "count": 63
+        },
+        {
+          "domain": "public_safety",
+          "count": 27
+        },
+        {
+          "domain": "rights",
+          "count": 27
+        },
+        {
+          "domain": "health",
+          "count": 27
+        },
+        {
+          "domain": "environment",
+          "count": 13
+        },
+        {
+          "domain": "migration",
+          "count": 11
+        },
+        {
+          "domain": "technology",
+          "count": 5
+        }
+      ],
+      "metrics": {
+        "sample_rows": 119,
+        "weak_support_pct": 0.8992,
+        "weak_contradiction_pct": 0.0588,
+        "ambiguous_pct": 0.042,
+        "theme_entropy": 0.8846
+      },
+      "bias": {
+        "by_source_lang": {
+          "xx": {
+            "rows": 119,
+            "supported": 107,
+            "contradicted": 7,
+            "ambiguous": 5,
+            "support_rate": 0.8992,
+            "contradiction_rate": 0.0588,
+            "ambiguous_rate": 0.042
+          }
+        },
+        "by_source_family": {
+          "gdelt": {
+            "rows": 119,
+            "supported": 107,
+            "contradicted": 7,
+            "ambiguous": 5,
+            "support_rate": 0.8992,
+            "contradiction_rate": 0.0588,
+            "ambiguous_rate": 0.042
+          }
+        },
+        "by_country_group": {
+          "global_north": {
+            "rows": 7,
+            "supported": 7,
+            "contradicted": 0,
+            "ambiguous": 0,
+            "support_rate": 1.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 0.0
+          },
+          "global_south_or_other": {
+            "rows": 112,
+            "supported": 100,
+            "contradicted": 7,
+            "ambiguous": 5,
+            "support_rate": 0.8929,
+            "contradiction_rate": 0.0625,
+            "ambiguous_rate": 0.0446
+          }
+        }
+      },
+      "examples": {
+        "supported": [
+          {
+            "signal_id": 6402367,
+            "headline": "&#x41B;&#x430;&#x432;&#x440;&#x43E;&#x432; &#x443;&#x43B;&#x438;&#x447;&#x438;&#x43B; &#x421;&#x428;&#x410; &#x432; &#x437;&#x430;&#x442;&#x44F;&#x433;&#x438;&#x432;&#x430;&#x43D;&#x438;&#x438; &#x43A;&#x43E;&#x43D;&#x444;&#x43B;&#x438;&#x43A;&#x442;&#x430; &#x43D;&#x430; &#x423;&#x43A;&#x440;&#x430;&#x438;&#x43D;&#x435; ::  &#x41D;&#x43E;&#x432;&#x43E;&#x441;&#x442;&#x438; &#x434;&#x43D;&#x44F;  / &#x412;&#x417;&#x413;&#x41B;&#x42F;&#x414;",
+            "country_code": "RU",
+            "source_name": "vz.ru",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_ETHNICITY_UKRAINIAN",
+              "TAX_WORLDLANGUAGES_RUSSIAN",
+              "WB_2433_CONFLICT_AND_VIOLENCE",
+              "TAX_FNCACT_MINISTER",
+              "TAX_FNCACT_PRESIDENT",
+              "TAX_WORLDLANGUAGES_UKRAINIAN",
+              "TAX_WORLDLANGUAGES_RUSSIA",
+              "CRISISLEX_T11_UPDATESSYMPATHY"
+            ],
+            "domains": [
+              "conflict",
+              "disaster"
+            ],
+            "status": "supported"
+          },
+          {
+            "signal_id": 6402271,
+            "headline": "&#x41B;&#x430;&#x432;&#x440;&#x43E;&#x432;&#x430; &#x443;&#x434;&#x438;&#x432;&#x438;&#x43B;&#x438; &#x437;&#x430;&#x44F;&#x432;&#x43B;&#x435;&#x43D;&#x438;&#x44F; &#x420;&#x443;&#x431;&#x438;&#x43E; &#x43E; &#x43D;&#x435;&#x433;&#x43E;&#x442;&#x43E;&#x432;&#x43D;&#x43E;&#x441;&#x442;&#x438; &#x441;&#x442;&#x43E;&#x440;&#x43E;&#x43D; &#x43A;&#x43E;&#x43D;&#x444;&#x43B;&#x438;&#x43A;&#x442;&#x430; &#x43D;&#x430; &#x423;&#x43A;&#x440;&#x430;&#x438;&#x43D;&#x435; &#x43A; &#x443;&#x441;&#x442;&#x443;&#x43F;&#x43A;&#x430;&#x43C; ::  &#x41D;&#x43E;&#x432;&#x43E;&#x441;&#x442;&#x438; &#x434;&#x43D;&#x44F;  / &#x412;&#x417;&#x413;&#x41B;&#x42F;&#x414;",
+            "country_code": "RU",
+            "source_name": "vz.ru",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_DIPLOMAT",
+              "WB_2471_PEACEKEEPING",
+              "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+              "USPEC_POLITICS_GENERAL1",
+              "MEDIA_MSM",
+              "EPU_POLICY_CONGRESS",
+              "WB_840_JUSTICE",
+              "GENERAL_GOVERNMENT"
+            ],
+            "domains": [
+              "conflict",
+              "economy",
+              "policy"
+            ],
+            "status": "supported"
+          },
+          {
+            "signal_id": 6402370,
+            "headline": "&#x41B;&#x430;&#x432;&#x440;&#x43E;&#x432; &#x43D;&#x430;&#x437;&#x432;&#x430;&#x43B; &#x441;&#x442;&#x440;&#x430;&#x43D;&#x43D;&#x44B;&#x43C;&#x438; &#x441;&#x43B;&#x43E;&#x432;&#x430; &#x420;&#x443;&#x431;&#x438;&#x43E; &#x43E; &#x43D;&#x435;&#x433;&#x43E;&#x442;&#x43E;&#x432;&#x43D;&#x43E;&#x441;&#x442;&#x438; &#x420;&#x424; &#x43A; &#x43F;&#x435;&#x440;&#x435;&#x433;&#x43E;&#x432;&#x43E;&#x440;&#x430;&#x43C; &#x43F;&#x43E; &#x423;&#x43A;&#x440;&#x430;&#x438;&#x43D;&#x435;",
+            "country_code": "RU",
+            "source_name": "vedomosti.ru",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "WB_2471_PEACEKEEPING",
+              "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+              "USPEC_POLITICS_GENERAL1",
+              "WB_840_JUSTICE",
+              "WB_843_DISPUTE_RESOLUTION",
+              "RATIFY",
+              "TAX_WORLDLANGUAGES_RUSSIA",
+              "TAX_FNCACT_MINISTER"
+            ],
+            "domains": [
+              "conflict",
+              "policy"
+            ],
+            "status": "supported"
+          },
+          {
+            "signal_id": 6399797,
+            "headline": "&#x421;&#x417;&#x420; &#x43F;&#x43E;&#x432;&#x456;&#x434;&#x43E;&#x43C;&#x43B;&#x44F;&#x454;, &#x449;&#x43E; &#x434;&#x43E;&#x445;&#x43E;&#x434;&#x438; &#x420;&#x43E;&#x441;&#x456;&#x457; &#x432;&#x43F;&#x430;&#x43B;&#x438; &#x43D;&#x430; 40% &#x447;&#x435;&#x440;&#x435;&#x437; &#x432;&#x456;&#x439;&#x43D;&#x443; - &#x41F;&#x41C;&#x415;&#x424;-2026 - &#x43D;&#x43E;&#x432;&#x438;&#x43D;&#x438; &#x441;&#x432;&#x456;&#x442;&#x443;",
+            "country_code": "RU",
+            "source_name": "zn.ua",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "UNGP_FORESTS_RIVERS_OCEANS",
+              "ECON_NATGASPRICE",
+              "TAX_FNCACT_AGGRESSOR",
+              "TAX_DISEASE_STROKE",
+              "EPU_CATS_NATIONAL_SECURITY",
+              "EPU_ECONOMY_HISTORIC",
+              "EPU_ECONOMY",
+              "DRONES"
+            ],
+            "domains": [
+              "economy",
+              "health",
+              "policy",
+              "public_safety",
+              "rights"
+            ],
+            "status": "supported"
+          },
+          {
+            "signal_id": 6399777,
+            "headline": "&#x421;&#x43A;&#x430;&#x43D;&#x434;&#x430;&#x43B; &#x43C;&#x456;&#x436; &#x41F;&#x43E;&#x43B;&#x44C;&#x449;&#x435;&#x44E; &#x442;&#x430; &#x423;&#x43A;&#x440;&#x430;&#x457;&#x43D;&#x43E;&#x44E; &#x447;&#x435;&#x440;&#x435;&#x437; &#x423;&#x41F;&#x410;: &#x44F;&#x43A;&#x456; &#x43D;&#x430;&#x441;&#x43B;&#x456;&#x434;&#x43A;&#x438; &#x43C;&#x43E;&#x436;&#x443;&#x442;&#x44C; &#x431;&#x443;&#x442;&#x438; &#x434;&#x43B;&#x44F; &#x443;&#x43A;&#x440;&#x430;&#x457;&#x43D;&#x446;&#x456;&#x432; &#x2014; &#x421;&#x432;&#x456;&#x442;",
+            "country_code": "RU",
+            "source_name": "tsn.ua",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_POLITICIAN",
+              "UNGP_FORESTS_RIVERS_OCEANS",
+              "TAX_FNCACT_OFFICIALS",
+              "EPU_CATS_MIGRATION_FEAR_FEAR",
+              "TAX_ETHNICITY_GERMAN",
+              "WB_678_DIGITAL_GOVERNMENT",
+              "TAX_WORLDLANGUAGES_GERMAN",
+              "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE"
+            ],
+            "domains": [
+              "conflict",
+              "economy",
+              "migration",
+              "policy",
+              "rights",
+              "technology"
+            ],
+            "status": "supported"
+          }
+        ],
+        "contradicted": [
+          {
+            "signal_id": 6326354,
+            "headline": "&#x42F;&#x43A; &#x43F;&#x43E;&#x447;&#x438;&#x441;&#x442;&#x438;&#x442;&#x438; &#x437;&#x43B;&#x438;&#x432; &#x43D;&#x430; &#x43A;&#x443;&#x445;&#x43D;&#x456;: &#x447;&#x43E;&#x43C;&#x443; &#x435;&#x43A;&#x441;&#x43F;&#x435;&#x440;&#x442;&#x438; &#x43D;&#x435; &#x440;&#x430;&#x434;&#x44F;&#x442;&#x44C; &#x441;&#x43E;&#x434;&#x443; &#x442;&#x430; &#x43E;&#x446;&#x435;&#x442; &#x2014; &#x420;&#x456;&#x437;&#x43D;&#x435;",
+            "country_code": "ZA",
+            "source_name": "tsn.ua",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "WB_137_WATER",
+              "USPEC_UNCERTAINTY1",
+              "NATURAL_DISASTER_FLOOD_WATER",
+              "DELAY",
+              "WB_1306_PREVENTIVE_CARE",
+              "EXTREMISM",
+              "WB_139_SANITATION_AND_WASTEWATER",
+              "SLFID_MINERAL_RESOURCES"
+            ],
+            "domains": [
+              "disaster",
+              "environment"
+            ],
+            "status": "contradicted"
+          },
+          {
+            "signal_id": 6192943,
+            "headline": "&#x417;&#x435;&#x43C;&#x43B;&#x44F; &#x432; &#x423;&#x43A;&#x440;&#x430;&#x457;&#x43D;&#x456; &#x43F;&#x440;&#x43E;&#x434;&#x43E;&#x432;&#x436;&#x443;&#x454; &#x434;&#x43E;&#x440;&#x43E;&#x436;&#x447;&#x430;&#x442;&#x438;: &#x434;&#x435; &#x433;&#x435;&#x43A;&#x442;&#x430;&#x440;&#x438; &#x43A;&#x43E;&#x448;&#x442;&#x443;&#x44E;&#x442;&#x44C; &#x43D;&#x430;&#x439;&#x434;&#x43E;&#x440;&#x43E;&#x436;&#x447;&#x435; &#x443; 2026 &#x440;&#x43E;&#x446;&#x456;",
+            "country_code": "UA",
+            "source_name": "bigmir.net",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "AGRICULTURE",
+              "WB_612_HOUSING_FINANCE",
+              "WB_1039_PROPERTY_LAWS_AND_REGULATIONS",
+              "TRIAL",
+              "TAX_ECON_PRICE",
+              "WB_332_CAPITAL_MARKETS",
+              "TAX_WORLDLANGUAGES_UKRAINIAN",
+              "TAX_FNCACT_TENANT"
+            ],
+            "domains": [
+              "economy"
+            ],
+            "status": "contradicted"
+          },
+          {
+            "signal_id": 6112230,
+            "headline": "&#x41F;&#x435;&#x43D;&#x441;&#x456;&#x44F; &#x432; &#x423;&#x43A;&#x440;&#x430;&#x457;&#x43D;&#x456; - &#x447;&#x435;&#x440;&#x435;&#x437; &#x449;&#x43E; &#x43F;&#x435;&#x43D;&#x441;&#x456;&#x43E;&#x43D;&#x435;&#x440;&#x438; &#x43D;&#x435;&#x434;&#x43E;&#x43E;&#x442;&#x440;&#x438;&#x43C;&#x443;&#x44E;&#x442;&#x44C; &#x432;&#x438;&#x43F;&#x43B;&#x430;&#x442;&#x438; &#x2014; &#x413;&#x440;&#x43E;&#x448;&#x456;",
+            "country_code": "UA",
+            "source_name": "tsn.ua",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_CHILD",
+              "TAX_WORLDLANGUAGES_UKRAINIAN",
+              "WB_2670_JOBS",
+              "AFFECT",
+              "WB_2690_CATEGORIES_OF_EMPLOYMENT",
+              "WB_2896_RETIREMENT",
+              "WB_697_SOCIAL_PROTECTION_AND_LABOR",
+              "WB_1967_AGRICULTURAL_RISK_AND_SECURITY"
+            ],
+            "domains": [
+              "public_safety",
+              "rights"
+            ],
+            "status": "contradicted"
+          },
+          {
+            "signal_id": 6112178,
+            "headline": "&#x423;&#x434;&#x430;&#x440; &#x420;&#x43E;&#x441;&#x456;&#x457; &#x43F;&#x43E; &#x41A;&#x438;&#x454;&#x432;&#x443; 2 &#x447;&#x435;&#x440;&#x432;&#x43D;&#x44F; &#x43D;&#x435; &#x431;&#x443;&#x432; &#x432;&#x456;&#x434;&#x43F;&#x43E;&#x432;&#x456;&#x434;&#x434;&#x44E; &#x43D;&#x430; &#x434;&#x456;&#x457; &#x417;&#x421;&#x423; &#x2013; &#x432;&#x438;&#x441;&#x43D;&#x43E;&#x432;&#x43A;&#x438; ISW",
+            "country_code": "UA",
+            "source_name": "mignews.com.ua",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_WORLDLANGUAGES_UKRAINIAN",
+              "ECON_STOCKMARKET",
+              "MARITIME",
+              "AFFECT",
+              "PROTEST",
+              "TAX_FNCACT_TROOPS",
+              "MANMADE_DISASTER_IMPLIED",
+              "SCIENCE"
+            ],
+            "domains": [
+              "disaster",
+              "economy"
+            ],
+            "status": "contradicted"
+          },
+          {
+            "signal_id": 6064669,
+            "headline": "Usa, raid difensivi a Qaeshm, intercettati missili e droni iraniani",
+            "country_code": "BA",
+            "source_name": "ilgiornaledivicenza.it",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "MARITIME_INCIDENT",
+              "MARITIME",
+              "TAX_FNCACT_SAILORS",
+              "DRONES",
+              "WB_137_WATER",
+              "MANMADE_DISASTER_IMPLIED"
+            ],
+            "domains": [
+              "disaster",
+              "environment"
+            ],
+            "status": "contradicted"
+          }
+        ],
+        "ambiguous": [
+          {
+            "signal_id": 6331827,
+            "headline": "&#x411;&#x430;&#x43D;&#x43A;&#x438; &#x43E;&#x43D;&#x43E;&#x432;&#x438;&#x43B;&#x438; &#x43A;&#x443;&#x440;&#x441;&#x438; &#x432;&#x430;&#x43B;&#x44E;&#x442; &#x2013; &#x441;&#x43A;&#x456;&#x43B;&#x44C;&#x43A;&#x438; &#x43A;&#x43E;&#x448;&#x442;&#x443;&#x44E;&#x442;&#x44C; &#x434;&#x43E;&#x43B;&#x430;&#x440; &#x442;&#x430; &#x454;&#x432;&#x440;&#x43E; 4 &#x447;&#x435;&#x440;&#x432;&#x43D;&#x44F;",
+            "country_code": "UA",
+            "source_name": "rbc.ua",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_WORLDLANGUAGES_UKRAINIAN",
+              "TAX_ETHNICITY_UKRAINIAN",
+              "TAX_ECON_PRICE"
+            ],
+            "domains": [],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6322754,
+            "headline": "&#x411;&#x438;&#x432; &#x43C;&#x43E;&#x43B;&#x43E;&#x442;&#x43A;&#x43E;&#x43C; &#x442;&#x430; &#x456;&#x43C;&#x456;&#x442;&#x443;&#x432;&#x430;&#x432; &#x441;&#x442;&#x440;&#x430;&#x442;&#x443;: &#x41D;&#x430;&#x446;&#x43F;&#x43E;&#x43B;&#x456;&#x446;&#x456;&#x44F; &#x43F;&#x43E;&#x432;&#x456;&#x434;&#x43E;&#x43C;&#x438;&#x43B;&#x430; &#x43F;&#x440;&#x43E; &#x43F;&#x456;&#x434;&#x43E;&#x437;&#x440;&#x443; &#x447;&#x435;&#x447;&#x435;&#x43D;&#x441;&#x44C;&#x43A;&#x43E;&#x43C;&#x443; &#x43E;&#x43A;&#x443;&#x43F;&#x430;&#x43D;&#x442;&#x443; (&#x444;&#x43E;&#x442;&#x43E;)",
+            "country_code": "UA",
+            "source_name": "glavcom.ua",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [],
+            "domains": [],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6219793,
+            "headline": "\"&#x5DC;&#x5E8;&#x5E7;&#x5D5;&#x5D3; &#x5D9;&#x5D5;&#x5EA;&#x5E8; &#x5E7;&#x5E9;&#x5D4; &#x5DE;&#x5DC;&#x5E6;&#x5DC;&#x5DD; &#x5D0;&#x5EA; &#x5D9;&#x5D5;&#x5DE;&#x5E0;&#x5D9; &#x5D4;&#x5E2;&#x5E8;&#x5E4;&#x5D3;\": &#x5E0;&#x5D9;&#x5D9;&#x5D8; &#x5D1;&#x5D5;&#x5D6;&#x5D5;&#x5DC;&#x5D9;&#x5E7; &#x5E0;&#x5E9;&#x5D1;&#x5E8; &#x5D1;&#x5D7;&#x5D6;&#x5E8;&#x5D5;&#x5EA;",
+            "country_code": "IL",
+            "source_name": "srugim.co.il",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [],
+            "domains": [],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6193000,
+            "headline": "&#x41F;&#x440;&#x430;&#x437;&#x44C;&#x43A;&#x438;&#x439; &#x43E;&#x43F;&#x435;&#x440;&#x430;&#x442;&#x43E;&#x440; &#x437;&#x430;&#x43F;&#x443;&#x441;&#x43A;&#x430;&#x454; &#x43D;&#x43E;&#x432;&#x438;&#x439; &#x43F;&#x43E;&#x442;&#x44F;&#x433; &#x432;&#x456;&#x434; &#x443;&#x43A;&#x440;&#x430;&#x457;&#x43D;&#x441;&#x44C;&#x43A;&#x43E;&#x433;&#x43E; &#x43A;&#x43E;&#x440;&#x434;&#x43E;&#x43D;&#x443;&#xA0;&#x2014; &#x434;&#x435;&#x442;&#x430;&#x43B;&#x456; &#x2014; Finance.ua",
+            "country_code": "PL",
+            "source_name": "news.finance.ua",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "SOC_POINTSOFINTEREST_AIRPORT",
+              "WB_507_ENERGY_AND_EXTRACTIVES",
+              "TAX_FNCACT_GENERAL_MANAGER",
+              "WB_2931_IRON",
+              "TAX_FNCACT_OPERATOR",
+              "WB_1804_AIRPORTS",
+              "TAX_ETHNICITY_CZECH",
+              "TAX_WORLDLANGUAGES_UKRAINIAN"
+            ],
+            "domains": [],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6184705,
+            "headline": "&#x41D;&#x43E;&#x440;&#x432;&#x435;&#x433;&#x456;&#x44F; &#x433;&#x43E;&#x442;&#x43E;&#x432;&#x430; &#x434;&#x43E;&#x43F;&#x43E;&#x43C;&#x43E;&#x433;&#x442;&#x438; &#x423;&#x43A;&#x440;&#x430;&#x457;&#x43D;&#x456; &#x437; &#x41F;&#x41F;&#x41E; &#x2013; &#x417;&#x435;&#x43B;&#x435;&#x43D;&#x441;&#x44C;&#x43A;&#x438;&#x439;",
+            "country_code": "UA",
+            "source_name": "nbnews.com.ua",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "WB_1406_DISEASES",
+              "WB_133_INFORMATION_AND_COMMUNICATION_TECHNOLOGIES",
+              "TAX_FNCACT_PRESIDENT",
+              "TAX_WORLDLANGUAGES_NORWEGIAN",
+              "TAX_FNCACT_REPRESENTATIVE",
+              "TAX_FNCACT_REPRESENTATIVES",
+              "TAX_FNCACT_SECRETARY",
+              "TAX_WORLDLANGUAGES_UKRAINIAN"
+            ],
+            "domains": [],
+            "status": "ambiguous"
+          }
+        ]
+      },
+      "recommendation": "split_thread"
+    },
+    {
+      "thread_id": "dynamic-topic-18",
+      "label": "Local News and Politics",
+      "signal_count": 281,
+      "country_count": 20,
+      "source_count": 0,
+      "noise_rate": 0.3263,
+      "expected_domains": [
+        "policy"
+      ],
+      "top_gdelt_themes": [
+        {
+          "theme": "TAX_FNCACT_PRESIDENT",
+          "count": 29,
+          "domains": []
+        },
+        {
+          "theme": "GENERAL_HEALTH",
+          "count": 21,
+          "domains": [
+            "health"
+          ]
+        },
+        {
+          "theme": "GENERAL_GOVERNMENT",
+          "count": 21,
+          "domains": [
+            "policy"
+          ]
+        },
+        {
+          "theme": "WOUND",
+          "count": 19,
+          "domains": []
+        },
+        {
+          "theme": "WB_2670_JOBS",
+          "count": 19,
+          "domains": []
+        },
+        {
+          "theme": "SOC_GENERALCRIME",
+          "count": 19,
+          "domains": []
+        },
+        {
+          "theme": "EPU_ECONOMY",
+          "count": 18,
+          "domains": [
+            "economy",
+            "policy"
+          ]
+        },
+        {
+          "theme": "WB_2456_DRUGS_AND_NARCOTICS",
+          "count": 18,
+          "domains": []
+        },
+        {
+          "theme": "TAX_ETHNICITY_BLACK",
+          "count": 17,
+          "domains": []
+        },
+        {
+          "theme": "TRANSPARENCY",
+          "count": 15,
+          "domains": []
+        },
+        {
+          "theme": "WB_2471_PEACEKEEPING",
+          "count": 15,
+          "domains": [
+            "conflict",
+            "policy"
+          ]
+        },
+        {
+          "theme": "TAX_ETHNICITY_ARAB",
+          "count": 15,
+          "domains": []
+        }
+      ],
+      "top_domains": [
+        {
+          "domain": "policy",
+          "count": 71
+        },
+        {
+          "domain": "conflict",
+          "count": 50
+        },
+        {
+          "domain": "economy",
+          "count": 45
+        },
+        {
+          "domain": "disaster",
+          "count": 32
+        },
+        {
+          "domain": "health",
+          "count": 26
+        },
+        {
+          "domain": "public_safety",
+          "count": 16
+        },
+        {
+          "domain": "rights",
+          "count": 16
+        },
+        {
+          "domain": "migration",
+          "count": 13
+        },
+        {
+          "domain": "environment",
+          "count": 9
+        },
+        {
+          "domain": "technology",
+          "count": 1
+        }
+      ],
+      "metrics": {
+        "sample_rows": 92,
+        "weak_support_pct": 0.7717,
+        "weak_contradiction_pct": 0.1304,
+        "ambiguous_pct": 0.0978,
+        "theme_entropy": 0.8781
+      },
+      "bias": {
+        "by_source_lang": {
+          "es": {
+            "rows": 1,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 1,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          },
+          "xx": {
+            "rows": 91,
+            "supported": 71,
+            "contradicted": 12,
+            "ambiguous": 8,
+            "support_rate": 0.7802,
+            "contradiction_rate": 0.1319,
+            "ambiguous_rate": 0.0879
+          }
+        },
+        "by_source_family": {
+          "gdelt": {
+            "rows": 91,
+            "supported": 71,
+            "contradicted": 12,
+            "ambiguous": 8,
+            "support_rate": 0.7802,
+            "contradiction_rate": 0.1319,
+            "ambiguous_rate": 0.0879
+          },
+          "independent": {
+            "rows": 1,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 1,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          }
+        },
+        "by_country_group": {
+          "global_north": {
+            "rows": 18,
+            "supported": 14,
+            "contradicted": 1,
+            "ambiguous": 3,
+            "support_rate": 0.7778,
+            "contradiction_rate": 0.0556,
+            "ambiguous_rate": 0.1667
+          },
+          "global_south_or_other": {
+            "rows": 74,
+            "supported": 57,
+            "contradicted": 11,
+            "ambiguous": 6,
+            "support_rate": 0.7703,
+            "contradiction_rate": 0.1486,
+            "ambiguous_rate": 0.0811
+          }
+        }
+      },
+      "examples": {
+        "supported": [
+          {
+            "signal_id": 6333306,
+            "headline": "Dos soldados espa&#xF1;oles son heridos en un ataque en el L&#xED;bano | Noticias La Tribuna de Toledo",
+            "country_code": "IL",
+            "source_name": "latribunadetoledo.es",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "GENERAL_HEALTH",
+              "SELF_IDENTIFIED_ATROCITY",
+              "TAX_FNCACT_SOLDIERS",
+              "TRANSPARENCY",
+              "TAX_RELIGION_ISLAMIC",
+              "WOUND",
+              "SOC_POINTSOFINTEREST_UNIVERSITY",
+              "WB_2471_PEACEKEEPING"
+            ],
+            "domains": [
+              "conflict",
+              "health",
+              "policy"
+            ],
+            "status": "supported"
+          },
+          {
+            "signal_id": 6333499,
+            "headline": "Muere un casco azul serbio y dos espa&#xF1;oles resultan heridos leves en un ataque en el sur del L&#xED;bano",
+            "country_code": "RB",
+            "source_name": "lavozdegalicia.es",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "GENERAL_HEALTH",
+              "SELF_IDENTIFIED_ATROCITY",
+              "TRANSPARENCY",
+              "TAX_RELIGION_ISLAMIC",
+              "TAX_FNCACT_PRESIDENT",
+              "WOUND",
+              "WB_2471_PEACEKEEPING",
+              "SOC_POINTSOFINTEREST_UNIVERSITY"
+            ],
+            "domains": [
+              "conflict",
+              "health",
+              "policy"
+            ],
+            "status": "supported"
+          },
+          {
+            "signal_id": 6333475,
+            "headline": "David S&#xE1;nchez niega que interviniera en la creaci&#xF3;n de su puesto | Noticias La Tribuna de Toledo",
+            "country_code": "ES",
+            "source_name": "latribunadetoledo.es",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "WB_2470_PEACE_OPERATIONS_AND_CONFLICT_MANAGEMENT",
+              "TAX_FNCACT_PRESIDENT",
+              "TRAFFIC",
+              "WB_2490_NATIONAL_PROTECTION_AND_SECURITY",
+              "TAX_FNCACT_BOSS",
+              "BORDER",
+              "USPEC_POLITICS_GENERAL1",
+              "SOC_POINTSOFINTEREST_PRISON"
+            ],
+            "domains": [
+              "conflict",
+              "migration",
+              "policy",
+              "public_safety"
+            ],
+            "status": "supported"
+          },
+          {
+            "signal_id": 6333399,
+            "headline": "Muere un 'casco azul' serbio y dos espa&#xF1;oles resultan heridos leves en un ataque en el sur de L&#xED;bano",
+            "country_code": "ES",
+            "source_name": "lanzadigital.com",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "GENERAL_HEALTH",
+              "SELF_IDENTIFIED_ATROCITY",
+              "TRANSPARENCY",
+              "TAX_RELIGION_ISLAMIC",
+              "WOUND",
+              "SOC_POINTSOFINTEREST_UNIVERSITY",
+              "WB_2471_PEACEKEEPING",
+              "TAX_WORLDLANGUAGES_SPANISH"
+            ],
+            "domains": [
+              "conflict",
+              "health",
+              "policy"
+            ],
+            "status": "supported"
+          },
+          {
+            "signal_id": 6333374,
+            "headline": "El hermano de Pedro S&#xE1;nchez se defiende en los tribunales: &#xAB;No tengo capacidad de influir en nada&#xBB;",
+            "country_code": "ES",
+            "source_name": "lavozdegalicia.es",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_SECRETARY_GENERAL",
+              "TAX_FNCACT_PRESIDENT",
+              "USPEC_POLICY1",
+              "RECRUITMENT",
+              "CRISISLEX_C07_SAFETY",
+              "TAX_WORLDLANGUAGES_PORTUGUESE",
+              "TAX_FNCACT_SECRETARY",
+              "TAX_FNCACT_CANDIDATE"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "policy"
+            ],
+            "status": "supported"
+          }
+        ],
+        "contradicted": [
+          {
+            "signal_id": 6333436,
+            "headline": "Muere un 'casco azul' serbio y dos espa&#xF1;oles resultan heridos en un ataque en el sur de L&#xED;bano",
+            "country_code": "LS",
+            "source_name": "europapress.tv",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_WEAPONS_MORTAR",
+              "CRISISLEX_CRISISLEXREC",
+              "WOUND",
+              "TAX_WORLDLANGUAGES_SERBIAN",
+              "TAX_WORLDLANGUAGES_SPANISH",
+              "TAX_FNCACT_TROOPS",
+              "CRISISLEX_T02_INJURED",
+              "CRISISLEX_C03_WELLBEING_HEALTH"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "health"
+            ],
+            "status": "contradicted"
+          },
+          {
+            "signal_id": 6331048,
+            "headline": "Muere un casco azul serbio y dos espa&#xF1;oles resultan heridos en un ataque en L&#xED;bano",
+            "country_code": "LS",
+            "source_name": "elprogreso.es",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "GENERAL_HEALTH",
+              "WOUND",
+              "MARITIME",
+              "SOC_POINTSOFINTEREST_HEADQUARTERS",
+              "TAX_WORLDLANGUAGES_SPANISH",
+              "TAX_FNCACT_TROOPS",
+              "TAX_FNCACT_GENTLEMAN",
+              "TAX_MILITARY_TITLE_SOLDIER"
+            ],
+            "domains": [
+              "conflict",
+              "health"
+            ],
+            "status": "contradicted"
+          },
+          {
+            "signal_id": 6217220,
+            "headline": "Deja 3 mujeres lesionadas accidente vial en Acu&#xF1;a &#x2013; Peri&#xF3;dico Z&#xF3;calo | Noticias de Saltillo, Torre&#xF3;n,  Piedras Negras, Monclova, Acu&#xF1;a",
+            "country_code": "MX",
+            "source_name": "zocalo.com.mx",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "GENERAL_HEALTH",
+              "SOC_POINTSOFINTEREST_SCHOOL",
+              "WOUND",
+              "TAX_ETHNICITY_BLACK",
+              "WB_435_AGRICULTURE_AND_FOOD_SECURITY",
+              "CRISISLEX_T02_INJURED",
+              "AFFECT",
+              "TAX_FNCACT_WOMEN"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "economy",
+              "health",
+              "public_safety"
+            ],
+            "status": "contradicted"
+          },
+          {
+            "signal_id": 6217207,
+            "headline": "Colapsa la carretera Saltillo-Monterrey por obras pluviales; trabajos continuar&#xE1;n &#x2013; Peri&#xF3;dico Z&#xF3;calo | Noticias de Saltillo, Torre&#xF3;n,  Piedras Negras, Monclova, Acu&#xF1;a",
+            "country_code": "MX",
+            "source_name": "zocalo.com.mx",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "MARITIME_INCIDENT",
+              "CRISISLEX_CRISISLEXREC",
+              "WB_137_WATER",
+              "MEDIA_MSM",
+              "MARITIME",
+              "CRISISLEX_C06_WATER_SANITATION",
+              "TAX_ECON_PRICE",
+              "TRAFFIC"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "environment"
+            ],
+            "status": "contradicted"
+          },
+          {
+            "signal_id": 6216979,
+            "headline": "Autoriza jueza subasta conjunta de AHMSA y Minosa con trato preferente a acreedores &#x2013; Peri&#xF3;dico Z&#xF3;calo | Noticias de Saltillo, Torre&#xF3;n,  Piedras Negras, Monclova, Acu&#xF1;a",
+            "country_code": "MX",
+            "source_name": "zocalo.com.mx",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_JUDGE",
+              "TRANSPARENCY",
+              "TAX_ETHNICITY_BLACK",
+              "WB_2048_COMPENSATION_CAREERS_AND_INCENTIVES",
+              "TAX_WORLDMAMMALS_HUMAN",
+              "WB_723_PUBLIC_ADMINISTRATION",
+              "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+              "WB_2203_HUMAN_RIGHTS"
+            ],
+            "domains": [
+              "conflict",
+              "rights"
+            ],
+            "status": "contradicted"
+          }
+        ],
+        "ambiguous": [
+          {
+            "signal_id": 6216793,
+            "headline": "Reconoce Cecilia Guadiana retiro de visa de Am&#xE9;rico Villarreal &#x2013; Peri&#xF3;dico Z&#xF3;calo | Noticias de Saltillo, Torre&#xF3;n,  Piedras Negras, Monclova, Acu&#xF1;a",
+            "country_code": "MX",
+            "source_name": "zocalo.com.mx",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "WB_2896_RETIREMENT",
+              "MEDIA_MSM",
+              "WB_2670_JOBS",
+              "RETIREMENT",
+              "WB_2689_JOBS_DIAGNOSTICS",
+              "TAX_ETHNICITY_AMERICAN",
+              "WB_2690_CATEGORIES_OF_EMPLOYMENT",
+              "TAX_FNCACT_OPERATOR"
+            ],
+            "domains": [],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6066957,
+            "headline": "Donald Trump expresa su “respaldo total” a Abelardo de la Espriella y pide el voto para él en la segunda vuelta",
+            "country_code": "US",
+            "source_name": "elpais.com",
+            "source_lang": "es",
+            "source_family": "independent",
+            "themes": [],
+            "domains": [],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6024912,
+            "headline": "Azzaman daily newspaper&#x62C;&#x631;&#x64A;&#x62F;&#x629; &#x627;&#x644;&#x632;&#x645;&#x627;&#x646; - &#x639;&#x631;&#x628;&#x64A;&#x629; &#x64A;&#x648;&#x645;&#x64A;&#x629; &#x62F;&#x648;&#x644;&#x64A;&#x629; &#x645;&#x633;&#x62A;&#x642;&#x644;&#x629;   | Azzaman International daily newspaper&#x631;&#x648;&#x628;&#x64A;&#x648;:&#x644;&#x648;&#x644;&#x627; &#x639;&#x642;&#x628;&#x629; &#x62D;&#x632;&#x628; &#x627;&#x644;&#x644;&#x647; &#x644;&#x62C;&#x631;&#x649; &#x627;&#x628;&#x631;&#x627;&#x645; &#x627;&#x62A;&#x641;&#x627;&#x642; &#x627;&#x644;&#x633;&#x644;&#x627;&#x645; &#x628;&#x64A;&#x646; &#x644;&#x628;&#x646;&#x627;&#x646; &#x648;&#x625;&#x633;&#x631;&#x627;&#x626;&#x64A;&#x644;",
+            "country_code": "IL",
+            "source_name": "azzaman.com",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_ETHNICITY_ARAB",
+              "CEASEFIRE",
+              "TAX_TERROR_GROUP_HIZBALLAH"
+            ],
+            "domains": [],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6024963,
+            "headline": "Azzaman daily newspaper&#x62C;&#x631;&#x64A;&#x62F;&#x629; &#x627;&#x644;&#x632;&#x645;&#x627;&#x646; - &#x639;&#x631;&#x628;&#x64A;&#x629; &#x64A;&#x648;&#x645;&#x64A;&#x629; &#x62F;&#x648;&#x644;&#x64A;&#x629; &#x645;&#x633;&#x62A;&#x642;&#x644;&#x629;   | Azzaman International daily newspaper&#x625;&#x633;&#x62A;&#x642;&#x627;&#x644;&#x629; &#x2013; &#x63A;&#x64A;&#x62B; &#x639;&#x628;&#x62F; &#x627;&#x644;&#x63A;&#x646;&#x64A;",
+            "country_code": "IQ",
+            "source_name": "azzaman.com",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [],
+            "domains": [],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6024960,
+            "headline": "Azzaman daily newspaper&#x62C;&#x631;&#x64A;&#x62F;&#x629; &#x627;&#x644;&#x632;&#x645;&#x627;&#x646; - &#x639;&#x631;&#x628;&#x64A;&#x629; &#x64A;&#x648;&#x645;&#x64A;&#x629; &#x62F;&#x648;&#x644;&#x64A;&#x629; &#x645;&#x633;&#x62A;&#x642;&#x644;&#x629;   | Azzaman International daily newspaper&#x625;&#x639;&#x644;&#x627;&#x646; &#x642;&#x627;&#x626;&#x645;&#x629; &#x627;&#x644;&#x648;&#x637;&#x646;&#x64A; &#x627;&#x644;&#x646;&#x647;&#x627;&#x626;&#x64A;&#x629; &#x642;&#x628;&#x644; &#x627;&#x644;&#x634;&#x631;&#x648;&#x639; &#x628;&#x628;&#x637;&#x648;&#x644;&#x629; &#x643;&#x627;&#x633; &#x627;&#x644;&#x639;&#x627;&#x644;&#x645;",
+            "country_code": "ES",
+            "source_name": "azzaman.com",
+            "source_lang": "xx",
+            "source_family": "gdelt",
+            "themes": [],
+            "domains": [],
+            "status": "ambiguous"
+          }
+        ]
+      },
+      "recommendation": "split_thread"
+    },
+    {
+      "thread_id": "dynamic-topic-5",
+      "label": "Virginia Bus Crash",
+      "signal_count": 244,
+      "country_count": 20,
+      "source_count": 0,
+      "noise_rate": 0.0038,
+      "expected_domains": [
+        "public_safety"
+      ],
+      "top_gdelt_themes": [
+        {
+          "theme": "USPEC_POLITICS_GENERAL1",
+          "count": 33,
+          "domains": [
+            "policy"
+          ]
+        },
+        {
+          "theme": "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+          "count": 30,
+          "domains": [
+            "conflict"
+          ]
+        },
+        {
+          "theme": "TAX_FNCACT_PRESIDENT",
+          "count": 24,
+          "domains": []
+        },
+        {
+          "theme": "KILL",
+          "count": 24,
+          "domains": []
+        },
+        {
+          "theme": "LEADER",
+          "count": 23,
+          "domains": []
+        },
+        {
+          "theme": "CRISISLEX_T11_UPDATESSYMPATHY",
+          "count": 23,
+          "domains": [
+            "conflict",
+            "disaster"
+          ]
+        },
+        {
+          "theme": "WB_696_PUBLIC_SECTOR_MANAGEMENT",
+          "count": 22,
+          "domains": []
+        },
+        {
+          "theme": "MANMADE_DISASTER_IMPLIED",
+          "count": 21,
+          "domains": [
+            "disaster"
+          ]
+        },
+        {
+          "theme": "TAX_FNCACT_CITIZEN",
+          "count": 20,
+          "domains": []
+        },
+        {
+          "theme": "TAX_FNCACT_FATHER",
+          "count": 19,
+          "domains": []
+        },
+        {
+          "theme": "WB_678_DIGITAL_GOVERNMENT",
+          "count": 18,
+          "domains": [
+            "policy",
+            "technology"
+          ]
+        },
+        {
+          "theme": "ARREST",
+          "count": 17,
+          "domains": []
+        }
+      ],
+      "top_domains": [
+        {
+          "domain": "policy",
+          "count": 88
+        },
+        {
+          "domain": "conflict",
+          "count": 58
+        },
+        {
+          "domain": "disaster",
+          "count": 53
+        },
+        {
+          "domain": "economy",
+          "count": 47
+        },
+        {
+          "domain": "technology",
+          "count": 23
+        },
+        {
+          "domain": "rights",
+          "count": 22
+        },
+        {
+          "domain": "public_safety",
+          "count": 21
+        },
+        {
+          "domain": "health",
+          "count": 8
+        },
+        {
+          "domain": "environment",
+          "count": 7
+        },
+        {
+          "domain": "migration",
+          "count": 5
+        },
+        {
+          "domain": "media_social",
+          "count": 2
+        }
+      ],
+      "metrics": {
+        "sample_rows": 126,
+        "weak_support_pct": 0.1667,
+        "weak_contradiction_pct": 0.6667,
+        "ambiguous_pct": 0.1667,
+        "theme_entropy": 0.8444
+      },
+      "bias": {
+        "by_source_lang": {
+          "en": {
+            "rows": 102,
+            "supported": 21,
+            "contradicted": 60,
+            "ambiguous": 21,
+            "support_rate": 0.2059,
+            "contradiction_rate": 0.5882,
+            "ambiguous_rate": 0.2059
+          },
+          "xx": {
+            "rows": 24,
+            "supported": 0,
+            "contradicted": 24,
+            "ambiguous": 0,
+            "support_rate": 0.0,
+            "contradiction_rate": 1.0,
+            "ambiguous_rate": 0.0
+          }
+        },
+        "by_source_family": {
+          "gdelt": {
+            "rows": 125,
+            "supported": 21,
+            "contradicted": 84,
+            "ambiguous": 20,
+            "support_rate": 0.168,
+            "contradiction_rate": 0.672,
+            "ambiguous_rate": 0.16
+          },
+          "independent": {
+            "rows": 1,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 1,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          }
+        },
+        "by_country_group": {
+          "global_north": {
+            "rows": 104,
+            "supported": 19,
+            "contradicted": 70,
+            "ambiguous": 15,
+            "support_rate": 0.1827,
+            "contradiction_rate": 0.6731,
+            "ambiguous_rate": 0.1442
+          },
+          "global_south_or_other": {
+            "rows": 22,
+            "supported": 2,
+            "contradicted": 14,
+            "ambiguous": 6,
+            "support_rate": 0.0909,
+            "contradiction_rate": 0.6364,
+            "ambiguous_rate": 0.2727
+          }
+        }
+      },
+      "examples": {
+        "supported": [
+          {
+            "signal_id": 6400971,
+            "headline": "Ex-national security adviser John Bolton will plead guilty in classified information case, source says",
+            "country_code": "US",
+            "source_name": "azfamily.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "UNGP_FORESTS_RIVERS_OCEANS",
+              "TAX_FNCACT_OFFICIALS",
+              "TAX_ETHNICITY_AMERICAN",
+              "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+              "TAX_FNCACT_AGENTS",
+              "EPU_CATS_NATIONAL_SECURITY",
+              "USPEC_POLITICS_GENERAL1",
+              "WB_2490_NATIONAL_PROTECTION_AND_SECURITY"
+            ],
+            "domains": [
+              "conflict",
+              "economy",
+              "policy",
+              "public_safety",
+              "rights"
+            ],
+            "status": "supported"
+          },
+          {
+            "signal_id": 6400105,
+            "headline": "Former Trump adviser John Bolton to plead guilty in classified information case: sources",
+            "country_code": "US",
+            "source_name": "weartv.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_DIRECTOR",
+              "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+              "TAX_FNCACT_AGENTS",
+              "EPU_POLICY_LAW",
+              "EPU_CATS_NATIONAL_SECURITY",
+              "EPU_POLICY_WHITE_HOUSE",
+              "USPEC_POLITICS_GENERAL1",
+              "WB_2490_NATIONAL_PROTECTION_AND_SECURITY"
+            ],
+            "domains": [
+              "conflict",
+              "economy",
+              "policy",
+              "public_safety"
+            ],
+            "status": "supported"
+          },
+          {
+            "signal_id": 6400878,
+            "headline": "Exclusive: John Bolton reaches plea deal over mishandling of sensitive national security information",
+            "country_code": "US",
+            "source_name": "abc57.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_DIRECTOR",
+              "UNGP_FORESTS_RIVERS_OCEANS",
+              "WB_2670_JOBS",
+              "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+              "EPU_CATS_NATIONAL_SECURITY",
+              "USPEC_POLITICS_GENERAL1",
+              "EPU_POLICY_WHITE_HOUSE",
+              "WB_2490_NATIONAL_PROTECTION_AND_SECURITY"
+            ],
+            "domains": [
+              "conflict",
+              "economy",
+              "policy",
+              "public_safety",
+              "rights"
+            ],
+            "status": "supported"
+          },
+          {
+            "signal_id": 6400631,
+            "headline": "John Bolton expected to plead guilty over mishandling classified documents: Sources",
+            "country_code": "US",
+            "source_name": "abc7news.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "WB_2470_PEACE_OPERATIONS_AND_CONFLICT_MANAGEMENT",
+              "TAX_FNCACT_PROSECUTORS",
+              "LEADER",
+              "WB_696_PUBLIC_SECTOR_MANAGEMENT",
+              "CRISISLEX_C07_SAFETY",
+              "EPU_POLICY_POLITICAL",
+              "TAX_FNCACT_PRESIDENT",
+              "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "economy",
+              "policy",
+              "public_safety"
+            ],
+            "status": "supported"
+          },
+          {
+            "signal_id": 6397413,
+            "headline": "Ex-national security adviser John Bolton to plead guilty in classified information case",
+            "country_code": "US",
+            "source_name": "newson6.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "UNGP_FORESTS_RIVERS_OCEANS",
+              "TAX_FNCACT_OFFICIALS",
+              "WB_2024_ANTI_CORRUPTION_AUTHORITIES",
+              "TAX_ETHNICITY_AMERICAN",
+              "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+              "TAX_FNCACT_AGENTS",
+              "EPU_CATS_NATIONAL_SECURITY",
+              "USPEC_POLITICS_GENERAL1"
+            ],
+            "domains": [
+              "conflict",
+              "economy",
+              "policy",
+              "public_safety",
+              "rights"
+            ],
+            "status": "supported"
+          }
+        ],
+        "contradicted": [
+          {
+            "signal_id": 6400225,
+            "headline": "John Bolton reportedly reaches plea deal in classified information case",
+            "country_code": "IQ",
+            "source_name": "bostonglobe.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_DIRECTOR",
+              "TAX_FNCACT_SUPPORTER",
+              "UNGP_FORESTS_RIVERS_OCEANS",
+              "TAX_FNCACT_OFFICIALS",
+              "WB_2024_ANTI_CORRUPTION_AUTHORITIES",
+              "TAX_ETHNICITY_AMERICAN",
+              "WB_678_DIGITAL_GOVERNMENT",
+              "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE"
+            ],
+            "domains": [
+              "conflict",
+              "economy",
+              "policy",
+              "rights",
+              "technology"
+            ],
+            "status": "contradicted"
+          },
+          {
+            "signal_id": 6400996,
+            "headline": "Ex-national security adviser John Bolton will plead guilty in classified information case: AP source",
+            "country_code": "US",
+            "source_name": "news-gazette.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_DIRECTOR",
+              "UNGP_FORESTS_RIVERS_OCEANS",
+              "TAX_FNCACT_SUPPORTER",
+              "TAX_FNCACT_OFFICIALS",
+              "WB_2024_ANTI_CORRUPTION_AUTHORITIES",
+              "TAX_ETHNICITY_AMERICAN",
+              "WB_678_DIGITAL_GOVERNMENT",
+              "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE"
+            ],
+            "domains": [
+              "conflict",
+              "economy",
+              "policy",
+              "rights",
+              "technology"
+            ],
+            "status": "contradicted"
+          },
+          {
+            "signal_id": 6396523,
+            "headline": "John Bolton will plead guilty in classified information case: source",
+            "country_code": "IR",
+            "source_name": "dailypress.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_SUPPORTER",
+              "UNGP_FORESTS_RIVERS_OCEANS",
+              "TAX_FNCACT_DIRECTOR",
+              "TAX_FNCACT_OFFICIALS",
+              "WB_2024_ANTI_CORRUPTION_AUTHORITIES",
+              "TAX_ETHNICITY_AMERICAN",
+              "WB_678_DIGITAL_GOVERNMENT",
+              "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE"
+            ],
+            "domains": [
+              "conflict",
+              "economy",
+              "policy",
+              "rights",
+              "technology"
+            ],
+            "status": "contradicted"
+          },
+          {
+            "signal_id": 6382515,
+            "headline": "Ex-national security adviser John Bolton will plead guilty in classified information case",
+            "country_code": "US",
+            "source_name": "news9.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "WB_2024_ANTI_CORRUPTION_AUTHORITIES",
+              "TAX_FNCACT_PRESIDENT",
+              "TAX_FNCACT_AGENTS",
+              "LEADER",
+              "WB_696_PUBLIC_SECTOR_MANAGEMENT",
+              "WB_831_GOVERNANCE",
+              "WB_1014_CRIMINAL_JUSTICE",
+              "TRIAL"
+            ],
+            "domains": [
+              "conflict",
+              "policy"
+            ],
+            "status": "contradicted"
+          },
+          {
+            "signal_id": 6383157,
+            "headline": "Exclusive: John Bolton reaches plea deal over mishandling of sensitive national security documents",
+            "country_code": "US",
+            "source_name": "cnn.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "WB_2024_ANTI_CORRUPTION_AUTHORITIES",
+              "TAX_FNCACT_PROSECUTORS",
+              "TAX_FNCACT_PRESIDENT",
+              "CYBER_ATTACK",
+              "LEADER",
+              "WB_724_HUMAN_RESOURCES_FOR_PUBLIC_SECTOR",
+              "TAX_FNCACT_DIRECTOR",
+              "WB_696_PUBLIC_SECTOR_MANAGEMENT"
+            ],
+            "domains": [
+              "conflict",
+              "policy",
+              "technology"
+            ],
+            "status": "contradicted"
+          }
+        ],
+        "ambiguous": [
+          {
+            "signal_id": 6403419,
+            "headline": "Trump foe John Bolton to plead guilty in classified information case",
+            "country_code": "US",
+            "source_name": "scmp.com",
+            "source_lang": "en",
+            "source_family": "independent",
+            "themes": [],
+            "domains": [],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6220172,
+            "headline": "Best new books: Hayden Panettiere memoir, Stan Grant and Jane Austen | Glen Innes Examiner",
+            "country_code": "TR",
+            "source_name": "gleninnesexaminer.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_CITIZEN",
+              "TAX_FNCACT_FATHER"
+            ],
+            "domains": [],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6221240,
+            "headline": "Best new books: Hayden Panettiere memoir, Stan Grant and Jane Austen | Great Lakes Advocate",
+            "country_code": "AU",
+            "source_name": "greatlakesadvocate.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_CITIZEN",
+              "TAX_FNCACT_FATHER"
+            ],
+            "domains": [],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6220923,
+            "headline": "Best new books: Hayden Panettiere memoir, Stan Grant and Jane Austen | Western Advocate",
+            "country_code": "AU",
+            "source_name": "westernadvocate.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_CITIZEN",
+              "TAX_FNCACT_FATHER"
+            ],
+            "domains": [],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6220636,
+            "headline": "Best new books: Hayden Panettiere memoir, Stan Grant and Jane Austen | The Scone Advocate",
+            "country_code": "AU",
+            "source_name": "sconeadvocate.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_CITIZEN",
+              "TAX_FNCACT_FATHER"
+            ],
+            "domains": [],
+            "status": "ambiguous"
+          }
+        ]
+      },
+      "recommendation": "split_thread"
+    },
+    {
+      "thread_id": "dynamic-topic-1",
+      "label": "Orchard Portfolio Sale",
+      "signal_count": 208,
+      "country_count": 14,
+      "source_count": 0,
+      "noise_rate": 0.0342,
+      "expected_domains": [],
+      "top_gdelt_themes": [
+        {
+          "theme": "WB_2670_JOBS",
+          "count": 32,
+          "domains": []
+        },
+        {
+          "theme": "TAX_ECON_PRICE",
+          "count": 32,
+          "domains": []
+        },
+        {
+          "theme": "TAX_FNCACT_DIRECTOR",
+          "count": 31,
+          "domains": []
+        },
+        {
+          "theme": "TAX_FNCACT_AMBASSADOR",
+          "count": 20,
+          "domains": []
+        },
+        {
+          "theme": "WB_507_ENERGY_AND_EXTRACTIVES",
+          "count": 20,
+          "domains": []
+        },
+        {
+          "theme": "TAX_FNCACT_COLUMNIST",
+          "count": 20,
+          "domains": []
+        },
+        {
+          "theme": "WB_1331_HEALTH_TECHNOLOGIES",
+          "count": 20,
+          "domains": [
+            "health"
+          ]
+        },
+        {
+          "theme": "DELAY",
+          "count": 20,
+          "domains": []
+        },
+        {
+          "theme": "CRISISLEX_C07_SAFETY",
+          "count": 20,
+          "domains": [
+            "conflict",
+            "disaster"
+          ]
+        },
+        {
+          "theme": "DEMOCRACY",
+          "count": 20,
+          "domains": []
+        },
+        {
+          "theme": "TAX_FNCACT_MINISTER",
+          "count": 20,
+          "domains": []
+        },
+        {
+          "theme": "UNGP_FORESTS_RIVERS_OCEANS",
+          "count": 20,
+          "domains": [
+            "policy",
+            "rights"
+          ]
+        }
+      ],
+      "top_domains": [
+        {
+          "domain": "policy",
+          "count": 51
+        },
+        {
+          "domain": "economy",
+          "count": 48
+        },
+        {
+          "domain": "health",
+          "count": 41
+        },
+        {
+          "domain": "conflict",
+          "count": 41
+        },
+        {
+          "domain": "disaster",
+          "count": 33
+        },
+        {
+          "domain": "rights",
+          "count": 20
+        },
+        {
+          "domain": "environment",
+          "count": 19
+        },
+        {
+          "domain": "public_safety",
+          "count": 9
+        }
+      ],
+      "metrics": {
+        "sample_rows": 71,
+        "weak_support_pct": 0.0,
+        "weak_contradiction_pct": 0.0,
+        "ambiguous_pct": 1.0,
+        "theme_entropy": 0.949
+      },
+      "bias": {
+        "by_source_lang": {
+          "en": {
+            "rows": 71,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 71,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          }
+        },
+        "by_source_family": {
+          "gdelt": {
+            "rows": 71,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 71,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          }
+        },
+        "by_country_group": {
+          "global_north": {
+            "rows": 71,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 71,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          }
+        }
+      },
+      "examples": {
+        "supported": [],
+        "contradicted": [],
+        "ambiguous": [
+          {
+            "signal_id": 6220226,
+            "headline": "Pauline Hanson: One Nation leader's choices and strategy explored | Moree Champion",
+            "country_code": "AU",
+            "source_name": "moreechampion.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_AMBASSADOR",
+              "WB_507_ENERGY_AND_EXTRACTIVES",
+              "TAX_FNCACT_COLUMNIST",
+              "WB_1331_HEALTH_TECHNOLOGIES",
+              "DELAY",
+              "TAX_FNCACT_DIRECTOR",
+              "CRISISLEX_C07_SAFETY",
+              "DEMOCRACY"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "health"
+            ],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6221125,
+            "headline": "Pauline Hanson: One Nation leader's choices and strategy explored | Great Lakes Advocate",
+            "country_code": "AU",
+            "source_name": "greatlakesadvocate.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_AMBASSADOR",
+              "WB_507_ENERGY_AND_EXTRACTIVES",
+              "TAX_FNCACT_COLUMNIST",
+              "DELAY",
+              "WB_1331_HEALTH_TECHNOLOGIES",
+              "TAX_FNCACT_DIRECTOR",
+              "CRISISLEX_C07_SAFETY",
+              "DEMOCRACY"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "health"
+            ],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6221026,
+            "headline": "Pauline Hanson: One Nation leader's choices and strategy explored | Western Advocate",
+            "country_code": "AU",
+            "source_name": "westernadvocate.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_AMBASSADOR",
+              "WB_507_ENERGY_AND_EXTRACTIVES",
+              "TAX_FNCACT_COLUMNIST",
+              "DELAY",
+              "WB_1331_HEALTH_TECHNOLOGIES",
+              "TAX_FNCACT_DIRECTOR",
+              "CRISISLEX_C07_SAFETY",
+              "DEMOCRACY"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "health"
+            ],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6220888,
+            "headline": "Pauline Hanson: One Nation leader's choices and strategy explored | Glen Innes Examiner",
+            "country_code": "AU",
+            "source_name": "gleninnesexaminer.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_AMBASSADOR",
+              "WB_507_ENERGY_AND_EXTRACTIVES",
+              "TAX_FNCACT_COLUMNIST",
+              "DELAY",
+              "WB_1331_HEALTH_TECHNOLOGIES",
+              "TAX_FNCACT_DIRECTOR",
+              "CRISISLEX_C07_SAFETY",
+              "DEMOCRACY"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "health"
+            ],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6220591,
+            "headline": "Pauline Hanson: One Nation leader's choices and strategy explored | The Canberra Times",
+            "country_code": "AU",
+            "source_name": "canberratimes.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_AMBASSADOR",
+              "WB_507_ENERGY_AND_EXTRACTIVES",
+              "TAX_FNCACT_COLUMNIST",
+              "DELAY",
+              "WB_1331_HEALTH_TECHNOLOGIES",
+              "TAX_FNCACT_DIRECTOR",
+              "CRISISLEX_C07_SAFETY",
+              "DEMOCRACY"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "health"
+            ],
+            "status": "ambiguous"
+          }
+        ]
+      },
+      "recommendation": "label_review"
+    },
+    {
+      "thread_id": "dynamic-topic-13",
+      "label": "PSG Victory Riots",
+      "signal_count": 191,
+      "country_count": 18,
+      "source_count": 0,
+      "noise_rate": 0.0,
+      "expected_domains": [],
+      "top_gdelt_themes": [
+        {
+          "theme": "KILL",
+          "count": 47,
+          "domains": []
+        },
+        {
+          "theme": "TAX_FNCACT_EXECUTIVE",
+          "count": 38,
+          "domains": []
+        },
+        {
+          "theme": "WB_133_INFORMATION_AND_COMMUNICATION_TECHNOLOGIES",
+          "count": 34,
+          "domains": []
+        },
+        {
+          "theme": "TAX_FNCACT_PRESIDENT",
+          "count": 34,
+          "domains": []
+        },
+        {
+          "theme": "WB_694_BROADCAST_AND_MEDIA",
+          "count": 29,
+          "domains": []
+        },
+        {
+          "theme": "MANMADE_DISASTER_IMPLIED",
+          "count": 28,
+          "domains": [
+            "disaster"
+          ]
+        },
+        {
+          "theme": "CRISISLEX_T11_UPDATESSYMPATHY",
+          "count": 27,
+          "domains": [
+            "conflict",
+            "disaster"
+          ]
+        },
+        {
+          "theme": "WB_2670_JOBS",
+          "count": 25,
+          "domains": []
+        },
+        {
+          "theme": "AFFECT",
+          "count": 21,
+          "domains": []
+        },
+        {
+          "theme": "CRISISLEX_T01_CAUTION_ADVICE",
+          "count": 17,
+          "domains": [
+            "conflict",
+            "disaster"
+          ]
+        },
+        {
+          "theme": "EPU_POLICY_POLITICAL",
+          "count": 16,
+          "domains": [
+            "economy",
+            "policy"
+          ]
+        },
+        {
+          "theme": "SECURITY_SERVICES",
+          "count": 16,
+          "domains": [
+            "public_safety"
+          ]
+        }
+      ],
+      "top_domains": [
+        {
+          "domain": "policy",
+          "count": 56
+        },
+        {
+          "domain": "disaster",
+          "count": 51
+        },
+        {
+          "domain": "conflict",
+          "count": 47
+        },
+        {
+          "domain": "economy",
+          "count": 43
+        },
+        {
+          "domain": "public_safety",
+          "count": 33
+        },
+        {
+          "domain": "health",
+          "count": 19
+        },
+        {
+          "domain": "technology",
+          "count": 17
+        },
+        {
+          "domain": "rights",
+          "count": 11
+        },
+        {
+          "domain": "environment",
+          "count": 3
+        },
+        {
+          "domain": "media_social",
+          "count": 3
+        },
+        {
+          "domain": "migration",
+          "count": 1
+        }
+      ],
+      "metrics": {
+        "sample_rows": 86,
+        "weak_support_pct": 0.0,
+        "weak_contradiction_pct": 0.0,
+        "ambiguous_pct": 1.0,
+        "theme_entropy": 0.8564
+      },
+      "bias": {
+        "by_source_lang": {
+          "en": {
+            "rows": 86,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 86,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          }
+        },
+        "by_source_family": {
+          "gdelt": {
+            "rows": 84,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 84,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          },
+          "independent": {
+            "rows": 1,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 1,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          },
+          "wire": {
+            "rows": 1,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 1,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          }
+        },
+        "by_country_group": {
+          "global_north": {
+            "rows": 44,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 44,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          },
+          "global_south_or_other": {
+            "rows": 42,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 42,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          }
+        }
+      },
+      "examples": {
+        "supported": [],
+        "contradicted": [],
+        "ambiguous": [
+          {
+            "signal_id": 6221045,
+            "headline": "60 Minutes Staff Should Not Follow Scott Pelley Out the Door",
+            "country_code": "US",
+            "source_name": "mediaite.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "WB_133_INFORMATION_AND_COMMUNICATION_TECHNOLOGIES",
+              "TAX_FNCACT_PRESIDENT",
+              "TAX_WORLDMAMMALS_FOX",
+              "TAX_ETHNICITY_AMERICAN",
+              "TAX_ETHNICITY_AMERICANS",
+              "TAX_FNCACT_BOSSES",
+              "TAX_FNCACT_GUARD",
+              "WB_2670_JOBS"
+            ],
+            "domains": [],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6220602,
+            "headline": "Scott Pelley Fired as CBS and 60 Minutes Feud Escalates",
+            "country_code": "US",
+            "source_name": "lamag.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "WB_133_INFORMATION_AND_COMMUNICATION_TECHNOLOGIES",
+              "WB_678_DIGITAL_GOVERNMENT",
+              "TAX_FNCACT_CHIEF",
+              "MEDIA_MSM",
+              "EPU_POLICY_POLITICAL",
+              "TAX_FNCACT_EXECUTIVE",
+              "UNGP_POLITICAL_FREEDOMS",
+              "TAX_FNCACT_EDITORS"
+            ],
+            "domains": [
+              "economy",
+              "policy",
+              "rights",
+              "technology"
+            ],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6220407,
+            "headline": "Scott Pelley fired from '60 Minutes,' deepening turmoil at CBS News | Chattanooga Times Free Press",
+            "country_code": "US",
+            "source_name": "timesfreepress.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "WB_133_INFORMATION_AND_COMMUNICATION_TECHNOLOGIES",
+              "TAX_FNCACT_PRESIDENT",
+              "DELAY",
+              "UNGP_CRIME_VIOLENCE",
+              "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+              "WB_2670_JOBS",
+              "TAX_FNCACT_EXECUTIVE",
+              "EPU_POLICY_POLITICAL"
+            ],
+            "domains": [
+              "conflict",
+              "economy",
+              "policy",
+              "public_safety",
+              "rights"
+            ],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6220330,
+            "headline": "Firings at CBS' '60 Minutes' reflect the fight for media control in the age of Trump",
+            "country_code": "US",
+            "source_name": "northcountrypublicradio.org",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "GENERAL_HEALTH",
+              "WB_133_INFORMATION_AND_COMMUNICATION_TECHNOLOGIES",
+              "TAX_FNCACT_PRESIDENT",
+              "RESIGNATION",
+              "EXTREMISM",
+              "WB_1331_HEALTH_TECHNOLOGIES",
+              "EPU_CATS_REGULATION",
+              "TAX_FNCACT_CHAIRMAN"
+            ],
+            "domains": [
+              "economy",
+              "health",
+              "policy"
+            ],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6217762,
+            "headline": "60 Minutes: Scott Pelley Accuses Weiss of Misleading CBS News Staff",
+            "country_code": "US",
+            "source_name": "bleedingcool.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "WB_133_INFORMATION_AND_COMMUNICATION_TECHNOLOGIES",
+              "TAX_FNCACT_PRESIDENT",
+              "CRISISLEX_T11_UPDATESSYMPATHY",
+              "DELAY",
+              "TAX_ETHNICITY_AMERICAN",
+              "IDEOLOGY",
+              "WB_2670_JOBS",
+              "TAX_FNCACT_EXECUTIVE"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "economy",
+              "policy"
+            ],
+            "status": "ambiguous"
+          }
+        ]
+      },
+      "recommendation": "label_review"
+    },
+    {
+      "thread_id": "dynamic-topic-6",
+      "label": "Trump Headlines Freedom 250",
+      "signal_count": 186,
+      "country_count": 14,
+      "source_count": 0,
+      "noise_rate": 0.006,
+      "expected_domains": [
+        "rights"
+      ],
+      "top_gdelt_themes": [
+        {
+          "theme": "TAX_FNCACT_MINISTER",
+          "count": 36,
+          "domains": []
+        },
+        {
+          "theme": "DRONES",
+          "count": 36,
+          "domains": []
+        },
+        {
+          "theme": "CRISISLEX_C07_SAFETY",
+          "count": 30,
+          "domains": [
+            "conflict",
+            "disaster"
+          ]
+        },
+        {
+          "theme": "TAX_RELIGION_ISLAMIC",
+          "count": 26,
+          "domains": []
+        },
+        {
+          "theme": "ECON_TAXATION",
+          "count": 26,
+          "domains": [
+            "economy"
+          ]
+        },
+        {
+          "theme": "DEMOCRACY",
+          "count": 26,
+          "domains": []
+        },
+        {
+          "theme": "WB_507_ENERGY_AND_EXTRACTIVES",
+          "count": 25,
+          "domains": []
+        },
+        {
+          "theme": "WB_658_ENTERPRISE_APPLICATIONS",
+          "count": 25,
+          "domains": []
+        },
+        {
+          "theme": "WB_2670_JOBS",
+          "count": 25,
+          "domains": []
+        },
+        {
+          "theme": "MANMADE_DISASTER_IMPLIED",
+          "count": 25,
+          "domains": [
+            "disaster"
+          ]
+        },
+        {
+          "theme": "WB_2931_IRON",
+          "count": 24,
+          "domains": []
+        },
+        {
+          "theme": "SURVEILLANCE",
+          "count": 24,
+          "domains": []
+        }
+      ],
+      "top_domains": [
+        {
+          "domain": "conflict",
+          "count": 74
+        },
+        {
+          "domain": "disaster",
+          "count": 72
+        },
+        {
+          "domain": "economy",
+          "count": 46
+        },
+        {
+          "domain": "policy",
+          "count": 41
+        },
+        {
+          "domain": "health",
+          "count": 11
+        },
+        {
+          "domain": "media_social",
+          "count": 11
+        },
+        {
+          "domain": "public_safety",
+          "count": 10
+        },
+        {
+          "domain": "environment",
+          "count": 10
+        },
+        {
+          "domain": "technology",
+          "count": 6
+        },
+        {
+          "domain": "migration",
+          "count": 5
+        },
+        {
+          "domain": "rights",
+          "count": 4
+        }
+      ],
+      "metrics": {
+        "sample_rows": 88,
+        "weak_support_pct": 0.0455,
+        "weak_contradiction_pct": 0.9432,
+        "ambiguous_pct": 0.0114,
+        "theme_entropy": 0.8144
+      },
+      "bias": {
+        "by_source_lang": {
+          "en": {
+            "rows": 85,
+            "supported": 4,
+            "contradicted": 80,
+            "ambiguous": 1,
+            "support_rate": 0.0471,
+            "contradiction_rate": 0.9412,
+            "ambiguous_rate": 0.0118
+          },
+          "xx": {
+            "rows": 3,
+            "supported": 0,
+            "contradicted": 3,
+            "ambiguous": 0,
+            "support_rate": 0.0,
+            "contradiction_rate": 1.0,
+            "ambiguous_rate": 0.0
+          }
+        },
+        "by_source_family": {
+          "gdelt": {
+            "rows": 87,
+            "supported": 4,
+            "contradicted": 83,
+            "ambiguous": 0,
+            "support_rate": 0.046,
+            "contradiction_rate": 0.954,
+            "ambiguous_rate": 0.0
+          },
+          "independent": {
+            "rows": 1,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 1,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          }
+        },
+        "by_country_group": {
+          "global_north": {
+            "rows": 21,
+            "supported": 0,
+            "contradicted": 21,
+            "ambiguous": 0,
+            "support_rate": 0.0,
+            "contradiction_rate": 1.0,
+            "ambiguous_rate": 0.0
+          },
+          "global_south_or_other": {
+            "rows": 67,
+            "supported": 4,
+            "contradicted": 62,
+            "ambiguous": 1,
+            "support_rate": 0.0597,
+            "contradiction_rate": 0.9254,
+            "ambiguous_rate": 0.0149
+          }
+        }
+      },
+      "examples": {
+        "supported": [
+          {
+            "signal_id": 6186827,
+            "headline": "The Latest: Trump called Netanyahu 'crazy' and says Israel is complicating peace talks with Iran",
+            "country_code": "IL",
+            "source_name": "breitbart.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "SOC_POINTSOFINTEREST_SCHOOL",
+              "TAX_FNCACT_AMBASSADOR",
+              "MARITIME",
+              "DELAY",
+              "ECON_TAXATION",
+              "TAX_FNCACT_NOMINEE",
+              "EPU_POLICY_POLICY",
+              "WB_1669_FORCED_LABOR"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "economy",
+              "policy",
+              "rights"
+            ],
+            "status": "supported"
+          },
+          {
+            "signal_id": 6175465,
+            "headline": "'Fucking Crazy': Trump Reportedly Lashes Out at Netanyahu in Expletive-laden Call",
+            "country_code": "IL",
+            "source_name": "haaretz.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "WB_2470_PEACE_OPERATIONS_AND_CONFLICT_MANAGEMENT",
+              "UNGP_FORESTS_RIVERS_OCEANS",
+              "WB_2471_PEACEKEEPING",
+              "TAX_TERROR_GROUP_HEZBOLLAH",
+              "TAX_POLITICAL_PARTY_HEZBOLLAH",
+              "CEASEFIRE",
+              "WB_2473_DIPLOMACY_AND_NEGOTIATIONS",
+              "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE"
+            ],
+            "domains": [
+              "conflict",
+              "policy",
+              "rights"
+            ],
+            "status": "supported"
+          },
+          {
+            "signal_id": 6060653,
+            "headline": "Iran claims attack on US bases in West Asia: Kuwait, Bahrain air defences activated",
+            "country_code": "IR",
+            "source_name": "businesstoday.in",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "MARITIME",
+              "TAX_FNCACT_SPOKESPERSON",
+              "DRONES",
+              "TAX_FNCACT_COLONEL",
+              "WB_694_BROADCAST_AND_MEDIA",
+              "MANMADE_DISASTER_IMPLIED",
+              "TAX_WORLDLANGUAGES_PERSIAN",
+              "CRISISLEX_T01_CAUTION_ADVICE"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "policy",
+              "rights"
+            ],
+            "status": "supported"
+          },
+          {
+            "signal_id": 6056797,
+            "headline": "Iran fires missiles on Kuwait, Bahrain and US strikes back after reports of faltering peace talks",
+            "country_code": "IR",
+            "source_name": "thefrontierpost.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "MARITIME_PIRACY",
+              "PROTEST",
+              "DRONES",
+              "ENV_NATURALGAS",
+              "MANMADE_DISASTER_IMPLIED",
+              "CRISISLEX_T01_CAUTION_ADVICE",
+              "WB_843_DISPUTE_RESOLUTION",
+              "DEMOCRACY"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "environment",
+              "policy",
+              "rights",
+              "technology"
+            ],
+            "status": "supported"
+          }
+        ],
+        "contradicted": [
+          {
+            "signal_id": 6220743,
+            "headline": "Mahsa Amini: Defiance grows despite Iran's brutal crackdown | Glen Innes Examiner",
+            "country_code": "IR",
+            "source_name": "gleninnesexaminer.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_RELIGION_ISLAMIC",
+              "WB_507_ENERGY_AND_EXTRACTIVES",
+              "WB_2931_IRON",
+              "ECON_TAXATION",
+              "SURVEILLANCE",
+              "CRISISLEX_C07_SAFETY",
+              "WB_658_ENTERPRISE_APPLICATIONS",
+              "DEMOCRACY"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "economy"
+            ],
+            "status": "contradicted"
+          },
+          {
+            "signal_id": 6221277,
+            "headline": "Mahsa Amini: Defiance grows despite Iran's brutal crackdown | Moree Champion",
+            "country_code": "AU",
+            "source_name": "moreechampion.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_RELIGION_ISLAMIC",
+              "WB_507_ENERGY_AND_EXTRACTIVES",
+              "WB_2931_IRON",
+              "ECON_TAXATION",
+              "SURVEILLANCE",
+              "CRISISLEX_C07_SAFETY",
+              "WB_658_ENTERPRISE_APPLICATIONS",
+              "DEMOCRACY"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "economy"
+            ],
+            "status": "contradicted"
+          },
+          {
+            "signal_id": 6221103,
+            "headline": "Mahsa Amini: Defiance grows despite Iran's brutal crackdown | The Canberra Times",
+            "country_code": "IR",
+            "source_name": "canberratimes.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_RELIGION_ISLAMIC",
+              "WB_507_ENERGY_AND_EXTRACTIVES",
+              "WB_2931_IRON",
+              "ECON_TAXATION",
+              "SURVEILLANCE",
+              "CRISISLEX_C07_SAFETY",
+              "WB_658_ENTERPRISE_APPLICATIONS",
+              "DEMOCRACY"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "economy"
+            ],
+            "status": "contradicted"
+          },
+          {
+            "signal_id": 6220726,
+            "headline": "Mahsa Amini: Defiance grows despite Iran's brutal crackdown | Great Lakes Advocate",
+            "country_code": "AU",
+            "source_name": "greatlakesadvocate.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_RELIGION_ISLAMIC",
+              "WB_507_ENERGY_AND_EXTRACTIVES",
+              "WB_2931_IRON",
+              "ECON_TAXATION",
+              "SURVEILLANCE",
+              "CRISISLEX_C07_SAFETY",
+              "WB_658_ENTERPRISE_APPLICATIONS",
+              "DEMOCRACY"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "economy"
+            ],
+            "status": "contradicted"
+          },
+          {
+            "signal_id": 6220697,
+            "headline": "Mahsa Amini: Defiance grows despite Iran's brutal crackdown | The Scone Advocate",
+            "country_code": "IR",
+            "source_name": "sconeadvocate.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_RELIGION_ISLAMIC",
+              "WB_507_ENERGY_AND_EXTRACTIVES",
+              "WB_2931_IRON",
+              "ECON_TAXATION",
+              "SURVEILLANCE",
+              "CRISISLEX_C07_SAFETY",
+              "WB_658_ENTERPRISE_APPLICATIONS",
+              "DEMOCRACY"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "economy"
+            ],
+            "status": "contradicted"
+          }
+        ],
+        "ambiguous": [
+          {
+            "signal_id": 6115388,
+            "headline": "One killed in Iranian attack on Kuwait",
+            "country_code": "IR",
+            "source_name": "middleeasteye.net",
+            "source_lang": "en",
+            "source_family": "independent",
+            "themes": [],
+            "domains": [],
+            "status": "ambiguous"
+          }
+        ]
+      },
+      "recommendation": "split_thread"
+    },
+    {
+      "thread_id": "dynamic-topic-9",
+      "label": "Meteor Sonic Boom",
+      "signal_count": 140,
+      "country_count": 11,
+      "source_count": 0,
+      "noise_rate": 0.0119,
+      "expected_domains": [],
+      "top_gdelt_themes": [
+        {
+          "theme": "MANMADE_DISASTER_IMPLIED",
+          "count": 21,
+          "domains": [
+            "disaster"
+          ]
+        },
+        {
+          "theme": "GENERAL_HEALTH",
+          "count": 19,
+          "domains": [
+            "health"
+          ]
+        },
+        {
+          "theme": "TAX_FNCACT_GARDENERS",
+          "count": 19,
+          "domains": []
+        },
+        {
+          "theme": "TAX_FNCACT_PHOTOGRAPHER",
+          "count": 19,
+          "domains": []
+        },
+        {
+          "theme": "WB_174_CROP_PRODUCTION",
+          "count": 19,
+          "domains": []
+        },
+        {
+          "theme": "EPU_CATS_HEALTHCARE",
+          "count": 19,
+          "domains": [
+            "economy",
+            "policy"
+          ]
+        },
+        {
+          "theme": "WB_133_INFORMATION_AND_COMMUNICATION_TECHNOLOGIES",
+          "count": 19,
+          "domains": []
+        },
+        {
+          "theme": "WB_1949_CLIMATE_SMART_AGRICULTURE",
+          "count": 19,
+          "domains": [
+            "environment"
+          ]
+        },
+        {
+          "theme": "RETIREMENT",
+          "count": 19,
+          "domains": []
+        },
+        {
+          "theme": "CRISISLEX_T01_CAUTION_ADVICE",
+          "count": 19,
+          "domains": [
+            "conflict",
+            "disaster"
+          ]
+        },
+        {
+          "theme": "ALLIANCE",
+          "count": 17,
+          "domains": []
+        },
+        {
+          "theme": "WB_723_PUBLIC_ADMINISTRATION",
+          "count": 17,
+          "domains": []
+        }
+      ],
+      "top_domains": [
+        {
+          "domain": "policy",
+          "count": 46
+        },
+        {
+          "domain": "economy",
+          "count": 46
+        },
+        {
+          "domain": "disaster",
+          "count": 28
+        },
+        {
+          "domain": "conflict",
+          "count": 27
+        },
+        {
+          "domain": "environment",
+          "count": 20
+        },
+        {
+          "domain": "health",
+          "count": 19
+        },
+        {
+          "domain": "rights",
+          "count": 17
+        },
+        {
+          "domain": "technology",
+          "count": 17
+        },
+        {
+          "domain": "media_social",
+          "count": 4
+        },
+        {
+          "domain": "public_safety",
+          "count": 3
+        },
+        {
+          "domain": "migration",
+          "count": 1
+        }
+      ],
+      "metrics": {
+        "sample_rows": 74,
+        "weak_support_pct": 0.0,
+        "weak_contradiction_pct": 0.0,
+        "ambiguous_pct": 1.0,
+        "theme_entropy": 0.8822
+      },
+      "bias": {
+        "by_source_lang": {
+          "en": {
+            "rows": 68,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 68,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          },
+          "xx": {
+            "rows": 6,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 6,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          }
+        },
+        "by_source_family": {
+          "gdelt": {
+            "rows": 73,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 73,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          },
+          "wire": {
+            "rows": 1,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 1,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          }
+        },
+        "by_country_group": {
+          "global_north": {
+            "rows": 61,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 61,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          },
+          "global_south_or_other": {
+            "rows": 13,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 13,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          }
+        }
+      },
+      "examples": {
+        "supported": [],
+        "contradicted": [],
+        "ambiguous": [
+          {
+            "signal_id": 6221179,
+            "headline": "Ageing in Australia | Valerie Brown, 95 explains Support at Home program's value | Moree Champion",
+            "country_code": "DE",
+            "source_name": "moreechampion.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "GENERAL_HEALTH",
+              "TAX_FNCACT_GARDENERS",
+              "TAX_FNCACT_PHOTOGRAPHER",
+              "WB_174_CROP_PRODUCTION",
+              "EPU_CATS_HEALTHCARE",
+              "WB_133_INFORMATION_AND_COMMUNICATION_TECHNOLOGIES",
+              "WB_1949_CLIMATE_SMART_AGRICULTURE",
+              "RETIREMENT"
+            ],
+            "domains": [
+              "economy",
+              "environment",
+              "health",
+              "policy"
+            ],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6220504,
+            "headline": "Ageing in Australia | Valerie Brown, 95 explains Support at Home program's value | Glen Innes Examiner",
+            "country_code": "DE",
+            "source_name": "gleninnesexaminer.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "GENERAL_HEALTH",
+              "TAX_FNCACT_GARDENERS",
+              "TAX_FNCACT_PHOTOGRAPHER",
+              "WB_174_CROP_PRODUCTION",
+              "EPU_CATS_HEALTHCARE",
+              "WB_133_INFORMATION_AND_COMMUNICATION_TECHNOLOGIES",
+              "WB_1949_CLIMATE_SMART_AGRICULTURE",
+              "RETIREMENT"
+            ],
+            "domains": [
+              "economy",
+              "environment",
+              "health",
+              "policy"
+            ],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6220394,
+            "headline": "Ageing in Australia | Valerie Brown, 95 explains Support at Home program's value | Great Lakes Advocate",
+            "country_code": "DE",
+            "source_name": "greatlakesadvocate.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "GENERAL_HEALTH",
+              "TAX_FNCACT_GARDENERS",
+              "TAX_FNCACT_PHOTOGRAPHER",
+              "WB_174_CROP_PRODUCTION",
+              "EPU_CATS_HEALTHCARE",
+              "WB_133_INFORMATION_AND_COMMUNICATION_TECHNOLOGIES",
+              "WB_1949_CLIMATE_SMART_AGRICULTURE",
+              "RETIREMENT"
+            ],
+            "domains": [
+              "economy",
+              "environment",
+              "health",
+              "policy"
+            ],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6220135,
+            "headline": "Ageing in Australia | Valerie Brown, 95 explains Support at Home program's value | The Scone Advocate",
+            "country_code": "AU",
+            "source_name": "sconeadvocate.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "GENERAL_HEALTH",
+              "TAX_FNCACT_GARDENERS",
+              "TAX_FNCACT_PHOTOGRAPHER",
+              "WB_174_CROP_PRODUCTION",
+              "WB_133_INFORMATION_AND_COMMUNICATION_TECHNOLOGIES",
+              "EPU_CATS_HEALTHCARE",
+              "WB_1949_CLIMATE_SMART_AGRICULTURE",
+              "RETIREMENT"
+            ],
+            "domains": [
+              "economy",
+              "environment",
+              "health",
+              "policy"
+            ],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6221260,
+            "headline": "Ageing in Australia | Valerie Brown, 95 explains Support at Home program's value | The Canberra Times",
+            "country_code": "GB",
+            "source_name": "canberratimes.com.au",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_FNCACT_GARDENERS",
+              "GENERAL_HEALTH",
+              "TAX_FNCACT_PHOTOGRAPHER",
+              "WB_174_CROP_PRODUCTION",
+              "WB_133_INFORMATION_AND_COMMUNICATION_TECHNOLOGIES",
+              "EPU_CATS_HEALTHCARE",
+              "RETIREMENT",
+              "WB_1949_CLIMATE_SMART_AGRICULTURE"
+            ],
+            "domains": [
+              "economy",
+              "environment",
+              "health",
+              "policy"
+            ],
+            "status": "ambiguous"
+          }
+        ]
+      },
+      "recommendation": "label_review"
+    },
+    {
+      "thread_id": "dynamic-topic-21",
+      "label": "Vancouver Real Estate Listings",
+      "signal_count": 51,
+      "country_count": 5,
+      "source_count": 0,
+      "noise_rate": 0.1117,
+      "expected_domains": [],
+      "top_gdelt_themes": [
+        {
+          "theme": "EDUCATION",
+          "count": 8,
+          "domains": []
+        },
+        {
+          "theme": "WB_135_TRANSPORT",
+          "count": 7,
+          "domains": []
+        },
+        {
+          "theme": "WB_793_TRANSPORT_AND_LOGISTICS_SERVICES",
+          "count": 5,
+          "domains": []
+        },
+        {
+          "theme": "WB_1174_WAREHOUSING_AND_STORAGE",
+          "count": 5,
+          "domains": []
+        },
+        {
+          "theme": "WB_1986_MOUNTAINS",
+          "count": 4,
+          "domains": []
+        },
+        {
+          "theme": "WB_1979_NATURAL_RESOURCE_MANAGEMENT",
+          "count": 4,
+          "domains": []
+        },
+        {
+          "theme": "WB_435_AGRICULTURE_AND_FOOD_SECURITY",
+          "count": 4,
+          "domains": [
+            "economy",
+            "public_safety"
+          ]
+        },
+        {
+          "theme": "SOC_POINTSOFINTEREST_SCHOOLS",
+          "count": 4,
+          "domains": []
+        },
+        {
+          "theme": "SOC_POINTSOFINTEREST_SCHOOL",
+          "count": 4,
+          "domains": []
+        },
+        {
+          "theme": "WB_1803_TRANSPORT_INFRASTRUCTURE",
+          "count": 3,
+          "domains": []
+        },
+        {
+          "theme": "URBAN",
+          "count": 3,
+          "domains": []
+        },
+        {
+          "theme": "WB_137_WATER",
+          "count": 2,
+          "domains": [
+            "environment"
+          ]
+        }
+      ],
+      "top_domains": [
+        {
+          "domain": "economy",
+          "count": 6
+        },
+        {
+          "domain": "environment",
+          "count": 4
+        },
+        {
+          "domain": "public_safety",
+          "count": 4
+        },
+        {
+          "domain": "conflict",
+          "count": 2
+        },
+        {
+          "domain": "disaster",
+          "count": 2
+        },
+        {
+          "domain": "health",
+          "count": 2
+        },
+        {
+          "domain": "policy",
+          "count": 2
+        },
+        {
+          "domain": "migration",
+          "count": 1
+        },
+        {
+          "domain": "rights",
+          "count": 1
+        }
+      ],
+      "metrics": {
+        "sample_rows": 22,
+        "weak_support_pct": 0.0,
+        "weak_contradiction_pct": 0.0,
+        "ambiguous_pct": 1.0,
+        "theme_entropy": 0.9271
+      },
+      "bias": {
+        "by_source_lang": {
+          "en": {
+            "rows": 22,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 22,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          }
+        },
+        "by_source_family": {
+          "gdelt": {
+            "rows": 22,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 22,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          }
+        },
+        "by_country_group": {
+          "global_north": {
+            "rows": 22,
+            "supported": 0,
+            "contradicted": 0,
+            "ambiguous": 22,
+            "support_rate": 0.0,
+            "contradiction_rate": 0.0,
+            "ambiguous_rate": 1.0
+          }
+        }
+      },
+      "examples": {
+        "supported": [],
+        "contradicted": [],
+        "ambiguous": [
+          {
+            "signal_id": 6055009,
+            "headline": "1214 EASTVIEW ROAD, North Vancouver &#x2014; $2,099,000",
+            "country_code": "CA",
+            "source_name": "bchomez.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "WB_137_WATER"
+            ],
+            "domains": [
+              "environment"
+            ],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6055056,
+            "headline": "9110 CENTAURUS CIRCLE, Burnaby &#x2014; $629,000",
+            "country_code": "CA",
+            "source_name": "bchomez.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "WB_1986_MOUNTAINS",
+              "WB_1979_NATURAL_RESOURCE_MANAGEMENT",
+              "TAX_WORLDLANGUAGES_STONEY",
+              "WB_137_WATER",
+              "WB_435_AGRICULTURE_AND_FOOD_SECURITY"
+            ],
+            "domains": [
+              "economy",
+              "environment",
+              "public_safety"
+            ],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6055060,
+            "headline": "1642 232 STREET, Langley &#x2014; $2,649,900",
+            "country_code": "CA",
+            "source_name": "bchomez.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "AGRICULTURE",
+              "TAX_FNCACT_FARMERS",
+              "TAX_WORLDMAMMALS_HORSE",
+              "RURAL",
+              "TAX_FNCACT_TRUCKERS",
+              "TAX_ETHNICITY_POLE"
+            ],
+            "domains": [],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6055073,
+            "headline": "433 W 18TH AVENUE, Vancouver &#x2014; $2,599,000",
+            "country_code": "CA",
+            "source_name": "bchomez.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "TAX_ETHNICITY_FRENCH",
+              "SOC_POINTSOFINTEREST_SCHOOLS",
+              "TAX_WORLDLANGUAGES_FRENCH",
+              "TAX_FNCACT_PRINCIPAL",
+              "EDUCATION"
+            ],
+            "domains": [],
+            "status": "ambiguous"
+          },
+          {
+            "signal_id": 6055093,
+            "headline": "2665 E PENDER STREET, Vancouver &#x2014; $1,068,000",
+            "country_code": "CA",
+            "source_name": "bchomez.com",
+            "source_lang": "en",
+            "source_family": "gdelt",
+            "themes": [
+              "WB_135_TRANSPORT",
+              "WB_1458_HEALTH_PROMOTION_AND_DISEASE_PREVENTION",
+              "WB_793_TRANSPORT_AND_LOGISTICS_SERVICES",
+              "WB_1462_WATER_SANITATION_AND_HYGIENE",
+              "WB_635_PUBLIC_HEALTH",
+              "WB_1174_WAREHOUSING_AND_STORAGE",
+              "WB_621_HEALTH_NUTRITION_AND_POPULATION",
+              "CRISISLEX_O01_WEATHER"
+            ],
+            "domains": [
+              "conflict",
+              "disaster",
+              "environment",
+              "health"
+            ],
+            "status": "ambiguous"
+          }
+        ]
+      },
+      "recommendation": "label_review"
+    }
+  ],
+  "interpretation": {
+    "weak_support_pct": "share of sampled rows whose GDELT theme domains overlap expected domains inferred from the thread label",
+    "weak_contradiction_pct": "share of sampled rows whose GDELT domains do not overlap the expected label domains",
+    "theme_entropy": "0 means concentrated domains; 1 means maximally mixed among observed domains",
+    "bias": "support/contradiction slices by language, source family, and global-north vs other country grouping",
+    "promotion_rule": "GDELT weak support can recommend inspection or candidate expansion; it cannot verify evidence alone"
+  }
+}

@@ -18,6 +18,33 @@
 - Obsidian wikilinks in the spec resolve.
 - `git diff --check` passed.
 
+## 2026-06-04 — GDELT weak-support audit implemented
+
+### What happened
+- Added `backend/scripts/gdelt_weak_support_audit.py`, a read-only audit over
+  active `dynamic_topics`.
+- Added helper metrics for GDELT domain mapping, expected-domain inference from
+  thread labels, normalized theme entropy, support/contradiction rates, and bias
+  slices by source language, source family, and global-north vs other country
+  group.
+- Generated first live artifact:
+  `docs/research/topic-quality/gdelt-weak-support/2026-06-04-live.json`.
+- Fixed a scoring bug found by the live audit: `TAX_WORLDLANGUAGES_*` themes are
+  metadata and must not become domain evidence merely because they contain
+  words like Russia or Ukrainian.
+
+### Validation
+- TDD red: `test_theme_domains_ignores_language_metadata_themes` failed before
+  the metadata guard.
+- `cd backend && .venv/bin/python -m pytest tests/test_gdelt_weak_support_audit.py -v`
+  -> `5 passed`.
+- Live read-only run returned `schema_version=atlas-gdelt-weak-support-v1`,
+  `thread_count=8`.
+- Initial findings: `Russia-Ukraine War Updates` has high weak support
+  (`0.8992`) but high entropy (`0.8846`), suggesting a real but mixed/splittable
+  thread. `Virginia Bus Crash` has low support (`0.1667`) and high contradiction
+  (`0.6667`), making it a review/split/suppress candidate.
+
 ## 2026-06-04 — Unified thread detail shell started
 
 ### What happened
