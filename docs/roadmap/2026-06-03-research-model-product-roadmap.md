@@ -72,6 +72,13 @@ static topic assignment toward scope gates, evidence roles, and dynamic topics.
 
 ## Product Gate After Paper 1
 
+**2026-06-04 MVP sprint update:** Paper 1 remains relevant, but it is no
+longer the blocking gate for the next work block. The current operating priority
+is next-week MVP readiness: recover useful Narrative Thread volume, keep GDELT
+as a weak/bias-measured support signal rather than a final classifier, and
+reduce or classify the stale GitHub issue backlog. The active sprint design is
+[[2026-06-04-mvp-thread-volume-and-issue-sprint-design]].
+
 After the Paper 1 documentation pass, the next engineering block is product
 verification of the dynamic-topic cutover:
 

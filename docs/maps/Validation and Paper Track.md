@@ -14,6 +14,10 @@ gating, annotator agreement, and the future paper series.
   anti-information-disorder product purpose.
 - [[2026-06-03-paper-1-result-skeleton]] — Paper 1 draft skeleton with current
   RQ1 result, result tables, improvement levers, limitations, and figure list.
+- [[2026-06-04-mvp-thread-volume-and-issue-sprint-design]] — temporary operating
+  shift for MVP: paper remains active refinement, while product work prioritizes
+  Narrative Thread volume and issue cleanup. GDELT can be used only as weak,
+  bias-measured support, not as paper-grade truth.
 - [[2026-06-01-narrative-cluster-evidence-roles-design]] — teacher-student
   design for classifying evidence roles inside narrative clusters.
 - [[2026-06-01-narrative-cluster-evidence-roles]] — implementation plan for

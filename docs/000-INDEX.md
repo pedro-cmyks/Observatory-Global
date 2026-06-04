@@ -29,6 +29,9 @@ below resolve via Obsidian's fuzzy search regardless of folder.
 
 ## Active design specs
 
+- [[2026-06-04-mvp-thread-volume-and-issue-sprint-design]] — MVP sprint design:
+  use GDELT themes as weak, bias-measured support signals to recover Narrative
+  Thread volume, then re-triage and close stale GitHub issues.
 - [[2026-06-04-thread-intelligence-packet-design]] — unify ThreadFocusPanel with
   ThemeDetail's rich data (country edges, source lanes, timeline, graph,
   attention) via one server-side packet built from the thread's signal set.

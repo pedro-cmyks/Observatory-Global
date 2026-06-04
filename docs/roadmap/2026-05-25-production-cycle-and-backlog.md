@@ -147,6 +147,14 @@ These belong to the source-lane/Voice Mix block: #160, #168, #172, #180, #158,
 
 ## Next Work Block
 
+2026-06-04 MVP sprint update: the active work block is now
+[[2026-06-04-mvp-thread-volume-and-issue-sprint-design]]. Prioritize Narrative
+Thread volume and issue cleanup for next week's MVP. Use GDELT themes as weak,
+bias-measured support signals for candidate recall and diagnostics, not as
+validated Atlas topics or paper-grade truth. Paper 1 remains active refinement
+but should not block MVP execution unless a product decision makes an unsupported
+methodological claim.
+
 2026-06-03 update: the active work block has moved from individual Path C topic
 repair into the research-to-product loop documented in
 `docs/roadmap/2026-06-03-research-model-product-roadmap.md`. Finish the Paper 1

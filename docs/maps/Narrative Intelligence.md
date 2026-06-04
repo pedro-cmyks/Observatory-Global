@@ -8,6 +8,9 @@ Threads and emergent narrative discovery.
 - [[2026-05-25-atlas-narrative-intelligence-framework]] — active model canon.
 - [[2026-06-03-research-model-product-roadmap]] — current route from Paper 1
   evidence to model correction and product verification.
+- [[2026-06-04-mvp-thread-volume-and-issue-sprint-design]] — current MVP sprint
+  direction: recover Narrative Thread volume using GDELT themes as weak,
+  bias-measured support signals, then clean up the issue backlog.
 - [[2026-05-24-living-narrative-threads]] — thread contract and product model.
 - [[2026-05-29-emergent-topic-discovery-design]] — emergent discovery layer.
 - [[2026-06-02-emergent-topic-identity-resolver-design]] — Phase 6
@@ -60,6 +63,10 @@ The visible product should answer:
 
 ## Planned enrichment
 
+- [[2026-06-04-mvp-thread-volume-and-issue-sprint-design]] — GDELT weak-support
+  audit and recall pilot. GDELT remains non-authoritative, but can help recover
+  candidate volume when its support, contradiction, entropy, and regional/source
+  bias are measured.
 - [[2026-06-04-thread-intelligence-packet-design]] — one server-side packet
   (country edges, source/social lanes, sentiment timeline, graph signals, public
   attention, relations) attached to thread detail so ThreadFocusPanel matches

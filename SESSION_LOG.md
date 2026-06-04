@@ -1,5 +1,23 @@
 # Atlas — Session Log
 
+## 2026-06-04 — MVP thread-volume and issue sprint design
+
+### What happened
+- Reframed the next work block around MVP readiness for next week: recover useful
+  Narrative Thread volume first, then clean up the stale GitHub issue backlog.
+- Wrote `docs/superpowers/specs/2026-06-04-mvp-thread-volume-and-issue-sprint-design.md`.
+- Documented GDELT themes as weak, bias-measured support signals, not final
+  Atlas classifiers or proof of significance.
+- Added explicit bias diagnostics for Western/global-north, language,
+  source-family, and syndicated-source skew.
+- Updated roadmaps so Paper 1 remains active refinement but no longer blocks the
+  MVP sprint.
+
+### Validation
+- Spec self-review found no placeholder TODO/TBD markers.
+- Obsidian wikilinks in the spec resolve.
+- `git diff --check` passed.
+
 ## 2026-06-04 — Unified thread detail shell started
 
 ### What happened
