@@ -7,6 +7,7 @@ from typing import Any
 
 from app import db
 from app.services.narrative_note import build_thread_narrative_note
+from app.services.thread_packet import build_thread_packet
 
 logger = logging.getLogger(__name__)
 
@@ -264,7 +265,9 @@ SELECT
     timestamp,
     nlp_sentiment,
     confidence,
-    syndication_count
+    syndication_count,
+    themes,
+    persons
 FROM (
     SELECT DISTINCT ON (LOWER(s.headline))
         s.id,
@@ -276,6 +279,8 @@ FROM (
         COALESCE(c.name, s.country_code) AS country_name,
         s.timestamp,
         s.nlp_sentiment,
+        s.themes,
+        s.persons,
         sta.confidence,
         COUNT(*) OVER (PARTITION BY LOWER(s.headline))::int AS syndication_count
     FROM signal_topic_assignments sta
@@ -674,6 +679,7 @@ _EMERGENT_SAMPLE_SIGNALS_SQL = """
            NULL::text       AS country_name,
            timestamp,
            persons,
+           themes,
            sentiment        AS nlp_sentiment,
            1::int           AS syndication_count,
            NULL::float      AS confidence
@@ -896,7 +902,13 @@ async def _fetch_dynamic_thread_detail(
         sample_signals = await conn.fetch(
             _EMERGENT_SAMPLE_SIGNALS_SQL, sample_ids, timeout=8,
         )
-    return assemble_dynamic_thread(topic, list(sample_signals))
+    detail = assemble_dynamic_thread(topic, list(sample_signals))
+    packet_rows = [
+        {**dict(r), "sentiment": (r["nlp_sentiment"] if "nlp_sentiment" in r else r["sentiment"])}
+        for r in sample_signals
+    ]
+    detail["packet"] = build_thread_packet(packet_rows)
+    return detail
 
 
 async def _fetch_emergent_threads_with_conn(
@@ -988,11 +1000,17 @@ async def _fetch_emergent_thread_detail(
             _EMERGENT_SAMPLE_SIGNALS_SQL, sample_ids, timeout=8,
         )
     gate_thr = cluster["gate_threshold"]
-    return assemble_emergent_thread(
+    detail = assemble_emergent_thread(
         cluster,
         list(sample_signals),
         gate_threshold=float(gate_thr) if gate_thr is not None else None,
     )
+    packet_rows = [
+        {**dict(r), "sentiment": (r["nlp_sentiment"] if "nlp_sentiment" in r else r["sentiment"])}
+        for r in sample_signals
+    ]
+    detail["packet"] = build_thread_packet(packet_rows)
+    return detail
 
 
 async def _fetch_threads_with_conn(
@@ -1137,4 +1155,9 @@ async def fetch_thread_detail(
 
     threads[0]["evidence_samples"] = [_serialize_evidence(row) for row in evidence_rows]
     threads[0]["narrative_note"] = build_thread_narrative_note(threads[0])
+    packet_rows = [
+        {**dict(r), "sentiment": (r["nlp_sentiment"] if "nlp_sentiment" in r else r["sentiment"])}
+        for r in evidence_rows
+    ]
+    threads[0]["packet"] = build_thread_packet(packet_rows)
     return threads[0]
