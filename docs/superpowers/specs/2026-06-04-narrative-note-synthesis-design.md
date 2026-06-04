@@ -17,10 +17,11 @@ adds noise. The next step is to make a thread open like a readable briefing:
 what this thread is about, why it is moving now, what evidence supports it, and
 how much confidence the reader should place in the current view.
 
-This spec defines the first read-only Narrative Note increment. It avoids LLM
-generation for now. The note is extractive and deterministic, built from the
-existing thread contract plus evidence headlines/snippets. It should be useful
-enough to improve the reading flow while remaining cheap, testable, and safe.
+This spec defines the first read-only Narrative Note increment. The shipped base
+note is extractive and deterministic, built from the existing thread contract
+plus evidence headlines/snippets. A follow-up increment adds optional DeepSeek
+synthesis for opened thread detail panels only, preserving the extractive note as
+fallback when the LLM is unavailable or returns invalid JSON.
 
 Related context:
 - [[2026-06-04-signal-snippet-enrichment-design]] — persisted source snippets.
@@ -66,9 +67,10 @@ In scope for the first increment:
 - Include quality language when the evidence is weak, snippet-poor, too
   source-concentrated, or high-noise.
 
-Out of scope for this increment:
+Out of scope for the first extractive increment:
 
-- LLM-generated summaries.
+- LLM-generated summaries. These were added later as an optional detail-only
+  experiment via DeepSeek, not as a list-level or required app dependency.
 - Persistence/caching tables for notes.
 - Per-country narrative assembly (F2/F4). This spec creates the note-building
   pattern that country notes will reuse later.
@@ -92,6 +94,35 @@ Add a nullable `narrative_note` object to thread responses:
   }
 }
 ```
+
+## Optional DeepSeek synthesis
+
+The opened thread detail endpoint can request LLM synthesis with
+`/api/v2/threads/{thread_id}?hours=24&llm=1`. The backend sends a compact,
+grounded packet to DeepSeek and accepts only strict JSON with the same
+`narrative_note` shape. If `DEEPSEEK_API_KEY` is missing, DeepSeek errors, or the
+model returns incomplete JSON, the existing `extractive-v1` note remains.
+
+Default model: `deepseek-v4-flash`.
+
+Configurable env:
+
+- `DEEPSEEK_API_KEY`
+- `ENABLE_LLM_THREAD_NOTES=false`
+- `DEEPSEEK_THREAD_NOTE_MODEL=deepseek-v4-flash`
+
+`deepseek-v4-pro` can be tested by changing `DEEPSEEK_THREAD_NOTE_MODEL` without
+touching code.
+
+## Contract alignment note
+
+Country briefs and Narrative Threads must not report different narrative worlds.
+The country brief currently counts top signal themes from country-scoped
+`/api/v2/signals`, while Narrative Threads previously fetched global threads and
+filtered them client-side by `top_countries`. That made a country show active
+themes while the Narrative Threads panel could appear empty. The thread list now
+accepts `country_code` and delegates country-scoped thread selection to the
+backend.
 
 Field rules:
 

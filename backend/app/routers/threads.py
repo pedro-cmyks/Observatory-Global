@@ -6,6 +6,10 @@ import logging
 from fastapi import APIRouter, HTTPException, Query
 
 from app.main_v2 import app
+from app.services.deepseek_narrative import (
+    build_deepseek_thread_narrative_note,
+    deepseek_thread_notes_enabled,
+)
 from app.services.thread_intelligence import fetch_thread_detail, fetch_threads
 
 router = APIRouter(prefix="/api/v2", tags=["threads"])
@@ -39,8 +43,10 @@ async def _cache_set(key: str, payload: dict, ttl: int) -> None:
 async def get_threads(
     hours: int = Query(24, ge=1, le=720),
     limit: int = Query(10, ge=1, le=50),
+    country_code: str | None = Query(None, min_length=2, max_length=2),
 ) -> dict:
-    cache_key = f"threads:list:{hours}:{limit}"
+    country = country_code.upper() if country_code else None
+    cache_key = f"threads:list:{hours}:{limit}:{country or 'global'}"
     cached = await _cache_get(cache_key)
     if cached is not None:
         return cached
@@ -49,7 +55,12 @@ async def get_threads(
         "beta": True,
         "hours": hours,
         "contract": "living-narrative-threads-v0",
-        "threads": await fetch_threads(hours=hours, limit=limit),
+        "country_code": country,
+        "threads": await fetch_threads(
+            hours=hours,
+            limit=limit,
+            country_codes=[country] if country else None,
+        ),
     }
     await _cache_set(cache_key, payload, THREADS_CACHE_TTL)
     return payload
@@ -59,8 +70,10 @@ async def get_threads(
 async def get_thread_detail(
     thread_id: str,
     hours: int = Query(24, ge=1, le=720),
+    llm: bool = Query(False),
 ) -> dict:
-    cache_key = f"threads:detail:{thread_id}:{hours}"
+    use_llm = llm or deepseek_thread_notes_enabled()
+    cache_key = f"threads:detail:{thread_id}:{hours}:llm-{int(use_llm)}"
     cached = await _cache_get(cache_key)
     if cached is not None:
         return cached
@@ -68,6 +81,10 @@ async def get_thread_detail(
     thread = await fetch_thread_detail(thread_id=thread_id, hours=hours)
     if thread is None:
         raise HTTPException(status_code=404, detail="Thread not found")
+    if use_llm:
+        llm_note = await build_deepseek_thread_narrative_note(thread)
+        if llm_note is not None:
+            thread["narrative_note"] = llm_note
     payload = {
         "beta": True,
         "hours": hours,

@@ -5,5 +5,5 @@ export function getNarrativesForDisplay<T extends { top_countries: string[] }>(
   country?: string,
 ): T[] {
   if (!country) return narratives
-  return narratives.filter(narrative => narrative.top_countries.includes(country))
+  return narratives
 }

@@ -1,5 +1,35 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-06-04 (Narrative Note shipped + backend deployed)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-06-04 (Thread note DeepSeek pilot + country thread alignment)
+
+---
+
+## Current handoff (2026-06-04) — DeepSeek thread-note pilot + country alignment
+
+Implemented a follow-up to the Narrative Note work:
+
+- `/api/v2/threads/{thread_id}` accepts `llm=1` and tries DeepSeek-backed
+  `narrative_note` synthesis for opened thread details only.
+- The LLM path is grounded in the existing thread packet and evidence samples,
+  requires strict JSON, and falls back to the existing `extractive-v1` note on
+  missing key, provider error, or invalid output.
+- DeepSeek default model is `deepseek-v4-flash`; `deepseek-v4-pro` is selectable
+  with `DEEPSEEK_THREAD_NOTE_MODEL`.
+- `/api/v2/threads` accepts `country_code`, and `NarrativeThreads` now requests
+  country-scoped threads from the backend instead of filtering global threads in
+  the client. This addresses the country brief vs Narrative Threads mismatch
+  where a country could show active themes while the threads panel showed none.
+
+Verification before deploy:
+
+- Backend focused suite:
+  `cd backend && .venv/bin/python -m pytest tests/test_deepseek_narrative.py tests/test_threads_router_contract.py tests/test_thread_intelligence.py tests/test_threads_emergent_augment_shape.py -v`
+  -> `34 passed`.
+- Frontend: `cd frontend-v2 && npm run build` passed.
+
+Remaining product work: restore the richer Thread Intelligence Packet
+(`graph_signals`, country edges, source-family/social lanes, sentiment timeline,
+and relation history) so `ThreadFocusPanel` and `ThemeDetail` stop behaving like
+separate concepts.
 
 ---
 

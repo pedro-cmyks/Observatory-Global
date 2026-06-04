@@ -139,7 +139,12 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
 
     const fetchNarratives = useCallback(async () => {
         try {
-            const res = await fetch(`/api/v2/threads?hours=${cappedHours}&limit=${fetchLimit}`)
+            const params = new URLSearchParams({
+                hours: String(cappedHours),
+                limit: String(fetchLimit),
+            })
+            if (filter.country) params.set('country_code', filter.country)
+            const res = await fetch(`/api/v2/threads?${params.toString()}`)
             if (!res.ok) return
             const data = await res.json()
             setNarratives((data.threads || []).map(normalizeThread))
@@ -149,7 +154,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
         } finally {
             setLoading(false)
         }
-    }, [cappedHours, fetchLimit])
+    }, [cappedHours, fetchLimit, filter.country])
 
     // Initial fetch + 5-minute interval; re-fetch when country changes
     useEffect(() => {

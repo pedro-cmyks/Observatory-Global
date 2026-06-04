@@ -76,7 +76,7 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
         const controller = new AbortController()
         setLoading(true)
         setError(null)
-        fetch(`/api/v2/threads/${encodeURIComponent(thread.thread_id)}?hours=${hours}`, { signal: controller.signal })
+        fetch(`/api/v2/threads/${encodeURIComponent(thread.thread_id)}?hours=${hours}&llm=1`, { signal: controller.signal })
             .then(response => {
                 if (!response.ok) throw new Error(`HTTP ${response.status}`)
                 return response.json()

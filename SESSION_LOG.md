@@ -1,5 +1,31 @@
 # Atlas — Session Log
 
+## 2026-06-04 — DeepSeek thread-note pilot and country thread alignment
+
+### What happened
+- Added optional DeepSeek synthesis for opened thread details:
+  `/api/v2/threads/{thread_id}?llm=1`.
+- Kept the deterministic `extractive-v1` note as the fallback and accepted only
+  strict JSON from DeepSeek.
+- Added `country_code` to `/api/v2/threads` and updated `NarrativeThreads` to
+  request country-scoped threads from the backend instead of filtering global
+  results client-side.
+- Documented the current DeepSeek model selection:
+  `deepseek-v4-flash` by default, `deepseek-v4-pro` via
+  `DEEPSEEK_THREAD_NOTE_MODEL`.
+
+### Validation
+- Backend: `34 passed` across DeepSeek narrative, router contract, thread
+  intelligence, and emergent/dynamic shape tests.
+- Frontend: `npm run build` passed.
+
+### Decision
+Themes and Narrative Threads should be one product concept. The immediate fix is
+country-scoped thread retrieval; the next architectural fix is a shared Thread
+Intelligence Packet so `ThreadFocusPanel` inherits graph, country-edge,
+source-lane, social/Reddit, and sentiment-history data instead of diverging from
+`ThemeDetail`.
+
 ## 2026-06-04 — Narrative Note synthesis shipped
 
 ### What happened
