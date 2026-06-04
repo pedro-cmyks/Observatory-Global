@@ -23,6 +23,14 @@ data work lands in the existing UI instead of creating duplicate panels.
   Gate logic in `InvestigationWorkspace.tsx`; production-only, bypass with
   `VITE_ENABLE_WORKBENCH=true`.
 
+## Reading-experience track
+
+- Signal snippet enrichment: persist source body text
+  (`signals_v2.snippet`) so theme/thread detail evidence rows show real
+  sentences, not only counts. Design:
+  [[2026-06-04-signal-snippet-enrichment-design]]. Foundation for per-country
+  narrative assembly (F2/F4), thread re-enrichment (F5), reading-panel UX (F1).
+
 ## Primary surfaces
 
 - Brief modal Watchlist:
