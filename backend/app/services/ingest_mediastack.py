@@ -12,6 +12,7 @@ from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse
 
 from app.services.ingest_rss import extract_country, is_blocked
+from app.services.signal_text import clean_snippet
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +107,7 @@ async def run_mediastack_ingestion() -> None:
                 "is_state_media": False,
                 # Semantic class (migration 021)
                 "signal_class": "reporting",
+                "snippet": clean_snippet(snippet),
             })
 
         inserted = 0
@@ -119,10 +121,10 @@ async def run_mediastack_ingestion() -> None:
                             source_url, source_name, headline, themes, persons,
                             is_crisis, crisis_score, crisis_themes, severity, event_type,
                             source_family, source_lang, geo_confidence, attribution_method, is_state_media,
-                            signal_class
+                            signal_class, snippet
                         )
                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-                                $16,$17,$18,$19,$20,$21)
+                                $16,$17,$18,$19,$20,$21,$22)
                         ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO NOTHING
                         """,
                         s["timestamp"], s["country_code"], s["latitude"], s["longitude"],
@@ -133,6 +135,7 @@ async def run_mediastack_ingestion() -> None:
                         s["source_family"], s["source_lang"], s["geo_confidence"],
                         s["attribution_method"], s["is_state_media"],
                         s.get("signal_class", "reporting"),
+                        s.get("snippet"),
                     )
                     if result == "INSERT 0 1":
                         inserted += 1
