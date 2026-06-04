@@ -66,6 +66,10 @@ The visible product should answer:
   per-country narrative assembly, cross-source feeding (Reddit / public
   attention / events), narrative-note synthesis, and the thread re-enrichment
   that restores country edges and the evolutive connection graph.
+- [[2026-06-04-narrative-note-synthesis-design]] — first read-only narrative
+  note for opened threads. Deterministic/extractive, no LLM, using thread
+  movement, source/country concentration, and evidence headlines/snippets so a
+  thread opens as prose before dense metrics.
 
 ## Key files
 

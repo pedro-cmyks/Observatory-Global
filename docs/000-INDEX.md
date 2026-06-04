@@ -33,6 +33,9 @@ below resolve via Obsidian's fuzzy search regardless of folder.
   body text into `signals_v2.snippet`, expose it as evidence data, and render it
   in the clicked single-signal detail panel. Foundation for Atlas as a reading
   experience.
+- [[2026-06-04-narrative-note-synthesis-design]] — first read-only,
+  deterministic narrative note for opened threads, using thread metrics plus
+  evidence headlines/snippets before any LLM generation.
 - [[2026-06-03-workbench-waitlist-gate-design]] — interactive early-access
   waitlist gate for the public MVP Workbench launch (`/api/v2/waitlist`,
   real-data counter, Supabase-backed).
