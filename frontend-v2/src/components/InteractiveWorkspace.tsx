@@ -674,7 +674,7 @@ export function InteractiveWorkspace({ onNavigate, lockedForPublicPreview = fals
                         </aside>
                     )}
                 </div>
-                {lockedForPublicPreview && (
+                {isOpen && lockedForPublicPreview && (
                     <WorkbenchWaitlistGate onKeepExploring={() => setIsOpen(false)} />
                 )}
             </section>
