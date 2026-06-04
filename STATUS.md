@@ -1,5 +1,46 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-06-04 (F3 signal snippet enrichment shipped + verified)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-06-04 (Narrative Note shipped + backend deployed)
+
+---
+
+## Current handoff (2026-06-04) — Narrative Note synthesis shipped
+
+The first read-only Narrative Note increment is implemented on `v3-intel-layer`.
+It adds deterministic/extractive thread prose without an LLM, then renders it at
+the top of `ThreadFocusPanel` before dense metrics.
+
+Shipped:
+
+- **Spec + plan**:
+  `docs/superpowers/specs/2026-06-04-narrative-note-synthesis-design.md` and
+  `docs/superpowers/plans/2026-06-04-narrative-note-synthesis.md`.
+- **Backend service** `backend/app/services/narrative_note.py` builds
+  `narrative_note` with `lede`, `movement`, `evidence`, `caveat`, `quality`, and
+  `source="extractive-v1"`.
+- **Thread contract** now includes `narrative_note` for atlas-topic,
+  emergent-cluster, and dynamic-topic thread assemblies; atlas detail refreshes
+  the note after loading detail evidence.
+- **Frontend** `ThreadFocusPanel` renders the note as the first reading block,
+  with fallback to the previous `why_now` paragraph when the field is absent.
+
+Verification on 2026-06-04:
+
+- Backend focused suite:
+  `cd backend && .venv/bin/python -m pytest tests/test_narrative_note.py tests/test_thread_intelligence.py tests/test_threads_emergent_augment_shape.py tests/test_snippet_evidence_contract.py -v`
+  -> `36 passed`.
+- Frontend: `cd frontend-v2 && npm run build` passed.
+- Direct local-code smoke against Supabase returned `dynamic-topic-17` with
+  `narrative_note.source="extractive-v1"`.
+- Backend deployed with `bash scripts/deploy-fly-api.sh`; Fly machine
+  `d8d2e46fe07e78` reached good state.
+- Fly `/health` after deploy returned `status=healthy`, `db_ok=true`,
+  `total_signals=350853`.
+- Fly and localhost proxy both returned `/api/v2/threads?hours=24&limit=1` with
+  `narrative_note.source="extractive-v1"` and lede
+  `Infrastructure and Public Services is moving across ID, BR, and CA.`
+
+Next product step: use the same note service shape for country-scoped narrative
+assembly (F2/F4), after this thread-level reading block is reviewed in the UI.
 
 ---
 

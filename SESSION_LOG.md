@@ -1,5 +1,34 @@
 # Atlas — Session Log
 
+## 2026-06-04 — Narrative Note synthesis shipped
+
+### What happened
+- Implemented the first read-only Narrative Note increment from
+  `docs/superpowers/specs/2026-06-04-narrative-note-synthesis-design.md`.
+- Added `backend/app/services/narrative_note.py`, a deterministic/extractive
+  note builder with no LLM calls and no new persistence.
+- Wired `narrative_note` into atlas-topic, emergent-cluster, and dynamic-topic
+  thread assemblies in `thread_intelligence.py`.
+- Updated `ThreadFocusPanel` so an opened thread starts with prose (`lede`,
+  movement, evidence, caveat) before metrics/evidence lists. The old `why_now`
+  paragraph remains the fallback when the backend field is absent.
+
+### Validation
+- Backend: `36 passed` across narrative note, thread intelligence, emergent
+  shape, and snippet evidence contract tests.
+- Frontend: `npm run build` passed.
+- Direct local-code smoke against Supabase returned `dynamic-topic-17` with
+  `narrative_note.source="extractive-v1"`.
+- Deployed backend to Fly with `scripts/deploy-fly-api.sh`; app machine reached
+  good state and `/health` returned healthy.
+- Fly and localhost proxy both returned `/api/v2/threads?hours=24&limit=1` with
+  `narrative_note.source="extractive-v1"`.
+
+### Decision
+Thread-level narrative prose is now the first reading layer. It remains
+extractive and provisional by design; LLM synthesis and country-scoped notes are
+separate follow-up increments.
+
 ## 2026-06-04 — F3 signal snippet enrichment shipped and verified
 
 ### What happened

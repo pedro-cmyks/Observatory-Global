@@ -1,6 +1,6 @@
 # Project Inventory
 
-Generated: 2026-06-04T14:33:21.893270+00:00
+Generated: 2026-06-04T15:23:16.021851+00:00
 Regen: `python scripts/project_inventory.py`
 
 ## Endpoints (backend)
@@ -132,13 +132,18 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 
 | Label | Program | Schedule | RunAtLoad | Last log mtime | Last log line |
 |---|---|---|---|---|---|
-| `com.atlas.atlas-topic-classifier` | `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` | every 1800s | True | 2026-06-04T14:23:44.534545+00:00 | } |
+| `com.atlas.atlas-topic-classifier` | `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` | every 1800s | True | 2026-06-04T14:54:27.858089+00:00 | } |
 | `com.atlas.emergent-snapshot` | `/Users/pedro/AtlasLocalWorker/run-emergent-snapshot.sh` | 0:00, 6:00, 12:00, 18:00 | True | 2026-06-04T11:56:25.678774+00:00 | } |
 | `com.atlas.local-hot-cold-catchup` | `/Users/pedro/AtlasLocalWorker/run-local-hot-cold-catchup.sh` | 0:10, 1:10, 2:10, 3:10, 4:10, 5:10 | True | 2026-06-03T21:12:16.672220+00:00 | } |
 | `com.atlas.threevendor-calibration` | `/Users/pedro/AtlasLocalWorker/run-3vendor-calibration.sh` | — | False | 2026-06-03T08:16:03.098547+00:00 | 2026-06-03T08:16:03Z calibration done -> /Users/pedro/AtlasLocalWorker/calibration/2026-06-03-calib-agreement.json |
 
 ## Recent commits (last 2 weeks)
 
+- `1b7e176 2026-06-04 feat(narrative): render thread narrative note`
+- `9d04555 2026-06-04 feat(narrative): expose narrative_note on thread contracts`
+- `1e91dee 2026-06-04 feat(narrative): add extractive thread note builder`
+- `570f267 2026-06-04 docs(spec): narrative note synthesis design`
+- `2937720 2026-06-04 docs(snippet): sync F3 shipment handoff`
 - `87c98dc 2026-06-04 merge: signal snippet enrichment (F3)`
 - `9480941 2026-06-04 feat(snippet): show signal snippet in the single-signal detail panel`
 - `49c3c69 2026-06-04 feat(snippet): return snippet from /api/v2/signals + prefer info-rich signals in stream`
@@ -214,8 +219,3 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 - `042b61e 2026-05-30 feat(emergent): wire emergent_clusters into brief Watchlist (Phase 2)`
 - `ef6d81a 2026-05-30 feat(emergent): topic discovery POC + precision gate + design spec`
 - `bedbcf7 2026-05-30 feat(brief): atlas-topic gated view + honest Watchlist framing`
-- `75bb8d1 2026-05-29 docs: handoff — scope gate deployed to production (issue #203 closed)`
-- `ee71215 2026-05-29 feat(api): wire scope gate into production (mig 045 + scorer + gated counts)`
-- `2b29417 2026-05-29 feat(research): local $0/signal scope gate (e5-base) — production encoder`
-- `c23784d 2026-05-29 feat(research): scope-gate inference engine (Phase C) + validation`
-- `641e82d 2026-05-29 feat(research): persist production scope gate v1 (emb+conf, per-topic calibrated)`
