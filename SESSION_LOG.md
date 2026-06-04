@@ -13,10 +13,21 @@
 - Updated roadmaps so Paper 1 remains active refinement but no longer blocks the
   MVP sprint.
 
+### Follow-up
+- Added `docs/roadmap/2026-06-04-mvp-issue-triage.md` after reviewing the 42
+  open GitHub issues. Active MVP order is: close #146, implement #174/#175 as a
+  scope/empty-state pass, smoke #193, then return to Signal Stream relevance
+  and GDELT weak-recall review mechanics.
+- Updated `NarrativeThreads` country-scoped empty state so it explains thread
+  quality gates and provides a "Show global threads" reset instead of implying
+  the panel is broken.
+
 ### Validation
 - Spec self-review found no placeholder TODO/TBD markers.
 - Obsidian wikilinks in the spec resolve.
 - `git diff --check` passed.
+- `cd frontend-v2 && npm test -- src/lib/narrativeThreads.test.ts` passed.
+- `cd frontend-v2 && npm run build` passed.
 
 ## 2026-06-04 — GDELT weak-support audit implemented
 

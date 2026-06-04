@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getNarrativeFetchLimit, getNarrativesForDisplay } from './narrativeThreadLimits'
+import { buildCountryThreadEmptyState, getNarrativeFetchLimit, getNarrativesForDisplay } from './narrativeThreadLimits'
 
 describe('NarrativeThreads limits', () => {
   it('fetches enough global narratives to fill the available panel space', () => {
@@ -14,5 +14,13 @@ describe('NarrativeThreads limits', () => {
 
     expect(getNarrativesForDisplay(narratives, undefined)).toHaveLength(12)
     expect(getNarrativesForDisplay(narratives, 'US')).toHaveLength(12)
+  })
+
+  it('explains a country-scoped empty state without implying the global thread list is broken', () => {
+    expect(buildCountryThreadEmptyState('CO', 'Colombia')).toEqual({
+      title: 'No living Narrative Threads detected for Colombia in this window',
+      body: 'Atlas asked for country-scoped threads. This usually means Colombia has signals, but no coherent thread cleared the current quality gate for the selected time range.',
+      actionLabel: 'Show global threads',
+    })
   })
 })

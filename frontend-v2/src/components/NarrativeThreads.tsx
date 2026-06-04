@@ -2,7 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { timeRangeToHours } from '../lib/timeRanges'
-import { getNarrativeFetchLimit, getNarrativesForDisplay } from '../lib/narrativeThreadLimits'
+import { resolveCountryName } from '../lib/countryNames'
+import { buildCountryThreadEmptyState, getNarrativeFetchLimit, getNarrativesForDisplay } from '../lib/narrativeThreadLimits'
 import './NarrativeThreads.css'
 
 const THREAD_COLORS = [
@@ -181,6 +182,11 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
         onCountrySelect?.(code)
     }
 
+    const clearCountryFilter = () => {
+        setCountry(null)
+        setMapFlyCountry(null)
+    }
+
     // Loading skeleton
     if (loading && narratives.length === 0) {
         return (
@@ -206,9 +212,16 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     }
 
     if (displayedNarratives.length === 0 && filter.country) {
+        const emptyState = buildCountryThreadEmptyState(filter.country, resolveCountryName(filter.country))
         return (
             <div className="narrative-threads-container">
-                <div className="narrative-empty">No top narrative threads found for {filter.country} in this window</div>
+                <div className="narrative-empty narrative-empty--actionable">
+                    <div className="narrative-empty-title">{emptyState.title}</div>
+                    <p>{emptyState.body}</p>
+                    <button type="button" className="narrative-empty-action" onClick={clearCountryFilter}>
+                        {emptyState.actionLabel}
+                    </button>
+                </div>
             </div>
         )
     }
@@ -217,7 +230,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
         <div className="narrative-threads-container">
             {filter.country && (
                 <div className="narrative-country-filter-notice">
-                    Threads active in {filter.country}: signal counts are global
+                    Threads filtered to {resolveCountryName(filter.country)} by backend quality gates
                 </div>
             )}
             {isCapped && !filter.country && (
@@ -238,7 +251,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 const isDimmed = dimByCountry
                 const trendArrow = n.trend === 'accelerating' ? '▲' : n.trend === 'fading' ? '▼' : '→'
                 // Plain-language hover hint; falls back to label when no description is available.
-                const rowHint = `${n.label}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries from ${n.source_count} sources. Click to open the topic breakdown.`
+                const rowHint = `${n.label}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries from ${n.source_count} sources. Click to open the unified thread detail.`
                 const domainLabel = (n.parent_domain || 'living thread').replace(/-/g, ' ')
 
                 const colorIdx = displayedNarratives.indexOf(n) % THREAD_COLORS.length

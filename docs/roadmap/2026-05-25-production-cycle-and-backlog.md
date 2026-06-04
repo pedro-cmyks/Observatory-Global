@@ -153,7 +153,9 @@ Thread volume and issue cleanup for next week's MVP. Use GDELT themes as weak,
 bias-measured support signals for candidate recall and diagnostics, not as
 validated Atlas topics or paper-grade truth. Paper 1 remains active refinement
 but should not block MVP execution unless a product decision makes an unsupported
-methodological claim.
+methodological claim. The open-issue execution list is tracked in
+`docs/roadmap/2026-06-04-mvp-issue-triage.md`: close #146 first, then implement
+#174/#175 as a scope/empty-state pass, then smoke #193.
 
 2026-06-03 update: the active work block has moved from individual Path C topic
 repair into the research-to-product loop documented in
