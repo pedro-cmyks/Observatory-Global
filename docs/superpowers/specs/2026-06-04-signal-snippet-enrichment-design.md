@@ -153,13 +153,13 @@ nothing extra — no empty placeholder.
 ## Deployment order
 
 1. Apply migration 052 (Supabase MCP).
-2. Deploy backend API (`scripts/deploy-fly-api.sh`) so evidence serialization
-   returns `snippet`.
-3. Redeploy the NLP/ingest worker so new signals start writing `snippet`
-   (the ingests run in the worker; the API-only deploy does not pick up ingest
-   changes).
-4. Frontend (Vercel) once `npm run build` passes.
-5. Smoke: confirm new non-GDELT signals carry a snippet in DB; confirm theme and
+2. Deploy backend with `scripts/deploy-fly-api.sh`. Per `fly.toml` the `app`
+   process group runs **API + ingestion** (the `nlp_worker` group is NLP
+   enrichment only), so this single deploy ships both the evidence-serialization
+   changes and the ingest snippet wiring. New signals start writing `snippet`
+   immediately; no separate worker deploy is required.
+3. Frontend (Vercel) once `npm run build` passes.
+4. Smoke: confirm new non-GDELT signals carry a snippet in DB; confirm theme and
    thread detail evidence rows return + render it.
 
 ## Obsidian connections
