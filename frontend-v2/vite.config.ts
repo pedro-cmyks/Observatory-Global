@@ -8,12 +8,16 @@ export default defineConfig({
     port: 3000,
     strictPort: true,  // Fail if port 3000 is taken
     proxy: {
+      // Local frontend dev runs against the PRODUCTION backend/data so localhost
+      // shows the same live signals as production; only the frontend code is
+      // local. Set VITE_LOCAL_API=http://localhost:8000 to target a local
+      // backend instead.
       '/api': {
-        target: 'http://localhost:8000',
+        target: process.env.VITE_LOCAL_API || 'https://atlas-api-pedro.fly.dev',
         changeOrigin: true,
       },
       '/health': {
-        target: 'http://localhost:8000',
+        target: process.env.VITE_LOCAL_API || 'https://atlas-api-pedro.fly.dev',
         changeOrigin: true,
       }
     }
