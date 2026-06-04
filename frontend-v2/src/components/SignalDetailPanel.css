@@ -307,3 +307,10 @@
     border-color: rgba(16,185,129,0.35);
     color: #10b981;
 }
+
+.sdp-snippet {
+    margin: 8px 0 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--color-text-secondary, #cbd5e1);
+}

@@ -23,6 +23,7 @@ from urllib.parse import urlparse
 from typing import Optional
 
 from app.config.source_blocklist import is_blocked
+from app.services.signal_text import clean_snippet
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -177,6 +178,7 @@ async def fetch_reliefweb_feed(
                 "is_state_media": False,
                 # Semantic class (migration 021) — all ReliefWeb is humanitarian
                 "signal_class": "humanitarian",
+                "snippet": clean_snippet(snippet),
             })
 
     except aiohttp.ClientError as e:
@@ -229,10 +231,10 @@ async def insert_reliefweb_signals(pool: asyncpg.Pool, signals: list[dict]) -> i
                         source_url, source_name, headline, themes, persons,
                         is_crisis, crisis_score, crisis_themes, severity, event_type,
                         source_family, source_lang, geo_confidence, attribution_method, is_state_media,
-                        signal_class
+                        signal_class, snippet
                     )
                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-                            $16,$17,$18,$19,$20,$21)
+                            $16,$17,$18,$19,$20,$21,$22)
                     ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO UPDATE SET
                         country_code = EXCLUDED.country_code,
                         source_name = EXCLUDED.source_name,
@@ -262,6 +264,7 @@ async def insert_reliefweb_signals(pool: asyncpg.Pool, signals: list[dict]) -> i
                     s["source_family"], s["source_lang"], s["geo_confidence"],
                     s["attribution_method"], s["is_state_media"],
                     s.get("signal_class", "humanitarian"),
+                    s.get("snippet"),
                 )
                 if result in {"INSERT 0 1", "UPDATE 1"}:
                     upserted += 1

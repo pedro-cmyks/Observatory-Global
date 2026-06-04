@@ -9,6 +9,7 @@ export interface Signal {
     source: string
     url: string
     headline: string | null
+    snippet?: string | null
     sentiment: number
     themes: string[]
     persons: string[]
@@ -90,6 +91,10 @@ export const SignalDetailPanel: React.FC<Props> = ({
                     <div className="sdp-headline">
                         {signal.headline || `Signal from ${signal.source}`}
                     </div>
+
+                    {signal.snippet && (
+                        <p className="sdp-snippet">{signal.snippet}</p>
+                    )}
 
                     <div className="sdp-meta-row">
                         <span

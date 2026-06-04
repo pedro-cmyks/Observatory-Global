@@ -255,6 +255,7 @@ THREAD_EVIDENCE_SQL = """
 SELECT
     id,
     headline,
+    snippet,
     source_name,
     source_url,
     country_code,
@@ -267,6 +268,7 @@ FROM (
     SELECT DISTINCT ON (LOWER(s.headline))
         s.id,
         s.headline,
+        s.snippet,
         s.source_name,
         s.source_url,
         s.country_code,
@@ -525,6 +527,7 @@ def _serialize_evidence(row: Any) -> dict[str, Any]:
     return {
         "id": str(_record_get(row, "id")),
         "headline": headline,
+        "snippet": _record_get(row, "snippet"),
         "source": _record_get(row, "source_name"),
         "url": _record_get(row, "source_url"),
         "country_code": _record_get(row, "country_code"),
@@ -659,7 +662,7 @@ def assemble_emergent_thread(
 
 
 _EMERGENT_SAMPLE_SIGNALS_SQL = """
-    SELECT id, headline, source_name, source_url, country_code,
+    SELECT id, headline, snippet, source_name, source_url, country_code,
            NULL::text       AS country_name,
            timestamp,
            persons,
