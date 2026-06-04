@@ -61,11 +61,11 @@ The visible product should answer:
 ## Planned enrichment
 
 - [[2026-06-04-signal-snippet-enrichment-design]] — persist source body text
-  (`signals_v2.snippet`) currently discarded at ingest, and surface it in
-  thread/theme evidence so narratives read as sentences, not counts. Foundation
-  for per-country narrative assembly, cross-source feeding (Reddit / public
-  attention / events), and the thread re-enrichment that restores country edges
-  and the evolutive connection graph.
+  (`signals_v2.snippet`) currently discarded at ingest, expose it as evidence
+  data, and render it only in clicked single-signal detail. Foundation for
+  per-country narrative assembly, cross-source feeding (Reddit / public
+  attention / events), narrative-note synthesis, and the thread re-enrichment
+  that restores country edges and the evolutive connection graph.
 
 ## Key files
 

@@ -26,8 +26,8 @@ data work lands in the existing UI instead of creating duplicate panels.
 ## Reading-experience track
 
 - Signal snippet enrichment: persist source body text
-  (`signals_v2.snippet`) so theme/thread detail evidence rows show real
-  sentences, not only counts. Design:
+  (`signals_v2.snippet`) so evidence payloads have body text available and the
+  clicked single-signal detail can read as more than a headline. Design:
   [[2026-06-04-signal-snippet-enrichment-design]]. Foundation for per-country
   narrative assembly (F2/F4), thread re-enrichment (F5), reading-panel UX (F1).
 

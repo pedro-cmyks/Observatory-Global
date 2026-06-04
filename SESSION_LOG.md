@@ -1,5 +1,43 @@
 # Atlas — Session Log
 
+## 2026-06-04 — F3 signal snippet enrichment shipped and verified
+
+### What happened
+- Continued from the F3 handoff after context loss and validated the real repo
+  state first. The feature was already merged on `v3-intel-layer` at
+  `87c98dc merge: signal snippet enrichment (F3)`.
+- Confirmed migration 052 adds nullable `signals_v2.snippet`, and the Supabase
+  column exists as `text`.
+- Confirmed source text is wired through `clean_snippet` for Reddit, NewsAPI,
+  RSS, NewsData, MediaStack, and ReliefWeb. GDELT remains NULL by design.
+- Confirmed `/api/v2/signals` returns `snippet` for `SignalDetailPanel`, and
+  thread evidence serialization carries `snippet` as data for future narrative
+  synthesis.
+- Confirmed localhost is connected to production data by default through the
+  Vite proxy to `https://atlas-api-pedro.fly.dev`; local frontend changes render
+  against the same signals as production unless `VITE_LOCAL_API` is set.
+
+### Validation
+- Backend focused tests:
+  `.venv/bin/python -m pytest tests/test_signal_text.py tests/test_ingest_snippet_wiring.py tests/test_snippet_evidence_contract.py -v`
+  -> `9 passed`.
+- Frontend: `npm run build` passed.
+- Fly `/health` and localhost `/health` returned matching production state
+  (`status=healthy`, `db_ok=true`, `total_signals=343493`, ingest lag `2.5`
+  minutes during smoke).
+- `/api/v2/signals?hours=24&limit=5` on both Fly and localhost returned the
+  `snippet` key without contract errors.
+- Live DB showed `with_snippet=0` in the current 24h window, but post-deploy
+  inserts since `2026-06-04T14:25:00Z` were GDELT-only. That is expected because
+  GDELT has no body text. The next non-GDELT ingest cycle is the real persistence
+  smoke.
+
+### Decision
+F3 is shipped as a foundation: persist snippets when source text exists, expose
+them as data, and render raw text only in the clicked single-signal detail panel.
+Do not render raw snippets under every theme/thread headline; the stronger use
+is a follow-up narrative-note synthesis layer.
+
 ## 2026-06-03 — Workbench early-access waitlist gate shipped
 
 ### What happened

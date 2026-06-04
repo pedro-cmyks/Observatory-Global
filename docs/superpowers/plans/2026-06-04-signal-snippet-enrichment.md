@@ -2,9 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Persist source-provided body text (Reddit selftext, NewsAPI/RSS/NewsData/Mediastack descriptions, ReliefWeb body) into a new `signals_v2.snippet` column and surface it under the headline in thread/theme evidence so Atlas reads as sentences, not only counts.
+**Status:** Shipped on `v3-intel-layer` at merge commit `87c98dc` and verified on
+2026-06-04. Column/API/build/tests are green; the first non-GDELT post-deploy
+ingest cycle is still needed to observe non-null snippets in live rows.
 
-**Architecture:** Additive nullable column `signals_v2.snippet`. A shared `clean_snippet` helper normalizes (strip, cap 500, empty→None). Six ingests already compute a `snippet`/`selftext` local — wire each into its signal dict + `INSERT INTO signals_v2`. GDELT (`ingest_v2`) stays NULL. Evidence serializers in `thread_intelligence.py` and `themes.py` add `snippet` (their SELECTs add the column); `ThemeDetail` + `ThreadFocusPanel` render it when present.
+**Goal:** Persist source-provided body text (Reddit selftext, NewsAPI/RSS/NewsData/Mediastack descriptions, ReliefWeb body) into a new `signals_v2.snippet` column, expose it as backend evidence data, and render it in the clicked single-signal detail panel.
+
+**Architecture:** Additive nullable column `signals_v2.snippet`. A shared `clean_snippet` helper normalizes (strip, cap 500, empty→None). Six ingests already compute a `snippet`/`selftext` local — wire each into its signal dict + `INSERT INTO signals_v2`. GDELT (`ingest_v2`) stays NULL. Thread evidence serialization adds `snippet` as data for future narrative synthesis; `/api/v2/signals` returns it for `SignalDetailPanel`, which renders it when present.
 
 **Tech Stack:** Python 3.12 / FastAPI / asyncpg / Postgres (Supabase); React + TypeScript + Vite; vanilla CSS.
 
@@ -451,6 +455,11 @@ git commit -m "feat(snippet): show signal snippet in the single-signal detail pa
 ## Task 7: Deploy + smoke
 
 **Files:** none (verification + deploy)
+
+**Current verification note (2026-06-04):** Fly app group is deployed and
+healthy; localhost proxy hits the same Fly backend. Column and endpoint contract
+smokes pass. Live DB has `0` non-null snippets so far because rows inserted
+after the deploy were GDELT-only, and GDELT intentionally has no body text.
 
 - [ ] **Step 1: Full backend test sweep**
 

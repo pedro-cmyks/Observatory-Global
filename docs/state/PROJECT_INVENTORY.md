@@ -1,6 +1,6 @@
 # Project Inventory
 
-Generated: 2026-06-03T16:23:01.635313+00:00
+Generated: 2026-06-04T14:33:21.893270+00:00
 Regen: `python scripts/project_inventory.py`
 
 ## Endpoints (backend)
@@ -132,13 +132,30 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 
 | Label | Program | Schedule | RunAtLoad | Last log mtime | Last log line |
 |---|---|---|---|---|---|
-| `com.atlas.atlas-topic-classifier` | `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` | every 1800s | True | 2026-06-03T16:08:43.468747+00:00 | } |
-| `com.atlas.emergent-snapshot` | `/Users/pedro/AtlasLocalWorker/run-emergent-snapshot.sh` | 0:00, 6:00, 12:00, 18:00 | True | 2026-06-03T11:05:13.547947+00:00 | } |
-| `com.atlas.local-hot-cold-catchup` | `/Users/pedro/AtlasLocalWorker/run-local-hot-cold-catchup.sh` | 0:10, 1:10, 2:10, 3:10, 4:10, 5:10 | True | 2026-06-03T10:11:01.032397+00:00 | } |
+| `com.atlas.atlas-topic-classifier` | `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` | every 1800s | True | 2026-06-04T14:23:44.534545+00:00 | } |
+| `com.atlas.emergent-snapshot` | `/Users/pedro/AtlasLocalWorker/run-emergent-snapshot.sh` | 0:00, 6:00, 12:00, 18:00 | True | 2026-06-04T11:56:25.678774+00:00 | } |
+| `com.atlas.local-hot-cold-catchup` | `/Users/pedro/AtlasLocalWorker/run-local-hot-cold-catchup.sh` | 0:10, 1:10, 2:10, 3:10, 4:10, 5:10 | True | 2026-06-03T21:12:16.672220+00:00 | } |
 | `com.atlas.threevendor-calibration` | `/Users/pedro/AtlasLocalWorker/run-3vendor-calibration.sh` | — | False | 2026-06-03T08:16:03.098547+00:00 | 2026-06-03T08:16:03Z calibration done -> /Users/pedro/AtlasLocalWorker/calibration/2026-06-03-calib-agreement.json |
 
 ## Recent commits (last 2 weeks)
 
+- `87c98dc 2026-06-04 merge: signal snippet enrichment (F3)`
+- `9480941 2026-06-04 feat(snippet): show signal snippet in the single-signal detail panel`
+- `49c3c69 2026-06-04 feat(snippet): return snippet from /api/v2/signals + prefer info-rich signals in stream`
+- `4c1110b 2026-06-04 feat(snippet): expose snippet in thread evidence serialization (data only)`
+- `4aeca95 2026-06-04 feat(snippet): persist source body text into signals_v2.snippet across ingests`
+- `ca7ebf1 2026-06-04 feat(snippet): clean_snippet helper (strip/cap/empty-to-null)`
+- `a3f995e 2026-06-04 feat(snippet): add signals_v2.snippet column (migration 052)`
+- `efed3ff 2026-06-04 docs(spec,plan): retarget snippet exposure to single-signal detail`
+- `ac07403 2026-06-04 docs(plan): signal snippet enrichment implementation plan`
+- `572ea49 2026-06-04 docs(obsidian): link snippet enrichment spec from Narrative Intelligence MOC`
+- `3bf2ba8 2026-06-04 chore(dev): point local vite proxy at production API by default`
+- `2973528 2026-06-04 docs(spec): signal snippet enrichment design (F3 reading-experience foundation)`
+- `0e9655c 2026-06-04 fix(ui): legend cleanup + workspace toggle/overlay layout`
+- `48b3cf5 2026-06-04 fix(workbench): only render preview gate when workspace is open`
+- `9afaa50 2026-06-03 fix(waitlist): portal overlay to document.body so it centers in the real viewport`
+- `fb91de4 2026-06-03 docs(waitlist): log waitlist gate shipment + regenerate inventory`
+- `8881ba7 2026-06-03 fix(waitlist): English overlay copy + viewport-anchored gate (fix clip/cutoff)`
 - `1af31fa 2026-06-03 merge: workbench early-access waitlist gate`
 - `36c432f 2026-06-03 fix(waitlist): harden rate-limit (Fly-Client-IP, evict idle IPs), cap referrer, robust submit error handling`
 - `eaa94dc 2026-06-03 feat(waitlist): interactive Workbench early-access overlay`
@@ -202,20 +219,3 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 - `2b29417 2026-05-29 feat(research): local $0/signal scope gate (e5-base) — production encoder`
 - `c23784d 2026-05-29 feat(research): scope-gate inference engine (Phase C) + validation`
 - `641e82d 2026-05-29 feat(research): persist production scope gate v1 (emb+conf, per-topic calibrated)`
-- `a972486 2026-05-29 feat(research): semantic scope gate — keep@90% precision 64% -> 84% recall`
-- `3e7c54e 2026-05-28 feat(research): Phase A 5k 3-vendor consensus — scope gate clears 90% precision`
-- `eefbe41 2026-05-28 feat(research): Phase B scope-gate probe — learned gate beats Atlas confidence 30x`
-- `08040e6 2026-05-28 docs: refresh handoff with 3-vendor 7-model consensus (47.69%)`
-- `40f5f89 2026-05-28 feat(research): third vendor (DeepSeek) — 3-vendor 7-model consensus`
-- `a33d74c 2026-05-28 docs: pause handoff — precision roadmap to 90-95% + tracking update`
-- `bcbddc9 2026-05-28 feat(research): balanced 6-model panel reveals annotator vendor camps`
-- `d43ab5c 2026-05-28 feat(research): cross-vendor annotator panel (GPT-4.1) breaks lineage caveat`
-- `23628d2 2026-05-28 feat(research): 3-model annotator panel resolves the gold-standard question`
-- `69c9621 2026-05-28 feat(research): multi-annotator agreement tool (Cohen + Fleiss kappa)`
-- `166ee1f 2026-05-28 feat(research): dual-annotator precision picture exposes 35pp annotator gap`
-- `f73041b 2026-05-28 feat(research): migration 044 theme-hint removals lift precision to 73.77%`
-- `c69a856 2026-05-27 feat(research): migration 043 gold-guided removals lift precision +6.55pp`
-- `5a9e63e 2026-05-27 feat(research): measure migration 042 lift on reviewed gold (null effect)`
-- `162bcc9 2026-05-27 docs(research): close 2026-05-27 session — migration 042 applied to prod`
-- `d7f3b45 2026-05-27 feat(research): llm multilingual vocab mining and migration 042 draft`
-- `d9b723e 2026-05-27 docs(research): atlas papers master plan (series of 8 papers)`

@@ -1,5 +1,57 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-06-03 (Workbench early-access waitlist gate shipped)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-06-04 (F3 signal snippet enrichment shipped + verified)
+
+---
+
+## Current handoff (2026-06-04) — F3 signal snippet enrichment shipped
+
+F3 is implemented on production branch `v3-intel-layer` at merge commit
+`87c98dc merge: signal snippet enrichment (F3)`. The repo is clean and aligned
+with `origin/v3-intel-layer`.
+
+Shipped:
+
+- **Migration 052** `signals_v2.snippet TEXT` (nullable, no backfill) is present
+  in Supabase.
+- **Ingestion wiring** persists source-provided body text through
+  `clean_snippet` for Reddit, NewsAPI, RSS, NewsData, MediaStack, and ReliefWeb.
+  GDELT intentionally leaves `snippet` NULL because it does not provide body
+  text.
+- **Backend exposure** adds `snippet` to `/api/v2/signals` for the clicked
+  single-signal detail panel, and to thread evidence serialization as data for
+  future narrative-note synthesis.
+- **Frontend exposure** renders `snippet` only in
+  `SignalDetailPanel` when present. It is not rendered as a raw extra line under
+  every thread/theme headline.
+- **Localhost data connection** is corrected: `frontend-v2/vite.config.ts`
+  proxies `/api` and `/health` to `https://atlas-api-pedro.fly.dev` by default,
+  so `localhost:3000` uses production data while keeping local frontend code.
+  Set `VITE_LOCAL_API=http://localhost:8000` only when intentionally targeting a
+  local backend.
+
+Verification on 2026-06-04:
+
+- `cd backend && .venv/bin/python -m pytest tests/test_signal_text.py tests/test_ingest_snippet_wiring.py tests/test_snippet_evidence_contract.py -v`
+  -> `9 passed`.
+- `cd frontend-v2 && npm run build` -> Vite build passed.
+- Fly `/health` and localhost `/health` both returned the same production data:
+  `status=healthy`, `db_ok=true`, `total_signals=343493`, ingest lag `2.5`
+  minutes at the time of smoke.
+- Supabase column check returned `snippet | text`.
+- `/api/v2/signals?hours=24&limit=5` on both Fly and localhost returned the
+  `snippet` key without contract errors.
+- Since the app deploy at `2026-06-04T14:25:00Z`, only GDELT rows had been
+  inserted (`gdelt_gkg` / `gdelt_gkg_translated`), so current post-deploy
+  `with_snippet=0` is expected until the next non-GDELT RSS/API/Reddit/ReliefWeb
+  insert lands.
+
+Spec: `docs/superpowers/specs/2026-06-04-signal-snippet-enrichment-design.md`.
+Plan: `docs/superpowers/plans/2026-06-04-signal-snippet-enrichment.md`.
+
+Next verification checkpoint: after the next non-GDELT ingest cycle, confirm
+`created_at > deploy_time` rows for `rss_feed`, `newsdata_api`,
+`mediastack_api`, `newsapi_api`, `reddit_public`, or `reliefweb_api` have
+`snippet IS NOT NULL`. Do not judge F3 from GDELT-only windows.
 
 ---
 

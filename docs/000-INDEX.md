@@ -30,8 +30,9 @@ below resolve via Obsidian's fuzzy search regardless of folder.
 ## Active design specs
 
 - [[2026-06-04-signal-snippet-enrichment-design]] — persist discarded source
-  body text into `signals_v2.snippet` and surface it in theme/thread evidence,
-  the foundation for Atlas as a reading experience.
+  body text into `signals_v2.snippet`, expose it as evidence data, and render it
+  in the clicked single-signal detail panel. Foundation for Atlas as a reading
+  experience.
 - [[2026-06-03-workbench-waitlist-gate-design]] — interactive early-access
   waitlist gate for the public MVP Workbench launch (`/api/v2/waitlist`,
   real-data counter, Supabase-backed).
