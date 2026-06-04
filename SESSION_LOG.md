@@ -45,6 +45,31 @@
   thread. `Virginia Bus Crash` has low support (`0.1667`) and high contradiction
   (`0.6667`), making it a review/split/suppress candidate.
 
+## 2026-06-04 — GDELT weak-support recall pilot implemented
+
+### What happened
+- Added `backend/scripts/gdelt_weak_recall_pilot.py`, a read-only pilot that
+  asks how many additional recent signals compatible GDELT themes could surface
+  for manual review.
+- Added conservative safeguards after the first live run surfaced noisy
+  expansion:
+  - reject over-broad expansion themes (`GENERAL_*`, `TAX_FNCACT_*`,
+    `TAX_WORLDLANGUAGES_*`, generic CrisisLex safety);
+  - do not treat every `UNGP_*` code as policy/rights;
+  - require label anchor terms such as `russia`/`ukraine`;
+  - skip generic labels such as `Local News and Politics` until label review.
+- Generated `docs/research/topic-quality/gdelt-weak-support/2026-06-04-recall-pilot.json`.
+
+### Validation
+- `cd backend && .venv/bin/python -m pytest tests/test_gdelt_weak_recall_pilot.py tests/test_gdelt_weak_support_audit.py -v`
+  -> `12 passed`.
+- Live pilot with `--candidate-limit 500` returned 33 conservative added
+  candidates for `Russia-Ukraine War Updates`.
+- Other active threads did not expand because they lacked compatible themes,
+  had generic labels, or were already flagged by the audit as review/split
+  candidates. This is acceptable for the first MVP-safe pilot: recover volume
+  only where GDELT support plus label anchors agree.
+
 ## 2026-06-04 — Unified thread detail shell started
 
 ### What happened

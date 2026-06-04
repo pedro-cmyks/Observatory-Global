@@ -1,0 +1,488 @@
+{
+  "schema_version": "atlas-gdelt-weak-recall-pilot-v1",
+  "generated_at": "2026-06-04T21:14:59.841816+00:00",
+  "source_audit_schema": "atlas-gdelt-weak-support-v1",
+  "window_hours": 24,
+  "thread_limit": 8,
+  "candidate_limit_per_thread": 500,
+  "review_limit_per_thread": 12,
+  "thread_count": 8,
+  "results": [
+    {
+      "thread_id": "dynamic-topic-10",
+      "label": "Russia-Ukraine War Updates",
+      "current_signal_count": 461,
+      "current_sample_rows": 119,
+      "expected_domains": [
+        "conflict",
+        "policy"
+      ],
+      "label_anchor_terms": [
+        "russia",
+        "ukraine"
+      ],
+      "expansion_themes": [
+        "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+        "WB_2471_PEACEKEEPING",
+        "USPEC_POLITICS_GENERAL1"
+      ],
+      "added_candidate_count": 33,
+      "added_country_count": 6,
+      "added_source_count": 26,
+      "weak_status_counts": {
+        "supported": 33
+      },
+      "review_sample": [
+        {
+          "signal_id": 6441309,
+          "headline": "Putin holds Q&A with international news agency heads at SPIEF",
+          "country_code": "RU",
+          "source_name": "massachusettssun.com",
+          "source_lang": "en",
+          "source_family": "gdelt",
+          "timestamp": "2026-06-04T21:15:00+00:00",
+          "themes": [
+            "TAX_WORLDLANGUAGES_AZERBAIJAN",
+            "TAX_ETHNICITY_RUSSIAN",
+            "USPEC_POLITICS_GENERAL1",
+            "EPU_POLICY_POLITICAL",
+            "TAX_FNCACT_PRESIDENT",
+            "TAX_FNCACT_CHIEFS",
+            "USPEC_POLICY1",
+            "TAX_WORLDLANGUAGES_RUSSIAN",
+            "CRISISLEX_CRISISLEXREC",
+            "TAX_WORLDLANGUAGES_RUSSIA"
+          ],
+          "domains": [
+            "conflict",
+            "disaster",
+            "economy",
+            "policy"
+          ],
+          "weak_status": "supported"
+        },
+        {
+          "signal_id": 6441429,
+          "headline": "Putin: N&#xEB;se Ukraina i thot&#xEB; po kompromisit q&#xEB; ram&#xEB; dakord me Trumpin n&#xEB; Alask&#xEB;, lufta do t&#xEB; p&#xEB;rfundoj&#xEB; shpejt",
+          "country_code": "UA",
+          "source_name": "tetovasot.com",
+          "source_lang": "xx",
+          "source_family": "gdelt",
+          "timestamp": "2026-06-04T21:00:00+00:00",
+          "themes": [
+            "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+            "USPEC_POLITICS_GENERAL1",
+            "TAX_ETHNICITY_RUSSIAN",
+            "EPU_CATS_NATIONAL_SECURITY",
+            "TAX_FNCACT_PRESIDENT",
+            "WB_2433_CONFLICT_AND_VIOLENCE",
+            "MEDIA_MSM",
+            "TAX_WORLDLANGUAGES_RUSSIAN",
+            "MARITIME",
+            "TAX_WORLDLANGUAGES_RUSSIA"
+          ],
+          "domains": [
+            "conflict",
+            "economy",
+            "policy",
+            "public_safety"
+          ],
+          "weak_status": "supported"
+        },
+        {
+          "signal_id": 6441444,
+          "headline": "Germany Blames Russia For Failed Un Security Council Bid",
+          "country_code": "CN",
+          "source_name": "singtaousa.com",
+          "source_lang": "xx",
+          "source_family": "gdelt",
+          "timestamp": "2026-06-04T21:00:00+00:00",
+          "themes": [
+            "ELECTION",
+            "TAX_WORLDMAMMALS_BEAR",
+            "WB_678_DIGITAL_GOVERNMENT",
+            "TAX_FNCACT_CHANCELLOR",
+            "LEGISLATION",
+            "WB_2372_AUTHENTICATION_AND_AUTHORIZATION",
+            "WB_670_ICT_SECURITY",
+            "TAX_FNCACT_OFFICIAL",
+            "USPEC_POLITICS_GENERAL1",
+            "TAX_FNCACT_OFFICER"
+          ],
+          "domains": [
+            "policy",
+            "public_safety",
+            "technology"
+          ],
+          "weak_status": "supported"
+        },
+        {
+          "signal_id": 6442733,
+          "headline": "\"Gasprom\" produ&#x17E;io snabdevanje Srbije gasom za jo&#x161; tri meseca\": Oglasila se ministarka &#x110;edovi&#x107; Handanovi&#x107;",
+          "country_code": "RU",
+          "source_name": "naslovi.net",
+          "source_lang": "xx",
+          "source_family": "gdelt",
+          "timestamp": "2026-06-04T21:00:00+00:00",
+          "themes": [
+            "TAX_FNCACT_PRESIDENT",
+            "TAX_WORLDLANGUAGES_RUSSIA",
+            "LEADER",
+            "TAX_FNCACT_MINISTER",
+            "ENV_MINING",
+            "USPEC_POLITICS_GENERAL1"
+          ],
+          "domains": [
+            "environment",
+            "policy"
+          ],
+          "weak_status": "supported"
+        },
+        {
+          "signal_id": 6441627,
+          "headline": "&#x628;&#x648;&#x62A;&#x64A;&#x646; &#x64A;&#x634;&#x64A;&#x62F; &#x628;&#x639;&#x644;&#x627;&#x642;&#x62A;&#x647; \"&#x627;&#x644;&#x637;&#x64A;&#x628;&#x629;\" &#x628;&#x627;&#x644;&#x631;&#x626;&#x64A;&#x633; &#x627;&#x644;&#x645;&#x635;&#x631;&#x64A;",
+          "country_code": "RU",
+          "source_name": "rt.com",
+          "source_lang": "xx",
+          "source_family": "gdelt",
+          "timestamp": "2026-06-04T21:00:00+00:00",
+          "themes": [
+            "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+            "RELATIONS",
+            "TAX_FNCACT_PRESIDENT",
+            "TAX_ETHNICITY_IRANIAN",
+            "EPU_ECONOMY_HISTORIC",
+            "MEDIA_MSM",
+            "WB_2433_CONFLICT_AND_VIOLENCE",
+            "CRISISLEX_CRISISLEXREC",
+            "TAX_WORLDLANGUAGES_RUSSIA",
+            "LEADER"
+          ],
+          "domains": [
+            "conflict",
+            "disaster",
+            "economy",
+            "policy"
+          ],
+          "weak_status": "supported"
+        },
+        {
+          "signal_id": 6441687,
+          "headline": "Putin afirma que habl&#xF3; con EU sobre posible operaci&#xF3;n militar en Cuba similar a la de Venezuela; hubo contactos con gobierno de Trump",
+          "country_code": "RU",
+          "source_name": "eluniversal.com.mx",
+          "source_lang": "xx",
+          "source_family": "gdelt",
+          "timestamp": "2026-06-04T21:00:00+00:00",
+          "themes": [
+            "WB_2465_REVOLUTIONARY_VIOLENCE",
+            "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+            "WB_2462_POLITICAL_VIOLENCE_AND_WAR",
+            "ENV_OIL",
+            "TAX_ETHNICITY_AMERICAN",
+            "TAX_FNCACT_PRESIDENT",
+            "WB_2433_CONFLICT_AND_VIOLENCE",
+            "TAX_WORLDLANGUAGES_RUSSIAN",
+            "TAX_WORLDLANGUAGES_RUSSIA",
+            "LEADER"
+          ],
+          "domains": [
+            "conflict",
+            "environment"
+          ],
+          "weak_status": "supported"
+        },
+        {
+          "signal_id": 6441795,
+          "headline": "Trump sugiere que son necesarios compromisos para solucionar el conflicto ucraniano",
+          "country_code": "RU",
+          "source_name": "rt.com",
+          "source_lang": "xx",
+          "source_family": "gdelt",
+          "timestamp": "2026-06-04T21:00:00+00:00",
+          "themes": [
+            "TAX_ETHNICITY_UKRAINIAN",
+            "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+            "TAX_FNCACT_PRESIDENT",
+            "WB_2433_CONFLICT_AND_VIOLENCE",
+            "TAX_WORLDLANGUAGES_UKRAINIAN",
+            "TAX_WORLDLANGUAGES_RUSSIA",
+            "LEADER",
+            "USPEC_POLITICS_GENERAL1"
+          ],
+          "domains": [
+            "conflict",
+            "policy"
+          ],
+          "weak_status": "supported"
+        },
+        {
+          "signal_id": 6441859,
+          "headline": "Putin admite que habl&#xF3; con EE. UU. sobre posible operaci&#xF3;n a la venezolana en Cuba",
+          "country_code": "CU",
+          "source_name": "laverdad.com",
+          "source_lang": "xx",
+          "source_family": "gdelt",
+          "timestamp": "2026-06-04T21:00:00+00:00",
+          "themes": [
+            "WB_2465_REVOLUTIONARY_VIOLENCE",
+            "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+            "WB_2462_POLITICAL_VIOLENCE_AND_WAR",
+            "ENV_OIL",
+            "TAX_FNCACT_PRESIDENT",
+            "WB_2433_CONFLICT_AND_VIOLENCE",
+            "TAX_FNCACT_REPRESENTATIVES",
+            "TAX_WORLDLANGUAGES_RUSSIAN",
+            "TAX_WORLDLANGUAGES_RUSSIA",
+            "LEADER"
+          ],
+          "domains": [
+            "conflict",
+            "environment"
+          ],
+          "weak_status": "supported"
+        },
+        {
+          "signal_id": 6441986,
+          "headline": "Ucraina-Russia, Zelensky scrive a Putin: \"Incontriamoci e chiudiamo la guerra\"",
+          "country_code": "RU",
+          "source_name": "sanremonews.it",
+          "source_lang": "xx",
+          "source_family": "gdelt",
+          "timestamp": "2026-06-04T21:00:00+00:00",
+          "themes": [
+            "WB_2530_BUSINESS_ENVIRONMENT",
+            "CEASEFIRE",
+            "WB_405_BUSINESS_CLIMATE",
+            "WB_2433_CONFLICT_AND_VIOLENCE",
+            "WB_696_PUBLIC_SECTOR_MANAGEMENT",
+            "LEADER",
+            "TAX_FNCACT_SPOKESMAN",
+            "USPEC_UNCERTAINTY1",
+            "TAX_ETHNICITY_UKRAINIAN",
+            "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE"
+          ],
+          "domains": [
+            "conflict",
+            "environment"
+          ],
+          "weak_status": "supported"
+        },
+        {
+          "signal_id": 6441991,
+          "headline": "Ucraina-Russia, Zelensky scrive a Putin: \"Incontriamoci e chiudiamo la guerra\" - il Fatto Nisseno - Caltanissetta notizie, cronaca, attualit&#xE0;",
+          "country_code": "UA",
+          "source_name": "ilfattonisseno.it",
+          "source_lang": "xx",
+          "source_family": "gdelt",
+          "timestamp": "2026-06-04T21:00:00+00:00",
+          "themes": [
+            "CEASEFIRE",
+            "WB_696_PUBLIC_SECTOR_MANAGEMENT",
+            "LEADER",
+            "TAX_ETHNICITY_UKRAINIAN",
+            "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+            "WB_939_NEGOTIATION",
+            "TAX_WORLDLANGUAGES_UKRAINIAN",
+            "WB_2473_DIPLOMACY_AND_NEGOTIATIONS",
+            "WB_2470_PEACE_OPERATIONS_AND_CONFLICT_MANAGEMENT",
+            "USPEC_POLITICS_GENERAL1"
+          ],
+          "domains": [
+            "conflict",
+            "policy"
+          ],
+          "weak_status": "supported"
+        },
+        {
+          "signal_id": 6442048,
+          "headline": "&#x41F;&#x443;&#x442;&#x438;&#x43D; &#x438; &#x41C;&#x438;&#x440;&#x437;&#x438;&#x435;&#x435;&#x432; &#x434;&#x430;&#x43B;&#x438; &#x441;&#x442;&#x430;&#x440;&#x442; &#x441;&#x442;&#x440;&#x43E;&#x438;&#x442;&#x435;&#x43B;&#x44C;&#x441;&#x442;&#x432;&#x443; &#x43F;&#x435;&#x440;&#x432;&#x43E;&#x433;&#x43E; &#x431;&#x43B;&#x43E;&#x43A;&#x430; &#x438;&#x43D;&#x442;&#x435;&#x433;&#x440;&#x438;&#x440;&#x43E;&#x432;&#x430;&#x43D;&#x43D;&#x43E;&#x439; &#x410;&#x42D;&#x421;",
+          "country_code": "RU",
+          "source_name": "aif.ru",
+          "source_lang": "xx",
+          "source_family": "gdelt",
+          "timestamp": "2026-06-04T21:00:00+00:00",
+          "themes": [
+            "TAX_FNCACT_REPRESENTATIVE",
+            "TAX_FNCACT_PRESIDENT",
+            "TAX_FNCACT_LEADERS",
+            "TAX_WORLDLANGUAGES_RUSSIA",
+            "LEADER",
+            "USPEC_POLITICS_GENERAL1"
+          ],
+          "domains": [
+            "policy"
+          ],
+          "weak_status": "supported"
+        },
+        {
+          "signal_id": 6442056,
+          "headline": "&#x41F;&#x443;&#x442;&#x438;&#x43D; &#x440;&#x430;&#x441;&#x43A;&#x440;&#x438;&#x442;&#x438;&#x43A;&#x43E;&#x432;&#x430;&#x43B; &#x437;&#x430;&#x44F;&#x432;&#x43B;&#x435;&#x43D;&#x438;&#x44F; &#x43E; &#x432;&#x44B;&#x433;&#x43E;&#x434;&#x435; &#x420;&#x43E;&#x441;&#x441;&#x438;&#x438; &#x43E;&#x442; &#x43A;&#x43E;&#x43D;&#x444;&#x43B;&#x438;&#x43A;&#x442;&#x430; &#x418;&#x440;&#x430;&#x43D;&#x430; &#x438; &#x421;&#x428;&#x410;",
+          "country_code": "RU",
+          "source_name": "ria.ru",
+          "source_lang": "xx",
+          "source_family": "gdelt",
+          "timestamp": "2026-06-04T21:00:00+00:00",
+          "themes": [
+            "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE",
+            "TAX_ECON_PRICE",
+            "TAX_FNCACT_CHIEF_OF_STATE",
+            "TAX_FNCACT_PRESIDENT",
+            "WB_2433_CONFLICT_AND_VIOLENCE",
+            "EPU_ECONOMY_HISTORIC",
+            "TAX_WORLDLANGUAGES_RUSSIA",
+            "LEADER",
+            "TAX_FNCACT_CHIEF",
+            "EPU_ECONOMY"
+          ],
+          "domains": [
+            "conflict",
+            "economy",
+            "policy"
+          ],
+          "weak_status": "supported"
+        }
+      ],
+      "recommendation": "manual_review"
+    },
+    {
+      "thread_id": "dynamic-topic-18",
+      "label": "Local News and Politics",
+      "current_signal_count": 281,
+      "current_sample_rows": 92,
+      "expected_domains": [
+        "policy"
+      ],
+      "label_anchor_terms": [],
+      "expansion_themes": [
+        "EPU_ECONOMY",
+        "WB_2471_PEACEKEEPING"
+      ],
+      "added_candidate_count": 0,
+      "added_country_count": 0,
+      "added_source_count": 0,
+      "weak_status_counts": {},
+      "review_sample": [],
+      "recommendation": "label_review_before_expansion"
+    },
+    {
+      "thread_id": "dynamic-topic-5",
+      "label": "Virginia Bus Crash",
+      "current_signal_count": 244,
+      "current_sample_rows": 126,
+      "expected_domains": [
+        "public_safety"
+      ],
+      "label_anchor_terms": [
+        "bus",
+        "crash",
+        "virginia"
+      ],
+      "expansion_themes": [],
+      "added_candidate_count": 0,
+      "added_country_count": 0,
+      "added_source_count": 0,
+      "weak_status_counts": {},
+      "review_sample": [],
+      "recommendation": "no_candidates"
+    },
+    {
+      "thread_id": "dynamic-topic-1",
+      "label": "Orchard Portfolio Sale",
+      "current_signal_count": 208,
+      "current_sample_rows": 71,
+      "expected_domains": [],
+      "label_anchor_terms": [
+        "orchard"
+      ],
+      "expansion_themes": [],
+      "added_candidate_count": 0,
+      "added_country_count": 0,
+      "added_source_count": 0,
+      "weak_status_counts": {},
+      "review_sample": [],
+      "recommendation": "no_candidates"
+    },
+    {
+      "thread_id": "dynamic-topic-13",
+      "label": "PSG Victory Riots",
+      "current_signal_count": 191,
+      "current_sample_rows": 86,
+      "expected_domains": [],
+      "label_anchor_terms": [
+        "psg",
+        "riots"
+      ],
+      "expansion_themes": [],
+      "added_candidate_count": 0,
+      "added_country_count": 0,
+      "added_source_count": 0,
+      "weak_status_counts": {},
+      "review_sample": [],
+      "recommendation": "no_candidates"
+    },
+    {
+      "thread_id": "dynamic-topic-6",
+      "label": "Trump Headlines Freedom 250",
+      "current_signal_count": 186,
+      "current_sample_rows": 88,
+      "expected_domains": [
+        "rights"
+      ],
+      "label_anchor_terms": [
+        "freedom",
+        "trump"
+      ],
+      "expansion_themes": [],
+      "added_candidate_count": 0,
+      "added_country_count": 0,
+      "added_source_count": 0,
+      "weak_status_counts": {},
+      "review_sample": [],
+      "recommendation": "no_candidates"
+    },
+    {
+      "thread_id": "dynamic-topic-9",
+      "label": "Meteor Sonic Boom",
+      "current_signal_count": 140,
+      "current_sample_rows": 74,
+      "expected_domains": [],
+      "label_anchor_terms": [
+        "boom",
+        "meteor",
+        "sonic"
+      ],
+      "expansion_themes": [],
+      "added_candidate_count": 0,
+      "added_country_count": 0,
+      "added_source_count": 0,
+      "weak_status_counts": {},
+      "review_sample": [],
+      "recommendation": "no_candidates"
+    },
+    {
+      "thread_id": "dynamic-topic-21",
+      "label": "Vancouver Real Estate Listings",
+      "current_signal_count": 51,
+      "current_sample_rows": 22,
+      "expected_domains": [],
+      "label_anchor_terms": [
+        "estate",
+        "real",
+        "vancouver"
+      ],
+      "expansion_themes": [],
+      "added_candidate_count": 0,
+      "added_country_count": 0,
+      "added_source_count": 0,
+      "weak_status_counts": {},
+      "review_sample": [],
+      "recommendation": "no_candidates"
+    }
+  ],
+  "interpretation": {
+    "added_candidate_count": "recent signals matching compatible GDELT themes but not already in the dynamic-topic sample ids",
+    "manual_review": "candidate rows are for inspection only; they are not promoted into threads by this report",
+    "stop_rule": "if added candidates do not improve answerability or mostly add context/noise, keep them out of the visible thread layer"
+  }
+}

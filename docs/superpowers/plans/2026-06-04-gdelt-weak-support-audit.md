@@ -171,3 +171,55 @@ Expected:
 - [x] **Step 4: Document validation**
 
 Update `SESSION_LOG.md` with the report path and a short summary.
+
+## Task 3: Conservative Recall Pilot
+
+**Files:**
+- Create: `backend/scripts/gdelt_weak_recall_pilot.py`
+- Create: `backend/tests/test_gdelt_weak_recall_pilot.py`
+- Create: `docs/research/topic-quality/gdelt-weak-support/2026-06-04-recall-pilot.json`
+- Modify: `SESSION_LOG.md`
+
+- [x] **Step 1: Write failing tests**
+
+Covered:
+
+- selecting expansion themes only when their mapped domains overlap expected
+  thread domains;
+- rejecting over-broad expansion themes (`GENERAL_*`, `TAX_FNCACT_*`,
+  language metadata, generic CrisisLex safety);
+- deriving conservative label anchor terms and skipping generic labels;
+- excluding current sample ids from added candidates.
+
+- [x] **Step 2: Run tests to verify failure**
+
+Initial run failed with `ModuleNotFoundError`. Follow-up RED tests caught two
+real issues: `UNGP_*` was too broad and generic GDELT themes expanded noisy
+candidates.
+
+- [x] **Step 3: Implement read-only pilot**
+
+`gdelt_weak_recall_pilot.py` now:
+
+- reuses the weak-support audit;
+- selects compatible, non-generic GDELT themes;
+- requires label anchor terms such as `russia`/`ukraine`;
+- queries candidate signals read-only;
+- writes a review sample artifact without product promotion.
+
+- [x] **Step 4: Validate live**
+
+Run:
+
+```bash
+backend/.venv/bin/python backend/scripts/gdelt_weak_recall_pilot.py \
+  --hours 24 \
+  --limit 8 \
+  --candidate-limit 500 \
+  --review-limit 12 \
+  --output docs/research/topic-quality/gdelt-weak-support/2026-06-04-recall-pilot.json
+```
+
+Expected: JSON artifact with `schema_version=atlas-gdelt-weak-recall-pilot-v1`.
+Observed: `Russia-Ukraine War Updates` recovered 33 conservative candidates;
+generic/noisy threads did not expand.

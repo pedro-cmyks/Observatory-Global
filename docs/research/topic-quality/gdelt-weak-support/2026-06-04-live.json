@@ -1,6 +1,6 @@
 {
   "schema_version": "atlas-gdelt-weak-support-v1",
-  "generated_at": "2026-06-04T21:04:40.622697+00:00",
+  "generated_at": "2026-06-04T21:14:18.857670+00:00",
   "window_hours": 24,
   "limit": 10,
   "thread_count": 8,
@@ -69,8 +69,7 @@
           "theme": "UNGP_FORESTS_RIVERS_OCEANS",
           "count": 16,
           "domains": [
-            "policy",
-            "rights"
+            "environment"
           ]
         },
         {
@@ -103,7 +102,7 @@
         },
         {
           "domain": "policy",
-          "count": 80
+          "count": 74
         },
         {
           "domain": "disaster",
@@ -114,20 +113,16 @@
           "count": 63
         },
         {
-          "domain": "public_safety",
-          "count": 27
+          "domain": "environment",
+          "count": 28
         },
         {
-          "domain": "rights",
+          "domain": "public_safety",
           "count": 27
         },
         {
           "domain": "health",
           "count": 27
-        },
-        {
-          "domain": "environment",
-          "count": 13
         },
         {
           "domain": "migration",
@@ -136,6 +131,10 @@
         {
           "domain": "technology",
           "count": 5
+        },
+        {
+          "domain": "rights",
+          "count": 4
         }
       ],
       "metrics": {
@@ -143,7 +142,7 @@
         "weak_support_pct": 0.8992,
         "weak_contradiction_pct": 0.0588,
         "ambiguous_pct": 0.042,
-        "theme_entropy": 0.8846
+        "theme_entropy": 0.8693
       },
       "bias": {
         "by_source_lang": {
@@ -280,10 +279,10 @@
             ],
             "domains": [
               "economy",
+              "environment",
               "health",
               "policy",
-              "public_safety",
-              "rights"
+              "public_safety"
             ],
             "status": "supported"
           },
@@ -307,9 +306,9 @@
             "domains": [
               "conflict",
               "economy",
+              "environment",
               "migration",
               "policy",
-              "rights",
               "technology"
             ],
             "status": "supported"
@@ -615,11 +614,11 @@
           "count": 26
         },
         {
-          "domain": "public_safety",
-          "count": 16
+          "domain": "environment",
+          "count": 19
         },
         {
-          "domain": "rights",
+          "domain": "public_safety",
           "count": 16
         },
         {
@@ -627,8 +626,8 @@
           "count": 13
         },
         {
-          "domain": "environment",
-          "count": 9
+          "domain": "rights",
+          "count": 4
         },
         {
           "domain": "technology",
@@ -640,7 +639,7 @@
         "weak_support_pct": 0.7717,
         "weak_contradiction_pct": 0.1304,
         "ambiguous_pct": 0.0978,
-        "theme_entropy": 0.8781
+        "theme_entropy": 0.8678
       },
       "bias": {
         "by_source_lang": {
@@ -1110,7 +1109,7 @@
       "top_domains": [
         {
           "domain": "policy",
-          "count": 88
+          "count": 86
         },
         {
           "domain": "conflict",
@@ -1129,20 +1128,20 @@
           "count": 23
         },
         {
-          "domain": "rights",
-          "count": 22
-        },
-        {
           "domain": "public_safety",
           "count": 21
         },
         {
-          "domain": "health",
-          "count": 8
+          "domain": "environment",
+          "count": 17
         },
         {
-          "domain": "environment",
-          "count": 7
+          "domain": "rights",
+          "count": 10
+        },
+        {
+          "domain": "health",
+          "count": 8
         },
         {
           "domain": "migration",
@@ -1158,7 +1157,7 @@
         "weak_support_pct": 0.1667,
         "weak_contradiction_pct": 0.6667,
         "ambiguous_pct": 0.1667,
-        "theme_entropy": 0.8444
+        "theme_entropy": 0.8472
       },
       "bias": {
         "by_source_lang": {
@@ -1244,9 +1243,9 @@
             "domains": [
               "conflict",
               "economy",
+              "environment",
               "policy",
-              "public_safety",
-              "rights"
+              "public_safety"
             ],
             "status": "supported"
           },
@@ -1295,9 +1294,9 @@
             "domains": [
               "conflict",
               "economy",
+              "environment",
               "policy",
-              "public_safety",
-              "rights"
+              "public_safety"
             ],
             "status": "supported"
           },
@@ -1347,9 +1346,9 @@
             "domains": [
               "conflict",
               "economy",
+              "environment",
               "policy",
-              "public_safety",
-              "rights"
+              "public_safety"
             ],
             "status": "supported"
           }
@@ -1375,8 +1374,8 @@
             "domains": [
               "conflict",
               "economy",
+              "environment",
               "policy",
-              "rights",
               "technology"
             ],
             "status": "contradicted"
@@ -1401,8 +1400,8 @@
             "domains": [
               "conflict",
               "economy",
+              "environment",
               "policy",
-              "rights",
               "technology"
             ],
             "status": "contradicted"
@@ -1427,8 +1426,8 @@
             "domains": [
               "conflict",
               "economy",
+              "environment",
               "policy",
-              "rights",
               "technology"
             ],
             "status": "contradicted"
@@ -1626,16 +1625,11 @@
           "theme": "UNGP_FORESTS_RIVERS_OCEANS",
           "count": 20,
           "domains": [
-            "policy",
-            "rights"
+            "environment"
           ]
         }
       ],
       "top_domains": [
-        {
-          "domain": "policy",
-          "count": 51
-        },
         {
           "domain": "economy",
           "count": 48
@@ -1649,16 +1643,16 @@
           "count": 41
         },
         {
+          "domain": "environment",
+          "count": 39
+        },
+        {
           "domain": "disaster",
           "count": 33
         },
         {
-          "domain": "rights",
-          "count": 20
-        },
-        {
-          "domain": "environment",
-          "count": 19
+          "domain": "policy",
+          "count": 31
         },
         {
           "domain": "public_safety",
@@ -1670,7 +1664,7 @@
         "weak_support_pct": 0.0,
         "weak_contradiction_pct": 0.0,
         "ambiguous_pct": 1.0,
-        "theme_entropy": 0.949
+        "theme_entropy": 0.963
       },
       "bias": {
         "by_source_lang": {
@@ -1921,7 +1915,7 @@
       "top_domains": [
         {
           "domain": "policy",
-          "count": 56
+          "count": 55
         },
         {
           "domain": "disaster",
@@ -1948,15 +1942,15 @@
           "count": 17
         },
         {
-          "domain": "rights",
-          "count": 11
-        },
-        {
           "domain": "environment",
-          "count": 3
+          "count": 5
         },
         {
           "domain": "media_social",
+          "count": 3
+        },
+        {
+          "domain": "rights",
           "count": 3
         },
         {
@@ -1969,7 +1963,7 @@
         "weak_support_pct": 0.0,
         "weak_contradiction_pct": 0.0,
         "ambiguous_pct": 1.0,
-        "theme_entropy": 0.8564
+        "theme_entropy": 0.8433
       },
       "bias": {
         "by_source_lang": {
@@ -2077,7 +2071,6 @@
             "domains": [
               "economy",
               "policy",
-              "rights",
               "technology"
             ],
             "status": "ambiguous"
@@ -2103,8 +2096,7 @@
               "conflict",
               "economy",
               "policy",
-              "public_safety",
-              "rights"
+              "public_safety"
             ],
             "status": "ambiguous"
           },
@@ -2255,7 +2247,11 @@
         },
         {
           "domain": "policy",
-          "count": 41
+          "count": 40
+        },
+        {
+          "domain": "environment",
+          "count": 12
         },
         {
           "domain": "health",
@@ -2270,10 +2266,6 @@
           "count": 10
         },
         {
-          "domain": "environment",
-          "count": 10
-        },
-        {
           "domain": "technology",
           "count": 6
         },
@@ -2283,25 +2275,25 @@
         },
         {
           "domain": "rights",
-          "count": 4
+          "count": 1
         }
       ],
       "metrics": {
         "sample_rows": 88,
-        "weak_support_pct": 0.0455,
-        "weak_contradiction_pct": 0.9432,
+        "weak_support_pct": 0.0114,
+        "weak_contradiction_pct": 0.9773,
         "ambiguous_pct": 0.0114,
-        "theme_entropy": 0.8144
+        "theme_entropy": 0.8057
       },
       "bias": {
         "by_source_lang": {
           "en": {
             "rows": 85,
-            "supported": 4,
-            "contradicted": 80,
+            "supported": 1,
+            "contradicted": 83,
             "ambiguous": 1,
-            "support_rate": 0.0471,
-            "contradiction_rate": 0.9412,
+            "support_rate": 0.0118,
+            "contradiction_rate": 0.9765,
             "ambiguous_rate": 0.0118
           },
           "xx": {
@@ -2317,11 +2309,11 @@
         "by_source_family": {
           "gdelt": {
             "rows": 87,
-            "supported": 4,
-            "contradicted": 83,
+            "supported": 1,
+            "contradicted": 86,
             "ambiguous": 0,
-            "support_rate": 0.046,
-            "contradiction_rate": 0.954,
+            "support_rate": 0.0115,
+            "contradiction_rate": 0.9885,
             "ambiguous_rate": 0.0
           },
           "independent": {
@@ -2346,11 +2338,11 @@
           },
           "global_south_or_other": {
             "rows": 67,
-            "supported": 4,
-            "contradicted": 62,
+            "supported": 1,
+            "contradicted": 65,
             "ambiguous": 1,
-            "support_rate": 0.0597,
-            "contradiction_rate": 0.9254,
+            "support_rate": 0.0149,
+            "contradiction_rate": 0.9701,
             "ambiguous_rate": 0.0149
           }
         }
@@ -2380,82 +2372,6 @@
               "economy",
               "policy",
               "rights"
-            ],
-            "status": "supported"
-          },
-          {
-            "signal_id": 6175465,
-            "headline": "'Fucking Crazy': Trump Reportedly Lashes Out at Netanyahu in Expletive-laden Call",
-            "country_code": "IL",
-            "source_name": "haaretz.com",
-            "source_lang": "en",
-            "source_family": "gdelt",
-            "themes": [
-              "WB_2470_PEACE_OPERATIONS_AND_CONFLICT_MANAGEMENT",
-              "UNGP_FORESTS_RIVERS_OCEANS",
-              "WB_2471_PEACEKEEPING",
-              "TAX_TERROR_GROUP_HEZBOLLAH",
-              "TAX_POLITICAL_PARTY_HEZBOLLAH",
-              "CEASEFIRE",
-              "WB_2473_DIPLOMACY_AND_NEGOTIATIONS",
-              "WB_2432_FRAGILITY_CONFLICT_AND_VIOLENCE"
-            ],
-            "domains": [
-              "conflict",
-              "policy",
-              "rights"
-            ],
-            "status": "supported"
-          },
-          {
-            "signal_id": 6060653,
-            "headline": "Iran claims attack on US bases in West Asia: Kuwait, Bahrain air defences activated",
-            "country_code": "IR",
-            "source_name": "businesstoday.in",
-            "source_lang": "en",
-            "source_family": "gdelt",
-            "themes": [
-              "MARITIME",
-              "TAX_FNCACT_SPOKESPERSON",
-              "DRONES",
-              "TAX_FNCACT_COLONEL",
-              "WB_694_BROADCAST_AND_MEDIA",
-              "MANMADE_DISASTER_IMPLIED",
-              "TAX_WORLDLANGUAGES_PERSIAN",
-              "CRISISLEX_T01_CAUTION_ADVICE"
-            ],
-            "domains": [
-              "conflict",
-              "disaster",
-              "policy",
-              "rights"
-            ],
-            "status": "supported"
-          },
-          {
-            "signal_id": 6056797,
-            "headline": "Iran fires missiles on Kuwait, Bahrain and US strikes back after reports of faltering peace talks",
-            "country_code": "IR",
-            "source_name": "thefrontierpost.com",
-            "source_lang": "en",
-            "source_family": "gdelt",
-            "themes": [
-              "MARITIME_PIRACY",
-              "PROTEST",
-              "DRONES",
-              "ENV_NATURALGAS",
-              "MANMADE_DISASTER_IMPLIED",
-              "CRISISLEX_T01_CAUTION_ADVICE",
-              "WB_843_DISPUTE_RESOLUTION",
-              "DEMOCRACY"
-            ],
-            "domains": [
-              "conflict",
-              "disaster",
-              "environment",
-              "policy",
-              "rights",
-              "technology"
             ],
             "status": "supported"
           }
@@ -2682,12 +2598,16 @@
       ],
       "top_domains": [
         {
+          "domain": "economy",
+          "count": 46
+        },
+        {
           "domain": "policy",
           "count": 46
         },
         {
-          "domain": "economy",
-          "count": 46
+          "domain": "environment",
+          "count": 37
         },
         {
           "domain": "disaster",
@@ -2698,19 +2618,15 @@
           "count": 27
         },
         {
-          "domain": "environment",
-          "count": 20
-        },
-        {
           "domain": "health",
           "count": 19
         },
         {
-          "domain": "rights",
+          "domain": "technology",
           "count": 17
         },
         {
-          "domain": "technology",
+          "domain": "rights",
           "count": 17
         },
         {
@@ -2731,7 +2647,7 @@
         "weak_support_pct": 0.0,
         "weak_contradiction_pct": 0.0,
         "ambiguous_pct": 1.0,
-        "theme_entropy": 0.8822
+        "theme_entropy": 0.8827
       },
       "bias": {
         "by_source_lang": {
@@ -3010,11 +2926,15 @@
         },
         {
           "domain": "environment",
-          "count": 4
+          "count": 5
         },
         {
           "domain": "public_safety",
           "count": 4
+        },
+        {
+          "domain": "health",
+          "count": 2
         },
         {
           "domain": "conflict",
@@ -3025,19 +2945,11 @@
           "count": 2
         },
         {
-          "domain": "health",
-          "count": 2
-        },
-        {
-          "domain": "policy",
-          "count": 2
-        },
-        {
           "domain": "migration",
           "count": 1
         },
         {
-          "domain": "rights",
+          "domain": "policy",
           "count": 1
         }
       ],
@@ -3046,7 +2958,7 @@
         "weak_support_pct": 0.0,
         "weak_contradiction_pct": 0.0,
         "ambiguous_pct": 1.0,
-        "theme_entropy": 0.9271
+        "theme_entropy": 0.9119
       },
       "bias": {
         "by_source_lang": {

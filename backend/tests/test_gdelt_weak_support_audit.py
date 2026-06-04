@@ -17,6 +17,11 @@ def test_theme_domains_ignores_language_metadata_themes():
     assert theme_domains("WORLDLANGUAGES_UKRAINIAN") == set()
 
 
+def test_theme_domains_does_not_treat_every_ungp_code_as_policy():
+    assert theme_domains("UNGP_FORESTS_RIVERS_OCEANS") == {"environment"}
+    assert theme_domains("UNGP_FREEDOM_FROM_DISCRIMINATION") == {"policy", "rights"}
+
+
 def test_infer_expected_domains_from_thread_label():
     assert infer_expected_domains("Russia-Ukraine War Updates") == {"conflict", "policy"}
     assert infer_expected_domains("Social Media") == {"media_social"}
