@@ -58,6 +58,15 @@ The visible product should answer:
   deployed and browser-smoked. Smoke report:
   `docs/research/topic-quality/2026-06-03-dynamic-topics-product-smoke.md`.
 
+## Planned enrichment
+
+- [[2026-06-04-signal-snippet-enrichment-design]] — persist source body text
+  (`signals_v2.snippet`) currently discarded at ingest, and surface it in
+  thread/theme evidence so narratives read as sentences, not counts. Foundation
+  for per-country narrative assembly, cross-source feeding (Reddit / public
+  attention / events), and the thread re-enrichment that restores country edges
+  and the evolutive connection graph.
+
 ## Key files
 
 - `backend/app/services/thread_intelligence.py`
