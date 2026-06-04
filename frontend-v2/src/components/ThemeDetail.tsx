@@ -20,6 +20,7 @@ const TemporalNarrativeGraph = lazy(() =>
 
 interface ThemeData {
     theme: string
+    label?: string
     country: string | null
     total: number
     avgSentiment: number
@@ -307,6 +308,19 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
 
     const pinnedId = `theme-${theme}${originCountry ? '-' + originCountry : ''}`
     const pinned = isPinned(pinnedId)
+    const displayLabel = data?.label || getThemeLabel(theme)
+    const countryFramingRows = data
+        ? (data.countryFraming && data.countryFraming.length > 0
+            ? data.countryFraming
+            : data.countryBreakdown.map(c => ({
+                country_code: c.code,
+                country_name: resolveCountryName(c.code),
+                signal_count: c.count,
+                avg_sentiment: c.sentiment,
+                top_sub_themes: [],
+                sentiment_label: c.sentiment > 0.1 ? 'positive' : c.sentiment < -0.1 ? 'negative' : 'neutral',
+            })))
+        : []
 
     const pinTemporalSnapshot = (bucket: TemporalNarrativeBucket) => {
         const snapshotId = `temporal-${theme}-${bucket.id}`
@@ -326,11 +340,11 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         pinItem({
             id: snapshotId,
             type: 'temporal_snapshot',
-            title: `${getThemeLabel(theme)} · ${bucket.label}`,
+            title: `${displayLabel} · ${bucket.label}`,
             urlParams: `?theme=${encodeURIComponent(theme)}`,
             meta: {
                 theme,
-                themeLabel: getThemeLabel(theme),
+                themeLabel: displayLabel,
                 bucketLabel: bucket.label,
                 signalCount: bucket.signalCount,
                 start: bucket.start,
@@ -354,7 +368,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
             pinItem({
                 id: pinnedId,
                 type: 'theme',
-                title: `${getThemeLabel(theme)}${originCountryName ? ` in ${originCountryName}` : ''}`,
+                title: `${displayLabel}${originCountryName ? ` in ${originCountryName}` : ''}`,
                 urlParams: `?${params.toString()}`
             })
         }
@@ -373,7 +387,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                     </button>
                     {!loading && data && (
                         <ExportMenu
-                            themeName={getThemeLabel(theme)}
+                            themeName={displayLabel}
                             data={data}
                             insight={insight}
                             captureRef={detailRef}
@@ -388,7 +402,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                 <div className="theme-detail-header">
                     <span className="theme-detail-icon">{getThemeIcon(theme)}</span>
                     <div style={{ flex: 1 }}>
-                        <h2>{getThemeLabel(theme)}</h2>
+                        <h2>{displayLabel}</h2>
                         {drillCountry ? (
                             <p className="theme-detail-meta">
                                 <button
@@ -518,7 +532,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                         <span className="attention-signal-icon">PUBLIC</span>
                                         <h3>{originAttention.title}</h3>
                                         <p>
-                                            This thread was opened from a people-side attention item, so Atlas is reading {getThemeLabel(theme)}
+                                            This thread was opened from a people-side attention item, so Atlas is reading {displayLabel}
                                             {' '}through that context instead of as a generic global topic.
                                         </p>
                                     </div>
@@ -547,7 +561,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 <Suspense fallback={<div className="temporal-graph-loading">Loading evolution graph...</div>}>
                                     <TemporalNarrativeGraph
                                         theme={theme}
-                                        themeLabel={getThemeLabel(theme)}
+                                        themeLabel={displayLabel}
                                         signals={data.graphSignals?.length ? data.graphSignals : data.signals}
                                         onThemeSelect={onThemeSelect}
                                         onCountrySelect={(code) => {
@@ -560,7 +574,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                         onOpenInWorkspace={() => {
                                             const pid = `theme-${theme}`
                                             if (!isPinned(pid)) {
-                                                pinItem({ id: pid, type: 'theme', title: getThemeLabel(theme), urlParams: `?theme=${encodeURIComponent(theme)}` })
+                                                pinItem({ id: pid, type: 'theme', title: displayLabel, urlParams: `?theme=${encodeURIComponent(theme)}` })
                                             }
                                             openWorkspace(true)
                                         }}
@@ -642,9 +656,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                         )}
 
                         {/* HOW IT'S COVERED — Framing Analysis (hidden when drilled into a country) */}
-                        {!drillCountry && data.countryFraming && data.countryFraming.length > 0 && (() => {
+                        {!drillCountry && countryFramingRows.length > 0 && (() => {
                             // Assign ranks by volume BEFORE reordering
-                            const withRank = data.countryFraming.map((cf, idx) => ({ ...cf, volumeRank: idx + 1 }))
+                            const withRank = countryFramingRows.map((cf, idx) => ({ ...cf, volumeRank: idx + 1 }))
                             let framing = withRank
 
                             if (originCountry) {
@@ -670,13 +684,13 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 }
                             }
                             const totalFramingSignals = framing.reduce((s, c) => s + c.signal_count, 0)
-                            const extraCountries = data.countryBreakdown.length - data.countryFraming.length
+                            const extraCountries = data.countryBreakdown.length - countryFramingRows.length
                             return (
                                 <div className="theme-section framing-section">
                                     <div className="framing-header-row">
                                         <h3 data-help="Each card shows how a country's media frames this topic. Tone ranges from −10 (critical) to +10 (supportive). Click any card to see country-specific signals.">How It's Covered</h3>
                                         <span className="framing-scope">
-                                            top {data.countryFraming.length} of {data.countryBreakdown.length} countries by volume
+                                            top {countryFramingRows.length} of {data.countryBreakdown.length} countries by volume
                                         </span>
                                         <span className="framing-info-btn" data-tip="Each card shows how a country's media covers this topic. Tone −10 to +10: negative = framed critically, positive = framed supportively. Sub-themes co-occur most in that country's coverage. Click any card to see that country's signals.">?</span>
                                     </div>
@@ -770,7 +784,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                         {data.relatedThemes.length > 0 && (
                             <div className="theme-section">
                                 <h3>Related Topics</h3>
-                                <p className="related-topics-hint">Co-occur in same signals · click to explore</p>
+                                <p className="related-topics-hint">Co-occurring GDELT themes in the same signals · click to explore</p>
                                 <div className="related-grid">
                                     {data.relatedThemes.slice(0, 8).map(t => (
                                         <div key={t.theme} className="related-chip-wrap">

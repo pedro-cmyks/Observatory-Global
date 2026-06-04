@@ -15,12 +15,23 @@
   source/person/theme actions).
 - Renamed the fallback ThreadFocusPanel's vague `Movement` section to
   `10h Signal Change`.
+- Follow-up UI fix from live review: `ThemeDetail` now prefers backend
+  `data.label` over formatting raw slugs, so `dynamic-topic-10` renders as the
+  actual thread label instead of `Dynamic Topic 10`.
+- `ThemeDetail` now falls back from empty `countryFraming` to `countryBreakdown`
+  for dynamic topics, restoring the country-card/edge interaction even when the
+  backend only has preview-grade country aggregates.
+- Related-topic copy now names those chips as co-occurring GDELT themes, not
+  source-family categories.
 
 ### Validation
 - `cd frontend-v2 && npm run build` passed.
 - Direct helper smoke passed via Node type stripping.
 - Local proxy returned 200 for `/api/v2/threads`, `/api/v2/theme/dynamic-topic-17`,
   and `/api/v2/theme/election-legitimacy-dispute?country_code=CO`.
+- Local smoke for `/api/v2/theme/dynamic-topic-10?hours=24` returned
+  `label=Russia-Ukraine War Updates`, `countryBreakdown=15`, and
+  `countryFraming=0`, matching the frontend fallback.
 - Vitest currently hangs even on an existing unrelated test in this local
   session; kept the new unit test file in place but did not rely on Vitest as a
   completion gate.
