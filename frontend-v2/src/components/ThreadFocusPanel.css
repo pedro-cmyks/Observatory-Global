@@ -230,3 +230,287 @@
     font-style: italic;
     font-weight: 400;
 }
+
+/* ── Packet: Activity Timeline ───────────────────────────────────────── */
+
+.thread-focus-timeline-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 80px;
+    padding: 10px 10px 0;
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    border-radius: 6px;
+    background: rgba(2, 6, 23, 0.32);
+}
+
+.thread-focus-timeline-bar {
+    flex: 1;
+    min-width: 3px;
+    border-radius: 2px 2px 0 0;
+    transition: opacity 0.15s;
+}
+
+.thread-focus-timeline-bar:hover {
+    opacity: 0.75;
+}
+
+.thread-focus-timeline-legend {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+    justify-content: center;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    color: var(--color-text-muted, #64748b);
+}
+
+.thread-focus-legend-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+/* ── Packet: Country Breakdown ───────────────────────────────────────── */
+
+.thread-focus-country-breakdown {
+    display: grid;
+    gap: 4px;
+}
+
+.thread-focus-country-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 10px;
+    background: rgba(15, 23, 42, 0.48);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    border-radius: 5px;
+    cursor: pointer;
+    color: inherit;
+    text-align: left;
+    transition: background 0.15s;
+}
+
+.thread-focus-country-row:hover {
+    background: rgba(45, 212, 191, 0.06);
+    border-color: rgba(45, 212, 191, 0.2);
+}
+
+.thread-focus-country-code {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    color: #2dd4bf;
+    min-width: 24px;
+}
+
+.thread-focus-country-name {
+    flex: 1;
+    font-size: 12px;
+    color: #cbd5e1;
+}
+
+.thread-focus-country-count {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    color: #94a3b8;
+}
+
+.thread-focus-country-sentiment {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    min-width: 36px;
+    text-align: right;
+}
+
+/* ── Packet: Source Lanes ────────────────────────────────────────────── */
+
+.thread-focus-lane-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.thread-focus-lane-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    border-radius: 4px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    border: 1px solid;
+}
+
+.thread-focus-lane-chip strong {
+    font-weight: 700;
+}
+
+.thread-focus-lane-media {
+    color: #93c5fd;
+    background: rgba(147, 197, 253, 0.08);
+    border-color: rgba(147, 197, 253, 0.2);
+}
+
+.thread-focus-lane-state {
+    color: #fca5a5;
+    background: rgba(252, 165, 165, 0.08);
+    border-color: rgba(252, 165, 165, 0.2);
+}
+
+.thread-focus-lane-social {
+    color: #86efac;
+    background: rgba(134, 239, 172, 0.08);
+    border-color: rgba(134, 239, 172, 0.2);
+}
+
+.thread-focus-lane-other {
+    color: #94a3b8;
+    background: rgba(148, 163, 184, 0.08);
+    border-color: rgba(148, 163, 184, 0.15);
+}
+
+.thread-focus-packet-source-list {
+    display: grid;
+    gap: 4px;
+}
+
+.thread-focus-packet-source-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.07);
+}
+
+.thread-focus-packet-source-name {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-size: 12px;
+    color: #cbd5e1;
+    cursor: pointer;
+    text-align: left;
+}
+
+.thread-focus-packet-source-name:hover {
+    color: #2dd4bf;
+}
+
+/* source-family-badge classes are defined in ThemeDetail.css (global scope).
+   Re-declare base here so ThreadFocusPanel.css is self-contained. */
+.thread-focus-source-family-badge {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 9px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    color: rgba(226, 232, 240, 0.82);
+}
+
+.thread-focus-packet-source-count {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    color: #64748b;
+    min-width: 28px;
+    text-align: right;
+}
+
+.thread-focus-packet-source-sentiment {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    min-width: 36px;
+    text-align: right;
+}
+
+/* ── Packet: Related Themes ──────────────────────────────────────────── */
+
+.thread-focus-related-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 9px;
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    background: rgba(148, 163, 184, 0.05);
+    border-radius: 4px;
+    font-size: 11px;
+    color: #cbd5e1;
+    cursor: default;
+}
+
+.thread-focus-related-icon {
+    font-size: 12px;
+}
+
+.thread-focus-related-label {
+    color: #e2e8f0;
+}
+
+.thread-focus-related-count {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 9px;
+    color: #64748b;
+    padding: 1px 4px;
+    background: rgba(148, 163, 184, 0.08);
+    border-radius: 3px;
+}
+
+/* ── Packet: Public Attention ────────────────────────────────────────── */
+
+.thread-focus-attention-row {
+    display: grid;
+    gap: 8px;
+}
+
+.thread-focus-attention-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    background: rgba(15, 23, 42, 0.45);
+    border-radius: 6px;
+}
+
+.thread-focus-attention-icon {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    padding: 3px 6px;
+    border-radius: 3px;
+    background: rgba(45, 212, 191, 0.12);
+    color: #2dd4bf;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.thread-focus-attention-label {
+    font-size: 11px;
+    color: #cbd5e1;
+    margin-bottom: 6px;
+}
+
+.thread-focus-attention-detail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.thread-focus-trending-kw,
+.thread-focus-wiki-article {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: rgba(148, 163, 184, 0.08);
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.1);
+}

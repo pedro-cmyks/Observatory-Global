@@ -1,7 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { LivingThreadSelection } from './NarrativeThreads'
 import { PanelSkeleton } from './PanelSkeleton'
+import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
+import { resolveCountryName } from '../lib/countryNames'
+import { getSourceFamilyMeta } from '../lib/sourceFamily'
 import './ThreadFocusPanel.css'
+
+interface ThreadPacket {
+    graphSignals?: Array<{ headline: string; country: string | null; source: string; sentiment: number; url?: string }>
+    countryBreakdown?: Array<{ code: string; count: number; sentiment: number }>
+    topSources?: Array<{ name: string; count: number; sentiment: number; family?: string }>
+    topPersons?: Array<{ name: string; count: number }>
+    timeline?: Array<{ hour: string; count: number; sentiment: number }>
+    lanes?: { media: number; social: number; state: number; other: number }
+    relatedThemes?: Array<{ theme: string; count: number }>
+    public_attention?: { trends?: unknown[]; wiki?: unknown[] } | null
+}
 
 interface ThreadEvidence {
     id: string
@@ -38,6 +52,7 @@ type ThreadDetail = LivingThreadSelection & {
     }
     related_threads?: Array<{ topic?: string; label?: string; co_signals?: number }>
     evidence_samples?: ThreadEvidence[]
+    packet?: ThreadPacket | null
 }
 
 interface ThreadFocusPanelProps {
@@ -49,6 +64,7 @@ interface ThreadFocusPanelProps {
 }
 
 const formatCount = (value: number) => value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value.toLocaleString()
+const getSentimentColor = (s: number) => s > 0.1 ? '#4ade80' : s < -0.1 ? '#f87171' : '#fbbf24'
 
 const Sparkline = ({ data, trend }: { data: Array<{ hour: string; count: number }>, trend: string }) => {
     if (!data || data.length < 2) return <div className="thread-focus-empty-chart">No timeline yet.</div>
@@ -221,6 +237,176 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
                             </div>
                         )}
                     </div>
+
+                    {/* PACKET: Sentiment Timeline */}
+                    {!!active.packet?.timeline?.length && (
+                        <div className="thread-focus-section">
+                            <div className="thread-focus-section-title">Activity Timeline</div>
+                            <div className="thread-focus-timeline-chart">
+                                {active.packet.timeline!.map((t, i) => (
+                                    <div
+                                        key={i}
+                                        className="thread-focus-timeline-bar"
+                                        style={{
+                                            height: `${Math.max(10, (t.count / Math.max(...active.packet!.timeline!.map(x => x.count))) * 100)}%`,
+                                            backgroundColor: getSentimentColor(t.sentiment),
+                                        }}
+                                        data-tip={`${t.hour}: ${t.count} signals`}
+                                    />
+                                ))}
+                            </div>
+                            <div className="thread-focus-timeline-legend">
+                                <span><span className="thread-focus-legend-dot" style={{ background: '#4ade80' }} /> Positive</span>
+                                <span><span className="thread-focus-legend-dot" style={{ background: '#fbbf24' }} /> Neutral</span>
+                                <span><span className="thread-focus-legend-dot" style={{ background: '#f87171' }} /> Negative</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* PACKET: Country Edges */}
+                    {!!active.packet?.countryBreakdown?.length && (
+                        <div className="thread-focus-section">
+                            <div className="thread-focus-section-title">Country Breakdown</div>
+                            <div className="thread-focus-country-breakdown">
+                                {active.packet.countryBreakdown!.slice(0, 10).map(c => (
+                                    <button
+                                        key={c.code}
+                                        className="thread-focus-country-row"
+                                        onClick={() => onCountrySelect?.(c.code)}
+                                        data-tip={`${resolveCountryName(c.code)} · ${c.count} signals · tone ${c.sentiment > 0 ? '+' : ''}${c.sentiment.toFixed(2)}`}
+                                    >
+                                        <span className="thread-focus-country-code">{c.code}</span>
+                                        <span className="thread-focus-country-name">{resolveCountryName(c.code)}</span>
+                                        <span className="thread-focus-country-count">{c.count}</span>
+                                        <span
+                                            className="thread-focus-country-sentiment"
+                                            style={{ color: getSentimentColor(c.sentiment) }}
+                                        >
+                                            {c.sentiment > 0 ? '+' : ''}{c.sentiment.toFixed(2)}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* PACKET: Source Lanes + Top Sources */}
+                    {(!!active.packet?.lanes || !!active.packet?.topSources?.length) && (
+                        <div className="thread-focus-section">
+                            <div className="thread-focus-section-title">Source Lanes</div>
+                            {active.packet?.lanes && (
+                                <div className="thread-focus-lane-chips">
+                                    {active.packet.lanes.media > 0 && (
+                                        <span className="thread-focus-lane-chip thread-focus-lane-media" data-tip="Media outlets">
+                                            media <strong>{active.packet.lanes.media}</strong>
+                                        </span>
+                                    )}
+                                    {active.packet.lanes.state > 0 && (
+                                        <span className="thread-focus-lane-chip thread-focus-lane-state" data-tip="State-affiliated sources">
+                                            state <strong>{active.packet.lanes.state}</strong>
+                                        </span>
+                                    )}
+                                    {active.packet.lanes.social > 0 && (
+                                        <span className="thread-focus-lane-chip thread-focus-lane-social" data-tip="Social / wire sources">
+                                            social <strong>{active.packet.lanes.social}</strong>
+                                        </span>
+                                    )}
+                                    {active.packet.lanes.other > 0 && (
+                                        <span className="thread-focus-lane-chip thread-focus-lane-other" data-tip="Other sources">
+                                            other <strong>{active.packet.lanes.other}</strong>
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                            {!!active.packet?.topSources?.length && (
+                                <div className="thread-focus-packet-source-list">
+                                    {active.packet.topSources!.slice(0, 8).map(s => {
+                                        const family = getSourceFamilyMeta(s.family)
+                                        return (
+                                            <div
+                                                key={s.name}
+                                                className="thread-focus-packet-source-row"
+                                                data-tip={`${family.tip} · tone ${s.sentiment > 0 ? '+' : ''}${s.sentiment.toFixed(2)}`}
+                                            >
+                                                <button
+                                                    className="thread-focus-packet-source-name"
+                                                    onClick={() => onSourceClick?.(s.name)}
+                                                >
+                                                    {s.name}
+                                                </button>
+                                                <span className={`thread-focus-source-family-badge ${family.className}`}>{family.label}</span>
+                                                <span className="thread-focus-packet-source-count">{s.count}</span>
+                                                <span
+                                                    className="thread-focus-packet-source-sentiment"
+                                                    style={{ color: getSentimentColor(s.sentiment) }}
+                                                >
+                                                    {s.sentiment > 0 ? '+' : ''}{s.sentiment.toFixed(2)}
+                                                </span>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* PACKET: Related Themes */}
+                    {!!active.packet?.relatedThemes?.length && (
+                        <div className="thread-focus-section">
+                            <div className="thread-focus-section-title">Related Topics</div>
+                            <div className="thread-focus-chip-row">
+                                {active.packet.relatedThemes!.slice(0, 8).map(t => (
+                                    <span key={t.theme} className="thread-focus-related-chip" data-tip={`${t.count} co-occurrences`}>
+                                        <span className="thread-focus-related-icon">{getThemeIcon(t.theme)}</span>
+                                        <span className="thread-focus-related-label">{getThemeLabel(t.theme)}</span>
+                                        <span className="thread-focus-related-count">{t.count}</span>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* PACKET: Public Attention */}
+                    {(!!(active.packet?.public_attention?.trends as unknown[] | undefined)?.length ||
+                      !!(active.packet?.public_attention?.wiki as unknown[] | undefined)?.length) && (
+                        <div className="thread-focus-section">
+                            <div className="thread-focus-section-title">Public Attention</div>
+                            <div className="thread-focus-attention-row">
+                                {!!(active.packet!.public_attention!.trends as unknown[])?.length && (
+                                    <div className="thread-focus-attention-card">
+                                        <span className="thread-focus-attention-icon">SEARCH</span>
+                                        <div>
+                                            <div className="thread-focus-attention-label">People are searching for this</div>
+                                            <div className="thread-focus-attention-detail">
+                                                {(active.packet!.public_attention!.trends as Array<{ keyword?: string; title?: string }>)
+                                                    .slice(0, 3)
+                                                    .map((item, i) => (
+                                                        <span key={i} className="thread-focus-trending-kw">
+                                                            {item.keyword ?? item.title ?? ''}
+                                                        </span>
+                                                    ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                {!!(active.packet!.public_attention!.wiki as unknown[])?.length && (
+                                    <div className="thread-focus-attention-card">
+                                        <span className="thread-focus-attention-icon">WIKI</span>
+                                        <div>
+                                            <div className="thread-focus-attention-label">Wikipedia activity</div>
+                                            <div className="thread-focus-attention-detail">
+                                                {(active.packet!.public_attention!.wiki as Array<{ title?: string; views?: number }>)
+                                                    .slice(0, 3)
+                                                    .map((item, i) => (
+                                                        <span key={i} className="thread-focus-wiki-article">{item.title ?? ''}</span>
+                                                    ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
         </div>

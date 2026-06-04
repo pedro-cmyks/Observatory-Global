@@ -14,6 +14,7 @@ from app.services.processed_historical import (
     query_historical_topic_detail,
     use_processed_history,
 )
+from app.services.thread_packet import build_thread_packet
 import httpx
 
 router = APIRouter()
@@ -312,72 +313,18 @@ async def _emergent_cluster_detail(
         sum(float(s["sentiment"] or 0) for s in signals) / sample if sample else 0
     )
 
-    country_counts: dict = {}
-    source_counts: dict = {}
-    timeline_counts: dict = {}
-    person_counts: dict = {}
-    for s in signals:
-        cc = s["country_code"]
-        if cc:
-            country_counts.setdefault(cc, []).append(float(s["sentiment"] or 0))
-        sn = s["source_name"]
-        if sn:
-            source_counts.setdefault(sn, []).append(float(s["sentiment"] or 0))
-        ts = s["timestamp"]
-        if ts:
-            hour_bucket = ts.replace(minute=0, second=0, microsecond=0)
-            timeline_counts.setdefault(hour_bucket, []).append(float(s["sentiment"] or 0))
-        for p in (s["persons"] or []):
-            person_counts[p] = person_counts.get(p, 0) + 1
-
-    top_persons = [
-        {"name": p, "count": c}
-        for p, c in sorted(person_counts.items(), key=lambda x: x[1], reverse=True)
-        if _is_valid_person(p)
-    ][:10]
-
-    country_breakdown = [
-        {"code": cc, "count": len(vs), "sentiment": sum(vs) / len(vs)}
-        for cc, vs in sorted(country_counts.items(), key=lambda x: len(x[1]), reverse=True)
-    ][:15]
-    top_sources = [
-        {
-            "name": extract_domain(sn),
-            "count": len(vs),
-            "sentiment": sum(vs) / len(vs),
-            "family": classify_source(sn or ""),
-        }
-        for sn, vs in sorted(source_counts.items(), key=lambda x: len(x[1]), reverse=True)
-    ][:20]
-    timeline = [
-        {"hour": h.isoformat(), "count": len(vs), "sentiment": sum(vs) / len(vs)}
-        for h, vs in sorted(timeline_counts.items())
-    ]
-
-    def _sig(r):
-        return {
-            "timestamp": r["timestamp"].isoformat() if r["timestamp"] else None,
-            "country": r["country_code"],
-            "source": r["source_name"],
-            "url": r["source_url"],
-            "headline": html.unescape(r["headline"]) if r["headline"] else r["headline"],
-            "sentiment": float(r["sentiment"] or 0),
-            "otherThemes": (r["themes"] or [])[:5],
-            "persons": (r["persons"] or [])[:5],
-        }
-
-    signal_rows = [_sig(r) for r in signals]
+    packet = build_thread_packet(signals, own_topic=None)
 
     return {
         **base_payload,
         "signalSample": sample,
         "avgSentiment": round(avg_sentiment, 3),
-        "signals": signal_rows,
-        "graphSignals": signal_rows,
-        "countryBreakdown": country_breakdown,
-        "topSources": top_sources,
-        "topPersons": top_persons,
-        "timeline": timeline,
+        "signals": packet["graphSignals"],
+        "graphSignals": packet["graphSignals"],
+        "countryBreakdown": packet["countryBreakdown"],
+        "topSources": packet["topSources"],
+        "topPersons": packet["topPersons"],
+        "timeline": packet["timeline"],
         "warnings": ["emergent_cluster_preview_sample"],
     }
 
@@ -461,71 +408,18 @@ async def _dynamic_topic_detail(
         sum(float(s["sentiment"] or 0) for s in signals) / sample if sample else 0
     )
 
-    country_counts: dict = {}
-    source_counts: dict = {}
-    timeline_counts: dict = {}
-    person_counts: dict = {}
-    for s in signals:
-        cc = s["country_code"]
-        if cc:
-            country_counts.setdefault(cc, []).append(float(s["sentiment"] or 0))
-        sn = s["source_name"]
-        if sn:
-            source_counts.setdefault(sn, []).append(float(s["sentiment"] or 0))
-        ts = s["timestamp"]
-        if ts:
-            hour_bucket = ts.replace(minute=0, second=0, microsecond=0)
-            timeline_counts.setdefault(hour_bucket, []).append(float(s["sentiment"] or 0))
-        for p in (s["persons"] or []):
-            person_counts[p] = person_counts.get(p, 0) + 1
-
-    top_persons = [
-        {"name": p, "count": c}
-        for p, c in sorted(person_counts.items(), key=lambda x: x[1], reverse=True)
-        if _is_valid_person(p)
-    ][:10]
-    country_breakdown = [
-        {"code": cc, "count": len(vs), "sentiment": sum(vs) / len(vs)}
-        for cc, vs in sorted(country_counts.items(), key=lambda x: len(x[1]), reverse=True)
-    ][:15]
-    top_sources = [
-        {
-            "name": extract_domain(sn),
-            "count": len(vs),
-            "sentiment": sum(vs) / len(vs),
-            "family": classify_source(sn or ""),
-        }
-        for sn, vs in sorted(source_counts.items(), key=lambda x: len(x[1]), reverse=True)
-    ][:20]
-    timeline = [
-        {"hour": h.isoformat(), "count": len(vs), "sentiment": sum(vs) / len(vs)}
-        for h, vs in sorted(timeline_counts.items())
-    ]
-
-    def _sig(r):
-        return {
-            "timestamp": r["timestamp"].isoformat() if r["timestamp"] else None,
-            "country": r["country_code"],
-            "source": r["source_name"],
-            "url": r["source_url"],
-            "headline": html.unescape(r["headline"]) if r["headline"] else r["headline"],
-            "sentiment": float(r["sentiment"] or 0),
-            "otherThemes": (r["themes"] or [])[:5],
-            "persons": (r["persons"] or [])[:5],
-        }
-
-    signal_rows = [_sig(r) for r in signals]
+    packet = build_thread_packet(signals, own_topic=None)
 
     return {
         **base_payload,
         "signalSample": sample,
         "avgSentiment": round(avg_sentiment, 3),
-        "signals": signal_rows,
-        "graphSignals": signal_rows,
-        "countryBreakdown": country_breakdown,
-        "topSources": top_sources,
-        "topPersons": top_persons,
-        "timeline": timeline,
+        "signals": packet["graphSignals"],
+        "graphSignals": packet["graphSignals"],
+        "countryBreakdown": packet["countryBreakdown"],
+        "topSources": packet["topSources"],
+        "topPersons": packet["topPersons"],
+        "timeline": packet["timeline"],
         "warnings": ["dynamic_topic_member_preview_sample"],
     }
 
