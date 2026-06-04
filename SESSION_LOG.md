@@ -1,5 +1,30 @@
 # Atlas — Session Log
 
+## 2026-06-04 — Unified thread detail shell started
+
+### What happened
+- Corrected the F5 frontend direction: resolvable Narrative Threads now open the
+  existing `ThemeDetail` shell instead of the parallel `ThreadFocusPanel`.
+- Added `resolveThreadThemeTarget` to route dynamic threads to
+  `dynamic-topic-<id>`, atlas threads to their anchor topic, and keep
+  emergent-only threads on the old ThreadFocusPanel fallback until ThemeDetail
+  supports that prefix.
+- Embedded the thread `narrative_note` at the top of `ThemeDetail` when the
+  panel was opened from a Narrative Thread, preserving the richer ThemeDetail
+  interactions (Evolution Graph, country cards, right-panel country edge,
+  source/person/theme actions).
+- Renamed the fallback ThreadFocusPanel's vague `Movement` section to
+  `10h Signal Change`.
+
+### Validation
+- `cd frontend-v2 && npm run build` passed.
+- Direct helper smoke passed via Node type stripping.
+- Local proxy returned 200 for `/api/v2/threads`, `/api/v2/theme/dynamic-topic-17`,
+  and `/api/v2/theme/election-legitimacy-dispute?country_code=CO`.
+- Vitest currently hangs even on an existing unrelated test in this local
+  session; kept the new unit test file in place but did not rely on Vitest as a
+  completion gate.
+
 ## 2026-06-04 — Thread Intelligence Packet (F5) shipped
 
 ### What happened

@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Attach one server-side intelligence packet (country edges, source/social lanes, sentiment timeline, graph signals, related themes, public attention) to thread detail so `ThreadFocusPanel` matches the old `ThemeDetail` depth across atlas / emergent / dynamic threads.
+**Goal:** Attach one server-side intelligence packet (country edges, source/social lanes, sentiment timeline, graph signals, related themes, public attention) to thread detail, then keep the visible product shell unified so Narrative Threads and Theme Detail do not behave like separate concepts.
 
-**Architecture:** Extract the aggregation already in `themes.py` into a shared pure `build_thread_packet(rows)`. Thread detail and theme detail both call it (DRY). Thread sample-signals SQL gains `themes`. A best-effort `public_attention` (top GDELT theme → trends/wiki match) is attached, isolated so it can't fail the detail. Frontend renders the packet.
+**Architecture:** Extract the aggregation already in `themes.py` into a shared pure `build_thread_packet(rows)`. Thread detail and theme detail both call it (DRY). Thread sample-signals SQL gains `themes`. A best-effort `public_attention` (top GDELT theme → trends/wiki match) is attached, isolated so it can't fail the detail. Frontend correction after review: resolvable Narrative Threads open the existing `ThemeDetail` shell with the thread note embedded at the top; `ThreadFocusPanel` remains only as fallback for unresolved thread ids.
 
 **Tech Stack:** Python 3.12 / FastAPI / asyncpg; React + TypeScript + Vite; vanilla CSS.
 

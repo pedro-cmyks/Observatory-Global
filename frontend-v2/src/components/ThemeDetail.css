@@ -947,3 +947,36 @@
 .source-intel-countries {
     color: rgba(255, 255, 255, 0.35);
 }
+
+/* ─── Thread note embedded in canonical ThemeDetail ─── */
+.theme-thread-note {
+    border-left: 2px solid #2dd4bf;
+    background: rgba(45, 212, 191, 0.06);
+    padding: 12px 14px;
+    margin: 0 0 16px;
+    color: rgba(226, 232, 240, 0.86);
+    font-size: 13px;
+    line-height: 1.58;
+}
+
+.theme-thread-note p {
+    margin: 0 0 8px;
+}
+
+.theme-thread-note p:last-child {
+    margin-bottom: 0;
+}
+
+.theme-thread-note-lede {
+    color: #f8fafc;
+    font-weight: 600;
+}
+
+.theme-thread-note-caveat {
+    color: rgba(148, 163, 184, 0.95);
+}
+
+.theme-thread-note-thin {
+    border-left-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.06);
+}

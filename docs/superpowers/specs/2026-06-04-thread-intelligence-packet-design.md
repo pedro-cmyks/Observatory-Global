@@ -1,19 +1,25 @@
 # Thread Intelligence Packet — Design
 
 **Date:** 2026-06-04
-**Status:** Draft for review
+**Status:** Shipped, with frontend architecture correction
 **Branch:** `v3-intel-layer`
 **Track:** Product (narrative unification — F5)
 
 ## Context
 
-`ThreadFocusPanel` is now the canonical narrative surface, but it is thinner than
-the old `ThemeDetail`. Threads were wired to dynamic/atlas/emergent sources and
-got a narrative note (extractive + DeepSeek) and country-scoped fetch, which
-fixed the country dissociation (Colombia now returns country-scoped threads). The
-remaining gap is the rich intelligence that still only lives in `ThemeDetail`.
+Threads were wired to dynamic/atlas/emergent sources and got a narrative note
+(extractive + DeepSeek) and country-scoped fetch, which fixed the country
+dissociation (Colombia now returns country-scoped threads). The remaining gap was
+the rich intelligence that still only lived in `ThemeDetail`.
 
-Gap (ThemeDetail has, ThreadFocusPanel lacks):
+Frontend correction after review: visible product concepts should not diverge
+between "theme detail" and "narrative thread detail". A Narrative Thread is the
+user-facing theme/thread unit. The canonical shell is therefore the existing
+`ThemeDetail` panel, with the thread `narrative_note` embedded at the top when a
+thread opened it. `ThreadFocusPanel` remains only as a fallback for thread ids
+that cannot yet resolve to a ThemeDetail route, currently `emergent-cluster-*`.
+
+Original gap (ThemeDetail had, ThreadFocusPanel lacked):
 
 - `countryBreakdown` — per-country count + sentiment (country edges).
 - `topSources` **with `source_family`** — source lanes (media / social / state).
@@ -31,8 +37,8 @@ sample signals. Thread detail in `thread_intelligence.py` resolves the **same**
 builder and have both theme detail and thread detail use it.
 
 This is the "Thread Intelligence Packet": one server-side packet attached to the
-thread detail response so `ThreadFocusPanel` reads everything in one call,
-regardless of thread type (atlas / emergent-cluster / dynamic-topic).
+thread detail response, shared with `ThemeDetail` aggregation where possible, so
+thread-origin details and direct theme details stop drifting.
 
 Related: [[2026-06-04-signal-snippet-enrichment-design]] (snippet now persisted +
 in evidence), [[Narrative Intelligence]], [[Frontend Product Surfaces]].
@@ -53,9 +59,10 @@ In scope (full packet, one pass — user decision):
 - Refactor `themes.py` `_dynamic_topic_detail` / `_emergent_cluster_detail` to
   consume the same shared builder (DRY; keeps theme detail and thread packet
   byte-identical and prevents drift).
-- `ThreadFocusPanel` renders the packet: country edges, source lanes, sentiment
-  timeline, graph signals, public attention, related threads — reusing the
-  `ThemeDetail` render patterns.
+- `ThreadFocusPanel` initially rendered the packet, but post-review frontend
+  routing now sends resolvable Narrative Threads to `ThemeDetail` and embeds the
+  narrative note there. The fallback panel remains null-safe for unsupported
+  thread ids.
 
 Out of scope:
 - The DeepSeek/extractive narrative note (already shipped).

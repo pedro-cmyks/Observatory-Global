@@ -66,6 +66,7 @@ interface ThemeDetailProps {
     originCountry?: string
     originCountryName?: string
     originAttention?: PublicAttentionOrigin
+    threadContext?: { thread_id: string; label: string }
     /** When set, automatically applies a country filter to the theme data fetch (compound search) */
     initialDrillCountry?: string
     hours: number
@@ -76,6 +77,15 @@ interface ThemeDetailProps {
     onPersonClick?: (name: string) => void
     onSourceClick?: (domain: string) => void
     onCompareClick?: (theme: string) => void
+}
+
+interface NarrativeNote {
+    lede: string
+    movement: string
+    evidence: string
+    caveat?: string | null
+    quality: 'strong' | 'provisional' | 'thin'
+    source: string
 }
 
 interface AttentionSearchData {
@@ -118,7 +128,7 @@ function formatAttentionCount(n?: number): string {
     return String(n)
 }
 
-export function ThemeDetail({ theme, originCountry, originCountryName, originAttention, initialDrillCountry, hours, onClose, onThemeSelect, onCountryCardClick, onPersonClick, onSourceClick, onCompareClick }: ThemeDetailProps) {
+export function ThemeDetail({ theme, originCountry, originCountryName, originAttention, threadContext, initialDrillCountry, hours, onClose, onThemeSelect, onCountryCardClick, onPersonClick, onSourceClick, onCompareClick }: ThemeDetailProps) {
     const [data, setData] = useState<ThemeData | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -139,6 +149,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     const [trendMatch, setTrendMatch] = useState<{ has_public_interest: boolean; matches: Array<{ keyword: string; country_code: string }> } | null>(null)
     const [wikiMatch, setWikiMatch] = useState<{ has_wiki_activity: boolean; matches: Array<{ title: string; views: number }>, total_views: number } | null>(null)
     const [attentionSearchData, setAttentionSearchData] = useState<AttentionSearchData | null>(null)
+    const [threadNote, setThreadNote] = useState<NarrativeNote | null>(null)
 
     // Reset drill state when theme changes, preserving country-scoped pivots from Brief/CountryBrief.
     useEffect(() => {
@@ -205,6 +216,25 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
             .catch(() => { if (!controller.signal.aborted) setAttentionSearchData(null) })
         return () => controller.abort()
     }, [originAttention?.title, originAttention?.query, hours])
+
+    useEffect(() => {
+        if (!threadContext?.thread_id) {
+            setThreadNote(null)
+            return
+        }
+        const controller = new AbortController()
+        fetch(`/api/v2/threads/${encodeURIComponent(threadContext.thread_id)}?hours=${hours}&llm=1`, { signal: controller.signal })
+            .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+            .then(payload => {
+                if (!controller.signal.aborted) {
+                    setThreadNote(payload?.thread?.narrative_note ?? null)
+                }
+            })
+            .catch(() => {
+                if (!controller.signal.aborted) setThreadNote(null)
+            })
+        return () => controller.abort()
+    }, [threadContext?.thread_id, hours])
 
     const [insightError, setInsightError] = useState<string | null>(null)
 
@@ -403,6 +433,17 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
 
                 {data && (
                     <>
+                        {threadNote && (
+                            <div className={`theme-thread-note theme-thread-note-${threadNote.quality}`}>
+                                <p className="theme-thread-note-lede">{threadNote.lede}</p>
+                                <p>{threadNote.movement}</p>
+                                <p>{threadNote.evidence}</p>
+                                {threadNote.caveat && (
+                                    <p className="theme-thread-note-caveat">{threadNote.caveat}</p>
+                                )}
+                            </div>
+                        )}
+
                         {/* AI Coverage Insight */}
                         <div className="theme-insight-block">
                             {insightLoading && !insight && (
