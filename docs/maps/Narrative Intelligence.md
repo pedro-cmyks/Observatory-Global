@@ -60,6 +60,10 @@ The visible product should answer:
 
 ## Planned enrichment
 
+- [[2026-06-04-thread-intelligence-packet-design]] — one server-side packet
+  (country edges, source/social lanes, sentiment timeline, graph signals, public
+  attention, relations) attached to thread detail so ThreadFocusPanel matches
+  the old ThemeDetail depth. Reuses the aggregation already in themes.py.
 - [[2026-06-04-signal-snippet-enrichment-design]] — persist source body text
   (`signals_v2.snippet`) currently discarded at ingest, expose it as evidence
   data, and render it only in clicked single-signal detail. Foundation for

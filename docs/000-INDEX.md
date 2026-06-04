@@ -29,6 +29,9 @@ below resolve via Obsidian's fuzzy search regardless of folder.
 
 ## Active design specs
 
+- [[2026-06-04-thread-intelligence-packet-design]] — unify ThreadFocusPanel with
+  ThemeDetail's rich data (country edges, source lanes, timeline, graph,
+  attention) via one server-side packet built from the thread's signal set.
 - [[2026-06-04-signal-snippet-enrichment-design]] — persist discarded source
   body text into `signals_v2.snippet`, expose it as evidence data, and render it
   in the clicked single-signal detail panel. Foundation for Atlas as a reading
