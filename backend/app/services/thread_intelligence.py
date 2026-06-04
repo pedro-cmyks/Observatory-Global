@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from app import db
+from app.core.gdelt_taxonomy import get_theme_label
 from app.services.narrative_note import build_thread_narrative_note
 from app.services.thread_packet import build_thread_packet
 
@@ -880,6 +881,67 @@ async def _fetch_dynamic_threads_with_conn(
     return threads
 
 
+async def _thread_public_attention(
+    conn: Any,
+    related_themes: list[dict],
+) -> dict | None:
+    """Best-effort public-attention slice for a thread, keyed on its top GDELT
+    theme. Reuses the trends/wiki match query logic. Any failure -> None, so it
+    can never break thread detail."""
+    if not related_themes:
+        return None
+    theme = related_themes[0].get("theme")
+    if not theme:
+        return None
+    try:
+        label = get_theme_label(theme).lower()
+        theme_words = [w for w in label.split() if len(w) > 3]
+        if not theme_words:
+            return None
+
+        # Trends match — same query as GET /api/v2/trends/match
+        trends_conditions = " OR ".join(
+            [f"LOWER(keyword) LIKE '%' || ${i + 1} || '%'" for i in range(len(theme_words))]
+        )
+        trends_query = f"""
+            SELECT keyword, country_code, rank
+            FROM trends_v2
+            WHERE timestamp > NOW() - INTERVAL '24 hours'
+            AND ({trends_conditions})
+            ORDER BY rank ASC
+            LIMIT 10
+        """
+        trends_rows = await conn.fetch(trends_query, *theme_words)
+        trends_matches = [
+            {"keyword": r["keyword"], "country_code": r["country_code"], "rank": r["rank"]}
+            for r in trends_rows
+        ]
+
+        # Wiki match — same query as GET /api/v2/wiki/match
+        wiki_conditions = " OR ".join(
+            [f"LOWER(article_title) LIKE '%' || ${i + 1} || '%'" for i in range(len(theme_words))]
+        )
+        wiki_query = f"""
+            SELECT article_title, SUM(views) as views, COUNT(DISTINCT country_code) as country_count
+            FROM wiki_pageviews_v2
+            WHERE fetch_date >= CURRENT_DATE - ('1 days')::INTERVAL
+            AND ({wiki_conditions})
+            GROUP BY article_title
+            ORDER BY views DESC
+            LIMIT 5
+        """
+        wiki_rows = await conn.fetch(wiki_query, *theme_words)
+        wiki_matches = [
+            {"title": r["article_title"], "views": r["views"], "country_count": r["country_count"]}
+            for r in wiki_rows
+        ]
+
+        result = {"trends": trends_matches, "wiki": wiki_matches}
+        return result if (trends_matches or wiki_matches) else None
+    except Exception:
+        return None
+
+
 async def _fetch_dynamic_thread_detail(
     conn: Any,
     *,
@@ -908,6 +970,7 @@ async def _fetch_dynamic_thread_detail(
         for r in sample_signals
     ]
     detail["packet"] = build_thread_packet(packet_rows)
+    detail["packet"]["public_attention"] = await _thread_public_attention(conn, detail["packet"]["relatedThemes"])
     return detail
 
 
@@ -1010,6 +1073,7 @@ async def _fetch_emergent_thread_detail(
         for r in sample_signals
     ]
     detail["packet"] = build_thread_packet(packet_rows)
+    detail["packet"]["public_attention"] = await _thread_public_attention(conn, detail["packet"]["relatedThemes"])
     return detail
 
 
@@ -1160,4 +1224,5 @@ async def fetch_thread_detail(
         for r in evidence_rows
     ]
     threads[0]["packet"] = build_thread_packet(packet_rows)
+    threads[0]["packet"]["public_attention"] = await _thread_public_attention(conn, threads[0]["packet"]["relatedThemes"])
     return threads[0]
