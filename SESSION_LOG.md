@@ -1,5 +1,37 @@
 # Atlas — Session Log
 
+## 2026-06-04 — Thread Intelligence Packet (F5) shipped
+
+### What happened
+- Built a shared `backend/app/services/thread_packet.py` `build_thread_packet(rows,
+  own_topic)` that aggregates a thread's sample signals into country edges,
+  source/social lanes, sentiment timeline, top sources (+family), top persons,
+  related themes, and a public_attention slot.
+- Attached `packet` to all three thread-detail paths (atlas/emergent/dynamic) in
+  `thread_intelligence.py`; added `themes` to the sample SQL (and `themes`+`persons`
+  to the atlas evidence SQL).
+- `public_attention`: best-effort, reuses the trends/wiki theme-match SQL keyed on
+  the thread's top GDELT theme; fully isolated (any failure → None).
+- Refactored `themes.py` `_dynamic_topic_detail`/`_emergent_cluster_detail` to reuse
+  the same builder (DRY, −106 lines), ThemeDetail contract unchanged.
+- `ThreadFocusPanel` renders 5 packet sections (timeline, country breakdown, source
+  lanes, related topics, public attention), null-safe, reusing ThemeDetail patterns.
+- Also closed F3 loose end: snippet confirmed persisting live (independent 127/143,
+  api 47/47, gdelt 0).
+
+### Validation
+- 44 backend tests pass; frontend `npm run build` clean.
+- Prod smoke: dynamic-topic-10 packet populated (countryBreakdown 6, topSources 12,
+  timeline 8, lanes media 12, relatedThemes 10); emergent path returns null-safe
+  empty packet on a drifted sample. Fly `/health` healthy.
+
+### Decision
+Packet shipped (server-side, one contract, all thread types). `classify_source`
+returns "independent" for reddit, so lanes use a domain set (`_SOCIAL_DOMAINS`) to
+route social. public_attention is live but often null (theme-match miss) — acceptable.
+Caveat: packet aggregates over `sample_signal_ids` (~8-24), preview-grade; bumping the
+snapshot sample cap is an optional follow-up.
+
 ## 2026-06-04 — DeepSeek thread-note pilot and country thread alignment
 
 ### What happened

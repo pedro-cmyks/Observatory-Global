@@ -1,6 +1,6 @@
 # Project Inventory
 
-Generated: 2026-06-04T15:23:16.021851+00:00
+Generated: 2026-06-04T19:12:53.394599+00:00
 Regen: `python scripts/project_inventory.py`
 
 ## Endpoints (backend)
@@ -132,13 +132,24 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 
 | Label | Program | Schedule | RunAtLoad | Last log mtime | Last log line |
 |---|---|---|---|---|---|
-| `com.atlas.atlas-topic-classifier` | `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` | every 1800s | True | 2026-06-04T14:54:27.858089+00:00 | } |
-| `com.atlas.emergent-snapshot` | `/Users/pedro/AtlasLocalWorker/run-emergent-snapshot.sh` | 0:00, 6:00, 12:00, 18:00 | True | 2026-06-04T11:56:25.678774+00:00 | } |
+| `com.atlas.atlas-topic-classifier` | `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` | every 1800s | True | 2026-06-04T19:00:50.352070+00:00 | } |
+| `com.atlas.emergent-snapshot` | `/Users/pedro/AtlasLocalWorker/run-emergent-snapshot.sh` | 0:00, 6:00, 12:00, 18:00 | True | 2026-06-04T17:05:22.275837+00:00 | } |
 | `com.atlas.local-hot-cold-catchup` | `/Users/pedro/AtlasLocalWorker/run-local-hot-cold-catchup.sh` | 0:10, 1:10, 2:10, 3:10, 4:10, 5:10 | True | 2026-06-03T21:12:16.672220+00:00 | } |
 | `com.atlas.threevendor-calibration` | `/Users/pedro/AtlasLocalWorker/run-3vendor-calibration.sh` | — | False | 2026-06-03T08:16:03.098547+00:00 | 2026-06-03T08:16:03Z calibration done -> /Users/pedro/AtlasLocalWorker/calibration/2026-06-03-calib-agreement.json |
 
 ## Recent commits (last 2 weeks)
 
+- `f11e43f 2026-06-04 merge: thread intelligence packet (F5)`
+- `8bc9d3d 2026-06-04 feat(packet): render thread intelligence packet in ThreadFocusPanel`
+- `1026f61 2026-06-04 refactor(packet): theme detail reuses shared build_thread_packet`
+- `ee9831a 2026-06-04 feat(packet): best-effort public attention (top theme trends/wiki match)`
+- `64bcbdd 2026-06-04 feat(packet): attach build_thread_packet to thread detail paths`
+- `f8927ff 2026-06-04 feat(packet): shared build_thread_packet aggregation builder`
+- `70d6331 2026-06-04 docs(plan): thread intelligence packet implementation plan`
+- `0b7673f 2026-06-04 docs(spec): thread intelligence packet design (F5 unification)`
+- `0abdf59 2026-06-04 fix(threads): tolerate wrapped deepseek json`
+- `3baf797 2026-06-04 feat(threads): add deepseek notes and country-scoped fetch`
+- `54f1cba 2026-06-04 docs(narrative): log narrative note shipment`
 - `1b7e176 2026-06-04 feat(narrative): render thread narrative note`
 - `9d04555 2026-06-04 feat(narrative): expose narrative_note on thread contracts`
 - `1e91dee 2026-06-04 feat(narrative): add extractive thread note builder`
@@ -208,14 +219,3 @@ Where `/api/...` is called from. Multiple callers = shared surface.
 - `afeaa4b 2026-06-01 fix(ops): move hot-cold archive to external disk`
 - `f6d524d 2026-06-01 fix(ops): run emergent snapshot cron off desktop`
 - `955f8da 2026-06-01 docs(obsidian): add session hygiene maps`
-- `e6ccca5 2026-06-01 docs(obsidian): add 000-INDEX.md vault entry point + gitignore .obsidian/`
-- `86df741 2026-06-01 docs: inventory tool + ARCHITECTURE refresh + CLAUDE.md compact`
-- `7cd9dc4 2026-05-31 feat(threads): bilingual evidence in ThreadFocusPanel`
-- `bf3d8f2 2026-05-31 feat(translate): lazy headline translation layer (Phase 5)`
-- `c0b4cee 2026-05-31 docs: close threads-wiring milestone in CLAUDE.md`
-- `b076298 2026-05-31 feat(threads): augment /api/v2/threads with emergent-cluster rows`
-- `2c1cfc3 2026-05-30 docs: clarify which surface Phase 2 wired (correction)`
-- `a36f70c 2026-05-30 fix(brief): null-safe avg_confidence + dynamic source for emergent rows`
-- `042b61e 2026-05-30 feat(emergent): wire emergent_clusters into brief Watchlist (Phase 2)`
-- `ef6d81a 2026-05-30 feat(emergent): topic discovery POC + precision gate + design spec`
-- `bedbcf7 2026-05-30 feat(brief): atlas-topic gated view + honest Watchlist framing`
