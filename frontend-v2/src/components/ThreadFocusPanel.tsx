@@ -15,9 +15,19 @@ interface ThreadEvidence {
     evidence_role?: string
 }
 
+interface NarrativeNote {
+    lede: string
+    movement: string
+    evidence: string
+    caveat?: string | null
+    quality: 'strong' | 'provisional' | 'thin'
+    source: string
+}
+
 type ThreadDetail = LivingThreadSelection & {
     avg_confidence?: number
     why_now?: string
+    narrative_note?: NarrativeNote | null
     source_mix?: { top_sources?: string[]; source_count?: number }
     quality?: {
         lex_pct?: number
@@ -139,7 +149,18 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
 
             {!loading && !error && (
                 <>
-                    <p className="thread-focus-why">{active.why_now || `${formatCount(active.signal_count)} signals across ${active.country_count} countries.`}</p>
+                    {active.narrative_note ? (
+                        <section className={`thread-focus-note thread-focus-note-${active.narrative_note.quality}`}>
+                            <p className="thread-focus-note-lede">{active.narrative_note.lede}</p>
+                            <p>{active.narrative_note.movement}</p>
+                            <p>{active.narrative_note.evidence}</p>
+                            {active.narrative_note.caveat && (
+                                <p className="thread-focus-note-caveat">{active.narrative_note.caveat}</p>
+                            )}
+                        </section>
+                    ) : (
+                        <p className="thread-focus-why">{active.why_now || `${formatCount(active.signal_count)} signals across ${active.country_count} countries.`}</p>
+                    )}
 
                     <div className="thread-focus-stats">
                         <div><strong>{formatCount(active.signal_count)}</strong><span>signals</span></div>

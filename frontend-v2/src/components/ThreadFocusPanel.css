@@ -51,6 +51,36 @@
     line-height: 1.65;
 }
 
+.thread-focus-note {
+    margin: 0 0 18px;
+    padding: 14px 0 14px 14px;
+    border-left: 2px solid #2dd4bf;
+    color: #cbd5e1;
+}
+
+.thread-focus-note p {
+    margin: 7px 0 0;
+    font-size: 13px;
+    line-height: 1.65;
+}
+
+.thread-focus-note p:first-child {
+    margin-top: 0;
+}
+
+.thread-focus-note-lede {
+    color: #f8fafc;
+    font-size: 14px;
+}
+
+.thread-focus-note-caveat {
+    color: #94a3b8;
+}
+
+.thread-focus-note-thin {
+    border-left-color: #f59e0b;
+}
+
 .thread-focus-stats {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
