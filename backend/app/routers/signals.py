@@ -71,6 +71,7 @@ async def get_signals(
                 source_name,
                 source_url,
                 headline,
+                snippet,
                 {sentiment_expr} AS sentiment,
                 themes,
                 persons,
@@ -78,7 +79,14 @@ async def get_signals(
                 {nlp_framing_expr}
             FROM signals_v2
             WHERE {where_clause}
-            ORDER BY timestamp DESC
+            -- Prefer information-rich signals in the stream (has body snippet,
+            -- named people, themes) over bare ones, then most recent first.
+            -- Display ordering only — does not affect any counts/heat/metrics.
+            ORDER BY (
+                (snippet IS NOT NULL AND snippet <> '')::int
+                + (array_length(persons, 1) IS NOT NULL)::int
+                + (array_length(themes, 1) IS NOT NULL)::int
+            ) DESC, timestamp DESC
             LIMIT {limit}
         """, *params, timeout=8.0)
 
@@ -112,6 +120,7 @@ async def get_signals(
                     "source": r['source_name'],
                     "url": r['source_url'],
                     "headline": r['headline'],
+                    "snippet": r['snippet'],
                     "sentiment": float(r['sentiment'] or 0),
                     "themes": r['themes'] or [],
                     "persons": _resolve_persons(r['nlp_persons'], r['persons']),
