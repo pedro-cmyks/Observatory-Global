@@ -146,6 +146,7 @@
 
 .workspace-preview-panel {
     width: min(460px, 100%);
+    box-sizing: border-box;
     max-height: calc(100vh - 48px);
     overflow-y: auto;
     border: 1px solid rgba(45, 212, 191, 0.26);
@@ -646,7 +647,8 @@
 
 .workspace-toggle-tab {
     position: fixed;
-    top: 96px;
+    top: 50%;
+    transform: translateY(-50%);
     left: 0;
     width: 40px;
     height: 48px;

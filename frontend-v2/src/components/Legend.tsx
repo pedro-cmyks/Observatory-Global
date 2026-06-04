@@ -68,6 +68,13 @@ export const Legend: React.FC<LegendProps> = ({
             ? getThemeLabel(activeTheme)
             : null
 
+    // Only credit sources that feed a currently-visible map layer, so the
+    // footer never claims a feed (AIS, ADS-B) the user isn't seeing.
+    // Country nodes / heat / flows all derive from GDELT signals (always on).
+    const activeSources = ['GDELT 2.0']
+    if (showVessels) activeSources.push('AIS Stream')
+    if (showAircraft) activeSources.push('ADS-B Exchange')
+
     if (collapsed) {
         return (
             <button
@@ -104,25 +111,14 @@ export const Legend: React.FC<LegendProps> = ({
                 </div>
             )}
 
-            {/* Always-on: country nodes */}
-            <div style={{ marginBottom: '12px' }}>
-                <SectionHeader label="Countries" tip="Node size = total signals (log scale). Color = average news tone. Glow ring = above-baseline activity spike." />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <Swatch color="var(--color-sentiment-positive)" label="Positive tone" tip="Avg sentiment > 0.1 (scale: −1 to +1)" />
-                    <Swatch color="var(--color-sentiment-neutral)" label="Neutral tone" tip="Avg sentiment between −0.1 and +0.1" />
-                    <Swatch color="var(--color-sentiment-negative)" label="Negative tone" tip="Avg sentiment < −0.1" />
-                    <Swatch color="var(--color-accent-secondary)" label="Baseline spike" tip="Current signals significantly above that country's 7-day rolling average" />
-                </div>
-            </div>
-
             {/* Active optional layers */}
             {showHeatmap && (
                 <div style={{ marginBottom: '12px' }}>
-                    <SectionHeader label="Heat Layer" tip="Country fill intensity = normalized deviation from baseline. Red = far above-average media volume." />
+                    <SectionHeader label="Countries heat layer" tip="Country fill intensity = normalized deviation from baseline. Red = far above-average media volume." />
                     <div style={{ height: '8px', borderRadius: '4px', background: 'linear-gradient(90deg, rgba(29,78,216,0.6), rgba(251,146,60,0.8), rgba(239,68,68,0.95))', marginBottom: '4px' }} />
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--color-text-muted)' }}>
-                        <span>at baseline</span>
-                        <span>far above baseline</span>
+                        <span>normal volume</span>
+                        <span>high volume</span>
                     </div>
                 </div>
             )}
@@ -183,17 +179,17 @@ export const Legend: React.FC<LegendProps> = ({
 
             {conflictCount > 0 && (
                 <div style={{ marginBottom: '12px' }}>
-                    <SectionHeader label={`Conflict Events · ${conflictCount}`} tip="ACLED-sourced violent events. Dot size scales with fatality count." />
+                    <SectionHeader label={`Conflict Events · ${conflictCount}`} tip="Violent events extracted from GDELT event records. Dot size scales with reported severity." />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <Swatch color="rgba(239,68,68,0.9)" label="Battle / Explosion" tip="Armed clashes or explosive events (ACLED)" />
-                        <Swatch color="rgba(249,115,22,0.85)" label="Riot / Protest" tip="Civil unrest events (ACLED)" />
-                        <Swatch color="rgba(234,179,8,0.8)" label="Other violence" tip="Remote violence, strategic developments (ACLED)" />
+                        <Swatch color="rgba(239,68,68,0.9)" label="Battle / Explosion" tip="Armed clashes or explosive events (GDELT events)" />
+                        <Swatch color="rgba(249,115,22,0.85)" label="Riot / Protest" tip="Civil unrest events (GDELT events)" />
+                        <Swatch color="rgba(234,179,8,0.8)" label="Other violence" tip="Other violent or strategic events (GDELT events)" />
                     </div>
                 </div>
             )}
 
             <div style={{ fontSize: '10px', color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border-subtle)', paddingTop: '8px', marginTop: '4px' }}>
-                Sources: GDELT 2.0 · AIS Stream · ADS-B Exchange · ACLED
+                Sources: {activeSources.join(' · ')}
             </div>
         </div>
     )
