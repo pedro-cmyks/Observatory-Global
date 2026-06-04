@@ -54,3 +54,14 @@ def test_parse_deepseek_thread_note_normalizes_quality_and_source():
 
 def test_parse_deepseek_thread_note_rejects_incomplete_json():
     assert parse_deepseek_thread_note('{"lede":"Only one field"}', model="deepseek-v4-flash") is None
+
+
+def test_parse_deepseek_thread_note_extracts_json_from_wrapped_text():
+    note = parse_deepseek_thread_note(
+        'Here is the JSON: {"lede":"L","movement":"M","evidence":"E","quality":"thin"}',
+        model="deepseek-v4-pro",
+    )
+
+    assert note is not None
+    assert note["source"] == "deepseek:deepseek-v4-pro"
+    assert note["quality"] == "thin"

@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 THREADS_CACHE_TTL = 300  # 5 min — matches living-thread surge cadence
 DETAIL_CACHE_TTL = 180
+DETAIL_CACHE_VERSION = "v2"
 
 
 async def _cache_get(key: str) -> dict | None:
@@ -73,7 +74,7 @@ async def get_thread_detail(
     llm: bool = Query(False),
 ) -> dict:
     use_llm = llm or deepseek_thread_notes_enabled()
-    cache_key = f"threads:detail:{thread_id}:{hours}:llm-{int(use_llm)}"
+    cache_key = f"threads:detail:{DETAIL_CACHE_VERSION}:{thread_id}:{hours}:llm-{int(use_llm)}"
     cached = await _cache_get(cache_key)
     if cached is not None:
         return cached

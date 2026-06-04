@@ -70,6 +70,11 @@ def parse_deepseek_thread_note(raw: str, *, model: str) -> dict[str, Any] | None
         text = text.strip("`")
         if text.lower().startswith("json"):
             text = text[4:].strip()
+    if not text.startswith("{"):
+        start = text.find("{")
+        end = text.rfind("}")
+        if start >= 0 and end > start:
+            text = text[start:end + 1]
     try:
         parsed = json.loads(text)
     except json.JSONDecodeError:
