@@ -50,11 +50,16 @@ In scope:
   capped at 500 chars: `ingest_reddit`, `ingest_newsapi`, `ingest_rss`,
   `ingest_newsdata`, `ingest_mediastack`, `ingest_reliefweb`.
 - Leave GDELT (`ingest_v2`) snippet NULL.
-- Expose `snippet` in the theme/topic detail and thread detail evidence rows the
-  reading panels already consume, and render it under the headline in
-  `ThemeDetail` and `ThreadFocusPanel`.
+- Carry `snippet` in thread evidence payloads as available data (no raw line
+  rendering in the thread/theme panels).
+- Surface `snippet` as reading text in the single-signal detail: add it to
+  `/api/v2/signals` and render it in `SignalDetailPanel`.
 
 Out of scope (separate specs):
+- **Narrative note synthesis:** turning the per-thread / per-country headline +
+  snippet corpus into a written editorial note (word-cloud / extractive /
+  generated summary). This is the "strong" use of the snippet — Atlas as a note,
+  the thread as an article — and gets its own spec on top of this foundation.
 - Per-country narrative assembly over un-topic'd signals (F2/F4).
 - Reddit / public-attention / events cross-feeding into thread assembly (F4).
 - Narrative Threads panel re-enrichment: country edges, evolutive connection
@@ -110,23 +115,37 @@ strip/cap/empty-to-NULL logic DRY across all six.
 
 ## Exposure
 
-The theme/topic detail and thread detail endpoints already return evidence rows
-(representative signals) with `headline`. Add `snippet` to those serialized rows:
+The snippet is **information for the engine to leverage**, not a caption stacked
+under every headline. It is surfaced two ways, with different intent:
 
-- `backend/app/routers/themes.py` (theme/dynamic-topic detail evidence).
-- `backend/app/services/thread_intelligence.py` (`_serialize_evidence` and the
-  emergent/dynamic evidence builders).
+**1. As available data (no raw rendering).** Add `snippet` to the evidence rows
+that thread/theme detail already return, so the snippet travels in the payload
+and is available for downstream narrative synthesis (the follow-up "narrative
+note" feature builds an editorial note per thread/country from the headline +
+snippet corpus). This is a data-only change — the thread/theme panels do **not**
+render a snippet line under each headline (that was explicitly rejected: a
+headline with its body stacked under it adds noise, not reading value).
 
-The select that pulls evidence signals must include `snippet`; the serializer
-must pass it through (NULL-safe).
+- `backend/app/services/thread_intelligence.py` (`_serialize_evidence`): add a
+  NULL-safe `snippet`; evidence SELECTs add the column.
 
-Frontend renders it under the headline in the evidence lists:
-- `frontend-v2/src/components/ThemeDetail.tsx`.
-- `frontend-v2/src/components/ThreadFocusPanel.tsx`.
+**2. As reading text in the single-signal detail.** When a user clicks a signal
+in the Signal Stream, `SignalDetailPanel` opens and should show roughly *what the
+signal says* — the snippet — alongside the existing sentiment, themes, people,
+related signals, and "read original". This is the one place a raw snippet is the
+right rendering.
 
-Render rule: if `snippet` is present and non-empty, show it as a muted
-single/two-line clamp under the headline. If absent (GDELT-only rows), render
-nothing extra — no empty placeholder.
+- `backend/app/routers/signals.py` (`/api/v2/signals`): add `snippet` to the
+  SELECT + response (this endpoint feeds the `Signal` objects the stream and
+  detail panel use).
+- `frontend-v2/src/components/SignalDetailPanel.tsx`: add `snippet` to the
+  `Signal` interface and render it (when present, non-empty) as a short readable
+  paragraph under the headline. Absent → render nothing.
+
+Explicitly NOT in scope here (follow-up "narrative note" spec): turning the
+per-thread / per-country headline + snippet corpus into a synthesized editorial
+note (word-cloud / extractive / generated). This spec only persists the text and
+makes it available + readable per single signal.
 
 ## Error handling
 

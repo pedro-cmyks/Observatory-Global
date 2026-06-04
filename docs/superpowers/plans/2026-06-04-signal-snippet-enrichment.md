@@ -19,9 +19,10 @@
 - Create: `backend/tests/test_signal_text.py` — helper unit test.
 - Create: `backend/tests/test_ingest_snippet_wiring.py` — source-string guardrails that each text ingest INSERT includes `snippet`.
 - Modify (ingests, each: dict + INSERT): `ingest_reddit.py`, `ingest_newsapi.py`, `ingest_rss.py`, `ingest_newsdata.py`, `ingest_mediastack.py`, `ingest_reliefweb.py`.
-- Modify (backend exposure): `backend/app/services/thread_intelligence.py`, `backend/app/routers/themes.py`.
+- Modify (backend, thread evidence data): `backend/app/services/thread_intelligence.py`.
 - Create: `backend/tests/test_snippet_evidence_contract.py` — serializer includes `snippet`.
-- Modify (frontend): `frontend-v2/src/components/ThemeDetail.tsx`, `frontend-v2/src/components/ThreadFocusPanel.tsx`.
+- Modify (backend, single-signal endpoint): `backend/app/routers/signals.py`.
+- Modify (frontend, single-signal render): `frontend-v2/src/components/SignalDetailPanel.tsx`, `frontend-v2/src/components/SignalDetailPanel.css`.
 
 ---
 
@@ -334,98 +335,101 @@ git commit -m "feat(snippet): expose snippet in thread evidence serialization"
 
 ---
 
-## Task 5: Expose snippet in theme/topic detail evidence
+## Task 5: Expose snippet in the single-signal endpoint
+
+The snippet is read text for the single-signal detail (Signal Stream → click →
+`SignalDetailPanel`). That panel's `Signal` objects come from `/api/v2/signals`.
 
 **Files:**
-- Modify: `backend/app/routers/themes.py`
+- Modify: `backend/app/routers/signals.py`
 
-- [ ] **Step 1: Add snippet to the theme headlines fetch + serialization**
+- [ ] **Step 1: Add snippet to the SELECT**
 
-In `backend/app/routers/themes.py`:
-
-1. The recent-headlines fetch (around line 98) selects `headline` among other
-   columns. Add `snippet` to that SELECT column list.
-2. The serialized headline dict (around line 175-182, `"headline": r['headline']`)
-   — add:
+In `backend/app/routers/signals.py`, the `/api/v2/signals` query SELECT (around
+lines 66-83) lists `headline,` among its columns. Add `snippet,` right after the
+`headline,` line:
 
 ```python
-                    "snippet": r["snippet"] if "snippet" in r else None,
+                headline,
+                snippet,
+                {sentiment_expr} AS sentiment,
 ```
 
-3. The emergent/dynamic cluster detail SELECT (around line 304,
-   `s.sentiment, s.headline, s.themes, s.persons`) — add `s.snippet`. Its
-   serialized row (around line 363, `"headline": html.unescape(...)`) — add:
+- [ ] **Step 2: Add snippet to the response dict**
+
+In the same handler's response (around line 108-119), after
+`"headline": r['headline'],` add:
 
 ```python
-            "snippet": r["snippet"] if r["snippet"] else None,
+                    "headline": r['headline'],
+                    "snippet": r['snippet'],
 ```
 
-- [ ] **Step 2: Verify theme tests + import**
+- [ ] **Step 3: Verify import + signals behavior unchanged**
 
-Run: `cd backend && python -m pytest tests/test_emergent_router_shape.py -v && python -c "import app.routers.themes"`
-Expected: PASS, no import error.
+Run: `cd backend && python -c "import app.routers.signals"`
+Expected: no import/syntax error.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add backend/app/routers/themes.py
-git commit -m "feat(snippet): expose snippet in theme/topic detail evidence"
+git add backend/app/routers/signals.py
+git commit -m "feat(snippet): return snippet from /api/v2/signals for single-signal detail"
 ```
 
 ---
 
-## Task 6: Render snippet in the reading panels
+## Task 6: Render snippet in the single-signal detail panel
+
+Render the snippet ONLY in `SignalDetailPanel` (what a clicked signal shows). Do
+NOT add a snippet line under headlines in the thread/theme list panels — that was
+explicitly rejected. The snippet stays available in thread evidence payloads
+(Task 4) as data for the future narrative-note synthesis, but is not rendered as
+raw lines there.
 
 **Files:**
-- Modify: `frontend-v2/src/components/ThreadFocusPanel.tsx`
-- Modify: `frontend-v2/src/components/ThemeDetail.tsx`
+- Modify: `frontend-v2/src/components/SignalDetailPanel.tsx`
+- Modify: `frontend-v2/src/components/SignalDetailPanel.css`
 
-- [ ] **Step 1: ThreadFocusPanel — render snippet under each evidence headline**
+- [ ] **Step 1: Add snippet to the `Signal` interface**
 
-In `frontend-v2/src/components/ThreadFocusPanel.tsx`, where each evidence sample
-renders its `headline`, add directly below the headline element:
-
-```tsx
-{ev.snippet && (
-  <p className="evidence-snippet">{ev.snippet}</p>
-)}
-```
-
-Use the actual evidence variable name in the file (e.g. `ev`, `sample`,
-`s`) — match the existing map callback. Add `snippet?: string | null` to the
-evidence TypeScript type/interface used there so it typechecks.
-
-- [ ] **Step 2: ThemeDetail — render snippet under each headline**
-
-In `frontend-v2/src/components/ThemeDetail.tsx`, where each headline row renders,
-add below the headline:
+In `frontend-v2/src/components/SignalDetailPanel.tsx`, the exported `Signal`
+interface (around line 5) lists `headline: string | null`. Add:
 
 ```tsx
-{h.snippet && (
-  <p className="theme-evidence-snippet">{h.snippet}</p>
-)}
+    headline: string | null
+    snippet?: string | null
 ```
 
-Match the actual headline item variable and add `snippet?: string | null` to its
-type.
+- [ ] **Step 2: Render the snippet under the headline**
 
-- [ ] **Step 3: Add minimal styles**
+In the same component, the headline renders around line 90:
 
-In the CSS the two components use (vanilla CSS — no Tailwind), add a muted,
-2-line-clamped style. Append to `ThreadFocusPanel`'s and `ThemeDetail`'s CSS
-files (or their existing style blocks):
+```tsx
+                    <div className="sdp-headline">
+                        {signal.headline || `Signal from ${signal.source}`}
+                    </div>
+```
+
+Directly after that `</div>`, add:
+
+```tsx
+                    {signal.snippet && (
+                        <p className="sdp-snippet">{signal.snippet}</p>
+                    )}
+```
+
+- [ ] **Step 3: Add the style**
+
+Append to `frontend-v2/src/components/SignalDetailPanel.css` (vanilla CSS — no
+Tailwind):
 
 ```css
-.evidence-snippet,
-.theme-evidence-snippet {
-    margin: 2px 0 0;
-    font-size: 12px;
-    line-height: 1.45;
-    color: var(--color-text-muted, #94a3b8);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+.sdp-snippet {
+    margin: 8px 0 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--color-text-secondary, #cbd5e1);
 }
 ```
 
@@ -438,8 +442,8 @@ issue, see STATUS.md), rely on the Vercel build.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add frontend-v2/src/components/ThreadFocusPanel.tsx frontend-v2/src/components/ThemeDetail.tsx
-git commit -m "feat(snippet): render evidence snippet under headlines in reading panels"
+git add frontend-v2/src/components/SignalDetailPanel.tsx frontend-v2/src/components/SignalDetailPanel.css
+git commit -m "feat(snippet): show signal snippet in the single-signal detail panel"
 ```
 
 ---
@@ -477,15 +481,17 @@ GROUP BY source_family ORDER BY total DESC;
 Expected: non-GDELT families (reddit/rss/newsapi/etc.) show `with_snippet > 0`;
 GDELT stays 0 (NULL).
 
-- [ ] **Step 4: Smoke — evidence returns snippet**
+- [ ] **Step 4: Smoke — endpoints return snippet**
 
 ```bash
+# single-signal endpoint (powers SignalDetailPanel)
+curl -s "https://atlas-api-pedro.fly.dev/api/v2/signals?hours=24&limit=20" | python -m json.tool | grep -i snippet | head
+# thread evidence payload (data available for future synthesis)
 curl -s "https://atlas-api-pedro.fly.dev/api/v2/threads?hours=24&limit=1"
-# take a thread_id, then:
 curl -s "https://atlas-api-pedro.fly.dev/api/v2/threads/<thread_id>" | python -m json.tool | grep -i snippet
 ```
-Expected: evidence samples include a `snippet` key (value may be null for older
-or GDELT-only rows).
+Expected: both include a `snippet` key (null for older or GDELT-only rows;
+non-null for recent reddit/rss/newsapi/etc. signals).
 
 - [ ] **Step 5: Frontend deploy + docs**
 
@@ -503,12 +509,15 @@ git push origin v3-intel-layer
 ## Self-review notes
 
 - **Spec coverage:** migration (T1), clean_snippet (T2), 6-ingest wiring with
-  GDELT NULL (T3), thread evidence exposure (T4), theme evidence exposure (T5),
-  frontend render with null-omit (T6), deploy incl. **worker** + smoke (T7). No
-  backfill (correctly absent). Out-of-scope items (F2/F4/F5/F1) have no tasks.
+  GDELT NULL (T3), thread evidence as available data (T4), single-signal endpoint
+  exposure (T5), single-signal render only (T6), deploy (single `app` deploy
+  ships API + ingestion) + smoke (T7). No backfill (correctly absent). The
+  narrative-note synthesis and F2/F4/F5/F1 are out of scope (no tasks) — snippet
+  is NOT rendered as a line under thread/theme headlines.
 - **Type consistency:** `clean_snippet` defined T2, used T3; `snippet` key
-  carried from ingest INSERT → SELECT → `_serialize_evidence`/theme serializer →
-  frontend `snippet?: string | null`. 500-cap consistent (helper + spec).
+  carried from ingest INSERT → SELECT → `_serialize_evidence` (data) and →
+  `/api/v2/signals` response → frontend `Signal.snippet?: string | null`.
+  500-cap consistent (helper + spec).
 - **Placeholders:** none — every step has concrete SQL/code/commands. The only
   per-file variance (indentation, exact dict location, evidence var name) is
   called out explicitly for the implementer to match.
