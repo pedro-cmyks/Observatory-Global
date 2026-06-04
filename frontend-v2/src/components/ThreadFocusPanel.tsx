@@ -197,7 +197,7 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
                     </div>
 
                     <div className="thread-focus-section">
-                        <div className="thread-focus-section-title">Movement</div>
+                        <div className="thread-focus-section-title">10h Signal Change</div>
                         <Sparkline data={active.hourly_timeline} trend={displayTrend} />
                         <div className="thread-focus-movement">
                             <span>{active.changed_10h > 0 ? '+' : ''}{active.changed_10h} signals in 10h</span>

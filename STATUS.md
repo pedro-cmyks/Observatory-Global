@@ -1,5 +1,43 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-06-04 (Thread note DeepSeek pilot + country thread alignment)
+**Branch:** `feat/unified-thread-detail` | **Updated:** 2026-06-04 (Unified thread detail shell)
+
+---
+
+## Current handoff (2026-06-04) — Unified thread detail shell
+
+Corrected the F5 frontend architecture after product review: Narrative Threads
+and Theme Detail are not separate concepts in the visible product. Resolvable
+threads now open the existing `ThemeDetail` shell, with the thread
+`narrative_note` embedded at the top, so the richer intelligence surface remains
+intact: Evolution Graph, country breakdown, right-panel country edge, sources,
+persons, public-attention affordances, and related-theme actions.
+
+Implemented:
+
+- `resolveThreadThemeTarget` routes `dynamic-topic-*` threads directly to the
+  dynamic ThemeDetail slug and atlas-backed threads to their anchor topic.
+- `emergent-cluster-*` threads remain on `ThreadFocusPanel` as a fallback until
+  ThemeDetail supports that prefix.
+- `ThemeDetail` accepts optional thread context and fetches
+  `/api/v2/threads/{thread_id}?llm=1` only when opened from a Narrative Thread,
+  then renders the note above dense metrics.
+- The fallback `ThreadFocusPanel` section label changed from vague `Movement` to
+  `10h Signal Change` because the metric is an absolute 10-hour signal delta.
+
+Validation:
+
+- `cd frontend-v2 && npm run build` passed.
+- Direct helper smoke passed via Node type stripping.
+- Local proxy returned 200 for `/api/v2/threads`,
+  `/api/v2/theme/dynamic-topic-17`, and
+  `/api/v2/theme/election-legitimacy-dispute?country_code=CO`.
+- Vitest currently hangs even on an existing unrelated local test in this
+  session; the unit test file exists, but Vitest was not used as the completion
+  gate.
+
+Next product step: browser-smoke the unified panel on localhost/prod after merge
+and remove or further narrow `ThreadFocusPanel` once emergent-only threads have a
+ThemeDetail-compatible route.
 
 ---
 
@@ -26,10 +64,9 @@ Verification before deploy:
   -> `34 passed`.
 - Frontend: `cd frontend-v2 && npm run build` passed.
 
-Remaining product work: restore the richer Thread Intelligence Packet
-(`graph_signals`, country edges, source-family/social lanes, sentiment timeline,
-and relation history) so `ThreadFocusPanel` and `ThemeDetail` stop behaving like
-separate concepts.
+Follow-up product work moved to the unified shell: keep `ThemeDetail` as the
+canonical reader and add a ThemeDetail-compatible route for emergent-only
+threads so the fallback `ThreadFocusPanel` can shrink further or disappear.
 
 ---
 

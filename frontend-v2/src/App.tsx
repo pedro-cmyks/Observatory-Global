@@ -30,6 +30,7 @@ import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoi
 import { resolveCountryName } from './lib/countryNames'
 import type { PublicAttentionOrigin } from './lib/publicAttention'
 import { prefetchBriefing } from './lib/briefingPrefetch'
+import { resolveThreadThemeTarget } from './lib/threadThemeTarget'
 
 // Terminal Panels
 import { NarrativeThreads, type LivingThreadSelection } from './components/NarrativeThreads'
@@ -248,7 +249,13 @@ function AppContent() {
   // State
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
   const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null)
-  type SelectedTheme = { theme: string, originCountry?: string, originCountryName?: string, originAttention?: PublicAttentionOrigin }
+  type SelectedTheme = {
+    theme: string,
+    originCountry?: string,
+    originCountryName?: string,
+    originAttention?: PublicAttentionOrigin,
+    thread?: { thread_id: string, label: string },
+  }
   const [selectedTheme, setSelectedTheme] = useState<SelectedTheme | null>(null)
   const [selectedThread, setSelectedThread] = useState<LivingThreadSelection | null>(null)
   const [themeBackStack, setThemeBackStack] = useState<SelectedTheme[]>([])
@@ -1371,7 +1378,7 @@ function AppContent() {
             <button className="drill-back-btn" onClick={themeBackStack.length > 0 ? handleThemeBack : handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>
               {themeBackStack.length > 0 ? `← ${themeBackStack[0].theme.replace(/_/g, ' ').slice(0, 20)}` : '← STREAM'}
             </button>
-            <span style={{ color: '#94a3b8' }}>{selectedTheme!.theme.replace(/_/g, ' ').slice(0, 26)}</span>
+            <span style={{ color: '#94a3b8' }}>{(selectedTheme!.thread?.label || selectedTheme!.theme.replace(/_/g, ' ')).slice(0, 32)}</span>
           </>
           if (isThread) panelTitle = <>
             <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
@@ -1443,6 +1450,7 @@ function AppContent() {
                     originCountry={selectedTheme!.originCountry}
                     originCountryName={selectedTheme!.originCountryName}
                     originAttention={selectedTheme!.originAttention}
+                    threadContext={selectedTheme!.thread}
                     initialDrillCountry={selectedTheme!.originCountry}
                     hours={timeRangeToHours(timeRange)}
                     onClose={closeAll}
@@ -1487,17 +1495,24 @@ function AppContent() {
           <div className="panel-content">
             <PanelErrorBoundary panelName="NARRATIVE THREADS">
               <NarrativeThreads
-                activeThreadId={selectedThread?.thread_id}
+                activeThreadId={selectedTheme?.thread?.thread_id ?? selectedThread?.thread_id}
                 onThreadSelect={(thread) => {
-                  setSelectedTheme(null)
+                  const target = resolveThreadThemeTarget(thread)
+                  setSelectedTheme(target ? {
+                    theme: target.theme,
+                    originCountry: target.originCountry,
+                    originCountryName: target.originCountryName,
+                    thread: target.thread,
+                  } : null)
                   setTheme(null)
                   setSelectedCountry(null)
                   setSelectedCountryCode(null)
                   setSelectedPublicAttention(null)
                   setSelectedChokepoint(null)
                   setRightPanelThemeCountry(null)
+                  setThemeBackStack([])
                   clearFocus()
-                  setSelectedThread(thread)
+                  setSelectedThread(target ? null : thread)
                   if (thread.top_countries[0]) setMapFlyCountry(thread.top_countries[0])
                 }}
                 onCountrySelect={(code) => {
