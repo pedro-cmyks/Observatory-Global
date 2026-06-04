@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from app import db
+from app.services.narrative_note import build_thread_narrative_note
 
 logger = logging.getLogger(__name__)
 
@@ -436,6 +437,11 @@ def _quality_metadata(
     }
 
 
+def _with_narrative_note(thread: dict[str, Any]) -> dict[str, Any]:
+    thread["narrative_note"] = build_thread_narrative_note(thread)
+    return thread
+
+
 def assemble_thread(
     row: Any,
     *,
@@ -462,7 +468,7 @@ def assemble_thread(
         top_countries=country_names,
     )
 
-    return {
+    return _with_narrative_note({
         "thread_id": build_thread_id(topic_slug, country_codes),
         "label": label,
         "summary": label,
@@ -505,7 +511,8 @@ def assemble_thread(
         "subthreads": [],
         "related_threads": _as_list(_record_get(row, "related_topics")),
         "evidence_samples": evidence_samples or [],
-    }
+        "narrative_note": None,
+    })
 
 
 def evidence_role(syndication_count: int) -> str:
@@ -612,7 +619,7 @@ def assemble_emergent_thread(
     country_count = len(country_codes)
     avg_conf = float(gate_threshold) if gate_threshold is not None else 0.9
 
-    return {
+    return _with_narrative_note({
         "thread_id": f"{EMERGENT_CLUSTER_THREAD_PREFIX}{cluster_id}",
         "label": label_text,
         "summary": description or label_text,
@@ -656,9 +663,10 @@ def assemble_emergent_thread(
         "subthreads": [],
         "related_threads": [],
         "evidence_samples": [_serialize_evidence(sig) for sig in sample_signals],
+        "narrative_note": None,
         "cluster_cohesion": float(cohesion) if cohesion is not None else None,
         "source": "emergent_clusters",
-    }
+    })
 
 
 _EMERGENT_SAMPLE_SIGNALS_SQL = """
@@ -789,7 +797,7 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
     source_count = len(sources)
     country_count = len(country_codes)
 
-    return {
+    return _with_narrative_note({
         "thread_id": f"{DYNAMIC_TOPIC_THREAD_PREFIX}{topic_id}",
         "label": label_text,
         "summary": label_text,
@@ -833,9 +841,10 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         "subthreads": [],
         "related_threads": [],
         "evidence_samples": [_serialize_evidence(sig) for sig in sample_signals],
+        "narrative_note": None,
         "cluster_cohesion": float(cohesion) if cohesion is not None else None,
         "source": "dynamic_topics",
-    }
+    })
 
 
 async def _fetch_dynamic_threads_with_conn(
@@ -1127,4 +1136,5 @@ async def fetch_thread_detail(
         )
 
     threads[0]["evidence_samples"] = [_serialize_evidence(row) for row in evidence_rows]
+    threads[0]["narrative_note"] = build_thread_narrative_note(threads[0])
     return threads[0]

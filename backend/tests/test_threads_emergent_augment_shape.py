@@ -77,6 +77,7 @@ def test_assemble_emergent_thread_emits_required_contract_fields():
         '"confidence"',
         '"why_now"',
         '"evidence_samples"',
+        '"narrative_note"',
     ]
     for key in required:
         assert key in body, f"emergent thread missing contract key {key}"

@@ -111,6 +111,9 @@ def test_assemble_thread_contract():
         == "47 more signals in the last 10h, concentrated in Nigeria and Peru."
     )
     assert thread["related_threads"][0]["topic"] == "labor-strike-disruption"
+    assert "narrative_note" in thread
+    assert thread["narrative_note"] is not None
+    assert thread["narrative_note"]["source"] == "extractive-v1"
 
 
 def test_assemble_thread_parses_jsonb_strings_from_asyncpg():
