@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { timeRangeToHours } from '../lib/timeRanges'
-import { resolveCountryName } from '../lib/countryNames'
-import { getThemeLabel } from '../lib/themeLabels'
+import { buildSourceIntegrityScopeLabel } from '../lib/sourceIntegrityScope'
 import './SourceIntegrityPanel.css'
 
 interface GlobalBriefing {
@@ -17,16 +16,28 @@ interface GlobalBriefing {
     }>
 }
 
-export const SourceIntegrityPanel: React.FC = () => {
+interface SourceIntegrityPanelProps {
+    viewingLabel?: string | null
+}
+
+export const SourceIntegrityPanel: React.FC<SourceIntegrityPanelProps> = ({ viewingLabel }) => {
     const { filter } = useFocus()
     const { summary, timeRange, loading: focusLoading } = useFocusData()
     const [globalData, setGlobalData] = useState<GlobalBriefing | null>(null)
     const [loading, setLoading] = useState(false)
+    const hasScopedFilter = !!(filter.country || filter.theme || filter.person || filter.entity)
+    const scopeLabel = buildSourceIntegrityScopeLabel({
+        country: filter.country,
+        theme: filter.theme,
+        person: filter.person,
+        entity: filter.entity,
+        viewingLabel,
+    })
 
     // Fetch global briefing if not locked to anything
     useEffect(() => {
         let isMounted = true
-        if (filter.country || filter.theme) {
+        if (hasScopedFilter) {
             setGlobalData(null)
             return
         }
@@ -48,7 +59,7 @@ export const SourceIntegrityPanel: React.FC = () => {
         fetchGlobal()
 
         return () => { isMounted = false }
-    }, [filter.country, filter.theme, timeRange])
+    }, [hasScopedFilter, timeRange])
 
     // Compute metrics
     const isLoading = focusLoading || loading
@@ -83,7 +94,14 @@ export const SourceIntegrityPanel: React.FC = () => {
     return (
         <div className="source-panel-container">
             <div className="source-header">
-                <div>SOURCE HEALTH: {filter.country ? resolveCountryName(filter.country) : filter.theme ? getThemeLabel(filter.theme) : 'GLOBAL AGGREGATE'}</div>
+                <div className="source-heading">
+                    <span>SOURCE HEALTH: {scopeLabel.heading}</span>
+                    {scopeLabel.sublabel && (
+                        <span className={`source-scope-badge${scopeLabel.scoped ? ' scoped' : ''}`}>
+                            {scopeLabel.sublabel}
+                        </span>
+                    )}
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     {filter.streamLevel && filter.streamLevel !== 'notable' && filter.streamLevel !== 'all' && (
                         <span style={{ fontSize: '9px', fontFamily: 'Space Grotesk, monospace', fontWeight: 600, color: filter.streamLevel === 'critical' ? '#ef4444' : filter.streamLevel === 'elevated' ? '#f97316' : '#fbbf24', letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid currentColor`, borderRadius: '3px', padding: '1px 5px', opacity: 0.85 }}>

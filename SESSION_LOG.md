@@ -21,12 +21,18 @@
 - Updated `NarrativeThreads` country-scoped empty state so it explains thread
   quality gates and provides a "Show global threads" reset instead of implying
   the panel is broken.
+- Closed #146 after the fix was pushed.
+- Started #174 with a Source Integrity scope-truth slice: the panel now names
+  country/theme/person scopes when FocusData is scoped, and labels unscoped
+  metrics as `Global background` when the center panel is focused on a thread,
+  public-attention item, or chokepoint.
 
 ### Validation
 - Spec self-review found no placeholder TODO/TBD markers.
 - Obsidian wikilinks in the spec resolve.
 - `git diff --check` passed.
 - `cd frontend-v2 && npm test -- src/lib/narrativeThreads.test.ts` passed.
+- `cd frontend-v2 && npm test -- src/lib/sourceIntegrityScope.test.ts src/lib/narrativeThreads.test.ts` passed.
 - `cd frontend-v2 && npm run build` passed.
 
 ## 2026-06-04 — GDELT weak-support audit implemented

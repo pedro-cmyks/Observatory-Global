@@ -1585,10 +1585,19 @@ function AppContent() {
           </div>
           <div className="panel-content">
             <PanelErrorBoundary
-              key={`integrity-${filter.country ?? ''}-${filter.theme ?? ''}`}
+              key={`integrity-${filter.country ?? ''}-${filter.theme ?? ''}-${filter.person ?? ''}-${filter.entity ?? ''}`}
               panelName="SOURCE INTEGRITY"
             >
-              <SourceIntegrityPanel />
+              <SourceIntegrityPanel
+                viewingLabel={
+                  selectedTheme?.thread?.label
+                  ?? selectedTheme?.theme
+                  ?? selectedThread?.label
+                  ?? selectedPublicAttention?.title
+                  ?? selectedChokepoint?.name
+                  ?? null
+                }
+              />
             </PanelErrorBoundary>
           </div>
         </div>

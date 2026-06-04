@@ -20,6 +20,31 @@
     align-items: center;
 }
 
+.source-heading {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.source-heading > span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.source-scope-badge {
+    color: rgba(148, 163, 184, 0.72);
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.source-scope-badge.scoped {
+    color: #5eead4;
+}
+
 .source-content {
     flex: 1;
     display: flex;

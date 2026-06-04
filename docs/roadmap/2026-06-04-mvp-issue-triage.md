@@ -21,7 +21,7 @@ The MVP sprint prioritizes product truth over polish:
 | Issue | Action | Reason |
 |---|---|---|
 | #207 Living Narrative Threads data contract | Keep open as umbrella | Threads/themes are now one product concept, but downstream surfaces still need consistency. |
-| #174 Scope coherence across side panels | Implement next | The most damaging MVP issue is contradiction between map, center panel, right rail, Source Integrity, and Public Attention. |
+| #174 Scope coherence across side panels | In progress | First slice labels Source Integrity as scoped vs global background; remaining work covers Public Attention, thread detail, and stale response guards. |
 | #175 Topic-detail empty states | Implement with #174 | Zero/empty states should explain scope, thread quality gates, and how to return to global context. |
 | #193 Processed history app windows | Verify/deploy-smoke | 1w/1m should route to processed historical tables and expose coverage metadata. |
 | #177 Signal Stream relevance/noise | Start after scope pass | Stream should rank evidence for the active thread, not just list recent signals. |
@@ -97,7 +97,9 @@ These are valid but not MVP blockers:
 ## Next Implementation Order
 
 1. Close #146.
-2. Implement #174/#175 together as a scope/empty-state pass.
+2. Continue #174/#175 as a scope/empty-state pass. First #174 slice is complete:
+   Source Integrity now names country/theme/person scopes and explicitly labels
+   unscoped metrics as global background when the center panel is focused.
 3. Smoke #193 for 1w/1m processed-history routing.
 4. Decide whether GDELT weak recall becomes a review queue or remains a research
    artifact for MVP.
