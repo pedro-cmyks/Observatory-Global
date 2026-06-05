@@ -23,7 +23,7 @@ The MVP sprint prioritizes product truth over polish:
 | #207 Living Narrative Threads data contract | Keep open as umbrella | Threads/themes are now one product concept, but downstream surfaces still need consistency. |
 | #174 Scope coherence across side panels | In progress | First slice labels Source Integrity as scoped vs global background; remaining work covers Public Attention, thread detail, and stale response guards. |
 | #175 Topic-detail empty states | In progress | ThemeDetail now explains zero-result thread/topic detail as a coverage/quality gate and gives a return action; remaining work covers stale responses and other panels. |
-| #193 Processed history app windows | Verify/deploy-smoke | 1w/1m should route to processed historical tables and expose coverage metadata. |
+| #193 Processed history app windows | In progress | Briefing already routes long windows to processed history; `/api/v2/nodes` now does too in code and needs Fly deploy/smoke. |
 | #177 Signal Stream relevance/noise | Start after scope pass | Stream should rank evidence for the active thread, not just list recent signals. |
 | #146 Narrative Threads explanation | Close after current fix | Country-scoped empty states now explain quality gates and provide a global reset. |
 
@@ -102,7 +102,10 @@ These are valid but not MVP blockers:
    unscoped metrics as global background when the center panel is focused.
    ThemeDetail now replaces zero-result stats/graphs with a coverage-gate empty
    state and a return-to-global/stream action.
-3. Smoke #193 for 1w/1m processed-history routing.
+3. Deploy and smoke #193 for 1w/1m processed-history routing. Briefing already
+   returns `historical_topic_country_daily`; `/api/v2/nodes` has been updated
+   to return `source=historical_topic_country_daily` plus `coverage` for long
+   windows.
 4. Decide whether GDELT weak recall becomes a review queue or remains a research
    artifact for MVP.
 5. Return to #177 evidence relevance once the selected scope is reliable.

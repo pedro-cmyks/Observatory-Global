@@ -30,6 +30,11 @@
   thread/topic details now explain that no scoped evidence cleared the current
   quality gate and provide a return action instead of rendering empty stats and
   graph sections.
+- Started #193 app-window routing fix: live smoke showed briefing long windows
+  already use `historical_topic_country_daily`, but `/api/v2/nodes?range=1w`
+  and `range=1m` returned the same hot-rollup-style totals. Updated `nodes` to
+  use `query_historical_country_attention` plus `build_historical_coverage` for
+  non-focused long windows.
 
 ### Validation
 - Spec self-review found no placeholder TODO/TBD markers.
@@ -39,6 +44,8 @@
 - `cd frontend-v2 && npm test -- src/lib/sourceIntegrityScope.test.ts src/lib/narrativeThreads.test.ts` passed.
 - `cd frontend-v2 && npm test -- src/lib/themeDetailEmptyState.test.ts src/lib/sourceIntegrityScope.test.ts src/lib/narrativeThreads.test.ts` passed.
 - `cd frontend-v2 && npm run build` passed.
+- `cd backend && .venv/bin/python -m pytest tests/test_processed_historical_routing.py tests/test_briefing_performance_shape.py tests/test_historical_processing.py -q`
+  passed (`40 passed`).
 
 ## 2026-06-04 — GDELT weak-support audit implemented
 

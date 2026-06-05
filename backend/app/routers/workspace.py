@@ -7,6 +7,7 @@ from app.utils import extract_domain
 from app.core.gdelt_taxonomy import classify_source
 from app.services.processed_historical import (
     build_historical_coverage,
+    query_historical_country_attention,
     query_historical_theme_anomalies,
     use_processed_history,
 )
@@ -167,8 +168,10 @@ async def get_nodes(
             await conn.execute("SET statement_timeout = 10000")
 
             # Parse range parameter (takes precedence over hours)
-            use_daily_rollup = False
             effective_hours = hours
+            response_source = "hourly_rollup"
+            coverage_payload = None
+            historical_attention_by_country: dict[str, float] = {}
             if time_range:
                 range_map = {
                     "24h": 24,
@@ -178,8 +181,6 @@ async def get_nodes(
                     "record": 8760  # ~1 year, will use all data
                 }
                 effective_hours = range_map.get(time_range, hours)
-                # Use daily rollup for ranges > 168 hours (1 week)
-                use_daily_rollup = effective_hours > 168
 
             # If focus is active, query signals_v2 directly with filtering
             if focus_type and focus_value:
@@ -228,51 +229,30 @@ async def get_nodes(
                     ORDER BY total_signals DESC
                     LIMIT {effective_limit}
                 """, filter_value, timeout=10.0)
-            elif use_daily_rollup:
-                # Use daily rollup for extended ranges (1m, 3m, record)
-                days = effective_hours // 24
+                response_source = "signals_v2_focus"
+            elif use_processed_history(effective_hours):
+                # Long app windows use compact processed historical aggregates,
+                # not raw historical rows or stale country rollups.
                 effective_limit = min(limit, 217)
-                rows = await conn.fetch("""
-                    SELECT
-                        d.country_code,
-                        c.name,
-                        c.latitude,
-                        c.longitude,
-                        SUM(d.signal_count) as total_signals,
-                        AVG(d.avg_sentiment) as sentiment,
-                        MAX(d.max_sentiment) as max_sentiment,
-                        MIN(d.min_sentiment) as min_sentiment,
-                        SUM(d.unique_sources) as unique_sources
-                    FROM country_daily_v2 d
-                    LEFT JOIN countries_v2 c ON d.country_code = c.code
-                    WHERE d.day > CURRENT_DATE - INTERVAL '%s days'
-                    GROUP BY d.country_code, c.name, c.latitude, c.longitude
-                    HAVING SUM(d.signal_count) > 0
-                    ORDER BY total_signals DESC
-                    LIMIT %s
-                """ % (days, effective_limit), timeout=10.0)
-                # If daily rollup is empty (table not yet populated), fall back to hourly
-                if not rows:
-                    fallback_hours = min(effective_hours, 168)
-                    rows = await conn.fetch("""
-                        SELECT
-                            h.country_code,
-                            c.name,
-                            c.latitude,
-                            c.longitude,
-                            SUM(h.signal_count) as total_signals,
-                            AVG(h.avg_sentiment) as sentiment,
-                            MAX(h.max_sentiment) as max_sentiment,
-                            MIN(h.min_sentiment) as min_sentiment,
-                            SUM(h.unique_sources) as unique_sources
-                        FROM country_hourly_v2 h
-                        LEFT JOIN countries_v2 c ON h.country_code = c.code
-                        WHERE h.hour > NOW() - INTERVAL '%s hours'
-                        GROUP BY h.country_code, c.name, c.latitude, c.longitude
-                        HAVING SUM(h.signal_count) > 0
-                        ORDER BY total_signals DESC
-                        LIMIT %s
-                    """ % (fallback_hours, effective_limit), timeout=10.0)
+                historical_rows = await query_historical_country_attention(
+                    conn,
+                    hours=effective_hours,
+                    limit=effective_limit,
+                )
+                coverage_payload = (await build_historical_coverage(conn, hours=effective_hours)).to_dict()
+                response_source = "historical_topic_country_daily"
+                rows = []
+                for row in historical_rows:
+                    historical_attention_by_country[row["country_code"]] = float(row.get("historical_attention") or 0)
+                    rows.append({
+                        "country_code": row["country_code"],
+                        "name": row.get("country_name") or row["country_code"],
+                        "latitude": row.get("latitude"),
+                        "longitude": row.get("longitude"),
+                        "total_signals": row.get("signal_count") or 0,
+                        "sentiment": row.get("avg_sentiment") or 0,
+                        "unique_sources": row.get("source_diversity") or 0,
+                    })
             else:
                 # Use hourly materialized view for short ranges (faster)
                 effective_limit = min(limit, 217)
@@ -295,22 +275,40 @@ async def get_nodes(
                     ORDER BY total_signals DESC
                     LIMIT %s
                 """ % (effective_hours, effective_limit), timeout=10.0)
+                response_source = "hourly_rollup"
 
             if not rows:
-                return {"nodes": [], "count": 0, "hours": effective_hours, "range": time_range, "focus_type": focus_type, "focus_value": focus_value}
+                return {
+                    "nodes": [],
+                    "count": 0,
+                    "hours": effective_hours,
+                    "range": time_range,
+                    "focus_type": focus_type,
+                    "focus_value": focus_value,
+                    "source": response_source,
+                    "coverage": coverage_payload,
+                }
 
             # Apply countries filter if provided (post-query for compatibility with all query paths)
             if country_filter_set:
                 rows = [r for r in rows if r['country_code'] in country_filter_set]
                 if not rows:
-                    return {"nodes": [], "count": 0, "hours": effective_hours, "range": time_range, "countries": countries}
+                    return {
+                        "nodes": [],
+                        "count": 0,
+                        "hours": effective_hours,
+                        "range": time_range,
+                        "countries": countries,
+                        "source": response_source,
+                        "coverage": coverage_payload,
+                    }
 
             max_signals = max(float(r['total_signals']) for r in rows)
 
             # Fetch per-country baselines for z-score heat (non-focus queries only — focus queries
             # are already filtered so relative deviation vs global baseline is less meaningful)
             baselines: dict[str, tuple[float, float]] = {}
-            if not (focus_type and focus_value):
+            if not (focus_type and focus_value) and response_source != "historical_topic_country_daily":
                 country_codes = [r['country_code'] for r in rows if r['country_code']]
                 if country_codes:
                     baseline_rows = await conn.fetch("""
@@ -362,7 +360,11 @@ async def get_nodes(
                     continue
                 signal_count = int(row['total_signals'])
                 total_signals += signal_count
-                heat_val, anomaly_level = _heat(row['country_code'], float(signal_count))
+                if response_source == "historical_topic_country_daily":
+                    heat_val = historical_attention_by_country.get(row['country_code'], 0.0)
+                    anomaly_level = "normal"
+                else:
+                    heat_val, anomaly_level = _heat(row['country_code'], float(signal_count))
                 nodes.append({
                     "id": row['country_code'],
                     "name": row['name'] or row['country_code'],
@@ -396,7 +398,8 @@ async def get_nodes(
                 "focus_type": focus_type,
                 "focus_value": focus_value,
                 "is_filtered": focus_type is not None,
-                "source": "daily_rollup" if use_daily_rollup else "hourly_rollup"
+                "source": response_source,
+                "coverage": coverage_payload,
             }
     except Exception as e:
         return {"nodes": [], "count": 0, "error": str(e), "hours": hours}

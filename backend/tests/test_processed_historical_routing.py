@@ -60,3 +60,14 @@ def test_theme_anomalies_routes_long_windows_to_processed_history():
     assert "query_historical_theme_anomalies" in source
     assert "daily_grain_anomaly" in source
     assert '"source": "historical_topic_country_daily"' in source
+
+
+def test_nodes_routes_long_windows_to_processed_history():
+    source = Path("app/routers/workspace.py").read_text(encoding="utf-8")
+    nodes_section = source[source.index('async def get_nodes'):source.index('@router.get("/api/v2/anomalies")')]
+
+    assert "use_processed_history(effective_hours)" in nodes_section
+    assert "query_historical_country_attention" in nodes_section
+    assert "build_historical_coverage" in nodes_section
+    assert 'response_source = "historical_topic_country_daily"' in nodes_section
+    assert '"coverage"' in nodes_section

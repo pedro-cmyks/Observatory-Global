@@ -149,6 +149,8 @@ async def query_historical_country_attention(
         )
         SELECT r.country_code,
                c.name AS country_name,
+               c.latitude,
+               c.longitude,
                r.signal_count,
                r.avg_sentiment,
                r.topic_coverage,
