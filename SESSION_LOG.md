@@ -26,6 +26,10 @@
   country/theme/person scopes when FocusData is scoped, and labels unscoped
   metrics as `Global background` when the center panel is focused on a thread,
   public-attention item, or chokepoint.
+- Started #175 with a ThemeDetail coverage-gate empty state: zero-result
+  thread/topic details now explain that no scoped evidence cleared the current
+  quality gate and provide a return action instead of rendering empty stats and
+  graph sections.
 
 ### Validation
 - Spec self-review found no placeholder TODO/TBD markers.
@@ -33,6 +37,7 @@
 - `git diff --check` passed.
 - `cd frontend-v2 && npm test -- src/lib/narrativeThreads.test.ts` passed.
 - `cd frontend-v2 && npm test -- src/lib/sourceIntegrityScope.test.ts src/lib/narrativeThreads.test.ts` passed.
+- `cd frontend-v2 && npm test -- src/lib/themeDetailEmptyState.test.ts src/lib/sourceIntegrityScope.test.ts src/lib/narrativeThreads.test.ts` passed.
 - `cd frontend-v2 && npm run build` passed.
 
 ## 2026-06-04 — GDELT weak-support audit implemented

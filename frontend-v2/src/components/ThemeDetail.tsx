@@ -12,6 +12,7 @@ import { PanelSkeleton, PanelSkeletonGrid } from './PanelSkeleton'
 import { CoverageBadge, type CoverageMeta } from './CoverageBadge'
 import type { PublicAttentionOrigin } from '../lib/publicAttention'
 import type { TemporalNarrativeBucket } from '../lib/temporalNarrativeGraph'
+import { buildThemeDetailEmptyState } from '../lib/themeDetailEmptyState'
 import './ThemeDetail.css'
 
 const TemporalNarrativeGraph = lazy(() =>
@@ -309,6 +310,14 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     const pinnedId = `theme-${theme}${originCountry ? '-' + originCountry : ''}`
     const pinned = isPinned(pinnedId)
     const displayLabel = data?.label || getThemeLabel(theme)
+    const emptyState = data && data.total === 0
+        ? buildThemeDetailEmptyState({
+            label: displayLabel,
+            countryName: drillCountryName || (drillCountry ? resolveCountryName(drillCountry) : null),
+            hours,
+            openedFrom: threadContext ? 'thread' : originAttention ? 'public_attention' : 'topic',
+        })
+        : null
     const countryFramingRows = data
         ? (data.countryFraming && data.countryFraming.length > 0
             ? data.countryFraming
@@ -445,7 +454,35 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                 {loading && data && <div className="panel-reloading" aria-label="Refreshing" />}
                 {error && <div className="theme-detail-error">Error: {error}</div>}
 
-                {data && (
+                {data && emptyState && (
+                    <div className="theme-detail-empty-state">
+                        <div className="theme-detail-empty-kicker">Coverage gate</div>
+                        <h3>{emptyState.title}</h3>
+                        <p>{emptyState.body}</p>
+                        <p className="theme-detail-empty-note">{emptyState.secondaryNote}</p>
+                        <div className="theme-detail-empty-actions">
+                            {drillCountry ? (
+                                <button
+                                    type="button"
+                                    className="theme-detail-empty-action"
+                                    onClick={() => { setDrillCountry(null); setDrillCountryName(null) }}
+                                >
+                                    {emptyState.primaryAction}
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="theme-detail-empty-action"
+                                    onClick={onClose}
+                                >
+                                    {emptyState.primaryAction}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {data && !emptyState && (
                     <>
                         {threadNote && (
                             <div className={`theme-thread-note theme-thread-note-${threadNote.quality}`}>
