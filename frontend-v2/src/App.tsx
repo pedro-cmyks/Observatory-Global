@@ -31,6 +31,7 @@ import { resolveCountryName } from './lib/countryNames'
 import type { PublicAttentionOrigin } from './lib/publicAttention'
 import { prefetchBriefing } from './lib/briefingPrefetch'
 import { resolveThreadThemeTarget } from './lib/threadThemeTarget'
+import { buildHistoricalCoverageCue } from './lib/historicalCoverageCue'
 
 // Terminal Panels
 import { NarrativeThreads, type LivingThreadSelection } from './components/NarrativeThreads'
@@ -475,7 +476,7 @@ function AppContent() {
   }, [])
 
   // Focus-aware data from provider - auto-refetches when focus/range changes
-  const { nodes, flows, unfilteredFlows, acledConflicts, loading, isRefetching, refetch, timeRange, setTimeRange } = useFocusData()
+  const { nodes, flows, unfilteredFlows, acledConflicts, loading, isRefetching, refetch, timeRange, setTimeRange, meta: focusMeta } = useFocusData()
 
   // Initial map stays global. The hotspot reset button performs focused fly-to on demand.
 
@@ -950,6 +951,10 @@ function AppContent() {
 
   // Total signals for stats
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
+  const historicalCoverageCue = buildHistoricalCoverageCue({
+    source: focusMeta.source,
+    coverage: focusMeta.coverage,
+  })
   const openBrief = () => {
     const params = new URLSearchParams()
     params.set('range', timeRange)
@@ -1042,6 +1047,11 @@ function AppContent() {
                 data-tip={`Countries and signals in the selected time window${filter.country || filter.theme ? ' (filtered view)' : ' (global)'}`}
               >
                 {nodes.length} countries · {totalSignals.toLocaleString()} signals
+              </span>
+            )}
+            {historicalCoverageCue && (
+              <span className="historical-coverage-pill" data-tip={historicalCoverageCue.tip}>
+                {historicalCoverageCue.label}
               </span>
             )}
           </div>

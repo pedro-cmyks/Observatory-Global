@@ -148,6 +148,20 @@
   white-space: nowrap;
   font-weight: 500;
   letter-spacing: 0.06em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.historical-coverage-pill {
+  border: 1px solid rgba(104, 219, 174, 0.22);
+  border-radius: 3px;
+  color: #68dbae;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 5px;
+  text-transform: uppercase;
 }
 
 /* Time Range Controls in Command Bar */

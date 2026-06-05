@@ -53,6 +53,13 @@ export interface FocusDataMeta {
     totalCountries: number
     totalSignals: number
     isFiltered: boolean
+    source?: string | null
+    coverage?: {
+        source?: string | null
+        modelVersion?: string | null
+        requestedHours?: number | null
+        partialCoverage?: boolean | null
+    } | null
 }
 
 export interface AcledConflict {
@@ -94,7 +101,9 @@ interface FocusDataContextValue extends FocusDataState {
 const defaultMeta: FocusDataMeta = {
     totalCountries: 0,
     totalSignals: 0,
-    isFiltered: false
+    isFiltered: false,
+    source: null,
+    coverage: null,
 }
 
 const defaultState: FocusDataState = {
@@ -156,9 +165,11 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 meta: safeNodes.length > 0 ? {
                     totalCountries: nodesData.count || nodesData.nodes?.length || 0,
                     totalSignals: nodesData.totalSignals || 0,
-                    isFiltered: nodesData.is_filtered || false
+                    isFiltered: nodesData.is_filtered || false,
+                    source: nodesData.source ?? null,
+                    coverage: nodesData.coverage ?? null,
                 } : (prev.isRefetching ? prev.meta : {
-                    totalCountries: 0, totalSignals: 0, isFiltered: false
+                    totalCountries: 0, totalSignals: 0, isFiltered: false, source: null, coverage: null
                 }),
                 loading: false,
                 error: null
@@ -286,4 +297,3 @@ export const useFocusData = (): FocusDataContextValue => {
     }
     return context
 }
-

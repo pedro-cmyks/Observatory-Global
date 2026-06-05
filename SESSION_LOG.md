@@ -35,6 +35,15 @@
   and `range=1m` returned the same hot-rollup-style totals. Updated `nodes` to
   use `query_historical_country_attention` plus `build_historical_coverage` for
   non-focused long windows.
+- Deployed the #193 API fix to Fly. Production smoke now shows:
+  - `nodes?range=24h`: `source=hourly_rollup`, `totalSignals=173,566`;
+  - `nodes?range=1w`: `source=historical_topic_country_daily`,
+    `coverage.source=historical_processed`, `totalSignals=1,009,607`;
+  - `nodes?range=1m`: `source=historical_topic_country_daily`,
+    `coverage.source=historical_processed`, `totalSignals=4,332,735`.
+  Added the remaining `/app` coverage cue: `FocusDataContext` now carries
+  `nodes.source`/`nodes.coverage`, and the command-bar stats show a
+  `Historical processed` badge for long windows served from compact aggregates.
 
 ### Validation
 - Spec self-review found no placeholder TODO/TBD markers.
@@ -46,6 +55,8 @@
 - `cd frontend-v2 && npm run build` passed.
 - `cd backend && .venv/bin/python -m pytest tests/test_processed_historical_routing.py tests/test_briefing_performance_shape.py tests/test_historical_processing.py -q`
   passed (`40 passed`).
+- `cd frontend-v2 && npm test -- src/lib/historicalCoverageCue.test.ts src/lib/themeDetailEmptyState.test.ts src/lib/sourceIntegrityScope.test.ts src/lib/narrativeThreads.test.ts`
+  passed.
 
 ## 2026-06-04 — GDELT weak-support audit implemented
 
