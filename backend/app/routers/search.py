@@ -4,6 +4,7 @@ import logging
 from fastapi import APIRouter, Query
 from app import db
 from app.main_v2 import app
+from app.services.search_contract import should_show_concept_suggestions
 from app.utils import _is_valid_person, extract_domain
 
 router = APIRouter()
@@ -495,7 +496,14 @@ async def unified_search(
         "concept_suggestions": [
             {"slug": c["slug"], "label": c["label"], "description": c["description"]}
             for c in concept_suggestions
-        ],
+        ] if should_show_concept_suggestions(
+            concept_hits=concept_hits,
+            merged_themes=merged_themes,
+            persons=db_result.get("persons", []),
+            countries=countries,
+            public_attention=public_attention,
+            signal_matches=signal_matches,
+        ) else [],
         "region": region_match,
         "persons": db_result.get("persons", []),
         "countries": countries,
