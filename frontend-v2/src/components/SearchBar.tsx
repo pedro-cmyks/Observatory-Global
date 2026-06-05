@@ -1,12 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { useFocus } from '../contexts/FocusContext'
-import type { ConceptFilter, RegionFilter } from '../contexts/FocusContext'
-import { Search, PlusCircle } from '../lib/icons'
+import type { RegionFilter } from '../contexts/FocusContext'
+import { Search } from '../lib/icons'
 import { hasVisibleSearchResults } from '../lib/searchResults'
 import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters'
-import { useCustomConcepts } from '../hooks/useCustomConcepts'
-import { CustomConceptModal } from './CustomConceptModal'
 import './SearchBar.css'
 
 // Sorted longest-first so multi-word country names match before single-word substrings
@@ -203,10 +201,8 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
     const [parsedQuery, setParsedQuery] = useState<ParsedQuery>({ topic: '', countryCode: null, countryDisplay: null })
     const [isOpen, setIsOpen] = useState(false)
     const [loading, setLoading] = useState(false)
-    const [showCreateModal, setShowCreateModal] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
-    const { setFocus, setMapFlyCountry, setCountry, setTheme, setConcept, setRegion } = useFocus()
-    const { concepts: customConcepts, add: addCustomConcept, remove: removeCustomConcept } = useCustomConcepts()
+    const { setFocus, setMapFlyCountry, setCountry, setTheme, setRegion } = useFocus()
 
     const doSearch = useCallback(async (q: string) => {
         if (q.length < 2) {
@@ -281,20 +277,6 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
         setFocus('country', c.code, c.name)
         setMapFlyCountry(c.code)
         onCountrySelect(c.code)
-        close()
-    }
-
-    const handleConceptClick = (c: ConceptResult) => {
-        const concept: ConceptFilter = { slug: c.slug, themes: c.themes, label: c.label }
-        if (parsedQuery.countryCode) {
-            setCountry(parsedQuery.countryCode)
-            setConcept(concept)
-            setMapFlyCountry(parsedQuery.countryCode)
-            if (c.themes[0]) onThemeSelect(c.themes[0], parsedQuery.countryCode, parsedQuery.countryDisplay ?? undefined)
-        } else {
-            setConcept(concept)
-            if (c.themes[0]) onThemeSelect(c.themes[0])
-        }
         close()
     }
 
@@ -422,64 +404,6 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                         </div>
                     )}
 
-                    {results?.concepts && results.concepts.length > 0 && (
-                        <div className="search-section">
-                            <div className="search-section-label">Concepts</div>
-                            {results.concepts.map(c => (
-                                <div key={c.slug} className="search-item search-item--concept" onClick={() => handleConceptClick(c)}>
-                                    <span className="search-item-tag concept-tag">CON</span>
-                                    <span className="search-item-name">{c.label}</span>
-                                    {countryBadge}
-                                    <span className="search-item-meta search-item-meta--desc">{c.description.slice(0, 60)}…</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {customConcepts.length > 0 && query.length >= 2 && customConcepts.filter(c =>
-                        c.label.toLowerCase().includes(query.toLowerCase()) ||
-                        c.description.toLowerCase().includes(query.toLowerCase())
-                    ).length > 0 && (
-                        <div className="search-section">
-                            <div className="search-section-label">My Concepts</div>
-                            {customConcepts.filter(c =>
-                                c.label.toLowerCase().includes(query.toLowerCase()) ||
-                                c.description.toLowerCase().includes(query.toLowerCase())
-                            ).map(c => (
-                                <div key={c.slug} className="search-item search-item--concept search-item--custom-concept" onClick={() => {
-                                    handleConceptClick({ slug: c.slug, label: c.label, description: c.description, themes: c.themes })
-                                }}>
-                                    <span className="search-item-tag custom-concept-tag">★</span>
-                                    <span className="search-item-name">{c.label}</span>
-                                    <span className="search-item-meta search-item-meta--desc">{c.description.slice(0, 60)}{c.description.length > 60 ? '…' : ''}</span>
-                                    <button className="search-item-remove-concept" onClick={e => { e.stopPropagation(); removeCustomConcept(c.slug) }} aria-label="Delete concept" title="Delete">×</button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {results?.concept_suggestions && results.concept_suggestions.length > 0 && !results?.concepts?.length && (
-                        <div className="search-suggestion-banner">
-                            Related concepts:
-                            {results.concept_suggestions.map(c => (
-                                <button
-                                    key={c.slug}
-                                    className="search-suggestion-chip"
-                                    onClick={() => {
-                                        const full = results?.concepts?.find(x => x.slug === c.slug)
-                                        if (full) handleConceptClick(full)
-                                        else {
-                                            setQuery(c.label)
-                                            doSearch(c.label)
-                                        }
-                                    }}
-                                >
-                                    {c.label}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-
                     {results?.public_attention && results.public_attention.some(item => isPublicAttentionRelevant(item.title)) && (
                         <div className="search-section">
                             <div className="search-section-label">Public Attention</div>
@@ -560,21 +484,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                         <div className="search-empty">No results for "{parsedQuery.topic}"</div>
                     )}
 
-                    {query.length >= 2 && (
-                        <div className="search-create-concept-row">
-                            <button className="search-create-concept-btn" onClick={() => { setShowCreateModal(true); setIsOpen(false) }}>
-                                <PlusCircle size={12} /> Save "{parsedQuery.topic || query}" as investigative concept
-                            </button>
-                        </div>
-                    )}
                 </div>
-            )}
-
-            {showCreateModal && (
-                <CustomConceptModal
-                    onSave={(label, description, themes) => addCustomConcept(label, description, themes)}
-                    onClose={() => setShowCreateModal(false)}
-                />
             )}
         </div>
     )

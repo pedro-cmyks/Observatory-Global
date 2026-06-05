@@ -22,7 +22,7 @@ The MVP sprint prioritizes product truth over polish:
 |---|---|---|
 | #207 Living Narrative Threads data contract | Keep open as umbrella | Threads/themes are now one product concept, but downstream surfaces still need consistency. |
 | #174 Scope coherence across side panels | In progress | Source Integrity labels scoped vs global background; FocusData now discards stale responses; Public Attention names global matching vs country origin. Remaining work is manual country -> person -> topic -> clear smoke and any panel-specific gaps found there. |
-| #175 Topic-detail empty states | In progress | ThemeDetail explains zero-result thread/topic detail as a coverage/quality gate and gives a return action; stale-response guard is now in FocusData. Remaining work covers related empty states found during manual smoke. |
+| #175 Topic-detail/Search empty states | In progress | ThemeDetail explains zero-result thread/topic detail as a coverage/quality gate. Search no longer shows curated concept-map suggestions or the old save-as-concept CTA. Remaining work: custom query-thread builder and search-demand tracking. |
 | #193 Processed history app windows | Closed | Briefing and `/api/v2/nodes` route long windows to processed history; `/app` shows a historical processed cue when the map is served from compact historical aggregates. |
 | #177 Signal Stream relevance/noise | Start after scope pass | Stream should rank evidence for the active thread, not just list recent signals. |
 | #146 Narrative Threads explanation | Close after current fix | Country-scoped empty states now explain quality gates and provide a global reset. |
@@ -37,6 +37,24 @@ This lane is active but conservative.
 | `docs/research/topic-quality/gdelt-weak-support/2026-06-04-recall-pilot.json` | Done | Weak recall can recover candidates only when compatible GDELT themes and label anchors agree. |
 | Automatic promotion from GDELT | Not allowed | GDELT is a weak support signal, not the final classifier or paper-grade truth. |
 | Next implementation | Pending | Add a reviewable candidate queue or diagnostics panel before adding any candidates to active threads. |
+
+## Search And Query Threads
+
+Search should not expose `INVESTIGATIVE CONCEPT MAP` as a fixed user-facing
+taxonomy. That map is a legacy curated GDELT-bundle helper and can create false
+related concepts for normal person/topic searches.
+
+MVP direction:
+
+1. Search returns direct evidence first: signal matches, people, countries,
+   public attention, and supported themes.
+2. A user query should become a temporary custom Narrative Thread when enough
+   evidence exists.
+3. A persistent concept list is allowed only if it grows from demand and
+   evidence: repeated searches, query volume, multilingual variants, and signal
+   support.
+4. Curated concept suggestions stay hidden until they can be justified by that
+   demand/evidence layer.
 
 ## Close Or Update Soon
 
@@ -102,7 +120,10 @@ These are valid but not MVP blockers:
    unscoped metrics as global background when the center panel is focused.
    ThemeDetail now replaces zero-result stats/graphs with a coverage-gate empty
    state and a return-to-global/stream action. FocusData now rejects stale
-   responses, and Public Attention names its matching scope.
-3. Decide whether GDELT weak recall becomes a review queue or remains a research
+   responses, Public Attention names its matching scope, and Search no longer
+   shows curated concept-map suggestions.
+3. Design/implement query-thread search: given arbitrary text, assemble a
+   temporary thread from direct signal/person/country/public-attention evidence.
+4. Decide whether GDELT weak recall becomes a review queue or remains a research
    artifact for MVP.
-4. Return to #177 evidence relevance once the selected scope is reliable.
+5. Return to #177 evidence relevance once the selected scope is reliable.

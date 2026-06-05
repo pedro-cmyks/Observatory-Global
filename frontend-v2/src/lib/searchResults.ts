@@ -14,7 +14,6 @@ export function hasVisibleSearchResults<T extends SearchVisibilityResult>(result
     results.themes.some(t => t.total_signals > 0) ||
     results.persons.some(p => p.total_signals > 0) ||
     results.countries.length > 0 ||
-    (results.concepts?.length ?? 0) > 0 ||
     results.region != null ||
     (results.public_attention?.length ?? 0) > 0 ||
     (results.signal_matches?.length ?? 0) > 0

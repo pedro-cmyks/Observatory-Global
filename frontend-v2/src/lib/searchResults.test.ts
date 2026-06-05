@@ -19,4 +19,15 @@ describe('hasVisibleSearchResults', () => {
       signal_matches: [{ id: 1, headline: 'CDC reports hantavirus case', country: 'US', source: 'example.com', timestamp: '2026-05-07T00:00:00Z', themes: ['HEALTH'] }],
     })).toBe(true)
   })
+
+  it('does not treat curated concept-map hits as visible search results', () => {
+    expect(hasVisibleSearchResults({
+      themes: [],
+      persons: [],
+      countries: [],
+      concepts: [{ slug: 'blood-diamonds', label: 'Blood Diamonds & Conflict Minerals' }],
+      public_attention: [],
+      signal_matches: [],
+    })).toBe(false)
+  })
 })

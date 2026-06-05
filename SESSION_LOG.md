@@ -53,6 +53,17 @@
     matches or was opened from a country origin.
   - `AnomalyPanel` passes the active country origin into Public Attention
     selections when available.
+- Reframed Search/Investigative Concepts:
+  - `INVESTIGATIVE CONCEPT MAP` is not the desired user-facing model. It is a
+    legacy curated map and should not be force-fed into arbitrary searches.
+  - Search should evolve into a custom query-thread builder: the user enters a
+    phrase in any language, Atlas searches evidence across signals/people/
+    countries/public attention, and assembles a temporary thread for that query.
+  - Any future concept list should be demand/evidence driven: generated from
+    repeated searches, query volume, and matched signal support, not manually
+    curated suggestions.
+  - The SearchBar now hides curated concept-map results, related concept
+    suggestions, and the old "Save as investigative concept" CTA.
 
 ### Validation
 - Spec self-review found no placeholder TODO/TBD markers.
@@ -71,6 +82,13 @@
 - `cd frontend-v2 && npm run build` passed after the Public Attention and
   stale-response slice.
 - Local `/app` smoke returned HTTP 200.
+- `cd backend && .venv/bin/python -m pytest tests/test_search_concept_suggestions.py tests/test_search_performance_shape.py tests/test_search_normalization.py -q`
+  passed.
+- Production smoke for `Ivan cepeda` returned direct media evidence and
+  `concept_suggestions: []`.
+- `cd frontend-v2 && npm test -- src/lib/searchResults.test.ts` passed.
+- `cd frontend-v2 && npm run build` passed after removing curated concept
+  results from the SearchBar.
 
 ## 2026-06-04 — GDELT weak-support audit implemented
 
