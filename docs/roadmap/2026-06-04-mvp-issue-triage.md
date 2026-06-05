@@ -21,9 +21,9 @@ The MVP sprint prioritizes product truth over polish:
 | Issue | Action | Reason |
 |---|---|---|
 | #207 Living Narrative Threads data contract | Keep open as umbrella | Threads/themes are now one product concept, but downstream surfaces still need consistency. |
-| #174 Scope coherence across side panels | In progress | First slice labels Source Integrity as scoped vs global background; remaining work covers Public Attention, thread detail, and stale response guards. |
-| #175 Topic-detail empty states | In progress | ThemeDetail now explains zero-result thread/topic detail as a coverage/quality gate and gives a return action; remaining work covers stale responses and other panels. |
-| #193 Processed history app windows | Implemented; close after Vercel smoke | Briefing and `/api/v2/nodes` route long windows to processed history; `/app` shows a historical processed cue when the map is served from compact historical aggregates. |
+| #174 Scope coherence across side panels | In progress | Source Integrity labels scoped vs global background; FocusData now discards stale responses; Public Attention names global matching vs country origin. Remaining work is manual country -> person -> topic -> clear smoke and any panel-specific gaps found there. |
+| #175 Topic-detail empty states | In progress | ThemeDetail explains zero-result thread/topic detail as a coverage/quality gate and gives a return action; stale-response guard is now in FocusData. Remaining work covers related empty states found during manual smoke. |
+| #193 Processed history app windows | Closed | Briefing and `/api/v2/nodes` route long windows to processed history; `/app` shows a historical processed cue when the map is served from compact historical aggregates. |
 | #177 Signal Stream relevance/noise | Start after scope pass | Stream should rank evidence for the active thread, not just list recent signals. |
 | #146 Narrative Threads explanation | Close after current fix | Country-scoped empty states now explain quality gates and provide a global reset. |
 
@@ -97,13 +97,12 @@ These are valid but not MVP blockers:
 ## Next Implementation Order
 
 1. Close #146.
-2. Continue #174/#175 as a scope/empty-state pass. First slices are complete:
+2. Continue #174/#175 as a scope/empty-state pass. Current slices are complete:
    Source Integrity now names country/theme/person scopes and explicitly labels
    unscoped metrics as global background when the center panel is focused.
    ThemeDetail now replaces zero-result stats/graphs with a coverage-gate empty
-   state and a return-to-global/stream action.
-3. Close #193 after Vercel smoke. API smoke is complete and `/app` has a
-   historical processed cue wired from `nodes.source`/`nodes.coverage`.
-4. Decide whether GDELT weak recall becomes a review queue or remains a research
+   state and a return-to-global/stream action. FocusData now rejects stale
+   responses, and Public Attention names its matching scope.
+3. Decide whether GDELT weak recall becomes a review queue or remains a research
    artifact for MVP.
-5. Return to #177 evidence relevance once the selected scope is reliable.
+4. Return to #177 evidence relevance once the selected scope is reliable.

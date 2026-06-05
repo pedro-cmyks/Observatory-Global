@@ -12,7 +12,7 @@ describe('public attention helpers', () => {
 
   it('scopes public attention URLs to a country when provided', () => {
     expect(getPublicAttentionTopUrl(6, 'co')).toBe('/api/v2/wiki/top?days=7&limit=6&country_code=CO')
-    expect(getTrendingSearchesUrl(5, 24, 'co')).toBe('/api/v2/trends/search?hours=24&limit=5&country_code=CO')
+    expect(getTrendingSearchesUrl(5, 24, 'co')).toBe('/api/v2/trends/search?hours=72&limit=5&country_code=CO')
   })
 
   it('builds a country narrative that combines media and public attention evidence', () => {

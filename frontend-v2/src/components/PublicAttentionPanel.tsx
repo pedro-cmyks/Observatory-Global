@@ -4,6 +4,7 @@ import { getThemeLabel } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
 import { timeRangeToHours, type TimeRange } from '../lib/timeRanges'
 import type { PublicAttentionOrigin } from '../lib/publicAttention'
+import { buildPublicAttentionScopeLabel } from '../lib/publicAttentionScope'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import './PublicAttentionPanel.css'
 
@@ -81,6 +82,12 @@ export function PublicAttentionPanel({ item, timeRange, onClose, onThemeSelect, 
     const { pinItem, unpinItem, isPinned } = useWorkspace()
     const pinned = isPinned(pinnedId)
     const requestKey = `${title}:${hours}`
+    const scopeLabel = buildPublicAttentionScopeLabel({
+        title,
+        hours,
+        countryCode: item.country,
+        countryName: item.countryName,
+    })
     const [panelData, setPanelData] = useState<{
         key: string
         searchData: SearchResult | null
@@ -199,6 +206,11 @@ export function PublicAttentionPanel({ item, timeRange, onClose, onThemeSelect, 
                 <i />
                 <span>MEDIA</span>
                 <strong>{signalMatches.length} signals</strong>
+            </div>
+
+            <div className="pap-scope-band">
+                <span>{scopeLabel.label}</span>
+                <p>{scopeLabel.detail}</p>
             </div>
 
             <div className="pap-metrics">

@@ -44,6 +44,15 @@
   Added the remaining `/app` coverage cue: `FocusDataContext` now carries
   `nodes.source`/`nodes.coverage`, and the command-bar stats show a
   `Historical processed` badge for long windows served from compact aggregates.
+- Closed #193 after Vercel served the new `/app` bundle.
+- Continued #174/#175 with a scope/stale-response slice:
+  - `FocusDataContext` now keys requests by active range + focus and discards
+    stale responses, so old global/scoped fetches cannot overwrite the current
+    map/panel scope after rapid navigation.
+  - `PublicAttentionPanel` now shows whether it is comparing global media
+    matches or was opened from a country origin.
+  - `AnomalyPanel` passes the active country origin into Public Attention
+    selections when available.
 
 ### Validation
 - Spec self-review found no placeholder TODO/TBD markers.
@@ -57,6 +66,11 @@
   passed (`40 passed`).
 - `cd frontend-v2 && npm test -- src/lib/historicalCoverageCue.test.ts src/lib/themeDetailEmptyState.test.ts src/lib/sourceIntegrityScope.test.ts src/lib/narrativeThreads.test.ts`
   passed.
+- `cd frontend-v2 && npm test -- src/lib/publicAttentionScope.test.ts src/lib/focusRequestKey.test.ts src/lib/publicAttention.test.ts src/lib/sourceIntegrityScope.test.ts`
+  passed.
+- `cd frontend-v2 && npm run build` passed after the Public Attention and
+  stale-response slice.
+- Local `/app` smoke returned HTTP 200.
 
 ## 2026-06-04 — GDELT weak-support audit implemented
 

@@ -17,7 +17,7 @@ const SEVERITY_COLORS: Record<string, string> = {
 
 interface AnomalyPanelProps {
     onWikiClick?: (query: string) => void
-    onPublicAttentionSelect?: (item: { title: string; views?: number; country_count?: number }) => void
+    onPublicAttentionSelect?: (item: { title: string; views?: number; country_count?: number; country?: string; countryName?: string }) => void
 }
 
 export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPublicAttentionSelect }) => {
@@ -248,7 +248,12 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                                         className={`ap-row ap-row--trend${canOpen ? ' clickable' : ''}`}
                                         onClick={canOpen ? () => {
                                             if (onPublicAttentionSelect) {
-                                                onPublicAttentionSelect({ ...a, title: displayTitle })
+                                                onPublicAttentionSelect({
+                                                    ...a,
+                                                    title: displayTitle,
+                                                    country: activeCountry ?? undefined,
+                                                    countryName: activeCountry ? resolveCountryName(activeCountry) : undefined,
+                                                })
                                             } else {
                                                 onWikiClick?.(displayTitle)
                                             }

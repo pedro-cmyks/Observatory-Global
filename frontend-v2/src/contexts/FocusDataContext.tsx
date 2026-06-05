@@ -8,6 +8,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { useFocus } from './FocusContext'
 import { type TimeRange, timeRangeToHours } from '../lib/timeRanges'
+import { buildFocusRequestKey } from '../lib/focusRequestKey'
 
 // Types
 export interface NodeData {
@@ -125,8 +126,29 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
     const timeRange = filter.timeRange
     const [state, setState] = useState<FocusDataState>(defaultState)
     const previousFlows = useRef<FlowData[]>([])
+    const activeRequestKey = useRef<string | null>(null)
+    const activeRequestSeq = useRef(0)
+    const activeAbortController = useRef<AbortController | null>(null)
 
     const fetchData = useCallback(async () => {
+        const requestKey = buildFocusRequestKey({
+            timeRange,
+            isActive,
+            focusType: focus.type,
+            focusValue: focus.value,
+        })
+        const controller = new AbortController()
+        activeAbortController.current?.abort()
+        activeAbortController.current = controller
+        const requestSeq = activeRequestSeq.current + 1
+        activeRequestSeq.current = requestSeq
+        activeRequestKey.current = requestKey
+        const isCurrentRequest = () => (
+            activeRequestKey.current === requestKey
+            && activeRequestSeq.current === requestSeq
+            && !controller.signal.aborted
+        )
+
         setState(prev => ({ ...prev, loading: prev.nodes.length === 0, isRefetching: true, error: null }))
 
         try {
@@ -146,9 +168,10 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
             }
 
             // Fetch nodes first
-            const nodesRes = await fetch(`/api/v2/nodes?${baseParams}`)
+            const nodesRes = await fetch(`/api/v2/nodes?${baseParams}`, { signal: controller.signal })
             if (!nodesRes.ok) throw new Error(`Nodes fetch failed: ${nodesRes.status}`)
             const nodesData = await nodesRes.json()
+            if (!isCurrentRequest()) return
 
             // Safe render: cap at 217 (all sovereign countries) to prevent Deck.gl memory issues
             const MAX_NODES = 217
@@ -177,6 +200,7 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
 
             // 200ms stagger before secondary fetches
             await new Promise(r => setTimeout(r, 200))
+            if (!isCurrentRequest()) return
 
             // Fetch flows with 12s timeout — render map without flows if slow
             const flowsParams = new URLSearchParams(baseParams.toString())
@@ -185,6 +209,7 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
             try {
                 const flowsCtrl = new AbortController()
                 const flowsTimer = setTimeout(() => flowsCtrl.abort(), 12000)
+                controller.signal.addEventListener('abort', () => flowsCtrl.abort(), { once: true })
                 const flowsRes = await fetch(`/api/v2/flows?${flowsParams}`, { signal: flowsCtrl.signal })
                 clearTimeout(flowsTimer)
                 if (flowsRes.ok) flowsData = await flowsRes.json()
@@ -201,7 +226,7 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                         value: focus.value,
                         hours: timeRangeToHours(timeRange).toString()
                     })
-                    const summaryRes = await fetch(`/api/v2/focus?${summaryParams}`)
+                    const summaryRes = await fetch(`/api/v2/focus?${summaryParams}`, { signal: controller.signal })
                     if (summaryRes.ok) {
                         summaryData = await summaryRes.json()
                     }
@@ -216,7 +241,7 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 const hours = timeRangeToHours(timeRange)
                 const days = Math.max(1, Math.min(30, Math.ceil(hours / 24)))
                 const markersParams = new URLSearchParams({ days: days.toString(), limit: '500' })
-                const markersRes = await fetch(`/api/v2/conflict-markers?${markersParams}`)
+                const markersRes = await fetch(`/api/v2/conflict-markers?${markersParams}`, { signal: controller.signal })
                 if (markersRes.ok) {
                     const data = await markersRes.json()
                     acledData = data.markers || []
@@ -226,6 +251,7 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
             }
 
             const newFlows = flowsData.flows || []
+            if (!isCurrentRequest()) return
             previousFlows.current = newFlows
 
             // Update flows/acled without re-hiding the globe
@@ -239,6 +265,7 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
             }))
 
         } catch (err) {
+            if (!isCurrentRequest()) return
             console.error('[FocusDataProvider] Fetch error:', err)
             setState(prev => ({
                 ...prev,
@@ -247,6 +274,7 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 error: err instanceof Error ? err.message : 'Unknown error'
             }))
         }
+
     }, [focus.type, focus.value, isActive, timeRange])
 
     // Use a native debounce to prevent rapid-click API thrashing

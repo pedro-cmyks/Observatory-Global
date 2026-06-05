@@ -124,6 +124,28 @@
     background: linear-gradient(90deg, rgba(34, 211, 238, 0.25), rgba(16, 185, 129, 0.65));
 }
 
+.pap-scope-band {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    background: rgba(8, 47, 73, 0.20);
+}
+
+.pap-scope-band span {
+    display: block;
+    color: #67e8f9;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.pap-scope-band p {
+    margin: 4px 0 0;
+    color: #93a9b8;
+    font-size: 11px;
+    line-height: 1.35;
+}
+
 .pap-metrics > div {
     display: flex;
     flex-direction: column;

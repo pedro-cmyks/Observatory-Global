@@ -16,6 +16,8 @@ export interface PublicAttentionOrigin {
   views?: number
   country_count?: number
   query?: string
+  country?: string
+  countryName?: string
 }
 
 function compactJoin(items: string[]): string {
