@@ -343,3 +343,27 @@
     opacity: 1;
     background: rgba(30, 41, 59, 0.4);
 }
+
+/* Stream lane badges (#177) — visibly separate sports/entertainment noise. */
+.stream-lane-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 1px 5px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    margin-left: 4px;
+    cursor: default;
+}
+.stream-lane-badge--sports {
+    background: rgba(56, 189, 248, 0.12);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+}
+.stream-lane-badge--entertainment {
+    background: rgba(232, 121, 249, 0.12);
+    color: #e879f9;
+    border: 1px solid rgba(232, 121, 249, 0.3);
+}

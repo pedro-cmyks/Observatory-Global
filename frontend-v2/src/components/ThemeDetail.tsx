@@ -49,7 +49,9 @@ interface ThemeData {
     topPersons: Array<{ name: string; count: number }>
     timeline: Array<{ hour: string; count: number; sentiment: number }>
     source?: string
+    query?: string
     coverage?: CoverageMeta
+    coverageTier?: 'thin' | 'limited' | 'ok'
     warnings?: string[]
     countryFraming?: Array<{
         country_code: string
@@ -146,6 +148,10 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     const detailRef = useRef<HTMLDivElement>(null)
     const { pinItem, unpinItem, isPinned, setIsOpen: openWorkspace } = useWorkspace()
     const isDynamicTopic = theme.toLowerCase().startsWith('dynamic-topic-')
+    // Custom query thread: token shape is `query-thread::<raw user query>`.
+    // The raw text is preserved (accents/spaces) for the /search/thread builder.
+    const isQueryThread = theme.startsWith('query-thread::')
+    const queryThreadText = isQueryThread ? theme.slice('query-thread::'.length) : ''
 
     // Public attention signals
     const [trendMatch, setTrendMatch] = useState<{ has_public_interest: boolean; matches: Array<{ keyword: string; country_code: string }> } | null>(null)
@@ -175,7 +181,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
             try {
                 const params = new URLSearchParams({ hours: hours.toString() })
                 if (drillCountry) params.append('country_code', drillCountry)
-                const url = `/api/v2/theme/${encodeURIComponent(theme)}?${params.toString()}`
+                const url = isQueryThread
+                    ? `/api/v2/search/thread?q=${encodeURIComponent(queryThreadText)}&${params.toString()}`
+                    : `/api/v2/theme/${encodeURIComponent(theme)}?${params.toString()}`
 
                 const res = await fetch(url)
                 if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -194,6 +202,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     // Fetch public attention signals (trends + wiki)
     useEffect(() => {
         if (!theme) return
+        if (isQueryThread) return  // theme-code match is meaningless for free-text threads
         const encoded = encodeURIComponent(theme)
         fetch(`/api/v2/trends/match?theme=${encoded}&hours=${hours}`)
             .then(r => r.json().catch(() => null))
@@ -243,7 +252,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     // Fetch AI insight async after main data loads
     useEffect(() => {
         if (!theme) return
-        if (isDynamicTopic) return
+        if (isDynamicTopic || isQueryThread) return
         setInsightLoading(true)
         setInsightFailed(false)
         setInsightError(null)
@@ -261,15 +270,15 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
             })
             .catch(() => { setInsightFailed(true); setInsightError(null) })
             .finally(() => setInsightLoading(false))
-    }, [theme, hours, isDynamicTopic])
+    }, [theme, hours, isDynamicTopic, isQueryThread])
 
     useEffect(() => {
-        if (!isDynamicTopic) return
+        if (!isDynamicTopic && !isQueryThread) return
         setInsightLoading(false)
         setInsightFailed(false)
         setInsightError(null)
-        setInsight(data ? buildDynamicTopicInsight(data) : null)
-    }, [isDynamicTopic, data])
+        setInsight(isDynamicTopic && data ? buildDynamicTopicInsight(data) : null)
+    }, [isDynamicTopic, isQueryThread, data])
 
     const getSentimentColor = (s: number) =>
         s > 0.1 ? '#4ade80' : s < -0.1 ? '#f87171' : '#fbbf24'
@@ -309,7 +318,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
 
     const pinnedId = `theme-${theme}${originCountry ? '-' + originCountry : ''}`
     const pinned = isPinned(pinnedId)
-    const displayLabel = data?.label || getThemeLabel(theme)
+    const displayLabel = data?.label || (isQueryThread ? queryThreadText : getThemeLabel(theme))
     const emptyState = data && data.total === 0
         ? buildThemeDetailEmptyState({
             label: displayLabel,
@@ -412,6 +421,18 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                     <span className="theme-detail-icon">{getThemeIcon(theme)}</span>
                     <div style={{ flex: 1 }}>
                         <h2>{displayLabel}</h2>
+                        {isQueryThread && (
+                            <p className="theme-detail-meta">
+                                <span className="query-thread-tag">Custom thread</span>
+                                {data?.coverageTier === 'thin' && (
+                                    <span className="coverage-badge coverage-badge--thin" data-tip="Few matching signals — this thread is built from thin coverage">THIN</span>
+                                )}
+                                {data?.coverageTier === 'limited' && (
+                                    <span className="coverage-badge coverage-badge--limited" data-tip="Limited matching signals for this query">LIMITED</span>
+                                )}
+                                {' '}Built from your search · {data?.total || 0} matching signals
+                            </p>
+                        )}
                         {drillCountry ? (
                             <p className="theme-detail-meta">
                                 <button

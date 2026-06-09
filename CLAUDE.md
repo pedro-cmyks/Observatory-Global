@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-06-02 (Phase 6 dynamic topics backend cutover).
+Last updated: 2026-06-08 (MVP issue closeout and CountryBrief thread truth).
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -8,7 +8,41 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
-## Current Session Context (2026-06-02, dynamic topics backend cutover)
+## Current Session Context (2026-06-08, MVP issue closeout)
+
+Current branch is `v3-intel-layer`. The latest work is local and not deployed
+yet: search query-thread builder (#175), Signal Stream relevance lanes (#177
+slice 1), source-available license migration, and CountryBrief thread-count
+alignment (#174/#207).
+
+Important current guardrails:
+
+- The visible product model is Narrative Threads. Do not present fixed GDELT
+  themes or curated concept-map suggestions as the user-facing topic model.
+- CountryBrief must not count a forced `topCounts(themeCounts, 12)` slice as
+  visible "themes". It now fetches
+  `/api/v2/threads?hours=<window>&limit=24&country_code=<country>` and uses that
+  country-scoped thread response for the visible `threads` metric and Narrative
+  Threads list.
+- If a country has signals but no coherent thread clears the quality gate, show
+  `0 threads` / an explanatory empty state; do not fall back to GDELT theme
+  volume.
+- The local batch should be browser-smoked, committed, then deployed with key
+  rotation before being described as shipped.
+- Kalman filtering, if explored next, belongs in a read-only dynamic-topic state
+  tracking pilot (smoothed intensity, velocity, uncertainty, surprise), not as a
+  semantic classifier replacement.
+
+Verification from 2026-06-08:
+
+- Backend focused suite for query-thread + stream lanes: `28 passed`.
+- Frontend focused suite for country/thread/search/empty-state helpers: `4 files
+  passed / 8 tests`.
+- `frontend-v2` production build passed.
+
+See `docs/state/2026-06-08-mvp-closeout-plan.md` for the next execution order.
+
+## Prior Session Context (2026-06-02, dynamic topics backend cutover)
 
 ### Phase 6 dynamic topics read path
 

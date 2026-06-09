@@ -226,6 +226,8 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                 setResults(fallback.ok ? await fallback.json() : { themes: [], persons: [], countries: [] })
             }
             setIsOpen(true)
+            // Warm the custom query-thread cache so clicking the option is instant.
+            fetch(`/api/v2/search/thread?q=${encodeURIComponent(searchQ)}&hours=168${countryParam}`).catch(() => { })
         } catch {
             // silent
         } finally {
@@ -311,6 +313,15 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
         doSearch(suggestion.value)
     }
 
+    // Build a custom Narrative Thread from the exact query text. The token
+    // `query-thread::<raw>` is resolved by ThemeDetail against /search/thread.
+    const handleQueryThreadClick = () => {
+        const raw = query.trim()
+        if (raw.length < 2) return
+        onThemeSelect(`query-thread::${raw}`, parsedQuery.countryCode ?? undefined, parsedQuery.countryDisplay ?? undefined)
+        close()
+    }
+
     const hasResults = hasVisibleSearchResults(results)
     const expandedVariants = (results?.query_variants || [])
         .filter(v => v && v !== results?.normalized_query)
@@ -346,6 +357,16 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                             Filtering to: <strong>{parsedQuery.countryDisplay}</strong>
                             <span className="search-context-hint"> · results scoped to this country</span>
                         </div>
+                    )}
+
+                    {query.trim().length >= 2 && (
+                        <button className="search-query-thread-cta" onClick={handleQueryThreadClick}>
+                            <span className="search-query-thread-icon">🧵</span>
+                            <span className="search-query-thread-text">
+                                Build a thread for <strong>“{query.trim()}”</strong>
+                            </span>
+                            <span className="search-query-thread-hint">custom narrative →</span>
+                        </button>
                     )}
 
                     {expandedVariants.length > 0 && (

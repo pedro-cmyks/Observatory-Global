@@ -291,6 +291,73 @@ async def _get_fuzzy_search_suggestions(
 
     return suggestions
 
+QUERY_THREAD_SIGNAL_LIMIT = 300
+
+
+@router.get("/api/v2/search/thread")
+async def query_thread(
+    q: str = Query(..., min_length=2, description="Free-text query to build a thread from"),
+    hours: int = Query(168, ge=1, le=720),
+    country: str | None = Query(None, min_length=2, max_length=2),
+    country_code: str | None = Query(None, min_length=2, max_length=2),
+):
+    """Build a temporary Narrative Thread from arbitrary query text.
+
+    Matches signals directly (headline / themes / persons / source via the
+    multilingual query variants), then assembles a theme-detail-shaped payload
+    through the shared thread packet. No minimum-evidence gate: sparse matches
+    still return a thread, tagged with a ``coverage`` tier so the UI can show a
+    THIN badge.
+    """
+    from app.core.search_normalization import build_query_variants
+    from app.services.query_thread import build_query_thread
+
+    query_variants = build_query_variants(q)
+    selected_country = country_code or country
+    country_code = selected_country.upper() if selected_country else None
+    cache_key = f"qthread:v1:{q.lower().strip()}:{hours}:{country_code or 'all'}"
+    if app.state.redis:
+        try:
+            cached = await app.state.redis.get(cache_key)
+            if cached:
+                return json.loads(cached)
+        except Exception:
+            pass
+
+    like_patterns = [f"%{variant}%" for variant in query_variants]
+    country_clause = "AND country_code = $2" if country_code else ""
+    params: list = [like_patterns]
+    if country_code:
+        params.append(country_code)
+
+    async with db.pool.acquire() as conn:
+        rows = await conn.fetch(f"""
+            SELECT timestamp, country_code, source_name, source_url,
+                   sentiment, headline, themes, persons
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+              AND (
+                (headline IS NOT NULL AND LOWER(headline) LIKE ANY($1::text[]))
+                OR (source_name IS NOT NULL AND LOWER(source_name) LIKE ANY($1::text[]))
+                OR (themes IS NOT NULL AND LOWER(array_to_string(themes, ' ')) LIKE ANY($1::text[]))
+                OR (persons IS NOT NULL AND LOWER(array_to_string(persons, ' ')) LIKE ANY($1::text[]))
+              )
+              {country_clause}
+            ORDER BY timestamp DESC
+            LIMIT {QUERY_THREAD_SIGNAL_LIMIT}
+        """, *params, timeout=SEARCH_SEGMENT_TIMEOUT_SECONDS)
+
+    result = build_query_thread(rows, q, hours=hours, country=country_code)
+
+    if app.state.redis:
+        try:
+            await app.state.redis.setex(cache_key, 120, json.dumps(result))
+        except Exception:
+            pass
+
+    return result
+
+
 @router.get("/api/v2/search/unified")
 async def unified_search(
     q: str = Query(..., min_length=2, description="Search query"),

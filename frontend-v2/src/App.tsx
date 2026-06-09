@@ -419,7 +419,9 @@ function AppContent() {
   const handleThemeSelect = (theme: string, countryCode?: string, countryName?: string, originAttention?: PublicAttentionOrigin) => {
     setSelectedPublicAttention(null)
     setSelectedThread(null)
-    setTheme(theme)
+    // Custom query threads are synthetic — they must not pollute FocusContext
+    // (which would fire focus-data fetches against a non-existent theme code).
+    if (!theme.startsWith('query-thread::')) setTheme(theme)
     const nextTheme = { theme, originCountry: countryCode, originCountryName: countryName, originAttention }
     setSelectedTheme(prev => {
       if (prev && prev.theme !== theme) {

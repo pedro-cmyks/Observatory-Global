@@ -93,3 +93,12 @@ Copy `.env.example` to `.env` and set local database/cache values. Production se
 Atlas is in active development. Current focus: data quality, multilingual NLP validation, source diversification, country heat methodology, workspace dossiers, and clearer product documentation.
 
 Built with open data and public infrastructure: GDELT, Wikimedia, Google Trends, FastAPI, Supabase, Fly.io, Vercel, and React.
+
+## License
+
+Source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE). The
+source is public to read, study, and use for noncommercial purposes (personal,
+research, education, nonprofits, government). Commercial use, resale, or running
+a competing service requires a separate commercial license from the copyright
+holder, Pedro Villegas. Access to the hosted service is free; the underlying IP,
+research, and curated data remain proprietary.

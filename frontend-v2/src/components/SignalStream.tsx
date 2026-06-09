@@ -97,6 +97,11 @@ const getSignalPriority = (signal: Signal): number => {
     return 2
 }
 
+// Backend relevance lanes (#177): sports/entertainment are noise for analyst
+// workflows and must not sit beside crisis/conflict items in the default tabs.
+const isNoiseLane = (signal: Signal): boolean =>
+    signal.lane === 'sports' || signal.lane === 'entertainment'
+
 export const SignalStream: React.FC = () => {
     const { filter, setTheme, setCountry, setPerson, setStreamLevel } = useFocus()
     const { timeRange } = useFocusData()
@@ -142,6 +147,7 @@ export const SignalStream: React.FC = () => {
                 const params = new URLSearchParams()
                 params.append('limit', '50')
                 params.append('hours', timeRangeToHours(timeRange).toString())
+                params.append('sort', 'relevance')  // analyst-grade ranking (#177)
                 if (filter.country) params.append('country_code', filter.country)
                 if (filter.theme) params.append('theme', filter.theme)
                 if (filter.person) params.append('person', filter.person)
@@ -294,11 +300,14 @@ export const SignalStream: React.FC = () => {
         if (streamFilter === 'all') return true
         if (streamFilter === 'person') return sig.persons?.length > 0
         if (streamFilter === 'maritime') return MARITIME_KEYWORDS.test(sig.headline || '') || sig.themes.some(t => t.includes('MARITIME') || t.includes('VESSEL'))
+        // Analyst-grade tabs: never surface sports/entertainment noise lanes.
+        if (isNoiseLane(sig)) return false
         if (streamFilter === 'trend') return sig.themes.some(t => HIGH_PRIORITY_THEMES.some(h => t.includes(h)))
         if (streamFilter === 'critical') return sig.themes.some(t => CRITICAL_THEMES.some(c => t.includes(c)))
         if (streamFilter === 'elevated') return sig.themes.some(t => ELEVATED_THEMES.some(e => t.includes(e)))
         if (streamFilter === 'notable') {
-            return getSignalPriority(sig) === 1 ||
+            return sig.lane === 'analyst' ||
+                getSignalPriority(sig) === 1 ||
                 sig.themes.some(t => CRITICAL_THEMES.some(c => t.includes(c))) ||
                 sig.themes.some(t => ELEVATED_THEMES.some(e => t.includes(e))) ||
                 sig.persons?.length > 0
@@ -335,6 +344,9 @@ export const SignalStream: React.FC = () => {
                             key={f}
                             className={`stream-filter-tab${streamFilter === f ? ' active' : ''}`}
                             onClick={() => { setStreamFilter(f); setStreamLevel(f) }}
+                            data-tip={f === 'notable'
+                                ? 'Analyst-grade ranking: crisis/conflict, security, economy and political signals first. Sports and entertainment are filtered out.'
+                                : f === 'all' ? 'Everything, including sports and entertainment (lane-tagged).' : undefined}
                         >
                             {f.toUpperCase()}
                         </button>
@@ -410,6 +422,12 @@ export const SignalStream: React.FC = () => {
                                         </div>
                                         <div className="signal-footer">
                                             <span className={`source ${getSourceClass(sig.source)}`}>{sig.source}</span>
+                                            {(sig.lane === 'sports' || sig.lane === 'entertainment') && (
+                                                <span className={`stream-lane-badge stream-lane-badge--${sig.lane}`}
+                                                    data-tip={`${sig.lane === 'sports' ? 'Sports' : 'Entertainment'} — separated from analyst workflows`}>
+                                                    {sig.lane === 'sports' ? 'SPORT' : 'CULTURE'}
+                                                </span>
+                                            )}
                                             <div className="themes">
                                                 {sig.themes.slice(0, 3).map(t => (
                                                     <span

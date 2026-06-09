@@ -13,6 +13,10 @@ export interface Signal {
     sentiment: number
     themes: string[]
     persons: string[]
+    /** Stream lane from backend relevance scoring (#177): analyst|sports|entertainment|general */
+    lane?: 'analyst' | 'sports' | 'entertainment' | 'general'
+    relevanceScore?: number
+    framing?: string | null
 }
 
 interface Props {

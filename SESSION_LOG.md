@@ -1,5 +1,181 @@
 # Atlas — Session Log
 
+## 2026-06-08 — MVP issue closeout and CountryBrief thread truth
+
+Resumed the MVP issue sprint from the uncommitted 2026-06-05 batch. The repo is
+on `v3-intel-layer`, aligned with `origin/v3-intel-layer`, with local changes
+still pending commit/deploy.
+
+### State reconstructed
+- The latest local batch contains the PolyForm Noncommercial license migration,
+  custom query-thread builder (#175), Signal Stream relevance lanes (#177 slice
+  1), and docs/roadmap updates.
+- Search is now product-framed as a temporary Narrative Thread builder, not a
+  curated concept browser. Organic demand tracking remains deferred.
+- Signal Stream relevance is local and test-covered, but still needs live smoke.
+- Deploy day should include secret rotation before treating this batch as
+  shipped.
+
+### CountryBrief thread-count fix (#174/#207)
+Pedro flagged that opening a country could show "12 themes", which contradicted
+the Narrative Threads panel. Root cause: `CountryBrief` built `top_themes` from
+recent signal GDELT themes with `topCounts(themeCounts, 12)` and displayed the
+length of that forced local slice.
+
+Fix:
+- Added `frontend-v2/src/lib/countryBriefThreads.ts` and tests.
+- Added `frontend-v2/src/lib/countryBriefFetch.ts` so optional CountryBrief
+  fetches cannot blank the whole country panel when one auxiliary endpoint is
+  slow or unavailable.
+- `CountryBrief` now fetches `/api/v2/threads?hours=<window>&limit=24&country_code=<country>`.
+- The top metric now displays the country-scoped Narrative Thread count, labeled
+  `threads`.
+- The visible section changed from `Top Themes` to `Narrative Threads`, using
+  the same country-scoped thread rows. No GDELT fallback is used for the visible
+  thread count; if zero threads clear the gate, the count is `0`, not `12`.
+- `GET /api/v2/search/thread` now accepts both `country` and `country_code`,
+  matching the ThemeDetail fetch convention and preventing the local query-thread
+  path from returning a scoped detail error.
+
+### Verification
+- `cd frontend-v2 && npm test -- src/lib/countryBriefThreads.test.ts` -> 2
+  passed after TDD red/green.
+- `cd frontend-v2 && npm test -- src/lib/countryBriefFetch.test.ts src/lib/countryBriefThreads.test.ts`
+  -> 2 files passed / 3 tests.
+- `cd backend && .venv/bin/python -m pytest tests/test_query_thread.py tests/test_query_thread_router_contract.py tests/test_signals_lane_contract.py tests/test_stream_relevance.py -q`
+  -> 29 passed.
+- `cd frontend-v2 && npm test -- src/lib/countryBriefThreads.test.ts src/lib/narrativeThreads.test.ts src/lib/themeDetailEmptyState.test.ts src/lib/searchResults.test.ts`
+  -> 4 files passed / 8 tests.
+- `cd frontend-v2 && npm run build` passed.
+- Static preview smoke: `npx vite preview --host 127.0.0.1 --port 4173` served
+  `/app` as `200 text/html` with the built `index` bundle. Full automated
+  browser interaction was not completed because Playwright is not installed in
+  the available Node runtime.
+- In-app browser smoke on local backend + Vite dev:
+  - `/app` loaded with page title `Atlas - Public Narrative Intelligence Console`.
+  - Search for `Colombia` showed the custom query-thread CTA without curated
+    concept-map results.
+  - Opening that CTA rendered a `Custom thread` panel without `HTTP 404`.
+  - `/app?country=CO` rendered CountryBrief with `10 threads`, a `Narrative
+    Threads` section, and no `Top Themes` label or `Error: Failed to fetch`.
+
+### Next plan
+1. Browser-smoke `/app` locally: query-thread search, country click,
+   CountryBrief thread count vs NarrativeThreads rows, Signal Stream Notable
+   relevance, and empty-state transitions.
+2. Review/stage/commit the local batch.
+3. Rotate keys on deploy day, deploy backend/frontend, and production-smoke the
+   same flows.
+4. After this MVP truth pass ships, scope a read-only Kalman/state-tracking
+   pilot for dynamic topic intensity/velocity/surprise. Keep it out of semantic
+   classification.
+
+## 2026-06-05 — Signal Stream relevance lanes (#177, slice 1)
+
+First slice of #177: analyst-grade relevance scoring + lane separation so the
+`Notable` stream stops mixing crisis/conflict items with sports and celebrity
+noise (e.g. "Vikings 2026 Undrafted Free Agents", "Eurovision Song Contest").
+
+**Approach:** the observed noise carries generic/empty GDELT themes, so the
+analyst signal comes from themes (crisis + security/economy/politics
+categories) while sports/entertainment are detected from headline keywords.
+Analyst themes override headline keywords.
+
+**Backend**
+- `backend/app/services/stream_relevance.py` — pure `classify_stream_lane`,
+  `stream_relevance_score`, `score_stream_signal`. Lanes:
+  analyst|sports|entertainment|general; score 0..1 (analyst base 0.7 + severity
+  boost, noise lanes ≤0.15). 11 unit tests.
+- `GET /api/v2/signals` now returns `lane` + `relevanceScore` per signal, accepts
+  `lane=` filter and `sort=relevance` (widens fetch to 200 then ranks + truncates
+  to `limit`). 4 contract tests.
+
+**Frontend**
+- `SignalDetailPanel.tsx` — `Signal` type gains `lane`, `relevanceScore`,
+  `framing`.
+- `SignalStream.tsx` — fetches `sort=relevance`; analyst tabs
+  (notable/critical/elevated/trend) exclude sports/entertainment lanes; `notable`
+  promotes `lane === 'analyst'`; sports/entertainment items get a lane badge in
+  `all`; NOTABLE tab has a tooltip explaining the ranking (acceptance criterion).
+- `SignalStream.css` — `.stream-lane-badge` styles.
+
+**Verification:** 28 backend tests (this slice + query-thread) pass; `npm run
+build` passes. Live smoke pending.
+
+**Not yet in this slice:** dedicated Public-attention / US-domestic / Raw-firehose
+tabs; consuming `signal_topic_assignments` (#167) for domain labels. Lane is
+theme+headline heuristic for now.
+
+## 2026-06-05 — License migration + custom query-thread builder (#175)
+
+### License → source-available
+- Replaced MIT with **PolyForm Noncommercial License 1.0.0** (verbatim canonical
+  text + `Required Notice: Copyright (c) 2025 Pedro Villegas — Observatorio
+  Global`). Goal: free read/noncommercial access, IP retained, commercial use
+  requires a separate license.
+- Updated `LICENSE`, root `README.md` (new License section), `backend/README.md`,
+  `frontend-v2/package.json` (`LicenseRef-PolyForm-Noncommercial-1.0.0`), and
+  `backend/pyproject.toml`.
+- Remaining `MIT` mentions are correct (MIT Media Lab institution; h3-js/deck.gl
+  dependency licenses) — left untouched.
+
+### Key rotation plan (deploy day)
+- Decision: rotate **all** secrets at next deploy regardless of leak audit
+  (audit inconclusive — full-history `git log -S` scans timed out on the 50MB
+  pack; `.env` is confirmed gitignored and never tracked on the working branch).
+- Rotation targets: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`,
+  `MAPBOX_TOKEN`, `OPENSKY_CLIENT_ID/SECRET`, `POSTGRES_PASSWORD`/`DATABASE_URL`,
+  Redis creds. Re-set via `fly secrets set` + Vercel env + worker `.env` (600).
+
+### #175 — custom query-thread builder (search becomes a thread creator)
+Product reframe: search no longer exposes a curated investigative concept map.
+Any query builds a temporary Narrative Thread from direct evidence. This slice
+ships that builder end-to-end.
+
+**Decisions (confirmed with Pedro):**
+- Matching: **direct only** — headline / themes / persons / source via the
+  existing multilingual `build_query_variants`. No GDELT weak-recall expansion.
+- Gate: **none** — build from whatever matches; flag sparse results with a
+  `coverageTier` ("thin" | "limited" | "ok") so the UI shows a THIN badge like
+  country-scoped threads, instead of an empty state.
+- Entry UX: search results are the options; a prominent top CTA builds a thread
+  for the exact query, and the offered thread is prefetched so the click is
+  instant.
+
+**Backend**
+- `backend/app/services/query_thread.py` — pure `build_query_thread(rows, query,
+  *, hours, country)` wraps the shared `build_thread_packet` into the
+  theme-detail contract + `coverageTier` + `query_thread_thin_coverage` warning.
+  ASCII slug folds accents. 9 unit tests.
+- `GET /api/v2/search/thread` in `backend/app/routers/search.py` — fetches packet
+  columns from `signals_v2` (headline/source/themes/persons LIKE ANY the
+  multilingual variants), caps at 300 signals, caches 120s. 4 contract tests.
+- 0 regression across thread/packet tests.
+
+**Frontend**
+- `SearchBar.tsx` — top CTA "Build a thread for «query»" → `onThemeSelect(
+  'query-thread::<raw>')`; fires a warm fetch to `/api/v2/search/thread` when
+  results load.
+- `ThemeDetail.tsx` — detects the `query-thread::<raw>` token, fetches
+  `/search/thread` instead of `/theme/<slug>`, guards the theme-code-only
+  sub-fetches (trends/wiki/insight), renders a Custom-thread tag + THIN/LIMITED
+  badge.
+- `App.tsx` — `handleThemeSelect` skips `setTheme` for `query-thread::` tokens so
+  the synthetic id never pollutes FocusContext.
+- CSS: `.search-query-thread-cta` (SearchBar.css), `.query-thread-tag`
+  (ThemeDetail.css). `coverage-badge--thin/limited` reused (global CSS).
+
+**Verification:** backend tests + `npm run build` pass (observed). Live smoke
+pending — needs running backend + DB; deferred to Pedro's manual / video pass.
+
+**Not yet shipped (next #175 slice):** organic demand tracking — a concept list
+that grows from repeated searches / query volume / multilingual variants /
+signal support. Parked per roadmap.
+
+**State:** uncommitted on `v3-intel-layer`; batched for deploy day with key
+rotation and the license change. Full detail in
+`docs/state/2026-06-05-query-thread-builder.md`.
+
 ## 2026-06-04 — MVP thread-volume and issue sprint design
 
 ### What happened

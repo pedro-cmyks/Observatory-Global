@@ -1,5 +1,60 @@
 # Atlas — Session Status
-**Branch:** `feat/unified-thread-detail` | **Updated:** 2026-06-04 (Unified thread detail shell)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-06-08 (MVP issue closeout and CountryBrief thread truth)
+
+---
+
+## Current handoff (2026-06-08) — MVP issue closeout, query threads, and CountryBrief thread truth
+
+Current repo state is local working-tree work on `v3-intel-layer`, not deployed
+production. The branch is aligned with `origin/v3-intel-layer`, with the
+2026-06-05/08 MVP closeout batch still uncommitted.
+
+What is ready locally:
+
+- **Search becomes a thread creator (#175 slice):** `GET /api/v2/search/thread`
+  builds a temporary `query-thread::<raw query>` detail packet from direct
+  evidence. The old curated concept-map suggestions remain hidden from the
+  user-facing search flow.
+- **Signal Stream relevance (#177 slice 1):** `/api/v2/signals` returns
+  `lane` and `relevanceScore`, supports `lane=` and `sort=relevance`, and the
+  frontend separates analyst-relevant items from sports/entertainment noise in
+  the Notable/Critical/Elevated/Trend tabs.
+- **CountryBrief thread count fix (#174/#207):** the CountryBrief metric no
+  longer counts a local `topCounts(..., 12)` slice of GDELT themes as visible
+  "themes". It fetches `/api/v2/threads?country_code=<country>` and displays
+  that country-scoped Narrative Thread count and rows. If no thread clears the
+  gate, the visible count is `0`, not a forced `12`.
+- **CountryBrief resilience:** optional side fetches for indicators, trends,
+  wiki, nodes, and threads no longer blank the whole country panel if one request
+  fails. Country signals remain the critical fetch.
+- **Query-thread country alias:** `/api/v2/search/thread` now accepts
+  `country_code` as well as `country`, matching ThemeDetail's scoped fetch
+  convention.
+- **License batch:** local source-available license migration to PolyForm
+  Noncommercial remains staged in the working tree and should ship together with
+  the planned key rotation.
+
+Verification on 2026-06-08:
+
+- `cd backend && .venv/bin/python -m pytest tests/test_query_thread.py tests/test_query_thread_router_contract.py tests/test_signals_lane_contract.py tests/test_stream_relevance.py -q`
+  -> `29 passed`.
+- `cd frontend-v2 && npm test -- src/lib/countryBriefFetch.test.ts src/lib/countryBriefThreads.test.ts`
+  -> `2 files passed / 3 tests`.
+- `cd frontend-v2 && npm test -- src/lib/countryBriefThreads.test.ts src/lib/narrativeThreads.test.ts src/lib/themeDetailEmptyState.test.ts src/lib/searchResults.test.ts`
+  -> `4 passed / 8 tests`.
+- `cd frontend-v2 && npm run build` passed.
+- In-app browser smoke on local backend + Vite dev passed the target flows:
+  query-thread CTA opens without `HTTP 404`; `/app?country=CO` renders
+  CountryBrief with `10 threads`, a `Narrative Threads` section, and no `Top
+  Themes` fallback.
+
+Next closeout order:
+
+1. Review/stage the whole local batch and commit.
+2. Rotate secrets during deploy day, then deploy backend/frontend and production
+   smoke.
+3. Only after the MVP truth pass is shipped, start the read-only Kalman/state
+   tracking pilot for dynamic topics.
 
 ---
 

@@ -15,6 +15,8 @@ import {
     getPublicAttentionTopUrl,
     getTrendingSearchesUrl,
 } from '../lib/publicAttention';
+import { buildCountryBriefThreadSummary, type CountryBriefThreadInput } from '../lib/countryBriefThreads';
+import { optionalFetchResponse } from '../lib/countryBriefFetch';
 
 // ThemeChange interface reserved for future use
 // interface ThemeChange {
@@ -69,6 +71,7 @@ interface BriefData {
     hours: number;
     signal_count: number;
     top_themes: Array<{ name: string; count: number }>;
+    narrative_threads: CountryBriefThreadInput[];
     top_sources: Array<{ name: string; count: number }>;
     keyPersons: KeyPerson[];
     avg_sentiment: number;
@@ -117,6 +120,10 @@ interface TrendsResponse {
 
 interface WikiTopResponse {
     articles?: Array<{ title: string; views?: number | null }>;
+}
+
+interface ThreadsResponse {
+    threads?: CountryBriefThreadInput[];
 }
 
 interface CountryBriefProps {
@@ -215,28 +222,30 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             setIndicators(null);
 
             try {
-                const [nodeRes, indicatorsRes, signalsRes, trendsRes, wikiRes] = await Promise.all([
-                    fetch(`/api/v2/nodes?focus_type=country&focus_value=${countryCode}&hours=${timeWindow}&limit=1`, { signal: controller.signal }),
-                    fetch(`/api/indicators/country/${countryCode}?hours=${timeWindow}`, { signal: controller.signal }),
+                const [nodeRes, indicatorsRes, signalsRes, trendsRes, wikiRes, threadsRes] = await Promise.all([
+                    optionalFetchResponse(() => fetch(`/api/v2/nodes?focus_type=country&focus_value=${countryCode}&hours=${timeWindow}&limit=1`, { signal: controller.signal })),
+                    optionalFetchResponse(() => fetch(`/api/indicators/country/${countryCode}?hours=${timeWindow}`, { signal: controller.signal })),
                     fetch(`/api/v2/signals?country_code=${countryCode}&hours=${timeWindow}&limit=500`, { signal: controller.signal }),
-                    fetch(getTrendingSearchesUrl(5, Math.min(timeWindow, 168), countryCode), { signal: controller.signal }),
-                    fetch(getPublicAttentionTopUrl(5, countryCode), { signal: controller.signal }),
+                    optionalFetchResponse(() => fetch(getTrendingSearchesUrl(5, Math.min(timeWindow, 168), countryCode), { signal: controller.signal })),
+                    optionalFetchResponse(() => fetch(getPublicAttentionTopUrl(5, countryCode), { signal: controller.signal })),
+                    optionalFetchResponse(() => fetch(`/api/v2/threads?hours=${timeWindow}&limit=24&country_code=${countryCode}`, { signal: controller.signal })),
                 ]);
 
                 if (!signalsRes.ok) {
                     throw new Error(`Failed to fetch country signals: ${signalsRes.status}`);
                 }
 
-                const nodeData = nodeRes.ok ? await nodeRes.json() as NodesResponse : null;
+                const nodeData = nodeRes?.ok ? await nodeRes.json() as NodesResponse : null;
                 let indicatorsData = null;
-                if (indicatorsRes.ok) {
+                if (indicatorsRes?.ok) {
                     indicatorsData = await indicatorsRes.json();
                     if (!indicatorsData.error && !controller.signal.aborted) setIndicators(indicatorsData);
                 }
 
                 const signalsPayload = await signalsRes.json() as SignalsResponse;
-                const trendsPayload = trendsRes.ok ? await trendsRes.json() as TrendsResponse : null;
-                const wikiPayload = wikiRes.ok ? await wikiRes.json() as WikiTopResponse : null;
+                const trendsPayload = trendsRes?.ok ? await trendsRes.json() as TrendsResponse : null;
+                const wikiPayload = wikiRes?.ok ? await wikiRes.json() as WikiTopResponse : null;
+                const threadsPayload = threadsRes?.ok ? await threadsRes.json() as ThreadsResponse : null;
                 const signals = signalsPayload.signals || [];
                 const themeCounts = new Map<string, number>();
                 const sourceCounts = new Map<string, number>();
@@ -286,6 +295,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     hours: timeWindow,
                     signal_count: focusSummary?.summary.total_signals ?? node?.signalCount ?? signals.length,
                     top_themes: topCounts(themeCounts, 12),
+                    narrative_threads: threadsPayload?.threads ?? [],
                     top_sources: summarySources.length > 0 ? summarySources : topCounts(sourceCounts, 8),
                     keyPersons: selectVisibleKeyPersons(topCounts(personCounts, 20)),
                     avg_sentiment: sentiment,
@@ -348,6 +358,11 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
         );
     }
 
+    const threadSummary = buildCountryBriefThreadSummary({
+        threads: data.narrative_threads,
+        fallbackThemes: data.top_themes,
+    })
+
     return (
         <div className={cls}>
             <div className="brief-header">
@@ -408,9 +423,9 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 </div>
                 <div>
                     <span className="cb-metric-value">
-                        {data.top_themes.filter(t => !t.name.startsWith('WORLDLANGUAGES_') && !t.name.startsWith('TAX_WORLDLANGUAGES_')).length}
+                        {threadSummary.count}
                     </span>
-                    <span className="cb-metric-label">themes</span>
+                    <span className="cb-metric-label">{threadSummary.label}</span>
                 </div>
             </div>
 
@@ -546,23 +561,22 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 </div>
             </section>
 
-            {/* Top Themes */}
+            {/* Narrative Threads */}
             <section className="brief-section">
-                <div className="cb-section-label">Top Themes</div>
+                <div className="cb-section-label">Narrative Threads</div>
                 <div className="theme-list">
-                    {data.top_themes
-                        .filter(t => !t.name.startsWith('WORLDLANGUAGES_') && !t.name.startsWith('TAX_WORLDLANGUAGES_'))
+                    {threadSummary.rows
                         .slice(0, 8)
-                        .map((theme, i) => (
+                        .map((thread, i) => (
                         <button
                             key={i}
                             className={`theme-chip${anomaly && i === 0 ? ' anomaly-spike' : ''}`}
-                            onClick={() => onThemeSelect?.(theme.name)}
-                            data-tip={`Click to open ${getThemeLabel(theme.name)} narrative thread`}
+                            onClick={() => onThemeSelect?.(thread.name)}
+                            data-tip={`Click to open ${thread.label} narrative thread`}
                         >
                             {anomaly && i === 0 && <span className="spike-bars">▂▄▇</span>}
-                            <span className="theme-name">{getThemeLabel(theme.name)}</span>
-                            <span className="theme-count">{theme.count}</span>
+                            <span className="theme-name">{thread.label}</span>
+                            <span className="theme-count">{thread.count}</span>
                         </button>
                     ))}
                 </div>

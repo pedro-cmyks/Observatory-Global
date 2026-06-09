@@ -369,4 +369,6 @@ pytest -vv --tb=short
 
 ## License
 
-MIT
+PolyForm Noncommercial License 1.0.0 — source-available, noncommercial use only.
+See [LICENSE](../LICENSE). Commercial use requires a separate license from the
+copyright holder (Pedro Villegas).

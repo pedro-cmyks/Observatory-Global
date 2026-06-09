@@ -14,9 +14,18 @@ async def get_signals(
     person: str = Query(None),
     hours: int = Query(24, ge=1, le=8760),
     since: Optional[datetime] = Query(None, description="Fetch signals since this timestamp"),
-    limit: int = Query(50, ge=1, le=500)
+    limit: int = Query(50, ge=1, le=500),
+    lane: Optional[str] = Query(None, description="Filter to a stream lane: analyst|sports|entertainment|general"),
+    sort: str = Query("recent", description="recent | relevance (analyst-grade ranking)"),
 ):
-    """Get raw signals with filters and velocity calculation."""
+    """Get raw signals with filters and velocity calculation.
+
+    Each signal carries a ``lane`` (analyst|sports|entertainment|general) and a
+    0..1 ``relevanceScore`` so the Signal Stream can promote analyst-grade items
+    and separate sports/entertainment noise (#177). ``lane`` filters the result;
+    ``sort=relevance`` ranks by relevance score then recency.
+    """
+    from app.services.stream_relevance import score_stream_signal
     async with db.pool.acquire() as conn:
         await conn.execute("SET statement_timeout = 10000")
         has_nlp_columns = await conn.fetchval("""
@@ -62,7 +71,11 @@ async def get_signals(
             params.append(f"%{person}%")
         
         where_clause = " AND ".join(conditions)
-        
+
+        # When ranking or filtering by lane, classification happens in Python
+        # after the fetch, so pull a wider window to give the lane material.
+        fetch_limit = max(limit, 200) if (lane or sort == "relevance") else limit
+
         rows = await conn.fetch(f"""
             SELECT
                 id,
@@ -87,7 +100,7 @@ async def get_signals(
                 + (array_length(persons, 1) IS NOT NULL)::int
                 + (array_length(themes, 1) IS NOT NULL)::int
             ) DESC, timestamp DESC
-            LIMIT {limit}
+            LIMIT {fetch_limit}
         """, *params, timeout=8.0)
 
         # Calculate velocity
@@ -105,29 +118,42 @@ async def get_signals(
         velocity_delta = (vel_last or 0) - (vel_prev or 0)
         velocity_pct = ((vel_last or 0) - (vel_prev or 0)) / (vel_prev or 1) * 100
         
+        signals = []
+        for r in rows:
+            themes = r['themes'] or []
+            relevance = score_stream_signal(themes, r['headline'])
+            signals.append({
+                "id": r['id'],
+                "timestamp": r['timestamp'].isoformat(),
+                "country": r['country_code'],
+                "source": r['source_name'],
+                "url": r['source_url'],
+                "headline": r['headline'],
+                "snippet": r['snippet'],
+                "sentiment": float(r['sentiment'] or 0),
+                "themes": themes,
+                "persons": _resolve_persons(r['nlp_persons'], r['persons']),
+                "framing": r['nlp_framing'],
+                "lane": relevance["lane"],
+                "relevanceScore": relevance["relevanceScore"],
+            })
+
+        if lane:
+            signals = [s for s in signals if s["lane"] == lane.lower()]
+
+        if sort == "relevance":
+            signals.sort(key=lambda s: (s["relevanceScore"], s["timestamp"]), reverse=True)
+
+        signals = signals[:limit]
+
         return {
-            "count": len(rows),
+            "count": len(signals),
             "velocity": {
                 "signals_per_minute": velocity,
                 "delta": velocity_delta,
                 "percentage_change": round(velocity_pct, 1)
             },
-            "signals": [
-                {
-                    "id": r['id'],
-                    "timestamp": r['timestamp'].isoformat(),
-                    "country": r['country_code'],
-                    "source": r['source_name'],
-                    "url": r['source_url'],
-                    "headline": r['headline'],
-                    "snippet": r['snippet'],
-                    "sentiment": float(r['sentiment'] or 0),
-                    "themes": r['themes'] or [],
-                    "persons": _resolve_persons(r['nlp_persons'], r['persons']),
-                    "framing": r['nlp_framing']
-                }
-                for r in rows
-            ]
+            "signals": signals
         }
 
 @router.get("/api/v3/crisis/signals")

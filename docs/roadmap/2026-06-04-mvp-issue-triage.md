@@ -21,11 +21,11 @@ The MVP sprint prioritizes product truth over polish:
 | Issue | Action | Reason |
 |---|---|---|
 | #207 Living Narrative Threads data contract | Keep open as umbrella | Threads/themes are now one product concept, but downstream surfaces still need consistency. |
-| #174 Scope coherence across side panels | In progress | Source Integrity labels scoped vs global background; FocusData now discards stale responses; Public Attention names global matching vs country origin. Remaining work is manual country -> person -> topic -> clear smoke and any panel-specific gaps found there. |
-| #175 Topic-detail/Search empty states | In progress | ThemeDetail explains zero-result thread/topic detail as a coverage/quality gate. Search no longer shows curated concept-map suggestions or the old save-as-concept CTA. Remaining work: custom query-thread builder and search-demand tracking. |
+| #174 Scope coherence across side panels | In progress | Source Integrity labels scoped vs global background; FocusData discards stale responses; Public Attention names global matching vs country origin. **CountryBrief now counts country-scoped Narrative Threads from `/api/v2/threads?country_code=...`, not the forced 12-item GDELT theme slice.** Remaining work is manual country -> person -> topic -> clear smoke and any panel-specific gaps found there. |
+| #175 Topic-detail/Search empty states | In progress | ThemeDetail explains zero-result thread/topic detail as a coverage/quality gate. Search no longer shows curated concept-map suggestions or the old save-as-concept CTA. **Custom query-thread builder shipped 2026-06-05** (`GET /api/v2/search/thread` + `query-thread::` token in SearchBar/ThemeDetail; direct match, no gate, THIN badge). Remaining: organic search-demand tracking. See `docs/state/2026-06-05-query-thread-builder.md`. |
 | #193 Processed history app windows | Closed | Briefing and `/api/v2/nodes` route long windows to processed history; `/app` shows a historical processed cue when the map is served from compact historical aggregates. |
-| #177 Signal Stream relevance/noise | Start after scope pass | Stream should rank evidence for the active thread, not just list recent signals. |
-| #146 Narrative Threads explanation | Close after current fix | Country-scoped empty states now explain quality gates and provide a global reset. |
+| #177 Signal Stream relevance/noise | In progress | **Slice 1 shipped 2026-06-05**: backend `lane`+`relevanceScore` on `/api/v2/signals` (+`lane` filter, `sort=relevance`); SignalStream analyst tabs exclude sports/entertainment, NOTABLE ranks analyst lane, lane badges + ranking tooltip. Remaining: dedicated public-attention/US-domestic/raw tabs and `signal_topic_assignments` (#167) domain labels. |
+| #146 Narrative Threads explanation | Close after current smoke | Country-scoped empty states explain quality gates and provide a global reset. CountryBrief now aligns its visible thread count with the Narrative Threads contract. |
 
 ## Thread Volume Lane
 
@@ -103,27 +103,35 @@ These are valid but not MVP blockers:
 
 ## Current Closure Decision
 
-#146 is the first close candidate in this sprint. The current implementation:
+#146 remains the first close candidate in this sprint. The current implementation:
 
 - fetches country-scoped threads from `/api/v2/threads?country_code=...`;
 - explains that an empty country list means no coherent thread cleared the
   current quality gate, not that the country has no signals;
 - provides a direct "Show global threads" reset;
 - updates hover copy to point to the unified thread detail instead of the old
-  topic breakdown.
+  topic breakdown;
+- aligns CountryBrief's visible `threads` metric and Narrative Threads section
+  with the same country-scoped thread source, so countries no longer show a
+  forced `12 themes` count from local GDELT signal-theme slicing.
 
 ## Next Implementation Order
 
-1. Close #146.
-2. Continue #174/#175 as a scope/empty-state pass. Current slices are complete:
+1. Browser-smoke #146/#174 locally: country click, CountryBrief `threads` metric,
+   NarrativeThreads country rows, ThreadDetail open, clear country, and empty
+   states.
+2. Commit the local closeout batch once smoke passes.
+3. Rotate secrets and deploy the local batch; production-smoke the same flows.
+4. Close #146 after commit/deploy/comment if production matches local behavior.
+5. Continue #174/#175 as a scope/empty-state pass. Current slices are complete:
    Source Integrity now names country/theme/person scopes and explicitly labels
    unscoped metrics as global background when the center panel is focused.
    ThemeDetail now replaces zero-result stats/graphs with a coverage-gate empty
    state and a return-to-global/stream action. FocusData now rejects stale
    responses, Public Attention names its matching scope, and Search no longer
    shows curated concept-map suggestions.
-3. Design/implement query-thread search: given arbitrary text, assemble a
-   temporary thread from direct signal/person/country/public-attention evidence.
-4. Decide whether GDELT weak recall becomes a review queue or remains a research
+6. Decide whether GDELT weak recall becomes a review queue or remains a research
    artifact for MVP.
-5. Return to #177 evidence relevance once the selected scope is reliable.
+7. Continue #177 beyond slice 1: dedicated public-attention / US-domestic /
+   raw-firehose lanes and `signal_topic_assignments` domain labels.
+8. Scope the Kalman/state-tracking pilot only after the MVP truth pass ships.
