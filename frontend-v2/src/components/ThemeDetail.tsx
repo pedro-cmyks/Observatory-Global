@@ -24,6 +24,14 @@ interface ThemeData {
     label?: string
     country: string | null
     total: number
+    // Atlas-topic threads resolve through gated signal_topic_assignments: `total`
+    // is the precise (gate-kept) count once scored, while `rawTotal` is the raw
+    // assigned count the Narrative Threads list shows. Surfacing both keeps the
+    // panel number reconciled with the list instead of silently disagreeing.
+    rawTotal?: number
+    gated?: number
+    gatePending?: boolean
+    gateCoverage?: number | null
     avgSentiment: number
     signals: Array<{
         timestamp: string
@@ -559,9 +567,14 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
 
                         {/* Summary Stats */}
                         <div className="theme-stats-row">
-                            <div className="theme-stat" data-tip="Total media signals (articles, posts) mentioning this topic in the selected time window">
+                            <div className="theme-stat" data-tip={data.rawTotal && data.rawTotal !== data.total
+                                ? `${data.total} precise signals kept by the relevance gate, of ${data.rawTotal} assigned to this thread. The Narrative Threads list shows the assigned count.`
+                                : "Total media signals (articles, posts) mentioning this topic in the selected time window"}>
                                 <span className="theme-stat-value">{data.total}</span>
                                 <span className="theme-stat-label">Signals</span>
+                                {data.rawTotal && data.rawTotal !== data.total ? (
+                                    <span className="theme-stat-subnote">of {data.rawTotal.toLocaleString()} assigned</span>
+                                ) : null}
                             </div>
                             <div className="theme-stat" data-tip="Avg GDELT tone: −10 to +10. Negative = topic framed critically or with conflict, positive = framed supportively. Scores rarely exceed ±3 in normal news.">
                                 <span className="theme-stat-value" style={{ color: getSentimentColor(data.avgSentiment) }}>
