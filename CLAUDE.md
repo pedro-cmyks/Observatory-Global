@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-06-08 (MVP issue closeout and CountryBrief thread truth).
+Last updated: 2026-06-08/09 (MVP issue closeout shipped).
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -8,12 +8,13 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
-## Current Session Context (2026-06-08, MVP issue closeout)
+## Current Session Context (2026-06-08/09, MVP issue closeout shipped)
 
-Current branch is `v3-intel-layer`. The latest work is local and not deployed
-yet: search query-thread builder (#175), Signal Stream relevance lanes (#177
-slice 1), source-available license migration, and CountryBrief thread-count
-alignment (#174/#207).
+Current branch is `v3-intel-layer` and is aligned with `origin/v3-intel-layer`.
+Commit `ca2130b` shipped the search query-thread builder (#175), Signal Stream
+relevance lanes (#177 slice 1), source-available license migration, and
+CountryBrief thread-count alignment (#174/#207). Fly API was deployed with
+`scripts/deploy-fly-api.sh`; Vercel is serving the matching frontend bundle.
 
 Important current guardrails:
 
@@ -27,8 +28,10 @@ Important current guardrails:
 - If a country has signals but no coherent thread clears the quality gate, show
   `0 threads` / an explanatory empty state; do not fall back to GDELT theme
   volume.
-- The local batch should be browser-smoked, committed, then deployed with key
-  rotation before being described as shipped.
+- Secret rotation was intentionally deferred and remains a separate maintenance
+  pass before the next credential-bearing deploy cycle.
+- Do not reopen #175/#177 unless a new regression appears; create narrower
+  follow-ups for additional stream taxonomy or search-demand tracking.
 - Kalman filtering, if explored next, belongs in a read-only dynamic-topic state
   tracking pilot (smoothed intensity, velocity, uncertainty, surprise), not as a
   semantic classifier replacement.
@@ -39,8 +42,11 @@ Verification from 2026-06-08:
 - Frontend focused suite for country/thread/search/empty-state helpers: `4 files
   passed / 8 tests`.
 - `frontend-v2` production build passed.
+- Production smoke after deploy passed: `/api/v2/search/thread` returned `200`,
+  `/app?country=CO` showed `10 THREADS` with no `Top Themes`, and clicking
+  "Build a thread" opened `CUSTOM THREAD` without `HTTP 404`.
 
-See `docs/state/2026-06-08-mvp-closeout-plan.md` for the next execution order.
+See `docs/state/2026-06-08-mvp-closeout-plan.md` for the shipped closeout record.
 
 ## Prior Session Context (2026-06-02, dynamic topics backend cutover)
 

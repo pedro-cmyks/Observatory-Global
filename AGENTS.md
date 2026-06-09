@@ -3,13 +3,13 @@
 ## Project Structure & Module Organization
 `backend/` hosts the FastAPI service (APIs, services, NLP logic) and pytest suites under `tests/`. The active React + Vite client lives in `frontend-v2/` (`src/pages`, `src/components`, `src/lib`, `src/App.tsx`). The `frontend/` directory is DEPRECATED — do not touch it. Docker/Compose exists for local dev only; production runs on Vercel (frontend) + Fly.io (backend). ADRs, demos, and decision logs go in `docs/`; keep environment templates in `.env.example`. MCP server configuration lives in `.mcp.json` (supabase + stitch). Design assets exported from Google Stitch live in `stitch_atlas_landing_experience_redesign/`.
 
-Key docs/code changed in session 30 (MVP issue closeout + CountryBrief thread truth — 2026-06-08):
-- `docs/state/2026-06-08-mvp-closeout-plan.md` — current continuation plan. Local batch is not deployed yet; browser-smoke, commit, key rotation, deploy, and production smoke remain next.
+Key docs/code changed in session 30 (MVP issue closeout + CountryBrief thread truth — 2026-06-08/09):
+- `docs/state/2026-06-08-mvp-closeout-plan.md` — shipped closeout record. Commit `ca2130b` was pushed to `origin/v3-intel-layer`, Fly API was deployed with `scripts/deploy-fly-api.sh`, Vercel served the matching bundle, and production smoke passed. Secret rotation was deferred as a separate maintenance pass.
 - `frontend-v2/src/lib/countryBriefThreads.ts` and `frontend-v2/src/lib/countryBriefThreads.test.ts` — CountryBrief thread-summary contract. CountryBrief counts country-scoped Narrative Threads from `/api/v2/threads?country_code=...`; it must not fall back to the local `topCounts(themeCounts, 12)` GDELT theme slice.
 - `frontend-v2/src/lib/countryBriefFetch.ts` and `frontend-v2/src/lib/countryBriefFetch.test.ts` — optional CountryBrief fetch helper. Indicators, nodes, public attention, and threads must degrade without blanking the country panel; country signals remain the critical fetch.
 - `frontend-v2/src/components/CountryBrief.tsx` — visible metric label is `threads`, and the visible country section is `Narrative Threads`. If no country-scoped thread clears the quality gate, show `0 threads`, not a forced theme count.
 - `backend/app/routers/search.py` — `/api/v2/search/thread` accepts both `country` and `country_code`; keep both because `SearchBar` prefetch uses `country` and `ThemeDetail` scoped fetches use `country_code`.
-- `SESSION_LOG.md`, `STATUS.md`, `CLAUDE.md`, and `docs/roadmap/2026-06-04-mvp-issue-triage.md` — updated with the 2026-06-08 state, verification, and closeout order.
+- `SESSION_LOG.md`, `STATUS.md`, `CLAUDE.md`, and `docs/roadmap/2026-06-04-mvp-issue-triage.md` — updated with the 2026-06-08/09 shipped state, production verification, and next order.
 
 Key files added in session 15 (multi-source ingestion + NLP stabilization — 2026-05-19):
 - `backend/app/services/ingest_newsdata.py` — NewsData.io multilingual ingestion. 7 country-primary buckets after post-commit edit: ES/PT LatAm split (CO/MX/BR/AR/VE + PE/CL/EC/BO/CU), AR MENA, FR West/Central Africa, SW/AM East Africa, SE Asia, S Asia. Page size 10, 7-day fetch window. Called every 4th cycle. Env: `NEWSDATA_API_KEY`. `source_family="api"`, `attribution_method="newsdata_api"`, `geo_confidence=0.7`.

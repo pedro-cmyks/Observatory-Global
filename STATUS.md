@@ -1,15 +1,16 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-06-08 (MVP issue closeout and CountryBrief thread truth)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-06-08/09 (MVP issue closeout shipped)
 
 ---
 
-## Current handoff (2026-06-08) — MVP issue closeout, query threads, and CountryBrief thread truth
+## Current handoff (2026-06-08/09) — MVP issue closeout shipped
 
-Current repo state is local working-tree work on `v3-intel-layer`, not deployed
-production. The branch is aligned with `origin/v3-intel-layer`, with the
-2026-06-05/08 MVP closeout batch still uncommitted.
+Current repo state: `v3-intel-layer` is aligned with `origin/v3-intel-layer`.
+Commit `ca2130b` (`feat(mvp): align search and country thread truth`) has been
+pushed, the Fly API process has been deployed with the API-only lightweight
+target, and the Vercel frontend is serving the matching build bundle.
 
-What is ready locally:
+What shipped:
 
 - **Search becomes a thread creator (#175 slice):** `GET /api/v2/search/thread`
   builds a temporary `query-thread::<raw query>` detail packet from direct
@@ -30,9 +31,8 @@ What is ready locally:
 - **Query-thread country alias:** `/api/v2/search/thread` now accepts
   `country_code` as well as `country`, matching ThemeDetail's scoped fetch
   convention.
-- **License batch:** local source-available license migration to PolyForm
-  Noncommercial remains staged in the working tree and should ship together with
-  the planned key rotation.
+- **License batch:** source-available migration to PolyForm Noncommercial
+  shipped with the MVP closeout commit.
 
 Verification on 2026-06-08:
 
@@ -48,12 +48,34 @@ Verification on 2026-06-08:
   CountryBrief with `10 threads`, a `Narrative Threads` section, and no `Top
   Themes` fallback.
 
+Production deployment and smoke on 2026-06-08/09:
+
+- `git push origin v3-intel-layer` pushed `ca2130b`.
+- `scripts/deploy-fly-api.sh` deployed only Fly process group `app` with
+  `--build-target api-runtime`; image size was 259 MB and Fly reported the API
+  machine in a good state.
+- `https://atlas-api-pedro.fly.dev/health` returned `200`, `status=healthy`,
+  `db_ok=true`, and fresh ingest activity.
+- `GET /api/v2/search/thread?q=Colombia&hours=24&country_code=CO` returned
+  `200` in production; this endpoint had returned `404` before deploy.
+- `GET /api/v2/threads?hours=24&limit=5&country_code=CO` returned real
+  country-scoped thread rows.
+- Vercel served the matching `frontend-v2/dist` bundle
+  (`/assets/index-BY2GvIR-.js`).
+- Playwright production smoke on
+  `https://observatory-global.vercel.app/app?country=CO` showed `10 THREADS`,
+  no `Top Themes`, no `Failed to fetch`, and no console errors.
+- Playwright production search smoke for `Colombia` called
+  `/api/v2/search/thread` with `200` responses; clicking "Build a thread"
+  opened `CUSTOM THREAD` with matching signals and no `HTTP 404`.
+- GitHub #175 and #177 were closed after production smoke. #207 remains open as
+  the Living Narrative Threads umbrella.
+
 Next closeout order:
 
-1. Review/stage the whole local batch and commit.
-2. Rotate secrets during deploy day, then deploy backend/frontend and production
-   smoke.
-3. Only after the MVP truth pass is shipped, start the read-only Kalman/state
+1. Rotate secrets in a separate maintenance pass before the next deploy cycle
+   that changes credentials.
+2. Start the read-only Kalman/state
    tracking pilot for dynamic topics.
 
 ---

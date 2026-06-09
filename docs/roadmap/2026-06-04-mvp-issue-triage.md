@@ -22,9 +22,9 @@ The MVP sprint prioritizes product truth over polish:
 |---|---|---|
 | #207 Living Narrative Threads data contract | Keep open as umbrella | Threads/themes are now one product concept, but downstream surfaces still need consistency. |
 | #174 Scope coherence across side panels | In progress | Source Integrity labels scoped vs global background; FocusData discards stale responses; Public Attention names global matching vs country origin. **CountryBrief now counts country-scoped Narrative Threads from `/api/v2/threads?country_code=...`, not the forced 12-item GDELT theme slice.** Remaining work is manual country -> person -> topic -> clear smoke and any panel-specific gaps found there. |
-| #175 Topic-detail/Search empty states | In progress | ThemeDetail explains zero-result thread/topic detail as a coverage/quality gate. Search no longer shows curated concept-map suggestions or the old save-as-concept CTA. **Custom query-thread builder shipped 2026-06-05** (`GET /api/v2/search/thread` + `query-thread::` token in SearchBar/ThemeDetail; direct match, no gate, THIN badge). Remaining: organic search-demand tracking. See `docs/state/2026-06-05-query-thread-builder.md`. |
+| #175 Topic-detail/Search empty states | Closed 2026-06-08/09 | ThemeDetail explains zero-result thread/topic detail as a coverage/quality gate. Search no longer shows curated concept-map suggestions or the old save-as-concept CTA. **Custom query-thread builder shipped in `ca2130b`** (`GET /api/v2/search/thread` + `query-thread::` token in SearchBar/ThemeDetail; direct match, no gate, THIN badge). Production smoke: search for `Colombia` and "Build a thread" opened `CUSTOM THREAD` with no `HTTP 404`. Organic search-demand tracking should be a separate future issue if needed. |
 | #193 Processed history app windows | Closed | Briefing and `/api/v2/nodes` route long windows to processed history; `/app` shows a historical processed cue when the map is served from compact historical aggregates. |
-| #177 Signal Stream relevance/noise | In progress | **Slice 1 shipped 2026-06-05**: backend `lane`+`relevanceScore` on `/api/v2/signals` (+`lane` filter, `sort=relevance`); SignalStream analyst tabs exclude sports/entertainment, NOTABLE ranks analyst lane, lane badges + ranking tooltip. Remaining: dedicated public-attention/US-domestic/raw tabs and `signal_topic_assignments` (#167) domain labels. |
+| #177 Signal Stream relevance/noise | Closed 2026-06-08/09 | **Slice 1 shipped in `ca2130b`**: backend `lane`+`relevanceScore` on `/api/v2/signals` (+`lane` filter, `sort=relevance`); SignalStream analyst tabs exclude sports/entertainment, NOTABLE ranks analyst lane, lane badges + ranking tooltip. Production smoke returned signals with `lane=analyst` and `relevanceScore=1.0`. Dedicated public-attention/US-domestic/raw tabs and `signal_topic_assignments` (#167) domain labels should be narrower future issues if needed. |
 | #146 Narrative Threads explanation | Close after current smoke | Country-scoped empty states explain quality gates and provide a global reset. CountryBrief now aligns its visible thread count with the Narrative Threads contract. |
 
 ## Thread Volume Lane
@@ -121,9 +121,11 @@ These are valid but not MVP blockers:
    NarrativeThreads country rows, ThreadDetail open, clear country, and empty
    states.
 2. Commit the local closeout batch once smoke passes.
-3. Rotate secrets and deploy the local batch; production-smoke the same flows.
+3. Rotate secrets in a separate maintenance pass; the MVP batch itself was
+   pushed/deployed/smoked in `ca2130b`.
 4. Close #146 after commit/deploy/comment if production matches local behavior.
-5. Continue #174/#175 as a scope/empty-state pass. Current slices are complete:
+5. Continue only new narrower follow-ups from #174/#175 if fresh evidence shows
+   a regression. Current slices are complete:
    Source Integrity now names country/theme/person scopes and explicitly labels
    unscoped metrics as global background when the center panel is focused.
    ThemeDetail now replaces zero-result stats/graphs with a coverage-gate empty
@@ -132,6 +134,7 @@ These are valid but not MVP blockers:
    shows curated concept-map suggestions.
 6. Decide whether GDELT weak recall becomes a review queue or remains a research
    artifact for MVP.
-7. Continue #177 beyond slice 1: dedicated public-attention / US-domestic /
-   raw-firehose lanes and `signal_topic_assignments` domain labels.
+7. Treat #177 as closed for this implementation slice. Open narrower follow-ups
+   for dedicated public-attention / US-domestic / raw-firehose tabs, or for
+   consuming `signal_topic_assignments` (#167) as domain labels.
 8. Scope the Kalman/state-tracking pilot only after the MVP truth pass ships.

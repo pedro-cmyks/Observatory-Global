@@ -2,19 +2,19 @@
 
 ## 2026-06-08 — MVP issue closeout and CountryBrief thread truth
 
-Resumed the MVP issue sprint from the uncommitted 2026-06-05 batch. The repo is
-on `v3-intel-layer`, aligned with `origin/v3-intel-layer`, with local changes
-still pending commit/deploy.
+Resumed the MVP issue sprint from the uncommitted 2026-06-05 batch. The batch is
+now committed, pushed, deployed, and production-smoked as `ca2130b`
+(`feat(mvp): align search and country thread truth`).
 
 ### State reconstructed
-- The latest local batch contains the PolyForm Noncommercial license migration,
+- The batch contains the PolyForm Noncommercial license migration,
   custom query-thread builder (#175), Signal Stream relevance lanes (#177 slice
   1), and docs/roadmap updates.
 - Search is now product-framed as a temporary Narrative Thread builder, not a
   curated concept browser. Organic demand tracking remains deferred.
-- Signal Stream relevance is local and test-covered, but still needs live smoke.
-- Deploy day should include secret rotation before treating this batch as
-  shipped.
+- Signal Stream relevance is deployed and live-smoked. Dedicated public-attention
+  / US-domestic / raw-firehose tabs remain future narrower work if needed.
+- Secret rotation was deferred by Pedro and remains a separate maintenance pass.
 
 ### CountryBrief thread-count fix (#174/#207)
 Pedro flagged that opening a country could show "12 themes", which contradicted
@@ -59,14 +59,34 @@ Fix:
   - `/app?country=CO` rendered CountryBrief with `10 threads`, a `Narrative
     Threads` section, and no `Top Themes` label or `Error: Failed to fetch`.
 
+### Production deploy and issue closeout
+- Pushed `ca2130b` to `origin/v3-intel-layer`.
+- Deployed Fly backend with `scripts/deploy-fly-api.sh`, which targets only the
+  lightweight `api-runtime` image and `app` process group. Fly reported image
+  size 259 MB and the API machine in a good state.
+- Vercel served the matching built frontend bundle
+  `/assets/index-BY2GvIR-.js`.
+- Production API smoke:
+  - `/health` -> `200`, healthy, `db_ok=true`.
+  - `/api/v2/search/thread?q=Colombia&hours=24&country_code=CO` -> `200` after
+    previously returning `404`.
+  - `/api/v2/threads?hours=24&limit=5&country_code=CO` -> real thread rows.
+  - `/api/v2/signals?hours=24&limit=5&sort=relevance&country_code=CO` returned
+    signals with `lane=analyst` and `relevanceScore=1.0`.
+- Production Playwright smoke:
+  - `/app?country=CO` showed `10 THREADS`, no `Top Themes`, no `Failed to fetch`,
+    and no console errors.
+  - Search for `Colombia` called `/api/v2/search/thread` with `200` responses.
+  - Clicking "Build a thread" opened `CUSTOM THREAD` with matching signals and
+    no `HTTP 404`.
+- Closed GitHub #175 and #177 after production smoke.
+- Commented #207 with the country-thread truth smoke and kept it open as the
+  Living Narrative Threads umbrella.
+
 ### Next plan
-1. Browser-smoke `/app` locally: query-thread search, country click,
-   CountryBrief thread count vs NarrativeThreads rows, Signal Stream Notable
-   relevance, and empty-state transitions.
-2. Review/stage/commit the local batch.
-3. Rotate keys on deploy day, deploy backend/frontend, and production-smoke the
-   same flows.
-4. After this MVP truth pass ships, scope a read-only Kalman/state-tracking
+1. Rotate keys in a separate maintenance pass before the next credential-bearing
+   deploy cycle.
+2. Scope a read-only Kalman/state-tracking
    pilot for dynamic topic intensity/velocity/surprise. Keep it out of semantic
    classification.
 
