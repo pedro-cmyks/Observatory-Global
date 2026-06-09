@@ -13,7 +13,8 @@ below resolve via Obsidian's fuzzy search regardless of folder.
 - [[STATUS]] — long-running operational status doc.
 - [[Data Operations]] — storage, crons, historical sync, and runtime guardrails.
 - [[Narrative Intelligence]] — Living Narrative Threads, emergent clusters, and
-  product/model canon.
+  product/model canon. Guardrail: `dynamic_topics` is the implementation
+  backing for many user-facing threads, not a separate product category.
 - [[Validation and Paper Track]] — benchmark, annotator, precision-gate, and
   paper evidence map.
 - [[Frontend Product Surfaces]] — which UI panels consume which contracts.
@@ -31,10 +32,11 @@ below resolve via Obsidian's fuzzy search regardless of folder.
 
 - [[2026-06-09-research-thread-builder-workbench]] — detailed target for
   natural research search + Workbench investigation: search returns Atlas
-  anchors/options, the user opens and pins useful items, and Workbench preserves
-  the route for who-says-what, frame comparison, coverage gaps, list/detail
-  reconciliation, and optional report/export using the Iran climate/water + US
-  bases/satellite compound case.
+  anchors/options ranked by investigative usefulness, the user opens and pins
+  useful items, and Workbench preserves the route for who-says-what, frame
+  comparison, coverage gaps, list/detail reconciliation, and optional
+  report/export using the Iran climate/water + US bases/satellite compound
+  case.
 - [[2026-06-04-mvp-thread-volume-and-issue-sprint-design]] — MVP sprint design:
   use GDELT themes as weak, bias-measured support signals to recover Narrative
   Thread volume, then re-triage and close stale GitHub issues.

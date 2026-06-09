@@ -77,11 +77,19 @@ Product correction from Pedro:
   pinning useful items.
 - Workbench emerges as the memory/organizer of the route and can later generate
   a report/dossier from pinned evidence.
+- `dynamic_topics` and Narrative Threads should not be treated as separate
+  product concepts. `dynamic_topics` is the current implementation/lifecycle
+  backing for many user-facing threads.
+- The key ranking problem is investigative usefulness: Atlas should rank
+  anchors by intent fit, thread coherence, evidence strength, answerability,
+  movement, source/actor value, geo/entity fit, novelty/gap value, and penalties
+  for noise, unsupported claims, or list/detail mismatch.
 
 The spec defines the expected product outcome:
 
 - natural query interpretation and anchor options;
 - thread/country/source/public-attention entry points;
+- investigative-usefulness ranking;
 - who-says-what source/actor matrix;
 - frame comparison;
 - coverage gaps;

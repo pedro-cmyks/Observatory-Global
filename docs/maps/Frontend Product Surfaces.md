@@ -54,9 +54,12 @@ data work lands in the existing UI instead of creating duplicate panels.
 
 ## Current connection rules
 
+- Product vocabulary should call these objects threads. `dynamic_topics` is the
+  implementation backing for many thread rows, not a separate frontend surface.
 - Dynamic narrative threads are owned by `NarrativeThreads` +
-  `ThreadFocusPanel`, with Brief Watchlist and dynamic-topic ThemeDetail as
-  secondary entry points.
+  `ThreadFocusPanel`, with Brief Watchlist and the
+  `/api/v2/theme/dynamic-topic-*` compatibility route as secondary entry
+  points.
 - Globe/country heat is not a dynamic-topic view; it is country-level signal
   activity and should not be read as topic truth.
 - Source Integrity is currently a concentration proxy; use it for

@@ -3,6 +3,19 @@
 This map tracks the product/model shift from static topics to Living Narrative
 Threads and emergent narrative discovery.
 
+## Vocabulary Guardrail
+
+For product purposes, `dynamic_topics` and Narrative Threads are the same
+object at different layers:
+
+- `dynamic_topics` is the implementation/lifecycle table that persists stable
+  thread identities across emergent snapshots.
+- `/api/v2/threads` is the product contract that exposes those identities as
+  user-facing Narrative Threads.
+
+Do not design Search, Workbench, Brief, Country Focus, or ThreadFocusPanel as if
+`dynamic_topics` and threads were separate product categories.
+
 ## Start here
 
 - [[2026-05-25-atlas-narrative-intelligence-framework]] — active model canon.
@@ -13,7 +26,8 @@ Threads and emergent narrative discovery.
   bias-measured support signals, then clean up the issue backlog.
 - [[2026-06-09-research-thread-builder-workbench]] — product/architecture
   target for turning natural compound search into a guided Atlas investigation:
-  anchors, pins, route memory, frames, who-says-what, gaps, and evidence roles.
+  anchors, pins, route memory, investigative-usefulness ranking, frames,
+  who-says-what, gaps, and evidence roles.
 - [[2026-05-24-living-narrative-threads]] — thread contract and product model.
 - [[2026-05-29-emergent-topic-discovery-design]] — emergent discovery layer.
 - [[2026-06-02-emergent-topic-identity-resolver-design]] — Phase 6
@@ -48,15 +62,17 @@ The visible product should answer:
 ## Current implementation
 
 - `/api/v2/threads` prefers active `dynamic_topics` when they exist; atlas-topic
-  threads and raw emergent-cluster threads remain fallbacks.
+  threads and raw emergent-cluster threads remain fallbacks. Product language
+  should still call these rows threads.
 - `/api/v2/threads/{thread_id}` dispatches by prefix:
   `dynamic-topic-<id>` uses dynamic topic detail, `emergent-cluster-<id>` uses
   emergent detail, and atlas ids use the atlas thread path.
 - `/api/v2/briefing.top_atlas_topics` is a Watchlist feed, not the only
   narrative surface. It now prefers `dynamic_topics` and exposes `noise_rate`
   before falling back to raw `emergent_clusters` or static atlas assignments.
-- `/api/v2/theme/dynamic-topic-<id>` opens dynamic topic evidence in the
-  existing theme-detail contract, using member emergent-cluster samples.
+- `/api/v2/theme/dynamic-topic-<id>` is a compatibility route that opens a
+  thread backed by `dynamic_topics` in the existing theme-detail contract, using
+  member emergent-cluster samples.
 - `/api/v2/theme/cluster-<id>` opens emergent cluster evidence in the existing
   theme-detail contract.
 - `dynamic_topics` lifecycle still runs after each emergent snapshot from the

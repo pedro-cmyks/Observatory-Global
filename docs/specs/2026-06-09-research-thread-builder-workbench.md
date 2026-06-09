@@ -34,6 +34,54 @@ Wrong product frame:
 search -> finished dossier
 ```
 
+## Terminology Correction: Threads and Dynamic Topics
+
+Pedro also clarified that `dynamic_topic` and `thread` should not be treated as
+different product concepts.
+
+Plain-language meanings:
+
+- **Thread:** a thread is a hilo: a connected line of events, sources, claims,
+  places, actors, and evidence that can be followed over time.
+- **Dynamic topic:** a dynamic topic is a tema dinamico: a topic-like identity
+  that changes as new evidence arrives, persists across snapshots, and can grow,
+  split, merge, fade, or retire.
+
+For Atlas product purposes, these are the same thing:
+
+```text
+dynamic_topic = implementation record for a living Narrative Thread
+thread = user-facing product contract for that same living topic
+```
+
+The current separation exists for historical/technical reasons:
+
+1. `atlas_topics` began as a static internal anchor taxonomy.
+2. `emergent_clusters` then found raw evidence clusters in each snapshot.
+3. `dynamic_topics` was added as the persistence/lifecycle layer that links
+   clusters across snapshots into stable identities.
+4. `/api/v2/threads` was created as the user-facing contract that exposes those
+   identities as Narrative Threads.
+
+That means `dynamic_topics` should not appear in product thinking as a separate
+kind of thing from threads. Search, Workbench, Country Focus, Brief, and
+ThreadFocusPanel should reason over **threads**. Internally, the best current
+source for those threads is often the `dynamic_topics` table.
+
+Correct product vocabulary:
+
+- "Open this thread."
+- "Pin this thread to Workbench."
+- "This thread is active/candidate/fading."
+- "This thread is backed by `dynamic_topics`."
+
+Incorrect product vocabulary:
+
+- "Open a dynamic topic" as if it were separate from a thread.
+- "Existing threads / dynamic topics" as two peer lanes.
+- "Topic" as the visible user-facing taxonomy when the object is actually a
+  living thread.
+
 ## Objective
 
 Atlas search should let a user type a natural investigation question and begin a
@@ -176,6 +224,90 @@ show the accumulated graph/trail and optional report view.
 
 The system must make uncertainty visible. It should not pretend it found
 evidence when it only found taxonomy similarity or web context.
+
+## Search Architecture Principle
+
+Atlas should learn from web search platforms without trying to become a general
+web search engine.
+
+The useful pattern is:
+
+```text
+prepare indexes ahead of time
+-> retrieve candidates quickly
+-> rank candidates by the user's intent
+-> present navigable answers, not raw database rows
+```
+
+Atlas should not scan every signal at query time. It should query prepared
+structures:
+
+- thread index: `/api/v2/threads`, backed primarily by `dynamic_topics`;
+- signal/evidence index: `signals_v2`, snippets, source, language, country,
+  timestamp;
+- entity index: people, organizations, places, infrastructure;
+- source index: publisher, source family, language, geography, source lane;
+- public-attention index: Wikipedia/search/social attention;
+- historical processed index: longer windows and background volume;
+- future semantic index: embeddings for query/thread/evidence similarity.
+
+The Research Plan API is the planner/ranker over these indexes. It should return
+anchors because anchors are faster, safer, and more useful than pretending the
+first query can answer the whole investigation.
+
+## Investigative Usefulness Ranking
+
+The strongest part of this feature is ranking by **investigative usefulness**.
+Atlas should not rank only by text match or volume. It should rank anchors by
+whether opening or pinning them helps answer the user's research question.
+
+First-pass ranking formula:
+
+```text
+investigative_score =
+  intent_match
+  + thread_coherence
+  + evidence_strength
+  + answerability
+  + movement_signal
+  + source_actor_value
+  + geo_entity_fit
+  + novelty_or_gap_value
+  - noise_penalty
+  - contradiction_penalty
+  - list_detail_penalty
+```
+
+Initial criteria:
+
+| Criterion | Meaning | Current Atlas signal |
+|---|---|---|
+| `intent_match` | Does this anchor match the query terms, expanded concepts, country, entities, and branch relation? | Search parser, lexical match, concept expansion, future embeddings. |
+| `thread_coherence` | Is the thread a coherent hilo rather than a roundup/grab-bag? | `dynamic_topics.noise_rate`, roundup gate, cohesion, representative label, member consistency. |
+| `evidence_strength` | Does the anchor have real supporting evidence, not only taxonomy similarity? | signal count, sample evidence, retrieval lane, evidence-role classifier. |
+| `answerability` | Which Atlas questions can this anchor answer now? | why-now, what changed, where, subthreads, sources, evidence, related threads. |
+| `movement_signal` | Is the story moving recently or changing shape? | changed_10h, velocity, surprise, trend, first/last seen. |
+| `source_actor_value` | Does it help answer "who says what"? | source diversity, actor extraction, voice mix, source-family lanes. |
+| `geo_entity_fit` | Does it match the requested country/region/entity/infrastructure scope? | country_code, entity mentions, related countries, infrastructure terms. |
+| `novelty_or_gap_value` | Does it reveal a drowned-out story, missing lane, or useful uncertainty? | public attention vs media mismatch, coverage gaps, silent-risk detectors. |
+| `noise_penalty` | Is it likely off-topic, generic, syndicated, entertainment/sports, or roundup? | relevance lanes, noise rate, dedupe/syndication, blacklist/roundup rules. |
+| `contradiction_penalty` | Does the anchor claim more than the evidence supports? | weak evidence role, context-only evidence, unsupported causal relation. |
+| `list_detail_penalty` | Does list count disagree with detail/evidence count? | `/threads` vs detail vs signal sample reconciliation. |
+
+This ranking should reuse the work already done in Atlas:
+
+- evidence-role validation;
+- dynamic-topic lifecycle and noise-rate gates;
+- Kalman/state pilot as a movement hint only;
+- Signal Stream relevance lanes;
+- source-family and voice-mix work;
+- public-attention and silent-risk direction;
+- Path B/Paper 1 precision gates;
+- list/detail reconciliation from the thread contracts.
+
+The ranking output should be inspectable. A user or reviewer should be able to
+ask: "Why did Atlas suggest this?" and see the contributing reasons, penalties,
+and gaps.
 
 ## Step-by-Step Atlas Investigation Workflow
 
@@ -421,7 +553,7 @@ The builder must run several retrieval lanes:
 |---|---|---|
 | direct lexical | exact headline/theme/person/source match | `signals_v2` |
 | semantic expansion | query terms to sibling concepts | internal expansion dictionary, future embeddings |
-| existing threads | country/time thread candidates | `/api/v2/threads` / `dynamic_topics` |
+| threads | country/time thread candidates | `/api/v2/threads`, backed primarily by `dynamic_topics` |
 | theme/detail | static and dynamic detail packets | `/api/v2/theme/*`, `/api/v2/threads/*` |
 | signal stream | recent notable evidence | `/api/v2/signals` with intent-aware filters |
 | public attention | wiki/search attention | existing public attention endpoints |
@@ -773,8 +905,8 @@ Acceptance:
 4. Source framing needs source-family and article-type awareness.
 5. Historical processed tables may lack enough evidence detail for older
    windows; research builder may need small evidence samples or archive bridge.
-6. Dynamic-topic list/detail paths must be reconciled before Workbench relies on
-   counts.
+6. Thread list/detail paths, including those backed by `dynamic_topics`, must be
+   reconciled before Workbench relies on counts.
 7. Satellite/OSINT claims should be labeled carefully as reported analysis,
    imagery-derived evidence, or actor claim.
 
@@ -801,7 +933,7 @@ threads of work:
 | Area | Issues | Product connection |
 |---|---|---|
 | Search and investigation entry | #213, #175, #152, #178 | Broad queries should become anchor menus and stable routes, not dead ends or layout collisions. |
-| Living Narrative Threads | #207, #167, #204, #185 | Search should generate/open threads; topic anchors remain internal support, not the user-facing taxonomy. |
+| Living Narrative Threads | #207, #167, #204, #185 | Search should generate/open threads; `dynamic_topics` is the current implementation source for many threads, not a separate product object. Topic anchors remain internal support, not the user-facing taxonomy. |
 | Evidence route and Workbench memory | #173, #140, #134, #133, #141 | The user needs to see how evidence was found, pin it, and later turn the route into reading/report output. |
 | Public attention and drowned-out stories | #168, #172, #145, #153 | Atlas should reveal when one story dominates, when attention diverges from media coverage, and where social/public lanes matter. |
 | Query-time evidence and story evolution | #161, #159, #156 | Atlas should enrich at query time and show propagation/evolution, not only static hot-store matches. |

@@ -65,10 +65,29 @@ Pedro's correction after the first spec pass:
 - Workbench emerges from the user's route and pins;
 - dossier/export is a later view generated from Workbench state.
 
+Pedro's terminology correction:
+- a `thread` is a hilo: a connected line of events, sources, claims, places,
+  actors, and evidence that can be followed over time;
+- a `dynamic_topic` is a tema dinamico: a changing topic identity that persists
+  across snapshots;
+- for Atlas product purposes these are the same object. `dynamic_topics` is the
+  implementation/lifecycle table behind many user-facing Narrative Threads, not
+  a separate product category.
+
+Search architecture correction:
+- Atlas should learn from web search by using prepared indexes, fast candidate
+  retrieval, and ranking, but rank for Atlas's research job rather than generic
+  web relevance.
+- The key ranking criterion is investigative usefulness: intent fit, thread
+  coherence, evidence strength, answerability, movement, source/actor value,
+  geo/entity fit, novelty/gap value, and penalties for noise, unsupported
+  claims, or list/detail mismatch.
+
 The spec defines a detailed target:
 - natural research intent parser;
 - multi-lane anchor discovery;
 - thread/country/source/public-attention entry points;
+- investigative-usefulness ranking;
 - who-says-what matrix;
 - frame comparison;
 - coverage gaps;

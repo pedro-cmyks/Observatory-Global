@@ -31,6 +31,9 @@ Important current guardrails:
 
 - The visible product model is Narrative Threads. Do not present fixed GDELT
   themes or curated concept-map suggestions as the user-facing topic model.
+- `dynamic_topics` and Narrative Threads are not separate product concepts.
+  Treat `dynamic_topics` as the implementation/lifecycle backing record for
+  user-facing threads.
 - CountryBrief must not count a forced `topCounts(themeCounts, 12)` slice as
   visible "themes". It now fetches
   `/api/v2/threads?hours=<window>&limit=24&country_code=<country>` and uses that
@@ -54,6 +57,10 @@ Important current guardrails:
   US/allied bases, satellite imagery, communications/radar infrastructure, and
   regional water/energy security" by producing anchors/options, who-says-what,
   frame comparison, coverage gaps, pin candidates, and a Workbench route.
+- Research search ranking should optimize investigative usefulness: intent fit,
+  thread coherence, evidence strength, answerability, movement, source/actor
+  value, geo/entity fit, novelty/gap value, and penalties for noise,
+  unsupported claims, or list/detail mismatch.
 - Do not frame the first search response as a finished dossier. The report is an
   optional later output generated from pinned Workbench state.
 - Do not treat this as an Iran-only feature. The Iran case is the fixture and
