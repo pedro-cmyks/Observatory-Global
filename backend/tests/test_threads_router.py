@@ -10,7 +10,8 @@ MAIN_SOURCE = Path("app/main_v2.py").read_text(encoding="utf-8")
 def test_threads_router_exposes_beta_collection_endpoint():
     assert '@router.get("/threads")' in ROUTER_SOURCE
     assert '"contract": "living-narrative-threads-v0"' in ROUTER_SOURCE
-    assert '"threads": await fetch_threads(hours=hours, limit=limit)' in ROUTER_SOURCE
+    assert '"threads": await fetch_threads(' in ROUTER_SOURCE
+    assert "country_codes=[country] if country else None" in ROUTER_SOURCE
 
 
 def test_threads_router_exposes_beta_detail_endpoint():

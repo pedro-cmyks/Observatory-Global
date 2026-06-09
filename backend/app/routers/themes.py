@@ -622,6 +622,25 @@ async def get_theme_details(
                     country_code=country_code.upper() if country_code else None,
                 )
                 if not historical:
+                    # list/detail reconciliation: the thread list counts
+                    # signal_topic_assignments for ALL windows, but processed
+                    # history may have no row for this atlas slug. Before
+                    # declaring zero, resolve through the same assignment source
+                    # the list used, so a thread that lists with N signals never
+                    # opens to 0 (Phase 0.5).
+                    atlas_row = await conn.fetchrow(
+                        "SELECT id, slug, label FROM atlas_topics WHERE slug = $1",
+                        topic_slug,
+                    )
+                    if atlas_row:
+                        return await _atlas_topic_detail(
+                            conn,
+                            topic_id=atlas_row["id"],
+                            slug=atlas_row["slug"],
+                            label=atlas_row["label"],
+                            hours=hours,
+                            country_code=country_code.upper() if country_code else None,
+                        )
                     return {
                         "theme": theme_code,
                         "country": country_code,
