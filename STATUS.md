@@ -58,6 +58,8 @@ is a general Research Thread Builder for natural compound investigations.
 New design spec:
 
 - `docs/specs/2026-06-09-research-thread-builder-workbench.md`
+- GitHub: #213 (`feat(search): build Research Thread Builder for natural
+  compound investigations`)
 
 Forcing case:
 

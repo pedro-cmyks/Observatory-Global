@@ -3,7 +3,7 @@
 **Date:** 2026-06-09  
 **Status:** active design target  
 **Branch:** `v3-intel-layer`  
-**Related:** #207 Living Narrative Threads, #175 Search, #177 Signal Stream,
+**Related:** #213 Research Thread Builder, #207 Living Narrative Threads, #175 Search, #177 Signal Stream,
 Workbench, `docs/specs/2026-05-25-atlas-narrative-intelligence-framework.md`
 
 ## Objective

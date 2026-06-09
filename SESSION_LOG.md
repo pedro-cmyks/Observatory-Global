@@ -51,6 +51,7 @@ Sources/frames found:
 
 ### Spec created
 - `docs/specs/2026-06-09-research-thread-builder-workbench.md`
+- GitHub #213 opened for the implementation track.
 
 The spec defines a detailed target:
 - natural research intent parser;
