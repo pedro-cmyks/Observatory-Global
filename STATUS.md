@@ -1,5 +1,52 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-06-08/09 (MVP issue closeout shipped)
+**Branch:** `v3-intel-layer` | **Updated:** 2026-06-09 (dynamic-topic state pilot)
+
+---
+
+## Current handoff (2026-06-09) — Dynamic-topic state pilot
+
+Implemented the first read-only Kalman/state-tracking pilot for
+`dynamic_topics`. This is **not** a semantic classifier and does not write to
+production tables.
+
+Shipped locally:
+
+- `backend/scripts/dynamic_topic_state_report.py` estimates smoothed intensity,
+  velocity, uncertainty, surprise, and trend from each topic's
+  `dynamic_topic_members` / `emergent_clusters` snapshot history.
+- The report preserves the existing lifecycle state separately from the Kalman
+  reading, so `active/candidate/deprecated` remains the source-of-truth lifecycle
+  decision.
+- Explicit `News Roundup` / `Mixed News` labels are marked
+  `do_not_promote_roundup`, even if their movement signal is surging.
+- High-noise topics remain `do_not_promote_high_noise`.
+- Generated artifacts:
+  - `docs/research/topic-quality/2026-06-09-dynamic-topic-state-pilot.json`
+  - `docs/research/topic-quality/2026-06-09-dynamic-topic-state-pilot.md`
+
+Live read-only result over active/candidate topics:
+
+- 12 topics reported.
+- 6 explicit roundup candidates flagged `do_not_promote_roundup`.
+- 2 active topics flagged `watch_acceleration`.
+- 2 active topics flagged `watch_decay`.
+- 1 high-noise candidate flagged `do_not_promote_high_noise`.
+
+Verification:
+
+- `cd backend && .venv/bin/python -m pytest tests/test_dynamic_topic_state_report.py tests/test_project_dynamic_topics.py -q`
+  -> `18 passed`.
+- Live script run used the gitignored root `.env` `DATABASE_URL`; it wrote only
+  the JSON/Markdown report artifacts under `docs/research/topic-quality/`.
+
+Next order:
+
+1. Review whether the `watch_acceleration` / `watch_decay` rows should become a
+   recurring monitoring report or stay as manual research.
+2. If useful, add a dry-run cron/report wrapper; do not write Kalman estimates to
+   DB until the metric proves useful across several snapshots.
+3. Rotate secrets in a separate maintenance pass before the next
+   credential-bearing deploy cycle.
 
 ---
 

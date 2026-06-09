@@ -3,6 +3,12 @@
 ## Project Structure & Module Organization
 `backend/` hosts the FastAPI service (APIs, services, NLP logic) and pytest suites under `tests/`. The active React + Vite client lives in `frontend-v2/` (`src/pages`, `src/components`, `src/lib`, `src/App.tsx`). The `frontend/` directory is DEPRECATED — do not touch it. Docker/Compose exists for local dev only; production runs on Vercel (frontend) + Fly.io (backend). ADRs, demos, and decision logs go in `docs/`; keep environment templates in `.env.example`. MCP server configuration lives in `.mcp.json` (supabase + stitch). Design assets exported from Google Stitch live in `stitch_atlas_landing_experience_redesign/`.
 
+Key docs/code changed in session 31 (dynamic-topic state pilot — 2026-06-09):
+- `backend/scripts/dynamic_topic_state_report.py` — read-only Kalman/state report over `dynamic_topics` member snapshot history. Estimates smoothed intensity, velocity, uncertainty, surprise, and trend; does not classify topics or write DB tables.
+- `backend/tests/test_dynamic_topic_state_report.py` — TDD coverage for acceleration, surprise, single-observation uncertainty, lifecycle/state separation, and explicit roundup blocking.
+- `docs/research/topic-quality/2026-06-09-dynamic-topic-state-pilot.json` and `.md` — live read-only output over active/candidate dynamic topics. Roundups are flagged `do_not_promote_roundup`; active accelerating/decaying rows are review hints only.
+- Guardrail: keep Kalman/state tracking separate from semantic classification and dynamic-topic lifecycle writes unless Pedro explicitly asks for persistence/cron.
+
 Key docs/code changed in session 30 (MVP issue closeout + CountryBrief thread truth — 2026-06-08/09):
 - `docs/state/2026-06-08-mvp-closeout-plan.md` — shipped closeout record. Commit `ca2130b` was pushed to `origin/v3-intel-layer`, Fly API was deployed with `scripts/deploy-fly-api.sh`, Vercel served the matching bundle, and production smoke passed. Secret rotation was deferred as a separate maintenance pass.
 - `frontend-v2/src/lib/countryBriefThreads.ts` and `frontend-v2/src/lib/countryBriefThreads.test.ts` — CountryBrief thread-summary contract. CountryBrief counts country-scoped Narrative Threads from `/api/v2/threads?country_code=...`; it must not fall back to the local `topCounts(themeCounts, 12)` GDELT theme slice.

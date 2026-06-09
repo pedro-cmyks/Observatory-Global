@@ -1,5 +1,53 @@
 # Atlas — Session Log
 
+## 2026-06-09 — Dynamic-topic Kalman/state pilot
+
+Implemented the first read-only state-tracking pilot for `dynamic_topics`.
+Kalman filtering is used only to estimate movement state over snapshot history:
+smoothed intensity, velocity, uncertainty, surprise, and trend. It does not
+replace semantic classification, does not change lifecycle state, and does not
+write to database tables.
+
+### Implementation
+- Added `backend/scripts/dynamic_topic_state_report.py`.
+- The script reads `dynamic_topics`, `dynamic_topic_members`, and
+  `emergent_clusters`, then emits JSON/Markdown reports.
+- It models intensity as `log1p(n_signals)` and uses a small constant-velocity
+  Kalman filter over each topic's snapshot sequence.
+- Recommendations are review hints only:
+  `watch_acceleration`, `watch_decay`, `keep_current_lifecycle`,
+  `collect_more_history`, `do_not_promote_roundup`, and
+  `do_not_promote_high_noise`.
+- The report keeps `lifecycle_state` separate from `state_estimate` so the
+  existing candidate/active/deprecated state machine remains authoritative.
+- Explicit roundup labels are blocked from promotion even when the temporal
+  signal is surging.
+
+### Artifacts
+- `docs/research/topic-quality/2026-06-09-dynamic-topic-state-pilot.json`
+- `docs/research/topic-quality/2026-06-09-dynamic-topic-state-pilot.md`
+
+### Live read-only result
+- 12 active/candidate topics reported.
+- 6 explicit roundup candidates flagged `do_not_promote_roundup`.
+- 2 active topics flagged `watch_acceleration`.
+- 2 active topics flagged `watch_decay`.
+- 1 high-noise candidate flagged `do_not_promote_high_noise`.
+
+### Verification
+- TDD red: new tests first failed on missing module and missing roundup guard.
+- `cd backend && .venv/bin/python -m pytest tests/test_dynamic_topic_state_report.py tests/test_project_dynamic_topics.py -q`
+  -> 18 passed.
+- Live script run used gitignored root `.env` `DATABASE_URL` without printing the
+  secret and wrote only local report artifacts.
+
+### Next plan
+1. Decide whether state tracking should become a periodic report or remain a
+   manual research diagnostic.
+2. If recurring, add a local wrapper that writes reports only; defer any DB
+   persistence until the signal is useful across multiple days.
+3. Keep semantic classification changes separate from this state metric.
+
 ## 2026-06-08 — MVP issue closeout and CountryBrief thread truth
 
 Resumed the MVP issue sprint from the uncommitted 2026-06-05 batch. The batch is

@@ -1,0 +1,228 @@
+{
+  "report_type": "dynamic-topic-kalman-state-pilot",
+  "model_version": "kalman-state-v0-readonly",
+  "read_only": true,
+  "states": [
+    "active",
+    "candidate"
+  ],
+  "topic_count": 12,
+  "topics": [
+    {
+      "dynamic_topic_id": 8,
+      "label": "Greek News Roundup",
+      "lifecycle_state": "candidate",
+      "is_roundup": true,
+      "current_noise_rate": 0.8036,
+      "current_agg_n_signals": 2749,
+      "observation_count": 26,
+      "state_estimate": {
+        "smoothed_intensity": 4.6428,
+        "velocity": -0.1622,
+        "uncertainty": 0.6859,
+        "surprise": 1.3044,
+        "trend": "cooling",
+        "n_observations": 26
+      },
+      "recommendation": "do_not_promote_roundup"
+    },
+    {
+      "dynamic_topic_id": 15,
+      "label": "Brazil News Roundup",
+      "lifecycle_state": "candidate",
+      "is_roundup": true,
+      "current_noise_rate": 0.1783,
+      "current_agg_n_signals": 2033,
+      "observation_count": 26,
+      "state_estimate": {
+        "smoothed_intensity": 4.7281,
+        "velocity": 0.3969,
+        "uncertainty": 0.5045,
+        "surprise": 1.6813,
+        "trend": "surging",
+        "n_observations": 26
+      },
+      "recommendation": "do_not_promote_roundup"
+    },
+    {
+      "dynamic_topic_id": 16,
+      "label": "Romanian News Roundup",
+      "lifecycle_state": "candidate",
+      "is_roundup": true,
+      "current_noise_rate": 0.4159,
+      "current_agg_n_signals": 1301,
+      "observation_count": 25,
+      "state_estimate": {
+        "smoothed_intensity": 4.0874,
+        "velocity": -0.0017,
+        "uncertainty": 0.6318,
+        "surprise": 1.4398,
+        "trend": "stable",
+        "n_observations": 25
+      },
+      "recommendation": "do_not_promote_roundup"
+    },
+    {
+      "dynamic_topic_id": 7,
+      "label": "Mixed News Headlines",
+      "lifecycle_state": "candidate",
+      "is_roundup": true,
+      "current_noise_rate": 0.1522,
+      "current_agg_n_signals": 1227,
+      "observation_count": 24,
+      "state_estimate": {
+        "smoothed_intensity": 3.6997,
+        "velocity": -0.0436,
+        "uncertainty": 0.4744,
+        "surprise": 0.9993,
+        "trend": "stable",
+        "n_observations": 24
+      },
+      "recommendation": "do_not_promote_roundup"
+    },
+    {
+      "dynamic_topic_id": 12,
+      "label": "Turkey News Roundup",
+      "lifecycle_state": "candidate",
+      "is_roundup": true,
+      "current_noise_rate": 0.4035,
+      "current_agg_n_signals": 1154,
+      "observation_count": 24,
+      "state_estimate": {
+        "smoothed_intensity": 3.4477,
+        "velocity": -0.2104,
+        "uncertainty": 0.5818,
+        "surprise": 1.0154,
+        "trend": "cooling",
+        "n_observations": 24
+      },
+      "recommendation": "do_not_promote_roundup"
+    },
+    {
+      "dynamic_topic_id": 10,
+      "label": "Russia-Ukraine War Updates",
+      "lifecycle_state": "active",
+      "is_roundup": false,
+      "current_noise_rate": 0.0557,
+      "current_agg_n_signals": 825,
+      "observation_count": 23,
+      "state_estimate": {
+        "smoothed_intensity": 3.0517,
+        "velocity": -0.3224,
+        "uncertainty": 0.4823,
+        "surprise": 1.0426,
+        "trend": "cooling",
+        "n_observations": 23
+      },
+      "recommendation": "watch_decay"
+    },
+    {
+      "dynamic_topic_id": 17,
+      "label": "Indonesian News Roundup",
+      "lifecycle_state": "candidate",
+      "is_roundup": true,
+      "current_noise_rate": 0.1828,
+      "current_agg_n_signals": 800,
+      "observation_count": 19,
+      "state_estimate": {
+        "smoothed_intensity": 3.1955,
+        "velocity": -0.2733,
+        "uncertainty": 0.4711,
+        "surprise": 0.8844,
+        "trend": "cooling",
+        "n_observations": 19
+      },
+      "recommendation": "do_not_promote_roundup"
+    },
+    {
+      "dynamic_topic_id": 14,
+      "label": "Agostina Vega Found Dead",
+      "lifecycle_state": "candidate",
+      "is_roundup": false,
+      "current_noise_rate": 0.5717,
+      "current_agg_n_signals": 611,
+      "observation_count": 19,
+      "state_estimate": {
+        "smoothed_intensity": 3.6293,
+        "velocity": 0.1472,
+        "uncertainty": 0.6267,
+        "surprise": 0.7389,
+        "trend": "accelerating",
+        "n_observations": 19
+      },
+      "recommendation": "do_not_promote_high_noise"
+    },
+    {
+      "dynamic_topic_id": 18,
+      "label": "Noticias Regionales Variadas",
+      "lifecycle_state": "active",
+      "is_roundup": false,
+      "current_noise_rate": 0.2643,
+      "current_agg_n_signals": 448,
+      "observation_count": 18,
+      "state_estimate": {
+        "smoothed_intensity": 2.932,
+        "velocity": -0.039,
+        "uncertainty": 0.534,
+        "surprise": 0.5633,
+        "trend": "stable",
+        "n_observations": 18
+      },
+      "recommendation": "keep_current_lifecycle"
+    },
+    {
+      "dynamic_topic_id": 11,
+      "label": "Death of Indio Solari",
+      "lifecycle_state": "active",
+      "is_roundup": false,
+      "current_noise_rate": 0.3994,
+      "current_agg_n_signals": 436,
+      "observation_count": 19,
+      "state_estimate": {
+        "smoothed_intensity": 3.2234,
+        "velocity": 0.1417,
+        "uncertainty": 0.6319,
+        "surprise": 0.7117,
+        "trend": "accelerating",
+        "n_observations": 19
+      },
+      "recommendation": "watch_acceleration"
+    },
+    {
+      "dynamic_topic_id": 1,
+      "label": "Stock Price Movements",
+      "lifecycle_state": "active",
+      "is_roundup": false,
+      "current_noise_rate": 0.0735,
+      "current_agg_n_signals": 428,
+      "observation_count": 18,
+      "state_estimate": {
+        "smoothed_intensity": 3.2956,
+        "velocity": 0.1411,
+        "uncertainty": 0.4744,
+        "surprise": 1.4688,
+        "trend": "surging",
+        "n_observations": 18
+      },
+      "recommendation": "watch_acceleration"
+    },
+    {
+      "dynamic_topic_id": 9,
+      "label": "New World Screwworm in Texas",
+      "lifecycle_state": "active",
+      "is_roundup": false,
+      "current_noise_rate": 0.0368,
+      "current_agg_n_signals": 414,
+      "observation_count": 16,
+      "state_estimate": {
+        "smoothed_intensity": 2.9735,
+        "velocity": -0.2725,
+        "uncertainty": 0.4502,
+        "surprise": 1.0631,
+        "trend": "cooling",
+        "n_observations": 16
+      },
+      "recommendation": "watch_decay"
+    }
+  ]
+}

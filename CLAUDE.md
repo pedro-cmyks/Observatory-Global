@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-06-08/09 (MVP issue closeout shipped).
+Last updated: 2026-06-09 (dynamic-topic state pilot).
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -8,13 +8,18 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
-## Current Session Context (2026-06-08/09, MVP issue closeout shipped)
+## Current Session Context (2026-06-09, dynamic-topic state pilot)
 
 Current branch is `v3-intel-layer` and is aligned with `origin/v3-intel-layer`.
 Commit `ca2130b` shipped the search query-thread builder (#175), Signal Stream
 relevance lanes (#177 slice 1), source-available license migration, and
 CountryBrief thread-count alignment (#174/#207). Fly API was deployed with
 `scripts/deploy-fly-api.sh`; Vercel is serving the matching frontend bundle.
+
+The latest local work adds a read-only Kalman/state report:
+`backend/scripts/dynamic_topic_state_report.py`, tested by
+`backend/tests/test_dynamic_topic_state_report.py`, with artifacts under
+`docs/research/topic-quality/2026-06-09-dynamic-topic-state-pilot.*`.
 
 Important current guardrails:
 
@@ -35,6 +40,9 @@ Important current guardrails:
 - Kalman filtering, if explored next, belongs in a read-only dynamic-topic state
   tracking pilot (smoothed intensity, velocity, uncertainty, surprise), not as a
   semantic classifier replacement.
+- The pilot now exists and must remain read-only unless Pedro explicitly asks to
+  promote it into persistence/cron. It keeps `lifecycle_state` separate from
+  `state_estimate` and flags explicit roundups as `do_not_promote_roundup`.
 
 Verification from 2026-06-08:
 
@@ -45,8 +53,12 @@ Verification from 2026-06-08:
 - Production smoke after deploy passed: `/api/v2/search/thread` returned `200`,
   `/app?country=CO` showed `10 THREADS` with no `Top Themes`, and clicking
   "Build a thread" opened `CUSTOM THREAD` without `HTTP 404`.
+- Dynamic-topic state pilot verification:
+  `cd backend && .venv/bin/python -m pytest tests/test_dynamic_topic_state_report.py tests/test_project_dynamic_topics.py -q`
+  -> `18 passed`; live read-only report generated JSON/Markdown artifacts.
 
-See `docs/state/2026-06-08-mvp-closeout-plan.md` for the shipped closeout record.
+See `docs/research/topic-quality/2026-06-09-dynamic-topic-state-pilot.md` for
+the current pilot output.
 
 ## Prior Session Context (2026-06-02, dynamic topics backend cutover)
 
