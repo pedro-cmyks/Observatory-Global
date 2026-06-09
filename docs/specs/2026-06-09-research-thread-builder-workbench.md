@@ -7,6 +7,7 @@
 #177 Signal Stream, #173 Evidence Route, #168 Public Attention Threads,
 #172 Silent Risk, Workbench,
 `docs/specs/2026-05-25-atlas-narrative-intelligence-framework.md`
+**Roadmap:** `docs/roadmap/2026-06-09-research-workflow-roadmap.md`
 
 ## Product Review Correction
 
@@ -277,6 +278,80 @@ eventually reconstruct from its own data plus explicit external enrichment:
    communications/radar/satellite-linked infrastructure in Kuwait, Bahrain,
    Qatar, UAE, Saudi Arabia, Iraq, and Jordan; commercial satellite imagery
    becomes both evidence and contested infrastructure.
+
+## Second Forcing Case: Claim Verification
+
+The first forcing case (Iran climate/water) tests **topic research**. A second,
+equally important case tests **claim verification** of a viral narrative. This is
+the case a normal user actually hits: they see a striking claim on social media
+and want to know if it is true, who is saying it, and why now.
+
+### User intent
+
+> "Vi en redes que en Irán volvió a llover porque atacaron unas bases con
+> estaciones de microondas que calentaban la atmósfera y manipulaban el clima.
+> ¿Es verdad? ¿Quién dice esto, por qué, y después de qué?"
+
+The user does not know the "correct" query. They might type `manipulación de
+clima Irán`, `por qué llovió en Irán`, `rain theft Iran`, `weather weapon Iran
+base`, or nothing precise at all. The workflow must turn vague/fringe phrasing
+into anchors, not a dead end, and must verify rather than amplify.
+
+### Web investigation baseline (claim verification)
+
+Manual web research on 2026-06-09 characterizes the narrative Atlas should be
+able to reconstruct and label:
+
+1. **Observable event (real).** Late-April 2026 brought unusual heavy rain,
+   record snowfall, and cooler temperatures across Iran and neighbors, breaking a
+   long drought.
+2. **The viral claim (unverified).** Iranian social media, amplified by Iran's
+   embassy in Kabul (Apr 21, 2026), claimed the weather changed because Iran
+   destroyed US radars and Israeli/Emirati "weather-engineering" / cloud-seeding
+   infrastructure (THAAD, AN/FPS-132 radar in Qatar, an alleged UAE weather
+   center). Low-credibility outlets (Global Research, planet-today, needtoknow)
+   echoed it as fact.
+3. **The contradiction (authoritative).** Iran's own Meteorological Organization
+   rejected the "rain theft" claim. Meteorologists attribute the rainfall to jet
+   stream shifts, regional synoptic patterns, and climate variability. NOAA,
+   RMIT, and AAP fact-checks establish that HAARP-style ionospheric heaters
+   cannot control surface weather: the energy is orders of magnitude too small
+   and acts 50-1000 km up, far from where weather forms.
+4. **Why now / after what.** The causal claim is post-hoc: it attaches to two
+   real events (the drought breaking + strikes on bases/radars) and serves a
+   political/morale frame.
+
+### What this case demands of the product
+
+This case is the acceptance test for the harder spec capabilities:
+
+- **Public-discussion lane as origin, not evidence.** The claim lives first on
+  social media; Atlas must show it as public attention/narrative spread, clearly
+  not as verified fact (Reddit/forum/social guardrail).
+- **`contradiction` evidence role.** Iran Met Org and NOAA/RMIT/AAP rebuttals
+  must surface as first-class contradicting evidence, not be buried.
+- **`unsupported_claim_adjustment`.** The weather-weapon causal claim is
+  downranked-with-reason as an unsupported causal relation, never silently
+  dropped (the user may be investigating the claim itself).
+- **Source credibility labeling.** Low-credibility/conspiracy outlets vs
+  national met agency vs scientific fact-checkers must be distinguishable in the
+  who-says-what matrix.
+- **Frame comparison.** At minimum: conspiracy/political-morale frame vs
+  meteorological/climate-variability frame vs fact-check/debunk frame.
+- **Movement + temporal "after what".** The claim spike must be locatable in time
+  relative to the drought break and the base strikes.
+
+### Product responsibility rule
+
+```text
+Atlas verifies and contextualizes claims. Atlas does not endorse or amplify them.
+```
+
+For a viral/fringe claim, the honest output is: the observable event, who is
+making the claim and from what source family, what authoritative sources say,
+the explicit contradiction, the unsupported-causal-link flag, and the
+uncertainty. Atlas must never present taxonomy similarity or social virality as
+proof the claim is true.
 
 ## Current Atlas Result
 
@@ -1325,7 +1400,11 @@ This feature is successful when:
 - list counts and detail panels do not contradict each other;
 - the pinned route can become a report/dossier in Workbench;
 - the user can understand the story's evolution and related routes from one
-  place.
+  place;
+- for a viral/fringe claim, Atlas surfaces the observable event, who is making
+  the claim and from what source family, authoritative contradictions, and an
+  explicit unsupported-causal-link flag — without endorsing or amplifying the
+  claim.
 
 ## Related Issue Map
 
@@ -1445,6 +1524,26 @@ separate backlog; `#151`/`#179`/`#183` have only weak provenance/frame ties.
 - Reddit API documentation: `https://www.reddit.com/dev/api/` Reddit remains a
   useful public discussion source, but Atlas should treat it as public
   discussion/commentary unless corroborated.
+
+### Claim-verification baseline sources (Iran "rain theft" / weather weapon)
+
+- Factually fact-check, "Did destroying weather-control tech cause Iran's sudden
+  rain": `https://factually.co/fact-checks/science/sudden-rain-iran-weather-modification-technology-claims-explained-2bd0c9`
+- Zee News, "Iran's rain theft claim and US radars / Israel weather-engineering":
+  `https://zeenews.india.com/world/whats-irans-rain-theft-claim-and-how-its-linked-to-us-radars-israels-weather-engineering-machines-3040508.html`
+- Tempo, "Iran's sudden weather shift sparks 'rain theft' theory":
+  `https://en.tempo.co/read/2100624/irans-sudden-weather-shift-sparks-rain-theft-theory`
+- NOAA, "Fact check: debunking weather modification claims":
+  `https://www.noaa.gov/news/fact-check-debunking-weather-modification-claims`
+- RMIT FactLab, "Claims US military project is manipulating weather are nonsense":
+  `https://www.rmit.edu.au/news/factlab-meta/claims-us-military-project-manipulating-weather-are-nonsense`
+- AAP FactCheck, "HAARP weather control conspiracy is off in the clouds":
+  `https://www.aap.com.au/factcheck/haarp-weather-control-conspiracy-is-off-in-the-clouds/`
+
+These are used to characterize the narrative for the claim-verification fixture.
+Low-credibility amplifiers (e.g. Global Research, planet-today, needtoknow) are
+referenced in the baseline only as examples of the claim's spread, not as
+evidence.
 
 ## Immediate Next Step
 

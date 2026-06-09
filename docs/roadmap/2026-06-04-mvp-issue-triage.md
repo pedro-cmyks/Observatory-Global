@@ -1,7 +1,10 @@
 # MVP Issue Triage
 
 **Date:** 2026-06-04  
-**Status:** Active MVP sprint triage  
+**Status:** Superseded for sequencing by
+`docs/roadmap/2026-06-09-research-workflow-roadmap.md` (the MVP truth pass
+shipped in `ca2130b`; #213 research workflow is the next sprint). Tier
+assignments and the promote/park reconciliation live in that roadmap.  
 **Basis:** 42 open GitHub issues from `gh issue list --state open --limit 100`
 on 2026-06-04.
 
