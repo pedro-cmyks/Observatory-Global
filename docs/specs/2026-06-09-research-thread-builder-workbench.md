@@ -34,6 +34,107 @@ Wrong product frame:
 search -> finished dossier
 ```
 
+## Scope Corrections (2026-06-09 review)
+
+A build-readiness review tightened scope. These corrections override looser
+language elsewhere in this spec; where any section disagrees, this section wins.
+
+### Honest framing of what Phase 1 fixes
+
+The forcing-case `0 signals` result is a **retrieval** failure, not a parsing
+failure. `Iran climate water drought` returns nothing because the evidence is
+missing the English words or is cross-language (Persian/Arabic/etc). A
+deterministic expansion dictionary alone does not bridge that gap.
+
+Therefore:
+
+- Phase 1's real win is **anchor surfacing through the thread / country /
+  public-attention lanes** (which already return `flood-landslide-disaster--ir`,
+  `armed-conflict-escalation--ir`, etc.), not signal-level recall.
+- Signal-level recall for natural queries stays partly broken until the semantic
+  (embedding) lane and cross-language/source work land.
+- Do not let any acceptance criterion claim Phase 1 solves signal-level recall.
+
+### Embeddings are near-term, not "future"
+
+`e5-base` already runs locally for the emergent-cluster snapshot. Reuse it for
+query↔thread and query↔evidence similarity. The semantic lane is **Phase 1.5**,
+not an indefinite "future semantic index". It is the actual fix for over/under
+recall (Open Problem 1) and the main near-term lever for cross-language matching
+(Open Problem 2).
+
+### list/detail reconciliation is a prerequisite bug
+
+`flood-landslide-disaster--ir` shows list `133` / detail `0` today. If a user
+opens a suggested anchor and gets `0`, trust dies immediately and the whole
+"anchors you can open" promise fails. This is a **pre-existing correctness bug**,
+small scope, independent of this feature. Fix it as its own issue **before**
+Workbench (Phase 2) relies on counts. Section F still defines the contract; this
+correction only changes ordering and ownership.
+
+### Reddit / public-discussion lane is DB-served by default
+
+`ingest_reddit.py` already persists Reddit signals to Postgres. The default
+public-discussion lane must read **ingested** Reddit rows, not fetch the public
+API at query time. Live fetch (2s/subreddit × many subreddits) blows the
+10-20s budget and puts public-API rate limits and reliability in the hot path.
+Live/on-demand fetch is allowed only as an explicit, user-triggered deep action.
+
+### Ranking needs weights and normalization
+
+`investigative_score` (below) is not an equal-weight sum. Each component is
+normalized to `[0, 1]` and multiplied by a tunable weight from config. Without
+this, cheap-to-score components (`geo_entity_fit`, `intent_match`) dominate and
+the expensive-but-important ones (`evidence_strength`, `answerability`) are
+drowned, making the "why ranked" explanations explain noise.
+
+### Workbench persistence: localStorage first
+
+v1 Workbench is **client-side localStorage**. This ships Phase 2 (pinning,
+sidebar/history, route) with zero backend migration. Promote to Postgres
+(`investigation_session` / `workbench_pin` tables) only when multi-device or
+sharing is needed. The `POST /api/v2/workbench/*` endpoints below are the
+forward-compatible target, not a Phase 2 blocker.
+
+### Caching and Phase 1 split
+
+- `POST /api/v2/research/plan` is cached in Redis (~2 min) keyed on
+  normalized-query + geo + hours, matching the existing unified-search cache
+  convention.
+- Phase 1 splits into **1a** (anchors from existing thread/country/
+  public-attention surfaces, no ranking ledger — prove the forcing case) and
+  **1b** (ranking, weights, reason codes, downranking ledger, gaps).
+
+### Frame comparison is best-effort early
+
+Rule-based frame extraction over multilingual text is noisy. The who-says-what
+matrix and frame comparison (Steps 4-5) are **best-effort / manual-assist** in
+early phases. Workbench usefulness must not be gated on automatic frame labels;
+real frame quality is Phase 4.
+
+### Movement signal source: Kalman state pilot
+
+The read-only Kalman state pilot (`backend/scripts/dynamic_topic_state_report.py`,
+model `kalman-state-v0-readonly`) produces per-thread `velocity`, `surprise`,
+`uncertainty`, and `trend`. This is the concrete provider for the ranking
+`movement_signal` component. It stays read-only and never promotes/suppresses
+semantic topics; the research planner only **reads** its state estimates as a
+movement hint. Promoting it from a manual report into a callable movement feed is
+an optional follow-up, not a Phase 1 blocker.
+
+### Evidence modality, not a satellite relation type
+
+`reported_by_satellite_imagery` is too specific as a graph relation. Model
+evidence modality (`osint`, `imagery`, `actor_claim`, `media_report`) as an
+attribute on `evidence_item`, not as a relation type.
+
+### Acceptance is an automated fixture
+
+"Useful anchors" must be measurable. The Iran walkthrough fixture becomes an
+automated test: the forcing-case query returns at least N anchors, and at least
+one anchor opens to non-empty thread/country detail. Assert in CI, not manual
+smoke.
+
 ## Terminology Correction: Threads and Dynamic Topics
 
 Pedro also clarified that `dynamic_topic` and `thread` should not be treated as
@@ -249,7 +350,9 @@ structures:
 - source index: publisher, source family, language, geography, source lane;
 - public-attention index: Wikipedia/search/social attention;
 - historical processed index: longer windows and background volume;
-- future semantic index: embeddings for query/thread/evidence similarity.
+- semantic index (Phase 1.5): `e5-base` embeddings for query/thread/evidence
+  similarity. `e5-base` already runs locally for the emergent snapshot, so this
+  is reuse, not new infrastructure.
 
 The Research Plan API is the planner/ranker over these indexes. It should return
 anchors because anchors are faster, safer, and more useful than pretending the
@@ -294,22 +397,29 @@ The strongest part of this feature is ranking by **investigative usefulness**.
 Atlas should not rank only by text match or volume. It should rank anchors by
 whether opening or pinning them helps answer the user's research question.
 
-First-pass ranking model:
+First-pass ranking model. Each component is normalized to `[0, 1]` and weighted
+by a tunable config value `w_*`; adjustments are subtracted after weighting:
 
 ```text
 investigative_score =
-  intent_match
-  + thread_coherence
-  + evidence_strength
-  + answerability
-  + movement_signal
-  + source_actor_value
-  + geo_entity_fit
-  + novelty_or_gap_value
-  - noise_risk_adjustment
-  - unsupported_claim_adjustment
-  - list_detail_mismatch_adjustment
+    w_intent      * intent_match
+  + w_coherence   * thread_coherence
+  + w_evidence    * evidence_strength
+  + w_answer      * answerability
+  + w_movement    * movement_signal          # from Kalman state pilot
+  + w_source      * source_actor_value
+  + w_geo         * geo_entity_fit
+  + w_novelty     * novelty_or_gap_value
+  - w_noise       * noise_risk_adjustment
+  - w_unsupported * unsupported_claim_adjustment
+  - w_mismatch    * list_detail_mismatch_adjustment
 ```
+
+Weights live in config so ranking is tunable and reviewable. Do not ship an
+equal-weight sum: it lets cheap-to-score components (`geo_entity_fit`,
+`intent_match`) dominate the expensive-but-important ones (`evidence_strength`,
+`answerability`). Start weights from the source-quality audit (#154) rather than
+guessing.
 
 Initial criteria:
 
@@ -649,7 +759,7 @@ The builder must run several retrieval lanes:
 | Lane | Purpose | Sources |
 |---|---|---|
 | direct lexical | exact headline/theme/person/source match | `signals_v2` |
-| semantic expansion | query terms to sibling concepts | internal expansion dictionary, future embeddings |
+| semantic expansion | query terms to sibling concepts | internal expansion dictionary; `e5-base` embeddings (Phase 1.5) |
 | threads | country/time thread candidates | `/api/v2/threads`, backed primarily by `dynamic_topics` |
 | theme/detail | static and dynamic detail packets | `/api/v2/theme/*`, `/api/v2/threads/*` |
 | signal stream | recent notable evidence | `/api/v2/signals` with intent-aware filters |
@@ -687,8 +797,12 @@ question, amplify, and route narratives there before those narratives are fully
 visible in formal news lanes.
 
 Current Atlas already has `backend/app/services/ingest_reddit.py` for a fixed
-set of subreddits. The Research Workflow should extend this into a query-time
-or scheduled public-discussion lane:
+set of subreddits, persisting rows to Postgres. The default public-discussion
+lane must read those **ingested** rows, not call the Reddit public API at query
+time (see Scope Corrections: 2s/subreddit × many subreddits breaks the latency
+budget and puts rate limits in the hot path). Live/on-demand fetch is an
+explicit deep action only. The scheduled ingest list should be extended to cover
+the investigation's countries/topics:
 
 - country subreddits: `r/iran`, `r/colombia`, `r/kuwait`, `r/AskMiddleEast`,
   `r/UnitedStates`, etc.;
@@ -768,7 +882,9 @@ Relation types:
 - `temporal_precedes`;
 - `regional_spillover`;
 - `infrastructure_dependency`;
-- `reported_by_satellite_imagery`;
+
+Evidence modality (`osint`, `imagery`, `actor_claim`, `media_report`) is an
+attribute on `evidence_item`, not a relation type.
 
 ### F. List/Detail Reconciliation
 
@@ -869,7 +985,9 @@ Response:
 }
 ```
 
-V1 can be stateless/read-only. Persistence is optional later.
+V1 can be stateless/read-only. Persistence is optional later. The endpoint is
+cached in Redis (~2 min) keyed on normalized-query + geo + hours, matching the
+existing unified-search cache convention.
 
 ### Latency and Progressive Loading
 
@@ -1043,32 +1161,82 @@ Deliverables:
 
 No product code.
 
-### Phase 1 — Read-only Research Plan API
+### Phase 0.5 — Prerequisite: list/detail reconciliation fix
+
+Independent correctness bug, own issue, lands before Workbench relies on counts.
+
+Deliver:
+
+- reconcile thread list count vs detail endpoint count vs signal sample for
+  country-scoped threads (e.g. `flood-landslide-disaster--ir`: list `133`,
+  detail `0`);
+- route country-scoped thread detail through the thread packet or return an
+  explicit "detail unavailable" with the same count contract.
+
+Acceptance:
+
+- No surface shows a non-zero list count and a `0` detail for the same thread +
+  filters without an explicit gap explanation.
+
+### Phase 1a — Read-only anchors (prove the forcing case)
 
 Deliver:
 
 - deterministic intent parser;
 - expansion dictionary for climate/water/conflict/infrastructure;
-- multi-lane anchor discovery;
+- multi-lane anchor discovery over **existing** thread/country/public-attention
+  surfaces;
 - country/thread/source/public-attention/gap anchor options;
-- pin candidates;
-- suggested next steps;
-- ranking explanations and downranking ledger;
-- coverage gaps including list/detail mismatch.
+- pin candidates and suggested next steps;
+- coverage gaps including list/detail mismatch (reusing Phase 0.5).
 
-No persistence. No LLM dependency required.
+No ranking ledger yet. No persistence. No LLM dependency.
+
+Acceptance (automated fixture, not manual smoke):
+
+- The Iran forcing-case query returns at least N anchors, and at least one
+  anchor opens to non-empty thread/country detail.
+- Query can suggest the US bases/satellite branch.
+- Output labels each anchor as direct evidence, context, weak support, or gap.
+- Output marks gaps instead of hiding them.
+- This phase explicitly does **not** claim signal-level recall for natural
+  queries; its win is anchor surfacing.
+
+### Phase 1b — Ranking + transparency
+
+Deliver:
+
+- weighted, normalized `investigative_score` (weights in config);
+- ranking explanations with `reason_codes`;
+- downranking/omission ledger;
+- low-confidence / noisy inspection tray.
 
 Acceptance:
 
-- Query `Iran climate water drought` no longer returns empty if related Atlas
-  threads/evidence exist; it returns anchors and gaps.
-- Query can suggest the US bases/satellite branch.
-- Output labels whether an anchor is direct evidence, context, weak support, or
-  an unresolved gap.
-- Output marks gaps instead of hiding them.
 - Output explains why anchors were ranked, downranked, or omitted.
+- No material that matches the investigation is silently omitted.
+
+### Phase 1.5 — Semantic lane (`e5-base`)
+
+Deliver:
+
+- query↔thread and query↔evidence similarity using the existing local
+  `e5-base` embeddings;
+- semantic candidates merged into anchor discovery, labeled `retrieval_lane =
+  semantic`.
+
+Acceptance:
+
+- A natural query with no lexical match (incl. cross-language headlines) can
+  still surface related evidence anchors via semantic similarity, labeled as
+  semantic rather than direct match.
 
 ### Phase 2 — Workbench Pinning + Route UI
+
+Storage: **client-side localStorage** in v1. No backend migration. Promote to
+Postgres (`investigation_session` / `workbench_pin`) only when multi-device or
+sharing is required; the `POST /api/v2/workbench/*` contracts are the
+forward-compatible target, not a v1 blocker.
 
 Deliver:
 
@@ -1175,6 +1343,88 @@ threads of work:
 | Entity/actor hygiene | #176, #162, #166 | "Who says what?" needs clean actor/person/entity surfaces, not noisy string matches. |
 | Layout and provenance | #179, #183 | Investigation surfaces need clear active layers, provenance, counts, and source-of-truth display. |
 
+## Backlog Alignment (2026-06-09 review)
+
+Key finding: the open backlog is not scattered. A large cluster of existing
+issues directly feeds this spec. #213 becomes the **umbrella** that finally
+sequences that backlog. Each issue is tiered by how it relates to the research
+workflow. (No Kalman GitHub issue exists; it is the read-only pilot script and is
+the `movement_signal` provider — see Scope Corrections.)
+
+### Tier A — Core spec surfaces (build with / as part of #213)
+
+| Issue | Role in research workflow |
+|---|---|
+| #207 living Narrative Threads contract | Core dependency. Anchors are threads; this contract underpins them. |
+| #173 Evidence Route panel | The `Show evidence route` Workbench action. |
+| #168 public-attention threads + semantic links | Public-attention anchor lane + semantic links. |
+| #172 silent-risk detector | Feeds `novelty_or_gap_value` and coverage gaps. |
+| #160 Voice Mix endpoint | Powers the who-says-what matrix / `source_actor_value`. |
+| #176 entity/actor hygiene | Clean actors for who-says-what (Open Problem 3). |
+| #178 stable item inspection (pub vs render time) | Stable pinned evidence rows. |
+
+### Tier B — Recall and cross-language enablers (fix the 0-results forcing case)
+
+| Issue | Role |
+|---|---|
+| #161 GDELT DOC 2.0 query-time enrichment | Cheapest signal-recall fix before embeddings; query-time evidence lane. |
+| #185 corpus-mined lexicon | Feeds the intent parser expansion dictionary (was previously unconnected). |
+| #150 non-anglophone sources | More multilingual evidence = fewer empty natural queries. |
+| #158 newsdata country-primary multilingual buckets | Same cross-language recall lever. |
+| #162 multilingual sentiment/NER/framing models | Frames + actors + cross-language for who-says-what. |
+| #157 multilingual NLP benchmark | Validates B above before trusting it in ranking. |
+
+### Tier C — Source/evidence quality (feed ranking weights; do before/with Phase 1b)
+
+| Issue | Role |
+|---|---|
+| #154 source quality/dominance audit | Should precede ranking; seeds initial `w_*` weights. |
+| #166 analyst confidence calibration | Confidence bands on evidence/frames. |
+| #180 reliefweb API/proxy fix | Restores the humanitarian source lane (UNICEF/ACAPS in the Iran matrix). |
+| #148 publisher expansion in CountryBrief | Source breadth for `source_actor_value`. |
+| #153 evaluate Reddit/NewsAPI/MediaStack/EventRegistry | The public-discussion lane + enrichment source eval. |
+| #156 newsapi quota + dynamic crisis queries | Query-time enrichment lane budget. |
+| #159 GDELT Event Mentions for propagation | Story-evolution / movement evidence. |
+| #46 ACLED access | Conflict-event evidence for the bases/infrastructure branch. |
+
+### Tier D — NLP capacity backbone (unprocessed signals are invisible evidence)
+
+| Issue | Role |
+|---|---|
+| #164 ADR sampling vs full backfill (~1.8M unprocessed) | Decides how much hidden evidence becomes searchable. |
+| #163 split NLP into priority-queue process | Capacity for query-time enrichment. |
+| #184 bump worker limit + drain backlog | Same family; reduces evidence blind spots. |
+
+### Tier E — Search entry / front door
+
+| Issue | Role |
+|---|---|
+| #152 command-bar layout collision | Must hold the new `Start investigation` / `Add to Workbench` actions. |
+
+### Tier F — Superseded or fold by current approach
+
+| Issue | Disposition |
+|---|---|
+| #167 Atlas topic intelligence beyond GDELT themes | Largely delivered by `dynamic_topics` -> threads. Reframe to "internal anchor support only" or close. |
+| #134 / #140 use-case docs + visual manual | The Iran walkthrough becomes the canonical showcase. Defer until the feature ships, then fold. |
+| #204 Path C quarterly taxonomy revision | Internal anchor support only; low priority; not user-facing taxonomy. |
+
+### Tier G — Independent (not blocked by, not blocking #213)
+
+`#106` mascot, `#147` map reset, `#151` financial overlay, `#179` map legend,
+`#183` sentiment/heat badge, `#196` vessels TLS, `#212` Equal Earth. Keep as a
+separate backlog; `#151`/`#179`/`#183` have only weak provenance/frame ties.
+
+### Suggested attack order
+
+1. Phase 0.5 list/detail fix (trust prerequisite).
+2. Tier A surfaces + Phase 1a anchors (#207, #173, #168, #172, #160, #176, #178).
+3. Tier C #154 audit -> seed ranking weights -> Phase 1b.
+4. Tier B recall lane (#161 first, then #185 + multilingual) + Phase 1.5
+   `e5-base` semantic lane.
+5. Phase 2 Workbench (localStorage) + #152 search entry.
+6. Tier D NLP capacity as a continuous backbone track in parallel.
+
 ## Research References
 
 - Google Search Help, "How Google autocomplete predictions work":
@@ -1211,5 +1461,10 @@ Step 7: Pin source/actor/evidence items.
 Step 8: Workbench shows route, relations, gaps, who-says-what, and optional report.
 ```
 
-Then implement Phase 1 as a read-only research-plan API and compare Atlas anchor
-output to the walkthrough before touching public UI.
+Turn that walkthrough into the automated acceptance fixture. Then:
+
+1. Fix list/detail reconciliation (Phase 0.5) so opened anchors are not empty.
+2. Implement Phase 1a (read-only anchors over existing surfaces) and assert the
+   fixture before touching public UI.
+3. Run the #154 source-quality audit to seed ranking weights, then Phase 1b.
+4. Add the `e5-base` semantic lane (Phase 1.5) for cross-language recall.
