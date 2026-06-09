@@ -30,10 +30,11 @@ below resolve via Obsidian's fuzzy search regardless of folder.
 ## Active design specs
 
 - [[2026-06-09-research-thread-builder-workbench]] — detailed target for
-  natural research search + Workbench investigation: query expansion, research
-  tree, who-says-what, frame comparison, coverage gaps, and list/detail
-  reconciliation using the Iran climate/water + US bases/satellite compound
-  case.
+  natural research search + Workbench investigation: search returns Atlas
+  anchors/options, the user opens and pins useful items, and Workbench preserves
+  the route for who-says-what, frame comparison, coverage gaps, list/detail
+  reconciliation, and optional report/export using the Iran climate/water + US
+  bases/satellite compound case.
 - [[2026-06-04-mvp-thread-volume-and-issue-sprint-design]] — MVP sprint design:
   use GDELT themes as weak, bias-measured support signals to recover Narrative
   Thread volume, then re-triage and close stale GitHub issues.

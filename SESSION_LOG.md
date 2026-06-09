@@ -1,10 +1,13 @@
 # Atlas — Session Log
 
-## 2026-06-09 — Research Thread Builder / Workbench investigation spec
+## 2026-06-09 — Research Workflow + Workbench investigation spec
 
 Pedro reframed the Iran climate search experiment as a product objective:
-Atlas should not merely answer one research question; it should let any broad,
-compound natural query become an evidence-backed research dossier in Workbench.
+Atlas should not merely answer one research question, and it should not pretend
+that search instantly builds a finished dossier. It should let any broad,
+compound natural query start a guided research workflow where the user opens
+Atlas anchors, pins useful items, follows related branches, and lets Workbench
+become the investigation memory.
 
 ### Forcing case
 - Initial query: climate/weather in the Middle East, specifically Iran.
@@ -53,23 +56,32 @@ Sources/frames found:
 - `docs/specs/2026-06-09-research-thread-builder-workbench.md`
 - GitHub #213 opened for the implementation track.
 
+Pedro's correction after the first spec pass:
+- search returns anchors/options, not a final dossier;
+- anchors can be country focus, Narrative Threads, source lanes, public
+  attention, coverage gaps, or related branches;
+- the user can search `Iran`, `climate`, `climate in Iran`, or the satellite/base
+  branch, then pin what matters;
+- Workbench emerges from the user's route and pins;
+- dossier/export is a later view generated from Workbench state.
+
 The spec defines a detailed target:
 - natural research intent parser;
-- editable subquestions;
-- multi-lane evidence retrieval;
-- research tree;
+- multi-lane anchor discovery;
+- thread/country/source/public-attention entry points;
 - who-says-what matrix;
 - frame comparison;
 - coverage gaps;
 - list/detail reconciliation;
-- Workbench add-branch flow;
-- dossier/export path;
-- phased implementation from fixture -> read-only API -> Workbench UI.
+- Workbench pinning/add-branch flow;
+- optional report/export path from pinned route;
+- phased implementation from walkthrough fixture -> read-only research-plan API
+  -> Workbench pinning UI.
 
 ### Next plan
-1. Open a dedicated GitHub issue for Research Thread Builder.
-2. Implement Phase 0 fixture for the Iran compound case.
-3. Build Phase 1 read-only `/api/v2/research/thread` prototype before changing
+1. Keep #213 as the dedicated GitHub issue for the corrected workflow frame.
+2. Implement Phase 0 walkthrough fixture for the Iran compound case.
+3. Build Phase 1 read-only `/api/v2/research/plan` prototype before changing
    the public UI.
 
 ## 2026-06-09 — Dynamic-topic Kalman/state pilot

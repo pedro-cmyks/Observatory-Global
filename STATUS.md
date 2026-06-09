@@ -50,16 +50,16 @@ Next order:
 
 ---
 
-## Current product target (2026-06-09) — Research Thread Builder
+## Current product target (2026-06-09) — Research Workflow + Workbench
 
 The next major product objective is no longer a one-off Iran climate search. It
-is a general Research Thread Builder for natural compound investigations.
+is a general Atlas investigation workflow for natural compound searches.
 
 New design spec:
 
 - `docs/specs/2026-06-09-research-thread-builder-workbench.md`
-- GitHub: #213 (`feat(search): build Research Thread Builder for natural
-  compound investigations`)
+- GitHub: #213 (`feat(search/workbench): support research workflow from natural
+  search to pinned investigation`)
 
 Forcing case:
 
@@ -67,15 +67,26 @@ Forcing case:
 - plus a related branch for attacks on US/allied bases, satellite imagery,
   communications/radar infrastructure, and regional water/energy security.
 
+Product correction from Pedro:
+
+- Search should not directly create a finished dossier.
+- Search should generate useful anchors/options: country focus, Narrative
+  Threads, source lanes, public-attention lanes, coverage gaps, and related
+  branches.
+- The user investigates naturally inside Atlas by opening those anchors and
+  pinning useful items.
+- Workbench emerges as the memory/organizer of the route and can later generate
+  a report/dossier from pinned evidence.
+
 The spec defines the expected product outcome:
 
-- natural query interpretation and editable subquestions;
-- research tree;
+- natural query interpretation and anchor options;
+- thread/country/source/public-attention entry points;
 - who-says-what source/actor matrix;
 - frame comparison;
 - coverage gaps;
 - list/detail reconciliation;
-- Workbench handoff and dossier/export path.
+- Workbench pinning, route memory, and optional report/export path.
 
 Current Atlas gap found during the experiment:
 
@@ -90,8 +101,8 @@ Current Atlas gap found during the experiment:
   unrelated/noisy rows; intent-aware stream retrieval is required.
 
 Next implementation should start with Phase 0/1 from the spec: create the Iran
-compound fixture, then build a read-only `/api/v2/research/thread` prototype
-before changing public UI.
+compound walkthrough fixture, then build a read-only `/api/v2/research/plan`
+prototype before changing public UI.
 
 ---
 

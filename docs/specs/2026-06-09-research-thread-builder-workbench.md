@@ -1,16 +1,46 @@
-# Research Thread Builder + Workbench Investigation Spec
+# Research Workflow + Workbench Investigation Spec
 
 **Date:** 2026-06-09  
 **Status:** active design target  
 **Branch:** `v3-intel-layer`  
-**Related:** #213 Research Thread Builder, #207 Living Narrative Threads, #175 Search, #177 Signal Stream,
-Workbench, `docs/specs/2026-05-25-atlas-narrative-intelligence-framework.md`
+**Related:** #213 Research Workflow, #207 Living Narrative Threads, #175 Search,
+#177 Signal Stream, #173 Evidence Route, #168 Public Attention Threads,
+#172 Silent Risk, Workbench,
+`docs/specs/2026-05-25-atlas-narrative-intelligence-framework.md`
+
+## Product Review Correction
+
+Pedro clarified the core product shape on 2026-06-09:
+
+- Atlas should not present this as "search builds a finished dossier."
+- The user should investigate naturally inside Atlas, the way they would across
+  the open web: search, open a country, open a thread, inspect sources, compare
+  frames, follow related branches, and pin useful pieces.
+- Workbench is the investigation memory and organizer that emerges from those
+  actions. It is not the required starting point and not a magical final answer.
+- A dossier/report can be generated later from the pinned route, but it is the
+  output of the workflow, not the first response.
+
+Correct product frame:
+
+```text
+search -> anchors/options -> open existing Atlas surfaces -> pin useful items
+       -> suggested next branches -> Workbench graph/trail -> optional report
+```
+
+Wrong product frame:
+
+```text
+search -> finished dossier
+```
 
 ## Objective
 
-Atlas search should let a user type a natural investigation question and receive
-a compact research dossier that is as rich as a careful web investigation, but
-grounded in Atlas evidence and compressed into one navigable workspace.
+Atlas search should let a user type a natural investigation question and begin a
+guided research workflow inside Atlas. Search should return useful anchors,
+related thread options, pin candidates, and next-step suggestions. As the user
+opens and pins those items, Workbench should accumulate a structured
+investigation trail that can later become a report.
 
 Target user job:
 
@@ -23,12 +53,12 @@ example for a general product capability:
 
 - natural-language research intent;
 - compound/multi-hop question expansion;
-- evidence-backed Narrative Thread tree;
+- evidence-backed Narrative Thread anchors;
 - "who says what" source/actor matrix;
 - frame comparison;
 - coverage-gap detection;
 - list-vs-detail reconciliation;
-- Workbench handoff for iterative investigation.
+- Workbench handoff for pinned investigation memory.
 
 The expected result is that Atlas stops losing the majority of relevant
 information because the user's words do not exactly match the current signal
@@ -114,13 +144,15 @@ Production checks on 2026-06-09:
 
 Conclusion:
 
-Atlas has relevant information, but search and Workbench do not yet assemble it
-into an investigation. The missing product layer is a Research Thread Builder.
+Atlas has relevant information, but search does not yet guide the user from a
+natural question into the country/thread/source/evidence surfaces where that
+information lives. Workbench also does not yet preserve the user's route as a
+living investigation object.
 
 ## Product Principle
 
 Search is not just retrieval. For Atlas, search must be an investigation
-constructor.
+starting point.
 
 The user should be able to start with:
 
@@ -129,31 +161,33 @@ clima en Irán y relación con ataques a infraestructura estadounidense/satelita
 en Medio Oriente
 ```
 
-Atlas should respond with:
+Atlas should first respond with:
 
 - an interpreted research intent;
-- editable subquestions;
-- evidence tree;
-- sources and actors;
-- frame comparison;
-- gaps;
-- suggested next branches;
-- Workbench graph/dossier.
+- anchor options the user can open;
+- related Narrative Threads;
+- country, source, actor, and public-attention entry points;
+- pin candidates;
+- gaps and uncertainty;
+- suggested next branches.
+
+Only after the user opens, filters, compares, and pins items should Workbench
+show the accumulated graph/trail and optional report view.
 
 The system must make uncertainty visible. It should not pretend it found
 evidence when it only found taxonomy similarity or web context.
 
-## Target User Experience
+## Step-by-Step Atlas Investigation Workflow
 
 ### 1. Natural Research Query
 
-The user enters a broad or compound query in Search or Workbench:
+The user starts with Search, not with a prebuilt dossier:
 
 ```text
 clima Irán Medio Oriente agua sequía y ataques a bases estadounidenses satélite
 ```
 
-Atlas creates an interpreted query card:
+Atlas creates an interpreted query card and entry-point menu:
 
 ```json
 {
@@ -171,15 +205,64 @@ Atlas creates an interpreted query card:
     "climate": ["drought", "heatwave", "water scarcity", "reservoirs", "dams", "WASH"],
     "conflict_infrastructure": ["US bases", "radar", "radome", "satellite communications", "air defense"],
     "regional": ["Kuwait", "Bahrain", "Qatar", "UAE", "Saudi Arabia", "Iraq", "Jordan"]
-  }
+  },
+  "anchor_options": [
+    {"type": "country", "label": "Iran", "action": "open_country_focus"},
+    {"type": "thread", "label": "Iran water/climate stress", "action": "open_thread"},
+    {"type": "thread", "label": "Flood/disaster signals in Iran", "action": "open_thread"},
+    {"type": "source_lane", "label": "Humanitarian / UN / NGO framing", "action": "inspect_sources"},
+    {"type": "public_attention", "label": "Public attention around Iran + water", "action": "inspect_attention"},
+    {"type": "related_branch", "label": "US bases / satellite / communications layer", "action": "add_branch"}
+  ],
+  "pin_candidates": [
+    "country:IR",
+    "thread:iran-water-climate-stress",
+    "branch:us-bases-satellite-communications"
+  ]
 }
 ```
 
-The user can edit/remove subquestions before running the investigation.
+The user can open any anchor, pin it, ignore it, or add another query. Search
+should generate threads/options, not force a single answer path.
 
-### 2. Research Thread Tree
+### 2. Open Existing Atlas Surfaces
 
-Atlas returns a tree, not a flat result list:
+If the user opens `Iran`, Atlas should use the existing Country Focus surface. If
+the user opens a thread, Atlas should use Narrative Threads / ThreadFocusPanel.
+If the user opens a source lane, Atlas should use source and signal panels.
+
+The same investigation can begin from several paths:
+
+- `Iran` -> country focus -> active threads -> pin water/climate thread.
+- `climate in Iran` -> thread anchors -> open water/flood/heat threads.
+- `Iran satellite bases` -> related-branch anchors -> inspect conflict
+  infrastructure.
+- `UNICEF Iran water` -> source lane -> inspect humanitarian framing.
+
+Each surface needs the same core actions:
+
+- `Pin to Workbench`;
+- `Add as branch`;
+- `Compare frames`;
+- `Show evidence route`;
+- `Show coverage gaps`;
+- `Open related thread`.
+
+### 3. Pin and Build the Workbench Route
+
+Workbench should appear as the user's investigation memory once the user pins or
+adds a branch. It stores:
+
+- pinned countries;
+- pinned threads;
+- pinned evidence rows;
+- pinned sources/actors;
+- user notes;
+- relations between pins;
+- coverage gaps;
+- ordered trail of how the user got there.
+
+Example emerging Workbench graph:
 
 ```text
 Iran climate-water crisis
@@ -206,7 +289,10 @@ Iran climate-water crisis
    └─ regional countries hosting affected infrastructure
 ```
 
-Each node has:
+Each node is created from user action plus Atlas suggestions. A node can be
+manually pinned, suggested by Atlas, or promoted from evidence.
+
+Each pinned node has:
 
 - evidence count;
 - countries;
@@ -216,9 +302,9 @@ Each node has:
 - confidence/coverage band;
 - gaps.
 
-### 3. Who Says What Matrix
+### 4. Who Says What Matrix
 
-For every node, Atlas should show:
+For every pinned node or opened thread, Atlas should show:
 
 | Source / actor | Type | What they say | Frame | Evidence role | Confidence |
 |---|---|---|---|---|---|
@@ -231,7 +317,7 @@ For every node, Atlas should show:
 
 This is the core "quién dice qué" object.
 
-### 4. Frame Comparison
+### 5. Frame Comparison
 
 Atlas should compare frames instead of collapsing them into one summary:
 
@@ -244,7 +330,36 @@ Atlas should compare frames instead of collapsing them into one summary:
 | Military infrastructure | US/allied bases and communications become targets | AP, WaPo/OSINT, regional media | public imagery may be incomplete/restricted |
 | Regional spillover | energy, food, shipping, desalination, Gulf security | ACAPS, WRI | broad but important |
 
-### 5. Coverage Gaps
+### 6. Suggested Next Branches
+
+Atlas should keep suggesting next research moves based on the current Workbench
+state:
+
+- "You pinned Iran water scarcity. Related country branches: Iraq, UAE, Qatar,
+  Saudi Arabia."
+- "You pinned conflict infrastructure. Related evidence lanes: bases, radar,
+  satellite imagery, electricity/water infrastructure."
+- "You have public attention but thin media evidence; inspect silent-risk gaps."
+- "You have country-level evidence but no actor lane; inspect who is quoted."
+
+The user decides what to add. Atlas should not auto-expand the investigation
+until it becomes noisy.
+
+### 7. Optional Report/Dossier View
+
+Only after there is a meaningful pinned route should Atlas offer:
+
+- Markdown/JSON export;
+- report view;
+- executive summary;
+- timeline;
+- who-says-what matrix;
+- evidence table;
+- gaps/uncertainty section.
+
+The report is generated from Workbench state. It is not the first search result.
+
+### 8. Coverage Gaps
 
 Atlas must say what it cannot answer:
 
@@ -269,7 +384,7 @@ Input:
 
 - raw query;
 - optional selected country/person/source/theme;
-- user-added subquestion;
+- user-added branch/subquestion;
 - current Workbench context.
 
 Output:
@@ -358,12 +473,14 @@ Initial frame families:
 
 Each evidence item can carry multiple frames with scores.
 
-### E. Research Graph Builder
+### E. Workbench Investigation Graph Builder
 
 Objects:
 
-- `research_thread`;
-- `research_node`;
+- `investigation_session`;
+- `anchor_option`;
+- `workbench_pin`;
+- `investigation_node`;
 - `subquestion`;
 - `evidence_item`;
 - `actor`;
@@ -415,7 +532,10 @@ another.
 
 ## Backend Contract Proposal
 
-### `POST /api/v2/research/thread`
+### `POST /api/v2/research/plan`
+
+This is the Phase 1 search helper. It should not return a finished dossier. It
+returns an interpreted intent, candidate anchors, and suggested next actions.
 
 Request:
 
@@ -424,7 +544,7 @@ Request:
   "query": "clima en Iran y ataques a bases estadounidenses satelitales en Medio Oriente",
   "hours": 168,
   "geo_scope": ["IR", "ME"],
-  "mode": "build",
+  "mode": "suggest_anchors",
   "context": {
     "selected_country": "IR",
     "workspace_items": []
@@ -436,15 +556,20 @@ Response:
 
 ```json
 {
-  "research_id": "research-thread-...",
+  "session_id": "research-session-...",
   "query": "...",
   "interpreted_intent": {},
-  "tree": [],
-  "who_says_what": [],
-  "frames": [],
+  "anchor_options": [
+    {
+      "type": "country|thread|source_lane|actor|public_attention|coverage_gap|related_branch",
+      "label": "...",
+      "action": "open|pin|add_branch|compare|inspect_gap",
+      "target": {}
+    }
+  ],
+  "pin_candidates": [],
+  "suggested_next_steps": [],
   "coverage_gaps": [],
-  "evidence": [],
-  "next_questions": [],
   "quality_envelope": {
     "band": "thin|medium|high|degraded",
     "answerable_questions": ["where", "sources", "evidence"],
@@ -455,23 +580,39 @@ Response:
 
 V1 can be stateless/read-only. Persistence is optional later.
 
-### `POST /api/v2/research/thread/expand`
+### `POST /api/v2/workbench/pins`
 
-Adds a branch:
+Persists or stages an item the user chose to keep.
 
 ```json
 {
-  "research_id": "...",
+  "session_id": "...",
+  "pin": {
+    "type": "country|thread|source|actor|evidence|gap|note",
+    "target": {},
+    "user_note": "why this matters"
+  }
+}
+```
+
+### `POST /api/v2/research/plan/expand`
+
+Suggests anchors for an added branch:
+
+```json
+{
+  "session_id": "...",
   "branch_query": "relacion con ataques a bases estadounidenses y comunicaciones satelitales",
   "relation": "related_to"
 }
 ```
 
-V1 can simply rebuild the dossier with the new subquestion appended.
+V1 can simply recompute the anchor plan with current Workbench pins plus the new
+branch query.
 
-### `GET /api/v2/research/thread/{id}/export`
+### `GET /api/v2/workbench/{id}/export`
 
-Future: export dossier to Markdown/JSON.
+Future: export the pinned investigation route to Markdown/JSON.
 
 ## Frontend / Workbench UX
 
@@ -479,17 +620,17 @@ Future: export dossier to Markdown/JSON.
 
 Current SearchBar should keep quick direct search, but add a clear action:
 
-- `Build research thread`
+- `Start investigation`
 - `Add to Workbench`
 
-For broad queries, the primary action should become research-thread builder, not
-theme detail.
+For broad queries, the primary action should show anchors and next steps, not
+force theme detail or a finished answer.
 
 ### Workbench Mode
 
-Workbench becomes the investigation editor:
+Workbench becomes the investigation memory and editor:
 
-- left: research tree;
+- left: pinned route / trail;
 - center: evidence/storyline;
 - right: who-says-what + frames + gaps;
 - bottom or side rail: next questions / add branch.
@@ -504,9 +645,10 @@ User can add:
 Example:
 
 1. User starts: `clima Iran Medio Oriente`.
-2. Atlas builds water/climate tree.
-3. User adds: `ataques a bases estadounidenses y satelite`.
-4. Atlas adds a sibling branch connected through:
+2. Atlas offers country/thread/source/public-attention anchors.
+3. User opens Iran, opens a water/climate thread, and pins it.
+4. User adds: `ataques a bases estadounidenses y satelite`.
+5. Atlas suggests a sibling branch connected through:
    - conflict infrastructure;
    - satellite imagery;
    - regional bases;
@@ -515,7 +657,8 @@ Example:
 
 ### Dossier View
 
-The final view should read like a structured report:
+The optional final view should read like a structured report generated from
+Workbench pins:
 
 1. Executive summary.
 2. Timeline.
@@ -528,25 +671,26 @@ The final view should read like a structured report:
 
 ## Phased Implementation
 
-### Phase 0 — Spec + fixture from Iran case
+### Phase 0 — Spec + walkthrough fixture from Iran case
 
 Deliverables:
 
 - this spec;
-- a manually curated expected-output fixture for the Iran compound case;
+- a manually curated expected walkthrough for the Iran compound case;
 - current Atlas failure snapshot.
 
 No product code.
 
-### Phase 1 — Read-only Research Builder API
+### Phase 1 — Read-only Research Plan API
 
 Deliver:
 
 - deterministic intent parser;
 - expansion dictionary for climate/water/conflict/infrastructure;
-- multi-lane retrieval;
-- research tree JSON;
-- who-says-what matrix from source/actor/entity extraction;
+- multi-lane anchor discovery;
+- country/thread/source/public-attention/gap anchor options;
+- pin candidates;
+- suggested next steps;
 - coverage gaps including list/detail mismatch.
 
 No persistence. No LLM dependency required.
@@ -554,26 +698,40 @@ No persistence. No LLM dependency required.
 Acceptance:
 
 - Query `Iran climate water drought` no longer returns empty if related Atlas
-  threads/evidence exist.
-- Query can add the US bases/satellite branch.
-- Output labels evidence as direct/context/weak/external.
+  threads/evidence exist; it returns anchors and gaps.
+- Query can suggest the US bases/satellite branch.
+- Output labels whether an anchor is direct evidence, context, weak support, or
+  an unresolved gap.
 - Output marks gaps instead of hiding them.
 
-### Phase 2 — Workbench UI
+### Phase 2 — Workbench Pinning + Route UI
 
 Deliver:
 
-- Workbench accepts a natural research query.
-- Renders tree, evidence, frames, sources, actors, gaps.
+- Search results can be pinned to Workbench.
+- Existing country/thread/source/evidence panels expose pin actions.
+- Workbench renders pinned route, evidence, frames, sources, actors, gaps.
 - Allows `Add branch`.
-- Exports Markdown dossier.
 
 Acceptance:
 
 - User can reproduce the Iran climate + satellite/bases compound investigation
-  without leaving Atlas.
+  without leaving Atlas and without losing the route they took.
 
-### Phase 3 — Evidence/Frame Quality
+### Phase 3 — Report/Export
+
+Deliver:
+
+- Markdown/JSON export from pinned Workbench route;
+- report view generated from pins;
+- timeline, who-says-what, frame comparison, evidence table, and gaps.
+
+Acceptance:
+
+- The dossier/report is traceable back to the user's pinned investigation, not
+  an opaque generated answer.
+
+### Phase 4 — Evidence/Frame Quality
 
 Deliver:
 
@@ -590,7 +748,7 @@ Acceptance:
 - Frame labels useful enough for human review, not necessarily fully automatic
   truth.
 
-### Phase 4 — Optional External Context Adapter
+### Phase 5 — Optional External Context Adapter
 
 Deliver:
 
@@ -624,27 +782,47 @@ Acceptance:
 
 This feature is successful when:
 
-- a broad natural query produces a useful research tree, not zero results;
+- a broad natural query produces useful Atlas anchors, not zero results;
 - a user can add a related branch without restarting;
+- a user can pin useful country/thread/source/evidence items as they research;
+- Workbench preserves the investigation route and relationships between pins;
 - Atlas shows who says what and how frames differ;
 - Atlas clearly separates evidence, context, weak support, and gaps;
 - list counts and detail panels do not contradict each other;
-- the output can become a report/dossier in Workbench;
+- the pinned route can become a report/dossier in Workbench;
 - the user can understand the story's evolution and related routes from one
   place.
 
+## Related Issue Map
+
+This spec is not isolated to one new issue. It depends on several existing
+threads of work:
+
+| Area | Issues | Product connection |
+|---|---|---|
+| Search and investigation entry | #213, #175, #152, #178 | Broad queries should become anchor menus and stable routes, not dead ends or layout collisions. |
+| Living Narrative Threads | #207, #167, #204, #185 | Search should generate/open threads; topic anchors remain internal support, not the user-facing taxonomy. |
+| Evidence route and Workbench memory | #173, #140, #134, #133, #141 | The user needs to see how evidence was found, pin it, and later turn the route into reading/report output. |
+| Public attention and drowned-out stories | #168, #172, #145, #153 | Atlas should reveal when one story dominates, when attention diverges from media coverage, and where social/public lanes matter. |
+| Query-time evidence and story evolution | #161, #159, #156 | Atlas should enrich at query time and show propagation/evolution, not only static hot-store matches. |
+| Sources and voice mix | #160, #148, #150, #154, #158, #180, #46 | "Who is talking?" requires source lanes, publisher expansion, non-anglophone coverage, quality/dominance checks, and conflict/event sources. |
+| Entity/actor hygiene | #176, #162, #166 | "Who says what?" needs clean actor/person/entity surfaces, not noisy string matches. |
+| Layout and provenance | #179, #183 | Investigation surfaces need clear active layers, provenance, counts, and source-of-truth display. |
+
 ## Immediate Next Step
 
-Create a concrete fixture for the Iran case:
+Create a concrete walkthrough fixture for the Iran case:
 
 ```text
-Query A: climate/water in Iran and Middle East
-Query B: relation to attacks on US bases/satellite/communications infrastructure
-Time: recent + 7d Atlas hot window + historical context
-Expected nodes: water scarcity, heat/drought, Tehran reservoirs, agriculture,
-governance/protest, WASH/conflict damage, regional spillover, US bases/satellite
-infrastructure.
+Step 1: Search "Iran".
+Step 2: Open Country Focus and inspect active threads.
+Step 3: Search "climate in Iran" and inspect anchor options.
+Step 4: Pin water/climate/flood/heat signals or gaps.
+Step 5: Add branch "US bases satellite communications Middle East".
+Step 6: Inspect related conflict-infrastructure anchors.
+Step 7: Pin source/actor/evidence items.
+Step 8: Workbench shows route, relations, gaps, who-says-what, and optional report.
 ```
 
-Then implement Phase 1 as a read-only API and compare Atlas output to the
-fixture before touching public UI.
+Then implement Phase 1 as a read-only research-plan API and compare Atlas anchor
+output to the walkthrough before touching public UI.
