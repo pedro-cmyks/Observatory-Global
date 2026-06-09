@@ -11,6 +11,9 @@ Threads and emergent narrative discovery.
 - [[2026-06-04-mvp-thread-volume-and-issue-sprint-design]] — current MVP sprint
   direction: recover Narrative Thread volume using GDELT themes as weak,
   bias-measured support signals, then clean up the issue backlog.
+- [[2026-06-09-research-thread-builder-workbench]] — product/architecture
+  target for turning natural compound search into a Workbench research dossier:
+  tree, frames, who-says-what, gaps, and evidence roles.
 - [[2026-05-24-living-narrative-threads]] — thread contract and product model.
 - [[2026-05-29-emergent-topic-discovery-design]] — emergent discovery layer.
 - [[2026-06-02-emergent-topic-identity-resolver-design]] — Phase 6
@@ -63,6 +66,11 @@ The visible product should answer:
 
 ## Planned enrichment
 
+- [[2026-06-09-research-thread-builder-workbench]] — Research Thread Builder:
+  natural-language investigation constructor over Atlas evidence plus explicit
+  coverage gaps. Forcing case: Iran climate/water crisis connected to attacks
+  on US/allied bases, satellite imagery, communications/radar infrastructure,
+  and regional water/energy security.
 - [[2026-06-04-mvp-thread-volume-and-issue-sprint-design]] — GDELT weak-support
   audit and recall pilot. GDELT remains non-authoritative, but can help recover
   candidate volume when its support, contradiction, entropy, and regional/source

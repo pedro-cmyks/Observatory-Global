@@ -17,6 +17,11 @@ data work lands in the existing UI instead of creating duplicate panels.
 
 ## Launch surfaces
 
+- Research Thread Builder / Workbench investigation:
+  [[2026-06-09-research-thread-builder-workbench]]. Target: natural compound
+  search produces a research tree, who-says-what matrix, frame comparison,
+  coverage gaps, and an editable Workbench dossier. This should extend Search
+  and Workbench rather than adding a duplicate panel.
 - Workbench early-access gate:
   `frontend-v2/src/components/InteractiveWorkspace.tsx` (preview overlay) +
   `/api/v2/waitlist`. Design: [[2026-06-03-workbench-waitlist-gate-design]].

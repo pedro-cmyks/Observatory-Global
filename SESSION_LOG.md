@@ -1,5 +1,76 @@
 # Atlas — Session Log
 
+## 2026-06-09 — Research Thread Builder / Workbench investigation spec
+
+Pedro reframed the Iran climate search experiment as a product objective:
+Atlas should not merely answer one research question; it should let any broad,
+compound natural query become an evidence-backed research dossier in Workbench.
+
+### Forcing case
+- Initial query: climate/weather in the Middle East, specifically Iran.
+- Required answers: who is talking, what each source/actor says, how frames
+  differ, where it is happening, why it is moving now, what countries and actors
+  are involved, and how the story evolves.
+- Compound branch added by Pedro: relationship between climate/water in Iran,
+  attacks on US/allied bases or satellite/communications infrastructure, other
+  Middle Eastern countries, and regional water/energy/security routes.
+
+### Web baseline
+Manual web research showed the correct research tree is not "climate" alone:
+`climate -> drought -> water scarcity -> Tehran reservoirs/rationing ->
+agriculture/groundwater -> protests/governance -> conflict damage to
+water/electricity infrastructure -> WASH/health -> regional water/energy
+security -> US bases/satellite imagery/communications/radar infrastructure`.
+
+Sources/frames found:
+- UNICEF: climate as child-rights, water, health, heat, displacement risk.
+- Al Jazeera: Tehran dams, rationing, agriculture, sanctions, poor management,
+  50C heat, water bankruptcy.
+- WRI: water stress plus conflict/security and food/energy/health risk.
+- ACAPS: humanitarian/WASH, damaged water and electricity infrastructure,
+  displaced people, waterborne disease risk, food inflation.
+- Guardian: day-zero, pressure cuts, protests, climate breakdown and
+  mismanagement.
+- AP/WaPo/OSINT-style reporting: attacks/damage around US/allied bases,
+  radars, satellite communications, air-defense equipment, and commercial
+  satellite imagery as contested evidence.
+
+### Atlas gap snapshot
+- `/api/v2/search/thread?q=Iran climate water drought&hours=168&country_code=IR`
+  -> 0 signals.
+- Variants `Iran water shortage`, `Iran drought`, `Tehran water`,
+  `Iran heatwave`, `Iran dams`, and `Iran water crisis` also returned 0.
+- `/api/v2/search/unified` detected country `IR` and suggested climate/water
+  concepts, but did not bridge those concepts to evidence.
+- `/api/v2/threads?hours=168&country_code=IR` did return country threads,
+  including `flood-landslide-disaster--ir`, but
+  `/api/v2/theme/flood-landslide-disaster?country_code=IR` returned 0. This is a
+  list/detail reconciliation bug class.
+- `/api/v2/signals?country_code=IR&sort=relevance` returned geopolitical
+  signals mixed with unrelated/noisy rows; retrieval is not intent-aware enough.
+
+### Spec created
+- `docs/specs/2026-06-09-research-thread-builder-workbench.md`
+
+The spec defines a detailed target:
+- natural research intent parser;
+- editable subquestions;
+- multi-lane evidence retrieval;
+- research tree;
+- who-says-what matrix;
+- frame comparison;
+- coverage gaps;
+- list/detail reconciliation;
+- Workbench add-branch flow;
+- dossier/export path;
+- phased implementation from fixture -> read-only API -> Workbench UI.
+
+### Next plan
+1. Open a dedicated GitHub issue for Research Thread Builder.
+2. Implement Phase 0 fixture for the Iran compound case.
+3. Build Phase 1 read-only `/api/v2/research/thread` prototype before changing
+   the public UI.
+
 ## 2026-06-09 — Dynamic-topic Kalman/state pilot
 
 Implemented the first read-only state-tracking pilot for `dynamic_topics`.

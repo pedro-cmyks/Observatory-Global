@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-06-09 (dynamic-topic state pilot).
+Last updated: 2026-06-09 (Research Thread Builder target).
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -8,7 +8,7 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
-## Current Session Context (2026-06-09, dynamic-topic state pilot)
+## Current Session Context (2026-06-09, Research Thread Builder target)
 
 Current branch is `v3-intel-layer` and is aligned with `origin/v3-intel-layer`.
 Commit `ca2130b` shipped the search query-thread builder (#175), Signal Stream
@@ -20,6 +20,11 @@ The latest local work adds a read-only Kalman/state report:
 `backend/scripts/dynamic_topic_state_report.py`, tested by
 `backend/tests/test_dynamic_topic_state_report.py`, with artifacts under
 `docs/research/topic-quality/2026-06-09-dynamic-topic-state-pilot.*`.
+
+Pedro then promoted the Iran climate/water search experiment into the next major
+product target: natural compound search should become a Research Thread Builder
+inside Workbench. The detailed spec is
+`docs/specs/2026-06-09-research-thread-builder-workbench.md`.
 
 Important current guardrails:
 
@@ -43,6 +48,13 @@ Important current guardrails:
 - The pilot now exists and must remain read-only unless Pedro explicitly asks to
   promote it into persistence/cron. It keeps `lifecycle_state` separate from
   `state_estimate` and flags explicit roundups as `do_not_promote_roundup`.
+- Research Thread Builder is the next target. It should solve broad searches
+  like "climate/water in Iran" plus related branches like "attacks on US/allied
+  bases, satellite imagery, communications/radar infrastructure, and regional
+  water/energy security" by producing a tree, who-says-what, frame comparison,
+  coverage gaps, and Workbench dossier.
+- Do not treat this as an Iran-only feature. The Iran case is the fixture and
+  acceptance test for a general natural research-search capability.
 
 Verification from 2026-06-08:
 
@@ -59,6 +71,8 @@ Verification from 2026-06-08:
 
 See `docs/research/topic-quality/2026-06-09-dynamic-topic-state-pilot.md` for
 the current pilot output.
+See `docs/specs/2026-06-09-research-thread-builder-workbench.md` for the next
+implementation target.
 
 ## Prior Session Context (2026-06-02, dynamic topics backend cutover)
 

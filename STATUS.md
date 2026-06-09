@@ -50,6 +50,49 @@ Next order:
 
 ---
 
+## Current product target (2026-06-09) — Research Thread Builder
+
+The next major product objective is no longer a one-off Iran climate search. It
+is a general Research Thread Builder for natural compound investigations.
+
+New design spec:
+
+- `docs/specs/2026-06-09-research-thread-builder-workbench.md`
+
+Forcing case:
+
+- "climate/water in Iran and the Middle East";
+- plus a related branch for attacks on US/allied bases, satellite imagery,
+  communications/radar infrastructure, and regional water/energy security.
+
+The spec defines the expected product outcome:
+
+- natural query interpretation and editable subquestions;
+- research tree;
+- who-says-what source/actor matrix;
+- frame comparison;
+- coverage gaps;
+- list/detail reconciliation;
+- Workbench handoff and dossier/export path.
+
+Current Atlas gap found during the experiment:
+
+- Atlas detects Iran and can suggest climate/water concepts, but direct
+  query-thread searches for `Iran climate water drought`, `Iran water shortage`,
+  `Iran drought`, `Tehran water`, `Iran heatwave`, `Iran dams`, and
+  `Iran water crisis` returned 0 signals.
+- `/api/v2/threads?country_code=IR&hours=168` did return Iran threads, including
+  `flood-landslide-disaster--ir`, but scoped theme detail for the same apparent
+  story returned 0. The builder must reconcile list/detail contradictions.
+- Signal Stream for Iran returned relevant geopolitical signals mixed with
+  unrelated/noisy rows; intent-aware stream retrieval is required.
+
+Next implementation should start with Phase 0/1 from the spec: create the Iran
+compound fixture, then build a read-only `/api/v2/research/thread` prototype
+before changing public UI.
+
+---
+
 ## Current handoff (2026-06-08/09) — MVP issue closeout shipped
 
 Current repo state: `v3-intel-layer` is aligned with `origin/v3-intel-layer`.
