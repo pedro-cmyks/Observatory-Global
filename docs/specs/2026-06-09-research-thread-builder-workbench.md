@@ -255,13 +255,46 @@ The Research Plan API is the planner/ranker over these indexes. It should return
 anchors because anchors are faster, safer, and more useful than pretending the
 first query can answer the whole investigation.
 
+## How People Search
+
+Atlas should also learn from how normal users search, not only from how search
+engines index data.
+
+Research patterns to support:
+
+1. **Berrypicking / trail following.** Users often do not know the final query
+   at the start. They pick one useful result, learn a new term/person/place, and
+   reformulate from there. Atlas should preserve that route as an investigation
+   trail.
+2. **Query reformulation.** Users repeatedly narrow, broaden, translate, add a
+   country, add an actor, switch wording, or ask a question after seeing partial
+   results. Atlas should treat reformulation as normal workflow, not failure.
+3. **Exploratory search.** Research tasks often have uncertainty and no single
+   known answer. Atlas should show anchors and next branches instead of forcing
+   one final result.
+4. **Social asking / public sensemaking.** Users often ask or inspect social
+   spaces in addition to search engines. Reddit and similar forums should be
+   modeled as public-attention / narrative-discovery lanes, not as verified
+   evidence by default.
+5. **Suggestion-guided search.** Google-style autocomplete uses real searches,
+   language/web patterns, context, trends, and policy filters. Atlas can use a
+   smaller version: suggest branches from query logs, current thread movement,
+   related entities/countries, public-attention spikes, and Workbench pins.
+
+Product consequence:
+
+```text
+search is not one query -> one answer
+search is query -> anchors -> inspection -> reformulation -> pins -> route
+```
+
 ## Investigative Usefulness Ranking
 
 The strongest part of this feature is ranking by **investigative usefulness**.
 Atlas should not rank only by text match or volume. It should rank anchors by
 whether opening or pinning them helps answer the user's research question.
 
-First-pass ranking formula:
+First-pass ranking model:
 
 ```text
 investigative_score =
@@ -273,9 +306,9 @@ investigative_score =
   + source_actor_value
   + geo_entity_fit
   + novelty_or_gap_value
-  - noise_penalty
-  - contradiction_penalty
-  - list_detail_penalty
+  - noise_risk_adjustment
+  - unsupported_claim_adjustment
+  - list_detail_mismatch_adjustment
 ```
 
 Initial criteria:
@@ -290,9 +323,9 @@ Initial criteria:
 | `source_actor_value` | Does it help answer "who says what"? | source diversity, actor extraction, voice mix, source-family lanes. |
 | `geo_entity_fit` | Does it match the requested country/region/entity/infrastructure scope? | country_code, entity mentions, related countries, infrastructure terms. |
 | `novelty_or_gap_value` | Does it reveal a drowned-out story, missing lane, or useful uncertainty? | public attention vs media mismatch, coverage gaps, silent-risk detectors. |
-| `noise_penalty` | Is it likely off-topic, generic, syndicated, entertainment/sports, or roundup? | relevance lanes, noise rate, dedupe/syndication, blacklist/roundup rules. |
-| `contradiction_penalty` | Does the anchor claim more than the evidence supports? | weak evidence role, context-only evidence, unsupported causal relation. |
-| `list_detail_penalty` | Does list count disagree with detail/evidence count? | `/threads` vs detail vs signal sample reconciliation. |
+| `noise_risk_adjustment` | Is it likely off-topic, generic, syndicated, entertainment/sports, or roundup? | relevance lanes, noise rate, dedupe/syndication, blacklist/roundup rules. |
+| `unsupported_claim_adjustment` | Does the anchor claim more than the evidence supports? | weak evidence role, context-only evidence, unsupported causal relation. |
+| `list_detail_mismatch_adjustment` | Does list count disagree with detail/evidence count? | `/threads` vs detail vs signal sample reconciliation. |
 
 This ranking should reuse the work already done in Atlas:
 
@@ -308,6 +341,52 @@ This ranking should reuse the work already done in Atlas:
 The ranking output should be inspectable. A user or reviewer should be able to
 ask: "Why did Atlas suggest this?" and see the contributing reasons, penalties,
 and gaps.
+
+### No Silent Filtering
+
+"Penalty" must not mean hidden censorship or irreversible deletion. In Atlas,
+these are **risk adjustments** and should be inspectable.
+
+Default rule:
+
+- Do not silently omit material that matches the user's investigation.
+- Downrank or label risky/noisy material.
+- Show why an item was downranked.
+- Allow the user to open a "filtered / low-confidence / noisy" tray when useful.
+- Preserve source provenance and retrieval lane.
+
+Sports, entertainment, celebrity, and lifestyle items are often low-value for
+geopolitical investigations, but they must not be blindly excluded. They can be
+politically relevant when athletes, artists, influencers, clubs, or fan groups
+participate in protest, sanctions, boycotts, national identity disputes,
+military propaganda, or public-attention campaigns.
+
+Example transparency payload:
+
+```json
+{
+  "anchor_id": "signal-123",
+  "visibility": "downranked",
+  "reason_codes": ["sports_lane", "weak_intent_match"],
+  "counter_signals": ["mentions protest", "mentions national team boycott"],
+  "final_action": "show_in_low_confidence_tray",
+  "user_message": "Downranked because this is sports coverage with weak climate/Iran match, but kept visible because it mentions protest."
+}
+```
+
+Atlas should maintain an **omission/downranking ledger** for every research plan:
+
+| Field | Purpose |
+|---|---|
+| `candidate_count` | How many candidate items were considered. |
+| `shown_count` | How many were shown as primary anchors. |
+| `downranked_count` | How many were moved to low-confidence/noisy trays. |
+| `omitted_count` | How many were omitted entirely. |
+| `reason_codes` | Why items were downranked/omitted. |
+| `appeal_action` | How the user can inspect or restore a class of results. |
+
+This is a product trust requirement. Good filtering is acceptable only when it
+is documented, inspectable, and reversible for the investigation.
 
 ## Step-by-Step Atlas Investigation Workflow
 
@@ -343,6 +422,7 @@ Atlas creates an interpreted query card and entry-point menu:
     {"type": "thread", "label": "Iran water/climate stress", "action": "open_thread"},
     {"type": "thread", "label": "Flood/disaster signals in Iran", "action": "open_thread"},
     {"type": "source_lane", "label": "Humanitarian / UN / NGO framing", "action": "inspect_sources"},
+    {"type": "social_lane", "label": "Reddit and forum discussion", "action": "inspect_public_discussion"},
     {"type": "public_attention", "label": "Public attention around Iran + water", "action": "inspect_attention"},
     {"type": "related_branch", "label": "US bases / satellite / communications layer", "action": "add_branch"}
   ],
@@ -362,6 +442,9 @@ should generate threads/options, not force a single answer path.
 If the user opens `Iran`, Atlas should use the existing Country Focus surface. If
 the user opens a thread, Atlas should use Narrative Threads / ThreadFocusPanel.
 If the user opens a source lane, Atlas should use source and signal panels.
+If the user opens a public discussion lane, Atlas should use Reddit/forum
+signals as commentary and narrative-discovery evidence, not as verified factual
+evidence by default.
 
 The same investigation can begin from several paths:
 
@@ -370,6 +453,8 @@ The same investigation can begin from several paths:
 - `Iran satellite bases` -> related-branch anchors -> inspect conflict
   infrastructure.
 - `UNICEF Iran water` -> source lane -> inspect humanitarian framing.
+- `Reddit Iran water` or `r/iran water crisis` -> public discussion lane ->
+  inspect what communities are asking, amplifying, doubting, or linking.
 
 Each surface needs the same core actions:
 
@@ -379,6 +464,8 @@ Each surface needs the same core actions:
 - `Show evidence route`;
 - `Show coverage gaps`;
 - `Open related thread`.
+- `Pin to current investigation`;
+- `Save to new investigation`.
 
 ### 3. Pin and Build the Workbench Route
 
@@ -393,6 +480,16 @@ adds a branch. It stores:
 - relations between pins;
 - coverage gaps;
 - ordered trail of how the user got there.
+
+Workbench should support multiple saved investigations, like a chat sidebar:
+
+- one active investigation at a time;
+- a sidebar/history of saved investigations;
+- `New investigation` starts a clean route without deleting older pins;
+- returning the next day should reopen the last active investigation or prompt
+  the user to continue vs start fresh;
+- pins from different investigations should not silently mix;
+- a user can manually move/copy a pin from one investigation to another.
 
 Example emerging Workbench graph:
 
@@ -557,6 +654,7 @@ The builder must run several retrieval lanes:
 | theme/detail | static and dynamic detail packets | `/api/v2/theme/*`, `/api/v2/threads/*` |
 | signal stream | recent notable evidence | `/api/v2/signals` with intent-aware filters |
 | public attention | wiki/search attention | existing public attention endpoints |
+| public discussion | Reddit/forum/community narratives | `ingest_reddit.py`, subreddit search, future forum adapters |
 | external context | web/manual enrich, only if enabled | explicit external source adapter |
 | historical processed | broader background windows | processed historical tables |
 
@@ -581,6 +679,41 @@ Every evidence item needs a role:
 
 This should reuse the existing evidence-role validation direction. The research
 thread builder should not treat all retrieved rows as equal.
+
+### C2. Reddit and Public Discussion Lane
+
+Reddit should be part of the research workflow because people often discuss,
+question, amplify, and route narratives there before those narratives are fully
+visible in formal news lanes.
+
+Current Atlas already has `backend/app/services/ingest_reddit.py` for a fixed
+set of subreddits. The Research Workflow should extend this into a query-time
+or scheduled public-discussion lane:
+
+- country subreddits: `r/iran`, `r/colombia`, `r/kuwait`, `r/AskMiddleEast`,
+  `r/UnitedStates`, etc.;
+- regional/global subreddits: `r/worldnews`, `r/geopolitics`,
+  `r/CredibleDefense`, `r/MiddleEast`;
+- topic subreddits where relevant: climate, energy, OSINT, defense, public
+  health, migration, local politics;
+- future forum adapters can follow the same contract if they are public,
+  legal, and useful.
+
+Important guardrail:
+
+```text
+Reddit/forum discussion = public attention, claims, questions, links, frames
+Reddit/forum discussion != verified evidence by default
+```
+
+The lane should answer:
+
+- What are people asking?
+- What links/sources are being shared?
+- Which claims are spreading?
+- Which communities/countries are discussing it?
+- Does public discussion reveal a branch that formal media is missing?
+- Is there formal evidence that supports or contradicts the public narrative?
 
 ### D. Frame Extractor
 
@@ -702,6 +835,32 @@ Response:
   "pin_candidates": [],
   "suggested_next_steps": [],
   "coverage_gaps": [],
+  "ranking_explanations": [
+    {
+      "anchor_id": "...",
+      "score_components": {
+        "intent_match": 0.8,
+        "thread_coherence": 0.7,
+        "evidence_strength": 0.5,
+        "answerability": 0.6,
+        "movement_signal": 0.4,
+        "source_actor_value": 0.3,
+        "geo_entity_fit": 0.9,
+        "novelty_or_gap_value": 0.2,
+        "noise_risk_adjustment": -0.1,
+        "unsupported_claim_adjustment": 0,
+        "list_detail_mismatch_adjustment": -0.2
+      },
+      "reason_codes": ["strong_geo_fit", "medium_evidence", "list_detail_mismatch"]
+    }
+  ],
+  "downranking_ledger": {
+    "candidate_count": 0,
+    "shown_count": 0,
+    "downranked_count": 0,
+    "omitted_count": 0,
+    "reason_codes": {}
+  },
   "quality_envelope": {
     "band": "thin|medium|high|degraded",
     "answerable_questions": ["where", "sources", "evidence"],
@@ -711,6 +870,31 @@ Response:
 ```
 
 V1 can be stateless/read-only. Persistence is optional later.
+
+### Latency and Progressive Loading
+
+Atlas does not need Google-scale millisecond answers for research workflows, but
+it must be honest about what is happening.
+
+Target response pattern:
+
+| Stage | Target | User-visible state |
+|---|---:|---|
+| Fast anchors | 1-3s | "Finding matching countries, threads, and source lanes..." |
+| Ranked research plan | 5-12s | "Ranking anchors by evidence, movement, sources, and gaps..." |
+| Public discussion / Reddit lane | 10-20s | "Checking public discussion and community signals..." |
+| Deep enrichment / external context | 20-60s | "Adding background context and checking unsupported claims..." |
+
+The first useful UI should appear as soon as fast anchors are ready. Deeper
+lanes can stream in progressively and update the Workbench route.
+
+Implementation rule:
+
+- Precompute thread/source/entity/public-attention indexes where possible.
+- Run slow lanes asynchronously.
+- Show partial results with provenance instead of blocking the whole workflow.
+- Keep a visible loading explanation for each lane.
+- Do not use slow external enrichment to hide the local Atlas result.
 
 ### `POST /api/v2/workbench/pins`
 
@@ -724,6 +908,38 @@ Persists or stages an item the user chose to keep.
     "target": {},
     "user_note": "why this matters"
   }
+}
+```
+
+### `POST /api/v2/workbench/investigations`
+
+Creates a clean investigation session so pins do not mix across unrelated
+research work.
+
+```json
+{
+  "title": "Iran climate and regional infrastructure",
+  "initial_query": "clima Iran Medio Oriente agua sequia",
+  "source": "search|manual|continue_prompt"
+}
+```
+
+### `GET /api/v2/workbench/investigations`
+
+Returns the sidebar/history list:
+
+```json
+{
+  "active_investigation_id": "...",
+  "investigations": [
+    {
+      "id": "...",
+      "title": "Iran climate and regional infrastructure",
+      "updated_at": "...",
+      "pin_count": 12,
+      "last_query": "US bases satellite communications Middle East"
+    }
+  ]
 }
 ```
 
@@ -774,6 +990,20 @@ User can add:
 - another actor/source;
 - another relation.
 
+### Investigation Sidebar
+
+Workbench should include a sidebar/history pattern:
+
+- current active investigation;
+- recent investigations;
+- `New investigation`;
+- `Continue last investigation`;
+- `Move/copy pin`;
+- clear indication when a pin belongs to a different investigation.
+
+This prevents the product from mixing yesterday's pins with today's unrelated
+research while preserving a durable research archive.
+
 Example:
 
 1. User starts: `clima Iran Medio Oriente`.
@@ -823,6 +1053,7 @@ Deliver:
 - country/thread/source/public-attention/gap anchor options;
 - pin candidates;
 - suggested next steps;
+- ranking explanations and downranking ledger;
 - coverage gaps including list/detail mismatch.
 
 No persistence. No LLM dependency required.
@@ -835,11 +1066,14 @@ Acceptance:
 - Output labels whether an anchor is direct evidence, context, weak support, or
   an unresolved gap.
 - Output marks gaps instead of hiding them.
+- Output explains why anchors were ranked, downranked, or omitted.
 
 ### Phase 2 — Workbench Pinning + Route UI
 
 Deliver:
 
+- investigation sidebar/history;
+- `New investigation` and `Continue last investigation`;
 - Search results can be pinned to Workbench.
 - Existing country/thread/source/evidence panels expose pin actions.
 - Workbench renders pinned route, evidence, frames, sources, actors, gaps.
@@ -940,6 +1174,27 @@ threads of work:
 | Sources and voice mix | #160, #148, #150, #154, #158, #180, #46 | "Who is talking?" requires source lanes, publisher expansion, non-anglophone coverage, quality/dominance checks, and conflict/event sources. |
 | Entity/actor hygiene | #176, #162, #166 | "Who says what?" needs clean actor/person/entity surfaces, not noisy string matches. |
 | Layout and provenance | #179, #183 | Investigation surfaces need clear active layers, provenance, counts, and source-of-truth display. |
+
+## Research References
+
+- Google Search Help, "How Google autocomplete predictions work":
+  `https://support.google.com/websearch/answer/7368877`
+  autocomplete uses real searches, wording patterns across the web, and
+  policy-based removals/exceptions.
+- Bates, "The Design of Browsing and Berrypicking Techniques for the Online
+  Search Interface":
+  `https://pages.gseis.ucla.edu/faculty/bates/articles/berrypicking.pdf` users
+  often gather information by following changing trails rather than executing
+  one perfect query.
+- Jansen, Booth, and Spink, "Patterns of query reformulation during Web
+  searching": `https://asistdl.onlinelibrary.wiley.com/doi/abs/10.1002/asi.21071`
+  query reformulation is a central web-search behavior.
+- Microsoft Research, "To Search or to Ask": users combine search engines with
+  social-network asking for some information needs:
+  `https://www.microsoft.com/en-us/research/publication/to-search-or-to-ask-the-routing-of-information-needs-between-traditional-search-engines-and-social-networks/`
+- Reddit API documentation: `https://www.reddit.com/dev/api/` Reddit remains a
+  useful public discussion source, but Atlas should treat it as public
+  discussion/commentary unless corroborated.
 
 ## Immediate Next Step
 

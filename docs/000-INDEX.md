@@ -34,9 +34,10 @@ below resolve via Obsidian's fuzzy search regardless of folder.
   natural research search + Workbench investigation: search returns Atlas
   anchors/options ranked by investigative usefulness, the user opens and pins
   useful items, and Workbench preserves the route for who-says-what, frame
-  comparison, coverage gaps, list/detail reconciliation, and optional
-  report/export using the Iran climate/water + US bases/satellite compound
-  case.
+  comparison, coverage gaps, transparent downranking, Reddit/public-discussion
+  lanes, saved investigation sidebar/history, list/detail reconciliation, and
+  optional report/export using the Iran climate/water + US bases/satellite
+  compound case.
 - [[2026-06-04-mvp-thread-volume-and-issue-sprint-design]] — MVP sprint design:
   use GDELT themes as weak, bias-measured support signals to recover Narrative
   Thread volume, then re-triage and close stale GitHub issues.

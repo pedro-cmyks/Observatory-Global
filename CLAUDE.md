@@ -61,6 +61,14 @@ Important current guardrails:
   thread coherence, evidence strength, answerability, movement, source/actor
   value, geo/entity fit, novelty/gap value, and penalties for noise,
   unsupported claims, or list/detail mismatch.
+- Do not implement ranking as silent filtering. The Research Workflow spec now
+  requires reason codes, ranking explanations, a downranking/omission ledger,
+  and inspectable low-confidence/noisy trays.
+- Reddit/forum discussion belongs in a public-attention / narrative-discovery
+  lane. It can suggest branches and show claims/questions/links, but it is not
+  verified evidence by default.
+- Workbench should support multiple saved investigations in a sidebar/history;
+  pins from unrelated sessions should not silently mix.
 - Do not frame the first search response as a finished dossier. The report is an
   optional later output generated from pinned Workbench state.
 - Do not treat this as an Iran-only feature. The Iran case is the fixture and

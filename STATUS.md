@@ -84,12 +84,23 @@ Product correction from Pedro:
   anchors by intent fit, thread coherence, evidence strength, answerability,
   movement, source/actor value, geo/entity fit, novelty/gap value, and penalties
   for noise, unsupported claims, or list/detail mismatch.
+- Ranking/downranking must be transparent and reversible. Atlas should expose a
+  downranking ledger with reason codes instead of silently hiding candidate
+  information.
+- Search should support how people actually search: reformulating queries,
+  following trails, inspecting social/public discussion, and saving separate
+  investigations over time.
+- Reddit/forum discussion is a public-attention and narrative-discovery lane,
+  not verified evidence by default.
 
 The spec defines the expected product outcome:
 
 - natural query interpretation and anchor options;
 - thread/country/source/public-attention entry points;
 - investigative-usefulness ranking;
+- ranking explanations and downranking ledger;
+- Reddit/public-discussion lane;
+- saved investigations/sidebar model for Workbench;
 - who-says-what source/actor matrix;
 - frame comparison;
 - coverage gaps;

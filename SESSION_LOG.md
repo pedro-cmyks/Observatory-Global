@@ -82,12 +82,26 @@ Search architecture correction:
   coherence, evidence strength, answerability, movement, source/actor value,
   geo/entity fit, novelty/gap value, and penalties for noise, unsupported
   claims, or list/detail mismatch.
+- Ranking should not become hidden bias. The spec now requires risk-adjustment
+  explanations, reason codes, a downranking/omission ledger, and a low-confidence
+  tray so users can inspect what was omitted or demoted.
+- Normal users search by reformulating, following trails, asking/socially
+  checking, and using suggestions. The spec now treats reformulation and
+  suggested branches as core workflow, not failure.
+- Reddit/forum discussion is added as a public-attention / narrative-discovery
+  lane. It can show what people are asking, amplifying, linking, or doubting,
+  but it is not verified evidence by default.
+- Workbench should support separate saved investigations in a sidebar/history so
+  yesterday's pins do not silently mix with today's research.
 
 The spec defines a detailed target:
 - natural research intent parser;
 - multi-lane anchor discovery;
 - thread/country/source/public-attention entry points;
 - investigative-usefulness ranking;
+- transparent downranking ledger;
+- Reddit/public-discussion lane;
+- saved investigation sidebar/history;
 - who-says-what matrix;
 - frame comparison;
 - coverage gaps;
