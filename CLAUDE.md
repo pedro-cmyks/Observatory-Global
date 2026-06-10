@@ -46,14 +46,28 @@ to Fly (`atlas-api-pedro`) and verified by production smoke:
   provider — still NEVER a semantic classifier; `lifecycle_state` stays
   separate from `state_estimate`.
 
+**Phase 1.5a shipped 2026-06-10** (`45834e8`, deployed):
+`research_semantic.py` — semantic lane with two bases, both
+`retrieval_lane=semantic` + `match_basis`: `member_centroid`
+(query↔`dynamic_topics.centroid_vec`, pooling replicates the snapshot
+pipeline exactly) and `topic_description` (query↔embedded atlas_topics
+label+description, cached per process, relative top-margin cut 0.012 —
+taxonomy similarity never presented as evidence). Cross-language verified
+real-model (Spanish↔Persian/English); pure-semantic case "crisis hídrica en
+Teherán" → water-stress anchor sim 0.7967. Fly api-runtime has no torch, so
+production shows the designed `lane_unavailable` gap ("recall is
+lexical-only") until #223.
+
 **Next work, in order:**
 
-1. Phase 1.5 — `e5-base` semantic lane (query↔thread/evidence similarity,
-   `retrieval_lane=semantic`); fixtures must include one cross-language case
-   (Persian/Arabic headline ↔ Spanish query).
+1. Phase 1.5b (#223) — semantic lane in production (ONNX vs nlp_worker
+   endpoint, measure RAM first) + persisted signal embeddings for
+   full-corpus retrieval.
 2. Phase 2 — Workbench: localStorage + pin-event log (#218) + JSON export +
    walkthrough E2E fixture (= #213 exit criterion). #152 search entry.
-3. Parallel, non-blocking: #219 Kalman movement feed; #217 credibility tiers.
+3. Parallel, non-blocking: #219 Kalman movement feed; #217 credibility
+   tiers; #220 funnel ledger; #221 maturity contract; #222 stratified
+   snapshot sampling.
 
 Tests: research suites = `pytest tests/test_research_*.py` (22 tests).
 Deploy: `./scripts/deploy-fly-api.sh`. Prod smoke:
