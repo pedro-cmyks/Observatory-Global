@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-06-09 (Research Workflow + Workbench target).
+Last updated: 2026-06-10 (Research Workflow Phases 1a/1b shipped + spec review).
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
@@ -8,7 +8,58 @@ This file provides Claude Code with essential context about the Observatorio Glo
 
 Observatorio Global is a narrative intelligence system that tracks, analyzes, and visualizes how topics and narratives propagate across global media sources. The system aggregates signals from GDELT 2.0, Google Trends, and Wikipedia, normalizes them into a unified schema, and provides insights on geographic drift, sentiment analysis, and narrative mutations.
 
-## Current Session Context (2026-06-09, Research Workflow + Workbench target)
+## Current Session Context (2026-06-10, Research Workflow Phases 1a/1b shipped)
+
+Branch `v3-intel-layer`, aligned with origin. All of the following is deployed
+to Fly (`atlas-api-pedro`) and verified by production smoke:
+
+- **Phase 1a (#215, closed):** deterministic intent parser
+  (`backend/app/services/research_plan.py`) + multi-lane anchor discovery
+  (`research_anchor_discovery.py`) + `POST /api/v2/research/plan` (120s Redis
+  cache, contract `research-plan-v0`). Lanes: country, threads (country-scoped
+  + global), public attention (trends_v2), related branches, coverage gaps.
+  Every anchor labeled direct_evidence/context/weak_support/gap; degraded
+  lanes emit gap notes, never 500s. Geo alias tokens excluded from topical
+  matching.
+- **Phase 1b (#216, closed):** `investigative_score` per anchor
+  (`research_ranking.py`), ranking_explanations with reason_codes,
+  downranking_ledger (candidate/shown/downranked/omitted reconciles exactly),
+  low_confidence_tray, noise lanes (sports/entertainment/roundup → tray, never
+  excluded), relevance gate `0.5 + 0.5*intent_match` exposed per anchor.
+- **Ranking calibration:** weights + normalization midpoints calibrated by
+  `backend/scripts/calibrate_research_ranking.py` — constraint harness over
+  spec-derived gold orderings + live forcing cases (21/21 vs baseline 20/21).
+  Report: `docs/research/ranking-calibration/2026-06-10-ranking-calibration.md`.
+  NOT seeded from #154 (that dependency was removed; see issue comment).
+- **Spec review + amendments:** judgment of the spec lives in
+  `docs/specs/2026-06-10-research-workflow-spec-review.md`; all amendments
+  applied in place to the spec (changelog section at top). Key decisions:
+  capability G source-credibility tiers added (#217, product face of Paper 2);
+  pin-event log is a Phase 2 day-one deliverable (#218 — the future
+  relevance-judgment dataset); evidence-window contract (hot ≤168h / processed
+  aggregates / archive not queryable) is spec capability H; #213 closes when
+  the Phase 2 walkthrough E2E fixture passes.
+- **Kalman promotion APPROVED (Pedro, 2026-06-10), scoped:** #219 — promote
+  the read-only state pilot to a persisted movement feed (velocity/surprise/
+  uncertainty per thread, written after the emergent-snapshot cron) consumed
+  by `movement_signal` v2 with `changed_10h` fallback. Strictly a movement
+  provider — still NEVER a semantic classifier; `lifecycle_state` stays
+  separate from `state_estimate`.
+
+**Next work, in order:**
+
+1. Phase 1.5 — `e5-base` semantic lane (query↔thread/evidence similarity,
+   `retrieval_lane=semantic`); fixtures must include one cross-language case
+   (Persian/Arabic headline ↔ Spanish query).
+2. Phase 2 — Workbench: localStorage + pin-event log (#218) + JSON export +
+   walkthrough E2E fixture (= #213 exit criterion). #152 search entry.
+3. Parallel, non-blocking: #219 Kalman movement feed; #217 credibility tiers.
+
+Tests: research suites = `pytest tests/test_research_*.py` (22 tests).
+Deploy: `./scripts/deploy-fly-api.sh`. Prod smoke:
+`curl -s -X POST https://atlas-api-pedro.fly.dev/api/v2/research/plan -H 'Content-Type: application/json' -d '{"query":"Iran climate water drought","hours":168}'`.
+
+## Prior Session Context (2026-06-09, Research Workflow + Workbench target)
 
 Current branch is `v3-intel-layer` and is aligned with `origin/v3-intel-layer`.
 Commit `ca2130b` shipped the search query-thread builder (#175), Signal Stream

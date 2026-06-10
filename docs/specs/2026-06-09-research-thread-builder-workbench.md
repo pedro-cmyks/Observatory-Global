@@ -9,6 +9,19 @@
 `docs/specs/2026-05-25-atlas-narrative-intelligence-framework.md`
 **Roadmap:** `docs/roadmap/2026-06-09-research-workflow-roadmap.md`
 
+## Changelog
+
+- **2026-06-10:** Amendments from the implementation review
+  (`docs/specs/2026-06-10-research-workflow-spec-review.md`), applied after
+  Phases 0.5/1a/1b shipped. Sections below are edited in place (no further
+  "correction layer" pattern): ranking-weight seeding (D1), relevance gate +
+  guardrail restated (D2), movement-signal provider (D3), walkthrough fixture
+  scope (D4), capability G source credibility (P2), pin-event logging in
+  Phase 2 (P3), evidence-window contract (B1), public-discussion coverage
+  self-description (B2), durability language (B3), #213 exit criterion (S2).
+  Kalman promotion to a movement feed approved by Pedro 2026-06-10 — as a
+  movement provider only, never as a semantic classifier.
+
 ## Product Review Correction
 
 Pedro clarified the core product shape on 2026-06-09:
@@ -84,10 +97,25 @@ Live/on-demand fetch is allowed only as an explicit, user-triggered deep action.
 ### Ranking needs weights and normalization
 
 `investigative_score` (below) is not an equal-weight sum. Each component is
-normalized to `[0, 1]` and multiplied by a tunable weight from config. Without
-this, cheap-to-score components (`geo_entity_fit`, `intent_match`) dominate and
-the expensive-but-important ones (`evidence_strength`, `answerability`) are
-drowned, making the "why ranked" explanations explain noise.
+normalized to `[0, 1]` and multiplied by a tunable weight from config.
+
+**Amended 2026-06-10 (D1/D2):** weights are NOT seeded from the #154
+source-quality audit — source metrics inform at most `source_actor_value` and
+`noise_risk` and cannot trade `intent_match` against `evidence_strength`.
+Weights are calibrated by the constraint-satisfaction harness
+(`backend/scripts/calibrate_research_ranking.py`) against gold ordering
+constraints derived from this spec's acceptance criteria plus live
+forcing-case constraints; normalization midpoints are calibrated from live
+thread distributions. Report:
+`docs/research/ranking-calibration/2026-06-10-ranking-calibration.md`.
+Additionally, a multiplicative **relevance gate** (`0.5 + 0.5·intent_match`,
+exposed per anchor in `ranking_explanations`) prevents large fast-moving
+threads with no intent match from burying the actual query match. The
+guardrail is therefore restated: `geo_entity_fit` and `movement_signal` must
+not dominate `evidence_strength`/`answerability`; `intent_match` may lead
+because the gate makes it the load-bearing usefulness axis. Rerun the
+calibration when data shifts or when real user relevance judgments (Phase 2
+pin-event log) become available.
 
 ### Workbench persistence: localStorage first
 
@@ -115,13 +143,18 @@ real frame quality is Phase 4.
 
 ### Movement signal source: Kalman state pilot
 
-The read-only Kalman state pilot (`backend/scripts/dynamic_topic_state_report.py`,
-model `kalman-state-v0-readonly`) produces per-thread `velocity`, `surprise`,
-`uncertainty`, and `trend`. This is the concrete provider for the ranking
-`movement_signal` component. It stays read-only and never promotes/suppresses
-semantic topics; the research planner only **reads** its state estimates as a
-movement hint. Promoting it from a manual report into a callable movement feed is
-an optional follow-up, not a Phase 1 blocker.
+**Amended 2026-06-10 (D3):** the v1 `movement_signal` provider is
+`changed_10h`/`trend` from thread rows — this is what Phase 1b shipped. The
+read-only Kalman state pilot
+(`backend/scripts/dynamic_topic_state_report.py`, model
+`kalman-state-v0-readonly`) produces per-thread `velocity`, `surprise`,
+`uncertainty`, and `trend` and is the **approved v2 provider**: Pedro
+green-lit (2026-06-10) promoting it from a manual report into a persisted
+movement feed (cron writes state estimates; the ranking reads them as the
+movement hint). Scope of that promotion is strictly **movement provider** —
+it never classifies topics, never promotes/suppresses semantic threads, and
+`lifecycle_state` stays separate from `state_estimate`. Tracked as its own
+issue; not a Phase 1.5/2 blocker.
 
 ### Evidence modality, not a satellite relation type
 
@@ -904,6 +937,13 @@ The lane should answer:
 - Does public discussion reveal a branch that formal media is missing?
 - Is there formal evidence that supports or contradicts the public narrative?
 
+**Coverage self-description (added 2026-06-10, B2):** lane coverage is a
+function of the scheduled ingest list. When an investigation's `geo_scope`
+has no ingested subreddits, the lane must emit
+`coverage_gap {lane: public_discussion, reason: not_ingested}` (the Phase 1a
+gap mechanism already supports this) instead of returning silent emptiness.
+Extending the ingest list then becomes a visible, data-driven action.
+
 ### D. Frame Extractor
 
 Frame extraction should start rule-based, then graduate to model-assisted only
@@ -985,6 +1025,43 @@ If these disagree, the node should show a gap:
 
 No user-facing surface should silently show `133` in one place and `0` in
 another.
+
+### G. Source Credibility Tiers (added 2026-06-10, P2)
+
+The claim-verification forcing case requires distinguishing
+low-credibility/conspiracy outlets, national agencies, mainstream media, and
+scientific fact-checkers in the who-says-what matrix. Without this the matrix
+would present Global Research and NOAA as peers, and the case cannot pass
+honestly.
+
+This capability is the **product face of Paper 2** ("Cross-source
+source-quality scoring for narrative intelligence") and consumes the #154
+audit:
+
+- v1 is a small, inspectable tier map: existing `is_state_media` flag +
+  `source_family` + a fact-checker/met-agency allowlist + a known-conspiracy
+  list seeded from this spec's claim-verification baseline sources;
+- tiers are labels with provenance, never silent filters (No Silent Filtering
+  applies: a low-credibility source is shown with its tier, not hidden);
+- expansion and measurement follow the Paper 2 methodology
+  (`atlas-topic-benchmark-v2` statistical conventions);
+- ranking consumption: tier feeds `source_actor_value` priors and
+  `noise_risk` inputs — it does not get its own additive component until the
+  calibration harness shows a constraint that demands one.
+
+### H. Evidence-Window Contract (added 2026-06-10, B1)
+
+`POST /api/v2/research/plan` accepts `hours` up to 720, but evidence depth is
+not uniform across that range. The plan must emit the window band as part of
+its honesty contract instead of pretending uniform depth:
+
+| Window | Evidence depth | Research-plan behavior |
+|---|---|---|
+| ≤168h (hot) | full `signals_v2` + evidence samples | all lanes active |
+| 168h–~90d (processed) | aggregates only (`theme_country_hourly_v2`, processed historical) | thread/country anchors OK; evidence samples marked unavailable; gap note `evidence detail limited to aggregates beyond the hot window` |
+| beyond (archive) | manifests on the external disk, no live query path | not queryable; the plan states it explicitly; an archive bridge is its own future issue, never an implicit promise |
+
+This is the product-facing consequence of the temporal model (Paper 6).
 
 ## Backend Contract Proposal
 
@@ -1195,7 +1272,11 @@ Workbench should include a sidebar/history pattern:
 - clear indication when a pin belongs to a different investigation.
 
 This prevents the product from mixing yesterday's pins with today's unrelated
-research while preserving a durable research archive.
+research. **Durability note (amended 2026-06-10, B3):** v1 storage is
+localStorage — per-browser and evictable, NOT a durable archive. Durability in
+v1 comes from JSON export, which therefore ships in Phase 2 (not 3). The
+Phase 2 pin-event log incidentally provides server-side reconstruction
+capability.
 
 Example:
 
@@ -1321,11 +1402,26 @@ Deliver:
 - Existing country/thread/source/evidence panels expose pin actions.
 - Workbench renders pinned route, evidence, frames, sources, actors, gaps.
 - Allows `Add branch`.
+- **Pin-event log (added 2026-06-10, P3):** log
+  `(plan_id, anchor_id, rank_shown, opened, pinned, dwell)` from day one —
+  a Postgres table or JSONL, no new infra. Anchor impressions → opens → pins
+  are graded relevance labels. This is simultaneously the ranking-calibration
+  dataset (replacing spec-derived constraints with real judgments), the
+  Paper 7 analyst-workflow evidence, and the input for suggestion-guided
+  search. Cheap at build time, impossible to retrofit.
+- **JSON export** of the pinned investigation (moved up from Phase 3 — it is
+  the v1 durability mechanism, see B3).
 
 Acceptance:
 
 - User can reproduce the Iran climate + satellite/bases compound investigation
   without leaving Atlas and without losing the route they took.
+- The 8-step walkthrough (Immediate Next Step section) passes as an automated
+  E2E fixture for both forcing cases. **This fixture is the exit criterion
+  for umbrella #213 (added 2026-06-10, S2/D4):** Phases 1a/1b acceptance was
+  the per-layer fixtures that already exist; the walkthrough fixture is
+  Phase 2's, and #213 closes when it passes. Tier B/C/D work beyond that is
+  ongoing product work, not umbrella scope.
 
 ### Phase 3 — Report/Export
 
@@ -1457,7 +1553,7 @@ the `movement_signal` provider — see Scope Corrections.)
 
 | Issue | Role |
 |---|---|
-| #154 source quality/dominance audit | Should precede ranking; seeds initial `w_*` weights. |
+| #154 source quality/dominance audit | Grounds `noise_risk` inputs and source-tier priors (capability G); weights themselves come from the calibration harness (amended 2026-06-10). |
 | #166 analyst confidence calibration | Confidence bands on evidence/frames. |
 | #180 reliefweb API/proxy fix | Restores the humanitarian source lane (UNICEF/ACAPS in the Iran matrix). |
 | #148 publisher expansion in CountryBrief | Source breadth for `source_actor_value`. |
@@ -1496,13 +1592,17 @@ separate backlog; `#151`/`#179`/`#183` have only weak provenance/frame ties.
 
 ### Suggested attack order
 
-1. Phase 0.5 list/detail fix (trust prerequisite).
-2. Tier A surfaces + Phase 1a anchors (#207, #173, #168, #172, #160, #176, #178).
-3. Tier C #154 audit -> seed ranking weights -> Phase 1b.
+1. Phase 0.5 list/detail fix (trust prerequisite). **[done 2026-06-09]**
+2. Tier A surfaces + Phase 1a anchors. **[Phase 1a done 2026-06-10: #215]**
+3. Phase 1b ranking + ledger, weights via calibration harness.
+   **[done 2026-06-10: #216 + calibration]**
 4. Tier B recall lane (#161 first, then #185 + multilingual) + Phase 1.5
-   `e5-base` semantic lane.
-5. Phase 2 Workbench (localStorage) + #152 search entry.
+   `e5-base` semantic lane (fixtures must include one cross-language case).
+5. Phase 2 Workbench (localStorage + pin-event log + JSON export) + #152
+   search entry. Walkthrough fixture = #213 exit criterion.
 6. Tier D NLP capacity as a continuous backbone track in parallel.
+7. Kalman movement-feed promotion (approved 2026-06-10, own issue) — parallel,
+   not blocking.
 
 ## Research References
 
@@ -1560,10 +1660,21 @@ Step 7: Pin source/actor/evidence items.
 Step 8: Workbench shows route, relations, gaps, who-says-what, and optional report.
 ```
 
-Turn that walkthrough into the automated acceptance fixture. Then:
+Turn that walkthrough into the automated acceptance fixture — it is the
+Phase 2 exit criterion for #213 (amended 2026-06-10, D4: steps 4-8 are
+Phase 2 surface, so the full E2E fixture lands with Phase 2; Phases 0.5/1a/1b
+were accepted on their per-layer fixtures).
 
-1. Fix list/detail reconciliation (Phase 0.5) so opened anchors are not empty.
-2. Implement Phase 1a (read-only anchors over existing surfaces) and assert the
-   fixture before touching public UI.
-3. Run the #154 source-quality audit to seed ranking weights, then Phase 1b.
-4. Add the `e5-base` semantic lane (Phase 1.5) for cross-language recall.
+Status as of 2026-06-10:
+
+1. ~~Phase 0.5 list/detail reconciliation~~ — done.
+2. ~~Phase 1a read-only anchors~~ — done (#215, deployed).
+3. ~~Phase 1b ranking + transparency ledger~~ — done (#216, deployed), weights
+   via the calibration harness (not the #154 audit).
+4. **Next:** Phase 1.5 `e5-base` semantic lane for cross-language recall
+   (include a Persian/Arabic ↔ Spanish fixture case).
+5. Then Phase 2 Workbench: localStorage + pin-event log + JSON export +
+   walkthrough fixture.
+6. Parallel: Kalman movement-feed promotion (approved, own issue);
+   capability G source-credibility tiers (own issue, feeds the
+   claim-verification case).
