@@ -37,7 +37,21 @@ below resolve via Obsidian's fuzzy search regardless of folder.
   comparison, coverage gaps, transparent downranking, Reddit/public-discussion
   lanes, saved investigation sidebar/history, list/detail reconciliation, and
   optional report/export using the Iran climate/water + US bases/satellite
-  compound case.
+  compound case. **This is the working guide for current effort.** Phases
+  0.5/1a/1b shipped 2026-06-09/10; amendments tracked in its Changelog.
+- [[2026-06-10-research-workflow-spec-review]] — critical review of that spec
+  after Phases 0.5/1a/1b shipped: divergences from shipped reality,
+  paper-line alignment gaps (source credibility = Paper 2 → #217,
+  evidence-role benchmark binding, Workbench pin-log as the future
+  relevance-judgment dataset → #218), data-line gaps (evidence-window
+  contract), and the amendment plan (applied in place).
+- [[2026-06-10-funnel-maturity-and-positioning]] — measured 24h funnel
+  (194,674 raw → 442 served cluster members), serving-maturity tiers instead
+  of a blanket T-1h delay (#221), funnel observability ledger (#220),
+  stratified snapshot sampling (#222), Pipeline Funnel Principle ("gates
+  decide what Atlas volunteers, not what it can find when asked"),
+  Measurement Provenance Principle (paper numbers are method-dependent
+  estimates), and the "Why Atlas vs Google" positioning answer.
 - [[2026-06-04-mvp-thread-volume-and-issue-sprint-design]] — MVP sprint design:
   use GDELT themes as weak, bias-measured support signals to recover Narrative
   Thread volume, then re-triage and close stale GitHub issues.

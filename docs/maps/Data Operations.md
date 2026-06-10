@@ -19,6 +19,21 @@ and production runtime constraints.
 - [[2026-05-20-atlas-hot-cold-data-operating-model-design]]
 - [[2026-05-30-phase-2-emergent-wiring-handoff]]
 
+## Funnel and serving maturity (2026-06-10)
+
+- [[2026-06-10-funnel-maturity-and-positioning]] — measured 24h funnel:
+  194,674 raw → 153,538 deduped → 14,343 topic-assigned → 6,785 NLP'd →
+  442 latest-snapshot cluster members. Separates deliberate precision
+  filtering from capacity ceilings.
+- #220 funnel observability ledger (stage counts + drop causes, measurement
+  only); #221 serving maturity contract (sealed-hour floor for aggregates,
+  provisional badge for live stream — instead of a blanket T-1h delay, which
+  cannot fix the 3.5% NLP coverage); #222 stratified snapshot sampling
+  (replaces the latest-15K cap that over-represents anglophone volume).
+- Governing rule (spec Pipeline Funnel Principle): gates decide what Atlas
+  volunteers, not what it can find when asked — Phase 1.5 semantic lane
+  retrieves the full deduped corpus with quality labels.
+
 ## Operational guardrails
 
 - Raw historical archive remains local but physically lives on the external disk

@@ -25,7 +25,15 @@ Two different kinds of drop are mixed and must be separated:
 
 - **Deliberate precision filtering** (gates, noise rates, roundup rules) —
   this is the product working as designed; Paper 1 measured why (41.6% raw
-  precision → 70-90% gated).
+  precision → 70-90% gated). **Caveat (Pedro, 2026-06-10):** those paper
+  numbers are themselves method-dependent estimates — one sampling strategy,
+  one annotator process, one window — not law. A different method can
+  legitimately yield a different number. This is now a standing spec rule
+  (Measurement Provenance Principle in
+  [[2026-06-09-research-thread-builder-workbench]]): any number that gates a
+  product decision gets an alternate-method probe before it hardens. The
+  stratified-sampling issue (#222) is the first such probe: the current
+  cluster population is partly an artifact of latest-N sampling.
 - **Capacity/coverage ceilings** (15K snapshot cap, 7.4% classification
   coverage, 3.5% NLP coverage) — these are NOT editorial decisions. They are
   silent recall losses that nobody chose per-signal.
@@ -186,17 +194,30 @@ topics outside the ingested field, and deep document reading. Positioning
 must not pretend otherwise; the external-context lane (Phase 5) exists
 precisely because Atlas should *orchestrate* web context, not replace it.
 
-## Proposed actions (none taken yet)
+## Actions taken (approved by Pedro 2026-06-10)
 
-1. **Issue: funnel observability ledger** (2a) — stats endpoint + nightly
-   report; measurement only, no behavior change. Small.
-2. **Issue: serving maturity contract** (1) — sealed-hour floor for
-   aggregate surfaces + provisional badge for live stream. Medium; extends
-   capability H.
-3. **Issue: snapshot sampling diversity** (2b.1) — measure embedding
-   headroom; stratified sampling instead of latest-15K. Small-medium.
-4. **Fold 2c into Phase 1.5 scope** — the semantic lane retrieves from the
-   full deduped corpus with quality labels, not only the gated pool. This is
-   a scope clarification on the existing plan, not new work.
-5. **Positioning section** — this doc's section 3 is the seed; promote to a
-   standalone positioning doc when Landing/marketing needs it.
+1. **#220 — funnel observability ledger** (2a): stats endpoint + nightly
+   report; measurement only.
+2. **#221 — serving maturity contract** (1): sealed-hour floor for aggregate
+   surfaces + provisional badge for live stream; spec capability H extended.
+3. **#222 — stratified snapshot sampling** (2b.1): also the first
+   Measurement Provenance probe.
+4. **Folded into Phase 1.5 scope** (2c): semantic lane retrieves the full
+   deduped corpus with quality labels — spec Phase 1.5 deliverables +
+   acceptance updated.
+5. **Spec amended**: Pipeline Funnel Principle + Measurement Provenance
+   Principle added to [[2026-06-09-research-thread-builder-workbench]]
+   (see its Changelog, second 2026-06-10 pass).
+6. **Positioning** stays seeded in section 3; promote to standalone when
+   Landing/marketing needs it.
+
+## Obsidian connections
+
+- Spec (work guide): [[2026-06-09-research-thread-builder-workbench]]
+- Spec review that preceded this: [[2026-06-10-research-workflow-spec-review]]
+- Paper line: [[2026-05-27-atlas-papers-master-plan]],
+  [[2026-06-03-paper-1-result-skeleton]], [[2026-06-02-rq1-improvement-methods]]
+- Data line: [[2026-05-20-atlas-hot-cold-data-operating-model-design]],
+  [[2026-05-21-data-operating-roadmap]]
+- Ranking calibration this builds on:
+  `docs/research/ranking-calibration/2026-06-10-ranking-calibration.md`

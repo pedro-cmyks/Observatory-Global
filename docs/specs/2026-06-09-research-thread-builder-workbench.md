@@ -21,6 +21,17 @@
   self-description (B2), durability language (B3), #213 exit criterion (S2).
   Kalman promotion to a movement feed approved by Pedro 2026-06-10 — as a
   movement provider only, never as a semantic classifier.
+- **2026-06-10 (second pass):** funnel/maturity/positioning analysis folded
+  in (`docs/research/2026-06-10-funnel-maturity-and-positioning.md`,
+  approved by Pedro): serving-maturity tiers added to capability H; new
+  Pipeline Funnel Principle ("gates decide what Atlas volunteers, not what
+  it can find when asked") with funnel observability ledger + second-chance
+  retrieval folded into Phase 1.5 scope; new Measurement Provenance
+  Principle — benchmark/paper numbers are method-dependent estimates, every
+  product-gating number gets an alternate-method probe on the route.
+  "Why Atlas vs Google" positioning lives in the analysis doc; the
+  forcing-case web baselines are the standing Google-comparison control
+  group.
 
 ## Product Review Correction
 
@@ -433,6 +444,59 @@ show the accumulated graph/trail and optional report view.
 
 The system must make uncertainty visible. It should not pretend it found
 evidence when it only found taxonomy similarity or web context.
+
+### Pipeline Funnel Principle (added 2026-06-10)
+
+No Silent Filtering applies to the whole ingest→serve pipeline, not only to
+the research plan. Measured 2026-06-10 (live 24h): 194,674 raw signals →
+153,538 distinct headlines → 14,343 topic-assigned → 442 latest-snapshot
+cluster members. Two different kinds of drop are mixed today and must be
+separated:
+
+- **deliberate precision filtering** (gates, noise rates, roundup rules) —
+  working as designed, justified by measured precision (Paper 1);
+- **capacity/coverage ceilings** (15K snapshot input cap, 7.4% classification
+  coverage, 3.5% NLP coverage) — silent recall losses nobody chose
+  per-signal. These are fixed by raising capacity (#185, #163/#164/#184,
+  stratified snapshot sampling), never by loosening precision gates.
+
+Governing rule:
+
+```text
+Gates decide what Atlas volunteers.
+Gates must not decide what Atlas can find when asked.
+```
+
+Consequences: a funnel observability ledger (stage-by-stage counts with drop
+causes — the pipeline-level twin of the research plan's downranking ledger),
+and second-chance retrieval — research queries (Phase 1.5 semantic lane,
+query-time enrichment #161) retrieve from the **full deduped corpus**, not
+only the gated pool, with evidence labels carrying the quality verdict.
+Analysis: `docs/research/2026-06-10-funnel-maturity-and-positioning.md`.
+
+### Measurement Provenance Principle (added 2026-06-10)
+
+The measured numbers this spec relies on (Paper 1 precision 41.6%, gate lift
+41%→70%, student 78.2%/71.4%, the funnel counts above, the calibration's
+21/21 constraints) are **method-dependent estimates, not law**. Each came
+from one sampling strategy, one annotator process, one window, one
+constraint set; a different method can legitimately produce a different
+number. Rules:
+
+- every number cited in this spec carries its method and date; re-measuring
+  with the same tooling must be one command;
+- before any number gates a product decision (e.g. "keep the precision gate
+  at X"), the route includes at least one **alternate-method probe**:
+  different sampling (stratified vs latest-N), different window, different
+  annotator mix, or an ablation — Paper 1's own missing-evidence list
+  (temporal hold-out, BERTopic/lex-only ablations) is exactly this and
+  doubles as product validation;
+- when an alternate method moves a number materially, the spec text is
+  amended in place (changelog), not defended.
+
+This is the same skepticism the ranking calibration already applied to this
+spec's own guidance (the #154 weight-seeding claim did not survive contact
+with implementation), turned into a standing rule.
 
 ## Search Architecture Principle
 
@@ -1063,6 +1127,23 @@ its honesty contract instead of pretending uniform depth:
 
 This is the product-facing consequence of the temporal model (Paper 6).
 
+**Serving maturity (added 2026-06-10, extends H backward to fresh data):**
+the same honesty applies to the newest data. Measured 2026-06-10: NLP covers
+~3.5% of a 24h window, topic classification ~7.4%, so a blanket serving delay
+cannot guarantee "processed" — maturity must be labeled, not assumed:
+
+| Maturity tier | Meaning | Guarantee |
+|---|---|---|
+| `provisional` | ingested < 1h ago | exists, deduped; raw GDELT tone; topic/NLP may be missing |
+| `classified` | topic cron passed (≤1h) | dedup + topic assignment stable; counts stop moving |
+| `enriched` | NLP done | RoBERTa sentiment, NER done (per-signal badge, never a global promise at current capacity) |
+
+Aggregate surfaces (Brief, threads, country counts) read from **sealed hours
+only** (`classified` floor) so counts and rankings stop shifting under the
+user; live stream surfaces keep serving `provisional` with an explicit
+"unconsolidated" badge. Analysis:
+`docs/research/2026-06-10-funnel-maturity-and-positioning.md`.
+
 ## Backend Contract Proposal
 
 ### `POST /api/v2/research/plan`
@@ -1379,13 +1460,23 @@ Deliver:
 - query↔thread and query↔evidence similarity using the existing local
   `e5-base` embeddings;
 - semantic candidates merged into anchor discovery, labeled `retrieval_lane =
-  semantic`.
+  semantic`;
+- **(scope clarified 2026-06-10, Pipeline Funnel Principle)** the semantic
+  lane retrieves over the **full deduped corpus** (~153K/24h), not only the
+  gated/served pool — quality verdicts ride on evidence labels
+  (`weak_support`, `below_gate`, `unclassified`), so the 99% funnel drop is
+  default-hidden but query-reachable, never unreachable.
 
 Acceptance:
 
 - A natural query with no lexical match (incl. cross-language headlines) can
   still surface related evidence anchors via semantic similarity, labeled as
   semantic rather than direct match.
+- Fixtures include at least one cross-language case (Persian/Arabic headline
+  ↔ Spanish query) — cross-language recall is the stated reason this lane
+  exists.
+- A signal below the precision gate is retrievable by a matching semantic
+  query and arrives labeled with its gate status.
 
 ### Phase 2 — Workbench Pinning + Route UI
 

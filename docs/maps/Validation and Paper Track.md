@@ -36,6 +36,24 @@ gating, annotator agreement, and the future paper series.
   for Atlas judging/teacher labels after the `llama3.2:1b` M1 pilot failed the
   validation bar.
 
+- [[2026-06-10-research-workflow-spec-review]] — connects the paper line to
+  the research-workflow spec: capability G source-credibility tiers is the
+  product face of Paper 2 (#217); Phase 4 should extend Paper 1's benchmark
+  machinery to research roles (`contradiction` first); the Workbench pin-event
+  log (#218) is the future relevance-judgment dataset for ranking calibration
+  and Paper 7.
+- [[2026-06-10-funnel-maturity-and-positioning]] — measured ingest→serve
+  funnel + the **Measurement Provenance Principle** (now in the spec): paper
+  numbers (41.6%, gate lifts, student precision) are method-dependent
+  estimates, not law; every product-gating number gets an alternate-method
+  probe (#222 stratified snapshot sampling is the first — the current cluster
+  population is partly an artifact of latest-N sampling).
+- Ranking calibration harness:
+  `backend/scripts/calibrate_research_ranking.py` + report under
+  `docs/research/ranking-calibration/` — weights fit to spec-derived ordering
+  constraints + live forcing cases; reruns when real relevance judgments
+  (#218) arrive.
+
 ## Validation findings
 
 - Paper 1 is not closed as a manuscript. RQ1 is closed enough as a measured
