@@ -134,6 +134,18 @@ def score_anchor(
     intent_match = min(
         1.0, _EVIDENCE_LABEL_INTENT.get(evidence_label, 0.0) + 0.05 * len(matched)
     )
+    semantic_sim = anchor.get("semantic_similarity")
+    if semantic_sim is not None:
+        # e5 cosines compress into a high band; rescale to [0, 1] so a strong
+        # semantic match competes with a lexical direct match instead of being
+        # read off the weak_support floor. The two match bases have different
+        # live distributions (see research_semantic threshold notes), so each
+        # gets its own scale.
+        if anchor.get("match_basis") == "topic_description":
+            scaled = (float(semantic_sim) - 0.755) / 0.045
+        else:  # member_centroid
+            scaled = (float(semantic_sim) - 0.75) / 0.20
+        intent_match = max(intent_match, max(0.0, min(1.0, scaled)))
 
     if anchor_type == "thread":
         thread_coherence = _confidence_value(anchor)
@@ -280,6 +292,8 @@ def score_anchor(
         reason_codes.append("coverage_gap")
     if anchor_type == "public_attention":
         reason_codes.append("public_discussion_lane")
+    if semantic_sim is not None:
+        reason_codes.append("semantic_match")
 
     if relevance_gate < 0.7:
         reason_codes.append("low_relevance_gated")

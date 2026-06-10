@@ -1762,8 +1762,15 @@ Status as of 2026-06-10:
 2. ~~Phase 1a read-only anchors~~ — done (#215, deployed).
 3. ~~Phase 1b ranking + transparency ledger~~ — done (#216, deployed), weights
    via the calibration harness (not the #154 audit).
-4. **Next:** Phase 1.5 `e5-base` semantic lane for cross-language recall
-   (include a Persian/Arabic ↔ Spanish fixture case).
+4. ~~Phase 1.5a semantic lane~~ — done 2026-06-10: query↔thread over
+   `dynamic_topics` centroids + atlas-topic description anchors
+   (`match_basis` labeled — taxonomy similarity is never presented as
+   evidence), cross-language verified with the real model (Spanish query ↔
+   Persian/English headlines; pure-semantic query "crisis hídrica en
+   Teherán" → water-stress anchor, sim 0.797). Degrades to a visible
+   `lane_unavailable` gap where torch is absent (Fly api-runtime today).
+   **Phase 1.5b = #223:** production embedding (ONNX vs nlp_worker endpoint,
+   measure first) + persisted signal embeddings for full-corpus retrieval.
 5. Then Phase 2 Workbench: localStorage + pin-event log + JSON export +
    walkthrough fixture.
 6. Parallel: Kalman movement-feed promotion (approved, own issue);

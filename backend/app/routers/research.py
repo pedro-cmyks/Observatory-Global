@@ -6,6 +6,7 @@ ranking ledger (Phase 1b), no persistence (Phase 2), no LLM.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 
@@ -18,6 +19,12 @@ from app.main_v2 import app
 from app.services.research_anchor_discovery import discover_anchors
 from app.services.research_plan import parse_research_intent
 from app.services.research_ranking import rank_plan
+from app.services.research_semantic import (
+    embed_atlas_anchors,
+    embed_query,
+    fetch_atlas_topic_anchors,
+    fetch_topic_centroids,
+)
 from app.services.thread_intelligence import fetch_threads
 
 router = APIRouter(prefix="/api/v2/research", tags=["research"])
@@ -70,11 +77,29 @@ async def research_plan(body: ResearchPlanRequest) -> dict:
         except Exception:
             pass
 
+    async def _fetch_centroids() -> list[dict]:
+        if db.pool is None:
+            return []
+        async with db.pool.acquire() as conn:
+            return await fetch_topic_centroids(conn)
+
+    async def _fetch_atlas_anchors() -> list[dict] | None:
+        if db.pool is None:
+            return []
+        async with db.pool.acquire() as conn:
+            topics = await fetch_atlas_topic_anchors(conn)
+        # embedding is CPU-blocking; cached per process after first call
+        return await asyncio.to_thread(embed_atlas_anchors, topics)
+
     plan = await discover_anchors(
         intent,
         hours=body.hours,
         fetch_threads_fn=fetch_threads,
         fetch_attention_fn=_fetch_attention,
+        # embedding is CPU-blocking (model load + encode); keep it off the loop
+        embed_query_fn=lambda text: asyncio.to_thread(embed_query, text),
+        fetch_centroids_fn=_fetch_centroids,
+        fetch_atlas_anchors_fn=_fetch_atlas_anchors,
     )
     plan = rank_plan(plan)
     plan["query"] = body.query

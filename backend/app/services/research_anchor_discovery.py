@@ -99,6 +99,9 @@ async def discover_anchors(
     hours: int,
     fetch_threads_fn: ThreadFetcher,
     fetch_attention_fn: AttentionFetcher | None = None,
+    embed_query_fn: Callable[[str], list[float] | None] | None = None,
+    fetch_centroids_fn: Callable[..., Awaitable[list[dict[str, Any]]]] | None = None,
+    fetch_atlas_anchors_fn: Callable[..., Awaitable[list[dict[str, Any]] | None]] | None = None,
 ) -> dict[str, Any]:
     """Discover anchors for parsed intent. Degrades lane-by-lane: a failing
     lane contributes a gap note, never an exception."""
@@ -233,6 +236,90 @@ async def discover_anchors(
                         "params": {"country_code": code, "query": keyword, "hours": hours},
                     },
                 })
+
+    # ── Semantic lane (Phase 1.5a: query↔thread over e5 centroids) ───────
+    if embed_query_fn is not None and fetch_centroids_fn is not None:
+        from app.services.research_semantic import (
+            semantic_evidence_label,
+            semantic_topic_candidates,
+        )
+        import inspect
+        try:
+            query_vec = embed_query_fn(intent.get("main_intent") or "")
+            if inspect.isawaitable(query_vec):
+                query_vec = await query_vec
+            if query_vec is None:
+                coverage_gaps.append({
+                    "gap_type": "lane_unavailable",
+                    "lane": "semantic",
+                    "note": (
+                        "Semantic lane unavailable in this deployment "
+                        "(embedding model not present); recall is lexical-only."
+                    ),
+                })
+            else:
+                topics = await fetch_centroids_fn()
+                for cand in semantic_topic_candidates(query_vec, topics):
+                    thread_id = f"dynamic-topic-{cand['topic_id']}"
+                    if thread_id in seen_thread_ids:
+                        continue  # lexical lanes already anchored it
+                    seen_thread_ids.add(thread_id)
+                    anchors.append({
+                        "anchor_type": "thread",
+                        "lane": "semantic",
+                        "retrieval_lane": "semantic",
+                        "match_basis": "member_centroid",
+                        "id": thread_id,
+                        "label": cand["label"],
+                        "evidence_label": semantic_evidence_label(cand["similarity"]),
+                        "matched_terms": [],
+                        "semantic_similarity": cand["similarity"],
+                        "signal_count": cand["n_signals"],
+                        "open": {
+                            "surface": "thread_detail",
+                            "params": {"thread_id": thread_id, "hours": hours},
+                        },
+                    })
+
+                # Atlas-topic anchor basis: taxonomy similarity, NOT evidence.
+                # Reaches country threads that have no member centroid (e.g. a
+                # Spanish query matching the English water-stress description).
+                if fetch_atlas_anchors_fn is not None:
+                    from app.services.research_semantic import semantic_atlas_candidates
+                    from app.services.thread_intelligence import build_thread_id
+                    embedded = await fetch_atlas_anchors_fn()
+                    for cand in semantic_atlas_candidates(query_vec, embedded or []):
+                        thread_id = build_thread_id(cand["slug"], geo)
+                        if thread_id in seen_thread_ids:
+                            continue
+                        seen_thread_ids.add(thread_id)
+                        anchors.append({
+                            "anchor_type": "thread",
+                            "lane": "semantic",
+                            "retrieval_lane": "semantic",
+                            "match_basis": "topic_description",
+                            "id": thread_id,
+                            "label": cand["label"],
+                            "evidence_label": semantic_evidence_label(
+                                cand["similarity"], basis="topic_description"
+                            ),
+                            "matched_terms": [],
+                            "semantic_similarity": cand["similarity"],
+                            "open": {
+                                "surface": "thread_detail",
+                                "params": {
+                                    "thread_id": thread_id,
+                                    "hours": hours,
+                                    **({"country_code": geo[0]} if geo else {}),
+                                },
+                            },
+                        })
+        except Exception as exc:
+            coverage_gaps.append({
+                "gap_type": "lane_degraded",
+                "lane": "semantic",
+                "note": f"Semantic lane unavailable ({exc.__class__.__name__}).",
+            })
 
     # ── Related-branch lane ───────────────────────────────────────────────
     for branch in intent.get("branches") or []:
