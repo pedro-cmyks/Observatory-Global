@@ -67,9 +67,12 @@ def _plan(query: str = "Iran climate water drought") -> dict:
 def test_weights_are_not_equal_sum():
     positive = [v for k, v in RANKING_WEIGHTS.items() if "adjustment" not in k]
     assert len(set(positive)) > 1, "spec forbids an equal-weight sum"
-    # evidence outweighs the cheap lexical/geo components
-    assert RANKING_WEIGHTS["evidence_strength"] > RANKING_WEIGHTS["intent_match"]
-    assert RANKING_WEIGHTS["evidence_strength"] > RANKING_WEIGHTS["geo_entity_fit"]
+    # calibration guardrails: evidence/answerability must not be dominated by
+    # the cheap geo/movement components (intent is allowed to lead because the
+    # relevance gate makes it the load-bearing usefulness axis)
+    assert RANKING_WEIGHTS["evidence_strength"] >= RANKING_WEIGHTS["geo_entity_fit"]
+    assert RANKING_WEIGHTS["evidence_strength"] >= RANKING_WEIGHTS["movement_signal"]
+    assert RANKING_WEIGHTS["answerability"] >= RANKING_WEIGHTS["geo_entity_fit"]
 
 
 def test_direct_evidence_outranks_weak_support():

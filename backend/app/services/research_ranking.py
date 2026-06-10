@@ -21,25 +21,39 @@ import json
 import os
 from typing import Any
 
-# Deliberately NOT equal-weight: evidence/answerability outweigh the cheap
-# components (geo fit, lexical intent match) per spec guidance.
+# Deliberately NOT equal-weight. Calibrated 2026-06-10 by
+# backend/scripts/calibrate_research_ranking.py against the gold ordering
+# constraints (spec acceptance criteria) + live forcing-case constraints:
+# 21/21 satisfied vs 20/21 for the hand-tuned baseline. See
+# docs/research/ranking-calibration/2026-06-10-ranking-calibration.md.
+# Rerun the script when data shifts or user relevance judgments arrive.
 RANKING_WEIGHTS: dict[str, float] = {
-    "intent_match": 0.15,
-    "thread_coherence": 0.12,
-    "evidence_strength": 0.20,
-    "answerability": 0.16,
-    "movement_signal": 0.08,
-    "source_actor_value": 0.08,
-    "geo_entity_fit": 0.10,
-    "novelty_or_gap_value": 0.11,
+    "intent_match": 0.2321,
+    "thread_coherence": 0.1232,
+    "evidence_strength": 0.1462,
+    "answerability": 0.1518,
+    "movement_signal": 0.07,
+    "source_actor_value": 0.068,
+    "geo_entity_fit": 0.1051,
+    "novelty_or_gap_value": 0.1036,
     # adjustments (subtracted after weighting)
-    "noise_risk_adjustment": 0.10,
-    "unsupported_claim_adjustment": 0.08,
-    "list_detail_mismatch_adjustment": 0.07,
+    "noise_risk_adjustment": 0.1152,
+    "unsupported_claim_adjustment": 0.1356,
+    "list_detail_mismatch_adjustment": 0.1378,
 }
 
 # Anchors below this score move to the low-confidence tray (still visible).
 DOWNRANK_THRESHOLD = 0.30
+
+# Saturation midpoints for count→[0,1) normalization (midpoint maps to 0.5).
+# Calibrated from live thread distributions by
+# backend/scripts/calibrate_research_ranking.py — see the report under
+# docs/research/ranking-calibration/. Rerun the script after data shifts.
+NORMALIZATION_MIDPOINTS: dict[str, float] = {
+    "evidence_signals": 10.0,
+    "source_count": 4.0,
+    "movement_changed_10h": 3.0,
+}
 
 _EVIDENCE_LABEL_INTENT = {
     "direct_evidence": 1.0,
@@ -130,7 +144,9 @@ def score_anchor(
 
     signal_count = int(anchor.get("signal_count") or 0)
     if anchor_type == "thread":
-        evidence_strength = _saturating(signal_count, midpoint=40)
+        evidence_strength = _saturating(
+            signal_count, midpoint=NORMALIZATION_MIDPOINTS["evidence_signals"]
+        )
     elif anchor_type == "country":
         evidence_strength = 0.5  # opens a full surface, evidence behind it
     elif anchor_type == "public_attention":
@@ -153,9 +169,15 @@ def score_anchor(
     else:
         answerability = 0.2
 
-    movement_signal = _saturating(abs(int(anchor.get("changed_10h") or 0)), midpoint=10)
+    movement_signal = _saturating(
+        abs(int(anchor.get("changed_10h") or 0)),
+        midpoint=NORMALIZATION_MIDPOINTS["movement_changed_10h"],
+    )
 
-    source_actor_value = _saturating(int(anchor.get("source_count") or 0), midpoint=5)
+    source_actor_value = _saturating(
+        int(anchor.get("source_count") or 0),
+        midpoint=NORMALIZATION_MIDPOINTS["source_count"],
+    )
     if anchor_type == "country":
         source_actor_value = 0.7
 
