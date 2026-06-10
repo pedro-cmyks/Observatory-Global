@@ -78,6 +78,9 @@ def _thread_anchor(
         "evidence_label": evidence_label,
         "matched_terms": matched_terms,
         "signal_count": int(thread.get("signal_count") or 0),
+        "source_count": int(thread.get("source_count") or 0),
+        "changed_10h": int(thread.get("changed_10h") or 0),
+        "quality": thread.get("quality"),
         "confidence": thread.get("confidence"),
         "open": {
             "surface": "thread_detail",
@@ -111,6 +114,9 @@ async def discover_anchors(
     coverage_gaps: list[dict[str, Any]] = []
     seen_thread_ids: set[str] = set()
     axis_hit: dict[str, bool] = {axis: False for axis in axes}
+    # Honest ledger input (spec: No Silent Filtering): every thread candidate
+    # the lanes considered but did not anchor, with a reason code.
+    skipped_candidates: list[dict[str, Any]] = []
 
     # ── Country lane ─────────────────────────────────────────────────────
     for code in geo:
@@ -163,6 +169,15 @@ async def discover_anchors(
                 label, matched = "weak_support", []
                 weak_used += 1
             else:
+                skipped_candidates.append({
+                    "candidate_id": thread_id,
+                    "label": thread.get("label"),
+                    "lane": "thread",
+                    "scope": scope,
+                    "reason_code": (
+                        "weak_support_cap_reached" if scope else "no_intent_match"
+                    ),
+                })
                 continue
             seen_thread_ids.add(thread_id)
             anchors.append(_thread_anchor(
@@ -198,6 +213,13 @@ async def discover_anchors(
                 kw_tokens = _norm_tokens(keyword)
                 matched = sorted(kw_tokens & (query_tokens | expansion))
                 if not matched:
+                    skipped_candidates.append({
+                        "candidate_id": f"attention-{code.lower()}-{normalize_search_text(keyword).replace(' ', '-')}",
+                        "label": keyword,
+                        "lane": "public_attention",
+                        "scope": code,
+                        "reason_code": "no_intent_match",
+                    })
                     continue
                 anchors.append({
                     "anchor_type": "public_attention",
@@ -294,4 +316,5 @@ async def discover_anchors(
         "pin_candidates": pin_candidates,
         "coverage_gaps": coverage_gaps,
         "suggested_next_steps": next_steps,
+        "skipped_candidates": skipped_candidates,
     }

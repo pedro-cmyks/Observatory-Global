@@ -17,6 +17,7 @@ from app.core.search_normalization import normalize_search_text
 from app.main_v2 import app
 from app.services.research_anchor_discovery import discover_anchors
 from app.services.research_plan import parse_research_intent
+from app.services.research_ranking import rank_plan
 from app.services.thread_intelligence import fetch_threads
 
 router = APIRouter(prefix="/api/v2/research", tags=["research"])
@@ -59,7 +60,7 @@ async def research_plan(body: ResearchPlanRequest) -> dict:
 
     normalized = normalize_search_text(body.query)
     cache_key = (
-        f"rplan:v1:{normalized}:{'-'.join(intent['geo_scope']) or 'all'}:{body.hours}"
+        f"rplan:v2:{normalized}:{'-'.join(intent['geo_scope']) or 'all'}:{body.hours}"
     )
     if app.state.redis:
         try:
@@ -75,6 +76,7 @@ async def research_plan(body: ResearchPlanRequest) -> dict:
         fetch_threads_fn=fetch_threads,
         fetch_attention_fn=_fetch_attention,
     )
+    plan = rank_plan(plan)
     plan["query"] = body.query
 
     if app.state.redis:
