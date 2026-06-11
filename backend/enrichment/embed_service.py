@@ -56,7 +56,10 @@ def _serve() -> None:
 
     uvicorn.run(
         _build_app(),
-        host="0.0.0.0",
+        # Fly private networking (6PN) is IPv6-only: binding 0.0.0.0 makes the
+        # service unreachable at <process>.process.<app>.internal. "::" binds
+        # both stacks.
+        host=os.getenv("EMBED_SERVICE_HOST", "::"),
         port=EMBED_SERVICE_PORT,
         log_level="warning",
         access_log=False,
