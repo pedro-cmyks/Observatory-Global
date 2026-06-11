@@ -106,9 +106,27 @@ close-map: biggest clusters close at (1) who-says-what surface polish
 (#160/#168/#172/#173/#176/#178 + #217) and (2) the #154/Paper 2 audit moment
 (7-8 issues). 10 issues are spec-independent UX/maintenance.
 
+**Thread-quality diagnosis 2026-06-11 (Pedro's fresh-eyes review, confirmed
+with data):** dynamic-topic identities are black holes — running-mean
+centroid drift + MATCH_THRESHOLD=0.85 (below the e5 centroid↔centroid noise
+floor) makes 11-day-old topics absorb unrelated clusters at 0.87-0.93
+(evidence in #224: 'PSG Victory Riots' recent members are Orwell/Modi/
+earthquakes/car launches). Plus: roundup detection misses non-English labels
+('Noticias Regionales Variadas' active, unflagged); /threads ranks by
+lifetime agg_n_signals so stale topics dominate by construction. Fix design
+in #224 (anchor-centroid guard, threshold re-measure, event aging,
+entropy-based roundup detection, window-scoped serving counts, identity
+rebuild). #225 = editorial surface-hierarchy review (Brief L1 → App L2 →
+Workbench L3 → dossier L3.5), blocked on #224.
+
 **Next work, in order:**
 
-1. #223 remainder — threshold calibration on the full corpus + headline
+1. **#224 — fix dynamic-topic identity black holes.** Jumps the queue: it
+   poisons Brief watchlist, /threads, research-plan thread lane, AND the
+   semantic member_centroid basis. Projection writer changes
+   (backend/scripts/project_dynamic_topics.py) + rebuild + retire.
+2. #225 — editorial surfaces review (after #224).
+3. #223 remainder — threshold calibration on the full corpus + headline
    dedup + semantic_evidence UI.
 2. Parallel, non-blocking: #219 Kalman movement feed; #217 credibility
    tiers; #220 funnel ledger; #221 maturity contract; #222 stratified
