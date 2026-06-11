@@ -58,13 +58,23 @@ Teherán" → water-stress anchor sim 0.7967. Fly api-runtime has no torch, so
 production shows the designed `lane_unavailable` gap ("recall is
 lexical-only") until #223.
 
+**Phase 2 slice 1 shipped 2026-06-10** (`ff38990`, Fly + Vercel deployed,
+prod E2E verified): Workbench overlay (command-bar WORKBENCH button) —
+investigation sidebar + pins + trail + JSON export over localStorage
+(`lib/workbench.ts`); `ResearchPlanPanel` (anchors, gaps, tray, ledger, PIN);
+pin-event log #218 CLOSED (migration 053 `research_pin_events` applied,
+`POST /api/v2/research/events`, plans carry `plan_id`, frontend emits
+impressions/opens/pins — verified rows in prod). Thread anchors open via the
+theme-detail contract (slug--cc parsed); country anchors via CountryBrief.
+
 **Next work, in order:**
 
-1. Phase 1.5b (#223) — semantic lane in production (ONNX vs nlp_worker
-   endpoint, measure RAM first) + persisted signal embeddings for
-   full-corpus retrieval.
-2. Phase 2 — Workbench: localStorage + pin-event log (#218) + JSON export +
-   walkthrough E2E fixture (= #213 exit criterion). #152 search entry.
+1. Phase 2 remainder — walkthrough E2E fixture (both forcing cases:
+   search → open → pin → workbench → export) = the #213 exit criterion;
+   browser-smoke the overlay on production; #152 search entry
+   ('Start investigation' from SearchBar).
+2. Phase 1.5b (#223) — semantic lane in production (ONNX vs nlp_worker
+   endpoint, measure RAM first) + persisted signal embeddings.
 3. Parallel, non-blocking: #219 Kalman movement feed; #217 credibility
    tiers; #220 funnel ledger; #221 maturity contract; #222 stratified
    snapshot sampling.
