@@ -87,11 +87,29 @@ service must bind `::` (Fly 6PN is IPv6-only — 0.0.0.0 = connection
 refused). Verified: semantic anchors in prod, weak matches correctly
 trayed, walkthrough smoke PASS both cases.
 
+**Phase 1.5b deliverable 2 shipped 2026-06-11** (`207feda`+`6128416`,
+deployed E2E): migration 054 `signal_embeddings` (pgvector halfvec/768,
+HNSW); writer `scripts/embed_hot_corpus.py` + launchd cron
+`com.atlas.embed-hot-corpus` (6h, installed on M1); query path
+`fetch_semantic_signal_matches` → `plan.semantic_evidence` items with
+`gate_status` labels (`match_basis=signal_headline`). Bugs fixed: headlines
+HTML-entity-encoded (unescape before embed), executemany WAN bottleneck
+(unnest batch INSERT ~45/s), cold model load burning timeouts (warmup thread
++ 30s remote timeout). Prod verified: 12 below_gate evidence items for a
+pure-semantic Spanish query. Backfill ~200K running; #223 stays open for:
+threshold re-measure on full corpus, query-side headline dedup, UI render of
+semantic_evidence (pairs with #178).
+
+**Issue audit 2026-06-11:** closed #207 (threads contract delivered), #163
+(nlp_worker split delivered), #167 (superseded by dynamic topics). Backlog
+close-map: biggest clusters close at (1) who-says-what surface polish
+(#160/#168/#172/#173/#176/#178 + #217) and (2) the #154/Paper 2 audit moment
+(7-8 issues). 10 issues are spec-independent UX/maintenance.
+
 **Next work, in order:**
 
-1. Phase 1.5b deliverable 2 (#223 open) — persisted signal embeddings for
-   full-corpus semantic retrieval (pgvector vs REAL[] decision, quantization,
-   local-worker writer, gate-status-labeled query path).
+1. #223 remainder — threshold calibration on the full corpus + headline
+   dedup + semantic_evidence UI.
 2. Parallel, non-blocking: #219 Kalman movement feed; #217 credibility
    tiers; #220 funnel ledger; #221 maturity contract; #222 stratified
    snapshot sampling; #152 command-bar layout.
