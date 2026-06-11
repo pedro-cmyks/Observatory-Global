@@ -76,11 +76,22 @@ cases PASS). SearchBar gained the 'Start investigation' entry (creates
 investigation + opens Workbench + loads the plan). Browser click-through of
 the overlay still worth a manual pass from Pedro.
 
+**Phase 1.5b deliverable 1 shipped 2026-06-10/11** (`a129cc9`, deployed):
+semantic lane LIVE in production. `enrichment/embed_service.py` = internal
+e5 embed service on nlp_worker (4096MB machines, ~3.3GB headroom — the
+985MB note was stale), private 6PN only, daemon thread, snapshot-identical
+pooling. API box reaches it via `EMBED_SERVICE_URL` (fly.toml), 10s timeout,
+degrades to visible lane gap. Two prod bugs fixed: e5 had to be pre-baked
+into nlp-runtime (TRANSFORMERS_OFFLINE=1 blocks runtime download), and the
+service must bind `::` (Fly 6PN is IPv6-only — 0.0.0.0 = connection
+refused). Verified: semantic anchors in prod, weak matches correctly
+trayed, walkthrough smoke PASS both cases.
+
 **Next work, in order:**
 
-1. Phase 1.5b (#223) — semantic lane in production (ONNX vs nlp_worker
-   endpoint, measure RAM first) + persisted signal embeddings for
-   full-corpus retrieval.
+1. Phase 1.5b deliverable 2 (#223 open) — persisted signal embeddings for
+   full-corpus semantic retrieval (pgvector vs REAL[] decision, quantization,
+   local-worker writer, gate-status-labeled query path).
 2. Parallel, non-blocking: #219 Kalman movement feed; #217 credibility
    tiers; #220 funnel ledger; #221 maturity contract; #222 stratified
    snapshot sampling; #152 command-bar layout.
