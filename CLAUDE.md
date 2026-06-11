@@ -128,6 +128,16 @@ nightly). Atlas L4 markets layer documented
 (docs/research/2026-06-12-atlas-markets-layer-l4.md, M0 event study =
 #226): personal app in future private repo, evidence-gated, no employer IP.
 
+**2026-06-12 (app review, Pedro):** global threads list was starved (4
+threads vs 188K signals) — fetch_threads returned dynamic EXCLUSIVELY;
+atlas threads now fill remaining slots (`8cf9dbc`, deployed, prod=10).
+Below-gate evidence fallback shipped for the #214 contradiction: theme
+detail with gated=0/raw>0 serves raw signals labeled below_gate_evidence +
+UNVERIFIED banner (prod verified: CO election-legitimacy 0/44 — real
+relevant headlines the gate hid). #214 stays open for list count
+semantics. Markets L4: lives in `markets/` folder IN this repo (Pedro);
+relational thesis recorded (co-movement, Atlas-as-API end state).
+
 **Next work, in order:**
 
 1. **#224 — fix dynamic-topic identity black holes.** Jumps the queue: it
