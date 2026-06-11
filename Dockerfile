@@ -48,6 +48,10 @@ RUN python -c "from transformers import pipeline; pipeline('sentiment-analysis',
 RUN python -c "from transformers import pipeline; pipeline('sentiment-analysis', model='cardiffnlp/twitter-xlm-roberta-base-sentiment', device=-1)" || true && \
     python -c "from transformers import pipeline; pipeline('zero-shot-classification', model='MoritzLaurer/multilingual-MiniLMv2-L6-mnli-xnli', device=-1)" || true
 
+# e5-base for the internal embed service (#223): research semantic lane.
+# Must pre-bake before TRANSFORMERS_OFFLINE=1 or the runtime download fails.
+RUN python -c "from transformers import AutoModel, AutoTokenizer; AutoTokenizer.from_pretrained('intfloat/multilingual-e5-base'); AutoModel.from_pretrained('intfloat/multilingual-e5-base')" || true
+
 # After pre-bake: skip HF API network checks at runtime (models are in /app/hf_cache)
 ENV TRANSFORMERS_OFFLINE=1
 ENV HF_DATASETS_OFFLINE=1
