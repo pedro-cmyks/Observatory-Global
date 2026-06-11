@@ -67,17 +67,25 @@ pin-event log #218 CLOSED (migration 053 `research_pin_events` applied,
 impressions/opens/pins — verified rows in prod). Thread anchors open via the
 theme-detail contract (slug--cc parsed); country anchors via CountryBrief.
 
+**#213 umbrella CLOSED 2026-06-10** (`c020de7`, deployed): walkthrough E2E
+fixture passes at three layers — service
+(`backend/tests/test_research_walkthrough_fixture.py`), client route
+(`frontend-v2/src/lib/walkthrough.test.ts`), live production smoke
+(`backend/scripts/research_walkthrough_smoke.py`, repeatable, both forcing
+cases PASS). SearchBar gained the 'Start investigation' entry (creates
+investigation + opens Workbench + loads the plan). Browser click-through of
+the overlay still worth a manual pass from Pedro.
+
 **Next work, in order:**
 
-1. Phase 2 remainder — walkthrough E2E fixture (both forcing cases:
-   search → open → pin → workbench → export) = the #213 exit criterion;
-   browser-smoke the overlay on production; #152 search entry
-   ('Start investigation' from SearchBar).
-2. Phase 1.5b (#223) — semantic lane in production (ONNX vs nlp_worker
-   endpoint, measure RAM first) + persisted signal embeddings.
-3. Parallel, non-blocking: #219 Kalman movement feed; #217 credibility
+1. Phase 1.5b (#223) — semantic lane in production (ONNX vs nlp_worker
+   endpoint, measure RAM first) + persisted signal embeddings for
+   full-corpus retrieval.
+2. Parallel, non-blocking: #219 Kalman movement feed; #217 credibility
    tiers; #220 funnel ledger; #221 maturity contract; #222 stratified
-   snapshot sampling.
+   snapshot sampling; #152 command-bar layout.
+3. Later phases: Phase 3 report view from pinned state; Phase 4
+   evidence/frame quality bound to Paper 1 benchmarks.
 
 Tests: research suites = `pytest tests/test_research_*.py` (22 tests).
 Deploy: `./scripts/deploy-fly-api.sh`. Prod smoke:

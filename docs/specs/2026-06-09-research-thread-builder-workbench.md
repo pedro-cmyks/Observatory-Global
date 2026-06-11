@@ -1771,8 +1771,15 @@ Status as of 2026-06-10:
    `lane_unavailable` gap where torch is absent (Fly api-runtime today).
    **Phase 1.5b = #223:** production embedding (ONNX vs nlp_worker endpoint,
    measure first) + persisted signal embeddings for full-corpus retrieval.
-5. Then Phase 2 Workbench: localStorage + pin-event log + JSON export +
-   walkthrough fixture.
-6. Parallel: Kalman movement-feed promotion (approved, own issue);
-   capability G source-credibility tiers (own issue, feeds the
-   claim-verification case).
+5. ~~Phase 2 Workbench~~ — done 2026-06-10: Workbench overlay
+   (investigations / pins / trail / JSON export over localStorage),
+   ResearchPlanPanel, pin-event log (#218 closed, production-verified),
+   SearchBar 'Start investigation' entry. **Walkthrough fixture passes at
+   three layers (service / client route / live production smoke) — #213
+   exit criterion met, umbrella closed.**
+6. **Next:** Phase 1.5b (#223) production semantic lane + signal-embedding
+   store; then Phase 3 report view from pinned state; Phase 4 quality bound
+   to Paper 1 benchmarks.
+7. Parallel: #219 Kalman movement feed (approved); #217 source-credibility
+   tiers; #220 funnel ledger; #221 maturity contract; #222 stratified
+   sampling.
