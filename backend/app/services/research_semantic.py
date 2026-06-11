@@ -238,6 +238,60 @@ def embed_atlas_anchors(topics: list[dict[str, Any]]) -> list[dict[str, Any]] | 
     return embedded
 
 
+# ── Signal-headline basis (full-corpus retrieval, #223 deliverable 2) ───────
+# pgvector ANN over signal_embeddings (halfvec/768, migration 054). Every hit
+# carries its gate status so below-gate material is query-reachable but
+# labeled (Pipeline Funnel Principle). Distances: cosine distance = 1 - sim.
+
+SIGNAL_MIN_SIMILARITY = 0.82   # headline↔query runs hotter than descriptions
+SIGNAL_LANE_LIMIT = 12
+
+
+async def fetch_semantic_signal_matches(
+    conn: Any,
+    query_vec: list[float],
+    *,
+    hours: int,
+    limit: int = SIGNAL_LANE_LIMIT,
+    min_similarity: float = SIGNAL_MIN_SIMILARITY,
+) -> list[dict[str, Any]]:
+    vec_literal = "[" + ",".join(f"{x:.5f}" for x in query_vec) + "]"
+    rows = await conn.fetch(
+        f"""
+        SELECT s.id, s.headline, s.country_code, s.source_name, s.timestamp,
+               1 - (e.vec <=> $1::halfvec) AS similarity,
+               EXISTS (SELECT 1 FROM signal_topic_assignments sta
+                       WHERE sta.signal_id = s.id) AS has_topic
+        FROM signal_embeddings e
+        JOIN signals_v2 s ON s.id = e.signal_id
+        WHERE s.timestamp > NOW() - INTERVAL '{int(hours)} hours'
+        ORDER BY e.vec <=> $1::halfvec
+        LIMIT {int(limit * 3)}
+        """,
+        vec_literal,
+    )
+    import html as _html
+    matches = []
+    for r in rows:
+        sim = float(r["similarity"])
+        if sim < min_similarity:
+            continue
+        matches.append({
+            "signal_id": int(r["id"]),
+            # stored headlines are HTML-entity-encoded (known serialize bug)
+            "headline": _html.unescape(r["headline"] or ""),
+            "country_code": r["country_code"],
+            "source_name": r["source_name"],
+            "timestamp": r["timestamp"].isoformat() if r["timestamp"] else None,
+            "similarity": round(sim, 4),
+            # gate status per Pipeline Funnel Principle: reachable, labeled
+            "gate_status": "assigned" if r["has_topic"] else "below_gate",
+        })
+        if len(matches) >= limit:
+            break
+    return matches
+
+
 def semantic_atlas_candidates(
     query_vec: list[float],
     embedded_topics: list[dict[str, Any]],

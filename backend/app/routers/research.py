@@ -26,6 +26,7 @@ from app.services.research_semantic import (
     embed_atlas_anchors,
     embed_query,
     fetch_atlas_topic_anchors,
+    fetch_semantic_signal_matches,
     fetch_topic_centroids,
 )
 from app.services.thread_intelligence import fetch_threads
@@ -94,6 +95,12 @@ async def research_plan(body: ResearchPlanRequest) -> dict:
         # embedding is CPU-blocking; cached per process after first call
         return await asyncio.to_thread(embed_atlas_anchors, topics)
 
+    async def _fetch_signal_matches(*, query_vec: list[float], hours: int) -> list[dict]:
+        if db.pool is None:
+            return []
+        async with db.pool.acquire() as conn:
+            return await fetch_semantic_signal_matches(conn, query_vec, hours=hours)
+
     plan = await discover_anchors(
         intent,
         hours=body.hours,
@@ -103,6 +110,7 @@ async def research_plan(body: ResearchPlanRequest) -> dict:
         embed_query_fn=lambda text: asyncio.to_thread(embed_query, text),
         fetch_centroids_fn=_fetch_centroids,
         fetch_atlas_anchors_fn=_fetch_atlas_anchors,
+        fetch_signal_matches_fn=_fetch_signal_matches,
     )
     plan = rank_plan(plan)
     plan["query"] = body.query

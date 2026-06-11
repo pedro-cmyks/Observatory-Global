@@ -102,6 +102,7 @@ async def discover_anchors(
     embed_query_fn: Callable[[str], list[float] | None] | None = None,
     fetch_centroids_fn: Callable[..., Awaitable[list[dict[str, Any]]]] | None = None,
     fetch_atlas_anchors_fn: Callable[..., Awaitable[list[dict[str, Any]] | None]] | None = None,
+    fetch_signal_matches_fn: Callable[..., Awaitable[list[dict[str, Any]]]] | None = None,
 ) -> dict[str, Any]:
     """Discover anchors for parsed intent. Degrades lane-by-lane: a failing
     lane contributes a gap note, never an exception."""
@@ -114,6 +115,7 @@ async def discover_anchors(
     axes: list[str] = intent.get("topic_axes") or []
 
     anchors: list[dict[str, Any]] = []
+    semantic_evidence: list[dict[str, Any]] = []
     coverage_gaps: list[dict[str, Any]] = []
     seen_thread_ids: set[str] = set()
     axis_hit: dict[str, bool] = {axis: False for axis in axes}
@@ -314,6 +316,20 @@ async def discover_anchors(
                                 },
                             },
                         })
+                # Signal-headline basis (#223 deliverable 2): full-corpus
+                # evidence retrieval. These are evidence ITEMS, not anchors —
+                # each labeled with retrieval lane + gate status so below-gate
+                # material is reachable but never presented as curated.
+                if fetch_signal_matches_fn is not None:
+                    matches = await fetch_signal_matches_fn(
+                        query_vec=query_vec, hours=hours,
+                    )
+                    for m in matches:
+                        semantic_evidence.append({
+                            **m,
+                            "retrieval_lane": "semantic",
+                            "match_basis": "signal_headline",
+                        })
         except Exception as exc:
             coverage_gaps.append({
                 "gap_type": "lane_degraded",
@@ -404,4 +420,5 @@ async def discover_anchors(
         "coverage_gaps": coverage_gaps,
         "suggested_next_steps": next_steps,
         "skipped_candidates": skipped_candidates,
+        "semantic_evidence": semantic_evidence,
     }

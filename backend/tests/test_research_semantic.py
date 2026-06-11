@@ -204,3 +204,57 @@ def test_cross_language_real_model():
     water_sim = next(c["similarity"] for c in cands if c["topic_id"] == 1)
     sports_sim = cosine(query_vec, topics[1]["centroid_vec"])
     assert water_sim > sports_sim + 0.03, (water_sim, sports_sim)
+
+
+def test_signal_evidence_basis_labels_gate_status():
+    """#223 deliverable 2: full-corpus matches are evidence items labeled
+    with retrieval lane + gate status — reachable, never volunteered."""
+    intent = parse_research_intent("rain theft Iran")
+
+    async def no_threads(**kwargs):
+        return []
+
+    async def centroids():
+        return []
+
+    async def signal_matches(*, query_vec, hours):
+        return [
+            {"signal_id": 1, "headline": "Tehran reservoirs at record lows",
+             "country_code": "IR", "source_name": "x", "timestamp": None,
+             "similarity": 0.88, "gate_status": "below_gate"},
+            {"signal_id": 2, "headline": "Iran drought breaks after rains",
+             "country_code": "IR", "source_name": "y", "timestamp": None,
+             "similarity": 0.85, "gate_status": "assigned"},
+        ]
+
+    plan = asyncio.run(discover_anchors(
+        intent, hours=72,
+        fetch_threads_fn=no_threads, fetch_attention_fn=None,
+        embed_query_fn=lambda _t: QUERY_VEC,
+        fetch_centroids_fn=centroids,
+        fetch_signal_matches_fn=signal_matches,
+    ))
+
+    evidence = plan["semantic_evidence"]
+    assert len(evidence) == 2
+    assert all(e["retrieval_lane"] == "semantic" for e in evidence)
+    assert all(e["match_basis"] == "signal_headline" for e in evidence)
+    # below-gate material is present AND labeled — the funnel rule
+    assert any(e["gate_status"] == "below_gate" for e in evidence)
+
+
+def test_signal_evidence_absent_without_embedder():
+    intent = parse_research_intent("rain theft Iran")
+
+    async def no_threads(**kwargs):
+        return []
+
+    plan = asyncio.run(discover_anchors(
+        intent, hours=72,
+        fetch_threads_fn=no_threads, fetch_attention_fn=None,
+        embed_query_fn=lambda _t: None,
+        fetch_centroids_fn=lambda: None,  # never reached
+        fetch_signal_matches_fn=lambda **k: None,  # never reached
+    ))
+    assert plan["semantic_evidence"] == []
+    assert any(g.get("lane") == "semantic" for g in plan["coverage_gaps"])
