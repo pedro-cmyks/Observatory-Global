@@ -119,6 +119,15 @@ entropy-based roundup detection, window-scoped serving counts, identity
 rebuild). #225 = editorial surface-hierarchy review (Brief L1 → App L2 →
 Workbench L3 → dossier L3.5), blocked on #224.
 
+**2026-06-12:** #224 CLOSED (anchor 0.93 after same-domain conflation found;
+rebuild → 116 identities, actives = Russia-Ukraine/US-Iran/Mundial 2026;
+prod /threads verified fresh). Embed cron rescheduled 17:30/23:30/05:30 —
+heavy local compute NEVER during Pedro's working hours (daytime backfill
+froze his machine; backfill reached 39.6K/200K, cron chips the rest
+nightly). Atlas L4 markets layer documented
+(docs/research/2026-06-12-atlas-markets-layer-l4.md, M0 event study =
+#226): personal app in future private repo, evidence-gated, no employer IP.
+
 **Next work, in order:**
 
 1. **#224 — fix dynamic-topic identity black holes.** Jumps the queue: it

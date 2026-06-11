@@ -45,6 +45,12 @@ below resolve via Obsidian's fuzzy search regardless of folder.
   evidence-role benchmark binding, Workbench pin-log as the future
   relevance-judgment dataset → #218), data-line gaps (evidence-window
   contract), and the amendment plan (applied in place).
+- [[2026-06-12-atlas-markets-layer-l4]] — Atlas L4 markets layer (Pedro's
+  personal trading-research app, future private repo): literature judgment
+  (LLM trading agents, GDELT→markets evidence, leakage red flags), phased
+  evidence-gated plan (M0 event study #226 → backtest harness → LLM analyst
+  ensemble → paper trading → only then real capital), standing guardrails
+  (no employer IP, Measurement Provenance, off-hours compute).
 - [[2026-06-10-funnel-maturity-and-positioning]] — measured 24h funnel
   (194,674 raw → 442 served cluster members), serving-maturity tiers instead
   of a blanket T-1h delay (#221), funnel observability ledger (#220),
