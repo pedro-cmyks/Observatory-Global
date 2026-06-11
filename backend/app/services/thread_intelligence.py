@@ -1154,11 +1154,27 @@ async def fetch_threads(
         if is_atlas_filtered:
             return atlas
         if dynamic:
-            # dynamic_topics is canonical when active rows exist; atlas and raw
-            # emergent rows remain fallback sources to avoid reintroducing
-            # static-taxonomy noise above the self-curated lifecycle.
+            # dynamic_topics stays canonical and ranks first, but it must not
+            # STARVE the global list: after the #224 identity rebuild the
+            # honest active set can be small (4 topics vs 188K signals — the
+            # 2026-06-12 review caught the list looking dead). Fill the
+            # remaining slots with atlas-aggregate threads instead of
+            # returning dynamic exclusively.
             dynamic.sort(key=lambda t: int(t.get("signal_count") or 0), reverse=True)
-            return dynamic[:limit]
+            dynamic = dynamic[:limit]
+            if len(dynamic) >= limit:
+                return dynamic
+            dynamic_labels = {
+                str(t.get("label") or "").strip().lower() for t in dynamic
+            }
+            atlas_fill = [
+                t for t in atlas
+                if str(t.get("label") or "").strip().lower() not in dynamic_labels
+            ]
+            atlas_fill.sort(
+                key=lambda t: int(t.get("signal_count") or 0), reverse=True
+            )
+            return dynamic + atlas_fill[: limit - len(dynamic)]
         else:
             try:
                 emergent = await _fetch_emergent_threads_with_conn(

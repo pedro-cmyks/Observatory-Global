@@ -15,10 +15,24 @@ trades. Noted a fork of this repo by someone with an auto-trading engine.
 1. **Atlas product (#151)**: market context overlay — commodity/asset prices
    shown next to relevant threads. Editorial, descriptive, public. Already
    in the backlog; the L4 work feeds it analysis but is not it.
-2. **L4 (this doc)**: a **separate, private repo** ("atlas-markets") that
-   *consumes* the Atlas API. Personal tool. Never deployed with Atlas, never
-   shares credentials or DB. Atlas must work well first — Pedro's own
-   framing: "el uno va después del otro."
+2. **L4 (this doc)**: a **separate folder inside this repo**
+   (`markets/`, decided by Pedro 2026-06-12 — related to the project, so it
+   lives with it) that *consumes* the Atlas API only. Personal tool. Never
+   deployed with Atlas, never shares runtime credentials. Atlas must work
+   well first — Pedro's own framing: "el uno va después del otro."
+
+### Pedro's core thesis (2026-06-12)
+
+Not "one signal predicts one asset." Atlas's strength is **relational**:
+"muchas cosas afectan muchas cosas, y esas cosas se mueven en relación
+entre sí" — co-movement of narratives, countries, and instruments as a
+system. That reframes M0: not single-thread event studies only, but
+cross-correlation structure (which thread families move together, which
+lead which markets, how the relations themselves shift). It also points at
+the product end-state: **Atlas as an API** — selling processed narrative
+state (threads, movement, relations) for others to build on. The current
+bottleneck for both is the same one as always: thread quality and how
+information enters them (#224 fixed the worst of it; #225/#223 continue).
 
 ## 1. What the literature actually says (read 2026-06-12)
 
@@ -101,7 +115,7 @@ daily/hourly returns (free data: yfinance/Alpaca). Output: a measured
 lead/lag table with CIs. **Gate: if no exploitable lead exists, L4 stops
 here and the result still feeds #219/#151 and a paper.**
 
-**M1 — Signal dataset + backtest harness.** Private repo `atlas-markets`.
+**M1 — Signal dataset + backtest harness.** `markets/` folder in this repo.
 Pull Atlas API (threads, movement, research plans) into a feature store;
 vectorbt walk-forward harness; baseline strategies (momentum, vol) as the
 bar to beat. No LLMs yet — establish the statistical floor first.
@@ -124,7 +138,7 @@ lost without pain. This is 6-12 months away at minimum and that is correct.
 
 ## 5. Guardrails (standing)
 
-- Private repo, separate credentials, consumes Atlas over its public API.
+- `markets/` folder, separate credentials, consumes Atlas over its public API.
 - No employer IP, ever.
 - Measurement Provenance applies: leakage audit on every backtest;
   timestamps from Atlas maturity tiers (#221 — `provisional` data is

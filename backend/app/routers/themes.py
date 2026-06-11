@@ -471,7 +471,13 @@ async def _atlas_topic_detail(
     scored_n = int(counts["scored"] or 0) if counts else 0
     gate_pending = scored_n == 0
     # Once scored, show only the gate-kept (precise) evidence; otherwise all.
-    kept_clause = "" if gate_pending else " AND a.gate_kept"
+    # Pipeline Funnel Principle (#214, 2026-06-12): when the gate kept ZERO
+    # signals but raw assignments exist, the user who opened this detail
+    # explicitly asked — show the raw material labeled below-gate (gateKept
+    # false per row, 'below_gate_evidence' warning) instead of an empty
+    # panel that contradicts the list count.
+    below_gate_fallback = (not gate_pending) and gated_n == 0 and raw_n > 0
+    kept_clause = "" if (gate_pending or below_gate_fallback) else " AND a.gate_kept"
 
     signals = await conn.fetch(f"""
         SELECT s.timestamp, s.country_code, s.source_name, s.source_url,
@@ -559,6 +565,8 @@ async def _atlas_topic_detail(
 
     signal_rows = [_sig(r) for r in signals]
     warnings = ["atlas_topic_gated"] + (["gate_pending"] if gate_pending else [])
+    if below_gate_fallback:
+        warnings.append("below_gate_evidence")
 
     return {
         "theme": slug,

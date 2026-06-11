@@ -101,8 +101,11 @@ def test_fetch_threads_merges_atlas_and_emergent():
     block = source[merged_start:next_def]
     assert "_fetch_dynamic_threads_with_conn" in block
     assert "_fetch_emergent_threads_with_conn" in block
-    assert "return dynamic[:limit]" in block
-    assert "dynamic_topics is canonical when active rows exist" in block
+    # dynamic ranks first but must not starve the list (#224 review follow-up):
+    # atlas threads fill remaining slots, deduped by label
+    assert "dynamic + atlas_fill[: limit - len(dynamic)]" in block
+    assert "dynamic_topics stays canonical" in block
+    assert "atlas_fill" in block
     assert 'sort(key=lambda t: int(t.get("signal_count") or 0), reverse=True)' in block
     # Atlas-only when filtered by topic/country
     assert "is_atlas_filtered" in block

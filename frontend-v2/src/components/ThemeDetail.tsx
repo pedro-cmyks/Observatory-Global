@@ -327,7 +327,11 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     const pinnedId = `theme-${theme}${originCountry ? '-' + originCountry : ''}`
     const pinned = isPinned(pinnedId)
     const displayLabel = data?.label || (isQueryThread ? queryThreadText : getThemeLabel(theme))
-    const emptyState = data && data.total === 0
+    // total counts VERIFIED (gate-kept) evidence; with the below-gate
+    // fallback (#214) the backend can return raw signals labeled unverified
+    // even when total is 0 — only show the empty state when there is truly
+    // nothing to inspect.
+    const emptyState = data && data.total === 0 && (data.signals?.length ?? 0) === 0
         ? buildThemeDetailEmptyState({
             label: displayLabel,
             countryName: drillCountryName || (drillCountry ? resolveCountryName(drillCountry) : null),
@@ -564,6 +568,22 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 </p>
                             )}
                         </div>
+
+                        {data.warnings?.includes('below_gate_evidence') && (
+                            <div
+                                className="theme-below-gate-banner"
+                                style={{
+                                    fontSize: 10, lineHeight: 1.5, padding: '6px 10px', margin: '0 0 8px',
+                                    borderRadius: 6, border: '1px solid rgba(251,191,36,0.35)',
+                                    background: 'rgba(251,191,36,0.07)', color: 'rgba(252,211,77,0.9)',
+                                }}
+                                data-tip="Gates decide what Atlas volunteers, not what it can find when asked"
+                            >
+                                0 signals cleared the quality gate for this slice — showing the{' '}
+                                {data.rawTotal?.toLocaleString()} assigned signals as UNVERIFIED evidence.
+                                Treat headlines below as candidate material, not confirmed coverage.
+                            </div>
+                        )}
 
                         {/* Summary Stats */}
                         <div className="theme-stats-row">

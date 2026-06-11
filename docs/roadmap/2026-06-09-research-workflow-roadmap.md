@@ -81,3 +81,12 @@ useful, openable anchors; the user can pin a route in Workbench without losing
 it; who-says-what and frame differences are visible; evidence, context, weak
 support, contradiction, and gaps are clearly separated; list and detail counts
 agree; and the pinned route can become a report.
+
+
+## Addendum 2026-06-12: L4 markets layer (post-spec track)
+
+After the research workflow ships its remaining phases, the L4 markets
+layer is the next major track: `docs/research/2026-06-12-atlas-markets-layer-l4.md`
+(evidence-gated plan, M0 = #226). Lives in a `markets/` folder in this repo,
+consumes the Atlas API, never blocks the spec. Long-range product thesis:
+Atlas as an API for processed narrative state.
