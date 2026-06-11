@@ -83,4 +83,16 @@ def start_embed_service_thread() -> threading.Thread | None:
     thread = threading.Thread(target=_serve, name="embed-service", daemon=True)
     thread.start()
     logger.info("embed service listening on :%d (private 6PN only)", EMBED_SERVICE_PORT)
+
+    # Warm the model off the request path: first load takes 60-90s on Fly
+    # shared CPU, which would otherwise burn every caller's timeout budget.
+    def _warm() -> None:
+        try:
+            from app.services.research_semantic import embed_texts
+            embed_texts(["query: warmup"])
+            logger.info("embed model warm")
+        except Exception as exc:
+            logger.warning("embed warmup failed: %s", exc)
+
+    threading.Thread(target=_warm, name="embed-warmup", daemon=True).start()
     return thread

@@ -113,7 +113,10 @@ def _embed_remote(texts: list[str]) -> list[list[float]] | None:
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        timeout = float(os.getenv("EMBED_SERVICE_TIMEOUT_SECONDS", "10"))
+        # 30s default: the atlas-anchor batch (~30 texts) takes >10s on Fly
+        # shared CPU; on success the caller caches it per process, so the
+        # cost is paid once per deploy, not per request.
+        timeout = float(os.getenv("EMBED_SERVICE_TIMEOUT_SECONDS", "30"))
         with urllib.request.urlopen(req, timeout=timeout) as res:
             payload = json.loads(res.read())
         vectors = payload.get("vectors")
