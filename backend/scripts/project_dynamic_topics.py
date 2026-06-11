@@ -32,14 +32,41 @@ import numpy as np
 
 from scripts.emergent_topic_identity_resolver import cosine
 
-MATCH_THRESHOLD = 0.85
+MATCH_THRESHOLD = 0.88
+# Anchor guard (#224, measured 2026-06-11): a cluster must also match the
+# topic's ORIGINAL (first-cluster) centroid, not only the running mean. The
+# running mean drifts toward a generic news centroid over ~20 snapshots,
+# after which everything matches >= 0.85 and the topic becomes a black hole
+# ('PSG Victory Riots' absorbed Orwell/Modi/earthquakes at 0.87-0.93 running
+# but only 0.785-0.879 vs anchor; genuine Russia-Ukraine continuations sit
+# at 0.92-0.97 vs anchor). 0.90 separates the measured populations.
+ANCHOR_THRESHOLD = 0.90
+# NOTE (#224): a label-instability guard was tried and removed — genuine
+# evolving stories (Russia-Ukraine) legitimately get a fresh DeepSeek label
+# per snapshot, so label diversity over-fires. Semantic coherence is already
+# enforced structurally by the anchor guard on attach.
+# Recurring-format noise (#224): coherent-looking labels that are listings,
+# not narratives. They persist forever by nature, so they must never promote.
+LISTING_PATTERNS = re.compile(
+    r"\b(stock price|share price|market movements?|real estate listings?|"
+    r"property listings?|company information|exchange rates?|"
+    r"lottery (results?|numbers)|horoscopes?|weather forecasts?|"
+    r"tv (guide|listings)|recipes)\b",
+    re.IGNORECASE,
+)
 # Deliberately narrow: only unambiguous grab-bag markers. Broad terms like
 # "headlines" or "digest" catch legitimate topics ("Crime Headlines") and
 # were validated out. Label-regex is a weak first filter; the robust quality
-# gate is the evidence-role student noise rate (next increment).
+# gates are the evidence-role noise rate and the instability guard above.
+# Multilingual markers added 2026-06-11 (#224): 'Noticias Regionales
+# Variadas' was active and unflagged because the patterns were English-only.
 ROUNDUP_PATTERNS = re.compile(
     r"\b(round\s?up|mixed news|miscellaneous|assorted|news brief|"
-    r"various (news|stories|topics|updates)|grab\s?bag)\b",
+    r"various (news|stories|topics|updates)|grab\s?bag|"
+    r"noticias (variadas|varias|mixtas|regionales variadas|generales)|"
+    r"resumen de noticias|vari(as|os) noticias|noticias del d[ií]a|"
+    r"actualit[eé]s? diverses|nachrichten[üu]berblick|"
+    r"notizie varie|not[íi]cias variadas)\b",
     re.IGNORECASE,
 )
 
@@ -57,7 +84,7 @@ class LifecycleConfig:
 def is_roundup_label(label: str | None) -> bool:
     if not label:
         return False
-    return bool(ROUNDUP_PATTERNS.search(label))
+    return bool(ROUNDUP_PATTERNS.search(label)) or bool(LISTING_PATTERNS.search(label))
 
 
 def next_state(
@@ -106,9 +133,9 @@ def running_mean(old: np.ndarray, k: int, new: np.ndarray) -> np.ndarray:
 
 class Topic:
     __slots__ = (
-        "id", "identity_key", "state", "label_counts", "centroid", "first_seen",
-        "last_seen", "snapshots", "agg_n_signals", "cohesions", "roundup_votes",
-        "n_labels", "since_seen", "members", "dirty", "new", "noises",
+        "id", "identity_key", "state", "label_counts", "centroid", "anchor_centroid",
+        "first_seen", "last_seen", "snapshots", "agg_n_signals", "cohesions",
+        "roundup_votes", "n_labels", "since_seen", "members", "dirty", "new", "noises",
     )
 
     def __init__(self, identity_key, label, centroid, snap, n_signals, cohesion, noise=None):
@@ -118,6 +145,10 @@ class Topic:
         self.state = "candidate"
         self.label_counts: Any = Counter({label: 1}) if label else Counter()
         self.centroid = np.array(centroid, dtype=np.float64)
+        # immutable identity anchor (#224): the first cluster's centroid.
+        # attach() never updates it, so drift in the running mean cannot
+        # widen what the topic is allowed to absorb.
+        self.anchor_centroid = np.array(centroid, dtype=np.float64)
         self.first_seen = snap
         self.last_seen = snap
         self.snapshots = {snap}
@@ -255,7 +286,9 @@ def process_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], s
     for ci, c in enumerate(snap_clusters):
         for ti, t in enumerate(topics):
             s = cosine(np.array(c["centroid"]), t.centroid)
-            if s >= MATCH_THRESHOLD:
+            if s >= MATCH_THRESHOLD and (
+                cosine(np.array(c["centroid"]), t.anchor_centroid) >= ANCHOR_THRESHOLD
+            ):
                 pairs.append((s, ci, ti))
     pairs.sort(reverse=True)
     used_c: set[int] = set()

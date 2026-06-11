@@ -132,3 +132,76 @@ def test_merge_duplicates_does_not_let_roundups_absorb_real_topics():
     merged = merge_duplicates([roundup, real], threshold=0.9)
 
     assert len(merged) == 2
+
+
+# ── #224: black-hole guards ──────────────────────────────────────────────────
+
+def _unit(v):
+    import numpy as np
+    a = np.array(v, dtype=float)
+    return (a / np.linalg.norm(a)).tolist()
+
+
+def _cluster224(cid, label, centroid, snap="2026-06-11T00:00:00", n=30):
+    return {
+        "id": cid, "snapshot_at": snap, "cluster_id": cid, "label": label,
+        "n_signals": n, "cohesion": 0.7, "sample_signal_ids": [],
+        "centroid": centroid, "noise": 0.1,
+    }
+
+
+def test_anchor_guard_blocks_drift_chain():
+    """A topic whose running mean drifts must NOT absorb clusters that no
+    longer resemble its original identity (the PSG black hole, #224)."""
+    from scripts.project_dynamic_topics import (
+        LifecycleConfig, Topic, process_snapshot,
+    )
+    cfg = LifecycleConfig()
+    anchor_vec = _unit([1.0, 0.0, 0.0, 0.05])
+    topic = Topic("t-psg", "PSG Victory Riots", anchor_vec,
+                  "2026-06-01T00:00:00", 30, 0.7)
+    # simulate drift: running centroid pulled toward a different region
+    drift_vec = _unit([0.55, 0.8, 0.2, 0.0])
+    topic.centroid = __import__("numpy").array(drift_vec)
+
+    # cluster matches the DRIFTED centroid but not the anchor
+    invader = _cluster224(101, "PM Modi's 12-Year Milestone", drift_vec)
+    topics = process_snapshot([topic], [invader], "2026-06-11T00:00:00", cfg)
+
+    # invader must open its own topic, not attach to PSG
+    assert len(topics) == 2
+    assert topics[0].n_member_clusters == 0  # PSG gained nothing
+    assert topics[1].label == "PM Modi's 12-Year Milestone"
+
+
+def test_anchor_guard_allows_genuine_continuation():
+    from scripts.project_dynamic_topics import (
+        LifecycleConfig, Topic, process_snapshot,
+    )
+    cfg = LifecycleConfig()
+    anchor_vec = _unit([1.0, 0.0, 0.0, 0.05])
+    topic = Topic("t-war", "Russia-Ukraine War Updates", anchor_vec,
+                  "2026-06-01T00:00:00", 30, 0.7)
+    near = _cluster224(102, "Russian Drone Strikes on Kyiv", _unit([0.98, 0.05, 0.0, 0.06]))
+    topics = process_snapshot([topic], [near], "2026-06-11T00:00:00", cfg)
+    assert len(topics) == 1
+    assert topics[0].n_member_clusters == 1
+
+
+def test_listing_format_labels_flagged_never_promote():
+    """Recurring-format noise (listings) persists by nature; never a thread."""
+    from scripts.project_dynamic_topics import is_roundup_label
+    assert is_roundup_label("Stock Price Movements")
+    assert is_roundup_label("Real Estate Listings")
+    assert is_roundup_label("Company Information Summary")
+    assert not is_roundup_label("Stock Market Crash in Tokyo")  # a story, not a listing
+
+
+def test_multilingual_roundup_labels_flagged():
+    from scripts.project_dynamic_topics import is_roundup_label
+    assert is_roundup_label("Noticias Regionales Variadas")
+    assert is_roundup_label("Noticias Variadas")
+    assert is_roundup_label("Resumen de Noticias")
+    assert is_roundup_label("Greek News Roundup")
+    assert not is_roundup_label("Crime Headlines")
+    assert not is_roundup_label("Iran Water Crisis")

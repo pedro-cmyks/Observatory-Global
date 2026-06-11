@@ -700,6 +700,17 @@ SELECT
     dt.agg_n_signals,
     dt.mean_cohesion,
     dt.noise_rate,
+    -- current volume (#224): the latest member cluster's kept-signal count.
+    -- Lifetime agg_n_signals accumulates forever and let stale identities
+    -- dominate the list by construction.
+    COALESCE((
+        SELECT ec4.n_signals
+        FROM dynamic_topic_members dtm4
+        JOIN emergent_clusters ec4 ON ec4.id = dtm4.emergent_cluster_id
+        WHERE dtm4.dynamic_topic_id = dt.id
+        ORDER BY dtm4.snapshot_at DESC
+        LIMIT 1
+    ), 0)::int AS recent_n_signals,
     COALESCE(MAX(ec.velocity), 0)::int AS changed_10h,
     ARRAY(
         SELECT DISTINCT code
@@ -723,7 +734,7 @@ LEFT JOIN emergent_clusters ec ON ec.id = dtm.emergent_cluster_id
 WHERE dt.state = 'active'
   AND dt.last_seen > NOW() - ($1::int * INTERVAL '1 hour')
 GROUP BY dt.id
-ORDER BY dt.agg_n_signals DESC, dt.last_seen DESC
+ORDER BY recent_n_signals DESC, dt.last_seen DESC
 LIMIT $2
 """
 
@@ -767,7 +778,13 @@ GROUP BY dt.id
 def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[str, Any]:
     topic_id = int(_record_get(topic_row, "id"))
     label_text = str(_record_get(topic_row, "label") or f"dynamic topic {topic_id}")
-    signal_count = int(_record_get(topic_row, "agg_n_signals") or 0)
+    # current-window volume (#224); lifetime aggregate kept as metadata
+    signal_count = int(
+        _record_get(topic_row, "recent_n_signals")
+        or _record_get(topic_row, "agg_n_signals")
+        or 0
+    )
+    lifetime_signals = int(_record_get(topic_row, "agg_n_signals") or 0)
     changed_10h = int(_record_get(topic_row, "changed_10h") or 0)
     noise_rate = _record_get(topic_row, "noise_rate")
     avg_conf = 1.0 - float(noise_rate) if noise_rate is not None else 0.9
@@ -811,6 +828,7 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         "anchor_topics": [str(_record_get(topic_row, "identity_key") or f"dynamic-topic-{topic_id}")],
         "parent_domain": None,
         "signal_count": signal_count,
+        "lifetime_signal_count": lifetime_signals,
         "source_count": source_count,
         "country_count": country_count,
         "avg_confidence": round(max(min(avg_conf, 1.0), 0.0), 3),
