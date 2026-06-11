@@ -17,13 +17,14 @@
   <key>RunAtLoad</key>
   <false/>
 
-  <!-- Every 6h, offset :30 to stay clear of the emergent snapshot at :00 -->
+  <!-- Heavy local compute runs OFF Pedro's working hours (his ask,
+       2026-06-12: the daytime backfill froze the machine): evening +
+       overnight only, offset :30 from the emergent snapshot at :00 -->
   <key>StartCalendarInterval</key>
   <array>
-    <dict><key>Hour</key><integer>2</integer><key>Minute</key><integer>30</integer></dict>
-    <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>30</integer></dict>
-    <dict><key>Hour</key><integer>14</integer><key>Minute</key><integer>30</integer></dict>
-    <dict><key>Hour</key><integer>20</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Hour</key><integer>17</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Hour</key><integer>23</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Hour</key><integer>5</integer><key>Minute</key><integer>30</integer></dict>
   </array>
 
   <key>StandardOutPath</key>

@@ -24,4 +24,4 @@ launchctl unload "$TARGET_PLIST" 2>/dev/null || true
 launchctl load "$TARGET_PLIST"
 
 echo "installed: $(launchctl list | grep com.atlas.embed-hot-corpus || echo 'NOT LOADED')"
-echo "next runs at 02:30 / 08:30 / 14:30 / 20:30; logs in $WORKER_HOME/logs/embed-hot-corpus.*.log"
+echo "next runs at 17:30 / 23:30 / 05:30 (off working hours); logs in $WORKER_HOME/logs/embed-hot-corpus.*.log"

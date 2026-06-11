@@ -39,8 +39,13 @@ MATCH_THRESHOLD = 0.88
 # after which everything matches >= 0.85 and the topic becomes a black hole
 # ('PSG Victory Riots' absorbed Orwell/Modi/earthquakes at 0.87-0.93 running
 # but only 0.785-0.879 vs anchor; genuine Russia-Ukraine continuations sit
-# at 0.92-0.97 vs anchor). 0.90 separates the measured populations.
-ANCHOR_THRESHOLD = 0.90
+# at 0.92-0.97 vs anchor). 0.90 separated those populations, but same-domain
+# conflation survived it (a fresh PSG topic absorbed 'Real Madrid Offers 150M'
+# at 0.903 and 'Mundial 2026' at 0.931 — football↔football runs hot). 0.93
+# keeps the measured genuine cores (Russia-Ukraine 0.94-0.97) and cuts the
+# domain-cousin tail. Residual same-domain conflation above 0.93 is a known
+# limitation; the proper fix is an entity-overlap check (#224 follow-up).
+ANCHOR_THRESHOLD = 0.93
 # NOTE (#224): a label-instability guard was tried and removed — genuine
 # evolving stories (Russia-Ukraine) legitimately get a fresh DeepSeek label
 # per snapshot, so label diversity over-fires. Semantic coherence is already

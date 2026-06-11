@@ -21,9 +21,9 @@ MLVENV="${ATLAS_MLVENV:-/Users/pedro/AtlasLocalWorker/mlvenv}"
 LOCAL_ENV="${ATLAS_LOCAL_ENV:-$ROOT_DIR/.env}"
 
 # Incremental: only the recent window each run; retention bounds the table.
-WINDOW_HOURS="${ATLAS_EMBED_WINDOW_HOURS:-48}"
+WINDOW_HOURS="${ATLAS_EMBED_WINDOW_HOURS:-168}"
 RETENTION_DAYS="${ATLAS_EMBED_RETENTION_DAYS:-7}"
-MAX_SIGNALS="${ATLAS_EMBED_MAX_SIGNALS:-120000}"
+MAX_SIGNALS="${ATLAS_EMBED_MAX_SIGNALS:-60000}"  # ~25-40 min/run, bounded
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 mkdir -p "$LOG_DIR"
