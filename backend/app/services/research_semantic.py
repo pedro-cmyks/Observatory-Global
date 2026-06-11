@@ -97,20 +97,48 @@ def _build_embed_fn():
     return embed
 
 
-def embed_texts(texts: list[str]) -> list[list[float]] | None:
-    """Embed pre-prefixed texts ('query: ...' / 'passage: ...'). Returns None
-    when the model stack is unavailable (Fly API box) — callers must treat
-    None as a degraded lane, never an error."""
-    global _embed_fn
-    if not embedder_available():
+def _embed_remote(texts: list[str]) -> list[list[float]] | None:
+    """Embed via the internal embed service (nlp_worker hosts the model on
+    Fly — see enrichment/embed_service.py). Private 6PN URL via
+    EMBED_SERVICE_URL; returns None on any failure (lane degrades)."""
+    base = os.getenv("EMBED_SERVICE_URL")
+    if not base:
         return None
+    import json
+    import urllib.request
     try:
-        if _embed_fn is None:
-            _embed_fn = _build_embed_fn()
-        return _embed_fn(texts)
+        req = urllib.request.Request(
+            f"{base.rstrip('/')}/embed",
+            data=json.dumps({"texts": texts}).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        timeout = float(os.getenv("EMBED_SERVICE_TIMEOUT_SECONDS", "10"))
+        with urllib.request.urlopen(req, timeout=timeout) as res:
+            payload = json.loads(res.read())
+        vectors = payload.get("vectors")
+        return vectors if isinstance(vectors, list) and vectors else None
     except Exception as exc:
-        logger.warning("semantic embed failed: %s", exc)
+        logger.warning("remote embed failed: %s", exc)
         return None
+
+
+def embed_texts(texts: list[str]) -> list[list[float]] | None:
+    """Embed pre-prefixed texts ('query: ...' / 'passage: ...').
+
+    Provider chain: local torch (M1 dev / nlp_worker) → internal embed
+    service (Fly api box with EMBED_SERVICE_URL set) → None. Callers must
+    treat None as a degraded lane, never an error."""
+    global _embed_fn
+    if embedder_available():
+        try:
+            if _embed_fn is None:
+                _embed_fn = _build_embed_fn()
+            return _embed_fn(texts)
+        except Exception as exc:
+            logger.warning("semantic embed failed: %s", exc)
+            return None
+    return _embed_remote(texts)
 
 
 def embed_query(text: str) -> list[float] | None:

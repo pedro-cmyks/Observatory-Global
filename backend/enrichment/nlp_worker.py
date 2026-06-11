@@ -297,4 +297,11 @@ def _parse_args():
 
 if __name__ == "__main__":
     args = _parse_args()
+    # Internal e5 embed service for the research semantic lane (#223):
+    # daemon thread, private 6PN only, never blocks or crashes the worker.
+    try:
+        from enrichment.embed_service import start_embed_service_thread
+        start_embed_service_thread()
+    except Exception:
+        logger.exception("embed service failed to start (worker continues)")
     asyncio.run(main(args.limit, args.once))

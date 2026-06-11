@@ -48,6 +48,10 @@ primary_region = "iad"  # Washington DC — closest to GDELT servers
   # Inline NLP stays off in production. The dedicated nlp_worker process owns
   # transformer enrichment; the API image intentionally has no model deps.
   NLP_INLINE_ENABLED = "false"
+  # Research semantic lane (#223): the api box has no torch, so query
+  # embedding is served by the internal embed service hosted in nlp_worker
+  # (enrichment/embed_service.py). Private 6PN only — no [services] entry.
+  EMBED_SERVICE_URL = "http://nlp_worker.process.atlas-api-pedro.internal:8090"
 
 [deploy]
   strategy = "immediate"
