@@ -16,7 +16,8 @@ describe('ThemeDetail dynamic topic insight guardrail', () => {
         const effectEnd = source.indexOf('const getSentimentColor')
         const effectSource = source.slice(effectStart, effectEnd)
 
-        expect(effectSource).toContain('if (isDynamicTopic) return')
+        // guard must bail for dynamic topics (query threads may share the guard)
+        expect(effectSource).toMatch(/if \(isDynamicTopic[^)]*\) return/)
         expect(effectSource).toContain('/api/v2/theme/${encodeURIComponent(theme)}/insight')
     })
 })

@@ -32,6 +32,8 @@ import type { PublicAttentionOrigin } from './lib/publicAttention'
 import { prefetchBriefing } from './lib/briefingPrefetch'
 import { resolveThreadThemeTarget } from './lib/threadThemeTarget'
 import { buildHistoricalCoverageCue } from './lib/historicalCoverageCue'
+import ResearchPlanPanel from './components/ResearchPlanPanel'
+import WorkbenchPanel from './components/WorkbenchPanel'
 
 // Terminal Panels
 import { NarrativeThreads, type LivingThreadSelection } from './components/NarrativeThreads'
@@ -270,6 +272,10 @@ function AppContent() {
     | { type: 'country'; code: string; name: string }
   const [prevStreamCtx, setPrevStreamCtx] = useState<PrevCtx | null>(null)
   const [showBriefing, setShowBriefing] = useState(false)
+  // Workbench (Phase 2, #213): investigation memory overlay + research plan
+  const [workbenchOpen, setWorkbenchOpen] = useState(false)
+  const [researchQuery, setResearchQuery] = useState<string | null>(null)
+  const [wbRefresh, setWbRefresh] = useState(0)
   const [tourRunId, setTourRunId] = useState(0)
   const { watches, add: addWatch } = useSavedWatches()
   const [watchNamePrompt, setWatchNamePrompt] = useState<string | null>(null)
@@ -413,6 +419,38 @@ function AppContent() {
       sources: [],
     })
     setShowFlows(true)
+  }
+
+  // Workbench / research-plan handlers (Phase 2, #213). Anchors open the
+  // existing surfaces: a thread anchor routes through the theme-detail
+  // contract (same path NarrativeThreads uses), a country anchor through
+  // CountryBrief.
+  function handleResearchOpenThread(threadId: string, label: string) {
+    const isDynamic = threadId.startsWith('dynamic-topic-')
+    const slug = isDynamic ? threadId : threadId.split('--')[0]
+    const countryCode = !isDynamic && threadId.includes('--')
+      ? threadId.split('--')[1]?.split('-')[0]?.toUpperCase()
+      : undefined
+    setSelectedTheme({
+      theme: slug,
+      originCountry: countryCode,
+      originCountryName: countryCode ? resolveCountryName(countryCode) : undefined,
+      thread: { thread_id: threadId, label },
+    })
+    setSelectedThread(null)
+    setSelectedCountry(null)
+    setSelectedCountryCode(null)
+    setSelectedPublicAttention(null)
+    setSelectedChokepoint(null)
+    setRightPanelThemeCountry(null)
+    setThemeBackStack([])
+    setWorkbenchOpen(false)
+  }
+
+  function handleResearchOpenCountry(countryCode: string) {
+    handleCountryClick(countryCode)
+    setMapFlyCountry(countryCode)
+    setWorkbenchOpen(false)
   }
 
   // Theme selection handlers
@@ -1039,6 +1077,13 @@ function AppContent() {
                 {TIME_RANGE_LABELS[range]}
               </button>
             ))}
+            <button
+              className={`time-btn workbench-btn ${workbenchOpen ? 'active' : ''}`}
+              data-tip="Investigation Workbench: research plans, pins, and saved routes"
+              onClick={() => setWorkbenchOpen(open => !open)}
+            >
+              WORKBENCH
+            </button>
           </div>
         </div>
         <div className="command-bar-right">
@@ -1646,6 +1691,42 @@ function AppContent() {
             setShowBriefing(false)
           }}
         />
+      )}
+
+      {workbenchOpen && (
+        <div className="workbench-overlay">
+          <div className="workbench-overlay-header">
+            <span className="workbench-overlay-title">INVESTIGATION WORKBENCH</span>
+            <button className="workbench-overlay-close" onClick={() => setWorkbenchOpen(false)}>×</button>
+          </div>
+          <div className="workbench-overlay-body">
+            <div className="workbench-overlay-left">
+              <WorkbenchPanel
+                refreshToken={wbRefresh}
+                onOpenThread={handleResearchOpenThread}
+                onOpenCountry={handleResearchOpenCountry}
+                onStartInvestigation={(q) => setResearchQuery(q)}
+              />
+            </div>
+            <div className="workbench-overlay-right">
+              {researchQuery ? (
+                <ResearchPlanPanel
+                  query={researchQuery}
+                  hours={Math.max(timeRangeToHours(timeRange), 168)}
+                  onOpenThread={handleResearchOpenThread}
+                  onOpenCountry={handleResearchOpenCountry}
+                  onBranchQuery={(q) => setResearchQuery(q)}
+                  onPinsChanged={() => setWbRefresh(t => t + 1)}
+                />
+              ) : (
+                <div className="workbench-overlay-hint">
+                  Create or select an investigation, then its research plan appears here.
+                  Anchors open real Atlas surfaces; pin the useful ones.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ThemeDetail renders inside the stream panel — see stream panel below */}

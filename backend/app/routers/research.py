@@ -7,8 +7,11 @@ ranking ledger (Phase 1b), no persistence (Phase 2), no LLM.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
+import time
+from typing import Literal
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
@@ -103,6 +106,11 @@ async def research_plan(body: ResearchPlanRequest) -> dict:
     )
     plan = rank_plan(plan)
     plan["query"] = body.query
+    # plan_id joins pin events (#218) back to this ranked anchor list. Hashed
+    # from cache key + hour bucket: cache hits within the TTL share an id.
+    plan["plan_id"] = "rp-" + hashlib.sha1(
+        f"{cache_key}:{int(time.time() // 3600)}".encode()
+    ).hexdigest()[:16]
 
     if app.state.redis:
         try:
@@ -111,3 +119,55 @@ async def research_plan(body: ResearchPlanRequest) -> dict:
             pass
 
     return plan
+
+
+class PinEvent(BaseModel):
+    anchor_id: str = Field(..., min_length=1, max_length=300)
+    event_type: Literal["impression", "open", "pin", "unpin", "dismiss"]
+    anchor_type: str | None = Field(None, max_length=40)
+    rank_shown: int | None = Field(None, ge=0, le=500)
+    visibility: str | None = Field(None, max_length=20)
+    investigative_score: float | None = Field(None, ge=0, le=1)
+    dwell_ms: int | None = Field(None, ge=0)
+
+
+class PinEventBatch(BaseModel):
+    plan_id: str = Field(..., min_length=1, max_length=64)
+    investigation_id: str | None = Field(None, max_length=64)
+    query_text: str | None = Field(None, max_length=500)
+    events: list[PinEvent] = Field(..., min_length=1, max_length=200)
+
+
+@router.post("/events", status_code=202)
+async def record_pin_events(batch: PinEventBatch) -> dict:
+    """Relevance-judgment telemetry (#218): impressions/opens/pins per anchor.
+
+    Best-effort by design — a telemetry failure must never break the
+    investigation UI, so DB unavailability returns accepted=0, not a 500.
+    """
+    if db.pool is None:
+        return {"accepted": 0, "degraded": True}
+    rows = [
+        (
+            batch.plan_id, batch.investigation_id, e.anchor_id, e.anchor_type,
+            e.event_type, e.rank_shown, e.visibility, e.investigative_score,
+            batch.query_text, e.dwell_ms,
+        )
+        for e in batch.events
+    ]
+    try:
+        async with db.pool.acquire() as conn:
+            await conn.executemany(
+                """
+                INSERT INTO research_pin_events
+                    (plan_id, investigation_id, anchor_id, anchor_type,
+                     event_type, rank_shown, visibility, investigative_score,
+                     query_text, dwell_ms)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                """,
+                rows,
+            )
+    except Exception as exc:
+        logger.warning("pin-event write failed: %s", exc)
+        return {"accepted": 0, "degraded": True}
+    return {"accepted": len(rows), "degraded": False}
