@@ -192,10 +192,11 @@ interface SearchBarProps {
     onThemeSelect: (theme: string, countryCode?: string, countryName?: string) => void
     onCountrySelect: (code: string) => void
     onPublicAttentionSelect?: (item: PublicAttentionResult) => void
+    onStartInvestigation?: (query: string) => void
     externalQuery?: { q: string; id: number }
 }
 
-export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSelect, externalQuery }: SearchBarProps) {
+export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSelect, onStartInvestigation, externalQuery }: SearchBarProps) {
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<SearchResult | null>(null)
     const [parsedQuery, setParsedQuery] = useState<ParsedQuery>({ topic: '', countryCode: null, countryDisplay: null })
@@ -366,6 +367,20 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                                 Build a thread for <strong>“{query.trim()}”</strong>
                             </span>
                             <span className="search-query-thread-hint">custom narrative →</span>
+                        </button>
+                    )}
+
+                    {onStartInvestigation && query.trim().length >= 8 && (
+                        <button
+                            className="search-query-thread-cta"
+                            data-tip="Open a guided research plan in the Workbench"
+                            onClick={() => { onStartInvestigation(query.trim()); close() }}
+                        >
+                            <span className="search-query-thread-icon">🔬</span>
+                            <span className="search-query-thread-text">
+                                Start investigation for <strong>“{query.trim()}”</strong>
+                            </span>
+                            <span className="search-query-thread-hint">workbench →</span>
                         </button>
                     )}
 

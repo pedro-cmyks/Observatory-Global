@@ -34,6 +34,7 @@ import { resolveThreadThemeTarget } from './lib/threadThemeTarget'
 import { buildHistoricalCoverageCue } from './lib/historicalCoverageCue'
 import ResearchPlanPanel from './components/ResearchPlanPanel'
 import WorkbenchPanel from './components/WorkbenchPanel'
+import { createInvestigation } from './lib/workbench'
 
 // Terminal Panels
 import { NarrativeThreads, type LivingThreadSelection } from './components/NarrativeThreads'
@@ -1064,6 +1065,12 @@ function AppContent() {
               onThemeSelect={handleThemeSelect}
               onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
               onPublicAttentionSelect={handlePublicAttentionSelect}
+              onStartInvestigation={(q) => {
+                createInvestigation(q)
+                setResearchQuery(q)
+                setWorkbenchOpen(true)
+                setWbRefresh(t => t + 1)
+              }}
               externalQuery={externalSearchQuery}
             />
           </div>
