@@ -943,3 +943,275 @@
     color: #64748b;
     background: rgba(100, 116, 139, 0.1);
 }
+
+/* ===== SURFACES REVIEW REBUILD (#225) — lead story, watchlist, heat strip, demoted map ===== */
+
+/* LEAD STORY */
+.brief-lead-story {
+    max-width: 860px;
+    margin: 8px auto 0;
+    padding: 22px 40px;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.brief-lead-story:hover { background: rgba(29, 158, 117, 0.04); }
+
+.brief-lead-story:focus-visible {
+    outline: 2px solid #1D9E75;
+    outline-offset: -2px;
+}
+
+.brief-lead-headline {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 30px;
+    line-height: 1.2;
+    color: #f1f5f9;
+    margin: 0 0 10px;
+    font-weight: 700;
+}
+
+.brief-lead-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.brief-lead-count {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1D9E75;
+    font-variant-numeric: tabular-nums;
+}
+
+.brief-lead-sub {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 11px;
+    color: #64748b;
+}
+
+.brief-lead-whynow {
+    font-family: Georgia, serif;
+    font-size: 13px;
+    font-style: italic;
+    color: rgba(226, 232, 240, 0.7);
+    margin: 0 0 12px;
+}
+
+.brief-lead-empty p {
+    font-family: Georgia, serif;
+    font-size: 14px;
+    color: #94a3b8;
+}
+
+/* STANDFIRST — honest one-liner when no AI insight */
+.brief-standfirst {
+    font-family: Georgia, serif;
+    font-size: 14px;
+    color: rgba(226, 232, 240, 0.75);
+    margin: 0;
+    border-left: 2px solid rgba(255, 255, 255, 0.15);
+    padding-left: 16px;
+}
+
+/* THREAD ROWS (watchlist + country threads) */
+.brief-watchlist {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 14px 40px;
+}
+
+.brief-thread-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.brief-thread-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    background: none;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 9px 2px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s;
+    width: 100%;
+}
+
+.brief-thread-row:hover { background: rgba(29, 158, 117, 0.06); }
+
+.brief-thread-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.brief-thread-label {
+    font-family: Georgia, serif;
+    font-size: 14px;
+    color: #cbd5e1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.brief-thread-row:hover .brief-thread-label { color: #f1f5f9; }
+
+.brief-thread-headline {
+    font-size: 11px;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.brief-thread-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.brief-thread-count {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1D9E75;
+    font-variant-numeric: tabular-nums;
+    min-width: 36px;
+    text-align: right;
+}
+
+.brief-thread-trend {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.brief-thread-trend-up { color: #4ade80; }
+.brief-thread-trend-down { color: #f87171; }
+.brief-thread-trend-flat { color: #64748b; }
+
+.brief-thread-chip {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 3px;
+    padding: 1px 6px;
+    white-space: nowrap;
+}
+
+/* SPARKLINE — reserved timeline slot per row */
+.brief-spark {
+    color: rgba(29, 158, 117, 0.8);
+    display: inline-flex;
+    align-items: center;
+    width: 96px;
+    height: 24px;
+}
+
+.brief-spark-empty {
+    border-bottom: 1px dotted rgba(255, 255, 255, 0.12);
+    height: 1px;
+    align-self: center;
+}
+
+/* HEATING UP strip */
+.brief-heat-strip {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 14px 40px;
+}
+
+.brief-heat-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.brief-heat-card {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    background: rgba(248, 113, 113, 0.05);
+    border: 1px solid rgba(248, 113, 113, 0.18);
+    border-radius: 4px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.brief-heat-card:hover { background: rgba(248, 113, 113, 0.12); }
+
+.brief-heat-name {
+    font-family: Georgia, serif;
+    font-size: 13px;
+    color: #e2e8f0;
+}
+
+.brief-heat-val {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #f87171;
+    font-variant-numeric: tabular-nums;
+}
+
+.brief-heat-comp {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #b08948;
+}
+
+/* DEMOTED MAP — half-width beside Most Active */
+.brief-map-row {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 14px 40px;
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: 24px;
+    align-items: start;
+}
+
+.brief-map-row .brief-minimap-demoted {
+    margin: 0;
+    padding: 10px 12px;
+}
+
+.brief-map-side {
+    padding-top: 6px;
+}
+
+/* COUNTRY VIEW notes */
+.brief-country-note {
+    font-family: Georgia, serif;
+    font-size: 13px;
+    color: #94a3b8;
+}
+
+.brief-country-note p { margin: 0 0 10px; }
+
+@media (max-width: 720px) {
+    .brief-map-row { grid-template-columns: 1fr; }
+    .brief-lead-story { padding: 16px 20px; }
+    .brief-watchlist,
+    .brief-heat-strip,
+    .brief-map-row { padding-left: 20px; padding-right: 20px; }
+    .brief-thread-headline { display: none; }
+    .brief-spark { width: 64px; }
+}

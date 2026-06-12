@@ -6,6 +6,7 @@ import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { COUNTRY_OPTIONS, resolveCountryName } from '../lib/countryNames'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours, type TimeRange } from '../lib/timeRanges'
 import { readBriefingCache } from '../lib/briefingPrefetch'
+import { resolveThreadThemeTarget } from '../lib/threadThemeTarget'
 import './BriefNewspaper.css'
 
 // Natural Earth 110m with ISO_A2 country properties
@@ -37,6 +38,46 @@ function signalColor(intensity: number): string {
     return `rgb(${r},${g},${b})`
 }
 
+interface ThreadEvidence {
+    id?: string | number
+    headline: string
+    source?: string
+    country_code?: string | null
+    url?: string
+}
+
+interface TimelinePoint {
+    hour: string
+    count: number
+    avg_sentiment: number
+}
+
+interface TopThread {
+    thread_id: string
+    label: string
+    anchor_topics?: string[]
+    signal_count: number
+    lifetime_signal_count?: number
+    source_count?: number
+    country_count?: number
+    changed_10h?: number
+    trend?: string
+    why_now?: string
+    top_countries?: string[]
+    top_country_names?: string[]
+    evidence_samples?: ThreadEvidence[]
+    hourly_timeline?: TimelinePoint[]
+    confidence?: string
+}
+
+interface HeatCountry {
+    code: string
+    name: string
+    volume: number
+    heat: number
+    components?: Record<string, number>
+}
+
 interface BriefingData {
     period_hours: number
     stats: {
@@ -56,20 +97,8 @@ interface BriefingData {
         topic_coverage?: number | null
         sentiment_coverage?: number | null
     }[]
-    top_atlas_topics?: {
-        slug: string
-        label: string
-        parent_domain?: string
-        signal_count: number
-        avg_confidence?: number
-        high_confidence_count?: number
-        gated_signal_count?: number
-        gate_scored_count?: number
-        velocity?: number | null
-        description?: string | null
-        top_country_codes?: string[]
-    }[]
-    top_themes_source?: string
+    top_threads?: TopThread[]
+    heat_countries?: HeatCountry[]
     historical_coverage?: {
         source: 'hot' | 'historical_processed'
         sentimentCoverage?: number | null
@@ -77,18 +106,6 @@ interface BriefingData {
         modelVersion?: string | null
     }
     top_sources: { source: string; count: number }[]
-    theme_country?: { theme: string; countries: { code: string; name: string; count: number }[] }[]
-}
-
-interface ThemeSignal {
-    id: string | number
-    headline: string
-    source: string
-    country?: string
-    country_code?: string
-    published_at?: string
-    themes?: string[]
-    sentiment?: number
 }
 
 interface CountryBriefData {
@@ -97,7 +114,53 @@ interface CountryBriefData {
     totalSignals: number
     sentiment: number
     sources: number
-    themes: { name: string; count: number }[]
+}
+
+// Heat components a reader can act on. geo_confidence and duplication are
+// data-quality terms, not story terms — never surface them as "why hot".
+const HEAT_STORY_COMPONENTS = ['velocity', 'surprise', 'diversity', 'voice', 'polyphony'] as const
+
+function dominantHeatComponent(components?: Record<string, number>): string | null {
+    if (!components) return null
+    let best: string | null = null
+    let bestVal = -Infinity
+    for (const key of HEAT_STORY_COMPONENTS) {
+        const v = components[key]
+        if (typeof v === 'number' && v > bestVal) {
+            best = key
+            bestVal = v
+        }
+    }
+    return best
+}
+
+function trendArrow(trend?: string, changed10h?: number): { glyph: string; cls: string; label: string } | null {
+    if (trend === 'surging') return { glyph: '▲', cls: 'up', label: changed10h ? `+${changed10h} / 10h` : 'surging' }
+    if (trend === 'fading') return { glyph: '▼', cls: 'down', label: changed10h ? `${changed10h} / 10h` : 'fading' }
+    if (trend === 'stable') return { glyph: '—', cls: 'flat', label: 'stable' }
+    return null
+}
+
+// Inline sparkline from a thread's hourly timeline. Graphic slot per the
+// surfaces review (§3): degrades to null when the timeline is too short,
+// the slot itself stays in the row markup.
+function Sparkline({ timeline }: { timeline?: TimelinePoint[] }) {
+    if (!timeline || timeline.length < 2) return <span className="brief-spark brief-spark-empty" />
+    const counts = timeline.map(p => p.count)
+    const max = Math.max(...counts, 1)
+    const w = 96
+    const h = 24
+    const step = w / (counts.length - 1)
+    const points = counts
+        .map((c, i) => `${(i * step).toFixed(1)},${(h - 2 - (c / max) * (h - 4)).toFixed(1)}`)
+        .join(' ')
+    return (
+        <span className="brief-spark">
+            <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} preserveAspectRatio="none">
+                <polyline points={points} fill="none" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
+        </span>
+    )
 }
 
 export function BriefNewspaper() {
@@ -115,9 +178,9 @@ export function BriefNewspaper() {
     const [data, setData] = useState<BriefingData | null>(null)
     const [insight, setInsight] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
-    const [themeSignals, setThemeSignals] = useState<Record<string, ThemeSignal[]>>({})
     const [countryFilter, setCountryFilter] = useState<string | null>(countryParam)
     const [countryDetail, setCountryDetail] = useState<CountryBriefData | null>(null)
+    const [countryThreads, setCountryThreads] = useState<TopThread[] | null>(null)
     const [countryLoading, setCountryLoading] = useState(false)
     const [countryError, setCountryError] = useState<string | null>(null)
     const [countryQuery, setCountryQuery] = useState('')
@@ -131,14 +194,11 @@ export function BriefNewspaper() {
         setLoading(true)
         setData(null)
         setInsight(null)
-        setThemeSignals({})
         try {
             // Use Landing prefetch cache when available — eliminates visible loading delay
             const cached = readBriefingCache(h)
-            let briefData: BriefingData
             if (cached) {
-                briefData = cached.briefing as BriefingData
-                setData(briefData)
+                setData(cached.briefing as BriefingData)
                 if (cached.insight) setInsight(cached.insight)
             } else {
                 const [briefRes, insightRes] = await Promise.all([
@@ -146,29 +206,12 @@ export function BriefNewspaper() {
                     fetch(`/api/v2/briefing/insight?hours=${h}`)
                 ])
                 if (!briefRes.ok) throw new Error(`Briefing request failed: ${briefRes.status}`)
-                briefData = await briefRes.json()
-                setData(briefData)
+                setData(await briefRes.json())
                 if (insightRes.ok) {
                     const insightData = await insightRes.json()
                     if (insightData.insight) setInsight(insightData.insight)
                 }
             }
-
-            // Fetch top 3 headlines per top theme (parallel)
-            const topThemes = briefData.top_themes?.slice(0, 6) ?? []
-            const signalFetches = topThemes.map(t =>
-                fetch(`/api/v2/signals?theme=${encodeURIComponent(t.theme)}&limit=3&hours=${Math.min(h, 48)}`)
-                    .then(r => r.json())
-                    .then((d: { signals?: ThemeSignal[] } | ThemeSignal[]) => ({
-                        theme: t.theme,
-                        signals: Array.isArray(d) ? d.slice(0, 3) : (d.signals ?? []).slice(0, 3)
-                    }))
-                    .catch(() => ({ theme: t.theme, signals: [] }))
-            )
-            const results = await Promise.all(signalFetches)
-            const map: Record<string, ThemeSignal[]> = {}
-            results.forEach(r => { map[r.theme] = r.signals })
-            setThemeSignals(map)
         } catch (e) {
             console.error(e)
         } finally {
@@ -183,6 +226,7 @@ export function BriefNewspaper() {
     useEffect(() => {
         if (!countryFilter) {
             setCountryDetail(null)
+            setCountryThreads(null)
             setCountryError(null)
             return
         }
@@ -197,55 +241,31 @@ export function BriefNewspaper() {
                     if (!r.ok) throw new Error(`Country summary request failed: ${r.status}`)
                     return r.json()
                 }),
-            fetch(`/api/v2/signals?country_code=${countryFilter}&hours=${hours}&limit=500`)
+            // Country body is country-scoped Narrative Threads — same contract
+            // CountryBrief (L2) uses, so L1 and L2 agree on what a country shows.
+            fetch(`/api/v2/threads?hours=${hours}&limit=6&country_code=${countryFilter}`)
                 .then(async r => {
-                    if (!r.ok) throw new Error(`Country signals request failed: ${r.status}`)
+                    if (!r.ok) throw new Error(`Country threads request failed: ${r.status}`)
                     return r.json()
                 })
         ])
-            .then(([nodeData, signalData]) => {
+            .then(([nodeData, threadData]) => {
                 if (cancelled) return
                 const node = nodeData.nodes?.[0]
-                const signals: ThemeSignal[] = Array.isArray(signalData)
-                    ? signalData
-                    : (signalData.signals ?? [])
-                const themeCounts = new Map<string, number>()
-                const sourceNames = new Set<string>()
-                const countrySignalMap: Record<string, ThemeSignal[]> = {}
-                let sentimentTotal = 0
-
-                signals.forEach(signal => {
-                    if (signal.source) sourceNames.add(signal.source)
-                    sentimentTotal += Number((signal as ThemeSignal & { sentiment?: number }).sentiment ?? 0)
-                    ;(signal.themes ?? []).forEach(theme => {
-                        themeCounts.set(theme, (themeCounts.get(theme) ?? 0) + 1)
-                        if (!countrySignalMap[theme]) countrySignalMap[theme] = []
-                        if (countrySignalMap[theme].length < 3) {
-                            countrySignalMap[theme].push({
-                                ...signal,
-                                country_code: signal.country_code ?? signal.country
-                            })
-                        }
-                    })
-                })
-
-                const countryData: CountryBriefData = {
+                const threads: TopThread[] = threadData.threads ?? []
+                setCountryDetail({
                     countryCode: countryFilter,
                     name: node?.name ?? resolveCountryName(countryFilter),
-                    totalSignals: node?.signalCount ?? signals.length,
-                    sentiment: node?.sentiment ?? (signals.length ? sentimentTotal / signals.length : 0),
-                    sources: sourceNames.size,
-                    themes: [...themeCounts.entries()]
-                        .map(([name, count]) => ({ name, count }))
-                        .sort((a, b) => b.count - a.count)
-                        .slice(0, 10)
-                }
-                setCountryDetail(countryData)
-                setThemeSignals(prev => ({ ...prev, ...countrySignalMap }))
+                    totalSignals: node?.signalCount ?? 0,
+                    sentiment: node?.sentiment ?? 0,
+                    sources: node?.sourceCount ?? 0,
+                })
+                setCountryThreads(threads)
             })
             .catch(e => {
                 if (cancelled) return
                 setCountryDetail(null)
+                setCountryThreads(null)
                 setCountryError(e instanceof Error ? e.message : 'Country data unavailable')
             })
             .finally(() => {
@@ -285,157 +305,42 @@ export function BriefNewspaper() {
         navigate(`/app?${next.toString()}`)
     }
 
-    const atlasThemeParams = (theme: string, country?: string | null) => {
+    const openThread = (thread: TopThread, country?: string | null) => {
+        const target = resolveThreadThemeTarget(thread)
+        if (!target) return
         const params = new URLSearchParams()
-        params.set('theme', theme)
-        if (country) params.set('country', country)
-        return params.toString()
+        params.set('theme', target.theme)
+        const cc = country ?? target.originCountry
+        if (cc) params.set('country', cc)
+        goToAtlas(params.toString())
     }
 
     const moodLabel = (s: number) => s > 0.15 ? 'POSITIVE' : s < -0.15 ? 'NEGATIVE' : 'NEUTRAL'
     const moodClass = (s: number) => s > 0.15 ? 'mood-positive' : s < -0.15 ? 'mood-negative' : 'mood-neutral'
 
-    const filteredThemeCountry = data?.theme_country?.map(row => ({
-        ...row,
-        countries: countryFilter
-            ? row.countries.filter(c => c.code === countryFilter)
-            : row.countries
-    })).filter(row => !countryFilter || row.countries.length > 0)
+    const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
-    const countryThemes = countryFilter && countryDetail
-        ? countryDetail.themes.slice(0, 6).map(t => ({
-            theme: t.name,
-            countries: [{
-                code: countryFilter,
-                name: countryDetail.name,
-                count: t.count
-            }]
-        }))
+    const allThreads = data?.top_threads ?? []
+    // Lead story = highest-ranked thread that can actually show evidence.
+    // Dynamic threads rank first and carry evidence_samples; atlas-fill
+    // threads don't (list-level), so they stay watchlist rows.
+    const leadThread = !countryFilter
+        ? allThreads.find(t => (t.evidence_samples?.length ?? 0) > 0) ?? allThreads[0] ?? null
+        : null
+    const watchlistThreads = leadThread
+        ? allThreads.filter(t => t.thread_id !== leadThread.thread_id).slice(0, 8)
+        : allThreads.slice(0, 8)
+
+    const heatStrip = (data?.heat_countries ?? []).slice(0, 4)
+
+    // Honest standfirst: AI insight when the service produced one; otherwise a
+    // single factual line. No template essay variants — an editorial that
+    // pretends to judge is worse than no editorial (surfaces review §1.4).
+    const standfirstFallback = data
+        ? `${data.stats.total_signals.toLocaleString()} signals across ${data.stats.countries} countries from ${data.stats.sources} sources${leadThread ? ` · lead: ${leadThread.label}` : ''}.`
         : null
 
-    const activeThemes = countryThemes ?? filteredThemeCountry ?? data?.top_themes?.slice(0, 6).map(t => ({
-        theme: t.theme,
-        countries: []
-    })) ?? []
-
-    const displayedStats = countryFilter && countryDetail
-        ? {
-            total_signals: countryDetail.totalSignals,
-            countries: 1,
-            sources: countryDetail.sources,
-            avg_sentiment: countryDetail.sentiment,
-        }
-        : data?.stats
     const historicalCoverage = data?.historical_coverage
-
-    const tone = (s: number) => s > 0.1 ? 'positive' : s < -0.1 ? 'negative' : 'neutral'
-
-    const buildGlobalFallback = (d: BriefingData): string => {
-        const topThemeEntries = d.top_themes.slice(0, 3)
-        const negTop = d.negative_sentiment.slice(0, 2)
-        const posTop = d.positive_sentiment.slice(0, 2)
-        const leader = d.top_countries[0]
-        const runner = d.top_countries[1]
-        const leaderName = leader ? resolveCountryName(leader.code, leader.name) : null
-        const runnerName = runner ? resolveCountryName(runner.code, runner.name) : null
-        const negNames = negTop.map(c => resolveCountryName(c.code, c.name)).join(' and ')
-        const posNames = posTop.map(c => resolveCountryName(c.code, c.name)).join(' and ')
-        const themeLabels = topThemeEntries.map(e => getThemeLabel(e.theme))
-        const window = TIME_RANGE_LABELS[timeRange].toLowerCase()
-
-        // Rotate narrative angle on each call so repeated views feel like different editions
-        const variant = Math.floor(Math.random() * 4)
-
-        if (variant === 0) {
-            // Lead: dominant theme angle
-            const parts: string[] = []
-            if (themeLabels[0]) parts.push(`${themeLabels[0]} leads the ${window} feed.`)
-            if (leaderName) parts.push(`${leaderName} accounts for the highest signal volume${runnerName ? `, ahead of ${runnerName}` : ''}.`)
-            if (negNames) parts.push(`Critical framing concentrates in ${negNames}${posNames ? `; positive coverage peaks in ${posNames}` : ''}.`)
-            if (themeLabels.length > 1) parts.push(`${themeLabels.slice(1).join(' and ')} round out the major storylines.`)
-            return parts.join(' ')
-        }
-
-        if (variant === 1) {
-            // Lead: geography / volume angle
-            const parts: string[] = []
-            if (leaderName) {
-                parts.push(runnerName
-                    ? `${leaderName} and ${runnerName} drive the bulk of ${window} coverage.`
-                    : `${leaderName} dominates the ${window} signal landscape.`)
-            }
-            if (themeLabels[0]) parts.push(`${themeLabels[0]} is the period's defining narrative thread.`)
-            if (themeLabels.length > 1) parts.push(`${themeLabels.slice(1).join(' and ')} also register significant activity.`)
-            if (negNames) parts.push(`Sentiment runs most negative in ${negNames}.`)
-            return parts.join(' ')
-        }
-
-        if (variant === 2) {
-            // Lead: sentiment / tension angle
-            const parts: string[] = []
-            if (negNames) {
-                parts.push(posNames
-                    ? `The ${window} opens with sharp contrasts: press framing darkens in ${negNames} while ${posNames} attract unusually positive coverage.`
-                    : `Media tone this ${window} turns most critical in ${negNames}.`)
-            } else if (themeLabels[0]) {
-                parts.push(`${themeLabels[0]} sets the tone for the ${window} edition.`)
-            }
-            if (themeLabels[0]) parts.push(`${themeLabels[0]} anchors the global narrative.`)
-            if (leaderName) parts.push(`${leaderName} generates the most signals this period${runnerName ? `, with ${runnerName} close behind` : ''}.`)
-            return parts.join(' ')
-        }
-
-        // variant === 3: volume-first, theme second
-        const parts: string[] = []
-        if (themeLabels[0]) parts.push(`${themeLabels[0]} shapes the ${window} brief across ${d.stats.countries} countries.`)
-        if (leaderName) parts.push(`${leaderName} leads coverage volume${runnerName ? `, followed by ${runnerName}` : ''}.`)
-        if (negNames) parts.push(`Harshest press scrutiny falls on ${negNames}${posNames ? `; brightest coverage on ${posNames}` : ''}.`)
-        if (themeLabels.length > 1) parts.push(`${themeLabels.slice(1).join(' and ')} also feature across the feed.`)
-        return parts.join(' ')
-    }
-
-    const buildCountryFallback = (detail: CountryBriefData): string => {
-        const name = resolveCountryName(countryFilter!, detail.name)
-        const topThemes = detail.themes.slice(0, 3).map(t => getThemeLabel(t.name))
-        const t = tone(detail.sentiment)
-        const window = TIME_RANGE_LABELS[timeRange].toLowerCase()
-
-        const sentenceNeg = `Press framing runs predominantly critical — ongoing tension or crisis coverage.`
-        const sentencePos = `Coverage carries an unusually positive tone. Watch for diplomatic, economic, or cultural milestones.`
-        const sentenceNeutral = `Framing is broadly neutral across ${detail.sources} tracked sources.`
-        const sentimentLine = t === 'negative' ? sentenceNeg : t === 'positive' ? sentencePos : sentenceNeutral
-
-        const variant = Math.floor(Math.random() * 3)
-
-        if (variant === 0) {
-            const parts: string[] = []
-            if (topThemes[0]) parts.push(`${name} coverage centres on ${topThemes[0]} this ${window}.`)
-            if (topThemes.length > 1) parts.push(`${topThemes.slice(1).join(' and ')} also figure prominently.`)
-            parts.push(sentimentLine)
-            return parts.join(' ')
-        }
-
-        if (variant === 1) {
-            const parts: string[] = []
-            parts.push(sentimentLine)
-            if (topThemes[0]) parts.push(`Lead narrative: ${topThemes[0]}.`)
-            if (topThemes.length > 1) parts.push(`Secondary focus: ${topThemes.slice(1).join(', ')}.`)
-            return parts.join(' ')
-        }
-
-        // variant === 2: theme volume-first
-        const parts: string[] = []
-        if (topThemes[0]) parts.push(`${topThemes[0]} leads ${name}'s ${window} picture.`)
-        if (topThemes.length > 1) parts.push(`${topThemes.slice(1).join(' and ')} also active.`)
-        parts.push(sentimentLine)
-        return parts.join(' ')
-    }
-
-    const displayedInsight = countryFilter && countryDetail
-        ? buildCountryFallback(countryDetail)
-        : insight ?? (data ? buildGlobalFallback(data) : null)
-
-    const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
     const signalMap = data
         ? new Map([
@@ -446,11 +351,38 @@ export function BriefNewspaper() {
     const maxSignals = data
         ? Math.max(1, ...data.top_countries.map(c => c.signals), countryDetail?.totalSignals ?? 0)
         : 1
-    const maxThemeCount = countryDetail?.themes.length
-        ? Math.max(1, ...countryDetail.themes.map(t => t.count))
-        : data?.top_themes.length
-            ? Math.max(1, ...data.top_themes.map(t => t.count))
-            : 1
+
+    const renderThreadRow = (t: TopThread, country?: string | null) => {
+        const arrow = trendArrow(t.trend, t.changed_10h)
+        // In country view every thread is already scoped — repeating the
+        // country chip on each row is noise.
+        const chips = (t.top_countries ?? []).filter(cc => cc !== country).slice(0, 2)
+        const headline = t.evidence_samples?.[0]?.headline
+        return (
+            <button
+                key={t.thread_id}
+                className="brief-thread-row"
+                onClick={() => openThread(t, country)}
+            >
+                <span className="brief-thread-main">
+                    <span className="brief-thread-label">{t.label}</span>
+                    {headline && <span className="brief-thread-headline">{headline}</span>}
+                </span>
+                <span className="brief-thread-meta">
+                    <Sparkline timeline={t.hourly_timeline} />
+                    <span className="brief-thread-count">{t.signal_count.toLocaleString()}</span>
+                    {arrow && (
+                        <span className={`brief-thread-trend brief-thread-trend-${arrow.cls}`}>
+                            {arrow.glyph} {arrow.label}
+                        </span>
+                    )}
+                    {chips.map(cc => (
+                        <span key={cc} className="brief-thread-chip">{resolveCountryName(cc, cc)}</span>
+                    ))}
+                </span>
+            </button>
+        )
+    }
 
     return (
         <div className="brief-page">
@@ -491,32 +423,6 @@ export function BriefNewspaper() {
             ) : data ? (
                 <main className="brief-content">
 
-                    {/* STATS BAR — global or selected-country metrics row */}
-                    {displayedStats && <section className="brief-stats-bar">
-                        <div className="brief-stat">
-                            <span className="brief-stat-value">{displayedStats.total_signals.toLocaleString()}</span>
-                            <span className="brief-stat-label">signals</span>
-                        </div>
-                        <div className="brief-stat-divider" />
-                        <div className="brief-stat">
-                            <span className="brief-stat-value">{displayedStats.countries}</span>
-                            <span className="brief-stat-label">{displayedStats.countries === 1 ? 'country' : 'countries'}</span>
-                        </div>
-                        <div className="brief-stat-divider" />
-                        <div className="brief-stat">
-                            <span className="brief-stat-value">{displayedStats.sources}</span>
-                            <span className="brief-stat-label">sources</span>
-                        </div>
-                        <div className="brief-stat-divider" />
-                        <div
-                            className={`brief-stat ${moodClass(displayedStats.avg_sentiment)}`}
-                            data-tip="Aggregate sentiment across all signals in this window. Positive = media frames events favourably on balance. Negative = critical or alarming framing dominates. Neutral = mixed or factual coverage."
-                        >
-                            <span className="brief-stat-value">{moodLabel(displayedStats.avg_sentiment)}</span>
-                            <span className="brief-stat-label">{countryFilter ? 'country mood' : 'global mood'}</span>
-                        </div>
-                    </section>}
-
                     {historicalCoverage?.source === 'historical_processed' && (
                         <div
                             className="brief-coverage-note"
@@ -531,72 +437,6 @@ export function BriefNewspaper() {
                             )}
                         </div>
                     )}
-
-                    {/* SIGNAL MAP — choropleth of signal density by country */}
-                    <section className="brief-minimap">
-                        <div
-                            className="brief-minimap-label"
-                            data-tip="Signal density: how many media signals Atlas captured per country in this window. Darker = more coverage. Coverage volume reflects media attention, not geopolitical importance."
-                        >
-                            Signal density — {TIME_RANGE_LABELS[timeRange]}
-                        </div>
-                        <ComposableMap
-                            projection="geoMercator"
-                            projectionConfig={{ scale: 130, center: [0, 20] }}
-                            width={800}
-                            height={380}
-                        >
-                            <Geographies geography={GEO_URL}>
-                                {({ geographies }) =>
-                                    geographies.map(geo => {
-                                        const iso2 = NUMERIC_TO_ISO2[String(geo.id)]
-                                        const count = iso2 ? (signalMap.get(iso2) ?? 0) : 0
-                                        const intensity = count / maxSignals
-                                        const isSelected = Boolean(countryFilter && iso2 === countryFilter)
-                                        return (
-                                            <Geography
-                                                key={geo.rsmKey}
-                                                geography={geo}
-                                                fill={countryFilter
-                                                    ? isSelected
-                                                        ? signalColor(Math.max(intensity, 0.85))
-                                                        : '#0d1723'
-                                                    : count > 0 ? signalColor(intensity) : '#12202e'}
-                                                stroke={isSelected ? '#68dbae' : '#0c1017'}
-                                                strokeWidth={isSelected ? 1.4 : 0.5}
-                                                onClick={() => iso2 && selectCountry(iso2)}
-                                                style={{
-                                                    default: { outline: 'none' },
-                                                    hover: { outline: 'none' },
-                                                    pressed: { outline: 'none' },
-                                                }}
-                                            />
-                                        )
-                                    })
-                                }
-                            </Geographies>
-                        </ComposableMap>
-                    </section>
-
-                    <div className="brief-rule thin" />
-
-                    {/* LEAD STORY — AI insight */}
-                    {displayedInsight && (
-                        <section className="brief-lead">
-                            <div
-                                className="brief-section-tag"
-                                data-tip={countryFilter
-                                    ? "Country-scoped summary derived from signal clusters and source patterns in this window."
-                                    : "AI-generated pattern reading based on signal volume, sentiment shifts, and narrative spread. Describes observable coverage patterns — does not reflect Atlas editorial opinion."
-                                }
-                            >
-                                {countryFilter ? 'COUNTRY ANALYSIS' : "EDITOR'S ANALYSIS"}
-                            </div>
-                            <p className="brief-lead-text">{displayedInsight}</p>
-                        </section>
-                    )}
-
-                    <div className="brief-rule thin" />
 
                     {/* COUNTRY FILTER */}
                     {(() => {
@@ -675,187 +515,260 @@ export function BriefNewspaper() {
                         )
                     })()}
 
-                    <div className="brief-rule thin" />
-
-                    {/* ATLAS TOPICS — gated product taxonomy (global view) */}
-                    {!countryFilter && data.top_atlas_topics && data.top_atlas_topics.length > 0 && (
+                    {/* ===== GLOBAL FRONT PAGE ===== */}
+                    {!countryFilter && (
                         <>
-                            <section className="brief-atlas-topics">
-                                <div className="brief-atlas-head">
-                                    <h3 className="brief-bottom-heading">Watchlist</h3>
-                                </div>
-                                <div className="brief-atlas-list">
-                                    {data.top_atlas_topics.slice(0, 8).map(t => {
-                                        const raw = t.signal_count
-                                        const scored = t.gate_scored_count ?? 0
-                                        const gated = t.gated_signal_count ?? 0
-                                        const pending = scored === 0
-                                        return (
-                                            <button
-                                                key={t.slug}
-                                                className="brief-atlas-row"
-                                                onClick={() => goToAtlas(atlasThemeParams(t.slug))}
-                                            >
-                                                <span className="brief-atlas-label">{t.label}</span>
-                                                {pending ? (
-                                                    <span className="brief-atlas-metric">
-                                                        <span className="brief-atlas-count">{raw.toLocaleString()}</span>
-                                                        <span className="brief-atlas-pending">unfiltered</span>
-                                                    </span>
-                                                ) : (
-                                                    <span className="brief-atlas-metric">
-                                                        <span className="brief-atlas-count">{gated.toLocaleString()}</span>
-                                                        {t.velocity != null && t.velocity !== 0 && (
-                                                            <span className={`brief-atlas-vel ${t.velocity > 0 ? 'brief-atlas-vel-up' : 'brief-atlas-vel-down'}`}>
-                                                                {t.velocity > 0 ? `▲ +${t.velocity}` : `▼ ${t.velocity}`}
-                                                            </span>
+                            {/* LEAD STORY — top thread with evidence */}
+                            {leadThread ? (
+                                <section
+                                    className="brief-lead-story"
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => openThread(leadThread)}
+                                    onKeyDown={event => {
+                                        if (event.key === 'Enter' || event.key === ' ') {
+                                            event.preventDefault()
+                                            openThread(leadThread)
+                                        }
+                                    }}
+                                >
+                                    <div className="brief-section-tag" data-tip="Highest-activity narrative thread in this window, with sample evidence headlines.">LEAD STORY</div>
+                                    <h2 className="brief-lead-headline">{leadThread.label}</h2>
+                                    <div className="brief-lead-meta">
+                                        <span className="brief-lead-count">{leadThread.signal_count.toLocaleString()} signals</span>
+                                        {leadThread.source_count != null && (
+                                            <span className="brief-lead-sub">{leadThread.source_count} sources</span>
+                                        )}
+                                        {(() => {
+                                            const arrow = trendArrow(leadThread.trend, leadThread.changed_10h)
+                                            return arrow ? (
+                                                <span className={`brief-thread-trend brief-thread-trend-${arrow.cls}`}>
+                                                    {arrow.glyph} {arrow.label}
+                                                </span>
+                                            ) : null
+                                        })()}
+                                        <Sparkline timeline={leadThread.hourly_timeline} />
+                                    </div>
+                                    {leadThread.why_now && (
+                                        <p className="brief-lead-whynow">{leadThread.why_now}</p>
+                                    )}
+                                    {(leadThread.evidence_samples ?? []).slice(0, 3).length > 0 && (
+                                        <ul className="brief-headlines">
+                                            {(leadThread.evidence_samples ?? []).slice(0, 3).map((s, i) => (
+                                                <li key={s.id ?? i} className="brief-headline-item">
+                                                    <span className="brief-headline-text">{s.headline}</span>
+                                                    <span className="brief-headline-meta">
+                                                        {s.country_code && (
+                                                            <span className="brief-headline-country">{resolveCountryName(s.country_code, s.country_code)}</span>
                                                         )}
-                                                        <span className="brief-atlas-sub">of {raw.toLocaleString()} matched</span>
+                                                        {s.source && <span className="brief-headline-source">{s.source}</span>}
                                                     </span>
-                                                )}
-                                            </button>
-                                        )
-                                    })}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                    {(leadThread.top_countries ?? []).length > 0 && (
+                                        <div className="brief-article-countries">
+                                            {(leadThread.top_countries ?? []).slice(0, 4).map(cc => (
+                                                <span key={cc} className="brief-thread-chip">{resolveCountryName(cc, cc)}</span>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <span className="brief-theme-link">Open thread →</span>
+                                </section>
+                            ) : (
+                                <section className="brief-lead-story brief-lead-empty">
+                                    <div className="brief-section-tag">LEAD STORY</div>
+                                    <p>No narrative thread cleared the quality gate in this window. Open the console to inspect raw coverage.</p>
+                                </section>
+                            )}
+
+                            <div className="brief-rule thin" />
+
+                            {/* WATCHLIST — remaining threads */}
+                            {watchlistThreads.length > 0 && (
+                                <>
+                                    <section className="brief-watchlist">
+                                        <h3 className="brief-bottom-heading">Watchlist</h3>
+                                        <div className="brief-thread-list">
+                                            {watchlistThreads.map(t => renderThreadRow(t))}
+                                        </div>
+                                    </section>
+                                    <div className="brief-rule thin" />
+                                </>
+                            )}
+
+                            {/* STANDFIRST — AI insight when real, one factual line otherwise */}
+                            {(insight || standfirstFallback) && (
+                                <>
+                                    <section className="brief-lead">
+                                        {insight ? (
+                                            <>
+                                                <div
+                                                    className="brief-section-tag"
+                                                    data-tip="AI-generated pattern reading based on signal volume, sentiment shifts, and narrative spread. Describes observable coverage patterns — does not reflect Atlas editorial opinion."
+                                                >
+                                                    EDITOR'S ANALYSIS
+                                                </div>
+                                                <p className="brief-lead-text">{insight}</p>
+                                            </>
+                                        ) : (
+                                            <p className="brief-standfirst">{standfirstFallback}</p>
+                                        )}
+                                    </section>
+                                    <div className="brief-rule thin" />
+                                </>
+                            )}
+
+                            {/* HEATING UP — country heat strip */}
+                            {heatStrip.length > 0 && (
+                                <>
+                                    <section className="brief-heat-strip">
+                                        <h3
+                                            className="brief-bottom-heading"
+                                            data-tip="Countries with the strongest anomaly heat right now. The tag names the dominant component: velocity (volume acceleration), surprise (off-baseline), diversity (many themes), voice (source spread), polyphony (many actors)."
+                                        >
+                                            Heating Up
+                                        </h3>
+                                        <div className="brief-heat-row">
+                                            {heatStrip.map(h => {
+                                                const comp = dominantHeatComponent(h.components)
+                                                return (
+                                                    <button
+                                                        key={h.code}
+                                                        className="brief-heat-card"
+                                                        onClick={() => goToAtlas(`country=${h.code}`)}
+                                                    >
+                                                        <span className="brief-heat-name">{resolveCountryName(h.code, h.name)}</span>
+                                                        <span className="brief-heat-val">{Math.round(h.heat * 100)}</span>
+                                                        {comp && <span className="brief-heat-comp">{comp}</span>}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </section>
+                                    <div className="brief-rule thin" />
+                                </>
+                            )}
+
+                            {/* MAP — demoted to half-width beside Most Active (surfaces review §4.7) */}
+                            <section className="brief-map-row">
+                                <div className="brief-minimap brief-minimap-demoted">
+                                    <div
+                                        className="brief-minimap-label"
+                                        data-tip="Signal density: how many media signals Atlas captured per country in this window. Darker = more coverage. Coverage volume reflects media attention, not geopolitical importance."
+                                    >
+                                        Signal density — {TIME_RANGE_LABELS[timeRange]}
+                                    </div>
+                                    <ComposableMap
+                                        projection="geoEqualEarth"
+                                        projectionConfig={{ scale: 150, center: [0, 5] }}
+                                        width={800}
+                                        height={400}
+                                    >
+                                        <Geographies geography={GEO_URL}>
+                                            {({ geographies }) =>
+                                                geographies.map(geo => {
+                                                    const iso2 = NUMERIC_TO_ISO2[String(geo.id)]
+                                                    const count = iso2 ? (signalMap.get(iso2) ?? 0) : 0
+                                                    const intensity = count / maxSignals
+                                                    return (
+                                                        <Geography
+                                                            key={geo.rsmKey}
+                                                            geography={geo}
+                                                            fill={count > 0 ? signalColor(intensity) : '#12202e'}
+                                                            stroke="#0c1017"
+                                                            strokeWidth={0.5}
+                                                            onClick={() => iso2 && selectCountry(iso2)}
+                                                            style={{
+                                                                default: { outline: 'none' },
+                                                                hover: { outline: 'none' },
+                                                                pressed: { outline: 'none' },
+                                                            }}
+                                                        />
+                                                    )
+                                                })
+                                            }
+                                        </Geographies>
+                                    </ComposableMap>
+                                </div>
+                                <div className="brief-bottom-col brief-map-side">
+                                    <h3 className="brief-bottom-heading">Most Active</h3>
+                                    {data.top_countries.slice(0, 8).map(c => (
+                                        <button
+                                            key={c.code}
+                                            className="brief-bottom-country"
+                                            onClick={() => goToAtlas(`country=${c.code}`)}
+                                        >
+                                            <span>{resolveCountryName(c.code, c.name)}</span>
+                                            <span className="brief-bottom-num">{c.signals.toLocaleString()}</span>
+                                        </button>
+                                    ))}
                                 </div>
                             </section>
-                            <div className="brief-rule thin" />
                         </>
                     )}
 
-                    {/* THEME SECTIONS — main editorial body */}
-                    <section className="brief-body">
-                        <div className="brief-columns">
-                            {countryLoading && countryFilter ? (
-                                <article className="brief-article brief-empty-country">
-                                    <div className="brief-article-header">
-                                        <span className="brief-article-icon">◇</span>
-                                        <h2 className="brief-article-theme">Loading themes for {resolveCountryName(countryFilter)}</h2>
+                    {/* ===== COUNTRY VIEW ===== */}
+                    {countryFilter && (
+                        <>
+                            {countryDetail && (
+                                <section className="brief-stats-bar">
+                                    <div className="brief-stat">
+                                        <span className="brief-stat-value">{countryDetail.totalSignals.toLocaleString()}</span>
+                                        <span className="brief-stat-label">signals</span>
                                     </div>
-                                    <p>Checking this country's current signal clusters for the selected brief window.</p>
-                                </article>
-                            ) : activeThemes.length === 0 && countryFilter ? (
-                                <article className="brief-article brief-empty-country">
-                                    <div className="brief-article-header">
-                                        <span className="brief-article-icon">◇</span>
-                                        <h2 className="brief-article-theme">No active signals for {resolveCountryName(countryFilter)}</h2>
+                                    <div className="brief-stat-divider" />
+                                    <div className="brief-stat">
+                                        <span className="brief-stat-value">{countryThreads?.length ?? 0}</span>
+                                        <span className="brief-stat-label">threads</span>
                                     </div>
-                                    <p>
-                                        {countryError
-                                            ? 'Atlas could not load this country brief right now. Open the console to inspect broader context or expand the time range.'
-                                            : 'Atlas has this country in the selector, but the current brief window has no country-level signals available.'}
-                                    </p>
-                                    <button
-                                        className="brief-theme-link"
-                                        onClick={() => goToAtlas(`country=${countryFilter}`)}
+                                    <div className="brief-stat-divider" />
+                                    <div
+                                        className={`brief-stat ${moodClass(countryDetail.sentiment)}`}
+                                        data-tip="Aggregate sentiment across this country's signals in the window."
                                     >
-                                        Open country in Atlas →
-                                    </button>
-                                </article>
-                            ) : activeThemes.map((row, idx) => {
-                                const themeData = countryFilter && countryDetail
-                                    ? { theme: row.theme, count: row.countries[0]?.count ?? 0 }
-                                    : data.top_themes.find(t => t.theme === row.theme)
-                                const signals = themeSignals[row.theme] ?? []
-                                const isLead = idx === 0 && !countryFilter
-                                return (
-                                    <article
-                                        key={row.theme}
-                                        className={`brief-article brief-article-clickable ${isLead ? 'brief-article-lead' : ''}`}
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={() => goToAtlas(atlasThemeParams(row.theme, countryFilter))}
-                                        onKeyDown={event => {
-                                            if (event.key === 'Enter' || event.key === ' ') {
-                                                event.preventDefault()
-                                                goToAtlas(atlasThemeParams(row.theme, countryFilter))
-                                            }
-                                        }}
-                                    >
-                                        <div className="brief-article-header">
-                                            <span className="brief-article-icon">{getThemeIcon(row.theme)}</span>
-                                            <h2 className="brief-article-theme">{getThemeLabel(row.theme)}</h2>
-                                            {themeData && (
-                                                <span className="brief-article-count">{themeData.count.toLocaleString()} signals</span>
-                                            )}
-                                        </div>
+                                        <span className="brief-stat-value">{moodLabel(countryDetail.sentiment)}</span>
+                                        <span className="brief-stat-label">country mood</span>
+                                    </div>
+                                </section>
+                            )}
 
-                                        {themeData && (
-                                            <div className="brief-theme-bar-track">
-                                                <div
-                                                    className="brief-theme-bar"
-                                                    style={{ width: `${(themeData.count / maxThemeCount) * 100}%` }}
-                                                />
-                                            </div>
-                                        )}
+                            <div className="brief-rule thin" />
 
-                                        {row.countries.length > 0 && (
-                                            <div className="brief-article-countries">
-                                                {row.countries.slice(0, 4).map(c => (
-                                                    <button
-                                                        key={c.code}
-                                                        className="brief-country-pill"
-                                                        onClick={event => {
-                                                            event.stopPropagation()
-                                                            goToAtlas(atlasThemeParams(row.theme, c.code))
-                                                        }}
-                                                    >
-                                                        {resolveCountryName(c.code, c.name)}
-                                                        <span className="brief-pill-count">
-                                                            {c.count >= 1000 ? `${(c.count / 1000).toFixed(1)}k` : c.count}
-                                                        </span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {signals.length > 0 && (
-                                            <ul className="brief-headlines">
-                                                {signals.map((s, i) => (
-                                                    <li key={s.id ?? i} className="brief-headline-item">
-                                                        <span className="brief-headline-text">{s.headline}</span>
-                                                        <span className="brief-headline-meta">
-                                                            {s.country_code && (
-                                                                <span className="brief-headline-country">{resolveCountryName(s.country_code, s.country_code)}</span>
-                                                            )}
-                                                            <span className="brief-headline-source">{s.source}</span>
-                                                        </span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
-
+                            <section className="brief-watchlist">
+                                <h3 className="brief-bottom-heading">
+                                    Narrative Threads — {resolveCountryName(countryFilter, countryDetail?.name)}
+                                </h3>
+                                {countryLoading ? (
+                                    <p className="brief-country-note">Checking this country's narrative threads for the selected window…</p>
+                                ) : (countryThreads?.length ?? 0) > 0 ? (
+                                    <div className="brief-thread-list">
+                                        {countryThreads!.map(t => renderThreadRow(t, countryFilter))}
+                                    </div>
+                                ) : (
+                                    <div className="brief-country-note">
+                                        <p>
+                                            {countryError
+                                                ? 'Atlas could not load this country brief right now. Open the console to inspect broader context or expand the time range.'
+                                                : 'No coherent narrative thread cleared the quality gate for this country in the current window.'}
+                                        </p>
                                         <button
                                             className="brief-theme-link"
-                                            onClick={event => {
-                                                event.stopPropagation()
-                                                goToAtlas(atlasThemeParams(row.theme, countryFilter))
-                                            }}
+                                            onClick={() => goToAtlas(`country=${countryFilter}`)}
                                         >
-                                            Explore in Atlas →
+                                            Open country in Atlas →
                                         </button>
-                                    </article>
-                                )
-                            })}
-                        </div>
-                    </section>
+                                    </div>
+                                )}
+                            </section>
+                        </>
+                    )}
 
                     <div className="brief-rule" />
 
-                    {/* BOTTOM ROW — active + sentiment + sources */}
+                    {/* BACK-MATTER — sentiment + sources + theme index */}
                     <section className="brief-bottom-row">
-                        <div className="brief-bottom-col">
-                            <h3 className="brief-bottom-heading">Most Active</h3>
-                            {data.top_countries.slice(0, 5).map(c => (
-                                <button
-                                    key={c.code}
-                                    className="brief-bottom-country"
-                                    onClick={() => goToAtlas(`country=${c.code}`)}
-                                >
-                                    <span>{resolveCountryName(c.code, c.name)}</span>
-                                    <span className="brief-bottom-num">{c.signals.toLocaleString()}</span>
-                                </button>
-                            ))}
-                        </div>
                         <div className="brief-bottom-col">
                             <h3 className="brief-bottom-heading">Most Negative</h3>
                             {data.negative_sentiment.slice(0, 4).map(c => (
@@ -889,6 +802,19 @@ export function BriefNewspaper() {
                                     <span className="brief-source-name">{s.source}</span>
                                     <span className="brief-source-count">{s.count}</span>
                                 </div>
+                            ))}
+                        </div>
+                        <div className="brief-bottom-col">
+                            <h3 className="brief-bottom-heading" data-tip="Taxonomy index — themes are a navigation aid, not the story model. Narrative Threads above are the editorial unit.">By Theme</h3>
+                            {data.top_themes.slice(0, 6).map(t => (
+                                <button
+                                    key={t.theme}
+                                    className="brief-bottom-country"
+                                    onClick={() => goToAtlas(`theme=${encodeURIComponent(t.theme)}${countryFilter ? `&country=${countryFilter}` : ''}`)}
+                                >
+                                    <span>{getThemeIcon(t.theme)} {getThemeLabel(t.theme)}</span>
+                                    <span className="brief-bottom-num">{t.count.toLocaleString()}</span>
+                                </button>
                             ))}
                         </div>
                     </section>
@@ -945,7 +871,7 @@ export function BriefNewspaper() {
                                                             goToAtlas(atlasParams || undefined)
                                                         }}
                                                     >Open in Atlas →</button>
-                                                    <button className="brief-watch-remove" onClick={() => removeWatch(w.id)} title="Remove watch">×</button>
+                                                    <button className="brief-watch-remove" onClick={() => removeWatch(w.id)} data-tip="Remove watch">×</button>
                                                 </div>
                                             </div>
                                         )
