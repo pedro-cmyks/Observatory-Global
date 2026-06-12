@@ -60,7 +60,11 @@ async def main() -> int:
     conn = await asyncpg.connect(os.environ["DATABASE_URL"])
     try:
         rows = await _pending_rows(conn, args.hours, args.max_signals)
-        print(f"pending: {len(rows)} deduped headlines without embeddings", file=sys.stderr)
+        from app.services.research_semantic import is_junk_headline
+        before = len(rows)
+        rows = [r for r in rows if not is_junk_headline(html.unescape(r["headline"]))]
+        print(f"pending: {len(rows)} deduped headlines without embeddings "
+              f"({before - len(rows)} junk skipped)", file=sys.stderr)
         if args.dry_run:
             return 0
 

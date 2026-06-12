@@ -258,3 +258,15 @@ def test_signal_evidence_absent_without_embedder():
     ))
     assert plan["semantic_evidence"] == []
     assert any(g.get("lane") == "semantic" for g in plan["coverage_gaps"])
+
+
+def test_junk_headlines_filtered_and_deduped():
+    """#223 remainder: malformed scraped titles never surface as evidence,
+    and syndicated duplicate headlines collapse to one item."""
+    from app.services.research_semantic import is_junk_headline
+    assert is_junk_headline("Doc Iniaztwk5508793.Shtml")
+    assert is_junk_headline("index.html")
+    assert is_junk_headline("Untitled")
+    assert is_junk_headline("12345 67890")  # no real words
+    assert not is_junk_headline("Iran faces severe drought as reservoirs reach lows")
+    assert not is_junk_headline("El dron ruso que golpeó a Rumania")

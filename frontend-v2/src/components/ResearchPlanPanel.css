@@ -181,3 +181,31 @@
   padding: 8px 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
+
+.rp-evidence {
+  padding: 6px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.rp-evidence-item {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 5px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.rp-evidence-head { display: flex; gap: 6px; align-items: baseline; }
+
+.rp-evidence-cc {
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  color: rgba(125, 211, 252, 0.8);
+  flex-shrink: 0;
+}
+
+.rp-evidence-headline {
+  font-size: 10px;
+  color: rgba(203, 213, 225, 0.88);
+  line-height: 1.4;
+}

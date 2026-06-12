@@ -246,8 +246,27 @@ def embed_atlas_anchors(topics: list[dict[str, Any]]) -> list[dict[str, Any]] | 
 # carries its gate status so below-gate material is query-reachable but
 # labeled (Pipeline Funnel Principle). Distances: cosine distance = 1 - sim.
 
-SIGNAL_MIN_SIMILARITY = 0.82   # headline↔query runs hotter than descriptions
+# Re-measured 2026-06-11 on the ~100K-embedding corpus: relevant-query tops
+# sit at 0.84-0.86 (genuine on-topic matches); the 0.82 floor admitted
+# malformed-headline junk ("Doc Inia*.Shtml" at 0.822) and weak
+# same-language affinity. 0.84 cuts the junk band while keeping the
+# measured relevant cluster.
+SIGNAL_MIN_SIMILARITY = 0.84
 SIGNAL_LANE_LIMIT = 12
+
+# Malformed scraped titles pollute the embedding corpus and match anything
+# ("Doc Iniaztwk5508793.Shtml"). Filter at write AND query time.
+import re as _re
+_JUNK_HEADLINE = _re.compile(r"\.s?html?|^doc\s|^untitled", _re.IGNORECASE)
+
+
+def is_junk_headline(headline: str | None) -> bool:
+    if not headline:
+        return True
+    if _JUNK_HEADLINE.search(headline):
+        return True
+    words = [w for w in headline.split() if any(c.isalpha() for c in w)]
+    return len(words) < 3  # needs at least three real words to be a headline
 
 
 async def fetch_semantic_signal_matches(
@@ -275,14 +294,24 @@ async def fetch_semantic_signal_matches(
     )
     import html as _html
     matches = []
+    seen_headlines: set[str] = set()
     for r in rows:
         sim = float(r["similarity"])
         if sim < min_similarity:
             continue
+        headline = _html.unescape(r["headline"] or "")
+        if is_junk_headline(headline):
+            continue
+        # query-side dedup (#223): syndicated copies of the same headline can
+        # all carry embeddings (the writer dedupes per run, not across runs)
+        dedup_key = headline.strip().lower()
+        if dedup_key in seen_headlines:
+            continue
+        seen_headlines.add(dedup_key)
         matches.append({
             "signal_id": int(r["id"]),
             # stored headlines are HTML-entity-encoded (known serialize bug)
-            "headline": _html.unescape(r["headline"] or ""),
+            "headline": headline,
             "country_code": r["country_code"],
             "source_name": r["source_name"],
             "timestamp": r["timestamp"].isoformat() if r["timestamp"] else None,

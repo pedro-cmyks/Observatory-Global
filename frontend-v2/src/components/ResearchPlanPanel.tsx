@@ -204,6 +204,34 @@ export default function ResearchPlanPanel({
         </div>
       )}
 
+      {(plan.semantic_evidence?.length ?? 0) > 0 && (
+        <div className="rp-evidence">
+          <div className="rp-section-title" data-tip="Cross-language semantic matches over the full signal corpus — labeled by quality-gate status, never presented as verified coverage">
+            SEMANTIC EVIDENCE ({plan.semantic_evidence!.length})
+          </div>
+          {plan.semantic_evidence!.map(item => (
+            <div key={item.signal_id} className="rp-evidence-item">
+              <div className="rp-evidence-head">
+                {item.country_code && <span className="rp-evidence-cc">{item.country_code}</span>}
+                <span className="rp-evidence-headline">{item.headline}</span>
+              </div>
+              <div className="rp-anchor-meta">
+                <span className="rp-lane">semantic {item.similarity.toFixed(2)}</span>
+                <span
+                  className={`rp-badge ${item.gate_status === 'below_gate' ? 'rp-badge--gap' : 'rp-badge--context'}`}
+                  data-tip={item.gate_status === 'below_gate'
+                    ? 'Did not clear the quality gate — candidate material, not verified coverage'
+                    : 'Topic-assigned signal'}
+                >
+                  {item.gate_status === 'below_gate' ? 'UNVERIFIED' : 'ASSIGNED'}
+                </span>
+                {item.source_name && <span className="rp-score">{item.source_name}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {plan.low_confidence_tray.length > 0 && (
         <div className="rp-tray">
           <button className="rp-tray-toggle" onClick={() => setShowTray(s => !s)}>

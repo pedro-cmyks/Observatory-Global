@@ -26,6 +26,18 @@ export interface CoverageGap {
   note: string
 }
 
+export interface SemanticEvidenceItem {
+  signal_id: number
+  headline: string
+  country_code?: string | null
+  source_name?: string | null
+  timestamp?: string | null
+  similarity: number
+  gate_status: 'assigned' | 'below_gate'
+  retrieval_lane: string
+  match_basis: string
+}
+
 export interface ResearchPlan {
   contract: string
   plan_id?: string
@@ -43,6 +55,7 @@ export interface ResearchPlan {
   pin_candidates: string[]
   coverage_gaps: CoverageGap[]
   suggested_next_steps: string[]
+  semantic_evidence?: SemanticEvidenceItem[]
   downranking_ledger?: {
     candidate_count: number
     shown_count: number
