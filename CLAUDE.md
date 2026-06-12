@@ -235,11 +235,22 @@ but invisible — no surface exposes it; 14 ingest services need a
 utilization audit. Surface item folded into #228 impl: two-tier display
 honesty in NarrativeThreads (living/curated vs atlas-aggregate fill).
 
+**#228 §6 item 1 SHIPPED 2026-06-12** (`c6470cf`+`2b462fd`+`d3bae7a`,
+Fly+Vercel deployed): GET /api/v2/signal/{id}/context (thread
+memberships w/ gate status + semantic neighbors from signal_embeddings;
+HNSW gotcha: ORDER BY joined vector column = seq scan timeout — bind
+the vector as a constant). SignalDetailPanel: NARRATIVE THREADS chips
+primary, GDELT demoted to taxonomy row, SEMANTIC NEIGHBORS w/
+similarity+gate badges+working links replace the theme-overlap heuristic.
+Prod proof: lluvias signal → Trujillo deslizamientos 0.94. Two-tier
+badges in NarrativeThreads: LIVING vs AGGREGATE. Fresh signals show
+'not embedded yet' (nightly cron lag — #229 lever).
+
 **Next work, in order:**
 
-1. #228 implementation per review §6, on Pedro's acceptance (accepted
-   verbally 2026-06-12 'estoy de acuerdo con lo que propones' — start
-   with SignalDetail rebuild; add two-tier thread labels from #229).
+1. #228 §6 remainder: 2) bottom dock tabs + mount AtlasHeatList (#183),
+   3) person hygiene cheap wins (#176), 4) gate-recall SQL report,
+   5) map hovers + PLANE degraded state, 6) keyword-match labels.
 2. #229 funnel scaling program (data layer; lever 1 = corpus clustering).
 2. #183 panel remainder (sentiment_source badge + heat_countries panel
    in L2; the L1 strip already shipped with the Brief rebuild).
