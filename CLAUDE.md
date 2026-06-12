@@ -191,15 +191,30 @@ tilted → flat north-up first, flat → fly to hotspot. Verified
 design session (colors/typography/message), first use = Brief loading
 animation.
 
+**2026-06-12 (Pedro's L2 review, live):** routing bug FIXED (`0b9ab4a`,
+deployed): theme detail never parsed 'slug--cc' thread ids → atlas lookup
+missed → GDELT path → 0 signals while list showed 48. Hit on Peru's live
+vote-count dispute (Fujimori/Sánchez recount; 92 election headlines in
+raw PE feed). Prod now: rawTotal 43 + below_gate_evidence + UNVERIFIED
+banner. Diagnostic: gate kept 0/43 relevant Spanish headlines → gate
+recall problem on non-English (→ #162, noted in #214). New umbrella
+**#228**: L2/L3 deep review (connection map, click-path audit) with
+Pedro's observations — person panel weakest ('El Niño' as person,
+'bafana bafana' as people; fold #176), SignalDetail shows GDELT themes
+not Atlas threads + irrelevant related signals (fold #178), yellow dots
+no hover, PLANE dead/SHIPS sparse (movement→narratives, #159/#226),
+widescreen 16:9 crushes AnomalyAlert/SourceIntegrity panels.
+
 **Next work, in order:**
 
-1. #183 panel remainder (sentiment_source badge + heat_countries panel
+1. #228 L2/L3 deep review (umbrella; Pedro wants L1-style depth).
+2. #183 panel remainder (sentiment_source badge + heat_countries panel
    in L2; the L1 strip already shipped with the Brief rebuild).
-2. Workbench pin-snapshot + per-pin note (#227, Phase 3 prerequisite).
-3. Parallel, non-blocking: #219 Kalman movement feed; #217 credibility
+3. Workbench pin-snapshot + per-pin note (#227, Phase 3 prerequisite).
+4. Parallel, non-blocking: #219 Kalman movement feed; #217 credibility
    tiers; #220 funnel ledger; #221 maturity contract; #222 stratified
    snapshot sampling.
-4. Later phases: Phase 3 report view from pinned state (dossier defined in
+5. Later phases: Phase 3 report view from pinned state (dossier defined in
    review §5); Phase 4 evidence/frame quality bound to Paper 1 benchmarks.
 
 Tests: research suites = `pytest tests/test_research_*.py` (22 tests).
