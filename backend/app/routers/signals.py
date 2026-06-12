@@ -302,3 +302,120 @@ async def get_crisis_summary(hours: int = Query(24, ge=1, le=8760)):
             ]
         }
 
+
+
+@router.get("/api/v2/signal/{signal_id}/context")
+async def get_signal_context(
+    signal_id: int,
+    hours: int = Query(168, ge=1, le=8760),
+    neighbors: int = Query(4, ge=1, le=10),
+):
+    """Per-signal narrative context (#228 §2.3 SignalDetail rebuild).
+
+    Returns the Narrative Threads this signal is assigned to (the product
+    story model — primary) and semantically-nearest signals from the
+    persisted embedding corpus (labeled, gate-status-tagged — replaces the
+    old 'related by any shared GDELT theme' heuristic that connected a
+    Pakistan mosque blast to an Illinois tornado via 'Disaster Fire').
+
+    Uses the signal's OWN stored embedding (mig 054), so no embed-service
+    round trip: signals not yet embedded return neighbors=[] with a note.
+    """
+    from app.services.research_semantic import is_junk_headline
+    import html as _html
+
+    if db.pool is None:
+        return {"signal_id": signal_id, "threads": [], "semantic_neighbors": [],
+                "notes": ["database unavailable"]}
+
+    async with db.pool.acquire() as conn:
+        await conn.execute("SET statement_timeout = 8000")
+
+        threads = await conn.fetch(
+            """
+            SELECT t.slug, t.label, a.gate_kept, a.gate_score
+            FROM signal_topic_assignments a
+            JOIN atlas_topics t ON t.id = a.topic_id
+            WHERE a.signal_id = $1
+              AND a.method = 'lexicon'
+              AND a.model_version = 'theme-hint-lex-v2'
+            ORDER BY a.gate_score DESC NULLS LAST
+            LIMIT 5
+            """,
+            signal_id,
+        )
+
+        notes: list[str] = []
+        neighbor_rows: list = []
+        has_embedding = await conn.fetchval(
+            "SELECT EXISTS (SELECT 1 FROM signal_embeddings WHERE signal_id = $1)",
+            signal_id,
+        )
+        if has_embedding:
+            neighbor_rows = await conn.fetch(
+                f"""
+                SELECT s.id, s.headline, s.country_code, s.source_name,
+                       s.source_url, s.timestamp,
+                       1 - (e.vec <=> me.vec) AS similarity,
+                       EXISTS (SELECT 1 FROM signal_topic_assignments sta
+                               WHERE sta.signal_id = s.id) AS has_topic
+                FROM signal_embeddings me,
+                     signal_embeddings e
+                JOIN signals_v2 s ON s.id = e.signal_id
+                WHERE me.signal_id = $1
+                  AND e.signal_id <> $1
+                  AND s.timestamp > NOW() - INTERVAL '{int(hours)} hours'
+                ORDER BY e.vec <=> me.vec
+                LIMIT {int(neighbors * 4)}
+                """,
+                signal_id,
+            )
+        else:
+            notes.append("signal not embedded yet; semantic neighbors unavailable")
+
+        own_headline = await conn.fetchval(
+            "SELECT headline FROM signals_v2 WHERE id = $1", signal_id,
+        )
+
+    own_key = _html.unescape(own_headline or "").strip().lower()
+    seen = {own_key} if own_key else set()
+    semantic_neighbors = []
+    for r in neighbor_rows:
+        sim = float(r["similarity"])
+        if sim < 0.60:  # context view: looser than evidence retrieval (0.84),
+            continue    # but everything below carries its similarity visibly
+        headline = _html.unescape(r["headline"] or "")
+        if is_junk_headline(headline):
+            continue
+        key = headline.strip().lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        semantic_neighbors.append({
+            "signal_id": int(r["id"]),
+            "headline": headline,
+            "country_code": r["country_code"],
+            "source": r["source_name"],
+            "url": r["source_url"],
+            "timestamp": r["timestamp"].isoformat() if r["timestamp"] else None,
+            "similarity": round(sim, 4),
+            "gate_status": "assigned" if r["has_topic"] else "below_gate",
+        })
+        if len(semantic_neighbors) >= neighbors:
+            break
+
+    return {
+        "signal_id": signal_id,
+        "threads": [
+            {
+                "slug": t["slug"],
+                "label": t["label"],
+                "gate_kept": bool(t["gate_kept"]) if t["gate_kept"] is not None else None,
+                "gate_score": float(t["gate_score"]) if t["gate_score"] is not None else None,
+            }
+            for t in threads
+        ],
+        "semantic_neighbors": semantic_neighbors,
+        "match_basis": "signal_embedding",
+        "notes": notes,
+    }

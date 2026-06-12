@@ -314,3 +314,73 @@
     line-height: 1.5;
     color: var(--color-text-secondary, #cbd5e1);
 }
+
+/* ===== #228 §2.3 rebuild: thread chips primary, taxonomy demoted, semantic neighbors ===== */
+
+.sdp-thread-tag {
+    font-size: 11px;
+    padding: 3px 8px;
+    background: rgba(104, 219, 174, 0.12);
+    color: #68dbae;
+    border: 1px solid rgba(104, 219, 174, 0.25);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sdp-thread-tag:hover {
+    background: rgba(104, 219, 174, 0.24);
+}
+
+.sdp-thread-tag--belowgate {
+    border-style: dashed;
+    color: #94d8bc;
+}
+
+.sdp-gate-badge {
+    font-size: 8px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: rgba(251, 191, 36, 0.14);
+    color: #fbbf24;
+}
+
+/* Taxonomy demotion: index, not story model — visually quieter */
+.sdp-section-label--taxonomy {
+    color: #3b4757;
+}
+
+.sdp-tags--taxonomy .sdp-theme-tag {
+    background: rgba(148, 163, 184, 0.08);
+    color: #7d8da1;
+}
+
+.sdp-tags--taxonomy .sdp-theme-tag:hover {
+    background: rgba(148, 163, 184, 0.18);
+}
+
+.sdp-related-row--link {
+    cursor: pointer;
+    text-decoration: none;
+    display: block;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.sdp-related-row--link:hover {
+    background: rgba(104, 219, 174, 0.07);
+    border-color: rgba(104, 219, 174, 0.25);
+}
+
+.sdp-similarity {
+    font-size: 9px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-weight: 700;
+    color: #68dbae;
+    font-variant-numeric: tabular-nums;
+}
