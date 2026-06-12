@@ -125,3 +125,72 @@ def test_atlas_slug_unknown_returns_explained_empty(monkeypatch):
     assert result["total"] == 0
     assert result["source"] == "historical_topic_country_daily"
     assert "no_processed_topic_history" in result["warnings"]
+
+
+def test_thread_id_with_country_suffix_resolves_atlas_branch(monkeypatch):
+    """'slug--cc' thread ids must parse to (slug, country) before the atlas
+    lookup — Pedro's 2026-06-12 PE review: 'election-legitimacy-dispute--pe'
+    listed 48 signals, opened to 0 because the suffixed id missed
+    atlas_topics.slug and fell through to the GDELT path."""
+    sentinel = {"theme": "election-legitimacy-dispute", "total": 48,
+                "source": "atlas_topic_gated"}
+    captured = _install(
+        monkeypatch,
+        atlas_row={"id": 9, "slug": "election-legitimacy-dispute",
+                   "label": "Election legitimacy dispute"},
+        atlas_detail_result=sentinel,
+    )
+
+    result = asyncio.run(
+        themes.get_theme_details(
+            "election-legitimacy-dispute--pe", country_code=None, hours=168,
+        )
+    )
+
+    assert result is sentinel
+    assert captured["slug"] == "election-legitimacy-dispute"
+    # Single-country suffix scopes the detail to that country.
+    assert captured["country_code"] == "PE"
+
+
+def test_thread_id_multi_country_suffix_stays_global(monkeypatch):
+    """Multi-country ids ('slug--us-ir-sa') strip the suffix but do not force
+    a single-country filter — the thread is global."""
+    sentinel = {"theme": "currency-debt-stress", "total": 409,
+                "source": "atlas_topic_gated"}
+    captured = _install(
+        monkeypatch,
+        atlas_row={"id": 4, "slug": "currency-debt-stress",
+                   "label": "Currency and debt stress"},
+        atlas_detail_result=sentinel,
+    )
+
+    result = asyncio.run(
+        themes.get_theme_details(
+            "currency-debt-stress--us-ir-sa", country_code=None, hours=168,
+        )
+    )
+
+    assert result is sentinel
+    assert captured["slug"] == "currency-debt-stress"
+    assert captured["country_code"] is None
+
+
+def test_thread_id_explicit_country_param_wins(monkeypatch):
+    """An explicit country_code query param overrides the id suffix."""
+    sentinel = {"theme": "election-legitimacy-dispute", "total": 5,
+                "source": "atlas_topic_gated"}
+    captured = _install(
+        monkeypatch,
+        atlas_row={"id": 9, "slug": "election-legitimacy-dispute",
+                   "label": "Election legitimacy dispute"},
+        atlas_detail_result=sentinel,
+    )
+
+    asyncio.run(
+        themes.get_theme_details(
+            "election-legitimacy-dispute--pe", country_code="co", hours=168,
+        )
+    )
+
+    assert captured["country_code"] == "CO"

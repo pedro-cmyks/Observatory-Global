@@ -617,6 +617,24 @@ async def get_theme_details(
 ):
     """Get detailed information about a theme including rich context."""
     from app.core.gdelt_taxonomy import get_concepts_for_theme
+    from app.services.thread_intelligence import parse_thread_id
+
+    # Thread ids from /api/v2/threads use 'slug--cc[-cc...]'. Clients open
+    # threads with that full id, but atlas_topics.slug has no suffix — the
+    # lookup missed, fell through to the GDELT '$1 = ANY(themes)' path and
+    # returned 0 while the list showed N (#214; Pedro's 2026-06-12 PE review:
+    # election-legitimacy-dispute--pe listed 48, opened to an empty gate
+    # message during a live vote-count dispute). Parse the suffix here so the
+    # atlas branch — and its below-gate fallback — always resolves.
+    if "--" in theme_code:
+        base_slug, thread_countries = parse_thread_id(theme_code)
+        if base_slug and thread_countries and all(len(c) == 2 for c in thread_countries):
+            theme_code = base_slug
+            # Single-country thread id scopes the detail to that country;
+            # multi-country ids stay global unless the caller filtered.
+            if not country_code and len(thread_countries) == 1:
+                country_code = thread_countries[0]
+
     # For long windows, cap signals_v2 scans at 48h; use pre-agg tables for aggregates
     signals_hours = min(hours, 48) if hours > 24 else hours
     try:
