@@ -347,28 +347,31 @@ async def get_signal_context(
 
         notes: list[str] = []
         neighbor_rows: list = []
-        has_embedding = await conn.fetchval(
-            "SELECT EXISTS (SELECT 1 FROM signal_embeddings WHERE signal_id = $1)",
+        # Fetch the vector first and pass it back as a constant: the HNSW
+        # index only serves `vec <=> $const` — ordering by a joined column
+        # (me.vec) forces a sequential scan over the whole corpus and blows
+        # the statement timeout.
+        own_vec = await conn.fetchval(
+            "SELECT vec::text FROM signal_embeddings WHERE signal_id = $1",
             signal_id,
         )
-        if has_embedding:
+        if own_vec:
             neighbor_rows = await conn.fetch(
                 f"""
                 SELECT s.id, s.headline, s.country_code, s.source_name,
                        s.source_url, s.timestamp,
-                       1 - (e.vec <=> me.vec) AS similarity,
+                       1 - (e.vec <=> $2::halfvec) AS similarity,
                        EXISTS (SELECT 1 FROM signal_topic_assignments sta
                                WHERE sta.signal_id = s.id) AS has_topic
-                FROM signal_embeddings me,
-                     signal_embeddings e
+                FROM signal_embeddings e
                 JOIN signals_v2 s ON s.id = e.signal_id
-                WHERE me.signal_id = $1
-                  AND e.signal_id <> $1
+                WHERE e.signal_id <> $1
                   AND s.timestamp > NOW() - INTERVAL '{int(hours)} hours'
-                ORDER BY e.vec <=> me.vec
+                ORDER BY e.vec <=> $2::halfvec
                 LIMIT {int(neighbors * 4)}
                 """,
                 signal_id,
+                own_vec,
             )
         else:
             notes.append("signal not embedded yet; semantic neighbors unavailable")
