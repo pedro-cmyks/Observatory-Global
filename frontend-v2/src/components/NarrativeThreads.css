@@ -409,3 +409,27 @@
     background: rgba(45, 212, 191, 0.16);
     border-color: rgba(45, 212, 191, 0.48);
 }
+
+/* Two-tier honesty (#229/#228): living curated threads vs taxonomy aggregates */
+.narrative-tier-badge {
+    font-size: 8px;
+    font-family: var(--font-technical, monospace);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.narrative-tier-badge--living {
+    background: rgba(104, 219, 174, 0.14);
+    color: #68dbae;
+    border: 1px solid rgba(104, 219, 174, 0.3);
+}
+
+.narrative-tier-badge--aggregate {
+    background: rgba(148, 163, 184, 0.1);
+    color: #7d8da1;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+}
