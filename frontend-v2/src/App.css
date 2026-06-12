@@ -627,7 +627,7 @@
   grid-template-areas:
     "radar stream threads"
     "radar stream threads"
-    "anomaly anomaly integrity";
+    "dock dock dock";
   grid-template-columns: minmax(280px, 35%) minmax(280px, 1fr) minmax(240px, 30%);
   grid-template-rows: minmax(220px, 40%) minmax(180px, 1fr) minmax(140px, 20%);
   height: calc(100vh - 48px);
@@ -645,16 +645,15 @@
     grid-template-rows: minmax(0, 1fr) minmax(132px, 18vh);
     grid-template-areas:
       "radar stream threads"
-      "anomaly anomaly integrity";
+      "dock dock dock";
   }
 
   .terminal-panel {
     min-height: 0;
   }
 
-  .terminal-panel.anomaly,
-  .terminal-panel.integrity {
-    min-height: 132px;
+  .terminal-panel.dock {
+    min-height: 150px;
   }
 
   .panel-header {
@@ -694,7 +693,7 @@
     grid-template-areas:
       "radar stream"
       "radar stream"
-      "integrity anomaly";
+      "dock dock";
     grid-template-columns: minmax(260px, 40%) 1fr;
     grid-template-rows: minmax(200px, 42%) minmax(160px, 1fr) minmax(130px, 18%);
     overflow-y: auto;
@@ -789,10 +788,9 @@
       "radar"
       "stream"
       "threads"
-      "anomaly"
-      "integrity";
+      "dock";
     grid-template-columns: 1fr;
-    grid-template-rows: 52vh minmax(420px, auto) minmax(320px, auto) minmax(280px, auto) minmax(260px, auto);
+    grid-template-rows: 52vh minmax(420px, auto) minmax(320px, auto) minmax(300px, auto);
     height: auto;
     min-height: calc(100vh - 96px);
     margin-top: 0;
@@ -802,7 +800,7 @@
   }
 
   .terminal-panel.matrix,
-  .terminal-panel.integrity {
+  .terminal-panel.dock {
     display: flex;
   }
 
@@ -857,14 +855,9 @@
   display: none;
 }
 
-/* TERTIARY — Anomaly, Source Integrity: recessive */
-.terminal-panel.anomaly {
-  grid-area: anomaly;
-  border: 1px solid rgba(239, 68, 68, 0.18);
-  background: linear-gradient(180deg, rgba(28, 17, 20, 0.9), rgba(7, 13, 23, 0.92));
-}
-.terminal-panel.integrity {
-  grid-area: integrity;
+/* TERTIARY — bottom dock (tabbed: anomaly | heat | sources): recessive */
+.terminal-panel.dock {
+  grid-area: dock;
   border: 1px solid rgba(104, 219, 174, 0.1);
   background: linear-gradient(180deg, rgba(12, 24, 43, 0.86), rgba(7, 13, 23, 0.9));
 }
@@ -905,8 +898,7 @@
 }
 
 /* TERTIARY: Anomaly, Integrity, Matrix — quieter headers */
-.terminal-panel.anomaly .panel-header,
-.terminal-panel.integrity .panel-header,
+.terminal-panel.dock .panel-header,
 .terminal-panel.matrix .panel-header {
   font-size: 10px;
   color: rgba(226, 232, 240, 0.48);
@@ -1469,4 +1461,38 @@
   .command-bar-center > .workbench-btn {
     padding: 4px 8px;
   }
+}
+
+/* ===== Bottom dock tabs (#228 §3) ===== */
+.dock-header {
+  cursor: default;
+}
+
+.dock-tabs {
+  display: flex;
+  gap: 2px;
+}
+
+.dock-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: rgba(226, 232, 240, 0.42);
+  font-family: var(--font-technical, monospace);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 10px 4px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.dock-tab:hover {
+  color: rgba(226, 232, 240, 0.8);
+}
+
+.dock-tab.active {
+  color: var(--color-accent-primary, #68dbae);
+  border-bottom-color: var(--color-accent-primary, #68dbae);
 }

@@ -42,6 +42,7 @@ import { ThreadFocusPanel } from './components/ThreadFocusPanel'
 import { SignalStream } from './components/SignalStream'
 import { OnboardingCoachmark } from './components/OnboardingCoachmark'
 import { CorrelationMatrix } from './components/CorrelationMatrix'
+import AtlasHeatList from './components/AtlasHeatList'
 import { AnomalyPanel } from './components/AnomalyPanel'
 import { SourceIntegrityPanel } from './components/SourceIntegrityPanel'
 import { PanelErrorBoundary } from './components/PanelErrorBoundary'
@@ -283,6 +284,8 @@ function AppContent() {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [timeMenuOpen, setTimeMenuOpen] = useState(false)
+  // Bottom dock active tab (#228 §3): anomaly | heat | sources
+  const [dockTab, setDockTab] = useState<'anomaly' | 'heat' | 'sources'>('anomaly')
 
   useEffect(() => {
     if (!moreMenuOpen && !timeMenuOpen) return
@@ -1703,54 +1706,74 @@ function AppContent() {
           </div>
         </div>
 
-        {/* Panel 5: ANOMALY ALERT */}
-        <div className="terminal-panel anomaly" data-tour="anomaly-attention">
-          <div className="panel-header">
-            <div className="panel-header-title-wrap">
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        {/* Panel 5+6: BOTTOM DOCK — tabbed (#228 §3). On 16:9 laptops the old
+            two-panel bottom row gave three interactive sections ~132px each;
+            tabs give the active section the full row. */}
+        <div className="terminal-panel dock" data-tour="anomaly-attention">
+          <div className="panel-header dock-header">
+            <div className="dock-tabs">
+              <button
+                className={`dock-tab ${dockTab === 'anomaly' ? 'active' : ''}`}
+                onClick={() => setDockTab('anomaly')}
+                data-tip="Geo alerts and public attention vs 7-day baseline"
+              >
                 ANOMALY ALERT
-                <PanelHelpButton panel="anomaly-attention" />
-              </span>
-              <span className="panel-subtitle">unusual activity vs 7-day baseline</span>
-            </div>
-          </div>
-          <div className="panel-content">
-            <PanelErrorBoundary panelName="ANOMALY ALERT">
-              <AnomalyPanel
-                onWikiClick={(q) => setExternalSearchQuery({ q, id: Date.now() })}
-                onPublicAttentionSelect={handlePublicAttentionSelect}
-              />
-            </PanelErrorBoundary>
-          </div>
-        </div>
-
-        {/* Panel 6: SOURCE INTEGRITY */}
-        <div className="terminal-panel integrity">
-          <div className="panel-header">
-            <div className="panel-header-title-wrap">
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              </button>
+              <button
+                className={`dock-tab ${dockTab === 'heat' ? 'active' : ''}`}
+                onClick={() => setDockTab('heat')}
+                data-tip="Country heat: velocity, surprise, diversity, voice components"
+              >
+                HEAT
+              </button>
+              <button
+                className={`dock-tab ${dockTab === 'sources' ? 'active' : ''}`}
+                onClick={() => setDockTab('sources')}
+                data-tip="Diversity of information sources"
+              >
                 SOURCE INTEGRITY
-                <PanelHelpButton panel="source-integrity" />
-              </span>
-              <span className="panel-subtitle">diversity of information sources</span>
+              </button>
             </div>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {dockTab === 'anomaly' && <PanelHelpButton panel="anomaly-attention" />}
+              {dockTab === 'sources' && <PanelHelpButton panel="source-integrity" />}
+            </span>
           </div>
           <div className="panel-content">
-            <PanelErrorBoundary
-              key={`integrity-${filter.country ?? ''}-${filter.theme ?? ''}-${filter.person ?? ''}-${filter.entity ?? ''}`}
-              panelName="SOURCE INTEGRITY"
-            >
-              <SourceIntegrityPanel
-                viewingLabel={
-                  selectedTheme?.thread?.label
-                  ?? selectedTheme?.theme
-                  ?? selectedThread?.label
-                  ?? selectedPublicAttention?.title
-                  ?? selectedChokepoint?.name
-                  ?? null
-                }
-              />
-            </PanelErrorBoundary>
+            {dockTab === 'anomaly' && (
+              <PanelErrorBoundary panelName="ANOMALY ALERT">
+                <AnomalyPanel
+                  onWikiClick={(q) => setExternalSearchQuery({ q, id: Date.now() })}
+                  onPublicAttentionSelect={handlePublicAttentionSelect}
+                />
+              </PanelErrorBoundary>
+            )}
+            {dockTab === 'heat' && (
+              <PanelErrorBoundary panelName="HEAT">
+                <AtlasHeatList
+                  hours={timeRangeToHours(timeRange)}
+                  limit={12}
+                  onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
+                />
+              </PanelErrorBoundary>
+            )}
+            {dockTab === 'sources' && (
+              <PanelErrorBoundary
+                key={`integrity-${filter.country ?? ''}-${filter.theme ?? ''}-${filter.person ?? ''}-${filter.entity ?? ''}`}
+                panelName="SOURCE INTEGRITY"
+              >
+                <SourceIntegrityPanel
+                  viewingLabel={
+                    selectedTheme?.thread?.label
+                    ?? selectedTheme?.theme
+                    ?? selectedThread?.label
+                    ?? selectedPublicAttention?.title
+                    ?? selectedChokepoint?.name
+                    ?? null
+                  }
+                />
+              </PanelErrorBoundary>
+            )}
           </div>
         </div>
       </div>
