@@ -145,20 +145,36 @@ headline dedup, SEMANTIC EVIDENCE UI section in ResearchPlanPanel
 (UNVERIFIED/ASSIGNED badges). Prod verified clean. Embed cron converging
 (99.6K embeddings; throughput > inflow).
 
+**#225 review DELIVERED 2026-06-11** (`a6a7f79`):
+`docs/specs/2026-06-11-surfaces-editorial-review.md`. Verdict: L1 Brief
+inverted — leads with stats/choropleth/template "Editor's Analysis", buries
+threads, editorial body still six GDELT theme articles (guardrail
+violation). Key finding: briefing payload's `top_threads` (window-scoped
+counts, trend, changed_10h, countries, hourly timeline w/ sentiment) +
+`heat_countries` already contain the front page; Brief renders none of it —
+frontend rendering decision, not backend gap. Only backend gaps: evidence
+headlines per thread in payload + #214 count semantics. Proposed L1: lead
+story from top thread + watchlist rows w/ movement + honest standfirst +
+heating strip + reserved gap box + demoted map. Graphic slots per level
+(§3). UX fold (§6): #152/#179/#147 = L2 legibility batch; #183 splits
+(panel L2 / strip L1); #212 folds into Brief rebuild; #145 prerequisite
+for gap box; #106 backlog; #151 → markets L4; #196/#204 excluded.
+Execution order (§7): Brief rebuild first. Issue open pending Pedro's read.
+
 **Next work, in order:**
 
-1. **#224 — fix dynamic-topic identity black holes.** Jumps the queue: it
-   poisons Brief watchlist, /threads, research-plan thread lane, AND the
-   semantic member_centroid basis. Projection writer changes
-   (backend/scripts/project_dynamic_topics.py) + rebuild + retire.
-2. #225 — editorial surfaces review (after #224).
-3. #223 remainder — threshold calibration on the full corpus + headline
-   dedup + semantic_evidence UI.
-2. Parallel, non-blocking: #219 Kalman movement feed; #217 credibility
+1. **Brief rebuild (L1)** per §7 of the surfaces review, once Pedro accepts
+   the judgment — render from `top_threads`, lead story + watchlist
+   sparklines, kill template editorial, demote map (+#212), GDELT themes →
+   back-matter index. Backend: evidence headlines in briefing payload,
+   #214 count semantics.
+2. L2 legibility batch: #152 + #179 + #147 (+#183 panel).
+3. Workbench pin-snapshot + per-pin note (Phase 3 prerequisite).
+4. Parallel, non-blocking: #219 Kalman movement feed; #217 credibility
    tiers; #220 funnel ledger; #221 maturity contract; #222 stratified
-   snapshot sampling; #152 command-bar layout.
-3. Later phases: Phase 3 report view from pinned state; Phase 4
-   evidence/frame quality bound to Paper 1 benchmarks.
+   snapshot sampling.
+5. Later phases: Phase 3 report view from pinned state (dossier defined in
+   review §5); Phase 4 evidence/frame quality bound to Paper 1 benchmarks.
 
 Tests: research suites = `pytest tests/test_research_*.py` (22 tests).
 Deploy: `./scripts/deploy-fly-api.sh`. Prod smoke:
