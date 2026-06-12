@@ -161,19 +161,29 @@ heating strip + reserved gap box + demoted map. Graphic slots per level
 for gap box; #106 backlog; #151 → markets L4; #196/#204 excluded.
 Execution order (§7): Brief rebuild first. Issue open pending Pedro's read.
 
+**Brief rebuild (L1) SHIPPED 2026-06-12** (`3369e29`, Vercel prod
+verified, #225 CLOSED): Pedro accepted the judgment; L1 implemented per
+review §4. Lead story from `top_threads` (evidence headlines, why_now,
+trend chip, sparkline), watchlist rows w/ movement + country chips,
+honest standfirst (Math.random template essays deleted), Heating Up
+strip from `heat_countries` (dominant story component named;
+geo_confidence/duplication never surfaced), map demoted half-width
+geoEqualEarth (#212 partial — L2 MapLibre still open), GDELT themes →
+"By Theme" back-matter index, country view = country-scoped threads
+(same contract as CountryBrief). No backend change needed — dynamic
+threads already carried evidence_samples in the briefing payload.
+Verified: 56/56 tests, local preview global+CO, prod bundle markers.
+New issue #227: workbench pin evidence-snapshot + per-pin note (Phase 3
+prerequisite). Gap box deferred to #172 (after #145).
+
 **Next work, in order:**
 
-1. **Brief rebuild (L1)** per §7 of the surfaces review, once Pedro accepts
-   the judgment — render from `top_threads`, lead story + watchlist
-   sparklines, kill template editorial, demote map (+#212), GDELT themes →
-   back-matter index. Backend: evidence headlines in briefing payload,
-   #214 count semantics.
-2. L2 legibility batch: #152 + #179 + #147 (+#183 panel).
-3. Workbench pin-snapshot + per-pin note (Phase 3 prerequisite).
-4. Parallel, non-blocking: #219 Kalman movement feed; #217 credibility
+1. L2 legibility batch: #152 + #179 + #147 (+#183 panel).
+2. Workbench pin-snapshot + per-pin note (#227, Phase 3 prerequisite).
+3. Parallel, non-blocking: #219 Kalman movement feed; #217 credibility
    tiers; #220 funnel ledger; #221 maturity contract; #222 stratified
    snapshot sampling.
-5. Later phases: Phase 3 report view from pinned state (dossier defined in
+4. Later phases: Phase 3 report view from pinned state (dossier defined in
    review §5); Phase 4 evidence/frame quality bound to Paper 1 benchmarks.
 
 Tests: research suites = `pytest tests/test_research_*.py` (22 tests).
