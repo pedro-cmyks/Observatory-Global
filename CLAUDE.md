@@ -221,9 +221,26 @@ rebuild (folds #178), 2) dock tabs + mount AtlasHeatList (#183),
 3) person hygiene cheap wins, 4) gate-recall SQL report, 5) map hovers +
 PLANE degraded state, 6) keyword-match labels. Open pending Pedro's read.
 
+**#229 created 2026-06-12** (Pedro's note while reading #228): threads
+coverage scaling program. Measured funnel: 185K signals/24h → 15K cap →
+8 clusters/373 signals → ~5 living threads = **0.2% coverage**. Levers in
+order: (1) cluster over persisted signal_embeddings corpus (~100K,
+dissolves the 15K-cap constraint that #223 already paid for), (2) scoped
+regional passes (Peru recount had 92+ signals, never clustered —
+global HDBSCAN drowns regional stories), (3) #222 stratified sampling,
+(4) #219 lifecycle, (5) label refresh policy (labels frozen at creation),
+(6) #162 multilingual, (7) #220 ledger as instrumentation prerequisite.
+Facts verified: Reddit IS ingested (ingest_loop, source_family='social')
+but invisible — no surface exposes it; 14 ingest services need a
+utilization audit. Surface item folded into #228 impl: two-tier display
+honesty in NarrativeThreads (living/curated vs atlas-aggregate fill).
+
 **Next work, in order:**
 
-1. #228 implementation per review §6, on Pedro's acceptance.
+1. #228 implementation per review §6, on Pedro's acceptance (accepted
+   verbally 2026-06-12 'estoy de acuerdo con lo que propones' — start
+   with SignalDetail rebuild; add two-tier thread labels from #229).
+2. #229 funnel scaling program (data layer; lever 1 = corpus clustering).
 2. #183 panel remainder (sentiment_source badge + heat_countries panel
    in L2; the L1 strip already shipped with the Brief rebuild).
 3. Workbench pin-snapshot + per-pin note (#227, Phase 3 prerequisite).
