@@ -138,6 +138,13 @@ relevant headlines the gate hid). #214 stays open for list count
 semantics. Markets L4: lives in `markets/` folder IN this repo (Pedro);
 relational thesis recorded (co-movement, Atlas-as-API end state).
 
+**2026-06-11/12 late session:** #223 CLOSED (`a56dd6b`): threshold 0.84
+(re-measured on ~100K corpus), is_junk_headline filter write+query side
+('Doc *.Shtml' scraped garbage was matching everything), query-side
+headline dedup, SEMANTIC EVIDENCE UI section in ResearchPlanPanel
+(UNVERIFIED/ASSIGNED badges). Prod verified clean. Embed cron converging
+(99.6K embeddings; throughput > inflow).
+
 **Next work, in order:**
 
 1. **#224 — fix dynamic-topic identity black holes.** Jumps the queue: it
