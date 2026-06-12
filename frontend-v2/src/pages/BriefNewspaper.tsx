@@ -86,9 +86,9 @@ interface BriefingData {
         sources: number
         avg_sentiment: number
     }
-    top_countries: { code: string; name: string; signals: number; sentiment: number }[]
-    negative_sentiment: { code: string; name: string; sentiment: number; signals: number }[]
-    positive_sentiment: { code: string; name: string; sentiment: number; signals: number }[]
+    top_countries: { code: string; name: string; signals: number; sentiment: number; sentiment_source?: string; nlp_coverage?: number }[]
+    negative_sentiment: { code: string; name: string; sentiment: number; signals: number; sentiment_source?: string; nlp_coverage?: number }[]
+    positive_sentiment: { code: string; name: string; sentiment: number; signals: number; sentiment_source?: string; nlp_coverage?: number }[]
     top_themes: {
         theme: string
         count: number
@@ -132,6 +132,25 @@ function dominantHeatComponent(components?: Record<string, number>): string | nu
         }
     }
     return best
+}
+
+// #183: sentiment numbers carry their provenance — NLP-weighted (RoBERTa)
+// vs raw GDELT tone. Low NLP coverage tones the badge down so a glance
+// reads as "less confident value".
+function SentimentSourceBadge({ source, coverage }: { source?: string; coverage?: number }) {
+    if (!source) return null
+    const isNlp = source.startsWith('nlp')
+    const lowCov = (coverage ?? 0) < 0.30
+    return (
+        <span
+            className={`brief-sentsrc${isNlp && !lowCov ? '' : ' brief-sentsrc--weak'}`}
+            data-tip={isNlp
+                ? `Sentiment from multilingual NLP model, ${Math.round((coverage ?? 0) * 100)}% of signals covered${lowCov ? ' — low coverage, less confident' : ''}`
+                : 'Sentiment from raw GDELT tone only — no NLP coverage'}
+        >
+            {isNlp ? `NLP ${Math.round((coverage ?? 0) * 100)}%` : 'GDELT'}
+        </span>
+    )
 }
 
 function trendArrow(trend?: string, changed10h?: number): { glyph: string; cls: string; label: string } | null {
@@ -778,7 +797,10 @@ export function BriefNewspaper() {
                                     onClick={() => goToAtlas(`country=${c.code}`)}
                                 >
                                     <span>{resolveCountryName(c.code, c.name)}</span>
-                                    <span className="brief-bottom-num negative">{c.sentiment.toFixed(2)}</span>
+                                    <span className="brief-bottom-num negative">
+                                        {c.sentiment.toFixed(2)}
+                                        <SentimentSourceBadge source={c.sentiment_source} coverage={c.nlp_coverage} />
+                                    </span>
                                 </button>
                             ))}
                         </div>
@@ -791,7 +813,10 @@ export function BriefNewspaper() {
                                     onClick={() => goToAtlas(`country=${c.code}`)}
                                 >
                                     <span>{resolveCountryName(c.code, c.name)}</span>
-                                    <span className="brief-bottom-num positive">+{c.sentiment.toFixed(2)}</span>
+                                    <span className="brief-bottom-num positive">
+                                        +{c.sentiment.toFixed(2)}
+                                        <SentimentSourceBadge source={c.sentiment_source} coverage={c.nlp_coverage} />
+                                    </span>
                                 </button>
                             ))}
                         </div>
