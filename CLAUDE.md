@@ -205,9 +205,25 @@ not Atlas threads + irrelevant related signals (fold #178), yellow dots
 no hover, PLANE dead/SHIPS sparse (movement→narratives, #159/#226),
 widescreen 16:9 crushes AnomalyAlert/SourceIntegrity panels.
 
+**#228 review DELIVERED 2026-06-12** (`cc041e5`):
+`docs/specs/2026-06-12-l2-l3-deep-review.md`. Verdict: L2 skeleton right,
+edges rotten — every path off the threads spine lands on raw GDELT
+presented as product. Key findings: gate recall 0/43 Spanish ("language
+gate in quality-gate costume" → measure keep-rate by language, likely
+re-prioritizes #162); SignalDetail most-clicked + most dishonest leaf
+(GDELT chips as story model, related-by-GDELT-overlap, dead onClick) —
+rebuild with thread chips + semantic neighbors (embeddings exist);
+person panel garbage-in (#176 folded, priority raised); DiscoveryPanel +
+AtlasHeatList dead components (latter = half of #183 built, unmounted);
+16:9 bottom row ~132px for 3 interactive sections → tabbed dock
+proposal. L3 fine, only needs #227. Execution order §6: 1) SignalDetail
+rebuild (folds #178), 2) dock tabs + mount AtlasHeatList (#183),
+3) person hygiene cheap wins, 4) gate-recall SQL report, 5) map hovers +
+PLANE degraded state, 6) keyword-match labels. Open pending Pedro's read.
+
 **Next work, in order:**
 
-1. #228 L2/L3 deep review (umbrella; Pedro wants L1-style depth).
+1. #228 implementation per review §6, on Pedro's acceptance.
 2. #183 panel remainder (sentiment_source badge + heat_countries panel
    in L2; the L1 strip already shipped with the Brief rebuild).
 3. Workbench pin-snapshot + per-pin note (#227, Phase 3 prerequisite).
