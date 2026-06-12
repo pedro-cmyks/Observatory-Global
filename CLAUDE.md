@@ -176,9 +176,25 @@ Verified: 56/56 tests, local preview global+CO, prod bundle markers.
 New issue #227: workbench pin evidence-snapshot + per-pin note (Phase 3
 prerequisite). Gap box deferred to #172 (after #145).
 
+**L2 legibility batch SHIPPED 2026-06-12** (`d15799c`, #152/#179/#147
+CLOSED): command bar — compact time-range dropdown <1380px, '···'
+overflow menu (TOUR+Settings; SettingsPanel now supports controlled
+open/onClose), icon-only labels <1200px. Real cause of hidden horizontal
+scroll: SignalStream headline flex children (min-width:auto) — fixed
+min-width:0+ellipsis. Legend — follows effective render state (flows
+section when filter activates arcs, not just toggle), 'Baseline spikes'
+section for the always-on anomaly rings (the unexplained marker in
+Pedro's recording), chokepoint ring documented. Map reset — two-stage ↺:
+tilted → flat north-up first, flat → fly to hotspot. Verified
+1440/1280/375 maxScrollX=0, menus exercised, 56/56 tests. Branding note:
+#106 updated — Pedro wants leviathan/kraken mascot direction, dedicated
+design session (colors/typography/message), first use = Brief loading
+animation.
+
 **Next work, in order:**
 
-1. L2 legibility batch: #152 + #179 + #147 (+#183 panel).
+1. #183 panel remainder (sentiment_source badge + heat_countries panel
+   in L2; the L1 strip already shipped with the Brief rebuild).
 2. Workbench pin-snapshot + per-pin note (#227, Phase 3 prerequisite).
 3. Parallel, non-blocking: #219 Kalman movement feed; #217 credibility
    tiers; #220 funnel ledger; #221 maturity contract; #222 stratified
