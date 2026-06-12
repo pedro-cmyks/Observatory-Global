@@ -1378,3 +1378,95 @@
   .workbench-overlay-body { flex-direction: column; }
   .workbench-overlay-left { border-right: none; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
 }
+
+/* ===== #152 command-bar layout: overflow menu, compact range, icon-only labels ===== */
+
+/* WORKBENCH outside .time-controls needs its own pill chrome */
+.command-bar-center > .workbench-btn {
+  background: rgba(12, 24, 43, 0.78);
+  border: 1px solid rgba(29, 158, 117, 0.24);
+  flex: 0 0 auto;
+}
+
+.command-bar-center > .workbench-btn.active {
+  color: #003827;
+  background: var(--color-accent-primary, #68dbae);
+}
+
+/* Compact time-range dropdown: hidden on wide screens */
+.time-compact {
+  position: relative;
+  display: none;
+  flex: 0 0 auto;
+}
+
+.time-compact-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid rgba(29, 158, 117, 0.24);
+}
+
+/* Shared command-bar dropdown menu */
+.cmd-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 150px;
+  background: rgba(7, 13, 23, 0.97);
+  border: 1px solid rgba(29, 158, 117, 0.28);
+  border-radius: 5px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  padding: 4px;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cmd-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  padding: 7px 9px;
+  color: var(--color-text-secondary, #94a3b8);
+  font-family: var(--font-technical, monospace);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
+}
+
+.cmd-menu-item:hover {
+  background: rgba(29, 158, 117, 0.12);
+  color: var(--color-text-primary, #e2e8f0);
+}
+
+.cmd-menu-item.active {
+  color: #003827;
+  background: var(--color-accent-primary, #68dbae);
+}
+
+.cmd-more-wrap {
+  position: relative;
+}
+
+/* Narrow viewports: swap range buttons for the compact dropdown (#152
+   acceptance: no collision with the search bar, no horizontal scroll) */
+@media (max-width: 1380px) {
+  .time-controls { display: none; }
+  .time-compact { display: block; }
+}
+
+/* Icon-only action buttons below 1200px */
+@media (max-width: 1200px) {
+  .cmd-btn-label { display: none; }
+  .command-bar-center > .workbench-btn {
+    padding: 4px 8px;
+  }
+}

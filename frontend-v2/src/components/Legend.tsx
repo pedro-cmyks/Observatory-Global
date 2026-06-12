@@ -14,7 +14,17 @@ interface LegendProps {
     vesselConnected?: boolean
     aircraftError?: boolean
     conflictCount?: number
+    anomalyCount?: number
 }
+
+// Red ring marker used by the always-on anomaly layer (#179: this marker was
+// rendered but never explained in the legend).
+const RingSwatch: React.FC<{ color: string; label: string; tip?: string }> = ({ color, label, tip }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }} data-tip={tip}>
+        <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'transparent', border: `2px solid ${color}`, flexShrink: 0, boxShadow: `0 0 5px ${color}55` }} />
+        <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>{label}</span>
+    </div>
+)
 
 const Swatch: React.FC<{ color: string; label: string; tip?: string }> = ({ color, label, tip }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }} data-tip={tip}>
@@ -59,6 +69,7 @@ export const Legend: React.FC<LegendProps> = ({
     vesselConnected = false,
     aircraftError = false,
     conflictCount = 0,
+    anomalyCount = 0,
 }) => {
     const [collapsed, setCollapsed] = useState(false)
 
@@ -111,6 +122,15 @@ export const Legend: React.FC<LegendProps> = ({
                 </div>
             )}
 
+            {/* Always-on base layer: anomaly spike rings (#179 — these markers
+                were visible on the map but absent from the legend) */}
+            {anomalyCount > 0 && (
+                <div style={{ marginBottom: '12px' }}>
+                    <SectionHeader label={`Baseline spikes · ${anomalyCount}`} tip="Countries whose current signal volume deviates sharply from their own recent baseline. Ring size scales with signal count." />
+                    <RingSwatch color="rgba(239,68,68,0.95)" label="Volume spike vs own baseline" tip="Red ring = country is far above its normal media volume right now. Always visible — not affected by layer toggles." />
+                </div>
+            )}
+
             {/* Active optional layers */}
             {showHeatmap && (
                 <div style={{ marginBottom: '12px' }}>
@@ -145,6 +165,7 @@ export const Legend: React.FC<LegendProps> = ({
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <Swatch color="rgba(0,220,200,0.9)" label="> 10 kn — underway" tip="Vessel speed above 10 knots (active transit)" />
                         <Swatch color="rgba(0,180,160,0.7)" label="≤ 10 kn — slow / anchored" tip="Vessel speed 10 knots or below (slow transit, anchoring, or stopped)" />
+                        <RingSwatch color="rgba(0,255,210,0.8)" label="Chokepoint zone" tip="Strategic maritime chokepoint (Suez, Hormuz, Panama, Malacca, Bosphorus…). Bright ring = chokepoint relevant to the active filter." />
                     </div>
                 </div>
             )}

@@ -230,6 +230,21 @@
     text-decoration: none;
 }
 
+/* .headline is a flex row, so its text child needs min-width:0 + ellipsis —
+   flex items default to min-width:auto and refuse to shrink, which pushed
+   long headlines (and the pin button) past the viewport edge and created
+   the hidden horizontal page scroll (#152). */
+.headline > span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.headline .pin-btn {
+    flex-shrink: 0;
+}
+
 .headline a:hover {
     text-decoration: underline;
 }

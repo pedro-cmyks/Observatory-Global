@@ -25,7 +25,7 @@ import { SourceProfile } from './components/SourceProfile'
 import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext'
 import { InvestigationWorkspace } from './components/InvestigationWorkspace'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
-import { Globe, ClipboardList, FolderOpen, HelpCircle, BookmarkPlus } from './lib/icons'
+import { Globe, ClipboardList, FolderOpen, HelpCircle, BookmarkPlus, MoreHorizontal, Settings, ChevronDown } from './lib/icons'
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
 import { resolveCountryName } from './lib/countryNames'
 import type { PublicAttentionOrigin } from './lib/publicAttention'
@@ -278,6 +278,24 @@ function AppContent() {
   const [researchQuery, setResearchQuery] = useState<string | null>(null)
   const [wbRefresh, setWbRefresh] = useState(0)
   const [tourRunId, setTourRunId] = useState(0)
+  // #152 command-bar layout: overflow "···" menu (TOUR + Settings), controlled
+  // settings panel, and compact time-range dropdown for narrow viewports.
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [timeMenuOpen, setTimeMenuOpen] = useState(false)
+
+  useEffect(() => {
+    if (!moreMenuOpen && !timeMenuOpen) return
+    const onDown = (e: MouseEvent) => {
+      const el = e.target as HTMLElement
+      if (!el.closest('.cmd-more-wrap') && !el.closest('.time-compact')) {
+        setMoreMenuOpen(false)
+        setTimeMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [moreMenuOpen, timeMenuOpen])
   const { watches, add: addWatch } = useSavedWatches()
   const [watchNamePrompt, setWatchNamePrompt] = useState<string | null>(null)
   const entrySource = useMemo(() => {
@@ -1084,14 +1102,38 @@ function AppContent() {
                 {TIME_RANGE_LABELS[range]}
               </button>
             ))}
-            <button
-              className={`time-btn workbench-btn ${workbenchOpen ? 'active' : ''}`}
-              data-tip="Investigation Workbench: research plans, pins, and saved routes"
-              onClick={() => setWorkbenchOpen(open => !open)}
-            >
-              WORKBENCH
-            </button>
           </div>
+          {/* Compact range dropdown — replaces the button row on narrow
+              viewports (#152) so it can never collide with the search bar. */}
+          <div className="time-compact">
+            <button
+              className="time-btn active time-compact-trigger"
+              onClick={() => setTimeMenuOpen(open => !open)}
+              data-tip="Time window"
+            >
+              {TIME_RANGE_LABELS[timeRange]} <ChevronDown size={11} />
+            </button>
+            {timeMenuOpen && (
+              <div className="cmd-menu time-compact-menu">
+                {TIME_RANGE_OPTIONS.map(range => (
+                  <button
+                    key={range}
+                    className={`cmd-menu-item ${timeRange === range ? 'active' : ''}`}
+                    onClick={() => { setTimeRange(range); setTimeMenuOpen(false) }}
+                  >
+                    {TIME_RANGE_LABELS[range]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            className={`time-btn workbench-btn ${workbenchOpen ? 'active' : ''}`}
+            data-tip="Investigation Workbench: research plans, pins, and saved routes"
+            onClick={() => setWorkbenchOpen(open => !open)}
+          >
+            WORKBENCH
+          </button>
         </div>
         <div className="command-bar-right">
           <div className="stats">
@@ -1120,11 +1162,11 @@ function AppContent() {
               }}
               data-tip="Save current filter as a named watch"
             >
-              <BookmarkPlus size={13} /> WATCH
+              <BookmarkPlus size={13} /> <span className="cmd-btn-label">WATCH</span>
             </button>
           )}
-          <button className="cmd-btn" data-tour="brief-button" onClick={openBrief}>
-            <ClipboardList size={13} /> BRIEF
+          <button className="cmd-btn" data-tour="brief-button" onClick={openBrief} data-tip="Open the intelligence brief">
+            <ClipboardList size={13} /> <span className="cmd-btn-label">BRIEF</span>
             {watches.length > 0 && <span className="cmd-count">{watches.length}</span>}
           </button>
           <button
@@ -1133,23 +1175,46 @@ function AppContent() {
             onClick={() => setIsOpen(true)}
             data-tip="Open Investigation Workspace"
           >
-            <FolderOpen size={13} /> WORKSPACE
+            <FolderOpen size={13} /> <span className="cmd-btn-label">WORKSPACE</span>
             {(workspaceItems.length + sessionItems.length) > 0 && (
               <span className="cmd-count">{workspaceItems.length + sessionItems.length}</span>
             )}
           </button>
-          <button
-            className="cmd-btn"
-            onClick={() => setTourRunId(id => id + 1)}
-            data-tip="Start guided tour"
-          >
-            <HelpCircle size={13} /> TOUR
-          </button>
+          {/* TOUR + Settings live in a "···" overflow menu (#152) so the bar
+              keeps only primary actions visible. */}
+          <div className="cmd-more-wrap">
+            <button
+              className="cmd-btn"
+              onClick={() => setMoreMenuOpen(open => !open)}
+              data-tip="More: guided tour, settings"
+              aria-label="More options"
+            >
+              <MoreHorizontal size={13} />
+            </button>
+            {moreMenuOpen && (
+              <div className="cmd-menu cmd-more-menu">
+                <button
+                  className="cmd-menu-item"
+                  onClick={() => { setMoreMenuOpen(false); setTourRunId(id => id + 1) }}
+                >
+                  <HelpCircle size={13} /> Guided tour
+                </button>
+                <button
+                  className="cmd-menu-item"
+                  onClick={() => { setMoreMenuOpen(false); setSettingsOpen(true) }}
+                >
+                  <Settings size={13} /> Settings
+                </button>
+              </div>
+            )}
+          </div>
           <SettingsPanel
             showTerminator={showTerminator}
             onToggleTerminator={setShowTerminator}
             sizeBoost={sizeBoost}
             onToggleSizeBoost={setSizeBoost}
+            open={settingsOpen}
+            onClose={() => setSettingsOpen(false)}
           />
         </div>
       </header>
@@ -1213,19 +1278,38 @@ function AppContent() {
               <button
                 className="layer-btn layer-btn--reset"
                 onClick={() => {
+                  const map = mapRef.current?.getMap()
+                  // #147: after rotating/tilting users get lost — pitch and
+                  // bearing were never restored. First press on a tilted map
+                  // resets to the flat north-up default; pressing again (map
+                  // already flat) flies to the hotspot as before.
+                  const isTilted = map
+                    ? Math.abs(map.getPitch()) > 1 || Math.abs(map.getBearing()) > 1
+                    : false
+                  if (isTilted) {
+                    map?.flyTo({
+                      center: [INITIAL_VIEW.longitude, INITIAL_VIEW.latitude],
+                      zoom: INITIAL_VIEW.zoom,
+                      pitch: 0,
+                      bearing: 0,
+                      duration: 1200,
+                      essential: true,
+                    })
+                    return
+                  }
                   setSelectedCountry(null)
                   setSelectedCountryCode(null)
                   setShowFlows(false)
                   clearFocus()
                   if (nodes.length > 0) {
                     const hottest = pickTopAttentionNode(nodes)
-                    mapRef.current?.getMap()?.flyTo({ center: [hottest.lon, hottest.lat], zoom: 2.5, duration: 1800, essential: true })
+                    map?.flyTo({ center: [hottest.lon, hottest.lat], zoom: 2.5, duration: 1800, essential: true })
                   } else {
                     setViewState(INITIAL_VIEW)
                   }
                 }}
-                data-tip="Fly to highest baseline-normalized attention region"
-                aria-label="Fly to highest baseline-normalized attention region"
+                data-tip="Tilted or rotated: reset to flat north-up view. Already flat: fly to highest-attention region"
+                aria-label="Reset map view or fly to highest-attention region"
               >
                 ↺
               </button>
@@ -1359,7 +1443,10 @@ function AppContent() {
             </MapErrorBoundary>
             <Legend
               showHeatmap={showHeatmap}
-              showFlows={showFlows}
+              // #179: flows render whenever a country/theme filter is active,
+              // not only when the FLOWS toggle is on — the legend must follow
+              // what the map actually shows.
+              showFlows={showFlows || !!selectedCountryCode || !!filter.theme}
               showAircraft={showAircraft}
               showVessels={showVessels}
               showTerminator={showTerminator}
@@ -1369,6 +1456,7 @@ function AppContent() {
               vesselConnected={vesselConnected}
               aircraftError={aircraftError}
               conflictCount={acledConflicts?.length ?? 0}
+              anomalyCount={enhancedNodes.filter((n: any) => n.isAnomaly).length}
             />
           </div>
         </div>

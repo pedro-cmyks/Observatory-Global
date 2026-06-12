@@ -6,6 +6,10 @@ interface SettingsPanelProps {
     onToggleTerminator: (v: boolean) => void;
     sizeBoost: boolean;
     onToggleSizeBoost: (v: boolean) => void;
+    // Controlled mode (#152): when `open` is provided the trigger button is
+    // not rendered — the command bar's overflow menu owns the toggle.
+    open?: boolean;
+    onClose?: () => void;
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
@@ -13,13 +17,19 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     onToggleTerminator,
     sizeBoost,
     onToggleSizeBoost,
+    open: controlledOpen,
+    onClose,
 }) => {
-    const [open, setOpen] = useState(false);
+    const [internalOpen, setInternalOpen] = useState(false);
+    const isControlled = controlledOpen !== undefined;
+    const open = isControlled ? controlledOpen : internalOpen;
+    const close = () => { if (isControlled) onClose?.(); else setInternalOpen(false); };
 
     if (!open) {
+        if (isControlled) return null;
         return (
             <button
-                onClick={() => setOpen(true)}
+                onClick={() => setInternalOpen(true)}
                 style={{
                     background: 'var(--color-bg-tertiary)',
                     border: '1px solid var(--color-border-subtle)',
@@ -52,7 +62,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <span className="panel-header" style={{ margin: 0 }}>Settings</span>
                 <button
-                    onClick={() => setOpen(false)}
+                    onClick={close}
                     style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: '16px' }}
                 >
                     ×
