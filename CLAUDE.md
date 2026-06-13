@@ -288,6 +288,13 @@ ja/ko also absent (only es/pt/ar/fr/sw/SE-Asia/hi batches; CJK press
 entirely missing from news-text ingest, though wiki attention + GDELT
 domain-map do cover JP/KR/CN).
 
+**2026-06-13 (#234 slice 1 shipped):** country focus now re-scopes the
+map heat to the focused country + flow-strength-weighted co-occurrence
+partners (reuses visibleFlows), unrelated dims — map and flows agree.
+Client-only. #234 stays open for thread/person/PA focus + the dock
+surfaces re-scoping. Noted: spurious flow partners (Colombia→Trinidad)
+are co-occurrence/flow quality, separate from propagation.
+
 **Next work, in order:**
 
 1. #228 §6 remainder (items 1-2 + #183 done): 3) person hygiene cheap
