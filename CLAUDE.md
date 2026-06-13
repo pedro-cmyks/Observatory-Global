@@ -274,6 +274,20 @@ Prod proof: lluvias signal → Trujillo deslizamientos 0.94. Two-tier
 badges in NarrativeThreads: LIVING vs AGGREGATE. Fresh signals show
 'not embedded yet' (nightly cron lag — #229 lever).
 
+**2026-06-13 (Pedro's HEAT review):** #231 follow-ups shipped — heat
+gradient was too narrow (fetched top-80 only + raw band 0.36–0.72 → flat
+orange, world dark). Fixed: fetch all (limit 250) + min-max normalize the
+real band onto [0.1,1.0] + full blue→cyan→amber→red ramp (weather-radar
+spread). Renamed GLOW→HEAT everywhere (button/help/docs/legend) — same
+thing that drifted apart; Atlas = news weather-radar, HEAT fits the
+composite. NEW issues: **#234** (focus propagation — focusing a
+country/thread/person must repaint ALL surfaces to its RELATIONS; map
+stays global today, flow-relation view regressed; the #228 connection-map
+thesis made interactive — high-value spine item). **#230** confirmed
+ja/ko also absent (only es/pt/ar/fr/sw/SE-Asia/hi batches; CJK press
+entirely missing from news-text ingest, though wiki attention + GDELT
+domain-map do cover JP/KR/CN).
+
 **Next work, in order:**
 
 1. #228 §6 remainder (items 1-2 + #183 done): 3) person hygiene cheap
