@@ -25,7 +25,7 @@ const PANEL_HELP: Record<PanelHelpId, PanelHelpContent> = {
         title: 'Globe',
         summary: 'The map visualizes narrative activity, not geographic importance. Each layer is independently toggled and has a specific analytical purpose.',
         reads: [
-            'GLOW (always on): Country fill color shows how far current activity deviates from each country\'s 7-day rolling baseline. Red = far above average. Blue = at or below baseline.',
+            'HEAT (always on): Country fill color = composite anomaly (velocity, surprise, source diversity, local voice) vs each country\'s own baseline — NOT raw volume. Red = spiking above its own norm, blue = at baseline. A small country spiking outranks a high-volume one. Border thickness = signal volume (evidence density).',
             'FLOW: Arcs connect countries that share dominant narrative themes in the current window. Arc width = co-occurrence strength (Jaccard similarity). Non-directional — shared attention, not causation.',
             'SHIPS: Live AIS transponder positions near strategic maritime chokepoints (Suez, Hormuz, Malacca, Panama, Bosphorus). Cyan = fast transit (> 10 kn), teal = slow or anchored. Useful for trade/supply chain investigations.',
             'PLANE: Live ADS-B aircraft positions. White = cruise altitude (> 10,000 ft), amber = mid, orange = low. Turn off during narrative analysis — adds visual noise without analytical value.',

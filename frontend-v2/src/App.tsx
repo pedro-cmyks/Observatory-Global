@@ -547,18 +547,29 @@ function AppContent() {
 
   // #231: fetch the baseline-normalized heat composite for map color (after
   // timeRange is in scope). Falls back silently to volume if unavailable.
+  // Fetch ALL countries (not a top-N) and min-max normalize the real value
+  // band onto [0.1, 1.0] so the full blue→red gradient is used — the raw
+  // composite clusters in a narrow band (~0.36–0.72), which mapped to a flat
+  // orange and left most of the world dark (#231 follow-up, Pedro's review).
   useEffect(() => {
     let cancelled = false
     const h = timeRangeToHours(timeRange)
-    fetch(`/api/v2/heat/countries?hours=${h}&limit=80`)
+    fetch(`/api/v2/heat/countries?hours=${h}&limit=250`)
       .then(r => r.ok ? r.json() : null)
       .then(d => {
-        if (cancelled || !d?.items) return
+        if (cancelled || !d?.items?.length) return
+        const vals = d.items
+          .filter((it: any) => it.country_code && typeof it.atlas_heat === 'number')
+          .map((it: any) => [String(it.country_code).toUpperCase(), it.atlas_heat as number] as const)
+        if (!vals.length) return
+        const heats = vals.map((v: readonly [string, number]) => v[1])
+        const lo = Math.min(...heats)
+        const hi = Math.max(...heats)
+        const span = Math.max(hi - lo, 0.001)
         const m = new Map<string, number>()
-        for (const it of d.items) {
-          if (it.country_code && typeof it.atlas_heat === 'number') {
-            m.set(it.country_code.toUpperCase(), it.atlas_heat)
-          }
+        for (const [code, raw] of vals) {
+          // normalize to [0.1, 1.0] — coolest country still faintly visible
+          m.set(code, 0.1 + 0.9 * ((raw - lo) / span))
         }
         setHeatComposite(m)
       })
@@ -806,7 +817,7 @@ function AppContent() {
     if (!map || !mapReady) return
 
     if (map.getLayer('country-heat-fill')) {
-      map.setPaintProperty('country-heat-fill', 'fill-opacity', showHeatmap ? 0.3 : 0)
+      map.setPaintProperty('country-heat-fill', 'fill-opacity', showHeatmap ? 0.5 : 0)
     }
     if (map.getLayer('country-heat-glow')) {
       map.setLayoutProperty('country-heat-glow', 'visibility', showHeatmap ? 'visible' : 'none')
@@ -1292,7 +1303,7 @@ function AppContent() {
                 onClick={() => setShowHeatmap(!showHeatmap)}
                 data-tip="Country heat layer — color = composite anomaly (velocity, surprise, source diversity, local voice) vs each country's own baseline, NOT raw volume. A small country spiking above its norm outranks a high-volume one. Border thickness = signal volume (evidence density)."
               >
-                GLOW
+                HEAT
               </button>
               <button
                 className={`layer-btn ${showFlows ? 'active' : ''}`}
@@ -1405,17 +1416,21 @@ function AppContent() {
                     type: 'fill',
                     source: 'country-heat',
                     paint: {
+                      // Stops span the normalized [0.1,1.0] heat band with a
+                      // full cool→hot ramp (blue→cyan→amber→red) so the world
+                      // reads like a weather radar, not a flat orange (#231).
                       'fill-color': [
                         'interpolate', ['linear'],
                         ['coalesce', ['feature-state', 'heat'], 0],
                         0, 'rgba(0, 0, 0, 0)',
-                        0.05, 'rgba(15, 30, 90, 30)',
-                        0.15, 'rgba(30, 55, 130, 50)',
-                        0.35, 'rgba(170, 110, 30, 80)',
-                        0.6, 'rgba(215, 70, 15, 110)',
-                        1.0, 'rgba(235, 35, 10, 140)'
+                        0.1, 'rgba(20, 50, 120, 40)',
+                        0.3, 'rgba(25, 90, 150, 60)',
+                        0.5, 'rgba(40, 140, 120, 75)',
+                        0.65, 'rgba(190, 130, 30, 95)',
+                        0.82, 'rgba(220, 75, 20, 115)',
+                        1.0, 'rgba(238, 35, 10, 145)'
                       ],
-                      'fill-opacity': 0.45
+                      'fill-opacity': 0.5
                     }
                   })
 
@@ -1429,11 +1444,12 @@ function AppContent() {
                         'interpolate', ['linear'],
                         ['coalesce', ['feature-state', 'heat'], 0],
                         0, 'rgba(0, 0, 0, 0)',
-                        0.05, 'rgba(20, 35, 100, 20)',
-                        0.15, 'rgba(35, 60, 140, 40)',
-                        0.35, 'rgba(190, 120, 30, 60)',
-                        0.6, 'rgba(225, 75, 15, 90)',
-                        1.0, 'rgba(245, 45, 10, 120)'
+                        0.1, 'rgba(30, 60, 140, 30)',
+                        0.3, 'rgba(35, 110, 160, 50)',
+                        0.5, 'rgba(50, 160, 130, 65)',
+                        0.65, 'rgba(205, 140, 35, 80)',
+                        0.82, 'rgba(230, 80, 20, 100)',
+                        1.0, 'rgba(248, 45, 10, 125)'
                       ],
                       'line-width': [
                         'interpolate', ['linear'],

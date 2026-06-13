@@ -169,9 +169,10 @@ export function Docs() {
                                 <span className="docs-source-title">Globe</span>
                             </div>
                             <p>
-                                The Globe is the orientation layer. Glow shows activity relative to each country's own
-                                recent baseline. Raw signal volume adds evidence density, but it should not be read as
-                                direct real-world importance.
+                                The Globe is the orientation layer. The Heat layer colors each country by a composite
+                                anomaly score (velocity, surprise, source diversity, local voice) relative to its own
+                                recent baseline — not raw volume. Raw signal volume adds evidence density (border
+                                thickness), but it is not read as direct real-world importance.
                             </p>
                         </div>
                         <div className="docs-source-card" id="signal-stream-panel">
