@@ -235,6 +235,18 @@ but invisible — no surface exposes it; 14 ingest services need a
 utilization audit. Surface item folded into #228 impl: two-tier display
 honesty in NarrativeThreads (living/curated vs atlas-aggregate fill).
 
+**2026-06-12 (post power-outage resume):** #228 §6 items 1-2 shipped
+(see below). #183 CLOSED (`28df5c7`+`7dc8955`): heat panel = AtlasHeatList
+mounted as HEAT tab of new tabbed bottom dock (anomaly|heat|sources —
+fixes the 16:9 ~132px crush); sentiment provenance badges (NLP nn% vs
+GDELT) on Brief sentiment rows. **#230 created** (Pedro's China note,
+judged not assumed): China is #5 by subject-country (6,235/24h) but that's
+Western-lens — Chinese VOICE near-absent (2 outlets in 500-signal sample,
+all English; CGTN/Xinhua RSS dead; ZERO zh ingestion — NewsData's 8 lang
+batches skip zh/ja/ko entirely). Levers: east-asia NewsData batch, revive
+dead state feeds, hard-dep on #162 multilingual NLP, document Great
+Firewall ceiling. Folds into #229 source audit.
+
 **#228 §6 item 1 SHIPPED 2026-06-12** (`c6470cf`+`2b462fd`+`d3bae7a`,
 Fly+Vercel deployed): GET /api/v2/signal/{id}/context (thread
 memberships w/ gate status + semantic neighbors from signal_embeddings;
@@ -248,9 +260,10 @@ badges in NarrativeThreads: LIVING vs AGGREGATE. Fresh signals show
 
 **Next work, in order:**
 
-1. #228 §6 remainder: 2) bottom dock tabs + mount AtlasHeatList (#183),
-   3) person hygiene cheap wins (#176), 4) gate-recall SQL report,
-   5) map hovers + PLANE degraded state, 6) keyword-match labels.
+1. #228 §6 remainder (items 1-2 + #183 done): 3) person hygiene cheap
+   wins (#176), 4) gate-recall SQL report, 5) map hovers + PLANE degraded
+   state, 6) keyword-match labels.
+   Plus #230 China/East-Asia voice gap (acquisition + #162 dep).
 2. #229 funnel scaling program (data layer; lever 1 = corpus clustering).
 2. #183 panel remainder (sentiment_source badge + heat_countries panel
    in L2; the L1 strip already shipped with the Brief rebuild).
