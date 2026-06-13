@@ -42,7 +42,6 @@ import { ThreadFocusPanel } from './components/ThreadFocusPanel'
 import { SignalStream } from './components/SignalStream'
 import { OnboardingCoachmark } from './components/OnboardingCoachmark'
 import { CorrelationMatrix } from './components/CorrelationMatrix'
-import AtlasHeatList from './components/AtlasHeatList'
 import { AnomalyPanel } from './components/AnomalyPanel'
 import { SourceIntegrityPanel } from './components/SourceIntegrityPanel'
 import { PanelErrorBoundary } from './components/PanelErrorBoundary'
@@ -284,8 +283,10 @@ function AppContent() {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [timeMenuOpen, setTimeMenuOpen] = useState(false)
-  // Bottom dock active tab (#228 §3): anomaly | heat | sources
-  const [dockTab, setDockTab] = useState<'anomaly' | 'heat' | 'sources'>('anomaly')
+  // Bottom dock active tab (#228 §3): anomaly | sources. The HEAT tab was
+  // removed (#231) — heat is a map property (drives country color), not a
+  // bottom list. The composite now colors the map directly.
+  const [dockTab, setDockTab] = useState<'anomaly' | 'sources'>('anomaly')
 
   useEffect(() => {
     if (!moreMenuOpen && !timeMenuOpen) return
@@ -334,6 +335,10 @@ function AppContent() {
   const [showVessels, setShowVessels] = useState(false)
   const [vesselData, setVesselData] = useState([])
   const [vesselConnected, setVesselConnected] = useState(false)
+  // #231: baseline-normalized composite heat (velocity/surprise/diversity/
+  // voice) per country. The map fill must use THIS, not /nodes volume-rank
+  // heat (which made the US permanently reddest). Keyed by ISO2.
+  const [heatComposite, setHeatComposite] = useState<Map<string, number>>(new Map())
 
   // Fetch Aircraft data
   useEffect(() => {
@@ -540,6 +545,27 @@ function AppContent() {
   // Focus-aware data from provider - auto-refetches when focus/range changes
   const { nodes, flows, unfilteredFlows, acledConflicts, loading, isRefetching, refetch, timeRange, setTimeRange, meta: focusMeta } = useFocusData()
 
+  // #231: fetch the baseline-normalized heat composite for map color (after
+  // timeRange is in scope). Falls back silently to volume if unavailable.
+  useEffect(() => {
+    let cancelled = false
+    const h = timeRangeToHours(timeRange)
+    fetch(`/api/v2/heat/countries?hours=${h}&limit=80`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (cancelled || !d?.items) return
+        const m = new Map<string, number>()
+        for (const it of d.items) {
+          if (it.country_code && typeof it.atlas_heat === 'number') {
+            m.set(it.country_code.toUpperCase(), it.atlas_heat)
+          }
+        }
+        setHeatComposite(m)
+      })
+      .catch(() => { /* map falls back to volume-intensity if composite unavailable */ })
+    return () => { cancelled = true }
+  }, [timeRange])
+
   // Initial map stays global. The hotspot reset button performs focused fly-to on demand.
 
   // Fly to top country when theme clicked in NarrativeThreads
@@ -725,18 +751,41 @@ function AppContent() {
     const logRange = Math.max(logMax - logMin, 0.001)
 
     enhancedNodes.forEach(node => {
-      // intensity: log-normalized volume [0.15, 1.0] — evidence/confidence, not importance
+      // intensity: log-normalized volume [0.15, 1.0] — drives glow WIDTH only
+      // (evidence density, a secondary encoding — never the color).
       const normalized = (Math.log(node.signalCount + 1) - logMin) / logRange
       const intensity = 0.15 + normalized * 0.85
-      // heat: z-score deviation from per-country baseline [0, 1] — drives circle COLOR
-      // Falls back to intensity when no baseline exists (new countries)
-      const heat = node.heat != null ? node.heat : intensity
+      // heat drives fill COLOR. #231: use the baseline-normalized composite
+      // (velocity/surprise/diversity/voice) so a small country spiking above
+      // its own norm outranks the US on a high-volume day. CRITICAL: when the
+      // composite loaded, a country ABSENT from it is not anomalously hot —
+      // give it 0, NOT node.heat (which is volume-rank: US=1.0 always). Only
+      // when the composite failed to load entirely do we fall back to the old
+      // volume behavior, so the map degrades rather than goes blank.
+      const composite = heatComposite.get(node.id)
+      const heat = heatComposite.size > 0
+        ? (composite ?? 0)
+        : (node.heat != null ? node.heat : intensity)
       map.setFeatureState(
         { source: 'country-heat', id: node.id },
         { intensity, heat }
       )
       currentCodes.add(node.id)
     })
+
+    // #231: a hot country can sit OUTSIDE the top-100-by-volume nodes
+    // (e.g. Lebanon at 3 signals but high surprise). Color those too, with
+    // minimal glow width since they carry little volume.
+    if (heatComposite.size > 0) {
+      heatComposite.forEach((compHeat, code) => {
+        if (currentCodes.has(code)) return
+        map.setFeatureState(
+          { source: 'country-heat', id: code },
+          { intensity: 0.15, heat: compHeat }
+        )
+        currentCodes.add(code)
+      })
+    }
 
     // Clear countries no longer in the data
     prevHeatCountries.current.forEach(code => {
@@ -749,7 +798,7 @@ function AppContent() {
     })
 
     prevHeatCountries.current = currentCodes
-  }, [enhancedNodes, heatSourceReady])
+  }, [enhancedNodes, heatSourceReady, heatComposite])
 
   // Toggle country heat layer visibility when GLOW button is pressed
   useEffect(() => {
@@ -1241,7 +1290,7 @@ function AppContent() {
               <button
                 className={`layer-btn ${showHeatmap ? 'active' : ''}`}
                 onClick={() => setShowHeatmap(!showHeatmap)}
-                data-tip="Country heat layer — fill intensity shows deviation from each country's 7-day baseline. Red = far above-average activity."
+                data-tip="Country heat layer — color = composite anomaly (velocity, surprise, source diversity, local voice) vs each country's own baseline, NOT raw volume. A small country spiking above its norm outranks a high-volume one. Border thickness = signal volume (evidence density)."
               >
                 GLOW
               </button>
@@ -1720,13 +1769,6 @@ function AppContent() {
                 ANOMALY ALERT
               </button>
               <button
-                className={`dock-tab ${dockTab === 'heat' ? 'active' : ''}`}
-                onClick={() => setDockTab('heat')}
-                data-tip="Country heat: velocity, surprise, diversity, voice components"
-              >
-                HEAT
-              </button>
-              <button
                 className={`dock-tab ${dockTab === 'sources' ? 'active' : ''}`}
                 onClick={() => setDockTab('sources')}
                 data-tip="Diversity of information sources"
@@ -1745,15 +1787,6 @@ function AppContent() {
                 <AnomalyPanel
                   onWikiClick={(q) => setExternalSearchQuery({ q, id: Date.now() })}
                   onPublicAttentionSelect={handlePublicAttentionSelect}
-                />
-              </PanelErrorBoundary>
-            )}
-            {dockTab === 'heat' && (
-              <PanelErrorBoundary panelName="HEAT">
-                <AtlasHeatList
-                  hours={timeRangeToHours(timeRange)}
-                  limit={12}
-                  onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
                 />
               </PanelErrorBoundary>
             )}

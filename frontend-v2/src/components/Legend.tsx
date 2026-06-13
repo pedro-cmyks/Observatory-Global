@@ -134,11 +134,11 @@ export const Legend: React.FC<LegendProps> = ({
             {/* Active optional layers */}
             {showHeatmap && (
                 <div style={{ marginBottom: '12px' }}>
-                    <SectionHeader label="Countries heat layer" tip="Country fill intensity = normalized deviation from baseline. Red = far above-average media volume." />
+                    <SectionHeader label="Countries heat layer" tip="Country color = composite anomaly (velocity, surprise, source diversity, local voice) vs each country's OWN baseline — NOT raw volume. A small country spiking above its norm outranks a high-volume one. Border thickness = signal volume." />
                     <div style={{ height: '8px', borderRadius: '4px', background: 'linear-gradient(90deg, rgba(29,78,216,0.6), rgba(251,146,60,0.8), rgba(239,68,68,0.95))', marginBottom: '4px' }} />
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--color-text-muted)' }}>
-                        <span>normal volume</span>
-                        <span>high volume</span>
+                        <span>at baseline</span>
+                        <span>spiking vs own norm</span>
                     </div>
                 </div>
             )}
