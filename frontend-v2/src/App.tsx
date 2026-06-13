@@ -761,22 +761,46 @@ function AppContent() {
     const logMax = Math.log(Math.max(...counts, 1) + 1)
     const logRange = Math.max(logMax - logMin, 0.001)
 
+    // #234 focus propagation: when a country is focused, the map stops showing
+    // global heat and instead lights the focused country + its co-occurrence
+    // partners (the same flows the arcs draw), weighted by flow strength.
+    // Everything unrelated dims. Reuses visibleFlows — flows ARE the relations.
+    const focusCode = selectedCountryCode
+    const relation = new Map<string, number>()
+    if (focusCode) {
+      let maxStr = 0.001
+      visibleFlows.forEach((f: any) => { maxStr = Math.max(maxStr, f.strength || 0) })
+      relation.set(focusCode, 1.0)
+      visibleFlows.forEach((f: any) => {
+        const partner = f.sourceCountry === focusCode ? f.targetCountry
+          : f.targetCountry === focusCode ? f.sourceCountry : null
+        if (partner && partner !== focusCode) {
+          relation.set(partner, Math.max(
+            relation.get(partner) ?? 0,
+            0.25 + 0.75 * ((f.strength || 0) / maxStr),
+          ))
+        }
+      })
+    }
+
     enhancedNodes.forEach(node => {
       // intensity: log-normalized volume [0.15, 1.0] — drives glow WIDTH only
       // (evidence density, a secondary encoding — never the color).
       const normalized = (Math.log(node.signalCount + 1) - logMin) / logRange
       const intensity = 0.15 + normalized * 0.85
-      // heat drives fill COLOR. #231: use the baseline-normalized composite
-      // (velocity/surprise/diversity/voice) so a small country spiking above
-      // its own norm outranks the US on a high-volume day. CRITICAL: when the
-      // composite loaded, a country ABSENT from it is not anomalously hot —
-      // give it 0, NOT node.heat (which is volume-rank: US=1.0 always). Only
-      // when the composite failed to load entirely do we fall back to the old
-      // volume behavior, so the map degrades rather than goes blank.
-      const composite = heatComposite.get(node.id)
-      const heat = heatComposite.size > 0
-        ? (composite ?? 0)
-        : (node.heat != null ? node.heat : intensity)
+      // heat drives fill COLOR. Focused: relation relevance (focused country +
+      // flow partners), unrelated countries dim to 0. Unfocused: the
+      // baseline-normalized composite (#231) — a country ABSENT from it is not
+      // anomalously hot (0, NOT node.heat which is volume-rank: US=1.0 always).
+      let heat: number
+      if (focusCode) {
+        heat = relation.get(node.id) ?? 0
+      } else {
+        const composite = heatComposite.get(node.id)
+        heat = heatComposite.size > 0
+          ? (composite ?? 0)
+          : (node.heat != null ? node.heat : intensity)
+      }
       map.setFeatureState(
         { source: 'country-heat', id: node.id },
         { intensity, heat }
@@ -784,10 +808,20 @@ function AppContent() {
       currentCodes.add(node.id)
     })
 
-    // #231: a hot country can sit OUTSIDE the top-100-by-volume nodes
-    // (e.g. Lebanon at 3 signals but high surprise). Color those too, with
-    // minimal glow width since they carry little volume.
-    if (heatComposite.size > 0) {
+    if (focusCode) {
+      // Relation partners may sit outside the top-100 nodes — light them too.
+      relation.forEach((relHeat, code) => {
+        if (currentCodes.has(code)) return
+        map.setFeatureState(
+          { source: 'country-heat', id: code },
+          { intensity: 0.15, heat: relHeat }
+        )
+        currentCodes.add(code)
+      })
+    } else if (heatComposite.size > 0) {
+      // #231: a hot country can sit OUTSIDE the top-100-by-volume nodes
+      // (e.g. Lebanon at 3 signals but high surprise). Color those too, with
+      // minimal glow width since they carry little volume.
       heatComposite.forEach((compHeat, code) => {
         if (currentCodes.has(code)) return
         map.setFeatureState(
@@ -809,7 +843,7 @@ function AppContent() {
     })
 
     prevHeatCountries.current = currentCodes
-  }, [enhancedNodes, heatSourceReady, heatComposite])
+  }, [enhancedNodes, heatSourceReady, heatComposite, selectedCountryCode, visibleFlows])
 
   // Toggle country heat layer visibility when GLOW button is pressed
   useEffect(() => {
