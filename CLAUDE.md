@@ -253,8 +253,11 @@ Firewall ceiling. Folds into #229 source audit.
 monotonic w/ signalCount), NOT the `/heat/countries` baseline composite
 (GZ 0.74/vol49, LB 0.65/vol3, US not top-5). US-always-red = the
 volume≠importance distortion we explicitly rejected; same as the China
-Western-lens gap (#230). → **#231** wire composite into map color,
-rehome/remove HEAT tab (design Q pending). **#232**: vessels/aircraft/
+Western-lens gap (#230). → **#231 SHIPPED**: map fill = /heat/countries
+atlas_heat composite (not /nodes volume-rank); US no longer reddest;
+HEAT dock tab removed (heat = map property); volume → glow width only;
+legend/tooltip reworded; absent-from-composite reads not-hot. Dock now
+anomaly|sources. **#232**: vessels/aircraft/
 conflict/anomalies are viz-only, verified they do NOT feed threads —
 must become narrative inputs (paper-adjacent, #159/#226). **#233**:
 reorderable panels regressed (RGL ^2.2.3 still in deps, commit e6fbecf
