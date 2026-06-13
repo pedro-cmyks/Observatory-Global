@@ -247,6 +247,19 @@ batches skip zh/ja/ko entirely). Levers: east-asia NewsData batch, revive
 dead state feeds, hard-dep on #162 multilingual NLP, document Great
 Firewall ceiling. Folds into #229 source audit.
 
+**2026-06-12 (Pedro's dock review — corrections):** the HEAT tab from
+§6 item-2 was MISPLACED. Verified bug: map `country-heat-fill` uses
+`/nodes` `.heat` which is volume-rank (US 1.0, GB 0.40, CN 0.26 —
+monotonic w/ signalCount), NOT the `/heat/countries` baseline composite
+(GZ 0.74/vol49, LB 0.65/vol3, US not top-5). US-always-red = the
+volume≠importance distortion we explicitly rejected; same as the China
+Western-lens gap (#230). → **#231** wire composite into map color,
+rehome/remove HEAT tab (design Q pending). **#232**: vessels/aircraft/
+conflict/anomalies are viz-only, verified they do NOT feed threads —
+must become narrative inputs (paper-adjacent, #159/#226). **#233**:
+reorderable panels regressed (RGL ^2.2.3 still in deps, commit e6fbecf
+added draggable grid, now fixed CSS grid) — documented for revival.
+
 **#228 §6 item 1 SHIPPED 2026-06-12** (`c6470cf`+`2b462fd`+`d3bae7a`,
 Fly+Vercel deployed): GET /api/v2/signal/{id}/context (thread
 memberships w/ gate status + semantic neighbors from signal_embeddings;
