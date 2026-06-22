@@ -39,28 +39,45 @@ def primary_langs(cc: str) -> tuple[str, ...]:
     return PRIMARY_LANG.get((cc or "").upper(), ())
 
 
-def relation(scope_total: int, endogenous: int,
+def relation(scope_total: int, origin_known: int, domestic: int,
+             soft_power_local_lang: int,
              foreign_origins: list[tuple[str, int]],
              foreign_langs: list[tuple[str, int]]) -> dict:
     """Build the speaker↔subject relation for a single subject country.
 
-    endogenous = count of in-scope signals voiced by the subject itself
-    (source_origin_country == subject OR source_lang in subject's primary langs).
-    Everything else is exogenous (outsiders speaking about the subject).
+    Self-coverage is defined by OUTLET OWNERSHIP, not language:
+      - domestic            = source_origin_country == subject (the country's
+                              own press covering itself).
+      - foreign             = origin known and != subject.
+      - soft_power_local_lang = a SUBSET of foreign: a foreign outlet publishing
+                              in the subject's own language (e.g. BBC Persian
+                              about Iran — British eyes, Persian words). This is
+                              influence/soft power, NOT self-coverage, and is
+                              tracked separately precisely so it is not miscounted
+                              as a local voice.
+
+    Ratios are over `origin_known` (attributable voices); `unattributed` (mostly
+    GDELT, which carries no outlet origin) is reported honestly rather than
+    assumed domestic or foreign.
     """
-    foreign = max(scope_total - endogenous, 0)
-    self_ratio = (endogenous / scope_total) if scope_total else 0.0
+    foreign = max(origin_known - domestic, 0)
+    self_ratio = (domestic / origin_known) if origin_known else 0.0
     dom = None
     if foreign_origins:
         cc, n = foreign_origins[0]
         dom = {"origin": cc, "n": n,
                "pct_of_foreign": round(n / foreign, 4) if foreign else 0.0}
     return {
+        "definition": "self_voice = outlet based in the subject country (ownership, not language)",
         "scope_signals": scope_total,
-        "self_voice": endogenous,
+        "attributable_voices": origin_known,
+        "unattributed": max(scope_total - origin_known, 0),
+        "self_voice": domestic,
         "self_voice_ratio": round(self_ratio, 4),
         "foreign_voice": foreign,
-        "foreign_voice_ratio": round(1 - self_ratio, 4),
+        "foreign_voice_ratio": round(1 - self_ratio, 4) if origin_known else 0.0,
+        "soft_power_local_language": soft_power_local_lang,
+        "soft_power_ratio": round(soft_power_local_lang / origin_known, 4) if origin_known else 0.0,
         "dominant_outsider": dom,
         "top_foreign_origins": [{"cc": c, "n": n} for c, n in foreign_origins[:6]],
         "top_foreign_languages": [{"lang": l, "n": n} for l, n in foreign_langs[:6]],

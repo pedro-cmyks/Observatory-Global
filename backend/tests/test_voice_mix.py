@@ -65,21 +65,33 @@ def test_primary_langs_map():
     assert voice_mix.primary_langs("xx") == ()        # unknown -> empty
 
 
-def test_relation_flags_foreign_dominated_subject():
-    # Iran-like: 5000 signals about it, only 50 voiced by Iran -> 99% foreign.
+def test_relation_self_voice_is_ownership_not_language():
+    # 4000 attributable voices about a subject, 40 from domestic outlets.
+    # 3000 are foreign outlets IN the local language (BBC-Persian-type) — these
+    # must NOT count as self voice; they are soft power.
     r = voice_mix.relation(
-        scope_total=5000, endogenous=50,
-        foreign_origins=[("GB", 2000), ("US", 1500)],
-        foreign_langs=[("en", 4800)],
+        scope_total=6000, origin_known=4000, domestic=40,
+        soft_power_local_lang=3000,
+        foreign_origins=[("GB", 3200), ("US", 700)],
+        foreign_langs=[("fa", 3000), ("en", 900)],
     )
-    assert r["self_voice_ratio"] == 0.01
-    assert r["foreign_voice_ratio"] == 0.99
+    assert r["self_voice"] == 40
+    assert r["self_voice_ratio"] == 0.01            # 40 / 4000
+    assert r["foreign_voice"] == 3960
+    assert r["soft_power_local_language"] == 3000   # foreign-in-local-language
+    assert r["soft_power_ratio"] == 0.75
+    assert r["unattributed"] == 2000                # GDELT, honestly reported
     assert r["dominant_outsider"]["origin"] == "GB"
-    assert r["dominant_outsider"]["pct_of_foreign"] == round(2000 / 4950, 4)
 
 
-def test_relation_endogenous_country():
-    # A self-covered subject -> high self_voice_ratio, no dominant outsider drama.
-    r = voice_mix.relation(1000, 900, [("US", 100)], [("en", 100)])
+def test_relation_domestic_dominated_subject():
+    r = voice_mix.relation(1000, 1000, 900, 0, [("US", 100)], [("en", 100)])
     assert r["self_voice_ratio"] == 0.9
     assert r["foreign_voice"] == 100
+
+
+def test_relation_handles_zero_attributable():
+    # All GDELT, no outlet origin -> ratios are 0, nothing assumed.
+    r = voice_mix.relation(500, 0, 0, 0, [], [])
+    assert r["self_voice_ratio"] == 0.0
+    assert r["unattributed"] == 500

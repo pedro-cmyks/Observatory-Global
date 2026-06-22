@@ -718,6 +718,12 @@ async def fetch_feed(
                 # Provenance (migration 008)
                 "source_family": source_family,
                 "source_lang": source_lang,
+                # The outlet's HOME country (who is speaking), distinct from
+                # country_code (the story's subject). Required to tell a country's
+                # OWN press (self-coverage) apart from foreign outlets — including
+                # foreign broadcasters in local languages (BBC Persian = GB, not
+                # Iranian voice). Previously discarded; now persisted.
+                "source_origin_country": source_country,
                 "geo_confidence": 0.6,     # RSS geo = keyword match, lower confidence than GDELT
                 "attribution_method": "rss_feed",
                 "is_state_media": is_state_media,
@@ -750,10 +756,10 @@ async def insert_rss_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                         source_url, source_name, headline, themes, persons,
                         is_crisis, crisis_score, crisis_themes, severity, event_type,
                         source_family, source_lang, geo_confidence, attribution_method, is_state_media,
-                        signal_class, snippet
+                        signal_class, snippet, source_origin_country
                     )
                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-                            $16,$17,$18,$19,$20,$21,$22)
+                            $16,$17,$18,$19,$20,$21,$22,$23)
                     ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO NOTHING
                     """,
                     s["timestamp"], s["country_code"], s["latitude"], s["longitude"],
@@ -765,6 +771,7 @@ async def insert_rss_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                     s["attribution_method"], s["is_state_media"],
                     s.get("signal_class", "reporting"),
                     s.get("snippet"),
+                    s.get("source_origin_country"),
                 )
                 if result == "INSERT 0 1":
                     inserted += 1

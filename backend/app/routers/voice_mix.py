@@ -57,26 +57,32 @@ async def get_voice_mix(
     # scoped. "Of all coverage ABOUT this country, how much is voiced BY it?"
     if cc:
         langs = list(voice_mix.primary_langs(cc))
+        p = len(params)
         async with db.pool.acquire() as conn:
             await conn.execute("SET statement_timeout = 8000")
-            endo = await conn.fetchval(
-                f"SELECT COUNT(*) FROM signals_v2 WHERE {where} "
-                f"AND (source_origin_country = ${len(params)+1} "
-                f"     OR source_lang = ANY(${len(params)+2}::text[]))",
+            agg = await conn.fetchrow(
+                f"SELECT "
+                f"  COUNT(*) FILTER (WHERE source_origin_country IS NOT NULL) AS origin_known, "
+                f"  COUNT(*) FILTER (WHERE source_origin_country = ${p+1}) AS domestic, "
+                f"  COUNT(*) FILTER (WHERE source_origin_country IS NOT NULL "
+                f"      AND source_origin_country <> ${p+1} "
+                f"      AND source_lang = ANY(${p+2}::text[])) AS soft_power "
+                f"FROM signals_v2 WHERE {where}",
                 *params, cc, langs)
             f_origins = await conn.fetch(
                 f"SELECT source_origin_country AS cc, COUNT(*) AS n FROM signals_v2 "
                 f"WHERE {where} AND source_origin_country IS NOT NULL "
-                f"AND source_origin_country <> ${len(params)+1} "
+                f"AND source_origin_country <> ${p+1} "
                 f"GROUP BY 1 ORDER BY n DESC LIMIT 6", *params, cc)
             f_langs = await conn.fetch(
                 f"SELECT source_lang AS lang, COUNT(*) AS n FROM signals_v2 "
                 f"WHERE {where} AND source_lang NOT IN ('xx','un','und') "
                 f"AND TRIM(source_lang) <> '' "
-                f"AND NOT (source_lang = ANY(${len(params)+1}::text[])) "
+                f"AND NOT (source_lang = ANY(${p+1}::text[])) "
                 f"GROUP BY 1 ORDER BY n DESC LIMIT 6", *params, langs)
         report["relation"] = voice_mix.relation(
-            int(extra["total"]), int(endo or 0),
+            int(extra["total"]), int(agg["origin_known"] or 0),
+            int(agg["domestic"] or 0), int(agg["soft_power"] or 0),
             [(r["cc"], int(r["n"])) for r in f_origins],
             [(r["lang"], int(r["n"])) for r in f_langs],
         )
