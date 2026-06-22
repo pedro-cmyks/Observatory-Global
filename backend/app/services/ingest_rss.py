@@ -462,6 +462,53 @@ CURATED_FEEDS: dict[str, tuple[str, str, str, str, bool]] = {
         "https://www.prothomalo.com/feed/",
         "independent", "BD", "bn", False,
     ),
+    # ── WAVE 7: DOMESTIC SELF-COVERAGE (#160 source-research project) ──────────
+    # Self-coverage = a country's OWN press, by outlet ownership not language.
+    # Audit 2026-06-22 (14d, attributable origin): these countries had ~0%
+    # domestic voice — narrated only from outside. First batch of domestic
+    # outlets, all verified live. Goal: every Atlas country speaks for itself.
+    # (Remaining 0% gaps needing alternates: CH, BE, GR — current feeds blocked.)
+    "ansa_it": (
+        "https://www.ansa.it/sito/ansait_rss.xml",
+        "wire", "IT", "it", False,
+    ),
+    "repubblica_it": (
+        "https://www.repubblica.it/rss/homepage/rss2.0.xml",
+        "independent", "IT", "it", False,
+    ),
+    "svt_se": (
+        "https://www.svt.se/nyheter/rss.xml",
+        "wire", "SE", "sv", False,
+    ),
+    "derstandard_at": (
+        "https://www.derstandard.at/rss",
+        "independent", "AT", "de", False,
+    ),
+    "nos_nl": (
+        "https://feeds.nos.nl/nosnieuwsalgemeen",
+        "wire", "NL", "nl", False,
+    ),
+    "nrk_no": (
+        "https://www.nrk.no/toppsaker.rss",
+        "wire", "NO", "no", False,
+    ),
+    "rte_ie": (
+        "https://www.rte.ie/feeds/rss/?index=/news/",
+        "wire", "IE", "en", False,
+    ),
+    "expats_cz": (
+        "https://www.expats.cz/feed",
+        "independent", "CZ", "en", False,
+    ),
+    # State media — domestic voice, flagged as state (whose interest).
+    "granma_cu": (
+        "http://www.granma.cu/feed",
+        "state", "CU", "es", True,
+    ),
+    "sana_sy": (
+        "https://sana.sy/en/?feed=rss2",
+        "state", "SY", "en", True,
+    ),
 }
 
 # ── Lightweight country extractor ─────────────────────────────────────────────
