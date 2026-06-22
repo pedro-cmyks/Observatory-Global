@@ -414,6 +414,54 @@ CURATED_FEEDS: dict[str, tuple[str, str, str, str, bool]] = {
         "https://feeds.bbci.co.uk/hindi/rss.xml",
         "wire", "GB", "hi", False,
     ),
+    # ── WAVE 6: ISLAMIC WORLD VOICE (#150/#230) ───────────────────────────────
+    # Measured 2026-06-22: Muslim-majority countries are covered as SUBJECT but
+    # almost never HEARD — Iran 5,932 signals at 1% Persian/Arabic, Turkey 4,060
+    # at 0% Turkish, Pakistan 0% Urdu. Western-Arabic (France24/BBC/DW/RT) existed
+    # but the pan-Arab voices (Al Jazeera Arabic, Sky News Arabia) and tr/ur/id/bn
+    # were entirely absent. All verified live (HTTP 200 + items).
+    #
+    # ARABIC — pan-Arab voice (not Western-about-Arab)
+    "aljazeera_ar": (
+        "https://www.aljazeera.net/aljazeerarss/a7c186be-1baa-4bd4-9d80-a84db769f779/73d0e1b4-532f-45ef-b135-bfdff8b8cab9",
+        "wire", "QA", "ar", False,
+    ),
+    "skynews_arabia": (
+        "https://www.skynewsarabia.com/rss",
+        "wire", "AE", "ar", False,
+    ),
+    # TURKISH (tr) — Turkey was 4,060 signals at 0% Turkish
+    "bbc_turkce": (
+        "https://www.bbc.com/turkce/index.xml",
+        "wire", "GB", "tr", False,
+    ),
+    "anadolu_tr": (
+        "https://www.aa.com.tr/tr/rss/default?cat=guncel",
+        "state", "TR", "tr", True,
+    ),
+    "cumhuriyet_tr": (
+        "https://www.cumhuriyet.com.tr/rss/son_dakika.xml",
+        "independent", "TR", "tr", False,
+    ),
+    # URDU (ur) — Pakistan was 0% Urdu
+    "bbc_urdu": (
+        "https://www.bbc.com/urdu/index.xml",
+        "wire", "GB", "ur", False,
+    ),
+    # INDONESIAN (id) — largest Muslim-majority country, was 2% Indonesian
+    "antara_id": (
+        "https://www.antaranews.com/rss/terkini.xml",
+        "wire", "ID", "id", False,
+    ),
+    # BENGALI (bn) — Bangladesh
+    "bbc_bengali": (
+        "https://www.bbc.com/bengali/index.xml",
+        "wire", "GB", "bn", False,
+    ),
+    "prothomalo_bn": (
+        "https://www.prothomalo.com/feed/",
+        "independent", "BD", "bn", False,
+    ),
 }
 
 # ── Lightweight country extractor ─────────────────────────────────────────────

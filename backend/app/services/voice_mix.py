@@ -14,6 +14,57 @@ import math
 
 CJK_LANGS = ("zh", "ja", "ko")
 CJK_TARGET = 0.05  # aspirational CJK share of language-known corpus
+
+# Subject country -> its primary local language(s). Used to decide whether a
+# signal about country CC is an ENDOGENOUS voice (locals speaking) or EXOGENOUS
+# (outsiders speaking about them). Deliberately small + high-confidence; missing
+# countries simply fall back to origin-only endogeneity in the endpoint.
+PRIMARY_LANG: dict[str, tuple[str, ...]] = {
+    "CN": ("zh",), "TW": ("zh",), "HK": ("zh",), "JP": ("ja",), "KR": ("ko",),
+    "RU": ("ru",), "DE": ("de",), "FR": ("fr",), "BR": ("pt",), "PT": ("pt",),
+    "IR": ("fa",), "AF": ("fa", "ps"), "TR": ("tr",), "PK": ("ur",),
+    "BD": ("bn",), "IN": ("hi",), "ID": ("id",), "MY": ("ms",),
+    # Arabic-speaking world — one language serves many subjects.
+    "SA": ("ar",), "EG": ("ar",), "IQ": ("ar",), "SY": ("ar",), "YE": ("ar",),
+    "JO": ("ar",), "LB": ("ar",), "AE": ("ar",), "QA": ("ar",), "KW": ("ar",),
+    "OM": ("ar",), "BH": ("ar",), "LY": ("ar",), "DZ": ("ar",), "MA": ("ar",),
+    "TN": ("ar",), "SD": ("ar",), "PS": ("ar",),
+    # Spanish-speaking Latin America (illustrative subset).
+    "MX": ("es",), "CO": ("es",), "AR": ("es",), "CL": ("es",), "PE": ("es",),
+    "VE": ("es",), "EC": ("es",), "ES": ("es",),
+}
+
+
+def primary_langs(cc: str) -> tuple[str, ...]:
+    return PRIMARY_LANG.get((cc or "").upper(), ())
+
+
+def relation(scope_total: int, endogenous: int,
+             foreign_origins: list[tuple[str, int]],
+             foreign_langs: list[tuple[str, int]]) -> dict:
+    """Build the speaker↔subject relation for a single subject country.
+
+    endogenous = count of in-scope signals voiced by the subject itself
+    (source_origin_country == subject OR source_lang in subject's primary langs).
+    Everything else is exogenous (outsiders speaking about the subject).
+    """
+    foreign = max(scope_total - endogenous, 0)
+    self_ratio = (endogenous / scope_total) if scope_total else 0.0
+    dom = None
+    if foreign_origins:
+        cc, n = foreign_origins[0]
+        dom = {"origin": cc, "n": n,
+               "pct_of_foreign": round(n / foreign, 4) if foreign else 0.0}
+    return {
+        "scope_signals": scope_total,
+        "self_voice": endogenous,
+        "self_voice_ratio": round(self_ratio, 4),
+        "foreign_voice": foreign,
+        "foreign_voice_ratio": round(1 - self_ratio, 4),
+        "dominant_outsider": dom,
+        "top_foreign_origins": [{"cc": c, "n": n} for c, n in foreign_origins[:6]],
+        "top_foreign_languages": [{"lang": l, "n": n} for l, n in foreign_langs[:6]],
+    }
 # 'xx' is GDELT's no-language marker; the rest are genuinely missing. All are
 # "language unknown" and excluded from the known slice so English dominance is
 # measured honestly against signals we can actually attribute.
@@ -65,6 +116,9 @@ def compute(
     hhi = sum((v / ok_total) ** 2 for v in origin_known.values())
     top_origins = sorted(origin_known.items(), key=lambda kv: -kv[1])[:10]
     top_langs = sorted(known.items(), key=lambda kv: -kv[1])[:15]
+    # "Who is speaking" — origin distribution as a share of attributable origins.
+    voices_by_origin = [
+        {"cc": c, "n": n, "pct": round(n / ok_total, 4)} for c, n in top_origins]
 
     return {
         "total_signals": total,
@@ -81,6 +135,7 @@ def compute(
         "distinct_sources": distinct_sources,
         "origin_hhi": round(hhi, 4),
         "top_origin_countries": [{"cc": c, "n": n} for c, n in top_origins],
+        "voices_by_origin": voices_by_origin,
         "top_languages": [{"lang": l, "n": n} for l, n in top_langs],
         "diversity_score": diversity_score,
         "components": {

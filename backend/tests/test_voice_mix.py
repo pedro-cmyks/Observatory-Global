@@ -50,3 +50,36 @@ def test_cjk_coverage_caps_at_target():
     r = voice_mix.compute({"en": 950, "zh": 50}, _origins(), 1000, 0, 5)
     assert r["cjk"]["share_of_known"] == 0.05
     assert r["components"]["cjk_coverage"] == 1.0
+
+
+def test_compute_exposes_voices_by_origin():
+    r = voice_mix.compute({"en": 100}, {"US": 80, "GB": 20, "(null)": 5}, 105, 0, 5)
+    vbo = {v["cc"]: v for v in r["voices_by_origin"]}
+    assert vbo["US"]["pct"] == 0.8       # share of attributable origins
+    assert "(null)" not in vbo            # unattributed excluded
+
+
+def test_primary_langs_map():
+    assert voice_mix.primary_langs("IR") == ("fa",)
+    assert voice_mix.primary_langs("EG") == ("ar",)   # Arabic world
+    assert voice_mix.primary_langs("xx") == ()        # unknown -> empty
+
+
+def test_relation_flags_foreign_dominated_subject():
+    # Iran-like: 5000 signals about it, only 50 voiced by Iran -> 99% foreign.
+    r = voice_mix.relation(
+        scope_total=5000, endogenous=50,
+        foreign_origins=[("GB", 2000), ("US", 1500)],
+        foreign_langs=[("en", 4800)],
+    )
+    assert r["self_voice_ratio"] == 0.01
+    assert r["foreign_voice_ratio"] == 0.99
+    assert r["dominant_outsider"]["origin"] == "GB"
+    assert r["dominant_outsider"]["pct_of_foreign"] == round(2000 / 4950, 4)
+
+
+def test_relation_endogenous_country():
+    # A self-covered subject -> high self_voice_ratio, no dominant outsider drama.
+    r = voice_mix.relation(1000, 900, [("US", 100)], [("en", 100)])
+    assert r["self_voice_ratio"] == 0.9
+    assert r["foreign_voice"] == 100

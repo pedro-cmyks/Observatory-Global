@@ -52,4 +52,33 @@ async def get_voice_mix(
     report["country"] = cc
     report["generated_at"] = datetime.now(timezone.utc).isoformat()
     report["contract"] = "voice-mix-v0"
+
+    # The speaker↔subject relation: only meaningful when a subject country is
+    # scoped. "Of all coverage ABOUT this country, how much is voiced BY it?"
+    if cc:
+        langs = list(voice_mix.primary_langs(cc))
+        async with db.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 8000")
+            endo = await conn.fetchval(
+                f"SELECT COUNT(*) FROM signals_v2 WHERE {where} "
+                f"AND (source_origin_country = ${len(params)+1} "
+                f"     OR source_lang = ANY(${len(params)+2}::text[]))",
+                *params, cc, langs)
+            f_origins = await conn.fetch(
+                f"SELECT source_origin_country AS cc, COUNT(*) AS n FROM signals_v2 "
+                f"WHERE {where} AND source_origin_country IS NOT NULL "
+                f"AND source_origin_country <> ${len(params)+1} "
+                f"GROUP BY 1 ORDER BY n DESC LIMIT 6", *params, cc)
+            f_langs = await conn.fetch(
+                f"SELECT source_lang AS lang, COUNT(*) AS n FROM signals_v2 "
+                f"WHERE {where} AND source_lang NOT IN ('xx','un','und') "
+                f"AND TRIM(source_lang) <> '' "
+                f"AND NOT (source_lang = ANY(${len(params)+1}::text[])) "
+                f"GROUP BY 1 ORDER BY n DESC LIMIT 6", *params, langs)
+        report["relation"] = voice_mix.relation(
+            int(extra["total"]), int(endo or 0),
+            [(r["cc"], int(r["n"])) for r in f_origins],
+            [(r["lang"], int(r["n"])) for r in f_langs],
+        )
+        report["primary_languages"] = langs
     return report
