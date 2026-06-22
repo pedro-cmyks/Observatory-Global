@@ -376,9 +376,12 @@ relation; matches the mission; holds our own GDELT English bias accountable).
 
 **Next work, in order:**
 
-0. Problem A: native-language country lexicon (ar/fa/ru/zh/tr) so non-Latin
-   stories geo-tag to their SUBJECT, not the outlet — directly raises measured
-   self_voice_ratio. Then CountryBrief Voice Mix surface (#160 frontend).
+0. Problem A FIRST CUT SHIPPED (`62f97a2`, deployed): native-script country
+   patterns (CN/JP/KR/TW/RU/UA/IR/IN/US/IL/GZ/SY/DE) wired into extract_country
+   + RSS encoding fix (resp.read). Remaining: full Arabic/Turkish/Urdu/Bengali
+   SUBJECT lexicon + e5/NLP geo path. Then CountryBrief Voice Mix surface
+   (#160 frontend) consuming the `relation` payload (self_voice_ratio,
+   voices_by_origin, dominant_outsider).
 1. #228 §6 remainder (items 1-2 + #183 done): 3) person hygiene cheap
    wins (#176), 4) gate-recall SQL report, 5) map hovers + PLANE degraded
    state, 6) keyword-match labels.

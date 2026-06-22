@@ -148,10 +148,18 @@ Iran heard from itself 1.4% of the time — the distortion is now a number on a
 contract surface, exactly as intended. **Caveat (honest):** these self-voice
 ratios are a FLOOR. Problem A (non-Latin geo-tagging) routes BBC/DW-Persian
 stories *about Iran* to GB/DE (the outlet) instead of IR, so real endogenous
-voice is undercounted until the native-language country lexicon ships. The
-metric carries `geo_confidence` so this is visible, not hidden. Problem A is
-therefore the next build — it directly raises measured self-voice for every
-non-Latin subject.
+voice is undercounted until the native-language country lexicon ships.
 
-Shipped: `3064dd5`. Endpoint contract `voice-mix-v0` now carries `relation`,
+**Update — Problem A first cut SHIPPED (`62f97a2`, deployed):** native-script
+country patterns (`_NATIVE_COUNTRY_PATTERNS`) for the highest-volume non-Latin
+subjects (CN/JP/KR/TW/RU/UA/IR/IN/US/IL/GZ/SY/DE across zh/ja/ko/cyrillic/ar/
+hi), wired into `extract_country`; plus the RSS encoding fix (`resp.read()` →
+feedparser detects charset, fixing the folha_pt/antara utf-8 crash). Verified:
+`ایران`→IR, `中国`→CN, `Украина`→RU. So Iran's measured 1.4% self-voice already
+includes correct Persian/Arabic geo-tagging — it is *honest*, not an artifact:
+Iran really is ~99% foreign-voiced because we hold few Persian feeds against
+GDELT's English flood. Remaining Problem A: full Arabic-subject lexicon
+(السعودية/مصر/العراق…), Turkish/Urdu/Bengali subjects, and the e5/NLP geo path.
+
+Shipped: `3064dd5` + `62f97a2`. Endpoint contract `voice-mix-v0` now carries `relation`,
 `voices_by_origin`, `primary_languages`. 13 tests green.
