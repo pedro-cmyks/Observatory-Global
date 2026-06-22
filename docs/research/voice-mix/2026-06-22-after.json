@@ -1,0 +1,133 @@
+{
+  "generated_at": "2026-06-22T14:54:24.845583+00:00",
+  "window_hours": 168,
+  "total_signals": 153266,
+  "language_known": 56435,
+  "language_unknown": 96831,
+  "unknown_pct": 63.2,
+  "english_share_of_known": 0.9694,
+  "non_english_share_of_known": 0.0306,
+  "cjk": {
+    "zh": 1,
+    "ja": 5,
+    "ko": 4,
+    "total": 10,
+    "share_of_known": 0.0002
+  },
+  "language_entropy_norm": 0.0645,
+  "distinct_known_languages": 18,
+  "state_media": 361,
+  "state_media_pct": 0.24,
+  "distinct_sources": 9367,
+  "origin_hhi": 0.0763,
+  "top_origin_countries": [
+    {
+      "cc": "GB",
+      "n": 7678
+    },
+    {
+      "cc": "DE",
+      "n": 5678
+    },
+    {
+      "cc": "RU",
+      "n": 4891
+    },
+    {
+      "cc": "CN",
+      "n": 3736
+    },
+    {
+      "cc": "AU",
+      "n": 3160
+    },
+    {
+      "cc": "IN",
+      "n": 2814
+    },
+    {
+      "cc": "UA",
+      "n": 1868
+    },
+    {
+      "cc": "BR",
+      "n": 1853
+    },
+    {
+      "cc": "TR",
+      "n": 1534
+    },
+    {
+      "cc": "MX",
+      "n": 1524
+    }
+  ],
+  "top_languages": [
+    {
+      "lang": "en",
+      "n": 54706
+    },
+    {
+      "lang": "es",
+      "n": 773
+    },
+    {
+      "lang": "ar",
+      "n": 503
+    },
+    {
+      "lang": "fr",
+      "n": 114
+    },
+    {
+      "lang": "hi",
+      "n": 104
+    },
+    {
+      "lang": "id",
+      "n": 60
+    },
+    {
+      "lang": "pt",
+      "n": 50
+    },
+    {
+      "lang": "vi",
+      "n": 34
+    },
+    {
+      "lang": "sw",
+      "n": 29
+    },
+    {
+      "lang": "bn",
+      "n": 26
+    },
+    {
+      "lang": "ms",
+      "n": 16
+    },
+    {
+      "lang": "ja",
+      "n": 5
+    },
+    {
+      "lang": "ko",
+      "n": 4
+    },
+    {
+      "lang": "th",
+      "n": 4
+    },
+    {
+      "lang": "am",
+      "n": 2
+    }
+  ],
+  "diversity_score": 3.3,
+  "_components": {
+    "english_balance": 0.0306,
+    "language_entropy_norm": 0.0645,
+    "cjk_coverage": 0.0035
+  }
+}

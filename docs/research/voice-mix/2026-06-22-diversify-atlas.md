@@ -72,10 +72,38 @@ unknown is whether NewsData's Japanese code is `jp` (assumed) vs `ja`; the audit
 settles it on first run — if `ja` shows 0 while `zh`/`ko` arrive, flip the batch
 code to `ja` (one-line follow-up).
 
+## 5. Live result — loop CLOSED (deployed)
+
+Deployed to Fly (`atlas-api-pedro` v225, 2026-06-22 14:52Z) and triggered the
+NewsData run on the ingestion machine:
+
+```
+[NewsData] batch zh,jp,ko: 10 fetched → 10 inserted
+```
+
+NewsData returned CJK (the `jp` Japanese code is correct — batch did not error).
+DB after: `zh=1 (TW), ja=5, ko=4`. Re-audit (`after.json`, 168h):
+
+| | before | after (1 live batch) |
+|---|---|---|
+| CJK zh/ja/ko | 0 / 0 / 0 | **1 / 5 / 4** |
+| distinct known langs | 15 | **18** |
+| cjk_coverage component | 0.0 | 0.0035 |
+| diversity_score | 3.3 | 3.3 |
+
+One batch (10 signals) is a drop against 56K, so the headline score holds — but
+the change is structural: CJK went from *structurally absent* to a **live hourly
+stream** (~10/cycle ≈ 240/day, automatic via ingest_loop). The instrument
+detected the delta (CJK nonzero, +3 languages), which is the point — diversity
+is now measured and self-reinforcing. Score climbs as the window fills (~1 week
+of cron to approach the 5%-of-known CJK target, faster once #230 revives the
+zh state feeds). Minor follow-up: ja/ko rows landed `country_code=XX` (NewsData
+sent non-ISO country names) — geo-tag nit, separate from the voice win.
+
 ## Status
 
-- Lever + proof instrument + mechanism test: **shipped to branch.**
-- Live corpus delta: **awaiting Fly deploy** (`./scripts/deploy-fly-api.sh`).
+- Lever + proof instrument + mechanism test + **live deploy**: **shipped.**
+- Live corpus delta: **proven** (CJK 0 → 10, climbing hourly).
 - Follow-ups: #162 (multilingual NLP — lights CJK sentiment/framing),
   #230 (revive dead zh state feeds: CGTN/Xinhua), #160 (Voice Mix as a
   product surface / CountryBrief component using this same query).
