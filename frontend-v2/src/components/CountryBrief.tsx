@@ -126,6 +126,16 @@ interface ThreadsResponse {
     threads?: CountryBriefThreadInput[];
 }
 
+interface VoiceMixRelation {
+    self_voice_ratio: number;
+    foreign_voice_ratio: number;
+    self_voice: number;
+    attributable_voices: number;
+    soft_power_local_language: number;
+    soft_power_ratio: number;
+    dominant_outsider: { origin: string; n: number } | null;
+}
+
 interface CountryBriefProps {
     countryCode: string;
     countryName: string;
@@ -193,6 +203,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
     const { setPerson } = useFocus();
     const { summary } = useFocusData();
     const pinned = isPinned(`country-${countryCode}`);
+    const [voiceMix, setVoiceMix] = useState<VoiceMixRelation | null>(null);
 
     const downloadMarkdown = (filename: string, content: string) => {
         const blob = new Blob([content], { type: 'text/markdown' })
@@ -222,13 +233,14 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             setIndicators(null);
 
             try {
-                const [nodeRes, indicatorsRes, signalsRes, trendsRes, wikiRes, threadsRes] = await Promise.all([
+                const [nodeRes, indicatorsRes, signalsRes, trendsRes, wikiRes, threadsRes, voiceRes] = await Promise.all([
                     optionalFetchResponse(() => fetch(`/api/v2/nodes?focus_type=country&focus_value=${countryCode}&hours=${timeWindow}&limit=1`, { signal: controller.signal })),
                     optionalFetchResponse(() => fetch(`/api/indicators/country/${countryCode}?hours=${timeWindow}`, { signal: controller.signal })),
                     fetch(`/api/v2/signals?country_code=${countryCode}&hours=${timeWindow}&limit=500`, { signal: controller.signal }),
                     optionalFetchResponse(() => fetch(getTrendingSearchesUrl(5, Math.min(timeWindow, 168), countryCode), { signal: controller.signal })),
                     optionalFetchResponse(() => fetch(getPublicAttentionTopUrl(5, countryCode), { signal: controller.signal })),
                     optionalFetchResponse(() => fetch(`/api/v2/threads?hours=${timeWindow}&limit=24&country_code=${countryCode}`, { signal: controller.signal })),
+                    optionalFetchResponse(() => fetch(`/api/v2/voice-mix?hours=${Math.max(timeWindow, 168)}&country=${countryCode}`, { signal: controller.signal })),
                 ]);
 
                 if (!signalsRes.ok) {
@@ -246,6 +258,8 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 const trendsPayload = trendsRes?.ok ? await trendsRes.json() as TrendsResponse : null;
                 const wikiPayload = wikiRes?.ok ? await wikiRes.json() as WikiTopResponse : null;
                 const threadsPayload = threadsRes?.ok ? await threadsRes.json() as ThreadsResponse : null;
+                const voicePayload = voiceRes?.ok ? await voiceRes.json() as { relation?: VoiceMixRelation } : null;
+                if (!controller.signal.aborted) setVoiceMix(voicePayload?.relation ?? null);
                 const signals = signalsPayload.signals || [];
                 const themeCounts = new Map<string, number>();
                 const sourceCounts = new Map<string, number>();
@@ -475,6 +489,38 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     </div>
                 </section>
             )}
+
+            {/* Voice Mix — self-coverage vs outside voices (#235) */}
+            {voiceMix && voiceMix.attributable_voices > 0 && (() => {
+                const selfPct = Math.round(voiceMix.self_voice_ratio * 100);
+                const softPct = Math.round(voiceMix.soft_power_ratio * 100);
+                const barColor = selfPct >= 50 ? 'var(--accent-green, #34d399)'
+                    : selfPct >= 20 ? 'var(--accent-amber, #fbbf24)'
+                    : 'var(--accent-red, #f87171)';
+                return (
+                    <section className="brief-section">
+                        <div className="cb-section-label">
+                            Voice Mix
+                            <span className="sentiment-info-icon" data-tip="Self-coverage is defined by outlet OWNERSHIP, not language: a domestic outlet covering its own country. Foreign outlets in the local language (e.g. BBC Persian) count as soft power, not self-coverage. Ratios are over signals whose outlet origin is known.">?</span>
+                        </div>
+                        <div style={{ fontSize: '1.4rem', fontWeight: 700, color: barColor }}>
+                            {selfPct}% <span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-secondary, #9ca3af)' }}>covered by its own press</span>
+                        </div>
+                        <div style={{ height: 6, borderRadius: 3, background: 'var(--bg-tertiary, #1f2937)', margin: '6px 0 8px', overflow: 'hidden' }}>
+                            <div style={{ width: `${selfPct}%`, height: '100%', background: barColor }} />
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary, #9ca3af)', lineHeight: 1.5 }}>
+                            {voiceMix.self_voice} of {voiceMix.attributable_voices} attributable voices are domestic.
+                            {voiceMix.dominant_outsider && (
+                                <> Loudest outsider: <strong>{voiceMix.dominant_outsider.origin}</strong> ({voiceMix.dominant_outsider.n}).</>
+                            )}
+                            {softPct > 0 && (
+                                <> {softPct}% is foreign media in the local language (soft power, not self-coverage).</>
+                            )}
+                        </div>
+                    </section>
+                );
+            })()}
 
             {/* Sentiment */}
             <section className="brief-section">
