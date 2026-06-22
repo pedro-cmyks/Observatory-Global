@@ -374,6 +374,26 @@ task) ships; next build. 13 voice tests green. Justification = §2 of the plan
 doc (volume maps launder perspective; diversity unprovable without the
 relation; matches the mission; holds our own GDELT English bias accountable).
 
+**2026-06-22 WAVE 4 (self-coverage = OWNERSHIP, source-research project —
+`cced104`/`781fbbe`, deployed):** Pedro's correction: BBC Persian covering
+Iran is British eyes in Persian, NOT Iranian voice — self-coverage must be by
+outlet OWNERSHIP, not language. (1) RSS now persists `source_origin_country`
+(was discarded; existing rows backfilled, 93%). (2) `voice_mix.relation`
+redefined: `self_voice = origin == subject`; new `soft_power_local_language`
+bucket (foreign outlet in local language) tracked SEPARATELY, never counted as
+self; ratios over attributable origin, `unattributed` (GDELT, no origin)
+reported honestly. LIVE: Iran self_voice **10.4%** domestic, soft_power ~0
+(Iran is covered in English-by-foreigners, not even Persian-by-foreigners).
+(3) **Verification** (`backend/scripts/self_coverage_report.py`, 14d): most
+countries ~0% domestic — CH/BE/GR/BY/CZ/SY/PA/HU/CD at 0%, Iran 10%, US 10%;
+strong DE 91%, CO 52%. (4) **WAVE 7** 10 domestic feeds for 9 zero-coverage
+countries (ANSA/Repubblica IT, SVT se, Der Standard AT, NOS nl, NRK no, RTE ie,
+Expats cz, Granma cu, SANA sy). 97 feeds / 20 languages / 56 non-English. (5)
+**Project #235** = "every country a domestic voice" (iterate WAVE N: one
+verified domestic outlet per zero-coverage country; normalize GDELT FIPS subject
+codes RP/LS/OS/CG; surface self_voice_ratio in CountryBrief). 14 voice tests
+green. Caveat: WAVE 7 feeds new = no history, gaps close as cron accumulates.
+
 **Next work, in order:**
 
 0. Problem A FIRST CUT SHIPPED (`62f97a2`, deployed): native-script country
