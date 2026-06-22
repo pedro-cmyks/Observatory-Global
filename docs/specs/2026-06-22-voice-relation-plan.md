@@ -130,3 +130,28 @@ Same formula shared by the offline audit (single source of truth).
 4. Deploy + prove with Iran/China (high foreign-voice ratio = the relation
    working).
 5. Then Problem A lexicon (separate, larger) and the CountryBrief surface.
+
+## 8. Live result (deployed 2026-06-22)
+
+Islamic-world feeds landed: one RSS cycle = 15 languages, 81% non-English,
+with **tr 49 (was 0), bn 38, id 26, ur 2** — voices that did not exist before.
+
+The relation, live via `/api/v2/voice-mix?country=CC`:
+
+| subject | coverage about it | self_voice_ratio | dominant outsider |
+|---|---|---|---|
+| Iran (IR) | 6,062 | **0.014** | GB (en 2,631) |
+| China (CN) | 9,371 | 0.316 | DE |
+| Turkey (TR) | 4,171 | 0.240 (was ~0) | RU |
+
+Iran heard from itself 1.4% of the time — the distortion is now a number on a
+contract surface, exactly as intended. **Caveat (honest):** these self-voice
+ratios are a FLOOR. Problem A (non-Latin geo-tagging) routes BBC/DW-Persian
+stories *about Iran* to GB/DE (the outlet) instead of IR, so real endogenous
+voice is undercounted until the native-language country lexicon ships. The
+metric carries `geo_confidence` so this is visible, not hidden. Problem A is
+therefore the next build — it directly raises measured self-voice for every
+non-Latin subject.
+
+Shipped: `3064dd5`. Endpoint contract `voice-mix-v0` now carries `relation`,
+`voices_by_origin`, `primary_languages`. 13 tests green.

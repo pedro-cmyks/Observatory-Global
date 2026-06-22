@@ -355,8 +355,30 @@ country in native script** — a zh story naming no place still falls back to
 outlet country. Real recall lift = e5/NLP geo path (the clean #150 end
 state, still open). 9 tests green (CJK ingest + voice-mix).
 
+**2026-06-22 WAVE 3 (voice RELATION + Islamic world — `3064dd5`, deployed):**
+Pedro's ask: separate WHO speaks from WHO is spoken about, finish the mix,
+justify it. Plan+justification: `docs/specs/2026-06-22-voice-relation-plan.md`.
+Measured Islamic world: covered as subject, ~0 voice — Iran 5,932@1% Persian,
+Turkey 4,060@0% Turkish, Pakistan 0% Urdu. (1) **RSS WAVE 6** (9 feeds): Al
+Jazeera Arabic + Sky News Arabia (pan-Arab, were absent), BBC Türkçe/Anadolu/
+Cumhuriyet (tr), BBC Urdu, Antara (id), BBC Bangla/Prothom Alo (bn). Now 87
+feeds / **16 languages** / 49 non-English. (2) **source→subject relation** in
+`voice_mix.py` + `/api/v2/voice-mix?country=CC`: `PRIMARY_LANG` map,
+`voices_by_origin`, `self_voice_ratio`/`foreign_voice_ratio`/
+`dominant_outsider` (endogenous = origin==subject OR lang in subject's primary
+langs). LIVE PROOF: Iran self_voice **0.014** (98.6% foreign, dom GB), China
+0.316, Turkey 0.240 (was ~0). Subject-vs-voice conflation now a number on a
+contract surface. **Caveat:** self-voice is a FLOOR until Problem A (non-Latin
+geo-tagging — fa/ar/zh headlines fall back to outlet country, see spawned
+task) ships; next build. 13 voice tests green. Justification = §2 of the plan
+doc (volume maps launder perspective; diversity unprovable without the
+relation; matches the mission; holds our own GDELT English bias accountable).
+
 **Next work, in order:**
 
+0. Problem A: native-language country lexicon (ar/fa/ru/zh/tr) so non-Latin
+   stories geo-tag to their SUBJECT, not the outlet — directly raises measured
+   self_voice_ratio. Then CountryBrief Voice Mix surface (#160 frontend).
 1. #228 §6 remainder (items 1-2 + #183 done): 3) person hygiene cheap
    wins (#176), 4) gate-recall SQL report, 5) map hovers + PLANE degraded
    state, 6) keyword-match labels.
