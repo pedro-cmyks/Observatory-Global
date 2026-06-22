@@ -314,6 +314,30 @@ settles on first run. Method doc: `docs/research/voice-mix/2026-06-22-diversify-
 Follow-ups: #162 (multilingual NLP), #230 (revive CGTN/Xinhua zh feeds),
 #160 (Voice Mix product surface).
 
+**2026-06-22 WAVE 2 (full multilingual voice — `e216360`/`d927b8d`,
+deployed):** Went past the single CJK batch to attack the monoculture at
+volume. (1) **28 native-language RSS feeds** (`ingest_rss.py` WAVE 5,
+zh/ja/ko/ru/fr/pt/de/ar/fa/hi — all verified live); English feed-share
+78%→49%. RSS is UNCAPPED = the real lever vs NewsData 200/day. (2) **RSS
+cadence 4th→2nd cycle** (`ingest_loop.py`) — durably raises non-English
+share. (3) **Voice Mix endpoint** `GET /api/v2/voice-mix?hours=&country=`
+(#160), formula shared with the audit via `app/services/voice_mix.py`
+(single source of truth). (4) **#162 IS ALREADY LIVE** —
+`NLP_MULTILINGUAL_MODE=on`, `xlm-v1` (twitter-xlm-roberta); prod confirms
+new CJK/RU/FA signals labeled ~100% in-window. The "nlp_*_xlm=0" note was a
+MISREAD: on-mode writes production `nlp_*`, not shadow. Remaining #162 =
+throughput (#184), not the model — **correct the old handoff.** Live result:
+one RSS trigger landed **12 languages, 78% non-English** (ru/fa/ko/zh/de/ar/
+fr/ja vs en 77). diversity_score **3.3→4.5 (168h) / 12.1 (fresh cycle)**, CJK
+**0→83**, langs 15→21. Honest limiter: english_share_of_known still ~96%
+(GDELT English firehose ~52K/168h); score climbs via cjk_coverage+entropy and
+lifts english-balance only as the 30-min cron accumulates non-English over
+days. 13 tests green (`test_voice_mix.py` 5, `test_ingest_newsdata_cjk.py` 4 +
+existing). Doc: `docs/research/voice-mix/2026-06-22-diversify-atlas.md`.
+Remaining diversity levers: non-English VOLUME vs GDELT (#229), non-Latin
+geo-tagging (#150 — non-Latin headlines fall back to outlet home country),
+NLP throughput (#184), folha_pt feed utf-8 decode bug.
+
 **Next work, in order:**
 
 1. #228 §6 remainder (items 1-2 + #183 done): 3) person hygiene cheap
