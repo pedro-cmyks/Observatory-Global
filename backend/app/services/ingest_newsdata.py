@@ -44,15 +44,24 @@ LANGUAGE_BATCHES = [
     {"language": "id,ms,tl,vi,th", "country": "id,my,ph,vn,th"},
     # South Asia
     {"language": "hi,ur,bn", "country": "in,pk,bd,np,lk"},
+    # East Asia — CJK voice gap (#230). zh/jp/ko are entirely absent from the
+    # corpus (measured 0 of 146K signals, 2026-06-22), so China/Japan/Korea are
+    # only ever seen through Western-English reporting. 5 countries = NewsData
+    # free-plan per-request max. NewsData uses non-ISO "jp" for Japanese.
+    {"language": "zh,jp,ko", "country": "cn,tw,hk,jp,kr"},
 ]
 
 LANGUAGE_CODES = {
     "arabic": "ar",
     "amharic": "am",
     "bengali": "bn",
+    "chinese": "zh",
     "french": "fr",
     "hindi": "hi",
     "indonesian": "id",
+    "japanese": "ja",
+    "jp": "ja",  # NewsData returns non-ISO "jp" for Japanese — normalize to ISO ja
+    "korean": "ko",
     "malay": "ms",
     "portuguese": "pt",
     "spanish": "es",
