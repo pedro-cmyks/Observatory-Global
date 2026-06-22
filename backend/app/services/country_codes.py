@@ -59,6 +59,7 @@ FIPS_TO_ISO = {
     'SU': 'SD',  # Sudan
     'CG': 'CD',  # DRC (Congo Kinshasa)
     'CF': 'CG',  # Congo Brazzaville
+    'RP': 'PH',  # Philippines (FIPS RP; confirmed via Manila Times content)
     'ZI': 'ZW',  # Zimbabwe
     'WA': 'NA',  # Namibia
     'BC': 'BW',  # Botswana

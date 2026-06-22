@@ -509,6 +509,48 @@ CURATED_FEEDS: dict[str, tuple[str, str, str, str, bool]] = {
         "https://sana.sy/en/?feed=rss2",
         "state", "SY", "en", True,
     ),
+    # ── WAVE 8: DOMESTIC SELF-COVERAGE, round 2 (#235) ────────────────────────
+    # Second sweep of the zero-domestic work-list. All verified live.
+    "lenews_ch": (
+        "https://lenews.ch/feed/",
+        "independent", "CH", "en", False,
+    ),
+    "vrt_be": (
+        "https://www.vrt.be/vrtnws/en.rss.articles.xml",
+        "wire", "BE", "en", False,
+    ),
+    "greekcitytimes_gr": (
+        "https://greekcitytimes.com/feed/",
+        "independent", "GR", "en", False,
+    ),
+    "greekreporter_gr": (
+        "https://greekreporter.com/feed/",
+        "independent", "GR", "en", False,
+    ),
+    "telex_hu": (
+        "https://telex.hu/rss",
+        "independent", "HU", "hu", False,
+    ),
+    "dailynews_hu": (
+        "https://dailynewshungary.com/feed/",
+        "independent", "HU", "en", False,
+    ),
+    "actualite_cd": (
+        "https://actualite.cd/feed",
+        "independent", "CD", "fr", False,
+    ),
+    "radiookapi_cd": (
+        "https://www.radiookapi.net/rss.xml",
+        "wire", "CD", "fr", False,
+    ),
+    "belta_by": (
+        "https://www.belta.by/rss",
+        "state", "BY", "ru", True,
+    ),
+    "tvn_pa": (
+        "https://www.tvn-2.com/rss/",
+        "independent", "PA", "es", False,
+    ),
 }
 
 # ── Lightweight country extractor ─────────────────────────────────────────────
