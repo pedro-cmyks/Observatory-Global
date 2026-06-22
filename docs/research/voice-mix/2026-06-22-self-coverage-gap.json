@@ -1,0 +1,420 @@
+{
+  "days": 14,
+  "min_signals": 50,
+  "countries": [
+    {
+      "subject": "CH",
+      "attributable": 550,
+      "domestic": 0,
+      "domestic_pct": 0.0
+    },
+    {
+      "subject": "BE",
+      "attributable": 323,
+      "domestic": 0,
+      "domestic_pct": 0.0
+    },
+    {
+      "subject": "RP",
+      "attributable": 315,
+      "domestic": 0,
+      "domestic_pct": 0.0
+    },
+    {
+      "subject": "LS",
+      "attributable": 223,
+      "domestic": 0,
+      "domestic_pct": 0.0
+    },
+    {
+      "subject": "NZ",
+      "attributable": 145,
+      "domestic": 0,
+      "domestic_pct": 0.0
+    },
+    {
+      "subject": "OS",
+      "attributable": 142,
+      "domestic": 0,
+      "domestic_pct": 0.0
+    },
+    {
+      "subject": "CG",
+      "attributable": 116,
+      "domestic": 0,
+      "domestic_pct": 0.0
+    },
+    {
+      "subject": "GR",
+      "attributable": 97,
+      "domestic": 0,
+      "domestic_pct": 0.0
+    },
+    {
+      "subject": "BY",
+      "attributable": 95,
+      "domestic": 0,
+      "domestic_pct": 0.0
+    },
+    {
+      "subject": "CZ",
+      "attributable": 85,
+      "domestic": 0,
+      "domestic_pct": 0.0
+    },
+    {
+      "subject": "SY",
+      "attributable": 73,
+      "domestic": 0,
+      "domestic_pct": 0.0
+    },
+    {
+      "subject": "PA",
+      "attributable": 72,
+      "domestic": 0,
+      "domestic_pct": 0.0
+    },
+    {
+      "subject": "HU",
+      "attributable": 60,
+      "domestic": 0,
+      "domestic_pct": 0.0
+    },
+    {
+      "subject": "CD",
+      "attributable": 51,
+      "domestic": 0,
+      "domestic_pct": 0.0
+    },
+    {
+      "subject": "SE",
+      "attributable": 417,
+      "domestic": 2,
+      "domestic_pct": 0.5
+    },
+    {
+      "subject": "IE",
+      "attributable": 93,
+      "domestic": 2,
+      "domestic_pct": 2.2
+    },
+    {
+      "subject": "BO",
+      "attributable": 73,
+      "domestic": 2,
+      "domestic_pct": 2.7
+    },
+    {
+      "subject": "IT",
+      "attributable": 526,
+      "domestic": 26,
+      "domestic_pct": 4.9
+    },
+    {
+      "subject": "NO",
+      "attributable": 112,
+      "domestic": 6,
+      "domestic_pct": 5.4
+    },
+    {
+      "subject": "QA",
+      "attributable": 245,
+      "domestic": 19,
+      "domestic_pct": 7.8
+    },
+    {
+      "subject": "NL",
+      "attributable": 113,
+      "domestic": 10,
+      "domestic_pct": 8.8
+    },
+    {
+      "subject": "JO",
+      "attributable": 66,
+      "domestic": 6,
+      "domestic_pct": 9.1
+    },
+    {
+      "subject": "US",
+      "attributable": 2163,
+      "domestic": 217,
+      "domestic_pct": 10.0
+    },
+    {
+      "subject": "CU",
+      "attributable": 79,
+      "domestic": 8,
+      "domestic_pct": 10.1
+    },
+    {
+      "subject": "IR",
+      "attributable": 1941,
+      "domestic": 201,
+      "domestic_pct": 10.4
+    },
+    {
+      "subject": "AT",
+      "attributable": 278,
+      "domestic": 29,
+      "domestic_pct": 10.4
+    },
+    {
+      "subject": "UY",
+      "attributable": 103,
+      "domestic": 11,
+      "domestic_pct": 10.7
+    },
+    {
+      "subject": "SA",
+      "attributable": 116,
+      "domestic": 17,
+      "domestic_pct": 14.7
+    },
+    {
+      "subject": "TH",
+      "attributable": 100,
+      "domestic": 16,
+      "domestic_pct": 16.0
+    },
+    {
+      "subject": "GH",
+      "attributable": 84,
+      "domestic": 15,
+      "domestic_pct": 17.9
+    },
+    {
+      "subject": "TW",
+      "attributable": 163,
+      "domestic": 37,
+      "domestic_pct": 22.7
+    },
+    {
+      "subject": "CI",
+      "attributable": 52,
+      "domestic": 12,
+      "domestic_pct": 23.1
+    },
+    {
+      "subject": "DZ",
+      "attributable": 105,
+      "domestic": 30,
+      "domestic_pct": 28.6
+    },
+    {
+      "subject": "ES",
+      "attributable": 814,
+      "domestic": 275,
+      "domestic_pct": 33.8
+    },
+    {
+      "subject": "AE",
+      "attributable": 116,
+      "domestic": 41,
+      "domestic_pct": 35.3
+    },
+    {
+      "subject": "EG",
+      "attributable": 231,
+      "domestic": 100,
+      "domestic_pct": 43.3
+    },
+    {
+      "subject": "VN",
+      "attributable": 110,
+      "domestic": 50,
+      "domestic_pct": 45.5
+    },
+    {
+      "subject": "HK",
+      "attributable": 52,
+      "domestic": 24,
+      "domestic_pct": 46.2
+    },
+    {
+      "subject": "SG",
+      "attributable": 204,
+      "domestic": 95,
+      "domestic_pct": 46.6
+    },
+    {
+      "subject": "CO",
+      "attributable": 1199,
+      "domestic": 626,
+      "domestic_pct": 52.2
+    },
+    {
+      "subject": "IL",
+      "attributable": 744,
+      "domestic": 424,
+      "domestic_pct": 57.0
+    },
+    {
+      "subject": "PK",
+      "attributable": 399,
+      "domestic": 254,
+      "domestic_pct": 63.7
+    },
+    {
+      "subject": "UA",
+      "attributable": 2171,
+      "domestic": 1384,
+      "domestic_pct": 63.7
+    },
+    {
+      "subject": "FR",
+      "attributable": 1944,
+      "domestic": 1270,
+      "domestic_pct": 65.3
+    },
+    {
+      "subject": "JP",
+      "attributable": 913,
+      "domestic": 601,
+      "domestic_pct": 65.8
+    },
+    {
+      "subject": "CA",
+      "attributable": 893,
+      "domestic": 613,
+      "domestic_pct": 68.6
+    },
+    {
+      "subject": "KE",
+      "attributable": 136,
+      "domestic": 96,
+      "domestic_pct": 70.6
+    },
+    {
+      "subject": "VE",
+      "attributable": 256,
+      "domestic": 187,
+      "domestic_pct": 73.0
+    },
+    {
+      "subject": "CL",
+      "attributable": 275,
+      "domestic": 202,
+      "domestic_pct": 73.5
+    },
+    {
+      "subject": "GB",
+      "attributable": 7984,
+      "domestic": 6160,
+      "domestic_pct": 77.2
+    },
+    {
+      "subject": "PL",
+      "attributable": 1426,
+      "domestic": 1143,
+      "domestic_pct": 80.2
+    },
+    {
+      "subject": "CN",
+      "attributable": 3620,
+      "domestic": 2916,
+      "domestic_pct": 80.6
+    },
+    {
+      "subject": "BD",
+      "attributable": 137,
+      "domestic": 111,
+      "domestic_pct": 81.0
+    },
+    {
+      "subject": "PE",
+      "attributable": 177,
+      "domestic": 145,
+      "domestic_pct": 81.9
+    },
+    {
+      "subject": "KR",
+      "attributable": 559,
+      "domestic": 459,
+      "domestic_pct": 82.1
+    },
+    {
+      "subject": "AR",
+      "attributable": 1179,
+      "domestic": 980,
+      "domestic_pct": 83.1
+    },
+    {
+      "subject": "TR",
+      "attributable": 1296,
+      "domestic": 1090,
+      "domestic_pct": 84.1
+    },
+    {
+      "subject": "ID",
+      "attributable": 702,
+      "domestic": 600,
+      "domestic_pct": 85.5
+    },
+    {
+      "subject": "MX",
+      "attributable": 1510,
+      "domestic": 1293,
+      "domestic_pct": 85.6
+    },
+    {
+      "subject": "RU",
+      "attributable": 5390,
+      "domestic": 4672,
+      "domestic_pct": 86.7
+    },
+    {
+      "subject": "ZA",
+      "attributable": 417,
+      "domestic": 365,
+      "domestic_pct": 87.5
+    },
+    {
+      "subject": "NG",
+      "attributable": 746,
+      "domestic": 661,
+      "domestic_pct": 88.6
+    },
+    {
+      "subject": "AU",
+      "attributable": 2575,
+      "domestic": 2289,
+      "domestic_pct": 88.9
+    },
+    {
+      "subject": "BR",
+      "attributable": 2159,
+      "domestic": 1933,
+      "domestic_pct": 89.5
+    },
+    {
+      "subject": "DE",
+      "attributable": 4906,
+      "domestic": 4449,
+      "domestic_pct": 90.7
+    },
+    {
+      "subject": "IN",
+      "attributable": 2716,
+      "domestic": 2480,
+      "domestic_pct": 91.3
+    }
+  ],
+  "zero_self_coverage": [
+    "CH",
+    "BE",
+    "RP",
+    "LS",
+    "NZ",
+    "OS",
+    "CG",
+    "GR",
+    "BY",
+    "CZ",
+    "SY",
+    "PA",
+    "HU",
+    "CD"
+  ],
+  "n_countries": 66,
+  "n_zero": 14
+}
