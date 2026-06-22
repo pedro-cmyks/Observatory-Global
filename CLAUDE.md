@@ -394,6 +394,23 @@ verified domestic outlet per zero-coverage country; normalize GDELT FIPS subject
 codes RP/LS/OS/CG; surface self_voice_ratio in CountryBrief). 14 voice tests
 green. Caveat: WAVE 7 feeds new = no history, gaps close as cron accumulates.
 
+**2026-06-22 WAVE 6 (translations + WAVE 9 — `673b86c`/`6620529`, deployed
+Fly+Vercel, browser-verified, #235):** Instagram-style headline translation,
+INVERSE affordance (Pedro): non-viewer-language headlines show **translated by
+default** + a **"See original"/"Ver original"** toggle. `/api/v2/signals` now
+returns `source_lang`; `TranslatableHeadline` lazily hits `/api/v2/translate`
+(DeepSeek, cached in signal_translations, client-memoized); en/xx render plain
+(no call). Target lang = `navigator.language` → a Spanish-locale viewer gets
+English news in Spanish by default. Wired into SignalStream + **CountryBrief
+top_stories** (now render headlines + **own-voice sort**: a country's brief
+leads with ITS OWN-language press, not only GDELT English about it). KEY
+context: GDELT English firehose + snippet-richness ordering bury non-English
+RSS everywhere; the CountryBrief own-voice sort is the fix where it matters.
+Browser-verified VE: 6 Spanish headlines shown in English, toggle flips to
+original Spanish and back, 0 console errors. WAVE 9: New Zealand (RNZ, Stuff) —
+last 0% gap; live seed 11 domestic. **109 feeds.** Remaining: more native
+volume surfacing (#229), domestic feeds as cron accumulates.
+
 **2026-06-22 WAVE 5 (FIPS normalization + WAVE 8 domestic feeds + CountryBrief
 surface — `9b67b22`/`aab072e`, deployed Fly+Vercel, #235):** All 3 parts of
 the self-coverage goal. (1) **FIPS:** added `RP→PH` to FIPS_TO_ISO (Philippines
