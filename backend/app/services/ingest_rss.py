@@ -551,6 +551,16 @@ CURATED_FEEDS: dict[str, tuple[str, str, str, str, bool]] = {
         "https://www.tvn-2.com/rss/",
         "independent", "PA", "es", False,
     ),
+    # ── WAVE 9: DOMESTIC SELF-COVERAGE, round 3 (#235) ────────────────────────
+    # New Zealand had coverage but zero domestic feed.
+    "rnz_nz": (
+        "https://www.rnz.co.nz/rss/national.xml",
+        "wire", "NZ", "en", False,
+    ),
+    "stuff_nz": (
+        "https://www.stuff.co.nz/rss",
+        "independent", "NZ", "en", False,
+    ),
 }
 
 # ── Lightweight country extractor ─────────────────────────────────────────────

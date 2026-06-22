@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
+import { TranslatableHeadline } from './TranslatableHeadline'
 import { timeRangeToHours } from '../lib/timeRanges'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { mergeStreamItems, splitInitialStreamBatch } from '../lib/signalStreamQueue'
@@ -397,7 +398,9 @@ export const SignalStream: React.FC = () => {
                                                 style={{ flex: 1, cursor: 'pointer' }}
                                                 onClick={(e) => { e.stopPropagation(); setSelectedSignal(sig); }}
                                             >
-                                                {sig.headline || `Signal from ${sig.source}`}
+                                                {sig.headline
+                                                    ? <TranslatableHeadline signalId={sig.id} original={sig.headline} sourceLang={sig.source_lang} />
+                                                    : `Signal from ${sig.source}`}
                                             </span>
                                             <button
                                                 className="pin-btn"

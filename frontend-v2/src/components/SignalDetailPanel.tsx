@@ -37,6 +37,8 @@ export interface Signal {
     url: string
     headline: string | null
     snippet?: string | null
+    /** Original language of the headline (ISO 639-1), for translation toggle */
+    source_lang?: string | null
     sentiment: number
     themes: string[]
     persons: string[]
