@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { IndicatorTooltip, VolumeIndicator } from './IndicatorTooltip';
+import { TranslatableHeadline } from './TranslatableHeadline';
 import { useCrisis } from '../contexts/CrisisContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import { useFocus } from '../contexts/FocusContext';
@@ -32,6 +33,9 @@ interface Story {
     timestamp: string;
     sentiment: number;
     themeCode: string;
+    headline?: string | null;
+    id?: number;
+    source_lang?: string | null;
 }
 
 function extractDomain(url: string): string {
@@ -93,12 +97,15 @@ interface CountryAnomaly {
 }
 
 interface SignalResponseItem {
+    id?: number;
     url?: string;
     source?: string;
     timestamp?: string;
     sentiment?: number;
     themes?: string[];
     persons?: string[];
+    headline?: string | null;
+    source_lang?: string | null;
 }
 
 interface SignalsResponse {
@@ -273,8 +280,18 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     (signal.persons || []).forEach(person => incrementCount(personCounts, person));
                 });
 
+                // Surface the country's OWN-language press first: a brief about
+                // Italy should lead with Italian headlines (translated), not only
+                // GDELT's English coverage of Italy. Non-English/known-language
+                // signals rank ahead of en/xx, otherwise order is preserved.
+                const isOwnVoice = (s: SignalResponseItem) => {
+                    const l = (s.source_lang || '').toLowerCase();
+                    return l && !['en', 'xx', 'un', 'und'].includes(l);
+                };
                 const topStories: Story[] = signals
                     .filter((s): s is SignalResponseItem & { url: string } => Boolean(s.url))
+                    .slice()
+                    .sort((a, b) => Number(isOwnVoice(b)) - Number(isOwnVoice(a)))
                     .slice(0, 10)
                     .map((s) => {
                         const themes: string[] = Array.isArray(s.themes) ? s.themes : [];
@@ -286,7 +303,10 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                             source: s.source || extractDomain(s.url),
                             timestamp: s.timestamp || new Date().toISOString(),
                             sentiment: s.sentiment || 0,
-                            themeCode: primaryTheme
+                            themeCode: primaryTheme,
+                            headline: s.headline,
+                            id: s.id,
+                            source_lang: (s as SignalResponseItem & { source_lang?: string | null }).source_lang,
                         };
                     });
 
@@ -679,6 +699,13 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                     <span className="story-domain">{extractDomain(story.url)}</span>
                                     <span className="story-age">{timeAgo(story.timestamp)}</span>
                                 </p>
+                                {story.headline && (
+                                    <p className="story-headline" style={{ margin: '2px 0 4px', fontSize: '0.85rem', lineHeight: 1.35 }}>
+                                        {typeof story.id === 'number'
+                                            ? <TranslatableHeadline signalId={story.id} original={story.headline} sourceLang={story.source_lang} />
+                                            : story.headline}
+                                    </p>
+                                )}
                                 {story.themeCode && (
                                     <span
                                         className="story-theme-badge"
