@@ -338,6 +338,23 @@ Remaining diversity levers: non-English VOLUME vs GDELT (#229), non-Latin
 geo-tagging (#150 — non-Latin headlines fall back to outlet home country),
 NLP throughput (#184), folha_pt feed utf-8 decode bug.
 
+**2026-06-22 WAVE 2 follow-ups (two RSS fixes in `ingest_rss.py`):**
+(1) **Feed encoding bug FIXED** — `fetch_feed` did `await resp.text()`
+(assumes utf-8) → `UnicodeDecodeError: 'utf-8' codec can't decode byte 0xed`
+on latin-1/iso-8859-1 feeds. Now `await resp.read()` (bytes); feedparser
+detects charset from XML decl/HTTP header. Live verify (7-day window):
+**folha_pt 0→100 signals, antaranews_en 50, no decode error.** (2) **#150
+first cut — non-Latin geo-tagging.** Latin `\b` `_COUNTRY_PATTERNS` match no
+CJK/Cyrillic/Arabic/Devanagari → headlines fell back to outlet country
+(DW-Chinese Syria story → DE, not SY). Added `_NATIVE_COUNTRY_PATTERNS` (16
+high-volume subject countries × native scripts: CN/JP/KR/KP/TW/RU/UA/IR/IN/
+US/IL/GZ/SY/DE), checked after Latin in `extract_country`. CJK = substring
+(no word boundaries); Cyrillic/Arabic/Devanagari use Unicode-aware `re \b/\w`.
+High-precision/low-recall: only lifts voice when the **headline names the
+country in native script** — a zh story naming no place still falls back to
+outlet country. Real recall lift = e5/NLP geo path (the clean #150 end
+state, still open). 9 tests green (CJK ingest + voice-mix).
+
 **Next work, in order:**
 
 1. #228 §6 remainder (items 1-2 + #183 done): 3) person hygiene cheap

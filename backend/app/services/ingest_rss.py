@@ -500,11 +500,87 @@ _COUNTRY_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r'\bSri Lanka\b|\bSri Lankan\b|\bColombo\b|\bDissanayake\b', re.I), "LK"),
 ]
 
+# ── Native-script country patterns (#150) ─────────────────────────────────────
+# The Latin _COUNTRY_PATTERNS above are \b word-boundary regexes; CJK/Cyrillic/
+# Arabic/Devanagari headlines from the WAVE 5 feeds (zh/ja/ko/ru/fa/hi/ar) match
+# none of them, so a Chinese-language story about Syria fell back to the outlet's
+# home country (DE for dw_zh) — mis-geotagging the subject. This focused table
+# covers the highest-volume non-Latin subject countries + the geopolitically hot
+# subjects those presses cover most. CJK has no word boundaries, so these are
+# plain substring matches (no \b); the tokens are multi-char and distinctive,
+# keeping false-positive risk low. This is a first cut of #150, not the full
+# e5/NLP geo path.
+_NATIVE_COUNTRY_PATTERNS: list[tuple[re.Pattern, str]] = [
+    # China
+    (re.compile(r'中国|中國|北京'), "CN"),
+    (re.compile(r'중국'), "CN"),
+    (re.compile(r'چین'), "CN"),
+    # Japan
+    (re.compile(r'日本|東京'), "JP"),
+    (re.compile(r'일본'), "JP"),
+    (re.compile(r'ژاپن'), "JP"),
+    # Koreas
+    (re.compile(r'한국|서울|대한민국'), "KR"),
+    (re.compile(r'韩国|韓国'), "KR"),
+    (re.compile(r'북한|조선민주주의'), "KP"),
+    (re.compile(r'朝鲜|北朝鮮'), "KP"),
+    # Taiwan
+    (re.compile(r'台湾|台灣|臺灣|타이완|대만'), "TW"),
+    # Russia
+    (re.compile(r'Росси|Москв|Кремл|Путин'), "RU"),
+    (re.compile(r'俄罗斯|ロシア|러시아'), "RU"),
+    (re.compile(r'روسیه'), "RU"),
+    (re.compile(r'रूस'), "RU"),
+    # Ukraine
+    (re.compile(r'Украин|Киев|Зеленск'), "UA"),
+    (re.compile(r'乌克兰|ウクライナ|우크라이나'), "UA"),
+    (re.compile(r'اوکراین'), "UA"),
+    (re.compile(r'यूक्रेन'), "UA"),
+    # Iran
+    (re.compile(r'ایران|تهران'), "IR"),
+    (re.compile(r'伊朗|イラン|이란'), "IR"),
+    (re.compile(r'Иран'), "IR"),
+    # India
+    (re.compile(r'भारत|नई दिल्ली|नई दिल्ली'), "IN"),
+    (re.compile(r'印度|インド|인도'), "IN"),
+    (re.compile(r'هند'), "IN"),
+    # United States
+    (re.compile(r'美国|美國|アメリカ|미국'), "US"),
+    (re.compile(r'США'), "US"),
+    (re.compile(r'آمریکا|آمریكا'), "US"),
+    (re.compile(r'अमेरिका'), "US"),
+    # Israel
+    (re.compile(r'以色列|イスラエル|이스라엘'), "IL"),
+    (re.compile(r'Израил'), "IL"),
+    (re.compile(r'اسرائیل|اسراییل'), "IL"),
+    (re.compile(r'इज़राइल|इजरायल'), "IL"),
+    # Gaza / Palestine (project code GZ)
+    (re.compile(r'加沙|ガザ|가자'), "GZ"),
+    (re.compile(r'Газа|Газе'), "GZ"),
+    (re.compile(r'غزه|فلسطین'), "GZ"),
+    # Syria
+    (re.compile(r'叙利亚|シリア|시리아'), "SY"),
+    (re.compile(r'Сири'), "SY"),
+    (re.compile(r'سوریه|سوريه'), "SY"),
+    # Germany (DW native-language outlets cover it heavily)
+    (re.compile(r'德国|德國|ドイツ|독일'), "DE"),
+    (re.compile(r'Германи'), "DE"),
+    (re.compile(r'آلمان'), "DE"),
+]
+
 
 def extract_country(title: str, snippet: str) -> Optional[str]:
-    """Return first ISO2 match found in title+snippet, or None."""
+    """Return first ISO2 match found in title+snippet, or None.
+
+    Latin keyword patterns first, then native-script patterns (#150) so
+    non-Latin headlines geo-tag to the story subject rather than falling
+    back to the outlet's home country.
+    """
     text = f"{title} {snippet}"
     for pattern, iso2 in _COUNTRY_PATTERNS:
+        if pattern.search(text):
+            return iso2
+    for pattern, iso2 in _NATIVE_COUNTRY_PATTERNS:
         if pattern.search(text):
             return iso2
     return None
@@ -548,7 +624,11 @@ async def fetch_feed(
             if resp.status != 200:
                 logger.warning("[RSS] %s returned HTTP %d", feed_name, resp.status)
                 return signals
-            content = await resp.text()
+            # Read raw bytes, not resp.text(): resp.text() assumes utf-8 and
+            # throws UnicodeDecodeError on latin-1/iso-8859-1 feeds (folha_pt,
+            # antaranews_en). feedparser detects encoding from the XML
+            # declaration / HTTP charset itself when handed bytes.
+            content = await resp.read()
 
         feed = feedparser.parse(content)
         if feed.bozo and not feed.entries:
