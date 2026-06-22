@@ -295,6 +295,25 @@ Client-only. #234 stays open for thread/person/PA focus + the dock
 surfaces re-scoping. Noted: spurious flow partners (Colombia→Trinidad)
 are co-occurrence/flow quality, separate from propagation.
 
+**2026-06-22 (Diversify Atlas + prove it — `f52c83b`):** Goal = make "global"
+a measured claim. Shipped **Voice Mix audit** (`backend/scripts/voice_mix_audit.py`,
+read-only, repeatable, `diversity_score` 0-100 = mean of english_balance /
+language_entropy / cjk_coverage). **Baseline (prod, 168h, 146K signals):
+English = 96.9% of language-known, CJK zh/ja/ko = 0, entropy 0.0686,
+diversity_score 3.3/100** — the monoculture is now a number (artifact
+`docs/research/voice-mix/2026-06-22-baseline.json`). Lever: **8th NewsData
+batch zh,jp,ko / cn,tw,hk,jp,kr** (192 req/day < 200 free cap; NewsData
+non-ISO "jp"→ISO "ja"). e5 semantic layer gives CJK presence + thread
+membership immediately; NLP gate still English-only (`nlp_*_xlm` columns
+exist but 0-populated → #162 is the next dep). Mechanism proven:
+`tests/test_ingest_newsdata_cjk.py` 4/4 (CJK article → normalized source_lang
+end-to-end, no live key needed). **Open loop: live corpus delta needs
+`./scripts/deploy-fly-api.sh` + 1 ingest cycle, then re-run audit `--hours 24`;
+success = CJK 0→N, score rises.** Empirical unknown: Japanese code jp vs ja
+settles on first run. Method doc: `docs/research/voice-mix/2026-06-22-diversify-atlas.md`.
+Follow-ups: #162 (multilingual NLP), #230 (revive CGTN/Xinhua zh feeds),
+#160 (Voice Mix product surface).
+
 **Next work, in order:**
 
 1. #228 §6 remainder (items 1-2 + #183 done): 3) person hygiene cheap
