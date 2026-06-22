@@ -394,14 +394,28 @@ verified domestic outlet per zero-coverage country; normalize GDELT FIPS subject
 codes RP/LS/OS/CG; surface self_voice_ratio in CountryBrief). 14 voice tests
 green. Caveat: WAVE 7 feeds new = no history, gaps close as cron accumulates.
 
+**2026-06-22 WAVE 5 (FIPS normalization + WAVE 8 domestic feeds + CountryBrief
+surface — `9b67b22`/`aab072e`, deployed Fly+Vercel, #235):** All 3 parts of
+the self-coverage goal. (1) **FIPS:** added `RP→PH` to FIPS_TO_ISO (Philippines
+leaked unconverted = false 0% domestic), backfilled 1419 RP→PH/CG→CD rows;
+**PH self-coverage 0%→36%** verified. LS/OS/MG = GDELT geocode noise, left.
+(2) **WAVE 8** domestic feeds for CH (Le News), BE (VRT), GR (Greek City Times/
+Reporter), HU (Telex/Daily News), CD (Actualité.cd/Radio Okapi), BY (Belta
+state), PA (TVN) — 107 feeds/21 langs/61 non-English; live seed landed domestic
+signals (HU 9, PA 7, BY 6, CD 2). (3) **CountryBrief Voice Mix panel** —
+"X% covered by its own press" (color bar, domestic/foreign, dominant outsider,
+soft-power note); browser-verified PH 36%. The self_voice = OWNERSHIP metric is
+now end-to-end: ingest stores origin → relation by origin → surfaced. Remaining
+(#235): next feed waves for any country still at 0% after cron catches up;
+normalize remaining FIPS edge codes; full Arabic/tr/ur/bn SUBJECT lexicon for
+Problem A.
+
 **Next work, in order:**
 
-0. Problem A FIRST CUT SHIPPED (`62f97a2`, deployed): native-script country
-   patterns (CN/JP/KR/TW/RU/UA/IR/IN/US/IL/GZ/SY/DE) wired into extract_country
-   + RSS encoding fix (resp.read). Remaining: full Arabic/Turkish/Urdu/Bengali
-   SUBJECT lexicon + e5/NLP geo path. Then CountryBrief Voice Mix surface
-   (#160 frontend) consuming the `relation` payload (self_voice_ratio,
-   voices_by_origin, dominant_outsider).
+0. Problem A remaining: full Arabic/Turkish/Urdu/Bengali SUBJECT lexicon +
+   e5/NLP geo path (native-script first cut `62f97a2` already covers
+   CN/JP/KR/TW/RU/UA/IR/IN/US/IL/GZ/SY/DE). Continue #235 domestic-feed waves
+   until no Atlas country sits at 0% self-coverage.
 1. #228 §6 remainder (items 1-2 + #183 done): 3) person hygiene cheap
    wins (#176), 4) gate-recall SQL report, 5) map hovers + PLANE degraded
    state, 6) keyword-match labels.
