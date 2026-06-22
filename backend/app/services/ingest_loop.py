@@ -86,8 +86,12 @@ async def main():
             except Exception:
                 log.exception("ACLED ingestion failed — continuing")
 
-        # ── RSS Curated Feeds: every 4th cycle (~60 min) ──
-        if gdelt_cycle % 4 == 0:
+        # ── RSS Curated Feeds: every 2nd cycle (~30 min) ──
+        # Bumped from every-4th (#150/#230): 40 of 78 feeds are native non-English
+        # (zh/ja/ko/ru/fr/pt/de/ar/fa/hi). RSS is uncapped, and it is far more
+        # multilingual than GDELT's English firehose, so a higher RSS cadence
+        # durably raises the corpus non-English share (the diversity_score lever).
+        if gdelt_cycle % 2 == 0:
             try:
                 log.info("RSS curated feeds ingestion starting...")
                 from app.services.ingest_rss import run_rss_ingestion

@@ -100,10 +100,50 @@ of cron to approach the 5%-of-known CJK target, faster once #230 revives the
 zh state feeds). Minor follow-up: ja/ko rows landed `country_code=XX` (NewsData
 sent non-ISO country names) — geo-tag nit, separate from the voice win.
 
+## 6. Wave 2 — full multilingual voice (deployed)
+
+Went past the single CJK NewsData batch to attack the monoculture at volume:
+
+- **28 native-language RSS feeds** (`ingest_rss.py` WAVE 5) across 10 languages
+  (zh/ja/ko/ru/fr/pt/de/ar/fa/hi), every one verified live. RSS is uncapped, so
+  it is the real volume lever. English feed-share 78% → 49%.
+- **RSS cadence 4th → 2nd cycle** (`ingest_loop.py`) — 40/78 feeds are native
+  non-English; a higher cadence durably raises corpus non-English share.
+- **Voice Mix endpoint** `GET /api/v2/voice-mix?hours=&country=` (#160) sharing
+  the audit formula via `app/services/voice_mix.py` (one source of truth).
+- **#162 finding:** multilingual NLP is ALREADY LIVE (`NLP_MULTILINGUAL_MODE=on`,
+  `xlm-v1`). Prod confirms the new CJK/RU/FA signals are labeled by
+  twitter-xlm-roberta at ~100% in-window. The `nlp_*_xlm=0` note was a misread
+  (on-mode writes production `nlp_*`, not shadow). Remaining #162 = throughput
+  (#184), not the model.
+
+Live result after one RSS trigger — **12 languages flowing, 78% non-English in
+the cycle** (ru 59, fa 37, ko 35, zh 30, de 21, ar 16, fr 15, ja 8 vs en 77):
+
+| metric | baseline | wave 2 (168h) | fresh cycle (1h) |
+|---|---|---|---|
+| diversity_score | 3.3 | **4.5** | **12.1** |
+| distinct known langs | 15 | **21** | 12 |
+| CJK total | 0 | **83** | 51 |
+| non-English share of known | 3.1% | 3.5% | 3.9% |
+
+Honest limiter: `english_share_of_known` still ~96% because GDELT is an
+English firehose (~52K en / 168h). One cycle's ~270 non-English is real voice
+but small against that — so the score climbs via CJK-coverage + entropy, and
+will lift english-balance only as the 30-min RSS cron accumulates non-English
+volume over days (projection: tens of thousands/week → english-share toward
+~55% in the known slice). Diversity is now structural and self-reinforcing, not
+a one-off.
+
 ## Status
 
-- Lever + proof instrument + mechanism test + **live deploy**: **shipped.**
-- Live corpus delta: **proven** (CJK 0 → 10, climbing hourly).
+- CJK batch + 28 native RSS feeds + Voice Mix audit/endpoint + cadence bump:
+  **shipped & deployed.** 13 tests green.
+- Multilingual NLP (#162 core): **already live** (xlm-v1), labeling the new
+  voices.
+- Diversity: measurably moving (3.3 → 4.5 → 12.1 fresh) and climbing via cron.
+- Remaining levers: non-English *volume* vs GDELT (#229 funnel), non-Latin
+  geo-tagging precision (#150), NLP throughput (#184).
 - Follow-ups: #162 (multilingual NLP — lights CJK sentiment/framing),
   #230 (revive dead zh state feeds: CGTN/Xinhua), #160 (Voice Mix as a
   product surface / CountryBrief component using this same query).

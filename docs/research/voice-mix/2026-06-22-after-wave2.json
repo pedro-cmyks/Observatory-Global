@@ -1,0 +1,133 @@
+{
+  "total_signals": 157497,
+  "language_known": 57982,
+  "language_unknown": 99515,
+  "unknown_pct": 63.2,
+  "english_share_of_known": 0.9655,
+  "non_english_share_of_known": 0.0345,
+  "cjk": {
+    "zh": 31,
+    "ja": 13,
+    "ko": 39,
+    "total": 83,
+    "share_of_known": 0.0014
+  },
+  "language_entropy_norm": 0.0709,
+  "distinct_known_languages": 21,
+  "state_media": 452,
+  "state_media_pct": 0.29,
+  "distinct_sources": 9456,
+  "origin_hhi": 0.0762,
+  "top_origin_countries": [
+    {
+      "cc": "GB",
+      "n": 7880
+    },
+    {
+      "cc": "DE",
+      "n": 5812
+    },
+    {
+      "cc": "RU",
+      "n": 5095
+    },
+    {
+      "cc": "CN",
+      "n": 3779
+    },
+    {
+      "cc": "AU",
+      "n": 3173
+    },
+    {
+      "cc": "IN",
+      "n": 2863
+    },
+    {
+      "cc": "UA",
+      "n": 1977
+    },
+    {
+      "cc": "BR",
+      "n": 1950
+    },
+    {
+      "cc": "TR",
+      "n": 1569
+    },
+    {
+      "cc": "MX",
+      "n": 1533
+    }
+  ],
+  "top_languages": [
+    {
+      "lang": "en",
+      "n": 55982
+    },
+    {
+      "lang": "es",
+      "n": 818
+    },
+    {
+      "lang": "ar",
+      "n": 519
+    },
+    {
+      "lang": "fr",
+      "n": 129
+    },
+    {
+      "lang": "hi",
+      "n": 107
+    },
+    {
+      "lang": "id",
+      "n": 60
+    },
+    {
+      "lang": "ru",
+      "n": 59
+    },
+    {
+      "lang": "pt",
+      "n": 52
+    },
+    {
+      "lang": "ko",
+      "n": 39
+    },
+    {
+      "lang": "fa",
+      "n": 37
+    },
+    {
+      "lang": "vi",
+      "n": 34
+    },
+    {
+      "lang": "zh",
+      "n": 31
+    },
+    {
+      "lang": "sw",
+      "n": 29
+    },
+    {
+      "lang": "bn",
+      "n": 26
+    },
+    {
+      "lang": "de",
+      "n": 21
+    }
+  ],
+  "diversity_score": 4.5,
+  "components": {
+    "english_balance": 0.0345,
+    "language_entropy_norm": 0.0709,
+    "cjk_coverage": 0.0286
+  },
+  "generated_at": "2026-06-22T15:23:45.532426+00:00",
+  "window_hours": 168
+}
