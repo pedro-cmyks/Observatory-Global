@@ -1,7 +1,8 @@
 """
 RSS Feed Ingestion Service — Wave 1 + Wave 3 + Wave 4
 
-Ingests curated international RSS feeds (50 feeds across 30+ countries).
+Ingests curated international RSS feeds (78 feeds across 30+ countries,
+11 languages — Wave 5 added native-language zh/ja/ko/ru/fr/pt/de/ar/fa/hi).
 Wave 1: maritime/chokepoints, Middle East, Russia independent, humanitarian, Asia, Africa/LatAm.
 Wave 3: state media (RT, Sputnik, Global Times, IRNA) + non-English regional (AR/ES/DE).
 Wave 4: LATAM depth (CO/AR/PE/VE/CL), MENA depth (SA/IL/TR/EG), Sub-Saharan Africa
@@ -284,6 +285,134 @@ CURATED_FEEDS: dict[str, tuple[str, str, str, str, bool]] = {
     "myanmar_now": (
         "https://myanmar-now.org/en/feed/",
         "independent", "MM", "en", False,
+    ),
+    # ── WAVE 5: NATIVE-LANGUAGE VOICE (#150/#230) ─────────────────────────────
+    # Diversity audit 2026-06-22 measured English = 96.9% of language-known
+    # signals and CJK = 0. RSS is uncapped (unlike NewsData's 200/day), so
+    # native-language feeds are the real lever to break the monoculture. Every
+    # feed below was verified live (HTTP 200 + items) on 2026-06-22.
+    #
+    # CHINESE (zh) — endogenous Chinese-language voice, not Western-about-China
+    "dw_chinese": (
+        "https://rss.dw.com/xml/rss-chi-all",
+        "wire", "DE", "zh", False,
+    ),
+    "rfi_chinese": (
+        "https://www.rfi.fr/cn/rss",
+        "wire", "FR", "zh", False,
+    ),
+    "bbc_zhongwen": (
+        "https://www.bbc.co.uk/zhongwen/simp/index.xml",
+        "wire", "GB", "zh", False,
+    ),
+    "liberty_times_tw": (
+        "https://news.ltn.com.tw/rss/all.xml",
+        "independent", "TW", "zh", False,
+    ),
+    # JAPANESE (ja)
+    "nhk_ja": (
+        "https://www3.nhk.or.jp/rss/news/cat0.xml",
+        "wire", "JP", "ja", False,
+    ),
+    "asahi_ja": (
+        "https://www.asahi.com/rss/asahi/newsheadlines.rdf",
+        "independent", "JP", "ja", False,
+    ),
+    "mainichi_ja": (
+        "https://mainichi.jp/rss/etc/mainichi-flash.rss",
+        "independent", "JP", "ja", False,
+    ),
+    # KOREAN (ko)
+    "yonhap_ko": (
+        "https://www.yna.co.kr/rss/news.xml",
+        "wire", "KR", "ko", False,
+    ),
+    "yonhap_intl_ko": (
+        "https://www.yna.co.kr/rss/international.xml",
+        "wire", "KR", "ko", False,
+    ),
+    "hani_ko": (
+        "https://www.hani.co.kr/rss/",
+        "independent", "KR", "ko", False,
+    ),
+    # RUSSIAN (ru) — Kremlin framing (RT/state) vs independent (Meduza/exile)
+    "meduza_ru": (
+        "https://meduza.io/rss/all",
+        "independent", "LV", "ru", False,
+    ),
+    "dw_russian": (
+        "https://rss.dw.com/xml/rss-ru-all",
+        "wire", "DE", "ru", False,
+    ),
+    "rt_russian": (
+        "https://russian.rt.com/rss",
+        "state", "RU", "ru", True,
+    ),
+    "bbc_russian": (
+        "https://www.bbc.co.uk/russian/index.xml",
+        "wire", "GB", "ru", False,
+    ),
+    # FRENCH (fr) — Francophone Europe + Africa angle
+    "lemonde_fr": (
+        "https://www.lemonde.fr/rss/une.xml",
+        "independent", "FR", "fr", False,
+    ),
+    "france24_fr": (
+        "https://www.france24.com/fr/rss",
+        "wire", "FR", "fr", False,
+    ),
+    "rfi_fr": (
+        "https://www.rfi.fr/fr/rss",
+        "wire", "FR", "fr", False,
+    ),
+    # PORTUGUESE (pt) — Brazil + Lusophone
+    "folha_pt": (
+        "https://feeds.folha.uol.com.br/mundo/rss091.xml",
+        "independent", "BR", "pt", False,
+    ),
+    "rfi_brasil_pt": (
+        "https://www.rfi.fr/br/rss",
+        "wire", "FR", "pt", False,
+    ),
+    # GERMAN (de) — central-European perspective
+    "dw_german": (
+        "https://rss.dw.com/xml/rss-de-all",
+        "wire", "DE", "de", False,
+    ),
+    "spiegel_de": (
+        "https://www.spiegel.de/schlagzeilen/tops/index.rss",
+        "independent", "DE", "de", False,
+    ),
+    "tagesschau_de": (
+        "https://www.tagesschau.de/index~rss2.xml",
+        "wire", "DE", "de", False,
+    ),
+    # ARABIC (ar) — extends existing Arabic coverage
+    "dw_arabic": (
+        "https://rss.dw.com/xml/rss-ar-all",
+        "wire", "DE", "ar", False,
+    ),
+    "bbc_arabic_rss": (
+        "https://feeds.bbci.co.uk/arabic/rss.xml",
+        "wire", "GB", "ar", False,
+    ),
+    # PERSIAN (fa) — Iran inside + diaspora
+    "bbc_persian": (
+        "https://www.bbc.co.uk/persian/index.xml",
+        "wire", "GB", "fa", False,
+    ),
+    "dw_persian": (
+        "https://rss.dw.com/xml/rss-per-all",
+        "wire", "DE", "fa", False,
+    ),
+    "irna_fa": (
+        "https://www.irna.ir/rss",
+        "state", "IR", "fa", True,
+    ),
+    # HINDI (hi) — South Asia native
+    "bbc_hindi": (
+        "https://feeds.bbci.co.uk/hindi/rss.xml",
+        "wire", "GB", "hi", False,
     ),
 }
 

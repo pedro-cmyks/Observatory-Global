@@ -25,15 +25,14 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import math
 import os
 from datetime import datetime, timezone
 
 import asyncpg
 
+from app.services import voice_mix
+
 DATABASE_URL = os.getenv("DATABASE_URL", "")
-CJK_LANGS = ("zh", "ja", "ko")
-CJK_TARGET = 0.05  # aspirational CJK share of language-known corpus
 
 LANG_SQL = """
 SELECT COALESCE(NULLIF(TRIM(source_lang), ''), '(null)') AS lang, COUNT(*) AS n
@@ -60,20 +59,6 @@ FROM signals_v2
 WHERE timestamp > now() - ($1::int * interval '1 hour')
 """
 
-# Untagged buckets: 'xx' is GDELT's no-language marker, '(null)' is genuinely
-# missing. Both are "language unknown" — excluded from the known-language slice
-# so English dominance is measured honestly against signals we can attribute.
-UNKNOWN_LANGS = {"xx", "(null)", "un", "und"}
-
-
-def _shannon_norm(counts: list[int]) -> float:
-    total = sum(counts)
-    if total <= 0 or len(counts) <= 1:
-        return 0.0
-    h = -sum((c / total) * math.log(c / total) for c in counts if c > 0)
-    return h / math.log(len(counts))
-
-
 async def audit(hours: int) -> dict:
     conn = await asyncpg.connect(DATABASE_URL)
     try:
@@ -83,61 +68,16 @@ async def audit(hours: int) -> dict:
     finally:
         await conn.close()
 
-    total = int(extra["total"])
-    langs = {r["lang"]: int(r["n"]) for r in lang_rows}
-    known = {k: v for k, v in langs.items() if k not in UNKNOWN_LANGS}
-    known_total = sum(known.values())
-    unknown_total = total - known_total
-
-    en = known.get("en", 0)
-    cjk = {l: known.get(l, 0) for l in CJK_LANGS}
-    cjk_total = sum(cjk.values())
-
-    english_share_known = (en / known_total) if known_total else 0.0
-    cjk_share = (cjk_total / known_total) if known_total else 0.0
-    lang_entropy = _shannon_norm(list(known.values()))
-
-    english_balance = 1.0 - english_share_known
-    cjk_coverage = min(cjk_share / CJK_TARGET, 1.0) if CJK_TARGET else 0.0
-    diversity_score = round(
-        100 * (english_balance + lang_entropy + cjk_coverage) / 3, 1
+    lang_counts = {r["lang"]: int(r["n"]) for r in lang_rows}
+    origin_counts = {r["origin"]: int(r["n"]) for r in origin_rows}
+    report = voice_mix.compute(
+        lang_counts, origin_counts,
+        int(extra["total"]), int(extra["state_media"]),
+        int(extra["distinct_sources"]),
     )
-
-    origins = {r["origin"]: int(r["n"]) for r in origin_rows}
-    origin_known = {k: v for k, v in origins.items() if k != "(null)"}
-    ok_total = sum(origin_known.values()) or 1
-    # HHI concentration of origin countries (0=spread, 1=monopoly)
-    hhi = sum((v / ok_total) ** 2 for v in origin_known.values())
-    top_origins = sorted(origin_known.items(), key=lambda kv: -kv[1])[:10]
-
-    top_langs = sorted(known.items(), key=lambda kv: -kv[1])[:15]
-    state = int(extra["state_media"])
-
-    return {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "window_hours": hours,
-        "total_signals": total,
-        "language_known": known_total,
-        "language_unknown": unknown_total,
-        "unknown_pct": round(100 * unknown_total / total, 1) if total else 0,
-        "english_share_of_known": round(english_share_known, 4),
-        "non_english_share_of_known": round(1 - english_share_known, 4),
-        "cjk": {**cjk, "total": cjk_total, "share_of_known": round(cjk_share, 4)},
-        "language_entropy_norm": round(lang_entropy, 4),
-        "distinct_known_languages": len(known),
-        "state_media": state,
-        "state_media_pct": round(100 * state / total, 2) if total else 0,
-        "distinct_sources": int(extra["distinct_sources"]),
-        "origin_hhi": round(hhi, 4),
-        "top_origin_countries": [{"cc": c, "n": n} for c, n in top_origins],
-        "top_languages": [{"lang": l, "n": n} for l, n in top_langs],
-        "diversity_score": diversity_score,
-        "_components": {
-            "english_balance": round(english_balance, 4),
-            "language_entropy_norm": round(lang_entropy, 4),
-            "cjk_coverage": round(cjk_coverage, 4),
-        },
-    }
+    report["generated_at"] = datetime.now(timezone.utc).isoformat()
+    report["window_hours"] = hours
+    return report
 
 
 def _print_summary(r: dict) -> None:
@@ -157,7 +97,7 @@ def _print_summary(r: dict) -> None:
     print(f"top origins:          " +
           ", ".join(f"{o['cc']} {o['n']}" for o in r['top_origin_countries'][:6]))
     print(f"\n>>> DIVERSITY SCORE:  {r['diversity_score']} / 100")
-    print(f"    components: {r['_components']}\n")
+    print(f"    components: {r['components']}\n")
 
 
 async def main() -> None:
