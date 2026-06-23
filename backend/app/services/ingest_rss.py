@@ -684,6 +684,18 @@ CURATED_FEEDS: dict[str, tuple[str, str, str, str, bool]] = {
     "novinite_bg": ("https://www.novinite.com/services/news_rdf.php", "independent", "BG", "en", False),
     "yle_fi": ("https://feeds.yle.fi/uutiset/v1/recent.rss?publisherIds=YLE_UUTISET", "wire", "FI", "fi", False),
     "n1_rs": ("https://n1info.rs/feed/", "independent", "RS", "sr", False),
+    # ── WAVE 14: long-tail coverage round 2 (#235) ────────────────────────────
+    # 10 more countries with zero domestic voice. All verified live.
+    "newzim_zw": ("https://www.newzimbabwe.com/feed/", "independent", "ZW", "en", False),
+    "ktpress_rw": ("https://www.ktpress.rw/feed/", "independent", "RW", "en", False),
+    "lostiempos_bo": ("https://www.lostiempos.com/rss.xml", "independent", "BO", "es", False),
+    "diariolibre_do": ("https://www.diariolibre.com/rss/portada.xml", "independent", "DO", "es", False),
+    "roya_jo": ("https://en.royanews.tv/rss", "independent", "JO", "en", False),
+    "adaderana_lk": ("http://adaderana.lk/rss.php", "independent", "LK", "en", False),
+    "ppp_kh": ("https://www.phnompenhpost.com/rss", "independent", "KH", "en", False),
+    "err_ee": ("https://news.err.ee/rss", "wire", "EE", "en", False),
+    "icelandreview_is": ("https://www.icelandreview.com/feed/", "independent", "IS", "en", False),
+    "gazeta_uz": ("https://www.gazeta.uz/en/rss/", "independent", "UZ", "en", False),
 }
 
 # ── Lightweight country extractor ─────────────────────────────────────────────
