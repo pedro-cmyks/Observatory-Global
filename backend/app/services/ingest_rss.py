@@ -670,6 +670,20 @@ CURATED_FEEDS: dict[str, tuple[str, str, str, str, bool]] = {
     # China — add to Global Times; state media, flagged
     "chinadaily_cn": ("https://www.chinadaily.com.cn/rss/china_rss.xml", "state", "CN", "en", True),
     "cgtn_cn": ("https://www.cgtn.com/subscribe/rss/section/world.xml", "state", "CN", "en", True),
+    # ── WAVE 13: long-tail country coverage (#235) ────────────────────────────
+    # 11 more countries with zero domestic voice — Africa, Caucasus/Central Asia,
+    # Caribbean, Balkans, Nordics, South Asia. All verified live.
+    "myjoy_gh": ("https://www.myjoyonline.com/feed/", "independent", "GH", "en", False),
+    "lusaka_zm": ("https://www.lusakatimes.com/feed/", "independent", "ZM", "en", False),
+    "astana_kz": ("https://astanatimes.com/feed/", "independent", "KZ", "en", False),
+    "civil_ge": ("https://civil.ge/feed", "independent", "GE", "en", False),
+    "trend_az": ("https://en.trend.az/rss/", "wire", "AZ", "en", False),
+    "gleaner_jm": ("http://jamaica-gleaner.com/feed/rss.xml", "independent", "JM", "en", False),
+    "prensalibre_gt": ("https://www.prensalibre.com/feed/", "independent", "GT", "es", False),
+    "ktmpost_np": ("https://kathmandupost.com/rss", "independent", "NP", "en", False),
+    "novinite_bg": ("https://www.novinite.com/services/news_rdf.php", "independent", "BG", "en", False),
+    "yle_fi": ("https://feeds.yle.fi/uutiset/v1/recent.rss?publisherIds=YLE_UUTISET", "wire", "FI", "fi", False),
+    "n1_rs": ("https://n1info.rs/feed/", "independent", "RS", "sr", False),
 }
 
 # ── Lightweight country extractor ─────────────────────────────────────────────
