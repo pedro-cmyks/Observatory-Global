@@ -394,6 +394,24 @@ verified domestic outlet per zero-coverage country; normalize GDELT FIPS subject
 codes RP/LS/OS/CG; surface self_voice_ratio in CountryBrief). 14 voice tests
 green. Caveat: WAVE 7 feeds new = no history, gaps close as cron accumulates.
 
+**2026-06-23 DIVERSITY PROGRAM CONSOLIDATION (`c6e802c`…`fdcbc9d`, deployed):**
+Full session arc, end to end. `diversity_score` 3.3→**23.9/100**;
+**`voice_entropy` (origin diversity, Pedro's objective metric) = 0.71, ABOVE
+the 0.65-0.70 target** over 89 countries. Ingest **50→219 feeds / 126 countries
+/ 31 languages / 105 non-English** (waves 5-16; bg-agent assist for last 31
+countries; only KW/BH uncovered = bot-block ceiling). Stack: Voice Mix audit +
+`/api/v2/voice-mix` (voice_entropy headline); self_voice = OWNERSHIP +
+soft_power bucket + CountryBrief surface; Instagram translation (translated by
+default + "See original"); **#229** persisted-corpus stratified clustering
+(`--from-persisted` cron LIVE every 6h → non-English threads serve, 11→25/run);
+**#224** content-entropy roundup classifier (no-shared-subject AND single-outlet
+guard spares broad real threads — Ukraine/market crash; `subj<0.30 AND
+src>=0.35`); FIPS RP→PH; #162 xlm-v1 confirmed live. **Served threads refresh
+every 6h** (clustering cadence), ingest every 30min. Ceiling ~65-70 (English is
+real lingua franca; GDELT firehose). Self-maintaining now. Doc:
+`docs/research/voice-mix/2026-06-23-diversity-program-consolidation.md`. Tests:
+`pytest tests/test_voice_mix.py tests/test_project_dynamic_topics.py tests/test_ingest_newsdata_cjk.py`.
+
 **2026-06-22 WAVE 6 (translations + WAVE 9 — `673b86c`/`6620529`, deployed
 Fly+Vercel, browser-verified, #235):** Instagram-style headline translation,
 INVERSE affordance (Pedro): non-viewer-language headlines show **translated by

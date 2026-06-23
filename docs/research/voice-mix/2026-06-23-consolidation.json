@@ -1,0 +1,191 @@
+{
+  "total_signals": 292182,
+  "language_known": 122034,
+  "language_unknown": 170148,
+  "unknown_pct": 58.2,
+  "english_share_of_known": 0.9093,
+  "non_english_share_of_known": 0.0907,
+  "cjk": {
+    "zh": 1001,
+    "ja": 347,
+    "ko": 1496,
+    "total": 2844,
+    "share_of_known": 0.0233
+  },
+  "language_entropy_norm": 0.1593,
+  "distinct_known_languages": 32,
+  "state_media": 2433,
+  "state_media_pct": 0.83,
+  "distinct_sources": 11884,
+  "origin_hhi": 0.0633,
+  "distinct_origin_countries": 89,
+  "voice_entropy": 0.7107,
+  "voice_entropy_target": [
+    0.65,
+    0.7
+  ],
+  "top_origin_countries": [
+    {
+      "cc": "GB",
+      "n": 13256
+    },
+    {
+      "cc": "DE",
+      "n": 10923
+    },
+    {
+      "cc": "RU",
+      "n": 10235
+    },
+    {
+      "cc": "BR",
+      "n": 5166
+    },
+    {
+      "cc": "CN",
+      "n": 5119
+    },
+    {
+      "cc": "IN",
+      "n": 4573
+    },
+    {
+      "cc": "AU",
+      "n": 4337
+    },
+    {
+      "cc": "UA",
+      "n": 3708
+    },
+    {
+      "cc": "FR",
+      "n": 3316
+    },
+    {
+      "cc": "TR",
+      "n": 3187
+    }
+  ],
+  "voices_by_origin": [
+    {
+      "cc": "GB",
+      "n": 13256,
+      "pct": 0.1388
+    },
+    {
+      "cc": "DE",
+      "n": 10923,
+      "pct": 0.1144
+    },
+    {
+      "cc": "RU",
+      "n": 10235,
+      "pct": 0.1072
+    },
+    {
+      "cc": "BR",
+      "n": 5166,
+      "pct": 0.0541
+    },
+    {
+      "cc": "CN",
+      "n": 5119,
+      "pct": 0.0536
+    },
+    {
+      "cc": "IN",
+      "n": 4573,
+      "pct": 0.0479
+    },
+    {
+      "cc": "AU",
+      "n": 4337,
+      "pct": 0.0454
+    },
+    {
+      "cc": "UA",
+      "n": 3708,
+      "pct": 0.0388
+    },
+    {
+      "cc": "FR",
+      "n": 3316,
+      "pct": 0.0347
+    },
+    {
+      "cc": "TR",
+      "n": 3187,
+      "pct": 0.0334
+    }
+  ],
+  "top_languages": [
+    {
+      "lang": "en",
+      "n": 110971
+    },
+    {
+      "lang": "es",
+      "n": 1566
+    },
+    {
+      "lang": "ko",
+      "n": 1496
+    },
+    {
+      "lang": "ru",
+      "n": 1010
+    },
+    {
+      "lang": "zh",
+      "n": 1001
+    },
+    {
+      "lang": "fa",
+      "n": 838
+    },
+    {
+      "lang": "ar",
+      "n": 775
+    },
+    {
+      "lang": "id",
+      "n": 694
+    },
+    {
+      "lang": "tr",
+      "n": 671
+    },
+    {
+      "lang": "de",
+      "n": 502
+    },
+    {
+      "lang": "bn",
+      "n": 440
+    },
+    {
+      "lang": "fr",
+      "n": 431
+    },
+    {
+      "lang": "pt",
+      "n": 427
+    },
+    {
+      "lang": "ja",
+      "n": 347
+    },
+    {
+      "lang": "hi",
+      "n": 149
+    }
+  ],
+  "diversity_score": 23.9,
+  "components": {
+    "english_balance": 0.0907,
+    "language_entropy_norm": 0.1593,
+    "cjk_coverage": 0.4661
+  },
+  "generated_at": "2026-06-23T21:14:25.675210+00:00",
+  "window_hours": 168
+}
