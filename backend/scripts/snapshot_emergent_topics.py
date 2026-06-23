@@ -71,6 +71,44 @@ async def _pull_signals(conn: asyncpg.Connection, hours: int, max_n: int):
     """, max_n)
 
 
+_PERSISTED_SELECT = """
+    SELECT s.id, s.headline, s.country_code, s.source_name, s.timestamp,
+           se.vec::text AS emb
+    FROM signal_embeddings se
+    JOIN signals_v2 s ON s.id = se.signal_id
+    WHERE s.timestamp > NOW() - INTERVAL '{hours} hours'
+      AND s.headline IS NOT NULL AND length(s.headline) >= 20
+      AND s.source_lang {lang_pred}
+    ORDER BY s.timestamp DESC
+    LIMIT $1
+"""
+
+
+async def _pull_embedded_stratified(
+    conn: asyncpg.Connection, hours: int, max_n: int, nonenglish_cap: int,
+):
+    """#229 lever 1: cluster over the PERSISTED signal_embeddings corpus (no
+    re-embed), stratified so the world's non-English voice is guaranteed a seat
+    at the table instead of being crowded out by GDELT's English firehose in a
+    latest-N-by-timestamp draw.
+
+    Returns rows (id/headline/country_code/source_name/timestamp) and a parallel
+    {id: vector} map. Takes ALL recent non-English embedded signals (up to
+    nonenglish_cap), then fills the remainder with English/untagged.
+    """
+    h = int(hours)
+    ne = await conn.fetch(
+        _PERSISTED_SELECT.format(
+            hours=h, lang_pred="IS NOT NULL AND s.source_lang NOT IN ('en','xx','un','und')"),
+        nonenglish_cap)
+    fill = max(max_n - len(ne), 0)
+    en = await conn.fetch(
+        _PERSISTED_SELECT.format(
+            hours=h, lang_pred="IS NULL OR s.source_lang IN ('en','xx','un','und')"),
+        fill) if fill else []
+    return list(ne) + list(en)
+
+
 async def _prior_snapshot_clusters(conn: asyncpg.Connection, before: datetime):
     """Fetch the clusters of the most recent prior snapshot for velocity.
 
@@ -221,6 +259,12 @@ async def main() -> None:
     ap = argparse.ArgumentParser(description="Persistent emergent topic snapshot writer.")
     ap.add_argument("--window-hours", type=int, default=24)
     ap.add_argument("--max-signals", type=int, default=20000)
+    ap.add_argument("--from-persisted", action="store_true",
+                    help="#229: cluster over the persisted signal_embeddings corpus "
+                         "(no re-embed), stratified to guarantee non-English voice.")
+    ap.add_argument("--nonenglish-cap", type=int, default=8000,
+                    help="With --from-persisted: max non-English embedded signals to "
+                         "include before filling with English/untagged.")
     ap.add_argument("--min-cluster-size", type=int, default=20)
     ap.add_argument("--min-samples", type=int, default=10)
     ap.add_argument("--selection", choices=["leaf", "eom"], default="leaf")
@@ -251,12 +295,21 @@ async def main() -> None:
     print(f"snapshot_at = {snapshot_at.isoformat()}  window={args.window_hours}h", file=sys.stderr)
 
     conn = await asyncpg.connect(db)
+    emb_by_id: dict[int, list] | None = None
     try:
-        raw = await _pull_signals(conn, args.window_hours, args.max_signals)
+        if args.from_persisted:
+            raw = await _pull_embedded_stratified(
+                conn, args.window_hours, args.max_signals, args.nonenglish_cap)
+            emb_by_id = {int(r["id"]): json.loads(r["emb"]) for r in raw}
+        else:
+            raw = await _pull_signals(conn, args.window_hours, args.max_signals)
     except Exception:
         await conn.close()
         raise
     rows = [dict(r) for r in raw]
+    if emb_by_id is not None:
+        for r in rows:
+            r.pop("emb", None)
     print(f"  pulled {len(rows)}", file=sys.stderr)
     rows = _clean_and_dedupe(rows)
     print(f"  clean + dedupe: {len(rows)}", file=sys.stderr)
@@ -266,11 +319,17 @@ async def main() -> None:
         await conn.close()
         return
 
-    print("embedding e5-base...", file=sys.stderr)
-    embed, device = _build_embedder()
-    texts = [f"passage: {r['headline']}" for r in rows]
-    embs = embed(texts).astype(np.float32)
-    print(f"  embeddings {embs.shape} on {device}", file=sys.stderr)
+    if emb_by_id is not None:
+        # #229: use the PERSISTED vectors (no re-embed). Rebuild the matrix in the
+        # cleaned/deduped row order so embeddings stay aligned with rows.
+        embs = np.array([emb_by_id[int(r["id"])] for r in rows], dtype=np.float32)
+        print(f"  persisted embeddings {embs.shape} (no re-embed)", file=sys.stderr)
+    else:
+        print("embedding e5-base...", file=sys.stderr)
+        embed, device = _build_embedder()
+        texts = [f"passage: {r['headline']}" for r in rows]
+        embs = embed(texts).astype(np.float32)
+        print(f"  embeddings {embs.shape} on {device}", file=sys.stderr)
 
     print(
         f"clustering HDBSCAN ({args.min_cluster_size}/{args.min_samples}/{args.selection})...",
