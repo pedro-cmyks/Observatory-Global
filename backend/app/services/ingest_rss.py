@@ -696,6 +696,50 @@ CURATED_FEEDS: dict[str, tuple[str, str, str, str, bool]] = {
     "err_ee": ("https://news.err.ee/rss", "wire", "EE", "en", False),
     "icelandreview_is": ("https://www.icelandreview.com/feed/", "independent", "IS", "en", False),
     "gazeta_uz": ("https://www.gazeta.uz/en/rss/", "independent", "UZ", "en", False),
+    # ── WAVE 15: long-tail coverage round 3 (#235) — 31 countries, all verified ─
+    # Latin America / Caribbean
+    "abc_py": ("https://www.abc.com.py/arc/outboundfeeds/rss/?outputType=xml", "independent", "PY", "es", False),
+    "elpais_uy": ("https://www.elpais.com.uy/rss/", "independent", "UY", "es", False),
+    "montevideo_uy": ("https://www.montevideo.com.uy/anxml.aspx?59", "independent", "UY", "es", False),
+    "elsalvador_sv": ("https://www.elsalvador.com/feed/", "independent", "SV", "es", False),
+    "proceso_hn": ("https://proceso.hn/feed/", "independent", "HN", "es", False),
+    "confidencial_ni": ("https://confidencial.digital/feed/", "independent", "NI", "es", False),
+    "nacion_cr": ("https://www.nacion.com/rss/", "independent", "CR", "es", False),
+    "delfino_cr": ("https://delfino.cr/feed", "independent", "CR", "es", False),
+    "newsday_tt": ("https://newsday.co.tt/feed/", "independent", "TT", "en", False),
+    # Africa
+    "dailynews_tz": ("https://dailynews.co.tz/feed/", "state", "TZ", "en", True),
+    "dakaractu_sn": ("https://www.dakaractu.com/xml/syndication.rss", "independent", "SN", "fr", False),
+    "aip_ci": ("https://aip.ci/feed/", "state", "CI", "fr", True),
+    "journalducameroun_cm": ("https://www.journalducameroun.com/feed/", "independent", "CM", "fr", False),
+    "makaangola_ao": ("https://www.makaangola.org/feed/", "independent", "AO", "pt", False),
+    "opais_mz": ("https://www.opais.co.mz/feed/", "independent", "MZ", "pt", False),
+    "sundaystandard_bw": ("https://www.sundaystandard.info/feed/", "independent", "BW", "en", False),
+    "bamada_ml": ("https://bamada.net/feed", "independent", "ML", "fr", False),
+    "goobjoog_so": ("https://goobjoog.com/english/feed/", "independent", "SO", "en", False),
+    "fanabc_et": ("https://www.fanabc.com/english/feed/", "state", "ET", "en", True),
+    # Asia / Central Asia
+    "ikon_mn": ("https://ikon.mn/rss", "independent", "MN", "mn", False),
+    "laotiantimes_la": ("https://laotiantimes.com/feed/", "independent", "LA", "en", False),
+    "pajhwok_af": ("https://pajhwok.com/feed/", "independent", "AF", "en", False),
+    "timesofoman_om": ("https://timesofoman.com/feed", "independent", "OM", "en", False),
+    "akipress_kg": ("https://akipress.com/rss/news.rss", "independent", "KG", "en", False),
+    "24kg_kg": ("https://24.kg/rss/", "independent", "KG", "ru", False),
+    "asiaplus_tj": ("https://asiaplustj.info/en/rss.xml", "independent", "TJ", "en", False),
+    # Europe
+    "aktuality_sk": ("https://www.aktuality.sk/rss/", "independent", "SK", "sk", False),
+    "rtvslo_si": ("https://www.rtvslo.si/feeds/00.xml", "state", "SI", "sl", True),
+    "delo_si": ("https://www.delo.si/rss/", "independent", "SI", "sl", False),
+    "balkanweb_al": ("https://www.balkanweb.com/feed/", "independent", "AL", "sq", False),
+    "mia_mk": ("https://mia.mk/feed/?lang=en", "state", "MK", "en", True),
+    "meta_mk": ("https://meta.mk/en/feed/", "independent", "MK", "en", False),
+    "cyprusmail_cy": ("https://cyprus-mail.com/feed/", "independent", "CY", "en", False),
+    "luxtimes_lu": ("https://www.luxtimes.lu/rss", "independent", "LU", "en", False),
+    "wort_lu": ("https://www.wort.lu/rss", "independent", "LU", "de", False),
+    "lovinmalta_mt": ("https://lovinmalta.com/feed/", "independent", "MT", "en", False),
+    # Pacific
+    "fbcnews_fj": ("https://www.fbcnews.com.fj/feed/", "state", "FJ", "en", True),
+    "postcourier_pg": ("https://www.postcourier.com.pg/feed/", "independent", "PG", "en", False),
 }
 
 # ── Lightweight country extractor ─────────────────────────────────────────────
