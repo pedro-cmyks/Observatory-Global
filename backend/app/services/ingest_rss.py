@@ -603,6 +603,47 @@ CURATED_FEEDS: dict[str, tuple[str, str, str, str, bool]] = {
         "https://www.dabangasudan.org/en/feed",
         "independent", "SD", "en", False,
     ),
+    # ── WAVE 11: SOURCE PLURALISM (#235) ──────────────────────────────────────
+    # Several domestic outlets per country, not one — variety of editorial line
+    # within a country (independent / state / business / left / right) so "the
+    # national voice" isn't a single paper. All verified live. Adds new countries
+    # Poland and Vietnam, and the first domestic outlet for Mexico.
+    # France
+    "lefigaro_fr": ("https://www.lefigaro.fr/rss/figaro_actualites.xml", "independent", "FR", "fr", False),
+    "liberation_fr": ("https://www.liberation.fr/arc/outboundfeeds/rss/?outputType=xml", "independent", "FR", "fr", False),
+    # Germany
+    "zeit_de": ("https://newsfeed.zeit.de/index", "independent", "DE", "de", False),
+    "faz_de": ("https://www.faz.net/rss/aktuell/", "independent", "DE", "de", False),
+    # Italy
+    "corriere_it": ("https://xml2.corriereobjects.it/rss/homepage.xml", "independent", "IT", "it", False),
+    "lastampa_it": ("https://www.lastampa.it/rss/homepage.xml", "independent", "IT", "it", False),
+    # Spain
+    "elmundo_es": ("https://e00-elmundo.uecdn.es/elmundo/rss/portada.xml", "independent", "ES", "es", False),
+    "lavanguardia_es": ("https://www.lavanguardia.com/rss/home.xml", "independent", "ES", "es", False),
+    # India
+    "toi_in": ("https://timesofindia.indiatimes.com/rssfeedstopstories.cms", "independent", "IN", "en", False),
+    # Brazil
+    "g1_br": ("https://g1.globo.com/rss/g1/", "independent", "BR", "pt", False),
+    # Russia — state (TASS) + independent business (Kommersant)
+    "tass_ru": ("https://tass.com/rss/v2.xml", "state", "RU", "en", True),
+    "kommersant_ru": ("https://www.kommersant.ru/RSS/news.xml", "independent", "RU", "ru", False),
+    # Argentina
+    "lanacion_ar": ("https://www.lanacion.com.ar/arc/outboundfeeds/rss/?outputType=xml", "independent", "AR", "es", False),
+    # Poland (new country)
+    "notesfrompoland_pl": ("https://notesfrompoland.com/feed/", "independent", "PL", "en", False),
+    # Japan
+    "japantimes_jp": ("https://www.japantimes.co.jp/feed/", "independent", "JP", "en", False),
+    # Mexico (first domestic)
+    "lajornada_mx": ("https://www.jornada.com.mx/rss/edicion.xml?v=1", "independent", "MX", "es", False),
+    # Pakistan
+    "thenews_pk": ("https://www.thenews.com.pk/rss/1/1", "independent", "PK", "en", False),
+    # Vietnam (new country)
+    "vnexpress_vn": ("https://e.vnexpress.net/rss/news.rss", "independent", "VN", "en", False),
+    # Philippines
+    "inquirer_ph": ("https://www.inquirer.net/feed/", "independent", "PH", "en", False),
+    "rappler_ph": ("https://www.rappler.com/feed/", "independent", "PH", "en", False),
+    # Saudi Arabia
+    "saudigazette_sa": ("https://saudigazette.com.sa/rssFeed/74", "independent", "SA", "en", False),
 }
 
 # ── Lightweight country extractor ─────────────────────────────────────────────
