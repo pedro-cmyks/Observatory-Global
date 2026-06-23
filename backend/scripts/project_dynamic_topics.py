@@ -75,7 +75,8 @@ ROUNDUP_PATTERNS = re.compile(
     # #224 (2026-06-23): non-English / generic grab-bags that promoted from the
     # persisted-corpus snapshot. 'Notícias Diversas', 'Regional News and Events'.
     r"diverse news|(regional|general|local) news( (and|&) (events|updates|stories))?|"
-    r"news (and|&) events)\b",
+    r"news (and|&) events|"
+    r"tin t[ứu]c t[ổo]ng h[ợo]p|berita terkini|haber [öo]zetleri)\b",
     re.IGNORECASE,
 )
 
