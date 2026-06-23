@@ -68,10 +68,14 @@ LISTING_PATTERNS = re.compile(
 ROUNDUP_PATTERNS = re.compile(
     r"\b(round\s?up|mixed news|miscellaneous|assorted|news brief|"
     r"various (news|stories|topics|updates)|grab\s?bag|"
-    r"noticias (variadas|varias|mixtas|regionales variadas|generales)|"
+    r"noticias (variadas|varias|mixtas|diversas|regionales variadas|generales)|"
     r"resumen de noticias|vari(as|os) noticias|noticias del d[ií]a|"
     r"actualit[eé]s? diverses|nachrichten[üu]berblick|"
-    r"notizie varie|not[íi]cias variadas)\b",
+    r"notizie varie|not[íi]cias (variadas|diversas)|"
+    # #224 (2026-06-23): non-English / generic grab-bags that promoted from the
+    # persisted-corpus snapshot. 'Notícias Diversas', 'Regional News and Events'.
+    r"diverse news|(regional|general|local) news( (and|&) (events|updates|stories))?|"
+    r"news (and|&) events)\b",
     re.IGNORECASE,
 )
 

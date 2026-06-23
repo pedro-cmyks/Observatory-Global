@@ -22,6 +22,21 @@ def test_is_roundup_label():
     assert not is_roundup_label(None)
 
 
+def test_is_roundup_label_multilingual_grabbags():
+    # #224 follow-up: non-English / generic grab-bag labels that slipped through
+    # and promoted to living threads in the 2026-06-23 persisted-corpus snapshot.
+    assert is_roundup_label("Notícias Diversas do Dia")     # pt "diverse news"
+    assert is_roundup_label("Noticias Diversas")            # es
+    assert is_roundup_label("Regional News and Events")     # generic listing
+    assert is_roundup_label("Diverse News Updates")
+    assert is_roundup_label("General News Roundup")
+    # Real narrative threads must NOT be flagged, incl. non-English ones.
+    assert not is_roundup_label("Operasyon ve Yolsuzluk")   # Turkish corruption probe
+    assert not is_roundup_label("Russia-Ukraine War")
+    assert not is_roundup_label("Qatargate and Political Scandals")
+    assert not is_roundup_label("Crime Headlines")          # legit topic (per existing guard)
+
+
 def test_running_mean():
     old = np.array([1.0, 1.0])
     out = running_mean(old, 1, np.array([3.0, 3.0]))
