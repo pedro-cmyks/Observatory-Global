@@ -96,7 +96,13 @@ def _print_summary(r: dict) -> None:
     print(f"origin HHI:           {r['origin_hhi']} (1.0 = single-country)")
     print(f"top origins:          " +
           ", ".join(f"{o['cc']} {o['n']}" for o in r['top_origin_countries'][:6]))
-    print(f"\n>>> DIVERSITY SCORE:  {r['diversity_score']} / 100")
+    ve = r.get("voice_entropy", 0)
+    band = r.get("voice_entropy_target", [0.65, 0.70])
+    status = "IN TARGET" if band[0] <= ve <= band[1] else ("ABOVE" if ve > band[1] else "below")
+    print(f"\n>>> VOICE DIVERSITY (origin entropy): {ve}  "
+          f"[target {band[0]}-{band[1]} → {status}]  "
+          f"over {r.get('distinct_origin_countries', 0)} countries")
+    print(f">>> DIVERSITY SCORE (language):       {r['diversity_score']} / 100")
     print(f"    components: {r['components']}\n")
 
 

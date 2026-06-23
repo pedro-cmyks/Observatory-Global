@@ -131,6 +131,12 @@ def compute(
     origin_known = {k: v for k, v in origin_counts.items() if k != "(null)"}
     ok_total = sum(origin_known.values()) or 1
     hhi = sum((v / ok_total) ** 2 for v in origin_known.values())
+    # VOICE diversity (Pedro's objective): normalized Shannon entropy over the
+    # ORIGIN-COUNTRY distribution — how many different voices are speaking and how
+    # evenly, weighted by where the outlet is based (not by language, and not by
+    # raw outlet count which GDELT's ~11K mostly-Western domains would inflate).
+    # Target band 0.65–0.70. Measured over attributable-origin signals only.
+    voice_entropy = shannon_norm(list(origin_known.values()))
     top_origins = sorted(origin_known.items(), key=lambda kv: -kv[1])[:10]
     top_langs = sorted(known.items(), key=lambda kv: -kv[1])[:15]
     # "Who is speaking" — origin distribution as a share of attributable origins.
@@ -151,6 +157,9 @@ def compute(
         "state_media_pct": round(100 * state_media / total, 2) if total else 0,
         "distinct_sources": distinct_sources,
         "origin_hhi": round(hhi, 4),
+        "distinct_origin_countries": len(origin_known),
+        "voice_entropy": round(voice_entropy, 4),
+        "voice_entropy_target": [0.65, 0.70],
         "top_origin_countries": [{"cc": c, "n": n} for c, n in top_origins],
         "voices_by_origin": voices_by_origin,
         "top_languages": [{"lang": l, "n": n} for l, n in top_langs],
