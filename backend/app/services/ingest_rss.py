@@ -561,6 +561,48 @@ CURATED_FEEDS: dict[str, tuple[str, str, str, str, bool]] = {
         "https://www.stuff.co.nz/rss",
         "independent", "NZ", "en", False,
     ),
+    # ── WAVE 10: DOMESTIC SELF-COVERAGE, round 4 (#235) ───────────────────────
+    # More countries with coverage but zero domestic voice. All verified live.
+    "dr_dk": (
+        "https://www.dr.dk/nyheder/service/feeds/allenyheder",
+        "wire", "DK", "da", False,
+    ),
+    "cphpost_dk": (
+        "https://cphpost.dk/feed/",
+        "independent", "DK", "en", False,
+    ),
+    "digi24_ro": (
+        "https://www.digi24.ro/rss",
+        "independent", "RO", "ro", False,
+    ),
+    "delfi_lt": (
+        "https://www.delfi.lt/rss/feeds/daily.xml",
+        "independent", "LT", "lt", False,
+    ),
+    "fmt_my": (
+        "https://www.freemalaysiatoday.com/feed/",
+        "independent", "MY", "en", False,
+    ),
+    "tcn_hr": (
+        "https://total-croatia-news.com/feed/",
+        "independent", "HR", "en", False,
+    ),
+    "newsam_am": (
+        "https://news.am/eng/rss/",
+        "wire", "AM", "en", False,
+    ),
+    "hespress_ma": (
+        "https://en.hespress.com/feed",
+        "independent", "MA", "en", False,
+    ),
+    "iraqinews_iq": (
+        "https://www.iraqinews.com/feed/",
+        "independent", "IQ", "en", False,
+    ),
+    "dabanga_sd": (
+        "https://www.dabangasudan.org/en/feed",
+        "independent", "SD", "en", False,
+    ),
 }
 
 # ── Lightweight country extractor ─────────────────────────────────────────────

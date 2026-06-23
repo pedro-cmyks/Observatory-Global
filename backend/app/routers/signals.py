@@ -17,6 +17,7 @@ async def get_signals(
     limit: int = Query(50, ge=1, le=500),
     lane: Optional[str] = Query(None, description="Filter to a stream lane: analyst|sports|entertainment|general"),
     sort: str = Query("recent", description="recent | relevance (analyst-grade ranking)"),
+    own_voice_mix: bool = Query(True, description="Interleave recent non-English native-voice signals into the global stream so GDELT's English firehose doesn't bury them"),
 ):
     """Get raw signals with filters and velocity calculation.
 
@@ -119,11 +120,10 @@ async def get_signals(
         velocity_delta = (vel_last or 0) - (vel_prev or 0)
         velocity_pct = ((vel_last or 0) - (vel_prev or 0)) / (vel_prev or 1) * 100
         
-        signals = []
-        for r in rows:
+        def _row_to_signal(r):
             themes = r['themes'] or []
             relevance = score_stream_signal(themes, r['headline'])
-            signals.append({
+            return {
                 "id": r['id'],
                 "timestamp": r['timestamp'].isoformat(),
                 "country": r['country_code'],
@@ -138,13 +138,48 @@ async def get_signals(
                 "framing": r['nlp_framing'],
                 "lane": relevance["lane"],
                 "relevanceScore": relevance["relevanceScore"],
-            })
+            }
+
+        signals = [_row_to_signal(r) for r in rows]
 
         if lane:
             signals = [s for s in signals if s["lane"] == lane.lower()]
 
         if sort == "relevance":
             signals.sort(key=lambda s: (s["relevanceScore"], s["timestamp"]), reverse=True)
+
+        # Global stream surfacing: GDELT's English firehose + the snippet-richness
+        # ordering bury non-English native voice. On the unfiltered global stream,
+        # interleave recent own-voice (non en/xx) signals — ~1 in every 3 slots —
+        # so the world's own press is visible, not only English coverage of it.
+        is_global = not (country_code or countries or theme or person or lane)
+        if own_voice_mix and is_global and sort != "relevance":
+            seen_ids = {s["id"] for s in signals}
+            own_rows = await conn.fetch(f"""
+                SELECT id, timestamp, country_code, source_name, source_url, headline,
+                       snippet, source_lang, {sentiment_expr} AS sentiment, themes, persons,
+                       {nlp_persons_expr}, {nlp_framing_expr}
+                FROM signals_v2
+                WHERE {where_clause}
+                  AND source_lang IS NOT NULL
+                  AND source_lang NOT IN ('en', 'xx', 'un', 'und')
+                  AND TRIM(source_lang) <> ''
+                  AND headline IS NOT NULL
+                ORDER BY timestamp DESC
+                LIMIT {limit}
+            """, *params, timeout=8.0)
+            own = [_row_to_signal(r) for r in own_rows if r["id"] not in seen_ids]
+            if own:
+                merged, oi, mi = [], 0, 0
+                while (mi < len(signals) or oi < len(own)) and len(merged) < limit:
+                    # 2 main : 1 own-voice
+                    if mi < len(signals):
+                        merged.append(signals[mi]); mi += 1
+                    if mi < len(signals):
+                        merged.append(signals[mi]); mi += 1
+                    if oi < len(own):
+                        merged.append(own[oi]); oi += 1
+                signals = merged
 
         signals = signals[:limit]
 
