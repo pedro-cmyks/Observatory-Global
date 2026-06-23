@@ -23,10 +23,20 @@ LOCAL_ENV="${ATLAS_LOCAL_ENV:-$ROOT_DIR/.env}"
 FLY_APP="${ATLAS_FLY_APP:-atlas-api-pedro}"
 
 WINDOW_HOURS="${ATLAS_EMERGENT_WINDOW_HOURS:-24}"
-MAX_SIGNALS="${ATLAS_EMERGENT_MAX_SIGNALS:-15000}"
+# #229: cluster over the persisted signal_embeddings corpus, stratified for
+# non-English voice. Higher cap (no re-embed = the cost is HDBSCAN, not e5).
+MAX_SIGNALS="${ATLAS_EMERGENT_MAX_SIGNALS:-25000}"
 MIN_CLUSTER_SIZE="${ATLAS_EMERGENT_MIN_CLUSTER_SIZE:-20}"
 MIN_SAMPLES="${ATLAS_EMERGENT_MIN_SAMPLES:-10}"
 TOP_CLUSTERS="${ATLAS_EMERGENT_TOP_CLUSTERS:-30}"
+NONENGLISH_CAP="${ATLAS_EMERGENT_NONENGLISH_CAP:-7000}"
+# --from-persisted on by default (#229); set ATLAS_EMERGENT_FROM_PERSISTED=0 to
+# fall back to the legacy latest-15K re-embed path.
+FROM_PERSISTED="${ATLAS_EMERGENT_FROM_PERSISTED:-1}"
+PERSISTED_FLAGS=()
+if [[ "$FROM_PERSISTED" == "1" ]]; then
+  PERSISTED_FLAGS=(--from-persisted --nonenglish-cap "$NONENGLISH_CAP")
+fi
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 mkdir -p "$LOG_DIR"
@@ -87,6 +97,7 @@ cd "$ROOT_DIR"
   --min-samples "$MIN_SAMPLES" \
   --top-clusters "$TOP_CLUSTERS" \
   --gate "$GATE_JSON" \
+  "${PERSISTED_FLAGS[@]}" \
   "$@"
 
 # Phase 6: fold the just-written snapshot into the dynamic_topics lifecycle.
