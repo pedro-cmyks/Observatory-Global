@@ -644,6 +644,32 @@ CURATED_FEEDS: dict[str, tuple[str, str, str, str, bool]] = {
     "rappler_ph": ("https://www.rappler.com/feed/", "independent", "PH", "en", False),
     # Saudi Arabia
     "saudigazette_sa": ("https://saudigazette.com.sa/rssFeed/74", "independent", "SA", "en", False),
+    # ── WAVE 12: PLURALISM round 2 + major-country gaps (#235) ─────────────────
+    # New countries Canada, Australia, Ukraine, Portugal, Ecuador (were 0); real
+    # domestic pluralism for the US/UK (had only niche/world-service feeds) and
+    # China (state outlets, flagged). All verified live.
+    # United States — mainstream domestic, not just niche/wire
+    "npr_us": ("https://feeds.npr.org/1001/rss.xml", "independent", "US", "en", False),
+    "thehill_us": ("https://thehill.com/rss/syndicator/19110", "independent", "US", "en", False),
+    "abcnews_us": ("https://abcnews.go.com/abcnews/topstories", "wire", "US", "en", False),
+    # United Kingdom — actual UK domestic press
+    "guardian_gb": ("https://www.theguardian.com/uk/rss", "independent", "GB", "en", False),
+    "independent_gb": ("https://www.independent.co.uk/news/uk/rss", "independent", "GB", "en", False),
+    "skynews_gb": ("https://feeds.skynews.com/feeds/rss/home.xml", "wire", "GB", "en", False),
+    # Canada (new)
+    "cbc_ca": ("https://www.cbc.ca/webfeed/rss/rss-topstories", "wire", "CA", "en", False),
+    # Australia (new)
+    "abc_au": ("https://www.abc.net.au/news/feed/51120/rss.xml", "wire", "AU", "en", False),
+    "smh_au": ("https://www.smh.com.au/rss/feed.xml", "independent", "AU", "en", False),
+    # Ukraine (new) — Ukrainian-language domestic voice
+    "pravda_ua": ("https://www.pravda.com.ua/rss/", "independent", "UA", "uk", False),
+    # Portugal (new)
+    "observador_pt": ("https://observador.pt/feed/", "independent", "PT", "pt", False),
+    # Ecuador (new)
+    "elcomercio_ec": ("https://www.elcomercio.com/feed", "independent", "EC", "es", False),
+    # China — add to Global Times; state media, flagged
+    "chinadaily_cn": ("https://www.chinadaily.com.cn/rss/china_rss.xml", "state", "CN", "en", True),
+    "cgtn_cn": ("https://www.cgtn.com/subscribe/rss/section/world.xml", "state", "CN", "en", True),
 }
 
 # ── Lightweight country extractor ─────────────────────────────────────────────
