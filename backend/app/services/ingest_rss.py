@@ -740,6 +740,16 @@ CURATED_FEEDS: dict[str, tuple[str, str, str, str, bool]] = {
     # Pacific
     "fbcnews_fj": ("https://www.fbcnews.com.fj/feed/", "state", "FJ", "en", True),
     "postcourier_pg": ("https://www.postcourier.com.pg/feed/", "independent", "PG", "en", False),
+    # ── WAVE 16: last gaps + pluralism (#235) ─────────────────────────────────
+    # Uganda + Yemen close the long-tail (only KW/BH remain — state agencies
+    # block bots / no RSS, a documented ceiling). Plus extra outlets for thin
+    # high-volume countries.
+    "independent_ug": ("https://www.independent.co.ug/feed/", "independent", "UG", "en", False),
+    "yemenonline_ye": ("https://yemenonline.info/feed/", "independent", "YE", "en", False),
+    "hindustantimes_in": ("https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml", "independent", "IN", "en", False),
+    "ndtv_in": ("https://feeds.feedburner.com/ndtvnews-top-stories", "independent", "IN", "en", False),
+    "dailystar_bd": ("https://www.thedailystar.net/rss.xml", "independent", "BD", "en", False),
+    "dailynews_eg": ("https://www.dailynewsegypt.com/feed/", "independent", "EG", "en", False),
 }
 
 # ── Lightweight country extractor ─────────────────────────────────────────────
