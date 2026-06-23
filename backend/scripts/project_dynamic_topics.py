@@ -24,6 +24,7 @@ import argparse
 import asyncio
 import os
 import re
+from collections import Counter
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from typing import Any
@@ -97,6 +98,93 @@ def is_roundup_label(label: str | None) -> bool:
     return bool(ROUNDUP_PATTERNS.search(label)) or bool(LISTING_PATTERNS.search(label))
 
 
+# Content-entropy roundup detection (#224): language-agnostic. A real narrative
+# thread shares a subject — some content token recurs across most member
+# headlines (an entity/event: "Starmer", "Clive Davis", "Delhi"). A grab-bag
+# roundup does not — every headline is a different topic, so no token recurs.
+# This catches multilingual roundups the label regex can't enumerate.
+import html as _html  # noqa: E402
+
+# Generic tokens that recur in headlines WITHOUT indicating a shared subject:
+# news/date/format words across the languages we ingest. Kept compact; the
+# metric is robust to a few leaks because it takes the SINGLE most-shared token.
+_GENERIC_TOKENS = {
+    # english
+    "news", "live", "update", "updates", "latest", "today", "report", "reports",
+    "day", "daily", "the", "and", "for", "with", "from", "after", "over", "amid",
+    "say", "says", "new", "top", "watch", "video", "photos",
+    # date words
+    "june", "juni", "junio", "junho", "haziran", "2026", "2025",
+    # spanish / portuguese
+    "las", "los", "del", "que", "con", "por", "para", "una", "noticias", "notícias",
+    "hoy", "dia", "día", "nesta", "esta",
+    # vietnamese generic
+    "tin", "tức", "tổng", "hợp", "hôm", "nay", "giá", "thị", "trường",
+    # indonesian
+    "berita", "ini", "yang", "dan", "untuk", "dari", "juni", "selasa", "daftar",
+    # turkish
+    "haber", "için", "ile", "son", "dakika",
+    # french / german
+    "les", "des", "une", "pour", "avec", "der", "die", "das", "und", "für",
+}
+
+
+def _subject_tokens(headline: str) -> set[str]:
+    """Letter-only tokens (len>=3), HTML-unescaped, minus generic/news/date words."""
+    text = _html.unescape(headline or "").lower()
+    toks = re.findall(r"[^\W\d_]{3,}", text, re.UNICODE)
+    return {t for t in toks if t not in _GENERIC_TOKENS}
+
+
+def subject_concentration(headlines: list[str]) -> float | None:
+    """Max share of member headlines that contain any single content token.
+
+    ~1.0 = a clear shared subject (real thread); low = grab-bag (roundup).
+    Returns None when undecidable: too few headlines, or a no-whitespace script
+    (CJK) where this word-level metric does not apply.
+    """
+    heads = [h for h in headlines if h and h.strip()]
+    n = len(heads)
+    if n < 6:
+        return None
+    token_sets = [_subject_tokens(h) for h in heads]
+    avg_tokens = sum(len(s) for s in token_sets) / n
+    if avg_tokens < 1.5:  # CJK / no-whitespace: word metric inapplicable
+        return None
+    df: Counter = Counter()
+    for s in token_sets:
+        df.update(s)
+    if not df:
+        return None
+    return max(df.values()) / n
+
+
+def source_concentration(sources: list[str]) -> float:
+    """Share of members from the single most common outlet (0=many, 1=one)."""
+    s = [x for x in sources if x]
+    if not s:
+        return 0.0
+    return Counter(s).most_common(1)[0][1] / len(s)
+
+
+# A grab-bag roundup has BOTH (a) no shared subject across headlines AND (b) is
+# dominated by a SINGLE outlet — it is that outlet's daily-digest feed dumped as
+# one cluster. The source guard is essential: a broad REAL thread (Ukraine war,
+# a market crash) also has dispersed headlines, but it spans MANY outlets, so it
+# must not be flagged. Calibrated on the 2026-06-23 snapshot — cleanly separates
+# Regional/Tin Tức/Notícias Diversas (0.12-0.21 subj, 0.38-0.54 src) from
+# Ukraine War / Stock Market Crash (0.21-0.25 subj but only 0.17-0.21 src).
+SUBJECT_CONCENTRATION_MIN = 0.30
+SOURCE_DOMINANCE_MIN = 0.35
+
+
+def is_roundup_by_content(headlines: list[str], sources: list[str]) -> bool:
+    conc = subject_concentration(headlines)
+    if conc is None or conc >= SUBJECT_CONCENTRATION_MIN:
+        return False
+    return source_concentration(sources) >= SOURCE_DOMINANCE_MIN
+
+
 def next_state(
     state: str,
     *,
@@ -148,8 +236,8 @@ class Topic:
         "roundup_votes", "n_labels", "since_seen", "members", "dirty", "new", "noises",
     )
 
-    def __init__(self, identity_key, label, centroid, snap, n_signals, cohesion, noise=None):
-        from collections import Counter
+    def __init__(self, identity_key, label, centroid, snap, n_signals, cohesion, noise=None,
+                 content_roundup=False):
         self.id: int | None = None
         self.identity_key = identity_key
         self.state = "candidate"
@@ -165,7 +253,7 @@ class Topic:
         self.agg_n_signals = int(n_signals)
         self.cohesions = [float(cohesion)] if cohesion is not None else []
         self.noises = [float(noise)] if noise is not None else []
-        self.roundup_votes = 1 if is_roundup_label(label) else 0
+        self.roundup_votes = 1 if (is_roundup_label(label) or content_roundup) else 0
         self.n_labels = 1
         self.since_seen = 0
         self.members: list[dict[str, Any]] = []
@@ -208,7 +296,7 @@ class Topic:
         clabel = cluster.get("label")
         if clabel:
             self.label_counts[clabel] += 1
-        if is_roundup_label(clabel):
+        if is_roundup_label(clabel) or cluster.get("content_roundup"):
             self.roundup_votes += 1
         if cluster.get("noise") is not None:
             self.noises.append(float(cluster["noise"]))
@@ -317,6 +405,7 @@ def process_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], s
                 identity_key=f"dyn-{c['snapshot_at']}-{c['cluster_id']}",
                 label=c["label"], centroid=c["centroid"], snap=snap,
                 n_signals=c["n_signals"], cohesion=c.get("cohesion"), noise=c.get("noise"),
+                content_roundup=bool(c.get("content_roundup")),
             )
             # constructor seeds aggregates from this cluster; record its member row
             t.members.append({"cluster_id": c["id"], "snapshot_at": snap, "match_score": 1.0})
@@ -360,6 +449,34 @@ async def load_clusters(conn) -> list[dict[str, Any]]:
         }
         for r in rows
     ]
+
+
+async def flag_content_roundups(conn, clusters: list[dict[str, Any]]) -> None:
+    """Set cluster['content_roundup'] (#224, content-entropy detection).
+
+    A grab-bag = no shared subject across headlines AND single-outlet dominated
+    (a daily-digest feed dumped as one cluster). Pure string metric, no torch.
+    Language-agnostic where headlines are whitespace-segmented.
+    """
+    # Only the newest snapshot's clusters need flagging — older ones already
+    # settled into topics. Bounds the headline fetch.
+    if not clusters:
+        return
+    latest = max(c["snapshot_at"] for c in clusters)
+    todo = [c for c in clusters
+            if c["snapshot_at"] == latest and "content_roundup" not in c
+            and c.get("sample_signal_ids")]
+    if not todo:
+        return
+    all_ids = sorted({sid for c in todo for sid in c["sample_signal_ids"]})
+    rows = await conn.fetch(
+        "SELECT id, headline, source_name FROM signals_v2 WHERE id = ANY($1::bigint[])", all_ids)
+    info = {int(r["id"]): (r["headline"] or "", r["source_name"] or "") for r in rows}
+    for c in todo:
+        ids = c["sample_signal_ids"]
+        heads = [info[s][0] for s in ids if s in info]
+        srcs = [info[s][1] for s in ids if s in info]
+        c["content_roundup"] = is_roundup_by_content(heads, srcs)
 
 
 async def score_clusters_noise(conn, clusters: list[dict[str, Any]], model_path: str) -> None:
@@ -438,6 +555,7 @@ async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tup
             identity_key=tr["identity_key"], label=first["label"], centroid=first["centroid"],
             snap=mem[0]["snapshot_at"], n_signals=first["n_signals"],
             cohesion=first.get("cohesion"), noise=first.get("noise"),
+            content_roundup=bool(first.get("content_roundup")),
         )
         t.members.append({"cluster_id": first["id"], "snapshot_at": mem[0]["snapshot_at"], "match_score": 1.0})
         for m in mem[1:]:
@@ -524,6 +642,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
     conn = await asyncpg.connect(db)
     try:
         clusters = await load_clusters(conn)
+        await flag_content_roundups(conn, clusters)   # #224 content-entropy roundup flag
         if args.student_model:
             await score_clusters_noise(conn, clusters, args.student_model)
 

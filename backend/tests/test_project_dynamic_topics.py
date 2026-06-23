@@ -37,6 +37,41 @@ def test_is_roundup_label_multilingual_grabbags():
     assert not is_roundup_label("Crime Headlines")          # legit topic (per existing guard)
 
 
+def test_content_roundup_distinguishes_digest_from_broad_thread():
+    from scripts.project_dynamic_topics import (
+        subject_concentration, source_concentration, is_roundup_by_content,
+    )
+    # Focused real thread: a shared subject token in every headline.
+    focused = [f"Delhi hotel fire kills {n} as rescue continues" for n in range(8)]
+    assert subject_concentration(focused) > 0.8
+
+    # Grab-bag digest: every headline a different topic, ALL from one outlet.
+    digest = [
+        "SpaceX shares slide for third session",
+        "Gold price edges lower this morning",
+        "Two road accidents overnight leave five dead",
+        "iPhone seventeen hits lowest local price",
+        "Fireworks festival opens additional seating",
+        "Rice export prices hold steady",
+        "Football betting ring busted before World Cup",
+        "Central bank governor signs two new decrees",
+    ]
+    one_src = ["vnexpress.net"] * len(digest)
+    assert subject_concentration(digest) < 0.30
+    assert source_concentration(one_src) == 1.0
+    assert is_roundup_by_content(digest, one_src) is True
+
+    # SAME dispersed headlines but spanning MANY outlets = broad real thread
+    # (e.g. a war or market crash) — must NOT be flagged.
+    many_src = [f"outlet{i}.com" for i in range(len(digest))]
+    assert source_concentration(many_src) < 0.35
+    assert is_roundup_by_content(digest, many_src) is False
+
+    # Too few / no-whitespace → undecidable, never flagged.
+    assert subject_concentration(["a", "b"]) is None
+    assert is_roundup_by_content(["one two three", "four five six"], ["x", "x"]) is False
+
+
 def test_running_mean():
     old = np.array([1.0, 1.0])
     out = running_mean(old, 1, np.array([3.0, 3.0]))
