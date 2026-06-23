@@ -91,6 +91,26 @@ const HIGH_PRIORITY_THEMES = [
 const INITIAL_VISIBLE_ITEMS = 18
 const MAX_STREAM_ITEMS = 120
 
+// Interleave non-English native-voice signals ~1-in-3 so GDELT's English
+// firehose doesn't fill every recency slot. Order otherwise preserved.
+const isOwnVoiceSignal = (s: Signal): boolean => {
+    const l = (s.source_lang || '').toLowerCase()
+    return !!l && !['en', 'xx', 'un', 'und'].includes(l)
+}
+function interleaveOwnVoice<T extends Signal>(items: T[]): T[] {
+    const own = items.filter(isOwnVoiceSignal)
+    if (own.length === 0) return items
+    const eng = items.filter(s => !isOwnVoiceSignal(s))
+    const out: T[] = []
+    let ei = 0, oi = 0
+    while (ei < eng.length || oi < own.length) {
+        if (ei < eng.length) out.push(eng[ei++])
+        if (ei < eng.length) out.push(eng[ei++])
+        if (oi < own.length) out.push(own[oi++])
+    }
+    return out
+}
+
 const getSignalPriority = (signal: Signal): number => {
     // Priority 1 (highest): Has high priority geopolitical themes
     if (signal.themes.some(t => HIGH_PRIORITY_THEMES.some(hpt => t.includes(hpt)))) return 1
@@ -167,9 +187,14 @@ export const SignalStream: React.FC = () => {
 
                 seenIdsRef.current = new Set(fetchedSignals.map(s => s.id))
 
-                const allItems = fetchedSignals.sort(
+                const sorted = fetchedSignals.sort(
                     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
                 )
+                // Guarantee the world's OWN voice in the initial view. Sorting by
+                // recency alone lets GDELT's English firehose fill every top slot;
+                // interleave non-English native-voice signals ~1-in-3 so they are
+                // actually seen (and translated by default downstream).
+                const allItems = interleaveOwnVoice(sorted)
 
                 const { visible, queue } = splitInitialStreamBatch(allItems, INITIAL_VISIBLE_ITEMS)
                 setItems(visible)
@@ -311,7 +336,11 @@ export const SignalStream: React.FC = () => {
                 getSignalPriority(sig) === 1 ||
                 sig.themes.some(t => CRITICAL_THEMES.some(c => t.includes(c))) ||
                 sig.themes.some(t => ELEVATED_THEMES.some(e => t.includes(e))) ||
-                sig.persons?.length > 0
+                sig.persons?.length > 0 ||
+                // The world's own-language press is notable by definition: RSS
+                // native-voice signals carry no GDELT themes/persons yet, so they
+                // would otherwise be filtered out of the default view entirely.
+                isOwnVoiceSignal(sig)
         }
         return true
     }), [items, streamFilter])
