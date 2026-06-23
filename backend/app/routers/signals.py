@@ -153,7 +153,7 @@ async def get_signals(
         # interleave recent own-voice (non en/xx) signals — ~1 in every 3 slots —
         # so the world's own press is visible, not only English coverage of it.
         is_global = not (country_code or countries or theme or person or lane)
-        if own_voice_mix and is_global and sort != "relevance":
+        if own_voice_mix and is_global:
             seen_ids = {s["id"] for s in signals}
             own_rows = await conn.fetch(f"""
                 SELECT id, timestamp, country_code, source_name, source_url, headline,
