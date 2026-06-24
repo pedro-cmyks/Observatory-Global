@@ -1,0 +1,208 @@
+"""Problema A — non-Latin geo-tagging (#150).
+
+A headline written in a non-Latin script (Arabic, Persian, Urdu, Bengali,
+Cyrillic, CJK, Devanagari) or in Turkish (Latin but distinct spellings) used
+to match none of the English ``_COUNTRY_PATTERNS``, so ``extract_country``
+returned ``None`` and the caller fell back to the *outlet's* home country —
+mis-geotagging the story's subject (a DW-Arabic story about Syria tagged DE,
+not SY).
+
+These tests pin the SUBJECT lexicon end to end at the parse layer:
+
+* Recall  — every target-language headline that names a country in native
+            script tags that country (the Problema-A fix).
+* Precision — country tokens that are substrings of unrelated words
+            (مصر in مصرف "bank", عراق in عراقيل "obstacles", قطر in قطرة
+            "drop") never produce a false tag.
+* Fallback — a headline that names no country returns ``None`` so the caller
+            can fall back to the outlet country (the contract callers rely on).
+* Regression — the existing Latin and CJK/Cyrillic paths still work.
+
+The two aggregate tests encode the bar: recall AND precision must be 100% —
+not merely "passes", but excellent.
+"""
+from __future__ import annotations
+
+import pytest
+
+from app.services.ingest_rss import extract_country
+
+
+# ── Recall: (label, headline, expected ISO2) ──────────────────────────────────
+# Headlines are realistic phrasings a real outlet would publish, each naming
+# its subject country in native script.
+RECALL_CASES: list[tuple[str, str, str]] = [
+    # ── Arabic (ar) — pan-Arab + MENA + majors ──
+    ("ar Egypt", "الانتخابات في مصر تشهد إقبالا واسعا", "EG"),
+    ("ar Saudi", "السعودية تعلن عن استثمارات جديدة", "SA"),
+    ("ar Iraq", "العراق يستعد للانتخابات البرلمانية", "IQ"),
+    ("ar Lebanon", "تفاقم الأزمة الاقتصادية في لبنان", "LB"),
+    ("ar Yemen", "الحوثيون في اليمن يستهدفون السفن", "YE"),
+    ("ar Sudan", "تواصل الحرب في السودان لليوم المئة", "SD"),
+    ("ar Libya", "اشتباكات جديدة في ليبيا", "LY"),
+    ("ar Jordan", "الأردن يستضيف قمة إقليمية", "JO"),
+    ("ar Syria", "قصف يستهدف العاصمة السورية دمشق", "SY"),
+    ("ar Gaza", "الحرب في غزة تدخل شهرها العاشر", "GZ"),
+    ("ar Qatar", "قطر تستضيف مفاوضات الوساطة", "QA"),
+    ("ar UAE", "الإمارات تطلق مشروعا للطاقة", "AE"),
+    ("ar Kuwait", "الكويت تعلن موازنة جديدة", "KW"),
+    ("ar Morocco", "المغرب يفوز بتنظيم البطولة", "MA"),
+    ("ar Tunisia", "انتخابات رئاسية في تونس", "TN"),
+    ("ar Algeria", "الجزائر توقع اتفاقا للغاز", "DZ"),
+    ("ar Turkey", "تركيا تتدخل في الملف السوري", "TR"),  # TR must win over SY
+    ("ar Iran>Israel", "تصاعد التوتر بين إيران وإسرائيل", "IR"),  # priority
+    ("ar Russia>Ukraine", "تتواصل الحرب بين روسيا وأوكرانيا", "RU"),  # priority
+    ("ar China", "الصين تعلن نموا اقتصاديا", "CN"),
+    ("ar Pakistan>Afghan", "توتر على الحدود بين باكستان وأفغانستان", "PK"),  # priority
+    ("ar USA", "الولايات المتحدة تفرض عقوبات جديدة", "US"),
+    ("ar Germany", "ألمانيا تستعد للانتخابات", "DE"),
+    ("ar India", "الهند تطلق قمرا صناعيا", "IN"),
+
+    # ── Turkish (tr) — Latin script, Turkish spellings ──
+    ("tr Syria", "Suriye'de yeni çatışmalar başladı", "SY"),
+    ("tr Iran", "İran ile gerilim tırmanıyor", "IR"),
+    ("tr Greece", "Yunanistan'da erken seçim kararı", "GR"),
+    ("tr Turkey", "Türkiye ekonomisinde toparlanma", "TR"),
+    ("tr Russia>Ukraine", "Rusya ve Ukrayna arasında savaş sürüyor", "RU"),  # priority
+    ("tr Egypt", "Mısır'da siyasi gelişmeler", "EG"),
+    ("tr Iraq", "Irak sınırında askeri operasyon", "IQ"),
+    ("tr USA", "ABD'den yeni yaptırımlar geldi", "US"),
+    ("tr China", "Çin ekonomisi hızla büyüyor", "CN"),
+    ("tr Palestine", "Filistin meselesi yeniden gündemde", "GZ"),
+    ("tr Israel", "İsrail'in saldırıları sürüyor", "IL"),
+    ("tr Germany", "Almanya'da koalisyon görüşmeleri", "DE"),
+
+    # ── Urdu (ur) — Arabic script, Pakistani spellings ──
+    ("ur Pakistan", "پاکستان میں سیاسی بحران شدت اختیار کر گیا", "PK"),
+    ("ur India", "بھارت کے ساتھ کشیدگی میں اضافہ", "IN"),
+    ("ur Afghanistan", "افغانستان کی صورتحال پر تشویش", "AF"),
+    ("ur Iran", "ایران پر فضائی حملہ", "IR"),
+    ("ur China", "چین کا بڑا اعلان", "CN"),
+    ("ur USA", "امریکہ کی نئی پابندیاں", "US"),
+    ("ur Israel", "اسرائیل کی جارحیت جاری", "IL"),
+    ("ur Palestine", "فلسطین کاز کے لیے حمایت", "GZ"),
+    ("ur Russia>Ukraine", "روس اور یوکرین کے درمیان جنگ", "RU"),  # priority
+    ("ur Saudi", "سعودی عرب کا اہم دورہ", "SA"),
+
+    # ── Bengali (bn) — Bengali script, Bangladeshi spellings ──
+    ("bn Bangladesh", "বাংলাদেশে নির্বাচন নিয়ে উত্তেজনা", "BD"),
+    ("bn India", "ভারতের সঙ্গে সীমান্ত উত্তেজনা", "IN"),
+    ("bn Pakistan", "পাকিস্তানে বড় হামলা", "PK"),
+    ("bn China", "চীনের অর্থনীতি নিয়ে উদ্বেগ", "CN"),
+    ("bn USA", "যুক্তরাষ্ট্রের নতুন নিষেধাজ্ঞা", "US"),
+    ("bn Russia>Ukraine", "রাশিয়া ও ইউক্রেনের মধ্যে যুদ্ধ", "RU"),  # priority
+    ("bn Iran", "ইরানে বিক্ষোভ ছড়িয়ে পড়েছে", "IR"),
+    ("bn Israel", "ইসরায়েলের হামলায় হতাহত", "IL"),
+    ("bn Gaza", "গাজায় যুদ্ধ অব্যাহত", "GZ"),
+    ("bn Myanmar", "মিয়ানমারে নতুন করে সহিংসতা", "MM"),
+
+    # ── Persian (fa) — extend the existing lane ──
+    ("fa Iran>USA", "تنش میان ایران و آمریکا بالا گرفت", "IR"),  # priority
+    ("fa Syria", "ادامه جنگ در سوریه", "SY"),
+    ("fa Afghanistan", "بحران در افغانستان عمیق‌تر شد", "AF"),
+    ("fa Saudi", "عربستان سعودی توافق جدیدی امضا کرد", "SA"),
+    ("fa Turkey", "ترکیه در مرز عملیات نظامی آغاز کرد", "TR"),
+    ("fa Russia", "حمله روسیه به اوکراین ادامه دارد", "RU"),
+
+    # ── Regression: existing CJK / Cyrillic / Devanagari ──
+    ("zh China", "中国经济数据公布", "CN"),
+    ("ja Japan", "日本の選挙結果速報", "JP"),
+    ("ko Korea", "한국 뉴스 속보", "KR"),
+    ("ru Russia>Ukraine", "Россия и Украина продолжают войну", "RU"),
+    ("hi India", "भारत में चुनाव की तैयारी", "IN"),
+
+    # ── Regression: Latin still works ──
+    ("en Iran>USA", "Iran strikes US base in overnight raid", "IR"),
+    ("es Colombia", "Elecciones presidenciales en Colombia", "CO"),
+
+    # ── Demonyms (nisba adjectives) — Arabic/Persian press names the actor by
+    # adjective far more than by country noun ("the Egyptian team", not "Egypt").
+    # Single-subject headlines so the expected tag is deterministic.
+    ("ar demonym Egypt", "المنتخب المصري يتأهل إلى النهائي", "EG"),
+    ("ar demonym Sudan", "الوفد السوداني يصل إلى طاولة المفاوضات", "SD"),
+    ("ar demonym Iraq", "الشعب العراقي يطالب بالإصلاح", "IQ"),
+    ("ar demonym Lebanon", "الجيش اللبناني ينتشر في الجنوب", "LB"),
+    ("ar demonym Saudi", "العاهل السعودي يفتتح القمة", "SA"),
+    ("ar demonym Syria", "الرئيس السوري يلقي خطابا", "SY"),
+    ("ar demonym Iran", "البرنامج النووي الإيراني تحت المراقبة", "IR"),
+    ("ar demonym China", "الاقتصاد الصيني يواصل النمو", "CN"),
+    ("ar demonym Pakistan", "الجيش الباكستاني يعلن عملية جديدة", "PK"),
+    ("ar demonym India", "الوفد الهندي يشارك في القمة", "IN"),
+    ("ar demonym Israel", "الجيش الإسرائيلي يواصل غاراته", "IL"),
+    ("ar demonym Palestine", "الشعب الفلسطيني يطالب بوقف الحرب", "GZ"),
+    ("fa demonym Iran", "برنامه هسته‌ای ایرانی در دستور کار", "IR"),
+    ("fa demonym China", "اقتصاد چینی در حال رشد است", "CN"),
+]
+
+
+# ── Precision: (label, headline, forbidden ISO2, expected-result) ──────────────
+# A country token that is a substring of an unrelated word must never fire.
+# expected is the correct answer: None for pure traps, or the real country
+# when a trap word co-occurs with a genuine country.
+PRECISION_CASES: list[tuple[str, str, str, str | None]] = [
+    # مصرف = "bank" contains مصر (Egypt). Real subject is Lebanon.
+    ("ar bank not Egypt", "أزمة في مصرف لبنان المركزي", "EG", "LB"),
+    # عراقيل = "obstacles" contains عراق (Iraq). No real country.
+    ("ar obstacles not Iraq", "واجهت الخطة عراقيل كثيرة هذا العام", "IQ", None),
+    # قطرة = "a drop" contains قطر (Qatar). No real country.
+    ("ar drop not Qatar", "سقطت قطرة مطر على النافذة", "QA", None),
+    # أيمن = the name "Ayman" contains يمن (Yemen). No real country.
+    ("ar name not Yemen", "أيمن يعمل في شركة كبيرة", "YE", None),
+    # بھروسا = "trust" (Urdu) contains روس (Russia). No real country.
+    ("ur trust not Russia", "مجھے تم پر پورا بھروسا ہے", "RU", None),
+    # Çince = "the Chinese language" contains Çin (China). It's the language,
+    # not the country — must not tag CN.
+    ("tr language not China", "Çince öğrenmeye başladım", "CN", None),
+]
+
+
+# ── Fallback: headlines that name NO country must return None ──────────────────
+NONE_CASES: list[tuple[str, str]] = [
+    ("ar neutral", "الاقتصاد العالمي في حال نمو مستمر"),
+    ("fa neutral", "بازارهای جهانی امروز رشد کردند"),
+    ("en neutral", "Global markets rally on strong tech earnings"),
+    ("empty", ""),
+]
+
+
+@pytest.mark.parametrize("label,headline,expected", RECALL_CASES, ids=[c[0] for c in RECALL_CASES])
+def test_recall_native_subject_tagging(label, headline, expected):
+    assert extract_country(headline, "") == expected
+
+
+@pytest.mark.parametrize(
+    "label,headline,forbidden,expected",
+    PRECISION_CASES,
+    ids=[c[0] for c in PRECISION_CASES],
+)
+def test_precision_no_substring_false_positive(label, headline, forbidden, expected):
+    result = extract_country(headline, "")
+    assert result != forbidden, f"false positive {forbidden} on {label!r}"
+    assert result == expected
+
+
+@pytest.mark.parametrize("label,headline", NONE_CASES, ids=[c[0] for c in NONE_CASES])
+def test_no_country_returns_none(label, headline):
+    assert extract_country(headline, "") is None
+
+
+def test_recall_is_perfect_over_gold_set():
+    """Excellence bar: 100% recall over the gold subject set."""
+    misses = [
+        (label, headline, expected, extract_country(headline, ""))
+        for label, headline, expected in RECALL_CASES
+        if extract_country(headline, "") != expected
+    ]
+    rate = 1 - len(misses) / len(RECALL_CASES)
+    assert not misses, f"recall {rate:.1%} — misses: {misses}"
+
+
+def test_precision_is_perfect_over_adversarial_set():
+    """Excellence bar: 100% precision — zero substring false positives."""
+    fails = [
+        (label, forbidden, extract_country(headline, ""))
+        for label, headline, forbidden, expected in PRECISION_CASES
+        if extract_country(headline, "") == forbidden
+        or extract_country(headline, "") != expected
+    ]
+    assert not fails, f"precision failures: {fails}"

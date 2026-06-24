@@ -447,10 +447,18 @@ Problem A.
 
 **Next work, in order:**
 
-0. Problem A remaining: full Arabic/Turkish/Urdu/Bengali SUBJECT lexicon +
-   e5/NLP geo path (native-script first cut `62f97a2` already covers
-   CN/JP/KR/TW/RU/UA/IR/IN/US/IL/GZ/SY/DE). Continue #235 domestic-feed waves
-   until no Atlas country sits at 0% self-coverage.
+0. Problem A — **lexical cut DONE (2026-06-24)**: full Arabic/Turkish/Urdu/
+   Bengali SUBJECT lexicon shipped in `ingest_rss.extract_country`
+   (`_NATIVE_COUNTRY_PATTERNS` 41→83; `_native_arabic`/`_native_bengali`
+   boundary helpers). Now covers ~30 subject countries per script incl. the
+   full Arab world + nisba DEMONYMS (المصري→EG, الإيراني→IR, چینی→CN).
+   Proven by `tests/test_geo_tagging_native.py` (95/95: recall noun+demonym
+   100%, precision 100% — مصرف/عراقيل/قطرة/سوريالي/بھروسا never false-fire;
+   held-out generalization confirmed). Boundary regime per script documented
+   in code. REMAINING: e5/NLP geo path (recall ceiling for headlines that
+   name a place only obliquely; list-order priority + non-Latin subject
+   geocoding live there). Continue #235 domestic-feed waves until no Atlas
+   country sits at 0% self-coverage.
 1. #228 §6 remainder (items 1-2 + #183 done): 3) person hygiene cheap
    wins (#176), 4) gate-recall SQL report, 5) map hovers + PLANE degraded
    state, 6) keyword-match labels.

@@ -836,72 +836,165 @@ _COUNTRY_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r'\bSri Lanka\b|\bSri Lankan\b|\bColombo\b|\bDissanayake\b', re.I), "LK"),
 ]
 
-# ── Native-script country patterns (#150) ─────────────────────────────────────
-# The Latin _COUNTRY_PATTERNS above are \b word-boundary regexes; CJK/Cyrillic/
-# Arabic/Devanagari headlines from the WAVE 5 feeds (zh/ja/ko/ru/fa/hi/ar) match
-# none of them, so a Chinese-language story about Syria fell back to the outlet's
-# home country (DE for dw_zh) — mis-geotagging the subject. This focused table
-# covers the highest-volume non-Latin subject countries + the geopolitically hot
-# subjects those presses cover most. CJK has no word boundaries, so these are
-# plain substring matches (no \b); the tokens are multi-char and distinctive,
-# keeping false-positive risk low. This is a first cut of #150, not the full
-# e5/NLP geo path.
+# ── Native-script country patterns (#150 — Problema A) ────────────────────────
+# The Latin _COUNTRY_PATTERNS above are \b word-boundary regexes; a headline in
+# Arabic/Persian/Urdu/Bengali/CJK/Cyrillic/Devanagari, or in Turkish (Latin but
+# distinct spellings — "Suriye" ≠ "Syria"), matches none of them, so the story
+# fell back to the *outlet's* home country — mis-geotagging the subject (a
+# DW-Arabic story about Syria tagged DE, not SY). This table carries the SUBJECT
+# lexicon those presses actually cover: the full Arab world, the majors, and the
+# geopolitically hot subjects, in every script the WAVE 5/6 feeds publish.
+#
+# Boundary regime per script (validated by tests/test_geo_tagging_native.py):
+#   • CJK — plain substring (CJK runs words together; no \b boundaries exist).
+#   • Cyrillic — distinctive stem prefixes (Росси- matches Россия/России); no \b.
+#   • Arabic/Persian/Urdu — _native_arabic(): \b(?:ال)?…\b, so الصين & صين both
+#     match but a root never fires inside a longer word (مصر in مصرف "bank",
+#     عراق in عراقيل "obstacles", قطر in قطرة "drop").
+#   • Bengali/Devanagari/Turkish — _native_word(): \b…\b, catching inflected
+#     forms (Bengali চীন→চীনের, Turkish Suriye→Suriye'de).
+# Order is priority: a country listed earlier wins when two are named, so the
+# high-coverage subjects (Iran, Russia, Turkey, Pakistan) precede their rivals.
+# This is the lexical cut of #150; the e5/NLP geo path is the eventual recall
+# ceiling for headlines that name a place only obliquely.
+
+
+def _native_word(*alts: str) -> re.Pattern:
+    """Word-boundary matcher for scripts with \\w/\\W boundaries (Turkish/
+    Bengali/Devanagari). \\b on both ends catches inflected/case-suffixed forms
+    (Bengali চীন→চীনের) while staying precise."""
+    return re.compile(r'\b(?:' + '|'.join(alts) + r')\b')
+
+
+def _native_arabic(*alts: str) -> re.Pattern:
+    """Arabic-script (Arabic/Persian/Urdu) country matcher.
+
+    Optional ال ("the") prefix so الصين and صين both match. Optional trailing
+    nisba adjective suffix (ي/ی/ية/یة) so the *demonym* form matches too —
+    Arabic/Persian headlines name the actor by adjective far more than by the
+    country noun (المصري "the Egyptian", الإيراني "the Iranian", چینی
+    "Chinese"). The trailing \\b after the optional suffix is what keeps this
+    precise: a root never fires inside a longer word — verified against مصرف
+    "bank" (≠EG), عراقيل "obstacles" (≠IQ), قطرة "drop" (≠QA), بھروسا "trust"
+    (≠RU). The suffix matches the nisba ي but \\b still rejects عراقيل because
+    the ل after عراقي has no boundary."""
+    return re.compile(r'\b(?:ال)?(?:' + '|'.join(alts) + r')(?:ی|ي|یة|ية)?\b')
+
+
+def _native_bengali(*alts: str) -> re.Pattern:
+    """Bengali matcher — leading \\b only. Bengali takes agglutinative case
+    suffixes (চীন→চীনের "of China") so a trailing boundary would miss the
+    inflected form; and a word ending in a spacing vowel-sign/matra (রাশিয়া,
+    U+09BE) defeats Python's trailing \\b before whitespace anyway (the matra
+    and the space are both non-word, so no boundary forms). The roots here are
+    long and distinctive, so a free right edge is safe."""
+    return re.compile(r'\b(?:' + '|'.join(alts) + r')')
+
+
 _NATIVE_COUNTRY_PATTERNS: list[tuple[re.Pattern, str]] = [
-    # China
+    # ── Priority subjects (win over their rivals when both are named) ──
+    # Iran — before Israel and the USA
+    (_native_arabic('ایران', 'إيران', 'ايران', 'تهران'), "IR"),
+    (re.compile(r'伊朗|イラン|이란'), "IR"),
+    (re.compile(r'Иран'), "IR"),
+    (_native_word('İran'), "IR"),                       # Turkish
+    (_native_bengali('ইরান'), "IR"),                    # Bengali
+    # Russia — before Ukraine
+    (re.compile(r'Росси|Москв|Кремл|Путин'), "RU"),
+    (re.compile(r'俄罗斯|ロシア|러시아'), "RU"),
+    (_native_arabic('روسیه', 'روسيا', 'روس'), "RU"),
+    (re.compile(r'रूस'), "RU"),
+    (_native_word('Rusya'), "RU"),                      # Turkish
+    (_native_bengali('রাশিয়া'), "RU"),                 # Bengali
+    # Turkey — before Syria
+    (_native_arabic('تركيا', 'ترکیه', 'ترکیە'), "TR"),
+    (_native_word('Türkiye', 'Türk', 'Ankara', 'İstanbul', 'Erdoğan'), "TR"),
+    # Pakistan — before Afghanistan
+    (_native_arabic('باكستان', 'پاکستان'), "PK"),
+    (_native_bengali('পাকিস্তান'), "PK"),               # Bengali
+    # ── China ──
     (re.compile(r'中国|中國|北京'), "CN"),
     (re.compile(r'중국'), "CN"),
-    (re.compile(r'چین'), "CN"),
-    # Japan
+    (_native_arabic('چین', 'صين'), "CN"),               # Persian/Urdu + Arabic
+    (_native_bengali('চীন'), "CN"),                     # Bengali
+    (_native_word('Çin'), "CN"),                        # Turkish
+    # ── Japan ──
     (re.compile(r'日本|東京'), "JP"),
     (re.compile(r'일본'), "JP"),
-    (re.compile(r'ژاپن'), "JP"),
-    # Koreas
+    (_native_arabic('ژاپن', 'الیابان', 'یابان'), "JP"),
+    # ── Koreas ──
     (re.compile(r'한국|서울|대한민국'), "KR"),
     (re.compile(r'韩国|韓国'), "KR"),
     (re.compile(r'북한|조선민주주의'), "KP"),
     (re.compile(r'朝鲜|北朝鮮'), "KP"),
-    # Taiwan
+    # ── Taiwan ──
     (re.compile(r'台湾|台灣|臺灣|타이완|대만'), "TW"),
-    # Russia
-    (re.compile(r'Росси|Москв|Кремл|Путин'), "RU"),
-    (re.compile(r'俄罗斯|ロシア|러시아'), "RU"),
-    (re.compile(r'روسیه'), "RU"),
-    (re.compile(r'रूस'), "RU"),
-    # Ukraine
-    (re.compile(r'Украин|Киев|Зеленск'), "UA"),
-    (re.compile(r'乌克兰|ウクライナ|우크라이나'), "UA"),
-    (re.compile(r'اوکراین'), "UA"),
-    (re.compile(r'यूक्रेन'), "UA"),
-    # Iran
-    (re.compile(r'ایران|تهران'), "IR"),
-    (re.compile(r'伊朗|イラン|이란'), "IR"),
-    (re.compile(r'Иран'), "IR"),
-    # India
-    (re.compile(r'भारत|नई दिल्ली|नई दिल्ली'), "IN"),
+    # ── India ──
+    (re.compile(r'भारत|नई दिल्ली'), "IN"),
     (re.compile(r'印度|インド|인도'), "IN"),
-    (re.compile(r'هند'), "IN"),
-    # United States
+    (_native_arabic('هند', 'بھارت', 'انڈیا'), "IN"),    # Persian + Urdu
+    (_native_bengali('ভারত'), "IN"),                    # Bengali
+    # ── United States ──
     (re.compile(r'美国|美國|アメリカ|미국'), "US"),
     (re.compile(r'США'), "US"),
-    (re.compile(r'آمریکا|آمریكا'), "US"),
+    (_native_arabic('آمریکا', 'آمریكا', 'أمريكا', 'امریکہ', 'امریکا',
+                    'الولايات المتحدة'), "US"),
     (re.compile(r'अमेरिका'), "US"),
-    # Israel
+    (_native_bengali('যুক্তরাষ্ট্র', 'আমেরিকা'), "US"), # Bengali
+    (_native_word('ABD'), "US"),                        # Turkish
+    # ── Israel ──
     (re.compile(r'以色列|イスラエル|이스라엘'), "IL"),
     (re.compile(r'Израил'), "IL"),
-    (re.compile(r'اسرائیل|اسراییل'), "IL"),
+    (_native_arabic('اسرائیل', 'اسراییل', 'إسرائيل', 'اسرائيل'), "IL"),
     (re.compile(r'इज़राइल|इजरायल'), "IL"),
-    # Gaza / Palestine (project code GZ)
+    (_native_bengali('ইসরায়েল', 'ইসরাইল'), "IL"),      # Bengali
+    (_native_word('İsrail'), "IL"),                     # Turkish
+    # ── Gaza / Palestine (project code GZ) ──
     (re.compile(r'加沙|ガザ|가자'), "GZ"),
     (re.compile(r'Газа|Газе'), "GZ"),
-    (re.compile(r'غزه|فلسطین'), "GZ"),
-    # Syria
+    (_native_arabic('غزه', 'غزة', 'فلسطین', 'فلسطين'), "GZ"),
+    (_native_bengali('গাজা', 'ফিলিস্তিন'), "GZ"),       # Bengali
+    (_native_word('Filistin', 'Gazze'), "GZ"),          # Turkish
+    # ── Syria ──
     (re.compile(r'叙利亚|シリア|시리아'), "SY"),
     (re.compile(r'Сири'), "SY"),
-    (re.compile(r'سوریه|سوريه'), "SY"),
-    # Germany (DW native-language outlets cover it heavily)
+    (_native_arabic('سوریه', 'سوريه', 'سوريا', 'سورية', 'سوري', 'دمشق'), "SY"),
+    (_native_word('Suriye'), "SY"),                     # Turkish
+    # ── Germany (DW native-language outlets cover it heavily) ──
     (re.compile(r'德国|德國|ドイツ|독일'), "DE"),
     (re.compile(r'Германи'), "DE"),
-    (re.compile(r'آلمان'), "DE"),
+    (_native_arabic('آلمان', 'ألمانيا'), "DE"),
+    (_native_word('Almanya'), "DE"),                    # Turkish
+    # ── Ukraine (after Russia) ──
+    (re.compile(r'Украин|Киев|Зеленск'), "UA"),
+    (re.compile(r'乌克兰|ウクライナ|우크라이나'), "UA"),
+    (_native_arabic('اوکراین', 'أوكرانيا', 'یوکرین'), "UA"),
+    (re.compile(r'यूक्रेन'), "UA"),
+    (_native_word('Ukrayna'), "UA"),                    # Turkish
+    (_native_bengali('ইউক্রেন'), "UA"),                 # Bengali
+    # ── Afghanistan (after Pakistan) ──
+    (_native_arabic('افغانستان', 'أفغانستان'), "AF"),
+    # ── Arab world (subject lexicon of the pan-Arab presses) ──
+    (_native_arabic('مصر', 'القاهرة', 'السیسی', 'السيسي'), "EG"),
+    (_native_word('Mısır'), "EG"),                      # Turkish
+    (_native_arabic('السعودية', 'سعودية', 'سعودي', 'عربستان', 'سعودی عرب', 'سعودی'), "SA"),
+    (_native_arabic('عراق'), "IQ"),
+    (_native_word('Irak'), "IQ"),                       # Turkish
+    (_native_arabic('لبنان'), "LB"),
+    (_native_arabic('یمن', 'الحوثیون', 'الحوثيون'), "YE"),
+    (_native_arabic('سودان'), "SD"),
+    (_native_arabic('ليبيا', 'ليبي'), "LY"),
+    (_native_arabic('الأردن', 'الاردن', 'اردن'), "JO"),
+    (_native_arabic('قطر'), "QA"),
+    (_native_arabic('الإمارات', 'الامارات'), "AE"),
+    (_native_arabic('الكويت', 'کویت', 'كويت'), "KW"),
+    (_native_arabic('المغرب', 'مغرب'), "MA"),
+    (_native_arabic('تونس'), "TN"),
+    (_native_arabic('الجزائر', 'جزائر'), "DZ"),
+    # ── Other native-script subjects ──
+    (_native_word('Yunanistan'), "GR"),                 # Turkish (Greece)
+    (_native_bengali('বাংলাদেশ'), "BD"),                # Bengali
+    (_native_bengali('মিয়ানমার'), "MM"),               # Bengali (Myanmar)
 ]
 
 
