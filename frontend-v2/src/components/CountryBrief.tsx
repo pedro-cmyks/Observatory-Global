@@ -7,7 +7,15 @@ import { useFocus } from '../contexts/FocusContext';
 import { Download, Pin, PinOff } from '../lib/icons';
 import './CountryBrief.css';
 import { getThemeLabel } from '../lib/themeLabels';
-import { selectVisibleKeyPersons, type KeyPerson } from '../lib/countryBriefPeople';
+import { buildKeySubjects, type KeySubject, type SubjectType } from '../lib/countryBriefSubjects';
+
+const SUBJECT_BADGE: Record<SubjectType, string> = {
+    person: 'person',
+    place: 'place',
+    organization: 'org',
+    group: 'group',
+    event: 'event',
+};
 import { buildCountryBriefMarkdown, sanitizeFilenamePart } from '../lib/exportFormatters';
 import { resolveCountryName } from '../lib/countryNames';
 import { useFocusData } from '../contexts/FocusDataContext';
@@ -77,7 +85,7 @@ interface BriefData {
     top_themes: Array<{ name: string; count: number }>;
     narrative_threads: CountryBriefThreadInput[];
     top_sources: Array<{ name: string; count: number }>;
-    keyPersons: KeyPerson[];
+    keySubjects: KeySubject[];
     avg_sentiment: number;
     sentiment_trend: 'improving' | 'declining' | 'stable';
     top_stories?: Story[];
@@ -226,7 +234,8 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 
     const handleExportBrief = () => {
         if (!data) return
-        const md = buildCountryBriefMarkdown({ countryName: displayCountryName, data })
+        const keyPersons = data.keySubjects.filter(s => s.type === 'person').map(s => ({ name: s.name, count: s.count }))
+        const md = buildCountryBriefMarkdown({ countryName: displayCountryName, data: { ...data, keyPersons } })
         const date = new Date().toISOString().split('T')[0]
         downloadMarkdown(`atlas-country-${sanitizeFilenamePart(displayCountryName)}-${date}.md`, md)
     }
@@ -331,7 +340,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     top_themes: topCounts(themeCounts, 12),
                     narrative_threads: threadsPayload?.threads ?? [],
                     top_sources: summarySources.length > 0 ? summarySources : topCounts(sourceCounts, 8),
-                    keyPersons: selectVisibleKeyPersons(topCounts(personCounts, 20)),
+                    keySubjects: buildKeySubjects(topCounts(personCounts, 40), 8),
                     avg_sentiment: sentiment,
                     sentiment_trend: sentimentTrend,
                     top_stories: topStories,
@@ -480,9 +489,12 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     topSearches: data.publicAttention?.searches,
                     topWikiArticles: data.publicAttention?.wikiArticles,
                 })}
-                {data.keyPersons.length > 0
-                    ? ` People most visible in the media layer include ${data.keyPersons.slice(0, 2).map(p => p.name).join(' and ')}.`
-                    : ''}
+                {(() => {
+                    const people = data.keySubjects.filter(s => s.type === 'person');
+                    return people.length > 0
+                        ? ` People most visible in the media layer include ${people.slice(0, 2).map(p => p.name).join(' and ')}.`
+                        : '';
+                })()}
             </p>
 
             {/* Trust Indicators */}
@@ -648,22 +660,29 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 </div>
             </section>
 
-            {/* Key People */}
-            {data.keyPersons.length > 0 && (
+            {/* Key Subjects — typed: person is one type, not the only one (#176) */}
+            {data.keySubjects.length > 0 && (
                 <section className="brief-section">
-                    <div className="cb-section-label">People Mentioned <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>click to filter signals</span></div>
+                    <div className="cb-section-label">Key Subjects <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>people, places &amp; topics in the coverage</span></div>
                     <div className="brief-person-list">
-                        {data.keyPersons.map(person => (
-                            <button
-                                key={person.name}
-                                className="brief-person-chip"
-                                onClick={() => setPerson(person.name)}
-                                data-tip={`${person.count} mentions — open person focus`}
-                            >
-                                <span className="brief-person-name">{person.name}</span>
-                                <span className="brief-person-count">{person.count}</span>
-                            </button>
-                        ))}
+                        {data.keySubjects.map(subject => {
+                            const clickable = subject.type === 'person';
+                            return (
+                                <button
+                                    key={`${subject.type}:${subject.name}`}
+                                    className="brief-person-chip"
+                                    onClick={clickable ? () => setPerson(subject.name) : undefined}
+                                    disabled={!clickable}
+                                    data-tip={clickable
+                                        ? `${subject.count} mentions — open person focus`
+                                        : `${subject.type} · ${subject.count} mentions`}
+                                >
+                                    <span className="brief-subject-badge" data-type={subject.type}>{SUBJECT_BADGE[subject.type]}</span>
+                                    <span className="brief-person-name">{subject.name}</span>
+                                    <span className="brief-person-count">{subject.count}</span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </section>
             )}

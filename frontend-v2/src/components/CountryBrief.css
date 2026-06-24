@@ -279,10 +279,35 @@
     transition: all 0.15s;
 }
 
-.brief-person-chip:hover {
+.brief-person-chip:hover:not(:disabled) {
     background: rgba(167, 139, 250, 0.2);
     border-color: rgba(167, 139, 250, 0.48);
 }
+
+/* Non-person subjects (place/org/event/group) are typed context, not a person
+   focus — shown but not clickable. */
+.brief-person-chip:disabled {
+    cursor: default;
+    opacity: 0.85;
+}
+
+/* Type badge (#176 typed subjects) */
+.brief-subject-badge {
+    font-size: 0.5rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    background: rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+}
+.brief-subject-badge[data-type="person"]       { background: rgba(167, 139, 250, 0.22); color: #ddd6fe; }
+.brief-subject-badge[data-type="place"]        { background: rgba(56, 189, 248, 0.20);  color: #bae6fd; }
+.brief-subject-badge[data-type="organization"] { background: rgba(251, 191, 36, 0.20);  color: #fde68a; }
+.brief-subject-badge[data-type="event"]        { background: rgba(248, 113, 113, 0.20); color: #fecaca; }
+.brief-subject-badge[data-type="group"]        { background: rgba(52, 211, 153, 0.20);  color: #a7f3d0; }
 
 .brief-person-name {
     max-width: 11rem;
