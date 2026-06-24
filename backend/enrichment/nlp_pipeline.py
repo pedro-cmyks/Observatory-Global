@@ -141,7 +141,7 @@ def _extract_entities(nlp, headline: str, source_lang: str | None) -> list[dict]
     seen: set[str] = set()
     entities = []
     for ent in nlp(headline).ents:
-        if ent.label_ not in {"PERSON", "ORG", "NORP", "FAC", "GPE", "LOC"}:
+        if ent.label_ not in {"PERSON", "ORG", "NORP", "FAC", "GPE", "LOC", "EVENT"}:
             continue
         name = ent.text.strip()
         if not _entity_valid(name, source_lang) or name.lower() in seen:

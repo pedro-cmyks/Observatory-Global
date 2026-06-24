@@ -73,6 +73,37 @@ def classify_subject(name: str, ner_type: str | None = None) -> str | None:
     return None
 
 
+def merge_entity_rows(ner_rows, gdelt_rows) -> list:
+    """Merge NER-typed entity rows with the untyped GDELT person rows.
+
+    NER (spaCy) carries a real type, so it wins: the first NER row per name
+    (case-insensitive; SQL orders by signal_count DESC, so that's the dominant
+    type) is kept, and GDELT rows are appended only for names NER never saw —
+    flagged untyped (``ner_type`` None) so ``classify_subject`` infers them and
+    ``build_key_subjects`` marks them unverified."""
+    seen: set[str] = set()
+    merged: list = []
+    for r in ner_rows:
+        name = (r.get("name") or "").strip()
+        if not name:
+            continue
+        key = name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(r)
+    for r in gdelt_rows:
+        name = (r.get("name") or "").strip()
+        if not name:
+            continue
+        key = name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(r)
+    return merged
+
+
 def build_key_subjects(rows, *, limit: int = 8, min_headlines: int = 2) -> list:
     """Type, filter, and rank aggregated entity rows into typed subjects.
 

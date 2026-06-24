@@ -1,5 +1,6 @@
 import html
 import json
+import logging
 import os
 from datetime import datetime, timezone
 from typing import Optional
@@ -8,7 +9,9 @@ from fastapi import APIRouter, Query, HTTPException
 from app import db
 from app.main_v2 import app
 from app.utils import _is_valid_person, _resolve_persons, extract_domain, rank_key_people
-from app.services.subjects import build_key_subjects
+from app.services.subjects import build_key_subjects, merge_entity_rows
+
+logger = logging.getLogger("atlas.themes")
 from app.core.gdelt_taxonomy import classify_source, get_concepts_for_theme
 from app.services.processed_historical import (
     build_historical_coverage,
@@ -144,18 +147,44 @@ async def get_focus_data(
         ]
         # Typed subjects (#176 reframe): person is one type — "El Niño" surfaces
         # as an event, "República Dominicana" as a place, instead of vanishing or
-        # posing as people. Sourced from the same GDELT pool (untyped → flagged
-        # unverified); NER-typed source is a follow-up slice.
-        key_subjects = build_key_subjects([
-            {
-                "name": r['person'],
-                "ner_type": None,
-                "signal_count": int(r['signal_count']),
-                "distinct_outlets": int(r['distinct_outlets']),
-                "distinct_headlines": int(r['distinct_headlines']),
-            }
-            for r in persons_rows
-        ], limit=8)
+        # posing as people. NER (spaCy) gives real verified types; the untyped
+        # GDELT pool fills names NER missed, flagged unverified. NER query
+        # degrades to GDELT-only on error (e.g. malformed nlp_persons jsonb).
+        try:
+            ner_rows = await conn.fetch(f"""
+                SELECT e->>'name' AS name, e->>'type' AS ner_type,
+                       COUNT(*) AS signal_count,
+                       COUNT(DISTINCT source_name) AS distinct_outlets,
+                       COUNT(DISTINCT headline) AS distinct_headlines
+                FROM signals_v2,
+                     jsonb_array_elements(
+                       CASE WHEN jsonb_typeof(nlp_persons) = 'array' THEN nlp_persons
+                            WHEN jsonb_typeof(nlp_persons_xlm) = 'array' THEN nlp_persons_xlm
+                            ELSE '[]'::jsonb END
+                     ) e
+                WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+                  AND {focus_filter}
+                  AND e->>'name' IS NOT NULL AND e->>'type' IS NOT NULL
+                GROUP BY e->>'name', e->>'type'
+                ORDER BY signal_count DESC
+                LIMIT 40
+            """, filter_value)
+        except Exception as exc:
+            logger.warning("NER subjects degraded: %s", exc)
+            ner_rows = []
+        key_subjects = build_key_subjects(
+            merge_entity_rows(
+                [dict(r) for r in ner_rows],
+                [{
+                    "name": r['person'],
+                    "ner_type": None,
+                    "signal_count": int(r['signal_count']),
+                    "distinct_outlets": int(r['distinct_outlets']),
+                    "distinct_headlines": int(r['distinct_headlines']),
+                } for r in persons_rows],
+            ),
+            limit=8,
+        )
 
         # Calculate totals
         total_signals = sum(int(n['signal_count']) for n in nodes)

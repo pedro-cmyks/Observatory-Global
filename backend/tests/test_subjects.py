@@ -17,7 +17,37 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.subjects import classify_subject, build_key_subjects
+from app.services.subjects import classify_subject, build_key_subjects, merge_entity_rows
+
+
+def test_merge_prefers_ner_typed_over_gdelt():
+    ner = [{"name": "Gustavo Petro", "ner_type": "PERSON", "signal_count": 9,
+            "distinct_outlets": 5, "distinct_headlines": 5}]
+    gdelt = [{"name": "gustavo petro", "ner_type": None, "signal_count": 12,
+              "distinct_outlets": 8, "distinct_headlines": 1},   # dup → dropped
+             {"name": "Alvaro Uribe", "ner_type": None, "signal_count": 4,
+              "distinct_outlets": 3, "distinct_headlines": 3}]
+    merged = merge_entity_rows(ner, gdelt)
+    names = [m["name"] for m in merged]
+    assert "Gustavo Petro" in names and "Alvaro Uribe" in names
+    assert "gustavo petro" not in names  # GDELT dup of the NER-typed name dropped
+    petro = next(m for m in merged if m["name"] == "Gustavo Petro")
+    assert petro["ner_type"] == "PERSON"  # NER row kept (typed)
+
+
+def test_merge_keeps_first_ner_type_per_name():
+    ner = [
+        {"name": "Apple", "ner_type": "ORG", "signal_count": 9, "distinct_headlines": 5, "distinct_outlets": 5},
+        {"name": "apple", "ner_type": "GPE", "signal_count": 2, "distinct_headlines": 1, "distinct_outlets": 1},
+    ]
+    merged = merge_entity_rows(ner, [])
+    assert len(merged) == 1 and merged[0]["ner_type"] == "ORG"  # dominant (first) type
+
+
+def test_merge_empty_ner_returns_gdelt_untyped():
+    gdelt = [{"name": "Luis Diaz", "ner_type": None, "signal_count": 4,
+              "distinct_outlets": 4, "distinct_headlines": 4}]
+    assert merge_entity_rows([], gdelt) == gdelt
 
 
 # ── classify_subject: NER-typed (trust spaCy's label) ──
