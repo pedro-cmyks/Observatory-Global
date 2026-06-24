@@ -6,7 +6,7 @@ from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Query, HTTPException
 from app import db
 from app.main_v2 import app
-from app.utils import _is_valid_person, _resolve_persons, extract_domain
+from app.utils import _is_valid_person, _resolve_persons, extract_domain, rank_key_people
 from app.core.gdelt_taxonomy import classify_source
 from app.services.processed_historical import (
     build_historical_coverage,
@@ -296,17 +296,25 @@ async def get_country_detail(country_code: str, hours: int = Query(24, ge=1, le=
             LIMIT 20
         """ % hours, country_code)
         
-        # Key persons
-        persons = await conn.fetch("""
-            SELECT unnest(persons) as person, COUNT(*) as count
-            FROM signals_v2
+        # Key persons — syndication-resistant ranking (#176): rank by distinct
+        # stories/outlets, not raw mention rows, so a republished wire story
+        # can't lead. Wide pool (40) so the corroboration floor leaves results.
+        persons_rows = await conn.fetch("""
+            SELECT
+                p AS person,
+                COUNT(*) AS signal_count,
+                COUNT(DISTINCT source_name) AS distinct_outlets,
+                COUNT(DISTINCT headline) AS distinct_headlines
+            FROM signals_v2, unnest(persons) p
             WHERE country_code = $1
             AND timestamp > NOW() - INTERVAL '%s hours'
             AND persons IS NOT NULL
-            GROUP BY person
-            ORDER BY count DESC
-            LIMIT 10
+            AND p <> ''
+            GROUP BY p
+            ORDER BY signal_count DESC
+            LIMIT 40
         """ % hours, country_code)
+        persons = rank_key_people([dict(r) for r in persons_rows], limit=10)
         
         # Determine country name
         country_record = await conn.fetchrow(
@@ -337,7 +345,7 @@ async def get_country_detail(country_code: str, hours: int = Query(24, ge=1, le=
             "minSentiment": float(stats['min_sentiment'] or 0) / 10,
             "themes": [{"name": t['theme'], "count": t['count']} for t in themes],
             "sources": [{"name": s['source_name'], "count": s['count']} for s in sources],
-            "keyPersons": [{"name": p['person'], "count": p['count']} for p in persons],
+            "keyPersons": [{"name": p['person'], "count": int(p['signal_count'])} for p in persons],
             "foreignSourcePct": foreign_source_pct,
         }
 

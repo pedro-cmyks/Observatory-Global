@@ -58,6 +58,32 @@ def _is_valid_person(name: str) -> bool:
     )
 
 
+def rank_key_people(rows, *, limit: int = 8, min_headlines: int = 2) -> list:
+    """Rank person mentions resistant to syndication (#176).
+
+    Raw COUNT(*) lets one wire-service story republished by many outlets (a
+    syndicated obituary) outrank locally-reported actors — the David-Hockney-
+    leads-Peru bug. Rank instead by how many DISTINCT stories/outlets a person
+    appears in, and drop anyone below a corroboration floor of ``min_headlines``
+    distinct headlines so a single mass-republished story can't lead the panel.
+    Falls back to the unfiltered ranking when nobody clears the floor, so a
+    low-coverage country still gets a People panel rather than a blank one.
+
+    ``rows`` are plain dicts (convert asyncpg Records with ``dict(r)``) carrying
+    at least ``person``; ``distinct_headlines``/``distinct_outlets``/
+    ``signal_count`` default to 1/1/0 when absent (backward-compatible)."""
+    def _hl(r):
+        return int(r.get("distinct_headlines") or 1)
+
+    def _sort_key(r):
+        return (_hl(r), int(r.get("distinct_outlets") or 1), int(r.get("signal_count") or 0))
+
+    valid = [r for r in rows if _is_valid_person(r.get("person", ""))]
+    corroborated = [r for r in valid if _hl(r) >= min_headlines]
+    pool = corroborated or valid  # fallback: never blank a populated panel
+    return sorted(pool, key=_sort_key, reverse=True)[:limit]
+
+
 def _resolve_persons(nlp_persons, gdelt_persons) -> list:
     """Prefer NLP-extracted persons (PERSON type only); fall back to GDELT."""
     if nlp_persons:

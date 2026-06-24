@@ -7,7 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, Query, HTTPException
 from app import db
 from app.main_v2 import app
-from app.utils import _is_valid_person, _resolve_persons, extract_domain
+from app.utils import _is_valid_person, _resolve_persons, extract_domain, rank_key_people
 from app.core.gdelt_taxonomy import classify_source, get_concepts_for_theme
 from app.services.processed_historical import (
     build_historical_coverage,
@@ -110,11 +110,16 @@ async def get_focus_data(
             LIMIT 10
         """, filter_value)
 
-        # 5. Get key people mentioned in matching signals
+        # 5. Get key people mentioned in matching signals. distinct_outlets /
+        # distinct_headlines feed the syndication-resistant ranking (#176): a
+        # wire story republished by many outlets must not outrank local actors.
+        # Pull a wide pool (40) so the corroboration floor still leaves results.
         persons_rows = await conn.fetch(f"""
             SELECT
                 p AS person,
                 COUNT(*) AS signal_count,
+                COUNT(DISTINCT source_name) AS distinct_outlets,
+                COUNT(DISTINCT headline) AS distinct_headlines,
                 ROUND(AVG(sentiment)::numeric, 2) AS avg_sentiment,
                 COUNT(DISTINCT country_code) AS country_count
             FROM signals_v2, unnest(persons) p
@@ -124,10 +129,8 @@ async def get_focus_data(
               AND LENGTH(p) > 3
             GROUP BY p
             ORDER BY signal_count DESC
-            LIMIT 12
+            LIMIT 40
         """, filter_value)
-
-        is_valid_person = _is_valid_person
 
         key_people = [
             {
@@ -136,9 +139,8 @@ async def get_focus_data(
                 "avg_sentiment": float(r['avg_sentiment'] or 0),
                 "country_count": int(r['country_count'])
             }
-            for r in persons_rows
-            if is_valid_person(r['person'])
-        ][:8]
+            for r in rank_key_people([dict(r) for r in persons_rows], limit=8)
+        ]
 
         # Calculate totals
         total_signals = sum(int(n['signal_count']) for n in nodes)
