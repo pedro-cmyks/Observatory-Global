@@ -459,10 +459,19 @@ Problem A.
    name a place only obliquely; list-order priority + non-Latin subject
    geocoding live there). Continue #235 domestic-feed waves until no Atlas
    country sits at 0% self-coverage.
-1. #228 §6 remainder (items 1-2 + #183 done): 3) person hygiene cheap
-   wins (#176), 4) gate-recall SQL report, 5) map hovers + PLANE degraded
-   state, 6) keyword-match labels.
-   Plus #230 China/East-Asia voice gap (acquisition + #162 dep).
+1. #228 §6 remainder (items 1-2 + #183 + **3 (#176) + 4 gate-recall** done):
+   — 3) person hygiene **DONE 2026-06-24** (`96fef18`+`2ae494d`): hardened
+     `_is_valid_person` gate (article/repeated-token/multilingual-geo rejects;
+     kills "El Niño"/"bafana bafana"/"dar una patada"/"america latina") +
+     `rank_key_people` syndication-resistant ranking (DISTINCT headlines/outlets
+     + corroboration floor + low-coverage fallback) wired into themes/geo
+     person aggregation. Tests `test_person_hygiene.py` (34) +
+     `test_person_ranking.py` (6). SQL COUNT(DISTINCT …) needs prod smoke.
+   — 4) gate-recall SQL report = `scripts/gate_recall_by_language.py` (already
+     shipped, `4911051`, 7 tests).
+   REMAINING: 5) map hovers + PLANE degraded state, 6) keyword-match labels
+   (both frontend, need preview verification). Plus #230 China/East-Asia voice
+   gap (acquisition + #162 dep).
 2. #229 funnel scaling program (data layer; lever 1 = corpus clustering).
 2. #183 panel remainder (sentiment_source badge + heat_countries panel
    in L2; the L1 strip already shipped with the Brief rebuild).
