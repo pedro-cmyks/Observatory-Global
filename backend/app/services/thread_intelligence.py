@@ -7,6 +7,7 @@ from typing import Any
 
 from app import db
 from app.core.gdelt_taxonomy import get_theme_label
+from app.core.iso_country_names import resolve_country_name
 from app.services.narrative_note import build_thread_narrative_note
 from app.services.thread_packet import build_thread_packet
 from app.services.thread_ranking import rank_threads
@@ -364,10 +365,14 @@ def build_thread_label(*, anchor_label: str, top_countries: list[str]) -> str:
     # Momentum is shown by the trend pill (accelerating/stable/fading); the
     # label stays a neutral topic+place phrase to avoid a second, contradictory
     # momentum signal in the title.
-    if len(top_countries) >= 2:
-        place = f"{top_countries[0]} and {top_countries[1]}"
-    elif top_countries:
-        place = top_countries[0]
+    # Expand any country that came through as a bare ISO code (countries_v2 /
+    # COUNTRY_METADATA are partial; the diversity program surfaces long-tail
+    # countries) so a label never reads "... in France and UG" (#204-lite).
+    names = [resolve_country_name(c) for c in top_countries]
+    if len(names) >= 2:
+        place = f"{names[0]} and {names[1]}"
+    elif names:
+        place = names[0]
     else:
         place = "multiple regions"
 
@@ -375,7 +380,8 @@ def build_thread_label(*, anchor_label: str, top_countries: list[str]) -> str:
 
 
 def _why_now(changed_10h: int, country_names: list[str]) -> str:
-    place = " and ".join(country_names[:2]) if country_names else "multiple regions"
+    resolved = [resolve_country_name(c) for c in country_names[:2]]
+    place = " and ".join(resolved) if resolved else "multiple regions"
     if changed_10h > 0:
         return f"{changed_10h} more signals in the last 10h, concentrated in {place}."
     if changed_10h < 0:
