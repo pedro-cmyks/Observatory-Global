@@ -176,13 +176,40 @@ def source_concentration(sources: list[str]) -> float:
 # Ukraine War / Stock Market Crash (0.21-0.25 subj but only 0.17-0.21 src).
 SUBJECT_CONCENTRATION_MIN = 0.30
 SOURCE_DOMINANCE_MIN = 0.35
+# A single outlet's wire feed dumped as one cluster (#214 follow-up, 2026-06-24):
+# every headline carries the outlet's boilerplate prefix ("Côte d'Ivoire-AIP/ …"),
+# so a geo/outlet slug token recurs in EVERY headline and fakes a perfect subject
+# concentration — the dump escaped the guard above and even got a hallucinated
+# DeepSeek label ('Russian Shadow Fleet Interceptions' over 546 aip.ci members).
+# When one outlet owns the cluster this completely, strip the shared leading
+# prefix and re-test: a real single-outlet story keeps a shared subject (Delhi
+# fire: "fire"/"kills" still recur); a feed dump collapses to no shared subject.
+# When one outlet owns this much of a cluster at scale it is that outlet's feed
+# dumped as a topic, not a corroborated narrative — flag regardless of how
+# coherent its single-outlet "subject" looks. The subject metric alone cannot
+# catch these: a wire feed prefixes every headline with its own geo/outlet slug
+# ("Côte d'Ivoire-AIP/ …", "Côte d'Ivoire-AIP /", "Côte d'Ivoire-AIP/Inter/"),
+# so a slug token recurs in every headline and fakes subject concentration 1.0.
+# That is exactly how aip.ci dumped 546 headlines into one cluster that drew the
+# hallucinated label 'Russian Shadow Fleet Interceptions' (#214, 2026-06-24).
+SINGLE_OUTLET_DUMP_MIN = 0.90
+SINGLE_OUTLET_DUMP_MIN_MEMBERS = 6
 
 
 def is_roundup_by_content(headlines: list[str], sources: list[str]) -> bool:
+    src = source_concentration(sources)
+    real_sources = [s for s in sources if s]
+    # Single-outlet wire-dump: Atlas treats a narrative as corroborated only when
+    # more than one outlet carries it, so near-total single-outlet ownership at
+    # scale is a feed dump by construction. Well above the calibrated multi-outlet
+    # roundup band (0.38-0.54) so genuine broad/narrow threads are untouched.
+    if len(real_sources) >= SINGLE_OUTLET_DUMP_MIN_MEMBERS and src >= SINGLE_OUTLET_DUMP_MIN:
+        return True
     conc = subject_concentration(headlines)
     if conc is None or conc >= SUBJECT_CONCENTRATION_MIN:
         return False
-    return source_concentration(sources) >= SOURCE_DOMINANCE_MIN
+    # dispersed subject across members: a roundup only if one outlet also dominates.
+    return src >= SOURCE_DOMINANCE_MIN
 
 
 def next_state(

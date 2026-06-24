@@ -72,6 +72,56 @@ def test_content_roundup_distinguishes_digest_from_broad_thread():
     assert is_roundup_by_content(["one two three", "four five six"], ["x", "x"]) is False
 
 
+def test_single_outlet_wire_dump_with_boilerplate_prefix_flagged():
+    # Real failure (#214, topic 23): aip.ci dumped 546 headlines all prefixed
+    # "Côte d'Ivoire-AIP/", faking subject concentration 1.0 → escaped the guard
+    # and got the hallucinated label "Russian Shadow Fleet Interceptions".
+    from scripts.project_dynamic_topics import (
+        subject_concentration, is_roundup_by_content,
+    )
+    aip = [
+        "Côte d’Ivoire-AIP/ L’ONPC annonce la prochaine ouverture d’un centre",
+        "Côte d’Ivoire-AIP/ Des caméras de surveillance pour renforcer la sécurité",
+        "Côte d’Ivoire-AIP/ Le Bafing bientôt doté d’une plateforme",
+        "Côte d’Ivoire-AIP/ La CNPS intensifie l’enrôlement des travailleurs",
+        "Côte d’Ivoire-AIP/ Des réformes engagées par le gouvernement",
+        "Côte d’Ivoire-AIP/ Lancement des Journées nationales du service public",
+        "Côte d’Ivoire-AIP/ La plateforme de l’ONEF sur le système",
+    ]
+    one_src = ["aip.ci"] * len(aip)
+    # the boilerplate prefix fools the raw subject metric...
+    assert subject_concentration(aip) >= 0.30
+    # ...but the single-outlet prefix-strip path catches it.
+    assert is_roundup_by_content(aip, one_src) is True
+
+
+def test_multi_outlet_focused_story_not_flagged():
+    # A genuine story corroborated across MANY outlets is a real thread — the
+    # single-outlet dump rule must not touch it (it spans outlets, not one feed).
+    from scripts.project_dynamic_topics import is_roundup_by_content
+    focused = [
+        "Delhi hotel fire kills six as rescue teams search the upper floors",
+        "Delhi hotel fire death toll rises while families wait for news",
+        "Delhi hotel fire probe opens into blocked exits and alarms",
+        "Delhi hotel fire survivors describe smoke filling the stairwell",
+        "Delhi hotel fire owner detained as inspectors review permits",
+        "Delhi hotel fire prompts citywide safety audit of old buildings",
+    ]
+    many_src = [f"outlet{i}.com" for i in range(len(focused))]
+    assert is_roundup_by_content(focused, many_src) is False
+
+
+def test_single_outlet_dump_flagged_even_when_subject_looks_coherent():
+    # Atlas requires multi-outlet corroboration: a cluster owned by ONE outlet at
+    # scale is that feed dumped, never a verified thread — flagged regardless of
+    # an apparently coherent (slug-driven) subject.
+    from scripts.project_dynamic_topics import is_roundup_by_content
+    headlines = [f"OutletWire/ Story number {n} on an unrelated matter today"
+                 for n in range(8)]
+    one_src = ["onewire.example"] * len(headlines)
+    assert is_roundup_by_content(headlines, one_src) is True
+
+
 def test_running_mean():
     old = np.array([1.0, 1.0])
     out = running_mean(old, 1, np.array([3.0, 3.0]))

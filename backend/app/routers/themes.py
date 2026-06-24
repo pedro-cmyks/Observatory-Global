@@ -410,6 +410,29 @@ async def _dynamic_topic_detail(
 
     packet = build_thread_packet(signals, own_topic=None)
 
+    # Semantic membership (#214/#162): the English lexicon never assigns most
+    # non-English signals, so they can't appear above via sample_ids. Route
+    # their thread membership through the multilingual e5 centroid ANN. Append
+    # honestly-labeled, never folded into the gated counts. Degrade silently —
+    # a semantic miss must never break the thread detail.
+    warnings = ["dynamic_topic_member_preview_sample"]
+    semantic_members: list = []
+    try:
+        from app.services.research_semantic import fetch_semantic_thread_members
+
+        semantic_members = await fetch_semantic_thread_members(
+            conn, int(topic_row["id"]), hours=hours, exclude_ids=sample_ids,
+        )
+        if country_code:
+            semantic_members = [
+                m for m in semantic_members if m.get("country_code") == country_code
+            ]
+    except Exception:
+        semantic_members = []
+    non_english = [m for m in semantic_members if m.get("source_lang") not in ("en", "xx")]
+    if semantic_members:
+        warnings.append("semantic_members_appended")
+
     return {
         **base_payload,
         "signalSample": sample,
@@ -420,7 +443,10 @@ async def _dynamic_topic_detail(
         "topSources": packet["topSources"],
         "topPersons": packet["topPersons"],
         "timeline": packet["timeline"],
-        "warnings": ["dynamic_topic_member_preview_sample"],
+        "semanticMembers": semantic_members,
+        "semanticMemberCount": len(semantic_members),
+        "semanticNonEnglishCount": len(non_english),
+        "warnings": warnings,
     }
 
 

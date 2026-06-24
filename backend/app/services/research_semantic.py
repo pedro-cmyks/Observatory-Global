@@ -345,3 +345,143 @@ def semantic_atlas_candidates(
         top = scored[0]["similarity"]
         scored = [c for c in scored if c["similarity"] >= top - ATLAS_TOP_MARGIN]
     return scored[:limit]
+
+
+# ---------------------------------------------------------------------------
+# Semantic thread membership (#214/#162 follow-up, 2026-06-24).
+#
+# The lexicon topic classifier (`theme-hint-lex-v2`) is English-keyed: in a
+# 168h window 1,722 Spanish / 832 Persian / 667 Arabic signals were ingested
+# but only 5 / 0 / 0 received a topic assignment, so non-English voice could
+# never reach a thread as gated evidence (gate_recall_by_language report,
+# docs/research/nlp-coverage/2026-06-24). The scope gate was never the bottleneck
+# — there was nothing in the pipe to ungate.
+#
+# Fix: route topic membership for the un-lexicon'd corpus through the existing
+# multilingual e5 embeddings (signal_embeddings, migration 054) against the
+# thread's running-mean centroid (dynamic_topics.centroid_vec). Read-path,
+# language-agnostic, $0, reuses the ANN already built for research.
+#
+# Conservative initial floor: centroid↔signal cosine. Centroids run hotter than
+# label anchors (members cluster tight) but the running mean drifts, so 0.82 is
+# chosen between the research centroid floor (0.80) and the signal-headline floor
+# (0.84) — pending a measured re-calibration on labeled members.
+THREAD_MEMBER_MIN_SIMILARITY = 0.82
+THREAD_MEMBER_LIMIT = 12
+
+
+def build_semantic_members(
+    raw_rows: list[dict[str, Any]],
+    *,
+    exclude_ids: set[int] | None = None,
+    min_similarity: float = THREAD_MEMBER_MIN_SIMILARITY,
+    limit: int = THREAD_MEMBER_LIMIT,
+) -> list[dict[str, Any]]:
+    """Pure filter/label of centroid-ANN rows into thread member items.
+
+    Each raw row is a dict with: id, headline, country_code, source_name,
+    source_url, timestamp(isoformat or None), sentiment, source_lang,
+    similarity, has_topic. Applies the similarity floor, junk-headline filter,
+    cross-syndication headline dedup, and the lexicon-already-shown exclusion,
+    then labels each survivor. Honest provenance: every item is tagged
+    retrieval=semantic_member with its gate_status so the surface never presents
+    a semantic neighbour as gated evidence.
+    """
+    import html as _html
+
+    excl = exclude_ids or set()
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for r in raw_rows:
+        sid = int(r["id"])
+        if sid in excl:
+            continue
+        sim = float(r["similarity"])
+        if sim < min_similarity:
+            continue
+        headline = _html.unescape(r.get("headline") or "")
+        if is_junk_headline(headline):
+            continue
+        key = headline.strip().lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({
+            "signal_id": sid,
+            "headline": headline,
+            "country_code": r.get("country_code"),
+            "source_name": r.get("source_name"),
+            "source_url": r.get("source_url"),
+            "timestamp": r.get("timestamp"),
+            "sentiment": float(r["sentiment"]) if r.get("sentiment") is not None else None,
+            "source_lang": r.get("source_lang") or "xx",
+            "similarity": round(sim, 4),
+            "retrieval": "semantic_member",
+            "gate_status": "assigned" if r.get("has_topic") else "below_gate",
+        })
+        if len(out) >= limit:
+            break
+    return out
+
+
+async def fetch_semantic_thread_members(
+    conn: Any,
+    topic_id: int,
+    *,
+    hours: int,
+    exclude_ids: list[int] | None = None,
+    limit: int = THREAD_MEMBER_LIMIT,
+    min_similarity: float = THREAD_MEMBER_MIN_SIMILARITY,
+) -> list[dict[str, Any]]:
+    """Signals semantically inside a dynamic topic, via centroid ANN.
+
+    Surfaces the non-English / un-lexicon'd voice the English lexicon never
+    assigned. Empty list when the topic has no centroid or no embeddings exist
+    yet (fresh signals embed on the nightly cron) — caller degrades silently.
+    """
+    centroid_row = await conn.fetchrow(
+        "SELECT centroid_vec FROM dynamic_topics "
+        "WHERE id = $1 AND centroid_vec IS NOT NULL",
+        topic_id,
+    )
+    if not centroid_row:
+        return []
+    centroid = [float(x) for x in centroid_row["centroid_vec"]]
+    vec_literal = "[" + ",".join(f"{x:.5f}" for x in centroid) + "]"
+    excl = exclude_ids or []
+    rows = await conn.fetch(
+        f"""
+        SELECT s.id, s.headline, s.country_code, s.source_name, s.source_url,
+               s.timestamp, s.sentiment,
+               COALESCE(NULLIF(s.source_lang, ''), 'xx') AS source_lang,
+               1 - (e.vec <=> $1::halfvec) AS similarity,
+               EXISTS (SELECT 1 FROM signal_topic_assignments sta
+                       WHERE sta.signal_id = s.id) AS has_topic
+        FROM signal_embeddings e
+        JOIN signals_v2 s ON s.id = e.signal_id
+        WHERE s.timestamp > NOW() - INTERVAL '{int(hours)} hours'
+          AND NOT (s.id = ANY($2::bigint[]))
+        ORDER BY e.vec <=> $1::halfvec
+        LIMIT {int(limit * 4)}
+        """,
+        vec_literal,
+        excl,
+    )
+    raw = [
+        {
+            "id": r["id"],
+            "headline": r["headline"],
+            "country_code": r["country_code"],
+            "source_name": r["source_name"],
+            "source_url": r["source_url"],
+            "timestamp": r["timestamp"].isoformat() if r["timestamp"] else None,
+            "sentiment": r["sentiment"],
+            "source_lang": r["source_lang"],
+            "similarity": r["similarity"],
+            "has_topic": r["has_topic"],
+        }
+        for r in rows
+    ]
+    return build_semantic_members(
+        raw, exclude_ids=set(excl), min_similarity=min_similarity, limit=limit
+    )
