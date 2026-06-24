@@ -8,6 +8,7 @@ from fastapi import APIRouter, Query, HTTPException
 from app import db
 from app.main_v2 import app
 from app.utils import _is_valid_person, _resolve_persons, extract_domain, rank_key_people
+from app.services.subjects import build_key_subjects
 from app.core.gdelt_taxonomy import classify_source, get_concepts_for_theme
 from app.services.processed_historical import (
     build_historical_coverage,
@@ -141,6 +142,20 @@ async def get_focus_data(
             }
             for r in rank_key_people([dict(r) for r in persons_rows], limit=8)
         ]
+        # Typed subjects (#176 reframe): person is one type — "El Niño" surfaces
+        # as an event, "República Dominicana" as a place, instead of vanishing or
+        # posing as people. Sourced from the same GDELT pool (untyped → flagged
+        # unverified); NER-typed source is a follow-up slice.
+        key_subjects = build_key_subjects([
+            {
+                "name": r['person'],
+                "ner_type": None,
+                "signal_count": int(r['signal_count']),
+                "distinct_outlets": int(r['distinct_outlets']),
+                "distinct_headlines": int(r['distinct_headlines']),
+            }
+            for r in persons_rows
+        ], limit=8)
 
         # Calculate totals
         total_signals = sum(int(n['signal_count']) for n in nodes)
@@ -184,7 +199,8 @@ async def get_focus_data(
                 }
                 for r in headlines
             ],
-            "key_people": key_people
+            "key_people": key_people,
+            "key_subjects": key_subjects
         }
 
 @router.get("/api/v2/theme/{theme_code}/drift")
