@@ -477,13 +477,25 @@ Problem A.
      `key_subjects`/`keySubjects` in focus+country (`cb52730`/serving commit),
      DEPLOYED + SMOKED LIVE: "america latin"/"republica dominicana" now
      `type=place` (no longer fake people), real people `type=person`, all
-     `unverified` (GDELT). REMAINING: (i) NER-typed source from `nlp_persons`
-     JSONB (real verified types, not all-unverified) + add `EVENT` to NER
-     kept-types in `nlp_pipeline.py:144` so phenomena are typed at ingest;
-     (ii) FRONTEND — CountryBrief still derives people client-side from
-     `signal.persons` with its OWN hardcoded blocklist (`countryBriefPeople.ts`
-     `COMMON_NON_PERSON_ENTITIES`); rewire to render `keySubjects` grouped by
-     type (preview-verify). EntityPanel/ThemeDetail likewise.
+     `unverified` (GDELT). **MODEL COMPLETE (backend+CountryBrief), 2026-06-24:**
+     (a) NER-typed source wired — focus+country query `nlp_persons`/`_xlm` JSONB
+     (`jsonb_array_elements` + `jsonb_typeof` guard) and `merge_entity_rows`
+     (NER wins per name, GDELT fills untyped); EVENT added to NER kept-types
+     (`nlp_pipeline.py:144`, `bd9swmfoq` deploy). (b) FRONTEND CountryBrief
+     ships "Key Subjects" typed (`countryBriefSubjects.ts` mirrors backend;
+     type badges; only person chips clickable) — browser-verified, replaced the
+     hardcoded `countryBriefPeople.ts` blocklist (`c47c523`). DEPLOYED+SMOKED:
+     US los angeles/las vegas→place, IR abu dhabi→place + netanyahu→person, CO
+     america latin→place. **FINDING:** all subjects still come back
+     `unverified=true` — NER query returns 0 rows because `nlp_persons` is
+     near-empty in served windows (NLP throughput, **#184**), so the gazetteer
+     carries typing honestly; the verified layer lights up only as NLP coverage
+     grows. REMAINING: EntityPanel/ThemeDetail still render the old "People"
+     list (other surfaces); CountryBrief uses a hand-mirrored TS gazetteer (the
+     server `key_subjects` is the eventual single source of truth).
+     CONVERGES WITH #234: every subject (person/place/event/thread/country) on
+     click should re-scope all surfaces (map centers on where its info
+     concentrates) — #234 slice 1 (country) shipped, thread/person pending.
    — 4) gate-recall SQL report = `scripts/gate_recall_by_language.py` (already
      shipped, `4911051`, 7 tests).
    REMAINING: 5) map hovers + PLANE degraded state, 6) keyword-match labels
