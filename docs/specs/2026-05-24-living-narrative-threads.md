@@ -298,3 +298,51 @@ are insufficient:
 
 These are good signs. Atlas should learn which clusters the world is actually
 producing, then map them back to internal anchors where useful.
+
+---
+
+## 2026-06-23 — Thread-model evolution (decisions, Pedro review)
+
+Live-corpus review of served threads surfaced the gaps below. These are the
+agreed direction; they extend (do not replace) the split/merge/child-subthread
+model already specified above — which was spec'd but never implemented.
+
+### Findings (prod, 168h)
+- **Noise-gate suppression.** Promotion requires evidence-role `noise_rate <
+  0.50`, but the student over-flags coherent high-volume threads: *Trump Warns
+  Netanyahu on Iran* (1390 signals, cohesion 0.96, noise 0.79) and *Mundial 2026*
+  (813 signals, es, noise 0.58) sat as candidates ~12 days. The 44 served
+  threads are small/recent; the biggest ongoing stories are hidden.
+- **Fragmentation.** US–Iran appears as ~7 flat threads, Russia–Ukraine as 3.
+  No parent/child; the anchor guard (0.93) + fresh per-snapshot DeepSeek labels
+  shatter an evolving story.
+- **Generic labels = labeling failure, not roundup.** *Iraqi News and Culture*
+  (cohesion 0.97) is a coherent cluster with a lazy DeepSeek name; the
+  content-roundup classifier correctly does NOT flag it. Fix = re-label, not gate.
+- **Reddit dead.** 0 social signals (datacenter-IP block on the public JSON).
+
+### Decisions
+1. **Drop noise_rate as a hard promotion gate.** Rely on cohesion + the #224
+   content-entropy roundup classifier (no-shared-subject AND single-outlet).
+   Noise stays a displayed signal, not a blocker.
+2. **No language suppression in promotion.** English is a real lingua franca;
+   gate/weight by ORIGIN, not language. Volume-as-quality is wrong for serving;
+   the weighted distribution lives in Atlas heat (Paper 3), not the thread gate.
+3. **Hierarchical threads.** A big story (Trump–Iran) is one parent with child
+   sub-threads, each with its own narrative + movement. Implement the spec's
+   `splitting`/`merged` states with evidence-driven parent/child links.
+4. **Re-label generic-but-coherent clusters** instead of killing them.
+5. **On-demand, any-window thread construction.** Open at 1h → show the last
+   hour; zoom a big topic into a 1h window; build the thread for the requested
+   window, not only the 6h batch.
+6. **Reddit + per-thread directed search.** Revive Reddit ingestion from a
+   residential IP (M1), not Fly datacenter. When a thread grows, search what the
+   public says about THAT thread specifically (per-country/topic subreddits).
+
+### Architecture note (Pedro) — raw-local vs served-processed
+Hot/cold is the wrong axis. Cold archive isn't used for live calc. Proposed:
+all raw INGESTION + processing local (M1 + external disk; residential IP dodges
+the datacenter blocks that kill Reddit and ~30% of feeds); the served DB
+(Supabase/Fly) holds only PROCESSED, query-ready artifacts. Migrate
+incrementally, blocked-sources first; GDELT stays on Fly as an always-on
+baseline. (This is Paper 6 territory.)
