@@ -595,6 +595,19 @@ function AppContent() {
     setMapFlyCountry(null)
   }, [mapFlyCountry, mapReady])
 
+  // #234: focusing a person/thread centers the map on where its coverage
+  // concentrates — the dominant country of the focus-scoped nodes. Fires once
+  // per focus (ref-guarded) so node refetches don't re-fly.
+  const lastEntityFlyRef = useRef<string | null>(null)
+  useEffect(() => {
+    const key = (focus.type === 'person' || focus.type === 'theme') && focus.value
+      ? `${focus.type}:${focus.value}` : null
+    if (!key) { lastEntityFlyRef.current = null; return }
+    if (!mapReady || nodes.length === 0 || lastEntityFlyRef.current === key) return
+    const dominant = nodes.reduce((m, n) => ((n.signalCount || 0) > (m.signalCount || 0) ? n : m), nodes[0])
+    if (dominant?.id) { setMapFlyCountry(dominant.id); lastEntityFlyRef.current = key }
+  }, [focus.type, focus.value, mapReady, nodes, setMapFlyCountry])
+
   // Sync Global Focus to CountrySlide-over + fly to country
   useEffect(() => {
     if (focus.type === 'country' && focus.value && focus.value !== selectedCountryCode) {
@@ -766,6 +779,11 @@ function AppContent() {
     // partners (the same flows the arcs draw), weighted by flow strength.
     // Everything unrelated dims. Reuses visibleFlows — flows ARE the relations.
     const focusCode = selectedCountryCode
+    // #234: focusing a person/thread re-scopes the map to where that entity's
+    // coverage concentrates. The nodes are already focus-scoped (the /nodes
+    // fetch passes focus_type/value), so their volume IS the concentration —
+    // light them, dim everything else.
+    const entityFocus = !focusCode && isActive && !!focus.value && (focus.type === 'person' || focus.type === 'theme')
     const relation = new Map<string, number>()
     if (focusCode) {
       let maxStr = 0.001
@@ -795,6 +813,9 @@ function AppContent() {
       let heat: number
       if (focusCode) {
         heat = relation.get(node.id) ?? 0
+      } else if (entityFocus) {
+        // focus-scoped node volume = where the person/thread concentrates
+        heat = intensity
       } else {
         const composite = heatComposite.get(node.id)
         heat = heatComposite.size > 0
@@ -818,7 +839,7 @@ function AppContent() {
         )
         currentCodes.add(code)
       })
-    } else if (heatComposite.size > 0) {
+    } else if (!entityFocus && heatComposite.size > 0) {
       // #231: a hot country can sit OUTSIDE the top-100-by-volume nodes
       // (e.g. Lebanon at 3 signals but high surprise). Color those too, with
       // minimal glow width since they carry little volume.
@@ -843,7 +864,7 @@ function AppContent() {
     })
 
     prevHeatCountries.current = currentCodes
-  }, [enhancedNodes, heatSourceReady, heatComposite, selectedCountryCode, visibleFlows])
+  }, [enhancedNodes, heatSourceReady, heatComposite, selectedCountryCode, visibleFlows, focus.type, focus.value, isActive])
 
   // Toggle country heat layer visibility when GLOW button is pressed
   useEffect(() => {
