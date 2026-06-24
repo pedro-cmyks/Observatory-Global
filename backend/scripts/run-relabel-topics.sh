@@ -32,6 +32,15 @@ LIMIT="${ATLAS_RELABEL_LIMIT:-25}"
 
 # claude lives in ~/.local/bin; keep homebrew + system paths for the venv.
 export PATH="/Users/pedro/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
+
+# CRITICAL: force the SUBSCRIPTION (Max) auth path, not the metered API.
+# If ANTHROPIC_API_KEY is present (it is in the worker .env, for the 3-vendor
+# calibration cron) the Claude CLI prefers it over the subscription — and that
+# API account has no credit, so headless `claude` fails ("Credit balance is too
+# low" / 401). Unset it here so `claude` uses CLAUDE_CODE_OAUTH_TOKEN (from
+# `claude setup-token`) or the login-keychain subscription instead. $0 on Max.
+unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+
 mkdir -p "$LOG_DIR"
 
 load_env_file() {
