@@ -466,7 +466,24 @@ Problem A.
      `rank_key_people` syndication-resistant ranking (DISTINCT headlines/outlets
      + corroboration floor + low-coverage fallback) wired into themes/geo
      person aggregation. Tests `test_person_hygiene.py` (34) +
-     `test_person_ranking.py` (6). SQL COUNT(DISTINCT …) needs prod smoke.
+     `test_person_ranking.py` (6). DEPLOYED + SMOKED (geo 24h=10, focus=8).
+   — 3b) **REFRAME person→SUBJECT (Pedro, 2026-06-24)**: panel asked "is this a
+     person?" and discarded the rest; correct frame is typed SUBJECTS (person
+     is one type). `app/services/subjects.py` (`cb52730`): `classify_subject`
+     (NER spaCy label → person/org/group/place/event; untyped GDELT inferred
+     via typed gazetteer — geo→place, El Niño→event, teams→org — EXACT match,
+     not substring) + `build_key_subjects` (types, syndication-rank, flags
+     GDELT-sourced `unverified`). `test_subjects.py` (27). Served as
+     `key_subjects`/`keySubjects` in focus+country (`cb52730`/serving commit),
+     DEPLOYED + SMOKED LIVE: "america latin"/"republica dominicana" now
+     `type=place` (no longer fake people), real people `type=person`, all
+     `unverified` (GDELT). REMAINING: (i) NER-typed source from `nlp_persons`
+     JSONB (real verified types, not all-unverified) + add `EVENT` to NER
+     kept-types in `nlp_pipeline.py:144` so phenomena are typed at ingest;
+     (ii) FRONTEND — CountryBrief still derives people client-side from
+     `signal.persons` with its OWN hardcoded blocklist (`countryBriefPeople.ts`
+     `COMMON_NON_PERSON_ENTITIES`); rewire to render `keySubjects` grouped by
+     type (preview-verify). EntityPanel/ThemeDetail likewise.
    — 4) gate-recall SQL report = `scripts/gate_recall_by_language.py` (already
      shipped, `4911051`, 7 tests).
    REMAINING: 5) map hovers + PLANE degraded state, 6) keyword-match labels
