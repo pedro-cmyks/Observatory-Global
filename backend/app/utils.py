@@ -16,14 +16,45 @@ _GEO_NAME_BLOCKLIST: set[str] = {
 }
 _GEO_FIRST_WORDS: set[str] = {"north", "south", "east", "west", "central", "greater", "upper", "lower"}
 
+# #176: non-English non-person phrases the English-only checks above missed —
+# multilingual geo forms, climate patterns, and sports-team names that the NER
+# tagged as PERSON. Lowercased; matched against the whole name.
+_NON_PERSON_PHRASES: set[str] = {
+    # climate / nature patterns
+    "el niño", "la niña", "el nino", "la nina",
+    # sports teams / chants
+    "bafana bafana",
+    # multilingual geo (Spanish/Portuguese order, demonym pairs)
+    "america latina", "latina america", "estados unidos", "reino unido",
+    "naciones unidas", "union europea", "unión europea", "oriente medio",
+    "medio oriente", "corea del norte", "corea del sur", "arabia saudita",
+    "emiratos arabes", "casa blanca", "estado islamico", "estado islámico",
+    "nueva york", "nueva delhi", "ciudad de mexico", "ciudad de méxico",
+    "reino saudita", "sudafrica", "sudáfrica",
+}
+
+# Leading tokens that no real person name starts with (articles, a verb, the
+# Spanish/English determiners). Kept deliberately tight: "al" is excluded
+# (Al Pacino) and "le"/"o"/"a" are excluded (Le Pen, Portuguese names), so the
+# rule never drops a genuine person.
+_LEADING_NON_NAME_TOKENS: set[str] = {
+    "el", "la", "los", "las", "lo", "un", "una", "unos", "unas", "the", "dar",
+}
+
 
 def _is_valid_person(name: str) -> bool:
     lower = name.lower()
+    tokens = lower.split()
     return (
         len(name.split()) >= 2
         and len(name) <= 60
         and lower not in _GEO_NAME_BLOCKLIST
-        and lower.split()[0] not in _GEO_FIRST_WORDS
+        and lower not in _NON_PERSON_PHRASES
+        and tokens[0] not in _GEO_FIRST_WORDS
+        and tokens[0] not in _LEADING_NON_NAME_TOKENS
+        # a real two-word name never repeats the exact same token
+        # ("bafana bafana", "new new")
+        and len(set(tokens)) > 1
     )
 
 
