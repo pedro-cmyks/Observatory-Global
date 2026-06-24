@@ -558,3 +558,21 @@
 .entity-person-row--static {
     cursor: default;
 }
+
+/* Typed subject badge (#176) */
+.entity-subject-badge {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    background: rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+}
+.entity-subject-badge[data-type="person"]       { background: rgba(167, 139, 250, 0.22); color: #ddd6fe; }
+.entity-subject-badge[data-type="place"]        { background: rgba(56, 189, 248, 0.20);  color: #bae6fd; }
+.entity-subject-badge[data-type="organization"] { background: rgba(251, 191, 36, 0.20);  color: #fde68a; }
+.entity-subject-badge[data-type="event"]        { background: rgba(248, 113, 113, 0.20); color: #fecaca; }
+.entity-subject-badge[data-type="group"]        { background: rgba(52, 211, 153, 0.20);  color: #a7f3d0; }

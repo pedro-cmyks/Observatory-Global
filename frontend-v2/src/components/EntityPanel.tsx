@@ -3,7 +3,11 @@ import { getThemeLabel } from '../lib/themeLabels'
 import { timeRangeToHours } from '../lib/timeRanges'
 import { type TimeRange } from '../lib/timeRanges'
 import { useWorkspace } from '../contexts/WorkspaceContext'
-import { selectVisibleKeyPersons } from '../lib/countryBriefPeople'
+import { buildKeySubjects, type SubjectType } from '../lib/countryBriefSubjects'
+
+const SUBJECT_BADGE: Record<SubjectType, string> = {
+    person: 'person', place: 'place', organization: 'org', group: 'group', event: 'event',
+}
 import { buildGeoNarrative } from '../lib/geoNarrative'
 import { groupThemeTopics } from '../lib/themeHierarchy'
 import { Pin, PinOff } from '../lib/icons'
@@ -24,6 +28,7 @@ interface FocusData {
     top_sources: Array<{ source: string; count: number; avg_sentiment: number }>
     headlines: Array<{ url: string; source: string; headline: string | null; time: string | null }>
     key_people: Array<{ person: string; signal_count: number; avg_sentiment: number; country_count: number }>
+    key_subjects?: Array<{ name: string; type: SubjectType; signal_count: number; unverified?: boolean }>
 }
 
 interface EntityPanelProps {
@@ -93,9 +98,11 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
     const totalSources = data?.nodes?.reduce((sum, n) => sum + n.unique_sources, 0) ?? 0
     const topNodes = data?.nodes?.slice(0, 10) ?? []
     const geoNarrative = data ? buildGeoNarrative(data.nodes) : null
-    const keyPeople = selectVisibleKeyPersons(
-        (data?.key_people ?? []).map(p => ({ name: p.person, count: p.signal_count }))
-    )
+    // #176: typed subjects — prefer the server's key_subjects (NER-typed),
+    // fall back to client-typing the legacy key_people for older responses.
+    const keySubjects = (data?.key_subjects && data.key_subjects.length > 0)
+        ? data.key_subjects.map(s => ({ name: s.name, type: s.type, count: s.signal_count }))
+        : buildKeySubjects((data?.key_people ?? []).map(p => ({ name: p.person, count: p.signal_count })))
     const relatedThemeGroups = groupThemeTopics((data?.related_topics ?? []).slice(0, 12))
 
     return (
@@ -267,21 +274,23 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
                         </div>
                     )}
 
-                    {/* Key People */}
-                    {keyPeople.length > 0 && (
+                    {/* Key Subjects — typed: person is one type (#176) */}
+                    {keySubjects.length > 0 && (
                         <div className="entity-section">
-                            <div className="entity-section-label">Key People</div>
+                            <div className="entity-section-label">Key Subjects</div>
                             <div className="entity-people">
-                                {keyPeople.map(p => {
-                                    const fullData = data.key_people.find(k => k.person === p.name)
+                                {keySubjects.map(s => {
+                                    const fullData = data.key_people.find(k => k.person === s.name)
+                                    const clickable = s.type === 'person' && !!onPersonSelect
                                     return (
                                         <div
-                                            key={p.name}
-                                            className={`entity-person-row${onPersonSelect ? '' : ' entity-person-row--static'}`}
-                                            onClick={() => onPersonSelect?.(p.name)}
+                                            key={`${s.type}:${s.name}`}
+                                            className={`entity-person-row${clickable ? '' : ' entity-person-row--static'}`}
+                                            onClick={clickable ? () => onPersonSelect?.(s.name) : undefined}
                                         >
-                                            <span className="entity-person-name">{p.name}</span>
-                                            <span className="entity-person-count">{formatCount(p.count)}</span>
+                                            <span className="entity-subject-badge" data-type={s.type}>{SUBJECT_BADGE[s.type]}</span>
+                                            <span className="entity-person-name">{s.name}</span>
+                                            <span className="entity-person-count">{formatCount(s.count)}</span>
                                             {fullData && fullData.country_count > 1 && (
                                                 <span className="entity-person-countries">{fullData.country_count} ctrs</span>
                                             )}

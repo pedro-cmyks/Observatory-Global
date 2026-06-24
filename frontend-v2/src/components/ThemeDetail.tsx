@@ -6,6 +6,11 @@ import { ExportMenu } from './ExportMenu'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { ArrowLeftRight, Pin, PinOff, X } from '../lib/icons'
 import { getSourceFamilyMeta, type SourceFamily } from '../lib/sourceFamily'
+import { buildKeySubjects, type SubjectType } from '../lib/countryBriefSubjects'
+
+const SUBJECT_BADGE: Record<SubjectType, string> = {
+    person: 'person', place: 'place', organization: 'org', group: 'group', event: 'event',
+}
 import { resolveCountryName } from '../lib/countryNames'
 import { PanelErrorBoundary } from './PanelErrorBoundary'
 import { PanelSkeleton, PanelSkeletonGrid } from './PanelSkeleton'
@@ -903,25 +908,37 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             </div>
                         )}
 
-                        {/* Top Persons */}
-                        {data.topPersons.length > 0 && (
-                            <div className="theme-section">
-                                <h3>People Mentioned</h3>
-                                <div className="person-pills">
-                                    {data.topPersons.slice(0, 8).map(p => (
-                                        <span
-                                            key={p.name}
-                                            className="person-pill"
-                                            data-tip={`${p.count} mentions — click to filter signals`}
-                                            onClick={() => onPersonClick?.(p.name)}
-                                        >
-                                            {p.name}
-                                            <span className="person-pill-count">{p.count}</span>
-                                        </span>
-                                    ))}
+                        {/* Key Subjects — typed: person is one type (#176) */}
+                        {data.topPersons.length > 0 && (() => {
+                            const keySubjects = buildKeySubjects(
+                                data.topPersons.map(p => ({ name: p.name, count: p.count })), 8,
+                            )
+                            if (keySubjects.length === 0) return null
+                            return (
+                                <div className="theme-section">
+                                    <h3>Key Subjects</h3>
+                                    <div className="person-pills">
+                                        {keySubjects.map(s => {
+                                            const clickable = s.type === 'person'
+                                            return (
+                                                <span
+                                                    key={`${s.type}:${s.name}`}
+                                                    className={`person-pill${clickable ? '' : ' person-pill--static'}`}
+                                                    data-tip={clickable
+                                                        ? `${s.count} mentions — click to filter signals`
+                                                        : `${s.type} · ${s.count} mentions`}
+                                                    onClick={clickable ? () => onPersonClick?.(s.name) : undefined}
+                                                >
+                                                    <span className="subject-badge" data-type={s.type}>{SUBJECT_BADGE[s.type]}</span>
+                                                    {s.name}
+                                                    <span className="person-pill-count">{s.count}</span>
+                                                </span>
+                                            )
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )
+                        })()}
 
                         {/* Top Sources */}
                         {data.topSources.length > 0 && (
