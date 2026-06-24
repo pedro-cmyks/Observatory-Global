@@ -1,10 +1,19 @@
 """
-Reddit public API ingestion — no auth required for public subreddits.
-Captures social signal layer: narrative emergence before press coverage.
-Runs every 4th GDELT cycle (~60 min). No env key needed.
-Rate limit: 60 req/min public API — sleep 2s between subreddits, safe.
+Reddit ingestion — OAuth app-only (read-only). Captures the social signal layer:
+narrative emergence + public discussion before/around press coverage.
+
+Reddit blocks the unauthenticated public JSON endpoint (HTTP 403) from BOTH
+datacenter and residential IPs since 2023, so OAuth is mandatory. Create a
+"script"/"web app" at https://www.reddit.com/prefs/apps and set:
+    REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET
+    REDDIT_USER_AGENT  (optional; Reddit wants a unique descriptive UA)
+App-only client_credentials grant → read public subreddits. No user login.
+Quota: ~100 QPM / OAuth app. Graceful no-op when creds are absent.
+
+Runs every 4th GDELT cycle (~60 min) via ingest_loop.
 """
 import asyncio
+import time
 import asyncpg
 import aiohttp
 import logging
@@ -22,16 +31,20 @@ DATABASE_URL = os.getenv(
     "postgresql://observatory:changeme@localhost:5432/observatory?sslmode=disable",
 )
 
-REDDIT_BASE = "https://www.reddit.com"
-USER_AGENT = "ObservatorioGlobal/1.0 geo-intelligence-monitor (non-commercial research)"
+REDDIT_CLIENT_ID = os.getenv("REDDIT_CLIENT_ID", "")
+REDDIT_CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET", "")
+USER_AGENT = os.getenv(
+    "REDDIT_USER_AGENT",
+    "ObservatorioGlobal/1.0 (narrative-intelligence research; contact: atlas)",
+)
+TOKEN_URL = "https://www.reddit.com/api/v1/access_token"
+OAUTH_BASE = "https://oauth.reddit.com"
 
 # Subreddits: (name, default_country_or_None, source_family)
 SUBREDDITS: list[tuple[str, str | None, str]] = [
-    # Global geopolitics
     ("worldnews", None, "social"),
     ("geopolitics", None, "social"),
     ("GlobalNews", None, "social"),
-    # Crisis-specific country subreddits
     ("colombia", "CO", "social"),
     ("Venezuela", "VE", "social"),
     ("ukraine", "UA", "social"),
@@ -40,11 +53,44 @@ SUBREDDITS: list[tuple[str, str | None, str]] = [
     ("Nigeria", "NG", "social"),
     ("myanmar", "MM", "social"),
     ("haiti", "HT", "social"),
-    # Conflict/security analysis
     ("CredibleDefense", None, "social"),
     ("SyrianCivilWar", "SY", "social"),
     ("PakistanPolitics", "PK", "social"),
 ]
+
+# Cached app-only token (process-lifetime; refreshed before expiry).
+_token: dict = {"value": None, "expires_at": 0.0}
+
+
+def reddit_enabled() -> bool:
+    return bool(REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET)
+
+
+async def _get_token(session: aiohttp.ClientSession) -> str | None:
+    """App-only OAuth token (client_credentials). Cached until ~1 min before expiry."""
+    now = time.time()
+    if _token["value"] and now < _token["expires_at"] - 60:
+        return _token["value"]
+    try:
+        auth = aiohttp.BasicAuth(REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET)
+        async with session.post(
+            TOKEN_URL,
+            data={"grant_type": "client_credentials"},
+            auth=auth,
+            headers={"User-Agent": USER_AGENT},
+            timeout=aiohttp.ClientTimeout(total=20),
+        ) as resp:
+            if resp.status != 200:
+                body = await resp.text()
+                logger.warning("[Reddit] token HTTP %d: %s", resp.status, body[:160])
+                return None
+            data = await resp.json()
+        _token["value"] = data.get("access_token")
+        _token["expires_at"] = now + float(data.get("expires_in", 3600))
+        return _token["value"]
+    except Exception as e:
+        logger.warning("[Reddit] token error: %s", e)
+        return None
 
 
 def _parse_reddit_time(created_utc: float | None) -> datetime:
@@ -55,17 +101,18 @@ def _parse_reddit_time(created_utc: float | None) -> datetime:
 
 async def _fetch_subreddit(
     session: aiohttp.ClientSession,
+    token: str,
     subreddit: str,
     default_country: str | None,
     since: datetime,
 ) -> list[dict]:
-    signals = []
+    signals: list[dict] = []
     try:
         async with session.get(
-            f"{REDDIT_BASE}/r/{subreddit}/new.json",
+            f"{OAUTH_BASE}/r/{subreddit}/new",
             params={"limit": 50},
             timeout=aiohttp.ClientTimeout(total=20),
-            headers={"User-Agent": USER_AGENT},
+            headers={"User-Agent": USER_AGENT, "Authorization": f"Bearer {token}"},
         ) as resp:
             if resp.status == 429:
                 logger.warning("[Reddit] rate limited on r/%s", subreddit)
@@ -78,35 +125,26 @@ async def _fetch_subreddit(
         posts = data.get("data", {}).get("children", [])
         for post in posts:
             p = post.get("data", {})
-            created_utc = p.get("created_utc")
-            pub_time = _parse_reddit_time(created_utc)
+            pub_time = _parse_reddit_time(p.get("created_utc"))
             if pub_time <= since:
                 continue
-
-            # Skip if removed or deleted
             if p.get("removed_by_category") or p.get("selftext") == "[removed]":
                 continue
 
             title = (p.get("title") or "")[:500]
             selftext = (p.get("selftext") or "")[:300]
             permalink = p.get("permalink", "")
-            url_str = f"{REDDIT_BASE}{permalink}" if permalink else ""
-
+            url_str = f"https://www.reddit.com{permalink}" if permalink else ""
             if not url_str:
                 continue
 
-            # External link posts — use the linked URL as source_url if not self-post
             post_url = p.get("url", "")
-            if post_url and not post_url.startswith(REDDIT_BASE) and not is_blocked(post_url):
+            if post_url and not post_url.startswith("https://www.reddit.com") and not is_blocked(post_url):
                 source_url = post_url
             else:
                 source_url = url_str
 
-            country_code = (
-                extract_country(title, selftext)
-                or default_country
-                or "XX"
-            )
+            country_code = extract_country(title, selftext) or default_country or "XX"
 
             signals.append({
                 "timestamp": pub_time,
@@ -127,9 +165,9 @@ async def _fetch_subreddit(
                 "source_family": "social",
                 "source_lang": "en",
                 "geo_confidence": 0.5,
-                "attribution_method": "reddit_public",
+                "attribution_method": "reddit_oauth",
                 "is_state_media": False,
-                # Semantic class (migration 021) — Reddit is commentary, NOT corroboration
+                # Reddit is commentary/discussion, NOT corroboration.
                 "signal_class": "social_commentary",
                 "snippet": clean_snippet(selftext),
             })
@@ -143,7 +181,11 @@ async def _fetch_subreddit(
 
 
 async def run_reddit_ingestion() -> None:
-    """Fetch social signals from geopolitics subreddits. Called by ingest_loop.py."""
+    """Fetch social signals from geopolitics subreddits via OAuth. Called by ingest_loop."""
+    if not reddit_enabled():
+        logger.warning("[Reddit] REDDIT_CLIENT_ID/SECRET not set — skipping (OAuth required)")
+        return
+
     since = datetime.now(timezone.utc) - timedelta(hours=2)
     pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=2)
     total_inserted = 0
@@ -151,10 +193,13 @@ async def run_reddit_ingestion() -> None:
 
     try:
         async with aiohttp.ClientSession() as session:
+            token = await _get_token(session)
+            if not token:
+                logger.warning("[Reddit] no OAuth token — skipping")
+                return
             for subreddit, default_country, _ in SUBREDDITS:
-                signals = await _fetch_subreddit(session, subreddit, default_country, since)
+                signals = await _fetch_subreddit(session, token, subreddit, default_country, since)
                 total_fetched += len(signals)
-
                 if signals:
                     inserted = 0
                     async with pool.acquire() as conn:
@@ -187,19 +232,10 @@ async def run_reddit_ingestion() -> None:
                                     inserted += 1
                             except Exception as e:
                                 logger.warning("[Reddit] insert error: %s", str(e)[:120])
-
                     total_inserted += inserted
-                    logger.info(
-                        "[Reddit] r/%s: %d fetched → %d inserted",
-                        subreddit, len(signals), inserted,
-                    )
-
-                await asyncio.sleep(2)  # 2s between subreddits — 30 req/min max
-
+                    logger.info("[Reddit] r/%s: %d fetched → %d inserted", subreddit, len(signals), inserted)
+                await asyncio.sleep(1)  # OAuth allows ~100 QPM; 1s/subreddit is safe
     finally:
         await pool.close()
 
-    logger.info(
-        "[Reddit] ingestion complete — %d fetched, %d new signals",
-        total_fetched, total_inserted,
-    )
+    logger.info("[Reddit] ingestion complete — %d fetched, %d new signals", total_fetched, total_inserted)
