@@ -1656,3 +1656,15 @@ need an eyeball on the Vercel build. Country-focus slice 1 unchanged; thread
 focus shares the same path (focus.type==='theme'). Pushed → Vercel redeploying.
 Remaining #234: public-attention focus; the dock surfaces (anomaly/sources)
 re-scoping; spurious flow partners are a co-occurrence data-quality issue.
+
+**2026-06-24 — typed subjects ACROSS ALL surfaces (`982be23`):** EntityPanel
+(person/theme focus) now consumes the server `key_subjects` from /api/v2/focus
+directly (NER-typed, single source of truth; falls back to client-typing
+key_people); ThemeDetail client-types its topPersons via buildKeySubjects (the
+/theme endpoint doesn't serve key_subjects). Both render "Key Subjects" with
+type badges, person-only clickable. Browser-verified (person→EntityPanel all
+person-typed; thread→ThemeDetail badges). 64/64 vitest, build green. The
+typed-subject reframe is now consistent across CountryBrief + EntityPanel +
+ThemeDetail. Remaining #176: NER throughput (#184) to flip subjects from
+unverified→verified; deeper GDELT name noise ("google mapsreeder mesa"). Old
+`countryBriefPeople.ts` (selectVisibleKeyPersons) now unused — safe to delete.
