@@ -1641,3 +1641,18 @@ drops 1→7. Browser-verified badge gone. Weights are calibratable v1.
 Follow-ups: atlas label quality awkward ("Disease outbreak in France and UG"
 — #204 taxonomy); NER persons still throughput-starved (#184, nlp_persons
 ~empty → subjects show unverified=true via gazetteer).
+
+**2026-06-24 — #234 slice 2 (person/thread focus → map re-scope + center):**
+`a018267`. The /nodes fetch already scopes to focus (focus_type/value), so a
+person/thread focus returns the countries where the entity concentrates
+(prod-verified: person=trump → US 2585/IR 1043/IL 289, 70 countries). App.tsx
+heat effect gained an `entityFocus` branch (light focus-scoped nodes by volume,
+dim the rest; composite-fill guarded with !entityFocus) + a ref-guarded effect
+that flies the camera to the dominant focus country. Build green, 64/64 vitest,
+app stable under person focus. CAVEAT: the map-heat VISUAL is UNVERIFIED — the
+`country-heat` layer does not render in the local dev preview (source fails to
+load; global heat dark too, pre-existing), so the re-scope colors + camera fly
+need an eyeball on the Vercel build. Country-focus slice 1 unchanged; thread
+focus shares the same path (focus.type==='theme'). Pushed → Vercel redeploying.
+Remaining #234: public-attention focus; the dock surfaces (anomaly/sources)
+re-scoping; spurious flow partners are a co-occurrence data-quality issue.
