@@ -1623,3 +1623,21 @@ Closed session 7: #63, #73, #78, #81, #84–#93.
 Closed session 8: #92 (Wave 4 NLP ADR).
 Closed session 9: #51 (tolerant search), #62 (ESLint debt), #77 (source framing viz), #92 (NLP ADR), #99 (geo validation Wave 4 Phase 4), #100 (NER geo-filter).
 Next priority: #83 (Signal Intelligence Panel), #61 (comparative engine UI), #70 (theme clustering), mac backfill completion.
+
+**2026-06-24 — UNIFIED THREAD RANKING (Pedro's call):** Killed the
+living/aggregate distinction — it was a source label dressed as quality
+(dynamic_topics always first, atlas filling below by volume). Pedro: a
+persistent atlas topic that keeps growing IS a live thread; don't demote by
+origin. `app/services/thread_ranking.py` `rank_threads` (pure, 6 tests):
+0.45·log-volume + 0.35·relative-movement(changed_10h) + 0.20·coherence
+(avg_confidence), min-max normalised, NO source bias; volume log-damped so a
+3K-signal category can't bury a 50-signal story, coherence is the guardrail
+vs loose bins. `fetch_threads` merge replaced (dynamic+atlas one population,
+deduped by label). Frontend NarrativeThreads LIVING/AGGREGATE badge removed
+(trend arrow carries movement). DEPLOYED + SMOKED: prod /threads interleaves
+DYN+ATLAS by score — Russia-Ukraine (ch10=147) leads on movement, growing
+atlas categories (1000/945 sig, surging) rank top, emergent Sydney Airport
+drops 1→7. Browser-verified badge gone. Weights are calibratable v1.
+Follow-ups: atlas label quality awkward ("Disease outbreak in France and UG"
+— #204 taxonomy); NER persons still throughput-starved (#184, nlp_persons
+~empty → subjects show unverified=true via gazetteer).
