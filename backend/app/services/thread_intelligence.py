@@ -9,6 +9,7 @@ from app import db
 from app.core.gdelt_taxonomy import get_theme_label
 from app.services.narrative_note import build_thread_narrative_note
 from app.services.thread_packet import build_thread_packet
+from app.services.thread_ranking import rank_threads
 
 logger = logging.getLogger(__name__)
 
@@ -1154,27 +1155,22 @@ async def fetch_threads(
         if is_atlas_filtered:
             return atlas
         if dynamic:
-            # dynamic_topics stays canonical and ranks first, but it must not
-            # STARVE the global list: after the #224 identity rebuild the
-            # honest active set can be small (4 topics vs 188K signals — the
-            # 2026-06-12 review caught the list looking dead). Fill the
-            # remaining slots with atlas-aggregate threads instead of
-            # returning dynamic exclusively.
-            dynamic.sort(key=lambda t: int(t.get("signal_count") or 0), reverse=True)
-            dynamic = dynamic[:limit]
-            if len(dynamic) >= limit:
-                return dynamic
+            # Unified ranking (Pedro, 2026-06-24): the living/aggregate split was
+            # a source label dressed as quality — dynamic_topics always first,
+            # atlas filling below. But a persistent atlas topic that keeps
+            # growing is a live thread too. Treat them as one population and
+            # rank by movement + volume + coherence with NO source bias
+            # (rank_threads). Dedup by label, keeping the dynamic (coherent)
+            # version on collision. Coherence in the score is the guardrail that
+            # keeps loose taxonomy bins from dominating by raw volume.
             dynamic_labels = {
                 str(t.get("label") or "").strip().lower() for t in dynamic
             }
-            atlas_fill = [
+            atlas_extra = [
                 t for t in atlas
                 if str(t.get("label") or "").strip().lower() not in dynamic_labels
             ]
-            atlas_fill.sort(
-                key=lambda t: int(t.get("signal_count") or 0), reverse=True
-            )
-            return dynamic + atlas_fill[: limit - len(dynamic)]
+            return rank_threads(dynamic + atlas_extra)[:limit]
         else:
             try:
                 emergent = await _fetch_emergent_threads_with_conn(
@@ -1183,9 +1179,7 @@ async def fetch_threads(
             except Exception as exc:
                 logger.warning("emergent threads degraded: %s", exc)
                 emergent = []
-        combined = emergent + atlas
-        combined.sort(key=lambda t: int(t.get("signal_count") or 0), reverse=True)
-        return combined[:limit]
+        return rank_threads(emergent + atlas)[:limit]
 
     if conn is not None:
         return await _merged(conn)

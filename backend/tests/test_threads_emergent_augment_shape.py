@@ -93,20 +93,20 @@ def test_emergent_fetcher_guards_missing_table():
 
 
 def test_fetch_threads_merges_atlas_and_emergent():
-    """Merged ranking by `signal_count` desc with the requested `limit`."""
+    """Unified ranking (Pedro 2026-06-24): dynamic + atlas are one population,
+    ranked by rank_threads with no source tier — no living/aggregate split."""
     source = _src()
     merged_start = source.index("async def fetch_threads(")
-    # Inner sort on signal_count is the merge contract.
     next_def = source.index("async def fetch_thread_detail(")
     block = source[merged_start:next_def]
     assert "_fetch_dynamic_threads_with_conn" in block
     assert "_fetch_emergent_threads_with_conn" in block
-    # dynamic ranks first but must not starve the list (#224 review follow-up):
-    # atlas threads fill remaining slots, deduped by label
-    assert "dynamic + atlas_fill[: limit - len(dynamic)]" in block
-    assert "dynamic_topics stays canonical" in block
-    assert "atlas_fill" in block
-    assert 'sort(key=lambda t: int(t.get("signal_count") or 0), reverse=True)' in block
+    # Unified ranking, source-agnostic, deduped by label.
+    assert "rank_threads(" in block
+    assert "atlas_extra" in block
+    # The old source-tier merge is gone.
+    assert "atlas_fill" not in block
+    assert "dynamic_topics stays canonical" not in block
     # Atlas-only when filtered by topic/country
     assert "is_atlas_filtered" in block
 
