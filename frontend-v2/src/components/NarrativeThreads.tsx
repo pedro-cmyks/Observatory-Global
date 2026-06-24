@@ -252,13 +252,11 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 const trendArrow = n.trend === 'accelerating' ? '▲' : n.trend === 'fading' ? '▼' : '→'
                 // Plain-language hover hint; falls back to label when no description is available.
                 const rowHint = `${n.label}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries from ${n.source_count} sources. Click to open the unified thread detail.`
-                const domainLabel = (n.parent_domain || 'living thread').replace(/-/g, ' ')
-                // Two-tier honesty (#229 → #228): curated living threads
-                // (dynamic_topics, window-scoped counts) vs atlas-aggregate
-                // fill (lexicon assignment counts) measure different things —
-                // a 48-signal living thread and a 3,300-signal aggregate must
-                // not read as the same kind of row.
-                const isLiving = n.thread_id.startsWith('dynamic-topic-')
+                const domainLabel = (n.parent_domain || 'narrative thread').replace(/-/g, ' ')
+                // Unified threads (Pedro 2026-06-24): no living/aggregate source
+                // tier — every row is a narrative thread, ranked by movement +
+                // volume + coherence. The trend arrow carries the movement; the
+                // count its weight. No source-origin badge.
 
                 const colorIdx = displayedNarratives.indexOf(n) % THREAD_COLORS.length
                 const threadColor = THREAD_COLORS[colorIdx]
@@ -279,14 +277,6 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                     {n.label}
                                     <span className="narrative-cluster-label">
                                         {domainLabel}
-                                    </span>
-                                    <span
-                                        className={`narrative-tier-badge ${isLiving ? 'narrative-tier-badge--living' : 'narrative-tier-badge--aggregate'}`}
-                                        data-tip={isLiving
-                                            ? 'Living thread: a curated narrative cluster; the count is window-scoped coherent coverage.'
-                                            : 'Taxonomy aggregate: all signals matching this atlas topic; the count is raw assignment volume, not a curated story.'}
-                                    >
-                                        {isLiving ? 'LIVING' : 'AGGREGATE'}
                                     </span>
                                 </span>
                             </div>
