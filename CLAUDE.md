@@ -1692,3 +1692,21 @@ attention re-scope for non-country focus; backend `threads?person=` for precise
 (non-top_entities-capped) person→thread relation. Evaluation note: the
 person→thread match is honest but capped by top_entities (~6); the backend
 filter is the precise upgrade (Paper 4 ablation territory).
+
+**2026-06-24 — #234 shared focus-relation context (Paper 7 method):**
+(`b4e8d4d`+`a0f52ff`). The DRY architecture Pedro approved: `lib/focusRelation.ts`
+`computeFocusRelation` (pure, 5 vitest) → `{kind, value, dominantCountry,
+relationCountries (volume-normalised), relationActive}`; `hooks/useFocusRelation`
+wraps it over FocusContext+FocusDataContext. Honest by construction:
+relationActive=false → panels stay global, never fabricate/blank. Panels
+SELF-SUBSCRIBE (no prop-drilling): AnomalyPanel is the first consumer —
+`scopeCountry = filter.country ?? relation.dominantCountry`, so a focused person
+re-scopes its public-attention (wiki/trends) + ACLED conflicts to the person's
+dominant country, label "PUBLIC ATTENTION · UNITED STATES", badge "TRUMP → US"
+(browser-verified). **Papers framing (Pedro):** product ↔ paper are one line —
+product = evidence/backing, paper = the lab that frames the RQ and tries methods.
+This context IS the Paper 7 (analyst-workflow) method answering "how should every
+surface re-scope to a focused entity's relations, honestly?". Remaining #234:
+SourceIntegrity + the detail-PublicAttentionPanel add one useFocusRelation()
+call each; map-heat + threads re-scope can migrate to the hook to collapse the
+bespoke logic; precise person→thread = backend `threads?person=` (Paper 4).
