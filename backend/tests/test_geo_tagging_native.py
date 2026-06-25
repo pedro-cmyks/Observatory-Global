@@ -206,3 +206,86 @@ def test_precision_is_perfect_over_adversarial_set():
         or extract_country(headline, "") != expected
     ]
     assert not fails, f"precision failures: {fails}"
+
+
+# ── Subject is the TITLE, never an incidental body mention ────────────────────
+# Confirmed bug: an Australian opinion column ("Pauline Hanson will be her own
+# downfall…", areanews.com.au, source_origin_country=AU) whose syndicated
+# description carried a France token (France/French/Paris/Macron) was
+# confidently tagged FR — surfacing "concentrated in France" + FRANCE chips on
+# an Australian story. extract_country tags the SUBJECT from the title only; a
+# passing country mention in the snippet/body must NOT assert that country.
+# When the title names no country, extract_country returns None so the caller
+# falls back to a reliable signal (outlet home country / provider country
+# field), never a body mention.
+#
+# (label, title, snippet, expected)
+TITLE_SUBJECT_CASES: list[tuple[str, str, str, str | None]] = [
+    # The confirmed false positive, with realistic syndicated-body France tokens.
+    (
+        "AU column, France in body 'Paris'",
+        "Adam Triggs | Pauline Hanson will be her own downfall if she keeps talking",
+        "Opinion: The One Nation senator's repeated outbursts are eroding her base. "
+        "More stories: Bastille Day crowds gather in Paris; local council budget passes.",
+        None,
+    ),
+    (
+        "AU column, France in body 'France'/'French'",
+        "Pauline Hanson will be her own downfall if she keeps talking",
+        "Related reading from across our network: France braces for strike; "
+        "French unions reject pension reform. Subscribe to the Area News newsletter.",
+        None,
+    ),
+    (
+        "AU column, France in body 'Macron'",
+        "Pauline Hanson will be her own downfall if she keeps talking",
+        "In other news, Macron addressed parliament on the economy this week.",
+        None,
+    ),
+    # Guardrail: a headline that GENUINELY names France must still resolve FR —
+    # the fix kills the false positive without killing legitimate detection.
+    (
+        "real France headline still FR",
+        "Macron calls snap election as France faces political crisis",
+        "Paris — The president dissolved the National Assembly on Sunday.",
+        "FR",
+    ),
+    (
+        "France subject even with AU-irrelevant body",
+        "France unveils new nuclear strategy in Paris",
+        "Sydney markets opened higher on Monday.",  # incidental body mention ignored
+        "FR",
+    ),
+    # A country named ONLY in the body does not tag the signal — caller falls
+    # back. (Recovering real body subjects is the e5/NLP geo path, not keywords.)
+    (
+        "subject only in body → None (caller falls back)",
+        "Breaking: latest developments and analysis",
+        "Russia launched a fresh wave of strikes on Kyiv overnight, Ukraine said.",
+        None,
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "label,title,snippet,expected",
+    TITLE_SUBJECT_CASES,
+    ids=[c[0] for c in TITLE_SUBJECT_CASES],
+)
+def test_subject_from_title_not_incidental_body(label, title, snippet, expected):
+    assert extract_country(title, snippet) == expected, label
+
+
+def test_pauline_hanson_not_france():
+    """The exact reported false positive: AU column, FR token in the body."""
+    title = "Adam Triggs | Pauline Hanson will be her own downfall if she keeps talking"
+    snippet = (
+        "The One Nation senator keeps talking herself into trouble. "
+        "Elsewhere: Macron and France's parliament clash over the budget in Paris."
+    )
+    result = extract_country(title, snippet)
+    assert result != "FR", f"regression: AU column mis-tagged FR (got {result!r})"
+    assert result is None, (
+        "title names no country → expected None so the caller falls back to the "
+        f"outlet's AU home country, got {result!r}"
+    )

@@ -998,14 +998,15 @@ _NATIVE_COUNTRY_PATTERNS: list[tuple[re.Pattern, str]] = [
 ]
 
 
-def extract_country(title: str, snippet: str) -> Optional[str]:
-    """Return first ISO2 match found in title+snippet, or None.
+def _scan_country(text: str) -> Optional[str]:
+    """First ISO2 whose subject pattern matches ``text``, else None.
 
     Latin keyword patterns first, then native-script patterns (#150) so
     non-Latin headlines geo-tag to the story subject rather than falling
     back to the outlet's home country.
     """
-    text = f"{title} {snippet}"
+    if not text:
+        return None
     for pattern, iso2 in _COUNTRY_PATTERNS:
         if pattern.search(text):
             return iso2
@@ -1013,6 +1014,35 @@ def extract_country(title: str, snippet: str) -> Optional[str]:
         if pattern.search(text):
             return iso2
     return None
+
+
+def extract_country(title: str, snippet: str = "") -> Optional[str]:
+    """Return the story's SUBJECT country (ISO2) from the TITLE, or None.
+
+    Only the title is scanned. The title is the story's subject; the snippet
+    (RSS summary / provider description) is supporting body where *incidental*
+    country mentions live — syndicated "related stories" blocks, photo
+    captions, datelines, "elsewhere in the world" footers, boilerplate. The
+    old implementation scanned the concatenated ``title + snippet`` and
+    returned the FIRST country matched ANYWHERE, so one passing France token
+    in a description hijacked the whole signal:
+
+        title  = "Adam Triggs | Pauline Hanson will be her own downfall …"
+        snippet= "… Macron and France's parliament clash over the budget in Paris."
+        → confidently tagged FR (areanews.com.au, source_origin_country=AU),
+          surfacing "concentrated in France" + FRANCE chips on an AU story.
+
+    Tagging the subject off an incidental body mention is worse than not
+    tagging at all: every caller already falls back to a more reliable signal
+    when this returns None — RSS to the outlet's ``source_country``, NewsData
+    to the provider's own country field, all to ``"XX"``. So a silent title
+    yields None and the caller picks the honest fallback, instead of asserting
+    a country at high confidence off the body. The ``snippet`` parameter is
+    kept for call-site compatibility but is intentionally NOT used for subject
+    geo-tagging. (Real subject recall from body text is the e5/NLP geo path,
+    the clean #150 end state.)
+    """
+    return _scan_country(title)
 
 
 def strip_html(text: str) -> str:
