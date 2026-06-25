@@ -1,9 +1,16 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
 Last updated: 2026-06-25. **Newest session handoff (read this first):**
-`docs/state/2026-06-25-session-handoff.md` — adaptive NLP fleet (#184) now
-draining the 208K NER backlog on the M1, #234 relation upgrades, all 8 papers
-brought current. The dated blocks below are the running registry.
+`docs/state/2026-06-25-brief-dataquality-session.md` — live re-eval of the
+surfaces moved the bottleneck from surface STRUCTURE to the DATA feeding them.
+Shipped + deployed: Brief lead-story regression fix, geo mistag (title-only +
+71-row backfill), count semantics #214, conservative same-event dedup,
+thread-detail UX (readable headlines + source→coverage expand + hide-empty
+drift), translatable coverage headlines. New umbrella **#238** (subject
+geography — chips/dedup/cross-language all need subject-country, not coverage
+volume). Prior handoff: `docs/state/2026-06-25-session-handoff.md` (adaptive
+NLP fleet #184, #234 relations, papers). The dated blocks below are the
+running registry.
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
