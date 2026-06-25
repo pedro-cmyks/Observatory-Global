@@ -65,6 +65,31 @@ production inference at zero per-call cost.
   `71.4%` noise recall, no LLM at inference.
 - Distillation candidates surfaced per topic (reasoning mining).
 
+**Product evidence accrued (2026-06-25):** the evidence-role / distillation
+pipeline is now the production backing record, with several decisions the paper
+can cite as deployed-at-scale rather than offline-only. (1) **`dynamic_topics`
+is the backing record** for user-facing threads, hydrated after the emergent
+snapshot cron using local e5 + the evidence-role student noise gate, caching
+per-cluster `role_noise_rate` on `emergent_clusters` at `$0` API
+(`thread_intelligence.evidence_role`, CLAUDE.md 2026-06-02 / 2026-06-09). (2)
+The **precision gate** survives in production (`snapshot_emergent_topics.py`
+keeps 9 of 12 raw HDBSCAN clusters; CLAUDE.md 2026-06-01). (3) **DeepSeek**, not
+the deprecated local Ollama, does the cluster labeling (`deepseek_narrative.py`;
+the 2026-06-02 note records Ollama `llama3.2:1b` at 25% decision accuracy on 20
+rows — keep that as the negative-control disclosure). (4) A separate but
+adjacent distillation-style **ranking calibration harness** is shipped:
+`backend/scripts/calibrate_research_ranking.py` calibrates weights +
+normalization midpoints over spec-derived gold orderings + live forcing cases,
+`21/21` vs a `20/21` baseline (report
+`docs/research/ranking-calibration/2026-06-10-ranking-calibration.md`; CLAUDE.md
+2026-06-10) — a constraint-harness calibration the methodology section can cite.
+(5) The semantic retrieval threshold was **re-measured on the real ~100K corpus
+to 0.84** (`research_semantic.SIGNAL_MIN_SIMILARITY = 0.84`; below the 0.84 band
+admits same-language affinity junk), shipped with an **`is_junk_headline`
+filter** on both write and query side (`is_junk_headline`, CLAUDE.md
+2026-06-11/12 #223) — a corpus-grounded threshold + noise filter, not a fixed
+constant.
+
 **Evidence still missing for submission:**
 - Result-bearing draft skeleton with current tables and figures.
 - Temporal generalization hold-out week.
@@ -73,6 +98,10 @@ production inference at zero per-call cost.
   a central claim.
 - Limitations language separating reviewed diagnostic labels, consensus gold,
   and local Ollama negative evidence.
+- Threshold-sweep curve around the re-measured `0.84` semantic floor (precision/
+  recall vs cut) on the full persisted corpus, not just the band rationale.
+- `role_noise_rate` calibration check: does the cached per-cluster noise rate
+  predict reviewed precision on a held-out thread sample?
 
 **Target venues:** EMNLP industry, ACL Findings, NLP4PI workshop.
 
@@ -95,12 +124,42 @@ useful narrative evidence than any single signal alone.
 - Atlas heat formula component `voice` already weights source
   diversity.
 
+**Product evidence accrued (2026-06-25):** the source-quality axis grew a
+measured, surfaced metric the paper can anchor on — **who speaks vs who is
+spoken about**. (1) A repeatable **Voice Mix audit**
+(`backend/scripts/voice_mix_audit.py`, read-only) computes a `diversity_score`
+(0-100, mean of english_balance / language_entropy / cjk_coverage) and the
+origin-diversity headline `voice_entropy`; baseline was a measured monoculture
+(English `96.9%` of language-known, CJK `0`, `diversity_score` 3.3/100, artifact
+`docs/research/voice-mix/2026-06-22-baseline.json`), and after the multilingual
+ingest waves `diversity_score` reached `23.9/100` with **`voice_entropy = 0.71`
+over 89 countries, above the 0.65-0.70 target** (CLAUDE.md 2026-06-22 /
+2026-06-23). (2) The same formula is exposed as a product contract:
+`GET /api/v2/voice-mix?hours=&country=` via `app/services/voice_mix.py` (single
+source of truth shared with the audit; #160). (3) **`source_origin_country` is
+persisted at ingest** (`ingest_rss.py`) — outlet home country, distinct from
+story subject country, backfilled ~93% of rows. (4) **Self-coverage is defined
+by OWNERSHIP, not language**: `self_voice = origin == subject`, with a separate
+`soft_power_local_language` bucket for a foreign outlet writing in the local
+language (BBC Persian on Iran counts as soft-power, never as self), ratios taken
+over attributable origin and `unattributed` GDELT reported honestly
+(`voice_mix.relation`; live: Iran `10.4%` domestic, US `10%`, DE `91%`, CO
+`52%`; verification script `backend/scripts/self_coverage_report.py`; CLAUDE.md
+2026-06-22 WAVE 4). (5) **#217 source-credibility tiers** are scoped as the
+product face of this paper (CLAUDE.md 2026-06-10 spec review) — design exists,
+not yet measured.
+
 **Evidence to collect:**
 - Cross-source coverage matrix (which sources cover which crises).
 - Per-source false-positive rate on stratified sample.
 - Aggregator-share metric per thread; correlation with analyst
   usefulness.
 - State-media leakage rate by topic.
+- Correlation of `voice_entropy` / `self_voice_ratio` with analyst-judged
+  perspective diversity on a stratified thread sample (does the ownership
+  metric track "did we hear the local voice?").
+- #217 credibility-tier ablation: does the tier weight change analyst-useful
+  ranking beyond `source_family` + `is_state_media` alone.
 
 **Target venues:** ICWSM, JCDL, ACL Findings.
 
@@ -122,10 +181,30 @@ the most to analyst-relevant ranking.
 - `heat_countries` API exposes the ranking.
 - `heat_voluminous_countries` lens for volume comparison.
 
+**Product evidence accrued (2026-06-25):** the volume≠importance thesis was put
+on the map and verified in production (#231). The map `country-heat-fill` had
+regressed to `/nodes` `.heat`, which is **volume-rank** (US 1.0, GB 0.40, CN
+0.26 — monotonic with signal count), i.e. exactly the distortion this paper
+argues against (US always reddest). It now fills from the **`atlas_heat`
+composite** via `/api/v2/heat/countries` (`App.tsx` fetches
+`heat/countries?limit=250` and keys on `it.atlas_heat`, CLAUDE.md 2026-06-12
+#231) — so a low-volume but composite-hot country (e.g. GZ 0.74/vol49, LB
+0.65/vol3) outranks high-volume US, and US is no longer reddest. **Volume was
+demoted to glow-width only**; absent-from-composite reads as not-hot. A
+follow-up (CLAUDE.md 2026-06-13) widened the visible band: fetch all (limit 250)
+then **min-max normalize the real composite band onto [0.1, 1.0]** across the
+full blue→cyan→amber→red ramp (the raw 0.36-0.72 band rendered flat-orange).
+This is the live, eyeballed (Vercel-confirmed) demonstration that the composite
+re-orders the world away from raw counts — the qualitative half of the paper's
+per-component ablation claim, on the production surface.
+
 **Evidence to collect:**
 - Per-component ablation: drop each component, measure ranking shift.
-- Analyst preference study: heat-ranked vs volume-ranked panels.
+- Analyst preference study: heat-ranked vs volume-ranked panels (the live
+  composite-vs-volume-rank swap is the deployable A/B substrate).
 - Time-correlation study: do heat spikes lead or lag external news?
+- Quantify the composite-vs-volume re-ranking (Kendall-tau / top-k overlap
+  between `/nodes` volume order and `/heat/countries` composite order).
 
 **Target venues:** ICWSM, JCDL, KDD Applied Data Science track.
 
@@ -151,12 +230,43 @@ better than per-topic aggregation alone.
 - Quality audit document
   (`docs/research/2026-05-24-thread-quality-audit.md`).
 
+**Product evidence accrued (2026-06-25):** the thread serving model was
+re-grounded on a quality-not-source decision the paper can defend. (1)
+**UNIFIED thread ranking** (`app/services/thread_ranking.py`, pure, 6 tests):
+`score = 0.45·log-volume + 0.35·relative-movement(changed_10h) +
+0.20·coherence(avg_confidence)`, min-max normalised across the candidate set,
+**NO source bias** — volume is log-damped so a 3K-signal category can't bury a
+50-signal story and coherence is the guardrail against loose bins. This
+explicitly **killed the living/aggregate distinction** (Pedro: a persistent
+atlas topic that keeps growing IS a live thread; demoting by origin was a source
+label dressed as quality); `fetch_threads` now merges dynamic + atlas as one
+deduped population ranked by score (prod-verified: Russia-Ukraine leads on
+movement `ch10=147`, a surging 1000-signal atlas category ranks top, an emergent
+thread drops 1→7; CLAUDE.md 2026-06-24). (2) **Evidence sampling is honest under
+the gate**: `evidence_samples` ride in the briefing/thread payload, and when the
+quality gate clears 0 but raw signals exist the theme detail serves
+`below_gate_evidence` raw headlines behind an **UNVERIFIED banner** rather than a
+false empty (`themes.py` warning `below_gate_evidence`; prod case CO
+election-legitimacy 0/44; CLAUDE.md 2026-06-12). (3) **Precise person→thread
+relation**: `GET /api/v2/threads?person=` filters to threads a person appears in
+via the full signal `persons` array — `thread_matches_person`
+(`thread_intelligence.py:1140`, 6 tests): atlas threads match by a lightweight
+person→topic-slug SQL that never touches the main THREADS spine, dynamic/emergent
+fall back to `top_entities`; prod smoke person=trump → 24/39 matched, catching a
+"Disease outbreak" thread the capped `top_entities` heuristic missed (CLAUDE.md
+2026-06-24, Paper 4 ablation territory).
+
 **Evidence to collect:**
 - Thread-level benchmark (sample 30 threads; LLM annotator scores
   each against the 7 questions; compare to analyst judgement).
 - Evidence-role accuracy per thread.
 - Syndication detection precision.
 - Confidence-band calibration.
+- Ranking-weight ablation: vary the 0.45/0.35/0.20 split and the log-damping,
+  measure analyst-judged top-k thread quality (weights are explicitly v1 /
+  calibratable).
+- person→thread recall/precision of `?person=` (full-array match) vs the
+  `top_entities`-capped heuristic on a labeled set.
 
 **Target venues:** ICWSM main, EMNLP industry, CSCW.
 
@@ -182,11 +292,39 @@ thresholds.
   `nlp_sentiment_weight_sum`, `nlp_confidence_sum`.
 - Three sentiment sources exposed: `gdelt`, `nlp`, `nlp_weighted`.
 
+**Product evidence accrued (2026-06-25):** the multilingual-NLP claim now has a
+deployed configuration AND an honest, measured infra limitation the paper should
+state as a finding. (1) **Sentiment runs as a fast lane** and reaches ~100%
+coverage on served signals (`nlp_sentiment` 100% in measured windows), while
+**NER lags far behind** — measured `3.9%` `nlp_persons` coverage, ~680/hr on the
+Fly box vs ~7,000/hr ingest (24h lag). Root cause is structural: the
+`nlp_worker` LOADs-RUNs-UNLOADs each heavy model per cycle to fit a 4GB box, and
+that box co-hosts the e5 embed service in the same Python process — bumping NER
+throughput starved the semantic lane (logged incident, CLAUDE.md 2026-06-25
+#184). (2) Multilingual mode exists (`NLP_MULTILINGUAL_MODE`,
+`cardiffnlp/twitter-xlm-roberta-base-sentiment`, `enrichment/nlp_pipeline.py`;
+confirmed labeling new CJK/RU/FA signals when on). (3) NER was **moved to the M1
+as a mindful launchd daemon** (`taskpolicy -b` → efficiency cores + nice, yields
+to foreground work), lifting throughput to ~1.5-3.5k/hr while freeing the Fly box
+for embed; hot-lane prioritises recent so served signals get NER'd first
+(CLAUDE.md 2026-06-25). (4) **Key honest finding for the per-language section:**
+multilingual NER was investigated and NOT enabled — `xx_ent_wiki_sm` extracts
+Latin scripts fine but returns **nothing for Persian/Arabic/CJK** (exactly the
+diversity gap), and the xlm sentiment tokenizer is broken in the M1 env
+(transformers 5.8 / Python 3.14 mis-routes the SentencePiece tokenizer). So
+non-English subjects stay **gazetteer-typed (honest, `unverified=true`)** until a
+proper multilingual token-classification model + a working xlm env land. The
+NER↔embed co-hosting and the non-Latin NER gap are real, reproducible system
+constraints — not aspirational.
+
 **Evidence to collect:**
 - Human sentiment labels on a stratified sample (e.g., 100 headlines).
-- Per-language accuracy breakdown.
+- Per-language accuracy breakdown (and per-language NER coverage, given the
+  measured non-Latin NER gap — likely the headline limitation result).
 - HTML entity decode impact ablation.
 - `nlp_weighted` vs flat-AVG ablation on analyst-facing rankings.
+- Throughput/coverage characterization: NER lag vs ingest rate, and the
+  sentiment-fast-lane vs NER split as a cost/coverage trade.
 
 **Target venues:** NAACL, EMNLP, *SEM (sentiment / semantics workshop).
 
@@ -210,10 +348,33 @@ granularity choices are justified per use case.
   compact tables.
 - Live coverage reports.
 
+**Product evidence accrued (2026-06-25):** the two-tier temporal contract was
+made explicit and its serving consequences measured. (1) The **evidence-window
+contract** is now a named spec capability (H): **hot ≤168h queryable / processed
+aggregates / archive NOT queryable** (CLAUDE.md 2026-06-10 spec review) — the
+boundary this paper argues for, written as a product guarantee. (2) The **hot
+lane prioritises recent signals first**, so under throughput pressure (e.g. NER
+behind ingest, #184) the most-served recent window is enriched first — a
+deliberate freshness-over-completeness scheduling choice the paper can cite. (3)
+The **cold archive was relocated to external disk** (`/Volumes/Ext/Atlas/Archive`,
+`/Users/pedro/AtlasArchive` symlinked; runner exits if the volume is unmounted;
+59 manifest dirs / 272 records / 3,947,759 rows verified, CLAUDE.md 2026-06-01) —
+concrete tiering operations under cost budget. (4) The strongest new datum is the
+**raw-vs-served coverage gap (#229)**: a measured funnel of `174K` ingested
+signals/24h → `71K` persisted embedding corpus → ~23 clusters/snapshot → ~50
+served threads ≈ **0.2% of the signal mass**, with the bottleneck identified as
+clustering RECALL (not the promotion gate); the persisted-corpus clustering that
+dissolved the 15K hot-window cap is shipped (`--from-persisted` cron every 6h;
+CLAUDE.md 2026-06-12 / 2026-06-25). This is the temporal-tier analogue of what
+the hot window can surface vs what is retained — directly relevant to bucket and
+retention justification (shared substrate with Paper 8's open-set funnel).
+
 **Evidence to collect:**
 - Query latency per bucket granularity.
 - Cost per row across hot/cold tiers.
 - Reproducibility of compact aggregates from cold archive.
+- Hot-window recency-scheduling impact: enrichment coverage of the served window
+  vs the full 168h hot window under throughput pressure.
 
 **Target venues:** VLDB systems, CIDR, ICDE industry track, KDD ADS.
 
