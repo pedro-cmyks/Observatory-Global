@@ -1234,3 +1234,28 @@
     color: #64748b;
     border-color: rgba(148, 163, 184, 0.25);
 }
+
+/* ── Consumer MVP: phone read surface (single column, no choropleth) ── */
+@media (max-width: 768px) {
+    /* a choropleth is not a phone surface — hide the map, keep "Most Active" */
+    .brief-map-row .brief-minimap-demoted { display: none; }
+    .brief-map-row { grid-template-columns: 1fr; gap: 0; }
+
+    /* everything stacks to one readable column */
+    .brief-columns { grid-template-columns: 1fr; }
+    .brief-bottom-row { grid-template-columns: 1fr !important; margin: 0 16px; }
+
+    /* tighter chrome, more room for content */
+    .brief-masthead { padding: 14px 16px 12px; gap: 8px; }
+    .brief-body { padding: 18px 16px; }
+    .brief-title { font-size: 2rem; }
+    .brief-lead-headline { font-size: 1.5rem; line-height: 1.18; }
+
+    /* comfortable tap targets (>=48px) */
+    .brief-thread-row { min-height: 56px; padding: 12px 16px; }
+    .brief-range-selector { flex-wrap: wrap; justify-content: center; gap: 6px; }
+    .brief-range-selector button { padding: 8px 12px; }
+
+    /* heating strip scrolls horizontally instead of squishing */
+    .brief-heat-strip { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
