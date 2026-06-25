@@ -1755,3 +1755,10 @@ country (slice 1), person (map+threads precise+anomaly+sources), thread
 (siblings). Precise future upgrades: rarity-weighted/entity-overlap thread
 relation; thread-as-focus-lens if the open flow is ever made a lens. Map VISUAL
 still needs Pedro's Vercel eyeball.
+
+**2026-06-24 — #234 map VISUAL CONFIRMED on Vercel (Pedro):** the heat re-scope
++ camera fly verified good in prod. #234 fully closed for country/person/thread
+focus — every main surface re-scopes, all verified end-to-end (the dev-preview
+dark-map was a local source race only). Remaining are precise UPGRADES, not gaps:
+rarity-weighted/entity-overlap thread-sibling relation; thread-as-full-focus-lens;
+public-attention focus panels. #234 core = DONE.
