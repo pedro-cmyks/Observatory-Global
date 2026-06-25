@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { PanelSkeleton } from './PanelSkeleton'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 import './NarrativeDrift.css'
 
@@ -44,8 +43,11 @@ export function NarrativeDrift({ themeCode, countryCode, days = 14 }: NarrativeD
         return () => { isMounted = false }
     }, [themeCode, countryCode, days])
 
-    if (loading) return <PanelSkeleton rows={5} className="narrative-drift-skeleton" />
-    if (!data.length) return <div className="narrative-drift empty">No drift data for this period.</div>
+    // Drift needs ~14 days of history; most threads have none. Render nothing
+    // rather than an empty placeholder — the section collapses entirely when
+    // there is no real trend to show (sister feedback 2026-06-25).
+    if (loading) return null
+    if (data.length < 2) return null
 
     // Format dates for display
     const formattedData = data.map(d => ({

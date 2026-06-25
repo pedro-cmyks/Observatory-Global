@@ -43,6 +43,7 @@ interface ThemeData {
         country: string
         source: string
         url: string
+        headline?: string | null
         sentiment: number
         otherThemes: string[]
         persons: string[]
@@ -52,6 +53,7 @@ interface ThemeData {
         country: string
         source: string
         url: string
+        headline?: string | null
         sentiment: number
         otherThemes: string[]
         persons: string[]
@@ -153,6 +155,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     const [insightLoading, setInsightLoading] = useState(false)
     const [insightFailed, setInsightFailed] = useState(false)
     const [selectedSource, setSelectedSource] = useState<string | null>(null)
+    const [showAllCoverage, setShowAllCoverage] = useState(false)
     const [showDrift, setShowDrift] = useState(false)
     const [drillCountry, setDrillCountry] = useState<string | null>(initialDrillCountry || null)
     const [drillCountryName, setDrillCountryName] = useState<string | null>(
@@ -307,6 +310,36 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     const formatTime = (iso: string) => {
         const d = new Date(iso)
         return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    }
+
+    // One coverage article: the HEADLINE is the primary, clickable line so a
+    // reader can actually read the story and open the original (sister
+    // feedback 2026-06-25 — the old list showed only metadata + a "View
+    // Source" link, never the headline).
+    const renderArticle = (
+        sig: { timestamp: string; country: string; source: string; url: string; headline?: string | null; sentiment: number; persons: string[] },
+        opts: { showSource?: boolean } = {},
+    ) => {
+        const title = sig.headline || 'Untitled report'
+        return (
+            <div className="coverage-article">
+                {sig.url ? (
+                    <a href={sig.url} target="_blank" rel="noopener noreferrer" className="coverage-article-headline">
+                        {title} <span className="coverage-article-ext">↗</span>
+                    </a>
+                ) : (
+                    <span className="coverage-article-headline coverage-article-headline--nolink">{title}</span>
+                )}
+                <div className="coverage-article-meta">
+                    {opts.showSource && <span className="coverage-article-source">{sig.source || 'Unknown'}</span>}
+                    <span>{formatTime(sig.timestamp)}</span>
+                    {sig.country && <span>{sig.country}</span>}
+                    <span style={{ color: getSentimentColor(sig.sentiment) }}>
+                        {sig.sentiment > 0 ? '+' : ''}{sig.sentiment.toFixed(2)}
+                    </span>
+                </div>
+            </div>
+        )
     }
 
     // Country code to flag emoji
@@ -680,16 +713,12 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             </PanelErrorBoundary>
                         )}
 
-                        {/* Narrative Drift timeline — deferred so AEIL explanation renders first */}
-                        {showDrift ? (
+                        {/* Narrative Drift timeline — deferred so AEIL explanation
+                            renders first. NarrativeDrift renders null when there is
+                            no real trend (most threads), so the section collapses
+                            entirely instead of showing an empty placeholder. */}
+                        {showDrift && (
                             <NarrativeDrift themeCode={theme} countryCode={drillCountry || originCountry} days={14} />
-                        ) : (
-                            <div className="narrative-drift narrative-drift--deferred">
-                                <div className="narrative-drift-header">
-                                    <h3>Narrative Drift <span>(loading after summary)</span></h3>
-                                </div>
-                                <div className="drift-deferred-line" />
-                            </div>
                         )}
 
                         {/* RELATED INVESTIGATIONS (Concepts) */}
@@ -947,24 +976,49 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 <div className="source-list">
                                     {data.topSources.map(s => {
                                         const family = getSourceFamilyMeta(s.family)
+                                        const isOpen = selectedSource === s.name
+                                        const srcSigs = isOpen ? data.signals.filter(sig => sig.source === s.name) : []
                                         return (
-                                            <div
-                                                key={s.name}
-                                                className={`source-item ${selectedSource === s.name ? 'source-active' : ''}`}
-                                                onClick={() => setSelectedSource(selectedSource === s.name ? null : s.name)}
-                                                data-tip={`Avg tone ${s.sentiment > 0 ? '+' : ''}${s.sentiment.toFixed(2)} · ${family.tip} · click to filter articles by this source`}
-                                            >
-                                                <span className="source-name">{s.name}</span>
-                                                <span className={`source-family-badge ${family.className}`} data-tip={family.tip}>
-                                                    {family.label}
-                                                </span>
-                                                <span className="source-count">{s.count}</span>
-                                                <span className="source-sentiment" style={{ color: getSentimentColor(s.sentiment) }}>
-                                                    {sentimentWord(s.sentiment)}
-                                                </span>
-                                                <span className="source-see-articles">
-                                                    {selectedSource === s.name ? '▴' : '▾'}
-                                                </span>
+                                            <div key={s.name} className="source-group">
+                                                <div
+                                                    className={`source-item ${isOpen ? 'source-active' : ''}`}
+                                                    onClick={() => setSelectedSource(isOpen ? null : s.name)}
+                                                    data-tip={`Avg tone ${s.sentiment > 0 ? '+' : ''}${s.sentiment.toFixed(2)} · ${family.tip} · click to read this source's coverage`}
+                                                >
+                                                    <span className="source-name">{s.name}</span>
+                                                    <span className={`source-family-badge ${family.className}`} data-tip={family.tip}>
+                                                        {family.label}
+                                                    </span>
+                                                    <span className="source-count">{s.count}</span>
+                                                    <span className="source-sentiment" style={{ color: getSentimentColor(s.sentiment) }}>
+                                                        {sentimentWord(s.sentiment)}
+                                                    </span>
+                                                    <span className="source-see-articles">{isOpen ? '▴' : '▾'}</span>
+                                                </div>
+                                                {isOpen && (
+                                                    <div className="source-coverage">
+                                                        {onSourceClick && (
+                                                            <button
+                                                                className="source-full-profile-btn"
+                                                                onClick={(e) => { e.stopPropagation(); onSourceClick(s.name) }}
+                                                            >
+                                                                Full source profile ↗
+                                                            </button>
+                                                        )}
+                                                        {srcSigs.length === 0 ? (
+                                                            <p className="coverage-source-empty">
+                                                                No recent articles from {s.name} in the last {data.signals.length} fetched —
+                                                                this source has {s.count} total over the period. Try a longer time window.
+                                                            </p>
+                                                        ) : (
+                                                            <div className="coverage-articles">
+                                                                {srcSigs.slice(0, 12).map((sig, i) => (
+                                                                    <div key={i}>{renderArticle(sig)}</div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         )
                                     })}
@@ -972,118 +1026,29 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             </div>
                         )}
 
-                        {/* Source Intelligence Block — shown when a source is selected */}
-                        {selectedSource && (() => {
-                            const srcSigs = data.signals.filter(s => s.source === selectedSource)
-                            if (srcSigs.length === 0) return null
-
-                            // Top co-occurring themes from this source's signals
-                            const themeFreq: Record<string, number> = {}
-                            for (const sig of srcSigs) {
-                                for (const t of sig.otherThemes) {
-                                    if (!t.startsWith('WORLDLANGUAGES_') && !t.startsWith('TAX_WORLDLANGUAGES_')) {
-                                        themeFreq[t] = (themeFreq[t] || 0) + 1
-                                    }
-                                }
-                            }
-                            const topThemes = Object.entries(themeFreq).sort((a, b) => b[1] - a[1]).slice(0, 4)
-
-                            // Country breakdown
-                            const countryFreq: Record<string, number> = {}
-                            for (const sig of srcSigs) {
-                                countryFreq[sig.country] = (countryFreq[sig.country] || 0) + 1
-                            }
-                            const topCountries = Object.entries(countryFreq).sort((a, b) => b[1] - a[1]).slice(0, 3)
-
-                            const avgSent = srcSigs.reduce((sum, s) => sum + s.sentiment, 0) / srcSigs.length
-
-                            return (
-                                <div className="source-intel-block">
-                                    <div className="source-intel-header">
-                                        <span className="source-intel-name">{selectedSource}</span>
-                                        <span className="source-intel-label"> covers this topic as:</span>
-                                        {onSourceClick && (
-                                            <button
-                                                className="source-full-profile-btn"
-                                                onClick={(e) => { e.stopPropagation(); onSourceClick(selectedSource); }}
-                                                style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid #4b5563', color: '#9ca3af', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}
-                                            >
-                                                Full Profile ↗
-                                            </button>
-                                        )}
+                        {/* All coverage — collapsed by default. Replaces the old
+                            always-on "Recent Coverage" list (metadata-only, no
+                            headlines). Now shows real headlines linking to the
+                            original article. Per-source coverage lives in the
+                            expand under each Top Source above. */}
+                        {data.signals.length > 0 && (
+                            <div className="theme-section">
+                                <button
+                                    className="all-coverage-toggle"
+                                    onClick={() => setShowAllCoverage(v => !v)}
+                                    data-tip="Every recent article in this thread, newest first"
+                                >
+                                    {showAllCoverage ? '▴ Hide' : '▾ Show'} all coverage ({data.signals.length})
+                                </button>
+                                {showAllCoverage && (
+                                    <div className="coverage-articles coverage-articles--all">
+                                        {data.signals.slice(0, 30).map((sig, i) => (
+                                            <div key={i}>{renderArticle(sig, { showSource: true })}</div>
+                                        ))}
                                     </div>
-                                    {topThemes.length > 0 && (
-                                        <div className="source-intel-themes">
-                                            {topThemes.map(([t, count]) => (
-                                                <span key={t} className="source-intel-chip">
-                                                    {getThemeLabel(t)}
-                                                    <span className="source-intel-chip-count">{count}</span>
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
-                                    <div className="source-intel-meta">
-                                        <span style={{ color: getSentimentColor(avgSent) }}>
-                                            {sentimentWord(avgSent)}
-                                        </span>
-                                        {topCountries.length > 0 && (
-                                            <>
-                                                <span className="source-intel-dot">·</span>
-                                                <span className="source-intel-countries">
-                                                    {topCountries.map(([code, cnt], i) => (
-                                                        <span key={code}>{i > 0 ? ', ' : ''}{code} ({cnt})</span>
-                                                    ))}
-                                                </span>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                            )
-                        })()}
-
-                        {/* Recent Coverage */}
-                        <div className="theme-section">
-                            <h3>
-                                Recent Coverage
-                                {selectedSource
-                                    ? <span className="coverage-filter-label"> · {selectedSource} <button className="coverage-filter-clear" onClick={() => setSelectedSource(null)}>×</button></span>
-                                    : <span className="coverage-count-label"> ({data.signals.length})</span>
-                                }
-                            </h3>
-                            {selectedSource && data.signals.filter(s => s.source === selectedSource).length === 0 && (
-                                <p className="coverage-source-empty">
-                                    No recent signals from {selectedSource} in the last 200 fetched.
-                                    This source has {data.topSources.find(s => s.name === selectedSource)?.count ?? 0} total signals over the period —
-                                    try a longer time window or view all signals.
-                                </p>
-                            )}
-                            <div className="signals-list">
-                                {data.signals
-                                    .filter(s => !selectedSource || s.source === selectedSource)
-                                    .slice(0, 20).map((s, i) => (
-                                        <div key={i} className="signal-item">
-                                            <div className="signal-header">
-                                                <span className="signal-source">{s.source || 'Unknown'}</span>
-                                                <span className="signal-time">{formatTime(s.timestamp)}</span>
-                                            </div>
-                                            <div className="signal-meta">
-                                                <span className="signal-country">{s.country}</span>
-                                                <span className="signal-sentiment" style={{ color: getSentimentColor(s.sentiment) }}>
-                                                    {s.sentiment > 0 ? '+' : ''}{s.sentiment.toFixed(2)}
-                                                </span>
-                                            </div>
-                                            {s.persons.length > 0 && (
-                                                <div className="signal-persons">Person: {s.persons.join(', ')}</div>
-                                            )}
-                                            {s.url && (
-                                                <a href={s.url} target="_blank" rel="noopener noreferrer" className="signal-link">
-                                                    View Source →
-                                                </a>
-                                            )}
-                                        </div>
-                                    ))}
+                                )}
                             </div>
-                        </div>
+                        )}
 
                     </>
                 )}

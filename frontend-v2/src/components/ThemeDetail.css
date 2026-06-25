@@ -1093,3 +1093,108 @@
     border-left-color: #f59e0b;
     background: rgba(245, 158, 11, 0.06);
 }
+
+/* ─── Top Sources: click a source to read its coverage (2026-06-25) ─── */
+.source-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.source-coverage {
+    margin: 2px 0 8px 0;
+    padding: 8px 10px;
+    border-left: 2px solid #1D9E75;
+    background: rgba(29, 158, 117, 0.06);
+    border-radius: 0 4px 4px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.source-full-profile-btn {
+    align-self: flex-start;
+    background: transparent;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    color: rgba(226, 232, 240, 0.7);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    cursor: pointer;
+}
+
+.source-full-profile-btn:hover {
+    border-color: #1D9E75;
+    color: #1D9E75;
+}
+
+.coverage-articles {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.coverage-articles--all {
+    margin-top: 8px;
+}
+
+.coverage-article {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.coverage-article:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.coverage-article-headline {
+    font-size: 12.5px;
+    line-height: 1.4;
+    color: rgba(226, 232, 240, 0.92);
+    text-decoration: none;
+}
+
+a.coverage-article-headline:hover {
+    color: #1D9E75;
+    text-decoration: underline;
+}
+
+.coverage-article-headline--nolink {
+    color: rgba(226, 232, 240, 0.7);
+}
+
+.coverage-article-ext {
+    font-size: 10px;
+    opacity: 0.5;
+}
+
+.coverage-article-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.coverage-article-source {
+    color: rgba(226, 232, 240, 0.6);
+}
+
+.all-coverage-toggle {
+    background: transparent;
+    border: none;
+    color: rgba(226, 232, 240, 0.55);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    padding: 4px 0;
+}
+
+.all-coverage-toggle:hover {
+    color: #1D9E75;
+}
