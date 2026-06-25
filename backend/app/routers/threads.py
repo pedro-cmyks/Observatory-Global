@@ -45,9 +45,11 @@ async def get_threads(
     hours: int = Query(24, ge=1, le=720),
     limit: int = Query(10, ge=1, le=50),
     country_code: str | None = Query(None, min_length=2, max_length=2),
+    person: str | None = Query(None, min_length=2, max_length=80),
 ) -> dict:
     country = country_code.upper() if country_code else None
-    cache_key = f"threads:list:{hours}:{limit}:{country or 'global'}"
+    person_q = person.strip() if person else None
+    cache_key = f"threads:list:{hours}:{limit}:{country or 'global'}:{(person_q or '').lower()}"
     cached = await _cache_get(cache_key)
     if cached is not None:
         return cached
@@ -57,10 +59,14 @@ async def get_threads(
         "hours": hours,
         "contract": "living-narrative-threads-v0",
         "country_code": country,
+        "person": person_q,
+        # #234: when filtering by person, search a wider ranked pool so the
+        # person's threads aren't lost below the display limit.
         "threads": await fetch_threads(
             hours=hours,
-            limit=limit,
+            limit=40 if person_q else limit,
             country_codes=[country] if country else None,
+            person=person_q,
         ),
     }
     await _cache_set(cache_key, payload, THREADS_CACHE_TTL)

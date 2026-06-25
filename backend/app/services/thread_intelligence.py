@@ -1121,12 +1121,49 @@ async def _fetch_threads_with_conn(
     return [assemble_thread(row) for row in rows]
 
 
+# Atlas topic slugs where a person appears in the FULL signal persons array
+# (precise — not the capped top_entities). Low-risk: a separate lightweight
+# query, never touches the THREADS_SQL spine.
+_PERSON_TOPIC_SLUGS_SQL = """
+    SELECT DISTINCT at.slug
+    FROM signal_topic_assignments sta
+    JOIN atlas_topics at ON at.id = sta.topic_id
+    JOIN signals_v2 s ON s.id = sta.signal_id,
+         unnest(s.persons) AS p
+    WHERE sta.model_version = 'theme-hint-lex-v2'
+      AND sta.assigned_at >= NOW() - ($1::int * INTERVAL '1 hour')
+      AND s.persons IS NOT NULL
+      AND LOWER(p) LIKE '%' || LOWER($2) || '%'
+"""
+
+
+def thread_matches_person(
+    thread: dict[str, Any], matching_slugs: set[str], person_lower: str
+) -> bool:
+    """True if a thread relates to the focused person (#234). Atlas threads
+    match precisely — their topic slug is among ``matching_slugs`` (the slugs
+    where the person appears in the full signal `persons` array). Dynamic /
+    emergent threads have no atlas slug, so they fall back to their capped
+    `top_entities`. Empty person → no filter."""
+    if not person_lower:
+        return True
+    entities = thread.get("top_entities") or []
+    if any(person_lower in str(e).lower() for e in entities):
+        return True
+    tid = str(thread.get("thread_id", ""))
+    if tid.startswith("dynamic-topic-") or tid.startswith("emergent-cluster-"):
+        return False
+    anchor = thread.get("anchor_topics") or []
+    return any(str(s).lower() in matching_slugs for s in anchor)
+
+
 async def fetch_threads(
     *,
     hours: int = 24,
     limit: int = 10,
     topic_slug: str | None = None,
     country_codes: list[str] | None = None,
+    person: str | None = None,
     conn: Any = None,
 ) -> list[dict[str, Any]]:
     """Returns atlas-anchored threads merged with emergent-cluster threads
@@ -1187,15 +1224,31 @@ async def fetch_threads(
                 emergent = []
         return rank_threads(emergent + atlas)[:limit]
 
+    async def _run(active_conn: Any) -> list[dict[str, Any]]:
+        threads = await _merged(active_conn)
+        if person:
+            person_lower = person.strip().lower()
+            try:
+                rows = await active_conn.fetch(_PERSON_TOPIC_SLUGS_SQL, hours, person_lower)
+                matching_slugs = {str(r["slug"]).lower() for r in rows}
+            except Exception as exc:
+                logger.warning("person thread filter degraded: %s", exc)
+                matching_slugs = set()
+            threads = [
+                t for t in threads
+                if thread_matches_person(t, matching_slugs, person_lower)
+            ]
+        return threads
+
     if conn is not None:
-        return await _merged(conn)
+        return await _run(conn)
 
     if db.pool is None:
         logger.warning("thread intelligence requested without database pool")
         return []
 
     async with db.pool.acquire() as own_conn:
-        return await _merged(own_conn)
+        return await _run(own_conn)
 
 
 async def fetch_thread_detail(
