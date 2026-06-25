@@ -1805,3 +1805,26 @@ UPDATE). MORE THROUGHPUT (future): parallel mindful workers need SELECT … FOR
 UPDATE SKIP LOCKED (no row lock today); or allow performance cores when idle; or
 flip `ATLAS_NLP_MULTILINGUAL=on` once stable (M1 handles it → non-English
 subjects verified, the #162 win that the Fly box could never do).
+
+**2026-06-25 — MACHINE AUDIT + RESTRUCTURE (Pedro): one purpose per box.**
+Final layout, each machine single-purpose, no NER↔embed contention:
+- **Fly `app` (1GB shared-1):** API + ingestion (`start.sh`). Unchanged.
+- **Fly `nlp_worker` (4GB shared-2x):** the EMBED service (e5, serves the
+  research semantic lane — must live next to the API; M1 NAT can't serve it) +
+  the light sentiment fast-lane. NER made RARE here via `NLP_WORKER_INTERVAL_
+  SECONDS=600` + `NLP_WORKER_LIMIT=10` so the per-cycle model-load no longer
+  starves the embed thread → research/plan back to a steady ~0.45s.
+- **M1 `com.atlas.nlp-worker` daemon:** the bulk NER, MINDFUL (taskpolicy -b →
+  efficiency cores + nice) — verified yielding: cycle 306s when idle → 606s when
+  Pedro is active on the machine (exactly the "don't bother me" behaviour).
+  Plus the existing M1 crons (topic-classifier, emergent-snapshot, embed-corpus).
+NER_ENABLED flag (`deee88b`) is committed for a future clean nlp_worker deploy
+(the process-group deploy kept failing to apply staged secrets / build a new
+image — version stuck at 252; the interval=600 secret achieved the same goal
+reliably). When that deploy lands, set NLP_WORKER_NER_ENABLED=false for true
+NER-off on Fly. Throughput now ~1.5–3.5k/hr (M1, mindful) vs 7k/hr ingest —
+hot-lane prioritises recent so served signals NER first; drains faster at night.
+NEXT LEVERS: flip ATLAS_NLP_MULTILINGUAL=on on the M1 (capable → non-English
+subjects verified, #162); parallel mindful M1 workers need SELECT…FOR UPDATE
+SKIP LOCKED. Re-sync enrichment/ + the runner to AtlasLocalWorker on worker code
+changes (they're versioned in repo, executed from the non-iCloud tree).
