@@ -720,13 +720,18 @@
 }
 
 @media (max-width: 768px) {
+  /* Tabbed L2 IA: the console is a flex column (command bar + one full-screen
+     surface at a time), not a long scroll of the desktop cockpit. */
   .app {
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
   }
 
   .command-bar {
-    position: sticky;
-    top: 0;
+    position: static;
+    flex: 0 0 auto;
     height: auto;
     min-height: 48px;
     flex-wrap: wrap;
@@ -1496,4 +1501,67 @@
 .dock-tab.active {
   color: var(--color-accent-primary, #68dbae);
   border-bottom-color: var(--color-accent-primary, #68dbae);
+}
+
+/* ── Mobile L2 tabbed IA (2026-06-25): one full-screen surface at a time ── */
+.mobile-tabbar { display: none; }
+
+@media (max-width: 768px) {
+  /* Verbose desktop disclaimer — drop it on phones (the legend + heat tooltip
+     carry the same caveat without eating a whole row). */
+  .coverage-disclaimer { display: none; }
+
+  /* The tabbed layout fills the space between the command bar and the tab bar;
+     only the active surface is shown, full height, scrolling internally. */
+  .terminal-layout[class*="mobile-tab-"] {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: block;
+    grid-template-rows: none;
+    grid-template-columns: none;
+    grid-template-areas: none;
+    height: auto;
+    overflow: hidden;
+    padding: 4px 4px 60px; /* 60px = room for the fixed tab bar */
+  }
+  .terminal-layout[class*="mobile-tab-"] .terminal-panel {
+    display: none;
+    height: 100%;
+    min-height: 0;
+  }
+  .terminal-layout.mobile-tab-map .terminal-panel.radar,
+  .terminal-layout.mobile-tab-stream .terminal-panel.stream,
+  .terminal-layout.mobile-tab-threads .terminal-panel.threads {
+    display: flex;
+  }
+
+  /* Bottom tab bar */
+  .mobile-tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9500;
+    display: flex;
+    height: 56px;
+    background: #0b0e13;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .mobile-tabbar button {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    background: transparent;
+    border: none;
+    color: rgba(226, 232, 240, 0.55);
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+  }
+  .mobile-tabbar button.active { color: #1D9E75; }
+  .mobile-tab-glyph { font-size: 17px; line-height: 1; }
 }

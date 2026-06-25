@@ -51,6 +51,7 @@ import { PanelHelpButton } from './components/PanelHelpDrawer'
 import { Legend } from './components/Legend'
 import { useUrlSync } from './hooks/useUrlSync'
 import { useSavedWatches } from './hooks/useSavedWatches'
+import { useIsMobile } from './hooks/useIsMobile'
 
 
 
@@ -287,6 +288,11 @@ function AppContent() {
   // removed (#231) — heat is a map property (drives country color), not a
   // bottom list. The composite now colors the map directly.
   const [dockTab, setDockTab] = useState<'anomaly' | 'sources'>('anomaly')
+  // Mobile L2 IA: instead of a long scroll of the desktop cockpit, show one
+  // full-screen surface at a time via a bottom tab bar. Default to the live
+  // stream (the L2 value). Desktop ignores this.
+  const isMobile = useIsMobile()
+  const [mobileTab, setMobileTab] = useState<'map' | 'stream' | 'threads'>('stream')
 
   useEffect(() => {
     if (!moreMenuOpen && !timeMenuOpen) return
@@ -1350,7 +1356,7 @@ function AppContent() {
         Coverage bias: map heat is baseline-normalized; raw volume is evidence density, not importance.
       </div>
 
-      <div className="terminal-layout">
+      <div className={`terminal-layout${isMobile ? ` mobile-tab-${mobileTab}` : ''}`}>
         {/* Panel 1: GLOBAL RADAR */}
         <div className="terminal-panel radar" data-tour="globe">
           <div className="panel-header">
@@ -1890,6 +1896,21 @@ function AppContent() {
           </div>
         </div>
       </div>
+
+      {/* Mobile L2 bottom navigation — one full-screen surface at a time */}
+      {isMobile && (
+        <nav className="mobile-tabbar" aria-label="Console sections">
+          <button className={mobileTab === 'map' ? 'active' : ''} onClick={() => setMobileTab('map')}>
+            <span className="mobile-tab-glyph">◍</span>Map
+          </button>
+          <button className={mobileTab === 'stream' ? 'active' : ''} onClick={() => setMobileTab('stream')}>
+            <span className="mobile-tab-glyph">≋</span>Stream
+          </button>
+          <button className={mobileTab === 'threads' ? 'active' : ''} onClick={() => setMobileTab('threads')}>
+            <span className="mobile-tab-glyph">⌗</span>Threads
+          </button>
+        </nav>
+      )}
 
       {/* Hover Tooltip */}
       <MapTooltip tooltip={tooltip} />
