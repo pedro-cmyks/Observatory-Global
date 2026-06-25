@@ -504,6 +504,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 top_threads = await fetch_threads(
                     hours=hours,
                     limit=TOP_THREADS_LIMIT,
+                    attach_evidence=True,
                     conn=conn,
                 )
             except Exception as exc:

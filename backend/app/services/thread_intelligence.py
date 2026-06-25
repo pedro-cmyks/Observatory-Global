@@ -1157,6 +1157,69 @@ def thread_matches_person(
     return any(str(s).lower() in matching_slugs for s in anchor)
 
 
+def _is_atlas_thread(thread: dict[str, Any]) -> bool:
+    """Atlas-anchored list threads are identified by a thread_id that does
+    NOT carry the dynamic/emergent prefixes. Dynamic and emergent threads
+    already attach evidence_samples in their assembly paths; atlas-fill
+    threads do not (the list query is aggregate-only)."""
+    tid = str(thread.get("thread_id", ""))
+    return not (
+        tid.startswith(DYNAMIC_TOPIC_THREAD_PREFIX)
+        or tid.startswith(EMERGENT_CLUSTER_THREAD_PREFIX)
+    )
+
+
+async def _attach_atlas_evidence(
+    active_conn: Any,
+    threads: list[dict[str, Any]],
+    *,
+    hours: int,
+    enrich_top_n: int = 10,
+    per_thread: int = 4,
+) -> None:
+    """Attach a few evidence headline samples to atlas-fill threads in the
+    LIST path so the top-ranked thread carries its evidence in the briefing
+    payload (regression after unified ranking — atlas threads can now lead).
+
+    Bounded to avoid an N+1 explosion: only the first ``enrich_top_n`` threads
+    (the briefing shows ~10) that are atlas-anchored AND currently missing
+    evidence are enriched, one bounded query each. Resilient: any failure
+    degrades that thread to evidence_samples=[] and never raises."""
+    enriched = 0
+    for thread in threads:
+        if enriched >= enrich_top_n:
+            break
+        if thread.get("evidence_samples"):
+            continue
+        if not _is_atlas_thread(thread):
+            continue
+        anchor_topics = thread.get("anchor_topics") or []
+        topic_slug = str(anchor_topics[0]) if anchor_topics else ""
+        if not topic_slug:
+            continue
+        enriched += 1
+        country_codes = [str(c) for c in (thread.get("top_countries") or []) if c]
+        try:
+            evidence_rows = await active_conn.fetch(
+                THREAD_EVIDENCE_SQL,
+                hours,
+                topic_slug,
+                country_codes or None,
+                per_thread,
+                timeout=8,
+            )
+            thread["evidence_samples"] = [
+                _serialize_evidence(row) for row in evidence_rows
+            ]
+        except Exception as exc:  # noqa: BLE001 - degrade, never 500
+            logger.warning(
+                "atlas evidence enrichment degraded for %s: %s",
+                thread.get("thread_id"),
+                exc,
+            )
+            thread["evidence_samples"] = thread.get("evidence_samples") or []
+
+
 async def fetch_threads(
     *,
     hours: int = 24,
@@ -1164,6 +1227,7 @@ async def fetch_threads(
     topic_slug: str | None = None,
     country_codes: list[str] | None = None,
     person: str | None = None,
+    attach_evidence: bool = False,
     conn: Any = None,
 ) -> list[dict[str, Any]]:
     """Returns atlas-anchored threads merged with emergent-cluster threads
@@ -1238,6 +1302,8 @@ async def fetch_threads(
                 t for t in threads
                 if thread_matches_person(t, matching_slugs, person_lower)
             ]
+        if attach_evidence and threads:
+            await _attach_atlas_evidence(active_conn, threads, hours=hours)
         return threads
 
     if conn is not None:

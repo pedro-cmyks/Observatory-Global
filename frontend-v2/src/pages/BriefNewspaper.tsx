@@ -7,6 +7,7 @@ import { COUNTRY_OPTIONS, resolveCountryName } from '../lib/countryNames'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours, type TimeRange } from '../lib/timeRanges'
 import { readBriefingCache } from '../lib/briefingPrefetch'
 import { resolveThreadThemeTarget } from '../lib/threadThemeTarget'
+import { selectLeadThread } from '../lib/briefLead'
 import './BriefNewspaper.css'
 
 // Natural Earth 110m with ISO_A2 country properties
@@ -340,12 +341,11 @@ export function BriefNewspaper() {
     const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
     const allThreads = data?.top_threads ?? []
-    // Lead story = highest-ranked thread that can actually show evidence.
-    // Dynamic threads rank first and carry evidence_samples; atlas-fill
-    // threads don't (list-level), so they stay watchlist rows.
-    const leadThread = !countryFilter
-        ? allThreads.find(t => (t.evidence_samples?.length ?? 0) > 0) ?? allThreads[0] ?? null
-        : null
+    // Lead story = the TOP-RANKED thread (see lib/briefLead.ts). Never the
+    // first thread that merely *carries* evidence — that broke after ranking
+    // was unified (2026-06-24). The lead renders evidence headlines when
+    // present and degrades gracefully when absent.
+    const leadThread = selectLeadThread(allThreads, countryFilter)
     const watchlistThreads = leadThread
         ? allThreads.filter(t => t.thread_id !== leadThread.thread_id).slice(0, 8)
         : allThreads.slice(0, 8)
@@ -551,7 +551,7 @@ export function BriefNewspaper() {
                                         }
                                     }}
                                 >
-                                    <div className="brief-section-tag" data-tip="Highest-activity narrative thread in this window, with sample evidence headlines.">LEAD STORY</div>
+                                    <div className="brief-section-tag" data-tip="Top-ranked narrative thread in this window (movement, volume and coherence). Sample evidence headlines shown when available.">LEAD STORY</div>
                                     <h2 className="brief-lead-headline">{leadThread.label}</h2>
                                     <div className="brief-lead-meta">
                                         <span className="brief-lead-count">{leadThread.signal_count.toLocaleString()} signals</span>

@@ -7,6 +7,7 @@ from app.services import thread_intelligence
 from app.services.thread_intelligence import (
     THREAD_EVIDENCE_SQL,
     THREADS_SQL,
+    _attach_atlas_evidence,
     _serialize_evidence,
     assemble_dynamic_thread,
     assemble_thread,
@@ -347,3 +348,142 @@ def test_serialize_evidence_includes_syndication_metadata():
     assert serialized["syndication_count"] == 25
     assert serialized["evidence_role"] == "syndicated"
     assert serialized["country_code"] == "UA"
+
+
+# --- atlas-fill evidence enrichment (briefing LIST path regression) ---------
+
+
+def _evidence_row(headline: str) -> dict:
+    return {
+        "id": 1,
+        "headline": headline,
+        "snippet": None,
+        "source_name": "reuters.com",
+        "source_url": "https://reuters.com/x",
+        "country_code": "UA",
+        "country_name": "Ukraine",
+        "timestamp": None,
+        "nlp_sentiment": -0.5,
+        "confidence": 0.9,
+        "syndication_count": 3,
+    }
+
+
+class _RecordingConn:
+    """Returns a fixed evidence batch and records every fetch() it sees."""
+
+    def __init__(self, rows):
+        self._rows = rows
+        self.calls: list[tuple] = []
+
+    async def fetch(self, query, *args, **kwargs):
+        self.calls.append((query, args, kwargs))
+        return self._rows
+
+
+def test_attach_atlas_evidence_enriches_evidenceless_atlas_thread():
+    """Regression: after unified ranking an atlas-fill thread can lead the
+    briefing but carries no list-level evidence. The LIST path must backfill
+    it from THREAD_EVIDENCE_SQL so the lead shows headlines."""
+    thread = {
+        "thread_id": "heat-public-health--gb-fr",
+        "anchor_topics": ["heat-public-health"],
+        "top_countries": ["GB", "FR"],
+        "evidence_samples": [],
+    }
+    conn = _RecordingConn([_evidence_row("Heatwave grips Britain")])
+
+    asyncio.run(_attach_atlas_evidence(conn, [thread], hours=24))
+
+    assert len(thread["evidence_samples"]) == 1
+    assert thread["evidence_samples"][0]["headline"] == "Heatwave grips Britain"
+    # Bounded: exactly one query, using THREAD_EVIDENCE_SQL with the thread's
+    # slug + countries + a per-thread cap, guarded by a timeout.
+    assert len(conn.calls) == 1
+    query, args, kwargs = conn.calls[0]
+    assert query == THREAD_EVIDENCE_SQL
+    assert args[0] == 24  # hours
+    assert args[1] == "heat-public-health"  # topic_slug from anchor_topics[0]
+    assert args[2] == ["GB", "FR"]  # country codes
+    assert isinstance(args[3], int) and args[3] > 0  # per-thread cap
+    assert kwargs.get("timeout")  # never an unbounded query
+
+
+def test_attach_atlas_evidence_skips_dynamic_and_already_enriched_threads():
+    """Dynamic/emergent threads already carry evidence from their assembly
+    paths; threads that already have samples must not be re-queried."""
+    dynamic = {
+        "thread_id": "dynamic-topic-7",
+        "anchor_topics": ["whatever"],
+        "evidence_samples": [],
+    }
+    emergent = {
+        "thread_id": "emergent-cluster-3",
+        "anchor_topics": ["cluster-3"],
+        "evidence_samples": [],
+    }
+    already = {
+        "thread_id": "atlas-x--us",
+        "anchor_topics": ["atlas-x"],
+        "evidence_samples": [{"headline": "kept"}],
+    }
+    conn = _RecordingConn([_evidence_row("should not appear")])
+
+    asyncio.run(_attach_atlas_evidence(conn, [dynamic, emergent, already], hours=24))
+
+    # No thread was queried.
+    assert conn.calls == []
+    assert dynamic["evidence_samples"] == []
+    assert emergent["evidence_samples"] == []
+    assert already["evidence_samples"] == [{"headline": "kept"}]
+
+
+def test_attach_atlas_evidence_degrades_to_empty_on_query_failure():
+    """A failed evidence query must never raise — the thread degrades to
+    evidence_samples=[] and the briefing still ships."""
+
+    class _BoomConn:
+        async def fetch(self, *args, **kwargs):
+            raise RuntimeError("statement timeout")
+
+    thread = {
+        "thread_id": "atlas-y--us",
+        "anchor_topics": ["atlas-y"],
+        "top_countries": ["US"],
+        "evidence_samples": [],
+    }
+
+    # Must not raise.
+    asyncio.run(_attach_atlas_evidence(_BoomConn(), [thread], hours=24))
+    assert thread["evidence_samples"] == []
+
+
+def test_attach_atlas_evidence_is_bounded_to_top_n():
+    """N+1 guard: only the first enrich_top_n atlas threads get a query."""
+    threads = [
+        {
+            "thread_id": f"atlas-{i}--us",
+            "anchor_topics": [f"atlas-{i}"],
+            "top_countries": ["US"],
+            "evidence_samples": [],
+        }
+        for i in range(15)
+    ]
+    conn = _RecordingConn([_evidence_row("h")])
+
+    asyncio.run(
+        _attach_atlas_evidence(conn, threads, hours=24, enrich_top_n=3)
+    )
+
+    assert len(conn.calls) == 3
+    # First three enriched, rest left as empty lists.
+    assert all(threads[i]["evidence_samples"] for i in range(3))
+    assert all(threads[i]["evidence_samples"] == [] for i in range(3, 15))
+
+
+def test_fetch_threads_exposes_attach_evidence_flag_defaulting_off():
+    """The detail path (limit=1) attaches its own richer evidence; only the
+    briefing opts in. Default must stay off to avoid changing other callers."""
+    sig = inspect.signature(fetch_threads)
+    assert "attach_evidence" in sig.parameters
+    assert sig.parameters["attach_evidence"].default is False
