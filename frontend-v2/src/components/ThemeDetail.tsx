@@ -3,6 +3,7 @@ import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { CompareBar } from './CompareBar'
 import { NarrativeDrift } from './NarrativeDrift'
 import { TranslatableHeadline } from './TranslatableHeadline'
+import { ShareThreadButton } from './ShareCard'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { ExportMenu } from './ExportMenu'
 import { useWorkspace } from '../contexts/WorkspaceContext'
@@ -473,12 +474,22 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                         {pinned ? <PinOff size={14} /> : <Pin size={14} />}
                     </button>
                     {!loading && data && (
-                        <ExportMenu
-                            themeName={displayLabel}
-                            data={data}
-                            insight={insight}
-                            captureRef={detailRef}
-                        />
+                        <>
+                            <ShareThreadButton
+                                input={{
+                                    label: displayLabel,
+                                    whyNow: `${(data.total ?? data.signals.length).toLocaleString()} signals`,
+                                    url: `${window.location.origin}/app?theme=${encodeURIComponent(theme)}`,
+                                }}
+                                evidence={data.signals.map(s => s.headline).filter((h): h is string => !!h)}
+                            />
+                            <ExportMenu
+                                themeName={displayLabel}
+                                data={data}
+                                insight={insight}
+                                captureRef={detailRef}
+                            />
+                        </>
                     )}
                     <button className="theme-detail-close" onClick={onClose} style={{ position: 'relative', top: 'auto', right: 'auto' }}>
                         <X size={16} />
