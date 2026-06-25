@@ -3,6 +3,7 @@ import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { CompareBar } from './CompareBar'
 import { NarrativeDrift } from './NarrativeDrift'
 import { TranslatableHeadline } from './TranslatableHeadline'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { ExportMenu } from './ExportMenu'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { ArrowLeftRight, Pin, PinOff, X } from '../lib/icons'
@@ -159,9 +160,19 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     const [insight, setInsight] = useState<string | null>(null)
     const [insightLoading, setInsightLoading] = useState(false)
     const [insightFailed, setInsightFailed] = useState(false)
+    const isMobile = useIsMobile()
     const [selectedSource, setSelectedSource] = useState<string | null>(null)
     const [showAllCoverage, setShowAllCoverage] = useState(false)
     const [showDrift, setShowDrift] = useState(false)
+
+    // On phones the thread read is a full-screen overlay; lock the cockpit
+    // behind it so background scroll doesn't bleed through.
+    useEffect(() => {
+        if (!isMobile) return
+        const prev = document.body.style.overflow
+        document.body.style.overflow = 'hidden'
+        return () => { document.body.style.overflow = prev }
+    }, [isMobile])
     const [drillCountry, setDrillCountry] = useState<string | null>(initialDrillCountry || null)
     const [drillCountryName, setDrillCountryName] = useState<string | null>(
         initialDrillCountry ? (originCountryName || initialDrillCountry) : null
@@ -692,8 +703,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             </div>
                         )}
 
-                        {/* Evolution Graph: relationship structure over sampled coverage time buckets */}
-                        {(data.graphSignals?.length ?? data.signals.length) > 0 && (
+                        {/* Evolution Graph: relationship structure over sampled coverage time buckets.
+                            Hidden on phones — a force-graph is a desktop surface (consumer MVP). */}
+                        {!isMobile && (data.graphSignals?.length ?? data.signals.length) > 0 && (
                             <PanelErrorBoundary panelName="Evolution Graph">
                                 <Suspense fallback={<div className="temporal-graph-loading">Loading evolution graph...</div>}>
                                     <TemporalNarrativeGraph

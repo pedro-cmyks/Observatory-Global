@@ -1197,3 +1197,23 @@
 .all-coverage-toggle:hover {
     color: #1D9E75;
 }
+
+/* ── Consumer MVP: full-screen readable thread on phones ──
+   On a phone, opening a thread from the Brief lands in the desktop console;
+   render the thread read full-screen over the cockpit so it reads like an
+   article. The panel keeps its own scroll; the body scroll is locked by the
+   component while this is mounted on mobile. */
+@media (max-width: 768px) {
+    .theme-detail-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 9000;
+        width: 100vw;
+        height: 100dvh;
+        background: #0c1017;
+    }
+    .theme-detail-panel { padding: 14px 16px; }
+    .theme-detail-header h2 { font-size: 1.4rem; line-height: 1.2; }
+    .coverage-article-headline { font-size: 15px; }
+    .source-item { min-height: 44px; }
+}
