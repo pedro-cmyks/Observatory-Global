@@ -1884,3 +1884,36 @@ collect; Paper 8 (open-set discovery) gained the #229 recall-ceiling measurement
 lever) as product evidence. Master plan: `docs/research/atlas-paper/2026-05-27-
 atlas-papers-master-plan.md`. Remaining #234: thread-as-full-focus-lens;
 public-attention focus panels.
+
+**2026-06-25 — #184 ADAPTIVE NLP FLEET (parallel workers, throughput attack).**
+Goal (Pedro): NER true-output → 100% (output==input) + drain the backlog.
+MEASURED backlog: 208,238 signals un-NER'd (95%); 11,232 done (5% — Pedro's
+estimate exact); ingest ~6.4k/hr. Shipped a sharded parallel fleet:
+- **Sharding** (`nlp_pipeline._priority_select_sql`): `NLP_WORKER_SHARD_COUNT/INDEX`
+  → each worker restricted to `id % N = K`. Verified EVEN + DISJOINT on the live
+  backlog (N=4 → 52043/52080/52000/52115, sum = backlog). No row locks / no held
+  transactions (the NER batch is slow — SKIP LOCKED would pin a txn open
+  minutes×N; modulo sharding is the right tool for slow batches).
+- **Adaptive supervisor** (`scripts/nlp_fleet_supervisor.py`): probes HID idle
+  (`ioreg HIDIdleTime`) + AC power (`pmset`) every 30s. **GENTLE** (Pedro active /
+  on battery) = 1 mindful worker (`taskpolicy -b`, efficiency cores, SHARD_COUNT=1,
+  covers everything) — identical to the old single worker. **BURST** (idle>180s on
+  AC) = N sharded workers at normal priority (performance cores). Drops back to
+  gentle within 30s of Pedro touching the machine.
+- **launchd** `com.atlas.nlp-fleet` (NO ProcessType=Background — that QoS clamp
+  would propagate and pin the burst children to efficiency cores). Supersedes
+  `com.atlas.nlp-worker` (booted out).
+- **M1 is 8GB** (verified, not 16) + runs heavy ML crons → **BURST_WORKERS=2**
+  (each worker peaks ~1.5GB; 2 perf workers ≈ 8-10k/hr > ingest, drains without
+  OOM/swap; bump via ATLAS_NLP_BURST_WORKERS only if RAM proves comfortable).
+HONEST throughput model: during ACTIVE hours NER stays gentle (~3k/hr < 6.4k/hr
+ingest) so the backlog grows slightly — the mindful constraint trades instant
+100% for never freezing the machine. During IDLE hours burst (~8-10k/hr) exceeds
+ingest and drains + makes up the deficit. So "output==input" is reachable as a
+DAILY AVERAGE given enough idle time, not instantaneously while Pedro works; the
+208K backlog clears over ~days of idle bursting, then steady-state keeps up.
+Faster levers if wanted: burst=3 (RAM permitting) or a dedicated always-on box
+(not the 8GB M1). VERIFIED: gentle worker completed a cycle ("NER[en-v1]: 300
+signals"); burst env validated (2 disjoint shards). Burst auto-triggers on the
+next real idle window — watch `logs/nlp-fleet.out.log` for "switching gentle ->
+burst". Re-sync enrichment/ + both scripts to AtlasLocalWorker on code changes.
