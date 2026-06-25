@@ -168,6 +168,18 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     // When country is active, show only threads that include that country
     const displayedNarratives = getNarrativesForDisplay(narratives, filter.country ?? undefined)
 
+    // #234: when a person is focused, surface the threads that mention them
+    // (the person appears in top_entities) and dim the rest — mirroring the
+    // map's relation re-scope. top_entities is capped and noisy, so if NOTHING
+    // matches we keep the global list rather than dimming everything.
+    const focusPerson = filter.person?.toLowerCase().trim() || null
+    const threadMatchesPerson = (n: Narrative): boolean =>
+        !!focusPerson && (n.top_entities || []).some(e => e.toLowerCase().includes(focusPerson))
+    const anyPersonMatch = !!focusPerson && displayedNarratives.some(threadMatchesPerson)
+    const orderedNarratives = anyPersonMatch
+        ? [...displayedNarratives].sort((a, b) => Number(threadMatchesPerson(b)) - Number(threadMatchesPerson(a)))
+        : displayedNarratives
+
     const handleClick = (n: Narrative) => {
         onThreadSelect?.(n)
         if (n.top_countries.length > 0) {
@@ -243,12 +255,14 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                     Thread details show last {effectiveHours}h · counts reflect full {cappedHours}h window
                 </div>
             )}
-            {displayedNarratives.map(n => {
+            {orderedNarratives.map(n => {
                 const isFocused = activeThreadId === n.thread_id
                 // Dim conditions:
-                //  - a country is locked AND this thread doesn't cover that country -> dim
+                //  - a country is locked AND this thread doesn't cover it -> dim
+                //  - a person is focused, some thread mentions them, this one doesn't -> dim (#234)
                 const dimByCountry = !!filter.country && !n.top_countries.includes(filter.country)
-                const isDimmed = dimByCountry
+                const dimByPerson = anyPersonMatch && !threadMatchesPerson(n)
+                const isDimmed = dimByCountry || dimByPerson
                 const trendArrow = n.trend === 'accelerating' ? '▲' : n.trend === 'fading' ? '▼' : '→'
                 // Plain-language hover hint; falls back to label when no description is available.
                 const rowHint = `${n.label}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries from ${n.source_count} sources. Click to open the unified thread detail.`
@@ -258,7 +272,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 // volume + coherence. The trend arrow carries the movement; the
                 // count its weight. No source-origin badge.
 
-                const colorIdx = displayedNarratives.indexOf(n) % THREAD_COLORS.length
+                const colorIdx = orderedNarratives.indexOf(n) % THREAD_COLORS.length
                 const threadColor = THREAD_COLORS[colorIdx]
                 return (
                     <div
