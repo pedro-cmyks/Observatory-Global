@@ -3,11 +3,12 @@ from __future__ import annotations
 import html
 import json
 import logging
+import re
 from typing import Any
 
 from app import db
 from app.core.gdelt_taxonomy import get_theme_label
-from app.core.iso_country_names import resolve_country_name
+from app.core.iso_country_names import ISO_COUNTRY_NAMES, resolve_country_name
 from app.services.narrative_note import build_thread_narrative_note
 from app.services.thread_packet import build_thread_packet
 from app.services.thread_ranking import rank_threads
@@ -380,13 +381,30 @@ def build_thread_label(*, anchor_label: str, top_countries: list[str]) -> str:
 
 
 def _why_now(changed_10h: int, country_names: list[str]) -> str:
+    """One-line 'why is this moving now' for a thread card.
+
+    `changed_10h` is a NET change: count(last 10h) - count(prior 10h). It is
+    NOT a gross count of signals added, and it can exceed the window
+    `signal_count` when the serving window is shorter than the 20h span the
+    delta is measured over (#214: a reader saw "+53 in 10h" against a window
+    total of 28). So the copy must read explicitly as a net up/down vs the
+    PRIOR 10h, never as "N more signals than the thread has". "signals" is
+    qualified as a rate ("more signals than the prior 10h") rather than an
+    absolute that invites comparison against the window total.
+    """
     resolved = [resolve_country_name(c) for c in country_names[:2]]
     place = " and ".join(resolved) if resolved else "multiple regions"
     if changed_10h > 0:
-        return f"{changed_10h} more signals in the last 10h, concentrated in {place}."
+        return (
+            f"Up {changed_10h} vs the prior 10h "
+            f"(net new coverage), concentrated in {place}."
+        )
     if changed_10h < 0:
-        return f"{abs(changed_10h)} fewer signals in the last 10h, still concentrated in {place}."
-    return f"Signal volume is steady in the last 10h, concentrated in {place}."
+        return (
+            f"Down {abs(changed_10h)} vs the prior 10h "
+            f"(coverage cooling), concentrated in {place}."
+        )
+    return f"Signal volume is steady vs the prior 10h, concentrated in {place}."
 
 
 def _trend_label(changed_10h: int, signal_count: int) -> str:
@@ -403,6 +421,27 @@ def _trend_label(changed_10h: int, signal_count: int) -> str:
     if ratio <= -0.05:
         return "fading"
     return "stable"
+
+
+def _movement_label(changed_10h: int, period: str = "10h") -> str:
+    """Short, reader-safe chip text for the movement delta (#214).
+
+    The frontend chip historically rendered raw `+53 / 10h`, which a reader
+    compares against the window `signal_count` ("28 signals") and reads as a
+    contradiction. `changed_10h` is a NET delta vs the prior period, not a
+    count of new signals, so the chip must SAY "vs prior <period>" to stop
+    that false comparison. Sign-prefixed and self-describing; safe to render
+    next to any `signal_count` without implying "more than the thread has".
+
+    ``period`` defaults to ``"10h"`` (atlas/dynamic 10h buckets); the emergent
+    path passes ``"prior snapshot"`` since its delta spans ~6h snapshots.
+    """
+    prefix = "prior " if period == "10h" else ""
+    if changed_10h > 0:
+        return f"+{changed_10h} vs {prefix}{period}"
+    if changed_10h < 0:
+        return f"{changed_10h} vs {prefix}{period}"
+    return f"flat vs {prefix}{period}"
 
 
 def _dominant_source_is_aggregator(top_sources: list[str]) -> bool:
@@ -493,6 +532,7 @@ def assemble_thread(
         "avg_confidence": round(avg_confidence, 3),
         "first_seen": first_seen.isoformat() if hasattr(first_seen, "isoformat") else first_seen,
         "changed_10h": changed_10h,
+        "movement_label": _movement_label(changed_10h),
         "trend": _trend_label(changed_10h, signal_count),
         "sentiment_swing_10h": _record_get(row, "sentiment_swing_10h"),
         "top_countries": country_codes,
@@ -644,6 +684,9 @@ def assemble_emergent_thread(
         "avg_confidence": round(avg_conf, 3),
         "first_seen": snap_at.isoformat() if hasattr(snap_at, "isoformat") else snap_at,
         "changed_10h": velocity,
+        # Emergent velocity is a delta vs the PRIOR SNAPSHOT (~6h apart),
+        # not a strict 10h window, so reuse the generic period phrasing.
+        "movement_label": _movement_label(velocity, period="prior snapshot"),
         "trend": _trend_label(velocity, signal_count),
         "sentiment_swing_10h": None,
         "top_countries": country_codes,
@@ -841,6 +884,7 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         "avg_confidence": round(max(min(avg_conf, 1.0), 0.0), 3),
         "first_seen": first_seen.isoformat() if hasattr(first_seen, "isoformat") else first_seen,
         "changed_10h": changed_10h,
+        "movement_label": _movement_label(changed_10h),
         "trend": _trend_label(changed_10h, signal_count),
         "sentiment_swing_10h": None,
         "top_countries": country_codes,
@@ -1220,6 +1264,176 @@ async def _attach_atlas_evidence(
             thread["evidence_samples"] = thread.get("evidence_samples") or []
 
 
+# ── Cross-language event de-duplication (serve-time, conservative) ───────────
+#
+# Clustering (project_dynamic_topics.py) splits ONE real-world event into two
+# dynamic-topic identities when its coverage is in different languages: an
+# English headline and a Russian/Spanish/etc. headline about the same event
+# embed to different e5 centroids, well below MATCH_THRESHOLD (0.88), so they
+# never link into one identity. Each gets its own DeepSeek label
+# ("Venezuela Earthquakes" vs "Venezuela Earthquake Disaster"), so the existing
+# exact-lowercased-label dedup in the merge below cannot catch them.
+#
+# The proper fix is at the clustering layer (a cross-language event signature —
+# see the data-layer proposal in the handoff). This serve-time guard is a
+# CONSERVATIVE safety net: it collapses two watchlist rows ONLY when they very
+# clearly describe the same event, and never fuses two genuinely distinct
+# same-country stories.
+#
+# Merge fires only when BOTH hold (strong conjunction):
+#   1. identical PRIMARY-country set (top-2 codes as a set), AND
+#   2. a shared DISTINCTIVE label token after removing the country name(s) and
+#      generic words — the event signature (e.g. "earthquake"). Two same-country
+#      threads with different subject words ("Venezuela Earthquakes" vs
+#      "Venezuela Election Dispute") share NO distinctive token, so they stay
+#      separate. A bare country-name overlap is explicitly insufficient.
+
+# Generic label tokens that recur across topic labels WITHOUT identifying the
+# event. "in/and/the" are structural ("X in A and B"); the rest are common news
+# words. Kept compact; matching takes the *intersection* of distinctive tokens,
+# so a stray generic leak cannot, on its own, fuse two threads.
+_LABEL_GENERIC_TOKENS = frozenset(
+    {
+        "in", "and", "the", "of", "on", "for", "to", "a", "an", "amid", "as",
+        "after", "over", "with", "from", "news", "update", "updates", "latest",
+        "crisis", "report", "reports", "story", "stories", "live", "regions",
+        "multiple", "region", "regional",
+    }
+)
+
+# Country-name tokens (lowercased words from every ISO name) so the place itself
+# is never treated as the event signature. "venezuela", "united", "states",
+# "korea", etc. — same place is necessary but never sufficient to merge.
+_COUNTRY_NAME_TOKENS = frozenset(
+    tok
+    for name in ISO_COUNTRY_NAMES.values()
+    for tok in re.findall(r"[a-z]{2,}", name.lower())
+)
+
+
+def _distinctive_label_tokens(label: str, country_codes: list[str]) -> set[str]:
+    """Distinctive (event-identifying) tokens of a thread label.
+
+    Lowercases, splits on non-letters, drops generic news/structure words, the
+    place name (both the resolved country name tokens and any ISO name token),
+    and applies a tiny English plural stem so "earthquake"/"earthquakes" match.
+    Returns an empty set when the label carries no distinctive token (then the
+    pair is treated as undecidable and never merged).
+    """
+    place_tokens: set[str] = set()
+    for code in country_codes:
+        place_tokens |= set(
+            re.findall(r"[a-z]{2,}", resolve_country_name(code).lower())
+        )
+
+    out: set[str] = set()
+    for raw in re.findall(r"[^\W\d_]{2,}", (label or "").lower(), re.UNICODE):
+        if raw in _LABEL_GENERIC_TOKENS:
+            continue
+        if raw in place_tokens or raw in _COUNTRY_NAME_TOKENS:
+            continue
+        # crude English plural stem: earthquakes -> earthquake, riots -> riot.
+        stem = raw[:-1] if (len(raw) > 4 and raw.endswith("s")) else raw
+        out.add(stem)
+    return out
+
+
+def _primary_country_key(thread: dict[str, Any], top_k: int = 2) -> frozenset[str]:
+    codes = [str(c).upper() for c in (thread.get("top_countries") or []) if c]
+    return frozenset(codes[:top_k])
+
+
+def same_event(a: dict[str, Any], b: dict[str, Any]) -> bool:
+    """True iff two threads clearly describe the same real-world event.
+
+    Conservative by construction: requires an identical non-empty primary-country
+    set AND at least one shared distinctive label token. Either condition alone
+    is insufficient, so two distinct same-country stories never merge.
+    """
+    key_a = _primary_country_key(a)
+    key_b = _primary_country_key(b)
+    if not key_a or key_a != key_b:
+        return False
+    tokens_a = _distinctive_label_tokens(str(a.get("label") or ""), list(key_a))
+    tokens_b = _distinctive_label_tokens(str(b.get("label") or ""), list(key_b))
+    if not tokens_a or not tokens_b:
+        return False
+    return bool(tokens_a & tokens_b)
+
+
+def _merge_event_pair(keep: dict[str, Any], drop: dict[str, Any]) -> dict[str, Any]:
+    """Fold ``drop`` into ``keep`` (the higher-ranked survivor).
+
+    The two threads are different-language coverage of one event, so their signal
+    sets are DISJOINT — volume/source counts are SUMMED (union of distinct
+    coverage), and changed_10h is summed (both deltas are real new signals).
+    Country / source / entity / evidence lists are unioned, keep's order first.
+    """
+    def _union(primary: list, extra: list) -> list:
+        seen: set = set()
+        out: list = []
+        for item in (primary or []) + (extra or []):
+            marker = json.dumps(item, sort_keys=True, default=str) if isinstance(
+                item, (dict, list)
+            ) else item
+            if marker in seen:
+                continue
+            seen.add(marker)
+            out.append(item)
+        return out
+
+    keep["signal_count"] = int(keep.get("signal_count") or 0) + int(
+        drop.get("signal_count") or 0
+    )
+    keep["source_count"] = max(
+        int(keep.get("source_count") or 0), int(drop.get("source_count") or 0)
+    )
+    keep["changed_10h"] = int(keep.get("changed_10h") or 0) + int(
+        drop.get("changed_10h") or 0
+    )
+    keep["top_countries"] = _union(
+        keep.get("top_countries"), drop.get("top_countries")
+    )[:5]
+    keep["top_country_names"] = _union(
+        keep.get("top_country_names"), drop.get("top_country_names")
+    )[:5]
+    keep["top_sources"] = _union(keep.get("top_sources"), drop.get("top_sources"))[:5]
+    keep["top_entities"] = _union(
+        keep.get("top_entities"), drop.get("top_entities")
+    )[:10]
+    keep["evidence_samples"] = _union(
+        keep.get("evidence_samples"), drop.get("evidence_samples")
+    )
+    # Record the fold so the merge is never a silent filter (project guardrail).
+    merged_ids = list(keep.get("merged_thread_ids") or [])
+    if drop.get("thread_id"):
+        merged_ids.append(str(drop.get("thread_id")))
+    if merged_ids:
+        keep["merged_thread_ids"] = merged_ids
+    # trend reflects the new combined movement
+    keep["trend"] = _trend_label(
+        int(keep.get("changed_10h") or 0), int(keep.get("signal_count") or 0)
+    )
+    return keep
+
+
+def dedupe_same_event_threads(threads: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Collapse cross-language duplicates of one event, preserving input order.
+
+    ``threads`` MUST already be in served (ranked) order: the first occurrence of
+    an event survives and absorbs later duplicates, so the higher-ranked row is
+    always the one kept. Pure and order-stable.
+    """
+    survivors: list[dict[str, Any]] = []
+    for thread in threads:
+        match = next((s for s in survivors if same_event(s, thread)), None)
+        if match is None:
+            survivors.append(thread)
+        else:
+            _merge_event_pair(match, thread)
+    return survivors
+
+
 async def fetch_threads(
     *,
     hours: int = 24,
@@ -1277,7 +1491,11 @@ async def fetch_threads(
                 t for t in atlas
                 if str(t.get("label") or "").strip().lower() not in dynamic_labels
             ]
-            return rank_threads(dynamic + atlas_extra)[:limit]
+            # rank first so the higher-ranked row survives the event-dedupe, then
+            # collapse cross-language duplicates (the language-split case the
+            # exact-label dedupe above cannot catch), then trim to limit.
+            ranked = rank_threads(dynamic + atlas_extra)
+            return dedupe_same_event_threads(ranked)[:limit]
         else:
             try:
                 emergent = await _fetch_emergent_threads_with_conn(
@@ -1286,7 +1504,7 @@ async def fetch_threads(
             except Exception as exc:
                 logger.warning("emergent threads degraded: %s", exc)
                 emergent = []
-        return rank_threads(emergent + atlas)[:limit]
+        return dedupe_same_event_threads(rank_threads(emergent + atlas))[:limit]
 
     async def _run(active_conn: Any) -> list[dict[str, Any]]:
         threads = await _merged(active_conn)

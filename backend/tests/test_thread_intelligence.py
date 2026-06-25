@@ -107,10 +107,14 @@ def test_assemble_thread_contract():
     assert thread["trend"] == "surging"
     assert thread["top_entities"] == ["Bola Tinubu", "Dina Boluarte"]
     assert thread["hourly_timeline"][0]["count"] == 12
+    # #214: why_now must read as a NET delta vs the prior 10h, never as a
+    # gross count that invites comparison against the window signal_count.
     assert (
         thread["why_now"]
-        == "47 more signals in the last 10h, concentrated in Nigeria and Peru."
+        == "Up 47 vs the prior 10h (net new coverage), concentrated in Nigeria and Peru."
     )
+    # #214: reader-safe movement chip is self-describing ("vs prior 10h").
+    assert thread["movement_label"] == "+47 vs prior 10h"
     assert thread["related_threads"][0]["topic"] == "labor-strike-disruption"
     assert "narrative_note" in thread
     assert thread["narrative_note"] is not None
@@ -236,6 +240,51 @@ def test_trend_label_classifies_volume_delta():
     assert _trend_label(-20, 100) == "fading"
     assert _trend_label(2, 1000) == "stable"  # 0.2% noise
     assert _trend_label(100, 0) == "stable"  # divide-by-zero guard
+
+
+def test_why_now_reads_as_net_change_not_gross_count():
+    """#214: changed_10h is a NET delta vs the prior 10h, not a count of new
+    signals. The copy must not say "N more signals" (which a reader compares
+    against the window signal_count and reads as a contradiction)."""
+    from app.services.thread_intelligence import _why_now
+
+    up = _why_now(47, ["NG", "PE"])
+    assert up == "Up 47 vs the prior 10h (net new coverage), concentrated in Nigeria and Peru."
+    # It must NOT use the old absolute phrasing.
+    assert "more signals" not in up
+
+    down = _why_now(-12, ["FR"])
+    assert down == "Down 12 vs the prior 10h (coverage cooling), concentrated in France."
+    assert "fewer signals" not in down
+
+    flat = _why_now(0, [])
+    assert flat == "Signal volume is steady vs the prior 10h, concentrated in multiple regions."
+
+
+def test_why_now_honest_when_delta_exceeds_window_total():
+    """#214 core case: a thread served over a <20h window can have a 10h delta
+    (+53) that exceeds its window signal_count (28). The why_now line must
+    stay reconcilable — it frames +53 as movement vs the PRIOR 10h, never as
+    "53 more signals" than the 28 the thread contains."""
+    from app.services.thread_intelligence import _why_now
+
+    line = _why_now(53, ["FR"])
+    assert "vs the prior 10h" in line
+    assert "more signals" not in line
+    # The number is presented as movement, not as an absolute pool size.
+    assert line.startswith("Up 53 vs the prior 10h")
+
+
+def test_movement_label_is_self_describing():
+    """#214: the short chip must carry "vs prior 10h" so it never reads as a
+    gross count compared against signal_count."""
+    from app.services.thread_intelligence import _movement_label
+
+    assert _movement_label(53) == "+53 vs prior 10h"
+    assert _movement_label(-12) == "-12 vs prior 10h"
+    assert _movement_label(0) == "flat vs prior 10h"
+    # Emergent path uses a snapshot period instead of a strict 10h window.
+    assert _movement_label(8, period="prior snapshot") == "+8 vs prior snapshot"
 
 
 def test_threads_sql_exposes_enriched_fields():
@@ -487,3 +536,114 @@ def test_fetch_threads_exposes_attach_evidence_flag_defaulting_off():
     sig = inspect.signature(fetch_threads)
     assert "attach_evidence" in sig.parameters
     assert sig.parameters["attach_evidence"].default is False
+
+
+# --- cross-language event de-duplication (serve-time, conservative) ----------
+
+from app.services.thread_intelligence import (  # noqa: E402
+    dedupe_same_event_threads,
+    same_event,
+)
+
+
+def _thread(thread_id, label, codes, signal_count, changed_10h=0, **extra):
+    base = {
+        "thread_id": thread_id,
+        "label": label,
+        "top_countries": list(codes),
+        "top_country_names": list(codes),
+        "signal_count": signal_count,
+        "changed_10h": changed_10h,
+        "top_entities": [],
+        "top_sources": [],
+        "evidence_samples": [],
+    }
+    base.update(extra)
+    return base
+
+
+def test_same_event_merges_language_split_pair():
+    """The reported bug: one earthquake, two language-split identities with
+    different labels but the same country and a shared distinctive token."""
+    en = _thread("dynamic-topic-1", "Venezuela Earthquakes", ["VE"], 80, 30)
+    ru = _thread("dynamic-topic-2", "Venezuela Earthquake Disaster", ["VE"], 40, 10)
+    assert same_event(en, ru) is True
+
+
+def test_same_event_does_not_merge_distinct_same_country_stories():
+    """Two genuinely different Venezuela stories share the country but NOT a
+    distinctive event token — they must stay separate."""
+    quake = _thread("dynamic-topic-1", "Venezuela Earthquakes", ["VE"], 80)
+    election = _thread("dynamic-topic-3", "Venezuela Election Dispute", ["VE"], 60)
+    assert same_event(quake, election) is False
+
+
+def test_same_event_does_not_merge_same_topic_different_country():
+    """Same subject word, different country = different real-world events."""
+    ve_quake = _thread("dynamic-topic-1", "Venezuela Earthquakes", ["VE"], 80)
+    tr_quake = _thread("dynamic-topic-4", "Turkey Earthquakes", ["TR"], 50)
+    assert same_event(ve_quake, tr_quake) is False
+
+
+def test_same_event_country_name_alone_is_insufficient():
+    """A bare country-name overlap (no distinctive token) never merges."""
+    a = _thread("a", "Venezuela News", ["VE"], 10)
+    b = _thread("b", "Venezuela Update", ["VE"], 10)
+    assert same_event(a, b) is False
+
+
+def test_same_event_requires_a_primary_country():
+    """Threads with no top country are undecidable and never merge."""
+    a = _thread("a", "Earthquake Disaster", [], 10)
+    b = _thread("b", "Earthquake Relief", [], 10)
+    assert same_event(a, b) is False
+
+
+def test_dedupe_collapses_pair_keeps_higher_ranked_and_sums_volume():
+    """Ranked input order: the first (higher-ranked) thread survives and absorbs
+    the later duplicate; disjoint language slices sum to the union volume."""
+    en = _thread("dynamic-topic-1", "Venezuela Earthquakes", ["VE"], 80, 30)
+    ru = _thread(
+        "dynamic-topic-2",
+        "Venezuela Earthquake Disaster",
+        ["VE"],
+        40,
+        10,
+        top_entities=["Nicolás Maduro"],
+        evidence_samples=[{"headline": "Много жертв"}],
+    )
+    out = dedupe_same_event_threads([en, ru])
+
+    assert len(out) == 1
+    survivor = out[0]
+    assert survivor["thread_id"] == "dynamic-topic-1"  # higher-ranked kept
+    assert survivor["signal_count"] == 120  # 80 + 40 (disjoint coverage)
+    assert survivor["changed_10h"] == 40  # 30 + 10
+    assert survivor["merged_thread_ids"] == ["dynamic-topic-2"]  # not silent
+    assert "Nicolás Maduro" in survivor["top_entities"]
+    assert {"headline": "Много жертв"} in survivor["evidence_samples"]
+
+
+def test_dedupe_leaves_distinct_threads_untouched():
+    """The exact same-country pair that must NOT fuse survives as two rows, in
+    the original (ranked) order."""
+    quake = _thread("dynamic-topic-1", "Venezuela Earthquakes", ["VE"], 80)
+    quake_ru = _thread("dynamic-topic-2", "Venezuela Earthquake Disaster", ["VE"], 40)
+    election = _thread("dynamic-topic-3", "Venezuela Election Dispute", ["VE"], 60)
+
+    out = dedupe_same_event_threads([quake, election, quake_ru])
+
+    assert len(out) == 2  # the two quakes collapse; election stays
+    labels = [t["label"] for t in out]
+    assert "Venezuela Election Dispute" in labels
+    assert out[0]["signal_count"] == 120  # quake survivor summed
+    assert out[0]["label"] == "Venezuela Earthquakes"
+
+
+def test_dedupe_is_order_stable_and_pure_on_no_duplicates():
+    """No duplicates → identical list, order preserved, no mutation of inputs."""
+    a = _thread("a", "Ukraine War Updates", ["UA", "RU"], 200)
+    b = _thread("b", "Sudan Famine Crisis", ["SD"], 90)
+    out = dedupe_same_event_threads([a, b])
+    assert [t["thread_id"] for t in out] == ["a", "b"]
+    assert a["signal_count"] == 200 and b["signal_count"] == 90
