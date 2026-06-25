@@ -1828,3 +1828,19 @@ NEXT LEVERS: flip ATLAS_NLP_MULTILINGUAL=on on the M1 (capable → non-English
 subjects verified, #162); parallel mindful M1 workers need SELECT…FOR UPDATE
 SKIP LOCKED. Re-sync enrichment/ + the runner to AtlasLocalWorker on worker code
 changes (they're versioned in repo, executed from the non-iCloud tree).
+
+**2026-06-25 — Multilingual NER on M1: investigated, NOT enabled (finding).**
+Tried to flip ATLAS_NLP_MULTILINGUAL=on on the M1 to verify non-English typed
+subjects (#162). Verified instead of assumed — two blockers make it not worth it:
+(1) `xx_ent_wiki_sm` (the multilingual spaCy NER) extracts Latin-script fine
+(es: Gustavo Petro/PER + Bogotá/LOC; fr: Macron/Scholz/Paris) but returns
+NOTHING for Persian/Arabic/CJK — exactly the diversity gap. The Problema-A
+gazetteer already types those honestly, so xx adds no non-Latin value.
+(2) The xlm sentiment model is broken in `mlvenv` (transformers 5.8 / Python
+3.14 routes xlm-roberta's SentencePiece tokenizer to tiktoken → ValueError),
+and there's no NLP_SKIP_SENTIMENT flag (only SKIP_FRAMING) — so multilingual mode
+would crash the M1 worker's sentiment phase. Left M1 on EN-only (working). Installed
+xx_ent_wiki_sm + tiktoken + sentencepiece into mlvenv (harmless). REAL non-Latin
+NER win needs a proper multilingual token-classification MODEL (not xx_ent_wiki_sm)
++ a transformers env that loads xlm-roberta — a scoped task, not a config flip.
+Meanwhile non-English subjects stay gazetteer-typed (honest, unverified).
