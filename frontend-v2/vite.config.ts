@@ -1,9 +1,57 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['icon-192.png', 'icon-512.png', 'icon-maskable-512.png'],
+      manifest: {
+        name: 'Atlas — Narrative Intelligence',
+        short_name: 'Atlas',
+        description: 'The global narrative weather — what is happening, who is saying what, where it is heading.',
+        start_url: '/brief',
+        display: 'standalone',
+        background_color: '#0b0e13',
+        theme_color: '#0b0e13',
+        icons: [
+          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,woff2,png,svg}'],
+        navigateFallbackDenylist: [/^\/api\//],
+        // The brief/threads read offline (network-first → last good response);
+        // theme detail likewise. Never precache the live API.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) =>
+              url.pathname.startsWith('/api/v2/briefing') || url.pathname.startsWith('/api/v2/threads'),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'atlas-brief',
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 },
+            },
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/v2/theme/'),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'atlas-theme',
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 12 },
+            },
+          },
+        ],
+      },
+    }),
+  ],
   server: {
     port: 3000,
     strictPort: true,  // Fail if port 3000 is taken
