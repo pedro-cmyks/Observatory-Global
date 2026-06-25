@@ -1762,3 +1762,24 @@ focus — every main surface re-scopes, all verified end-to-end (the dev-preview
 dark-map was a local source race only). Remaining are precise UPGRADES, not gaps:
 rarity-weighted/entity-overlap thread-sibling relation; thread-as-full-focus-lens;
 public-attention focus panels. #234 core = DONE.
+
+**2026-06-25 — #184 NLP throughput: DIAGNOSED + reverted (incident logged):**
+Goal = fill nlp_persons (flip typed subjects unverified→verified). Measured via
+Supabase: nlp_sentiment 100% (fast-lane) but nlp_persons only 3.9% / ~680/hr vs
+~7,000/hr ingest → 24h lag. Root cause: `nlp_worker.py` phase runners
+LOAD-RUN-UNLOAD each model per cycle (to fit 4GB), and `NLP_WORKER_LIMIT` is a
+Fly secret = 25 (not the 500 in the stale fly.toml comment). **INCIDENT:** the
+throughput-bump redeploy applied `NLP_MULTILINGUAL_MODE=on` → heavy xlm-roberta
+models load 140s/cycle on the shared-cpu-2x/4GB box, which ALSO hosts the embed
+service (daemon thread, same process) → embed starved → `/api/v2/research/plan`
+(semantic lane) timed out. FIX: `fly secrets set NLP_MULTILINGUAL_MODE=off
+NLP_WORKER_LIMIT=25 NLP_WORKER_INTERVAL_SECONDS=120` → EN-only light models
+(~11s cycles) → embed restored (plan 200/0.4s, was timeout). **STRUCTURAL
+FINDING:** NER throughput CANNOT be bumped by config — the worker (per-cycle
+heavy model load) and the embed service share one machine + Python process (GIL
+contention). #184 is blocked on INFRA: (a) move the embed service to its own
+machine, or (b) scale the worker box, or (c) decouple NER from the embed
+process. Until then NER stays EN-only at baseline; typed subjects stay
+gazetteer-typed (unverified). Multilingual NER (#162) has the same infra
+dependency. Lesson: changing the NLP worker risks the co-hosted embed — verify
+embed health on any worker deploy.
