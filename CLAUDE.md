@@ -1742,3 +1742,16 @@ useFocusRelation, country-scoped sources have no entity variant), SourceIntegrit
 work. Genuinely remaining: detail PublicAttentionPanel is already item-scoped (no
 #234 needed); map-heat/threads hook migration deliberately skipped (regression
 risk); the map VISUAL still needs Pedro's Vercel eyeball.
+
+**2026-06-24 — #234 thread-focus cross-panel (sibling threads, `8f544d4`):**
+Verified thread-open clears focus by design (opens ThemeDetail + flies to top
+country), so panels can't re-scope via the focus lens. Low-risk path instead:
+NarrativeThreads surfaces a thread's SIBLINGS — threads sharing one of its TOP-2
+(primary-geography) countries — and dims the rest, reusing the activeThreadId
+prop, no focus-model change. Top-2 not all-5 (sharing US is too broad).
+Browser-verified: open "Ukraine War Updates" (RU/KP) → "Oil and gas supply risk"
++ "News from Buryatia" surface, 17 dim. #234 now re-scopes for ALL focus kinds:
+country (slice 1), person (map+threads precise+anomaly+sources), thread
+(siblings). Precise future upgrades: rarity-weighted/entity-overlap thread
+relation; thread-as-focus-lens if the open flow is ever made a lens. Map VISUAL
+still needs Pedro's Vercel eyeball.
