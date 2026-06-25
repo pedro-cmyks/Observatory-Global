@@ -27,7 +27,11 @@ fi
 : "${DATABASE_URL:?DATABASE_URL must be set (via $LOCAL_ENV)}"
 
 # Fleet config (tunable; safe defaults). The supervisor reads these.
-export NLP_FLEET_BURST_WORKERS="${ATLAS_NLP_BURST_WORKERS:-3}"
+# M1 is 8GB: each worker peaks ~1.5GB of models + the M1 also runs heavy ML crons
+# (embed-hot-corpus, emergent-snapshot). 2 burst workers on the perf cores already
+# clear ~8-10k/hr > ingest, draining the backlog when idle without OOM/swap risk.
+# Bump via ATLAS_NLP_BURST_WORKERS only if free RAM proves comfortable.
+export NLP_FLEET_BURST_WORKERS="${ATLAS_NLP_BURST_WORKERS:-2}"
 export NLP_FLEET_IDLE_SECONDS="${ATLAS_NLP_IDLE_SECONDS:-180}"
 export NLP_FLEET_CHECK_SECONDS="${ATLAS_NLP_CHECK_SECONDS:-30}"
 export NLP_FLEET_REQUIRE_AC="${ATLAS_NLP_REQUIRE_AC:-1}"

@@ -24,8 +24,9 @@ launchd runs THIS process (KeepAlive); it owns the worker children. On SIGTERM
 it kills the fleet and exits cleanly.
 
 Env knobs (all optional):
-  NLP_FLEET_BURST_WORKERS     default 3   (workers in burst mode; watch RAM:
-                                           each loads ~1.5GB of models)
+  NLP_FLEET_BURST_WORKERS     default 2   (workers in burst mode; M1 is 8GB and
+                                           each loads ~1.5GB of models — 2 is the
+                                           safe ceiling, bump only if RAM allows)
   NLP_FLEET_IDLE_SECONDS      default 180 (idle seconds before bursting)
   NLP_FLEET_CHECK_SECONDS     default 30  (re-evaluate cadence / switch-back lag)
   NLP_FLEET_REQUIRE_AC        default 1   (only burst on AC power)
@@ -46,7 +47,7 @@ WORKER_ROOT = os.getenv("ATLAS_LOCAL_WORKER_DIR", "/Users/pedro/AtlasLocalWorker
 BACKEND_DIR = os.getenv("ATLAS_NLP_BACKEND_DIR", os.path.join(WORKER_ROOT, "backend"))
 VENV_PY = os.getenv("ATLAS_NLP_VENV_PY", os.path.join(WORKER_ROOT, "mlvenv", "bin", "python"))
 
-BURST_WORKERS = max(2, int(os.getenv("NLP_FLEET_BURST_WORKERS", "3")))
+BURST_WORKERS = max(2, int(os.getenv("NLP_FLEET_BURST_WORKERS", "2")))
 IDLE_SECONDS = int(os.getenv("NLP_FLEET_IDLE_SECONDS", "180"))
 CHECK_SECONDS = int(os.getenv("NLP_FLEET_CHECK_SECONDS", "30"))
 REQUIRE_AC = os.getenv("NLP_FLEET_REQUIRE_AC", "1").lower() not in {"0", "false", "no"}
