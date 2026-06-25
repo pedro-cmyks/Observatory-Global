@@ -1,6 +1,14 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
 Last updated: 2026-06-25. **Newest session handoff (read this first):**
+`docs/state/2026-06-25-consumer-mvp-pwa-session.md` — Consumer MVP shipped:
+Atlas is now an installable PWA (vite-plugin-pwa, offline-last-Brief) with a
+mobile single-column Brief feed + full-screen mobile thread read + honest
+"Covered from" chips + offline banner (Tasks 1-5,7 of 8 deployed to Vercel).
+Built via product-gap assessment → brainstorm (consumer read front door) →
+spec → plan. Remaining: share-card (Task 6) + final Lighthouse/papers (Task 8).
+Phase 2 (accounts/alerts/dossier) and #238 (subject-geography behind honest
+chips) are the next tracks. Prior handoff:
 `docs/state/2026-06-25-brief-dataquality-session.md` — live re-eval of the
 surfaces moved the bottleneck from surface STRUCTURE to the DATA feeding them.
 Shipped + deployed: Brief lead-story regression fix, geo mistag (title-only +
