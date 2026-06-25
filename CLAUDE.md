@@ -510,6 +510,10 @@ Problem A.
    snapshot sampling.
 5. Later phases: Phase 3 report view from pinned state (dossier defined in
    review §5); Phase 4 evidence/frame quality bound to Paper 1 benchmarks.
+6. Mobile visualization (#236, roadmap, NOT scheduled): phone-native
+   presentation, not a shrunk desktop — strip down + re-shape per surface.
+   L0 Landing + L1 Brief = near-term polish (already responsive); L2 console
+   mobile IA + L3 Workspace = larger project, coordinate with #228.
 
 Tests: research suites = `pytest tests/test_research_*.py` (22 tests).
 Deploy: `./scripts/deploy-fly-api.sh`. Prod smoke:
