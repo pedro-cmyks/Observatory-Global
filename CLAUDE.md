@@ -1844,3 +1844,26 @@ xx_ent_wiki_sm + tiktoken + sentencepiece into mlvenv (harmless). REAL non-Latin
 NER win needs a proper multilingual token-classification MODEL (not xx_ent_wiki_sm)
 + a transformers env that loads xlm-roberta — a scoped task, not a config flip.
 Meanwhile non-English subjects stay gazetteer-typed (honest, unverified).
+
+**2026-06-25 — #229 coverage DIAGNOSED + #234 rarity-weighted sibling shipped.**
+(While the M1 NLP drains.) #229 measured the funnel end-to-end (verify-before-
+assume killed two wrong fixes): 174K signals/24h → 71K persisted corpus → only
+**23 clusters/snapshot, mostly small**. Bottleneck is NOT promotion — the gate
+works (0 candidates qualify-but-stuck); 150/181 candidates are 1-snapshot-new,
+114 are <30 signals. Fast-tracking high-volume 1-snapshot candidates would help
+**0** topics (no big stuck candidates; biggest clean 1-snapshot is <60 sig). So
+coverage (50 active threads) ≈ the clustering's stable-large-cluster yield; the
+signal mass stays HDBSCAN noise. REAL #229 lever = clustering RECALL
+(`min_cluster_size` granularity + scoped regional passes, #229 lever 2) — a
+data-layer task that runs on the M1 cron and needs offline quality testing, not
+a quick code change. Logged for the next data-layer session.
+#234 sibling upgrade (`NarrativeThreads.tsx`): added rarity-weighted entity
+overlap to the thread-sibling relation. NAIVE entity overlap was HARMFUL —
+verified on live data that one common GDELT entity ("donald trump", DF=14/30)
+linked every unrelated thread (Pauline Hanson ↔ Venezuela Earthquake). Fixed by
+counting only DISTINCTIVE entities (document-freq ≤ min(3, 25% of list)): trump
+excluded, spurious matches gone, genuine geography-independent siblings still
+surface (Humanitarian-access ↔ Flood-disaster via a shared rare actor). This is
+the "rarity-weighted/entity-overlap" item from the #234 remaining list. Build
+green, 74/74 vitest, 0 console errors, live-data verified. Remaining #234:
+thread-as-full-focus-lens; public-attention focus panels.

@@ -213,9 +213,30 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     // Relate by the open thread's PRIMARY geography (top-2 countries), not all 5:
     // sharing the dominant country (often US) is too broad to be a real sibling.
     const activeCountries = new Set((activeThread?.top_countries || []).slice(0, 2))
+    // #234 upgrade: ALSO relate by shared DISTINCTIVE ENTITY (rarity-weighted) —
+    // sharper than geography alone. Naive entity overlap is HARMFUL: a single
+    // common GDELT entity (measured: "donald trump" in 14/30 threads) links every
+    // unrelated thread. So only entities shared by FEW threads count — a common
+    // actor is noise, a rare shared actor is a real sibling signal (e.g. opening a
+    // Russia–Ukraine thread surfaces another thread sharing Zelensky, not every
+    // US thread sharing Trump). Cap = min(3, 25% of the list).
+    const norm = (e: string) => e.toLowerCase().trim()
+    const entityDF = new Map<string, number>()
+    for (const n of displayedNarratives)
+        for (const e of new Set((n.top_entities || []).map(norm).filter(Boolean)))
+            entityDF.set(e, (entityDF.get(e) || 0) + 1)
+    const distinctiveCap = Math.max(2, Math.min(3, Math.floor(displayedNarratives.length * 0.25)))
+    const isDistinctive = (e: string) => (entityDF.get(e) || 0) <= distinctiveCap
+    const activeEntities = new Set(
+        (activeThread?.top_entities || []).map(norm).filter(e => e && isDistinctive(e))
+    )
     const threadRelated = (n: Narrative): boolean =>
-        !!activeThread && (n.thread_id === activeThreadId || n.top_countries.some(c => activeCountries.has(c)))
-    const anyThreadRelation = !!activeThread && activeCountries.size > 0 &&
+        !!activeThread && (
+            n.thread_id === activeThreadId ||
+            n.top_countries.some(c => activeCountries.has(c)) ||
+            (n.top_entities || []).some(e => activeEntities.has(norm(e)))
+        )
+    const anyThreadRelation = !!activeThread && (activeCountries.size > 0 || activeEntities.size > 0) &&
         displayedNarratives.some(n => n.thread_id !== activeThreadId && threadRelated(n))
 
     // person focus takes precedence; else thread-sibling relation
