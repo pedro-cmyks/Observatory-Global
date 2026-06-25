@@ -9,6 +9,7 @@ import { readBriefingCache } from '../lib/briefingPrefetch'
 import { resolveThreadThemeTarget } from '../lib/threadThemeTarget'
 import { selectLeadThread } from '../lib/briefLead'
 import { coverageChipTip, COVERAGE_CHIP_LABEL } from '../lib/countryChips'
+import { OfflineBanner } from '../components/OfflineBanner'
 import './BriefNewspaper.css'
 
 // Natural Earth 110m with ISO_A2 country properties
@@ -409,6 +410,7 @@ export function BriefNewspaper() {
 
     return (
         <div className="brief-page">
+            <OfflineBanner />
             <header className="brief-masthead">
                 <div className="brief-nav-actions">
                     <button className="brief-back" onClick={() => navigate('/')}>← Home</button>
