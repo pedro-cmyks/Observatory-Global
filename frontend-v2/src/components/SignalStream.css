@@ -399,3 +399,11 @@
 }
 .th-toggle:hover { opacity: 1; text-decoration: underline; }
 .th-loading { color: var(--text-secondary, #94a3b8); font-size: 0.72em; font-style: italic; }
+
+/* ── Mobile: the stream must NOT grow the page as items arrive.
+   On phones the desktop height:100% has no bounded parent, so the list grew
+   and pushed everything down. Bound it and scroll internally. ── */
+@media (max-width: 768px) {
+    .signal-stream-container { height: auto; max-height: 72vh; }
+    .signal-list { max-height: 60vh; }
+}

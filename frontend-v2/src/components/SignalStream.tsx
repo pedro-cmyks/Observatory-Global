@@ -11,7 +11,7 @@ import { SignalDetailPanel } from './SignalDetailPanel'
 import type { Signal } from './SignalDetailPanel'
 import './SignalStream.css'
 
-type StreamItem = Signal & { type: 'signal' }
+type StreamItem = Signal & { type: 'signal'; addedAt?: number }
 
 interface Velocity {
     signals_per_minute: number | string
@@ -26,9 +26,11 @@ const getSentimentClass = (sentiment: number) => {
     return 'neutral'
 }
 
-// Format timestamp as relative age: 1s, 2m, 15m, 2h
-const formatRelativeAge = (ts: string): string => {
-    const sec = Math.max(0, Math.floor((Date.now() - new Date(ts).getTime()) / 1000))
+// Age since the item ENTERED the stream (its render moment = zero), not its
+// publication time. A live feed counts up from when each item appeared: the
+// item just added shows 0s, the one added a second earlier shows 1s, etc.
+const formatRelativeAge = (addedAt: number, now: number): string => {
+    const sec = Math.max(0, Math.floor((now - addedAt) / 1000))
     if (sec < 60) return `${sec}s`
     const min = Math.floor(sec / 60)
     if (min < 60) return `${min}m`
@@ -127,6 +129,7 @@ export const SignalStream: React.FC = () => {
     const { filter, setTheme, setCountry, setPerson, setStreamLevel } = useFocus()
     const { timeRange } = useFocusData()
     const [items, setItems] = useState<StreamItem[]>([])
+    const [nowTs, setNowTs] = useState(() => Date.now())
     const [velocity, setVelocity] = useState<Velocity | null>(null)
     const [allowlist, setAllowlist] = useState<string[]>([])
     const [isHovered, setIsHovered] = useState(false)
@@ -197,7 +200,8 @@ export const SignalStream: React.FC = () => {
                 const allItems = interleaveOwnVoice(sorted)
 
                 const { visible, queue } = splitInitialStreamBatch(allItems, INITIAL_VISIBLE_ITEMS)
-                setItems(visible)
+                const stampNow = Date.now()
+                setItems(visible.map(it => ({ ...it, addedAt: stampNow })))
                 dripQueueRef.current = queue
 
                 if (fetchedSignals.length > 0) {
@@ -301,10 +305,18 @@ export const SignalStream: React.FC = () => {
                 const itemKey = `${next.type}-${next.id}`
                 setNewItemIds(prev => new Set([...prev, itemKey]))
                 setTimeout(() => setNewItemIds(prev => { const s = new Set(prev); s.delete(itemKey); return s }), 900)
-                setItems(prev => mergeStreamItems([next], prev, MAX_STREAM_ITEMS))
+                // Stamp the moment it appears so its age counts up from zero.
+                const stamped = { ...next, addedAt: next.addedAt ?? Date.now() }
+                setItems(prev => mergeStreamItems([stamped], prev, MAX_STREAM_ITEMS))
             }
         }, 1800)
         return () => clearInterval(drip)
+    }, [])
+
+    // Tick once a second so each item's "age since it appeared" counts up.
+    useEffect(() => {
+        const t = setInterval(() => setNowTs(Date.now()), 1000)
+        return () => clearInterval(t)
     }, [])
 
     const handleThemeClick = (e: React.MouseEvent, theme: string) => {
@@ -411,7 +423,7 @@ export const SignalStream: React.FC = () => {
                             return (
                                 <div key={sig.id} className={`signal-row priority-${getSignalPriority(sig)}${isNew ? ' new-entry' : ''}`}>
                                     <div className="signal-meta">
-                                        <span className="time">{formatRelativeAge(sig.timestamp)}</span>
+                                        <span className="time">{formatRelativeAge(sig.addedAt ?? new Date(sig.timestamp).getTime(), nowTs)}</span>
                                         <span 
                                             className="country-chip clickable" 
                                             onClick={(e) => handleCountryClick(e, sig.country || '')}
