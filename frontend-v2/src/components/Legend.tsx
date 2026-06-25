@@ -135,7 +135,10 @@ export const Legend: React.FC<LegendProps> = ({
             {showHeatmap && (
                 <div style={{ marginBottom: '12px' }}>
                     <SectionHeader label="Countries heat layer" tip="Country color = composite anomaly (velocity, surprise, source diversity, local voice) vs each country's OWN baseline — NOT raw volume. A small country spiking above its norm outranks a high-volume one. Border thickness = signal volume." />
-                    <div style={{ height: '8px', borderRadius: '4px', background: 'linear-gradient(90deg, rgba(29,78,216,0.6), rgba(251,146,60,0.8), rgba(239,68,68,0.95))', marginBottom: '4px' }} />
+                    {/* Mirrors the actual map heat ramp (App.tsx country-heat-fill):
+                        deep blue → blue → teal → amber → orange → red, the
+                        weather-radar spread (#231/2026-06-13). */}
+                    <div style={{ height: '8px', borderRadius: '4px', background: 'linear-gradient(90deg, rgb(20,50,120), rgb(25,90,150), rgb(40,140,120), rgb(190,130,30), rgb(220,75,20), rgb(238,35,10))', marginBottom: '4px' }} />
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--color-text-muted)' }}>
                         <span>at baseline</span>
                         <span>spiking vs own norm</span>
