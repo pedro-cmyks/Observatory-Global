@@ -1710,3 +1710,21 @@ surface re-scope to a focused entity's relations, honestly?". Remaining #234:
 SourceIntegrity + the detail-PublicAttentionPanel add one useFocusRelation()
 call each; map-heat + threads re-scope can migrate to the hook to collapse the
 bespoke logic; precise person→thread = backend `threads?person=` (Paper 4).
+
+**2026-06-24 — #234 "both done well" (precise person→thread + DRY):**
+(B `4edc87c`…, A `4edc87c`). (B, Paper 4) PRECISE person→thread: `/api/v2/threads
+?person=` filters to threads the person appears in via the FULL signal `persons`
+array — `thread_matches_person` (pure, 6 tests): atlas threads match by topic
+slug from a separate lightweight `_PERSON_TOPIC_SLUGS_SQL` (never touches the
+THREADS_SQL spine), dynamic/emergent fall back to top_entities; router searches a
+40-pool when person-filtering. Prod smoke: person=trump → 24/39 matched (caught
+"Disease outbreak" that top_entities missed). (A) NarrativeThreads highlight now
+consumes that precise set (replaces the capped heuristic): browser-verified 17/20
+match vs 10 before. DRY: AnomalyPanel already self-subscribes to
+`useFocusRelation`; SourceIntegrity NOT re-scoped (its data is the GLOBAL
+briefing — no country param; needs a country-scoped source-health fetch, noted).
+CRITICAL DECISION (logged): did NOT migrate the working map-heat/fly to the hook
+— marginal DRY gain vs regression risk on a carefully stale-guarded, verified
+surface; the hook is the go-forward source for NEW consumers, not a forced
+refactor. Remaining #234: SourceIntegrity country-scoped fetch; detail
+PublicAttentionPanel one-liner.
