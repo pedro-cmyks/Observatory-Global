@@ -1,64 +1,73 @@
-/* Landing page — background, animations, and effects not expressible in Tailwind */
+/* Landing — background, register gradient, and effects not expressible in Tailwind */
 
-.lp-bg {
+.lp-root {
     background-color: #070d17;
     background-image:
-        radial-gradient(circle at 50% 0%,   rgba(29, 158, 117, 0.18) 0%, transparent 55%),
-        radial-gradient(circle at 100% 100%, rgba(29, 158, 117, 0.06) 0%, transparent 50%);
+        linear-gradient(180deg, rgba(12, 16, 23, 0.55) 0%, rgba(7, 13, 23, 0) 32%),
+        radial-gradient(circle at 50% -5%, rgba(29, 158, 117, 0.16) 0%, transparent 50%),
+        radial-gradient(circle at 100% 100%, rgba(29, 158, 117, 0.05) 0%, transparent 55%);
     background-attachment: fixed;
 }
 
-/* ── Radar sweep ── */
-.lp-radar-sweep {
+/* ── Register hooks (the descent: editorial → console) ── */
+.lp-register-editorial { }
+.lp-register-transition { }
+.lp-register-console {
+    /* faint instrument grid behind the analyst register */
+    background-image: linear-gradient(rgba(29, 158, 117, 0.02) 1px, transparent 1px);
+    background-size: 100% 40px;
+}
+
+/* ── Soft beat divider ── */
+.lp-beat {
+    border-top: 1px solid rgba(104, 219, 174, 0.18);
+    border-bottom: 1px solid rgba(104, 219, 174, 0.18);
+    background: rgba(104, 219, 174, 0.03);
+}
+
+/* ── Trend chips ── */
+.lp-trend {
+    display: inline-block;
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    letter-spacing: 0.08em;
+}
+.lp-trend--accelerating { background: rgba(74, 222, 128, 0.14); color: #4ade80; }
+.lp-trend--fading       { background: rgba(148, 163, 184, 0.14); color: #94a3b8; }
+.lp-trend--stable       { background: rgba(104, 219, 174, 0.12); color: #68dbae; }
+
+/* ── Evidence-role chips (research workflow) ── */
+.lp-chip {
+    display: inline-block;
+    font-size: 8.5px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.06em;
+}
+.lp-chip--direct  { background: rgba(74, 222, 128, 0.14); color: #4ade80; }
+.lp-chip--context { background: rgba(56, 189, 248, 0.14); color: #38bdf8; }
+.lp-chip--weak    { background: rgba(251, 191, 36, 0.14); color: #fbbf24; }
+
+/* ── Workflow step number ── */
+.lp-step { position: relative; }
+.lp-step-num {
     position: absolute;
-    inset: 0;
-    background: conic-gradient(from 0deg, transparent 60%, rgba(104, 219, 174, 0.7) 100%);
-    border-radius: 50%;
-    animation: lp-sweep 5s linear infinite;
+    top: 10px;
+    right: 12px;
+    font-size: 10px;
+    opacity: 0.4;
 }
 
-@keyframes lp-sweep {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
+/* ── Card hover lift ── */
+.lp-lead-card,
+.lp-surface-lead {
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
-
-/* ── Signal dots (hero) ── */
-.lp-signal-dot {
-    position: absolute;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #68dbae;
-    animation: lp-pulse 3s ease-in-out infinite;
-}
-
-.lp-signal-dot::after {
-    content: '';
-    position: absolute;
-    inset: -4px;
-    border-radius: 50%;
-    background: rgba(104, 219, 174, 0.3);
-    animation: lp-ring 3s ease-in-out infinite;
-}
-
-@keyframes lp-pulse {
-    0%, 100% { opacity: 0.2; transform: scale(0.8); }
-    50%       { opacity: 1;   transform: scale(1.2); }
-}
-
-@keyframes lp-ring {
-    0%, 100% { transform: scale(1);   opacity: 0.6; }
-    50%       { transform: scale(2.5); opacity: 0; }
-}
-
-/* ── Hero entrance ── */
-.lp-hero-content {
-    animation: lp-fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes lp-fade-up {
-    from { opacity: 0; transform: translateY(24px); }
-    to   { opacity: 1; transform: translateY(0); }
+.lp-lead-card:hover,
+.lp-surface-lead:hover {
+    box-shadow: 0 0 24px rgba(29, 158, 117, 0.12), 0 4px 20px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
 }
 
 /* ── Section reveal on scroll ── */
@@ -73,26 +82,10 @@
     transform: translateY(0);
 }
 
-/* ── Bento card glow on hover ── */
-.lp-card-hover {
-    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
-}
-.lp-card-hover:hover {
-    border-color: rgba(104, 219, 174, 0.4) !important;
-    box-shadow: 0 0 24px rgba(29, 158, 117, 0.12), 0 4px 20px rgba(0,0,0,0.3);
-    transform: translateY(-2px);
-}
-
-/* ── Stats number glow ── */
-.lp-stat-num {
-    text-shadow: 0 0 20px rgba(104, 219, 174, 0.5);
-}
-
 /* ── CTA button pulse ── */
 .lp-btn-pulse {
     animation: lp-btn-glow 2.5s ease-in-out infinite;
 }
-
 @keyframes lp-btn-glow {
     0%, 100% { box-shadow: 0 0 0   rgba(29, 158, 117, 0); }
     50%       { box-shadow: 0 0 28px rgba(29, 158, 117, 0.5); }
@@ -106,4 +99,9 @@
     padding: 0;
     color: inherit;
     font: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lp-btn-pulse { animation: none; }
+    .lp-reveal { transition: none; opacity: 1; transform: none; }
 }
