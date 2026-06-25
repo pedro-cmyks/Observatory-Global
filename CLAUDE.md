@@ -1,6 +1,9 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-06-10 (Research Workflow Phases 1a/1b shipped + spec review).
+Last updated: 2026-06-25. **Newest session handoff (read this first):**
+`docs/state/2026-06-25-session-handoff.md` — adaptive NLP fleet (#184) now
+draining the 208K NER backlog on the M1, #234 relation upgrades, all 8 papers
+brought current. The dated blocks below are the running registry.
 
 This file provides Claude Code with essential context about the Observatorio Global project, including agent configurations, tooling guidelines, and development workflows.
 
