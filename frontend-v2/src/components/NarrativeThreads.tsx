@@ -201,8 +201,27 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
         return (n.top_entities || []).some(e => e.toLowerCase().includes(focusPerson))
     }
     const anyPersonMatch = !!focusPerson && displayedNarratives.some(threadMatchesPerson)
-    const orderedNarratives = anyPersonMatch
-        ? [...displayedNarratives].sort((a, b) => Number(threadMatchesPerson(b)) - Number(threadMatchesPerson(a)))
+
+    // #234: when a thread is open, surface its SIBLING threads — those sharing a
+    // top country with it — and dim the rest. No focus-model change (thread-open
+    // clears focus by design); reuses the activeThreadId prop. Guarded: only
+    // when the open thread is in this list, has countries, and at least one
+    // OTHER thread relates — otherwise the list stays as-is.
+    const activeThread = activeThreadId
+        ? displayedNarratives.find(n => n.thread_id === activeThreadId)
+        : null
+    // Relate by the open thread's PRIMARY geography (top-2 countries), not all 5:
+    // sharing the dominant country (often US) is too broad to be a real sibling.
+    const activeCountries = new Set((activeThread?.top_countries || []).slice(0, 2))
+    const threadRelated = (n: Narrative): boolean =>
+        !!activeThread && (n.thread_id === activeThreadId || n.top_countries.some(c => activeCountries.has(c)))
+    const anyThreadRelation = !!activeThread && activeCountries.size > 0 &&
+        displayedNarratives.some(n => n.thread_id !== activeThreadId && threadRelated(n))
+
+    // person focus takes precedence; else thread-sibling relation
+    const relate = anyPersonMatch ? threadMatchesPerson : (anyThreadRelation ? threadRelated : null)
+    const orderedNarratives = relate
+        ? [...displayedNarratives].sort((a, b) => Number(relate(b)) - Number(relate(a)))
         : displayedNarratives
 
     const handleClick = (n: Narrative) => {
@@ -287,7 +306,8 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 //  - a person is focused, some thread mentions them, this one doesn't -> dim (#234)
                 const dimByCountry = !!filter.country && !n.top_countries.includes(filter.country)
                 const dimByPerson = anyPersonMatch && !threadMatchesPerson(n)
-                const isDimmed = dimByCountry || dimByPerson
+                const dimByThread = !anyPersonMatch && anyThreadRelation && !threadRelated(n)
+                const isDimmed = dimByCountry || dimByPerson || dimByThread
                 const trendArrow = n.trend === 'accelerating' ? '▲' : n.trend === 'fading' ? '▼' : '→'
                 // Plain-language hover hint; falls back to label when no description is available.
                 const rowHint = `${n.label}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries from ${n.source_count} sources. Click to open the unified thread detail.`
