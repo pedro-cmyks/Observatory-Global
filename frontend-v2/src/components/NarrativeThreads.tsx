@@ -124,6 +124,9 @@ export type LivingThreadSelection = Narrative
 
 export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySelect, onThreadSelect, activeThreadId }) => {
     const [narratives, setNarratives] = useState<Narrative[]>([])
+    // #234: precise person→thread set from the backend (full persons array),
+    // replacing the capped top_entities heuristic for the focus highlight.
+    const [personMatchIds, setPersonMatchIds] = useState<Set<string> | null>(null)
     const [effectiveHours, setEffectiveHours] = useState<number | null>(null)
     const [loading, setLoading] = useState(true)
     const { filter, setCountry, setMapFlyCountry } = useFocus()
@@ -165,6 +168,23 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
         return () => clearInterval(interval)
     }, [fetchNarratives])
 
+    // #234: when a person is focused, fetch the PRECISE set of threads that
+    // mention them (backend ?person=, full persons array) for the highlight —
+    // more accurate than the capped top_entities. Cleared when no person.
+    useEffect(() => {
+        const person = filter.person?.trim()
+        if (!person) { setPersonMatchIds(null); return }
+        let cancelled = false
+        fetch(`/api/v2/threads?hours=${cappedHours}&person=${encodeURIComponent(person)}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(d => {
+                if (cancelled || !d) return
+                setPersonMatchIds(new Set((d.threads || []).map((t: { thread_id: string }) => t.thread_id)))
+            })
+            .catch(() => { if (!cancelled) setPersonMatchIds(null) })
+        return () => { cancelled = true }
+    }, [filter.person, cappedHours])
+
     // When country is active, show only threads that include that country
     const displayedNarratives = getNarrativesForDisplay(narratives, filter.country ?? undefined)
 
@@ -173,8 +193,13 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     // map's relation re-scope. top_entities is capped and noisy, so if NOTHING
     // matches we keep the global list rather than dimming everything.
     const focusPerson = filter.person?.toLowerCase().trim() || null
-    const threadMatchesPerson = (n: Narrative): boolean =>
-        !!focusPerson && (n.top_entities || []).some(e => e.toLowerCase().includes(focusPerson))
+    const threadMatchesPerson = (n: Narrative): boolean => {
+        if (!focusPerson) return false
+        // Precise: the backend ?person= set (full persons array). Until it
+        // arrives, fall back to the capped top_entities heuristic.
+        if (personMatchIds) return personMatchIds.has(n.thread_id)
+        return (n.top_entities || []).some(e => e.toLowerCase().includes(focusPerson))
+    }
     const anyPersonMatch = !!focusPerson && displayedNarratives.some(threadMatchesPerson)
     const orderedNarratives = anyPersonMatch
         ? [...displayedNarratives].sort((a, b) => Number(threadMatchesPerson(b)) - Number(threadMatchesPerson(a)))
