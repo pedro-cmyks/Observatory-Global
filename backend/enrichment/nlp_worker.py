@@ -38,6 +38,8 @@ WORKER_ID = os.getenv("NLP_WORKER_ID", socket.gethostname())
 WORKER_INTERVAL_SECONDS = int(os.getenv("NLP_WORKER_INTERVAL_SECONDS", "120"))
 WORKER_BATCH_LIMIT = int(os.getenv("NLP_WORKER_LIMIT", "500"))
 FAST_LANE_ENABLED = os.getenv("NLP_FAST_LANE_ENABLED", "true").lower() not in {"0", "false", "no"}
+# #184: the heavy NER pass. Off on Fly (embed-only box), on for the M1 worker.
+NER_ENABLED = os.getenv("NLP_WORKER_NER_ENABLED", "true").lower() not in {"0", "false", "no"}
 FAST_LANE_LIMIT = int(os.getenv("NLP_FAST_LANE_LIMIT", "10000"))
 FAST_LANE_HOURS = int(os.getenv("NLP_FAST_LANE_HOURS", "24"))
 # Refresh the stratified nlp_sample_queue every N worker cycles (~6h at 120s interval).
@@ -224,11 +226,15 @@ async def _one_cycle(limit: int, cycle_idx: int) -> int:
                 logger.info("Fast-lane hot enrichment: %s", fast_result)
             finally:
                 await fast_conn.close()
-        await run_nlp_enrichment(limit=limit)
-        # run_nlp_enrichment does not return a count today; treat one cycle as
-        # up to `limit` rows for the per-iteration metric. Real counts come from
-        # the lag delta the checkpoint computes.
-        rows_processed = limit
+        # The heavy NER/full-NLP pass. Disabled on the Fly box (#184): NER runs
+        # on the M1; Fly keeps only the light fast-lane + the embed service, so
+        # the embed thread is never starved. The fast-lane above still runs
+        # (keeps nlp_sentiment at ~100%).
+        if NER_ENABLED:
+            await run_nlp_enrichment(limit=limit)
+            # run_nlp_enrichment does not return a count today; treat one cycle
+            # as up to `limit` rows. Real counts come from the checkpoint delta.
+            rows_processed = limit
     except Exception as exc:
         last_error = repr(exc)[:500]
         logger.exception("NLP worker cycle failed")

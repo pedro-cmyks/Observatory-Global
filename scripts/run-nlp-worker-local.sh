@@ -41,8 +41,10 @@ fi
 export NLP_MULTILINGUAL_MODE="${ATLAS_NLP_MULTILINGUAL:-off}"
 export NLP_WORKER_LIMIT="${ATLAS_NLP_LIMIT:-300}"
 export NLP_WORKER_INTERVAL_SECONDS="${ATLAS_NLP_INTERVAL:-30}"
-export FAST_LANE_ENABLED="${ATLAS_NLP_FAST_LANE:-false}"
-# The embed service stays on Fly — the M1 worker must NOT host it.
+# Fly owns the light sentiment fast-lane (100% coverage) + the embed service;
+# the M1 owns only the heavy NER. (env names match nlp_worker.py exactly.)
+export NLP_FAST_LANE_ENABLED="${ATLAS_NLP_FAST_LANE:-false}"
+export NLP_WORKER_NER_ENABLED="true"
 export EMBED_SERVICE_ENABLED="false"
 export NLP_WORKER_ID="m1-local"
 
