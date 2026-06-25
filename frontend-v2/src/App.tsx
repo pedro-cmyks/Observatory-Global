@@ -2013,6 +2013,9 @@ function AppContent() {
         />
       )}
 
+      {/* The force-graph workspace is a desktop power surface (pointer pan/zoom);
+          hide it on phones — pins/investigations stay reachable via WORKBENCH. */}
+      {!isMobile && (
       <PanelErrorBoundary panelName="WORKSPACE">
       <InvestigationWorkspace
         onNavigate={(params) => {
@@ -2055,6 +2058,7 @@ function AppContent() {
         }}
       />
       </PanelErrorBoundary>
+      )}
 
       {comparePerson && (
         <PersonCompare
