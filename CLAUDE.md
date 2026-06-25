@@ -1728,3 +1728,17 @@ CRITICAL DECISION (logged): did NOT migrate the working map-heat/fly to the hook
 surface; the hook is the go-forward source for NEW consumers, not a forced
 refactor. Remaining #234: SourceIntegrity country-scoped fetch; detail
 PublicAttentionPanel one-liner.
+
+**2026-06-24 — #234 cross-panel ESSENTIALLY COMPLETE (correction, verified):**
+Earlier note said SourceIntegrity needs a country-scoped fetch — WRONG. Verified
+in-browser: SourceIntegrityPanel already re-scopes for ANY focus (incl. person)
+via its `summary` path (useFocusData = /api/v2/focus, entity-scoped) — person
+focus shows "SOURCE HEALTH: trump" + "Scoped to active person". Only the
+unfiltered case falls to the global briefing. So for a focused person every main
+surface now re-scopes: Map heat+camera (relation), NarrativeThreads (precise
+?person= highlight), AnomalyPanel (wiki/trends/conflicts → dominant country via
+useFocusRelation, country-scoped sources have no entity variant), SourceIntegrity
+(entity-precise via summary). Lesson logged: VERIFY before assuming a panel needs
+work. Genuinely remaining: detail PublicAttentionPanel is already item-scoped (no
+#234 needed); map-heat/threads hook migration deliberately skipped (regression
+risk); the map VISUAL still needs Pedro's Vercel eyeball.
