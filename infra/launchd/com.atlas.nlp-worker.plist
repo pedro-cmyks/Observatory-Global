@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.atlas.nlp-worker</string>
+
+  <!-- #184: continuous, mindful NLP/NER worker on the M1 (off Fly so the embed
+       service stops being starved). The runner wraps python in `taskpolicy -b`
+       (background QoS → efficiency cores) + nice; these launchd keys add the
+       OS-level throttle so it yields to Pedro's foreground work. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/pedro/AtlasLocalWorker/run-nlp-worker-local.sh</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/pedro/AtlasLocalWorker/backend</string>
+
+  <!-- Continuous daemon: the worker loops internally; KeepAlive restarts it if
+       it ever exits/crashes. -->
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <!-- Mindful: Background process type throttles CPU/IO; low priority. -->
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>Nice</key>
+  <integer>10</integer>
+  <key>LowPriorityIO</key>
+  <true/>
+
+  <!-- Don't hammer restarts if it crash-loops. -->
+  <key>ThrottleInterval</key>
+  <integer>60</integer>
+
+  <key>StandardOutPath</key>
+  <string>/Users/pedro/AtlasLocalWorker/logs/nlp-worker.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/pedro/AtlasLocalWorker/logs/nlp-worker.err.log</string>
+</dict>
+</plist>

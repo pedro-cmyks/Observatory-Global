@@ -1783,3 +1783,25 @@ process. Until then NER stays EN-only at baseline; typed subjects stay
 gazetteer-typed (unverified). Multilingual NER (#162) has the same infra
 dependency. Lesson: changing the NLP worker risks the co-hosted embed — verify
 embed health on any worker deploy.
+
+**2026-06-25 — #184 NLP worker MOVED to M1 (mindful daemon, embed freed):**
+Pedro's fix: server = ingestion only; NLP/NER on the M1 (capable, no embed to
+starve). Shipped a continuous **mindful** launchd daemon
+(`com.atlas.nlp-worker.plist` KeepAlive + ProcessType=Background + Nice;
+`scripts/run-nlp-worker-local.sh` wraps python in `taskpolicy -b` → EFFICIENCY
+cores + nice 20, so it yields to foreground work). Runs from
+`/Users/pedro/AtlasLocalWorker` (macOS TCC blocks launchd from the Desktop/iCloud
+path — had to sync `enrichment/` there + install spaCy+en_core_web_sm into
+`mlvenv`, which already had torch/transformers). New `EMBED_SERVICE_ENABLED`
+flag (default true) — set false on M1 so the worker does NER only; the embed
+service STAYS on Fly. VERIFIED LIVE: daemon checkpoints as `worker_id=m1-local`,
+"NER[en-v1]: 300 signals", Cycle 1 done 306s (efficiency cores), embed restored
+on Fly (research/plan 200/0.4s). Throughput ~3,500/hr (5x the Fly 680/hr) —
+mindful efficiency-core rate, below the ~7k/hr ingest but hot-lane prioritises
+recent so served signals get NER'd first. NOTE: the runner/plist are VERSIONED
+here but EXECUTED from AtlasLocalWorker — re-sync enrichment/ on worker code
+changes. Fly worker left at light EN/limit-25 (minor row-race with M1, idempotent
+UPDATE). MORE THROUGHPUT (future): parallel mindful workers need SELECT … FOR
+UPDATE SKIP LOCKED (no row lock today); or allow performance cores when idle; or
+flip `ATLAS_NLP_MULTILINGUAL=on` once stable (M1 handles it → non-English
+subjects verified, the #162 win that the Fly box could never do).
