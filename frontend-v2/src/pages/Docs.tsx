@@ -32,7 +32,9 @@ const NAV = [
     },
     { id: 'signal-pipeline', label: 'Signal Pipeline' },
     { id: 'narrative-threads', label: 'Narrative Threads' },
+    { id: 'research-workflow', label: 'Research Workflow' },
     { id: 'cross-source', label: 'Cross-Source Intelligence' },
+    { id: 'voice-coverage', label: 'Voice & Coverage' },
     { id: 'the-math', label: 'The Math' },
     { id: 'api-reference', label: 'API Reference' },
 ]
@@ -235,10 +237,12 @@ export function Docs() {
                         analytic conclusion.
                     </div>
                     <div className="docs-callout" id="multilingual-methodology">
-                        <strong>Multilingual NLP:</strong> Atlas currently treats NLP as an enrichment layer, not as
-                        ground truth. Sentiment, entity extraction, and framing are being hardened for multilingual
-                        coverage before non-English scores are used as high-confidence ranking inputs. During shadow
-                        mode, new multilingual results should be compared against existing fields and sampled manually.
+                        <strong>Multilingual NLP:</strong> multilingual enrichment is live. A cross-lingual model
+                        (XLM-RoBERTa) labels sentiment, entities, and framing on non-English signals in the same
+                        pass as English, so new CJK, Russian, Persian, and Arabic coverage is scored in-window
+                        rather than dropped. NLP is still treated as an enrichment layer, not ground truth — the
+                        remaining limiter is throughput, not language. Semantic recall is language-agnostic
+                        separately, via the embedding layer (see Cross-Source Intelligence).
                     </div>
                 </section>
 
@@ -562,9 +566,11 @@ export function Docs() {
                             <div className="docs-pipeline-step-body">
                                 <h4>Enrich & Aggregate</h4>
                                 <p>
-                                    NLP enrichment adds sentiment, entities, framing, method, and confidence metadata.
-                                    Aggregates power narrative threads, country brief views, and country heat without
-                                    repeatedly scanning raw rows.
+                                    NLP enrichment adds sentiment, entities, framing, language, method, and confidence
+                                    metadata, and a multilingual e5 model writes a semantic embedding per signal. A
+                                    clustering job then groups those embeddings into living narrative threads.
+                                    Aggregates power threads, country brief views, and country heat without repeatedly
+                                    scanning raw rows.
                                 </p>
                             </div>
                         </div>
@@ -573,10 +579,12 @@ export function Docs() {
                     <div className="docs-code">
                         {`signals_v2           Raw normalized signals and source provenance
 events_v2            GDELT CAMEO actor-action-actor events
+dynamic_topics       Living narrative threads (clustered signals)
+emergent_clusters    Raw clustering snapshots behind dynamic_topics
+signal_embeddings    Per-signal e5 vectors for semantic search/neighbors (pgvector)
+signal_translations  Cached on-demand headline translations
 trends_v2            Google Trends keywords by country
 wiki_pageviews_v2    Wikipedia article views by country/language
-nlp_progress         NLP/backlog tracking by country and source slice
-low_volume_countries Countries that need low-volume normalization
 country_heat_v2      Country heat view for normalized attention ranking
 countries_v2         Country centroids and metadata`}
                     </div>
@@ -589,39 +597,33 @@ countries_v2         Country centroids and metadata`}
                     <div className="docs-section-eyebrow">Intelligence Layer</div>
                     <h2>Narrative Threads</h2>
                     <p className="docs-lead">
-                        A narrative thread is a GDELT theme code that has accumulated significant
-                        coverage within the selected time window — characterized by its volume,
-                        velocity, geographic spread, and sentiment trajectory.
+                        A narrative thread is a <em>living topic</em> — a cluster of semantically related
+                        signals that Atlas discovers by grouping message embeddings, not a fixed GDELT
+                        theme code. Each thread is backed by a <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>dynamic_topics</code> record
+                        and characterized by its volume, velocity, geographic spread, and sentiment
+                        trajectory. A GDELT theme code is one input to a signal — never the identity of a thread.
                     </p>
+                    <h3>How threads are formed</h3>
                     <p>
-                        The threads endpoint runs a two-phase query designed to answer any time window
-                        (1 hour to 7 days) without exceeding a 20-second statement timeout:
+                        Every few hours a clustering job groups recent signals by the similarity of their
+                        e5 text embeddings (HDBSCAN), labels each surviving cluster, and writes it to
+                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}> dynamic_topics</code>. A quality gate drops
+                        incoherent clusters, and a content-entropy roundup classifier diverts
+                        "miscellaneous regional news" buckets to a separate tray instead of the live list.
+                        Because clustering runs over the persisted embedding corpus — not just the most
+                        recent rows — non-English narratives surface as their own threads rather than being
+                        absorbed into English ones.
                     </p>
-                    <h3>Phase 1 — Theme ranking (from pre-aggregated table)</h3>
-                    <div className="docs-code">
-                        {`SELECT theme,
-       SUM(signal_count)  AS signal_count,
-       SUM(country_count) AS country_count,
-       AVG(avg_sentiment) AS avg_sentiment
-FROM theme_hourly_v2
-WHERE hour > NOW() - $hours_interval
-GROUP BY theme
-ORDER BY signal_count DESC
-LIMIT 5`}
-                    </div>
+                    <h3>How threads are served</h3>
                     <p>
-                        This query reads only <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>theme_hourly_v2</code> —
-                        a small pre-aggregated table with ~50K rows — rather than scanning
-                        the full <code style={{ fontFamily: 'monospace' }}>signals_v2</code> table.
-                        Response time: typically under 50ms.
-                    </p>
-                    <h3>Phase 2 — Velocity, timeline, countries (GIN-indexed lookup)</h3>
-                    <p>
-                        Once the top 5 themes are known, a second query scopes into <code style={{ fontFamily: 'monospace' }}>signals_v2</code>
-                        using the GIN index on the <code style={{ fontFamily: 'monospace' }}>themes</code> column. Because it uses
-                        <code style={{ fontFamily: 'monospace' }}> themes && $top_themes::text[]</code> (array overlap), PostgreSQL
-                        uses the GIN index to fetch only rows containing at least one of the top 5 themes —
-                        a fraction of the full table.
+                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>/api/v2/threads</code> serves these dynamic
+                        topics first, then fills any remaining slots with broader atlas-topic aggregates so
+                        the list is never starved. Per-thread counts, velocity, and the hourly sparkline are
+                        computed against pre-aggregated hourly tables and the GIN-indexed
+                        <code style={{ fontFamily: 'monospace' }}> themes</code> array on
+                        <code style={{ fontFamily: 'monospace' }}> signals_v2</code> (array-overlap
+                        <code style={{ fontFamily: 'monospace' }}> &&</code> lookups), so any window from 1 hour to 7
+                        days answers within the statement timeout.
                     </p>
                     <h3>Thread fields explained</h3>
                     <table className="docs-table">
@@ -644,6 +646,96 @@ LIMIT 5`}
 
                 <hr className="docs-divider" />
 
+                {/* ── Research Workflow ── */}
+                <section className="docs-section" id="research-workflow">
+                    <div className="docs-section-eyebrow">Investigation</div>
+                    <h2>Research Workflow</h2>
+                    <p className="docs-lead">
+                        Atlas turns a natural-language question into a guided investigation, not a finished
+                        answer. A search like <em>"climate and water stress in Iran"</em> becomes a research
+                        plan — ranked anchors, coverage gaps, and pin candidates that you assemble into a
+                        Workspace dossier. The first response is a starting board, never a closed verdict.
+                    </p>
+                    <h3>From query to plan</h3>
+                    <p>
+                        A deterministic intent parser reads the query, then several discovery lanes run in
+                        parallel: country context, country-scoped and global narrative threads, public
+                        attention, related branches, and a language-agnostic semantic lane over
+                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}> signal_embeddings</code>.
+                        Every result is an <strong>anchor</strong>, labelled by the role it can play as evidence
+                        so nothing arrives unqualified.
+                    </p>
+                    <div className="docs-source-grid">
+                        <div className="docs-source-card">
+                            <div className="docs-source-card-head">
+                                <span className="docs-source-badge badge-trends">DIRECT</span>
+                                <span className="docs-source-title">Direct evidence</span>
+                            </div>
+                            <p>Anchors that speak to the question head-on — the spine of the investigation.</p>
+                        </div>
+                        <div className="docs-source-card">
+                            <div className="docs-source-card-head">
+                                <span className="docs-source-badge badge-gdelt">CONTEXT</span>
+                                <span className="docs-source-title">Context</span>
+                            </div>
+                            <p>Background that frames the question without answering it directly.</p>
+                        </div>
+                        <div className="docs-source-card">
+                            <div className="docs-source-card-head">
+                                <span className="docs-source-badge badge-wiki">WEAK</span>
+                                <span className="docs-source-title">Weak support</span>
+                            </div>
+                            <p>Loosely related material — kept and flagged, never presented as proof.</p>
+                        </div>
+                    </div>
+                    <div className="docs-callout">
+                        <strong>Gaps are evidence too.</strong> A lane that returns nothing emits a coverage-gap
+                        note rather than failing silently. An absent perspective — no local voice, no public
+                        attention, a thread that doesn't clear the quality gate — is reported as part of the plan,
+                        not hidden by it.
+                    </div>
+                    <h3>Ranking you can inspect</h3>
+                    <p>
+                        Anchors are ordered by an <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>investigative_score</code> that
+                        weighs intent fit, evidence strength, movement, and source value. Ranking is never
+                        silent filtering:
+                    </p>
+                    <div className="docs-pipeline">
+                        <div className="docs-pipeline-step">
+                            <div className="docs-pipeline-num">→</div>
+                            <div className="docs-pipeline-step-body">
+                                <h4>Ranking explanations</h4>
+                                <p>Each anchor carries reason codes for why it placed where it did, plus the relevance gate it cleared.</p>
+                            </div>
+                        </div>
+                        <div className="docs-pipeline-step">
+                            <div className="docs-pipeline-num">→</div>
+                            <div className="docs-pipeline-step-body">
+                                <h4>Downranking ledger</h4>
+                                <p>Candidate → shown → downranked → omitted reconciles exactly, so you can audit what was demoted and why — nothing disappears off the books.</p>
+                            </div>
+                        </div>
+                        <div className="docs-pipeline-step">
+                            <div className="docs-pipeline-num">→</div>
+                            <div className="docs-pipeline-step-body">
+                                <h4>Low-confidence tray</h4>
+                                <p>Noise lanes — sports, entertainment, news roundups — are moved to an inspectable tray, not deleted. You can always look at what was set aside.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <h3>Workbench — investigation memory</h3>
+                    <p>
+                        The Workspace overlay holds multiple saved investigations side by side, so pins from
+                        unrelated sessions never mix. Within one investigation you keep a <strong>Trail</strong> (the
+                        chronological path you took) and <strong>Pinned</strong> evidence (countries, sources, people,
+                        signals, and threads you curated), export the whole state as JSON, and every impression,
+                        open, and pin is recorded in a pin-event log. A report is an optional later output generated
+                        from pinned state — not the first thing Atlas hands you.
+                    </p>
+                </section>
+
+                <hr className="docs-divider" />
+
                 {/* ── Cross-Source Intelligence ── */}
                 <section className="docs-section" id="cross-source">
                     <div className="docs-section-eyebrow">Validation Model</div>
@@ -659,10 +751,20 @@ LIMIT 5`}
                         search curiosity, and reference-seeking each represent a different response to an event. A
                         narrative that activates several layers is more meaningful than a raw volume spike in one feed.
                     </div>
+                    <h3>Semantic matching across sources</h3>
+                    <p>
+                        The strongest cross-source link is semantic, not keyword. Atlas embeds signal text with a
+                        multilingual e5 model and stores the vectors in <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>signal_embeddings</code> (pgvector,
+                        HNSW index). Because the embedding space is language-agnostic, a Persian headline and an
+                        English one about the same event land near each other — so a thread, a research anchor, or the
+                        "semantic neighbors" on a signal can connect coverage that shares no literal keywords. This is
+                        what lets convergence be detected across languages and source families. The SEARCH and WIKI
+                        badges below are a lighter, complementary keyword check, not the primary mechanism.
+                    </p>
                     <h3>How SEARCH and WIKI badges are computed</h3>
                     <p>
-                        At the end of each narratives query, Atlas runs two batch enrichment queries.
-                        For each of the top 5 narrative themes:
+                        As a fast secondary signal, Atlas runs two batch enrichment queries.
+                        For each top narrative theme label:
                     </p>
                     <div className="docs-pipeline">
                         <div className="docs-pipeline-step">
@@ -705,6 +807,61 @@ LIMIT 5`}
                         narratives query, adding roughly 20–50ms total overhead. They are wrapped in
                         a try/except and are non-fatal: if either table is empty or the query fails,
                         the flags default to false and threads are still returned.
+                    </p>
+                </section>
+
+                <hr className="docs-divider" />
+
+                {/* ── Voice & Coverage ── */}
+                <section className="docs-section" id="voice-coverage">
+                    <div className="docs-section-eyebrow">Provenance</div>
+                    <h2>Voice &amp; Self-Coverage</h2>
+                    <p className="docs-lead">
+                        "Global" is a measured claim in Atlas, not a slogan. The system tracks not only what is
+                        covered but who is doing the covering — and it separates a country being <em>talked
+                        about</em> from a country having its own <em>voice</em>.
+                    </p>
+                    <div className="docs-callout">
+                        <strong>Self-coverage is ownership, not language.</strong> BBC Persian reporting on Iran is
+                        British eyes in Persian — not Iranian voice. Atlas measures self-coverage by outlet
+                        ownership (origin country = subject country). A foreign outlet publishing in a local
+                        language is tracked in a separate
+                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}> soft_power_local_language</code> bucket
+                        and never counted as domestic voice.
+                    </div>
+                    <h3>Voice Mix metrics</h3>
+                    <p>
+                        Served by <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>/api/v2/voice-mix</code> and
+                        surfaced in the Country Brief as "X% covered by its own press":
+                    </p>
+                    <table className="docs-table">
+                        <thead><tr><th>Metric</th><th>Meaning</th></tr></thead>
+                        <tbody>
+                            <tr><td>voice_entropy</td><td>Diversity of outlet <strong>origin</strong> countries — the headline objective metric (target band ≈ 0.65–0.70)</td></tr>
+                            <tr><td>language_entropy</td><td>Diversity of the languages signals are written in</td></tr>
+                            <tr><td>english_share_of_known</td><td>Share of language-known signals that are English</td></tr>
+                            <tr><td>cjk_coverage</td><td>Presence of Chinese / Japanese / Korean coverage</td></tr>
+                            <tr><td>self_voice_ratio</td><td>Share of a country's coverage from outlets it owns</td></tr>
+                            <tr><td>diversity_score</td><td>0–100 composite of the measures above</td></tr>
+                        </tbody>
+                    </table>
+                    <h3>How Atlas widens the aperture</h3>
+                    <p>
+                        Voice is raised at the source: 200+ native-language RSS feeds across 100+ countries and
+                        30+ languages (uncapped, unlike metered news APIs), native-script geo-tagging so a Persian
+                        or Chinese headline is attributed to the country it <em>names</em> rather than the outlet's
+                        home country, multilingual NLP for in-window scoring, and on-demand translation.
+                    </p>
+                    <div className="docs-callout">
+                        <strong>Honest ceiling.</strong> English is a real lingua franca and the GDELT English
+                        firehose is large, so the diversity score climbs and then plateaus rather than reaching
+                        100. Atlas reports the number rather than pretending the monoculture away.
+                    </div>
+                    <h3>Translation</h3>
+                    <p>
+                        Headlines not in the viewer's language are <strong>translated by default</strong> with a
+                        "See original" toggle. Combined with own-voice sorting in the Country Brief, a country's own
+                        press surfaces in the reader's language instead of being buried under English coverage about it.
                     </p>
                 </section>
 
@@ -827,14 +984,97 @@ Severity is derived from the max-weight crisis theme present:
                     <div className="docs-endpoint">
                         <div className="docs-endpoint-header">
                             <span className="docs-method">GET</span>
-                            <span className="docs-endpoint-path">/api/v2/narratives</span>
+                            <span className="docs-endpoint-path">/api/v2/threads</span>
                         </div>
                         <div className="docs-endpoint-body">
-                            Top narrative threads for the given time window. Cached 5 minutes in Redis.
+                            Living narrative threads (dynamic topics) for the window, with evidence headlines,
+                            movement, country spread, and sentiment. Falls back to atlas-topic aggregates so the
+                            list is never starved. Cached in Redis.
                             <br /><br />
                             <strong style={{ color: '#e2e8f0' }}>Params:</strong>{' '}
-                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>hours</code> (1–8760, default 24),{' '}
-                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>limit</code> (1–20, default 5)
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>hours</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>limit</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>country_code</code> (optional)
+                        </div>
+                    </div>
+
+                    <div className="docs-endpoint">
+                        <div className="docs-endpoint-header">
+                            <span className="docs-method">GET</span>
+                            <span className="docs-endpoint-path">/api/v2/threads/{'{thread_id}'}</span>
+                        </div>
+                        <div className="docs-endpoint-body">
+                            Detail for one thread: evidence signals, hourly timeline, top countries, and the
+                            key subjects (typed people, organizations, places, and events) most associated with it.
+                        </div>
+                    </div>
+
+                    <div className="docs-endpoint">
+                        <div className="docs-endpoint-header">
+                            <span className="docs-method">GET</span>
+                            <span className="docs-endpoint-path">/api/v2/briefing</span>
+                        </div>
+                        <div className="docs-endpoint-body">
+                            The Daily Brief payload: lead threads with evidence, heating countries, and watchlist
+                            rows with movement. Global or country-scoped.
+                            <br /><br />
+                            <strong style={{ color: '#e2e8f0' }}>Params:</strong>{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>hours</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>country</code> (optional)
+                        </div>
+                    </div>
+
+                    <div className="docs-endpoint">
+                        <div className="docs-endpoint-header">
+                            <span className="docs-method post">POST</span>
+                            <span className="docs-endpoint-path">/api/v2/research/plan</span>
+                        </div>
+                        <div className="docs-endpoint-body">
+                            Turns a natural-language query into a research plan: ranked anchors labelled by
+                            evidence role, coverage gaps, ranking explanations with reason codes, an inspectable
+                            downranking ledger, and a low-confidence tray. Backs the Workspace investigation flow.
+                            <br /><br />
+                            <strong style={{ color: '#e2e8f0' }}>Body:</strong>{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>query</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>hours</code>
+                        </div>
+                    </div>
+
+                    <div className="docs-endpoint">
+                        <div className="docs-endpoint-header">
+                            <span className="docs-method">GET</span>
+                            <span className="docs-endpoint-path">/api/v2/voice-mix</span>
+                        </div>
+                        <div className="docs-endpoint-body">
+                            Voice-diversity audit: language entropy, origin diversity (voice_entropy), and the
+                            self-coverage ratio — how much of a country's coverage comes from outlets it owns
+                            versus foreign or soft-power sources.
+                            <br /><br />
+                            <strong style={{ color: '#e2e8f0' }}>Params:</strong>{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>hours</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>country</code> (optional)
+                        </div>
+                    </div>
+
+                    <div className="docs-endpoint">
+                        <div className="docs-endpoint-header">
+                            <span className="docs-method">GET</span>
+                            <span className="docs-endpoint-path">/api/v2/signal/{'{signal_id}'}/context</span>
+                        </div>
+                        <div className="docs-endpoint-body">
+                            For one signal: which narrative threads it belongs to (with gate status) and its
+                            semantic neighbors — nearest signals by embedding similarity, across languages.
+                        </div>
+                    </div>
+
+                    <div className="docs-endpoint">
+                        <div className="docs-endpoint-header">
+                            <span className="docs-method">GET</span>
+                            <span className="docs-endpoint-path">/api/v2/heat/countries</span>
+                        </div>
+                        <div className="docs-endpoint-body">
+                            Country heat composite — velocity, surprise, source diversity, and local voice
+                            measured against each country's own baseline, not raw volume. Powers the map fill.
                         </div>
                     </div>
 
@@ -845,7 +1085,7 @@ Severity is derived from the max-weight crisis theme present:
                         </div>
                         <div className="docs-endpoint-body">
                             Country-level signal aggregates: total signals, sentiment, top themes, lat/lon.
-                            Powers the map globe heatmap.
+                            Powers globe glow density.
                             <br /><br />
                             <strong style={{ color: '#e2e8f0' }}>Params:</strong>{' '}
                             <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>range</code> (1h / 6h / 24h / 7d / 30d),{' '}
@@ -859,14 +1099,26 @@ Severity is derived from the max-weight crisis theme present:
                             <span className="docs-endpoint-path">/api/v2/signals</span>
                         </div>
                         <div className="docs-endpoint-body">
-                            Individual article-level signals for the Signal Stream panel.
-                            Optionally filtered by country or theme.
+                            Individual article-level signals for the Signal Stream panel, with source language for
+                            on-demand translation. Optionally filtered by country or theme.
                             <br /><br />
                             <strong style={{ color: '#e2e8f0' }}>Params:</strong>{' '}
                             <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>limit</code>,{' '}
                             <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>hours</code>,{' '}
                             <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>country</code>,{' '}
                             <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>theme</code>
+                        </div>
+                    </div>
+
+                    <div className="docs-endpoint">
+                        <div className="docs-endpoint-header">
+                            <span className="docs-method">GET</span>
+                            <span className="docs-endpoint-path">/api/v2/translate</span>
+                        </div>
+                        <div className="docs-endpoint-body">
+                            On-demand headline translation to the viewer's language, cached in
+                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}> signal_translations</code>. Powers the
+                            "translated by default · See original" affordance in the Signal Stream and Brief.
                         </div>
                     </div>
 
@@ -907,17 +1159,6 @@ Severity is derived from the max-weight crisis theme present:
                     <div className="docs-endpoint">
                         <div className="docs-endpoint-header">
                             <span className="docs-method">GET</span>
-                            <span className="docs-endpoint-path">/api/v2/acled</span>
-                        </div>
-                        <div className="docs-endpoint-body">
-                            ACLED conflict events with location, type, actors, fatalities, and source notes.
-                            Returns empty array if ACLED credentials are not configured.
-                        </div>
-                    </div>
-
-                    <div className="docs-endpoint">
-                        <div className="docs-endpoint-header">
-                            <span className="docs-method">GET</span>
                             <span className="docs-endpoint-path">/health</span>
                         </div>
                         <div className="docs-endpoint-body">
@@ -925,6 +1166,14 @@ Severity is derived from the max-weight crisis theme present:
                             if the connection pool is exhausted, rather than blocking the health checker.
                         </div>
                     </div>
+
+                    <p style={{ fontSize: '12px', color: '#64748b', marginTop: '20px' }}>
+                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>/api/v2/narratives</code> remains as a
+                        legacy GDELT-theme-ranked endpoint; <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>/api/v2/threads</code> is
+                        the current product. <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>/api/v2/acled</code>,{' '}
+                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>/api/v2/vessels</code>, and{' '}
+                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>/api/v2/aircraft</code> back map-only layers and are not narrative inputs.
+                    </p>
 
                     <div className="docs-callout" style={{ marginTop: '32px' }}>
                         <strong>All endpoints</strong> run with a statement_timeout between 5–20 seconds.

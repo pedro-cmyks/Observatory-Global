@@ -66,8 +66,8 @@ export const THEME_INTEL_NOIR: Theme = {
         nodeGlow: 'rgba(104, 219, 174, 0.56)',
     },
     typography: {
-        fontMono: "'SF Mono', 'Fira Code', monospace",
-        fontSans: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+        fontMono: "'Geist Mono Variable', 'Geist Mono', 'SF Mono', monospace",
+        fontSans: "'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif",
     },
     spacing: {
         panelPadding: '14px',

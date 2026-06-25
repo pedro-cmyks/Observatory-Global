@@ -596,17 +596,26 @@ function AppContent() {
   }, [mapFlyCountry, mapReady])
 
   // #234: focusing a person/thread centers the map on where its coverage
-  // concentrates — the dominant country of the focus-scoped nodes. Fires once
-  // per focus (ref-guarded) so node refetches don't re-fly.
-  const lastEntityFlyRef = useRef<string | null>(null)
+  // concentrates — the dominant country of the focus-scoped nodes. The trick
+  // is to wait for the NEW nodes: on focus change `nodes` is briefly the
+  // previous focus's data (refetch in flight), so flying immediately centres on
+  // the wrong place and the ref-guard then suppresses the correction. Instead
+  // we record the nodes reference at focus-change time and only fly once
+  // `nodes` becomes a different array (the focus's own data has arrived).
+  const flyTargetRef = useRef<{ key: string; nodesAtChange: unknown } | null>(null)
   useEffect(() => {
     const key = (focus.type === 'person' || focus.type === 'theme') && focus.value
       ? `${focus.type}:${focus.value}` : null
-    if (!key) { lastEntityFlyRef.current = null; return }
-    if (!mapReady || nodes.length === 0 || lastEntityFlyRef.current === key) return
+    flyTargetRef.current = key ? { key, nodesAtChange: nodes } : null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus.type, focus.value])
+  useEffect(() => {
+    const target = flyTargetRef.current
+    if (!target || !mapReady || nodes.length === 0) return
+    if (nodes === target.nodesAtChange) return  // still the previous focus's nodes
     const dominant = nodes.reduce((m, n) => ((n.signalCount || 0) > (m.signalCount || 0) ? n : m), nodes[0])
-    if (dominant?.id) { setMapFlyCountry(dominant.id); lastEntityFlyRef.current = key }
-  }, [focus.type, focus.value, mapReady, nodes, setMapFlyCountry])
+    if (dominant?.id) { setMapFlyCountry(dominant.id); flyTargetRef.current = null }
+  }, [nodes, mapReady, setMapFlyCountry])
 
   // Sync Global Focus to CountrySlide-over + fly to country
   useEffect(() => {

@@ -215,23 +215,23 @@ tokens:
     families:
       display:
         type: fontFamily
-        value: "Outfit, -apple-system, BlinkMacSystemFont, sans-serif"
-        description: Brand, hero, and high-impact headings.
+        value: "Fraunces, Georgia, serif"
+        description: Editorial display fingerprint — hero, masthead, high-impact headings.
       sans:
         type: fontFamily
-        value: "Plus Jakarta Sans, -apple-system, BlinkMacSystemFont, sans-serif"
-        description: Main console UI and body copy.
+        value: "Geist Variable, Geist, -apple-system, BlinkMacSystemFont, sans-serif"
+        description: Console UI and body copy.
       technical:
         type: fontFamily
-        value: "Space Grotesk, SF Mono, monospace"
+        value: "Geist Mono Variable, Geist Mono, SF Mono, monospace"
         description: Command labels, panel headers, metadata, and control text.
       mono:
         type: fontFamily
-        value: "SF Mono, Fira Code, JetBrains Mono, ui-monospace, monospace"
-        description: Numbers, counters, code-like metadata, and tabular values.
+        value: "Geist Mono Variable, Geist Mono, SF Mono, ui-monospace, monospace"
+        description: Numbers, counters, code-like metadata, and tabular values (tabular-nums).
       editorial:
         type: fontFamily
-        value: "Georgia, Times New Roman, serif"
+        value: "Fraunces, Georgia, serif"
         description: Daily brief masthead, analysis, and newspaper cards.
       materialSymbols:
         type: fontFamily
