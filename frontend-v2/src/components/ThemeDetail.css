@@ -1212,8 +1212,19 @@
         height: 100dvh;
         background: #0c1017;
     }
-    .theme-detail-panel { padding: 14px 16px; }
+    /* No sideways drag — the read scrolls vertically only. */
+    .theme-detail-panel { padding: 14px 16px; overflow-x: hidden; touch-action: pan-y; }
     .theme-detail-header h2 { font-size: 1.4rem; line-height: 1.2; }
     .coverage-article-headline { font-size: 15px; }
     .source-item { min-height: 44px; }
+
+    /* Rows that overflowed on phones → wrap / shrink so nothing pushes wide */
+    .theme-stats-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .theme-stat { min-width: 0; }
+    .theme-stat-subnote { white-space: normal; }
+    .framing-header-row { flex-wrap: wrap; }
+    .framing-grid { grid-template-columns: minmax(0, 1fr); }
+    .framing-card { min-width: 0; }
+    .related-chip-wrap { min-width: 0; }
+    .related-chip-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
