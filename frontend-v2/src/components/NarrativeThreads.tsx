@@ -239,6 +239,17 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     const anyThreadRelation = !!activeThread && (activeCountries.size > 0 || activeEntities.size > 0) &&
         displayedNarratives.some(n => n.thread_id !== activeThreadId && threadRelated(n))
 
+    // #234 legibility (Paper 7 / reason-codes guardrail): expose WHY a sibling
+    // relates — the shared distinctive entity (preferred, more specific) or the
+    // shared primary country — so the re-scope is never a silent dim.
+    const relationReason = (n: Narrative): string | null => {
+        if (!activeThread || n.thread_id === activeThreadId) return null
+        const sharedEntity = (n.top_entities || []).find(e => activeEntities.has(norm(e)))
+        if (sharedEntity) return sharedEntity
+        const sharedCountry = n.top_countries.find(c => activeCountries.has(c))
+        return sharedCountry ? resolveCountryName(sharedCountry) : null
+    }
+
     // person focus takes precedence; else thread-sibling relation
     const relate = anyPersonMatch ? threadMatchesPerson : (anyThreadRelation ? threadRelated : null)
     const orderedNarratives = relate
@@ -329,6 +340,9 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 const dimByPerson = anyPersonMatch && !threadMatchesPerson(n)
                 const dimByThread = !anyPersonMatch && anyThreadRelation && !threadRelated(n)
                 const isDimmed = dimByCountry || dimByPerson || dimByThread
+                // #234 legibility: show the relation reason on surfaced siblings.
+                const siblingReason = (anyThreadRelation && !anyPersonMatch && !filter.country
+                    && !isFocused && !isDimmed) ? relationReason(n) : null
                 const trendArrow = n.trend === 'accelerating' ? '▲' : n.trend === 'fading' ? '▼' : '→'
                 // Plain-language hover hint; falls back to label when no description is available.
                 const rowHint = `${n.label}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries from ${n.source_count} sources. Click to open the unified thread detail.`
@@ -357,6 +371,11 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                     {n.label}
                                     <span className="narrative-cluster-label">
                                         {domainLabel}
+                                        {siblingReason && (
+                                            <span className="narrative-sibling-reason" data-tip={`Related to the open thread via ${siblingReason}`}>
+                                                ↔ {siblingReason}
+                                            </span>
+                                        )}
                                     </span>
                                 </span>
                             </div>

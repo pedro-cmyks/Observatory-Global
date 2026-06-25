@@ -150,6 +150,21 @@
     text-transform: uppercase;
 }
 
+/* #234: relation reason on a surfaced sibling thread (why it relates to the
+   open thread — shared distinctive entity or country). */
+.narrative-sibling-reason {
+    margin-left: 6px;
+    padding: 1px 5px;
+    border-radius: 6px;
+    background: rgba(56, 189, 248, 0.14);
+    color: rgba(125, 211, 252, 0.95);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    white-space: nowrap;
+}
+
 .narrative-stats {
     font-size: 10px;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
