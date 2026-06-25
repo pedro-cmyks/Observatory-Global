@@ -8,6 +8,7 @@ import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours, type TimeRange
 import { readBriefingCache } from '../lib/briefingPrefetch'
 import { resolveThreadThemeTarget } from '../lib/threadThemeTarget'
 import { selectLeadThread } from '../lib/briefLead'
+import { coverageChipTip, COVERAGE_CHIP_LABEL } from '../lib/countryChips'
 import './BriefNewspaper.css'
 
 // Natural Earth 110m with ISO_A2 country properties
@@ -395,9 +396,12 @@ export function BriefNewspaper() {
                             {arrow.glyph} {arrow.label}
                         </span>
                     )}
-                    {chips.map(cc => (
-                        <span key={cc} className="brief-thread-chip">{resolveCountryName(cc, cc)}</span>
-                    ))}
+                    {chips.map(cc => {
+                        const name = resolveCountryName(cc, cc)
+                        return (
+                            <span key={cc} className="brief-thread-chip" data-tip={coverageChipTip(name)}>{name}</span>
+                        )
+                    })}
                 </span>
             </button>
         )
@@ -588,9 +592,13 @@ export function BriefNewspaper() {
                                     )}
                                     {(leadThread.top_countries ?? []).length > 0 && (
                                         <div className="brief-article-countries">
-                                            {(leadThread.top_countries ?? []).slice(0, 4).map(cc => (
-                                                <span key={cc} className="brief-thread-chip">{resolveCountryName(cc, cc)}</span>
-                                            ))}
+                                            <span className="brief-chip-caption">{COVERAGE_CHIP_LABEL}:</span>
+                                            {(leadThread.top_countries ?? []).slice(0, 4).map(cc => {
+                                                const name = resolveCountryName(cc, cc)
+                                                return (
+                                                    <span key={cc} className="brief-thread-chip" data-tip={coverageChipTip(name)}>{name}</span>
+                                                )
+                                            })}
                                         </div>
                                     )}
                                     <span className="brief-theme-link">Open thread →</span>

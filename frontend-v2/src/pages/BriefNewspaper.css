@@ -1235,6 +1235,17 @@
     border-color: rgba(148, 163, 184, 0.25);
 }
 
+/* Honest chip caption — chips are coverage geography, not subject (#238). */
+.brief-chip-caption {
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-right: 4px;
+    align-self: center;
+}
+
 /* ── Consumer MVP: phone read surface (single column, no choropleth) ── */
 @media (max-width: 768px) {
     /* a choropleth is not a phone surface — hide the map, keep "Most Active" */
