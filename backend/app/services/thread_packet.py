@@ -163,6 +163,12 @@ def build_thread_packet(rows: list, own_topic: str | None = None) -> dict:
         ts = _val(r, "timestamp")
         hl = _val(r, "headline")
         return {
+            # id + source_lang let the frontend TranslatableHeadline translate
+            # non-English coverage (id = translation cache key, source_lang =
+            # original language). _val is null-safe: callers whose rows omit
+            # these columns simply get None.
+            "id": _val(r, "id"),
+            "source_lang": _val(r, "source_lang"),
             "timestamp": ts.isoformat() if ts else None,
             "country": _val(r, "country_code"),
             "source": _val(r, "source_name"),

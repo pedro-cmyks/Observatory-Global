@@ -1155,21 +1155,20 @@
     font-size: 12.5px;
     line-height: 1.4;
     color: rgba(226, 232, 240, 0.92);
-    text-decoration: none;
-}
-
-a.coverage-article-headline:hover {
-    color: #1D9E75;
-    text-decoration: underline;
 }
 
 .coverage-article-headline--nolink {
     color: rgba(226, 232, 240, 0.7);
 }
 
-.coverage-article-ext {
-    font-size: 10px;
-    opacity: 0.5;
+.coverage-article-open {
+    color: #1D9E75;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.coverage-article-open:hover {
+    text-decoration: underline;
 }
 
 .coverage-article-meta {

@@ -2,6 +2,7 @@ import { lazy, Suspense, useState, useEffect, useRef } from 'react'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { CompareBar } from './CompareBar'
 import { NarrativeDrift } from './NarrativeDrift'
+import { TranslatableHeadline } from './TranslatableHeadline'
 import { ExportMenu } from './ExportMenu'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { ArrowLeftRight, Pin, PinOff, X } from '../lib/icons'
@@ -39,21 +40,25 @@ interface ThemeData {
     gateCoverage?: number | null
     avgSentiment: number
     signals: Array<{
+        id?: number
         timestamp: string
         country: string
         source: string
         url: string
         headline?: string | null
+        source_lang?: string | null
         sentiment: number
         otherThemes: string[]
         persons: string[]
     }>
     graphSignals?: Array<{
+        id?: number
         timestamp: string
         country: string
         source: string
         url: string
         headline?: string | null
+        source_lang?: string | null
         sentiment: number
         otherThemes: string[]
         persons: string[]
@@ -317,20 +322,23 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     // feedback 2026-06-25 — the old list showed only metadata + a "View
     // Source" link, never the headline).
     const renderArticle = (
-        sig: { timestamp: string; country: string; source: string; url: string; headline?: string | null; sentiment: number; persons: string[] },
+        sig: { id?: number; timestamp: string; country: string; source: string; url: string; headline?: string | null; source_lang?: string | null; sentiment: number; persons: string[] },
         opts: { showSource?: boolean } = {},
     ) => {
         const title = sig.headline || 'Untitled report'
         return (
             <div className="coverage-article">
-                {sig.url ? (
-                    <a href={sig.url} target="_blank" rel="noopener noreferrer" className="coverage-article-headline">
-                        {title} <span className="coverage-article-ext">↗</span>
-                    </a>
-                ) : (
-                    <span className="coverage-article-headline coverage-article-headline--nolink">{title}</span>
-                )}
+                <div className="coverage-article-headline">
+                    {sig.id != null && sig.headline
+                        ? <TranslatableHeadline signalId={sig.id} original={sig.headline} sourceLang={sig.source_lang} />
+                        : <span className="coverage-article-headline--nolink">{title}</span>}
+                </div>
                 <div className="coverage-article-meta">
+                    {sig.url && (
+                        <a href={sig.url} target="_blank" rel="noopener noreferrer" className="coverage-article-open">
+                            open original ↗
+                        </a>
+                    )}
                     {opts.showSource && <span className="coverage-article-source">{sig.source || 'Unknown'}</span>}
                     <span>{formatTime(sig.timestamp)}</span>
                     {sig.country && <span>{sig.country}</span>}

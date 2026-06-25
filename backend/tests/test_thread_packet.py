@@ -3,7 +3,8 @@ from app.services.thread_packet import build_thread_packet
 
 
 def _row(**kw):
-    base = {"timestamp": datetime(2026, 6, 4, 10, tzinfo=timezone.utc),
+    base = {"id": 12345, "source_lang": "es",
+            "timestamp": datetime(2026, 6, 4, 10, tzinfo=timezone.utc),
             "country_code": "CO", "source_name": "reuters.com",
             "source_url": "http://reuters.com/x", "sentiment": -1.0,
             "headline": "h", "themes": ["PROTEST"], "persons": ["Petro"]}
@@ -45,3 +46,24 @@ def test_related_themes_excludes_own_topic():
 def test_timeline_buckets_by_hour():
     p = build_thread_packet([_row(), _row()])
     assert len(p["timeline"]) == 1 and p["timeline"][0]["count"] == 2
+
+
+def test_serialized_signal_carries_id_and_source_lang():
+    # The frontend TranslatableHeadline needs id (translation cache key) and
+    # source_lang (original language) on each signal in data.signals.
+    p = build_thread_packet([_row(id=999, source_lang="fa")])
+    sig = p["graphSignals"][0]
+    assert sig["id"] == 999
+    assert sig["source_lang"] == "fa"
+
+
+def test_serialized_signal_id_source_lang_null_safe():
+    # Callers whose rows omit id/source_lang (other build_thread_packet
+    # consumers) must not crash — they get None.
+    row = _row()
+    del row["id"]
+    del row["source_lang"]
+    p = build_thread_packet([row])
+    sig = p["graphSignals"][0]
+    assert sig["id"] is None
+    assert sig["source_lang"] is None

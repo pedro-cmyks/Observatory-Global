@@ -348,8 +348,8 @@ async def _emergent_cluster_detail(
     where_clause = " AND ".join(where)
 
     signals = await conn.fetch(f"""
-        SELECT s.timestamp, s.country_code, s.source_name, s.source_url,
-               s.sentiment, s.headline, s.themes, s.persons
+        SELECT s.id, s.source_lang, s.timestamp, s.country_code, s.source_name,
+               s.source_url, s.sentiment, s.headline, s.themes, s.persons
         FROM signals_v2 s
         WHERE {where_clause}
         ORDER BY s.timestamp DESC
@@ -443,8 +443,8 @@ async def _dynamic_topic_detail(
     where_clause = " AND ".join(where)
 
     signals = await conn.fetch(f"""
-        SELECT s.timestamp, s.country_code, s.source_name, s.source_url,
-               s.sentiment, s.headline, s.themes, s.persons
+        SELECT s.id, s.source_lang, s.timestamp, s.country_code, s.source_name,
+               s.source_url, s.sentiment, s.headline, s.themes, s.persons
         FROM signals_v2 s
         WHERE {where_clause}
         ORDER BY s.timestamp DESC
@@ -553,8 +553,8 @@ async def _atlas_topic_detail(
     kept_clause = "" if (gate_pending or below_gate_fallback) else " AND a.gate_kept"
 
     signals = await conn.fetch(f"""
-        SELECT s.timestamp, s.country_code, s.source_name, s.source_url,
-               s.sentiment, s.headline, s.themes, s.persons,
+        SELECT s.id, s.source_lang, s.timestamp, s.country_code, s.source_name,
+               s.source_url, s.sentiment, s.headline, s.themes, s.persons,
                a.gate_score, a.gate_kept
         FROM signal_topic_assignments a
         JOIN signals_v2 s ON s.id = a.signal_id
@@ -624,6 +624,8 @@ async def _atlas_topic_detail(
 
     def _sig(r):
         return {
+            "id": r["id"],
+            "source_lang": r["source_lang"],
             "timestamp": r["timestamp"].isoformat() if r["timestamp"] else None,
             "country": r["country_code"],
             "source": r["source_name"],
@@ -950,7 +952,9 @@ async def get_theme_details(
             
             # Get signals
             signals = await conn.fetch(f"""
-                SELECT 
+                SELECT
+                    id,
+                    source_lang,
                     timestamp,
                     country_code,
                     source_name,
@@ -969,6 +973,8 @@ async def get_theme_details(
             graph_signals = await conn.fetch(f"""
                 WITH ranked AS (
                     SELECT
+                        id,
+                        source_lang,
                         timestamp,
                         country_code,
                         source_name,
@@ -984,6 +990,8 @@ async def get_theme_details(
                     WHERE {where_clause}
                 )
                 SELECT
+                    id,
+                    source_lang,
                     timestamp,
                     country_code,
                     source_name,
@@ -1176,6 +1184,8 @@ async def get_theme_details(
                 "avgSentiment": round(avg_sentiment, 3),
                 "signals": [
                     {
+                        "id": r['id'],
+                        "source_lang": r['source_lang'],
                         "timestamp": r['timestamp'].isoformat(),
                         "country": r['country_code'],
                         "source": r['source_name'],
@@ -1188,6 +1198,8 @@ async def get_theme_details(
                 ],
                 "graphSignals": [
                     {
+                        "id": r['id'],
+                        "source_lang": r['source_lang'],
                         "timestamp": r['timestamp'].isoformat(),
                         "country": r['country_code'],
                         "source": r['source_name'],
