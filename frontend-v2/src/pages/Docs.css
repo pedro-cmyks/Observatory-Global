@@ -7,7 +7,7 @@
     min-height: 100vh;
     background: #080c12;
     color: #cbd5e1;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--font-sans);
     font-size: 14px;
     line-height: 1.7;
 }
@@ -165,12 +165,13 @@
 }
 
 .docs-section h2 {
-    font-size: 26px;
+    font-family: var(--font-display);
+    font-size: 30px;
     font-weight: 700;
     color: #f8fafc;
     margin: 0 0 16px;
-    letter-spacing: -0.02em;
-    line-height: 1.2;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
 }
 
 .docs-section h3 {
