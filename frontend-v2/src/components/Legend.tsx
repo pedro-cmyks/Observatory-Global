@@ -71,7 +71,12 @@ export const Legend: React.FC<LegendProps> = ({
     conflictCount = 0,
     anomalyCount = 0,
 }) => {
-    const [collapsed, setCollapsed] = useState(false)
+    // On phones the expanded legend floats over the stream/workbench; start
+    // collapsed (a small "MAP KEY" button) so it never overlaps content. The
+    // user can still expand it. Desktop keeps it open.
+    const [collapsed, setCollapsed] = useState(
+        () => typeof window !== 'undefined' && window.innerWidth <= 768,
+    )
 
     const contextLabel = activeCountry
         ? resolveCountryName(activeCountry)
