@@ -346,3 +346,42 @@ the datacenter blocks that kill Reddit and ~30% of feeds); the served DB
 (Supabase/Fly) holds only PROCESSED, query-ready artifacts. Migrate
 incrementally, blocked-sources first; GDELT stays on Fly as an always-on
 baseline. (This is Paper 6 territory.)
+
+---
+
+## 2026-06-24 — Unified ranking (decision, Pedro review) — supersedes living/aggregate
+
+Live review of the served list: the **living vs aggregate two-tier was a source
+label dressed as quality** — `dynamic_topics` always ranked first, `atlas_topics`
+filled below by raw volume. Pedro's call: a persistent atlas topic that keeps
+**growing is a live thread too**; demoting it by origin is wrong, and
+"newest dynamic first" buried the biggest ongoing stories.
+
+### Decision
+- **One population, one ranking, no source tier.** `fetch_threads` merges
+  `dynamic + atlas` (deduped by label, dynamic kept on collision) and ranks with
+  `app/services/thread_ranking.rank_threads`.
+- **Score = 0.45·log-volume + 0.35·relative-movement(`changed_10h`) +
+  0.20·coherence(`avg_confidence`)**, min-max normalised, source-agnostic.
+  Volume is **log-damped** so a 3K-signal category cannot bury a 50-signal story
+  by count alone; movement lets a heating thread rise; coherence is the guardrail
+  against loose taxonomy bins.
+- **Frontend:** the `LIVING`/`AGGREGATE` badge is removed; the trend arrow
+  carries movement, the count its weight.
+
+### Cross-reference (Paper 3 / Paper 4)
+This operationalises the 2026-06-23 decision #2 — *"volume-as-quality is wrong
+for serving; the weighted distribution lives in Atlas heat (Paper 3), not the
+thread gate."* The log-damp + coherence weight enact exactly that: volume informs
+but does not dominate. Weights are a **calibratable v1** (Paper 4 will need an
+ablation: ranking-quality vs the gold orderings, the way
+`calibrate_research_ranking.py` did for anchors). Still OPEN from 2026-06-23:
+hierarchical parent/child threads (US–Iran as ~7 flat threads), generic-label
+re-labeling, on-demand any-window construction.
+
+### #234 focus propagation (Paper 7 — visualization/analyst workflow)
+Focus is a global lens: focusing a country/person/thread re-scopes the map heat
+to the focus's relations + flies to its dominant country, and (2026-06-24)
+NarrativeThreads now surfaces the threads mentioning a focused person. Remaining:
+dock (anomaly/sources) + public-attention re-scoping; backend `threads?person=`
+filter for precise (non-`top_entities`-capped) person→thread relations.

@@ -1668,3 +1668,23 @@ typed-subject reframe is now consistent across CountryBrief + EntityPanel +
 ThemeDetail. Remaining #176: NER throughput (#184) to flip subjects from
 unverified→verified; deeper GDELT name noise ("google mapsreeder mesa"). Old
 `countryBriefPeople.ts` (selectVisibleKeyPersons) now unused — safe to delete.
+
+**2026-06-24 — #234 focus propagation, cross-panel + papers cross-ref:**
+(`66c2d23` fly fix, `029845b` thread re-scope). Pedro Vercel review: map heat
+DID render (the dark map was a dev-preview-only source race), person focus
+re-scoped heat but the CAMERA didn't center. Fixed: the fly fired on STALE
+nodes (refetch in flight) → split into record-nodes-at-focus-change + fly-once-
+nodes-change-reference; verified in a fresh dev session (person=trump → fly US
+sc2497, camera centers N.America, US lit). Cross-panel slice 1: NarrativeThreads
+now surfaces threads mentioning a focused person (top_entities match, guarded so
+nothing-matches keeps the global list); browser-verified. **Cross-reference
+DONE** (Pedro's ask to cross the work lines): the unified-ranking decision +
+#234 recorded in the Paper 4 thread-model spec `2026-05-24-living-narrative-
+threads.md` (2026-06-24 section) — it operationalises the 2026-06-23 decision #2
+("volume-as-quality is wrong for serving; weighted distribution lives in Atlas
+heat / Paper 3"). Papers map: thread ranking = Paper 4, focus/subjects/viz =
+Paper 7, heat = Paper 3. REMAINING #234: dock (anomaly/sources) + public-
+attention re-scope for non-country focus; backend `threads?person=` for precise
+(non-top_entities-capped) person→thread relation. Evaluation note: the
+person→thread match is honest but capped by top_entities (~6); the backend
+filter is the precise upgrade (Paper 4 ablation territory).
