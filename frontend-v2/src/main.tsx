@@ -1,6 +1,8 @@
 import { Component, StrictMode, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import '@fontsource-variable/geist/index.css'
+import '@fontsource-variable/geist-mono/index.css'
 import './index.css'
 import './styles/variables.css'
 import { ThemeProvider } from './contexts/ThemeContext'

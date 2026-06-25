@@ -31,10 +31,10 @@
     --color-sentiment-neutral: #94a3b8;
     --color-sentiment-negative: #f87171;
 
-    --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-technical: 'Space Grotesk', 'SF Mono', monospace;
-    --font-mono: 'SF Mono', 'Fira Code', monospace;
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-sans: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-technical: 'Geist Mono Variable', 'Geist Mono', 'SF Mono', monospace;
+    --font-mono: 'Geist Mono Variable', 'Geist Mono', 'SF Mono', monospace;
 
     --panel-padding: 14px;
     --panel-radius: 6px;

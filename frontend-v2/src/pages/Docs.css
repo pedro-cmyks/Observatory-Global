@@ -30,7 +30,7 @@
 }
 
 .docs-brand {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 13px;
     font-weight: 700;
     color: #f8fafc;
@@ -155,7 +155,7 @@
 }
 
 .docs-section-eyebrow {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.12em;
@@ -226,7 +226,7 @@
 }
 
 .docs-source-badge {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 9px;
     font-weight: 700;
     padding: 2px 6px;
@@ -279,7 +279,7 @@
 }
 
 .docs-source-meta-item {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 10px;
     color: #475569;
 }
@@ -309,7 +309,7 @@
 }
 
 .docs-pipeline-num {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 11px;
     font-weight: 700;
     color: #38bdf8;
@@ -338,7 +338,7 @@
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 6px;
     padding: 16px 20px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 12px;
     color: #94a3b8;
     overflow-x: auto;
@@ -375,7 +375,7 @@
     border-radius: 0 6px 6px 0;
     padding: 16px 20px;
     margin: 16px 0;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 13px;
     color: #e2e8f0;
     line-height: 1.8;
@@ -400,7 +400,7 @@
 .docs-table th {
     text-align: left;
     padding: 8px 12px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
@@ -421,7 +421,7 @@
 }
 
 .docs-table td:first-child {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     color: #e2e8f0;
     font-size: 12px;
 }
@@ -467,7 +467,7 @@
 }
 
 .docs-method {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 10px;
     font-weight: 700;
     padding: 2px 6px;
@@ -477,8 +477,13 @@
     letter-spacing: 0.04em;
 }
 
+.docs-method.post {
+    background: rgba(251, 191, 36, 0.12);
+    color: #fbbf24;
+}
+
 .docs-endpoint-path {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 12px;
     color: #e2e8f0;
 }

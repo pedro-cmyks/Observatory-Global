@@ -12,6 +12,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "^5.2.9",
+    "@fontsource-variable/geist-mono": "^5.2.8",
     "@types/maplibre-gl": "^1.13.2",
     "d3-scale": "^4.0.2",
     "d3-scale-chromatic": "^3.1.0",
