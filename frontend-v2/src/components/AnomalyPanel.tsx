@@ -168,7 +168,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                     {visibleConflicts && visibleConflicts.length > 0 && (
                         <div className="ap-sub">
                             <div className="col-label" style={{ color: '#f87171' }}>
-                                {activeCountry ? `CONFLICTS · ${resolveCountryName(activeCountry)}` : 'CONFLICT EVENTS'}
+                                {scopeCountry ? `CONFLICTS · ${resolveCountryName(scopeCountry)}` : 'CONFLICT EVENTS'}
                             </div>
                             <div className="col-scroll-short">
                                 {visibleConflicts.slice(0, 8).map(c => {
@@ -217,13 +217,13 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                         data-tip={activeCountry
                             ? `What people in ${resolveCountryName(activeCountry)} are searching (Google Trends, 24h) and reading (Wikipedia, 7-day). Click any item to investigate.`
                             : 'Top Wikipedia articles by global pageviews. Click any item to investigate in the center panel.'}>
-                        {activeCountry
-                            ? `PUBLIC ATTENTION · ${resolveCountryName(activeCountry).toUpperCase()}`
+                        {scopeCountry
+                            ? `PUBLIC ATTENTION · ${resolveCountryName(scopeCountry).toUpperCase()}`
                             : 'PUBLIC ATTENTION · GLOBAL'}
                     </div>
                     <div className="col-scroll">
                         {/* Trends rows — shown only when country active */}
-                        {activeCountry && (trendsLoading ? (
+                        {scopeCountry && (trendsLoading ? (
                             <div className="ap-empty">Loading searches…</div>
                         ) : trendSearches.length > 0 ? (<>
                             {trendsStaleHours && (
@@ -253,7 +253,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                         ) : wikiArticles.length === 0 ? (
                             <div className="ap-empty">No attention data</div>
                         ) : (
-                            wikiArticles.slice(0, activeCountry && trendSearches.length > 0 ? 5 : 10).map((a, i) => {
+                            wikiArticles.slice(0, scopeCountry && trendSearches.length > 0 ? 5 : 10).map((a, i) => {
                                 const displayTitle = a.title.replace(/_/g, ' ')
                                 const canOpen = Boolean(onPublicAttentionSelect || onWikiClick)
                                 return (
@@ -265,8 +265,8 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                                                 onPublicAttentionSelect({
                                                     ...a,
                                                     title: displayTitle,
-                                                    country: activeCountry ?? undefined,
-                                                    countryName: activeCountry ? resolveCountryName(activeCountry) : undefined,
+                                                    country: scopeCountry ?? undefined,
+                                                    countryName: scopeCountry ? resolveCountryName(scopeCountry) : undefined,
                                                 })
                                             } else {
                                                 onWikiClick?.(displayTitle)
@@ -276,7 +276,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                                     >
                                         <span className="ap-src-tag" style={{ color: '#818cf8' }}>W</span>
                                         <span className="ap-keyword">{displayTitle}</span>
-                                        {!activeCountry && a.country_count && a.country_count > 1 && (
+                                        {!scopeCountry && a.country_count && a.country_count > 1 && (
                                             <span className="ap-ctry-count">{a.country_count}</span>
                                         )}
                                     </div>
