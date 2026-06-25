@@ -172,6 +172,15 @@ SAMPLE_LANE_SHARE = 0.25
 BACKLOG_LANE_SHARE = 0.10
 STRATIFIED_REFRESH_POOL_LIMIT = 75_000
 
+# Parallel-worker sharding (#184 throughput). Run N workers, each with a distinct
+# SHARD_INDEX 0..N-1; the selector restricts each to its own disjoint partition
+# of signal ids (id % N = K). Disjoint shards mean N workers never double-process
+# the same row — no row locks, no held transactions (the NER batch is slow, so a
+# FOR UPDATE SKIP LOCKED queue would hold a transaction open for minutes × N).
+# id is a bigint serial, so the modulo distributes the backlog ~evenly.
+SHARD_COUNT = max(1, int(os.getenv("NLP_WORKER_SHARD_COUNT", "1")))
+SHARD_INDEX = int(os.getenv("NLP_WORKER_SHARD_INDEX", "0")) % SHARD_COUNT
+
 
 def _validate_target_column(target_column: str) -> str:
     allowed = {
@@ -195,6 +204,9 @@ def _priority_select_sql(target_column: str) -> str:
     high geo_confidence boosted). This avoids full-table sorts over 2M+ rows.
     """
     target_column = _validate_target_column(target_column)
+    # Disjoint id-partition per worker (no-op when running a single worker).
+    shard = f"AND (id % {SHARD_COUNT}) = {SHARD_INDEX}" if SHARD_COUNT > 1 else ""
+    shard_s = f"AND (s.id % {SHARD_COUNT}) = {SHARD_INDEX}" if SHARD_COUNT > 1 else ""
     return f"""
         WITH budgets AS (
             SELECT
@@ -209,6 +221,7 @@ def _priority_select_sql(target_column: str) -> str:
             WHERE {target_column} IS NULL
               AND headline IS NOT NULL AND LENGTH(headline) > 10
               AND created_at > NOW() - INTERVAL '24 hours'
+              {shard}
             ORDER BY created_at DESC
             LIMIT 5000
         ),
@@ -232,6 +245,7 @@ def _priority_select_sql(target_column: str) -> str:
             WHERE s.{target_column} IS NULL
               AND s.headline IS NOT NULL AND LENGTH(s.headline) > 10
               AND s.id NOT IN (SELECT id FROM hot_lane)
+              {shard_s}
             ORDER BY q.enqueued_at ASC
             LIMIT (SELECT sample_limit FROM budgets)
         ),
@@ -243,6 +257,7 @@ def _priority_select_sql(target_column: str) -> str:
               AND headline IS NOT NULL AND LENGTH(headline) > 10
               AND created_at <= NOW() - INTERVAL '24 hours'
               AND created_at > NOW() - INTERVAL '15 days'
+              {shard}
             ORDER BY created_at DESC
             LIMIT 5000
         ),

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.atlas.nlp-fleet</string>
+
+  <!-- #184 throughput: the ADAPTIVE NLP-worker fleet supervisor. Supersedes the
+       single-worker com.atlas.nlp-worker job. The supervisor runs 1 mindful
+       worker while Pedro is active and N parallel sharded workers when the box
+       is idle on AC power.
+
+       IMPORTANT: this job deliberately has NO ProcessType=Background / Nice /
+       LowPriorityIO. Those QoS clamps would propagate to the worker children and
+       pin the burst workers to the efficiency cores, defeating the whole point.
+       Instead each worker sets its OWN QoS: the gentle worker wraps itself in
+       `taskpolicy -b` (efficiency cores), the burst workers run at normal
+       priority (performance cores) — the supervisor owns that policy, not
+       launchd. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/pedro/AtlasLocalWorker/run-nlp-fleet-local.sh</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/pedro/AtlasLocalWorker/backend</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <!-- Don't hammer restarts if the supervisor crash-loops. -->
+  <key>ThrottleInterval</key>
+  <integer>60</integer>
+
+  <key>StandardOutPath</key>
+  <string>/Users/pedro/AtlasLocalWorker/logs/nlp-fleet.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/pedro/AtlasLocalWorker/logs/nlp-fleet.err.log</string>
+</dict>
+</plist>
