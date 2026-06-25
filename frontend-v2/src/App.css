@@ -790,7 +790,8 @@
       "threads"
       "dock";
     grid-template-columns: 1fr;
-    grid-template-rows: 52vh minmax(420px, auto) minmax(320px, auto) minmax(300px, auto);
+    /* Map is a smaller hero on phones so the live stream surfaces sooner. */
+    grid-template-rows: 40vh minmax(440px, auto) minmax(320px, auto) minmax(300px, auto);
     height: auto;
     min-height: calc(100vh - 96px);
     margin-top: 0;
