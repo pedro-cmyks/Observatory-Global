@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useCrisis } from '../contexts/CrisisContext'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
+import { useFocusRelation } from '../hooks/useFocusRelation'
 import { resolveCountryName } from '../lib/countryNames'
 import { getThemeLabel } from '../lib/themeLabels'
 import { getPublicAttentionTopUrl, getTrendingSearchesUrl } from '../lib/publicAttention'
@@ -24,7 +25,14 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
     const { anomalies, nearMisses, themeAnomalies, meta, overallSeverity, loading } = useCrisis()
     const { filter, setFocus, setMapFlyCountry } = useFocus()
     const { acledConflicts } = useFocusData()
+    const relation = useFocusRelation()
     const activeCountry = filter.country
+    // #234: when a non-country entity is focused, re-scope this panel's
+    // public-attention + conflicts to the focus's dominant country (the shared
+    // focus-relation context). Honest: only when a relation exists.
+    const relationCountry = !activeCountry && relation.relationActive && relation.kind !== 'country'
+        ? relation.dominantCountry : null
+    const scopeCountry = activeCountry ?? relationCountry
     const activeTheme = filter.theme
     const streamLevel = filter.streamLevel
     const [wikiArticles, setWikiArticles] = useState<{ title: string; views: number; country_count?: number }[]>([])
@@ -37,7 +45,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
     useEffect(() => {
         setWikiLoading(true)
         setWikiError(false)
-        fetch(getPublicAttentionTopUrl(10, activeCountry ?? undefined))
+        fetch(getPublicAttentionTopUrl(10, scopeCountry ?? undefined))
             .then(r => r.ok ? r.json() : null)
             .then(d => {
                 type WikiItem = { title: string; views: number; country_count?: number }
@@ -47,12 +55,12 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
             })
             .catch(() => { setWikiError(true); setWikiArticles([]) })
             .finally(() => setWikiLoading(false))
-    }, [activeCountry])
+    }, [scopeCountry])
 
     useEffect(() => {
-        if (!activeCountry) { setTrendSearches([]); return }
+        if (!scopeCountry) { setTrendSearches([]); return }
         setTrendsLoading(true)
-        fetch(getTrendingSearchesUrl(8, 24, activeCountry))
+        fetch(getTrendingSearchesUrl(8, 24, scopeCountry))
             .then(r => r.ok ? r.json() : null)
             .then(d => {
                 const items = d?.trending ?? []
@@ -66,20 +74,20 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
             })
             .catch(() => { setTrendSearches([]); setTrendsStaleHours(null) })
             .finally(() => setTrendsLoading(false))
-    }, [activeCountry])
+    }, [scopeCountry])
 
     const handleAnomalyClick = (countryCode: string) => {
         setFocus('country', countryCode)
         setMapFlyCountry(countryCode)
     }
 
-    // When a country is active, filter conflicts to that country only.
-    // ACLED uses full names, GDELT uses 2-letter codes — match both.
-    const visibleConflicts = activeCountry
+    // When a country is active (or a focus relation resolves one), filter
+    // conflicts to that country. ACLED uses full names, GDELT 2-letter codes.
+    const visibleConflicts = scopeCountry
         ? acledConflicts.filter(c => {
             const loc = c.location.country || ''
-            const name = resolveCountryName(activeCountry).toLowerCase()
-            return loc === activeCountry || loc.toLowerCase() === name
+            const name = resolveCountryName(scopeCountry).toLowerCase()
+            return loc === scopeCountry || loc.toLowerCase() === name
         })
         : acledConflicts
 
@@ -101,6 +109,12 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                 {streamLevel && streamLevel !== 'notable' && streamLevel !== 'all' && !activeTheme && (
                     <span className={`ap-focus-badge ap-focus-stream ap-focus-stream--${streamLevel}`}>
                         STREAM: {streamLevel.toUpperCase()}
+                    </span>
+                )}
+                {relationCountry && (
+                    <span className="ap-focus-badge ap-focus-theme"
+                        title={`Re-scoped to the focus's dominant country: ${resolveCountryName(relationCountry)}`}>
+                        {(relation.value || '').toUpperCase().slice(0, 14)} → {relationCountry}
                     </span>
                 )}
                 {meta && (
