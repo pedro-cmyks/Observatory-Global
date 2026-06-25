@@ -38,14 +38,24 @@ a separate later spec. Delivery: **PWA on the existing React/Vite app**
 
 Tests: 84 vitest green (28 files). Builds green throughout.
 
+6. **Shareable thread** (`64f6be0`) — Share button on the thread read uses the
+   Web Share API (native sheet on mobile) with a timeout-guarded clipboard
+   fallback (never hangs). The IMAGE share-card was prototyped but
+   html-to-image stalls embedding cross-origin Google Fonts even with
+   `skipFonts` → **deferred** (self-host the card fonts or pre-rasterize);
+   text+link ships now. The offscreen `.share-card` CSS/markup is retained for
+   that follow-up. 86 vitest green.
+
+All 8 plan tasks implemented; the consumer read MVP is deployed.
+
 ## Remaining (close-out)
-- **Task 6 — shareable thread card** (`html-to-image` + Web Share API): the
-  viral loop. The only core plan item not yet built. Plan §Task 6 has the
-  code (`lib/shareCard.ts buildShareText/shareThread`, `ShareCard.tsx`).
-- **Task 8 — final verification + papers:** Lighthouse PWA pass on the live
-  Vercel build (the SW only runs on the production build, not the dev
-  preview); real-device install/offline sanity (Pedro); grow Paper 7 (mobile
-  read + share) + Paper 3/4 (honest-chips interim).
+- **Lighthouse PWA pass** on the live Vercel build (the SW only runs on the
+  production build, not the dev preview) + real-device install/offline sanity
+  (Pedro).
+- **Image share-card** follow-up (self-host card fonts to unblock
+  html-to-image).
+- **Papers:** grow Paper 7 (mobile read + share loop) + Paper 3/4 (honest-chips
+  interim). Phase 2 (accounts/alerts/dossier) + #238 (subject geography) next.
 
 ## Pending Pedro eyeball (Vercel, once deployed)
 - Install Atlas to home screen (Add to Home Screen) on a phone.
