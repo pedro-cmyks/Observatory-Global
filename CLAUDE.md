@@ -1867,3 +1867,20 @@ surface (Humanitarian-access ↔ Flood-disaster via a shared rare actor). This i
 the "rarity-weighted/entity-overlap" item from the #234 remaining list. Build
 green, 74/74 vitest, 0 console errors, live-data verified. Remaining #234:
 thread-as-full-focus-lens; public-attention focus panels.
+
+**2026-06-25 — #234 sibling-relation LEGIBILITY + papers grown in-place.**
+(a) Rarity-weighted entity-overlap thread siblings shipped (prev note). (b)
+SIBLING REASON CHIPS (`2342ea3`): a surfaced sibling now shows WHY it relates —
+"↔ <shared distinctive entity>" or "↔ <shared primary country>" — never a silent
+dim (satisfies the no-silent-filtering / reason-codes guardrail). Browser-
+verified: open "Ukraine War Updates" → 2 siblings chipped "↔ Russia", 17 dimmed,
+0 console errors, 74/74 vitest. (c) PAPERS GROWN (Pedro's instruction — cross-
+refs must be WRITTEN INTO the paper methodology, not just mentioned): Paper 7
+(viz/workflow) gained the focus-propagation relation model + the rarity-weighted
+finding ("donald trump" DF 14/30 launders relation → distinctive-only, same
+volume≠importance principle as Paper 3 heat) + a relation-quality ablation to
+collect; Paper 8 (open-set discovery) gained the #229 recall-ceiling measurement
+(0.2% coverage, bottleneck = clustering recall not promotion, regional-pass
+lever) as product evidence. Master plan: `docs/research/atlas-paper/2026-05-27-
+atlas-papers-master-plan.md`. Remaining #234: thread-as-full-focus-lens;
+public-attention focus panels.
