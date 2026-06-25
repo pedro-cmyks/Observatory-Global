@@ -234,9 +234,28 @@ the seven analyst questions than commodity dashboards.
 - Panel-by-panel audit
   (`docs/research/2026-05-24-app-panel-thread-audit.md`).
 - Workspace expert audit.
+- **Focus-propagation relation model (product, #234, 2026-06-13→25):** a focused
+  entity (country / person / thread) re-scopes EVERY surface to its relations —
+  map heat + camera fly, narrative-thread siblings, public-attention (wiki/
+  trends/conflict), source-health — via a shared `computeFocusRelation`
+  (`lib/focusRelation.ts`, `useFocusRelation`). Two measured method findings the
+  paper can use: (1) **honest-by-construction** — when nothing relates,
+  `relationActive=false` and surfaces stay global rather than fabricate or blank
+  a relation. (2) **Rarity-weighted relation (2026-06-25):** naive entity-overlap
+  for thread siblings LAUNDERS common actors — live measurement found one entity
+  ("donald trump") in 14 of 30 concurrent threads, which linked every unrelated
+  narrative (Pauline Hanson ↔ Venezuela Earthquake). The shipped relation counts
+  only DISTINCTIVE entities (document-freq ≤ min(3, 25% of the list)) ORed with
+  primary geography. This is the same volume≠importance principle as Paper 3's
+  heat composite, transferred from intensity to relation — a citable
+  cross-method result within the Atlas series. (`NarrativeThreads.tsx`; CLAUDE.md
+  2026-06-24/25.)
 
 **Evidence to collect:**
 - Analyst task-completion study (10-15 analysts, structured tasks).
+- Relation-quality study: do rarity-weighted siblings match analyst-judged
+  "related narratives" better than geography-only or naive-entity baselines?
+  (The DF-threshold is a tunable the study can ablate.)
 - Comparative dashboard (Atlas vs Google Trends + GDELT raw).
 - Eye-tracking or click-stream where feasible.
 
@@ -256,7 +275,24 @@ BERTopic clusters of unclassified signals with LLM-assisted naming
 and human approval, expands the Atlas taxonomy without losing the
 schema rigor of v2.
 
-**Evidence to collect:** all of it.
+**Product evidence accrued (#229, 2026-06-25):** the open-set discovery funnel
+is now instrumented end-to-end and the recall ceiling is measured. Prod, 24h:
+174K ingested signals → 71K persisted embedding corpus → HDBSCAN over the corpus
+yields only ~23 clusters/snapshot → ~50 stable served threads ≈ **0.2% of the
+signal mass**; the remainder stays HDBSCAN noise. Key result for this paper: the
+bottleneck is **RECALL of the discovery step, not the promotion/approval gate** —
+measured 0 candidates qualify-but-stuck, 150/181 candidates single-snapshot, 114
+<30 signals; fast-tracking high-volume candidates would promote 0 topics. So the
+open-set question is precisely "how many real narratives does clustering surface
+from the unlabeled mass," and the levers are clustering-side: `min_cluster_size`
+granularity, **scoped regional passes** (global HDBSCAN drowns regional stories —
+documented case: the Peru vote-recount, 92 signals, never clustered), stratified
+sampling. The persisted-corpus clustering (which dissolved the 15K hot-window
+cap) is already shipped (`--from-persisted` cron); recall measurement on the full
+corpus is the next experiment. (CLAUDE.md 2026-06-12 #229 / 2026-06-25.)
+
+**Evidence to collect:** taxonomy-evolution loop itself (BERTopic + LLM naming +
+human approval); recall vs `min_cluster_size` curve; regional-pass yield delta.
 
 **Target venues:** EMNLP, NAACL, ACL Findings, ICWSM.
 
