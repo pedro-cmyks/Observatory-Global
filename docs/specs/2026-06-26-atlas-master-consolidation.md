@@ -45,10 +45,13 @@ Foundational/living (do NOT close — they evolve): `living-narrative-threads`
   evidence-role precision (≥85% direct vs context/noise on a reviewed sample);
   confidence bands; syndication/duplication detection surfaced. *Spec:*
   research-workbench Phase 4. *Paper:* 1.
-- [ ] **T1.5 B4 gate-recall by language (re-run).** Run the existing
-  `gate_recall_by_language.py` on the current corpus; if non-English recall is
-  the bottleneck (likely, per the CI/Peru cases), re-prioritize #162. *Spec:*
-  L2 review B4. Measurement, not a build.
+- [x] **T1.5 B4 gate-recall by language.** ✅ Measured (`docs/research/gate-recall/
+  2026-06-26-...`). FINDING: en kept_rate 0.33 (strict for all); detected
+  non-English barely ENTERS scoring (fr=4, es=7 scored) — the bottleneck is
+  upstream English-centric ASSIGNMENT, not gate bias; the real bias is the `xx`
+  bucket (6921 scored, 0.10 kept). Fix = semantic assignment (T2 route, language-
+  agnostic) + #162, NOT per-language gate recalibration. Paper 1 = English-
+  conditioned caveat.
 
 ### Tier 2 — Public-attention / discussion depth
 - [ ] **T2.1 Lead-time-vs-coverage.** "Seen in forum/search Nh before media
