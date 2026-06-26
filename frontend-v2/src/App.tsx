@@ -435,6 +435,18 @@ function AppContent() {
 
   // Map readiness gate — prevents DeckGL from crashing before WebGL context is ready
   const [mapReady, setMapReady] = useState(false)
+  // Map-load watchdog: the basemap style is an EXTERNAL carto CDN fetch. On a
+  // flaky mobile network it can stall, onLoad never fires, and the map stays
+  // blank ("no carga nada"). If the map isn't ready after a grace period, remount
+  // it (via key) to re-request the style. Capped so it can't loop.
+  const [mapRetry, setMapRetry] = useState(0)
+  useEffect(() => {
+    if (mapReady || mapRetry >= 2) return
+    const t = setTimeout(() => {
+      if (!mapReady) setMapRetry(r => r + 1)
+    }, 9000)
+    return () => clearTimeout(t)
+  }, [mapReady, mapRetry])
   // Tracks when the 13MB GeoJSON source has actually finished loading
   const [heatSourceReady, setHeatSourceReady] = useState(false)
 
@@ -1531,11 +1543,13 @@ function AppContent() {
           <div className="panel-content">
             <MapErrorBoundary>
               <MapGL
+                key={`map-${mapRetry}`}
                 ref={mapRef}
                 mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
                 attributionControl={false}
                 projection={isGlobe ? 'globe' : 'mercator'}
                 {...viewState}
+                onError={(e: any) => { console.warn('[map] load error', e?.error?.message || e) }}
                 onMove={evt => setViewState(evt.viewState as any)}
                 onLoad={(e) => {
                   const map = e.target
