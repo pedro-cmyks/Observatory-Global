@@ -1,5 +1,7 @@
 # Mobile multi-level review (L0–L3) — 2026-06-25
 
+Status: ✅ CLOSED 2026-06-26 — mobile tabbed IA (Map·Threads·Stream·Pulse) + fixes shipped. Residual per-surface polish → master-consolidation T3.3 / #236.
+
 Same exercise as the #225/#228 desktop surface reviews, now for mobile: walk
 every level at 375px, compare to the desktop ("normal") intent, and drive each
 toward *flawless*. Audited live in the preview at 375×812.

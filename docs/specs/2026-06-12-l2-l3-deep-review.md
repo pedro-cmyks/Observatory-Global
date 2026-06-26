@@ -2,7 +2,7 @@
 
 Date: 2026-06-12
 Issue: #228 (follow-up to #225, which fixed L1)
-Status: review judgment — recommendations, not yet implemented
+Status: ✅ CLOSED 2026-06-26 — recommendations executed (#228 §6, #183, #176, gate-recall script; L3 sound + #227 closed). Deeper L2 continued in 2026-06-26-l2-deep-review.md.
 Evidence: production API probes + code inspection this session; Pedro's
 2026-06-12 screenshots (PE election thread, SignalDetail, person panel)
 

@@ -2,7 +2,7 @@
 
 Date: 2026-06-11
 Issue: #225
-Status: review judgment — recommendations, not yet implemented
+Status: ✅ CLOSED 2026-06-26 — Brief L1 rebuild shipped (#225 closed) + L2 legibility batch. Residual gap box → master-consolidation T3.4.
 Author: fresh-eyes pass per Pedro's framing ("lo que hay es el camino que nos
 trajo hasta acá, no necesariamente el camino hacia adelante")
 
