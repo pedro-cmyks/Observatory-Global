@@ -14,6 +14,7 @@ import {
   setActiveInvestigation,
   type Investigation,
 } from '../lib/workbench';
+import { DossierView } from './DossierView';
 import './WorkbenchPanel.css';
 
 interface WorkbenchPanelProps {
@@ -28,6 +29,7 @@ export default function WorkbenchPanel({
 }: WorkbenchPanelProps) {
   const [, setTick] = useState(0);
   const [newTitle, setNewTitle] = useState('');
+  const [showDossier, setShowDossier] = useState(false);
   void refreshToken;
 
   const rerender = useCallback(() => setTick(t => t + 1), []);
@@ -106,9 +108,13 @@ export default function WorkbenchPanel({
           <div className="wb-empty">Select or create an investigation.</div>
         ) : (
           <>
+            {showDossier && (
+              <DossierView investigation={active} onClose={() => setShowDossier(false)} />
+            )}
             <div className="wb-header">
               <span className="wb-title">{active.title}</span>
               <div className="wb-actions">
+                <button className="wb-action wb-action--report" onClick={() => setShowDossier(true)} data-tip="Generate a report from the pinned route (Phase 3)" disabled={active.pins.length === 0}>REPORT</button>
                 <button className="wb-action" onClick={handleExport} data-tip="Export investigation as JSON (durability)">EXPORT</button>
                 <button
                   className="wb-action wb-action--danger"
