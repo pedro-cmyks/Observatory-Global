@@ -17,32 +17,14 @@ export function FocusIndicator({ onClear }: { onClear?: () => void } = {}) {
 
     return (
         <div className="focus-indicator">
-            <span className="focus-icon" style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '24px',
-                height: '24px',
-                borderRadius: '4px',
-                background: 'var(--color-accent-primary)',
-                color: 'var(--color-bg-primary)',
-                fontSize: '10px',
-                fontWeight: 'bold'
-            }}>
-                {focus.type.charAt(0).toUpperCase()}
-            </span>
-            <div className="focus-content">
-                <span className="focus-type">
-                    {typeLabels[focus.type]} Focus
-                </span>
-                <span className="focus-value">
-                    {focus.label}
-                </span>
-            </div>
+            <span className="focus-dot" aria-hidden="true" />
+            <span className="focus-meta">{typeLabels[focus.type]}</span>
+            <span className="focus-value">{focus.label}</span>
             <button
                 className="focus-clear"
                 onClick={onClear ?? clearFocus}
                 data-tip="Clear focus — back to the whole view"
+                aria-label="Clear focus"
             >
                 ×
             </button>
