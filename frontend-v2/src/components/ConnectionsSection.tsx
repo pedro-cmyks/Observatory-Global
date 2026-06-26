@@ -13,15 +13,18 @@ import './ConnectionsSection.css'
 interface ConnectedThread {
     thread_id: string
     label: string
-    basis: 'member' | 'semantic'
+    basis: 'member' | 'semantic' | 'keyword'
     strength: number | null
     gate_kept?: boolean | null
     /** A forum post attached semantically — a discussion member, not evidence. */
     discussion?: boolean
+    /** For keyword matches: the shared term(s) that linked the item to the thread. */
+    shared?: string[]
 }
 
 function basisLabel(t: ConnectedThread): string {
     if (t.basis === 'member') return t.discussion ? 'discussed' : 'in thread'
+    if (t.basis === 'keyword') return 'keyword'
     return 'related'
 }
 
@@ -104,9 +107,11 @@ export function ConnectionsSection({ signalId, onThreadClick, hours = 336 }: Pro
                                 {basisLabel(t)}
                             </span>
                             <span className="connections-thread-label">{t.label}</span>
-                            {t.strength != null && (
+                            {t.strength != null ? (
                                 <span className="connections-strength">{strengthPct(t.strength)}</span>
-                            )}
+                            ) : t.basis === 'keyword' && t.shared && t.shared.length > 0 ? (
+                                <span className="connections-shared" data-tip={`Linked by the shared term "${t.shared[0]}"`}>↔ {t.shared[0]}</span>
+                            ) : null}
                         </button>
                     ))}
                 </div>
