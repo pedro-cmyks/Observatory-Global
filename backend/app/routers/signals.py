@@ -158,9 +158,9 @@ async def get_signals(
         if own_voice_mix and is_global:
             seen_ids = {s["id"] for s in signals}
             own_rows = await conn.fetch(f"""
-                SELECT id, timestamp, country_code, source_name, source_url, headline,
-                       snippet, source_lang, {sentiment_expr} AS sentiment, themes, persons,
-                       {nlp_persons_expr}, {nlp_framing_expr}
+                SELECT id, timestamp, country_code, source_name, source_family, source_url,
+                       headline, snippet, source_lang, {sentiment_expr} AS sentiment, themes,
+                       persons, {nlp_persons_expr}, {nlp_framing_expr}
                 FROM signals_v2
                 WHERE {where_clause}
                   AND source_lang IS NOT NULL
