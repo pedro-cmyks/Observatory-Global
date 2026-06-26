@@ -412,12 +412,15 @@ Spec ↔ issues, so the registry stays honest:
 | **T2** Forums in the inference (semantic discussion membership) | ✅ **DONE** | `assign_discussion_topics.py` (kNN, threshold 0.90 — measured precision finding) seeds discussion members; `/signal/{id}/context` shows `[member ·discussion]`; `fetch_threads` serves a separate `discussion_count`; NarrativeThreads + ConnectionsSection show it. Verified: oil-refinery forum is a discussion member of Armed conflict; thread shows "FORUM N". gate counts untouched (zero regression — distinct `model_version`). |
 | **T3.2** Person → "Threads <person> participates in" | ✅ **DONE** | EntityPanel gains the section (reuses `/threads?person=`, #234), above demoted GDELT themes. Verified: Donald Trump → 6 threads incl. "Armed conflict 3.9k [FORUM 3]". |
 | **T3.4** Search → results + connections | ✅ **DONE** | The SearchBar dropdown already surfaces the query's matching topics as clickable threads; relabeled that section **"Narrative threads"** (was "Themes") so search explicitly presents results AND the connected threads. Forum/query path also gets the ConnectionsSection via PublicAttentionPanel (T1). |
-| **T3.3** Event → P-FOCUS centered panel | ⏳ REMAINING | The conflict-event marker carries only `type`+`fatalities`; fixing "fly-to-country swallows the event" needs enriched acled features + an event-centered panel + the connections resolver. Flagged **map-flow change → do as a careful dedicated pass** (two map regressions occurred this session when moving fast). |
+| **T3.3** Event → P-FOCUS centered panel | ✅ **DONE** | acled marker now carries the full event identity (type/actors/place/date/fatalities); clicking `atlas-acled-circle` opens ConflictEventPanel centered on the EVENT ('this event, in <country>') + the country's threads as context + flies to the exact location. Additive (new handler+panel, existing layers untouched). Click verification needs an eyeball on the deployed map (pixel-based). |
 | **T4** Pinnable truncated thread (Workbench) | ⏳ DEFERRED | Explicitly optional/“later, gated on demand” in §5. |
 | **Cron** for T2 assignment | ⏳ infra | `assign_discussion_topics.py` is versioned + runnable; needs the M1 nightly hook after `embed_hot_corpus` (Pedro's machine). Seeded once manually (4 members). |
 
-**Net:** the spec's CORE — forums entering the inference + items (forum/signal/
-person) connecting to the living threads, honestly (basis + strength, discussion
-≠ evidence) — is **implemented and verified in production**. The remainder is the
-event P-FOCUS panel (map-flow, needs care), the SearchBar connections block
-(polish), the assignment cron hook (infra), and T4 (optional).
+**Net (rev — 2026-06-26):** the spec is **substantially complete** — T1, T2,
+T3.2, T3.3, T3.4 implemented and (except the pixel-based event click) verified in
+production. Forums enter the inference; items (forum/signal/person/event/search)
+connect to the living threads honestly (basis + strength, discussion ≠ evidence),
+with a lexical fallback + on-demand embedding so connections are never empty when
+the corpus lags. Only T4 (pinnable, explicitly optional) remains. The real
+blocker behind connection-emptiness — the embed service being down + the M1 embed
+cron's write throughput — was diagnosed and fixed this session (#240, #241).
