@@ -473,7 +473,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
 
                     {results?.themes && results.themes.filter(t => t.total_signals > 0).length > 0 && (
                         <div className="search-section">
-                            <div className="search-section-label">Themes</div>
+                            <div className="search-section-label">Narrative threads</div>
                             {results.themes.filter(t => t.total_signals > 0).map((t) => (
                                 <div key={t.theme} className="search-item" onClick={() => handleThemeClick(t)}>
                                     <span className="search-item-icon">{getThemeIcon(t.theme)}</span>
