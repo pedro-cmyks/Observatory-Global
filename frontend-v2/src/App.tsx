@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MapGL from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
@@ -659,26 +659,54 @@ function AppContent() {
     }
   }, [filter.country])
 
-  // Modal Stack Logic (Escape key)
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (showBriefing) {
-          setShowBriefing(false)
-        } else if (selectedTheme) {
-          setSelectedTheme(null)
-          setTheme(null)
-        } else if (selectedCountry || selectedCountryCode) {
-          setSelectedCountry(null)
-          setSelectedCountryCode(null)
-          setShowFlows(false)
-          clearFocus()
-        }
-      }
+  // Back navigation: pop the topmost open panel. Used by Escape (desktop) and
+  // by swipe-right-from-the-edge (mobile, like a native app). Order = most
+  // recently opened first.
+  const popPanel = useCallback((): boolean => {
+    if (showBriefing) { setShowBriefing(false); return true }
+    if (selectedSourceProfile) { setSelectedSourceProfile(null); return true }
+    if (rightPanelThemeCountry) { setRightPanelThemeCountry(null); return true }
+    if (focus.type === 'person') { clearFocus(); return true }
+    if (selectedTheme) { setSelectedTheme(null); setTheme(null); return true }
+    if (selectedCountry || selectedCountryCode) {
+      setSelectedCountry(null)
+      setSelectedCountryCode(null)
+      setShowFlows(false)
+      clearFocus()
+      return true
     }
+    return false
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showBriefing, selectedSourceProfile, rightPanelThemeCountry, focus.type, selectedTheme, selectedCountry, selectedCountryCode])
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') popPanel() }
     window.addEventListener('keydown', handleEsc)
     return () => window.removeEventListener('keydown', handleEsc)
-  }, [showBriefing, selectedTheme, selectedCountry])
+  }, [popPanel])
+
+  // Swipe-right from the left edge = back (native mobile feel).
+  useEffect(() => {
+    let x0 = 0, y0 = 0, t0 = 0, tracking = false
+    const onStart = (e: TouchEvent) => {
+      const t = e.touches[0]
+      tracking = t.clientX < 40 // only from near the left edge
+      x0 = t.clientX; y0 = t.clientY; t0 = Date.now()
+    }
+    const onEnd = (e: TouchEvent) => {
+      if (!tracking) return
+      tracking = false
+      const t = e.changedTouches[0]
+      const dx = t.clientX - x0, dy = t.clientY - y0, dt = Date.now() - t0
+      if (dx > 70 && Math.abs(dy) < 50 && dt < 600) popPanel()
+    }
+    window.addEventListener('touchstart', onStart, { passive: true })
+    window.addEventListener('touchend', onEnd, { passive: true })
+    return () => {
+      window.removeEventListener('touchstart', onStart)
+      window.removeEventListener('touchend', onEnd)
+    }
+  }, [popPanel])
 
   // --- Session Trail Tracking ---
   useEffect(() => {

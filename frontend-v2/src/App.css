@@ -1564,4 +1564,14 @@
   }
   .mobile-tabbar button.active { color: #1D9E75; }
   .mobile-tab-glyph { font-size: 17px; line-height: 1; }
+
+  /* Secondary panels that open inside the stream slot (source profile, entity,
+     country drill-in) must not spill content sideways on phones. */
+  .terminal-panel.stream { overflow-x: hidden; }
+  .source-profile,
+  .entity-panel,
+  .country-theme-panel { overflow-x: hidden; max-width: 100vw; }
+  .source-profile a,
+  .source-profile .source-url,
+  .entity-panel a { word-break: break-word; overflow-wrap: anywhere; }
 }
