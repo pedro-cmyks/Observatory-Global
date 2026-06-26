@@ -382,3 +382,22 @@ sentiment lens (P-STREAM); search creates results AND connections. Remaining:
   isolated to the cron; nothing forces a global graph build; everything additive.
 - *Ambiguity:* "connection basis" enumerated (member/semantic/entity/
   co-occurrence); empty state specified, not implied.
+
+---
+
+## 9. GitHub issue cross-check (2026-06-26)
+
+Spec ↔ issues, so the registry stays honest:
+
+| Issue | Relation to this spec | Action taken |
+|---|---|---|
+| **#168** public-attention threads + semantic links to media topics | This spec is the concrete design; #168 = the umbrella it realizes | commented, kept open |
+| **#237** Community Signal Layer (forum later) umbrella | Layer A (forum semantic membership) + sentiment lens = a slice of it | commented, kept open |
+| **#172** silent-risk detector (high attention, zero media) | ConnectionsSection is the surface where "no connected thread" = silent risk | commented, kept open |
+| **#234** focusing an entity must repaint to its relations | Item→connections is the next slice (P-FOCUS) | commented, kept open |
+| **#173** Evidence Route panel | ConnectionsSection = the evidence-route surface (item→threads→neighbor evidence) | commented, kept open |
+| **#176** entity drilldown hygiene / noisy person | T3 person connections (rarity-weighted) complement it | commented, kept open |
+| **#214** list shows raw not gated count | **DONE this session (B2)** — gated count + UNVERIFIED tray | **CLOSED** |
+| **#153** evaluate Reddit + others as public-attention sources | Reddit done (ingested+surfaced); narrow to MediaStack/EventRegistry/NewsAPI | commented (re-scope) |
+| **#184** bump NLP_WORKER_LIMIT + measure drain | Superseded by the M1 adaptive sharded fleet | commented (re-scope) |
+| **#228** L2/L3 deep review umbrella | Tier A/B/C shipped; A3/A4/C3 remain; this spec spun out of it | commented (progress) |
