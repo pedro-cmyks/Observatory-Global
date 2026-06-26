@@ -319,6 +319,7 @@ export function PublicAttentionPanel({ item, timeRange, onClose, onThemeSelect, 
                     {item.signalId != null && (
                         <ConnectionsSection
                             signalId={item.signalId}
+                            label={title}
                             onThreadClick={(slug) => onThemeSelect?.(slug)}
                         />
                     )}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { addPin, getActiveInvestigationId, createInvestigation, setActiveInvestigation } from '../lib/workbench'
 import './ConnectionsSection.css'
 
 /**
@@ -49,6 +50,8 @@ interface Props {
     /** Open a connected thread by its slug (the thread_id). */
     onThreadClick?: (slug: string) => void
     hours?: number
+    /** The item's headline — when present, the truncated thread can be PINNED (T4). */
+    label?: string
 }
 
 function strengthPct(s: number | null): string {
@@ -57,9 +60,39 @@ function strengthPct(s: number | null): string {
     return `${Math.round(Math.min(1, Math.max(0, s)) * 100)}%`
 }
 
-export function ConnectionsSection({ signalId, onThreadClick, hours = 336 }: Props) {
+export function ConnectionsSection({ signalId, onThreadClick, hours = 336, label }: Props) {
     const [data, setData] = useState<ContextResponse | null>(null)
     const [loading, setLoading] = useState(true)
+    const [pinned, setPinned] = useState(false)
+
+    // T4: pin the truncated thread — freeze WHERE this item connects, so the
+    // investigation keeps the analyst's read even after the live data drifts.
+    function pinTruncatedThread() {
+        let invId = getActiveInvestigationId()
+        if (!invId) {
+            const inv = createInvestigation(label || `Item ${signalId}`)
+            invId = inv.id
+            setActiveInvestigation(inv.id)
+        }
+        const cts = data?.connected_threads ?? []
+        addPin(invId, {
+            anchorId: `truncated-${signalId}`,
+            anchorType: 'connections',
+            label: label || `Item ${signalId}`,
+            open: { surface: 'signal_context', params: { signal_id: signalId } },
+            snapshot: {
+                capturedAt: new Date().toISOString(),
+                summary: cts.length > 0
+                    ? `Connects to ${cts.length} thread${cts.length > 1 ? 's' : ''}: ${cts.slice(0, 2).map(t => t.label).join(', ')}`
+                    : 'No strong narrative connection at pin time',
+                metrics: { connectedThreads: cts.length },
+                evidence: cts.slice(0, 3).map(t => ({
+                    headline: `${basisLabel(t)} → ${t.label}${t.strength != null ? ` (${strengthPct(t.strength)})` : t.shared?.[0] ? ` (↔ ${t.shared[0]})` : ''}`,
+                })),
+            },
+        })
+        setPinned(true)
+    }
 
     useEffect(() => {
         let ignore = false
@@ -86,7 +119,19 @@ export function ConnectionsSection({ signalId, onThreadClick, hours = 336 }: Pro
 
     return (
         <section className="connections-section">
-            <div className="connections-label">Where this fits</div>
+            <div className="connections-head">
+                <span className="connections-label">Where this fits</span>
+                {label && (
+                    <button
+                        className={`connections-pin${pinned ? ' connections-pin--done' : ''}`}
+                        onClick={pinTruncatedThread}
+                        disabled={pinned}
+                        data-tip={pinned ? 'Pinned to your investigation' : 'Pin this — freezes where it connects into your investigation'}
+                    >
+                        {pinned ? '📌 pinned' : '📌 pin'}
+                    </button>
+                )}
+            </div>
 
             {threads.length === 0 ? (
                 <div className="connections-empty">

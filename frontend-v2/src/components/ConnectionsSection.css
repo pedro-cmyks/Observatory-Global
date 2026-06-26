@@ -145,3 +145,26 @@
     color: #94a3b8;
     font-style: italic;
 }
+
+/* T4: pin the truncated thread */
+.connections-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+.connections-head .connections-label { margin-bottom: 0; }
+.connections-pin {
+    flex-shrink: 0;
+    background: rgba(29, 158, 117, 0.1);
+    border: 1px solid rgba(29, 158, 117, 0.35);
+    border-radius: 5px;
+    color: #1D9E75;
+    font-family: inherit;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    padding: 3px 8px;
+    cursor: pointer;
+}
+.connections-pin:hover { background: rgba(29, 158, 117, 0.18); }
+.connections-pin--done { opacity: 0.7; cursor: default; }
