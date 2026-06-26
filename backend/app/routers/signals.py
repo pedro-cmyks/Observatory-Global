@@ -400,10 +400,20 @@ async def get_signal_context(
                 SELECT s.id, s.headline, s.country_code, s.source_name,
                        s.source_url, s.timestamp,
                        1 - (e.vec <=> $2::halfvec) AS similarity,
-                       EXISTS (SELECT 1 FROM signal_topic_assignments sta
-                               WHERE sta.signal_id = s.id) AS has_topic
+                       nt.slug  AS thread_slug,
+                       nt.label AS thread_label
                 FROM signal_embeddings e
                 JOIN signals_v2 s ON s.id = e.signal_id
+                LEFT JOIN LATERAL (
+                    -- the neighbor's top thread: how a no-topic item (forum)
+                    -- connects to the living threads, via who it sits next to.
+                    SELECT t.slug, t.label
+                    FROM signal_topic_assignments sta
+                    JOIN atlas_topics t ON t.id = sta.topic_id
+                    WHERE sta.signal_id = s.id
+                    ORDER BY sta.gate_score DESC NULLS LAST
+                    LIMIT 1
+                ) nt ON true
                 WHERE e.signal_id <> $1
                   AND s.timestamp > NOW() - INTERVAL '{int(hours)} hours'
                 ORDER BY e.vec <=> $2::halfvec
@@ -422,6 +432,9 @@ async def get_signal_context(
     own_key = _html.unescape(own_headline or "").strip().lower()
     seen = {own_key} if own_key else set()
     semantic_neighbors = []
+    # Truncated-thread connections (#168/#234): the threads this item connects to
+    # via the threads its semantic neighbours belong to. slug -> best similarity.
+    neighbor_threads: dict[str, dict] = {}
     for r in neighbor_rows:
         sim = float(r["similarity"])
         if sim < 0.60:  # context view: looser than evidence retrieval (0.84),
@@ -433,18 +446,46 @@ async def get_signal_context(
         if key in seen:
             continue
         seen.add(key)
-        semantic_neighbors.append({
-            "signal_id": int(r["id"]),
-            "headline": headline,
-            "country_code": r["country_code"],
-            "source": r["source_name"],
-            "url": r["source_url"],
-            "timestamp": r["timestamp"].isoformat() if r["timestamp"] else None,
-            "similarity": round(sim, 4),
-            "gate_status": "assigned" if r["has_topic"] else "below_gate",
+        slug = r["thread_slug"]
+        if slug:
+            prev = neighbor_threads.get(slug)
+            if prev is None or sim > prev["sim"]:
+                neighbor_threads[slug] = {"label": r["thread_label"], "sim": sim}
+        if len(semantic_neighbors) < neighbors:
+            semantic_neighbors.append({
+                "signal_id": int(r["id"]),
+                "headline": headline,
+                "country_code": r["country_code"],
+                "source": r["source_name"],
+                "url": r["source_url"],
+                "timestamp": r["timestamp"].isoformat() if r["timestamp"] else None,
+                "similarity": round(sim, 4),
+                "gate_status": "assigned" if slug else "below_gate",
+            })
+        # keep scanning to accumulate neighbor_threads beyond the display cap
+
+    own_slugs = {t["slug"] for t in threads}
+    connected_threads = [
+        {
+            "thread_id": t["slug"],
+            "label": t["label"],
+            "basis": "member",
+            "strength": float(t["gate_score"]) if t["gate_score"] is not None else None,
+            "gate_kept": bool(t["gate_kept"]) if t["gate_kept"] is not None else None,
+        }
+        for t in threads
+    ]
+    for slug, info in sorted(
+        neighbor_threads.items(), key=lambda kv: kv[1]["sim"], reverse=True
+    ):
+        if slug in own_slugs:
+            continue
+        connected_threads.append({
+            "thread_id": slug,
+            "label": info["label"],
+            "basis": "semantic",
+            "strength": round(info["sim"], 4),
         })
-        if len(semantic_neighbors) >= neighbors:
-            break
 
     return {
         "signal_id": signal_id,
@@ -457,6 +498,9 @@ async def get_signal_context(
             }
             for t in threads
         ],
+        # Truncated-thread "Where this fits": connected threads (member first,
+        # then semantic), each basis-badged. Honest empty when nothing connects.
+        "connected_threads": connected_threads,
         "semantic_neighbors": semantic_neighbors,
         "match_basis": "signal_embedding",
         "notes": notes,
