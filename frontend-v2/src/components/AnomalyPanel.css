@@ -308,3 +308,14 @@
     color: #fb923c;
     opacity: 0.8;
 }
+
+/* Secondary link to the original Reddit post (main click investigates in Atlas). */
+.ap-forum-link {
+    flex-shrink: 0;
+    margin-left: 6px;
+    color: #fb923c;
+    opacity: 0.7;
+    text-decoration: none;
+    font-size: 12px;
+}
+.ap-forum-link:hover { opacity: 1; }

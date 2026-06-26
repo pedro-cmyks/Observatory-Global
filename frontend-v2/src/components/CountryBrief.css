@@ -460,10 +460,41 @@
 }
 
 /* Responsive */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
     .country-brief {
         width: 100vw;
         border-left: none;
+    }
+    /* Nothing in the country brief may scroll the page sideways on a phone. */
+    .country-brief,
+    .country-brief--inline {
+        overflow-x: hidden;
+        max-width: 100vw;
+    }
+    /* The header (flag + title + pin/share/export/close) overflowed to ~480px
+       on a 375px screen. Let it wrap and shrink the title instead. */
+    .brief-header {
+        flex-wrap: wrap;
+        padding: 12px 14px;
+        gap: 8px;
+    }
+    .brief-title {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+    .brief-title h2 {
+        font-size: 1.05rem;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .brief-header-actions {
+        flex-shrink: 0;
+    }
+    /* Drop the "Export" word — keep the icon — so the action row fits. */
+    .brief-export-button .brief-export-label {
+        display: none;
     }
 }
 /* Anomaly badge */

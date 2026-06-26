@@ -308,13 +308,23 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                             {forumItems.map((f, i) => (
                                 <div
                                     key={`forum-${i}`}
-                                    className={`ap-row ap-row--trend${f.url ? ' clickable' : ''}`}
-                                    onClick={f.url ? () => window.open(f.url, '_blank', 'noopener') : undefined}
-                                    data-tip={f.subreddit ? `${f.subreddit} — opens Reddit` : 'opens Reddit'}
+                                    className="ap-row ap-row--trend clickable"
+                                    onClick={() => onWikiClick?.(f.headline)}
+                                    data-tip={`Investigate "${f.headline}" in Atlas`}
                                 >
                                     <span className="ap-src-tag" style={{ color: '#fb923c' }}>F</span>
                                     <span className="ap-keyword">{f.headline}</span>
                                     {f.subreddit && <span className="ap-ctry-count">{f.subreddit}</span>}
+                                    {f.url && (
+                                        <a
+                                            className="ap-forum-link"
+                                            href={f.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={e => e.stopPropagation()}
+                                            data-tip="Open the original post on Reddit"
+                                        >↗</a>
+                                    )}
                                 </div>
                             ))}
                         </>)}

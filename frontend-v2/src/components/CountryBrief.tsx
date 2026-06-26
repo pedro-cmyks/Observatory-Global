@@ -445,7 +445,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                         aria-label="Export country brief"
                     >
                         <Download size={13} />
-                        Export
+                        <span className="brief-export-label">Export</span>
                     </button>
                     <button className="close-button" onClick={onClose} aria-label="Close brief">
                         ✕

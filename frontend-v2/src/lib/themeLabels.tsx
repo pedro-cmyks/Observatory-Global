@@ -6,6 +6,17 @@ import {
 } from './icons';
 
 export const themeLabels: Record<string, string> = {
+    // Raw GDELT root themes that read poorly as a single word ("Kill" → a real
+    // theme name). These surface in the Brief's "By Theme" index.
+    'KILL': 'Violence & Killings',
+    'WOUND': 'Injuries & Casualties',
+    'ARREST': 'Arrests & Detentions',
+    'KIDNAP': 'Kidnappings',
+    'TERROR': 'Terrorism',
+    'PROTEST': 'Protests & Unrest',
+    'CORRUPTION': 'Corruption',
+    'SECURITY_SERVICES': 'Security Forces',
+    'DISPLACEMENT': 'Displacement & Refugees',
     // World Bank — governance & institutions
     'WB_696_PUBLIC_SECTOR_MANAGEMENT': 'Public Sector',
     'WB_678_DIGITAL_GOVERNMENT': 'Digital Government',
