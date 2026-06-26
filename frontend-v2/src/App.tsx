@@ -24,6 +24,7 @@ import { ThemeCompare } from './components/ThemeCompare'
 import { SourceProfile } from './components/SourceProfile'
 import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext'
 import { InvestigationWorkspace } from './components/InvestigationWorkspace'
+import { FocusIndicator } from './components/FocusIndicator'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
 import { Globe, ClipboardList, FolderOpen, HelpCircle, BookmarkPlus, MoreHorizontal, Settings, ChevronDown } from './lib/icons'
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
@@ -328,7 +329,7 @@ function AppContent() {
   const isGlobe = false
 
   // Focus hook for click-to-focus
-  const { setFocus, focus, clearFocus, filter, setTheme, mapFlyCountry, setMapFlyCountry, isActive } = useFocus()
+  const { setFocus, focus, clearFocus, setCountry, filter, setTheme, mapFlyCountry, setMapFlyCountry, isActive } = useFocus()
 
   // Theme for layer styling
   const { themeId } = useTheme()
@@ -452,7 +453,27 @@ function AppContent() {
       sources: [],
     })
     setShowFlows(true)
+    // Single source of truth (A2): every country entry point also sets the
+    // global focus so the stream, dock, legend and map re-scope together — and
+    // the focus chip appears so the country can be deselected. The sync effect
+    // guards on focus.value !== selectedCountryCode, so this can't loop.
+    setCountry(countryCode)
   }
+
+  // A1: one comprehensive deselect — the focus chip's ✕ and the map background
+  // click both return to the whole, unfocused view. clearFocus() clears the
+  // GlobalFilter (closing country/theme panels via their effects); the rest
+  // resets local-only panel state.
+  const clearAll = useCallback(() => {
+    clearFocus()
+    setSelectedTheme(null)
+    setSelectedThread(null)
+    setSelectedSourceProfile(null)
+    setSelectedPublicAttention(null)
+    setSelectedChokepoint(null)
+    setRightPanelThemeCountry(null)
+    setShowFlows(false)
+  }, [clearFocus])
 
   // Workbench / research-plan handlers (Phase 2, #213). Anchors open the
   // existing surfaces: a thread anchor routes through the theme-detail
@@ -1393,6 +1414,10 @@ function AppContent() {
           />
         </div>
       </header>
+
+      {/* A1: persistent focus chip — shows what's focused and gives one ✕ to
+          return to the whole, unfocused view (the missing country deselect). */}
+      <FocusIndicator onClear={clearAll} />
 
       <div className="coverage-disclaimer" data-tip="Atlas colors countries by deviation from each country's recent baseline. Raw volume increases evidence density, but it is not treated as real-world importance.">
         Coverage bias: map heat is baseline-normalized; raw volume is evidence density, not importance.

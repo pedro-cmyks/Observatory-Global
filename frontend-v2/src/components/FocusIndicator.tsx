@@ -10,7 +10,7 @@ const typeLabels: Record<string, string> = {
     source: 'Source'
 }
 
-export function FocusIndicator() {
+export function FocusIndicator({ onClear }: { onClear?: () => void } = {}) {
     const { focus, clearFocus, isActive } = useFocus()
 
     if (!isActive || !focus.type) return null
@@ -41,8 +41,8 @@ export function FocusIndicator() {
             </div>
             <button
                 className="focus-clear"
-                onClick={clearFocus}
-                data-tip="Clear focus"
+                onClick={onClear ?? clearFocus}
+                data-tip="Clear focus — back to the whole view"
             >
                 ×
             </button>
