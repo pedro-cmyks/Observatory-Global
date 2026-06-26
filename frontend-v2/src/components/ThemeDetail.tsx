@@ -7,7 +7,7 @@ import { ShareThreadButton } from './ShareCard'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { ExportMenu } from './ExportMenu'
 import { useWorkspace } from '../contexts/WorkspaceContext'
-import { ArrowLeftRight, Pin, PinOff, X } from '../lib/icons'
+import { Pin, PinOff, X } from '../lib/icons'
 import { getSourceFamilyMeta, type SourceFamily } from '../lib/sourceFamily'
 import { buildKeySubjects, type SubjectType } from '../lib/countryBriefSubjects'
 
@@ -154,7 +154,7 @@ function formatAttentionCount(n?: number): string {
     return String(n)
 }
 
-export function ThemeDetail({ theme, originCountry, originCountryName, originAttention, threadContext, initialDrillCountry, hours, onClose, onThemeSelect, onCountryCardClick, onPersonClick, onSourceClick, onCompareClick }: ThemeDetailProps) {
+export function ThemeDetail({ theme, originCountry, originCountryName, originAttention, threadContext, initialDrillCountry, hours, onClose, onThemeSelect, onCountryCardClick, onPersonClick, onSourceClick }: ThemeDetailProps) {
     const [data, setData] = useState<ThemeData | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -936,37 +936,10 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             </div>
                         )}
 
-                        {/* Related Themes */}
-                        {data.relatedThemes.length > 0 && (
-                            <div className="theme-section">
-                                <h3>Related Topics</h3>
-                                <p className="related-topics-hint">Co-occurring GDELT themes in the same signals · click to explore</p>
-                                <div className="related-grid">
-                                    {data.relatedThemes.slice(0, 8).map(t => (
-                                        <div key={t.theme} className="related-chip-wrap">
-                                            <button
-                                                className="related-chip"
-                                                onClick={() => onThemeSelect?.(t.theme, originAttention)}
-                                            >
-                                                <span className="related-chip-icon">{getThemeIcon(t.theme)}</span>
-                                                <span className="related-chip-label">{getThemeLabel(t.theme)}</span>
-                                                <span className="related-chip-count">{t.count}</span>
-                                            </button>
-                                            {onCompareClick && (
-                                                <button
-                                                    className="related-chip-compare"
-                                                    onClick={(e) => { e.stopPropagation(); onCompareClick(t.theme); }}
-                                                    data-tip={`Compare: ${getThemeLabel(t.theme)} vs current`}
-                                                    aria-label={`Compare ${getThemeLabel(t.theme)} with current topic`}
-                                                >
-                                                    <ArrowLeftRight size={12} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                        {/* Related Topics (GDELT co-occurring themes) removed: raw GDELT
+                            theme codes are not the user-facing topic model (product
+                            guardrail) and the click resolved to an unroutable code.
+                            Narrative threads + semantic neighbors are the related model. */}
 
                         {/* Key Subjects — typed: person is one type (#176) */}
                         {data.topPersons.length > 0 && (() => {

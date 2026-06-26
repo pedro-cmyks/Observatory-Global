@@ -1945,11 +1945,11 @@ function AppContent() {
           <button className={mobileTab === 'map' ? 'active' : ''} onClick={() => setMobileTab('map')}>
             <span className="mobile-tab-glyph">◍</span>Map
           </button>
-          <button className={mobileTab === 'stream' ? 'active' : ''} onClick={() => setMobileTab('stream')}>
-            <span className="mobile-tab-glyph">≋</span>Stream
-          </button>
           <button className={mobileTab === 'threads' ? 'active' : ''} onClick={() => setMobileTab('threads')}>
             <span className="mobile-tab-glyph">⌗</span>Threads
+          </button>
+          <button className={mobileTab === 'stream' ? 'active' : ''} onClick={() => setMobileTab('stream')}>
+            <span className="mobile-tab-glyph">≋</span>Stream
           </button>
         </nav>
       )}

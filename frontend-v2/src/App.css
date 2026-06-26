@@ -1377,6 +1377,18 @@
   .workbench-overlay-left { border-right: none; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
 }
 
+@media (max-width: 768px) {
+  /* Full-screen modal on phones so its "INVESTIGATION WORKBENCH" header is not
+     buried under the taller mobile command bar (was inset 52px = desktop bar). */
+  .workbench-overlay {
+    inset: 0;
+    z-index: 9600;
+    border-radius: 0;
+    border: none;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
 /* ===== #152 command-bar layout: overflow menu, compact range, icon-only labels ===== */
 
 /* WORKBENCH outside .time-controls needs its own pill chrome */
