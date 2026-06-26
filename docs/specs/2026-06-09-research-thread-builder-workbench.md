@@ -1514,18 +1514,29 @@ Acceptance:
   Phase 2's, and #213 closes when it passes. Tier B/C/D work beyond that is
   ongoing product work, not umbrella scope.
 
-### Phase 3 — Report/Export
+### Phase 3 — Report/Export ✅ SHIPPED 2026-06-26
 
 Deliver:
 
-- Markdown/JSON export from pinned Workbench route;
-- report view generated from pins;
-- timeline, who-says-what, frame comparison, evidence table, and gaps.
+- [x] Markdown/JSON export from pinned Workbench route — `DossierView` Copy-MD /
+  Download (Markdown); `exportInvestigationJSON` (JSON) already existed.
+- [x] report view generated from pins — `DossierView` + `lib/dossier.ts`
+  `buildDossier` (pure, from the FROZEN #227 pin snapshots).
+- [x] timeline (from the trail), evidence table (from each pin's snapshot + note),
+  gaps/uncertainty (derived honestly), executive summary.
+- [ ] ~~who-says-what, frame comparison~~ → DEFERRED: these need per-source
+  framing carried in the pin snapshot (PinSnapshot.evidence is headlines, not
+  framed source rows). Future: enrich the snapshot with framing when pinning a
+  thread; the dossier section then populates. Acceptable for the MVP report.
 
 Acceptance:
 
-- The dossier/report is traceable back to the user's pinned investigation, not
-  an opaque generated answer.
+- [x] The report is traceable back to the pinned investigation — `buildDossier`
+  reads ONLY frozen pinned state, never a live re-fetch; gaps include the
+  "frozen at pin time" caveat. Verified end-to-end (pin → REPORT → structured
+  report with frozen evidence).
+
+Prerequisite #227 (pin evidence-snapshot + per-pin note) closed 2026-06-26.
 
 ### Phase 4 — Evidence/Frame Quality
 
@@ -1777,9 +1788,10 @@ Status as of 2026-06-10:
    SearchBar 'Start investigation' entry. **Walkthrough fixture passes at
    three layers (service / client route / live production smoke) — #213
    exit criterion met, umbrella closed.**
-6. **Next:** Phase 1.5b (#223) production semantic lane + signal-embedding
-   store; then Phase 3 report view from pinned state; Phase 4 quality bound
-   to Paper 1 benchmarks.
+6. ~~Phase 1.5b (#223) production semantic lane + signal-embedding store~~ —
+   done. ~~Phase 3 report view from pinned state~~ — **done 2026-06-26** (#227
+   pin snapshots + `DossierView`; who-says-what/frame-comparison deferred, see
+   the Phase 3 section). **Next:** Phase 4 quality bound to Paper 1 benchmarks.
 7. Parallel: #219 Kalman movement feed (approved); #217 source-credibility
    tiers; #220 funnel ledger; #221 maturity contract; #222 stratified
    sampling.
