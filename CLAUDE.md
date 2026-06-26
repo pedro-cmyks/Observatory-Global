@@ -1,7 +1,38 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-Last updated: 2026-06-25. **Newest session handoff (read this first):**
-`docs/state/2026-06-25-consumer-mvp-pwa-session.md` — Consumer MVP shipped:
+Last updated: 2026-06-26. **Newest session handoff (read this first):**
+**L2 deep-review execution (`docs/specs/2026-06-26-l2-deep-review.md`)** — the
+"analyze before attacking" review (split-brain: alert layer ↔ evidence layer
+never reconcile) is being implemented Tier A→B→C, all deployed Fly+Vercel:
+- **A1/A2** focus chip + deselect + single-source-of-truth country select; chip
+  redesigned COMPACT (was a loud blue gradient → small dark pill, mobile floats
+  above the tab bar).
+- **B3** thread KEY SUBJECTS use `rank_key_people` (kills single-signal "ocean
+  atlantic"-class noise). **B1** dropped the positional "critical" spike (a
+  country volume spike no longer falsely marks the first thread critical).
+- **B2 (#214) one count semantics**: country thread list now carries
+  `gated_signal_count`/`gate_scored_count` (CTE adds the gate-kept count the
+  detail already serves); CountryBrief shows the GATED number (raw on hover) and
+  splits scored-but-zero-kept threads into an **UNVERIFIED `<details>` tray** —
+  prod-verified CO: "Armed conflict" 39raw→12 shown, "Election legitimacy" 36/0
+  → tray. List and detail now agree.
+- **C1** forum lane surfaced: `GET /api/v2/public-attention[?country=]` (Reddit
+  `source_family='social'`, labeled `verified=false`, never evidence) +
+  `source_family` added to `/api/v2/signals`. **C2** AnomalyPanel Public
+  Attention now = Trends[S]+Wiki[W]+**Forum[F]**, scoped via useFocusRelation
+  (fixed a response race: global fetch overwriting the country-scoped one).
+  **Mobile**: new 4th tab **Pulse** (◎) mounts the intel dock so phones regain
+  Public Attention (the tabbed IA had dropped it).
+- **REGRESSION owned + fixed**: the tabbed-IA `display:none` map toggle exposed
+  an unguarded `map.getLayer()` in `ensureLayer` → crash-loop → console stuck on
+  loader / blank map. Guarded ensureLayer/setLayerVisibility + `map.resize()` on
+  Map-tab show. Also: country drill-in from a thread now renders ABOVE the thread
+  overlay (z 9100 > 9000) — was opening behind it on mobile.
+REMAINING L2: A3 (scope strips), A4 (first-click walkthrough), C3 (per-thread
+public attention). Lesson re-logged: VERIFY a panel before assuming; the NLP
+backlog still gates verified subjects (gazetteer types honestly meanwhile).
+
+Prior handoff: `docs/state/2026-06-25-consumer-mvp-pwa-session.md` — Consumer MVP shipped:
 Atlas is now an installable PWA (vite-plugin-pwa, offline-last-Brief) with a
 mobile single-column Brief feed + full-screen mobile thread read + honest
 "Covered from" chips + offline banner (Tasks 1-5,7 of 8 deployed to Vercel).
