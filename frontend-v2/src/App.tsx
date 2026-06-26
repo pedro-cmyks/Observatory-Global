@@ -135,12 +135,16 @@ function setGeoJsonData(map: any, sourceId: string, data: FeatureCollection) {
 }
 
 function ensureLayer(map: any, layer: any) {
+  // Guard: during a tab switch / teardown the map can be undefined or mid-
+  // removal; calling getLayer then throws and crash-loops the whole console.
+  if (!map || typeof map.getLayer !== 'function') return
   if (!map.getLayer(layer.id)) {
     map.addLayer(layer)
   }
 }
 
 function setLayerVisibility(map: any, layerId: string, visible: boolean) {
+  if (!map || typeof map.getLayer !== 'function') return
   if (map.getLayer(layerId)) {
     map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none')
   }
@@ -742,6 +746,14 @@ function AppContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile, selectedTheme, focus.type, selectedSourceProfile, rightPanelThemeCountry, selectedCountry, selectedCountryCode])
+
+  // The map lives in a tab panel that is display:none on other tabs; MapLibre
+  // can't size a hidden container, so resize it once the Map tab is shown.
+  useEffect(() => {
+    if (!isMobile || mobileTab !== 'map') return
+    const t = setTimeout(() => mapRef.current?.getMap()?.resize(), 120)
+    return () => clearTimeout(t)
+  }, [isMobile, mobileTab])
 
   // --- Session Trail Tracking ---
   useEffect(() => {
