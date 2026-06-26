@@ -86,6 +86,19 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
             .finally(() => setLoading(false))
     }, [focusType, focusValue, hours])
 
+    // Truncated-thread connections (spec T3, P-ADD): the living threads this
+    // person participates in. Reuses the precise /threads?person= relation (#234).
+    const [personThreads, setPersonThreads] = useState<Array<{ thread_id: string; label: string; signal_count: number; discussion_count?: number }>>([])
+    useEffect(() => {
+        if (focusType !== 'person') { setPersonThreads([]); return }
+        let ignore = false
+        fetch(`/api/v2/threads?hours=${hours}&person=${encodeURIComponent(focusValue)}&limit=8`)
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (!ignore) setPersonThreads(d?.threads ?? []) })
+            .catch(() => { if (!ignore) setPersonThreads([]) })
+        return () => { ignore = true }
+    }, [focusType, focusValue, hours])
+
     const displayName = focusType === 'person'
         ? focusValue.replace(/\b\w/g, c => c.toUpperCase())
         : getThemeLabel(focusValue)
@@ -243,6 +256,32 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
                                             {node.avg_sentiment > 0 ? '+' : ''}{node.avg_sentiment.toFixed(1)}
                                         </span>
                                     </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Threads this person participates in (spec T3) — the living
+                        narrative threads, ABOVE the demoted GDELT "Related Themes". */}
+                    {focusType === 'person' && personThreads.length > 0 && (
+                        <div className="entity-section">
+                            <div className="entity-section-label">Threads {displayName} participates in</div>
+                            <div className="entity-threads">
+                                {personThreads.slice(0, 6).map(t => (
+                                    <button
+                                        key={t.thread_id}
+                                        className="entity-thread-row"
+                                        onClick={() => onThemeSelect?.(t.thread_id)}
+                                        data-tip={`Open the "${t.label}" narrative thread`}
+                                    >
+                                        <span className="entity-thread-label">{t.label}</span>
+                                        {t.discussion_count != null && t.discussion_count > 0 && (
+                                            <span className="entity-thread-forum" data-tip={`${t.discussion_count} forum post(s) discussing this`}>FORUM {t.discussion_count}</span>
+                                        )}
+                                        <span className="entity-thread-count">
+                                            {t.signal_count > 999 ? `${(t.signal_count / 1000).toFixed(1)}k` : t.signal_count}
+                                        </span>
+                                    </button>
                                 ))}
                             </div>
                         </div>
