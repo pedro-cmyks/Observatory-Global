@@ -12,7 +12,7 @@ import html
 from typing import Any
 
 from app.core.gdelt_taxonomy import classify_source
-from app.utils import extract_domain, _is_valid_person
+from app.utils import extract_domain, rank_key_people
 
 # Social platform domains that classify_source returns "independent" for but
 # should map to the "social" lane. Checked against SOURCE_FAMILY (2026-06-04):
@@ -92,6 +92,11 @@ def build_thread_packet(rows: list, own_topic: str | None = None) -> dict:
     source_counts: dict[str, list[float]] = {}
     timeline_counts: dict = {}
     person_counts: dict[str, int] = {}
+    # B3: distinct headlines/outlets per person feed the syndication-resistant
+    # ranker so a single-signal name (e.g. "ocean atlantic" in one article)
+    # can't pose as a key subject.
+    person_headlines: dict[str, set] = {}
+    person_outlets: dict[str, set] = {}
     theme_counts: dict[str, int] = {}
     lanes: dict[str, int] = {"media": 0, "social": 0, "state": 0, "other": 0}
 
@@ -112,8 +117,13 @@ def build_thread_packet(rows: list, own_topic: str | None = None) -> dict:
             bucket = ts.replace(minute=0, second=0, microsecond=0)
             timeline_counts.setdefault(bucket, []).append(sentiment)
 
+        _hl_norm = (_val(r, "headline") or "").strip().lower()
         for p in (_val(r, "persons") or []):
             person_counts[p] = person_counts.get(p, 0) + 1
+            if _hl_norm:
+                person_headlines.setdefault(p, set()).add(_hl_norm)
+            if sn:
+                person_outlets.setdefault(p, set()).add(sn)
 
         for t in (_val(r, "themes") or []):
             if own_topic and t == own_topic:
@@ -144,13 +154,21 @@ def build_thread_packet(rows: list, own_topic: str | None = None) -> dict:
         for h, vs in sorted(timeline_counts.items())
     ]
 
+    # B3: rank by distinct stories/outlets (syndication-resistant) with a
+    # corroboration floor, not raw COUNT(*) gated only by _is_valid_person.
+    _person_rows = [
+        {
+            "person": p,
+            "signal_count": c,
+            "distinct_headlines": len(person_headlines.get(p, set())) or 1,
+            "distinct_outlets": len(person_outlets.get(p, set())) or 1,
+        }
+        for p, c in person_counts.items()
+    ]
     top_persons = [
-        {"name": p, "count": c}
-        for p, c in sorted(
-            person_counts.items(), key=lambda x: x[1], reverse=True
-        )
-        if _is_valid_person(p)
-    ][:10]
+        {"name": r["person"], "count": r["signal_count"]}
+        for r in rank_key_people(_person_rows, limit=10)
+    ]
 
     related_themes = [
         {"theme": t, "count": c}
