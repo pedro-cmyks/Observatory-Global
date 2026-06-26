@@ -708,6 +708,20 @@ function AppContent() {
     }
   }, [popPanel])
 
+  // On mobile, secondary panels (thread detail, person, source, country drill-in)
+  // render inside the Stream slot. Opening one from the Map/Threads tab would
+  // leave it on a hidden tab — so bring the Stream tab forward automatically.
+  useEffect(() => {
+    if (!isMobile) return
+    if (
+      selectedTheme || focus.type === 'person' || selectedSourceProfile ||
+      rightPanelThemeCountry || selectedCountry || selectedCountryCode
+    ) {
+      setMobileTab('stream')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMobile, selectedTheme, focus.type, selectedSourceProfile, rightPanelThemeCountry, selectedCountry, selectedCountryCode])
+
   // --- Session Trail Tracking ---
   useEffect(() => {
     if (selectedCountryCode) {
