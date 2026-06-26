@@ -1,5 +1,15 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+> **PRODUCT WEDGE (the one user, the one job — master-consolidation T5.2).**
+> Atlas serves the **narrative analyst** — journalist, OSINT/conflict researcher,
+> newsroom desk, or policy/NGO analyst — whose job is **honest situational
+> awareness on a specific event, topic, or country**: the real story, who is
+> saying what across countries and languages, press vs. public, and what is
+> missing — fast, and with the receipts. (Pedro 2026-06-26 chose "all four"; they
+> share this core, so it stays one wedge — *narrative analyst*, not "everyone" —
+> and narrows further if telemetry shows one persona dominates.) **Anti-goal:**
+> no new surface/capability until telemetry shows users reaching a value moment.
+
 Last updated: 2026-06-26. **Newest session handoff (read this first):**
 **L2 deep-review execution (`docs/specs/2026-06-26-l2-deep-review.md`)** — the
 "analyze before attacking" review (split-brain: alert layer ↔ evidence layer

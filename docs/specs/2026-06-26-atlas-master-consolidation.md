@@ -84,8 +84,11 @@ Foundational/living (do NOT close — they evolve): `living-narrative-threads`
   /api/v2/telemetry (best-effort) + `lib/telemetry.ts`. Wired: app_open,
   thread_open, dossier_generated, once-per-session first_value_moment. Verified
   live (app_open firing from prod).
-- [ ] **T5.2 Define the wedge user + job** in one sentence; put it atop CLAUDE.md
-  + the Landing; cut features that don't serve it.
+- [x] **T5.2 Define the wedge user + job.** ✅ Pedro chose "all four" personas;
+  unified into ONE wedge (the *narrative analyst* — journalist/OSINT/desk/policy)
+  whose job is honest situational awareness on a specific event/topic/country.
+  Written atop CLAUDE.md as the operational guide + anti-goal. (Landing marketing
+  copy = a small follow-up.)
 - [ ] **T5.3 Persist→deliver→alert loop.** Accounts + one saved watch + one alert
   — converts a browse tool into a returning product. *Spec:* product-gap doc.
 
