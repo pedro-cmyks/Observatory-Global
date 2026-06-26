@@ -14,6 +14,7 @@ import { FocusProvider, useFocus } from './contexts/FocusContext'
 import { FocusDataProvider, useFocusData, type NodeData } from './contexts/FocusDataContext'
 
 import { MapTooltip, type TooltipData } from './components/MapTooltip'
+import { ConflictEventPanel, type ConflictEventFocus } from './components/ConflictEventPanel'
 import { CrisisProvider } from './contexts/CrisisContext'
 import { SettingsPanel } from './components/SettingsPanel'
 import { CountryThemePanel } from './components/CountryThemePanel'
@@ -271,6 +272,8 @@ function AppContent() {
   const [themeBackStack, setThemeBackStack] = useState<SelectedTheme[]>([])
   const [selectedPublicAttention, setSelectedPublicAttention] = useState<PublicAttentionSelection | null>(null)
   const [selectedChokepoint, setSelectedChokepoint] = useState<Chokepoint | null>(null)
+  // T3.3 P-FOCUS: a clicked conflict event becomes the subject (not its country).
+  const [selectedConflictEvent, setSelectedConflictEvent] = useState<ConflictEventFocus | null>(null)
   const [rightPanelThemeCountry, setRightPanelThemeCountry] = useState<{ code: string, name: string } | null>(null)
   // One-level back navigation for the stream panel
   type PrevCtx =
@@ -1058,6 +1061,17 @@ function AppContent() {
               type: event.type || '',
               fatalities: event.fatalities || 0,
               radius: Math.min(Math.max(4, Math.sqrt(event.fatalities || 1) * 3), 15) * (sizeBoost ? 1.25 : 1),
+              // T3.3 P-FOCUS: carry the event identity so a click can center the
+              // EVENT (not swallow it into its country). Flattened — MapLibre
+              // feature props must be primitives.
+              country: event.location?.country || '',
+              place: event.location?.name || '',
+              actor1: event.actors?.actor1 || '',
+              actor2: event.actors?.actor2 || '',
+              date: event.date || '',
+              mentions: event.mentions || 0,
+              lat: event.location?.latitude ?? null,
+              lon: event.location?.longitude ?? null,
             },
           })),
       },
@@ -1217,15 +1231,42 @@ function AppContent() {
     const enter = () => { map.getCanvas().style.cursor = 'pointer' }
     const leave = () => { map.getCanvas().style.cursor = '' }
 
+    // T3.3 P-FOCUS: a conflict event click centers the EVENT (panel + fly to its
+    // exact location), instead of falling through to the country fill.
+    const handleAcledClick = (e: any) => {
+      const p = e.features?.[0]?.properties
+      if (!p) return
+      const ev: ConflictEventFocus = {
+        type: p.type || '', country: p.country || '', place: p.place || '',
+        actor1: p.actor1 || '', actor2: p.actor2 || '', date: p.date || '',
+        fatalities: Number(p.fatalities) || 0, mentions: Number(p.mentions) || 0,
+        lat: p.lat != null && p.lat !== '' ? Number(p.lat) : null,
+        lon: p.lon != null && p.lon !== '' ? Number(p.lon) : null,
+      }
+      setSelectedConflictEvent(ev)
+      if (ev.lat != null && ev.lon != null) {
+        map.flyTo({ center: [ev.lon, ev.lat], zoom: 5, duration: 1200 })
+      }
+    }
+
     map.on('click', 'atlas-chokepoints-circle', handleChokepointClick)
     map.on('mouseenter', 'atlas-chokepoints-circle', enter)
     map.on('mouseleave', 'atlas-chokepoints-circle', leave)
+    map.on('click', 'atlas-acled-circle', handleAcledClick)
+    map.on('mouseenter', 'atlas-acled-circle', enter)
+    map.on('mouseleave', 'atlas-acled-circle', leave)
 
     return () => {
-      if (!map.getLayer('atlas-chokepoints-circle')) return
-      map.off('click', 'atlas-chokepoints-circle', handleChokepointClick)
-      map.off('mouseenter', 'atlas-chokepoints-circle', enter)
-      map.off('mouseleave', 'atlas-chokepoints-circle', leave)
+      if (map.getLayer('atlas-chokepoints-circle')) {
+        map.off('click', 'atlas-chokepoints-circle', handleChokepointClick)
+        map.off('mouseenter', 'atlas-chokepoints-circle', enter)
+        map.off('mouseleave', 'atlas-chokepoints-circle', leave)
+      }
+      if (map.getLayer('atlas-acled-circle')) {
+        map.off('click', 'atlas-acled-circle', handleAcledClick)
+        map.off('mouseenter', 'atlas-acled-circle', enter)
+        map.off('mouseleave', 'atlas-acled-circle', leave)
+      }
     }
   }, [mapReady, setMapFlyCountry])
 
@@ -1701,7 +1742,7 @@ function AppContent() {
           const isCountry = !!selectedCountryCode && !isPerson && !isTheme && !isThread
           const isPublicAttention = !!selectedPublicAttention && !isPerson && !isCountry && !isTheme
           const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme && !isPublicAttention
-          const closeAll = () => { setSelectedTheme(null); setSelectedThread(null); setThemeBackStack([]); setSelectedPublicAttention(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null) }
+          const closeAll = () => { setSelectedTheme(null); setSelectedThread(null); setThemeBackStack([]); setSelectedPublicAttention(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); setSelectedConflictEvent(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null) }
           // Smart back: one step up, not all the way to stream
           const handleStreamBack = () => {
             if (prevStreamCtx?.type === 'chokepoint') {
@@ -2011,6 +2052,17 @@ function AppContent() {
 
       {/* Hover Tooltip */}
       <MapTooltip tooltip={tooltip} />
+
+      {/* T3.3 conflict-event focus — the event is the subject, country is context */}
+      {selectedConflictEvent && (
+        <ConflictEventPanel
+          event={selectedConflictEvent}
+          timeRangeHours={timeRangeToHours(timeRange)}
+          onClose={() => setSelectedConflictEvent(null)}
+          onThemeSelect={(threadId) => { setSelectedConflictEvent(null); handleThemeSelect(threadId) }}
+          onCountrySelect={(code) => { setSelectedConflictEvent(null); handleCountryClick(code); setMapFlyCountry(code) }}
+        />
+      )}
 
       {/* Briefing Modal */}
       {showBriefing && (
