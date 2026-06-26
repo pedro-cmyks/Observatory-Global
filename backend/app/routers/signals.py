@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Query
@@ -5,6 +6,50 @@ from app import db
 from app.utils import _resolve_persons, extract_domain
 
 router = APIRouter()
+
+_LEX_STOP = {
+    "the", "a", "an", "of", "to", "in", "on", "for", "and", "or", "is", "are",
+    "was", "were", "who", "what", "when", "where", "why", "how", "this", "that",
+    "with", "from", "by", "as", "at", "it", "its", "his", "her", "their", "they",
+    "you", "your", "our", "not", "but", "can", "will", "has", "have", "had",
+    "been", "about", "into", "over", "after", "before", "than", "then", "exposed",
+    "breaking", "news", "update", "updates", "video", "photo", "report",
+}
+
+
+def _lex_tokens(text: str) -> set[str]:
+    return {w for w in re.findall(r"[a-z]{4,}", (text or "").lower())
+            if w not in _LEX_STOP}
+
+
+def _stem(w: str) -> str:
+    """Crude suffix stripper so 'elections' ~ 'election', 'refineries' ~ 'refiner'."""
+    for suf in ("ations", "ation", "ings", "ing", "ies", "ied", "es", "ed", "s"):
+        if w.endswith(suf) and len(w) - len(suf) >= 4:
+            return w[: -len(suf)]
+    return w
+
+
+def _lexical_connections(headline: str, topic_rows: Any, *, limit: int = 3) -> list[dict]:
+    """Keyword-overlap connections between a headline and the living thread
+    labels/slugs — the fallback when nothing connects semantically."""
+    h = {_stem(w) for w in _lex_tokens(headline)}
+    if not h:
+        return []
+    scored = []
+    for r in topic_rows:
+        label = r["label"] or ""
+        lt = {_stem(w) for w in _lex_tokens(label)}
+        lt |= {_stem(w) for w in (r["slug"] or "").split("-") if len(w) >= 4}
+        overlap = h & lt
+        if overlap:
+            scored.append((len(overlap), int(r["n"]), r["slug"], label, sorted(overlap)))
+    scored.sort(reverse=True)
+    return [
+        {"thread_id": slug, "label": label, "basis": "keyword",
+         "strength": None, "shared": words[:3]}
+        for _, _, slug, label, words in scored[:limit]
+    ]
 
 @router.get("/api/v2/signals")
 async def get_signals(
@@ -491,6 +536,31 @@ async def get_signal_context(
             "basis": "semantic",
             "strength": round(info["sim"], 4),
         })
+
+    # LEXICAL fallback (the embed service can be down and fresh items aren't
+    # embedded yet): if nothing connected semantically, match the headline's
+    # keywords against the labels of the LIVING threads so the item still lands
+    # somewhere true ("africa elections" -> "Election legitimacy dispute").
+    if not connected_threads and own_headline:
+        try:
+            async with db.pool.acquire() as lex_conn:
+                await lex_conn.execute("SET statement_timeout = 5000")
+                topic_rows = await lex_conn.fetch(
+                    """
+                    SELECT at.slug, at.label, COUNT(*)::int AS n
+                    FROM signal_topic_assignments a
+                    JOIN atlas_topics at ON at.id = a.topic_id
+                    JOIN signals_v2 s ON s.id = a.signal_id
+                    WHERE a.model_version = 'theme-hint-lex-v2' AND a.gate_kept = true
+                      AND s.timestamp > NOW() - INTERVAL '168 hours'
+                    GROUP BY at.slug, at.label
+                    """
+                )
+            connected_threads = _lexical_connections(own_headline, topic_rows)
+            if connected_threads:
+                notes.append("connected by keyword (no embedding yet)")
+        except Exception:
+            pass
 
     return {
         "signal_id": signal_id,
