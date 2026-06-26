@@ -71,10 +71,11 @@ Foundational/living (do NOT close — they evolve): `living-narrative-threads`
   box on the Brief. *Spec:* surfaces-editorial.
 
 ### Tier 4 — Processing reliability (the moat's delivery)
-- [ ] **T4.1 Embed-service uptime (#240).** Keep the Fly embed machine up
-  (min_machines / health-ping / dedicated box). It silently died for a day.
-- [ ] **T4.2 Embed throughput steady-state (#241).** The 10x parallel-write fix
-  shipped; validate the nightly drain keeps up with inflow; tune burst if not.
+- [x] **T4.1 Embed-service uptime (#240).** ✅ `embed-service-watchdog.sh` +
+  launchd `com.atlas.embed-watchdog` (15-min) restarts the MAIN nlp_worker if it
+  stops (never the standby). Installed + verified ('embed-service up').
+- [~] **T4.2 Embed throughput steady-state (#241).** 10x parallel-write fix
+  SHIPPED; validation = the next nightly drain (pending, not a build).
 - [ ] **T4.3 NER throughput (#184).** Adaptive M1 fleet shipped; flip typed
   subjects unverified→verified as coverage grows; multilingual NER (#162).
 
