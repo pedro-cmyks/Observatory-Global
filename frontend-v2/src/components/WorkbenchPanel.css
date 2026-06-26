@@ -183,3 +183,57 @@
   padding: 10px 8px;
   line-height: 1.5;
 }
+
+/* #227: pin evidence snapshot + per-pin note */
+.wb-pin-snapshot {
+    margin-top: 6px;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border-left: 2px solid rgba(29, 158, 117, 0.4);
+    border-radius: 0 4px 4px 0;
+}
+.wb-snap-summary {
+    font-size: 11px;
+    color: #b7c0cc;
+    margin-bottom: 4px;
+}
+.wb-snap-evidence {
+    margin: 0;
+    padding-left: 14px;
+    list-style: disc;
+}
+.wb-snap-evidence li {
+    font-size: 11px;
+    line-height: 1.4;
+    color: #cbd5e1;
+    margin-bottom: 2px;
+}
+.wb-snap-evidence a { color: #cbd5e1; text-decoration: none; }
+.wb-snap-evidence a:hover { color: #fff; text-decoration: underline; }
+.wb-snap-src { color: #6b7585; }
+.wb-snap-frozen {
+    margin-top: 4px;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #6b7585;
+}
+.wb-pin-note {
+    width: 100%;
+    margin-top: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 4px;
+    color: #d8e0ea;
+    font-family: inherit;
+    font-size: 11px;
+    padding: 5px 7px;
+    resize: vertical;
+    min-height: 26px;
+    box-sizing: border-box;
+}
+.wb-pin-note:focus {
+    outline: none;
+    border-color: rgba(29, 158, 117, 0.45);
+}
+.wb-pin-note::placeholder { color: #6b7585; }

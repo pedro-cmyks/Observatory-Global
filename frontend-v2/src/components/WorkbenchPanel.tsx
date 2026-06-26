@@ -10,6 +10,7 @@ import {
   getInvestigation,
   listInvestigations,
   removePin,
+  updatePinNote,
   setActiveInvestigation,
   type Investigation,
 } from '../lib/workbench';
@@ -141,6 +142,38 @@ export default function WorkbenchPanel({
                       onClick={() => { removePin(active.id, pin.anchorId); rerender(); }}
                     >×</button>
                   </div>
+                  {/* #227: frozen evidence snapshot — what the analyst saw when pinning */}
+                  {pin.snapshot && (
+                    <div className="wb-pin-snapshot">
+                      {pin.snapshot.summary && <div className="wb-snap-summary">{pin.snapshot.summary}</div>}
+                      {pin.snapshot.evidence && pin.snapshot.evidence.length > 0 && (
+                        <ul className="wb-snap-evidence">
+                          {pin.snapshot.evidence.map((e, i) => (
+                            <li key={i}>
+                              {e.url ? <a href={e.url} target="_blank" rel="noopener noreferrer">{e.headline}</a> : e.headline}
+                              {e.source ? <span className="wb-snap-src"> · {e.source}</span> : null}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <div className="wb-snap-frozen" data-tip="This is frozen at pin time — the live data may have drifted since.">
+                        frozen {new Date(pin.snapshot.capturedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </div>
+                    </div>
+                  )}
+                  {/* #227: per-pin analyst note (saved on blur) */}
+                  <textarea
+                    className="wb-pin-note"
+                    defaultValue={pin.note ?? ''}
+                    placeholder="Add a note…"
+                    rows={1}
+                    onBlur={e => {
+                      if ((e.target.value ?? '') !== (pin.note ?? '')) {
+                        updatePinNote(active.id, pin.anchorId, e.target.value);
+                        rerender();
+                      }
+                    }}
+                  />
                 </div>
               ))}
               {active.pins.length === 0 && (

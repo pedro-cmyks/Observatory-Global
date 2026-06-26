@@ -23,6 +23,7 @@ import {
   getInvestigation,
   listInvestigations,
   removePin,
+  updatePinNote,
   setActiveInvestigation,
 } from './workbench'
 
@@ -51,6 +52,29 @@ describe('workbench store', () => {
     const got = getInvestigation(inv.id)!
     expect(got.pins).toHaveLength(1)
     expect(got.trail.some(t => t.action === 'pin' && t.detail === PIN.label)).toBe(true)
+  })
+
+  it('#227: a pin carries a frozen evidence snapshot', () => {
+    const inv = createInvestigation('Iran')
+    addPin(inv.id, {
+      ...PIN,
+      snapshot: {
+        capturedAt: '2026-06-26T00:00:00Z',
+        summary: 'Water stress · direct evidence · score 0.64',
+        metrics: { score: 0.64, lane: 'semantic' },
+        evidence: [{ headline: 'Tehran water crisis deepens', source: 'irna' }],
+      },
+    })
+    const pin = getInvestigation(inv.id)!.pins[0]
+    expect(pin.snapshot?.summary).toContain('Water stress')
+    expect(pin.snapshot?.evidence?.[0].headline).toBe('Tehran water crisis deepens')
+  })
+
+  it('#227: updatePinNote edits the analyst note', () => {
+    const inv = createInvestigation('Iran')
+    addPin(inv.id, PIN)
+    updatePinNote(inv.id, PIN.anchorId, 'corroborate with satellite imagery')
+    expect(getInvestigation(inv.id)!.pins[0].note).toBe('corroborate with satellite imagery')
   })
 
   it('pins from different investigations never mix', () => {

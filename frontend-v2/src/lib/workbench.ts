@@ -5,6 +5,16 @@
 // server-side pin-event log (#218). Multiple investigations live side by
 // side; pins from different investigations never silently mix.
 
+/** #227: a frozen snapshot of the evidence at pin time, so a Phase-3 dossier
+ *  reads what the analyst SAW when they pinned — not a live re-fetch that may
+ *  have drifted (counts move, the gate re-scores, threads dissolve). */
+export interface PinSnapshot {
+  capturedAt: string
+  summary?: string
+  metrics?: Record<string, string | number>
+  evidence?: Array<{ headline: string; source?: string; url?: string }>
+}
+
 export interface WorkbenchPin {
   anchorId: string
   anchorType: string
@@ -15,6 +25,8 @@ export interface WorkbenchPin {
   investigativeScore?: number
   open?: { surface: string; params: Record<string, unknown> } | null
   note?: string
+  /** #227: frozen evidence at pin time (Phase 3 reads this, not live data). */
+  snapshot?: PinSnapshot
   pinnedAt: string
   planId?: string
   queryText?: string
@@ -124,6 +136,17 @@ export function addPin(
     const stamped: WorkbenchPin = { ...pin, pinnedAt: new Date().toISOString() }
     inv.pins.push(stamped)
     inv.trail.push({ at: stamped.pinnedAt, action: 'pin', detail: pin.label })
+  })
+}
+
+/** #227: edit the analyst's per-pin note (the annotation the dossier carries). */
+export function updatePinNote(
+  investigationId: string, anchorId: string, note: string,
+): Investigation | null {
+  return mutate(investigationId, inv => {
+    const pin = inv.pins.find(p => p.anchorId === anchorId)
+    if (!pin) return
+    pin.note = note
   })
 }
 

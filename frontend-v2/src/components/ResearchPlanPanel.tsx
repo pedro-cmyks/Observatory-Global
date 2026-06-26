@@ -113,6 +113,12 @@ export default function ResearchPlanPanel({
       emit(anchor, 'unpin', rank);
       setPinnedIds(prev => { const next = new Set(prev); next.delete(anchor.id); return next; });
     } else {
+      // #227: freeze what the analyst SEES now, so the dossier doesn't re-fetch
+      // drifted data later.
+      const anyAnchor = anchor as unknown as Record<string, unknown>;
+      const ev = (anyAnchor.evidence_samples ?? anyAnchor.snippets ?? anyAnchor.evidence) as
+        | Array<{ headline?: string; title?: string; source?: string; url?: string }>
+        | undefined;
       addPin(invId, {
         anchorId: anchor.id,
         anchorType: anchor.anchor_type,
@@ -124,6 +130,24 @@ export default function ResearchPlanPanel({
         open: anchor.open ?? null,
         planId: plan?.plan_id,
         queryText: query,
+        snapshot: {
+          capturedAt: new Date().toISOString(),
+          summary: [anchor.label, anchor.evidence_label?.replace(/_/g, ' '),
+            anchor.investigative_score != null ? `score ${anchor.investigative_score.toFixed(2)}` : null]
+            .filter(Boolean).join(' · '),
+          metrics: {
+            ...(anchor.investigative_score != null ? { score: Number(anchor.investigative_score.toFixed(3)) } : {}),
+            ...(anchor.retrieval_lane || anchor.lane ? { lane: String(anchor.retrieval_lane ?? anchor.lane) } : {}),
+            ...(anchor.match_basis ? { basis: String(anchor.match_basis) } : {}),
+          },
+          evidence: Array.isArray(ev)
+            ? ev.slice(0, 3).map(e => ({
+                headline: String(e.headline ?? e.title ?? ''),
+                source: e.source ? String(e.source) : undefined,
+                url: e.url ? String(e.url) : undefined,
+              })).filter(e => e.headline)
+            : undefined,
+        },
       });
       emit(anchor, 'pin', rank);
       setPinnedIds(prev => new Set(prev).add(anchor.id));
