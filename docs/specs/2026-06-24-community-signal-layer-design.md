@@ -222,3 +222,27 @@ number TBD when Phase 1 traffic data exists — intentionally not guessed here.)
 - Identity = OAuth (parked to Phase 2).
 - Reframed forum → **two values (human interaction A + non-traditional sources
   B)**; chose **both, phased**: B now, A documented as Phase 2.
+
+---
+
+## Execution status (2026-06-26, spec-driven sync)
+
+Drift reconciled — this spec said community signal was "not deliberately wired
+into threads" and framed the forum as Phase 2. That is now PARTLY superseded:
+
+- **Social surface → threads as DISCUSSION is LIVE.** The truncated-thread spec
+  (`docs/specs/2026-06-26-truncated-narrative-thread.md` T2) ships semantic
+  discussion-membership: forum/social signals (`source_family='social'`) are
+  attached to the topic of their nearest gate-kept neighbour
+  (`method='embedding'`, `model_version='semantic-discussion-v1'`, `gate_kept=
+  false`), served as a SEPARATE `discussion_count` + `forum_sentiment`, never
+  folded into evidence. This is the Phase-1 "social surface feeds threads as
+  discussion / early movement" goal — delivered, honestly labelled.
+- **Forum surfaced**: `GET /api/v2/public-attention` + the mobile Pulse tab +
+  the AnomalyPanel forum lane (`verified=false`). Items also project onto the
+  living threads via the ConnectionsSection (`/signal/{id}/context`).
+- **Still Phase 2 (unchanged):** the *human-contribution* forum (A) — needs a
+  userbase Atlas doesn't have yet. Not built; correctly deferred.
+- **Gap:** "seen in discussion Nh before coverage" (§4 lead-time signal) is not
+  yet computed — discussion membership exists but the lead/lag-vs-media timing
+  is future work.

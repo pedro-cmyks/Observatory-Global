@@ -492,3 +492,26 @@ key — today only edge-swipe deselects.
   sibling relation — sound and paper-aligned (P3/P7).
 - SourceIntegrity entity-scoping, Voice Mix self-coverage honesty (P2).
 - The L3 Workbench honesty model — L2's below-gate tray (B2) should copy it.
+
+---
+
+## Execution status (2026-06-26, spec-driven sync)
+
+The action plan (§6) was executed this session. Tier status:
+
+- **A1 + A2** ✅ — focus chip + unified deselect + single-source-of-truth country
+  select (chip later redesigned compact).
+- **A3 scope strips / A4 walkthrough** ⏳ remaining (legibility polish).
+- **B1** ✅ killed the positional "critical" spike. **B2 (#214)** ✅ gated count +
+  UNVERIFIED tray (list/detail reconciled; #214 closed). **B3** ✅ thread subjects
+  via `rank_key_people`. **B4 gate-recall-by-language** — script shipped earlier
+  (`gate_recall_by_language.py`), not re-run on the current corpus (measurement
+  pending).
+- **C1** ✅ forum lane (`/api/v2/public-attention` + `source_family`). **C2** ✅
+  combined Public Attention (Trends+Wiki+Forum) + mobile **Pulse** tab.
+  **C3 per-thread Public Attention** ⏳ remaining.
+- **Spun out:** the item→thread connection direction became the truncated-thread
+  spec (`2026-06-26-truncated-narrative-thread.md`), which also delivered the
+  forums-in-inference work referenced in §4.
+
+Remaining: A3, A4, B4 (re-run), C3.
