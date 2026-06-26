@@ -1263,10 +1263,26 @@
     .brief-lead-headline { font-size: 1.5rem; line-height: 1.18; }
 
     /* comfortable tap targets (>=48px) */
-    .brief-thread-row { min-height: 56px; padding: 12px 16px; }
+    .brief-thread-row { min-height: 56px; padding: 12px 12px; }
     .brief-range-selector { flex-wrap: wrap; justify-content: center; gap: 6px; }
     .brief-range-selector button { padding: 8px 12px; }
 
     /* heating strip scrolls horizontally instead of squishing */
     .brief-heat-strip { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    /* WATCHLIST rows: stack so the label + movement/chips never overflow
+       sideways (was pushing ~150px wide on phones). */
+    .brief-thread-row { flex-wrap: wrap; gap: 6px 10px; }
+    .brief-thread-main { min-width: 0; flex: 1 1 100%; }
+    .brief-thread-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+    .brief-thread-meta { flex: 1 1 100%; justify-content: flex-start; flex-wrap: wrap; gap: 8px; }
+    .brief-spark { width: 56px; flex-shrink: 0; }
+
+    /* Readable body text on phones (serif at 11–13px was too small). */
+    .brief-thread-label { font-size: 15px; }
+    .brief-lead-whynow { font-size: 14px; line-height: 1.45; }
+    .brief-headlines li { font-size: 13px; line-height: 1.4; }
+    .brief-thread-headline { font-size: 13px; }
+    .brief-thread-meta { font-size: 12px; }
+    .brief-thread-chip { font-size: 11px; }
 }

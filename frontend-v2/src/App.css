@@ -1522,7 +1522,8 @@
     grid-template-areas: none;
     height: auto;
     overflow: hidden;
-    padding: 4px 4px 60px; /* 60px = room for the fixed tab bar */
+    /* room for the fixed tab bar + the iOS home-indicator safe area */
+    padding: 4px 4px calc(60px + env(safe-area-inset-bottom, 0px));
   }
   .terminal-layout[class*="mobile-tab-"] .terminal-panel {
     display: none;
@@ -1544,8 +1545,12 @@
     z-index: 9500;
     display: flex;
     height: 56px;
+    /* sit above the iOS home indicator so the nav is never clipped */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: content-box;
     background: #0b0e13;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid rgba(29, 158, 117, 0.22);
+    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.4);
   }
   .mobile-tabbar button {
     flex: 1;
