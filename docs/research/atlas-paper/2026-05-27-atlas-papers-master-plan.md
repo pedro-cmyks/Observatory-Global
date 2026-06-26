@@ -256,6 +256,42 @@ fall back to `top_entities`; prod smoke person=trump → 24/39 matched, catching
 "Disease outbreak" thread the capped `top_entities` heuristic missed (CLAUDE.md
 2026-06-24, Paper 4 ablation territory).
 
+**Product evidence accrued (2026-06-26, L2 deep review — alert↔evidence
+reconciliation):** the L2 console review
+(`docs/specs/2026-06-26-l2-deep-review.md`) traced end-to-end on Côte d'Ivoire
+(CI) the precise failure this paper's evidence-sampling thesis must defend, and
+the product shipped the honesty fix. **The split-brain (RQ touched: does the
+thread contract sample evidence honestly under the gate?):** the alert layer
+(country volume anomaly: CI 238 signals at 26.4× a 9-signal baseline) and the
+evidence layer (`/threads?country_code=CI` returning 4 rows of 1–2 raw
+assignments) are computed by unrelated pipelines and never reconcile, so the
+console routed a real volume spike into a single-source, gate-failed, positive,
+irrelevant "Flood and landslide disaster" thread (`total:0 / rawTotal:1`, served
+below-gate as one Spanish beach-tourism article, sentiment +0.385) and presented
+it as the lead "critical" story — four correct-in-isolation components wired so
+their disagreements surfaced as product. The shipped fixes are the measurable
+honesty results: **(1) #214 one-count semantics** — the country thread list CTE
+now carries `gated_signal_count` / `gate_scored_count` (the gate-kept count the
+detail already served), CountryBrief shows the GATED number with raw on hover,
+and scored-but-zero-kept threads split into a labeled **UNVERIFIED `<details>`
+tray** (prod-verified CO "Armed conflict" 39 raw → 12 shown; "Election
+legitimacy" 36/0 → tray) so list and detail finally agree (CLAUDE.md 2026-06-26
+B2, `60dce84`). **(2) Positional "critical" killed (B1)** — spike bars no longer
+paint on `i===0` (the first raw-count row), so a country volume spike no longer
+falsely marks an arbitrary thread critical (`8395b63`); "elevated" must come from
+the thread's OWN movement/coherence, not the country's volume. **(3) Thread KEY
+SUBJECTS now use `rank_key_people`** (syndication-resistant, corroboration floor)
+instead of bare `_is_valid_person`, killing single-signal "ocean atlantic"-class
+noise (GDELT NER mangling "Atlantic Ocean" into a PERSON) from the thread packet
+(`04d8f0a`, B3). This is the paper's evidence-sampling claim made honest on the
+production surface: the below-gate fallback (which serves raw signals labeled
+UNVERIFIED when the gate clears 0 but raw>0, the 2026-06-12 `below_gate_evidence`
+mechanism) is now demoted out of the lead/critical slot into an explicitly-marked
+tray rather than masquerading as the country's verified narrative. Note: the deep
+review re-confirms the leak is downstream of P1's gate-recall-on-non-English
+problem (CI's spike is French/`xx` local press the English-biased lexical gate
+can't score) — a Paper-1↔Paper-4 dependency the discussion section should state.
+
 **Evidence to collect:**
 - Thread-level benchmark (sample 30 threads; LLM annotator scores
   each against the 7 questions; compare to analyst judgement).
@@ -267,6 +303,11 @@ fall back to `top_entities`; prod smoke person=trump → 24/39 matched, catching
   calibratable).
 - person→thread recall/precision of `?person=` (full-array match) vs the
   `top_entities`-capped heuristic on a labeled set.
+- Alert↔evidence reconciliation (#214): on a sample of anomalous countries,
+  measure how often the volume-anomaly lead thread is below-gate / single-source
+  vs gate-passing, before and after the gated-count + UNVERIFIED-tray fix —
+  i.e. the rate at which "critical" was a sampling artifact. Pair with a
+  list↔detail count-agreement check (gated vs raw across the two surfaces).
 
 **Target venues:** ICWSM main, EMNLP industry, CSCW.
 
@@ -411,9 +452,50 @@ the seven analyst questions than commodity dashboards.
   heat composite, transferred from intensity to relation — a citable
   cross-method result within the Atlas series. (`NarrativeThreads.tsx`; CLAUDE.md
   2026-06-24/25.)
+- **Combined-honest Public Attention lane (product, L2 deep review, 2026-06-26):**
+  the analyst-workflow "people-side proxy" surface was rebuilt to corroborate or
+  contradict the press-side narrative honestly. Public Attention is now
+  **Trends[S] + Wiki[W] + Forum[F]**, where the forum lane surfaces the
+  `source_family='social'` (Reddit) signals Atlas already ingested but never
+  exposed — `GET /api/v2/public-attention[?country=]` returns them labeled
+  `verified=false` (never folded into gated evidence), and `source_family` was
+  added to `/api/v2/signals` (CLAUDE.md 2026-06-26 C1/C2, `34e941d`/`e73fcc0`;
+  mobile reachability via a 4th Pulse tab, `7ac10c6`). **Method finding the paper
+  can use:** the lane is *interleaved with kind badges and a corroboration flag*,
+  NOT a blended score — the kinds are not commensurable (a `de`-edition wiki
+  spike is a German-audience signal, not local attention), so the analyst value
+  is the *agreement across surfaces* ("searched + discussed + reported"), made
+  explicit rather than averaged away. This is the same honesty discipline as the
+  L1 reserved-gap-box / no-silent-blank thesis, transferred to a multi-source
+  attention panel. Cross-ref: the forum/voice diversity it exposes is Paper 2
+  source-quality substrate; the discovery value of the dark social layer is
+  Paper 8.
+- **Truncated narrative thread (product concept, spec in flight 2026-06-26):**
+  the evolution of focus-propagation (#234) + signal-context. Entering from a
+  SPECIFIC item (forum post / topic / person / event) should build an ad-hoc,
+  scoped "truncated" narrative thread that shows which EXISTING living threads
+  that item CONNECTS to — via semantic neighbors (signal_embeddings) + shared
+  distinctive entities — rather than only aggregating a fresh bucket. RQ touched:
+  *"how should a specific entity be related to the living thread set, honestly?"*
+  The honesty constraints carry over from the rarity-weighted relation above
+  (distinctive-entity overlap, not common-actor laundering) and the relation is
+  presented as a typed, reason-chipped connection set, never a fabricated thread.
+  This is the analyst-workflow method that turns the focus lens from "re-scope
+  every surface" into "show me where this one item sits in the narrative graph."
 
 **Evidence to collect:**
 - Analyst task-completion study (10-15 analysts, structured tasks).
+- Public Attention corroboration study: when an item appears across ≥2 kinds
+  (search + forum + press), do analysts rate the cross-surface-agreement signal
+  as more useful than any single kind alone? Measure forum-lane coverage gain
+  (how many CI-class countries with empty search/wiki get *some* people-side
+  signal once `source_family='social'` is surfaced).
+- Truncated-thread relation quality: do the item→existing-thread connections
+  (semantic neighbor + distinctive-entity overlap) match analyst-judged "this
+  item belongs to / relates to these narratives"? Ablate the DF threshold and
+  the semantic vs lexical match basis (the current `LIKE '%word%'` trends/wiki
+  join is language-blind — replacing it with embed-service similarity is the
+  comparison).
 - Relation-quality study: do rarity-weighted siblings match analyst-judged
   "related narratives" better than geography-only or naive-entity baselines?
   (The DF-threshold is a tunable the study can ablate.)
@@ -452,8 +534,33 @@ sampling. The persisted-corpus clustering (which dissolved the 15K hot-window
 cap) is already shipped (`--from-persisted` cron); recall measurement on the full
 corpus is the next experiment. (CLAUDE.md 2026-06-12 #229 / 2026-06-25.)
 
+**Product evidence accrued (2026-06-26, L2 deep review — forums structurally
+excluded from discovery):** the open-set funnel was found to throw away an entire
+ingested source class, and the diagnosis pinpoints the mechanism. **Measured in
+the DB: 0 of 71 forum (Reddit, `source_family='social'`) signals have any topic
+assignment.** Root cause is structural, not a deliberate filter: the atlas-topic
+classifier (`classify_topics.py`) matches on GDELT GKG themes
+(`WHERE themes IS NOT NULL … JOIN ON s.themes && t.gdelt_theme_hints`), and forum
+posts carry no GDELT themes, so they are excluded by construction from the
+theme-hint discovery path. **~28 of the 71 forum signals DO have embeddings**,
+which means the inclusion path already exists in the corpus: **semantic
+membership** (embedding → nearest topic centroid over the persisted
+`signal_embeddings` corpus), keeping forum posts labeled discussion / `verified=
+false` and NEVER counted as gated evidence. This is squarely this paper's
+question — open-set discovery over an unlabeled mass — extended to a second
+*modality* (social/forum) that the lexical-theme path can never reach. It also
+reframes the #229 recall ceiling: part of the "0.2% of signal mass surfaced"
+loss is not just clustering granularity but whole source families that the
+theme-join cannot see, recoverable only by the embedding path. (CLAUDE.md
+2026-06-26 / `docs/specs/2026-06-26-l2-deep-review.md` §4.)
+
 **Evidence to collect:** taxonomy-evolution loop itself (BERTopic + LLM naming +
-human approval); recall vs `min_cluster_size` curve; regional-pass yield delta.
+human approval); recall vs `min_cluster_size` curve; regional-pass yield delta;
+**semantic-membership recall for the forum/social modality** — how many of the
+~28 embedded forum signals (and of newly embedded ones) attach to an existing
+topic centroid above threshold, vs how many seed genuinely new discussion-only
+clusters that the theme-hint path could never surface (the discovery-from-
+unreachable-modality result).
 
 **Target venues:** EMNLP, NAACL, ACL Findings, ICWSM.
 
@@ -499,6 +606,27 @@ For any paper in the series to ship:
 - How do we credit Sonnet 4.6 in author / acknowledgement sections?
   Standard practice: "model assistance" disclosure in methodology
   section, no co-authorship.
+
+## Cross-reference index (product ↔ paper)
+
+Updated 2026-06-26 with the L2 deep-review findings
+(`docs/specs/2026-06-26-l2-deep-review.md`, which carries the full per-surface
+paper-alignment table in its §5). Newest mappings on top:
+
+| Product finding / surface | Paper(s) | Where folded |
+|---|---|---|
+| #214 one-count semantics (gated vs raw) + UNVERIFIED tray; killed positional "critical"; thread KEY SUBJECTS via `rank_key_people` | **P4** (primary), with P1 (gate is P1's result) + P3 (volume-as-importance leak) | P4 "Product evidence accrued (2026-06-26)" + new ablation in P4 "Evidence to collect" |
+| Forums (`source_family='social'`) NOT in thread inference — GKG-theme join structurally excludes them; ~28/71 have embeddings → semantic-membership inclusion path | **P8** open-set discovery (new modality) | P8 "Product evidence accrued (2026-06-26)" + semantic-membership recall in "Evidence to collect" |
+| Forums-as-discovery-lane surfaced (`/api/v2/public-attention`, Trends+Wiki+Forum, `verified=false`, interleaved + corroboration flag) | **P7** (analyst workflow), cross-ref P2 (voice/source diversity), P8 (dark social weight) | P7 "Evidence available" + corroboration study in "Evidence to collect" |
+| Truncated narrative thread (item → ad-hoc scoped connections to existing threads; evolution of #234 + signal-context) | **P7** (analyst-workflow method) | P7 "Evidence available" + truncated-thread relation-quality study in "Evidence to collect" |
+| Alert↔evidence split-brain (volume anomaly never reconciled with thread gate) — the cross-cutting CI failure | spans **P1/P3/P4/P5** (the "verified, gated, importance-ranked ≠ GDELT volume" thesis) | recorded in P4 split-brain note; the leak is downstream of P1 gate-recall-on-non-English |
+
+**Unassigned findings (no clean paper home yet):** none from this session — all
+four 2026-06-26 findings mapped cleanly (forum-modality → P8, Public Attention +
+truncated thread → P7, count semantics → P4). The L2 legibility items (deselect
+chip, single-source-of-truth country select, scope strips) are UX hardening, not
+a paper claim; they touch P7's legibility surface only and are tracked in the L2
+spec, not promoted to the paper track.
 
 ## Next action
 
