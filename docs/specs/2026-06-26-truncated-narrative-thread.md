@@ -401,3 +401,23 @@ Spec ↔ issues, so the registry stays honest:
 | **#153** evaluate Reddit + others as public-attention sources | Reddit done (ingested+surfaced); narrow to MediaStack/EventRegistry/NewsAPI | commented (re-scope) |
 | **#184** bump NLP_WORKER_LIMIT + measure drain | Superseded by the M1 adaptive sharded fleet | commented (re-scope) |
 | **#228** L2/L3 deep review umbrella | Tier A/B/C shipped; A3/A4/C3 remain; this spec spun out of it | commented (progress) |
+
+---
+
+## 10. Implementation status (2026-06-26)
+
+| Tier | Status | Evidence |
+|---|---|---|
+| **T1** ConnectionsSection "Where this fits" (forum/signal → connected threads) | ✅ **DONE** | `/signal/{id}/context` returns `connected_threads` (member/semantic, strength); ConnectionsSection mounted in PublicAttentionPanel (P-ADD). Verified: forum "Russia oil refinery" → related 95% Armed conflict, 89% Oil & gas supply. Honest empty for unembedded/chatter. |
+| **T2** Forums in the inference (semantic discussion membership) | ✅ **DONE** | `assign_discussion_topics.py` (kNN, threshold 0.90 — measured precision finding) seeds discussion members; `/signal/{id}/context` shows `[member ·discussion]`; `fetch_threads` serves a separate `discussion_count`; NarrativeThreads + ConnectionsSection show it. Verified: oil-refinery forum is a discussion member of Armed conflict; thread shows "FORUM N". gate counts untouched (zero regression — distinct `model_version`). |
+| **T3.2** Person → "Threads <person> participates in" | ✅ **DONE** | EntityPanel gains the section (reuses `/threads?person=`, #234), above demoted GDELT themes. Verified: Donald Trump → 6 threads incl. "Armed conflict 3.9k [FORUM 3]". |
+| **T3.4** Search → results + connections block | ⏳ PARTIAL | Search already surfaces themes/topics + the query-thread builder; the forum/query path gets connections via PublicAttentionPanel (T1). A dedicated connections block in the SearchBar dropdown is the remaining polish. |
+| **T3.3** Event → P-FOCUS centered panel | ⏳ REMAINING | The conflict-event marker carries only `type`+`fatalities`; fixing "fly-to-country swallows the event" needs enriched acled features + an event-centered panel + the connections resolver. Flagged **map-flow change → do as a careful dedicated pass** (two map regressions occurred this session when moving fast). |
+| **T4** Pinnable truncated thread (Workbench) | ⏳ DEFERRED | Explicitly optional/“later, gated on demand” in §5. |
+| **Cron** for T2 assignment | ⏳ infra | `assign_discussion_topics.py` is versioned + runnable; needs the M1 nightly hook after `embed_hot_corpus` (Pedro's machine). Seeded once manually (4 members). |
+
+**Net:** the spec's CORE — forums entering the inference + items (forum/signal/
+person) connecting to the living threads, honestly (basis + strength, discussion
+≠ evidence) — is **implemented and verified in production**. The remainder is the
+event P-FOCUS panel (map-flow, needs care), the SearchBar connections block
+(polish), the assignment cron hook (infra), and T4 (optional).
