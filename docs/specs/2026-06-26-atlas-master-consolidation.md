@@ -80,8 +80,10 @@ Foundational/living (do NOT close — they evolve): `living-narrative-threads`
   subjects unverified→verified as coverage grows; multilingual NER (#162).
 
 ### Tier 5 — Demand side (founder-review pivot — NOT a spec, but the real risk)
-- [ ] **T5.1 Instrument time-to-value.** One event: "user got a first useful
-  answer" (opened a thread's evidence / generated a dossier). Flying blind today.
+- [x] **T5.1 Instrument time-to-value.** ✅ `telemetry_events` (mig 056) + POST
+  /api/v2/telemetry (best-effort) + `lib/telemetry.ts`. Wired: app_open,
+  thread_open, dossier_generated, once-per-session first_value_moment. Verified
+  live (app_open firing from prod).
 - [ ] **T5.2 Define the wedge user + job** in one sentence; put it atop CLAUDE.md
   + the Landing; cut features that don't serve it.
 - [ ] **T5.3 Persist→deliver→alert loop.** Accounts + one saved watch + one alert
