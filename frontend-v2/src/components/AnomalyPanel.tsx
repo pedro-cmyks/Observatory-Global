@@ -5,7 +5,7 @@ import { useFocusData } from '../contexts/FocusDataContext'
 import { useFocusRelation } from '../hooks/useFocusRelation'
 import { resolveCountryName } from '../lib/countryNames'
 import { getThemeLabel } from '../lib/themeLabels'
-import { getPublicAttentionTopUrl, getTrendingSearchesUrl } from '../lib/publicAttention'
+import { getPublicAttentionTopUrl, getTrendingSearchesUrl, getForumAttentionUrl } from '../lib/publicAttention'
 import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters'
 import './AnomalyPanel.css'
 
@@ -41,6 +41,8 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
     const [trendSearches, setTrendSearches] = useState<{ keyword: string; rank?: number | null; timestamp?: string }[]>([])
     const [trendsLoading, setTrendsLoading] = useState(false)
     const [trendsStaleHours, setTrendsStaleHours] = useState<number | null>(null)
+    // C1/C2: forum discussion lane (Reddit) — labeled discussion, never evidence.
+    const [forumItems, setForumItems] = useState<{ subreddit?: string | null; headline: string; url?: string; source_lang?: string | null }[]>([])
 
     useEffect(() => {
         setWikiLoading(true)
@@ -74,6 +76,14 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
             })
             .catch(() => { setTrendSearches([]); setTrendsStaleHours(null) })
             .finally(() => setTrendsLoading(false))
+    }, [scopeCountry])
+
+    // Forum (Reddit) discussion — scoped to the active country, else global.
+    useEffect(() => {
+        fetch(getForumAttentionUrl(6, scopeCountry ?? undefined))
+            .then(r => r.ok ? r.json() : null)
+            .then(d => setForumItems(d?.forum?.items ?? []))
+            .catch(() => setForumItems([]))
     }, [scopeCountry])
 
     const handleAnomalyClick = (countryCode: string) => {
@@ -283,6 +293,27 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                                 )
                             })
                         )}
+
+                        {/* Forum discussion (Reddit) — narrative-discovery lane,
+                            labeled, never presented as verified evidence. */}
+                        {forumItems.length > 0 && (<>
+                            <div className="ap-forum-divider"
+                                data-tip="Forum discussion (Reddit). What people are saying — discussion, not verified evidence.">
+                                forum discussion
+                            </div>
+                            {forumItems.map((f, i) => (
+                                <div
+                                    key={`forum-${i}`}
+                                    className={`ap-row ap-row--trend${f.url ? ' clickable' : ''}`}
+                                    onClick={f.url ? () => window.open(f.url, '_blank', 'noopener') : undefined}
+                                    data-tip={f.subreddit ? `${f.subreddit} — opens Reddit` : 'opens Reddit'}
+                                >
+                                    <span className="ap-src-tag" style={{ color: '#fb923c' }}>F</span>
+                                    <span className="ap-keyword">{f.headline}</span>
+                                    {f.subreddit && <span className="ap-ctry-count">{f.subreddit}</span>}
+                                </div>
+                            ))}
+                        </>)}
                     </div>
                 </div>
             </div>

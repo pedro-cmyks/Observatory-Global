@@ -298,3 +298,13 @@
     padding: 6px;
     font-size: 9px;
 }
+
+/* Forum discussion divider in the Public Attention column (C2). */
+.ap-forum-divider {
+    margin: 6px 0 2px;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #fb923c;
+    opacity: 0.8;
+}

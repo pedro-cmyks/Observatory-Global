@@ -46,6 +46,17 @@ export function getTrendingSearchesUrl(limit: number, hours: number, countryCode
   return `/api/v2/trends/search?${params.toString()}`
 }
 
+// Forum discussion lane (Reddit). Country-scoped uses a wider 14-day window
+// because forum volume is thin; global uses 7 days.
+export function getForumAttentionUrl(limit: number, countryCode?: string): string {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    hours: countryCode ? '336' : '168',
+  })
+  if (countryCode) params.set('country', countryCode.toUpperCase())
+  return `/api/v2/public-attention?${params.toString()}`
+}
+
 export function buildCountryPublicAttentionNarrative({
   countryName,
   signalCount,
