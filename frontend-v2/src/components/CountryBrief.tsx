@@ -648,11 +648,15 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                         .map((thread, i) => (
                         <button
                             key={i}
-                            className={`theme-chip${anomaly && i === 0 ? ' anomaly-spike' : ''}`}
+                            className="theme-chip"
                             onClick={() => onThemeSelect?.(thread.name)}
                             data-tip={`Click to open ${thread.label} narrative thread`}
                         >
-                            {anomaly && i === 0 && <span className="spike-bars">▂▄▇</span>}
+                            {/* B1: no positional "critical" marker. A country volume
+                                spike (the anomaly badge above) does NOT make the first
+                                thread critical — that falsely sent users into empty
+                                below-gate threads. Per-thread criticality needs the
+                                thread's own movement/coherence (B2 plumbing). */}
                             <span className="theme-name">{thread.label}</span>
                             <span className="theme-count">{thread.count}</span>
                         </button>
