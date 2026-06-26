@@ -1544,7 +1544,8 @@
   }
   .terminal-layout.mobile-tab-map .terminal-panel.radar,
   .terminal-layout.mobile-tab-stream .terminal-panel.stream,
-  .terminal-layout.mobile-tab-threads .terminal-panel.threads {
+  .terminal-layout.mobile-tab-threads .terminal-panel.threads,
+  .terminal-layout.mobile-tab-pulse .terminal-panel.dock {
     display: flex;
   }
 

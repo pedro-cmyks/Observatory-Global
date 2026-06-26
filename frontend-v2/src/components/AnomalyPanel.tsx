@@ -79,11 +79,15 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
     }, [scopeCountry])
 
     // Forum (Reddit) discussion — scoped to the active country, else global.
+    // Guard against the response race: the global (no-country) fetch fired on
+    // mount must not overwrite the country-scoped result if it resolves later.
     useEffect(() => {
+        let ignore = false
         fetch(getForumAttentionUrl(6, scopeCountry ?? undefined))
             .then(r => r.ok ? r.json() : null)
-            .then(d => setForumItems(d?.forum?.items ?? []))
-            .catch(() => setForumItems([]))
+            .then(d => { if (!ignore) setForumItems(d?.forum?.items ?? []) })
+            .catch(() => { if (!ignore) setForumItems([]) })
+        return () => { ignore = true }
     }, [scopeCountry])
 
     const handleAnomalyClick = (countryCode: string) => {

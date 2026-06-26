@@ -297,7 +297,7 @@ function AppContent() {
   // full-screen surface at a time via a bottom tab bar. Default to the live
   // stream (the L2 value). Desktop ignores this.
   const isMobile = useIsMobile()
-  const [mobileTab, setMobileTab] = useState<'map' | 'stream' | 'threads'>('stream')
+  const [mobileTab, setMobileTab] = useState<'map' | 'stream' | 'threads' | 'pulse'>('stream')
 
   useEffect(() => {
     if (!moreMenuOpen && !timeMenuOpen) return
@@ -1987,6 +1987,9 @@ function AppContent() {
           </button>
           <button className={mobileTab === 'stream' ? 'active' : ''} onClick={() => setMobileTab('stream')}>
             <span className="mobile-tab-glyph">≋</span>Stream
+          </button>
+          <button className={mobileTab === 'pulse' ? 'active' : ''} onClick={() => setMobileTab('pulse')}>
+            <span className="mobile-tab-glyph">◎</span>Pulse
           </button>
         </nav>
       )}
