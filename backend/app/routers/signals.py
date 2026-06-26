@@ -431,14 +431,34 @@ async def get_signal_context(
 
         notes: list[str] = []
         neighbor_rows: list = []
-        # Fetch the vector first and pass it back as a constant: the HNSW
-        # index only serves `vec <=> $const` — ordering by a joined column
-        # (me.vec) forces a sequential scan over the whole corpus and blows
-        # the statement timeout.
+
+        own_headline = await conn.fetchval(
+            "SELECT headline FROM signals_v2 WHERE id = $1", signal_id,
+        )
+
+        # Stored embedding (nightly M1 corpus). Pass it back as a constant so the
+        # HNSW index serves `vec <=> $const` (a joined column forces a seq scan).
         own_vec = await conn.fetchval(
             "SELECT vec::text FROM signal_embeddings WHERE signal_id = $1",
             signal_id,
         )
+        # On-demand embed: if the item isn't in the nightly corpus yet (cron lag)
+        # but the embed service is up, embed its headline NOW — same 'passage:'
+        # prefix as the stored corpus — so it connects SEMANTICALLY instead of
+        # falling to the keyword lane. Runs off the event loop; degrades silently.
+        embedded_on_demand = False
+        if not own_vec and own_headline:
+            try:
+                import asyncio as _asyncio
+                from app.services.research_semantic import embed_texts
+                _hl = _html.unescape(own_headline)
+                vecs = await _asyncio.to_thread(embed_texts, [f"passage: {_hl}"])
+                if vecs and vecs[0]:
+                    own_vec = "[" + ",".join(f"{x:.6f}" for x in vecs[0]) + "]"
+                    embedded_on_demand = True
+            except Exception:
+                pass
+
         if own_vec:
             neighbor_rows = await conn.fetch(
                 f"""
@@ -467,12 +487,10 @@ async def get_signal_context(
                 signal_id,
                 own_vec,
             )
+            if embedded_on_demand:
+                notes.append("embedded on-demand (not in the nightly corpus yet)")
         else:
             notes.append("signal not embedded yet; semantic neighbors unavailable")
-
-        own_headline = await conn.fetchval(
-            "SELECT headline FROM signals_v2 WHERE id = $1", signal_id,
-        )
 
     own_key = _html.unescape(own_headline or "").strip().lower()
     seen = {own_key} if own_key else set()
