@@ -68,3 +68,13 @@ brainstorm → build each), in the spirit of #228. The cheap L2 polish (dead-lay
 tabs, filter-bar scroll, compact command bar) can land immediately.
 
 Verified live at 375px throughout; fixes deployed to Vercel.
+
+---
+
+## Execution status (2026-06-26, spec-driven sync)
+
+Implemented: the mobile tabbed IA (bottom nav Map · Threads · Stream · Pulse),
+full-screen mobile thread read, focus chip floating above the tab bar, map
+crash-loop guard + resize-on-tab, country-brief sideways-scroll fix, country
+drill-in z-order. Pulse tab restored Public Attention (Trends+Wiki+Forum) on
+mobile. Remaining mobile polish tracks under the L2 review (A3/A4) and #236.

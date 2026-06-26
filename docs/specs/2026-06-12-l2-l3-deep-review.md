@@ -207,3 +207,16 @@ panels entirely on short screens.
 
 Items 1–3 are independent and parallelizable. L3 needs only #227 (already
 queued) — no new L3 work from this review.
+
+---
+
+## Execution status (2026-06-26, spec-driven sync)
+
+The "not yet implemented" header is stale. Execution-order items shipped:
+SignalDetail rebuild w/ semantic neighbors (#228 §6 item 1, `c6470cf`), dock
+tabs + AtlasHeatList → HEAT/anomaly/sources then corrected to anomaly|sources
+(#183 closed; #231 heat-as-map-property), person→subject hygiene (#176,
+`96fef18`/`2ae494d`/`cb52730`), gate-recall-by-language script (`4911051`). The
+deeper L2 re-review continued in `2026-06-26-l2-deep-review.md` (Tier A/B/C). L3
+verdict (sound, needs only #227) — **#227 closed 2026-06-26**. This note is the
+delivery record; the body is the original judgment.

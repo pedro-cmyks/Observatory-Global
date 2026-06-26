@@ -227,3 +227,16 @@ comparison slot).
 5. **Phase 3 dossier** — built against §5's definition.
 
 Items 2–4 are parallelizable; item 1 should not wait on any of them.
+
+---
+
+## Execution status (2026-06-26, spec-driven sync)
+
+The "not yet implemented" header is stale — this review's recommendations WERE
+executed. The **Brief (L1) rebuild SHIPPED 2026-06-12** (`3369e29`, #225 CLOSED):
+lead story from `top_threads`, watchlist rows with movement + country chips,
+honest standfirst (Math.random essays deleted), Heating-Up strip from
+`heat_countries`, GDELT themes demoted to a "By Theme" index, map demoted
+half-width. The L2 legibility batch (#152/#179/#147) shipped `d15799c`. The gap
+box deferred to #172 (after #145). Treat the body below as the original judgment;
+this note is the delivery record.
