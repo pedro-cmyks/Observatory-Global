@@ -1450,6 +1450,44 @@ def dedupe_same_event_threads(threads: list[dict[str, Any]]) -> list[dict[str, A
     return survivors
 
 
+_DISCUSSION_COUNT_SQL = """
+SELECT at.slug AS slug, COUNT(DISTINCT a.signal_id)::int AS n
+FROM signal_topic_assignments a
+JOIN atlas_topics at ON at.id = a.topic_id
+JOIN signals_v2 s ON s.id = a.signal_id
+WHERE a.model_version = 'semantic-discussion-v1'
+  AND a.assigned_at >= NOW() - ($1::int * INTERVAL '1 hour')
+  AND at.slug = ANY($2::text[])
+  AND ($3::text[] IS NULL OR s.country_code = ANY($3::text[]))
+GROUP BY at.slug
+"""
+
+
+async def _attach_discussion_counts(
+    conn: Any, threads: list[dict[str, Any]], *, hours: int,
+    country_codes: list[str] | None,
+) -> None:
+    """#168/Tier2: people-side discussion members (forums attached semantically),
+    counted SEPARATELY from gated evidence and never folded into signal_count."""
+    slugs = sorted({
+        s for t in threads for s in (t.get("anchor_topics") or [])
+    })
+    for t in threads:
+        t.setdefault("discussion_count", 0)
+    if not slugs:
+        return
+    try:
+        rows = await conn.fetch(_DISCUSSION_COUNT_SQL, hours, slugs, country_codes)
+    except Exception as exc:  # additive — never break the thread list
+        logger.warning("discussion counts degraded: %s", exc)
+        return
+    counts = {str(r["slug"]): int(r["n"]) for r in rows}
+    for t in threads:
+        t["discussion_count"] = sum(
+            counts.get(s, 0) for s in (t.get("anchor_topics") or [])
+        )
+
+
 async def fetch_threads(
     *,
     hours: int = 24,
@@ -1538,6 +1576,10 @@ async def fetch_threads(
             ]
         if attach_evidence and threads:
             await _attach_atlas_evidence(active_conn, threads, hours=hours)
+        if threads:
+            await _attach_discussion_counts(
+                active_conn, threads, hours=hours, country_codes=country_codes,
+            )
         return threads
 
     if conn is not None:

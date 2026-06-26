@@ -372,12 +372,12 @@ async def get_signal_context(
 
         threads = await conn.fetch(
             """
-            SELECT t.slug, t.label, a.gate_kept, a.gate_score
+            SELECT t.slug, t.label, a.gate_kept, a.gate_score, a.model_version,
+                   a.confidence
             FROM signal_topic_assignments a
             JOIN atlas_topics t ON t.id = a.topic_id
             WHERE a.signal_id = $1
-              AND a.method = 'lexicon'
-              AND a.model_version = 'theme-hint-lex-v2'
+              AND a.model_version IN ('theme-hint-lex-v2', 'semantic-discussion-v1')
             ORDER BY a.gate_score DESC NULLS LAST
             LIMIT 5
             """,
@@ -465,16 +465,21 @@ async def get_signal_context(
         # keep scanning to accumulate neighbor_threads beyond the display cap
 
     own_slugs = {t["slug"] for t in threads}
-    connected_threads = [
-        {
+    connected_threads = []
+    for t in threads:
+        is_disc = t["model_version"] == "semantic-discussion-v1"
+        connected_threads.append({
             "thread_id": t["slug"],
             "label": t["label"],
             "basis": "member",
-            "strength": float(t["gate_score"]) if t["gate_score"] is not None else None,
-            "gate_kept": bool(t["gate_kept"]) if t["gate_kept"] is not None else None,
-        }
-        for t in threads
-    ]
+            # A forum post that was semantically attached is a DISCUSSION member,
+            # never evidence: strength is its match similarity, gate_kept false.
+            "discussion": is_disc,
+            "strength": (float(t["confidence"]) if is_disc and t["confidence"] is not None
+                         else (float(t["gate_score"]) if t["gate_score"] is not None else None)),
+            "gate_kept": False if is_disc else (
+                bool(t["gate_kept"]) if t["gate_kept"] is not None else None),
+        })
     for slug, info in sorted(
         neighbor_threads.items(), key=lambda kv: kv[1]["sim"], reverse=True
     ):
@@ -495,6 +500,7 @@ async def get_signal_context(
                 "label": t["label"],
                 "gate_kept": bool(t["gate_kept"]) if t["gate_kept"] is not None else None,
                 "gate_score": float(t["gate_score"]) if t["gate_score"] is not None else None,
+                "discussion": t["model_version"] == "semantic-discussion-v1",
             }
             for t in threads
         ],
