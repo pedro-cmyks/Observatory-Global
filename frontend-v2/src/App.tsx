@@ -15,6 +15,7 @@ import { FocusDataProvider, useFocusData, type NodeData } from './contexts/Focus
 
 import { MapTooltip, type TooltipData } from './components/MapTooltip'
 import { ConflictEventPanel, type ConflictEventFocus } from './components/ConflictEventPanel'
+import { track, trackOnce } from './lib/telemetry'
 import { CrisisProvider } from './contexts/CrisisContext'
 import { SettingsPanel } from './components/SettingsPanel'
 import { CountryThemePanel } from './components/CountryThemePanel'
@@ -450,6 +451,9 @@ function AppContent() {
     }, 9000)
     return () => clearTimeout(t)
   }, [mapReady, mapRetry])
+
+  // T5.1: instrument the App console open (the denominator for time-to-value).
+  useEffect(() => { track('app_open') }, [])
   // Tracks when the 13MB GeoJSON source has actually finished loading
   const [heatSourceReady, setHeatSourceReady] = useState(false)
 
@@ -528,6 +532,9 @@ function AppContent() {
 
   // Theme selection handlers
   const handleThemeSelect = (theme: string, countryCode?: string, countryName?: string, originAttention?: PublicAttentionOrigin) => {
+    // T5.1: a thread open is a value moment (the analyst reached real narrative).
+    track('thread_open')
+    trackOnce('first_value_moment', { kind: 'thread' })
     setSelectedPublicAttention(null)
     setSelectedThread(null)
     // Custom query threads are synthetic — they must not pollute FocusContext

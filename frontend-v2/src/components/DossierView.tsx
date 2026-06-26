@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { buildDossier, dossierToMarkdown } from '../lib/dossier'
+import { track, trackOnce } from '../lib/telemetry'
 import type { Investigation } from '../lib/workbench'
 import './DossierView.css'
 
@@ -9,6 +10,12 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
     const now = useMemo(() => new Date().toISOString(), [])
     const dossier = useMemo(() => buildDossier(investigation, now), [investigation, now])
     const [copied, setCopied] = useState(false)
+
+    // T5.1: generating a report is the deepest value moment in the analyst loop.
+    useEffect(() => {
+        track('dossier_generated', { pins: dossier.pinCount })
+        trackOnce('first_value_moment', { kind: 'dossier' })
+    }, [dossier.pinCount])
 
     const markdown = () => dossierToMarkdown(dossier)
 
