@@ -6,7 +6,9 @@ This pass assigns each embedded social signal to the topic of its nearest
 gate-kept neighbour (kNN over the persisted embedding corpus), writing it as a
 DISCUSSION member:
 
-    method='semantic', model_version='semantic-discussion-v1', gate_kept=false
+    method='embedding', model_version='semantic-discussion-v1', gate_kept=false
+    (method must be in the signal_topic_assignments CHECK set — 'semantic' is not
+    allowed, so 'embedding' carries the semantic-discussion marker via model_version)
 
 The distinct model_version means the existing thread serving (which filters
 model_version='theme-hint-lex-v2') ignores these rows entirely — zero regression.

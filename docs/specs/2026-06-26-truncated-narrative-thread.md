@@ -424,3 +424,43 @@ with a lexical fallback + on-demand embedding so connections are never empty whe
 the corpus lags. Only T4 (pinnable, explicitly optional) remains. The real
 blocker behind connection-emptiness — the embed service being down + the M1 embed
 cron's write throughput — was diagnosed and fixed this session (#240, #241).
+
+---
+
+## 11. Spec-driven verification pass (2026-06-26)
+
+Ran the `spec-driven-development` skill (verify implementation against spec).
+Structured comparison — drift fixed in-spec, gaps flagged.
+
+### Aligned (spec = code)
+- T1 ConnectionsSection / `/signal/{id}/context` connected_threads.
+- T2 semantic discussion membership + separate `discussion_count`.
+- T3.2 person→threads, T3.3 event P-FOCUS, T3.4 search→threads.
+- T4 pin + #227 PinSnapshot + per-pin note; Phase-3 dossier reads frozen pins.
+
+### Drift (spec ≠ code → spec corrected here)
+- **Assignment marker.** Spec §3/§5 said `method='semantic'` + `evidence_role=
+  'discussion'`. ACTUAL: `method='embedding'` (the `signal_topic_assignments`
+  CHECK set forbids 'semantic') + `model_version='semantic-discussion-v1'` (there
+  is no `evidence_role` column). The distinct model_version is the discussion
+  marker; the existing serving (`theme-hint-lex-v2`) ignores it → zero regression.
+- **`connections-v0` contract (§3).** The sketch listed `from`, `connected_threads`,
+  `neighbor_evidence`, `notes`. ACTUAL response: `connected_threads`
+  (basis ∈ {`member` [+`discussion`], `semantic`, **`keyword`**}, `strength`,
+  `shared`), `semantic_neighbors` (gate-status tagged), `threads` (legacy),
+  `notes`. No `from` block. `keyword` basis = the LEXICAL fallback added when
+  nothing connects semantically; plus ON-DEMAND embedding embeds the headline at
+  request time when the corpus lags (neither was in the rev2 sketch).
+- **Typed-item resolver.** Spec §5 T3.1 specified `GET /api/v2/connections?kind=`.
+  ACTUAL: replaced by REUSE of existing endpoints — person via `/threads?person=`
+  (#234), search via the SearchBar `themes` section, event via ConflictEventPanel
+  + `/threads?country=`. No new resolver was built (cheaper, no new contract).
+
+### Gaps (spec promised, not yet implemented)
+- **`forum_sentiment` lens (T2.3).** NOT shipped. `discussion_count` ships; the
+  press-vs-public sentiment divergence (P-STREAM payoff) is still future work.
+  Tractable (social rows are already NLP-sentiment'd; a serve-time split by
+  `source_family`). Tracked as the remaining T2 item.
+- **`from` block / `connected_threads` for typed items** are synthesized client-
+  side (person/event), not a unified server contract — acceptable for now; a
+  `/connections` resolver would consolidate them (deferred).
