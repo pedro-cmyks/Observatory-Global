@@ -56,4 +56,42 @@ describe('CountryBrief thread summary', () => {
     expect(summary.count).toBe(0)
     expect(summary.rows).toEqual([])
   })
+
+  it('shows the gated count (not raw) once the gate has scored a thread', () => {
+    const summary = buildCountryBriefThreadSummary({
+      threads: [
+        {
+          thread_id: 'dynamic-topic-50',
+          label: 'Water stress',
+          signal_count: 44,
+          gated_signal_count: 5,
+          gate_scored_count: 44,
+        },
+      ],
+      fallbackThemes: [],
+    })
+    const row = summary.rows[0]
+    expect(row.count).toBe(5) // gated, not 44
+    expect(row.rawCount).toBe(44)
+    expect(row.belowGate).toBe(false)
+    expect(summary.count).toBe(1)
+  })
+
+  it('flags a scored-but-zero-kept thread as below gate and drops it from the count', () => {
+    const summary = buildCountryBriefThreadSummary({
+      threads: [
+        {
+          thread_id: 'dynamic-topic-51',
+          label: 'Election legitimacy',
+          signal_count: 44,
+          gated_signal_count: 0,
+          gate_scored_count: 44,
+        },
+      ],
+      fallbackThemes: [],
+    })
+    expect(summary.rows[0].belowGate).toBe(true)
+    expect(summary.rows[0].rawCount).toBe(44)
+    expect(summary.count).toBe(0) // not a confident thread
+  })
 })

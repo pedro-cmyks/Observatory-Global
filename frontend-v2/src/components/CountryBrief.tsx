@@ -643,25 +643,51 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             <section className="brief-section">
                 <div className="cb-section-label">Narrative Threads</div>
                 <div className="theme-list">
+                    {/* B1: no positional "critical" marker — a country volume spike
+                        doesn't make the first thread critical. B2 (#214): show the
+                        GATED count (what the detail panel serves), with raw on hover,
+                        and split below-gate threads into the UNVERIFIED tray below so
+                        raw coverage stops masquerading as a confident thread. */}
                     {threadSummary.rows
+                        .filter(t => !t.belowGate)
                         .slice(0, 8)
                         .map((thread, i) => (
                         <button
                             key={i}
                             className="theme-chip"
                             onClick={() => onThemeSelect?.(thread.name)}
-                            data-tip={`Click to open ${thread.label} narrative thread`}
+                            data-tip={thread.rawCount > thread.count
+                                ? `${thread.count} verified of ${thread.rawCount} assigned · open thread`
+                                : `Click to open ${thread.label} narrative thread`}
                         >
-                            {/* B1: no positional "critical" marker. A country volume
-                                spike (the anomaly badge above) does NOT make the first
-                                thread critical — that falsely sent users into empty
-                                below-gate threads. Per-thread criticality needs the
-                                thread's own movement/coherence (B2 plumbing). */}
                             <span className="theme-name">{thread.label}</span>
                             <span className="theme-count">{thread.count}</span>
                         </button>
                     ))}
                 </div>
+                {threadSummary.rows.some(t => t.belowGate) && (
+                    <details className="cb-belowgate-tray">
+                        <summary>
+                            {threadSummary.rows.filter(t => t.belowGate).length} unverified · raw coverage, nothing cleared the relevance gate
+                        </summary>
+                        <div className="theme-list">
+                            {threadSummary.rows
+                                .filter(t => t.belowGate)
+                                .slice(0, 8)
+                                .map((thread, i) => (
+                                <button
+                                    key={i}
+                                    className="theme-chip theme-chip--unverified"
+                                    onClick={() => onThemeSelect?.(thread.name)}
+                                    data-tip={`${thread.rawCount} assigned, 0 cleared the gate — open to inspect the raw coverage`}
+                                >
+                                    <span className="theme-name">{thread.label}</span>
+                                    <span className="theme-count">{thread.rawCount}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </details>
+                )}
             </section>
 
             {/* Key Subjects — typed: person is one type, not the only one (#176) */}

@@ -686,3 +686,33 @@
     font-size: 11px;
     line-height: 1.4;
 }
+
+/* #214 below-gate (UNVERIFIED) tray — raw coverage that cleared no gate. */
+.cb-belowgate-tray {
+    margin-top: 10px;
+}
+.cb-belowgate-tray > summary {
+    cursor: pointer;
+    list-style: none;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    color: var(--color-text-tertiary, #8b97a6);
+    padding: 5px 8px;
+    border: 1px dashed rgba(180, 130, 60, 0.4);
+    border-radius: 6px;
+    user-select: none;
+}
+.cb-belowgate-tray > summary::-webkit-details-marker { display: none; }
+.cb-belowgate-tray > summary::before {
+    content: '⚠ ';
+    color: #c9923c;
+}
+.cb-belowgate-tray[open] > summary { margin-bottom: 8px; }
+.cb-belowgate-tray .theme-list { opacity: 0.78; }
+.theme-chip--unverified {
+    border-style: dashed !important;
+    border-color: rgba(180, 130, 60, 0.45) !important;
+}
+.theme-chip--unverified .theme-count {
+    color: #c9923c;
+}

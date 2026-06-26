@@ -35,6 +35,7 @@ WITH scoped AS (
         sta.topic_id,
         sta.evidence,
         sta.confidence,
+        sta.gate_kept,
         at.slug AS topic_slug,
         at.label AS topic_label,
         at.parent_domain AS parent_domain,
@@ -64,6 +65,10 @@ topic_agg AS (
         topic_label,
         parent_domain,
         COUNT(*)::int AS signal_count,
+        -- #214 gate-kept count: signals that cleared the relevance gate. The
+        -- detail panel (themes.py) shows only these; the list must agree.
+        COUNT(*) FILTER (WHERE gate_kept)::int AS gated_signal_count,
+        COUNT(*) FILTER (WHERE gate_kept IS NOT NULL)::int AS gate_scored_count,
         COUNT(*) FILTER (
             WHERE COALESCE((evidence->>'lex_count')::int, 0) > 0
         )::int AS lex_count,
@@ -219,6 +224,8 @@ SELECT
     ta.topic_label,
     ta.parent_domain,
     ta.signal_count,
+    ta.gated_signal_count,
+    ta.gate_scored_count,
     ta.lex_count,
     ta.theme_count,
     ta.source_count,
@@ -506,6 +513,8 @@ def assemble_thread(
     country_names = [str(name) for name in _as_list(_record_get(row, "top_country_names"))]
     changed_10h = int(_record_get(row, "changed_10h") or 0)
     signal_count = int(_record_get(row, "signal_count") or 0)
+    gated_signal_count = int(_record_get(row, "gated_signal_count") or 0)
+    gate_scored_count = int(_record_get(row, "gate_scored_count") or 0)
     lex_count = int(_record_get(row, "lex_count") or 0)
     theme_count = int(_record_get(row, "theme_count") or 0)
     source_count = int(_record_get(row, "source_count") or 0)
@@ -527,6 +536,10 @@ def assemble_thread(
         "anchor_topics": [topic_slug],
         "parent_domain": parent_domain,
         "signal_count": signal_count,
+        # #214: gate-kept count (detail shows only these). gate_scored=0 means the
+        # gate hasn't scored this topic yet (pending), not "0 relevant".
+        "gated_signal_count": gated_signal_count,
+        "gate_scored_count": gate_scored_count,
         "source_count": source_count,
         "country_count": country_count,
         "avg_confidence": round(avg_confidence, 3),
@@ -679,6 +692,9 @@ def assemble_emergent_thread(
         "anchor_topics": [f"cluster-{cluster_id}"],
         "parent_domain": None,
         "signal_count": signal_count,
+        # Emergent n_signals is already the post-gate kept count (#214).
+        "gated_signal_count": signal_count,
+        "gate_scored_count": signal_count,
         "source_count": source_count,
         "country_count": country_count,
         "avg_confidence": round(avg_conf, 3),
