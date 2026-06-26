@@ -444,16 +444,27 @@ function AppContent() {
   // blank ("no carga nada"). If the map isn't ready after a grace period, remount
   // it (via key) to re-request the style. Capped so it can't loop.
   const [mapRetry, setMapRetry] = useState(0)
+  // Mobile map fix: the app opens on the Stream tab, so the map panel is laid
+  // out at 0×0 (collapsed). MapLibre initialised in a 0-size container loads the
+  // style but never fetches/renders tiles, and a later resize() doesn't recover
+  // it → a permanently blank map. Fix: don't MOUNT MapGL until its container is
+  // really sized (the first time the Map tab is shown). Desktop is always sized.
+  const [mapEverShown, setMapEverShown] = useState(!isMobile)
   useEffect(() => {
-    if (mapReady || mapRetry >= 2) return
+    if (!isMobile || mobileTab === 'map') setMapEverShown(true)
+  }, [isMobile, mobileTab])
+  useEffect(() => {
+    // Don't burn the (capped) retries before the map is even mounted.
+    if (mapReady || mapRetry >= 2 || !mapEverShown) return
     const t = setTimeout(() => {
       if (!mapReady) setMapRetry(r => r + 1)
     }, 9000)
     return () => clearTimeout(t)
-  }, [mapReady, mapRetry])
+  }, [mapReady, mapRetry, mapEverShown])
 
   // T5.1: instrument the App console open (the denominator for time-to-value).
   useEffect(() => { track('app_open') }, [])
+
   // Tracks when the 13MB GeoJSON source has actually finished loading
   const [heatSourceReady, setHeatSourceReady] = useState(false)
 
@@ -1590,6 +1601,7 @@ function AppContent() {
           </div>
           <div className="panel-content">
             <MapErrorBoundary>
+              {mapEverShown ? (
               <MapGL
                 key={`map-${mapRetry}`}
                 ref={mapRef}
@@ -1715,10 +1727,27 @@ function AppContent() {
                     map.getCanvas().style.cursor = ''
                   })
 
+                  // iOS Safari (and other mobile GPUs) can silently DROP the
+                  // WebGL context under memory pressure — the map goes blank
+                  // with no JS error and never recovers on its own. Catch the
+                  // loss and force a remount so MapLibre rebuilds the context.
+                  // (Capped so a genuinely unsupported device can't loop.)
+                  try {
+                    map.getCanvas().addEventListener('webglcontextlost', (ev: Event) => {
+                      ev.preventDefault()
+                      console.warn('[map] webgl context lost — remounting')
+                      setMapReady(false)
+                      setMapRetry(r => (r < 4 ? r + 1 : r))
+                    }, { once: true })
+                  } catch { /* canvas not ready — ignore */ }
+
                   setMapReady(true)
                 }}
               >
               </MapGL>
+              ) : (
+                <div className="map-lazy-placeholder" />
+              )}
               <div className="globe-vignette" />
             </MapErrorBoundary>
             <Legend

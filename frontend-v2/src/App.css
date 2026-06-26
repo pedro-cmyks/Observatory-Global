@@ -1593,3 +1593,5 @@
   .source-profile .source-url,
   .entity-panel a { word-break: break-word; overflow-wrap: anywhere; }
 }
+
+.map-lazy-placeholder { position:absolute; inset:0; background:#0b0e13; }
