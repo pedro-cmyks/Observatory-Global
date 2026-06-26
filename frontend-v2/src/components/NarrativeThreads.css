@@ -448,3 +448,10 @@
     color: #7d8da1;
     border: 1px solid rgba(148, 163, 184, 0.22);
 }
+
+/* Forum discussion badge — people-side, never evidence (orange forum lane). */
+.attention-badge.forum {
+    color: #fb923c;
+    background: rgba(251, 146, 60, 0.12);
+    border: 1px solid rgba(251, 146, 60, 0.35);
+}

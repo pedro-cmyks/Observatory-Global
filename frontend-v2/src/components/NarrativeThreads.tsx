@@ -25,6 +25,7 @@ interface Narrative {
     anchor_topics: string[]
     parent_domain: string | null
     signal_count: number
+    discussion_count?: number
     country_count: number
     source_count: number
     top_sources: string[]
@@ -100,6 +101,7 @@ const normalizeThread = (thread: any): Narrative => ({
     anchor_topics: thread.anchor_topics || [],
     parent_domain: thread.parent_domain || null,
     signal_count: thread.signal_count || 0,
+    discussion_count: thread.discussion_count || 0,
     country_count: thread.country_count || 0,
     source_count: thread.source_count || 0,
     top_sources: thread.top_sources || thread.source_mix?.top_sources || [],
@@ -407,6 +409,11 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                 {n.has_wiki_activity && (
                                     <span className="attention-badge wiki" data-tip={`${(n.wiki_views || 0).toLocaleString()} Wikipedia views`}>
                                         WIKI {n.wiki_views && n.wiki_views > 1000 ? `${Math.round(n.wiki_views / 1000)}K` : ''}
+                                    </span>
+                                )}
+                                {n.discussion_count != null && n.discussion_count > 0 && (
+                                    <span className="attention-badge forum" data-tip={`${n.discussion_count} forum post(s) discussing this — people-side discussion, not counted as evidence`}>
+                                        FORUM {n.discussion_count}
                                     </span>
                                 )}
                             </div>

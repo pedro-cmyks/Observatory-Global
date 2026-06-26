@@ -16,6 +16,13 @@ interface ConnectedThread {
     basis: 'member' | 'semantic'
     strength: number | null
     gate_kept?: boolean | null
+    /** A forum post attached semantically — a discussion member, not evidence. */
+    discussion?: boolean
+}
+
+function basisLabel(t: ConnectedThread): string {
+    if (t.basis === 'member') return t.discussion ? 'discussed' : 'in thread'
+    return 'related'
 }
 
 interface Neighbor {
@@ -93,8 +100,8 @@ export function ConnectionsSection({ signalId, onThreadClick, hours = 336 }: Pro
                             onClick={() => onThreadClick?.(t.thread_id)}
                             data-tip={`Open the "${t.label}" narrative thread`}
                         >
-                            <span className={`connections-basis connections-basis--${t.basis}`}>
-                                {t.basis === 'member' ? 'in thread' : 'related'}
+                            <span className={`connections-basis connections-basis--${t.discussion ? 'discussion' : t.basis}`}>
+                                {basisLabel(t)}
                             </span>
                             <span className="connections-thread-label">{t.label}</span>
                             {t.strength != null && (
