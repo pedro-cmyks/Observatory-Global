@@ -60,3 +60,12 @@ def test_big_volume_still_helps_when_movement_and_coherence_equal():
     small = _t("small", sc=40, ch=1, conf=0.5)
     # big has both more volume and more absolute movement → ranks first
     assert [t["label"] for t in rank_threads([small, big])][0] == "big"
+
+
+def test_freak_movement_on_tiny_base_does_not_lead():
+    # A 28-signal syndicated story whose changed_10h (53) exceeds its own
+    # signal_count is noise/amplification — it must NOT out-rank a 766-signal
+    # accelerating story for the front-page lead (movement is volume-damped).
+    freak = _t("syndicated", sc=28, ch=53, conf=0.6)
+    real = _t("real-mover", sc=766, ch=116, conf=0.6)
+    assert [t["label"] for t in rank_threads([freak, real])][0] == "real-mover"

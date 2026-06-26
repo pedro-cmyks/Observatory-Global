@@ -25,6 +25,12 @@ _W_VOLUME = 0.45
 _W_MOVEMENT = 0.35
 _W_COHERENCE = 0.20
 
+# A thread needs at least this many signals before its relative movement is
+# fully trusted. A huge swing on a tiny base (e.g. a 28-signal syndicated story
+# whose changed_10h reads 53) is noise/amplification, not a real surge — so it
+# must not out-rank a 766-signal accelerating story for the front-page lead.
+_MOVEMENT_VOL_FLOOR = 80.0
+
 
 def _minmax(values: list[float]) -> list[float]:
     lo, hi = min(values), max(values)
@@ -38,7 +44,10 @@ def thread_score_components(thread: dict) -> tuple[float, float, float]:
     ch = int(thread.get("changed_10h") or 0)
     conf = float(thread.get("avg_confidence") or 0.0)
     volume = math.log1p(sc)
-    movement = ch / sc if sc > 0 else 0.0
+    # Relative acceleration, clamped (changed_10h can exceed signal_count, #214)
+    # and volume-confidence-damped so a freak swing on a tiny base can't lead.
+    movement_raw = max(-2.0, min(2.0, ch / sc)) if sc > 0 else 0.0
+    movement = movement_raw * min(1.0, sc / _MOVEMENT_VOL_FLOOR)
     return volume, movement, conf
 
 
