@@ -26,6 +26,7 @@ interface Narrative {
     parent_domain: string | null
     signal_count: number
     discussion_count?: number
+    forum_sentiment?: number | null
     country_count: number
     source_count: number
     top_sources: string[]
@@ -102,6 +103,7 @@ const normalizeThread = (thread: any): Narrative => ({
     parent_domain: thread.parent_domain || null,
     signal_count: thread.signal_count || 0,
     discussion_count: thread.discussion_count || 0,
+    forum_sentiment: thread.forum_sentiment ?? null,
     country_count: thread.country_count || 0,
     source_count: thread.source_count || 0,
     top_sources: thread.top_sources || thread.source_mix?.top_sources || [],
@@ -412,8 +414,8 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                     </span>
                                 )}
                                 {n.discussion_count != null && n.discussion_count > 0 && (
-                                    <span className="attention-badge forum" data-tip={`${n.discussion_count} forum post(s) discussing this — people-side discussion, not counted as evidence`}>
-                                        FORUM {n.discussion_count}
+                                    <span className="attention-badge forum" data-tip={`${n.discussion_count} forum post(s) discussing this — people-side, not evidence.${n.forum_sentiment != null ? ` Public mood ${n.forum_sentiment > 0.1 ? 'positive' : n.forum_sentiment < -0.1 ? 'negative' : 'neutral'} (${n.forum_sentiment.toFixed(1)}).` : ''}`}>
+                                        FORUM {n.discussion_count}{n.forum_sentiment != null ? ` · ${n.forum_sentiment > 0.1 ? '▲' : n.forum_sentiment < -0.1 ? '▼' : '–'}` : ''}
                                     </span>
                                 )}
                             </div>

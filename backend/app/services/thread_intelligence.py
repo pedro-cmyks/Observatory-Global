@@ -1451,7 +1451,8 @@ def dedupe_same_event_threads(threads: list[dict[str, Any]]) -> list[dict[str, A
 
 
 _DISCUSSION_COUNT_SQL = """
-SELECT at.slug AS slug, COUNT(DISTINCT a.signal_id)::int AS n
+SELECT at.slug AS slug, COUNT(DISTINCT a.signal_id)::int AS n,
+       AVG(COALESCE(s.nlp_sentiment, s.sentiment))::float AS forum_sentiment
 FROM signal_topic_assignments a
 JOIN atlas_topics at ON at.id = a.topic_id
 JOIN signals_v2 s ON s.id = a.signal_id
@@ -1468,12 +1469,14 @@ async def _attach_discussion_counts(
     country_codes: list[str] | None,
 ) -> None:
     """#168/Tier2: people-side discussion members (forums attached semantically),
-    counted SEPARATELY from gated evidence and never folded into signal_count."""
+    counted SEPARATELY from gated evidence and never folded into signal_count.
+    Also serves forum_sentiment (T2.3) so a thread can show press-vs-public."""
     slugs = sorted({
         s for t in threads for s in (t.get("anchor_topics") or [])
     })
     for t in threads:
         t.setdefault("discussion_count", 0)
+        t.setdefault("forum_sentiment", None)
     if not slugs:
         return
     try:
@@ -1482,10 +1485,17 @@ async def _attach_discussion_counts(
         logger.warning("discussion counts degraded: %s", exc)
         return
     counts = {str(r["slug"]): int(r["n"]) for r in rows}
+    sents = {
+        str(r["slug"]): float(r["forum_sentiment"])
+        for r in rows if r["forum_sentiment"] is not None
+    }
     for t in threads:
-        t["discussion_count"] = sum(
-            counts.get(s, 0) for s in (t.get("anchor_topics") or [])
-        )
+        anchors = t.get("anchor_topics") or []
+        t["discussion_count"] = sum(counts.get(s, 0) for s in anchors)
+        # count-weighted forum sentiment across the thread's anchor topics
+        num = sum(sents[s] * counts.get(s, 0) for s in anchors if s in sents)
+        den = sum(counts.get(s, 0) for s in anchors if s in sents)
+        t["forum_sentiment"] = round(num / den, 3) if den > 0 else None
 
 
 async def fetch_threads(
