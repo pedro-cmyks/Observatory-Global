@@ -740,12 +740,13 @@ function AppContent() {
     if (!isMobile) return
     if (
       selectedTheme || focus.type === 'person' || selectedSourceProfile ||
-      rightPanelThemeCountry || selectedCountry || selectedCountryCode
+      rightPanelThemeCountry || selectedCountry || selectedCountryCode ||
+      selectedPublicAttention
     ) {
       setMobileTab('stream')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMobile, selectedTheme, focus.type, selectedSourceProfile, rightPanelThemeCountry, selectedCountry, selectedCountryCode])
+  }, [isMobile, selectedTheme, focus.type, selectedSourceProfile, rightPanelThemeCountry, selectedCountry, selectedCountryCode, selectedPublicAttention])
 
   // The map lives in a tab panel that is display:none on other tabs; MapLibre
   // can't size a hidden container, so resize it once the Map tab is shown.

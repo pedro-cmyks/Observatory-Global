@@ -309,8 +309,21 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                                 <div
                                     key={`forum-${i}`}
                                     className="ap-row ap-row--trend clickable"
-                                    onClick={() => onWikiClick?.(f.headline)}
-                                    data-tip={`Investigate "${f.headline}" in Atlas`}
+                                    onClick={() => {
+                                        // Forums aren't in the thread inference, so we can't open
+                                        // "the forum's thread". Instead find the closest Atlas
+                                        // bucket: search the topic (signal matches + coverage).
+                                        if (onPublicAttentionSelect) {
+                                            onPublicAttentionSelect({
+                                                title: f.headline,
+                                                country: scopeCountry ?? undefined,
+                                                countryName: scopeCountry ? resolveCountryName(scopeCountry) : undefined,
+                                            })
+                                        } else {
+                                            onWikiClick?.(f.headline)
+                                        }
+                                    }}
+                                    data-tip={`Find the Atlas coverage closest to "${f.headline}"`}
                                 >
                                     <span className="ap-src-tag" style={{ color: '#fb923c' }}>F</span>
                                     <span className="ap-keyword">{f.headline}</span>
