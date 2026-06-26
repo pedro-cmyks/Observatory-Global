@@ -18,6 +18,9 @@ export interface PublicAttentionOrigin {
   query?: string
   country?: string
   countryName?: string
+  /** When the origin is a single signal (e.g. a forum post), its id — lets the
+   *  panel mount the "Where this fits" ConnectionsSection (truncated thread). */
+  signalId?: number
 }
 
 function compactJoin(items: string[]): string {

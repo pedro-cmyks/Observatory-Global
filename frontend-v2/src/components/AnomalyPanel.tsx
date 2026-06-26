@@ -18,7 +18,7 @@ const SEVERITY_COLORS: Record<string, string> = {
 
 interface AnomalyPanelProps {
     onWikiClick?: (query: string) => void
-    onPublicAttentionSelect?: (item: { title: string; views?: number; country_count?: number; country?: string; countryName?: string }) => void
+    onPublicAttentionSelect?: (item: { title: string; views?: number; country_count?: number; country?: string; countryName?: string; signalId?: number }) => void
 }
 
 export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPublicAttentionSelect }) => {
@@ -42,7 +42,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
     const [trendsLoading, setTrendsLoading] = useState(false)
     const [trendsStaleHours, setTrendsStaleHours] = useState<number | null>(null)
     // C1/C2: forum discussion lane (Reddit) — labeled discussion, never evidence.
-    const [forumItems, setForumItems] = useState<{ subreddit?: string | null; headline: string; url?: string; source_lang?: string | null }[]>([])
+    const [forumItems, setForumItems] = useState<{ id?: number; subreddit?: string | null; headline: string; url?: string; source_lang?: string | null }[]>([])
 
     useEffect(() => {
         setWikiLoading(true)
@@ -316,6 +316,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                                         if (onPublicAttentionSelect) {
                                             onPublicAttentionSelect({
                                                 title: f.headline,
+                                                signalId: f.id,
                                                 country: scopeCountry ?? undefined,
                                                 countryName: scopeCountry ? resolveCountryName(scopeCountry) : undefined,
                                             })

@@ -49,6 +49,8 @@ interface PublicAttentionPanelProps {
     onCountrySelect?: (code: string) => void
 }
 
+import { ConnectionsSection } from './ConnectionsSection'
+
 function cleanTitle(title: string): string {
     return title.replace(/_/g, ' ').trim()
 }
@@ -309,6 +311,17 @@ export function PublicAttentionPanel({ item, timeRange, onClose, onThemeSelect, 
                             <div className="pap-empty">No recent media headlines matched this item.</div>
                         )}
                     </section>
+
+                    {/* Truncated-thread connections (P-ADD): for an item backed by a
+                        single signal (e.g. a forum post), show which living threads
+                        it connects to — even when the text search above found no
+                        media match. Added below, never replacing the panel. */}
+                    {item.signalId != null && (
+                        <ConnectionsSection
+                            signalId={item.signalId}
+                            onThreadClick={(slug) => onThemeSelect?.(slug)}
+                        />
+                    )}
                 </div>
             )}
         </div>
