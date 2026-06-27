@@ -377,6 +377,43 @@
     letter-spacing: 0.3px;
 }
 
+/* A3 scope strip — legible, reversible re-scope */
+.narrative-scope-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 12px;
+    font-size: 10px;
+    color: #93c5fd;
+    background: rgba(59, 130, 246, 0.08);
+    border-bottom: 1px solid rgba(99, 179, 237, 0.15);
+    letter-spacing: 0.3px;
+}
+
+.narrative-scope-label strong {
+    color: #dbeafe;
+    font-weight: 700;
+}
+
+.narrative-scope-clear {
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid rgba(147, 197, 253, 0.3);
+    border-radius: 4px;
+    color: #93c5fd;
+    font-size: 10px;
+    line-height: 1;
+    padding: 2px 6px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.narrative-scope-clear:hover {
+    background: rgba(147, 197, 253, 0.15);
+    color: #fff;
+}
+
 /* Empty state */
 .narrative-empty {
     padding: 24px 16px;

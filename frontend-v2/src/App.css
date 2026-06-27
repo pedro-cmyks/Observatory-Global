@@ -869,6 +869,44 @@
 }
 
 /* Panel headers — tiered hierarchy */
+/* A3 stream-slot scope strip */
+.stream-scope-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 10px;
+  background: rgba(59, 130, 246, 0.08);
+  border-bottom: 1px solid rgba(99, 179, 237, 0.15);
+  font-family: var(--font-technical, monospace);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: #93c5fd;
+}
+
+.stream-scope-strip strong {
+  color: #dbeafe;
+  font-weight: 700;
+}
+
+.stream-scope-clear {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  border-radius: 4px;
+  color: #93c5fd;
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.stream-scope-clear:hover {
+  background: rgba(147, 197, 253, 0.15);
+  color: #fff;
+}
+
 .panel-header {
   min-height: 32px;
   background: rgba(12, 24, 43, 0.72);

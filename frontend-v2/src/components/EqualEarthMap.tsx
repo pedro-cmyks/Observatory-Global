@@ -1,0 +1,323 @@
+/**
+ * Equal Earth L2 map (#212, ADR-0005) — real equal-area projection rendered
+ * with SVG (basemap/choropleth/country hit-test) + a Canvas overlay
+ * (flows/markers/terminator, added in later phases). No WebGL → immune to the
+ * mobile GL-context blank-map (the bug c883988 couldn't recover).
+ *
+ * Coordinate truth = `lib/equalEarthProjection` (one instance for SVG + canvas
+ * + hit-test). Heat = `lib/countryHeatStates` (shared with the MapLibre map).
+ * Read-only: App owns the data + the focus model; this component renders + emits
+ * the same callbacks MapLibre does.
+ */
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import {
+    createEqualEarth,
+    clampScale,
+    type ViewTransform,
+    IDENTITY_TRANSFORM,
+} from '../lib/equalEarthProjection'
+import { heatFillColor, heatGlowColor, glowWidth, type CountryHeatStates } from '../lib/countryHeatStates'
+import './EqualEarthMap.css'
+
+// ISO_A2 (Natural Earth) → GDELT/FIPS where they differ. Mirrors App.tsx's map
+// so a click resolves to the same code the rest of Atlas keys on.
+const ISO_TO_GDELT: Record<string, string> = {
+    CN: 'CH', ID: 'RI', RS: 'RB', XK: 'KV', MK: 'MK',
+    CD: 'CG', CG: 'CF', TZ: 'TZ', KR: 'KS', KP: 'KN',
+    PS: 'GZ', EI: 'EI',
+}
+// Inverse: GDELT code → ISO_A2, to highlight the selected country's shape.
+const GDELT_TO_ISO: Record<string, string> = Object.fromEntries(
+    Object.entries(ISO_TO_GDELT).map(([iso, gdelt]) => [gdelt, iso]),
+)
+
+const GEOJSON_URL = '/data/countries.geojson'
+
+interface CountryFeature {
+    type: 'Feature'
+    properties: Record<string, unknown>
+    geometry: unknown
+}
+
+/** GeoJSON FeatureCollection (the shape App's nativeOverlayData already emits). */
+interface FC {
+    type: 'FeatureCollection'
+    features: Array<{ geometry: { type: string; coordinates: unknown }; properties: Record<string, unknown> }>
+}
+
+export interface OverlayData {
+    flows: FC
+    anomaly: FC
+    chokepoints: FC
+    aircraft: FC
+    vessels: FC
+    acled: FC
+    terminator: FC
+}
+
+export interface EqualEarthMapProps {
+    heatStates: CountryHeatStates
+    showHeatmap: boolean
+    selectedCountryCode: string | null
+    onCountryClick: (gdeltCode: string, name: string) => void
+    /** Overlay layers (flows/markers/terminator), same data MapLibre uses. */
+    overlay?: OverlayData
+}
+
+export function EqualEarthMap({
+    heatStates,
+    showHeatmap,
+    selectedCountryCode,
+    onCountryClick,
+    overlay,
+}: EqualEarthMapProps) {
+    const containerRef = useRef<HTMLDivElement>(null)
+    const canvasRef = useRef<HTMLCanvasElement>(null)
+    const [size, setSize] = useState({ w: 0, h: 0 })
+    const [features, setFeatures] = useState<CountryFeature[]>([])
+    const [transform, setTransform] = useState<ViewTransform>(IDENTITY_TRANSFORM)
+
+    // Container size (ResizeObserver) — drives the projection fit. Works even
+    // when the panel mounts at 0×0 then grows (the mobile tab case).
+    useEffect(() => {
+        const el = containerRef.current
+        if (!el) return
+        const measure = () => setSize({ w: el.clientWidth, h: el.clientHeight })
+        measure()
+        const ro = new ResizeObserver(measure)
+        ro.observe(el)
+        return () => ro.disconnect()
+    }, [])
+
+    // Country shapes — fetched once (local file, no CDN, offline-safe).
+    useEffect(() => {
+        let cancelled = false
+        fetch(GEOJSON_URL)
+            .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+            .then(json => { if (!cancelled) setFeatures(json?.features ?? []) })
+            .catch(() => { if (!cancelled) setFeatures([]) })
+        return () => { cancelled = true }
+    }, [])
+
+    const ee = useMemo(
+        () => (size.w > 0 && size.h > 0 ? createEqualEarth(size.w, size.h) : null),
+        [size.w, size.h],
+    )
+
+    // Base path strings (k=1) — the <g> transform scales them, so we only
+    // recompute when shapes or container size change, not on pan/zoom.
+    const paths = useMemo(() => {
+        if (!ee || features.length === 0) return []
+        return features.map(f => ({
+            iso: String(f.properties.ISO_A2 ?? f.properties.ISO_A2_EH ?? ''),
+            name: String(f.properties.NAME ?? f.properties.ADMIN ?? ''),
+            d: ee.pathString(f) ?? '',
+        })).filter(p => p.d)
+    }, [ee, features])
+
+    const selectedIso = selectedCountryCode
+        ? (GDELT_TO_ISO[selectedCountryCode] ?? selectedCountryCode)
+        : null
+
+    // --- Pan / zoom (native handlers, no d3-zoom dep) ---
+    const dragRef = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null)
+    // True once a drag moved past a small threshold — used to swallow the click
+    // that would otherwise fire on a country path at drag-end (pan ≠ select).
+    const movedRef = useRef(false)
+
+    const onWheel = useCallback((e: React.WheelEvent) => {
+        e.preventDefault()
+        const rect = containerRef.current?.getBoundingClientRect()
+        if (!rect) return
+        const cx = e.clientX - rect.left
+        const cy = e.clientY - rect.top
+        setTransform(t => {
+            const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15
+            const k2 = clampScale(t.k * factor)
+            if (k2 === t.k) return t
+            // keep the point under the cursor fixed
+            const x2 = cx - ((cx - t.x) / t.k) * k2
+            const y2 = cy - ((cy - t.y) / t.k) * k2
+            return { k: k2, x: x2, y: y2 }
+        })
+    }, [])
+
+    const onPointerDown = useCallback((e: React.PointerEvent) => {
+        ;(e.target as Element).setPointerCapture?.(e.pointerId)
+        movedRef.current = false
+        dragRef.current = { x: e.clientX, y: e.clientY, tx: transform.x, ty: transform.y }
+    }, [transform.x, transform.y])
+
+    const onPointerMove = useCallback((e: React.PointerEvent) => {
+        const d = dragRef.current
+        if (!d) return
+        if (Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) > 4) movedRef.current = true
+        setTransform(t => ({ ...t, x: d.tx + (e.clientX - d.x), y: d.ty + (e.clientY - d.y) }))
+    }, [])
+
+    const endDrag = useCallback((e: React.PointerEvent) => {
+        ;(e.target as Element).releasePointerCapture?.(e.pointerId)
+        dragRef.current = null
+    }, [])
+
+    const resetView = useCallback(() => setTransform(IDENTITY_TRANSFORM), [])
+
+    const handleCountryClick = useCallback((iso: string, name: string) => {
+        if (movedRef.current) return // a pan, not a select
+        if (!iso || iso === '-99') return
+        const gdelt = ISO_TO_GDELT[iso] || iso
+        onCountryClick(gdelt, name)
+    }, [onCountryClick])
+
+    // --- Canvas overlay: terminator + flows + markers (screen-space draw, so
+    // widths/radii stay constant under zoom). Same projection + transform as the
+    // SVG, so layers can't drift. ---
+    useEffect(() => {
+        const canvas = canvasRef.current
+        if (!canvas || !ee || size.w === 0) return
+        const dpr = Math.min(window.devicePixelRatio || 1, 2)
+        canvas.width = size.w * dpr
+        canvas.height = size.h * dpr
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+        ctx.clearRect(0, 0, size.w, size.h)
+        if (!overlay) return
+
+        const pt = (c: [number, number]) => ee.toScreen([c[0], c[1]], transform)
+        const num = (v: unknown, d = 0) => (typeof v === 'number' ? v : d)
+
+        // 1. Terminator (day/night) — filled polygons.
+        for (const f of overlay.terminator.features) {
+            const op = num(f.properties.opacity)
+            if (op <= 0) continue
+            ctx.fillStyle = `rgba(0, 8, 25, ${Math.min(op, 0.85)})`
+            drawPolygon(ctx, f.geometry, pt)
+            ctx.fill()
+        }
+        // 2. Flow arcs — lines, width by strength.
+        ctx.lineCap = 'round'
+        for (const f of overlay.flows.features) {
+            const coords = f.geometry.coordinates as [number, number][]
+            if (!Array.isArray(coords) || coords.length < 2) continue
+            const a = pt(coords[0]); const b = pt(coords[1])
+            if (!a || !b) continue
+            ctx.beginPath()
+            ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1])
+            ctx.strokeStyle = 'rgba(100, 140, 180, 0.5)'
+            ctx.lineWidth = 0.8 + Math.min(num(f.properties.strength), 1) * 2.2
+            ctx.stroke()
+        }
+        // 3. Point markers.
+        const dot = (c: unknown, r: number, fill: string, stroke?: string, sw = 0) => {
+            if (!Array.isArray(c)) return
+            const p = pt(c as [number, number])
+            if (!p) return
+            ctx.beginPath()
+            ctx.arc(p[0], p[1], r, 0, Math.PI * 2)
+            if (fill !== 'none') { ctx.fillStyle = fill; ctx.fill() }
+            if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = sw; ctx.stroke() }
+        }
+        for (const f of overlay.chokepoints.features) {
+            const active = f.properties.active === true
+            dot(f.geometry.coordinates, active ? 9 : 6,
+                active ? 'rgba(0,220,200,0.16)' : 'rgba(0,180,160,0.08)',
+                active ? 'rgba(0,255,210,0.8)' : 'rgba(0,180,160,0.35)', active ? 2 : 1)
+        }
+        for (const f of overlay.aircraft.features) {
+            const alt = num(f.properties.alt)
+            const col = alt > 10000 ? 'rgba(255,255,255,0.78)' : alt > 5000 ? 'rgba(255,210,80,0.72)' : 'rgba(255,140,40,0.68)'
+            dot(f.geometry.coordinates, alt > 10000 ? 2 : 3, col)
+        }
+        for (const f of overlay.vessels.features) {
+            dot(f.geometry.coordinates, 2.5, 'rgba(120,200,255,0.7)')
+        }
+        for (const f of overlay.acled.features) {
+            dot(f.geometry.coordinates, Math.min(num(f.properties.radius, 4), 12), 'rgba(239,68,68,0.55)', 'rgba(239,68,68,0.9)', 1)
+        }
+        // anomaly rings on top
+        for (const f of overlay.anomaly.features) {
+            dot(f.geometry.coordinates, num(f.properties.radius, 8), 'none', 'rgba(239,68,68,0.95)', 2)
+        }
+    }, [overlay, transform, ee, size.w, size.h])
+
+    const dragging = dragRef.current !== null
+
+    return (
+        <div
+            ref={containerRef}
+            className="equal-earth-map"
+            onWheel={onWheel}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={endDrag}
+            onPointerLeave={endDrag}
+            onDoubleClick={resetView}
+            style={{ cursor: dragging ? 'grabbing' : 'grab' }}
+        >
+            {ee && (
+                <svg
+                    className="equal-earth-svg"
+                    width={size.w}
+                    height={size.h}
+                    viewBox={`0 0 ${size.w} ${size.h}`}
+                >
+                    <g transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}>
+                        {/* sphere backdrop (ocean) */}
+                        <path
+                            d={ee.pathString({ type: 'Sphere' }) ?? ''}
+                            className="equal-earth-sphere"
+                        />
+                        {paths.map(p => {
+                            const st = heatStates.get(ISO_TO_GDELT[p.iso] || p.iso)
+                            const heat = showHeatmap && st ? st.heat : 0
+                            const isSel = selectedIso != null && p.iso === selectedIso
+                            return (
+                                <path
+                                    key={p.iso || p.name}
+                                    d={p.d}
+                                    className="equal-earth-country"
+                                    fill={heat > 0 ? heatFillColor(heat) : 'rgba(255,255,255,0.02)'}
+                                    stroke={isSel ? '#68dbae' : (heat > 0 ? heatGlowColor(heat) : 'rgba(120,140,170,0.18)')}
+                                    strokeWidth={isSel ? 1.8 : (st && heat > 0 ? glowWidth(st.intensity) * 0.4 + 0.4 : 0.4)}
+                                    onClick={() => handleCountryClick(p.iso, p.name)}
+                                    style={{ cursor: 'pointer' }}
+                                />
+                            )
+                        })}
+                    </g>
+                </svg>
+            )}
+            {ee && (
+                <canvas
+                    ref={canvasRef}
+                    className="equal-earth-canvas"
+                    style={{ width: size.w, height: size.h }}
+                />
+            )}
+        </div>
+    )
+}
+
+/** Draw a GeoJSON Polygon/MultiPolygon onto a 2D context using a projector. */
+function drawPolygon(
+    ctx: CanvasRenderingContext2D,
+    geometry: { type: string; coordinates: unknown },
+    pt: (c: [number, number]) => [number, number] | null,
+) {
+    const rings: [number, number][][] =
+        geometry.type === 'MultiPolygon'
+            ? (geometry.coordinates as [number, number][][][]).flat()
+            : (geometry.coordinates as [number, number][][])
+    ctx.beginPath()
+    for (const ring of rings) {
+        let started = false
+        for (const c of ring) {
+            const p = pt(c)
+            if (!p) continue
+            if (!started) { ctx.moveTo(p[0], p[1]); started = true }
+            else ctx.lineTo(p[0], p[1])
+        }
+        ctx.closePath()
+    }
+}

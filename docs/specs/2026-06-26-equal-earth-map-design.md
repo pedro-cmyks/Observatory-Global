@@ -65,27 +65,33 @@ re-fetch. App passes read-only props (`nodes`, `flows`, `unfilteredFlows`,
 toggles) and the same callbacks MapLibre uses today (`handleCountryClick`,
 focus/fly-to). Clicks/hover behave identically.
 
-### Units
+### Units (as built)
 
 - **`lib/equalEarthProjection.ts`** (pure, the single source of coordinate
-  truth): wraps `d3.geoEqualEarth`; exposes `project([lng,lat]) → [x,y]`,
-  `invert([x,y]) → [lng,lat]` (for hit-testing), a `geoPath` generator, and
-  applies the shared zoom/pan transform. **SVG, Canvas, and hit-testing all use
-  this one instance → layers can never drift apart** (the exact failure ADR-0004
-  feared, now structurally prevented).
-- **`components/EqualEarthMap.tsx`** — orchestrates the projection + zoom/pan
-  state (d3-zoom over one shared transform applied to both the SVG `<g>` and the
-  canvas draw). Owns the sized container, renders the sub-layers, wires
-  callbacks. Mounts in place of `<MapGL>` when the toggle = Equal Earth.
-- **Sub-layers (each one purpose):**
-  - `ChoroplethSvg` — country fills + heat ramp (world-atlas `countries-110m`,
-    same CDN the L1 Brief already uses), country click/hover/hit-test via native
-    SVG events. The basemap.
-  - `FlowCanvas` — flow arcs (great-circle paths via `geoPath` over LineString),
-    width = co-occurrence strength, same visibility rules as today.
-  - `MarkerCanvas` — vessels / aircraft / ACLED / chokepoints + anomaly rings,
-    projected points, toggled by the existing layer flags.
-  - `TerminatorSvg` — day/night polygon, projected, toggled by `showTerminator`.
+  truth): wraps `d3.geoEqualEarth` fitted to the container; exposes `project`,
+  `toScreen`/`toLngLat` (apply/undo the pan/zoom transform), `pathString`,
+  `clampScale`. **SVG, Canvas, and hit-testing all use this one instance →
+  layers can never drift apart.** Tested.
+- **`lib/countryHeatStates.ts`** (pure, NEW): `computeCountryHeatStates` — the
+  per-country `{heat,intensity}` map, the **single source of truth shared by the
+  MapLibre map and the Equal Earth map** (the MapLibre feature-state effect was
+  refactored to consume it; no more two divergent implementations). Plus
+  `heatFillColor`/`heatGlowColor`/`glowWidth` mirroring the #231 ramp. Tested.
+- **`components/EqualEarthMap.tsx`** — orchestrates projection + pan/zoom state
+  (**native pointer/wheel handlers**, no d3-zoom dep — zoom-to-cursor + drag,
+  drag swallows the click so pan ≠ select) applied as one shared transform to the
+  SVG `<g>` and the canvas. Mounts in place of `<MapGL>` when the toggle = Equal
+  Earth. Two render layers in one component:
+  - **SVG choropleth** — country fills + heat (from `heatStates`), border glow,
+    selected-country highlight, click/hover hit-test via native SVG events. Reads
+    **`/data/countries.geojson`** (local Natural Earth 110m, the file the
+    MapLibre heat source already uses — offline, no CDN), keyed by `ISO_A2` with
+    the `ISO_TO_GDELT` remap so clicks resolve to Atlas codes.
+  - **Canvas overlay** (`pointer-events:none`, above the SVG, screen-space draw
+    so widths/radii stay constant under zoom): terminator polygons → flow lines
+    (width by strength) → markers (chokepoints, aircraft, vessels, ACLED,
+    anomaly rings). Fed by App's existing `nativeOverlayData` GeoJSON (same data
+    MapLibre draws). Markers are non-interactive in v1.
 
 ### Data flow
 
@@ -97,9 +103,10 @@ animate the shared transform).
 
 ## 4. Toggle / default
 
-A control in the existing map control cluster (near reset/flows): **Mercator ↔
-Equal Earth**. Persisted in local state (optionally localStorage). Default
-Mercator at ship; flip to Equal Earth default + remove MapLibre after Pedro's OK.
+A `MERCATOR`/`EQ EARTH` `layer-btn` in the map control cluster (after reset).
+Persisted in **localStorage** (`atlas.mapProjection`). Default Mercator at ship;
+flip default + remove MapLibre after Pedro's visual OK. Double-click the Equal
+Earth map resets the view.
 
 ## 5. Trade-offs
 
@@ -129,8 +136,42 @@ Mercator at ship; flip to Equal Earth default + remove MapLibre after Pedro's OK
   after visual sign-off).
 - Equal Earth on the L1 Brief (already `geoEqualEarth` via react-simple-maps).
 - New layers or data sources — strict parity with today's L2 map.
-- Offline-bundling the world-atlas topojson (reuse the existing CDN for v1;
-  revisit for PWA offline later).
+- Basemap data is the existing local `/data/countries.geojson` (already shipped,
+  offline-safe) — no CDN/topojson dependency.
+
+### Known v1 gaps (parity follow-ups, tracked under #212)
+- **#234 camera fly-to** is MapLibre-only — Equal Earth re-scopes HEAT (shared
+  `heatStates`) but does not yet pan/zoom-to-bounds on focus. Add via the
+  projected bbox of the focused country/relation animating the shared transform.
+- **Markers non-interactive** on the canvas overlay (click/hover) — ACLED event
+  click + chokepoint open are MapLibre-only for now.
+- **Aircraft/vessels live refresh** redraws on data change (correct) but no
+  per-frame animation of heading — parity with current static markers is fine.
+
+## Implementation TODO
+
+- [x] **P0 deps.** `d3-geo` + `@types/d3-geo` installed.
+- [x] **P1 projection (pure).** `lib/equalEarthProjection.ts`: configure
+  `geoEqualEarth`, `project`/`invert`, `geoPath`, fit-to-size, shared zoom
+  transform. Unit tests (`equalEarthProjection.test.ts`): project/invert
+  round-trip, country bbox, transform.
+- [x] **P2 choropleth + hit-test.** `EqualEarthMap.tsx` + SVG choropleth from
+  local `/data/countries.geojson`, fills/glow from shared `heatStates`,
+  selected-country highlight, click/hover → callbacks, native pointer/wheel
+  pan/zoom (no d3-zoom), drag swallows click. `countryHeatStates` helper +
+  MapLibre effect refactored to it (single source). Both libs unit-tested.
+- [x] **P3 flows.** Canvas overlay flow lines (width by strength) from
+  `nativeOverlayData`, shared projection + transform, screen-space.
+- [x] **P4 markers + terminator.** Canvas overlay: terminator polygons +
+  chokepoints/aircraft/vessels/ACLED markers + anomaly rings (layer-flag toggled
+  via the same `nativeOverlayData`). Markers non-interactive in v1 (gap above).
+- [x] **P5 toggle + wire.** `MERCATOR`/`EQ EARTH` toggle (localStorage), renders
+  `EqualEarthMap` in place of `<MapGL>`, App data props + `onCountryClick`
+  callback. Default Mercator. (#234 fly-to-bounds deferred — gap above.)
+- [~] **P6 verify.** Unit + build green (17 new tests; full suite 110 pass / 1
+  pre-existing unrelated fail). **Visual check on desktop + mobile PENDING** —
+  Pedro flips the EQ EARTH toggle; required before promote-to-default. Default
+  Mercator means prod is unaffected until then.
 
 ## 8. Open questions (none blocking)
 

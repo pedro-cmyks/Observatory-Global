@@ -10,6 +10,8 @@ import { SearchBar } from './components/SearchBar'
 import { Briefing } from './components/Briefing'
 import { ThemeDetail } from './components/ThemeDetail'
 import { CountryBrief } from './components/CountryBrief'
+import { EqualEarthMap } from './components/EqualEarthMap'
+import { computeCountryHeatStates } from './lib/countryHeatStates'
 import { FocusProvider, useFocus } from './contexts/FocusContext'
 import { FocusDataProvider, useFocusData, type NodeData } from './contexts/FocusDataContext'
 
@@ -335,6 +337,18 @@ function AppContent() {
 
   const mapRef = useRef<MapRef>(null)
   const isGlobe = false
+  // #212 / ADR-0005: Equal Earth is a parallel switchable view. Default Mercator
+  // (zero prod risk) until visual sign-off; persisted so the choice sticks.
+  const [mapProjection, setMapProjection] = useState<'mercator' | 'equalEarth'>(
+    () => (localStorage.getItem('atlas.mapProjection') === 'equalEarth' ? 'equalEarth' : 'mercator'),
+  )
+  const toggleProjection = useCallback(() => {
+    setMapProjection(p => {
+      const next = p === 'mercator' ? 'equalEarth' : 'mercator'
+      localStorage.setItem('atlas.mapProjection', next)
+      return next
+    })
+  }, [])
 
   // Focus hook for click-to-focus
   const { setFocus, focus, clearFocus, setCountry, filter, setTheme, mapFlyCountry, setMapFlyCountry, isActive } = useFocus()
@@ -886,96 +900,37 @@ function AppContent() {
   // Track which countries have heat state set (for cleanup on data change)
   const prevHeatCountries = useRef<Set<string>>(new Set())
 
+  // Per-country heat + intensity — SINGLE SOURCE OF TRUTH for both the MapLibre
+  // map (feature-states below) and the Equal Earth map (#212). See
+  // lib/countryHeatStates. entityFocus mirrors the prior inline logic.
+  const heatStates = useMemo(() => {
+    const entityFocus = !selectedCountryCode && isActive && !!focus.value
+      && (focus.type === 'person' || focus.type === 'theme')
+    return computeCountryHeatStates({
+      enhancedNodes,
+      heatComposite,
+      visibleFlows,
+      selectedCountryCode,
+      entityFocus,
+    })
+  }, [enhancedNodes, heatComposite, visibleFlows, selectedCountryCode, isActive, focus.type, focus.value])
+
   // Update MapLibre native country heat feature-states when node data changes
   // Must wait for heatSourceReady (GeoJSON downloaded), not just mapReady
   useEffect(() => {
     const map = mapRef.current?.getMap()
-    if (!map || !heatSourceReady || enhancedNodes.length === 0) return
+    if (!map || !heatSourceReady || heatStates.size === 0) return
 
+    // heatStates is computed by the shared helper (single source of truth with
+    // the Equal Earth map). Here we just push it into MapLibre feature-states.
     const currentCodes = new Set<string>()
-    const counts = enhancedNodes.map(n => n.signalCount)
-    const logMin = Math.log(Math.min(...counts) + 1)
-    const logMax = Math.log(Math.max(...counts, 1) + 1)
-    const logRange = Math.max(logMax - logMin, 0.001)
-
-    // #234 focus propagation: when a country is focused, the map stops showing
-    // global heat and instead lights the focused country + its co-occurrence
-    // partners (the same flows the arcs draw), weighted by flow strength.
-    // Everything unrelated dims. Reuses visibleFlows — flows ARE the relations.
-    const focusCode = selectedCountryCode
-    // #234: focusing a person/thread re-scopes the map to where that entity's
-    // coverage concentrates. The nodes are already focus-scoped (the /nodes
-    // fetch passes focus_type/value), so their volume IS the concentration —
-    // light them, dim everything else.
-    const entityFocus = !focusCode && isActive && !!focus.value && (focus.type === 'person' || focus.type === 'theme')
-    const relation = new Map<string, number>()
-    if (focusCode) {
-      let maxStr = 0.001
-      visibleFlows.forEach((f: any) => { maxStr = Math.max(maxStr, f.strength || 0) })
-      relation.set(focusCode, 1.0)
-      visibleFlows.forEach((f: any) => {
-        const partner = f.sourceCountry === focusCode ? f.targetCountry
-          : f.targetCountry === focusCode ? f.sourceCountry : null
-        if (partner && partner !== focusCode) {
-          relation.set(partner, Math.max(
-            relation.get(partner) ?? 0,
-            0.25 + 0.75 * ((f.strength || 0) / maxStr),
-          ))
-        }
-      })
-    }
-
-    enhancedNodes.forEach(node => {
-      // intensity: log-normalized volume [0.15, 1.0] — drives glow WIDTH only
-      // (evidence density, a secondary encoding — never the color).
-      const normalized = (Math.log(node.signalCount + 1) - logMin) / logRange
-      const intensity = 0.15 + normalized * 0.85
-      // heat drives fill COLOR. Focused: relation relevance (focused country +
-      // flow partners), unrelated countries dim to 0. Unfocused: the
-      // baseline-normalized composite (#231) — a country ABSENT from it is not
-      // anomalously hot (0, NOT node.heat which is volume-rank: US=1.0 always).
-      let heat: number
-      if (focusCode) {
-        heat = relation.get(node.id) ?? 0
-      } else if (entityFocus) {
-        // focus-scoped node volume = where the person/thread concentrates
-        heat = intensity
-      } else {
-        const composite = heatComposite.get(node.id)
-        heat = heatComposite.size > 0
-          ? (composite ?? 0)
-          : (node.heat != null ? node.heat : intensity)
-      }
+    heatStates.forEach((st, code) => {
       map.setFeatureState(
-        { source: 'country-heat', id: node.id },
-        { intensity, heat }
+        { source: 'country-heat', id: code },
+        { intensity: st.intensity, heat: st.heat }
       )
-      currentCodes.add(node.id)
+      currentCodes.add(code)
     })
-
-    if (focusCode) {
-      // Relation partners may sit outside the top-100 nodes — light them too.
-      relation.forEach((relHeat, code) => {
-        if (currentCodes.has(code)) return
-        map.setFeatureState(
-          { source: 'country-heat', id: code },
-          { intensity: 0.15, heat: relHeat }
-        )
-        currentCodes.add(code)
-      })
-    } else if (!entityFocus && heatComposite.size > 0) {
-      // #231: a hot country can sit OUTSIDE the top-100-by-volume nodes
-      // (e.g. Lebanon at 3 signals but high surprise). Color those too, with
-      // minimal glow width since they carry little volume.
-      heatComposite.forEach((compHeat, code) => {
-        if (currentCodes.has(code)) return
-        map.setFeatureState(
-          { source: 'country-heat', id: code },
-          { intensity: 0.15, heat: compHeat }
-        )
-        currentCodes.add(code)
-      })
-    }
 
     // Clear countries no longer in the data
     prevHeatCountries.current.forEach(code => {
@@ -988,7 +943,7 @@ function AppContent() {
     })
 
     prevHeatCountries.current = currentCodes
-  }, [enhancedNodes, heatSourceReady, heatComposite, selectedCountryCode, visibleFlows, focus.type, focus.value, isActive])
+  }, [heatStates, heatSourceReady])
 
   // Toggle country heat layer visibility when GLOW button is pressed
   useEffect(() => {
@@ -1597,11 +1552,33 @@ function AppContent() {
               >
                 ↺
               </button>
+              <button
+                className={`layer-btn ${mapProjection === 'equalEarth' ? 'active' : ''}`}
+                onClick={toggleProjection}
+                data-tip={mapProjection === 'equalEarth'
+                  ? 'Equal Earth (equal-area, honest country sizes). Click for Mercator.'
+                  : 'Mercator (inflates the north). Click for Equal Earth — equal-area, honest country sizes.'}
+                aria-label="Toggle map projection"
+              >
+                {mapProjection === 'equalEarth' ? 'EQ EARTH' : 'MERCATOR'}
+              </button>
             </div>
           </div>
           <div className="panel-content">
             <MapErrorBoundary>
-              {mapEverShown ? (
+              {mapProjection === 'equalEarth' ? (
+                <EqualEarthMap
+                  heatStates={heatStates}
+                  showHeatmap={showHeatmap}
+                  selectedCountryCode={selectedCountryCode}
+                  overlay={nativeOverlayData}
+                  onCountryClick={(gdelt, name) => {
+                    handleCountryClick(gdelt)
+                    setFocus('country', gdelt, name || gdelt)
+                    setMapFlyCountry(gdelt)
+                  }}
+                />
+              ) : mapEverShown ? (
               <MapGL
                 key={`map-${mapRetry}`}
                 ref={mapRef}
@@ -1861,11 +1838,22 @@ function AppContent() {
             <button className="drill-back-btn" onClick={() => setSelectedChokepoint(null)} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
             <span style={{ color: '#2dd4bf' }}>{selectedChokepoint!.name}</span>
           </>
+          // A3 scope strip: the blank SignalStream silently re-scopes to an
+          // active country/person focus — name it and make it reversible.
+          const streamScopeName = isBlankState
+            ? (filter.country ? resolveCountryName(filter.country) : (filter.person || null))
+            : null
           return (
             <div className="terminal-panel stream" data-tour="stream">
               <div className="panel-header">
                 <div className="panel-header-title-wrap">{panelTitle}</div>
               </div>
+              {streamScopeName && (
+                <div className="stream-scope-strip" data-tip="The stream is scoped to your active focus">
+                  <span>Scoped to <strong>{streamScopeName}</strong></span>
+                  <button type="button" className="stream-scope-clear" onClick={clearAll} data-tip="Clear scope" aria-label="Clear scope">✕</button>
+                </div>
+              )}
               <div className="panel-content">
                 {isPerson ? (
                   <EntityPanel inline focusType="person" focusValue={focus.value!} timeRange={timeRange}

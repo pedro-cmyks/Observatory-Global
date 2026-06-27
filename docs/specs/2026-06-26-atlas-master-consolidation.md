@@ -58,14 +58,24 @@ Foundational/living (do NOT close — they evolve): `living-narrative-threads`
   coverage" — compute the discussion/attention timestamp vs the thread's first
   media signal. *Spec:* #237 §4 + #172 silent-risk. *Files:* `public_attention`
   service + thread serving.
-- [ ] **T2.2 C3 — per-thread Public Attention.** A "Public Attention for this
-  thread" block (trends/wiki/forum scoped to the thread, with the forum-vs-media
-  sentiment already served). *Spec:* L2 review C3. *Files:* ThemeDetail +
-  `useFocusRelation`.
+- [~] **T2.2 C3 — per-thread Public Attention.** FORUM lane SHIPPED: backend
+  `GET /api/v2/public-attention?thread=dynamic-topic-<id>` returns social-lane
+  discussion that is a SEMANTIC neighbor of the thread centroid (signal_embeddings
+  ANN, language-blind), always `verified=false`/discussion, degrades to empty when
+  no centroid/embeddings. ThemeDetail renders "PUBLIC ATTENTION · THIS THREAD"
+  (DISCUSSION · UNVERIFIED badge, subreddit + similarity %, translatable headline)
+  for dynamic-topic threads only. *Files:* `public_attention.py` service+router,
+  `ThemeDetail.tsx`, CSS. REMAINING: semantic (not lexical) trends/wiki match —
+  needs live embedding of trends/wiki text, deferred (heavier, embed-batch).
+  Verify: deploy Fly + prod smoke `?thread=` then eyeball a dynamic thread.
 
 ### Tier 3 — Legibility / UX
-- [ ] **T3.1 A3 scope strips.** A persistent `"Scoped to <X>"` strip with `✕` on
-  NarrativeThreads + the stream header so silent re-scopes are legible.
+- [x] **T3.1 A3 scope strips.** ✅ "Scoped to <X>" strip with `✕` on
+  NarrativeThreads (country + person focus → clearCountryFilter/setPerson(null),
+  replaced the silent "filtered by quality gates" notice) + the stream-slot header
+  (blank SignalStream scoped to active country/person → clearAll). *Files:*
+  `NarrativeThreads.tsx`+css, `App.tsx`+`App.css`. Build+types+tests green;
+  browser eyeball pending (port-3000 busy in another session).
 - [ ] **T3.2 A4 first-click walkthrough.** 2-step `OnboardingCoachmark` teaching
   the select/deselect model once.
 - [ ] **T3.3 #236 mobile visualization polish.** Phone-native per-surface (not a

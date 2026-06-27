@@ -133,7 +133,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     const [personMatchIds, setPersonMatchIds] = useState<Set<string> | null>(null)
     const [effectiveHours, setEffectiveHours] = useState<number | null>(null)
     const [loading, setLoading] = useState(true)
-    const { filter, setCountry, setMapFlyCountry } = useFocus()
+    const { filter, setCountry, setMapFlyCountry, setPerson } = useFocus()
     const { timeRange } = useFocusData()
 
     // Cap to 24h when browsing globally (spread_pct becomes meaningless at wider windows);
@@ -320,11 +320,22 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
 
     return (
         <div className="narrative-threads-container">
-            {filter.country && (
-                <div className="narrative-country-filter-notice">
-                    Threads filtered to {resolveCountryName(filter.country)} by backend quality gates
-                </div>
-            )}
+            {(filter.country || (anyPersonMatch && focusPerson)) && (() => {
+                // A3 scope strip: make silent re-scopes legible + reversible.
+                const scopedToCountry = !!filter.country
+                const scopeName = scopedToCountry
+                    ? resolveCountryName(filter.country!)
+                    : (filter.person || '')
+                const clearScope = scopedToCountry ? clearCountryFilter : () => setPerson(null)
+                return (
+                    <div className="narrative-scope-strip" data-tip={scopedToCountry ? 'Threads filtered to this country by backend quality gates' : 'Threads that mention this person'}>
+                        <span className="narrative-scope-label">
+                            Scoped to <strong>{scopeName}</strong>
+                        </span>
+                        <button type="button" className="narrative-scope-clear" onClick={clearScope} data-tip="Clear scope" aria-label="Clear scope">✕</button>
+                    </div>
+                )
+            })()}
             {isCapped && !filter.country && (
                 <div className="narrative-cap-notice">
                     Showing last 24h: narratives are most meaningful at shorter windows

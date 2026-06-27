@@ -1,0 +1,37 @@
+/* Equal Earth L2 map (#212). Fills the map panel; no WebGL canvas. */
+.equal-earth-map {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: #060a12;
+    touch-action: none; /* let pointer pan/zoom own the gesture */
+}
+
+.equal-earth-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* overlay markers/flows/terminator — above countries, clicks pass through */
+.equal-earth-canvas {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+/* ocean / sphere backdrop */
+.equal-earth-sphere {
+    fill: #0a1626;
+    stroke: rgba(80, 120, 170, 0.25);
+    stroke-width: 0.5;
+}
+
+.equal-earth-country {
+    transition: fill 0.4s ease;
+    vector-effect: non-scaling-stroke;
+}
+
+.equal-earth-country:hover {
+    fill: rgba(104, 219, 174, 0.18);
+}
