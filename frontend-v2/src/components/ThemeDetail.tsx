@@ -114,6 +114,16 @@ interface NarrativeNote {
     source: string
 }
 
+interface ThreadForumItem {
+    signal_id: number
+    headline: string
+    subreddit?: string | null
+    country_code?: string | null
+    source_url?: string | null
+    source_lang?: string | null
+    similarity: number
+}
+
 interface AttentionSearchData {
     signal_matches?: Array<{
         id: number
@@ -191,6 +201,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     const [wikiMatch, setWikiMatch] = useState<{ has_wiki_activity: boolean; matches: Array<{ title: string; views: number }>, total_views: number } | null>(null)
     const [attentionSearchData, setAttentionSearchData] = useState<AttentionSearchData | null>(null)
     const [threadNote, setThreadNote] = useState<NarrativeNote | null>(null)
+    // Per-thread forum discussion (L2 C3): semantic neighbors of the thread
+    // centroid from the social lane. Discussion only — never gated evidence.
+    const [threadForum, setThreadForum] = useState<ThreadForumItem[]>([])
 
     // Reset drill state when theme changes, preserving country-scoped pivots from Brief/CountryBrief.
     useEffect(() => {
@@ -246,6 +259,18 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
             .then(d => { if (d) setWikiMatch(d) })
             .catch(() => { })
     }, [theme, hours])
+
+    // Per-thread forum discussion (L2 C3). Only dynamic-topic threads carry a
+    // centroid the backend can match the social lane against; others get [].
+    useEffect(() => {
+        if (!isDynamicTopic) { setThreadForum([]); return }
+        const controller = new AbortController()
+        fetch(`/api/v2/public-attention?thread=${encodeURIComponent(theme)}&hours=${hours}`, { signal: controller.signal })
+            .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+            .then(d => { if (!controller.signal.aborted) setThreadForum(d?.forum?.items ?? []) })
+            .catch(() => { if (!controller.signal.aborted) setThreadForum([]) })
+        return () => controller.abort()
+    }, [theme, hours, isDynamicTopic])
 
     useEffect(() => {
         if (!originAttention?.title) {
@@ -807,6 +832,35 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                             </div>
                                         </div>
                                     )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* PUBLIC ATTENTION FOR THIS THREAD — forum discussion (L2 C3) */}
+                        {threadForum.length > 0 && (
+                            <div className="theme-section">
+                                <div className="theme-section-title">
+                                    PUBLIC ATTENTION · THIS THREAD
+                                    <span className="forum-lane-badge" data-tip="Forum discussion semantically related to this thread. Discussion only — never counted as verified evidence.">DISCUSSION · UNVERIFIED</span>
+                                </div>
+                                <div className="thread-forum-list">
+                                    {threadForum.slice(0, 6).map(item => (
+                                        <a
+                                            key={item.signal_id}
+                                            className="thread-forum-row"
+                                            href={item.source_url || undefined}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            <span className="thread-forum-meta">
+                                                {item.subreddit && <span className="thread-forum-sub">{item.subreddit}</span>}
+                                                <span className="thread-forum-sim" data-tip="Semantic similarity to this thread">{Math.round(item.similarity * 100)}%</span>
+                                            </span>
+                                            <span className="thread-forum-headline">
+                                                <TranslatableHeadline signalId={item.signal_id} original={item.headline} sourceLang={item.source_lang} />
+                                            </span>
+                                        </a>
+                                    ))}
                                 </div>
                             </div>
                         )}

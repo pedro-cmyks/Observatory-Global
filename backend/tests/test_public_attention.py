@@ -1,5 +1,17 @@
-"""Forum public-attention lane (L2 C1)."""
-from app.services.public_attention import subreddit_label
+"""Forum public-attention lane (L2 C1/C3)."""
+from app.services.public_attention import parse_dynamic_topic_id, subreddit_label
+
+
+def test_parse_dynamic_topic_id():
+    assert parse_dynamic_topic_id("dynamic-topic-12") == 12
+    assert parse_dynamic_topic_id("dynamic-topic-007") == 7
+    assert parse_dynamic_topic_id("42") == 42
+    assert parse_dynamic_topic_id(None) is None
+    assert parse_dynamic_topic_id("") is None
+    # Non-dynamic threads have no centroid → no per-thread forum match.
+    assert parse_dynamic_topic_id("armed-conflict--co") is None
+    assert parse_dynamic_topic_id("emergent-cluster-9") is None
+    assert parse_dynamic_topic_id("query-thread::iran water 5") is None
 
 
 def test_subreddit_label_strips_reddit_prefix():
