@@ -268,13 +268,13 @@ export function EqualEarthMap({
                             d={ee.pathString({ type: 'Sphere' }) ?? ''}
                             className="equal-earth-sphere"
                         />
-                        {paths.map(p => {
+                        {paths.map((p, i) => {
                             const st = heatStates.get(ISO_TO_GDELT[p.iso] || p.iso)
                             const heat = showHeatmap && st ? st.heat : 0
-                            const isSel = selectedIso != null && p.iso === selectedIso
+                            const isSel = selectedIso != null && p.iso !== '-99' && p.iso === selectedIso
                             return (
                                 <path
-                                    key={p.iso || p.name}
+                                    key={`${p.iso}-${i}`}
                                     d={p.d}
                                     className="equal-earth-country"
                                     fill={heat > 0 ? heatFillColor(heat) : 'rgba(255,255,255,0.02)'}

@@ -482,6 +482,16 @@ function AppContent() {
   // Tracks when the 13MB GeoJSON source has actually finished loading
   const [heatSourceReady, setHeatSourceReady] = useState(false)
 
+  // When switching to Equal Earth, MapLibre unmounts — gate its readiness off so
+  // its layer effects never touch a torn-down map (the `this.style.getLayer`
+  // crash). Returning to Mercator remounts MapGL; its onLoad sets these true.
+  useEffect(() => {
+    if (mapProjection !== 'mercator') {
+      setMapReady(false)
+      setHeatSourceReady(false)
+    }
+  }, [mapProjection])
+
   // Settings toggles
   const [showTerminator, setShowTerminator] = useState(false)
   const [sizeBoost, setSizeBoost] = useState(false)
@@ -918,6 +928,7 @@ function AppContent() {
   // Update MapLibre native country heat feature-states when node data changes
   // Must wait for heatSourceReady (GeoJSON downloaded), not just mapReady
   useEffect(() => {
+    if (mapProjection !== 'mercator') return
     const map = mapRef.current?.getMap()
     if (!map || !heatSourceReady || heatStates.size === 0) return
 
@@ -943,10 +954,11 @@ function AppContent() {
     })
 
     prevHeatCountries.current = currentCodes
-  }, [heatStates, heatSourceReady])
+  }, [heatStates, heatSourceReady, mapProjection])
 
   // Toggle country heat layer visibility when GLOW button is pressed
   useEffect(() => {
+    if (mapProjection !== 'mercator') return
     const map = mapRef.current?.getMap()
     if (!map || !mapReady) return
 
@@ -956,7 +968,7 @@ function AppContent() {
     if (map.getLayer('country-heat-glow')) {
       map.setLayoutProperty('country-heat-glow', 'visibility', showHeatmap ? 'visible' : 'none')
     }
-  }, [showHeatmap, mapReady])
+  }, [showHeatmap, mapReady, mapProjection])
 
   const nativeOverlayData = useMemo(() => {
     const activeChokepointSet = new Set(activeChokepoints)
@@ -1069,6 +1081,7 @@ function AppContent() {
   ])
 
   useEffect(() => {
+    if (mapProjection !== 'mercator') return
     const map = mapRef.current?.getMap()
     if (!map || !mapReady) return
 
@@ -1187,9 +1200,11 @@ function AppContent() {
     showTerminator,
     showVessels,
     themeId,
+    mapProjection,
   ])
 
   useEffect(() => {
+    if (mapProjection !== 'mercator') return
     const map = mapRef.current?.getMap()
     if (!map || !mapReady) return
 
@@ -1230,18 +1245,24 @@ function AppContent() {
     map.on('mouseleave', 'atlas-acled-circle', leave)
 
     return () => {
-      if (map.getLayer('atlas-chokepoints-circle')) {
-        map.off('click', 'atlas-chokepoints-circle', handleChokepointClick)
-        map.off('mouseenter', 'atlas-chokepoints-circle', enter)
-        map.off('mouseleave', 'atlas-chokepoints-circle', leave)
-      }
-      if (map.getLayer('atlas-acled-circle')) {
-        map.off('click', 'atlas-acled-circle', handleAcledClick)
-        map.off('mouseenter', 'atlas-acled-circle', enter)
-        map.off('mouseleave', 'atlas-acled-circle', leave)
-      }
+      // The map may already be torn down (projection switch unmounts MapGL):
+      // map.getLayer() reaches into a destroyed `this.style` and throws. Guard
+      // on map.style and swallow teardown races.
+      try {
+        if (!(map as any).style) return
+        if (map.getLayer('atlas-chokepoints-circle')) {
+          map.off('click', 'atlas-chokepoints-circle', handleChokepointClick)
+          map.off('mouseenter', 'atlas-chokepoints-circle', enter)
+          map.off('mouseleave', 'atlas-chokepoints-circle', leave)
+        }
+        if (map.getLayer('atlas-acled-circle')) {
+          map.off('click', 'atlas-acled-circle', handleAcledClick)
+          map.off('mouseenter', 'atlas-acled-circle', enter)
+          map.off('mouseleave', 'atlas-acled-circle', leave)
+        }
+      } catch { /* map already removed */ }
     }
-  }, [mapReady, setMapFlyCountry])
+  }, [mapReady, setMapFlyCountry, mapProjection])
 
   // Total signals for stats
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
