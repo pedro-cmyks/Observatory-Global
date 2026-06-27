@@ -4,7 +4,12 @@
     inset: 0;
     overflow: hidden;
     background: #060a12;
-    touch-action: none; /* let pointer pan/zoom own the gesture */
+    touch-action: none; /* let d3-zoom own pinch/pan gestures */
+    cursor: grab;
+}
+
+.equal-earth-map:active {
+    cursor: grabbing;
 }
 
 .equal-earth-svg {

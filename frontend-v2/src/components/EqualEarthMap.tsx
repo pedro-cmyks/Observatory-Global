@@ -10,14 +10,30 @@
  * the same callbacks MapLibre does.
  */
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { zoom as d3zoom, zoomIdentity, type ZoomBehavior } from 'd3-zoom'
+import { select } from 'd3-selection'
 import {
     createEqualEarth,
-    clampScale,
     type ViewTransform,
     IDENTITY_TRANSFORM,
 } from '../lib/equalEarthProjection'
 import { heatFillColor, heatGlowColor, glowWidth, type CountryHeatStates } from '../lib/countryHeatStates'
 import './EqualEarthMap.css'
+
+// Land base color (slate) so countries read as land over the darker ocean, and
+// heat tints ON TOP of land (single-fill alpha composite) instead of floating
+// on ocean — the contrast fix.
+const LAND_RGB: [number, number, number] = [34, 48, 66]
+const OCEAN = '#0a1422'
+
+/** Alpha-composite an rgba() string over the solid land base → solid rgb. */
+function heatOverLand(heat: number): string {
+    const m = heatFillColor(heat).match(/[\d.]+/g)
+    if (!m) return `rgb(${LAND_RGB.join(',')})`
+    const [r, g, b, a = 1] = m.map(Number)
+    const mix = (over: number, base: number) => Math.round(over * a + base * (1 - a))
+    return `rgb(${mix(r, LAND_RGB[0])}, ${mix(g, LAND_RGB[1])}, ${mix(b, LAND_RGB[2])})`
+}
 
 // ISO_A2 (Natural Earth) → GDELT/FIPS where they differ. Mirrors App.tsx's map
 // so a click resolves to the same code the rest of Atlas keys on.
@@ -119,48 +135,9 @@ export function EqualEarthMap({
         ? (GDELT_TO_ISO[selectedCountryCode] ?? selectedCountryCode)
         : null
 
-    // --- Pan / zoom (native handlers, no d3-zoom dep) ---
-    const dragRef = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null)
-    // True once a drag moved past a small threshold — used to swallow the click
-    // that would otherwise fire on a country path at drag-end (pan ≠ select).
+    // True during/just after a pan-zoom gesture — swallows the click that fires
+    // at gesture end so a pan ≠ a country select.
     const movedRef = useRef(false)
-
-    const onWheel = useCallback((e: React.WheelEvent) => {
-        e.preventDefault()
-        const rect = containerRef.current?.getBoundingClientRect()
-        if (!rect) return
-        const cx = e.clientX - rect.left
-        const cy = e.clientY - rect.top
-        setTransform(t => {
-            const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15
-            const k2 = clampScale(t.k * factor)
-            if (k2 === t.k) return t
-            // keep the point under the cursor fixed
-            const x2 = cx - ((cx - t.x) / t.k) * k2
-            const y2 = cy - ((cy - t.y) / t.k) * k2
-            return { k: k2, x: x2, y: y2 }
-        })
-    }, [])
-
-    const onPointerDown = useCallback((e: React.PointerEvent) => {
-        ;(e.target as Element).setPointerCapture?.(e.pointerId)
-        movedRef.current = false
-        dragRef.current = { x: e.clientX, y: e.clientY, tx: transform.x, ty: transform.y }
-    }, [transform.x, transform.y])
-
-    const onPointerMove = useCallback((e: React.PointerEvent) => {
-        const d = dragRef.current
-        if (!d) return
-        if (Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) > 4) movedRef.current = true
-        setTransform(t => ({ ...t, x: d.tx + (e.clientX - d.x), y: d.ty + (e.clientY - d.y) }))
-    }, [])
-
-    const endDrag = useCallback((e: React.PointerEvent) => {
-        ;(e.target as Element).releasePointerCapture?.(e.pointerId)
-        dragRef.current = null
-    }, [])
-
-    const resetView = useCallback(() => setTransform(IDENTITY_TRANSFORM), [])
 
     const handleCountryClick = useCallback((iso: string, name: string) => {
         if (movedRef.current) return // a pan, not a select
@@ -169,10 +146,64 @@ export function EqualEarthMap({
         onCountryClick(gdelt, name)
     }, [onCountryClick])
 
+    // The country <path>s do NOT depend on the pan/zoom transform (the parent
+    // <g transform> handles that), so memoize them — otherwise every zoom frame
+    // re-creates 177 elements and the gesture janks ("se tuesta") on mobile.
+    const countryEls = useMemo(() => paths.map((p, i) => {
+        const st = heatStates.get(ISO_TO_GDELT[p.iso] || p.iso)
+        const heat = showHeatmap && st ? st.heat : 0
+        const isSel = selectedIso != null && p.iso !== '-99' && p.iso === selectedIso
+        const fill = heat > 0 ? heatOverLand(heat) : `rgb(${LAND_RGB.join(',')})`
+        return (
+            <path
+                key={`${p.iso}-${i}`}
+                d={p.d}
+                className="equal-earth-country"
+                fill={fill}
+                stroke={isSel ? '#68dbae' : (heat > 0.3 ? heatGlowColor(heat) : 'rgba(120,140,170,0.22)')}
+                strokeWidth={isSel ? 1.8 : (st && heat > 0.3 ? glowWidth(st.intensity) * 0.3 + 0.3 : 0.3)}
+                onClick={() => handleCountryClick(p.iso, p.name)}
+                style={{ cursor: 'pointer' }}
+            />
+        )
+    }), [paths, heatStates, showHeatmap, selectedIso, handleCountryClick])
+
+    // --- Pan / zoom / pinch via d3-zoom (handles wheel, drag AND multi-touch
+    // pinch — the mobile gesture the hand-rolled handlers couldn't do). One
+    // {k,x,y} transform drives both the SVG <g> and the canvas. ---
+    const zoomRef = useRef<ZoomBehavior<HTMLDivElement, unknown> | null>(null)
+
+    useEffect(() => {
+        const el = containerRef.current
+        if (!el) return
+        const zb = d3zoom<HTMLDivElement, unknown>()
+            .scaleExtent([1, 12])
+            .on('start', () => { movedRef.current = false })
+            .on('zoom', (event) => {
+                if (event.sourceEvent) movedRef.current = true
+                const t = event.transform
+                setTransform({ k: t.k, x: t.x, y: t.y })
+            })
+            .on('end', () => { setTimeout(() => { movedRef.current = false }, 120) })
+        zoomRef.current = zb
+        const sel = select(el)
+        sel.call(zb)
+        sel.on('dblclick.zoom', null) // dbl-click is our reset, not zoom
+        return () => { sel.on('.zoom', null) }
+    }, [])
+
+    const resetView = useCallback(() => {
+        const el = containerRef.current
+        if (el && zoomRef.current) select(el).call(zoomRef.current.transform, zoomIdentity)
+    }, [])
+
     // --- Canvas overlay: terminator + flows + markers (screen-space draw, so
     // widths/radii stay constant under zoom). Same projection + transform as the
-    // SVG, so layers can't drift. ---
+    // SVG, so layers can't drift. rAF-coalesced so a fast pinch doesn't trigger
+    // a full redraw per event (mobile jank). ---
     useEffect(() => {
+        let raf = 0
+        raf = requestAnimationFrame(() => {
         const canvas = canvasRef.current
         if (!canvas || !ee || size.w === 0) return
         const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -239,21 +270,15 @@ export function EqualEarthMap({
         for (const f of overlay.anomaly.features) {
             dot(f.geometry.coordinates, num(f.properties.radius, 8), 'none', 'rgba(239,68,68,0.95)', 2)
         }
+        })
+        return () => cancelAnimationFrame(raf)
     }, [overlay, transform, ee, size.w, size.h])
-
-    const dragging = dragRef.current !== null
 
     return (
         <div
             ref={containerRef}
             className="equal-earth-map"
-            onWheel={onWheel}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={endDrag}
-            onPointerLeave={endDrag}
             onDoubleClick={resetView}
-            style={{ cursor: dragging ? 'grabbing' : 'grab' }}
         >
             {ee && (
                 <svg
@@ -267,24 +292,9 @@ export function EqualEarthMap({
                         <path
                             d={ee.pathString({ type: 'Sphere' }) ?? ''}
                             className="equal-earth-sphere"
+                            style={{ fill: OCEAN }}
                         />
-                        {paths.map((p, i) => {
-                            const st = heatStates.get(ISO_TO_GDELT[p.iso] || p.iso)
-                            const heat = showHeatmap && st ? st.heat : 0
-                            const isSel = selectedIso != null && p.iso !== '-99' && p.iso === selectedIso
-                            return (
-                                <path
-                                    key={`${p.iso}-${i}`}
-                                    d={p.d}
-                                    className="equal-earth-country"
-                                    fill={heat > 0 ? heatFillColor(heat) : 'rgba(255,255,255,0.02)'}
-                                    stroke={isSel ? '#68dbae' : (heat > 0 ? heatGlowColor(heat) : 'rgba(120,140,170,0.18)')}
-                                    strokeWidth={isSel ? 1.8 : (st && heat > 0 ? glowWidth(st.intensity) * 0.4 + 0.4 : 0.4)}
-                                    onClick={() => handleCountryClick(p.iso, p.name)}
-                                    style={{ cursor: 'pointer' }}
-                                />
-                            )
-                        })}
+                        {countryEls}
                     </g>
                 </svg>
             )}
