@@ -358,7 +358,15 @@ the papers — it is the comparative evidence they need.**
   has 0 source rows; public-led/social-led/silent-risk fire when F1 forum
   ingest populates discussion+mood). Closes the serving half of #168; re-homes
   #172 silent-risk on the ratio.
-- [ ] **F1.1** Bluesky Jetstream ingest worker → `signals_v2` social (country via lang+NER)
+- [x] **F1.1** Bluesky Jetstream ingest worker → `signals_v2` social — `app/services/ingest_bluesky.py`
+  (Jetstream JSON-over-WS firehose, NO `atproto` lib / no creds; bounded ~25s
+  drain, substantive top-level posts only, country via NER geocode + `source_lang`
+  from BCP-47 `langs` reduced to 2-letter; wired into `ingest_loop` every 4th
+  cycle; 12 tests). LIVE-verified: 185 social signals in one drain, **13
+  languages** (en/pt/ja/ko/…). Bug found+fixed: BCP-47 `pt-BR`/`zh-Hans` overflow
+  CHAR(2) `source_lang` → reduce to base 2-letter. Geo on social is weak by
+  design (lang+NER); the discussion attach is semantic (embeddings), so geo noise
+  doesn't affect membership.
 - [x] **F1.2** Lemmy ingest worker (instance=country) → `signals_v2` social — `app/services/ingest_lemmy.py`
   (9 live instances, `type_=Local`, `source_origin_country`=instance home; wired
   into `ingest_loop` every 4th cycle; 7 tests). LIVE-verified: 125 social signals

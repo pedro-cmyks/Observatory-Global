@@ -142,6 +142,19 @@ async def main():
             except Exception:
                 log.exception("Lemmy ingestion failed — continuing")
 
+        # ── Bluesky Social Signals: every 4th cycle (~60 min) ── Unified Engine F1.1.
+        # Jetstream JSON firehose (no creds, no atproto lib); a bounded ~25s drain
+        # of substantive top-level posts. Multilingual by nature; country via NER
+        # geocode on the text (Bluesky is one global network — no instance home).
+        if gdelt_cycle % 4 == 0:
+            try:
+                log.info("Bluesky social signals ingestion starting...")
+                from app.services.ingest_bluesky import run_bluesky_ingestion
+                await run_bluesky_ingestion()
+                log.info("Bluesky ingestion complete.")
+            except Exception:
+                log.exception("Bluesky ingestion failed — continuing")
+
         # ── MediaStack ES/PT: every 8th cycle (~2 hours) ──
         if gdelt_cycle % 8 == 0:
             try:
