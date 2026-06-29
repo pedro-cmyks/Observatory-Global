@@ -200,3 +200,34 @@ appear; resolve them with their own targeted pulls in the next pass.
 holds at 79% unanimous on the hardest (contested) slice — and the recurring lesson
 is the same as the engine work: the value is the **reject class + sharp
 boundaries**, applied at the GATE, not new categories.
+
+## Phase D — broad ensemble gold base (DONE, growing)
+
+`phase_d_goldset.py` — a big general pass over many topics: stratified across ALL
+categories + random recent, labeled under v2 by the 3 scriptable models (DeepSeek
++ OpenAI + **Codex/GPT-5.5 via ChatGPT subscription, zero API**), batched in
+chunks, ACCUMULATING across passes (dedupe by signal id). Builds a reusable
+labeled base — and a labeled-EMBEDDING base where the signal has an e5 vector
+(`goldset.json`).
+
+**Accumulated base (3 passes, 2026-06-29): 390 labeled signals**
+- **unanimous (3/3 models): 310/390 = 79%** — the v2 taxonomy is highly separable
+  at scale across all topics.
+- **3-way disagreements: ~2 total** — near-zero ambiguity; the taxonomy is clear.
+- **gold OUT_OF_SCOPE: 243/390 = 62%** — the force-fit confirmed AT SCALE: the
+  current gate keeps a majority of non-crisis content that v2 correctly rejects.
+- **embedded (labeled-embedding base): 117/390 (30%)** — limited by raw embedding
+  coverage (#229); this is the link to "growing the embeddings base" — the labeled
+  set is the training/eval foundation, and its usefulness scales with how much of
+  the corpus is embedded (the M1 embed cron / #229 backfill lever).
+- **`earthquake-volcano-disaster` (a flagged addition) drew 12+ real signals** —
+  DATA-VALIDATED: there are crisis signals (seismic events) that had no home in v1
+  and were force-fit. The 2 natural-hazard additions are justified.
+
+**Net:** a 390-signal, 79%-unanimous, 4-distinct-model (2 API families + Codex
+subscription + Claude-adjudication) labeled gold base — the unconfounded benchmark
+for the v2 gate, growing with each pass. The rewrite is validated end to end
+(force-fit 30–46% → reject; agreement v1 76% → v2 96%; in-category 81–92%;
+contested housing resolved; broad-pass 79% unanimous / earthquake-add validated).
+The complement Pedro flagged — growing the raw embedding corpus so MORE of this
+labeled base carries vectors — is the M1 embed cron / #229 (separate lever).
