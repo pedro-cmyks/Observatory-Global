@@ -2148,5 +2148,26 @@ parametrizing the read path to serve unified-v2. **F3.3 movement** (#232): event
 live in separate tables (`acled_conflicts_v2` ≠ `signals_v2`), so the movement
 role needs a `topic_members` event-ref schema extension first — scoped, commented
 on #232. #242 closed (subsumed); #237 progress-commented (forum ingest delivered).
-**Engine arc F0→F3.2 COMPLETE + measured.** NEXT: F3.3 schema (movement) / F4
-(labeling + gold + flag) / forum-volume ramp differentiates the lanes.
+**Engine arc F0→F3.2 COMPLETE + measured.**
+
+**2026-06-29 (PM cont.5) — F3.2b LLM-judge: CONFOUND → taxonomy is the real lever.**
+Tried to confirm the recall verdict with an independent modality
+(`engine_recall_judge.py`, DeepSeek judges on-topic vs each engine's label). Result
+negative-but-pivotal: `shared` members (assigned by BOTH engines) score **40–52%**
+on-topic (legal filing→"Gang control", FEMA satire→"Constitutional crisis"). The
+judge measures LABEL/TAXONOMY precision, not engine recall (broad atlas vs
+specific/stale dynamic labels = not comparable). **So: architecture settled in
+v2's favour on label-INDEPENDENT structural metrics, but topical precision vs the
+current taxonomy is ~40–52% for BOTH engines → the dominant remaining lever is
+TAXONOMY/LABELS (#204) + the gate, NOT the engine.** v2 cutover buys cleaner/
+tighter topics, not topical precision. Verdict auto-flags the confound (shared<65%).
+Commented #204 with the measured baseline (elevates it from "quarterly" to primary
+lever); written into Paper 1 + spec §16 F3.2b. Also found (measure-first): the
+NARRATIVE event sources are DEAD — `acled_conflicts_v2`=0 rows; only `events_v2`
+(4.8M GDELT CAMEO, co-occurrence-bindable not embeddable). So F3.3 movement needs
+event-ingestion revival OR a co-occurrence+schema build (commented #232), not a
+quick increment. **NEXT priorities (re-ordered by evidence):** (1) #204 taxonomy/
+label revision — the measured ~40–52% topical-precision ceiling; (2) a FIXED
+precise gold label set so the recall judge is unconfounded + F4 has a real gate;
+(3) F4 read-path + new-topic labeling; (4) forum-volume ramp differentiates lanes;
+(5) F3.3 movement (event source revival + schema).
