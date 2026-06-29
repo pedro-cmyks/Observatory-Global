@@ -210,13 +210,13 @@ chunks, ACCUMULATING across passes (dedupe by signal id). Builds a reusable
 labeled base — and a labeled-EMBEDDING base where the signal has an e5 vector
 (`goldset.json`).
 
-**Accumulated base (4 passes, 2026-06-29): 545 labeled signals** (growing)
-- **unanimous (3/3 models): 435/545 = 80%** — the v2 taxonomy is highly separable
+**Accumulated base (6 passes, 2026-06-29): 732 labeled signals** (growing)
+- **unanimous (3/3 models): 551/732 = 75%** — the v2 taxonomy is highly separable
   at scale across all topics.
-- **3-way disagreements: ~6 total** — near-zero ambiguity; the taxonomy is clear.
-- **gold OUT_OF_SCOPE: 335/545 = 61%** — the force-fit confirmed AT SCALE: the
+- **3-way disagreements: low; clean** — near-zero ambiguity; the taxonomy is clear.
+- **gold OUT_OF_SCOPE: 436/732 = 60%** — the force-fit confirmed AT SCALE: the
   current gate keeps a majority of non-crisis content that v2 correctly rejects.
-- **embedded (labeled-embedding base): 156/545 (29%)** — limited by raw embedding
+- **embedded (labeled-embedding base): 351/732 (48%)** — nearly doubled from 29% as the M1 embed cron caught up; the base IS growing both labels and vectors — limited by raw embedding
   coverage (#229); this is the link to "growing the embeddings base" — the labeled
   set is the training/eval foundation, and its usefulness scales with how much of
   the corpus is embedded (the M1 embed cron / #229 backfill lever).
@@ -224,7 +224,7 @@ labeled base — and a labeled-EMBEDDING base where the signal has an e5 vector
   DATA-VALIDATED: there are crisis signals (seismic events) that had no home in v1
   and were force-fit. The 2 natural-hazard additions are justified.
 
-**Net:** a 545-signal, 80%-unanimous, 4-distinct-model (2 API families + Codex
+**Net:** a 732-signal, 75%-unanimous, 4-distinct-model (2 API families + Codex
 subscription + Claude-adjudication) labeled gold base — the unconfounded benchmark
 for the v2 gate, growing with each pass. The rewrite is validated end to end
 (force-fit 30–46% → reject; agreement v1 76% → v2 96%; in-category 81–92%;
