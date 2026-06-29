@@ -12,6 +12,14 @@
     cursor: grabbing;
 }
 
+/* GPU-composited pan/zoom layer (holds the country SVG) */
+.equal-earth-viewport {
+    position: absolute;
+    inset: 0;
+    will-change: transform;
+    transform-origin: 0 0;
+}
+
 .equal-earth-svg {
     display: block;
     width: 100%;

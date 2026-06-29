@@ -93,16 +93,24 @@ export function EqualEarthMap({
     const [features, setFeatures] = useState<CountryFeature[]>([])
     const [transform, setTransform] = useState<ViewTransform>(IDENTITY_TRANSFORM)
 
-    // Container size (ResizeObserver) — drives the projection fit. Works even
-    // when the panel mounts at 0×0 then grows (the mobile tab case).
+    // Container size — drives the projection fit. The map can mount at 0×0
+    // inside a hidden mobile tab and only get a real box when the tab is shown,
+    // and ResizeObserver doesn't always fire on display:none→block. So: observe
+    // AND poll via rAF until we have a non-zero box (then stop polling).
     useEffect(() => {
         const el = containerRef.current
         if (!el) return
-        const measure = () => setSize({ w: el.clientWidth, h: el.clientHeight })
-        measure()
+        let raf = 0
+        const measure = () => {
+            const w = el.clientWidth, h = el.clientHeight
+            setSize(prev => (prev.w === w && prev.h === h ? prev : { w, h }))
+            return w > 0 && h > 0
+        }
+        const poll = () => { if (!measure()) raf = requestAnimationFrame(poll) }
+        poll()
         const ro = new ResizeObserver(measure)
         ro.observe(el)
-        return () => ro.disconnect()
+        return () => { ro.disconnect(); cancelAnimationFrame(raf) }
     }, [])
 
     // Country shapes — fetched once (local file, no CDN, offline-safe).
@@ -281,23 +289,35 @@ export function EqualEarthMap({
             onDoubleClick={resetView}
         >
             {ee && (
-                <svg
-                    className="equal-earth-svg"
-                    width={size.w}
-                    height={size.h}
-                    viewBox={`0 0 ${size.w} ${size.h}`}
+                // GPU-composited pan/zoom: the transform is a CSS transform on
+                // this wrapper (translate3d+scale), NOT an SVG <g transform> —
+                // SVG group transforms re-rasterize 177 detailed paths every
+                // frame on mobile ("se tuesta"); a CSS transform is composited on
+                // the GPU and stays smooth.
+                <div
+                    className="equal-earth-viewport"
+                    style={{
+                        transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${transform.k})`,
+                        transformOrigin: '0 0',
+                    }}
                 >
-                    <g transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}>
-                        {/* sphere backdrop (ocean) */}
+                    <svg
+                        className="equal-earth-svg"
+                        width={size.w}
+                        height={size.h}
+                        viewBox={`0 0 ${size.w} ${size.h}`}
+                    >
                         <path
                             d={ee.pathString({ type: 'Sphere' }) ?? ''}
                             className="equal-earth-sphere"
                             style={{ fill: OCEAN }}
                         />
                         {countryEls}
-                    </g>
-                </svg>
+                    </svg>
+                </div>
             )}
+            {/* Markers/flows/terminator: screen-space canvas (crisp, fixed-size
+                under zoom), redrawn rAF-throttled with the transform. */}
             {ee && (
                 <canvas
                     ref={canvasRef}
