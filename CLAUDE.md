@@ -2078,6 +2078,35 @@ data). **Papers:** P4 spec (`2026-05-24-living-narrative-threads.md`) + master-
 plan cross-ref row updated (typed membership + 5 types = P4; A/B = P1; serving =
 P7). **NEXT = F1**: Bluesky Jetstream + Lemmy ingest workers → `signals_v2`
 social (instance/lang=country), embedded, attached as discussion members —
-THEN the relationship types light up. Cron note: re-run `etl_topic_members`
-(now assigned-at-correct) on a schedule beside the classifier; classifier last
-ran 06-27 (24h window=0, 168h=6734).
+THEN the relationship types light up.
+
+**2026-06-29 (PM cont.2) — CLASSIFIER CRON FIXED + F1.2 Lemmy + discussion chain
+made recurring.** (1) **Classifier cron was dead since the power outage**
+(`exit 1` × 8, silent since 06-27 12:04 → why 24h threads were starved + topic_
+members had no fresh evidence). Root cause: launchd's minimal env has no
+`DATABASE_URL`; the runner fell to a `fly ssh` fetch that fails under launchd,
+and `set -euo pipefail` aborted the script before python (no logs). FIX
+(`/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh`, NOT in repo —
+un-versioned): source `.env` first + made fly-ssh fallback non-aborting.
+Verified end-to-end under launchd (exit 0, 425 assignments, fires every 30min);
+`/threads?hours=24` serves atlas again. (`local-hot-cold-catchup` also exit-1
+from the outage — archive job, left.) (2) **DISCUSSION-ATTACH BUG (the real
+reason 0 `semantic-discussion-v1` rows for weeks):** `assign_discussion_topics.py`
+INSERT `$3` was used as both `confidence` real AND a jsonb anyelement →
+`AmbiguousParameterError` on EVERY real run (dry-run hid it). It was ALSO never
+cron'd. Fixed `$3::real` (`f9af200`); proven: 24 embedded social → 2 attach at
+0.90 precision-first → `topic_members` discussion role → prod relationship
+endpoint reads real `discussion_count` (armed-conflict 1, migration-border 1;
+both stay media-led — evidence ≫ discussion, correct). (3) **F1.2 Lemmy ingest**
+(`9e5e917`, DEPLOYED): `app/services/ingest_lemmy.py` — 9 live instances,
+`type_=Local`, instance→`source_origin_country` (WAVE-N voice model for forums),
+wired into `ingest_loop` every 4th cycle, 7 tests. LIVE: 125 social signals,
+country-tagged (feddit.dk DK/DK; lemmy.ca→US-subject/CA-origin). (4) **Recurring
+discussion chain** (`33e71e0`): the M1 embed cron (3x/day) now does embed →
+attach → `etl_topic_members` project (all pure-SQL post-embedding), so discussion
+members + topic_members stay current with no manual runs. Synced runner + the 2
+scripts to AtlasLocalWorker (were missing). **NEXT:** F1.1 Bluesky Jetstream
+(volume → lanes differentiate to public/social-led/silent-risk); social
+embedding cadence (eligible, ~0.5% of corpus = slow); then F2 source_family
+clustering guard before scaling forum volume. When the F0.3 read-flag flips on,
+move the ETL projection to the 30-min classifier runner (fresher evidence).
