@@ -252,3 +252,21 @@ topical precision above ~50%. That is a labeling/taxonomy result, and it
 redirects the post-engine priority. (Methodological note for the paper: judge
 quality must be evaluated against a fixed, precise label set, not the production
 labels — the production-label judge is confounded by label drift.)
+
+## Taxonomy revision — ensemble-κ gold benchmark (2026-06-29, #204)
+
+The F3.2b finding (topical precision ~40–52% is taxonomy-bound, not engine-bound)
+drove a taxonomy rewrite, built + evaluated by a **multi-model LLM-ensemble
+annotation** method (DeepSeek + GPT-4o + GPT-5.5/Codex + Claude orchestrator).
+
+**Result:** a 732-item gold-labeled base over the candidate-v2 label space, with
+**Fleiss' κ = 0.739 (substantial)** full / **0.772 in-category** / 0.706 reject —
+strong reliability across 3 independent model families on a 33-way task. The
+diagnosis→fix→measure arc: force-fit measured (30–46% of gate-kept evidence is
+out-of-scope) → structural fix (a rigorous OUT_OF_SCOPE reject class + per-category
+excludes; categories barely move) → agreement lift (v1 76% → v2 96%) → at-scale
+validation (κ 0.74). This is P1's **evaluation contribution** and the unconfounded
+benchmark the production-label judge could not provide. Full method:
+`docs/research/taxonomy-revision/2026-06-29-taxonomy-revision-methodology.md`;
+dataset: `goldset.json`. The next P1 number is the v2-gate precision lift on a
+held-out gold split.
