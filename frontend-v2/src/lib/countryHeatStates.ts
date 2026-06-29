@@ -116,14 +116,17 @@ export function computeCountryHeatStates(input: CountryHeatInput): CountryHeatSt
  * Returns an rgba() string; transparent below the 0.1 floor.
  */
 export function heatFillColor(heat: number): string {
+    // Wide, vivid weather-radar ramp: faint heat barely tints (stays near land,
+    // so most countries read as land and only real heat pops), then a clearly
+    // separated blue→cyan→green→yellow→orange→red climb so values differentiate.
     const stops: Array<[number, [number, number, number, number]]> = [
         [0, [0, 0, 0, 0]],
-        [0.1, [20, 50, 120, 0.40]],
-        [0.3, [25, 90, 150, 0.60]],
-        [0.5, [40, 140, 120, 0.75]],
-        [0.65, [190, 130, 30, 0.95]],
-        [0.82, [220, 75, 20, 1.0]],
-        [1.0, [238, 35, 10, 1.0]],
+        [0.12, [40, 100, 210, 0.30]],
+        [0.30, [25, 175, 205, 0.55]],
+        [0.48, [45, 200, 120, 0.72]],
+        [0.64, [235, 205, 45, 0.88]],
+        [0.80, [240, 130, 30, 0.96]],
+        [1.0, [242, 45, 30, 1.0]],
     ]
     return rgbaInterpolate(heat, stops)
 }

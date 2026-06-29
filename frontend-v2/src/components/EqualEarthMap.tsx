@@ -24,8 +24,10 @@ import './EqualEarthMap.css'
 // Land base color (slate) so countries read as land over the darker ocean, and
 // heat tints ON TOP of land (single-fill alpha composite) instead of floating
 // on ocean — the contrast fix.
-const LAND_RGB: [number, number, number] = [34, 48, 66]
-const OCEAN = '#0a1422'
+// Land brighter than the (greyer, lighter) ocean so countries stand out — the
+// Mercator basemap reads as grey sea + lighter land; match that contrast.
+const LAND_RGB: [number, number, number] = [58, 76, 100]
+const OCEAN = '#1b2531'
 
 // ISO_A2 (Natural Earth) → GDELT/FIPS where they differ. Mirrors App.tsx's map
 // so a click resolves to the same code the rest of Atlas keys on.

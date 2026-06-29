@@ -78,7 +78,7 @@ describe('computeCountryHeatStates', () => {
 describe('heatFillColor', () => {
     it('transparent below the floor, hot near 1', () => {
         expect(heatFillColor(0)).toBe('rgba(0, 0, 0, 0.000)')
-        expect(heatFillColor(1)).toContain('238')
+        expect(heatFillColor(1)).toContain('242')
     })
 })
 
