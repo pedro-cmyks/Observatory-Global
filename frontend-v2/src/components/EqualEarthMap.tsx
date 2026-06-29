@@ -18,7 +18,7 @@ import {
     type ViewTransform,
     IDENTITY_TRANSFORM,
 } from '../lib/equalEarthProjection'
-import { heatFillColor, heatGlowColor, glowWidth, type CountryHeatStates } from '../lib/countryHeatStates'
+import { heatFillColor, heatGlowColor, type CountryHeatStates } from '../lib/countryHeatStates'
 import './EqualEarthMap.css'
 
 // Land base color (slate) so countries read as land over the darker ocean, and
@@ -26,15 +26,6 @@ import './EqualEarthMap.css'
 // on ocean — the contrast fix.
 const LAND_RGB: [number, number, number] = [34, 48, 66]
 const OCEAN = '#0a1422'
-
-/** Alpha-composite an rgba() string over the solid land base → solid rgb. */
-function heatOverLand(heat: number): string {
-    const m = heatFillColor(heat).match(/[\d.]+/g)
-    if (!m) return `rgb(${LAND_RGB.join(',')})`
-    const [r, g, b, a = 1] = m.map(Number)
-    const mix = (over: number, base: number) => Math.round(over * a + base * (1 - a))
-    return `rgb(${mix(r, LAND_RGB[0])}, ${mix(g, LAND_RGB[1])}, ${mix(b, LAND_RGB[2])})`
-}
 
 // ISO_A2 (Natural Earth) → GDELT/FIPS where they differ. Mirrors App.tsx's map
 // so a click resolves to the same code the rest of Atlas keys on.
@@ -175,22 +166,36 @@ export function EqualEarthMap({
         onCountryClick(gdelt, name)
     }, [onCountryClick])
 
-    // The country <path>s do NOT depend on the pan/zoom transform (the parent
-    // <g transform> handles that), so memoize them — otherwise every zoom frame
-    // re-creates 177 elements and the gesture janks ("se tuesta") on mobile.
-    const countryEls = useMemo(() => paths.map((p, i) => {
+    // Heat-conduction render (Pedro's weather-radar idea): THREE memoized SVG
+    // layers, stacked per tile — (1) solid LAND base, (2) heat fills run through
+    // a Gaussian blur so each country's heat BLEEDS across its shared borders
+    // into neighbors (thermal conduction), (3) crisp country borders + the
+    // click targets on top. Heat stays legibly per-country (the shape) but
+    // diffuses at the frontier like a radar. All memoized (transform-independent;
+    // the parent CSS transform pans/zooms them).
+    const landEls = useMemo(() => paths.map((p, i) => (
+        <path key={`l-${p.iso}-${i}`} d={p.d} fill={`rgb(${LAND_RGB.join(',')})`} />
+    )), [paths])
+
+    const heatEls = useMemo(() => paths.map((p, i) => {
+        const st = heatStates.get(ISO_TO_GDELT[p.iso] || p.iso)
+        const heat = showHeatmap && st ? st.heat : 0
+        if (heat <= 0) return null
+        return <path key={`h-${p.iso}-${i}`} d={p.d} fill={heatFillColor(heat)} />
+    }).filter(Boolean), [paths, heatStates, showHeatmap])
+
+    const borderEls = useMemo(() => paths.map((p, i) => {
         const st = heatStates.get(ISO_TO_GDELT[p.iso] || p.iso)
         const heat = showHeatmap && st ? st.heat : 0
         const isSel = selectedIso != null && p.iso !== '-99' && p.iso === selectedIso
-        const fill = heat > 0 ? heatOverLand(heat) : `rgb(${LAND_RGB.join(',')})`
         return (
             <path
-                key={`${p.iso}-${i}`}
+                key={`b-${p.iso}-${i}`}
                 d={p.d}
                 className="equal-earth-country"
-                fill={fill}
-                stroke={isSel ? '#68dbae' : (heat > 0.3 ? heatGlowColor(heat) : 'rgba(120,140,170,0.22)')}
-                strokeWidth={isSel ? 1.8 : (st && heat > 0.3 ? glowWidth(st.intensity) * 0.3 + 0.3 : 0.3)}
+                fill="transparent"
+                stroke={isSel ? '#68dbae' : (heat > 0.3 ? heatGlowColor(heat) : 'rgba(120,140,170,0.18)')}
+                strokeWidth={isSel ? 1.8 : 0.3}
                 onClick={() => handleCountryClick(p.iso, p.name)}
                 style={{ cursor: 'pointer' }}
             />
@@ -421,9 +426,16 @@ export function EqualEarthMap({
                         viewBox={`0 0 ${size.w} ${size.h}`}
                         style={{ overflow: 'visible' }}
                     >
+                        <defs>
+                            {/* Gaussian blur → heat conduction across borders. */}
+                            <filter id="atlas-heat-blur" x="-20%" y="-20%" width="140%" height="140%">
+                                <feGaussianBlur stdDeviation="5" />
+                            </filter>
+                        </defs>
                         {/* 3 tiles → infinite horizontal wrap (rectangular proj
                             tiles perfectly at ±180°). Middle + both neighbors so a
-                            seam is never visible as you pan/rotate sideways. */}
+                            seam is never visible as you pan/rotate sideways. Per
+                            tile: ocean → land → blurred heat → crisp borders. */}
                         {[-ee.worldWidth, 0, ee.worldWidth].map(off => (
                             <g key={off} transform={`translate(${off},0)`}>
                                 <path
@@ -431,7 +443,9 @@ export function EqualEarthMap({
                                     className="equal-earth-sphere"
                                     style={{ fill: OCEAN }}
                                 />
-                                {countryEls}
+                                {landEls}
+                                <g filter="url(#atlas-heat-blur)">{heatEls}</g>
+                                {borderEls}
                             </g>
                         ))}
                     </svg>
