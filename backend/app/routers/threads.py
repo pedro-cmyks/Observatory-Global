@@ -10,7 +10,12 @@ from app.services.deepseek_narrative import (
     build_deepseek_thread_narrative_note,
     deepseek_thread_notes_enabled,
 )
-from app.services.thread_intelligence import fetch_thread_detail, fetch_threads
+from app.services.thread_intelligence import (
+    V1_COMPAT_ENGINE_VERSION,
+    fetch_thread_detail,
+    fetch_threads,
+    fetch_topic_relationship,
+)
 
 router = APIRouter(prefix="/api/v2", tags=["threads"])
 logger = logging.getLogger(__name__)
@@ -70,6 +75,37 @@ async def get_threads(
         ),
     }
     await _cache_set(cache_key, payload, THREADS_CACHE_TTL)
+    return payload
+
+
+@router.get("/topic/{topic_id}/relationship")
+async def get_topic_relationship(
+    topic_id: str,
+    hours: int = Query(168, ge=1, le=720),
+) -> dict:
+    """Unified Engine F0.4 (spec §9.2): the #168 relationship type for a topic,
+    computed from typed `topic_members` role counts — media-led / public-led /
+    social-led / silent-risk / uncoupled-attention. Closes the serving half of
+    #168 and re-homes #172's silent-risk on the discussion/evidence ratio.
+
+    Accepts either a raw topic_id (`<atlas-slug>` or `dynamic-topic-<n>`) or a
+    served thread_id (`<slug>--<cc>`); the `--<cc>` country suffix is stripped to
+    the underlying topic."""
+    base = topic_id.strip().split("--", 1)[0]
+    cache_key = f"topic:relationship:{base}:{hours}"
+    cached = await _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    rel = await fetch_topic_relationship(topic_id=base, hours=hours)
+    payload = {
+        "contract": "topic-relationship-v0",
+        "topic_id": base,
+        "hours": hours,
+        "engine_version": V1_COMPAT_ENGINE_VERSION,
+        **rel,
+    }
+    await _cache_set(cache_key, payload, DETAIL_CACHE_TTL)
     return payload
 
 

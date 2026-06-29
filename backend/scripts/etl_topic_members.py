@@ -12,9 +12,13 @@ only `emergent_clusters.sample_signal_ids` (capped). So dynamic is projected by
 its sample; full dynamic membership is delivered later by unified-v2 (F3).
 
 Idempotent (ON CONFLICT DO NOTHING). Repeatable — runs as a cron beside the
-current paths until the F4 cutover. Window applies to atlas/discussion by
-`assigned_at` (matches the serving THREADS_SQL window basis — verified exact
-parity, 6734=6734); dynamic uses each topic's latest snapshot.
+current paths until the F4 cutover. `assigned_at` is carried from the SOURCE
+assignment time (atlas/discussion: `signal_topic_assignments.assigned_at`;
+dynamic: the snapshot time) — NOT the ETL insert time — so the F0.3 serving
+read can window `topic_members.assigned_at` identically to THREADS_SQL and the
+list parity is exact (6734=6734). A prior version stamped insert-time, which
+would have served stale (aged-out) assignments; re-seed v1-compat after that
+fix (DELETE WHERE engine_version='v1-compat' + re-run).
 
 Run:  python -m backend.scripts.etl_topic_members --hours 168
 """
@@ -29,12 +33,13 @@ import asyncpg
 
 _ATLAS_EVIDENCE = """
 INSERT INTO topic_members
-  (signal_id, topic_id, role, source_family, basis, confidence, gate_kept, engine_version)
+  (signal_id, topic_id, role, source_family, basis, confidence, gate_kept,
+   engine_version, assigned_at)
 SELECT a.signal_id, at.slug, 'evidence', s.source_family,
        CASE WHEN COALESCE((a.evidence->>'lex_count')::int, 0) > 0 THEN 'lexical'
             WHEN COALESCE((a.evidence->>'theme_hits')::int, 0) > 0 THEN 'theme'
             ELSE 'semantic' END,
-       a.confidence, a.gate_kept, 'v1-compat'
+       a.confidence, a.gate_kept, 'v1-compat', a.assigned_at
 FROM signal_topic_assignments a
 JOIN atlas_topics at ON at.id = a.topic_id
 JOIN signals_v2 s ON s.id = a.signal_id
@@ -45,9 +50,10 @@ ON CONFLICT DO NOTHING
 
 _DISCUSSION = """
 INSERT INTO topic_members
-  (signal_id, topic_id, role, source_family, basis, confidence, gate_kept, engine_version)
+  (signal_id, topic_id, role, source_family, basis, confidence, gate_kept,
+   engine_version, assigned_at)
 SELECT a.signal_id, at.slug, 'discussion', s.source_family, 'semantic',
-       a.confidence, false, 'v1-compat'
+       a.confidence, false, 'v1-compat', a.assigned_at
 FROM signal_topic_assignments a
 JOIN atlas_topics at ON at.id = a.topic_id
 JOIN signals_v2 s ON s.id = a.signal_id
@@ -62,9 +68,10 @@ WITH latest_snap AS (
     FROM dynamic_topic_members GROUP BY dynamic_topic_id
 )
 INSERT INTO topic_members
-  (signal_id, topic_id, role, source_family, basis, confidence, gate_kept, engine_version)
+  (signal_id, topic_id, role, source_family, basis, confidence, gate_kept,
+   engine_version, assigned_at)
 SELECT DISTINCT sid, 'dynamic-topic-' || dt.id, 'evidence', s.source_family,
-       'semantic', dtm.match_score, true, 'v1-compat'
+       'semantic', dtm.match_score, true, 'v1-compat', ls.snap
 FROM dynamic_topics dt
 JOIN latest_snap ls ON ls.dynamic_topic_id = dt.id
 JOIN dynamic_topic_members dtm

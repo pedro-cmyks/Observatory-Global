@@ -3,6 +3,7 @@ from __future__ import annotations
 import html
 import json
 import logging
+import os
 import re
 from typing import Any
 
@@ -12,10 +13,28 @@ from app.core.iso_country_names import ISO_COUNTRY_NAMES, resolve_country_name
 from app.services.narrative_note import build_thread_narrative_note
 from app.services.thread_packet import build_thread_packet
 from app.services.thread_ranking import rank_threads
+from app.services.topic_relationship import classify_relationship
 
 logger = logging.getLogger(__name__)
 
 THREAD_MODEL_VERSION = "theme-hint-lex-v2"
+
+# Unified Engine F0.3: the engine_version the read-flag serves from. Only
+# 'v1-compat' exists until F3 writes 'unified-v2'.
+V1_COMPAT_ENGINE_VERSION = "v1-compat"
+
+
+def serve_threads_from_topic_members() -> bool:
+    """F0.3 read-flag (spec 2026-06-29-atlas-unified-engine §10/§16). When ON,
+    the atlas-evidence list path reads the typed `topic_members` table
+    (role='evidence') via THREADS_SQL_TOPIC_MEMBERS instead of
+    `signal_topic_assignments` via THREADS_SQL. Default OFF — prod keeps the
+    current path until the A/B parity gate (`scripts/engine_serving_parity.py`)
+    proves the unified read matches. The dynamic-topic list stays sourced from
+    `dynamic_topics` aggregates either way (hybrid serving, spec §10)."""
+    return os.environ.get(
+        "ATLAS_SERVE_THREADS_FROM_TOPIC_MEMBERS", ""
+    ).strip().lower() in {"1", "true", "on", "yes"}
 
 AGGREGATOR_DOMAINS = frozenset(
     {
@@ -217,6 +236,217 @@ related AS (
         ) FILTER (WHERE rr.rn <= 5) AS related_topics
     FROM related_ranked rr
     JOIN atlas_topics at2 ON at2.id = rr.topic_id
+    GROUP BY rr.topic_slug
+)
+SELECT
+    ta.topic_slug,
+    ta.topic_label,
+    ta.parent_domain,
+    ta.signal_count,
+    ta.gated_signal_count,
+    ta.gate_scored_count,
+    ta.lex_count,
+    ta.theme_count,
+    ta.source_count,
+    ta.country_count,
+    ta.avg_confidence,
+    ta.first_seen,
+    ta.changed_10h,
+    ta.sentiment_swing_10h,
+    COALESCE(cl.top_countries, ARRAY[]::text[]) AS top_countries,
+    COALESCE(cl.top_country_names, ARRAY[]::text[]) AS top_country_names,
+    COALESCE(sl.top_sources, ARRAY[]::text[]) AS top_sources,
+    COALESCE(el.top_entities, ARRAY[]::text[]) AS top_entities,
+    COALESCE(tlh.hourly_timeline, '[]'::jsonb) AS hourly_timeline,
+    COALESCE(r.related_topics, '[]'::jsonb) AS related_topics
+FROM topic_agg ta
+LEFT JOIN country_lists cl ON cl.topic_slug = ta.topic_slug
+LEFT JOIN source_lists sl ON sl.topic_slug = ta.topic_slug
+LEFT JOIN entity_lists el ON el.topic_slug = ta.topic_slug
+LEFT JOIN timeline tlh ON tlh.topic_slug = ta.topic_slug
+LEFT JOIN related r ON r.topic_slug = ta.topic_slug
+ORDER BY
+    CASE
+        WHEN ta.signal_count >= 50
+          AND ta.source_count >= 5
+          AND ta.avg_confidence >= 0.65
+          AND (ta.lex_count::float / NULLIF(ta.signal_count, 0)) >= 0.30
+        THEN 0
+        WHEN ta.signal_count >= 25
+          AND ta.source_count >= 3
+          AND ta.avg_confidence >= 0.60
+        THEN 1
+        ELSE 2
+    END,
+    ta.changed_10h DESC,
+    ta.signal_count DESC
+LIMIT $2
+"""
+
+# Unified Engine F0.3 (spec 2026-06-29-atlas-unified-engine §9.1). Byte-for-byte
+# the same projection + ORDER BY as THREADS_SQL, but the atlas-evidence membership
+# is read from the typed `topic_members` table (role='evidence') instead of
+# `signal_topic_assignments` directly. Field mapping that preserves EXACT parity:
+#   sta.gate_kept                         -> tm.gate_kept   (carried by the ETL)
+#   sta.confidence                        -> tm.confidence  (carried)
+#   evidence->>'lex_count' > 0            -> tm.basis = 'lexical'
+#   evidence->>'lex_count'=0 AND themes>0 -> tm.basis = 'theme'
+#   sta.assigned_at window                -> tm.assigned_at (ETL carries source time)
+# $5 = engine_version (read flag selects it; F0.3 = 'v1-compat', F3+ = 'unified-v2').
+# Related-topic co-occurrence joins tm2 (role='evidence', same engine_version);
+# dynamic-topic ids never join atlas_topics.slug so only atlas relations surface,
+# matching THREADS_SQL. Behind ATLAS_SERVE_THREADS_FROM_TOPIC_MEMBERS (default off)
+# until the A/B parity gate passes.
+THREADS_SQL_TOPIC_MEMBERS = """
+WITH scoped AS (
+    SELECT
+        tm.signal_id,
+        tm.basis,
+        tm.confidence,
+        tm.gate_kept,
+        at.slug AS topic_slug,
+        at.label AS topic_label,
+        at.parent_domain AS parent_domain,
+        s.country_code,
+        COALESCE(c.name, s.country_code) AS country_name,
+        s.source_name,
+        s.timestamp,
+        s.nlp_sentiment,
+        s.persons
+    FROM topic_members tm
+    JOIN atlas_topics at ON at.slug = tm.topic_id
+    JOIN signals_v2 s ON s.id = tm.signal_id
+    LEFT JOIN countries_v2 c ON c.code = s.country_code
+    WHERE tm.engine_version = $5::text
+      AND tm.role = 'evidence'
+      AND tm.assigned_at >= NOW() - ($1::int * INTERVAL '1 hour')
+      AND ($3::text IS NULL OR at.slug = $3::text)
+      AND ($4::text[] IS NULL OR s.country_code = ANY($4::text[]))
+),
+topic_agg AS (
+    -- topic_members PK is (signal_id, topic_id, role, engine_version) so within a
+    -- (topic_slug, role='evidence', engine_version) group each signal appears once
+    -- and COUNT(*) == COUNT(DISTINCT signal_id) — same accounting as THREADS_SQL.
+    SELECT
+        topic_slug,
+        topic_label,
+        parent_domain,
+        COUNT(*)::int AS signal_count,
+        COUNT(*) FILTER (WHERE gate_kept)::int AS gated_signal_count,
+        COUNT(*) FILTER (WHERE gate_kept IS NOT NULL)::int AS gate_scored_count,
+        COUNT(*) FILTER (WHERE basis = 'lexical')::int AS lex_count,
+        COUNT(*) FILTER (WHERE basis = 'theme')::int AS theme_count,
+        COUNT(DISTINCT NULLIF(source_name, ''))::int AS source_count,
+        COUNT(DISTINCT NULLIF(country_code, ''))::int AS country_count,
+        AVG(confidence)::float AS avg_confidence,
+        MIN(timestamp) AS first_seen,
+        (
+            COUNT(*) FILTER (WHERE timestamp >= NOW() - INTERVAL '10 hours')
+            - COUNT(*) FILTER (
+                WHERE timestamp < NOW() - INTERVAL '10 hours'
+                  AND timestamp >= NOW() - INTERVAL '20 hours'
+            )
+        )::int AS changed_10h,
+        (
+            AVG(nlp_sentiment) FILTER (WHERE timestamp >= NOW() - INTERVAL '10 hours')
+            - AVG(nlp_sentiment) FILTER (
+                WHERE timestamp < NOW() - INTERVAL '10 hours'
+                  AND timestamp >= NOW() - INTERVAL '20 hours'
+            )
+        )::float AS sentiment_swing_10h
+    FROM scoped
+    GROUP BY topic_slug, topic_label, parent_domain
+),
+entity_base AS (
+    SELECT topic_slug, unnest(persons) AS person
+    FROM scoped WHERE persons IS NOT NULL
+),
+entity_ranked AS (
+    SELECT
+        topic_slug, person, COUNT(*) AS cnt,
+        ROW_NUMBER() OVER (PARTITION BY topic_slug ORDER BY COUNT(*) DESC, person) AS rn
+    FROM entity_base
+    WHERE person IS NOT NULL AND person <> ''
+    GROUP BY topic_slug, person
+),
+entity_lists AS (
+    SELECT topic_slug,
+        ARRAY_AGG(person ORDER BY cnt DESC, person) FILTER (WHERE rn <= 5) AS top_entities
+    FROM entity_ranked GROUP BY topic_slug
+),
+timeline_base AS (
+    SELECT topic_slug, date_trunc('hour', timestamp) AS hour, COUNT(*) AS cnt
+    FROM scoped GROUP BY topic_slug, date_trunc('hour', timestamp)
+),
+timeline AS (
+    SELECT topic_slug,
+        JSONB_AGG(
+            JSONB_BUILD_OBJECT(
+                'hour', TO_CHAR(hour, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+                'count', cnt
+            ) ORDER BY hour
+        ) AS hourly_timeline
+    FROM timeline_base GROUP BY topic_slug
+),
+country_ranked AS (
+    SELECT
+        topic_slug, country_code, country_name, COUNT(*) AS cnt,
+        ROW_NUMBER() OVER (PARTITION BY topic_slug ORDER BY COUNT(*) DESC, country_code) AS rn
+    FROM scoped WHERE country_code IS NOT NULL
+    GROUP BY topic_slug, country_code, country_name
+),
+country_lists AS (
+    SELECT topic_slug,
+        ARRAY_AGG(country_code ORDER BY cnt DESC, country_code) FILTER (WHERE rn <= 3)
+            AS top_countries,
+        ARRAY_AGG(country_name ORDER BY cnt DESC, country_code) FILTER (WHERE rn <= 3)
+            AS top_country_names
+    FROM country_ranked GROUP BY topic_slug
+),
+source_ranked AS (
+    SELECT
+        topic_slug, source_name, COUNT(*) AS cnt,
+        ROW_NUMBER() OVER (PARTITION BY topic_slug ORDER BY COUNT(*) DESC, source_name) AS rn
+    FROM scoped WHERE source_name IS NOT NULL AND source_name <> ''
+    GROUP BY topic_slug, source_name
+),
+source_lists AS (
+    SELECT topic_slug,
+        ARRAY_AGG(source_name ORDER BY cnt DESC, source_name) FILTER (WHERE rn <= 5)
+            AS top_sources
+    FROM source_ranked GROUP BY topic_slug
+),
+related_counts AS (
+    SELECT
+        scoped.topic_slug,
+        tm2.topic_id AS related_slug,
+        COUNT(DISTINCT scoped.signal_id)::int AS co_signals
+    FROM scoped
+    JOIN topic_members tm2
+      ON tm2.signal_id = scoped.signal_id
+     AND tm2.role = 'evidence'
+     AND tm2.engine_version = $5::text
+     AND tm2.topic_id <> scoped.topic_slug
+    GROUP BY scoped.topic_slug, tm2.topic_id
+),
+related_ranked AS (
+    SELECT
+        topic_slug, related_slug, co_signals,
+        ROW_NUMBER() OVER (
+            PARTITION BY topic_slug ORDER BY co_signals DESC, related_slug
+        ) AS rn
+    FROM related_counts
+),
+related AS (
+    SELECT
+        rr.topic_slug,
+        JSONB_AGG(
+            JSONB_BUILD_OBJECT(
+                'topic', at2.slug, 'label', at2.label, 'co_signals', rr.co_signals
+            ) ORDER BY rr.co_signals DESC, at2.slug
+        ) FILTER (WHERE rr.rn <= 5) AS related_topics
+    FROM related_ranked rr
+    JOIN atlas_topics at2 ON at2.slug = rr.related_slug
     GROUP BY rr.topic_slug
 )
 SELECT
@@ -1170,14 +1400,25 @@ async def _fetch_threads_with_conn(
     topic_slug: str | None,
     country_codes: list[str] | None,
 ) -> list[dict[str, Any]]:
-    rows = await conn.fetch(
-        THREADS_SQL,
-        hours,
-        limit,
-        topic_slug,
-        country_codes or None,
-        timeout=8,
-    )
+    if serve_threads_from_topic_members():
+        rows = await conn.fetch(
+            THREADS_SQL_TOPIC_MEMBERS,
+            hours,
+            limit,
+            topic_slug,
+            country_codes or None,
+            V1_COMPAT_ENGINE_VERSION,
+            timeout=8,
+        )
+    else:
+        rows = await conn.fetch(
+            THREADS_SQL,
+            hours,
+            limit,
+            topic_slug,
+            country_codes or None,
+            timeout=8,
+        )
     return [assemble_thread(row) for row in rows]
 
 
@@ -1665,3 +1906,41 @@ async def fetch_thread_detail(
     threads[0]["packet"] = build_thread_packet(packet_rows)
     threads[0]["packet"]["public_attention"] = await _thread_public_attention(conn, threads[0]["packet"]["relatedThemes"])
     return threads[0]
+
+
+# ── Unified Engine F0.4 — topic relationship (spec §9.2) ─────────────────────
+_TOPIC_ROLE_COUNTS_SQL = """
+SELECT role, COUNT(*)::int AS n
+FROM topic_members
+WHERE topic_id = $1
+  AND engine_version = $2
+  AND assigned_at >= NOW() - ($3::int * INTERVAL '1 hour')
+GROUP BY role
+"""
+
+
+async def fetch_topic_relationship(
+    *, topic_id: str, hours: int = 168
+) -> dict[str, Any]:
+    """The #168 relationship type for a topic, computed from its typed
+    `topic_members` role counts (evidence/discussion/mood/movement). Reads the
+    'v1-compat' engine version; F3 exposes 'unified-v2'. Honesty invariant
+    (spec §15): evidence is press-only; discussion/mood are social
+    (verified=false) and are NEVER folded into the evidence count."""
+    counts = {"evidence": 0, "discussion": 0, "mood": 0, "movement": 0}
+    if db.pool is None:
+        logger.warning("topic relationship requested without database pool")
+        return classify_relationship(**counts)
+    async with db.pool.acquire() as conn:
+        rows = await conn.fetch(
+            _TOPIC_ROLE_COUNTS_SQL,
+            topic_id,
+            V1_COMPAT_ENGINE_VERSION,
+            hours,
+            timeout=8,
+        )
+    for r in rows:
+        role = str(r["role"])
+        if role in counts:
+            counts[role] = int(r["n"])
+    return classify_relationship(**counts)

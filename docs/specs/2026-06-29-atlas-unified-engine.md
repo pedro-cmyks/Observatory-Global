@@ -338,8 +338,26 @@ the papers — it is the comparative evidence they need.**
 
 - [x] **F0.1** migration `topic_members` (+indexes) — `057_topic_members.sql`, applied to prod
 - [x] **F0.2** `v1-compat` ETL: project `signal_topic_assignments` → `topic_members` — `scripts/etl_topic_members.py`; atlas-evidence parity EXACT (6734=6734); dynamic projected by sample (per §10 constraint). Discussion path correct (0 rows = cron freshness, not a defect).
-- [ ] **F0.3** `/threads` + `/theme/{id}` read `topic_members` (role-filtered); parity test vs current ← NEXT (prod serving change, needs careful parity)
-- [ ] **F0.4** `GET /api/v2/topic/{id}/relationship` (5 types) — closes #168 serving half
+- [x] **F0.3** `/threads` reads `topic_members` (role='evidence') behind read-flag
+  `ATLAS_SERVE_THREADS_FROM_TOPIC_MEMBERS` (default OFF) — `THREADS_SQL_TOPIC_MEMBERS`
+  mirrors `THREADS_SQL` exactly (basis↔lex/theme, gate_kept/confidence carried).
+  A/B gate `scripts/engine_serving_parity.py`: **CRITICAL PARITY ALL PASS**
+  (set/order/signal_count/gated/source/country/entities exact, global+US+CO+topic).
+  Two documented cosmetic near-parity deltas, non-blocking: related-chip top-5
+  reshuffle (current = all-time co-occurrence, unified = window-scoped, MORE
+  correct) + avg_confidence ±1e-3 (REAL vs double). **ETL fix shipped:** carry
+  source `assigned_at` (was insert-time → would serve aged-out rows; re-seeded
+  6734=6734 windowed). Flip is Pedro's (1 env var) after eyeballing the chip
+  change. `/theme/{id}` read-swap deferred to F3 (the detail gate path is
+  separate; the LIST parity is the F0 acceptance).
+- [x] **F0.4** `GET /api/v2/topic/{id}/relationship` (5 types) — `app/services/topic_relationship.py`
+  `classify_relationship` (pure, 14 tests) + role-count query over `topic_members`;
+  route accepts raw topic_id or `slug--cc` thread_id. DEPLOYED + SMOKED (prod:
+  armed-conflict → media-led 1412 evidence). HONEST current state: all atlas
+  topics = `media-led` (discussion/mood lanes are 0 — `semantic-discussion-v1`
+  has 0 source rows; public-led/social-led/silent-risk fire when F1 forum
+  ingest populates discussion+mood). Closes the serving half of #168; re-homes
+  #172 silent-risk on the ratio.
 - [ ] **F1.1** Bluesky Jetstream ingest worker → `signals_v2` social (country via lang+NER)
 - [ ] **F1.2** Lemmy ingest worker (instance=country) → `signals_v2` social
 - [ ] **F2.1** `source_family` guard in clustering (social attaches, never seeds)
