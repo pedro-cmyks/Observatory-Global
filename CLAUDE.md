@@ -2171,3 +2171,31 @@ label revision — the measured ~40–52% topical-precision ceiling; (2) a FIXED
 precise gold label set so the recall judge is unconfounded + F4 has a real gate;
 (3) F4 read-path + new-topic labeling; (4) forum-volume ramp differentiates lanes;
 (5) F3.3 movement (event source revival + schema).
+
+**2026-06-29 (PM cont.6) — #204 TAXONOMY REWRITE via multi-model/multi-persona
+ensemble (Pedro greenlit). Candidate v2 BUILT + VALIDATED.** Foundation:
+`backend/scripts/ensemble/model_clients.py` — provider-neutral async client over
+DeepSeek + OpenAI(gpt-4o) + Gemini(CLI) + Claude(subagent path; **Anthropic API
+credits dry** so Claude annotates via the orchestrator, not the API), 429/5xx
+retry. **Phase A** (`phase_a_diagnose.py`): ensemble classified gate-kept EVIDENCE
+vs the 30 crisis categories with an OUT_OF_SCOPE option → **30% unanimous / 46%
+DeepSeek is OUT_OF_SCOPE** (force-fit; "Amazon buy that saved my marriage in the
+heatwave"→Heat-health, book review→Armed-conflict). Precision ceiling is
+STRUCTURAL: 100%-crisis taxonomy, no reject class. **Phase B**
+(`phase_b_propose.py`+`build_candidate_v2.py`): model×persona (DeepSeek=wire-
+taxonomist, GPT-4o=ontology-purist, Claude=geopolitics-analyst; Gemini quota-fails
+long prompts). CONVERGENT: both KEEP the ~30 categories, fix via a rigorous
+OUT_OF_SCOPE policy + per-category includes/excludes. **Candidate v2**
+(`docs/research/taxonomy-revision/candidate-v2.json`): 27 all-consensus + 3
+contested (housing/humanitarian-access/mining) + 2 flagged natural-hazard adds
+(earthquake-volcano, wildfire-storm) + the reject policy. **Phase C**
+(`phase_c_agreement.py`): inter-annotator agreement **v1 76% → v2 96% (+20pp)** —
+validated. HONEST caveat: random sample is non-crisis-heavy so the gain is driven
+by the reject class on the non-crisis majority (the core fix); in-category crisis
+separability + the 3 contested need a **crisis-only gold κ phase**. Method+results
+in `docs/research/taxonomy-revision/2026-06-29-taxonomy-revision-methodology.md`
+(paper-grade: ensemble annotation + κ = the unconfounded benchmark the
+production-label judge couldn't give). #204 commented. **NEXT: Pedro's interactive
+round + the gold κ phase, then wire OUT_OF_SCOPE+excludes into the gate/assignment
+prompts + add the 2 categories to `atlas_topics`.** Category NAMES barely move —
+the value is the reject class + sharp boundaries.
