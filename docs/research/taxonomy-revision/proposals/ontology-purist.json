@@ -1,0 +1,224 @@
+{
+  "categories": [
+    {
+      "slug": "agriculture-crop-risk",
+      "label": "Agriculture and Crop Risk",
+      "parent_domain": "climate-disaster",
+      "definition": "Risks to agriculture and crops due to environmental factors.",
+      "includes": "Crop failures, pests, fertilizer shortages, harvest shocks.",
+      "excludes": "General agricultural news, market trends, non-crisis farming practices."
+    },
+    {
+      "slug": "flood-landslide-disaster",
+      "label": "Flood and Landslide Disaster",
+      "parent_domain": "climate-disaster",
+      "definition": "Disasters caused by flooding and landslides.",
+      "includes": "Heavy rains, evacuations, disaster response.",
+      "excludes": "Routine weather reports, non-disaster rainfall."
+    },
+    {
+      "slug": "water-stress-drought",
+      "label": "Water Stress and Drought",
+      "parent_domain": "climate-disaster",
+      "definition": "Situations of water scarcity and drought.",
+      "includes": "Drought, reservoir stress, water rationing.",
+      "excludes": "General water management, non-crisis water usage."
+    },
+    {
+      "slug": "armed-conflict-escalation",
+      "label": "Armed Conflict Escalation",
+      "parent_domain": "conflict-security",
+      "definition": "Escalation of armed violence and territorial conflicts.",
+      "includes": "Battlefield escalation, attacks, territorial disputes.",
+      "excludes": "Military exercises, non-violent political disputes."
+    },
+    {
+      "slug": "gang-control-urban-security",
+      "label": "Gang Control and Urban Security",
+      "parent_domain": "conflict-security",
+      "definition": "Security issues related to gang control in urban areas.",
+      "includes": "Criminal armed groups, urban service control.",
+      "excludes": "Petty crime, non-crisis urban security issues."
+    },
+    {
+      "slug": "currency-debt-stress",
+      "label": "Currency and Debt Stress",
+      "parent_domain": "economic-stress",
+      "definition": "Economic stress related to currency and debt issues.",
+      "includes": "Currency collapse, sovereign debt crises.",
+      "excludes": "Routine economic reports, non-crisis financial news."
+    },
+    {
+      "slug": "food-price-stress",
+      "label": "Food Price Stress",
+      "parent_domain": "economic-stress",
+      "definition": "Stress on food prices affecting affordability and availability.",
+      "includes": "Food inflation, shortages, hunger.",
+      "excludes": "General market trends, non-crisis food industry news."
+    },
+    {
+      "slug": "fuel-subsidy-unrest",
+      "label": "Fuel Subsidy Unrest",
+      "parent_domain": "economic-stress",
+      "definition": "Unrest related to fuel prices and subsidies.",
+      "includes": "Subsidy disputes, transport-cost protests.",
+      "excludes": "Routine fuel price changes, non-crisis energy news."
+    },
+    {
+      "slug": "trade-export-restriction",
+      "label": "Trade and Export Restriction",
+      "parent_domain": "economic-stress",
+      "definition": "Restrictions on trade and exports causing economic stress.",
+      "includes": "Export bans, tariffs, trade disputes.",
+      "excludes": "Routine trade agreements, non-crisis trade news."
+    },
+    {
+      "slug": "disinformation-influence-operation",
+      "label": "Disinformation and Influence Operation",
+      "parent_domain": "information-environment",
+      "definition": "Coordinated efforts to manipulate information environments.",
+      "includes": "Propaganda, influence operations.",
+      "excludes": "General media reports, non-crisis information dissemination."
+    },
+    {
+      "slug": "press-freedom-crackdown",
+      "label": "Press Freedom Crackdown",
+      "parent_domain": "information-environment",
+      "definition": "Crackdowns on press freedom and media operations.",
+      "includes": "Journalist arrests, media censorship.",
+      "excludes": "Routine media regulations, non-crisis press activities."
+    },
+    {
+      "slug": "forced-displacement",
+      "label": "Forced Displacement",
+      "parent_domain": "migration-humanitarian",
+      "definition": "Situations causing forced displacement of populations.",
+      "includes": "Evacuations, expulsions, conflict displacement.",
+      "excludes": "Voluntary migration, non-crisis relocation."
+    },
+    {
+      "slug": "migration-border-pressure",
+      "label": "Migration and Border Pressure",
+      "parent_domain": "migration-humanitarian",
+      "definition": "Pressure on borders due to migration flows.",
+      "includes": "Border crossings, asylum, refugee movement.",
+      "excludes": "Routine immigration processes, non-crisis border activities."
+    },
+    {
+      "slug": "constitutional-institutional-crisis",
+      "label": "Constitutional or Institutional Crisis",
+      "parent_domain": "political-legitimacy",
+      "definition": "Crises involving constitutional or institutional conflicts.",
+      "includes": "Court-government confrontations, impeachments.",
+      "excludes": "Routine political debates, non-crisis institutional changes."
+    },
+    {
+      "slug": "corruption-investigation",
+      "label": "Corruption Investigation",
+      "parent_domain": "political-legitimacy",
+      "definition": "Investigations into corruption and related activities.",
+      "includes": "Bribery, embezzlement, anti-corruption probes.",
+      "excludes": "Routine audits, non-crisis financial oversight."
+    },
+    {
+      "slug": "election-legitimacy-dispute",
+      "label": "Election Legitimacy Dispute",
+      "parent_domain": "political-legitimacy",
+      "definition": "Disputes over the legitimacy of election processes.",
+      "includes": "Fraud claims, contested results.",
+      "excludes": "Routine election coverage, non-crisis political campaigns."
+    },
+    {
+      "slug": "sanctions-diplomatic-pressure",
+      "label": "Sanctions and Diplomatic Pressure",
+      "parent_domain": "political-legitimacy",
+      "definition": "International pressure through sanctions and diplomacy.",
+      "includes": "Diplomatic expulsions, treaty negotiations.",
+      "excludes": "Routine diplomatic activities, non-crisis international relations."
+    },
+    {
+      "slug": "disease-outbreak",
+      "label": "Disease Outbreak",
+      "parent_domain": "public-health",
+      "definition": "Outbreaks of diseases posing public health emergencies.",
+      "includes": "Emerging diseases, epidemics, vaccination campaigns.",
+      "excludes": "Routine health updates, non-crisis medical news."
+    },
+    {
+      "slug": "heat-health-risk",
+      "label": "Heat and Health Risk",
+      "parent_domain": "public-health",
+      "definition": "Health risks associated with extreme heat conditions.",
+      "includes": "Heat waves, thermal stress, health warnings.",
+      "excludes": "Routine weather updates, non-crisis climate news."
+    },
+    {
+      "slug": "energy-grid-instability",
+      "label": "Energy Grid Instability",
+      "parent_domain": "resources-energy",
+      "definition": "Instability in energy grids affecting supply.",
+      "includes": "Power outages, grid stress, generation shortages.",
+      "excludes": "Routine energy reports, non-crisis infrastructure updates."
+    },
+    {
+      "slug": "oil-gas-supply-risk",
+      "label": "Oil and Gas Supply Risk",
+      "parent_domain": "resources-energy",
+      "definition": "Risks to the supply of oil and gas.",
+      "includes": "Pipeline disruptions, refinery issues.",
+      "excludes": "Routine energy market updates, non-crisis supply changes."
+    },
+    {
+      "slug": "gender-violence-rights",
+      "label": "Gender Violence and Rights",
+      "parent_domain": "social-unrest-labor",
+      "definition": "Crises related to gender-based violence and rights.",
+      "includes": "Femicide, reproductive rights mobilization.",
+      "excludes": "Routine gender equality discussions, non-crisis advocacy."
+    },
+    {
+      "slug": "labor-strike-disruption",
+      "label": "Labor Strike Disruption",
+      "parent_domain": "social-unrest-labor",
+      "definition": "Disruptions caused by labor strikes and disputes.",
+      "includes": "Union actions, wage disputes.",
+      "excludes": "Routine labor negotiations, non-crisis employment news."
+    },
+    {
+      "slug": "student-youth-protest",
+      "label": "Student and Youth Protest",
+      "parent_domain": "social-unrest-labor",
+      "definition": "Protests led by students and youth groups.",
+      "includes": "Campus mobilization, education unrest.",
+      "excludes": "Routine educational activities, non-crisis student events."
+    },
+    {
+      "slug": "cyberattack-infrastructure",
+      "label": "Cyberattack on Infrastructure",
+      "parent_domain": "technology-infrastructure",
+      "definition": "Cyberattacks targeting critical infrastructure.",
+      "includes": "Attacks on government, finance, utilities.",
+      "excludes": "Routine cybersecurity updates, non-crisis tech news."
+    },
+    {
+      "slug": "telecom-internet-shutdown",
+      "label": "Telecom or Internet Shutdown",
+      "parent_domain": "technology-infrastructure",
+      "definition": "Shutdowns of telecom or internet services.",
+      "includes": "Internet shutdowns, telecom outages.",
+      "excludes": "Routine service maintenance, non-crisis connectivity issues."
+    },
+    {
+      "slug": "transport-corridor-disruption",
+      "label": "Transport Corridor Disruption",
+      "parent_domain": "technology-infrastructure",
+      "definition": "Disruptions in major transport corridors.",
+      "includes": "Ports, roads, railways disruptions.",
+      "excludes": "Routine transport updates, non-crisis logistics news."
+    }
+  ],
+  "out_of_scope_policy": "Reject signals that do not pertain to crisis or risk narratives, such as routine news, cultural events, sports, general business updates, and non-crisis human interest stories.",
+  "changes_vs_current": "Merged similar categories to reduce overlap, such as combining mining-related risks into broader resource categories. Added explicit exclusions to each category to prevent force-fitting non-crisis signals. Introduced a clear out-of-scope policy to reject irrelevant signals, addressing the issue of force-fitting unrelated content into crisis categories.",
+  "_persona": "ontology-purist",
+  "_provider": "openai"
+}

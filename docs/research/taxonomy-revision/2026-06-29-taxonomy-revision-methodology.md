@@ -67,3 +67,41 @@ Artifact: `docs/research/taxonomy-revision/phase-a-diagnosis.json`.
 
 Then Pedro runs a large interactive round against Atlas to validate before any
 production swap.
+
+## Phase B — ensemble proposals + candidate v2 (DONE, 2026-06-29)
+
+`phase_b_propose.py` (model × persona) → `build_candidate_v2.py` (synthesis).
+Personas that returned: **DeepSeek = wire-service taxonomist**, **GPT-4o =
+ontology purist**, **Claude (orchestrator) = geopolitics analyst**. (Gemini's CLI
+API quota fails on the long prompt — its short pings work; dropped from Phase B.)
+
+**Convergent finding:** both models KEEP the ~30 categories and put their changes
+into (a) a rigorous **OUT_OF_SCOPE** reject policy and (b) per-category
+**includes/excludes**. The categories were never the main problem — the missing
+**reject class** was. This matches Phase A exactly: force-fit comes from having no
+out-of-scope option, not from bad categories.
+
+**Candidate v2** (`candidate-v2.json` / `candidate-v2.md`):
+- **27 all-consensus** categories (both proposals kept) = the stable crisis spine.
+- **3 partial** (`housing-cost-pressure`, `humanitarian-access-conflict`,
+  `mining-royalty-risk`) — ontology-purist merged/dropped, wire-taxonomist kept →
+  contested, resolve in the gold phase.
+- **2 flagged additions** (`earthquake-volcano-disaster`, `wildfire-storm-disaster`)
+  — orchestrator lens closing a natural-hazard gap (current taxonomy has flood/
+  drought/heat/agriculture but no seismic/wildfire/storm home); validate in gold.
+- **OUT_OF_SCOPE policy** (the core change) + per-category `excludes` that name the
+  force-fit modes directly ("Reject even when a crisis WORD appears if the signal
+  is really about something else"; per-category "routine X", "company-level",
+  "without crisis impact").
+
+**This is the rewrite deliverable.** The category names barely move; the value is
+the reject class + boundaries. Two things remain before a production swap:
+1. **Gold phase (C/D):** every model × persona labels N signals against v2 →
+   inter-annotator κ per category (low κ → revise/merge the contested ones); then
+   old-vs-v2 topical precision on the gold set (the 40–52% → X lift). κ is the
+   unconfounded benchmark the production-label judge could not give.
+2. **Pedro's interactive round** against Atlas to sanity-check v2 before the swap.
+
+Production wiring (after validation): the OUT_OF_SCOPE policy + excludes belong in
+the gate prompt and the assignment step; `atlas_topics` gets the 2 new categories
++ refreshed descriptions from the `includes` text.

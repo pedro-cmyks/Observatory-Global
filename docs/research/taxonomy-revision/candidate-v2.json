@@ -1,0 +1,417 @@
+{
+  "version": "candidate-v2",
+  "method": "multi-model/multi-persona ensemble synthesis (#204)",
+  "personas": [
+    "ontology-purist",
+    "wire-taxonomist"
+  ],
+  "out_of_scope_policy": "Atlas tracks SIGNIFICANT crisis/risk narratives only. Reject (OUT_OF_SCOPE) any signal that is not substantively about an acute or developing crisis/risk with potential for significant harm, disruption, or instability. Reject even when a crisis WORD appears if the signal is really about something else. Explicit rejects: routine business/markets, sport, culture/entertainment, book/film reviews, shopping/product/lifestyle, local human-interest or memorials, celebrity, ordinary weather forecasts, procedural/legal items that are not themselves a crisis, and satire. A category is assigned ONLY if the signal clears this bar AND matches that category's `includes` without hitting its `excludes`.",
+  "n_categories": 32,
+  "categories": [
+    {
+      "label": "Agriculture and Crop Risk",
+      "parent_domain": "climate-disaster",
+      "definition": "Crop failures, pest outbreaks, fertilizer shortages, or harvest shocks threatening food production.",
+      "includes": "Drought/flood impact on crops, locust plagues, fertilizer price spikes, harvest losses, farm bankruptcy waves.",
+      "excludes": "Food price stress (see food-price-stress), routine agricultural market reports.",
+      "slug": "agriculture-crop-risk",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Armed Conflict Escalation",
+      "parent_domain": "conflict-security",
+      "definition": "Escalation of armed violence between organized groups or states.",
+      "includes": "Battlefield engagements, airstrikes, artillery exchanges, territorial gains/losses, ceasefire violations, attacks on military targets.",
+      "excludes": "Urban gang violence (see gang-control-urban-security), terrorism without state/group context, crime not linked to conflict.",
+      "slug": "armed-conflict-escalation",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Constitutional or Institutional Crisis",
+      "parent_domain": "political-legitimacy",
+      "definition": "Constitutional conflicts, court-government confrontations, or institutional breakdowns.",
+      "includes": "Impeachment proceedings, constitutional court clashes, government shutdowns, coup d'état, martial law.",
+      "excludes": "Routine political disagreements, election disputes (see election-legitimacy-dispute).",
+      "slug": "constitutional-institutional-crisis",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Corruption Investigation",
+      "parent_domain": "political-legitimacy",
+      "definition": "Major corruption probes, bribery scandals, or anti-corruption crackdowns.",
+      "includes": "High-level bribery cases, embezzlement revelations, asset seizures, whistleblower cases, anti-corruption protests.",
+      "excludes": "Routine audits, minor misconduct, corporate fraud without political angle.",
+      "slug": "corruption-investigation",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Currency and Debt Stress",
+      "parent_domain": "economic-stress",
+      "definition": "Currency collapse, sovereign debt crisis, or IMF negotiations.",
+      "includes": "Currency devaluation, hyperinflation, debt default, bond yield spikes, IMF bailout talks, reserve depletion.",
+      "excludes": "Routine market fluctuations, stock market corrections, corporate debt.",
+      "slug": "currency-debt-stress",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Cyberattack on Infrastructure",
+      "parent_domain": "technology-infrastructure",
+      "definition": "Cyberattacks targeting critical infrastructure such as government, finance, utilities, or telecoms.",
+      "includes": "Ransomware on hospitals, DDoS on banks, state-sponsored hacks on power grids, data breaches of government systems.",
+      "excludes": "Routine cybercrime, phishing scams, individual account hacks.",
+      "slug": "cyberattack-infrastructure",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Disease Outbreak",
+      "parent_domain": "public-health",
+      "definition": "Emerging or re-emerging infectious disease outbreaks, epidemics, or pandemics.",
+      "includes": "Novel virus outbreaks, vaccine campaigns during outbreaks, quarantine measures, hospital capacity strain, WHO emergency declarations.",
+      "excludes": "Chronic diseases, routine seasonal flu, heat-related illness (see heat-health-risk).",
+      "slug": "disease-outbreak",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Disinformation and Influence Operation",
+      "parent_domain": "information-environment",
+      "definition": "Coordinated disinformation campaigns or influence operations targeting public opinion or elections.",
+      "includes": "State-backed propaganda, fake news networks, bot farms, election interference, conspiracy theory amplification.",
+      "excludes": "Individual misinformation, satire, media bias without coordination.",
+      "slug": "disinformation-influence-operation",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Election Legitimacy Dispute",
+      "parent_domain": "political-legitimacy",
+      "definition": "Contested election results, fraud allegations, or institutional disputes over electoral processes.",
+      "includes": "Election fraud claims, court battles over results, delayed vote counts, foreign interference allegations, post-election violence.",
+      "excludes": "Routine election coverage, campaign strategy, policy debates.",
+      "slug": "election-legitimacy-dispute",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Energy Grid Instability",
+      "parent_domain": "resources-energy",
+      "definition": "Power outages, grid failures, or energy rationing due to generation shortages or infrastructure damage.",
+      "includes": "Blackouts, load shedding, grid collapse, power plant failures, energy rationing, cyberattacks on grid.",
+      "excludes": "Routine maintenance, local outages, fuel supply issues (see oil-gas-supply-risk).",
+      "slug": "energy-grid-instability",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Flood and Landslide Disaster",
+      "parent_domain": "climate-disaster",
+      "definition": "Flooding, landslides, or heavy rain events causing damage, evacuations, or humanitarian response.",
+      "includes": "River floods, flash floods, coastal storm surges, landslides, mudslides, evacuation orders, disaster relief operations.",
+      "excludes": "Drought (see water-stress-drought), heatwaves (see heat-health-risk), routine weather forecasts.",
+      "slug": "flood-landslide-disaster",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Food Price Stress",
+      "parent_domain": "economic-stress",
+      "definition": "Food inflation, shortages, or affordability crises leading to hunger or social unrest.",
+      "includes": "Spikes in staple food prices, bread riots, food rationing, hunger protests, supply chain disruptions causing shortages.",
+      "excludes": "Crop failures (see agriculture-crop-risk), general inflation, luxury food trends.",
+      "slug": "food-price-stress",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Forced Displacement",
+      "parent_domain": "migration-humanitarian",
+      "definition": "Internal or cross-border displacement due to conflict, violence, or disasters.",
+      "includes": "Refugee flows, IDP camps, ethnic cleansing, disaster evacuations, expulsion orders.",
+      "excludes": "Voluntary migration, economic migration, routine border crossings.",
+      "slug": "forced-displacement",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Fuel Subsidy Unrest",
+      "parent_domain": "economic-stress",
+      "definition": "Protests or strikes triggered by fuel price hikes or subsidy removal.",
+      "includes": "Fuel price protests, transport strikes, subsidy reform backlash, blockades at fuel depots.",
+      "excludes": "General labor strikes (see labor-strike-disruption), routine fuel price changes.",
+      "slug": "fuel-subsidy-unrest",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Gang Control and Urban Security",
+      "parent_domain": "conflict-security",
+      "definition": "Criminal armed groups exerting control over urban areas, transport, or services.",
+      "includes": "Gang takeovers of neighborhoods, extortion of businesses, control of prisons, transport routes, or utilities; turf wars.",
+      "excludes": "State-on-state conflict, organized crime without territorial control, petty crime.",
+      "slug": "gang-control-urban-security",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Gender Violence and Rights",
+      "parent_domain": "social-unrest-labor",
+      "definition": "Gender-based violence, femicide, or reproductive rights crises sparking mobilization.",
+      "includes": "Femicide waves, sexual violence in conflict, abortion rights protests, #MeToo movements, anti-gender-violence marches.",
+      "excludes": "Routine gender equality policy, individual crimes without systemic context.",
+      "slug": "gender-violence-rights",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Heat and Public Health Risk",
+      "parent_domain": "public-health",
+      "definition": "Extreme heat events causing mortality, health warnings, or infrastructure strain.",
+      "includes": "Heatwaves, heat-related deaths, hospital admissions for heatstroke, cooling center openings, power grid stress from AC demand.",
+      "excludes": "General climate change, drought (see water-stress-drought), routine summer weather.",
+      "slug": "heat-health-risk",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Housing Cost Pressure",
+      "parent_domain": "economic-stress",
+      "definition": "Housing affordability crises, rent spikes, evictions, or mortgage stress.",
+      "includes": "Rent surges, eviction waves, homelessness spikes, housing protests, mortgage default crises.",
+      "excludes": "Real estate market trends, construction industry news, luxury housing.",
+      "slug": "housing-cost-pressure",
+      "_support": [
+        "wire-taxonomist"
+      ],
+      "_consensus": "partial"
+    },
+    {
+      "label": "Humanitarian Access Under Conflict",
+      "parent_domain": "migration-humanitarian",
+      "definition": "Constraints on aid delivery due to violence or bureaucratic obstruction.",
+      "includes": "Aid convoy attacks, blocked corridors, visa denials for aid workers, looting of supplies.",
+      "excludes": "General displacement (see forced-displacement), natural disasters without conflict.",
+      "slug": "humanitarian-access-conflict",
+      "_support": [
+        "wire-taxonomist"
+      ],
+      "_consensus": "partial"
+    },
+    {
+      "label": "Labor Strike Disruption",
+      "parent_domain": "social-unrest-labor",
+      "definition": "Major labor strikes or union actions causing economic or service disruption.",
+      "includes": "General strikes, transport strikes, hospital strikes, factory walkouts, wage protests, collective bargaining breakdowns.",
+      "excludes": "Routine union meetings, individual labor disputes, student protests (see student-youth-protest).",
+      "slug": "labor-strike-disruption",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Migration and Border Pressure",
+      "parent_domain": "migration-humanitarian",
+      "definition": "Large-scale migration flows or border crises causing political or humanitarian strain.",
+      "includes": "Caravan migrations, border wall disputes, asylum seeker surges, pushbacks, detention center conditions.",
+      "excludes": "Routine immigration processes, non-crisis border activities.",
+      "slug": "migration-border-pressure",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Mining and Resource Safety Crisis",
+      "parent_domain": "resources-energy",
+      "definition": "Mine accidents, extraction-site safety failures, illegal mining, or resource-disaster events.",
+      "includes": "Mine collapses, toxic spills, illegal mining crackdowns, tailings dam failures, regulatory fallout.",
+      "excludes": "Routine mining operations, commodity price fluctuations.",
+      "slug": "mining-royalty-risk",
+      "_support": [
+        "wire-taxonomist"
+      ],
+      "_consensus": "partial"
+    },
+    {
+      "label": "Oil and Gas Supply Risk",
+      "parent_domain": "resources-energy",
+      "definition": "Disruption to oil, gas, or LNG supply due to conflict, accidents, or political decisions.",
+      "includes": "Pipeline sabotage, refinery shutdowns, OPEC production cuts, LNG terminal attacks, tanker seizures.",
+      "excludes": "Routine price changes, demand fluctuations, renewable energy news.",
+      "slug": "oil-gas-supply-risk",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Press Freedom Crackdown",
+      "parent_domain": "information-environment",
+      "definition": "Government or non-state attacks on journalists or media outlets.",
+      "includes": "Journalist arrests, media shutdowns, censorship orders, attacks on newsrooms, internet shutdowns targeting media.",
+      "excludes": "General internet shutdowns (see telecom-internet-shutdown), defamation lawsuits.",
+      "slug": "press-freedom-crackdown",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Sanctions and Diplomatic Pressure",
+      "parent_domain": "political-legitimacy",
+      "definition": "International sanctions, diplomatic expulsions, or treaty disputes causing geopolitical tension.",
+      "includes": "Economic sanctions, asset freezes, diplomatic expulsions, treaty withdrawals, nuclear negotiations, UN resolutions.",
+      "excludes": "Routine diplomacy, trade agreements without crisis, cultural exchanges.",
+      "slug": "sanctions-diplomatic-pressure",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Student and Youth Protest",
+      "parent_domain": "social-unrest-labor",
+      "definition": "Student-led protests or youth movements demanding political or social change.",
+      "includes": "Campus protests, education funding marches, youth climate strikes, student union activism, school boycotts.",
+      "excludes": "General labor strikes, non-student protests, routine school events.",
+      "slug": "student-youth-protest",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Telecom or Internet Shutdown",
+      "parent_domain": "technology-infrastructure",
+      "definition": "Government-ordered or conflict-related internet/telecom outages disrupting connectivity.",
+      "includes": "Internet blackouts during protests, mobile network shutdowns, censorship of social media, fiber cuts.",
+      "excludes": "Routine network maintenance, local outages, cyberattacks (see cyberattack-infrastructure).",
+      "slug": "telecom-internet-shutdown",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Trade and Export Restriction",
+      "parent_domain": "economic-stress",
+      "definition": "Export bans, tariffs, trade disputes, or shipping restrictions causing economic disruption.",
+      "includes": "Export bans on food/energy, tariff escalations, trade war announcements, port blockades, sanctions on trade.",
+      "excludes": "Routine trade negotiations, WTO disputes without crisis impact, company-level supply chain issues.",
+      "slug": "trade-export-restriction",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Transport Corridor Disruption",
+      "parent_domain": "technology-infrastructure",
+      "definition": "Disruption to major transport corridors (ports, canals, railways, roads) due to accidents, weather, or conflict.",
+      "includes": "Port strikes, canal blockages, bridge collapses, railway sabotage, road blockades by protesters, chokepoint closures.",
+      "excludes": "Routine transport updates, non-crisis logistics news.",
+      "slug": "transport-corridor-disruption",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "label": "Water Stress and Drought",
+      "parent_domain": "climate-disaster",
+      "definition": "Drought conditions, water scarcity, or conflict over water resources.",
+      "includes": "Prolonged dry spells, reservoir depletion, water rationing, irrigation restrictions, water disputes between regions/countries.",
+      "excludes": "Flood events, general climate change discussion without acute crisis.",
+      "slug": "water-stress-drought",
+      "_support": [
+        "ontology-purist",
+        "wire-taxonomist"
+      ],
+      "_consensus": "all"
+    },
+    {
+      "slug": "earthquake-volcano-disaster",
+      "label": "Earthquake or volcanic disaster",
+      "parent_domain": "climate-disaster",
+      "definition": "Seismic or volcanic events causing casualties, damage, or evacuation.",
+      "includes": "earthquakes, aftershocks, tsunamis, volcanic eruptions, ashfall evacuations",
+      "excludes": "routine seismology research; disaster anniversaries; flood/landslide (own category)",
+      "_status": "FLAGGED_ADD (orchestrator) — closes a natural-hazard gap; validate in gold"
+    },
+    {
+      "slug": "wildfire-storm-disaster",
+      "label": "Wildfire or severe-storm disaster",
+      "parent_domain": "climate-disaster",
+      "definition": "Wildfires, hurricanes/cyclones, tornadoes, or severe storms causing harm.",
+      "includes": "wildfires, hurricanes, typhoons, cyclones, tornadoes, blizzards causing damage",
+      "excludes": "ordinary weather forecasts; heat without fire/storm (heat-health category)",
+      "_status": "FLAGGED_ADD (orchestrator) — closes a natural-hazard gap; validate in gold"
+    }
+  ]
+}
