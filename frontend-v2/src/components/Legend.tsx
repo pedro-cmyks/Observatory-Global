@@ -96,7 +96,7 @@ export const Legend: React.FC<LegendProps> = ({
             <button
                 onClick={() => setCollapsed(false)}
                 className="panel"
-                style={{ position: 'fixed', bottom: '20px', left: '20px', padding: '6px 11px', cursor: 'pointer', zIndex: 800, fontSize: '11px', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border-subtle)' }}
+                style={{ position: 'absolute', bottom: '14px', left: '14px', padding: '6px 11px', cursor: 'pointer', zIndex: 800, fontSize: '11px', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border-subtle)' }}
                 data-tip="Show map legend"
                 aria-label="Show map legend"
             >
@@ -108,7 +108,7 @@ export const Legend: React.FC<LegendProps> = ({
     return (
         <div
             className="panel"
-            style={{ position: 'fixed', bottom: '20px', left: '20px', minWidth: '220px', maxWidth: '260px', zIndex: 800, padding: '12px 14px' }}
+            style={{ position: 'absolute', bottom: '14px', left: '14px', minWidth: '210px', maxWidth: '250px', maxHeight: 'calc(100% - 28px)', overflowY: 'auto', zIndex: 800, padding: '12px 14px' }}
         >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <span style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-secondary)' }}>Map Key</span>
@@ -140,10 +140,10 @@ export const Legend: React.FC<LegendProps> = ({
             {showHeatmap && (
                 <div style={{ marginBottom: '12px' }}>
                     <SectionHeader label="Countries heat layer" tip="Country color = composite anomaly (velocity, surprise, source diversity, local voice) vs each country's OWN baseline — NOT raw volume. A small country spiking above its norm outranks a high-volume one. Border thickness = signal volume." />
-                    {/* Mirrors the actual map heat ramp (App.tsx country-heat-fill):
-                        deep blue → blue → teal → amber → orange → red, the
-                        weather-radar spread (#231/2026-06-13). */}
-                    <div style={{ height: '8px', borderRadius: '4px', background: 'linear-gradient(90deg, rgb(20,50,120), rgb(25,90,150), rgb(40,140,120), rgb(190,130,30), rgb(220,75,20), rgb(238,35,10))', marginBottom: '4px' }} />
+                    {/* Mirrors the Equal Earth heat ramp (lib/countryHeatStates
+                        heatFillColor): blue → cyan → green → yellow → orange →
+                        red, the widened weather-radar spread. */}
+                    <div style={{ height: '8px', borderRadius: '4px', background: 'linear-gradient(90deg, rgb(40,100,210), rgb(25,175,205), rgb(45,200,120), rgb(235,205,45), rgb(240,130,30), rgb(242,45,30))', marginBottom: '4px' }} />
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--color-text-muted)' }}>
                         <span>at baseline</span>
                         <span>spiking vs own norm</span>

@@ -1469,6 +1469,8 @@ function AppContent() {
             onToggleTerminator={setShowTerminator}
             sizeBoost={sizeBoost}
             onToggleSizeBoost={setSizeBoost}
+            mapProjection={mapProjection}
+            onToggleProjection={toggleProjection}
             open={settingsOpen}
             onClose={() => setSettingsOpen(false)}
           />
@@ -1572,16 +1574,6 @@ function AppContent() {
                 aria-label="Reset map view or fly to highest-attention region"
               >
                 ↺
-              </button>
-              <button
-                className={`layer-btn ${mapProjection === 'equalEarth' ? 'active' : ''}`}
-                onClick={toggleProjection}
-                data-tip={mapProjection === 'equalEarth'
-                  ? 'Equal Earth (equal-area, honest country sizes). Click for Mercator.'
-                  : 'Mercator (inflates the north). Click for Equal Earth — equal-area, honest country sizes.'}
-                aria-label="Toggle map projection"
-              >
-                {mapProjection === 'equalEarth' ? 'EQ EARTH' : 'MERCATOR'}
               </button>
             </div>
           </div>
