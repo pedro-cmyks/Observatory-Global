@@ -1,8 +1,8 @@
 # Spec — Atlas Unified Engine (one engine, typed membership, measured cutover)
 
-Date: 2026-06-29 · Branch: `v3-intel-layer` · Status: **DRAFT — approved design,
-pending spec review** (brainstorming → spec, Pedro approved the design
-2026-06-29). Author: Claude (Opus 4.8). Companion to
+Date: 2026-06-29 · Branch: `v3-intel-layer` · Status: **APPROVED** (design +
+spec approved by Pedro 2026-06-29; §17 decisions resolved). Author: Claude
+(Opus 4.8). Companion to
 `docs/specs/2026-06-29-atlas-engine-gdelt-decoupling-syndication.md` (the engine
 diagnosis this builds on) and `docs/specs/2026-06-24-community-signal-layer-design.md`
 (#237).
@@ -226,6 +226,13 @@ evidence.
   + `/theme` read `topic_members`. *Accept:* prod `/threads` order + counts match
   the current path (parity), discussion lane unchanged. Closes the serving half
   of #168/#172.
+  - **Constraint discovered (2026-06-29, F0.2):** atlas topics have FULL
+    per-signal membership (`signal_topic_assignments`); dynamic topics have only
+    `emergent_clusters.sample_signal_ids` (a capped ~24 sample, via
+    `dynamic_topic_members`→`emergent_clusters`). So `v1-compat` projects atlas
+    fully + dynamic by its SAMPLE; full per-signal dynamic membership is a
+    BENEFIT delivered by `unified-v2` (F3). F0 `/threads` parity is on the LIST
+    (aggregate counts), not full dynamic membership.
 - **F1 — forum ingest (Bluesky + Lemmy).** Two ingest workers → `signals_v2`
   social with `source_origin_country`. *Accept:* live posts land country-tagged,
   embedded, attached as discussion members. Advances #237/#235.
@@ -329,9 +336,9 @@ the papers — it is the comparative evidence they need.**
 
 ## 16. Implementation TODO
 
-- [ ] **F0.1** migration `topic_members` (+indexes)
-- [ ] **F0.2** `v1-compat` ETL: project `signal_topic_assignments` → `topic_members`
-- [ ] **F0.3** `/threads` + `/theme/{id}` read `topic_members` (role-filtered); parity test vs current
+- [x] **F0.1** migration `topic_members` (+indexes) — `057_topic_members.sql`, applied to prod
+- [x] **F0.2** `v1-compat` ETL: project `signal_topic_assignments` → `topic_members` — `scripts/etl_topic_members.py`; atlas-evidence parity EXACT (6734=6734); dynamic projected by sample (per §10 constraint). Discussion path correct (0 rows = cron freshness, not a defect).
+- [ ] **F0.3** `/threads` + `/theme/{id}` read `topic_members` (role-filtered); parity test vs current ← NEXT (prod serving change, needs careful parity)
 - [ ] **F0.4** `GET /api/v2/topic/{id}/relationship` (5 types) — closes #168 serving half
 - [ ] **F1.1** Bluesky Jetstream ingest worker → `signals_v2` social (country via lang+NER)
 - [ ] **F1.2** Lemmy ingest worker (instance=country) → `signals_v2` social
@@ -344,13 +351,11 @@ the papers — it is the comparative evidence they need.**
 
 ---
 
-## 17. Open questions (for spec review)
+## 17. Decisions (resolved — Pedro, 2026-06-29)
 
-1. `topic_id` namespace: keep the dual `atlas-slug` / `dynamic-topic-N` ids in
-   `topic_members`, or mint a unified topic id space in F0? (Recommend: keep dual
-   ids in F0 to avoid a migration, unify the id space at F3.)
-2. `mood` extraction: reuse `nlp_sentiment` per forum signal (cheap) or a
-   dedicated concern-classifier (later)? (Recommend: sentiment-only in F1; concern
-   classifier deferred.)
-3. F1 source order confirmed Bluesky + Lemmy first? (vs leading with Telegram for
-   non-Western reach — higher integration cost.)
+1. **`topic_id` namespace** → keep dual `atlas-slug` / `dynamic-topic-N` ids in
+   F0 (no early migration); unify the id space at F3.
+2. **`mood` extraction** → reuse `nlp_sentiment` per forum signal in F1; a
+   dedicated concern-classifier is deferred.
+3. **F1 source order** → Bluesky + Lemmy first (highest volume + cleanest country
+   tag + lowest integration cost); Telegram/Mastodon/Discourse follow as WAVE-N.
