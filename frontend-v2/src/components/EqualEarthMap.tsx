@@ -259,18 +259,28 @@ export function EqualEarthMap({
                 drawPolygon(ctx, f.geometry, pt)
                 ctx.fill()
             }
-            // 2. Flow arcs.
+            // 2. Flow arcs. On the wrapping strip a pair can be drawn the long
+            // way around; pick the target's wrapped copy that gives the SHORTEST
+            // on-screen line to the source, then draw it in every seam tile.
             ctx.lineCap = 'round'
             for (const f of overlay.flows.features) {
                 const coords = f.geometry.coordinates as [number, number][]
                 if (!Array.isArray(coords) || coords.length < 2) continue
-                const a = pt(coords[0]); const b = pt(coords[1])
-                if (!a || !b) continue
-                ctx.beginPath()
-                ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1])
+                const a = pt(coords[0]); const b0 = pt(coords[1])
+                if (!a || !b0) continue
+                let bx = b0[0]
+                if (period > 0) {
+                    for (const o of [-period, period]) {
+                        if (Math.abs((b0[0] + o) - a[0]) < Math.abs(bx - a[0])) bx = b0[0] + o
+                    }
+                }
                 ctx.strokeStyle = 'rgba(100, 140, 180, 0.5)'
                 ctx.lineWidth = 0.8 + Math.min(num(f.properties.strength), 1) * 2.2
-                ctx.stroke()
+                for (const off of seams) {
+                    ctx.beginPath()
+                    ctx.moveTo(a[0] + off, a[1]); ctx.lineTo(bx + off, b0[1])
+                    ctx.stroke()
+                }
             }
             // 3. Static markers (positions, not alerts). Drawn at each seam so
             // they appear in whichever wrapped tile is on screen.
