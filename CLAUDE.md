@@ -2046,9 +2046,38 @@ F0.1 migration `057_topic_members` applied to prod; F0.2 `scripts/etl_topic_
 members.py` v1-compat ETL — atlas-evidence parity EXACT (6734=6734, windowed by
 `assigned_at` to match serving), dynamic projected by sample (constraint §10:
 dynamic has only `emergent_clusters.sample_signal_ids`; full membership arrives
-with unified-v2 F3). **NEXT = F0.3**: `/threads`+`/theme` read `topic_members`
-role-filtered, behind a READ-FLAG with A/B parity vs current BEFORE flipping
-(prod risk; atlas full membership but dynamic list still from aggregates → hybrid
-serving, not a clean swap). Then F1 (Bluesky+Lemmy ingest), F2 (source_family
+with unified-v2 F3). Then F1 (Bluesky+Lemmy ingest), F2 (source_family
 clustering guard), F3 (unified-v2 + A/B), F4 (cutover). §17 decisions: dual
 topic_id in F0; mood=nlp_sentiment in F1; F1=Bluesky+Lemmy first.
+
+**2026-06-29 (PM cont.) — F0.3 + F0.4 SHIPPED + DEPLOYED (`2f87459`).**
+**F0.3 unified read-flag:** `/threads` atlas-evidence path reads typed
+`topic_members` (role='evidence') via `THREADS_SQL_TOPIC_MEMBERS` (mirrors
+`THREADS_SQL` exactly: basis↔lex/theme, gate_kept/confidence carried, related
+co-occ via `tm2`), behind `ATLAS_SERVE_THREADS_FROM_TOPIC_MEMBERS` (default
+**OFF** — prod serving unchanged). **A/B gate `scripts/engine_serving_parity.py`:
+CRITICAL PARITY ALL PASS** (set/order/signal_count/gated/source/country/entities
+EXACT across global+US+CO+topic) — only 2 documented cosmetic deltas
+(related-chip top-5 reshuffle: current=all-time co-occ, unified=window-scoped =
+MORE correct; avg_confidence ±1e-3 REAL-vs-double). **ETL BUG FOUND+FIXED:**
+F0.2 stamped `topic_members.assigned_at = now()` (insert-time) → serving-window
+would have served aged-out rows (7449 vs correct 6734); now carries SOURCE
+`assigned_at`, re-seeded (windowed 6734=6734 exact). **Flip is Pedro's** (1 env
+var) after eyeballing the chip change — do NOT flip blind. `/theme/{id}`
+read-swap deferred to F3 (detail gate path separate; LIST parity is F0 accept).
+**F0.4 relationship endpoint:** `GET /api/v2/topic/{id}/relationship` — 5 #168
+types (media/public/social-led, silent-risk, uncoupled) from `topic_members`
+role-count ratios (`app/services/topic_relationship.py:classify_relationship`,
+pure, 14 tests; accepts raw topic_id or `slug--cc`). DEPLOYED+SMOKED (prod:
+armed-conflict→media-led 1412). **HONEST current state:** ALL atlas topics =
+`media-led` — discussion/mood lanes are 0 (`semantic-discussion-v1` has **0
+source rows**, not just cron-fresh); public/social-led/silent-risk fire only when
+F1 forum ingest populates discussion+mood. **Issues:** #168/#172 commented
+(serving half delivered; full close at F1 when the 5 types differentiate on real
+data). **Papers:** P4 spec (`2026-05-24-living-narrative-threads.md`) + master-
+plan cross-ref row updated (typed membership + 5 types = P4; A/B = P1; serving =
+P7). **NEXT = F1**: Bluesky Jetstream + Lemmy ingest workers → `signals_v2`
+social (instance/lang=country), embedded, attached as discussion members —
+THEN the relationship types light up. Cron note: re-run `etl_topic_members`
+(now assigned-at-correct) on a schedule beside the classifier; classifier last
+ran 06-27 (24h window=0, 168h=6734).

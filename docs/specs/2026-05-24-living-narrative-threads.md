@@ -385,3 +385,26 @@ to the focus's relations + flies to its dominant country, and (2026-06-24)
 NarrativeThreads now surfaces the threads mentioning a focused person. Remaining:
 dock (anomaly/sources) + public-attention re-scoping; backend `threads?person=`
 filter for precise (non-`top_entities`-capped) person→thread relations.
+
+### Typed membership + relationship types (2026-06-29 — Unified Engine F0, Paper 4)
+The split-brain (atlas-lexical ‖ dynamic-embedding ‖ discussion-attach, three
+pipelines that never reconcile) is replaced by ONE typed-membership table
+`topic_members(role ∈ evidence|discussion|mood|movement, basis, engine_version)`
+— construction unifies, serving separates by role (spec
+`docs/specs/2026-06-29-atlas-unified-engine.md`). **New Paper-4 contributions:**
+- **Typed membership** as the thread substrate: the evidence spine (press, gated)
+  is one role; discussion/mood (social, `verified=false`) and movement (events)
+  are separate roles never folded into `evidence_count` — the honesty invariant
+  becomes a schema property, not a serving convention.
+- **The 5 relationship types** (`media-led / public-led / social-led /
+  silent-risk / uncoupled-attention`) computed from role-count ratios
+  (`classify_relationship`, `app/services/topic_relationship.py`), NOT a new
+  pipeline. This is the press-vs-public structure of a thread as a measured
+  projection — the analyst can ask "is this story media-driven or
+  public-driven?" from the same membership model. (Serving lives at P7; the
+  typed-membership method + the silent-risk-as-ratio reframe are P4/P1.)
+- **F0.3 measured-cutover discipline:** the unified read path ships behind a
+  read-flag with an A/B parity gate (`engine_serving_parity.py`) proving
+  byte-exact list parity before the flip — the same calibrate-then-prove method
+  this spec used for ranking, now applied to a serving-layer swap. The A/B over
+  v1-compat vs unified-v2 (F3) IS Paper 1's split-brain-vs-unified experiment.
