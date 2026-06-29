@@ -311,15 +311,27 @@ can't score) — a Paper-1↔Paper-4 dependency the discussion section should st
     across ~25 Australian Community Media `.com.au` papers (135 serving-count
     signals). The 3-term ranking has no diversity term; log-damping is
     volume-blind to copy-vs-original. Proposed:
-    `headline_diversity = distinct_normalized_headlines / total_signals`
-    (near-dup normalized) + a `distinct_publisher_families` collapse (the
-    source→family map is uncollected P2 infra). MUST be a ranking INPUT, not a
-    gate (a real AP wire IS legitimately syndicated → measure false-demote rate).
+    `headline_diversity = distinct_normalized_headlines / total_signals`.
+    **2026-06-29 UPDATE — this metric was DISPROVEN by measure-first** (audit
+    `scripts/syndication_audit.py` + raw-corpus SQL; artifacts
+    `docs/research/syndication/`): of 506 high-reprint headline groups in 24h, 95%
+    are clean independent wire, and real news ("Iran attacks Bahrain", 116
+    reprints/115 domains) is structurally IDENTICAL to filler ("sausage rolls
+    healthier", 92/92) — diversity/domain-count cannot separate importance, and
+    owner-network fronts (Las Vegas ×25 `.com.au`, one owner) post once per domain
+    so they look like legit wire. A diversity penalty would false-demote real
+    news. **The negative result is itself a paper finding** (syndication structure
+    ≠ news value). Replaced by: (a) single-domain-boilerplate demote (high reprints
+    from 1 domain = template junk, ~4%); (b) editorial-lane demote — the real
+    "Las Vegas Travel Guide ranks #1" cause is LIFESTYLE/SPORT low news value, not
+    syndication, fixed by applying the #177 stream-lane classifier to thread
+    ranking.
 - Confidence-band calibration.
 - Ranking-weight ablation: vary the 0.45/0.35/0.20 split and the log-damping,
   measure analyst-judged top-k thread quality (weights are explicitly v1 /
-  calibratable). **Add a 4th `headline_diversity` term** to this ablation
-  (3-term v1 vs 4-term) — the home for the syndication fix above.
+  calibratable). **2026-06-29: the proposed 4th `headline_diversity` term is
+  withdrawn (disproved above); the editorial-lane term (#177) is the candidate
+  4th input instead.**
 - person→thread recall/precision of `?person=` (full-array match) vs the
   `top_entities`-capped heuristic on a labeled set.
 - Alert↔evidence reconciliation (#214): on a sample of anomalous countries,

@@ -1,0 +1,169 @@
+{
+  "params": {
+    "hours": 24,
+    "limit": 40,
+    "flag_below": 0.35
+  },
+  "n_threads": 13,
+  "n_scored": 13,
+  "n_flagged": 0,
+  "flagged_pct": 0.0,
+  "rows": [
+    {
+      "rank": 0,
+      "thread_id": "dynamic-topic-262",
+      "label": "Las Vegas Travel Guide",
+      "serving_count": 45,
+      "sample_n": 24,
+      "distinct_headlines": 24,
+      "headline_diversity": 1.0,
+      "distinct_domains": 24,
+      "flagged": false,
+      "top_headline": "Las Vegas: beyond glitz, discover the desert city's depths | Narromine"
+    },
+    {
+      "rank": 1,
+      "thread_id": "dynamic-topic-62",
+      "label": "John Bolton Pleads Guilty",
+      "serving_count": 33,
+      "sample_n": 27,
+      "distinct_headlines": 27,
+      "headline_diversity": 1.0,
+      "distinct_domains": 27,
+      "flagged": false,
+      "top_headline": "Ex US NSA Bolton pleads guilty to violating Espionage Act"
+    },
+    {
+      "rank": 2,
+      "thread_id": "dynamic-topic-121",
+      "label": "Trump Cancels Iran Attacks",
+      "serving_count": 37,
+      "sample_n": 25,
+      "distinct_headlines": 24,
+      "headline_diversity": 0.96,
+      "distinct_domains": 25,
+      "flagged": false,
+      "top_headline": "Estados Unidos bombardeó objetivos en Irán tras un presunto ataque con"
+    },
+    {
+      "rank": 3,
+      "thread_id": "dynamic-topic-248",
+      "label": "Venezuela Earthquake Death Toll",
+      "serving_count": 45,
+      "sample_n": 38,
+      "distinct_headlines": 37,
+      "headline_diversity": 0.974,
+      "distinct_domains": 38,
+      "flagged": false,
+      "top_headline": "Asciende a 920 la cifra de muertos por terremotos en Venezuela; 172 pe"
+    },
+    {
+      "rank": 4,
+      "thread_id": "dynamic-topic-263",
+      "label": "Budget Tax Changes Concern",
+      "serving_count": 43,
+      "sample_n": 30,
+      "distinct_headlines": 30,
+      "headline_diversity": 1.0,
+      "distinct_domains": 30,
+      "flagged": false,
+      "top_headline": "Labor Government: Budget tax changes spark 'tangled web' concern | Ten"
+    },
+    {
+      "rank": 5,
+      "thread_id": "dynamic-topic-246",
+      "label": "World Cup 2026 Live Streams",
+      "serving_count": 58,
+      "sample_n": 24,
+      "distinct_headlines": 24,
+      "headline_diversity": 1.0,
+      "distinct_domains": 8,
+      "flagged": false,
+      "top_headline": "يلا شوت ماتش مباراة مصر ضد ايران بث مباشر في كأس العالم 2026"
+    },
+    {
+      "rank": 6,
+      "thread_id": "dynamic-topic-10",
+      "label": "Ukraine War Updates",
+      "serving_count": 18,
+      "sample_n": 24,
+      "distinct_headlines": 24,
+      "headline_diversity": 1.0,
+      "distinct_domains": 19,
+      "flagged": false,
+      "top_headline": "Світан сказав, чи має Україна перевагу в дронах над Росією"
+    },
+    {
+      "rank": 7,
+      "thread_id": "dynamic-topic-264",
+      "label": "NDC Deregistration Controversy",
+      "serving_count": 30,
+      "sample_n": 32,
+      "distinct_headlines": 32,
+      "headline_diversity": 1.0,
+      "distinct_domains": 19,
+      "flagged": false,
+      "top_headline": "2027: Tinubu's govt working to stop my candidacy — Peter Obi"
+    },
+    {
+      "rank": 8,
+      "thread_id": "dynamic-topic-265",
+      "label": "Buttigieg False Report Incident",
+      "serving_count": 29,
+      "sample_n": 24,
+      "distinct_headlines": 24,
+      "headline_diversity": 1.0,
+      "distinct_domains": 24,
+      "flagged": false,
+      "top_headline": "Pete Buttigieg and his kids subject to CPS, police investigation after"
+    },
+    {
+      "rank": 9,
+      "thread_id": "dynamic-topic-189",
+      "label": "Israel-Lebanon Framework Agreement",
+      "serving_count": 22,
+      "sample_n": 23,
+      "distinct_headlines": 22,
+      "headline_diversity": 0.957,
+      "distinct_domains": 23,
+      "flagged": false,
+      "top_headline": "Lebanon, Israel and US sign trilateral framework pact"
+    },
+    {
+      "rank": 10,
+      "thread_id": "dynamic-topic-79",
+      "label": "Ernestina Pais Train Accident",
+      "serving_count": 30,
+      "sample_n": 24,
+      "distinct_headlines": 24,
+      "headline_diversity": 1.0,
+      "distinct_domains": 19,
+      "flagged": false,
+      "top_headline": "Cómo fue el accidente en el que murió Ernestina Pais: las primeras rec"
+    },
+    {
+      "rank": 11,
+      "thread_id": "dynamic-topic-266",
+      "label": "Weinstein Conviction Upheld",
+      "serving_count": 20,
+      "sample_n": 20,
+      "distinct_headlines": 18,
+      "headline_diversity": 0.9,
+      "distinct_domains": 20,
+      "flagged": false,
+      "top_headline": "California appeals court upholds Weinstein's rape conviction, orders r"
+    },
+    {
+      "rank": 12,
+      "thread_id": "dynamic-topic-50",
+      "label": "US Strikes Iran Retaliation",
+      "serving_count": 16,
+      "sample_n": 26,
+      "distinct_headlines": 25,
+      "headline_diversity": 0.962,
+      "distinct_domains": 23,
+      "flagged": false,
+      "top_headline": "Іран заявив про атаку на позиції армії США"
+    }
+  ]
+}

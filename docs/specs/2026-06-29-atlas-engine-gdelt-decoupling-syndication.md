@@ -142,7 +142,40 @@ downstream of semantic-classification health, not a standalone win.
 
 ---
 
-## 4. Pillar 3 — syndication-aware ranking (NEW; highest value)
+## 4. Pillar 3 — syndication-aware ranking
+
+### 4.0 MEASURED RESULT (2026-06-29) — `headline_diversity` DISPROVEN; PIVOT
+
+Measure-first (audit `scripts/syndication_audit.py` + raw-corpus SQL via Supabase,
+24h) **disproved the `headline_diversity` lever below.** Findings:
+
+- The served evidence sample is already **headline-deduped**, so diversity
+  measured on the API reads ~1.0 for everything — the API is the wrong instrument
+  (must measure raw `signals_v2`, not the served sample).
+- On RAW data, of 506 high-reprint headline groups (≥8 reprints): **482 (95%) are
+  clean independent wire** (~1 post per distinct domain) — and they are BOTH real
+  news AND filler: "Iran attacks Bahrain" (116 reprints / 115 domains) is
+  structurally **identical** to "sausage rolls healthier" (92/92). **Diversity /
+  domain-count cannot tell importance from filler.** Worse, the owner-network case
+  (Las Vegas × 25 `.com.au` fronts, one owner) posts once per domain → looks
+  identical to legit wire. A `headline_diversity` ranking penalty would
+  **false-demote real wire news** (the §4.3 risk, realized).
+
+**Pivot (replaces the metric below):**
+- **(a) single-domain boilerplate demote** — high reprints from ONE domain
+  ("China Daily website connecting China" ×104 / 1 domain). 21 groups / 421
+  signals in 24h (4%). Clean and safe: one outlet spamming a template ≠ a story.
+- **(b) editorial lane on thread ranking (the real Vegas fix)** — "Las Vegas
+  Travel Guide" / "World Cup Live Streams" rank high because they are
+  lifestyle/sport/entertainment (low news value), NOT because they are
+  syndicated. Apply the existing #177 stream-lane classifier
+  (analyst|sports|entertainment|general) to thread eligibility/ranking. This is
+  the lever that actually separates the Vegas pathology from "Iran attacks".
+
+The original `headline_diversity` design is kept below STRUCK-THROUGH for the
+record. ~~Build it.~~ → disproved; build (a)+(b) instead.
+
+### 4.1–4.4 (DISPROVED — kept for the record)
 
 **The genuinely new contribution.** No existing measurement infrastructure.
 
@@ -390,6 +423,7 @@ are *mapped* terrain. Re-open only with the new lever noted.
 | **Enrich embedding input** | e5 over `headline + entities (+country)` vs title-only, on a prod sample (§4B.3) | Entities +~1pp recall (marginal); country OVER-clusters by geography (geo_purity ↑). Not worth a full re-embed. | a cheaper recall lever is already exhausted AND a re-embed is happening anyway — fold entities in then. |
 | **Tune HDBSCAN params** | grid `min_cluster_size × min_samples × selection` over a fixed title-only embedding (§4B.4) | A CLIFF: `leaf` = purity 1.0 but shatters (Gaza recall 0.04, ~70% noise); `eom`/big mcs = recall 0.97 but a **mega-blob** (896/1074 rows, 0.49 purity = #224 black-hole). No high-recall + high-purity config. | running the representative 8000-row confirm; OR after regional-pass pre-filtering changes the density structure. |
 | **GDELT theme codes as classifier hints** | read the seed | `KILL` is polysemous, wired into conflict + gender topics → false threads (§2.2). Confirmed root cause, not a fix attempt. | n/a — feeds the Pillar-1 ablation. |
+| **`headline_diversity` ranking penalty** | audit + raw-corpus SQL, 24h (§4.0) | DISPROVEN: 95% of high-reprint is clean independent wire; real news ("Iran attacks", 116/115) is structurally identical to filler ("sausage rolls", 92/92); owner-network fronts (Vegas `.com.au` ×25) look like legit wire. Would false-demote real news. | never as specced — diversity ≠ importance. Replaced by single-domain-boilerplate demote + editorial lane. |
 
 **The lever that survives:** scoped regional/topical clustering passes (#229
 lever 2) — cluster within a coherent pre-filtered subset where the density
@@ -416,10 +450,19 @@ Investigated → negative (mapped §8), not building:
 - [x] ~~Embedding-input enrichment~~ → ~1pp, not worth re-embed.
 - [x] ~~HDBSCAN param tuning for recall~~ → blob/shatter cliff.
 
-Pending (gated on §7 answers):
-- [ ] **§4 syndication ranking** (the survivor win): `scripts/syndication_audit.py`
-  (measure first) → `source_family_map` → `headline_diversity` as a ranking
-  INPUT → honest thread-card label. *Verify: Vegas drops, diverse threads hold.*
+Investigated → negative (added 2026-06-29):
+- [x] ~~§4 `headline_diversity` ranking penalty~~ → DISPROVEN by measure-first
+  (`scripts/syndication_audit.py` + raw SQL, §4.0): diversity ≠ importance,
+  false-demotes real wire news. Artifacts `docs/research/syndication/`.
+
+Pending (the §4 PIVOT — measured replacements):
+- [ ] **§4(b) editorial lane on thread ranking** (the real Vegas fix): apply the
+  #177 stream-lane classifier (analyst|sports|entertainment|general) to thread
+  eligibility/ranking so lifestyle/sport/entertainment ("Las Vegas Travel Guide",
+  "World Cup Live Streams") demote. *Verify: Vegas/WorldCup drop, "Iran attacks"
+  and real threads hold.*
+- [ ] **§4(a) single-domain boilerplate demote** (clean, small): high reprints
+  from ONE domain → template junk, demote. ~4% of high-reprint groups.
 - [ ] §3.1a finish GDELT-chip removal/collapse across remaining surfaces.
 - [ ] 🔒 §3.2 `scripts/gdelt_hint_ablation.py` (recall delta) → only then remove
   theme-hints in prod.
