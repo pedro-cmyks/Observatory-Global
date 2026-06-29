@@ -2012,3 +2012,43 @@ parity (🔒 gate — removing them breaks Paper 1's 41.6% number); park article
 bodies (worsens #184). NEXT BUILD = §4 syndication (`syndication_audit.py`
 first). NOTE: Pedro running EqualEarthMap work in PARALLEL — this engine session
 did NOT touch the map.
+
+**2026-06-29 (PM) — UNIFIED ENGINE spec + F0 started; Vegas fix DEPLOYED;
+silent-risk investigated+parked.** Continuation of the engine session, all
+shipped to prod (Fly). (1) **Editorial-lane damp DEPLOYED + verified live**
+(`3d5fe1e`): `classify_stream_lane` gained a `lifestyle` lane; `rank_threads`
+damps lifestyle/sport/entertainment by label (damp, not gate). PROD: "Las Vegas
+Travel Guide" #0→#7, "World Cup" #5→#10, real news leads. (2) **#172 silent-risk
+investigated + VALIDATED + PARKED** (`docs/methodology/silent-risk-detection.md`,
+issue #172): built the scaffold (`/api/v2/attention/silent-risks`,
+`app/services/silent_risk.py`, `app/routers/attention_threads.py`), measure-first
+DISPROVED the data source across iterations — wiki top-pageviews is
+sports/celebrity (classified by Wikipedia category, not dropped — Pedro's
+no-silent-filtering correction), velocity uncomputable (wiki_pageviews_v2 is
+top-N only), and the **forum pivot does NOT clearly improve** (Reddit news subs
+track mainstream coverage → not silent; the silent-risk phenomenon is RARE in
+both sources). Real path = attention/coverage RATIO or local sources; parked.
+Forum-research agent mapped open sources (Bluesky/Lemmy/Mastodon/Telegram/HN —
+see the unified-engine spec §7). (3) **UNIFIED ENGINE — the big one.** Pedro's
+thesis (validated): kill the split-brain (atlas-lexical ‖ dynamic-embedding ‖
+discussion-attach = 3 parallel pipelines, different outputs, never reconcile);
+ONE engine — any signal → embedding substrate → ONE typed `topic_members` table
+(role: evidence/discussion/mood/movement); **unify construction, separate at
+SERVING.** GDELT themes demoted to an optional confidence feature (kills the
+RSS/forum asymmetry; full removal still gated on P1 ablation). HYBRID cutover:
+serving unifies now (v1-compat ETL), construction rewritten behind
+`ATLAS_UNIFIED_ENGINE` flag, A/B-measured, flip only when v2≥v1. Spec
+**APPROVED**: `docs/specs/2026-06-29-atlas-unified-engine.md` (brainstorming →
+spec-driven; phases F0-F4; plans to CLOSE #242/#168/#172/#237/#232; paper-track
+impact mapped P1/P4/P5/P7/P8/P2 — the A/B IS Paper 1's split-brain-vs-unified
+experiment; causal cross-vocab linking deferred). **F0 SHIPPED** (`413b391`):
+F0.1 migration `057_topic_members` applied to prod; F0.2 `scripts/etl_topic_
+members.py` v1-compat ETL — atlas-evidence parity EXACT (6734=6734, windowed by
+`assigned_at` to match serving), dynamic projected by sample (constraint §10:
+dynamic has only `emergent_clusters.sample_signal_ids`; full membership arrives
+with unified-v2 F3). **NEXT = F0.3**: `/threads`+`/theme` read `topic_members`
+role-filtered, behind a READ-FLAG with A/B parity vs current BEFORE flipping
+(prod risk; atlas full membership but dynamic list still from aggregates → hybrid
+serving, not a clean swap). Then F1 (Bluesky+Lemmy ingest), F2 (source_family
+clustering guard), F3 (unified-v2 + A/B), F4 (cutover). §17 decisions: dual
+topic_id in F0; mood=nlp_sentiment in F1; F1=Bluesky+Lemmy first.
