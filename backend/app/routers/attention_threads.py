@@ -81,6 +81,17 @@ _INFO_DESERT_FLOOR = 40     # country with < this many window signals = desert
 _MAX_TOPICS = 25            # cap per call
 _STOPWORDS = {"the", "and", "for", "with", "from", "2025", "2026", "new", "list"}
 
+# Forum source (#172 pivot): the Reddit ingest is curated to country + topical
+# subreddits. Measure-first finding (2026-06-29): country subs (r/myanmar,
+# r/Nigeria, r/colombia) are mostly daily-life chatter ("where can I buy a
+# cardigan"), while the TOPICAL subs are genuine news. So the forum silent-risk
+# source prefers the news-oriented subreddits.
+_NEWS_SUBREDDITS = {
+    "reddit/r/geopolitics", "reddit/r/worldnews", "reddit/r/credibledefense",
+    "reddit/r/syriancivilwar", "reddit/r/middleeast", "reddit/r/globalnews",
+    "reddit/r/anime_titties",  # (notorious news sub despite the name)
+}
+
 
 def _distinctive_token(normalized: str) -> str | None:
     """The most distinctive (longest, non-stopword) token to match coverage on.
@@ -107,9 +118,51 @@ async def _lexical_coverage(conn, token: str, hours: int) -> tuple[int, list[dic
     return count, samples
 
 
+async def _forum_topics(conn, cc: str | None, hours: int) -> list[dict]:
+    """Build silent-risk topics from the Reddit forum lane (#172 pivot). Prefers
+    news-oriented subreddits; country-subreddit daily-life chatter is included but
+    de-prioritised. Each post is a discussion topic; coverage is measured the same
+    way as the wiki path."""
+    rows = await conn.fetch(
+        f"""
+        SELECT s.headline, s.source_name, s.country_code, s.source_url,
+               (lower(s.source_name) = ANY($2::text[])) AS is_news_sub
+        FROM signals_v2 s
+        WHERE s.source_family = 'social'
+          AND s.timestamp > NOW() - INTERVAL '{int(hours)} hours'
+          AND s.headline IS NOT NULL AND s.headline <> ''
+          AND ($1::text IS NULL OR s.country_code = $1)
+        ORDER BY (lower(s.source_name) = ANY($2::text[])) DESC, s.timestamp DESC
+        LIMIT 120
+        """, cc, list(_NEWS_SUBREDDITS))
+    topics, seen = [], set()
+    for r in rows:
+        norm = normalize_title(r["headline"])
+        tok = _distinctive_token(norm)
+        if not tok:
+            continue
+        key = norm.lower()[:60]
+        if key in seen:
+            continue
+        seen.add(key)
+        topics.append({
+            "title": r["headline"], "normalized": norm[:120], "token": tok,
+            "lane": classify_stream_lane([], norm), "lane_basis": "keyword",
+            "views": 0, "baseline": 0, "velocity": 0.0,
+            "subreddit": (r["source_name"] or "").replace("reddit/", ""),
+            "is_news_sub": bool(r["is_news_sub"]),
+            "source_url": r["source_url"],
+            "country_code": r["country_code"],
+        })
+        if len(topics) >= _MAX_TOPICS:
+            break
+    return topics
+
+
 @router.get("/api/v2/attention/silent-risks")
 async def get_silent_risks(
     country: str | None = Query(None, min_length=2, max_length=2),
+    source: str = Query("wiki", pattern="^(wiki|forum)$"),
     hours: int = Query(24, ge=1, le=168),
     days: int = Query(1, ge=1, le=7),
     limit: int = Query(15, ge=1, le=30),
@@ -122,6 +175,32 @@ async def get_silent_risks(
     async with db.pool.acquire() as conn:
         await conn.execute("SET statement_timeout = 12000")
 
+        # ── Forum source (#172 pivot): Reddit discussion minus media coverage.
+        if source == "forum":
+            topics = (await _forum_topics(conn, cc, hours))[:limit]  # cap coverage queries
+            items = []
+            for t in topics:
+                media_count, samples = await _lexical_coverage(conn, t["token"], hours)
+                silent = is_silent_risk(1, media_count, media_floor=_MEDIA_FLOOR)
+                items.append({**t, "media_count": media_count, "match_basis": "lexical",
+                              "is_silent_risk": silent,
+                              "why_silent": why_silent(t["title"], cc, media_count) if silent else None,
+                              "top_media": samples})
+            # News-subreddit silent risks first, then by nothing (recency order kept).
+            items.sort(key=lambda x: (x["is_silent_risk"], x.get("is_news_sub", False)), reverse=True)
+            silent_by_lane: dict[str, int] = {}
+            for x in items:
+                if x["is_silent_risk"]:
+                    silent_by_lane[x["lane"]] = silent_by_lane.get(x["lane"], 0) + 1
+            return {
+                "contract": "silent-risks-v0", "source": "forum", "country": cc,
+                "hours": hours, "match_basis": "lexical",
+                "silent_count": sum(1 for x in items if x["is_silent_risk"]),
+                "silent_by_lane": silent_by_lane, "items": items, "notes": notes,
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+        # ── Wiki source (default): pageviews minus media coverage.
         # Velocity model (#172): rank by SURGE, not absolute views — today's
         # views vs the prior-7-day baseline. An evergreen celebrity/sport page
         # (steady views) is not news; a page that SPIKES today is. Brand-new
@@ -232,6 +311,7 @@ async def get_silent_risks(
 
     return {
         "contract": "silent-risks-v0",
+        "source": "wiki",
         "country": cc, "hours": hours, "days": days,
         "match_basis": "lexical",
         "information_desert": information_desert,

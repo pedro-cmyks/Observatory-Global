@@ -64,15 +64,44 @@ partly curiosity trivia, e.g. *Tubifex tubifex*), and the velocity signal #172
 specified is unavailable here. So: ship the endpoint as a CLASSIFIED scaffold,
 but the headline UI feature wants a stronger source.
 
-## The real path (recommended next)
+## Forum-source pivot — BUILT + VALIDATED, does NOT clearly improve (2026-06-29)
 
-The scaffold is source-agnostic; swap the attention source:
-1. **Reddit/forum lane** (already ingested, `source_family='social'`) — far more
-   news/discussion-oriented than Wikipedia pageviews. A forum topic with public
-   discussion but no media thread is a much truer silent risk.
-2. **Google Trends, news-filtered** — rising news queries with no media coverage.
-3. **Full Wikipedia Pageviews API** (per-article daily history, not top-N) — would
-   restore the velocity signal if a Wikipedia source is still wanted.
+Pedro asked to pivot the source to the Reddit/forum lane AND validate it actually
+improves. Built (`source=forum`, `_forum_topics`, prefers news subreddits) and
+measured head-to-head (global, 48h):
 
-Until a news-oriented source is wired, `is_silent_risk` + the coverage measurement
-+ the noise/lane filters are reusable as-is; only the source query changes.
+| source | silent risks surfaced |
+|---|---|
+| wiki | 2 — *Tubifex tubifex* (a worm), *Dalida* (trivia) |
+| forum | 1 — "Active Conflicts & News Megathread" (a recurring container, artifact) |
+
+**The forum pivot does not clearly improve the news case.** The Reddit news
+subreddits (r/geopolitics, r/worldnews, r/CredibleDefense) discuss MAINSTREAM
+geopolitics (Iran/Israel/Ukraine) — which the press covers heavily, so
+`media_count` is high (178 / 61 / 17) and they are NOT silent. The country
+subreddits (r/myanmar, r/Nigeria, r/colombia) are daily-life chatter ("where can
+I buy a cardigan", "90 Day Fiancé"), not news.
+
+**Root finding (both sources): the silent-risk phenomenon is RARE.** Mainstream
+public attention TRACKS media coverage; the residual gaps are trivia (wiki) or
+daily-life chatter (country forums), not hidden news. #172's premise — meaningful
+"topics the public cares about that the press isn't covering," detectable from
+top-pageviews or forum discussion — is only weakly supported by the data.
+
+## What WOULD work (reframe, not yet built)
+
+- **Attention/coverage RATIO, not absolute-zero.** Absolute "0 media" is rare and
+  trivia-dominated. A relative imbalance — public attention HIGH but media
+  coverage DISPROPORTIONATELY low for the same country/topic — is a softer,
+  findable signal (an under-covered, not un-covered, story).
+- **Local/regional sources** (local-language outlets, regional subreddits) where
+  global press genuinely has gaps — needs the diversity-ingest program (#235) to
+  mature first.
+- **Velocity** (surge vs baseline) — unavailable from `wiki_pageviews_v2` (top-N
+  only); needs the full Wikipedia Pageviews API.
+
+The scaffold (wiki + forum sources, lexical coverage, Wikipedia-category
+classification, honest labels) is reusable for any of these; only the
+source/metric changes. Recommendation: PARK the headline silent-risk feature
+until the ratio reframe or a local source is available — the current sources
+don't support it.
