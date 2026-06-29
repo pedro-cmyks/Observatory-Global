@@ -317,11 +317,22 @@ export function EqualEarthMap({
                         if (Math.abs((b0[0] + o) - a[0]) < Math.abs(bx - a[0])) bx = b0[0] + o
                     }
                 }
-                ctx.strokeStyle = 'rgba(100, 140, 180, 0.5)'
+                ctx.strokeStyle = 'rgba(110, 150, 195, 0.5)'
                 ctx.lineWidth = 0.8 + Math.min(num(f.properties.strength), 1) * 2.2
+                // Curved arc (bowed toward the top) — reads like a great-circle
+                // hop on a globe instead of a flat chord. Bow scales with span.
+                const dx = bx - a[0], dy = b0[1] - a[1]
+                const span = Math.hypot(dx, dy)
+                const mx = (a[0] + bx) / 2, my = (a[1] + b0[1]) / 2
+                // perpendicular, always biased upward (negative screen-y)
+                let nx = -dy / (span || 1), ny = dx / (span || 1)
+                if (ny > 0) { nx = -nx; ny = -ny }
+                const bow = span * 0.22
+                const cx = mx + nx * bow, cy = my + ny * bow
                 for (const off of seams) {
                     ctx.beginPath()
-                    ctx.moveTo(a[0] + off, a[1]); ctx.lineTo(bx + off, b0[1])
+                    ctx.moveTo(a[0] + off, a[1])
+                    ctx.quadraticCurveTo(cx + off, cy, bx + off, b0[1])
                     ctx.stroke()
                 }
             }
