@@ -151,6 +151,41 @@ async def _call_llm_once(
     raise LLMError(provider, f"unknown API provider {provider!r}")
 
 
+# ── Subscription-CLI fallbacks (no API usage) ───────────────────────────────
+# Pedro's Anthropic API credits are dry; OpenAI/DeepSeek API may also run low.
+# Subscription paths that bypass API billing:
+#   - CLAUDE  → the orchestrator / Agent tool (this Claude Code session runs on
+#               the Claude subscription). `claude -p` subprocess 401s (its stored
+#               token differs from the session), so the Claude annotator is the
+#               orchestrator itself or a spawned subagent — handled in the gold
+#               flow, not callable from this script.
+#   - CODEX   → `codex exec` (ChatGPT subscription). Best-effort below; the local
+#               codex is currently broken (default gpt-5.5 needs a newer CLI;
+#               gpt-5/gpt-5-codex unsupported/empty; MCP servers 401; jobs table
+#               missing). Wired so it works once the CLI is upgraded + MCP cleared.
+CODEX_MODEL = os.getenv("ATLAS_CODEX_MODEL", "gpt-5-codex")
+
+
+def call_codex(prompt: str, *, model: str | None = None, timeout: float = 120.0) -> str:
+    """GPT via the codex CLI (ChatGPT subscription, no API usage). Best-effort:
+    the local codex install must be healthy (recent CLI, MCP cleared)."""
+    model = model or CODEX_MODEL
+    cmd = ["codex", "exec", "-m", model,
+           "--dangerously-bypass-approvals-and-sandbox", "--skip-git-repo-check", prompt]
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except FileNotFoundError as exc:
+        raise LLMError("codex", f"CLI not found: {exc}") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise LLMError("codex", "CLI timeout") from exc
+    body = (out.stdout or "").strip()
+    if "error" in (out.stderr or "").lower() and not body:
+        raise LLMError("codex", out.stderr.strip()[:200])
+    if not body:
+        raise LLMError("codex", "empty output (check codex CLI/model health)")
+    return body
+
+
 def call_gemini(prompt: str, *, model: str | None = None, timeout: float = 90.0) -> str:
     """Gemini via the authenticated CLI (no API key in env). Sync subprocess —
     fine for the low-volume proposal phase; not used in bulk annotation."""

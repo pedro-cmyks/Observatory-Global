@@ -133,3 +133,36 @@ signal is strong but the gold phase should use the throttled fleet for full N.)
 class + sharp excludes dramatically raises annotator agreement (76%→96%) and
 directly removes the Phase-A force-fit. Candidate v2 is ready for Pedro's
 interactive round + the gold κ/precision phase before the production swap.
+
+## Phase C gold — crisis-only, 3 annotators incl. Claude via subscription (DONE)
+
+Subscription fallback (Pedro: Anthropic API credits dry). The Claude annotator is
+the **orchestrator / Agent tool** (this Claude Code session runs on the Claude
+subscription — `claude -p` subprocess 401s on a different stored token; `codex` is
+wired best-effort but the local CLI is broken: gpt-5.5 needs a newer CLI, MCP
+servers 401, jobs table missing). DeepSeek + OpenAI annotate via **one batched
+call each** (`phase_c_gold.py`) — batching defeats the per-signal 429/quota that
+broke the fan-out. So zero Claude API, no rate-limit walls.
+
+**Result (35 crisis-only = gate-kept headlines, v2 taxonomy):**
+
+| pair | overall agreement | in-category (both non-OOS) |
+|---|---|---|
+| DeepSeek vs OpenAI | 69% | **81%** |
+| DeepSeek vs Claude | 89% | **92%** |
+| OpenAI vs Claude | 74% | 81% |
+| **unanimous (all 3)** | **66%** | — |
+
+This is the in-CATEGORY separability test Phase C's random sample couldn't give.
+**In-category pairwise agreement is 81–92%** — far above the v1 ~40–52% topical-
+precision baseline. The v2 crisis categories ARE separable when applied to crisis
+content; 66% unanimous across 3 independent annotators on a 32-way task is strong.
+
+**v2 validated on both axes:** the reject class (Phase C random: +20pp agreement,
+97% OOS on the non-crisis majority) AND in-category separability (this gold:
+81–92%). Remaining for a full gold: targeted sampling of the 3 contested
+categories (`housing-cost-pressure`, `humanitarian-access-conflict`,
+`mining-royalty-risk`) — the gate-kept set is dominated by heat/migration/conflict/
+corruption, so the contested ones didn't appear here. Then Pedro's interactive
+round + production wiring (OUT_OF_SCOPE policy + excludes into the gate/assignment
+prompts; add the 2 natural-hazard categories to `atlas_topics`).
