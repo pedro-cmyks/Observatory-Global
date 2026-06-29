@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
+import { useIsMobile } from '../hooks/useIsMobile'
 import './OnboardingCoachmark.css'
 
 const STORAGE_KEY = 'atlas_onboarding_v3'
@@ -66,9 +67,43 @@ const STEPS: TourStep[] = [
     },
 ]
 
+// Mobile IA is tabbed (Map / Threads / Stream / Pulse), not the desktop
+// side-by-side panels — so the phone gets its own short tour anchored only to
+// elements that are ALWAYS on screen (the search bar + the bottom tab bar).
+// The card is a bottom sheet (see CSS) so Skip/Next are always reachable — the
+// desktop beside-target positioning clipped off-screen and trapped the user.
+const MOBILE_STEPS: TourStep[] = [
+    {
+        selector: '[data-tour="search"]',
+        eyebrow: 'Start here',
+        title: 'Search is the way in',
+        body: 'Ask Atlas for a country, person, source, or theme — like "Colombia" or a public figure. It opens a focused view.',
+        actionLabel: 'Focus search',
+        action: 'focus-search',
+    },
+    {
+        selector: '[data-tour="mobile-tabs"]',
+        eyebrow: 'Four views',
+        title: 'Switch with the bottom tabs',
+        body: 'Map = where stories are happening. Threads = what is spreading across countries. Stream = the live signal feed. Pulse = what people are reading and searching.',
+    },
+    {
+        selector: '',
+        eyebrow: 'Pivot, don’t just scroll',
+        title: 'Tap anything to drill in',
+        body: 'Tap a country on the map, a thread, a source, or a headline to turn one signal into a focused investigation. Anything you open can be pinned in the Workbench.',
+    },
+]
+
 function getTargetRect(selector: string): DOMRect | null {
+    if (!selector) return null
     const element = document.querySelector(selector)
-    return element?.getBoundingClientRect() ?? null
+    if (!element) return null
+    const rect = element.getBoundingClientRect()
+    // A target inside a hidden mobile tab has a 0×0 / off-screen box — treat it
+    // as "no target" so we never anchor the card to something invisible.
+    if (rect.width === 0 && rect.height === 0) return null
+    return rect
 }
 
 function getCardStyle(rect: DOMRect | null): CSSProperties {
@@ -97,6 +132,8 @@ interface OnboardingCoachmarkProps {
 }
 
 export function OnboardingCoachmark({ runId = 0, onOpenBrief, onOpenWorkspace, entryContext }: OnboardingCoachmarkProps) {
+    const isMobile = useIsMobile()
+    const steps = isMobile ? MOBILE_STEPS : STEPS
     const [step, setStep] = useState(0)
     const [visible, setVisible] = useState(() => {
         try {
@@ -124,7 +161,7 @@ export function OnboardingCoachmark({ runId = 0, onOpenBrief, onOpenWorkspace, e
     useEffect(() => {
         if (!visible) return
 
-        const updateRect = () => setTargetRect(getTargetRect(STEPS[step].selector))
+        const updateRect = () => setTargetRect(getTargetRect(steps[step].selector))
         updateRect()
         const id = window.setTimeout(updateRect, 150)
         window.addEventListener('resize', updateRect)
@@ -134,7 +171,10 @@ export function OnboardingCoachmark({ runId = 0, onOpenBrief, onOpenWorkspace, e
             window.removeEventListener('resize', updateRect)
             window.removeEventListener('scroll', updateRect, true)
         }
-    }, [step, visible])
+    }, [step, visible, isMobile]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Clamp when the step set shrinks (e.g. desktop→mobile rotation mid-tour).
+    const safeStep = Math.min(step, steps.length - 1)
 
     if (!visible) return null
 
@@ -144,15 +184,15 @@ export function OnboardingCoachmark({ runId = 0, onOpenBrief, onOpenWorkspace, e
     }
 
     const next = () => {
-        if (step < STEPS.length - 1) {
-            setStep(s => s + 1)
+        if (safeStep < steps.length - 1) {
+            setStep(safeStep + 1)
         } else {
             dismiss()
         }
     }
 
     const runAction = () => {
-        const action = STEPS[step].action
+        const action = steps[safeStep].action
         if (action === 'focus-search') {
             const input = document.querySelector<HTMLInputElement>('[data-tour="search"] input')
             input?.focus()
@@ -161,8 +201,10 @@ export function OnboardingCoachmark({ runId = 0, onOpenBrief, onOpenWorkspace, e
         if (action === 'open-brief') onOpenBrief?.()
     }
 
-    const current = STEPS[step]
-    const highlightStyle = targetRect
+    const current = steps[safeStep]
+    // On mobile the highlight ring is distracting and the targets move with the
+    // bottom-sheet card, so skip it; desktop keeps the anchored highlight.
+    const highlightStyle = !isMobile && targetRect
         ? {
             top: targetRect.top - 6,
             left: targetRect.left - 6,
@@ -173,18 +215,21 @@ export function OnboardingCoachmark({ runId = 0, onOpenBrief, onOpenWorkspace, e
 
     return (
         <div className="onboarding-layer" aria-live="polite">
-            <div className="onboarding-scrim" />
+            <div className="onboarding-scrim" onClick={isMobile ? dismiss : undefined} />
             {highlightStyle && <div className="onboarding-highlight" style={highlightStyle} />}
-            <div className="onboarding-card" style={getCardStyle(targetRect)}>
+            <div
+                className={`onboarding-card${isMobile ? ' onboarding-card--mobile' : ''}`}
+                style={isMobile ? undefined : getCardStyle(targetRect)}
+            >
                 <div className="onboarding-step-indicator">
-                    {STEPS.map((_, i) => (
-                        <span key={i} className={`onboarding-dot ${i === step ? 'active' : ''}`} />
+                    {steps.map((_, i) => (
+                        <span key={i} className={`onboarding-dot ${i === safeStep ? 'active' : ''}`} />
                     ))}
                 </div>
                 <div className="onboarding-eyebrow">{current.eyebrow}</div>
                 <p className="onboarding-title">{current.title}</p>
                 <p className="onboarding-body">{current.body}</p>
-                {entryContext && step === 0 && (
+                {entryContext && safeStep === 0 && (
                     <p className="onboarding-entry-context">{entryContext}</p>
                 )}
                 <div className="onboarding-actions">
@@ -198,7 +243,7 @@ export function OnboardingCoachmark({ runId = 0, onOpenBrief, onOpenWorkspace, e
                             </button>
                         )}
                         <button className="onboarding-next" onClick={next}>
-                            {step < STEPS.length - 1 ? 'Next' : 'Done'}
+                            {safeStep < steps.length - 1 ? 'Next' : 'Done'}
                         </button>
                     </div>
                 </div>

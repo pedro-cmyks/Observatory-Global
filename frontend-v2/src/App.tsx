@@ -2079,7 +2079,7 @@ function AppContent() {
 
       {/* Mobile L2 bottom navigation — one full-screen surface at a time */}
       {isMobile && (
-        <nav className="mobile-tabbar" aria-label="Console sections">
+        <nav className="mobile-tabbar" aria-label="Console sections" data-tour="mobile-tabs">
           <button className={mobileTab === 'map' ? 'active' : ''} onClick={() => setMobileTab('map')}>
             <span className="mobile-tab-glyph">◍</span>Map
           </button>

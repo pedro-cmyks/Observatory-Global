@@ -147,6 +147,29 @@
     background: #8df0c8;
 }
 
+/* Mobile walkthrough = bottom sheet. Never anchored beside a (possibly hidden,
+   off-screen) panel, never taller than the viewport — so Skip/Next are ALWAYS
+   reachable (the old beside-target card clipped off-screen and trapped users,
+   forcing a rotate-to-desktop to close it). */
+.onboarding-card--mobile {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    top: auto;
+    width: auto;
+    max-width: none;
+    transform: none;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.onboarding-card--mobile .onboarding-actions {
+    position: sticky;
+    bottom: 0;
+    background: inherit;
+}
+
 @media (max-width: 768px) {
     .onboarding-card {
         left: 16px !important;
@@ -155,5 +178,7 @@
         bottom: 16px;
         width: auto !important;
         transform: none !important;
+        max-height: 80vh;
+        overflow-y: auto;
     }
 }
