@@ -72,3 +72,14 @@ PROJECT_HOURS="${ATLAS_DISCUSSION_HOURS:-336}"
 # only on the embed cadence, ~3x/day).
 "$MLVENV/bin/python" -m scripts.etl_topic_members --hours "$PROJECT_HOURS" \
   || echo "[embed-hot-corpus] topic_members ETL failed (non-fatal)" >&2
+
+# Step 4: Unified Engine F3 — rebuild the unified-v2 construction in parallel
+# (engine_version='unified-v2', isolated from v1 serving) so the A/B
+# (engine_ab_report.py) reflects the current window and the measured cutover gate
+# stays live. numpy + HDBSCAN over the embeddings just written; non-fatal.
+UNIFIED_ASSIGN_T="${ATLAS_UNIFIED_ASSIGN_THRESHOLD:-0.88}"
+UNIFIED_GATE_T="${ATLAS_UNIFIED_GATE_THRESHOLD:-0.90}"
+"$MLVENV/bin/python" -m scripts.build_unified_topics \
+  --hours "$PROJECT_HOURS" \
+  --assign-threshold "$UNIFIED_ASSIGN_T" --gate-threshold "$UNIFIED_GATE_T" \
+  || echo "[embed-hot-corpus] unified-v2 build failed (non-fatal)" >&2
