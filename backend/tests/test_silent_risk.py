@@ -43,3 +43,12 @@ def test_why_silent_language_hint():
     assert why_silent("Iran war", None, 0) == "no media coverage found in window"
     assert "information desert" in why_silent("X", "CD", 0, information_desert=True)
     assert "thinly" in why_silent("Iran war", None, 2)
+
+
+def test_category_to_lane():
+    from app.services.silent_risk import category_to_lane
+    assert category_to_lane(["Argentine footballers", "2005 births"]) == "sports"
+    assert category_to_lane(["1983 films", "Crime films"]) == "entertainment"
+    assert category_to_lane(["Annelids", "Animals described in 1773"]) == "general"
+    assert category_to_lane(["Heads of state", "Colombian politicians"]) == "general"
+    assert category_to_lane([]) == "general"

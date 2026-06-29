@@ -18,7 +18,11 @@ one). Sports/entertainment pageview noise is dropped via the #177 editorial lane
 """
 from __future__ import annotations
 
+import asyncio
+import json as _json
 import re
+import urllib.parse
+import urllib.request
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Query
@@ -26,11 +30,49 @@ from fastapi import APIRouter, Query
 from app import db
 from app.services.stream_relevance import classify_stream_lane
 from app.services.silent_risk import (
+    category_to_lane,
     is_noise_title,
     is_silent_risk,
     normalize_title,
     why_silent,
 )
+
+
+def _ckey(title: str) -> str:
+    return title.replace("_", " ").strip().lower()
+
+
+async def _fetch_wiki_categories(titles: list[str], project: str = "en") -> dict[str, list[str]]:
+    """Batch-fetch each article's Wikipedia categories (MediaWiki API) so a bare
+    entity title can be classified by WHAT IT IS ('Argentine footballers' ->
+    sports) instead of dropped. Best-effort: on any failure, returns what it has
+    and the caller falls back to the keyword lane. Keyed by normalized title."""
+    out: dict[str, list[str]] = {}
+    # Small batches: MediaWiki caps total categories per response (~500), so a
+    # large batch silently truncates later pages to zero categories. 12 keeps
+    # every page's categories in one response.
+    for i in range(0, len(titles), 12):
+        batch = titles[i:i + 12]
+        q = urllib.parse.urlencode({
+            "action": "query", "format": "json", "prop": "categories",
+            "cllimit": "max", "redirects": "1", "titles": "|".join(batch),
+        })
+        url = f"https://{project}.wikipedia.org/w/api.php?{q}"
+
+        def _get():
+            req = urllib.request.Request(url, headers={"User-Agent": "AtlasOSINT/1.0 (research)"})
+            with urllib.request.urlopen(req, timeout=6) as r:
+                return _json.loads(r.read())
+
+        try:
+            data = await asyncio.to_thread(_get)
+            for p in data.get("query", {}).get("pages", {}).values():
+                cats = [c.get("title", "").replace("Category:", "")
+                        for c in p.get("categories", [])]
+                out[_ckey(p.get("title", ""))] = cats
+        except Exception:
+            continue
+    return out
 
 router = APIRouter()
 
@@ -38,7 +80,6 @@ _MEDIA_FLOOR = 3            # < this many media matches = silent (#172)
 _INFO_DESERT_FLOOR = 40     # country with < this many window signals = desert
 _MAX_TOPICS = 25            # cap per call
 _STOPWORDS = {"the", "and", "for", "with", "from", "2025", "2026", "new", "list"}
-_NOISE_LANES = {"sports", "entertainment", "lifestyle"}
 
 
 def _distinctive_token(normalized: str) -> str | None:
@@ -128,9 +169,11 @@ async def get_silent_risks(
                 notes.append(f"{cc} is an information desert (only {base} media signals/"
                              f"{hours}h) — silent flags reflect low baseline, not topic gaps")
 
-        # Filter: drop Wikipedia housekeeping noise AND sports/entertainment
-        # pageview noise (reuse the #177 editorial lane — composes with the
-        # 2026-06-29 thread-ranking work). What survives is plausibly NEWS.
+        # CLASSIFY, don't drop (Pedro 2026-06-29, the no-silent-filtering
+        # guardrail): a sports/entertainment topic may still carry relevant
+        # information — label it with its #177 lane and let the consumer filter,
+        # never discard it. Only true Wikipedia housekeeping / scraper artifacts
+        # (Main_Page, .phtml) are dropped — those are not topics at all.
         dropped_noise = 0
         topics = []
         for r in rows:
@@ -139,13 +182,11 @@ async def get_silent_risks(
             if is_noise_title(title):
                 dropped_noise += 1
                 continue
-            if classify_stream_lane([], norm) in _NOISE_LANES:
-                dropped_noise += 1
-                continue
             tok = _distinctive_token(norm)
             if not tok:
                 continue
             topics.append({"title": title, "normalized": norm, "token": tok,
+                           "lane": classify_stream_lane([], norm),
                            "views": int(r["views"]),
                            "baseline": int(r["v_base"]),
                            "velocity": round(float(r["velocity"]), 1),
@@ -153,6 +194,15 @@ async def get_silent_risks(
                            "country_count": r.get("country_count") if not cc else None})
             if len(topics) >= _MAX_TOPICS:
                 break
+
+        # Classify each title by its Wikipedia categories (what the entity IS),
+        # falling back to the #177 keyword lane when categories are unavailable
+        # (non-English title / API down). CLASSIFY, never drop.
+        cat_map = await _fetch_wiki_categories([t["title"] for t in topics]) if topics else {}
+        for t in topics:
+            cats = cat_map.get(_ckey(t["title"]), [])
+            t["lane"] = category_to_lane(cats) if cats else t["lane"]
+            t["lane_basis"] = "wiki-category" if cats else "keyword"
 
         items = []
         for t in topics:
@@ -170,9 +220,15 @@ async def get_silent_risks(
             })
 
     if dropped_noise:
-        notes.append(f"dropped {dropped_noise} sports/entertainment/housekeeping pageview items")
+        notes.append(f"dropped {dropped_noise} housekeeping/scraper artifacts (not topics)")
     items.sort(key=lambda x: (x["is_silent_risk"], x["velocity"]), reverse=True)
     silent_count = sum(1 for x in items if x["is_silent_risk"])
+    # Lane breakdown of the silent set — so a consumer can filter (news vs
+    # sports vs entertainment) instead of us dropping anything.
+    silent_by_lane: dict[str, int] = {}
+    for x in items:
+        if x["is_silent_risk"]:
+            silent_by_lane[x["lane"]] = silent_by_lane.get(x["lane"], 0) + 1
 
     return {
         "contract": "silent-risks-v0",
@@ -180,6 +236,7 @@ async def get_silent_risks(
         "match_basis": "lexical",
         "information_desert": information_desert,
         "silent_count": silent_count,
+        "silent_by_lane": silent_by_lane,
         "items": items,
         "notes": notes,
         "generated_at": datetime.now(timezone.utc).isoformat(),

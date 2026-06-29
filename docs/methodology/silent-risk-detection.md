@@ -32,8 +32,18 @@ Endpoint: `GET /api/v2/attention/silent-risks[?country=&hours=&days=&limit=]`.
 
 2. **Absolute pageviews surface sports/celebrity, not news.** With correct
    coverage, the global top-views list is football players (Ronaldo, Messi,
-   Haaland, Yamal…) and Netflix shows (Supergirl, Obsession…). None are news
-   silent-risks; most show coverage and drop out, the residue is trivia.
+   Haaland, Yamal…) and Netflix shows (Supergirl, Obsession…). **CLASSIFY, don't
+   drop** (Pedro 2026-06-29 — the no-silent-filtering guardrail): a sports/
+   entertainment topic may still carry relevant info, so it is LABELLED, never
+   discarded. The #177 keyword lane can't classify bare entity titles ("Nico Paz"
+   → general), so each title is classified by its **Wikipedia categories**
+   ("Argentine footballers" → sports, "1983 films" → entertainment) via the
+   MediaWiki API (`category_to_lane`, batched ≤12 to avoid the ~500-category
+   response cap, `redirects=1`). Live: 19/25 classified by real category, the
+   rest fall back to keyword; response carries `lane` + `lane_basis` per item and
+   a `silent_by_lane` breakdown so a consumer filters news vs sports vs
+   entertainment instead of us dropping anything. Only true housekeeping/scraper
+   artifacts (Main_Page, `.phtml`) are dropped — those are not topics.
 
 3. **Velocity (surge vs baseline) can't be computed from this table.**
    `wiki_pageviews_v2` stores only each day's TOP-N articles, not a consistent
@@ -44,11 +54,15 @@ Endpoint: `GET /api/v2/attention/silent-risks[?country=&hours=&days=&limit=]`.
 
 ## Verdict
 
-**Wikipedia top-pageviews is the WRONG attention source for news silent-risk.**
-It is driven by sports, entertainment, and random curiosity — not by news gaps —
-and the table cannot support the velocity signal #172 specified. The endpoint is
-honest (coverage is real, labels are honest) but the source yields noise, so it
-must NOT be surfaced as a headline UI feature on this source.
+**Wikipedia top-pageviews is sports/celebrity-heavy and the table can't support
+velocity** (top-N only, no per-article baseline). The endpoint is now honest AND
+useful: it CLASSIFIES every topic (news/sports/entertainment via Wikipedia
+categories) and measures coverage correctly, so a consumer can filter to the
+`general` (news-relevant) silent set instead of drowning in sports. But the
+news-silent signal from this source stays thin (the `general` residue is still
+partly curiosity trivia, e.g. *Tubifex tubifex*), and the velocity signal #172
+specified is unavailable here. So: ship the endpoint as a CLASSIFIED scaffold,
+but the headline UI feature wants a stronger source.
 
 ## The real path (recommended next)
 

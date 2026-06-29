@@ -74,6 +74,34 @@ def is_silent_risk(views: int, media_count: int, *,
     return True
 
 
+# Wikipedia-category -> editorial lane. Classifying a bare entity TITLE
+# ("Nico Paz", "Scarface") needs to know what the entity IS — keyword matching on
+# the title can't, but the article's Wikipedia categories ("Argentine
+# footballers", "1983 films") can. Classify, never drop (Pedro 2026-06-29).
+_CAT_SPORTS = (
+    "footballer", "football", "soccer", "basketball", "tennis", "athlete",
+    "olympic", "cricket", "sport", "fifa", "national team", "rugby", "boxer",
+    "cyclist", "swimmer", "golfer", "racing driver", "wrestler",
+)
+_CAT_ENTERTAINMENT = (
+    "film", "films", "album", "song", "actor", "actress", "musician", "singer",
+    "television", "video game", "novel", "band", "discography", "drama",
+    "comedian", "sitcom", "rapper", "screenwriter", "soap opera", "anime",
+)
+
+
+def category_to_lane(categories: list[str]) -> str:
+    """Map an article's Wikipedia categories to news|sports|entertainment|general.
+    News wins ties only implicitly: a topic that is neither sports nor
+    entertainment stays 'general' (the analyst-relevant default)."""
+    blob = " ".join(categories).lower()
+    if any(k in blob for k in _CAT_SPORTS):
+        return "sports"
+    if any(k in blob for k in _CAT_ENTERTAINMENT):
+        return "entertainment"
+    return "general"
+
+
 def why_silent(title: str, country_code: str | None, media_count: int,
                information_desert: bool = False) -> str:
     """Suggested explanation for WHY a topic is silent (analyst hint, honest)."""
