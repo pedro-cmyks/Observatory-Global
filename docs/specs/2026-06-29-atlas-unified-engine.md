@@ -406,6 +406,20 @@ the papers — it is the comparative evidence they need.**
   is the better engine (the Paper-1 split-brain→unified result, measured). F4
   cutover gated on: recurring v2 construction + new-topic labeling (§6 step 5) +
   gold confirmation; not forced.
+  - **F3.2b — LLM-judge cross-check (CONFOUNDED, but the key finding):**
+    `engine_recall_judge.py` (DeepSeek) judged on-topic-ness vs each engine's
+    label. `shared` members (BOTH engines assigned) scored only **40–52%** on-topic
+    → the judge measures LABEL/TAXONOMY precision, not engine recall (broad atlas
+    vs specific dynamic labels; concrete mismatches: legal filing→"Gang control",
+    FEMA satire→"Constitutional crisis"). **So: the engine architecture is settled
+    in v2's favour on the label-independent structural metrics, but topical
+    precision vs the current taxonomy is ~40–52% for BOTH engines — the dominant
+    remaining lever is TAXONOMY/LABELS (#204) + the gate, NOT the engine.** A v2
+    cutover buys cleaner/tighter/less-mega-blobbed topics; it does not by itself
+    lift topical precision. **Revised F4 stance:** the cutover is defensible on
+    architecture, but the gold benchmark must use a FIXED precise label set (the
+    production-label judge is confounded), and #204 taxonomy work is the parallel
+    priority for user-facing precision.
 - [ ] **F3.3** `movement` role: bind events (ACLED/anomalies) to topics — closes #232
 - [ ] **F4.1** cutover when A/B gate passes; close #242
 - [ ] **per-phase** paper-track edits (§13) + issue-closing comments (§12)

@@ -220,3 +220,35 @@ more distinct topics. **The unified engine is measurably better than the
 split-brain.** The 41.6%-class absolute number gets its successor once unified-v2
 is the serving engine (F4), gated on a recurring build (now live) + new-topic
 labeling + a gold confirmation set.
+
+### LLM-judge cross-check + the taxonomy-precision finding (2026-06-29)
+
+To confirm the member-recall verdict in a modality independent of embeddings, an
+LLM (`engine_recall_judge.py`, DeepSeek) judged whether sampled members are
+on-topic for the label their engine assigned. The result was a **negative /
+confounding** one, and it is the more important finding:
+
+| stratum | on-topic (2 runs) |
+|---|---|
+| v1_only (v1's disputed surplus) | 47.5% / — |
+| **shared (BOTH engines assigned)** | **40% / 52%** |
+| v2_only (v2's distinctive picks) | 22.5% / — |
+
+**`shared` is the tell.** Members BOTH engines confidently assigned are judged
+on-topic only ~40–52% of the time. Inspection shows why: a legal antitrust filing
+sits under "Gang control and urban security"; a satirical FEMA story under
+"Constitutional crisis". The judge is measuring **label/taxonomy precision**, not
+which engine assigned better — and the two engines have asymmetric labels (v1 =
+broad atlas categories, v2 = specific, sometimes stale dynamic labels), so the
+strata are not comparable. The test **cannot arbitrate the cutover**.
+
+**The real result:** topical precision against the *current taxonomy* is ~40–52%
+for BOTH engines. So the architecture choice (split-brain vs unified) is settled
+in v2's favour on the label-independent structural metrics (coherence,
+black-hole, topic granularity), but the **dominant remaining quality lever is the
+taxonomy and labels (#204) + the relevance gate — not the engine**. A v2 cutover
+buys cleaner, tighter, less-mega-blobbed topics; it does not by itself raise
+topical precision above ~50%. That is a labeling/taxonomy result, and it
+redirects the post-engine priority. (Methodological note for the paper: judge
+quality must be evaluated against a fixed, precise label set, not the production
+labels — the production-label judge is confounded by label drift.)
