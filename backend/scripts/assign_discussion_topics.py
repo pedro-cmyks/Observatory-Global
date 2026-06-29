@@ -62,8 +62,12 @@ _INSERT_SQL = """
 INSERT INTO signal_topic_assignments
     (signal_id, topic_id, method, confidence, model_name, model_version,
      gate_kept, evidence, assigned_at)
-VALUES ($1, $2, 'embedding', $3, 'knn-discussion', $4, false,
-        jsonb_build_object('basis', 'semantic_discussion', 'neighbor_sim', $3),
+-- $3 (neighbour sim) is cast in BOTH positions: without an explicit type it is
+-- used as the `confidence` real AND as a jsonb_build_object anyelement, which
+-- left asyncpg unable to infer $3's type (AmbiguousParameterError) — the latent
+-- crash that produced 0 discussion rows despite the ingest+attach existing.
+VALUES ($1, $2, 'embedding', $3::real, 'knn-discussion', $4, false,
+        jsonb_build_object('basis', 'semantic_discussion', 'neighbor_sim', $3::real),
         NOW())
 ON CONFLICT (signal_id, topic_id, method, model_version) DO NOTHING
 """
