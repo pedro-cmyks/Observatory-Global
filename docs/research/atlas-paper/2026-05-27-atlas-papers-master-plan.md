@@ -94,6 +94,14 @@ constant.
 - Result-bearing draft skeleton with current tables and figures.
 - Temporal generalization hold-out week.
 - BERTopic / lex-only / theme-only ablation baselines.
+  - **2026-06-29 motivation** (spec `docs/specs/2026-06-29-atlas-engine-gdelt-decoupling-syndication.md` §2.2/§3): the
+    theme-only ablation now has a concrete defect to measure against —
+    `gdelt_theme_hints` wire polysemous GKG codes into topics (`KILL` ∈ BOTH
+    `armed-conflict-escalation` and `gender-violence-rights`, `migrations/019:149,169`);
+    `KILL` fires on idioms ("killing it"), injecting false conflict assignments.
+    The ablation is the BLOCKING gate before removing theme-hints in prod (measure
+    recall delta + semantic recovery). The 41.6% precision number came from the
+    lex+theme system, so removal must be measured, not declared.
 - Anchoring effect measurement if the paper keeps the assistant-hint workflow as
   a central claim.
 - Limitations language separating reviewed diagnostic labels, consensus gold,
@@ -297,10 +305,21 @@ can't score) — a Paper-1↔Paper-4 dependency the discussion section should st
   each against the 7 questions; compare to analyst judgement).
 - Evidence-role accuracy per thread.
 - Syndication detection precision.
+  - **2026-06-29 live failure + proposed metric** (spec
+    `docs/specs/2026-06-29-...-syndication.md` §4): `dynamic-topic-262`
+    "Las Vegas Travel Guide" ranked **#0** at 24h — ONE travel article reprinted
+    across ~25 Australian Community Media `.com.au` papers (135 serving-count
+    signals). The 3-term ranking has no diversity term; log-damping is
+    volume-blind to copy-vs-original. Proposed:
+    `headline_diversity = distinct_normalized_headlines / total_signals`
+    (near-dup normalized) + a `distinct_publisher_families` collapse (the
+    source→family map is uncollected P2 infra). MUST be a ranking INPUT, not a
+    gate (a real AP wire IS legitimately syndicated → measure false-demote rate).
 - Confidence-band calibration.
 - Ranking-weight ablation: vary the 0.45/0.35/0.20 split and the log-damping,
   measure analyst-judged top-k thread quality (weights are explicitly v1 /
-  calibratable).
+  calibratable). **Add a 4th `headline_diversity` term** to this ablation
+  (3-term v1 vs 4-term) — the home for the syndication fix above.
 - person→thread recall/precision of `?person=` (full-array match) vs the
   `top_entities`-capped heuristic on a labeled set.
 - Alert↔evidence reconciliation (#214): on a sample of anomalous countries,
@@ -555,7 +574,25 @@ theme-join cannot see, recoverable only by the embedding path. (CLAUDE.md
 2026-06-26 / `docs/specs/2026-06-26-l2-deep-review.md` §4.)
 
 **Evidence to collect:** taxonomy-evolution loop itself (BERTopic + LLM naming +
-human approval); recall vs `min_cluster_size` curve; regional-pass yield delta;
+human approval); recall vs `min_cluster_size` curve **(2026-06-29: partly
+measured — see negative result below)**; regional-pass yield delta;
+
+- **2026-06-29 NEGATIVE result (investigated, mapped — do not re-investigate):**
+  spec `docs/specs/2026-06-29-atlas-engine-gdelt-decoupling-syndication.md`
+  §4B.3/§4B.4, artifacts `docs/research/embedding-ablation/`,
+  `scripts/embedding_input_ablation.py` + `scripts/cluster_recall_sweep.py`. Two
+  cheap recall hypotheses DISPROVED on prod data: (1) enriching the e5 input
+  beyond the headline (`+entities`, `+country`) buys ~1pp recall and `+country`
+  over-clusters by geography (geo_purity ↑); (2) tuning HDBSCAN params is a
+  cliff — `leaf` keeps purity 1.0 but shatters diverse coverage (Gaza
+  best-cluster recall 0.04, ~70% to noise), `eom`/larger `min_cluster_size`
+  hits recall 0.97 but as a **mega-blob** (modal Gaza cluster = 896/1074 rows at
+  0.49 purity = the #224 black-hole). NO config has high recall AND high purity.
+  → the recall ceiling is intrinsic to headline-only short-text density; the
+  remaining lever is **scoped regional/topical clustering passes** (cluster
+  within a coherent pre-filtered subset), the regional-pass yield-delta
+  experiment above. Caveat: smoke sample was Gaza-heavy (~42%); a representative
+  8000-row run should confirm the cliff (structure unlikely to change).
 **semantic-membership recall for the forum/social modality** — how many of the
 ~28 embedded forum signals (and of newly embedded ones) attach to an existing
 topic centroid above threshold, vs how many seed genuinely new discussion-only

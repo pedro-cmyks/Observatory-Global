@@ -1,0 +1,334 @@
+{
+  "params": {
+    "hours": 168,
+    "max_n": 500,
+    "min_cluster_size": 4,
+    "min_samples": 3,
+    "selection": "leaf"
+  },
+  "sample_size": 1039,
+  "ner_coverage": 0.691,
+  "gaza_probe_n": 448,
+  "vegas_probe_deduped_n": 131,
+  "variants": [
+    {
+      "variant": "A_title",
+      "n_rows": 1039,
+      "n_clusters": 24,
+      "noise_rate": 0.769,
+      "mean_cohesion": 0.968,
+      "largest_cluster": 53,
+      "geo_purity": 0.592,
+      "gaza_recall": {
+        "n": 448,
+        "best_cluster_recall": 0.067,
+        "noise_frac": 0.719,
+        "n_clusters_spanned": 15
+      },
+      "vegas_sanity": {
+        "n": 131,
+        "best_cluster_recall": 0.397,
+        "noise_frac": 0.519,
+        "n_clusters_spanned": 4
+      },
+      "top_clusters": [
+        {
+          "size": 53,
+          "cohesion": 0.983,
+          "top_countries": [
+            "AU",
+            "MX",
+            "US",
+            "DE"
+          ],
+          "sample_headline": "Las Vegas: beyond glitz, discover the desert city's depths | The Courier"
+        },
+        {
+          "size": 30,
+          "cohesion": 0.945,
+          "top_countries": [
+            "IL",
+            "GZ",
+            "WE",
+            "TR",
+            "EG"
+          ],
+          "sample_headline": "Israeli strike kills three Gaza Palestinians, including a child, ministry says"
+        },
+        {
+          "size": 14,
+          "cohesion": 0.96,
+          "top_countries": [
+            "RO",
+            "IL",
+            "RU",
+            "AJ"
+          ],
+          "sample_headline": "Isaac Herzog, președintele Israelului, la Iași: Evreii din România au avut un ro"
+        },
+        {
+          "size": 11,
+          "cohesion": 0.944,
+          "top_countries": [
+            "DE",
+            "CH",
+            "BE",
+            "IE",
+            "IN"
+          ],
+          "sample_headline": "Einzelhandel: Ministerium genehmigt Übernahme von MediaMarktSaturn"
+        },
+        {
+          "size": 11,
+          "cohesion": 0.96,
+          "top_countries": [
+            "IL",
+            "AJ",
+            "RU"
+          ],
+          "sample_headline": "Azerbaijan slams ally Israel's recognition of Armenian genocide"
+        },
+        {
+          "size": 10,
+          "cohesion": 0.955,
+          "top_countries": [
+            "DE"
+          ],
+          "sample_headline": "Schüsse in Jugendeinrichtung: Fünf Tote, zwei Festnahmen"
+        },
+        {
+          "size": 8,
+          "cohesion": 0.974,
+          "top_countries": [
+            "IL",
+            "IR"
+          ],
+          "sample_headline": "„Erster Schritt\": Israel und Libanon schließen Vereinbarung"
+        },
+        {
+          "size": 8,
+          "cohesion": 0.983,
+          "top_countries": [
+            "CH",
+            "GB",
+            "LS",
+            "IR",
+            "US"
+          ],
+          "sample_headline": "Acuerdo marco por la paz entre Israel, Líbano y EEU – Telemundo Houston"
+        }
+      ]
+    },
+    {
+      "variant": "B_title_entities",
+      "n_rows": 1039,
+      "n_clusters": 26,
+      "noise_rate": 0.801,
+      "mean_cohesion": 0.967,
+      "largest_cluster": 33,
+      "geo_purity": 0.583,
+      "gaza_recall": {
+        "n": 448,
+        "best_cluster_recall": 0.074,
+        "noise_frac": 0.688,
+        "n_clusters_spanned": 13
+      },
+      "vegas_sanity": {
+        "n": 131,
+        "best_cluster_recall": 0.046,
+        "noise_frac": 0.824,
+        "n_clusters_spanned": 5
+      },
+      "top_clusters": [
+        {
+          "size": 33,
+          "cohesion": 0.97,
+          "top_countries": [
+            "IL",
+            "IR",
+            "US",
+            "LS",
+            "TR"
+          ],
+          "sample_headline": "Israel and Lebanon sign framework agreement with US"
+        },
+        {
+          "size": 22,
+          "cohesion": 0.957,
+          "top_countries": [
+            "IL",
+            "GZ",
+            "WE",
+            "EG",
+            "PH"
+          ],
+          "sample_headline": "Israeli strike in central Gaza kills three Palestinians, including a child"
+        },
+        {
+          "size": 13,
+          "cohesion": 0.955,
+          "top_countries": [
+            "RO",
+            "IL",
+            "RU"
+          ],
+          "sample_headline": "Președintele Israelului, la Iași: „Evreii din România au avut un rol esențial în"
+        },
+        {
+          "size": 12,
+          "cohesion": 0.951,
+          "top_countries": [
+            "IL",
+            "PK",
+            "LS",
+            "AE"
+          ],
+          "sample_headline": "Israel destroys Hezbollah weapons tunnel in Lebanon strike"
+        },
+        {
+          "size": 11,
+          "cohesion": 0.96,
+          "top_countries": [
+            "IL",
+            "AJ",
+            "RU"
+          ],
+          "sample_headline": "Azerbaijan slams ally Israel's recognition of Armenian genocide"
+        },
+        {
+          "size": 10,
+          "cohesion": 0.962,
+          "top_countries": [
+            "DE"
+          ],
+          "sample_headline": "Schüsse in Stade: Mindestens fünf Tote in Jugendeinrichtung"
+        },
+        {
+          "size": 8,
+          "cohesion": 0.969,
+          "top_countries": [
+            "SY",
+            "IL",
+            "JO"
+          ],
+          "sample_headline": "Saudi Arabia condemns Israeli occupation forces' incursions into Syrian territor"
+        },
+        {
+          "size": 8,
+          "cohesion": 0.972,
+          "top_countries": [
+            "IL",
+            "IR",
+            "LS"
+          ],
+          "sample_headline": "Netanyahu: Israel will stay in southern Lebanon until Hezbollah is disarmed"
+        }
+      ]
+    },
+    {
+      "variant": "C_title_entities_country",
+      "n_rows": 1039,
+      "n_clusters": 22,
+      "noise_rate": 0.786,
+      "mean_cohesion": 0.97,
+      "largest_cluster": 39,
+      "geo_purity": 0.642,
+      "gaza_recall": {
+        "n": 448,
+        "best_cluster_recall": 0.087,
+        "noise_frac": 0.674,
+        "n_clusters_spanned": 13
+      },
+      "vegas_sanity": {
+        "n": 131,
+        "best_cluster_recall": 0.115,
+        "noise_frac": 0.748,
+        "n_clusters_spanned": 5
+      },
+      "top_clusters": [
+        {
+          "size": 39,
+          "cohesion": 0.968,
+          "top_countries": [
+            "IL",
+            "IR",
+            "US",
+            "LS",
+            "TR"
+          ],
+          "sample_headline": "Israel and Lebanon sign framework agreement with US"
+        },
+        {
+          "size": 26,
+          "cohesion": 0.957,
+          "top_countries": [
+            "IL",
+            "GZ",
+            "WE",
+            "EG",
+            "PH"
+          ],
+          "sample_headline": "Israeli strike in central Gaza kills three Palestinians, including a child"
+        },
+        {
+          "size": 21,
+          "cohesion": 0.925,
+          "top_countries": [
+            "KV",
+            "IN",
+            "MK",
+            "CN",
+            "GR"
+          ],
+          "sample_headline": "Gucati: Kam bërë kërkesë me shkrim që në protestat në Shqipëri të mos përdoret f"
+        },
+        {
+          "size": 15,
+          "cohesion": 0.99,
+          "top_countries": [
+            "MX"
+          ],
+          "sample_headline": "Las Vegas: beyond glitz, discover the desert city's depths | The Daily Advertise"
+        },
+        {
+          "size": 14,
+          "cohesion": 0.967,
+          "top_countries": [
+            "IL",
+            "AJ",
+            "RU"
+          ],
+          "sample_headline": "Azerbaijan slams ally Israel's recognition of Armenian genocide"
+        },
+        {
+          "size": 12,
+          "cohesion": 0.959,
+          "top_countries": [
+            "RO",
+            "IL",
+            "RU"
+          ],
+          "sample_headline": "Președintele Israelului, la Iași: „Evreii din România au avut un rol esențial în"
+        },
+        {
+          "size": 9,
+          "cohesion": 0.968,
+          "top_countries": [
+            "DE"
+          ],
+          "sample_headline": "Schüsse in Stade: Mindestens fünf Tote in Jugendeinrichtung"
+        },
+        {
+          "size": 8,
+          "cohesion": 0.974,
+          "top_countries": [
+            "SY",
+            "IL",
+            "JO"
+          ],
+          "sample_headline": "Saudi Arabia Condemns Israeli Incursions into Syria"
+        }
+      ]
+    }
+  ]
+}

@@ -1976,3 +1976,39 @@ Faster levers if wanted: burst=3 (RAM permitting) or a dedicated always-on box
 signals"); burst env validated (2 disjoint shards). Burst auto-triggers on the
 next real idle window — watch `logs/nlp-fleet.out.log` for "switching gentle ->
 burst". Re-sync enrichment/ + both scripts to AtlasLocalWorker on code changes.
+
+**2026-06-29 — ENGINE REVIEW: GDELT decoupling + syndication + embedding/recall
+investigation (spec `docs/specs/2026-06-29-atlas-engine-gdelt-decoupling-syndication.md`,
+status REVIEW).** Pedro's "attack the Atlas engine directly" session. Diagnosis
+(verified in code): the classifier is **split-brain** — a GDELT-theme lexicon
+path (`atlas_topics`, `theme-hint-lex-v2`: `gdelt_theme_hints` set-membership OR
+headline lexicon) ‖ an **embedding path** (`dynamic_topics`, e5 over
+`passage: {headline}` — HEADLINE TEXT ONLY, no GDELT) — they never reconcile.
+Root cause of nonsensical conflict threads CONFIRMED: GDELT `KILL` GKG theme is
+wired as a hard hint into `armed-conflict-escalation` + `gender-violence-rights`
+(`migrations/019:149,169`) and fires on idioms ("killing it"). **SHIPPED:**
+SignalDetail "Where this fits" — renders backend `connected_threads`
+(member/semantic/keyword basis badges) that was computed but thrown away; honest
+empty state when nothing connects; GDELT taxonomy collapsed into `<details>`
+(= truncated-spec T1.4; `SignalDetailPanel.tsx`+`.css`, build green). **Live
+finding:** `dynamic-topic-262` "Las Vegas Travel Guide" ranked #0 @24h = ONE
+travel article × ~25 Australian Community Media `.com.au` papers (135
+serving-count). Syndication is a RANKING-COUNT problem (clustering already
+headline-dedupes), fix = `headline_diversity` ranking INPUT + publisher-family
+map (§4, the surviving shippable win). **TWO recall hypotheses DISPROVED on prod
+(mapped, do NOT re-investigate — spec §8 + papers):** (1) enriching the e5 input
+(`+entities`/`+country`) buys ~1pp; `+country` over-clusters by geography. (2)
+HDBSCAN param tuning is a CLIFF — `leaf` purity 1.0 but shatters (Gaza recall
+0.04, ~70% noise); `eom`/big mcs recall 0.97 but mega-blob (896/1074 rows, 0.49
+purity = #224 black-hole). No high-recall+high-purity config → recall ceiling is
+intrinsic to headline-only short text; real lever = scoped regional passes
+(#229). Artifacts: `scripts/embedding_input_ablation.py`,
+`scripts/cluster_recall_sweep.py`, `docs/research/embedding-ablation/` (run on M1
+mlvenv, free compute). Papers updated: master plan P1 (KILL→theme-only ablation),
+P4 (headline_diversity 4th ranking term + Vegas), P8 (recall negative result
+mapped). Decisions (Pedro agreed): conservative diversity weight; defer coarse
+bucket (honest gap stays); theme-hints STAY until §3.2 ablation proves semantic
+parity (🔒 gate — removing them breaks Paper 1's 41.6% number); park article
+bodies (worsens #184). NEXT BUILD = §4 syndication (`syndication_audit.py`
+first). NOTE: Pedro running EqualEarthMap work in PARALLEL — this engine session
+did NOT touch the map.
