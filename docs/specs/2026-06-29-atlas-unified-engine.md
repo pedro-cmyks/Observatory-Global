@@ -359,7 +359,19 @@ the papers — it is the comparative evidence they need.**
   ingest populates discussion+mood). Closes the serving half of #168; re-homes
   #172 silent-risk on the ratio.
 - [ ] **F1.1** Bluesky Jetstream ingest worker → `signals_v2` social (country via lang+NER)
-- [ ] **F1.2** Lemmy ingest worker (instance=country) → `signals_v2` social
+- [x] **F1.2** Lemmy ingest worker (instance=country) → `signals_v2` social — `app/services/ingest_lemmy.py`
+  (9 live instances, `type_=Local`, `source_origin_country`=instance home; wired
+  into `ingest_loop` every 4th cycle; 7 tests). LIVE-verified: 125 social signals
+  inserted, country-tagged (feddit.dk Danish DK/DK; lemmy.ca covering US news →
+  country=US origin=CA, the voice≠subject split). **Chain bug FOUND+FIXED:**
+  `assign_discussion_topics.py` INSERT `$3` was untyped (used as both `confidence`
+  real and a jsonb anyelement) → `AmbiguousParameterError` on every real run = the
+  latent crash behind 0 `semantic-discussion-v1` rows. Cast `$3::real`; attach now
+  works (2 high-conf discussion members at ≥0.90 → `topic_members` → prod
+  `/topic/{id}/relationship` reads real `discussion_count`). REMAINING F1 wiring:
+  cron `assign_discussion_topics` (attach is not yet recurring) + social embedding
+  cadence (eligible but proportionally slow at 0.5% of corpus); then the
+  public/social-led/silent-risk types differentiate at volume.
 - [ ] **F2.1** `source_family` guard in clustering (social attaches, never seeds)
 - [ ] **F3.1** unified-v2 construction pass (embed-all → assign → typed write) behind `ATLAS_UNIFIED_ENGINE`
 - [ ] **F3.2** `scripts/engine_ab_report.py` (v1 vs v2 metrics, §11)

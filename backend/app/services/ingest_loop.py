@@ -130,6 +130,18 @@ async def main():
             except Exception:
                 log.exception("Reddit ingestion failed — continuing")
 
+        # ── Lemmy Social Signals: every 4th cycle (~60 min) ── Unified Engine F1.2.
+        # Federated forum, instance=country/lang → clean source_origin_country
+        # (the WAVE-N domestic-voice model for forums). Uncredentialled JSON API.
+        if gdelt_cycle % 4 == 0:
+            try:
+                log.info("Lemmy social signals ingestion starting...")
+                from app.services.ingest_lemmy import run_lemmy_ingestion
+                await run_lemmy_ingestion()
+                log.info("Lemmy ingestion complete.")
+            except Exception:
+                log.exception("Lemmy ingestion failed — continuing")
+
         # ── MediaStack ES/PT: every 8th cycle (~2 hours) ──
         if gdelt_cycle % 8 == 0:
             try:
