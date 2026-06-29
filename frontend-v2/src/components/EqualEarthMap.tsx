@@ -286,11 +286,12 @@ export function EqualEarthMap({
                 const c = f.geometry.coordinates
                 if (!Array.isArray(c)) return
                 const p = pt(c as [number, number]); if (!p) return
-                const base = Math.min(num(f.properties.radius, 4), 11)
+                // Smaller + lower opacity so they don't swamp the map.
+                const base = Math.min(num(f.properties.radius, 3) * 0.55, 5.5)
                 const ph = 0.5 + 0.5 * Math.sin(t / 480 + i * 0.7)
                 ctx.beginPath(); ctx.arc(p[0], p[1], base * (0.85 + 0.3 * ph), 0, Math.PI * 2)
-                ctx.fillStyle = `rgba(239,68,68,${0.35 + 0.3 * ph})`; ctx.fill()
-                ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(239,68,68,0.9)'; ctx.stroke()
+                ctx.fillStyle = `rgba(239,90,70,${0.22 + 0.22 * ph})`; ctx.fill()
+                ctx.lineWidth = 0.8; ctx.strokeStyle = 'rgba(239,90,70,0.7)'; ctx.stroke()
             })
             // anomaly = radar ping: a steady core ring + an expanding, fading ring.
             overlay.anomaly.features.forEach((f, i) => {
