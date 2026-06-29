@@ -26,22 +26,27 @@ import sys
 import asyncpg
 import httpx
 
-from backend.scripts.ensemble.model_clients import call_llm, extract_json
+from backend.scripts.ensemble.model_clients import call_codex, call_llm, extract_json
 
 CAND = "docs/research/taxonomy-revision/candidate-v2.json"
 BATCH = "docs/research/taxonomy-revision/gold-batch.json"
 API_ANNOTATORS = ("deepseek", "openai")
 
 
-async def _sample(conn, n: int) -> list[dict]:
+async def _sample(conn, n: int, slugs: list[str] | None) -> list[dict]:
+    # optional slug filter targets the contested categories (housing/humanitarian/
+    # mining) so the gold actually contains instances of them.
     rows = await conn.fetch(
-        """SELECT DISTINCT ON (s.headline) s.id, s.headline
-           FROM signal_topic_assignments a JOIN signals_v2 s ON s.id=a.signal_id
+        """SELECT DISTINCT ON (s.headline) s.id, s.headline, at.slug AS cur
+           FROM signal_topic_assignments a
+           JOIN atlas_topics at ON at.id=a.topic_id
+           JOIN signals_v2 s ON s.id=a.signal_id
            WHERE a.model_version='theme-hint-lex-v2' AND a.gate_kept=true
              AND s.headline IS NOT NULL AND length(s.headline)>=25
-             AND a.assigned_at > NOW() - INTERVAL '336 hours'
-           ORDER BY s.headline, random() LIMIT $1""", n)
-    return [{"n": i + 1, "headline": r["headline"]} for i, r in enumerate(rows)]
+             AND a.assigned_at > NOW() - INTERVAL '672 hours'
+             AND ($2::text[] IS NULL OR at.slug = ANY($2::text[]))
+           ORDER BY s.headline, random() LIMIT $1""", n, slugs)
+    return [{"n": i + 1, "headline": r["headline"], "cur": r["cur"]} for i, r in enumerate(rows)]
 
 
 def _batch_prompt(cand, sample) -> str:
@@ -88,18 +93,31 @@ def _agreement(labels_by_ann: dict[str, dict[int, str]], ns: list[int]) -> None:
     print(f"  unanimous (all {len(anns)} annotators agree): {unan}/{len(ns)} = {unan/max(len(ns),1):.0%}")
 
 
-async def run(n: int) -> int:
+def _codex_annotate(prompt, valid, n) -> dict[int, str]:
+    data = extract_json(call_codex(prompt))
+    out = {}
+    for lab in data.get("labels", []):
+        try:
+            i, s = int(lab["n"]), str(lab["slug"]).strip()
+        except Exception:  # noqa: BLE001
+            continue
+        out[i] = s if s in valid else "OUT_OF_SCOPE"
+    return out
+
+
+async def run(n: int, slugs: list[str] | None) -> int:
     dsn = os.environ.get("DATABASE_URL")
     with open(CAND) as f:
         cand = json.load(f)
     conn = await asyncpg.connect(dsn)
     try:
-        sample = await _sample(conn, n)
+        sample = await _sample(conn, n, slugs)
     finally:
         await conn.close()
     valid = {c["slug"] for c in cand["categories"]} | {"OUT_OF_SCOPE"}
     prompt = _batch_prompt(cand, sample)
-    print(f"crisis-only sample={len(sample)} | v2 cats={len(cand['categories'])}")
+    tag = f"targeted={slugs}" if slugs else "crisis-only"
+    print(f"sample={len(sample)} ({tag}) | v2 cats={len(cand['categories'])}")
 
     labels = {}
     async with httpx.AsyncClient(timeout=180.0) as client:
@@ -109,6 +127,12 @@ async def run(n: int) -> int:
                 print(f"  {p}: labeled {len(labels[p])}/{len(sample)}")
             except Exception as exc:  # noqa: BLE001
                 print(f"  {p}: FAILED {str(exc)[:120]}", file=sys.stderr)
+    # codex (ChatGPT subscription, sync subprocess) — batched
+    try:
+        labels["codex"] = _codex_annotate(prompt, valid, len(sample))
+        print(f"  codex: labeled {len(labels['codex'])}/{len(sample)}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"  codex: FAILED {str(exc)[:120]}", file=sys.stderr)
     out = {"candidate": "v2", "sample": sample, "labels": labels}
     os.makedirs(os.path.dirname(BATCH), exist_ok=True)
     with open(BATCH, "w") as f:
@@ -138,11 +162,14 @@ def combine(claude_path: str) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=40)
+    ap.add_argument("--slugs", type=str, default=None,
+                    help="comma-separated atlas slugs to target (e.g. the contested categories)")
     ap.add_argument("--combine", type=str, default=None)
     args = ap.parse_args()
     if args.combine:
         return combine(args.combine)
-    return asyncio.run(run(args.n))
+    slugs = [s.strip() for s in args.slugs.split(",")] if args.slugs else None
+    return asyncio.run(run(args.n, slugs))
 
 
 if __name__ == "__main__":

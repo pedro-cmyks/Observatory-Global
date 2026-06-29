@@ -166,3 +166,37 @@ categories (`housing-cost-pressure`, `humanitarian-access-conflict`,
 corruption, so the contested ones didn't appear here. Then Pedro's interactive
 round + production wiring (OUT_OF_SCOPE policy + excludes into the gate/assignment
 prompts; add the 2 natural-hazard categories to `atlas_topics`).
+
+## Phase C gold — contested categories, 4-model ensemble incl. Codex (DONE)
+
+Codex fixed (CLI 0.142.4): default model only (`gpt-5-codex`/`gpt-5` are
+unsupported on a ChatGPT account), `--json` JSONL on stdout, parse the
+`agent_message` event. So a genuine **4-model subscription ensemble**: DeepSeek +
+OpenAI + **Codex (GPT-5.5, ChatGPT sub, zero API)** + Claude (this session).
+
+Targeted gold on the 3 contested categories (`--slugs housing-cost-pressure,
+humanitarian-access-conflict,mining-royalty-risk`, 24 gate-kept signals — housing
+dominates the gate-kept volume, so the sample is mostly housing):
+
+| metric | value |
+|---|---|
+| pairwise agreement | 83–92% |
+| **unanimous (all 4)** | **79% (19/24)** |
+| OUT_OF_SCOPE rate | DeepSeek 23/24, OpenAI 23/24, Codex 21/24, Claude 19/24 |
+
+**Decisive finding:** the signals gate-kept under `housing-cost-pressure` are
+**~80–96% OUT_OF_SCOPE** by unanimous-ish ensemble — routine housing policy, a
+13× syndicated "Labor budget tax" story, tech/forex noise. The category is not
+bad; it is **force-fit** by the gate. The few real instances (rent benchmark,
+abusive-rents activism, a "Montana housing crisis" feature) are correctly
+`housing-cost-pressure`. **Resolution: KEEP `housing-cost-pressure`; the
+OUT_OF_SCOPE policy removes the force-fit** — the ontology-purist's drop/merge
+instinct was reacting to noise the reject class handles, not a bad category. (The
+reject also cleanly absorbed the 13× syndicated story — syndication handled too.)
+`humanitarian-access-conflict` + `mining-royalty-risk` are low-volume and didn't
+appear; resolve them with their own targeted pulls in the next pass.
+
+**Net:** with 4 independent models (2 families + 2 subscription paths) the rewrite
+holds at 79% unanimous on the hardest (contested) slice — and the recurring lesson
+is the same as the engine work: the value is the **reject class + sharp
+boundaries**, applied at the GATE, not new categories.

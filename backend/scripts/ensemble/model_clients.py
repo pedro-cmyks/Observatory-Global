@@ -163,27 +163,47 @@ async def _call_llm_once(
 #               codex is currently broken (default gpt-5.5 needs a newer CLI;
 #               gpt-5/gpt-5-codex unsupported/empty; MCP servers 401; jobs table
 #               missing). Wired so it works once the CLI is upgraded + MCP cleared.
-CODEX_MODEL = os.getenv("ATLAS_CODEX_MODEL", "gpt-5-codex")
+# Default model only: gpt-5-codex/gpt-5 are NOT supported on a ChatGPT account
+# (codex returns the model via the default; forcing -m breaks it). Empty = default.
+CODEX_MODEL = os.getenv("ATLAS_CODEX_MODEL", "")
 
 
-def call_codex(prompt: str, *, model: str | None = None, timeout: float = 120.0) -> str:
-    """GPT via the codex CLI (ChatGPT subscription, no API usage). Best-effort:
-    the local codex install must be healthy (recent CLI, MCP cleared)."""
+def call_codex(prompt: str, *, model: str | None = None, timeout: float = 180.0) -> str:
+    """GPT via the codex CLI (ChatGPT subscription, no API usage). Uses `--json`
+    (clean JSONL on stdout; the human transcript goes to stderr) and returns the
+    final `agent_message` text. ~28K input tokens/call of skills/hook overhead — so
+    BATCH (one call labels many items)."""
     model = model or CODEX_MODEL
-    cmd = ["codex", "exec", "-m", model,
-           "--dangerously-bypass-approvals-and-sandbox", "--skip-git-repo-check", prompt]
+    cmd = ["codex", "exec", "--json",
+           "--dangerously-bypass-approvals-and-sandbox", "--skip-git-repo-check"]
+    if model:
+        cmd[2:2] = ["-m", model]
+    cmd.append(prompt)
     try:
-        out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        out = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
     except FileNotFoundError as exc:
         raise LLMError("codex", f"CLI not found: {exc}") from exc
     except subprocess.TimeoutExpired as exc:
         raise LLMError("codex", "CLI timeout") from exc
-    body = (out.stdout or "").strip()
-    if "error" in (out.stderr or "").lower() and not body:
-        raise LLMError("codex", out.stderr.strip()[:200])
-    if not body:
-        raise LLMError("codex", "empty output (check codex CLI/model health)")
-    return body
+    answer = None
+    turn_error = None
+    for line in (out.stdout or "").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            ev = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        item = ev.get("item") or {}
+        if ev.get("type") == "item.completed" and item.get("type") == "agent_message":
+            answer = item.get("text", "")
+        elif ev.get("type") in ("turn.failed", "error"):
+            turn_error = ev.get("error", {}).get("message") if isinstance(ev.get("error"), dict) else ev.get("message")
+    if answer:
+        return answer
+    raise LLMError("codex", f"no agent_message ({turn_error or (out.stderr or '')[:160]})")
 
 
 def call_gemini(prompt: str, *, model: str | None = None, timeout: float = 90.0) -> str:
@@ -202,21 +222,55 @@ def call_gemini(prompt: str, *, model: str | None = None, timeout: float = 90.0)
     return out.stdout.strip()
 
 
-_JSON_RE = re.compile(r"\{.*\}|\[.*\]", re.DOTALL)
+def _iter_balanced(text: str, open_ch: str, close_ch: str):
+    """Yield balanced open..close substrings (handles nested braces + strings)."""
+    depth = 0
+    start = -1
+    in_str = False
+    esc = False
+    for i, ch in enumerate(text):
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == open_ch:
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == close_ch and depth:
+            depth -= 1
+            if depth == 0 and start >= 0:
+                yield text[start:i + 1]
 
 
 def extract_json(text: str):
-    """Parse JSON from a model reply, tolerating ```json fences / prose wrap."""
+    """Parse JSON from a model reply, tolerating ```json fences and noisy CLI
+    output (codex prints hooks/MCP logs + a token count around the answer). Strategy:
+    whole-string first, else the LAST balanced {..}/[..] that parses (the model's
+    final answer comes last)."""
     text = text.strip()
     if text.startswith("```"):
         text = re.sub(r"^```[a-zA-Z]*\n?|\n?```$", "", text).strip()
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        m = _JSON_RE.search(text)
-        if m:
-            return json.loads(m.group(0))
-        raise
+        pass
+    last = None
+    for op, cl in (("{", "}"), ("[", "]")):
+        for cand in _iter_balanced(text, op, cl):
+            try:
+                last = json.loads(cand)
+            except json.JSONDecodeError:
+                continue
+    if last is not None:
+        return last
+    raise json.JSONDecodeError("no JSON found", text, 0)
 
 
 async def ping(provider: str) -> tuple[str, bool, str]:
