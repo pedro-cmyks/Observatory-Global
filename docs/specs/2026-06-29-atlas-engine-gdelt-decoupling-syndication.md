@@ -455,12 +455,18 @@ Investigated → negative (added 2026-06-29):
   (`scripts/syndication_audit.py` + raw SQL, §4.0): diversity ≠ importance,
   false-demotes real wire news. Artifacts `docs/research/syndication/`.
 
+Shipped (the §4 PIVOT):
+- [x] **§4(b) editorial lane on thread ranking** (the real Vegas fix): added a
+  `lifestyle` lane to `classify_stream_lane` (`stream_relevance.py`) + a
+  multiplicative `lane_rank_multiplier` damp in `rank_threads` (`thread_ranking.py`,
+  label-based; sports 0.5 / entertainment+lifestyle 0.45; real-news labels →
+  general → 1.0). Damp, not gate — threads still appear. Tests +5 (22 pass).
+  **Verified on LIVE prod data (re-ranked locally, no deploy): Las Vegas #0→#7,
+  World Cup #5→#10; John Bolton / Trump-Iran / Venezuela Earthquake / Ukraine now
+  lead, undamped.** Needs a Fly deploy to go live. Limitation: label-only (threads
+  don't carry member themes here); keyword sets can grow.
+
 Pending (the §4 PIVOT — measured replacements):
-- [ ] **§4(b) editorial lane on thread ranking** (the real Vegas fix): apply the
-  #177 stream-lane classifier (analyst|sports|entertainment|general) to thread
-  eligibility/ranking so lifestyle/sport/entertainment ("Las Vegas Travel Guide",
-  "World Cup Live Streams") demote. *Verify: Vegas/WorldCup drop, "Iran attacks"
-  and real threads hold.*
 - [ ] **§4(a) single-domain boilerplate demote** (clean, small): high reprints
   from ONE domain → template junk, demote. ~4% of high-reprint groups.
 - [ ] §3.1a finish GDELT-chip removal/collapse across remaining surfaces.

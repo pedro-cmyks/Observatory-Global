@@ -62,3 +62,17 @@ def test_score_stream_signal_returns_lane_and_score():
 def test_score_stream_signal_handles_none_headline():
     out = score_stream_signal([], None)
     assert out["lane"] == "general"
+
+
+def test_lifestyle_travel_headline_is_lifestyle_lane():
+    # 2026-06-29: the "Las Vegas Travel Guide ranks #1" pathology (spec §4.0).
+    assert classify_stream_lane([], "Las Vegas Travel Guide") == "lifestyle"
+    assert classify_stream_lane([], "10 best restaurants in Rome") == "lifestyle"
+    assert classify_stream_lane([], "The ultimate guide to a Tokyo getaway") == "lifestyle"
+
+
+def test_real_news_label_is_not_demoted_to_a_noise_lane():
+    # Real-news labels carry no sports/lifestyle keyword -> general (no penalty).
+    assert classify_stream_lane([], "Iran Attacks Bahrain and Kuwait Following US Strikes") == "general"
+    assert classify_stream_lane([], "Ukraine War Updates") == "general"
+    assert classify_stream_lane([], "Venezuela Earthquake Death Toll Rises") == "general"

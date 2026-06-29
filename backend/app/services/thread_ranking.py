@@ -21,9 +21,30 @@ from __future__ import annotations
 
 import math
 
+from app.services.stream_relevance import classify_stream_lane
+
 _W_VOLUME = 0.45
 _W_MOVEMENT = 0.35
 _W_COHERENCE = 0.20
+
+# Editorial-lane DAMP (2026-06-29, spec §4.0/§4(b)). The "Las Vegas Travel Guide
+# ranks #1" pathology is low-news-value lifestyle/sport/entertainment copy, NOT
+# syndication (measure-first disproved headline_diversity). A thread whose LABEL
+# classifies into a noise lane is multiplicatively damped — it still appears
+# (input, never a gate), it just stops out-ranking real news. Real-news labels
+# carry no sports/lifestyle keyword → "general"/"analyst" → multiplier 1.0.
+_LANE_RANK_MULTIPLIER = {
+    "sports": 0.5,
+    "entertainment": 0.45,
+    "lifestyle": 0.45,
+}
+
+
+def lane_rank_multiplier(thread: dict) -> float:
+    """Damp factor in (0, 1] from the thread label's editorial lane. Label-only
+    (threads don't carry member themes here) — a v1 the keyword sets can grow."""
+    lane = classify_stream_lane([], str(thread.get("label") or ""))
+    return _LANE_RANK_MULTIPLIER.get(lane, 1.0)
 
 # A thread needs at least this many signals before its relative movement is
 # fully trusted. A huge swing on a tiny base (e.g. a 28-signal syndicated story
@@ -63,6 +84,9 @@ def rank_threads(threads: list[dict]) -> list[dict]:
     scored = []
     for idx, (t, v, m, c) in enumerate(zip(threads, nv, nm, nc)):
         score = _W_VOLUME * v + _W_MOVEMENT * m + _W_COHERENCE * c
+        # Editorial-lane damp: lifestyle/sport/entertainment threads stop
+        # out-ranking real news (still present — input, not gate).
+        score *= lane_rank_multiplier(t)
         # deterministic tie-break: score, then raw volume, then label
         scored.append((score, comps[idx][0], str(t.get("label") or ""), t))
     scored.sort(key=lambda x: (x[0], x[1], x[2]), reverse=True)

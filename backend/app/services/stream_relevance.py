@@ -39,6 +39,17 @@ _ENTERTAINMENT_KEYWORDS = {
     "album", "concert tour", "netflix series", "tv show", "movie premiere",
     "reality show", "michael jackson", "taylor swift", "kardashian",
 }
+# Travel / lifestyle / service-journalism filler. Added 2026-06-29: the "Las
+# Vegas Travel Guide ranks #1" pathology is low-news-value lifestyle copy, not a
+# syndication problem (measure-first disproved headline_diversity — spec §4.0).
+# Phrase-level keys to avoid catching real news (e.g. "travel guide", not "travel").
+_LIFESTYLE_KEYWORDS = {
+    "travel guide", "things to do", "best restaurants", "where to eat",
+    "where to stay", "best hotels", "best beaches", "tourist guide",
+    "city guide", "getaway", "staycation", "bucket list", "hidden gems",
+    "day trip", "holiday destination", "best places to visit", "weekend break",
+    "things to know before", "ultimate guide to",
+}
 
 _SEVERITY_BOOST = {"critical": 0.3, "high": 0.2, "medium": 0.1, "low": 0.0}
 
@@ -47,6 +58,7 @@ _LANE_BASE_SCORE = {
     "general": 0.4,
     "sports": 0.15,
     "entertainment": 0.12,
+    "lifestyle": 0.12,
 }
 
 
@@ -75,6 +87,8 @@ def classify_stream_lane(themes: list[str], headline: str | None) -> str:
         return "sports"
     if _headline_matches(headline or "", _ENTERTAINMENT_KEYWORDS):
         return "entertainment"
+    if _headline_matches(headline or "", _LIFESTYLE_KEYWORDS):
+        return "lifestyle"
     return "general"
 
 

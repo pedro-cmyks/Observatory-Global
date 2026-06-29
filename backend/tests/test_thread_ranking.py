@@ -69,3 +69,25 @@ def test_freak_movement_on_tiny_base_does_not_lead():
     freak = _t("syndicated", sc=28, ch=53, conf=0.6)
     real = _t("real-mover", sc=766, ch=116, conf=0.6)
     assert [t["label"] for t in rank_threads([freak, real])][0] == "real-mover"
+
+
+def test_lifestyle_thread_is_damped_below_a_comparable_real_thread():
+    # 2026-06-29 §4(b): Vegas has the STRONGEST raw metrics - it would lead
+    # without the damp (the live "Las Vegas Travel Guide ranks #1" pathology).
+    # The editorial-lane damp drops it below real news, but it still appears
+    # (input, not gate). Filler thread spreads the min-max normalisation.
+    vegas = _t("Las Vegas Travel Guide", sc=300, ch=90, conf=0.97)
+    iran = _t("Iran Attacks Bahrain and Kuwait", sc=250, ch=60, conf=0.90)
+    filler = _t("Local council notes", sc=15, ch=1, conf=0.40)
+    order = rank_threads([vegas, iran, filler])
+    assert order[0]["label"] == "Iran Attacks Bahrain and Kuwait"
+    labels = [t["label"] for t in order]
+    assert "Las Vegas Travel Guide" in labels  # present, just no longer #1
+
+
+def test_lane_damp_does_not_touch_real_news_ordering():
+    from app.services.thread_ranking import lane_rank_multiplier
+    assert lane_rank_multiplier({"label": "Iran Attacks Bahrain"}) == 1.0
+    assert lane_rank_multiplier({"label": "Ukraine War Updates"}) == 1.0
+    assert lane_rank_multiplier({"label": "World Cup 2026 Live Streams"}) < 1.0
+    assert lane_rank_multiplier({"label": "Las Vegas Travel Guide"}) < 1.0
