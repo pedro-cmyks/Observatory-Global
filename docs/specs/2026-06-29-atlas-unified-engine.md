@@ -388,8 +388,24 @@ the papers — it is the comparative evidence they need.**
   Verified on prod: 24 social excluded, 44,171 press kept for seed — lands BEFORE
   the F1.1/F1.2 volume embeds (spec §8 "guard before F1 scales"). Synced to the M1
   emergent-snapshot cron tree.
-- [ ] **F3.1** unified-v2 construction pass (embed-all → assign → typed write) behind `ATLAS_UNIFIED_ENGINE`
-- [ ] **F3.2** `scripts/engine_ab_report.py` (v1 vs v2 metrics, §11)
+- [x] **F3.1** unified-v2 construction — `scripts/build_unified_topics.py`: ONE
+  numpy assignment over the e5 substrate — every embedded signal → nearest active
+  `dynamic_topics` centroid (≥0.88, the high-purity regime; the threshold is a
+  CLIFF: 0.82→98.6% / 0.86→70% / 0.88→37%) with role by `source_family`
+  (gdelt/independent/wire/state→evidence, social→discussion+mood), plus §6-step-2
+  NEW-TOPIC formation (HDBSCAN-leaf on the residual; recovers 11.7% — the
+  companion-spec cliff, 88% stays diffuse noise). Writes
+  `topic_members(engine_version='unified-v2')`. (Serving flag flip = F4; this is
+  the parallel construction the A/B measures.)
+- [x] **F3.2** `scripts/engine_ab_report.py` (§11, v1-compat vs unified-v2). RESULT
+  (168h): coherence 0.930 vs 0.908, evidence-purity 100% vs 98.1%, black-hole
+  12.1% vs 19.0%, topics≥3 **103 vs 66** — v2 wins every quality axis + finds
+  more topics. Members 6710 vs 7874, BUT the surplus-quality test settles it:
+  v1's 2910 surplus members cohere **0.899** vs v1-shared **0.940** → the gap is
+  v1 OVER-ASSIGNMENT, not lost signal. **VERDICT: PASS (effective)** — unified-v2
+  is the better engine (the Paper-1 split-brain→unified result, measured). F4
+  cutover gated on: recurring v2 construction + new-topic labeling (§6 step 5) +
+  gold confirmation; not forced.
 - [ ] **F3.3** `movement` role: bind events (ACLED/anomalies) to topics — closes #232
 - [ ] **F4.1** cutover when A/B gate passes; close #242
 - [ ] **per-phase** paper-track edits (§13) + issue-closing comments (§12)
