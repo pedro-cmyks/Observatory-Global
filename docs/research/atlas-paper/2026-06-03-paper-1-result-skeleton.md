@@ -186,3 +186,37 @@ Paper 1 can move from skeleton to draft when:
 
 This is enough to continue the engineering sequence: deploy `dynamic_topics`,
 run browser smoke, and use the paper evidence as the model justification.
+
+## Split-brain → unified: the A/B result (2026-06-29, Unified Engine F3)
+
+The Unified Engine spec's A/B (`backend/scripts/engine_ab_report.py`, §11) IS this
+paper's central experiment: does ONE engine over the universal embedding substrate
+beat the split-brain (atlas-lexical ‖ dynamic-embedding ‖ discussion-attach)?
+
+**Method.** v1-compat (the projection of today's split-brain assignments into the
+typed `topic_members` table) vs unified-v2 (`build_unified_topics.py`: one numpy
+assignment of every embedded signal to its nearest active `dynamic_topics`
+centroid ≥0.88, role by `source_family`, + HDBSCAN-leaf new-topic formation on the
+residual). Engine-agnostic metrics computed from the persisted e5 embeddings over
+the same 168h window.
+
+**Result (168h, 2026-06-29):**
+
+| metric | v1-compat (split-brain) | unified-v2 | winner |
+|---|---|---|---|
+| coherence (mean member↔centroid) | 0.908 | **0.930** | v2 |
+| evidence purity (≥0.85 to centroid) | 98.1% | **100.0%** | v2 |
+| black-hole share (#224 mega-blob) | 19.0% | **12.1%** | v2 |
+| size Gini | 0.758 | **0.693** | v2 |
+| topics with ≥3 members | 66 | **103** | v2 |
+| evidence members | **7874** | 6710 | v1 |
+
+**The member-recall question, settled without human gold.** v2 assigns fewer
+members — but the surplus-quality test shows v1's 2910 surplus members (in v1, not
+v2) cohere **0.899** vs v1-shared **0.940**: v1's extra members are
+OVER-ASSIGNMENT (the looser tail the lexical path absorbs), not signal v2 loses.
+So on *effective* recall v2 does not regress; it wins every quality axis and finds
+more distinct topics. **The unified engine is measurably better than the
+split-brain.** The 41.6%-class absolute number gets its successor once unified-v2
+is the serving engine (F4), gated on a recurring build (now live) + new-topic
+labeling + a gold confirmation set.

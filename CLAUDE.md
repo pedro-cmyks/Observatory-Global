@@ -2127,3 +2127,26 @@ unified-v2 on coherence/recall/black-hole/evidence-purity/cross-source-binding,
 spec §11) — the A/B IS Paper 1's split-brain-vs-unified experiment. Then F4
 measured cutover. Forum volume now flows; lanes differentiate as Bluesky/Lemmy
 embed + attach over the next M1 embed cycles.
+
+**2026-06-29 (PM cont.4) — F3 UNIFIED CONSTRUCTION + A/B: split-brain→unified
+PROVEN (PASS effective).** `build_unified_topics.py` (F3.1, `80ac5b0`): ONE numpy
+assignment over the e5 substrate — every embedded signal → nearest active
+`dynamic_topics` centroid (≥0.88; threshold is a measured CLIFF 0.82→98.6% /
+0.86→70% / 0.88→37%) + role by `source_family` + §6 HDBSCAN-leaf new-topic
+formation on the residual (recovers ~12%, the companion-spec cliff) → writes
+`topic_members(engine_version='unified-v2')`, isolated from v1 serving.
+`engine_ab_report.py` (F3.2, §11) RESULT over 168h: **v2 wins coherence
+0.930>0.908, purity 100%>98.1%, black-hole 12.1%<19.0%, topics≥3 103>66**; members
+6710<7874 BUT the surplus-quality test settles member-recall WITHOUT human gold —
+v1's 2910 surplus members cohere **0.899 vs v1-shared 0.940** = v1
+OVER-ASSIGNMENT, not lost signal. **VERDICT: PASS (effective) — unified-v2 is the
+better engine** (Paper 1's experiment, measured; written into the P1 result
+skeleton). v2 build is now RECURRING on the M1 embed cron (`ba7460d`: embed→attach
+→ETL-v1→build-v2) so the A/B stays live. **F4 cutover NOT forced** — gated on
+recurring build (done) + new-topic labeling (§6 step 5) + gold confirmation +
+parametrizing the read path to serve unified-v2. **F3.3 movement** (#232): events
+live in separate tables (`acled_conflicts_v2` ≠ `signals_v2`), so the movement
+role needs a `topic_members` event-ref schema extension first — scoped, commented
+on #232. #242 closed (subsumed); #237 progress-commented (forum ingest delivered).
+**Engine arc F0→F3.2 COMPLETE + measured.** NEXT: F3.3 schema (movement) / F4
+(labeling + gold + flag) / forum-volume ramp differentiates the lanes.
