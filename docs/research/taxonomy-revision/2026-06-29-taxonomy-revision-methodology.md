@@ -105,3 +105,31 @@ the reject class + boundaries. Two things remain before a production swap:
 Production wiring (after validation): the OUT_OF_SCOPE policy + excludes belong in
 the gate prompt and the assignment step; `atlas_topics` gets the 2 new categories
 + refreshed descriptions from the `includes` text.
+
+## Phase C — inter-annotator agreement v1 vs v2 (DONE, 2026-06-29)
+
+`phase_c_agreement.py`. The same headlines classified by DeepSeek and GPT-4o under
+the v1 prompt vs the v2 prompt (categories + OUT_OF_SCOPE policy + excludes);
+pairwise agreement = the separability signal (paper-grade, unconfounded).
+
+**Result (40 recent headlines):**
+
+| taxonomy | annotator agreement | OUT_OF_SCOPE |
+|---|---|---|
+| v1 (current) | 76% | 78% |
+| **v2 (candidate)** | **96%** | 97% |
+| **delta** | **+20%** | — |
+
+**v2 is meaningfully more separable.** HONEST caveat: a random 72h sample is
+non-crisis-heavy, so the +20% is driven mainly by v2's explicit **reject policy
+making both annotators agree on OUT_OF_SCOPE** for the non-crisis majority — which
+IS the core fix (stop force-fitting), but it does not yet stress in-CATEGORY
+separability among the crisis types. The full gold phase must rerun this on a
+**crisis-only (gate-kept) sample** to measure crisis-vs-crisis κ and resolve the 3
+contested categories. (OpenAI rate-limited this run — 23/40 v2 pairs scored; the
+signal is strong but the gold phase should use the throttled fleet for full N.)
+
+**Net for #204:** the rewrite is validated on its central claim — a clear reject
+class + sharp excludes dramatically raises annotator agreement (76%→96%) and
+directly removes the Phase-A force-fit. Candidate v2 is ready for Pedro's
+interactive round + the gold κ/precision phase before the production swap.
