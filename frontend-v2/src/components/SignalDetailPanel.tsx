@@ -13,6 +13,22 @@ interface SignalThreadRef {
     gate_score: number | null
 }
 
+// "Where this fits" (#168/#234 truncated-thread connection): the living threads
+// this signal connects to. `basis` = how the link was made:
+//   member  — the signal is assigned to the thread (gate may be kept/below)
+//   semantic — connected via its nearest embedding neighbours' thread
+//   keyword  — fallback: headline keywords overlap a living thread label
+// This is the Atlas replacement for the GDELT-taxonomy "relates to" chips.
+interface ConnectedThread {
+    thread_id: string
+    label: string
+    basis: 'member' | 'semantic' | 'keyword'
+    strength: number | null
+    discussion?: boolean
+    gate_kept?: boolean | null
+    shared?: string[]
+}
+
 interface SemanticNeighbor {
     signal_id: number
     headline: string
@@ -25,6 +41,7 @@ interface SemanticNeighbor {
 
 interface SignalContext {
     threads: SignalThreadRef[]
+    connected_threads: ConnectedThread[]
     semantic_neighbors: SemanticNeighbor[]
     notes: string[]
 }
@@ -178,37 +195,67 @@ export const SignalDetailPanel: React.FC<Props> = ({
                         </div>
                     </div>
 
-                    {/* NARRATIVE THREADS — the product story model, primary.
-                        GDELT taxonomy demoted below (#228 §2.3). */}
-                    {context && context.threads.length > 0 && (
+                    {/* WHERE THIS FITS — the living Narrative Threads this signal
+                        connects to (#168/#234 truncated-thread connection). The
+                        Atlas story model, primary. Replaces the old GDELT-taxonomy
+                        "relates to" with thread connections (member / semantic /
+                        keyword). When NOTHING connects we say so honestly instead
+                        of hiding it — a missing connection is a gap to surface,
+                        not a fact of nature (no silent filtering). */}
+                    {context && (
                         <div>
-                            <div className="sdp-section-label">Narrative Threads</div>
-                            <div className="sdp-tags">
-                                {context.threads.map(t => (
-                                    <span
-                                        key={t.slug}
-                                        className={`sdp-thread-tag${t.gate_kept === false ? ' sdp-thread-tag--belowgate' : ''}`}
-                                        data-tip={t.gate_kept === false
-                                            ? 'Assigned to this thread but below the quality gate — unverified membership'
-                                            : 'Verified thread membership'}
-                                        onClick={() => { onThemeClick(t.slug); onClose(); }}
-                                    >
-                                        {t.label}
-                                        {t.gate_kept === false && <span className="sdp-gate-badge">UNVERIFIED</span>}
-                                    </span>
-                                ))}
+                            <div
+                                className="sdp-section-label"
+                                data-tip="The living Narrative Threads this signal belongs to or connects to. IN THREAD = assigned membership; RELATED = linked via nearest-meaning neighbours; KEYWORD = headline-term overlap with a thread."
+                            >
+                                Where this fits
                             </div>
+                            {context.connected_threads.length > 0 ? (
+                                <div className="sdp-tags">
+                                    {context.connected_threads.map(t => {
+                                        const unverified = t.gate_kept === false || t.discussion === true
+                                        const badge = t.basis === 'member'
+                                            ? (unverified ? 'UNVERIFIED' : 'IN THREAD')
+                                            : t.basis === 'semantic'
+                                                ? `RELATED${t.strength != null ? ` ${Math.round(t.strength * 100)}%` : ''}`
+                                                : 'KEYWORD'
+                                        const tip = t.basis === 'member'
+                                            ? (unverified ? 'Assigned to this thread but below the quality gate — unverified membership' : 'Verified thread membership')
+                                            : t.basis === 'semantic'
+                                                ? 'Connected via its nearest-meaning neighbours — not a direct membership'
+                                                : `Headline-keyword overlap${t.shared?.length ? `: ${t.shared.join(', ')}` : ''} — weakest link, no embedding yet`
+                                        return (
+                                            <span
+                                                key={`${t.basis}-${t.thread_id}`}
+                                                className={`sdp-thread-tag${unverified || t.basis !== 'member' ? ' sdp-thread-tag--belowgate' : ''}`}
+                                                data-tip={tip}
+                                                onClick={() => { onThemeClick(t.thread_id); onClose(); }}
+                                            >
+                                                {t.label}
+                                                <span className={`sdp-basis-badge sdp-basis-badge--${t.basis}`}>{badge}</span>
+                                            </span>
+                                        )
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="sdp-empty-connect" data-tip="This signal isn't linked to any living thread yet — it may not be embedded (nightly NER/embed lag) or no thread matches. The connection is missing, not absent by design.">
+                                    Not connected to a living thread yet
+                                    {context.notes.length > 0 && (
+                                        <span className="sdp-empty-note"> · {context.notes[0]}</span>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 
                     {signal.themes.length > 0 && (
-                        <div>
-                            <div
+                        <details className="sdp-taxonomy-details">
+                            <summary
                                 className="sdp-section-label sdp-section-label--taxonomy"
-                                data-tip="GDELT taxonomy codes — a navigation index, not the story model. Narrative Threads above are the product unit."
+                                data-tip="GDELT taxonomy codes — a navigation index, not the story model. 'Where this fits' above is the product unit. Collapsed by default; being phased out of the surface."
                             >
-                                GDELT Taxonomy
-                            </div>
+                                GDELT Taxonomy · {signal.themes.length}
+                            </summary>
                             <div className="sdp-tags sdp-tags--taxonomy">
                                 {signal.themes.map(t => (
                                     <span
@@ -220,7 +267,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                                     </span>
                                 ))}
                             </div>
-                        </div>
+                        </details>
                     )}
 
                     {signal.persons.length > 0 && (

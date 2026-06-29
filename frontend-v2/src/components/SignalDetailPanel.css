@@ -351,6 +351,53 @@
     color: #fbbf24;
 }
 
+/* Basis badge on a "Where this fits" thread chip: how the link was made. */
+.sdp-basis-badge {
+    font-size: 8px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: rgba(104, 219, 174, 0.16);
+    color: #68dbae;
+}
+.sdp-basis-badge--semantic {
+    background: rgba(129, 140, 248, 0.16);
+    color: #a5b4fc;
+}
+.sdp-basis-badge--keyword {
+    background: rgba(148, 163, 184, 0.14);
+    color: #94a3b8;
+}
+
+/* Honest empty: signal not yet connected to a living thread. Surfaced, not
+   hidden — a missing connection is a gap to show, not a fact of nature. */
+.sdp-empty-connect {
+    font-size: 11px;
+    color: #6b7689;
+    padding: 6px 8px;
+    border: 1px dashed rgba(148, 163, 184, 0.22);
+    border-radius: 4px;
+    font-style: italic;
+}
+.sdp-empty-note {
+    color: #51607a;
+}
+
+/* GDELT taxonomy collapsed by default — present but out of the path. */
+.sdp-taxonomy-details > summary {
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+.sdp-taxonomy-details > summary::-webkit-details-marker { display: none; }
+.sdp-taxonomy-details > summary::before {
+    content: '▸ ';
+    color: #3b4757;
+}
+.sdp-taxonomy-details[open] > summary::before { content: '▾ '; }
+
 /* Taxonomy demotion: index, not story model — visually quieter */
 .sdp-section-label--taxonomy {
     color: #3b4757;
