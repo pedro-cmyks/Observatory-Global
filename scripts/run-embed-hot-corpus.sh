@@ -44,7 +44,31 @@ if [[ ! -x "$MLVENV/bin/python" ]]; then
 fi
 
 cd "$BACKEND_DIR"
-exec "$MLVENV/bin/python" -m scripts.embed_hot_corpus \
+# Step 1: embed the recent window (this is the heavy step).
+"$MLVENV/bin/python" -m scripts.embed_hot_corpus \
   --hours "$WINDOW_HOURS" \
   --retention-days "$RETENTION_DAYS" \
   --max-signals "$MAX_SIGNALS"
+
+# ── Unified Engine F1 — recurring discussion chain (spec 2026-06-29 §7/§10) ──
+# The attach + projection are pure pgvector/asyncpg (no torch) and DEPEND on the
+# embeddings just written, so they run right here, right after. Both non-fatal:
+# a hiccup never blocks (or re-fails) the embed run. Idempotent.
+DISCUSSION_THRESHOLD="${ATLAS_DISCUSSION_THRESHOLD:-0.90}"  # precision-first (documented in the script)
+PROJECT_HOURS="${ATLAS_DISCUSSION_HOURS:-336}"
+
+# Step 2: attach freshly-embedded social signals to their nearest gate-kept
+# thread as DISCUSSION members (semantic-discussion-v1, verified=false, never
+# evidence).
+"$MLVENV/bin/python" scripts/assign_discussion_topics.py \
+  --hours "$PROJECT_HOURS" --threshold "$DISCUSSION_THRESHOLD" \
+  || echo "[embed-hot-corpus] discussion attach failed (non-fatal)" >&2
+
+# Step 3: project v1-compat assignments (atlas evidence + the discussion attaches
+# above) into the typed topic_members serving table, so /topic/{id}/relationship
+# and the F0.3 read-flag stay current. NOTE: when the read-flag is flipped on,
+# move this projection to the 30-min classifier runner for fresher EVIDENCE (the
+# classifier writes assignments every 30 min; here they land in topic_members
+# only on the embed cadence, ~3x/day).
+"$MLVENV/bin/python" -m scripts.etl_topic_members --hours "$PROJECT_HOURS" \
+  || echo "[embed-hot-corpus] topic_members ETL failed (non-fatal)" >&2
