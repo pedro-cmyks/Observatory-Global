@@ -176,6 +176,20 @@ export function EqualEarthMap({
         )
     }), [paths, heatStates, showHeatmap, selectedIso, handleCountryClick])
 
+    // Wrap the raw pan into an infinite horizontal strip: X wraps modulo the
+    // world period (so panning sideways rotates the globe seamlessly across the
+    // ±180° seam — 3 tiles below cover the view); Y clamps to the poles (no
+    // vertical pan past the top/bottom edges). The jump-by-period in X is
+    // invisible because the tiles are identical.
+    const period = ee ? ee.worldWidth * transform.k : 0
+    const applied = useMemo<ViewTransform>(() => {
+        if (!ee || period <= 0) return transform
+        const x = transform.x - Math.round(transform.x / period) * period // nearest-zero window
+        const minY = Math.min(0, size.h - ee.worldHeight * transform.k)
+        const y = Math.max(minY, Math.min(0, transform.y))
+        return { k: transform.k, x, y }
+    }, [transform, ee, period, size.h])
+
     // --- Pan / zoom / pinch via d3-zoom (handles wheel, drag AND multi-touch
     // pinch — the mobile gesture the hand-rolled handlers couldn't do). One
     // {k,x,y} transform drives both the SVG <g> and the canvas. ---
@@ -210,15 +224,15 @@ export function EqualEarthMap({
     // loop so ALERT markers stay alive: anomaly rings ping (expand + fade) and
     // conflict dots pulse. Reads latest transform/overlay/ee/size via a ref so
     // the loop is stable (set up once) and never janks the SVG. ---
-    const drawRef = useRef({ overlay, ee, transform, size })
-    useEffect(() => { drawRef.current = { overlay, ee, transform, size } }, [overlay, ee, transform, size])
+    const drawRef = useRef({ overlay, ee, applied, size, period })
+    useEffect(() => { drawRef.current = { overlay, ee, applied, size, period } }, [overlay, ee, applied, size, period])
 
     useEffect(() => {
         let raf = 0
         const num = (v: unknown, d = 0) => (typeof v === 'number' ? v : d)
         const frame = (t: number) => {
             raf = requestAnimationFrame(frame)
-            const { overlay, ee, transform, size } = drawRef.current
+            const { overlay, ee, applied, size, period } = drawRef.current
             const canvas = canvasRef.current
             if (!canvas || !ee || size.w === 0 || document.hidden) return
             const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -232,7 +246,10 @@ export function EqualEarthMap({
             ctx.clearRect(0, 0, size.w, size.h)
             if (!overlay) return
 
-            const pt = (c: [number, number]) => ee.toScreen([c[0], c[1]], transform)
+            const pt = (c: [number, number]) => ee.toScreen([c[0], c[1]], applied)
+            // Horizontal seam offsets so points show in whichever tile is in
+            // view (the strip wraps). −period/+period bracket the visible window.
+            const seams = period > 0 ? [0, -period, period] : [0]
 
             // 1. Terminator (day/night).
             for (const f of overlay.terminator.features) {
@@ -255,15 +272,25 @@ export function EqualEarthMap({
                 ctx.lineWidth = 0.8 + Math.min(num(f.properties.strength), 1) * 2.2
                 ctx.stroke()
             }
-            // 3. Static markers (positions, not alerts).
+            // 3. Static markers (positions, not alerts). Drawn at each seam so
+            // they appear in whichever wrapped tile is on screen.
+            const ringsAt = (p: [number, number], draw: (sx: number, sy: number) => void) => {
+                for (const off of seams) {
+                    const sx = p[0] + off
+                    if (sx < -40 || sx > size.w + 40) continue
+                    draw(sx, p[1])
+                }
+            }
             const dot = (c: unknown, r: number, fill: string, stroke?: string, sw = 0) => {
                 if (!Array.isArray(c)) return
                 const p = pt(c as [number, number])
                 if (!p) return
-                ctx.beginPath()
-                ctx.arc(p[0], p[1], r, 0, Math.PI * 2)
-                if (fill !== 'none') { ctx.fillStyle = fill; ctx.fill() }
-                if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = sw; ctx.stroke() }
+                ringsAt(p, (sx, sy) => {
+                    ctx.beginPath()
+                    ctx.arc(sx, sy, r, 0, Math.PI * 2)
+                    if (fill !== 'none') { ctx.fillStyle = fill; ctx.fill() }
+                    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = sw; ctx.stroke() }
+                })
             }
             for (const f of overlay.chokepoints.features) {
                 const active = f.properties.active === true
@@ -289,9 +316,11 @@ export function EqualEarthMap({
                 // Smaller + lower opacity so they don't swamp the map.
                 const base = Math.min(num(f.properties.radius, 3) * 0.55, 5.5)
                 const ph = 0.5 + 0.5 * Math.sin(t / 480 + i * 0.7)
-                ctx.beginPath(); ctx.arc(p[0], p[1], base * (0.85 + 0.3 * ph), 0, Math.PI * 2)
-                ctx.fillStyle = `rgba(239,90,70,${0.22 + 0.22 * ph})`; ctx.fill()
-                ctx.lineWidth = 0.8; ctx.strokeStyle = 'rgba(239,90,70,0.7)'; ctx.stroke()
+                ringsAt(p, (sx, sy) => {
+                    ctx.beginPath(); ctx.arc(sx, sy, base * (0.85 + 0.3 * ph), 0, Math.PI * 2)
+                    ctx.fillStyle = `rgba(239,90,70,${0.22 + 0.22 * ph})`; ctx.fill()
+                    ctx.lineWidth = 0.8; ctx.strokeStyle = 'rgba(239,90,70,0.7)'; ctx.stroke()
+                })
             })
             // anomaly = radar ping: a steady core ring + an expanding, fading ring.
             overlay.anomaly.features.forEach((f, i) => {
@@ -299,13 +328,13 @@ export function EqualEarthMap({
                 if (!Array.isArray(c)) return
                 const p = pt(c as [number, number]); if (!p) return
                 const base = num(f.properties.radius, 8)
-                // core ring (gentle breathe)
-                ctx.beginPath(); ctx.arc(p[0], p[1], base * (0.92 + 0.12 * pulse), 0, Math.PI * 2)
-                ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(239,68,68,0.95)'; ctx.stroke()
-                // expanding ping
                 const ping = ((t / 1600 + i * 0.33) % 1)
-                ctx.beginPath(); ctx.arc(p[0], p[1], base * (1 + ping * 1.6), 0, Math.PI * 2)
-                ctx.lineWidth = 1.5; ctx.strokeStyle = `rgba(239,68,68,${0.6 * (1 - ping)})`; ctx.stroke()
+                ringsAt(p, (sx, sy) => {
+                    ctx.beginPath(); ctx.arc(sx, sy, base * (0.92 + 0.12 * pulse), 0, Math.PI * 2)
+                    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(239,68,68,0.95)'; ctx.stroke()
+                    ctx.beginPath(); ctx.arc(sx, sy, base * (1 + ping * 1.6), 0, Math.PI * 2)
+                    ctx.lineWidth = 1.5; ctx.strokeStyle = `rgba(239,68,68,${0.6 * (1 - ping)})`; ctx.stroke()
+                })
             })
         }
         raf = requestAnimationFrame(frame)
@@ -327,7 +356,7 @@ export function EqualEarthMap({
                 <div
                     className="equal-earth-viewport"
                     style={{
-                        transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${transform.k})`,
+                        transform: `translate3d(${applied.x}px, ${applied.y}px, 0) scale(${applied.k})`,
                         transformOrigin: '0 0',
                     }}
                 >
@@ -336,13 +365,21 @@ export function EqualEarthMap({
                         width={size.w}
                         height={size.h}
                         viewBox={`0 0 ${size.w} ${size.h}`}
+                        style={{ overflow: 'visible' }}
                     >
-                        <path
-                            d={ee.pathString({ type: 'Sphere' }) ?? ''}
-                            className="equal-earth-sphere"
-                            style={{ fill: OCEAN }}
-                        />
-                        {countryEls}
+                        {/* 3 tiles → infinite horizontal wrap (rectangular proj
+                            tiles perfectly at ±180°). Middle + both neighbors so a
+                            seam is never visible as you pan/rotate sideways. */}
+                        {[-ee.worldWidth, 0, ee.worldWidth].map(off => (
+                            <g key={off} transform={`translate(${off},0)`}>
+                                <path
+                                    d={ee.pathString({ type: 'Sphere' }) ?? ''}
+                                    className="equal-earth-sphere"
+                                    style={{ fill: OCEAN }}
+                                />
+                                {countryEls}
+                            </g>
+                        ))}
                     </svg>
                 </div>
             )}

@@ -4,14 +4,23 @@ import { createEqualEarth, clampScale, IDENTITY_TRANSFORM } from './equalEarthPr
 const W = 800
 const H = 400
 
-describe('createEqualEarth', () => {
+describe('createEqualEarth (cylindrical equal-area strip)', () => {
     const ee = createEqualEarth(W, H)
 
-    it('projects [0,0] near the horizontal center', () => {
+    it('projects [0,0] near the horizontal center (prime meridian centered)', () => {
         const p = ee.project([0, 0])
         expect(p).not.toBeNull()
-        // Equator/prime-meridian sits roughly mid-width.
         expect(Math.abs(p![0] - W / 2)).toBeLessThan(2)
+    })
+
+    it('fills the height pole-to-pole (worldHeight ~= panel height)', () => {
+        expect(Math.abs(ee.worldHeight - H)).toBeLessThan(2)
+    })
+
+    it('is a wide strip: worldWidth exceeds the panel width', () => {
+        // Cylindrical equal-area at parallel 30 is ~2.36:1 — fit to a square-ish
+        // box by height, the width overflows (the strip the caller wraps).
+        expect(ee.worldWidth).toBeGreaterThan(W)
     })
 
     it('project/invert round-trips for several points', () => {
@@ -30,6 +39,15 @@ describe('createEqualEarth', () => {
             expect(back![0]).toBeCloseTo(ll[0], 1)
             expect(back![1]).toBeCloseTo(ll[1], 1)
         }
+    })
+
+    it('poles sit at the top/bottom edges of the box', () => {
+        const north = ee.project([0, 90])
+        const south = ee.project([0, -90])
+        expect(north).not.toBeNull()
+        expect(south).not.toBeNull()
+        expect(north![1]).toBeLessThan(2)
+        expect(south![1]).toBeGreaterThan(H - 2)
     })
 
     it('applies the pan/zoom transform in toScreen', () => {
@@ -61,24 +79,6 @@ describe('createEqualEarth', () => {
         const d = ee.pathString(feature)
         expect(d).toBeTruthy()
         expect(d!.startsWith('M')).toBe(true)
-    })
-
-    it('keeps the projected world inside the box (with inset)', () => {
-        // Sphere fit means extreme points stay within [0,W]x[0,H].
-        const corners: [number, number][] = [
-            [-180, 0],
-            [180, 0],
-            [0, 90],
-            [0, -90],
-        ]
-        for (const ll of corners) {
-            const p = ee.project(ll)
-            if (!p) continue
-            expect(p[0]).toBeGreaterThanOrEqual(0)
-            expect(p[0]).toBeLessThanOrEqual(W)
-            expect(p[1]).toBeGreaterThanOrEqual(0)
-            expect(p[1]).toBeLessThanOrEqual(H)
-        }
     })
 })
 
