@@ -231,3 +231,48 @@ for the v2 gate, growing with each pass. The rewrite is validated end to end
 contested housing resolved; broad-pass 79% unanimous / earthquake-add validated).
 The complement Pedro flagged — growing the raw embedding corpus so MORE of this
 labeled base carries vectors — is the M1 embed cron / #229 (separate lever).
+
+## Methodological backing (for the papers) + what's next
+
+### How this is backed (the method is publishable)
+This is **LLM-ensemble annotation for taxonomy construction + evaluation** — a
+recognized methodology, made rigorous here:
+1. **Multi-model × multi-persona ensemble** (DeepSeek, GPT-4o, GPT-5.5/Codex, +
+   Claude orchestrator) — independent model families reduce single-annotator bias
+   in different places; consensus is robust.
+2. **Reliability = Fleiss' κ** (`kappa.py`) on the 732-item gold base, 3 raters:
+   - full label space (32 cats + OOS): **κ = 0.739 — substantial**
+   - in-category (crisis types only, n=296): **κ = 0.772 — substantial**
+   - binary in-scope/OUT_OF_SCOPE: **κ = 0.706 — substantial**
+   "Substantial" (Landis & Koch .61–.80) across three independent model families on
+   a 33-way task is a strong, defensible reliability number. Notably in-category κ
+   > reject κ: the models agree MORE on which crisis than on the in/out boundary.
+3. **Gold = majority vote** of the 3 scriptable raters; **3-way disagreements
+   adjudicated** by Claude (senior annotator). ~clean (few disagreements).
+4. **Unconfounded benchmark** — this fixes the flaw in the engine spec's §16 F3.2b
+   LLM-judge, which was confounded by label drift (it judged against the
+   production labels). Here the labels ARE the gold, with provenance per item
+   (which raters, agreement) → a reusable labeled + labeled-embedding dataset
+   (`goldset.json`).
+5. **Diagnosis → fix → measure** arc: force-fit measured (Phase A, 30–46%) →
+   structural fix (reject class + excludes, Phase B) → agreement lift (Phase C, v1
+   76% → v2 96%) → at-scale validation (Phase D, κ 0.74). A clean experimental story.
+
+Paper home: **P1 (classification)** — the taxonomy IS the classification label
+space; this is the measured successor to the 41.6% number. The ensemble-κ method
++ the gold base are P1's evaluation contribution. (Cross-ref P4 thread labels, P2
+source/quality.)
+
+### What's next (after the passes finish)
+1. **Grow the base to "full"** — the running passes (+ the embed backfill raising
+   vector coverage so more of the base is training-usable).
+2. **Train/calibrate the v2 GATE** on the gold base: the labeled-embedding data →
+   an OUT_OF_SCOPE-rejecting relevance gate (an e5-feature classifier or a
+   prompt-gate calibrated on gold). This kills the measured ~60% force-fit — the
+   production payoff and P1's method.
+3. **Measure the precision lift** on a held-out gold split: current gate vs v2 gate
+   (the 40–52% → X number). The P1 result.
+4. **Wire v2 into production** — OUT_OF_SCOPE policy + excludes into the gate/
+   assignment prompts, the 2 data-validated natural-hazard categories into
+   `atlas_topics` — on Pedro's review (the final step he framed).
+5. **Pedro's interactive round.**
