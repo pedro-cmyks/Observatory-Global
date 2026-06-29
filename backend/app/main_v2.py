@@ -104,13 +104,14 @@ from app.routers import (
     stats, trends, signals, themes, search,
     geo, workspace, briefing, indicators, wiki, events, narratives, heat,
     nlp_corrections, threads, emergent, translate, waitlist, research,
-    voice_mix, public_attention, telemetry,
+    voice_mix, public_attention, telemetry, attention_threads,
 )
 
 app.include_router(stats.router)
 app.include_router(trends.router)
 app.include_router(signals.router)
 app.include_router(public_attention.router)
+app.include_router(attention_threads.router)
 app.include_router(telemetry.router)
 app.include_router(themes.router)
 app.include_router(search.router)
