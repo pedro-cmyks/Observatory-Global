@@ -2105,8 +2105,25 @@ country-tagged (feddit.dk DK/DK; lemmy.ca→US-subject/CA-origin). (4) **Recurri
 discussion chain** (`33e71e0`): the M1 embed cron (3x/day) now does embed →
 attach → `etl_topic_members` project (all pure-SQL post-embedding), so discussion
 members + topic_members stay current with no manual runs. Synced runner + the 2
-scripts to AtlasLocalWorker (were missing). **NEXT:** F1.1 Bluesky Jetstream
-(volume → lanes differentiate to public/social-led/silent-risk); social
-embedding cadence (eligible, ~0.5% of corpus = slow); then F2 source_family
-clustering guard before scaling forum volume. When the F0.3 read-flag flips on,
+scripts to AtlasLocalWorker (were missing). When the F0.3 read-flag flips on,
 move the ETL projection to the 30-min classifier runner (fresher evidence).
+
+**2026-06-29 (PM cont.3) — F1.1 Bluesky + F2 clustering guard SHIPPED+DEPLOYED.**
+**F1.1** (`97e1556`): `app/services/ingest_bluesky.py` — Jetstream JSON-over-WS
+firehose (no creds / no atproto lib / aiohttp WS), bounded ~25s drain of
+substantive top-level posts → social. Bluesky = one global network (no instance
+home) → country via NER geocode, `source_lang` from BCP-47 `langs` reduced to
+2-letter. Wired `ingest_loop` 4th cycle; 12 tests. LIVE: 185 signals/drain, **13
+languages**. Bug fixed: BCP-47 (`pt-BR`/`zh-Hans`) overflow CHAR(2) source_lang.
+**F2** (`711d3f4`): `snapshot_emergent_topics._social_seed_pred()` keeps
+`source_family='social'` OUT of the HDBSCAN seeding pulls (social still embeds +
+attaches as discussion; just never SEEDS) — env knob
+`ATLAS_CLUSTER_ALLOW_SOCIAL_SEED` for the measured exception. Verified prod: 24
+social excluded / 44,171 press kept; lands BEFORE the F1 volume embeds (spec §8).
+Synced to M1 emergent-snapshot tree. **F0/F1/F2 now done.** **NEXT = F3**: unified
+construction v2 behind `ATLAS_UNIFIED_ENGINE` (embed-all → assign → typed
+`topic_members(unified-v2)`) + `scripts/engine_ab_report.py` (v1-compat vs
+unified-v2 on coherence/recall/black-hole/evidence-purity/cross-source-binding,
+spec §11) — the A/B IS Paper 1's split-brain-vs-unified experiment. Then F4
+measured cutover. Forum volume now flows; lanes differentiate as Bluesky/Lemmy
+embed + attach over the next M1 embed cycles.
