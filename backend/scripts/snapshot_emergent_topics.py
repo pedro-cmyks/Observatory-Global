@@ -59,6 +59,28 @@ DEFAULT_GATE = Path(
 )
 
 
+# Unified Engine F2 (spec 2026-06-29-atlas-unified-engine §8): social signals
+# ATTACH to topics as discussion members (assign_discussion_topics, kNN over the
+# embeddings) but must NEVER SEED clusters — only press/institutional signals
+# anchor the topic spine. Social is still embedded and still attaches; it is just
+# kept OUT of the HDBSCAN seeding corpus so daily-life forum chatter cannot form
+# or pollute clusters as F1 forum volume scales. A measured exception for
+# high-signal forum events can flip this via the env knob.
+_ALLOW_SOCIAL_SEED = os.getenv("ATLAS_CLUSTER_ALLOW_SOCIAL_SEED", "").strip().lower() in {
+    "1", "true", "on", "yes",
+}
+
+
+def _social_seed_pred(alias: str = "") -> str:
+    """SQL predicate that excludes source_family='social' from the seeding pull
+    (empty when the measured-exception knob allows social to seed). `alias` is the
+    table alias prefix ('s.' for the joined query, '' for the bare table)."""
+    if _ALLOW_SOCIAL_SEED:
+        return ""
+    p = f"{alias}." if alias else ""
+    return f" AND ({p}source_family IS NULL OR {p}source_family <> 'social')"
+
+
 async def _pull_signals(conn: asyncpg.Connection, hours: int, max_n: int):
     return await conn.fetch(f"""
         SELECT id, headline, country_code, source_name, timestamp
@@ -66,6 +88,7 @@ async def _pull_signals(conn: asyncpg.Connection, hours: int, max_n: int):
         WHERE timestamp > NOW() - INTERVAL '{int(hours)} hours'
           AND headline IS NOT NULL
           AND length(headline) >= 20
+          {_social_seed_pred()}
         ORDER BY timestamp DESC
         LIMIT $1
     """, max_n)
@@ -79,6 +102,7 @@ _PERSISTED_SELECT = """
     WHERE s.timestamp > NOW() - INTERVAL '{hours} hours'
       AND s.headline IS NOT NULL AND length(s.headline) >= 20
       AND s.source_lang {lang_pred}
+      {social_pred}
     ORDER BY s.timestamp DESC
     LIMIT $1
 """
@@ -97,14 +121,17 @@ async def _pull_embedded_stratified(
     nonenglish_cap), then fills the remainder with English/untagged.
     """
     h = int(hours)
+    social_pred = _social_seed_pred("s")
     ne = await conn.fetch(
         _PERSISTED_SELECT.format(
-            hours=h, lang_pred="IS NOT NULL AND s.source_lang NOT IN ('en','xx','un','und')"),
+            hours=h, social_pred=social_pred,
+            lang_pred="IS NOT NULL AND s.source_lang NOT IN ('en','xx','un','und')"),
         nonenglish_cap)
     fill = max(max_n - len(ne), 0)
     en = await conn.fetch(
         _PERSISTED_SELECT.format(
-            hours=h, lang_pred="IS NULL OR s.source_lang IN ('en','xx','un','und')"),
+            hours=h, social_pred=social_pred,
+            lang_pred="IS NULL OR s.source_lang IN ('en','xx','un','und')"),
         fill) if fill else []
     return list(ne) + list(en)
 

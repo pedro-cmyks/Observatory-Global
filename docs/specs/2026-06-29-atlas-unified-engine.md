@@ -380,7 +380,14 @@ the papers — it is the comparative evidence they need.**
   cron `assign_discussion_topics` (attach is not yet recurring) + social embedding
   cadence (eligible but proportionally slow at 0.5% of corpus); then the
   public/social-led/silent-risk types differentiate at volume.
-- [ ] **F2.1** `source_family` guard in clustering (social attaches, never seeds)
+- [x] **F2.1** `source_family` guard in clustering (social attaches, never seeds) —
+  `snapshot_emergent_topics.py` `_social_seed_pred()` excludes `source_family='social'`
+  from BOTH seeding pulls (`_pull_signals` + `_PERSISTED_SELECT` stratified path);
+  social still embeds + kNN-attaches as discussion. Env knob
+  `ATLAS_CLUSTER_ALLOW_SOCIAL_SEED` for the measured high-signal-event exception.
+  Verified on prod: 24 social excluded, 44,171 press kept for seed — lands BEFORE
+  the F1.1/F1.2 volume embeds (spec §8 "guard before F1 scales"). Synced to the M1
+  emergent-snapshot cron tree.
 - [ ] **F3.1** unified-v2 construction pass (embed-all → assign → typed write) behind `ATLAS_UNIFIED_ENGINE`
 - [ ] **F3.2** `scripts/engine_ab_report.py` (v1 vs v2 metrics, §11)
 - [ ] **F3.3** `movement` role: bind events (ACLED/anomalies) to topics — closes #232
