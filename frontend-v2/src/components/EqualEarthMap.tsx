@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { zoom as d3zoom, zoomIdentity, type ZoomBehavior } from 'd3-zoom'
 import { select } from 'd3-selection'
-import { geoCentroid } from 'd3-geo'
+import { geoCentroid, geoGraticule10 } from 'd3-geo'
 import {
     createEqualEarth,
     type ViewTransform,
@@ -127,6 +127,13 @@ export function EqualEarthMap({
         [size.w, size.h],
     )
 
+    // Graticule (lat/long grid) — drawn over the ocean only (land covers it),
+    // for the nautical-chart / radar identity. Recomputed only on resize.
+    const graticulePath = useMemo(
+        () => (ee ? ee.pathString(geoGraticule10()) : null),
+        [ee],
+    )
+
     // Base path strings (k=1) — the <g> transform scales them, so we only
     // recompute when shapes or container size change, not on pan/zoom.
     const paths = useMemo(() => {
@@ -176,7 +183,13 @@ export function EqualEarthMap({
     // diffuses at the frontier like a radar. All memoized (transform-independent;
     // the parent CSS transform pans/zooms them).
     const landEls = useMemo(() => paths.map((p, i) => (
-        <path key={`l-${p.iso}-${i}`} d={p.d} fill={`rgb(${LAND_RGB.join(',')})`} />
+        <path
+            key={`l-${p.iso}-${i}`}
+            d={p.d}
+            fill={`rgb(${LAND_RGB.join(',')})`}
+            stroke="rgba(150,185,215,0.22)"
+            strokeWidth={0.35}
+        />
     )), [paths])
 
     const heatEls = useMemo(() => paths.map((p, i) => {
@@ -445,6 +458,9 @@ export function EqualEarthMap({
                                     className="equal-earth-sphere"
                                     style={{ fill: OCEAN }}
                                 />
+                                {graticulePath && (
+                                    <path d={graticulePath} className="equal-earth-graticule" />
+                                )}
                                 {landEls}
                                 <g filter="url(#atlas-heat-blur)">{heatEls}</g>
                                 {borderEls}
@@ -462,6 +478,7 @@ export function EqualEarthMap({
                     style={{ width: size.w, height: size.h }}
                 />
             )}
+            <div className="equal-earth-vignette" />
         </div>
     )
 }
