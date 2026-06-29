@@ -16,8 +16,9 @@
 .equal-earth-viewport {
     position: absolute;
     inset: 0;
-    will-change: transform;
     transform-origin: 0 0;
+    /* will-change is toggled inline: on only during an active gesture, so the
+       idle/zoomed map re-rasterizes crisp instead of scaling a cached bitmap. */
 }
 
 .equal-earth-svg {

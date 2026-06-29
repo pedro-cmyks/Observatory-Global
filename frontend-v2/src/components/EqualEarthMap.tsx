@@ -12,6 +12,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { zoom as d3zoom, zoomIdentity, type ZoomBehavior } from 'd3-zoom'
 import { select } from 'd3-selection'
+import { geoCentroid } from 'd3-geo'
 import {
     createEqualEarth,
     type ViewTransform,
@@ -92,6 +93,11 @@ export function EqualEarthMap({
     const [size, setSize] = useState({ w: 0, h: 0 })
     const [features, setFeatures] = useState<CountryFeature[]>([])
     const [transform, setTransform] = useState<ViewTransform>(IDENTITY_TRANSFORM)
+    // True only during an active pan/zoom gesture. We promote the SVG to a GPU
+    // layer (will-change) ONLY then — so the gesture is smooth — and drop it when
+    // idle so the browser re-rasterizes the vector crisp at the current zoom
+    // (with will-change always on, the cached bitmap scales → blur/pixelation).
+    const [gesturing, setGesturing] = useState(false)
 
     // Container size — drives the projection fit. The map can mount at 0×0
     // inside a hidden mobile tab and only get a real box when the tab is shown,
@@ -138,6 +144,21 @@ export function EqualEarthMap({
             d: ee.pathString(f) ?? '',
         })).filter(p => p.d)
     }, [ee, features])
+
+    // Country label anchors (centroid lng/lat + name). Drawn on the canvas at a
+    // constant font size only when zoomed in, so they don't scale with the map.
+    const labels = useMemo(() => {
+        if (features.length === 0) return []
+        return features.map(f => {
+            const name = String(f.properties.NAME ?? f.properties.ADMIN ?? '')
+            const iso = String(f.properties.ISO_A2 ?? f.properties.ISO_A2_EH ?? '')
+            if (!name || iso === '-99') return null
+            try {
+                const c = geoCentroid(f as never) as [number, number]
+                return { name, c }
+            } catch { return null }
+        }).filter(Boolean) as Array<{ name: string; c: [number, number] }>
+    }, [features])
 
     const selectedIso = selectedCountryCode
         ? (GDELT_TO_ISO[selectedCountryCode] ?? selectedCountryCode)
@@ -200,13 +221,13 @@ export function EqualEarthMap({
         if (!el) return
         const zb = d3zoom<HTMLDivElement, unknown>()
             .scaleExtent([1, 12])
-            .on('start', () => { movedRef.current = false })
+            .on('start', () => { movedRef.current = false; setGesturing(true) })
             .on('zoom', (event) => {
                 if (event.sourceEvent) movedRef.current = true
                 const t = event.transform
                 setTransform({ k: t.k, x: t.x, y: t.y })
             })
-            .on('end', () => { setTimeout(() => { movedRef.current = false }, 120) })
+            .on('end', () => { setGesturing(false); setTimeout(() => { movedRef.current = false }, 120) })
         zoomRef.current = zb
         const sel = select(el)
         sel.call(zb)
@@ -224,15 +245,17 @@ export function EqualEarthMap({
     // loop so ALERT markers stay alive: anomaly rings ping (expand + fade) and
     // conflict dots pulse. Reads latest transform/overlay/ee/size via a ref so
     // the loop is stable (set up once) and never janks the SVG. ---
-    const drawRef = useRef({ overlay, ee, applied, size, period })
-    useEffect(() => { drawRef.current = { overlay, ee, applied, size, period } }, [overlay, ee, applied, size, period])
+    const drawRef = useRef({ overlay, ee, applied, size, period, labels })
+    // Sync every render (no deps array) so the rAF loop always reads the latest
+    // without a deps array whose length could shift across HMR edits.
+    drawRef.current = { overlay, ee, applied, size, period, labels }
 
     useEffect(() => {
         let raf = 0
         const num = (v: unknown, d = 0) => (typeof v === 'number' ? v : d)
         const frame = (t: number) => {
             raf = requestAnimationFrame(frame)
-            const { overlay, ee, applied, size, period } = drawRef.current
+            const { overlay, ee, applied, size, period, labels } = drawRef.current
             const canvas = canvasRef.current
             if (!canvas || !ee || size.w === 0 || document.hidden) return
             const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -346,6 +369,26 @@ export function EqualEarthMap({
                     ctx.lineWidth = 1.5; ctx.strokeStyle = `rgba(239,68,68,${0.6 * (1 - ping)})`; ctx.stroke()
                 })
             })
+
+            // 5. Country names — appear when zoomed in (constant size, screen
+            // space → never scale weird). Fade in over the threshold.
+            if (applied.k > 2.2 && labels) {
+                const a = Math.min(1, (applied.k - 2.2) / 1.5)
+                ctx.font = '600 11px ui-sans-serif, system-ui, sans-serif'
+                ctx.textAlign = 'center'
+                ctx.textBaseline = 'middle'
+                for (const lb of labels) {
+                    const p = pt(lb.c); if (!p) continue
+                    for (const off of seams) {
+                        const sx = p[0] + off
+                        if (sx < 0 || sx > size.w || p[1] < 0 || p[1] > size.h) continue
+                        ctx.lineWidth = 3; ctx.strokeStyle = `rgba(6,10,18,${0.85 * a})`
+                        ctx.strokeText(lb.name, sx, p[1])
+                        ctx.fillStyle = `rgba(226,232,240,${a})`
+                        ctx.fillText(lb.name, sx, p[1])
+                    }
+                }
+            }
         }
         raf = requestAnimationFrame(frame)
         return () => cancelAnimationFrame(raf)
@@ -368,6 +411,7 @@ export function EqualEarthMap({
                     style={{
                         transform: `translate3d(${applied.x}px, ${applied.y}px, 0) scale(${applied.k})`,
                         transformOrigin: '0 0',
+                        willChange: gesturing ? 'transform' : 'auto',
                     }}
                 >
                     <svg
