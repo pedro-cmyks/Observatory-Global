@@ -206,81 +206,110 @@ export function EqualEarthMap({
     }, [])
 
     // --- Canvas overlay: terminator + flows + markers (screen-space draw, so
-    // widths/radii stay constant under zoom). Same projection + transform as the
-    // SVG, so layers can't drift. rAF-coalesced so a fast pinch doesn't trigger
-    // a full redraw per event (mobile jank). ---
+    // widths/radii stay constant under zoom). Driven by a single rAF animation
+    // loop so ALERT markers stay alive: anomaly rings ping (expand + fade) and
+    // conflict dots pulse. Reads latest transform/overlay/ee/size via a ref so
+    // the loop is stable (set up once) and never janks the SVG. ---
+    const drawRef = useRef({ overlay, ee, transform, size })
+    useEffect(() => { drawRef.current = { overlay, ee, transform, size } }, [overlay, ee, transform, size])
+
     useEffect(() => {
         let raf = 0
-        raf = requestAnimationFrame(() => {
-        const canvas = canvasRef.current
-        if (!canvas || !ee || size.w === 0) return
-        const dpr = Math.min(window.devicePixelRatio || 1, 2)
-        canvas.width = size.w * dpr
-        canvas.height = size.h * dpr
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-        ctx.clearRect(0, 0, size.w, size.h)
-        if (!overlay) return
-
-        const pt = (c: [number, number]) => ee.toScreen([c[0], c[1]], transform)
         const num = (v: unknown, d = 0) => (typeof v === 'number' ? v : d)
+        const frame = (t: number) => {
+            raf = requestAnimationFrame(frame)
+            const { overlay, ee, transform, size } = drawRef.current
+            const canvas = canvasRef.current
+            if (!canvas || !ee || size.w === 0 || document.hidden) return
+            const dpr = Math.min(window.devicePixelRatio || 1, 2)
+            if (canvas.width !== size.w * dpr || canvas.height !== size.h * dpr) {
+                canvas.width = size.w * dpr
+                canvas.height = size.h * dpr
+            }
+            const ctx = canvas.getContext('2d')
+            if (!ctx) return
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+            ctx.clearRect(0, 0, size.w, size.h)
+            if (!overlay) return
 
-        // 1. Terminator (day/night) — filled polygons.
-        for (const f of overlay.terminator.features) {
-            const op = num(f.properties.opacity)
-            if (op <= 0) continue
-            ctx.fillStyle = `rgba(0, 8, 25, ${Math.min(op, 0.85)})`
-            drawPolygon(ctx, f.geometry, pt)
-            ctx.fill()
+            const pt = (c: [number, number]) => ee.toScreen([c[0], c[1]], transform)
+
+            // 1. Terminator (day/night).
+            for (const f of overlay.terminator.features) {
+                const op = num(f.properties.opacity)
+                if (op <= 0) continue
+                ctx.fillStyle = `rgba(0, 8, 25, ${Math.min(op, 0.85)})`
+                drawPolygon(ctx, f.geometry, pt)
+                ctx.fill()
+            }
+            // 2. Flow arcs.
+            ctx.lineCap = 'round'
+            for (const f of overlay.flows.features) {
+                const coords = f.geometry.coordinates as [number, number][]
+                if (!Array.isArray(coords) || coords.length < 2) continue
+                const a = pt(coords[0]); const b = pt(coords[1])
+                if (!a || !b) continue
+                ctx.beginPath()
+                ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1])
+                ctx.strokeStyle = 'rgba(100, 140, 180, 0.5)'
+                ctx.lineWidth = 0.8 + Math.min(num(f.properties.strength), 1) * 2.2
+                ctx.stroke()
+            }
+            // 3. Static markers (positions, not alerts).
+            const dot = (c: unknown, r: number, fill: string, stroke?: string, sw = 0) => {
+                if (!Array.isArray(c)) return
+                const p = pt(c as [number, number])
+                if (!p) return
+                ctx.beginPath()
+                ctx.arc(p[0], p[1], r, 0, Math.PI * 2)
+                if (fill !== 'none') { ctx.fillStyle = fill; ctx.fill() }
+                if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = sw; ctx.stroke() }
+            }
+            for (const f of overlay.chokepoints.features) {
+                const active = f.properties.active === true
+                dot(f.geometry.coordinates, active ? 9 : 6,
+                    active ? 'rgba(0,220,200,0.16)' : 'rgba(0,180,160,0.08)',
+                    active ? 'rgba(0,255,210,0.8)' : 'rgba(0,180,160,0.35)', active ? 2 : 1)
+            }
+            for (const f of overlay.aircraft.features) {
+                const alt = num(f.properties.alt)
+                const col = alt > 10000 ? 'rgba(255,255,255,0.78)' : alt > 5000 ? 'rgba(255,210,80,0.72)' : 'rgba(255,140,40,0.68)'
+                dot(f.geometry.coordinates, alt > 10000 ? 2 : 3, col)
+            }
+            for (const f of overlay.vessels.features) {
+                dot(f.geometry.coordinates, 2.5, 'rgba(120,200,255,0.7)')
+            }
+
+            // 4. ALERT markers — animated. Conflict dots pulse; anomaly rings ping.
+            const pulse = 0.5 + 0.5 * Math.sin(t / 480) // 0..1, ~1.5 Hz
+            overlay.acled.features.forEach((f, i) => {
+                const c = f.geometry.coordinates
+                if (!Array.isArray(c)) return
+                const p = pt(c as [number, number]); if (!p) return
+                const base = Math.min(num(f.properties.radius, 4), 11)
+                const ph = 0.5 + 0.5 * Math.sin(t / 480 + i * 0.7)
+                ctx.beginPath(); ctx.arc(p[0], p[1], base * (0.85 + 0.3 * ph), 0, Math.PI * 2)
+                ctx.fillStyle = `rgba(239,68,68,${0.35 + 0.3 * ph})`; ctx.fill()
+                ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(239,68,68,0.9)'; ctx.stroke()
+            })
+            // anomaly = radar ping: a steady core ring + an expanding, fading ring.
+            overlay.anomaly.features.forEach((f, i) => {
+                const c = f.geometry.coordinates
+                if (!Array.isArray(c)) return
+                const p = pt(c as [number, number]); if (!p) return
+                const base = num(f.properties.radius, 8)
+                // core ring (gentle breathe)
+                ctx.beginPath(); ctx.arc(p[0], p[1], base * (0.92 + 0.12 * pulse), 0, Math.PI * 2)
+                ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(239,68,68,0.95)'; ctx.stroke()
+                // expanding ping
+                const ping = ((t / 1600 + i * 0.33) % 1)
+                ctx.beginPath(); ctx.arc(p[0], p[1], base * (1 + ping * 1.6), 0, Math.PI * 2)
+                ctx.lineWidth = 1.5; ctx.strokeStyle = `rgba(239,68,68,${0.6 * (1 - ping)})`; ctx.stroke()
+            })
         }
-        // 2. Flow arcs — lines, width by strength.
-        ctx.lineCap = 'round'
-        for (const f of overlay.flows.features) {
-            const coords = f.geometry.coordinates as [number, number][]
-            if (!Array.isArray(coords) || coords.length < 2) continue
-            const a = pt(coords[0]); const b = pt(coords[1])
-            if (!a || !b) continue
-            ctx.beginPath()
-            ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1])
-            ctx.strokeStyle = 'rgba(100, 140, 180, 0.5)'
-            ctx.lineWidth = 0.8 + Math.min(num(f.properties.strength), 1) * 2.2
-            ctx.stroke()
-        }
-        // 3. Point markers.
-        const dot = (c: unknown, r: number, fill: string, stroke?: string, sw = 0) => {
-            if (!Array.isArray(c)) return
-            const p = pt(c as [number, number])
-            if (!p) return
-            ctx.beginPath()
-            ctx.arc(p[0], p[1], r, 0, Math.PI * 2)
-            if (fill !== 'none') { ctx.fillStyle = fill; ctx.fill() }
-            if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = sw; ctx.stroke() }
-        }
-        for (const f of overlay.chokepoints.features) {
-            const active = f.properties.active === true
-            dot(f.geometry.coordinates, active ? 9 : 6,
-                active ? 'rgba(0,220,200,0.16)' : 'rgba(0,180,160,0.08)',
-                active ? 'rgba(0,255,210,0.8)' : 'rgba(0,180,160,0.35)', active ? 2 : 1)
-        }
-        for (const f of overlay.aircraft.features) {
-            const alt = num(f.properties.alt)
-            const col = alt > 10000 ? 'rgba(255,255,255,0.78)' : alt > 5000 ? 'rgba(255,210,80,0.72)' : 'rgba(255,140,40,0.68)'
-            dot(f.geometry.coordinates, alt > 10000 ? 2 : 3, col)
-        }
-        for (const f of overlay.vessels.features) {
-            dot(f.geometry.coordinates, 2.5, 'rgba(120,200,255,0.7)')
-        }
-        for (const f of overlay.acled.features) {
-            dot(f.geometry.coordinates, Math.min(num(f.properties.radius, 4), 12), 'rgba(239,68,68,0.55)', 'rgba(239,68,68,0.9)', 1)
-        }
-        // anomaly rings on top
-        for (const f of overlay.anomaly.features) {
-            dot(f.geometry.coordinates, num(f.properties.radius, 8), 'none', 'rgba(239,68,68,0.95)', 2)
-        }
-        })
+        raf = requestAnimationFrame(frame)
         return () => cancelAnimationFrame(raf)
-    }, [overlay, transform, ee, size.w, size.h])
+    }, [])
 
     return (
         <div
