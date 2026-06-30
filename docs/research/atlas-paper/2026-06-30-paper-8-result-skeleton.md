@@ -86,10 +86,19 @@ result for the paper:
   dynamism curve's negative→positive — a controlled before/after, not a tuned
   demo.** (Verification scheduled.)
 
-## Intervention 2 — coverage: the scoped-pass lever (planned)
-The coverage negative (5.6%) has its lever specced + an R0 probe written
-(scoped per-country HDBSCAN over persisted embeddings) — the planned before/after
-on the coverage curve, run off-peak, gated on the purity/black-hole guard (#224).
+## Intervention 2 — coverage: the scoped-pass lever (FIRST RESULT 2026-06-30)
+The coverage negative's lever was probed on US (highest-volume, lowest-recall),
+15,000 persisted embeddings, recent window. **Global pass: 2.59% of those signals
+are in a topic. Scoped (within-US) HDBSCAN: 38.11% — a ~15× lift — into 530
+distinct, non-blob clusters (largest 86, median 8).** Every grid config landed
+27–38% with no blob. This is the coverage curve's first measured before→after: the
+global HDBSCAN purity/recall cliff is intrinsic to a 200K global space but
+DISSOLVES under partitioning, because within a country the regional stories are
+the majority rather than drowned minorities. Generalization (2nd country) + the
+production per-country loop (R1) follow; the result already refutes the "ceiling
+is intrinsic" null for at least the high-volume case. Artifact:
+`docs/research/recall-scoped/scoped-probe-US.{json,md}`; method:
+`backend/scripts/recall_scoped_probe.py`.
 
 ## Negative-result honesty
 Both negatives (5.6% coverage, frozen lifecycle) are recorded BEFORE the fixes,

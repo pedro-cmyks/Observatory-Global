@@ -52,14 +52,14 @@ _FETCH = """
     LIMIT $3
 """
 
-# How many of this country's signals are in ANY topic today (the global baseline
-# this scoped pass must beat).
-_BASELINE = """
-    SELECT COUNT(DISTINCT tm.signal_id)
-    FROM topic_members tm JOIN signals_v2 s ON s.id = tm.signal_id
-    WHERE s.country_code = $1
-      AND s.timestamp > NOW() - ($2::int * INTERVAL '1 hour')
-"""
+# Of the EXACT signals we fetched (the sample the scoped pass clusters), how many
+# are already in a (global) topic — the directly-comparable global recall. (Bug
+# fix 2026-06-30: the old version divided the country's FULL in-topic count by the
+# capped sample size n, giving impossible >100% baselines.)
+_BASELINE_INTERSECT = (
+    "SELECT COUNT(DISTINCT signal_id) FROM topic_members "
+    "WHERE signal_id = ANY($1::bigint[])"
+)
 
 
 def _parse_vec(text: str) -> list[float]:
@@ -81,8 +81,13 @@ async def main() -> None:
 
     conn = await asyncpg.connect(db)
     try:
+        # The big vec::text fetch (~5KB/row) blows the DB statement_timeout at
+        # scale (the same timeout that froze the embed cron). This is a read-only
+        # research probe → lift the limit for its session.
+        await conn.execute("SET statement_timeout = '600s'")
         rows = await conn.fetch(_FETCH, cc, args.hours, args.max_n)
-        baseline = await conn.fetchval(_BASELINE, cc, args.hours)
+        ids = [int(r["id"]) for r in rows]
+        baseline = (await conn.fetchval(_BASELINE_INTERSECT, ids)) if ids else 0
     finally:
         await conn.close()
 

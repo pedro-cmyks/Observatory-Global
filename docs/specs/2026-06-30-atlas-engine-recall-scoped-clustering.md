@@ -36,6 +36,29 @@ captures a thin spine and discards the rest as noise. This is the structural
 cause of the L2 dishonesty (CI: a 238-signal surge that never formed a topic →
 the alert layer had nothing real to point at → the fake "Flood disaster" lead).
 
+## 1.4 R0 RESULT — scoping WORKS (validated 2026-06-30, US)
+
+The R0 probe (`backend/scripts/recall_scoped_probe.py`) ran on US — the highest-
+volume, lowest-recall country — over 15,000 persisted embeddings (the recent
+window, the hardest case since recent signals haven't been globally clustered
+yet). Result:
+
+| pass | recall | clusters | blob? |
+|---|---|---|---|
+| **global** (signals already in a topic) | **2.59%** (388/15,000) | — | — |
+| **scoped** best (leaf, mcs=5, ms=2) | **38.11%** (5,717/15,000) | **530** | no (largest 86, median 8) |
+
+**~15× recall lift, clean.** Scoping US ALONE found 530 distinct, non-blob
+clusters (vs ~68 total topics system-wide today). Every grid config landed
+27–38% with no blob — the global HDBSCAN cliff (gdelt-decoupling §8: no global
+config gives recall+purity) is DISSOLVED by partitioning, because within a
+country the regional stories are the majority, not noise. **The #229 scoped-pass
+hypothesis is confirmed with data.** Next: generalize to a 2nd country (CN, the
+0% global + voice-gap case), then R1 (the production per-country loop, off-peak).
+INFRA note found en route: the big `vec::text` fetch hits the DB statement_timeout
+(the SAME one that froze the embed cron) — the engine's large-vector queries need
+a higher server-side `statement_timeout`.
+
 ## 1.5 SECOND root cause — the topic layer is FROZEN + sticky (not dynamic)
 
 (Pedro's instinct 2026-06-30: "68 fixed makes no sense — nothing in Atlas

@@ -1,0 +1,81 @@
+{
+  "country": "US",
+  "hours": 168,
+  "embedded_signals": 15000,
+  "global_baseline_in_topic": 388,
+  "global_baseline_recall_pct": 2.59,
+  "results": [
+    {
+      "selection": "leaf",
+      "min_cluster_size": 5,
+      "min_samples": 2,
+      "n_clusters": 530,
+      "clustered": 5717,
+      "scoped_recall_pct": 38.11,
+      "noise_pct": 61.89,
+      "largest_cluster": 86,
+      "median_cluster": 8,
+      "blob_flag": false
+    },
+    {
+      "selection": "leaf",
+      "min_cluster_size": 8,
+      "min_samples": 3,
+      "n_clusters": 280,
+      "clustered": 4807,
+      "scoped_recall_pct": 32.05,
+      "noise_pct": 67.95,
+      "largest_cluster": 177,
+      "median_cluster": 12,
+      "blob_flag": false
+    },
+    {
+      "selection": "leaf",
+      "min_cluster_size": 12,
+      "min_samples": 3,
+      "n_clusters": 158,
+      "clustered": 4267,
+      "scoped_recall_pct": 28.45,
+      "noise_pct": 71.55,
+      "largest_cluster": 177,
+      "median_cluster": 19,
+      "blob_flag": false
+    },
+    {
+      "selection": "eom",
+      "min_cluster_size": 8,
+      "min_samples": 3,
+      "n_clusters": 271,
+      "clustered": 5038,
+      "scoped_recall_pct": 33.59,
+      "noise_pct": 66.41,
+      "largest_cluster": 206,
+      "median_cluster": 12,
+      "blob_flag": false
+    },
+    {
+      "selection": "eom",
+      "min_cluster_size": 15,
+      "min_samples": 5,
+      "n_clusters": 115,
+      "clustered": 4045,
+      "scoped_recall_pct": 26.97,
+      "noise_pct": 73.03,
+      "largest_cluster": 189,
+      "median_cluster": 28,
+      "blob_flag": false
+    }
+  ],
+  "best_non_blob": {
+    "selection": "leaf",
+    "min_cluster_size": 5,
+    "min_samples": 2,
+    "n_clusters": 530,
+    "clustered": 5717,
+    "scoped_recall_pct": 38.11,
+    "noise_pct": 61.89,
+    "largest_cluster": 86,
+    "median_cluster": 8,
+    "blob_flag": false
+  }
+}
