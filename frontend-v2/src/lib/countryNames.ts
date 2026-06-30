@@ -68,7 +68,13 @@ export function resolveCountryName(code: string, apiName?: string): string {
 // NOTE: we do NOT test membership in COUNTRY_NAMES — that map is display-only
 // and incomplete (e.g. CI/PR are absent), so membership would wrongly drop real
 // countries. We only reject explicit placeholders + non-2-letter junk.
-const PLACEHOLDER_COUNTRY_CODES = new Set(['XX', 'ZZ', 'OO', 'QO', 'X1', 'X2'])
+// Placeholders the geo tagger emits + deprecated/historical ISO codes GDELT
+// still geocodes to (CS = Serbia&Montenegro/Czechoslovakia, YU = Yugoslavia,
+// SU = USSR, DD = East Germany) — none map to a current country, so they are
+// never attributable anomalies.
+const PLACEHOLDER_COUNTRY_CODES = new Set([
+    'XX', 'ZZ', 'OO', 'QO', 'X1', 'X2', 'CS', 'YU', 'SU', 'DD',
+])
 export function isKnownCountry(code?: string | null): boolean {
     if (!code) return false
     const c = code.toUpperCase()

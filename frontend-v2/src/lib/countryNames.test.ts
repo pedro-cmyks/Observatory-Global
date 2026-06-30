@@ -15,4 +15,10 @@ describe('isKnownCountry', () => {
         expect(isKnownCountry(null)).toBe(false)
         expect(isKnownCountry(undefined)).toBe(false)
     })
+
+    it('rejects deprecated/historical codes GDELT still emits', () => {
+        expect(isKnownCountry('CS')).toBe(false) // Serbia & Montenegro / Czechoslovakia
+        expect(isKnownCountry('YU')).toBe(false) // Yugoslavia
+        expect(isKnownCountry('SU')).toBe(false) // USSR
+    })
 })

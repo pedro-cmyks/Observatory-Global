@@ -561,3 +561,60 @@ logged):** global Public Attention = football/celebrity/`fr`-wiki-mainpage noise
 (§4.1, #104 rate-limit); Anomaly `A-001 = "XX"` (invalid geo code, 65.7× — bad
 subject-country tag surfacing as a top anomaly). Not re-verified (minor): stream
 country chip, correlation cell, map-background deselect.
+
+## The unified-engine connection — attention + anomaly are the missing roles (Pedro, 2026-06-30)
+
+→ **For the engine track** (`2026-06-29-atlas-unified-engine.md`). Written here,
+not there, to avoid colliding with that session's in-flight edits; the user is
+the bridge — fold it in when the tracks meet.
+
+Pedro's insight, reached from the D/E fixes: **the Unified Engine should also
+consider Wiki, Trends and the Anomaly layer — and today it does not.** Verified
+against the spec: `topic_members.role` is a 4-value enum
+`('evidence','discussion','mood','movement')` = press / forum-social / forum-mood
+/ events. Its "attention" (§9.2 `public-led` / `uncoupled-attention`) is
+**forum-only**. §14 "Deferred" lists only causal cross-vocab linking — so wiki/
+trends/anomaly are **not deferred-on-purpose, just unscoped.** Two real gaps:
+
+1. **No `attention` role (Wiki + Google Trends).** The people-side *reading* and
+   *searching* proxy lives in `wiki_pageviews_v2` / `trends_v2`, surfaced by a
+   SEPARATE bolted-on pipeline (`public_attention.py`, AnomalyPanel) — never a
+   typed member of a topic. A thread cannot say "N people read my Wikipedia
+   article / searched my terms." This is exactly **C3(b)**: an `attention` role
+   subsumes it. The #168 types (`public-led`, `uncoupled-attention`) can only
+   fire on forum today because that is the only attention the engine sees.
+
+2. **Anomaly / volume-baseline is not reconciled into the topic.** The country-
+   volume anomaly (CrisisContext `/anomalies`, z-scores) and the thread/evidence
+   layer are different pipelines that never meet — **the §3 split-brain, proven
+   harmful** (CI: 26× spike → no gate-passing thread → fake "Flood disaster"
+   lead). Finding **E** ("XX" anomaly) is the same family: the volume layer
+   emits un-attributable spikes with no topic to anchor them. A topic should
+   carry its OWN volume-vs-baseline as `movement` (or a topic property), so
+   "critical/elevated" is a property of the *thread's* elevation, not orphaned
+   country volume. The L2 **B1** serving fix (mark critical from the thread's own
+   movement) is the down payment; this is the construction-side root fix.
+
+**Why they're absent:** the engine's substrate is "embeddable signal → nearest
+topic centroid." Wiki/trends are *aggregates* (title/keyword + country, not
+signal text); anomaly is a *country statistic*. Neither fits "embed a row,
+assign it" — so both were left as side pipelines, which is the structural cause
+of the split-brain the L2 audit keeps hitting.
+
+**Proposal (additive, A/B-gated like the rest of the engine):**
+- Add `attention` to the role enum. Bind wiki-title / trend-keyword to a topic by
+  the SAME semantic match C3(b) needs (embed the text, cosine vs centroid) OR
+  country+time co-occurrence. `verified=false`, never evidence — same honesty
+  invariant as discussion. Now `public-led` / `uncoupled-attention` differentiate
+  on REAL reading/searching data, not forum-only.
+- Compute per-topic volume-vs-baseline → a `movement`-class signal (or a topic
+  field), so the alert layer becomes a topic property. Closes §3 split-brain;
+  retires the orphaned country-anomaly-as-lead path that produced the CI failure
+  and the "XX" noise.
+
+Net: it makes the engine actually *unified* — one substrate for press + forum +
+events + **attention** + **alert/movement** — instead of leaving the two
+people-side/volume layers as the bolt-ons that generate L2's worst dishonesty.
+Cross-refs: §3 (split-brain), §4 (public attention / C3 forum + C3b trends/wiki),
+finding E (volume-layer noise), #168 (relationship types), #172 (silent-risk),
+#104 (trends coverage that an attention role would baseline-normalize).
