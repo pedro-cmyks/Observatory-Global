@@ -8,8 +8,9 @@ Empirical evidence: `2026-06-26-l2-deep-review.md` §3 + §"unified-engine conne
 > **⚠ PRIORITY CAVEAT (self-eval, verified vs live numbers).** This spec enriches
 > the EXISTING topic surface — but that surface is tiny: **68 active topics vs
 > 176,104 signals/24h = 0.04% coverage.** Both roles only attach to those 68
-> topics. So the engine's dominant lever is **RECALL (#229 — scoped regional
-> passes to form >68 topics)** and **taxonomy precision (#204 — the measured
+> topics. So the engine's dominant lever is **RECALL (#229 — now specced:
+> `2026-06-30-atlas-engine-recall-scoped-clustering.md`; only 5.6% of embedded
+> signals cluster)** and **taxonomy precision (#204 — the measured
 > 40–52% on-topic ceiling)**, NOT new roles. The CI fake-disaster was a COVERAGE
 > failure (no topic formed); this spec does not fix that — `anomaly→movement`
 > only retires the fake *lead*, leaving an honest gap. **Sequence: recall +

@@ -52,12 +52,16 @@ Foundational/living (do NOT close — they evolve): `living-narrative-threads`
   agnostic) + #162, NOT per-language gate recalibration. Paper 1 = English-
   conditioned caveat.
 
-- [ ] **T1.6a Engine RECALL (#229) — the lead engine lever (self-eval verdict).**
-  Numbers (2026-06-30): **68 active topics vs 176K signals/24h = 0.04% coverage.**
-  The CI fake-disaster + most L2 dishonesty is downstream of LOW COVERAGE (no
-  topic forms). Scoped regional clustering passes (#229 lever 2) + min_cluster_size
-  granularity. Data-layer, off-peak on the M1, needs offline quality testing.
-  THIS is the highest-leverage engine work, ahead of new roles/taxonomy polish.
+- [ ] **T1.6a Engine RECALL (#229) — the lead engine lever. SPEC WRITTEN 2026-06-30:**
+  `2026-06-30-atlas-engine-recall-scoped-clustering.md` (executable, phases
+  R0–R3, evidence-grounded). Measured: only **13,354 of 239,233 embedded signals
+  land in a topic = 5.6%**; per-country **<1%** even for 24K-signal countries
+  (US 24,709→136, CN 8,720→4). Bottleneck = clustering assignment (global HDBSCAN
+  drops ~94% as noise), NOT embedding or promotion. Lever = **scoped passes** over
+  the persisted corpus (partition by country — 15+ countries have 5K–29K embedded,
+  US 28,847 = the R0 test case — cluster within, merge + #224 anchor-guard).
+  Fixes the L2 §3 split-brain at the ROOT (CI gets a topic). Heavy → STRICTLY
+  off-peak M1; R0 measures one country first before any cron change.
 - [ ] **T1.6b Taxonomy precision (#204) — the measured ceiling.** F3.2b: shared
   members 40–52% on-topic by LLM judge = the dominant precision lever, NOT the
   engine. Gold base 2,134/κ0.775 shipped; gold-growth pass (lift gate balanced
