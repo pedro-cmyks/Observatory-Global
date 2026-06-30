@@ -52,11 +52,27 @@ export const COUNTRY_NAMES: Record<string, string> = {
     SX: 'Sint Maarten', AW: 'Aruba', TC: 'Turks & Caicos',
     BM: 'Bermuda', VI: 'Virgin Islands', GU: 'Guam',
     MP: 'N. Mariana Is.', UM: 'U.S. Minor Is.',
+    // ISO codes the data emits that the (FIPS-mixed) map above was missing —
+    // e.g. CI showed as "CI" and PR as "PR" (PR exists only as FIPS "RQ" above).
+    CI: "Côte d'Ivoire", PR: 'Puerto Rico', MO: 'Macau', EH: 'W. Sahara',
 }
 
 export function resolveCountryName(code: string, apiName?: string): string {
     if (apiName && apiName !== code && apiName.length > 2) return apiName
     return COUNTRY_NAMES[code?.toUpperCase()] || code
+}
+
+// Is this an attributable country code (vs a placeholder like "XX"/"ZZ")? Used
+// to keep un-attributable rows out of country-keyed surfaces (e.g. the anomaly
+// list, where "XX" was ranking as the top anomaly).
+// NOTE: we do NOT test membership in COUNTRY_NAMES — that map is display-only
+// and incomplete (e.g. CI/PR are absent), so membership would wrongly drop real
+// countries. We only reject explicit placeholders + non-2-letter junk.
+const PLACEHOLDER_COUNTRY_CODES = new Set(['XX', 'ZZ', 'OO', 'QO', 'X1', 'X2'])
+export function isKnownCountry(code?: string | null): boolean {
+    if (!code) return false
+    const c = code.toUpperCase()
+    return /^[A-Z]{2}$/.test(c) && !PLACEHOLDER_COUNTRY_CODES.has(c)
 }
 
 export const COUNTRY_OPTIONS = Object.entries(COUNTRY_NAMES)

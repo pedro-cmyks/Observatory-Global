@@ -3,7 +3,7 @@ import { useCrisis } from '../contexts/CrisisContext'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { useFocusRelation } from '../hooks/useFocusRelation'
-import { resolveCountryName } from '../lib/countryNames'
+import { resolveCountryName, isKnownCountry } from '../lib/countryNames'
 import { getThemeLabel } from '../lib/themeLabels'
 import { getPublicAttentionTopUrl, getTrendingSearchesUrl, getForumAttentionUrl } from '../lib/publicAttention'
 import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters'
@@ -22,7 +22,12 @@ interface AnomalyPanelProps {
 }
 
 export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPublicAttentionSelect }) => {
-    const { anomalies, nearMisses, themeAnomalies, meta, overallSeverity, loading } = useCrisis()
+    const { anomalies: rawAnomalies, nearMisses: rawNearMisses, themeAnomalies, meta, overallSeverity, loading } = useCrisis()
+    // E (2026-06-30): drop anomaly rows on un-attributable country codes (e.g.
+    // "XX" — the geo tagger emits placeholders that otherwise surfaced as the
+    // top anomaly). Never show an alert we can't pin to a real country.
+    const anomalies = rawAnomalies.filter(a => isKnownCountry(a.country_code))
+    const nearMisses = rawNearMisses.filter(a => isKnownCountry(a.country_code))
     const { filter, setFocus, setMapFlyCountry } = useFocus()
     const { acledConflicts } = useFocusData()
     const relation = useFocusRelation()
