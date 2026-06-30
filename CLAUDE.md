@@ -42,6 +42,17 @@ REMAINING L2: A3 (scope strips), A4 (first-click walkthrough), C3 (per-thread
 public attention). Lesson re-logged: VERIFY a panel before assuming; the NLP
 backlog still gates verified subjects (gazetteer types honestly meanwhile).
 
+**2026-06-30 — TRACK CONSOLIDATION DECIDED (Pedro):** stop the two-chat split;
+this frontend/L2 chat becomes the SINGLE living track AFTER the engine/taxonomy
+chat checkpoints + writes a final engine handoff. Rationale + the absorb plan +
+the exact handoff this chat needs from the engine chat:
+`docs/state/2026-06-30-track-consolidation.md`. The trigger: the L2 audit showed
+the Unified Engine split-brain is BIGGER than its spec scoped — 5 unreconciled
+"brains", not 3; the engine closes press/forum/event, leaves **attention
+(wiki/trends)** + **alert/volume (anomaly)** unscoped (analysis in the L2 spec
+§"unified-engine connection", to be folded into the unified-engine spec on
+consolidation). Until the handoff lands, this chat stays frontend-only.
+
 **2026-06-30 (parallel-chat L2 session, frontend-only — A3/A4/C3 closeout):**
 Verify-before-assume paid off — the "REMAINING L2" list above was STALE.
 Measured against code, not docs: **A3 scope strips ALREADY shipped** in
