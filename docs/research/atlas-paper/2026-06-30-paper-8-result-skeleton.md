@@ -86,18 +86,25 @@ result for the paper:
   dynamism curve's negative→positive — a controlled before/after, not a tuned
   demo.** (Verification scheduled.)
 
-## Intervention 2 — coverage: the scoped-pass lever (FIRST RESULT 2026-06-30)
-The coverage negative's lever was probed on US (highest-volume, lowest-recall),
-15,000 persisted embeddings, recent window. **Global pass: 2.59% of those signals
-are in a topic. Scoped (within-US) HDBSCAN: 38.11% — a ~15× lift — into 530
-distinct, non-blob clusters (largest 86, median 8).** Every grid config landed
-27–38% with no blob. This is the coverage curve's first measured before→after: the
-global HDBSCAN purity/recall cliff is intrinsic to a 200K global space but
-DISSOLVES under partitioning, because within a country the regional stories are
-the majority rather than drowned minorities. Generalization (2nd country) + the
-production per-country loop (R1) follow; the result already refutes the "ceiling
-is intrinsic" null for at least the high-volume case. Artifact:
-`docs/research/recall-scoped/scoped-probe-US.{json,md}`; method:
+## Intervention 2 — coverage: the scoped-pass lever (RESULT 2026-06-30, 2 countries)
+The coverage negative's lever was probed on two countries, persisted embeddings,
+recent window (the hardest case — recent signals aren't globally clustered yet):
+
+| country | global recall | scoped recall (best non-blob) | clusters | lift |
+|---|---|---|---|---|
+| US (15,000) | 2.59% | **38.11%** | 530 | ~15× |
+| CN (6,000) | 2.43% | **32.92%** | 213 | ~13.5× |
+
+Every grid config 22–38% with **no blob**. This is the coverage curve's measured
+before→after: the global HDBSCAN purity/recall cliff is intrinsic to a 200K
+global space but DISSOLVES under partitioning, because within a country the
+regional stories are the majority rather than drowned minorities. **It
+generalizes** — and CN is the key second case: a non-English, voice-gap country
+that clusters ~0% globally clusters at 33% scoped, so scoped passes ALSO dissolve
+the multilingual ASSIGNMENT bottleneck (the result that ties Paper 8 to Paper 5 /
+T1.5). The "ceiling is intrinsic" null is refuted for both the high-volume and the
+voice-gap case. Next: the production per-country loop (R1). Artifacts:
+`docs/research/recall-scoped/scoped-probe-{US,CN}.{json,md}`; method:
 `backend/scripts/recall_scoped_probe.py`.
 
 ## Negative-result honesty

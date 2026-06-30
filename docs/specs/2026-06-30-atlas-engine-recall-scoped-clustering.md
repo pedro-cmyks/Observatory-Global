@@ -43,21 +43,23 @@ volume, lowest-recall country — over 15,000 persisted embeddings (the recent
 window, the hardest case since recent signals haven't been globally clustered
 yet). Result:
 
-| pass | recall | clusters | blob? |
-|---|---|---|---|
-| **global** (signals already in a topic) | **2.59%** (388/15,000) | — | — |
-| **scoped** best (leaf, mcs=5, ms=2) | **38.11%** (5,717/15,000) | **530** | no (largest 86, median 8) |
+| country | global recall | scoped recall (best non-blob) | scoped clusters | lift |
+|---|---|---|---|---|
+| **US** (15,000) | **2.59%** (388) | **38.11%** (5,717) — leaf mcs5 ms2 | **530** | **~15×** |
+| **CN** (6,000) | **2.43%** (146) | **32.92%** (1,975) — leaf mcs5 ms2 | **213** | **~13.5×** |
 
-**~15× recall lift, clean.** Scoping US ALONE found 530 distinct, non-blob
-clusters (vs ~68 total topics system-wide today). Every grid config landed
-27–38% with no blob — the global HDBSCAN cliff (gdelt-decoupling §8: no global
-config gives recall+purity) is DISSOLVED by partitioning, because within a
+**~13–15× recall lift on both, clean (no blob).** US alone → 530 distinct
+clusters, CN alone → 213 (vs ~68 total topics system-wide). Every grid config
+landed 22–38% with no blob — the global HDBSCAN cliff (gdelt-decoupling §8: no
+global config gives recall+purity) is DISSOLVED by partitioning, because within a
 country the regional stories are the majority, not noise. **The #229 scoped-pass
-hypothesis is confirmed with data.** Next: generalize to a 2nd country (CN, the
-0% global + voice-gap case), then R1 (the production per-country loop, off-peak).
-INFRA note found en route: the big `vec::text` fetch hits the DB statement_timeout
-(the SAME one that froze the embed cron) — the engine's large-vector queries need
-a higher server-side `statement_timeout`.
+hypothesis is confirmed with data, and it GENERALIZES** — CN is the voice-gap case
+(non-English, clustered ~0% globally), so scoped passes also dissolve the
+multilingual ASSIGNMENT bottleneck (T1.5 / Paper 5): non-English regional stories
+cluster fine when given their own space. Next: R1 (the production per-country
+loop, off-peak). INFRA note found en route: the big `vec::text` fetch hits the DB
+statement_timeout (the SAME one that froze the embed cron) — the engine's
+large-vector queries need a higher server-side `statement_timeout`.
 
 ## 1.5 SECOND root cause — the topic layer is FROZEN + sticky (not dynamic)
 
