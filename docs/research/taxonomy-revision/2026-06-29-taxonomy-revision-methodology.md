@@ -371,3 +371,46 @@ The diagnosis→fix→measure arc (force-fit 30–46% → reject class → agree
 > the widened sampling; the manuscript numbers (final N, κ, and the v2-gate
 > precision-lift on a held-out split) are updated when the base saturates and the
 > gate is trained.
+
+---
+
+# Result — v2 embedding-gate precision lift (Paper 1 headline)
+
+Measure-first, offline (no prod change). `backend/scripts/ensemble/v2_gate_experiment.py`.
+A LogisticRegression over the e5 embeddings of the gold-labeled signals (n=1,255
+embedded, stratified 75/25 split), vs the current lexical gate measured on the
+same gold.
+
+**Baseline — current lexical gate (`theme-hint-lex-v2`) vs gold, 1,751 gate-kept:**
+- category precision (gold == assigned): **48.7%**
+- force-fit (gold == OUT_OF_SCOPE): **46.4%**
+- in-scope precision (kept ∧ not OOS): 53.6%
+- the stream the gate faces is **91.4% out-of-scope** (random full-stream gold) →
+  the gate's dominant job is to REJECT, and the lexical gate keeps 46% junk.
+
+**v2 e5 gate, held-out:**
+| metric | lexical | v2 e5 | Δ |
+|---|---|---|---|
+| in-scope precision @0.50 | 53.6% | **70.0%** | +16.4pp |
+| category precision (of kept) | 48.7% | **61.5%** | +12.8pp |
+| force-fit (of kept) | 46.4% | **30.0%** | −16.4pp |
+| reject recall (OOS caught) | — | 80.9% | |
+
+**Threshold = the product knob** (keep if P(in-scope) ≥ thr):
+| thr | keep% | in-scope precision | recall |
+|---|---|---|---|
+| 0.50 | 41% | 70.0% | 82.7% |
+| 0.60 | 27% | **80.0%** | 61.8% |
+| 0.70 | 16% | 86.3% | 40.0% |
+| 0.80 | 5% | 100.0% | 15.5% |
+
+**Reading (honest):** a $0-inference e5 gate beats the lexical gate at every
+operating point and **reaches the ~80% LLM-baseline precision at thr 0.60** (at a
+recall cost — it serves the cleanest 27%). The simple learner does not hit ~80% at
+the *balanced* point (61.5% category / 70% in-scope @0.50); closing that needs more
+gold (the base is still growable), a stronger model, and a better category
+sub-model (the multiclass step is the weaker link, data-starved on rare
+categories). The reject decision — the dominant job on a 91%-OOS stream — is where
+the embedding gate is already strong (OOS F1 85, reject recall 81%). This is the
+Paper 1 precision-lift result: the taxonomy revision + gold base convert a 48.7%
+force-fit-ridden gate into a tunable 70–86% one at no per-signal cost.
