@@ -276,3 +276,98 @@ source/quality.)
    assignment prompts, the 2 data-validated natural-hazard categories into
    `atlas_topics` — on Pedro's review (the final step he framed).
 5. **Pedro's interactive round.**
+
+---
+
+# Methodology for Paper 1 (consolidated for the manuscript)
+
+This section is written to drop into the Paper 1 (classification) manuscript as
+its evaluation-methodology contribution. It supersedes the per-phase running
+notes above for citation purposes.
+
+## 1. Motivation
+A prior experiment (the Unified-Engine A/B, F3.2b) established that Atlas's
+topical precision (~40–52%) is bounded by the **taxonomy/label space**, not the
+assignment engine: an LLM judge scored items both the lexical and embedding
+engines agreed on at only 40–52% on-topic, and the disagreement was driven by
+label quality, not engine recall. This motivates a taxonomy revision evaluated on
+an **unconfounded** benchmark — one whose labels are the gold, not the production
+labels under test.
+
+## 2. Annotation method — multi-model × multi-persona ensemble
+Labels are produced by an ensemble of independent LLM annotators rather than a
+single model or human, for two reasons: (a) different model families and analyst
+personas disagree in different regions of the label space, so consensus is more
+robust than any one annotator; (b) inter-annotator agreement becomes a measurable
+reliability statistic (§5).
+- **Annotators:** DeepSeek (`deepseek-chat`), OpenAI (`gpt-4o`), Codex / GPT-5.5
+  (via ChatGPT subscription, batched through the `codex` CLI), and Claude
+  (Opus 4.8, orchestrator) for disagreement adjudication. The proposal phase
+  additionally used distinct **personas** (wire-service taxonomist, ontology
+  purist, geopolitics analyst) to diversify the taxonomy design lens.
+- **Prompt:** each annotator receives the full candidate-v2 label space (32
+  crisis categories with per-category include/exclude rules) + the OUT_OF_SCOPE
+  reject policy, and assigns one label per headline. Batched (one call labels a
+  chunk) for throughput and to avoid per-item rate limits.
+- Provider-neutral client: `backend/scripts/ensemble/model_clients.py`.
+
+## 3. Sampling — representative of the real input distribution
+The evaluation population must be **what the gate actually classifies**, not only
+what it keeps. The gold base is therefore drawn from two strata, deduplicated by
+headline:
+1. **Stratified gate-kept** (per-category sample of current `theme-hint-lex-v2`
+   gate-kept evidence) — ensures every category is represented.
+2. **Representative full-stream random** (uniform recent `signals_v2`, gate-status
+   agnostic, 336h window) — captures the majority non-crisis / out-of-scope
+   distribution the reject class must handle.
+Drawing only from gate-kept evidence would make the OUT_OF_SCOPE decision
+unmeasurable; the full-stream stratum is what lets us evaluate (and later train) a
+gate that rejects. `backend/scripts/ensemble/phase_d_goldset.py`, accumulating
+across passes (dedupe by `signal_id`).
+
+## 4. Gold construction
+Gold label = **majority vote** of the scriptable annotators (DeepSeek, OpenAI,
+Codex). Each record carries `n_votes` and `agree_n` (provenance). Items where an
+annotator was unavailable (see §6) carry `n_votes=2` and are tracked separately,
+never silently treated as unanimous. Three-way disagreements (rare) are
+**adjudicated by Claude** (senior annotator). Each record also carries whether the
+signal has a persisted e5 embedding → the gold doubles as a **labeled-embedding
+training set** for a $0-inference gate.
+
+## 5. Reliability — Fleiss' κ
+On the 3-annotator subset (`backend/scripts/ensemble/kappa.py`):
+- **full label space (32 + OUT_OF_SCOPE): κ = 0.776 (substantial)**, n=1342
+- **in-category (crisis types only): κ = 0.800 (substantial)**, n=617
+- binary in-scope / OUT_OF_SCOPE: κ = 0.729 (substantial)
+All in the Landis & Koch "substantial" band (.61–.80), across three independent
+model families on a 33-way task. κ rose as the base grew (0.739 → 0.776).
+Notably in-category κ (0.800) > reject κ (0.729): annotators agree more on *which*
+crisis than on the in/out boundary, locating residual ambiguity at the gate, not
+inside the taxonomy.
+
+## 6. Limitations (stated honestly)
+- **LLM-consensus gold, not human gold.** The benchmark is an ensemble of LLM
+  annotators; we report κ, not human ground truth. This is the standard
+  LLM-as-annotator caveat; the multi-family ensemble + κ mitigate single-model
+  bias but do not eliminate shared LLM priors. A human-validated subset is future
+  work.
+- **Annotator availability.** The Codex annotator (subscription-metered) exhausted
+  its quota mid-run, producing a window of 2-vote items; it recovered and
+  back-filled. The `n_votes` field makes this explicit; κ is computed only over
+  full 3-vote items.
+- **Taxonomy-independence of the substrate.** The e5 embeddings and the gold
+  *labels* are reusable across taxonomy versions; only the **gate/classification**
+  is taxonomy-dependent. This separation is why the embeddings can be backfilled
+  *now* (not wasted work) while the gate is re-derived from the new labels.
+
+## 7. Reproducibility
+All scripts under `backend/scripts/ensemble/` (model clients, phase A–D, κ,
+candidate synthesis); dataset `docs/research/taxonomy-revision/goldset.json`
+(labels + provenance + embedding flag); candidate taxonomy `candidate-v2.json`.
+The diagnosis→fix→measure arc (force-fit 30–46% → reject class → agreement v1 76%
+→ v2 96% → κ 0.78 at scale) is the experimental spine of the Paper 1 evaluation.
+
+> **Pending (final-numbers pass):** the gold base is still growing overnight under
+> the widened sampling; the manuscript numbers (final N, κ, and the v2-gate
+> precision-lift on a held-out split) are updated when the base saturates and the
+> gate is trained.

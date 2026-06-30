@@ -52,7 +52,7 @@ async def _stratified(conn, per_slug: int, n_random: int) -> list[dict]:
                   (e.signal_id IS NOT NULL) AS embedded
            FROM signals_v2 s LEFT JOIN signal_embeddings e ON e.signal_id=s.id
            WHERE s.headline IS NOT NULL AND length(s.headline)>=25
-             AND s.timestamp > NOW() - INTERVAL '72 hours'
+             AND s.timestamp > NOW() - INTERVAL '336 hours'
            ORDER BY s.headline, random() LIMIT $1""", n_random)
     seen, out = set(), []
     for r in list(strat) + list(rnd):
