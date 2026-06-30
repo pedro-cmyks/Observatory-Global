@@ -74,3 +74,30 @@ taxonomy-independent), reproducibility. Committed.
 3. **Wire v2 into production** (gate/assignment prompts + the 2 new natural-hazard
    categories in `atlas_topics`) — on your go.
 4. Your **interactive round** against Atlas with the v2 taxonomy.
+
+---
+
+# Morning session (2026-06-30) — codex backfill + v2 gate SHIPPED
+
+- **Codex backfill** done → gold base uniform 3-vote (2,134, 0 gaps, κ 0.775 full /
+  0.800 in-category).
+- **v2 gate experiment** (`v2_gate_experiment.py`): baseline lexical gate 48.7%
+  category precision / 46.4% force-fit; v2 e5 gate 61.5% / 70% in-scope @0.50,
+  **80% @ thr 0.60** (threshold = product knob). Documented as the Paper 1 result.
+- **v2 gate TRAINED + SHIPPED** (`train_v2_gate.py` → `backend/models/v2_gate.json`,
+  numpy weights). **FLIP applied live: 567 force-fit demoted** (43.3%), tagged
+  `gate_model=v2-gate-e5-lr-1`, reversible.
+- **Recurring reject wired**: classifier runner Step 3 (`apply_v2_reject.py`,
+  mlvenv numpy-only), flag `ATLAS_V2_GATE_ENABLED=true` in AtlasLocalWorker/.env.
+  Every 30min: lexical + e5base gate + v2 force-fit cut. **NOTE: the runner
+  `/Users/pedro/AtlasLocalWorker/run-atlas-topic-classifier.sh` is un-versioned —
+  the Step 3 edit lives only there + the synced model/script in AtlasLocalWorker.**
+- **A/B documented in Paper 1** (verifiable + reversible via the gate_model tag).
+- Crons re-enabled (classifier + embed); nlp-fleet + emergent-snapshot stay OFF.
+
+**Reversibility:** `UPDATE signal_topic_assignments SET gate_kept=true WHERE
+gate_model='v2-gate-e5-lr-1'` undoes the whole v2 reject.
+
+**Open here (afternoon, on Pedro's go):** Plan 2 = grow more gold (rare-category +
+in-scope balanced) to lift the gate's *balanced* point; optional 3am–9am
+classification catch-up for the window the classifier was paused.
