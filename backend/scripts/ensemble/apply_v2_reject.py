@@ -2,8 +2,10 @@
 
 Post-classifier reject: of the signals the lexical gate (`theme-hint-lex-v2`) KEPT,
 demote the ones the v2 e5 gate scores as OUT_OF_SCOPE (the force-fit). Uses the e5
-vector already persisted in `signal_embeddings` → $0 inference. Does NOT touch the
-classifier; runs after it.
+vector already persisted in `signal_embeddings` → $0 inference. NUMPY-ONLY scoring
+(loads plain logistic weights from `v2_gate.json`, like the existing e5base scope
+gate) — no sklearn/joblib, so it is portable to the M1 worker venv. Does NOT touch
+the classifier; runs after it.
 
 Honesty + safety:
   - DRY-RUN by default: prints the A/B (how many it would demote + spot-check) and
@@ -20,13 +22,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import os
 
 import asyncpg
-import joblib
 import numpy as np
 
-MODEL_PATH = "backend/models/v2_gate.joblib"
+MODEL_PATH = "backend/models/v2_gate.json"
 GATE_MODEL_TAG = "v2-gate-e5-lr-1"
 
 
@@ -34,10 +36,13 @@ def _parse_vec(txt: str) -> np.ndarray:
     return np.fromstring(txt.strip("[]"), sep=",", dtype=np.float32)
 
 
+def _load_gate(path: str) -> tuple[np.ndarray, float]:
+    g = json.load(open(path))
+    return np.asarray(g["inscope_coef"], dtype=np.float64), float(g["inscope_intercept"])
+
+
 async def run(hours: int, threshold: float, apply: bool) -> int:
-    bundle = joblib.load(MODEL_PATH)
-    clf = bundle["model"]
-    inscope_idx = list(clf.classes_).index(bundle["in_scope_class"])
+    coef, intercept = _load_gate(MODEL_PATH)
 
     conn = await asyncpg.connect(os.environ["DATABASE_URL"])
     try:
@@ -52,8 +57,8 @@ async def run(hours: int, threshold: float, apply: bool) -> int:
         if not rows:
             print(f"no embedded gate_kept assignments in {hours}h.")
             return 0
-        X = np.vstack([_parse_vec(r["v"]) for r in rows])
-        p_inscope = clf.predict_proba(X)[:, inscope_idx]
+        X = np.vstack([_parse_vec(r["v"]) for r in rows]).astype(np.float64)
+        p_inscope = 1.0 / (1.0 + np.exp(-(X @ coef + intercept)))  # numpy sigmoid
         reject = p_inscope < threshold
 
         n, nrej = len(rows), int(reject.sum())
