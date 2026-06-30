@@ -28,7 +28,7 @@ import os
 import asyncpg
 import numpy as np
 
-MODEL_PATH = "backend/models/v2_gate.json"
+MODEL_PATH = os.environ.get("ATLAS_V2_GATE_JSON", "backend/models/v2_gate.json")
 GATE_MODEL_TAG = "v2-gate-e5-lr-1"
 
 

@@ -414,3 +414,40 @@ categories). The reject decision — the dominant job on a 91%-OOS stream — is
 the embedding gate is already strong (OOS F1 85, reject recall 81%). This is the
 Paper 1 precision-lift result: the taxonomy revision + gold base convert a 48.7%
 force-fit-ridden gate into a tunable 70–86% one at no per-signal cost.
+
+---
+
+# A/B deployment — v2 reject vs the production gate (verifiable)
+
+The v2 gate was deployed as an A/B comparison against the production gate, not a
+blind swap — so the lift is verifiable on live data.
+
+**The two arms.** Production gate = lexical assignment (`theme-hint-lex-v2`) +
+the 2026-05-29 e5base scope gate (`atlas-scope-gate-v1-e5base`, per-topic ≥90%
+precision thresholds). v2 arm = the same pipeline + a post-gate **v2 reject** that
+demotes any `gate_kept` signal the new e5 gate (trained on the 2,134 OOS-aware
+gold) scores OUT_OF_SCOPE.
+
+**Method.** `apply_v2_reject.py` runs DRY-RUN first (writes nothing) over the live
+`theme-hint-lex-v2` gate_kept set, reporting the demote rate + a spot-check, so the
+two arms are compared on identical real rows before any write. Live apply demotes
+only force-fit, tags `gate_model=v2-gate-e5-lr-1`, keeps `gate_score` → every
+difference between the arms is attributable and **reversible**
+(`UPDATE … SET gate_kept=true WHERE gate_model='v2-gate-e5-lr-1'`), so the A/B can
+be rolled back and re-measured.
+
+**Result (live, 168h, n=1,310 embedded gate_kept).** The v2 arm demoted **567
+(43.3%)** as force-fit — matching the gold-measured 46.4% baseline. Spot-check:
+demoted = local crime/admin force-fit ("Chiropractor charged with sexual assault",
+"Delhi HC school-rape bail", "Diaspora to vote online"); retained = genuine crises
+("France 1,000 heatwave deaths", "Ebola DR Congo 4th province", "Assam floods
+45,000 hit"). Real-stream validation (600 fresh non-gold signals, the honest
+91%-OOS distribution) keeps 18.2% @0.50 with a clean reject/keep split.
+
+**Deployment.** Flipped live (567 demoted) + wired recurring into the classifier
+runner (Step 3, flag `ATLAS_V2_GATE_ENABLED`, numpy-only on the M1 mlvenv, $0
+inference). The gate_model tag is the audit key for the ongoing A/B: kept-set
+precision can be re-measured at any time by comparing rows with/without the v2
+demotion against fresh ensemble labels. Verdict so far: v2 cuts ~43% of served
+force-fit while retaining the crisis signal — the product face of the Paper 1
+precision-lift result.
