@@ -64,8 +64,11 @@ over; the engine chat closed at the **v2-gate checkpoint** + wrote its final
 handoff (`docs/state/2026-06-30-engine-chat-final-handoff.md`, 5 points), this
 chat ABSORBED it → now the SINGLE living track owning engine + frontend. No more
 "reserved" — but the **heavy-compute discipline stays** (M1 crons ON: classifier
-30min + embed 17:30/23:30/05:30; M1 crashed at load 177 from stacked compute, so
-any heavy local pass goes off-peak AROUND the embed cron, efficiency cores). Owned
+30min + embed 17:30/23:30/05:30 + **emergent-snapshot REVIVED 2026-06-30 mindful
+@ 20:30/02:30** — it had frozen the served living topics; re-enabled off-peak in
+the embed gaps, Background QoS + nice 10 + `taskpolicy -b`, RunAtLoad off; M1
+crashed at load 177 from stacked compute, so any heavy local pass goes off-peak
+AROUND the embed cron, efficiency cores). Owned
 engine state: construction serves **v1** (unified-v2 built + A/B-wins, NOT
 flipped — F4 gated on labeling+gold+read-path); **v2 reject gate LIVE** (567
 force-fit demoted, `gate_model='v2-gate-e5-lr-1'`, reversible); `topic_members`

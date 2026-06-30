@@ -14,34 +14,35 @@
   <key>WorkingDirectory</key>
   <string>/Users/pedro/AtlasLocalWorker</string>
 
+  <!-- RunAtLoad FALSE (2026-06-30): this HDBSCAN job is heavy; firing on load
+       during work hours risks the load-177 crash. Fires only on schedule. -->
   <key>RunAtLoad</key>
-  <true/>
+  <false/>
 
+  <!-- Mindful: efficiency cores + low QoS so it yields to foreground work.
+       (Single moderate job, not a burst fleet, so the Background clamp is wanted
+       here — unlike the nlp-fleet.) Runner also wraps python in `taskpolicy -b`. -->
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>Nice</key>
+  <integer>10</integer>
+
+  <!-- Revived 2026-06-30 to unfreeze the served living topics (dynamic_topics),
+       scheduled OFF-PEAK in the GAPS between the embed cron (17:30/23:30/05:30)
+       so the two never stack (the consolidation booted this to avoid that). -->
   <key>StartCalendarInterval</key>
   <array>
     <dict>
       <key>Hour</key>
-      <integer>0</integer>
+      <integer>20</integer>
       <key>Minute</key>
-      <integer>0</integer>
+      <integer>30</integer>
     </dict>
     <dict>
       <key>Hour</key>
-      <integer>6</integer>
+      <integer>2</integer>
       <key>Minute</key>
-      <integer>0</integer>
-    </dict>
-    <dict>
-      <key>Hour</key>
-      <integer>12</integer>
-      <key>Minute</key>
-      <integer>0</integer>
-    </dict>
-    <dict>
-      <key>Hour</key>
-      <integer>18</integer>
-      <key>Minute</key>
-      <integer>0</integer>
+      <integer>30</integer>
     </dict>
   </array>
 

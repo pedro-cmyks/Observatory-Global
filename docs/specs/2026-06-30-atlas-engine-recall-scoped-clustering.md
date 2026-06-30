@@ -76,9 +76,19 @@ re-ran `etl_topic_members` once by hand → `topic_members` fresh again
 Synced to AtlasLocalWorker. **STILL FROZEN:** the SERVED layer — `/threads` reads
 `dynamic_topics` (via `emergent_clusters`, last 06-29 17:00) because the
 emergent-snapshot former is OFF and serving hasn't flipped to `topic_members`.
-Unfreezing serving = **E4** (§7): flip the F0.3 read-flag to the now-fresh
-`unified-v2`/`topic_members`, OR revive a mindful emergent-snapshot. That is a
-serving cutover (read-path + parity), Pedro's call — NOT done here.
+Unfreezing serving = **E4** (§7). Verified live first: flipping F0.3 would NOT
+help — `/threads` already serves the ATLAS threads fresh (from live lexical
+assignments); only the **dynamic/living** threads (`dynamic_topics`) are frozen,
+and F0.3 doesn't touch them. So **E4(b) — revive emergent-snapshot — is the
+correct fix** (Pedro chose it). **DONE 2026-06-30:** re-enabled
+`com.atlas.emergent-snapshot`, but MINDFUL + scheduled in the gaps — `RunAtLoad`
+off (no daytime fire; verified it did not run on load), `StartCalendarInterval`
+**20:30 + 02:30** (off-peak, 3h from the embed cron so they never stack — the
+stacking was why the consolidation booted it), `ProcessType=Background` + `Nice
+10` + runner `taskpolicy -b` (efficiency cores). First fire 20:30 → forms fresh
+`dynamic_topics` → the living threads unfreeze + the lifecycle (form/retire)
+resumes. End-state is still F4 (serve `unified-v2`, which the embed-runner fix
+now feeds); emergent-snapshot is the bridge until then.
 
 ## 2. Root cause (verified, not re-investigate — see gdelt-decoupling §8)
 The HDBSCAN sweep already proved there is **no global config with both high

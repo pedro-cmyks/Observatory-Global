@@ -90,7 +90,14 @@ fi
 
 cd "$ROOT_DIR"
 
-"$MLVENV/bin/python" -m backend.scripts.snapshot_emergent_topics \
+# Mindful (2026-06-30): run the HDBSCAN snapshot on EFFICIENCY cores so it yields
+# to Pedro's foreground work — the M1 crashed at load 177 from stacked compute,
+# so this revived cron must stay gentle (reinforces the plist Background QoS; also
+# applies if this runner is invoked by hand).
+TASKPOLICY=""
+command -v taskpolicy >/dev/null 2>&1 && TASKPOLICY="taskpolicy -b"
+
+$TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.snapshot_emergent_topics \
   --window-hours "$WINDOW_HOURS" \
   --max-signals "$MAX_SIGNALS" \
   --min-cluster-size "$MIN_CLUSTER_SIZE" \
@@ -104,7 +111,7 @@ cd "$ROOT_DIR"
 # Incremental + idempotent + $0 API (local student/e5; per-cluster noise cached
 # once). Guarded so a lifecycle failure never fails the snapshot cron.
 if [[ -f "$STUDENT_JSON" ]]; then
-  ( cd "$BACKEND_DIR" && "$MLVENV/bin/python" -m scripts.project_dynamic_topics \
+  ( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.project_dynamic_topics \
       --student-model "$STUDENT_JSON" ) \
     || echo "[emergent-snapshot] dynamic_topics projection failed (non-fatal)" >&2
 else
