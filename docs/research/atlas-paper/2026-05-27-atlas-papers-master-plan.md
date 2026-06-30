@@ -432,14 +432,27 @@ The **cold archive was relocated to external disk** (`/Volumes/Ext/Atlas/Archive
 `/Users/pedro/AtlasArchive` symlinked; runner exits if the volume is unmounted;
 59 manifest dirs / 272 records / 3,947,759 rows verified, CLAUDE.md 2026-06-01) —
 concrete tiering operations under cost budget. (4) The strongest new datum is the
-**raw-vs-served coverage gap (#229)**: a measured funnel of `174K` ingested
-signals/24h → `71K` persisted embedding corpus → ~23 clusters/snapshot → ~50
-served threads ≈ **0.2% of the signal mass**, with the bottleneck identified as
-clustering RECALL (not the promotion gate); the persisted-corpus clustering that
-dissolved the 15K hot-window cap is shipped (`--from-persisted` cron every 6h;
-CLAUDE.md 2026-06-12 / 2026-06-25). This is the temporal-tier analogue of what
-the hot window can surface vs what is retained — directly relevant to bucket and
-retention justification (shared substrate with Paper 8's open-set funnel).
+**raw-vs-served coverage gap (#229)** — re-measured precisely 2026-06-30 (live
+prod), which SHARPENS the old `~0.2%` funnel and adds a second dimension:
+- **Coverage:** `534K` signals → `239K` embedded → only **`13,354` distinct
+  signals in any topic = `5.6%` of embedded (`2.5%` of total)**. Per-country
+  recall is **`<1%` even for the highest-volume countries** (US `24,709→136`/0.6%,
+  CN `8,720→4`/0.0%, RU `7,036→10`). Bottleneck = **clustering ASSIGNMENT**
+  (global HDBSCAN drops ~94% as noise), NOT embedding (239K done) or the promotion
+  gate. The HDBSCAN purity/recall cliff is characterized (no global config gives
+  both); the lever is **scoped passes** (spec
+  `2026-06-30-atlas-engine-recall-scoped-clustering.md`, R0 probe written).
+- **Dynamism (new):** the served topic set was found **FROZEN** — `dynamic_topics`
+  last updated 06-29 17:00 (the topic-forming cron was disabled in a 06-29 infra
+  consolidation; the successor `unified-v2` built but was not served), and 54/68
+  "active" topics had `last_seen` > 3 days (the lifecycle wasn't retiring). **A
+  fixed topic count from a streaming feed is itself a failure signal.** Root cause
+  + fix logged (the embed runner's fatal embed-step aborted the chain; the
+  emergent-snapshot former was revived mindful/off-peak 06-30).
+Both are **Paper 8's** result (`2026-06-30-paper-8-result-skeleton.md`: open-set
+discovery = coverage + dynamism, published as a measured negative-before-fix).
+This is also the temporal-tier analogue of what the hot window surfaces vs what is
+retained — directly relevant to bucket/retention justification.
 
 **Evidence to collect:**
 - Query latency per bucket granularity.
@@ -564,6 +577,23 @@ documented case: the Peru vote-recount, 92 signals, never clustered), stratified
 sampling. The persisted-corpus clustering (which dissolved the 15K hot-window
 cap) is already shipped (`--from-persisted` cron); recall measurement on the full
 corpus is the next experiment. (CLAUDE.md 2026-06-12 #229 / 2026-06-25.)
+
+**Product evidence SHARPENED + a second dimension (2026-06-30) — see the result
+skeleton `2026-06-30-paper-8-result-skeleton.md`:** re-measured on live prod with
+exact queries. (1) **Coverage, sharper:** 534K signals → 239K embedded → only
+**13,354 in any topic = 5.6% of embedded**; per-country **<1%** even at high
+volume (US 24,709→136/0.6%, CN 8,720→4/0.0%). Confirms the bottleneck is
+clustering ASSIGNMENT, not embedding/gate. Lever specced + R0 probe written
+(`2026-06-30-atlas-engine-recall-scoped-clustering.md`). (2) **NEW — dynamism:**
+the served topic set was found FROZEN (`dynamic_topics` last updated 06-29 17:00;
+the forming cron disabled in the consolidation; 54/68 "active" topics >3d stale,
+the lifecycle not retiring). **A fixed topic count from a streaming feed is itself
+a failure signal** — open-set discovery is not just coverage but *dynamism*
+(topics appear/retire with the world). Root cause (a fatal embed-step aborted the
+projection chain) diagnosed + fixed; the former revived mindful/off-peak →
+natural before/after on the dynamism curve, verification scheduled. So Paper 8 now
+has TWO measured negatives-before-fix (coverage + dynamism) with localized causes
+and controlled interventions — the systems-paper contribution.
 
 **Product evidence accrued (2026-06-26, L2 deep review — forums structurally
 excluded from discovery):** the open-set funnel was found to throw away an entire

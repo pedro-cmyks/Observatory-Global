@@ -270,3 +270,30 @@ benchmark the production-label judge could not provide. Full method:
 `docs/research/taxonomy-revision/2026-06-29-taxonomy-revision-methodology.md`;
 dataset: `goldset.json`. The next P1 number is the v2-gate precision lift on a
 held-out gold split.
+
+## The split-brain is FIVE pipelines, not three (2026-06-30 extension)
+
+The A/B above framed the split-brain as 3 construction pipelines (atlas-lexical ‖
+dynamic-embedding ‖ discussion-attach) and showed unified-v2 reconciles them. An
+L2-surface audit (`docs/specs/2026-06-26-l2-deep-review.md` §"unified-engine
+connection") found the unification is **incomplete**: the unified engine's
+substrate is "embeddable signal → nearest centroid", which covers press/forum/
+event but silently EXCLUDES two more pipelines that never reconcile into a topic:
+
+1. **Attention** — Wikipedia pageviews + Google Trends (the people-side reading/
+   searching proxy) live in separate tables and are surfaced by a side service,
+   never as typed topic members. The engine's #168 "attention" relationship types
+   can only fire on forum data because that is the only attention it sees.
+2. **Alert/volume** — the country-anomaly layer (z-scores) and the topic layer are
+   different pipelines that never meet — the §3 split-brain that routes a 26×
+   volume spike with no gate-passing thread into a fabricated "critical" lead (the
+   Côte d'Ivoire case).
+
+So the split-brain has **five brains; the unified engine closes three.** This is
+not a contradiction of the A/B (unified-v2 IS better on the 3 it reconciles) — it
+is a scope correction: the engine's claim of "any signal enters" is really "any
+*embeddable* signal enters." The fix (an `attention` role + an `anomaly→movement`
+topic property, both `verified=false`/honesty-preserving, A/B-gated like F3) is
+specced in `docs/specs/2026-06-30-atlas-engine-attention-anomaly-roles.md`. Paper
+note: report the unification as a 5-pipeline reconciliation with 3 done + 2
+measured-and-specced, not an absolute — the honest scope is the contribution.

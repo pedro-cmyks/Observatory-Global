@@ -67,7 +67,33 @@ live lifecycle over 5.6% recall still misses 94% of the world.
 - **Paper 3/7** (heat / workflow): a dynamic, well-covered topic set is the
   substrate the heat + analyst surfaces draw from.
 
+## Intervention 1 — dynamism: a natural before/after (in flight 2026-06-30)
+The frozen-lifecycle negative had a precise, diagnosable cause — a clean systems
+result for the paper:
+- **Diagnosis.** Pipeline forensics (ingest/embed/lexical-assign all LIVE; only
+  the topic-forming tail frozen at 06-29 19:04) localized it to the M1 embed
+  runner: Step 1 (embed) ran under `set -e` as a FATAL step, so an asyncpg
+  statement-timeout (a large/slow embed backlog) aborted the run BEFORE the
+  topic-projection steps. Compounded by the topic-forming cron being disabled in
+  the 06-29 consolidation while the successor wasn't yet served.
+- **Intervention.** (a) make the embed step non-fatal so the projection always
+  runs; (b) revive the topic-forming cron mindful + off-peak (efficiency cores,
+  scheduled in the gaps so it never stacks — stacking had crashed the machine).
+- **Expected after (the measurement, ~24–48h):** `dynamic_topics` resumes
+  forming new topics + retiring stale ones (`stale_k=2`/`retire_m=4` by
+  `snapshots_since_seen`); the active-set size tracks event volume instead of
+  pinning to a constant; the 54 stale-but-active topics drain. **This is the
+  dynamism curve's negative→positive — a controlled before/after, not a tuned
+  demo.** (Verification scheduled.)
+
+## Intervention 2 — coverage: the scoped-pass lever (planned)
+The coverage negative (5.6%) has its lever specced + an R0 probe written
+(scoped per-country HDBSCAN over persisted embeddings) — the planned before/after
+on the coverage curve, run off-peak, gated on the purity/black-hole guard (#224).
+
 ## Negative-result honesty
-This baseline is published as a measured negative (5.6% coverage, frozen
-lifecycle) BEFORE the fix — so the lever's lift is a real, reproducible before/
-after, not a cherry-picked after. The query set is in the engine recall spec §1.
+Both negatives (5.6% coverage, frozen lifecycle) are recorded BEFORE the fixes,
+with the exact prod queries in the engine recall spec §1 — so each lever's lift
+is a real, reproducible before/after, not a cherry-picked after. A *systems*
+discovery paper's contribution is precisely this: the measured failure, the
+localized cause, and the controlled intervention — not just the final number.
