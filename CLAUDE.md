@@ -10,8 +10,14 @@
 > and narrows further if telemetry shows one persona dominates.) **Anti-goal:**
 > no new surface/capability until telemetry shows users reaching a value moment.
 
-Last updated: 2026-06-30. **TRACK CONSOLIDATION (read this FIRST):** the two
-parallel chats (engine/taxonomy ‖ frontend/L2) are merging into ONE living track —
+Last updated: 2026-06-30. **TRACK CONSOLIDATION — COMPLETE (read this FIRST):**
+the two parallel chats (engine/taxonomy ‖ frontend/L2) have MERGED into ONE living
+track — the engine handoff was absorbed 2026-06-30, so this is now the SINGLE
+track owning BOTH engine and frontend (no more "reserved" split). State now owned:
+prod serves construction **v1**; **v2 reject gate LIVE** (reversible); pending
+off-peak = gold-growth pass + F4 unified-v2 cutover + the attention/anomaly engine
+extension; ⚠ the M1 classifier runner Step 3 is un-versioned (see handoff §5).
+Original merge rationale —
 the L2 audit showed the split-brain is one problem, two ends (the engine's missing
 attention+anomaly roles ARE the L2 surfaces). Plan + rationale:
 `docs/state/2026-06-30-track-consolidation.md`. The engine chat's **FINAL HANDOFF**
@@ -53,16 +59,23 @@ REMAINING L2: A3 (scope strips), A4 (first-click walkthrough), C3 (per-thread
 public attention). Lesson re-logged: VERIFY a panel before assuming; the NLP
 backlog still gates verified subjects (gazetteer types honestly meanwhile).
 
-**2026-06-30 — TRACK CONSOLIDATION DECIDED (Pedro):** stop the two-chat split;
-this frontend/L2 chat becomes the SINGLE living track AFTER the engine/taxonomy
-chat checkpoints + writes a final engine handoff. Rationale + the absorb plan +
-the exact handoff this chat needs from the engine chat:
-`docs/state/2026-06-30-track-consolidation.md`. The trigger: the L2 audit showed
-the Unified Engine split-brain is BIGGER than its spec scoped — 5 unreconciled
-"brains", not 3; the engine closes press/forum/event, leaves **attention
-(wiki/trends)** + **alert/volume (anomaly)** unscoped (analysis in the L2 spec
-§"unified-engine connection", to be folded into the unified-engine spec on
-consolidation). Until the handoff lands, this chat stays frontend-only.
+**2026-06-30 — TRACK CONSOLIDATION COMPLETE (Pedro):** the two-chat split is
+over; the engine chat closed at the **v2-gate checkpoint** + wrote its final
+handoff (`docs/state/2026-06-30-engine-chat-final-handoff.md`, 5 points), this
+chat ABSORBED it → now the SINGLE living track owning engine + frontend. No more
+"reserved" — but the **heavy-compute discipline stays** (M1 crons ON: classifier
+30min + embed 17:30/23:30/05:30; M1 crashed at load 177 from stacked compute, so
+any heavy local pass goes off-peak AROUND the embed cron, efficiency cores). Owned
+engine state: construction serves **v1** (unified-v2 built + A/B-wins, NOT
+flipped — F4 gated on labeling+gold+read-path); **v2 reject gate LIVE** (567
+force-fit demoted, `gate_model='v2-gate-e5-lr-1'`, reversible); `topic_members`
+mig 057 (evidence+discussion populated, mood sparse, movement blocked #232).
+PENDING off-peak: gold-growth pass (lifts gate balanced 61.5%→~80%), F4 cutover,
+and the **attention/anomaly engine extension** (the 5-brains analysis — L2 spec
+§"unified-engine connection", fold into `2026-06-29-atlas-unified-engine.md`).
+⚠ **Un-versioned risk:** the M1 classifier runner Step 3
+(`run-atlas-topic-classifier.sh`) is NOT in git — re-sync `apply_v2_reject.py` +
+`v2_gate.json` to AtlasLocalWorker on any engine-code change (handoff §5).
 
 **2026-06-30 (parallel-chat L2 session, frontend-only — A3/A4/C3 closeout):**
 Verify-before-assume paid off — the "REMAINING L2" list above was STALE.
