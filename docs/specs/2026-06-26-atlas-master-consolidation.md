@@ -12,24 +12,23 @@ open-spec corpus.
 
 ---
 
-## 1. Source-spec → close map
+## 1. Source-spec → close map  ·  **VALIDATED 2026-06-30** (each claim checked vs code/live, not trusted)
 
-A source spec closes when all its rows below are `[x]`.
-
-| Source spec | Remaining items here | Closes when |
-|---|---|---|
-| `2026-06-26-truncated-narrative-thread` | T1.3, T1.4 | both done |
-| `2026-06-09-research-thread-builder-workbench` | T1.1, T1.2 (Phase 4) | Phase-4 row done |
-| `2026-06-24-community-signal-layer` (#237) | T2.1 | T2.1 done (Phase-2 forum stays deferred by design) |
-| `2026-06-26-l2-deep-review` | T2.2, T3.1, T3.2, T1.5 | A3✅ A4✅ C3-forum✅ (C3b trends/wiki deferred); B4 gate-recall re-run pending (gate-adjacent) |
-| `2026-06-11-surfaces-editorial-review` (#225) | T3.4 (gap box) | done — *body already executed; close on read* |
-| `2026-06-12-l2-l3-deep-review` | — | **closeable now** (executed; #227 closed) |
-| `2026-06-25-mobile-multilevel-review` | T3.3 | done — *IA executed; close on read* |
-| `2026-05-23-ai-assisted-taxonomy` (#204) | T6.1 | T6.1 done |
+| Source spec | Validated status (2026-06-30) |
+|---|---|
+| `2026-06-26-truncated-narrative-thread` | ✅ **CLOSED** — T1.4 SignalDetail "Where this fits" (`connected_threads`) verified LIVE this session (RELATED 86% + Semantic Neighbors, GDELT collapsed); T1.3 done. |
+| `2026-06-09-research-thread-builder-workbench` | ⏳ **OPEN** — Phases 0.5/1a/1b/2 shipped, but **Phase 4 (T1.1 who-says-what dossier + T1.2 evidence-quality/Paper-1 benchmark) NOT done.** Stays open. |
+| `2026-06-24-community-signal-layer` (#237) | ⏳ **OPEN** — forum lane shipped, but **T2.1 lead-time-vs-coverage NOT done.** Stays open. |
+| `2026-06-26-l2-deep-review` | 🔵 **LIVING** — A3/A4/C3-forum/B4(T1.5) done, C3b deferred; now also carries the live connectivity audit + the unified-engine 5-brains analysis. Keep open as the L2 reference. |
+| `2026-06-11-surfaces-editorial-review` (#225) | ✅ **CLOSED** — Brief L1 rebuild verified (`lib/briefLead.ts` + `Briefing.tsx`, commits `3369e29`/`ae855f4`, no Math.random template essays). T3.4 gap box → tracked at #172/#145. |
+| `2026-06-12-l2-l3-deep-review` (#228) | ✅ **CLOSED** — verified: SignalDetail rebuild, `AtlasHeatList.tsx` mounted, `rank_key_people` wired (`thread_packet.py`). #227 closed. |
+| `2026-06-25-mobile-multilevel-review` (#236) | ✅ **CLOSED (IA)** — tabbed IA (Map/Threads/Stream/Pulse, `App.tsx:2092` mobile-tabbar) verified LIVE this session. Per-surface polish ongoing in T3.3 (not a re-open). |
+| `2026-05-23-ai-assisted-taxonomy` (#204) | 🔵 **LIVING** — v2 reject gate + gold base 2,134/κ0.775 shipped (engine chat); gold-growth pass + quarterly revision ongoing. Keep open. |
 
 Foundational/living (do NOT close — they evolve): `living-narrative-threads`
 (Paper 4), `atlas-focus-model`, `atlas-narrative-intelligence-framework`,
-`voice-relation-plan`.
+`voice-relation-plan`, plus the engine specs (`2026-06-29-atlas-*`,
+`2026-06-30-atlas-engine-attention-anomaly-roles`).
 
 ---
 
@@ -53,16 +52,26 @@ Foundational/living (do NOT close — they evolve): `living-narrative-threads`
   agnostic) + #162, NOT per-language gate recalibration. Paper 1 = English-
   conditioned caveat.
 
-- [ ] **T1.6 Engine attention + anomaly→movement roles (the 5-brains fix).**
-  Post-consolidation (2026-06-30): the unified engine closed 3 of the split-brain's
-  5 pipelines; add the last 2 — `attention` (wiki/trends → topic centroid,
-  verified=false; subsumes C3(b)/T2.2) + `anomaly→movement` (per-topic
-  volume-baseline; retires the orphaned country-anomaly-as-lead = the CI
-  fake-disaster + finding E). Closes the §3 split-brain at the root; makes #168
-  types real. *Spec:* `2026-06-30-atlas-engine-attention-anomaly-roles.md`
-  (executable, phases G0–G4; heavy steps off-peak). *Decisions pending Pedro:*
-  D1 (member-ref schema vs separate table), D2 (attention in ranking?), D3
-  (movement replaces vs augments country anomaly). *Papers:* 1/3/7.
+- [ ] **T1.6a Engine RECALL (#229) — the lead engine lever (self-eval verdict).**
+  Numbers (2026-06-30): **68 active topics vs 176K signals/24h = 0.04% coverage.**
+  The CI fake-disaster + most L2 dishonesty is downstream of LOW COVERAGE (no
+  topic forms). Scoped regional clustering passes (#229 lever 2) + min_cluster_size
+  granularity. Data-layer, off-peak on the M1, needs offline quality testing.
+  THIS is the highest-leverage engine work, ahead of new roles/taxonomy polish.
+- [ ] **T1.6b Taxonomy precision (#204) — the measured ceiling.** F3.2b: shared
+  members 40–52% on-topic by LLM judge = the dominant precision lever, NOT the
+  engine. Gold base 2,134/κ0.775 shipped; gold-growth pass (lift gate balanced
+  61.5%→~80%) pending off-peak. Pairs with T6.1.
+- [ ] **T1.6c Engine `anomaly→movement` role (cheap honest win).** Per-topic
+  volume-vs-baseline as a topic property (countable from `topic_members`, ships
+  WITHOUT the #232 event-ref blocker). Retires the fake *lead* (below-gate thread
+  shown critical); leaves the honest coverage gap (does NOT fix CI root — that's
+  T1.6a). *Spec:* `2026-06-30-atlas-engine-attention-anomaly-roles.md` §2.2/G2.
+- [ ] **T1.6d Engine `attention` role — HOLD (data-gated).** wiki/trends → topic
+  centroid, `verified=false`. Self-eval: only binds to the 68 topics + wiki is
+  thin (1700/7d/17c) though trends has volume (24.9K/24h/99c). Build the trends
+  half AFTER recall (T1.6a); skip wiki until #104. Do NOT run the hot-PK migration
+  for this yet. *Spec:* same, §2.1/D1.
 
 ### Tier 2 — Public-attention / discussion depth
 - [ ] **T2.1 Lead-time-vs-coverage.** "Seen in forum/search Nh before media

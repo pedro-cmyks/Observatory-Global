@@ -1,9 +1,21 @@
 # Spec — Atlas Engine: the two missing roles (attention + anomaly→movement)
 
-Date: 2026-06-30 · Branch: `v3-intel-layer` · Status: **DRAFT for Pedro's review.**
-Author: Claude (Opus 4.8). **Companion + extension** to
-`2026-06-29-atlas-unified-engine.md` (the approved engine; this finishes it).
+Date: 2026-06-30 · Branch: `v3-intel-layer` · Status: **DRAFT — RE-SCOPED after
+self-eval vs the numbers (2026-06-30).** Author: Claude (Opus 4.8). **Companion +
+extension** to `2026-06-29-atlas-unified-engine.md` (the approved engine).
 Empirical evidence: `2026-06-26-l2-deep-review.md` §3 + §"unified-engine connection".
+
+> **⚠ PRIORITY CAVEAT (self-eval, verified vs live numbers).** This spec enriches
+> the EXISTING topic surface — but that surface is tiny: **68 active topics vs
+> 176,104 signals/24h = 0.04% coverage.** Both roles only attach to those 68
+> topics. So the engine's dominant lever is **RECALL (#229 — scoped regional
+> passes to form >68 topics)** and **taxonomy precision (#204 — the measured
+> 40–52% on-topic ceiling)**, NOT new roles. The CI fake-disaster was a COVERAGE
+> failure (no topic formed); this spec does not fix that — `anomaly→movement`
+> only retires the fake *lead*, leaving an honest gap. **Sequence: recall +
+> taxonomy FIRST; then `anomaly→movement` (cheap, ships now); `attention` =
+> HOLD, data-gated (§2.1).** Do NOT run the hot-PK migration (§3 D1) for the
+> attention role until recall makes the topic surface worth enriching.
 
 > **One sentence.** The Unified Engine unified the *embeddable signal* corpus
 > (press/forum/event → evidence/discussion/mood/movement) but left two layers as
@@ -40,9 +52,20 @@ a *country statistic*. Neither fit "embed a row, assign it."
 
 ## 2. The two extensions
 
-### 2.1 `attention` role — Wikipedia + Google Trends
+### 2.1 `attention` role — Wikipedia + Google Trends  ·  **STATUS: HOLD (data-gated)**
 A topic gains an `attention` lane: the people-side reading/searching proxy,
 bound to the topic **semantically** (the same machinery C3(b) needs).
+
+**Data reality (verified 2026-06-30, corrects the earlier "trends/wiki is thin"
+claim that deferred C3(b)):** the two sources are NOT alike —
+- **trends_v2: 24,902 rows/24h across 99 countries** → real volume. The earlier
+  "thin" call over-generalized the CI-specific 0. Trends is worth binding FIRST.
+- **wiki_pageviews_v2: 1,700 rows/7d across 17 countries** → genuinely thin +
+  evergreen-noisy (the D fix). Wiki waits on #104 / better coverage.
+Even so, both bind only to the **68 active topics**, so attention volume is
+capped by the topic surface, not the source — which is why this whole role is
+HOLD behind recall (#229). Build the trends half first, and only after recall
+makes more topics; skip wiki until its coverage improves.
 
 - **Source rows:** `wiki_pageviews_v2.article_title` (+ `language`, `views`,
   `fetch_date`, `country_code`) and `trends_v2.keyword` (+ `approximate_volume`,
@@ -74,9 +97,13 @@ The alert layer becomes a **property of the topic**, not an orphaned country sta
   event-`movement` role (vessels/ACLED, #232) which needs the member-ref schema
   (§3); this is volume-baseline, computable from `signals_v2`/`topic_members`
   ALONE — so it ships WITHOUT the #232 blocker.
-- **Payoff:** retires the country-anomaly-as-lead path (CI fake-disaster, "XX").
-  "Critical/elevated" is the *thread's* elevation; AnomalyPanel can scope to
-  topics that are actually moving, reconciled with the evidence layer.
+- **Payoff (precise — not over-claimed):** retires the fake *lead* — a
+  below-gate single thread dressed as "critical" stops leading, because its OWN
+  movement is nil. It does NOT fix the CI root, which was a COVERAGE failure (no
+  topic formed for the 26× surge); that needs recall (#229). So the honest
+  outcome on a CI-class country becomes "volume spike, no verified moving thread"
+  — the honest gap the L2 review wanted, not a fabricated disaster. "XX" is
+  already handled at the frontend (finding E); this reconciles it at the source.
 
 ## 3. Schema
 
@@ -110,6 +137,13 @@ z-score on the CI-class cases (does the fake-disaster stop leading?). Flag-gated
 `engine_version`, cutover only on measured win — identical discipline to F3/F4.
 
 ## 6. Phases (executable; heavy steps OFF-PEAK around the embed cron)
+
+> **Re-sequenced (self-eval):** the engine's lead work is **recall (#229) +
+> taxonomy (#204)**, tracked separately — those go FIRST. Of the G-phases below,
+> only **G2 (`anomaly→movement`, no heavy compute) is near-term**; G0/G1 (the
+> `attention` role + its hot-PK migration) are **HELD** until recall makes the
+> topic surface worth enriching and the trends-half is validated. Do not run G0
+> for attention alone.
 
 - **G0 — schema (no compute).** Migration: role CHECK + `member_kind`/`member_ref`
   (nullable `signal_id`) + `topic_movement`. Reversible. *Daytime-safe.*
@@ -152,10 +186,20 @@ z-score on the CI-class cases (does the fake-disaster stop leading?). Flag-gated
   ABOVE threshold (uncoupled-attention is the honest gap, not a forced match).
 - **Don't regress F3/F4:** this is additive to the unified-v2 build; A/B isolated.
 
-## 9. Cross-refs
+## 9. Cross-refs (corrected — honest paper mapping)
 L2 §3 (split-brain) + §"unified-engine connection"; unified-engine spec (roles,
 #168, A/B discipline); C3(b) (subsumed by §2.1); finding E (orphaned volume);
-#232 (event-movement — unlocked by the §3 member-ref); #172 (silent-risk on the
-ratio); #104 (trends coverage an attention role baseline-normalizes); Paper 1
-(split-brain→unified experiment, now 5-brains), Paper 3 (volume≠importance →
-attention-as-lens, D2), Paper 7 (the people-side proxy surfaced honestly).
+#232 (event-movement — unlocked by the §3 member-ref); #172 (silent-risk ratio);
+#104 (wiki coverage the attention role waits on).
+**Papers (self-eval corrected):**
+- **Paper 8 (open-set discovery / recall)** — the paper the numbers actually
+  point to (0.04% coverage). This spec does NOT serve it; recall (#229) does.
+  Flagged so we don't mistake role-enrichment for the coverage result.
+- **Paper 3 (volume≠importance)** — `anomaly→movement` + D2 (attention-as-lens,
+  not ranking). SOLID.
+- **Paper 7 (people-side proxy, honest surfacing)** — the `attention` lens, once
+  data + recall support a measurable result.
+- **Paper 1 (evidence-role classification)** — WEAK link (earlier over-claimed):
+  `attention`/`anomaly` are `verified=false` / non-evidence, so they don't touch
+  the evidence-role experiment. Paper 1's real ceiling is taxonomy (#204, the
+  40–52% on-topic), not roles.
