@@ -10,7 +10,18 @@
 > and narrows further if telemetry shows one persona dominates.) **Anti-goal:**
 > no new surface/capability until telemetry shows users reaching a value moment.
 
-Last updated: 2026-06-26. **Newest session handoff (read this first):**
+Last updated: 2026-06-30. **TRACK CONSOLIDATION (read this FIRST):** the two
+parallel chats (engine/taxonomy ‖ frontend/L2) are merging into ONE living track —
+the L2 audit showed the split-brain is one problem, two ends (the engine's missing
+attention+anomaly roles ARE the L2 surfaces). Plan + rationale:
+`docs/state/2026-06-30-track-consolidation.md`. The engine chat's **FINAL HANDOFF**
+(F3/F4 status, #204 gold base 2,134/κ0.775 + **v2 reject gate SHIPPED** cutting ~43%
+force-fit reversibly, `topic_members` schema, M1 crons, mid-flight/un-versioned
+runner) = `docs/state/2026-06-30-engine-chat-final-handoff.md` — whoever owns the
+engine reads that one. Reversibility: `UPDATE signal_topic_assignments SET
+gate_kept=true WHERE gate_model='v2-gate-e5-lr-1'`.
+
+Prior handoff (L2 execution): **read for the frontend track:**
 **L2 deep-review execution (`docs/specs/2026-06-26-l2-deep-review.md`)** — the
 "analyze before attacking" review (split-brain: alert layer ↔ evidence layer
 never reconcile) is being implemented Tier A→B→C, all deployed Fly+Vercel:
