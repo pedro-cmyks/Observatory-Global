@@ -63,6 +63,23 @@ mindful emergent-snapshot) + make retirement actually age stale topics out
 (`snapshots_since_seen` / `last_seen` → `state` transitions). This is open-set
 discovery's core invariant: **topics must appear and disappear with the world.**
 
+**ROOT CAUSE + PARTIAL FIX (2026-07-01).** Pinpointed: ingest/embed/lexical-assign
+were all LIVE; only the topic-forming tail froze. The M1 embed runner
+(`run-embed-hot-corpus.sh`) ran Step 1 (embed) under `set -e` as a FATAL step —
+when embed hit an asyncpg statement-timeout (a large/slow embed backlog, ~59K
+pending, #241), the whole runner aborted BEFORE Steps 2–4 (attach / `etl_topic_
+members` / `build_unified_topics`), so `topic_members` stopped refreshing at
+06-29 19:04. **Fixed:** made Step 1 non-fatal (`|| echo … non-fatal`) — the ETL
+projects fresh LEXICAL assignments and doesn't need embed to fully succeed — and
+re-ran `etl_topic_members` once by hand → `topic_members` fresh again
+(latest-member signal 06-29 19:04 → **06-30 17:52**, +4,810 evidence rows).
+Synced to AtlasLocalWorker. **STILL FROZEN:** the SERVED layer — `/threads` reads
+`dynamic_topics` (via `emergent_clusters`, last 06-29 17:00) because the
+emergent-snapshot former is OFF and serving hasn't flipped to `topic_members`.
+Unfreezing serving = **E4** (§7): flip the F0.3 read-flag to the now-fresh
+`unified-v2`/`topic_members`, OR revive a mindful emergent-snapshot. That is a
+serving cutover (read-path + parity), Pedro's call — NOT done here.
+
 ## 2. Root cause (verified, not re-investigate — see gdelt-decoupling §8)
 The HDBSCAN sweep already proved there is **no global config with both high
 recall and high purity**: `leaf` → purity 1.0 but shatters (Gaza recall 0.04,

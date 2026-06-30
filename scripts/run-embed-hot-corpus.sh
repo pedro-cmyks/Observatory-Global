@@ -45,10 +45,18 @@ fi
 
 cd "$BACKEND_DIR"
 # Step 1: embed the recent window (this is the heavy step).
+# NON-FATAL (fixed 2026-07-01): under `set -e` a non-zero exit here (e.g. the
+# asyncpg statement-timeout seen when the embed backlog is large + slow) ABORTED
+# the whole runner BEFORE Steps 2-4 — which froze topic_members at 2026-06-29
+# 19:04 (the topic layer stopped refreshing while ingest/embed/lexical-assign
+# stayed live). The downstream ETL projects fresh LEXICAL assignments and does
+# not need embed to fully succeed, so a partial/timed-out embed must not block
+# it. (The underlying embed backlog/throughput is #241, separate.)
 "$MLVENV/bin/python" -m scripts.embed_hot_corpus \
   --hours "$WINDOW_HOURS" \
   --retention-days "$RETENTION_DAYS" \
-  --max-signals "$MAX_SIGNALS"
+  --max-signals "$MAX_SIGNALS" \
+  || echo "[embed-hot-corpus] embed step failed/timed out (non-fatal); continuing to attach/ETL/build so topic_members stays fresh" >&2
 
 # ── Unified Engine F1 — recurring discussion chain (spec 2026-06-29 §7/§10) ──
 # The attach + projection are pure pgvector/asyncpg (no torch) and DEPEND on the
