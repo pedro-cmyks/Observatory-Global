@@ -22,6 +22,7 @@ export function FocusIndicator({ onClear }: { onClear?: () => void } = {}) {
             <span className="focus-value">{focus.label}</span>
             <button
                 className="focus-clear"
+                data-tour="focus-clear"
                 onClick={onClear ?? clearFocus}
                 data-tip="Clear focus — back to the whole view"
                 aria-label="Clear focus"

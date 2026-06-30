@@ -21,7 +21,7 @@ A source spec closes when all its rows below are `[x]`.
 | `2026-06-26-truncated-narrative-thread` | T1.3, T1.4 | both done |
 | `2026-06-09-research-thread-builder-workbench` | T1.1, T1.2 (Phase 4) | Phase-4 row done |
 | `2026-06-24-community-signal-layer` (#237) | T2.1 | T2.1 done (Phase-2 forum stays deferred by design) |
-| `2026-06-26-l2-deep-review` | T2.2, T3.1, T3.2, T1.5 | A3/A4/B4/C3 rows done |
+| `2026-06-26-l2-deep-review` | T2.2, T3.1, T3.2, T1.5 | A3✅ A4✅ C3-forum✅ (C3b trends/wiki deferred); B4 gate-recall re-run pending (gate-adjacent) |
 | `2026-06-11-surfaces-editorial-review` (#225) | T3.4 (gap box) | done — *body already executed; close on read* |
 | `2026-06-12-l2-l3-deep-review` | — | **closeable now** (executed; #227 closed) |
 | `2026-06-25-mobile-multilevel-review` | T3.3 | done — *IA executed; close on read* |
@@ -65,9 +65,14 @@ Foundational/living (do NOT close — they evolve): `living-narrative-threads`
   no centroid/embeddings. ThemeDetail renders "PUBLIC ATTENTION · THIS THREAD"
   (DISCUSSION · UNVERIFIED badge, subreddit + similarity %, translatable headline)
   for dynamic-topic threads only. *Files:* `public_attention.py` service+router,
-  `ThemeDetail.tsx`, CSS. REMAINING: semantic (not lexical) trends/wiki match —
-  needs live embedding of trends/wiki text, deferred (heavier, embed-batch).
-  Verify: deploy Fly + prod smoke `?thread=` then eyeball a dynamic thread.
+  `ThemeDetail.tsx`, CSS. REMAINING — C3(b) semantic (not lexical) trends/wiki
+  match: **DEFERRED (Pedro 2026-06-30).** Today still lexical `/trends/match`+
+  `/wiki/match` (GDELT-theme-code → ~dead for dynamic threads). Deferred because
+  trends/wiki coverage is thin/stale (#104 cloud-IP rate-limit → low ROI) and
+  the live path embeds ~100 candidates per ThemeDetail-open on the shared Fly
+  embed box; the cheap pre-embed-in-cron path touches the reserved
+  AtlasLocalWorker tree. Pick up when #104 improves coverage OR pre-embed
+  trends/wiki off-peak (see l2-deep-review §"Execution status" impl note).
 
 ### Tier 3 — Legibility / UX
 - [x] **T3.1 A3 scope strips.** ✅ "Scoped to <X>" strip with `✕` on
@@ -76,10 +81,25 @@ Foundational/living (do NOT close — they evolve): `living-narrative-threads`
   (blank SignalStream scoped to active country/person → clearAll). *Files:*
   `NarrativeThreads.tsx`+css, `App.tsx`+`App.css`. Build+types+tests green;
   browser eyeball pending (port-3000 busy in another session).
-- [ ] **T3.2 A4 first-click walkthrough.** 2-step `OnboardingCoachmark` teaching
-  the select/deselect model once.
-- [ ] **T3.3 #236 mobile visualization polish.** Phone-native per-surface (not a
+- [x] **T3.2 A4 first-click walkthrough.** ✅ 2026-06-30. New
+  `CountryFocusWalkthrough.tsx` (NOT OnboardingCoachmark — own component, reuses
+  the `.onboarding-*` chrome) fires once on the first `handleCountryClick` (own
+  `atlas_country_walkthrough_v1` key, guarded so it never stacks on the
+  first-session tour). 2 steps teaching select → deselect; step 2 highlights the
+  focus-chip ✕ on desktop. Mobile-essentially-different (Pedro): centered card
+  (`cfw-card-mobile`, NOT the bottom sheet — it collided with the tab bar +
+  floating chip) + tab-model copy ("opened in the Stream tab… Map/Threads/Pulse
+  re-scoped", "Tap ✕ above the tabs"). Browser-verified desktop (1440) + mobile
+  (375). *Files:* `CountryFocusWalkthrough.tsx`+css, `App.tsx`, `FocusIndicator.tsx`.
+- [~] **T3.3 #236 mobile visualization polish.** Phone-native per-surface (not a
   shrunk desktop) — the L2 tabbed IA is done; remaining is per-surface shaping.
+  Progress 2026-06-30: A4 walkthrough given a mobile-native treatment (centered
+  card + tab-model copy, above). **CountryBrief "Top Publishers" — two passes:**
+  (1) was a dead `<div>` (`onSourceClick` received but unused as `_onSourceClick`);
+  (2) Pedro: the panel-jump was inconsistent with the rest — now matches
+  ThemeDetail's EXPAND pattern (click → recent coverage headlines inline + "Full
+  source profile ↗" → SourceProfile). Verified live (manilatimes.net → 8 inline
+  headlines, no panel-jump). *Files:* `CountryBrief.tsx`+css.
 - [ ] **T3.4 Brief gap box (#172/#145).** The reserved "what Atlas can't answer"
   box on the Brief. *Spec:* surfaces-editorial.
 

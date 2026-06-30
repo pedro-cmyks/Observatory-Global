@@ -202,7 +202,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
     timeWindow,
     onClose,
     onThemeSelect,
-    onSourceClick: _onSourceClick,
+    onSourceClick,
     onAttentionItemClick,
     inline
 }) => {
@@ -219,6 +219,9 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
     const { summary } = useFocusData();
     const pinned = isPinned(`country-${countryCode}`);
     const [voiceMix, setVoiceMix] = useState<VoiceMixRelation | null>(null);
+    // Top Publishers: click expands the source's recent coverage inline (same
+    // pattern as ThemeDetail), not a jump straight to the bare profile panel.
+    const [expandedSource, setExpandedSource] = useState<string | null>(null);
 
     const downloadMarkdown = (filename: string, content: string) => {
         const blob = new Blob([content], { type: 'text/markdown' })
@@ -721,12 +724,73 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             <section className="brief-section">
                 <div className="cb-section-label">Top Publishers <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>who's covering this country</span></div>
                 <div className="source-list">
-                    {data.top_sources.slice(0, 5).map((source, i) => (
-                        <div key={i} className="source-item">
-                            <span className="source-name">{source.name}</span>
-                            <span className="source-count">{source.count} signals</span>
-                        </div>
-                    ))}
+                    {data.top_sources.slice(0, 5).map((source, i) => {
+                        // Expand-in-place pattern (mirrors ThemeDetail): click a
+                        // publisher → its recent coverage opens inline + a "Full
+                        // source profile ↗" link to the full panel. No silent
+                        // jump to the bare profile.
+                        const isOpen = expandedSource === source.name
+                        const srcStories = isOpen
+                            ? (data.top_stories || []).filter(s => s.source === source.name)
+                            : []
+                        return (
+                            <div key={i} className="source-group">
+                                <button
+                                    type="button"
+                                    className={`source-item source-item--btn${isOpen ? ' source-active' : ''}`}
+                                    onClick={() => setExpandedSource(isOpen ? null : source.name)}
+                                    data-tip={`Read ${source.name}'s recent coverage of this country`}
+                                >
+                                    <span className="source-name">{source.name}</span>
+                                    <span className="source-count">{source.count} signals</span>
+                                    <span className="source-see-articles">{isOpen ? '▴' : '▾'}</span>
+                                </button>
+                                {isOpen && (
+                                    <div className="source-coverage">
+                                        {onSourceClick && (
+                                            <button
+                                                type="button"
+                                                className="source-full-profile-btn"
+                                                onClick={(e) => { e.stopPropagation(); onSourceClick(source.name) }}
+                                            >
+                                                Full source profile ↗
+                                            </button>
+                                        )}
+                                        {srcStories.length === 0 ? (
+                                            <p className="coverage-source-empty">
+                                                No recent articles from {source.name} in the last {timeWindow}h fetched —
+                                                this source has {source.count} total over the period.
+                                            </p>
+                                        ) : (
+                                            <div className="coverage-articles">
+                                                {srcStories.slice(0, 8).map((story, j) => (
+                                                    <a
+                                                        key={j}
+                                                        href={story.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="story-item"
+                                                        data-tip="Open article in new tab"
+                                                    >
+                                                        <p className="story-source-line">
+                                                            <span className="story-age">{timeAgo(story.timestamp)}</span>
+                                                        </p>
+                                                        {story.headline && (
+                                                            <p className="story-headline" style={{ margin: '2px 0 4px', fontSize: '0.85rem', lineHeight: 1.35 }}>
+                                                                {typeof story.id === 'number'
+                                                                    ? <TranslatableHeadline signalId={story.id} original={story.headline} sourceLang={story.source_lang} />
+                                                                    : story.headline}
+                                                            </p>
+                                                        )}
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    })}
                 </div>
             </section>
 

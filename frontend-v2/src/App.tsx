@@ -46,6 +46,7 @@ import { NarrativeThreads, type LivingThreadSelection } from './components/Narra
 import { ThreadFocusPanel } from './components/ThreadFocusPanel'
 import { SignalStream } from './components/SignalStream'
 import { OnboardingCoachmark } from './components/OnboardingCoachmark'
+import { CountryFocusWalkthrough, COUNTRY_WALKTHROUGH_KEY } from './components/CountryFocusWalkthrough'
 import { CorrelationMatrix } from './components/CorrelationMatrix'
 import { AnomalyPanel } from './components/AnomalyPanel'
 import { SourceIntegrityPanel } from './components/SourceIntegrityPanel'
@@ -290,6 +291,11 @@ function AppContent() {
   const [researchQuery, setResearchQuery] = useState<string | null>(null)
   const [wbRefresh, setWbRefresh] = useState(0)
   const [tourRunId, setTourRunId] = useState(0)
+  // A4: one-time contextual walkthrough on the first country selection.
+  const [countryWalkthrough, setCountryWalkthrough] = useState<string | null>(null)
+  const countryWalkthroughDone = useRef<boolean>(
+    (() => { try { return !!localStorage.getItem(COUNTRY_WALKTHROUGH_KEY) } catch { return true } })()
+  )
   // #152 command-bar layout: overflow "···" menu (TOUR + Settings), controlled
   // settings panel, and compact time-range dropdown for narrow viewports.
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
@@ -501,6 +507,12 @@ function AppContent() {
   function handleCountryClick(countryCode: string) {
     setSelectedPublicAttention(null)
     setSelectedThread(null)
+    // Country nav must take the stream slot: clear any open ThemeDetail so the
+    // isCountry branch wins (else focus/chip update but the stream stays on the
+    // old theme — the anomaly/map→country-while-theme-open bug). Flows that keep
+    // a theme (ThemeDetail country card → right panel) don't go through here.
+    setSelectedTheme(null)
+    setThemeBackStack([])
     setSelectedCountryCode(countryCode)
     setSelectedCountry({
       countryCode,
@@ -516,6 +528,12 @@ function AppContent() {
     // the focus chip appears so the country can be deselected. The sync effect
     // guards on focus.value !== selectedCountryCode, so this can't loop.
     setCountry(countryCode)
+    // A4: teach the select/deselect model once, on the first country click —
+    // but never while the first-session tour is still on screen (don't stack).
+    if (!countryWalkthroughDone.current && !document.querySelector('.onboarding-layer')) {
+      countryWalkthroughDone.current = true
+      setCountryWalkthrough(resolveCountryName(countryCode))
+    }
   }
 
   // A1: one comprehensive deselect — the focus chip's ✕ and the map background
@@ -2276,6 +2294,12 @@ function AppContent() {
         onOpenWorkspace={() => setIsOpen(true)}
         entryContext={tourEntryContext}
       />
+      {countryWalkthrough && (
+        <CountryFocusWalkthrough
+          countryName={countryWalkthrough}
+          onDismiss={() => setCountryWalkthrough(null)}
+        />
+      )}
 
       {watchNamePrompt !== null && (
         <div className="watch-save-overlay" onClick={e => e.target === e.currentTarget && setWatchNamePrompt(null)}>

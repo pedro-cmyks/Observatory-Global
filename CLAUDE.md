@@ -42,6 +42,40 @@ REMAINING L2: A3 (scope strips), A4 (first-click walkthrough), C3 (per-thread
 public attention). Lesson re-logged: VERIFY a panel before assuming; the NLP
 backlog still gates verified subjects (gazetteer types honestly meanwhile).
 
+**2026-06-30 (parallel-chat L2 session, frontend-only — A3/A4/C3 closeout):**
+Verify-before-assume paid off — the "REMAINING L2" list above was STALE.
+Measured against code, not docs: **A3 scope strips ALREADY shipped** in
+`6dfa6a0` (NarrativeThreads "Scoped to X ✕" country+person + blank-stream strip
++ sibling reason chips) — verified rendering live. **C3 forum lane ALREADY
+shipped** (`public_attention.fetch_forum_thread_attention` + ThemeDetail
+"DISCUSSION · UNVERIFIED", data-dependent render). Only genuinely-missing item
+built: **A4 first-country-click walkthrough** (`CountryFocusWalkthrough.tsx`,
+own `atlas_country_walkthrough_v1` key, fires once on first `handleCountryClick`,
+guarded vs stacking on the first-session tour; step 2 highlights the focus-chip
+✕ on desktop; position-accurate copy on mobile ("Tap"/"above the tabs"), spec §7
+says deselect matters most there). **Mobile fix (Pedro caught it):** the shared
+`.onboarding-card--mobile` bottom sheet (`bottom:16px`, `!important`) COLLIDED
+with the mobile tab bar + the focus chip that floats above it → action buttons
+clipped. Fixed with a dedicated `CountryFocusWalkthrough.css` `cfw-card-mobile`
+class = a VERTICALLY-CENTERED card (own !important to beat the base rule) that
+clears the top header AND the bottom chrome, leaving the chip visible below for
+step 2. Browser-verified desktop (1440) + mobile (375): A3 strip + A4
+walkthrough + A1 chip render together, card centered (top 293/bottom 519, tab
+bar at 755), console clean, `npm run build` green, 112/113 vitest (the 1
+fail = pre-existing `exportFormatters.test.ts` "Protest"→"Protests & Unrest",
+a #204 taxonomy LABEL rename — reserved track, NOT touched). **C3(b) semantic
+trends/wiki DEFERRED** (Pedro's call): per-thread trends/wiki still lexical
+(`/trends/match`+`/wiki/match`, GDELT-theme-code → ~dead for dynamic threads);
+deferred because trends/wiki data is thin/stale (#104 rate-limit, low ROI) and
+the live path embeds ~100 candidates per ThemeDetail-open on the shared Fly
+embed box (cheap pre-embed path touches the reserved AtlasLocalWorker tree).
+Impl note in spec §"Execution status". **#234 finding:** the two remaining
+items (thread-as-full-focus-lens + dock-PA-for-open-thread) both trace to ONE
+root — thread-open clears focus BY DESIGN, deliberately kept by prior sessions;
+needs an explicit greenlight (regression risk), not a quiet win. Files: new
+`CountryFocusWalkthrough.tsx`, `App.tsx` (wire+trigger), `FocusIndicator.tsx`
+(`data-tour="focus-clear"`). Uncommitted (commit on request).
+
 Prior handoff: `docs/state/2026-06-25-consumer-mvp-pwa-session.md` — Consumer MVP shipped:
 Atlas is now an installable PWA (vite-plugin-pwa, offline-last-Brief) with a
 mobile single-column Brief feed + full-screen mobile thread read + honest

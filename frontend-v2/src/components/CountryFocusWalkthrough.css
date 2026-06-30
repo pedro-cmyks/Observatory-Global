@@ -1,0 +1,30 @@
+/* L2 A4 — mobile positioning for the first-country-click walkthrough.
+   The shared `.onboarding-card--mobile` bottom-sheet pins to bottom:16px, which
+   collides with the mobile tab bar AND the focus chip that floats above it (both
+   bottom-pinned) — the action buttons clipped behind them. So on mobile this
+   walkthrough is a VERTICALLY-CENTERED card instead: clears the top header and
+   the whole bottom chrome, and leaves the focus chip visible below the card so
+   step 2 ("tap ✕ above the tabs") can point at a chip the user can actually see. */
+@media (max-width: 768px) {
+    /* OnboardingCoachmark.css forces every `.onboarding-card` to a bottom sheet
+       (top:auto/transform:none/bottom:16px) with !important — so this centered
+       override must also use !important to win. */
+    .cfw-card-mobile {
+        left: 16px;
+        right: 16px;
+        top: 50% !important;
+        bottom: auto !important;
+        transform: translateY(-50%) !important;
+        width: auto;
+        max-width: none;
+        max-height: 76vh;
+        overflow-y: auto;
+    }
+    /* Keep the actions reachable if the body ever overflows. */
+    .cfw-card-mobile .onboarding-actions {
+        position: sticky;
+        bottom: 0;
+        background: inherit;
+        padding-top: 10px;
+    }
+}

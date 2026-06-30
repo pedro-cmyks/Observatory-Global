@@ -501,7 +501,19 @@ The action plan (§6) was executed this session. Tier status:
 
 - **A1 + A2** ✅ — focus chip + unified deselect + single-source-of-truth country
   select (chip later redesigned compact).
-- **A3 scope strips / A4 walkthrough** ⏳ remaining (legibility polish).
+- **A3 scope strips** ✅ — shipped `6dfa6a0` (NarrativeThreads "Scoped to X ✕"
+  for country+person, blank-stream-slot strip, sibling reason chips). Was
+  mislabeled remaining; verified rendering live 2026-06-30.
+- **A4 first-country-click walkthrough** ✅ — shipped 2026-06-30
+  (`CountryFocusWalkthrough.tsx`, own `atlas_country_walkthrough_v1` key, fires
+  once on the first `handleCountryClick`, guarded against stacking on the
+  first-session tour; step 2 highlights the focus-chip ✕ on desktop). On mobile
+  it is a vertically-centered card (`CountryFocusWalkthrough.css`
+  `cfw-card-mobile`), NOT the shared bottom sheet — the bottom sheet's
+  `bottom:16px !important` collided with the mobile tab bar + the floating focus
+  chip and clipped the buttons (Pedro caught this). Copy is position-accurate
+  per platform ("Click"/"top-left" vs "Tap"/"above the tabs"). Browser-verified
+  desktop (1440) + mobile (375).
 - **B1** ✅ killed the positional "critical" spike. **B2 (#214)** ✅ gated count +
   UNVERIFIED tray (list/detail reconciled; #214 closed). **B3** ✅ thread subjects
   via `rank_key_people`. **B4 gate-recall-by-language** — script shipped earlier
@@ -509,9 +521,43 @@ The action plan (§6) was executed this session. Tier status:
   pending).
 - **C1** ✅ forum lane (`/api/v2/public-attention` + `source_family`). **C2** ✅
   combined Public Attention (Trends+Wiki+Forum) + mobile **Pulse** tab.
-  **C3 per-thread Public Attention** ⏳ remaining.
+  **C3 per-thread Public Attention** — forum part ✅ shipped
+  (`public_attention.fetch_forum_thread_attention` = social signals that are
+  semantic neighbors of the thread centroid; ThemeDetail "DISCUSSION ·
+  UNVERIFIED" section, data-dependent render). **C3(b) semantic trends/wiki**
+  ⏳ DEFERRED (Pedro 2026-06-30): the per-thread trends/wiki match is still
+  lexical (`/trends/match`+`/wiki/match`, GDELT-theme-code → ~dead for
+  dynamic-topic threads). Deferred because (1) trends/wiki coverage is
+  thin/stale (Google rate-limits cloud IPs, #104) → low ROI today; (2) the live
+  path embeds ~100 trends/wiki candidates per ThemeDetail open on the shared Fly
+  embed box, and the cheaper pre-embed-in-cron path touches the reserved
+  AtlasLocalWorker tree. **Impl note for when it's worth doing:** pre-embed
+  trends/wiki text in the M1 embed cron (off-peak) so per-open is a cheap ANN vs
+  the thread centroid, mirroring `signal_embeddings`; OR live-embed behind a
+  short Redis cache. Render honestly with a coverage note when empty.
 - **Spun out:** the item→thread connection direction became the truncated-thread
   spec (`2026-06-26-truncated-narrative-thread.md`), which also delivered the
   forums-in-inference work referenced in §4.
 
-Remaining: A3, A4, B4 (re-run), C3.
+Remaining: B4 (gate-recall re-run — reserved/gate-adjacent), C3(b) semantic
+trends/wiki (deferred, see above). A3/A4/C3-forum all ✅ as of 2026-06-30.
+
+## Live connectivity verification (2026-06-30, click-by-click in the browser)
+
+§1's connection audit was re-verified LIVE (not from the doc, which had proven
+stale). **Spine confirmed wired:** NarrativeThreads→ThemeDetail; ThemeDetail
+source→expand(headlines)→"Full source profile ↗"→SourceProfile; ThemeDetail
+per-thread forum + Key Subjects; Anomaly row→country→CountryBrief; CountryBrief
+Key Subject(person)→EntityPanel; #234 person propagation (threads "Scoped to X"
++ dim, dock "PERSON→country"); public-attention item→PublicAttentionPanel;
+signal headline→SignalDetail "Where this fits" (connected_threads RELATED 86% +
+Semantic Neighbors, GDELT collapsed) = truncados wired. **Two leaf bugs found +
+FIXED:** (A) country nav (anomaly/map) did NOT swap the stream slot when a
+ThemeDetail was open — `handleCountryClick` didn't clear `selectedTheme` so
+`isTheme` kept the slot (chip updated, content stale); now clears it. (B)
+CountryBrief "Top Publishers" jumped to the bare SourceProfile (inconsistent
+with ThemeDetail) → now the same expand pattern. **Data-quality (NOT wiring,
+logged):** global Public Attention = football/celebrity/`fr`-wiki-mainpage noise
+(§4.1, #104 rate-limit); Anomaly `A-001 = "XX"` (invalid geo code, 65.7× — bad
+subject-country tag surfacing as a top anomaly). Not re-verified (minor): stream
+country chip, correlation cell, map-background deselect.
