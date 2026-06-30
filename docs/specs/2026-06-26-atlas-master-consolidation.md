@@ -61,7 +61,16 @@ Foundational/living (do NOT close — they evolve): `living-narrative-threads`
   the persisted corpus (partition by country — 15+ countries have 5K–29K embedded,
   US 28,847 = the R0 test case — cluster within, merge + #224 anchor-guard).
   Fixes the L2 §3 split-brain at the ROOT (CI gets a topic). Heavy → STRICTLY
-  off-peak M1; R0 measures one country first before any cron change.
+  off-peak M1; R0 probe AUTHORED (`backend/scripts/recall_scoped_probe.py`, runs
+  off-peak). **SECOND root cause found 2026-06-30 (Pedro's instinct):** the served
+  topic layer is FROZEN — `dynamic_topics`/`emergent_clusters` last updated
+  06-29 17:00 (the topic-forming cron was disabled in the consolidation; unified-v2
+  builds but isn't served), and 54/68 "active" topics are >3d stale (lifecycle
+  doesn't retire). So the spec now has a **B-track (urgent, cheap): unfreeze
+  serving (flip unified-v2 — E4) + dynamic retirement.** Hypothesis written into
+  **Paper 8** (`docs/research/atlas-paper/2026-06-30-paper-8-result-skeleton.md`:
+  open-set discovery = coverage + dynamism; "a fixed topic count from a streaming
+  feed is itself the failure signal").
 - [ ] **T1.6b Taxonomy precision (#204) — the measured ceiling.** F3.2b: shared
   members 40–52% on-topic by LLM judge = the dominant precision lever, NOT the
   engine. Gold base 2,134/κ0.775 shipped; gold-growth pass (lift gate balanced

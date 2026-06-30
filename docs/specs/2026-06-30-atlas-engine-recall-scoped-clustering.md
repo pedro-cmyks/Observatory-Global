@@ -36,6 +36,33 @@ captures a thin spine and discards the rest as noise. This is the structural
 cause of the L2 dishonesty (CI: a 238-signal surge that never formed a topic →
 the alert layer had nothing real to point at → the fake "Flood disaster" lead).
 
+## 1.5 SECOND root cause — the topic layer is FROZEN + sticky (not dynamic)
+
+(Pedro's instinct 2026-06-30: "68 fixed makes no sense — nothing in Atlas
+persists, everything is dynamic." Verified — he was right.)
+
+The 68 "active" topics are **not a live set; they are a ~1-day-frozen, stale
+snapshot:**
+- `dynamic_topics` last created/updated **2026-06-29 17:00**; `emergent_clusters`
+  last snapshot **2026-06-29 17:00**. The `emergent-snapshot` cron that forms /
+  ages / retires dynamic topics was **booted OFF in the 06-29 consolidation** —
+  and `unified-v2` (which IS building) is **not served** (read flag OFF). So
+  serving reads a frozen snapshot; **no new topic has formed in ~1 day.**
+- Even pre-freeze the lifecycle is **sticky**: **54 of 68 "active" topics have
+  `last_seen` > 3 days** yet stay `active`; only 1 created in the last 2 days;
+  **185 candidates stuck** un-promoted, only 14 ever retired. So topics
+  accumulate and persist instead of appearing/growing/retiring.
+
+**Implication:** the recall problem is TWO problems. (A) clustering drops 94% as
+noise (§2) — and (B) the topic LIFECYCLE is frozen + sticky, so even the topics
+that DO form don't refresh, retire, or get replaced by fresher ones. Scoped
+clustering (§3) fixes (A) but is wasted if (B) leaves the output frozen. **Both
+must ship.** (B) is also the cheaper, more urgent fix: revive a live topic-former
+(either flip serving to the already-building `unified-v2`, or re-enable a
+mindful emergent-snapshot) + make retirement actually age stale topics out
+(`snapshots_since_seen` / `last_seen` → `state` transitions). This is open-set
+discovery's core invariant: **topics must appear and disappear with the world.**
+
 ## 2. Root cause (verified, not re-investigate — see gdelt-decoupling §8)
 The HDBSCAN sweep already proved there is **no global config with both high
 recall and high purity**: `leaf` → purity 1.0 but shatters (Gaza recall 0.04,
@@ -88,6 +115,19 @@ Re-clustering 239K embeddings PER partition is the heaviest job in Atlas.
   a partition loop, don't add a new always-on heavy cron.
 
 ## 6. Phases (executable)
+
+**B-track (URGENT, parallel — fixes the freeze §1.5, cheaper than R):**
+- **B0 — unfreeze serving.** Decide + do: either (a) flip the read flag to the
+  already-building `unified-v2` (`ATLAS_SERVE_THREADS_FROM_TOPIC_MEMBERS`, after a
+  parity eyeball — the F0.3 parity passed), or (b) re-enable a mindful
+  emergent-snapshot on the M1 (off-peak). (a) is faster + needs no heavy compute.
+  *Decision E4 below.*
+- **B1 — dynamic retirement.** Make the lifecycle age stale topics out:
+  `snapshots_since_seen` / `last_seen` past a threshold → `state` active→dormant→
+  retired; promote stuck candidates on momentum. Pure-SQL/light. So "active"
+  means *currently alive*, not *ever seen*.
+
+**R-track (recall via scoped clustering — the bigger, heavier fix):**
 - **R0 — measure the partition (offline, daytime-safe SQL + one M1 sample).**
   Per-country embedded-signal counts; run ONE scoped HDBSCAN pass on a high-volume
   country (US or CN) over its persisted embeddings; score recall + purity vs that
@@ -111,6 +151,11 @@ Re-clustering 239K embeddings PER partition is the heaviest job in Atlas.
   pure regional topics over fewer big ones (the opposite of the #224 failure).
 - **E3 — scoped topics: separate lane or merged?** *Default:* merge into the one
   `dynamic_topics` population (on-thesis: one topic model), provenance-tagged.
+- **E4 — unfreeze approach (B0, urgent).** *Default:* flip serving to the
+  already-building `unified-v2` (no heavy compute; the A/B already showed it wins
+  + parity passed) — this makes serving live again immediately. *Alt:* re-enable a
+  mindful emergent-snapshot on the M1 (off-peak, more compute, keeps v1). Leaning
+  flip-to-v2, because it ALSO advances F4 and removes the dead-old-cron gap.
 
 ## 8. Why this is the lead lever (vs the other engine work)
 - Fixes the L2 §3 split-brain at the ROOT (CI gets a topic → the alert layer has
