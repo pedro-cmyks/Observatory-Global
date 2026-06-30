@@ -53,6 +53,17 @@ Foundational/living (do NOT close — they evolve): `living-narrative-threads`
   agnostic) + #162, NOT per-language gate recalibration. Paper 1 = English-
   conditioned caveat.
 
+- [ ] **T1.6 Engine attention + anomaly→movement roles (the 5-brains fix).**
+  Post-consolidation (2026-06-30): the unified engine closed 3 of the split-brain's
+  5 pipelines; add the last 2 — `attention` (wiki/trends → topic centroid,
+  verified=false; subsumes C3(b)/T2.2) + `anomaly→movement` (per-topic
+  volume-baseline; retires the orphaned country-anomaly-as-lead = the CI
+  fake-disaster + finding E). Closes the §3 split-brain at the root; makes #168
+  types real. *Spec:* `2026-06-30-atlas-engine-attention-anomaly-roles.md`
+  (executable, phases G0–G4; heavy steps off-peak). *Decisions pending Pedro:*
+  D1 (member-ref schema vs separate table), D2 (attention in ranking?), D3
+  (movement replaces vs augments country anomaly). *Papers:* 1/3/7.
+
 ### Tier 2 — Public-attention / discussion depth
 - [ ] **T2.1 Lead-time-vs-coverage.** "Seen in forum/search Nh before media
   coverage" — compute the discussion/attention timestamp vs the thread's first

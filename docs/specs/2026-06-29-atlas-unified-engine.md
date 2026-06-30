@@ -5,7 +5,10 @@ spec approved by Pedro 2026-06-29; §17 decisions resolved). Author: Claude
 (Opus 4.8). Companion to
 `docs/specs/2026-06-29-atlas-engine-gdelt-decoupling-syndication.md` (the engine
 diagnosis this builds on) and `docs/specs/2026-06-24-community-signal-layer-design.md`
-(#237).
+(#237). **Extension (2026-06-30):** the L2 audit found this engine closes 3 of
+the split-brain's 5 pipelines — the 2 missing roles (`attention` = wiki/trends,
+`anomaly→movement` = per-topic volume) are specced in
+`docs/specs/2026-06-30-atlas-engine-attention-anomaly-roles.md`.
 
 > **The idea in one sentence.** Atlas builds narrative topics through 2–3
 > independent pipelines that produce different outputs and never reconcile (the
