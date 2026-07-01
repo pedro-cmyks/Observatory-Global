@@ -345,8 +345,11 @@ function AppContent() {
   const isGlobe = false
   // #212 / ADR-0005: Equal Earth is a parallel switchable view. Default Mercator
   // (zero prod risk) until visual sign-off; persisted so the choice sticks.
+  // Equal-area is the DEFAULT since 2026-07-01 (Pedro's visual sign-off — the
+  // ADR-0005 P6 gate): equal-area honesty + no WebGL (mobile blank-map class
+  // gone). Mercator remains available via Settings; explicit choice persists.
   const [mapProjection, setMapProjection] = useState<'mercator' | 'equalEarth'>(
-    () => (localStorage.getItem('atlas.mapProjection') === 'equalEarth' ? 'equalEarth' : 'mercator'),
+    () => (localStorage.getItem('atlas.mapProjection') === 'mercator' ? 'mercator' : 'equalEarth'),
   )
   const toggleProjection = useCallback(() => {
     setMapProjection(p => {

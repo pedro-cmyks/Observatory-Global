@@ -440,6 +440,13 @@ async def unified_search(
                 f"%{t}%" for t in re.split(r"[^a-z0-9áéíóúüñ]+", topic_query.lower())
                 if len(t) >= 3
             ][:6]
+            # P2a (the "Burkina Faso" case): a PURE country query — "what's
+            # happening in X" — should surface X's top live threads inline,
+            # not just the country entry. match_country signals this by
+            # returning the ORIGINAL query as the topic remainder.
+            pure_country = bool(country_match) and country_match["query"] == query and country_filter
+            if pure_country:
+                thread_tokens = ["%"]  # match-all label; the country EXISTS clause scopes
             if thread_tokens:
                 # DISTINCT ON label: R1 scoped passes can mint near-duplicate
                 # topics for one event across countries; serving dedupes them
