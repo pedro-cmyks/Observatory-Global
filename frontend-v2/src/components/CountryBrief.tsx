@@ -222,6 +222,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
     // Top Publishers: click expands the source's recent coverage inline (same
     // pattern as ThemeDetail), not a jump straight to the bare profile panel.
     const [expandedSource, setExpandedSource] = useState<string | null>(null);
+    const [showAllSources, setShowAllSources] = useState(false);
 
     const downloadMarkdown = (filename: string, content: string) => {
         const blob = new Blob([content], { type: 'text/markdown' })
@@ -342,7 +343,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     signal_count: focusSummary?.summary.total_signals ?? node?.signalCount ?? signals.length,
                     top_themes: topCounts(themeCounts, 12),
                     narrative_threads: threadsPayload?.threads ?? [],
-                    top_sources: summarySources.length > 0 ? summarySources : topCounts(sourceCounts, 8),
+                    top_sources: summarySources.length > 0 ? summarySources : topCounts(sourceCounts, 15),
                     keySubjects: buildKeySubjects(topCounts(personCounts, 40), 8),
                     avg_sentiment: sentiment,
                     sentiment_trend: sentimentTrend,
@@ -724,7 +725,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             <section className="brief-section">
                 <div className="cb-section-label">Top Publishers <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>who's covering this country</span></div>
                 <div className="source-list">
-                    {data.top_sources.slice(0, 5).map((source, i) => {
+                    {(showAllSources ? data.top_sources : data.top_sources.slice(0, 5)).map((source, i) => {
                         // Expand-in-place pattern (mirrors ThemeDetail): click a
                         // publisher → its recent coverage opens inline + a "Full
                         // source profile ↗" link to the full panel. No silent
@@ -791,6 +792,18 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                             </div>
                         )
                     })}
+                    {data.top_sources.length > 5 && (
+                        <button
+                            type="button"
+                            className="source-show-all-btn"
+                            onClick={() => setShowAllSources(v => !v)}
+                            data-tip={showAllSources ? 'Collapse back to the top 5' : `Show the remaining ${data.top_sources.length - 5} publishers`}
+                        >
+                            {showAllSources
+                                ? 'Show top 5 only'
+                                : `Show all ${data.top_sources.length} publishers`}
+                        </button>
+                    )}
                 </div>
             </section>
 

@@ -795,3 +795,17 @@
 .theme-chip--unverified .theme-count {
     color: #c9923c;
 }
+
+/* #148: 'See all publishers' expansion (list caps at 5 by default) */
+.source-show-all-btn {
+    background: none;
+    border: 1px dashed rgba(156, 163, 175, 0.35);
+    color: #9ca3af;
+    font-size: 0.72rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 0.35rem;
+}
+.source-show-all-btn:hover { color: #68dbae; border-color: rgba(104, 219, 174, 0.4); }
