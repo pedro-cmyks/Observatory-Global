@@ -41,6 +41,15 @@ _LEADING_NON_NAME_TOKENS: set[str] = {
     "el", "la", "los", "las", "lo", "un", "una", "unos", "unas", "the", "dar",
 }
 
+# Photo-agency / stock-photo credit tokens GDELT extracts from article boilerplate
+# ("jonathan borba unsplash", "benvenuti lapresse sipa" — live /country/IT leak,
+# 2026-07-01). Token-level match; deliberately EXCLUDES ambiguous real surnames
+# ("getty" — J. Paul Getty) and press initialisms ("afp", "epa").
+_PHOTO_CREDIT_TOKENS: set[str] = {
+    "unsplash", "shutterstock", "istock", "istockphoto", "pexels", "pixabay",
+    "lapresse", "sipa", "zuma", "dreamstime", "depositphotos",
+}
+
 
 def _is_valid_person(name: str) -> bool:
     lower = name.lower()
@@ -52,6 +61,8 @@ def _is_valid_person(name: str) -> bool:
         and lower not in _NON_PERSON_PHRASES
         and tokens[0] not in _GEO_FIRST_WORDS
         and tokens[0] not in _LEADING_NON_NAME_TOKENS
+        # photo credits scraped as "people" ("peter hansen unsplash")
+        and not any(t in _PHOTO_CREDIT_TOKENS for t in tokens)
         # a real two-word name never repeats the exact same token
         # ("bafana bafana", "new new")
         and len(set(tokens)) > 1
