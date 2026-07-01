@@ -26,13 +26,15 @@ from pathlib import Path
 import asyncpg
 import numpy as np
 
-from backend.scripts.emergent_poc import _build_embedder  # multilingual-e5-base, mean-pool + L2 (centroid space)
-
 _CANDIDATE = Path("docs/research/taxonomy-revision/candidate-v2.json")
 SEED_THRESHOLD = 0.80  # centroid vs crisis-seed prototype (knob, calibrate on --validate)
 
 
 def _load_seed_prototypes():
+    # lazy import: emergent_poc pulls torch/sentence-transformers — only the
+    # (weak) cosine path needs it; the DeepSeek 30-min cron path must stay light
+    from backend.scripts.emergent_poc import _build_embedder  # multilingual-e5-base, mean-pool + L2 (centroid space)
+
     d = json.loads(_CANDIDATE.read_text())
     cats = d["categories"]
     labels = [c["label"] for c in cats]
@@ -88,6 +90,10 @@ async def main() -> None:
     ap.add_argument("--write", action="store_true", help="write typings to dynamic_topics")
     ap.add_argument("--threshold", type=float, default=SEED_THRESHOLD)
     ap.add_argument("--deepseek", action="store_true", help="type via DeepSeek (the real method; cosine alone is spurious)")
+    ap.add_argument("--only-untyped", action="store_true",
+                    help="incremental: only topics never typed (crisis_class IS NULL) — "
+                         "the 30-min cron mode (spec R3.1 §3.1: fresh stories get their "
+                         "badge within a cycle; steady-state = 0 API calls)")
     args = ap.parse_args()
 
     db = os.environ.get("DATABASE_URL")
@@ -100,10 +106,15 @@ async def main() -> None:
     conn = await asyncpg.connect(db)
     try:
         limit = args.validate or 1_000_000
+        untyped = "AND crisis_class IS NULL " if args.only_untyped else ""
         rows = await conn.fetch(
             "SELECT id, label, agg_n_signals, centroid_vec FROM dynamic_topics "
             "WHERE state='active' AND is_umbrella=false AND centroid_vec IS NOT NULL "
+            f"{untyped}"
             "ORDER BY agg_n_signals DESC LIMIT $1", limit)
+        if not rows:
+            print("no topics to type (all typed)" if args.only_untyped else "no topics")
+            return
         typed = []
         for r in rows:
             if args.deepseek:

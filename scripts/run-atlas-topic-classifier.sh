@@ -18,6 +18,10 @@ set -euo pipefail
 # Step 3: apply_v2_reject (#204) demotes theme-hint-lex-v2 gate_kept rows the v2
 #   e5 gate scores OUT_OF_SCOPE — flag-gated (ATLAS_V2_GATE_ENABLED) + reversible
 #   (tags gate_model=v2-gate-e5-lr-1). All steps idempotent.
+# Step 4: compute_category_typing --only-untyped (R3.1 §3.1: category typing runs
+#   on THIS 30-min cron, not nightly, so fresh stories get their badge within a
+#   cycle — the nightly scoped-snapshot pass remains the full sweep + emergent
+#   clustering). DeepSeek-only (no torch load); steady-state = 0 API calls.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ -d "$SCRIPT_DIR/backend" ]]; then
@@ -97,4 +101,17 @@ if [[ "${ATLAS_V2_GATE_ENABLED:-}" == "true" && -x "$MLVENV/bin/python" && -f "$
     || echo "[atlas-topic] v2 reject failed (non-fatal)" >&2
 else
   echo "[atlas-topic] skip v2 reject (ATLAS_V2_GATE_ENABLED!=true or json missing)" >&2
+fi
+
+# Step 4: R3.1 incremental category typing (spec §3.1 mandates the 30-min cadence —
+# nightly-only typing recreates the badge asymmetry as a TEMPORAL one, F-C4.2).
+# --only-untyped: types ONLY topics with crisis_class IS NULL (new since the last
+# pass), so steady-state is a single cheap SELECT and 0 DeepSeek calls. Runs from
+# ROOT_DIR (module path backend.scripts.*, candidate-v2.json relative). Non-fatal.
+if [[ -n "${DEEPSEEK_API_KEY:-}" && -x "$MLVENV/bin/python" ]]; then
+  ( cd "$ROOT_DIR" && "$MLVENV/bin/python" -m backend.scripts.compute_category_typing \
+      --deepseek --write --only-untyped ) \
+    || echo "[atlas-topic] category typing failed (non-fatal)" >&2
+else
+  echo "[atlas-topic] skip category typing (DEEPSEEK_API_KEY or mlvenv missing)" >&2
 fi
