@@ -35,6 +35,21 @@ FRAMING_MODEL_EN = "cross-encoder/nli-distilroberta-base"
 FRAMING_MODEL_XLM = "MoritzLaurer/multilingual-MiniLMv2-L6-mnli-xnli"
 SPACY_MODEL_EN = "en_core_web_sm"
 SPACY_MODEL_XX = "xx_ent_wiki_sm"
+# Non-English NER backend (2026-07-01 real-fix eval): xx_ent_wiki_sm is worse-than-useless
+# for non-Latin (fa: nothing; ar: Russia->PERSON). A proper xlm-roberta token-classification
+# model extracts non-Latin entities with correct types (measured: Russia->LOC, Yazd via
+# cross-lingual transfer). Flag-gated + reversible; default xlm when multilingual is enabled.
+NER_MODEL_XLM = os.getenv("NLP_NER_MODEL_XLM", "Davlan/xlm-roberta-base-ner-hrl")
+NLP_MULTILINGUAL_NER = os.getenv("NLP_MULTILINGUAL_NER", "xlm").lower()  # xlm | spacy
+# Davlan HRL labels (PER/ORG/LOC/DATE/MISC) -> the kept entity schema; DATE/MISC dropped.
+_HF_NER_LABEL_MAP = {"PER": "PERSON", "PERSON": "PERSON", "ORG": "ORG", "LOC": "LOC"}
+# Languages where the xlm model is UNRELIABLE (offline eval 2026-07-01: Davlan HRL has no
+# Russian → ru precision 0/3). Route these to the English model (extracts ~nothing from a
+# non-Latin script = clean-empty → the typed gazetteer carries the subject honestly) rather
+# than writing garbage entities. Measured strong: zh/fa/ar/ko/de/pt (70–100% precision).
+NLP_XLM_NER_SKIP_LANGS = {
+    x.strip() for x in os.getenv("NLP_XLM_NER_SKIP_LANGS", "ru").split(",") if x.strip()
+}
 
 MODEL_VERSION_TAG = {
     "off": "en-v1",
@@ -148,6 +163,31 @@ def _extract_entities(nlp, headline: str, source_lang: str | None) -> list[dict]
             continue
         seen.add(name.lower())
         entities.append({"name": name, "type": ent.label_})
+    return entities
+
+
+def _extract_entities_hf(ner, headline: str, source_lang: str | None) -> list[dict]:
+    """Non-English NER via an xlm-roberta token-classification pipeline (Davlan).
+
+    Same output contract as _extract_entities ({name, type}), same validity + dedup
+    filters, but reads the HF `entity_group` (PER/ORG/LOC/…) instead of spaCy `.ents`,
+    and maps to the kept schema. Sub-token artefacts (leading ▁/##/spaces) are stripped.
+    """
+    seen: set[str] = set()
+    entities: list[dict] = []
+    try:
+        spans = ner(headline)
+    except Exception:  # a single bad headline must not abort the batch
+        return entities
+    for sp in spans:
+        etype = _HF_NER_LABEL_MAP.get(str(sp.get("entity_group", "")).upper())
+        if not etype:
+            continue
+        name = str(sp.get("word", "")).replace("▁", " ").replace("##", "").strip()
+        if not _entity_valid(name, source_lang) or name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        entities.append({"name": name, "type": etype})
     return entities
 
 
@@ -475,18 +515,40 @@ async def _run_ner_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) ->
             return spacy.load(name, disable=["parser", "lemmatizer", "attribute_ruler"])
 
     nlp_en = _load(SPACY_MODEL_EN)
-    nlp_xx = _load(SPACY_MODEL_XX) if _multilingual_enabled() else None
+    # Non-English NER backend: xlm (Davlan HF token-classification, default — extracts
+    # non-Latin with correct types) or spacy (xx_ent_wiki_sm, the legacy Latin-only path).
+    nlp_xx = None
+    hf_ner = None
+    if _multilingual_enabled():
+        if NLP_MULTILINGUAL_NER == "xlm":
+            try:
+                from transformers import pipeline as hf_pipeline
+                hf_ner = hf_pipeline(
+                    "token-classification", model=NER_MODEL_XLM,
+                    aggregation_strategy="simple", device=-1,
+                )
+            except Exception:
+                logger.exception("xlm NER load failed — falling back to spaCy xx")
+                nlp_xx = _load(SPACY_MODEL_XX)
+        else:
+            nlp_xx = _load(SPACY_MODEL_XX)
 
     records = []
     for row in rows:
         lang = (row["source_lang"] or "").lower()
-        nlp = nlp_xx if (nlp_xx is not None and lang and lang != "en") else nlp_en
-        entities = _extract_entities(nlp, row["headline"], lang or None)
+        non_en = bool(lang and lang != "en")
+        if non_en and hf_ner is not None and lang not in NLP_XLM_NER_SKIP_LANGS:
+            entities = _extract_entities_hf(hf_ner, row["headline"], lang or None)
+        else:
+            nlp = nlp_xx if (non_en and nlp_xx is not None) else nlp_en
+            entities = _extract_entities(nlp, row["headline"], lang or None)
         records.append((json.dumps(entities), row["id"]))
 
     del nlp_en
     if nlp_xx is not None:
         del nlp_xx
+    if hf_ner is not None:
+        del hf_ner
     gc.collect()
 
     if not dry_run and records:

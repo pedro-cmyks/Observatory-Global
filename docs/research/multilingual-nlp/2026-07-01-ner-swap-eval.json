@@ -1,0 +1,55 @@
+{
+  "per_lang": {
+    "ar": {
+      "n": 8,
+      "xx_extract_rate_pct": 25.0,
+      "xlm_extract_rate_pct": 87.5,
+      "xlm_entities_judged": 17,
+      "xlm_precision_pct": 70.6
+    },
+    "de": {
+      "n": 8,
+      "xx_extract_rate_pct": 50.0,
+      "xlm_extract_rate_pct": 75.0,
+      "xlm_entities_judged": 7,
+      "xlm_precision_pct": 85.7
+    },
+    "fa": {
+      "n": 8,
+      "xx_extract_rate_pct": 12.5,
+      "xlm_extract_rate_pct": 100.0,
+      "xlm_entities_judged": 12,
+      "xlm_precision_pct": 91.7
+    },
+    "ko": {
+      "n": 8,
+      "xx_extract_rate_pct": 0.0,
+      "xlm_extract_rate_pct": 37.5,
+      "xlm_entities_judged": 4,
+      "xlm_precision_pct": 100.0
+    },
+    "pt": {
+      "n": 8,
+      "xx_extract_rate_pct": 87.5,
+      "xlm_extract_rate_pct": 100.0,
+      "xlm_entities_judged": 13,
+      "xlm_precision_pct": 84.6
+    },
+    "ru": {
+      "n": 8,
+      "xx_extract_rate_pct": 0.0,
+      "xlm_extract_rate_pct": 12.5,
+      "xlm_entities_judged": 3,
+      "xlm_precision_pct": 0.0
+    },
+    "zh": {
+      "n": 8,
+      "xx_extract_rate_pct": 0.0,
+      "xlm_extract_rate_pct": 100.0,
+      "xlm_entities_judged": 11,
+      "xlm_precision_pct": 100.0
+    }
+  },
+  "overall_xlm_precision_pct": 82.1,
+  "overall_xlm_entities": 67
+}

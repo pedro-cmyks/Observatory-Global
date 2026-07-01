@@ -77,3 +77,35 @@ Implement. The evaluation removes the two reasons it was parked. Suggested order
 `nlp_pipeline` non-English NER swap + label map, (2) test offline on a labeled non-English sample
 (precision vs the gazetteer), (3) pre-bake protobuf + the model into mlvenv, (4) flip multilingual
 on the M1 worker, monitor throughput + a spot-check of verified non-English subjects on a surface.
+
+## Execution — steps 1–3 SHIPPED (offline, safe), step 4 gated on Pedro (2026-07-01)
+- **Step 1 (code):** `nlp_pipeline.py` — `_extract_entities_hf` (Davlan HF token-classification,
+  label map PER/ORG/LOC → PERSON/ORG/LOC, DATE/MISC dropped); flag `NLP_MULTILINGUAL_NER=xlm`
+  (default) routes non-English to it, `en` stays `en_core_web_sm`. DORMANT — only fires when
+  `NLP_MULTILINGUAL_MODE` ∈ {shadow,on}; mode is OFF, so zero behaviour change until the flip.
+- **Step 2 (offline eval, `scripts/eval_multilingual_ner.py`, DeepSeek-judged):** on real
+  non-English headlines, xlm vs the current `xx_ent_wiki_sm`:
+
+  | lang | xx extract-rate | xlm extract-rate | xlm precision (judged) |
+  |---|---:|---:|---:|
+  | zh | 0% | 100% | 100% (11/11) |
+  | fa | 12.5% | 100% | 91.7% (11/12) |
+  | ko | 0% | 37.5% | 100% (4/4) |
+  | ar | 25% | 87.5% | 70.6% (12/17) |
+  | pt | 87.5% | 100% | 84.6% (11/13) |
+  | de | 50% | 75% | 85.7% (6/7) |
+  | ru | 0% | 12.5% | **0% (0/3)** |
+  | **overall** | — | — | **82.1%** |
+
+  Huge recall lift for non-Latin (zh/fa/ar/ko were ~0 with `xx`) at 70–100% precision. **ru is the
+  one gap** — Davlan HRL has no Russian; Cyrillic transfer fails. → a **skip-guard**
+  (`NLP_XLM_NER_SKIP_LANGS=ru`, default) routes ru to the English model (clean-empty on Cyrillic →
+  the typed gazetteer carries ru honestly, no garbage written). Follow-up: a Cyrillic-capable NER
+  model for ru/uk/bg.
+- **Step 3 (pre-bake):** `protobuf 7.35.1` + `sentencepiece` installed in mlvenv (persists — it IS
+  the M1 worker venv); Davlan model cached (~1.1GB). `nlp_pipeline.py` synced to AtlasLocalWorker
+  (dormant).
+- **Step 4 (PENDING PEDRO'S GO — touches serving):** `fly`/launchd flip `NLP_MULTILINGUAL_MODE=on`
+  on the M1 worker ONLY (Fly stays EN-light, #184). Then non-English `nlp_persons` populate →
+  `key_subjects` flip unverified→verified across CountryBrief/EntityPanel/ThemeDetail; monitor M1
+  throughput + spot-check a surface. Reversible (mode back to off).
