@@ -27,6 +27,9 @@ recall.
   "what's happening in X" → X's stories, not just X's brief). (b) Search
   WITHIN a focused country: when FocusContext has a country, the SearchBar
   scopes live_threads/signals to it and labels the scope ("in Burkina Faso ✕").
+  (c) **Measured P1 finding: `match_country` does NOT recognize "burkina
+  faso"** — Pedro's literal example gets threads+signals but no country entry;
+  the alias table needs full-coverage (all ~200 countries + es/fr forms).
 - **P3 — semantic on-submit.** Lexical misses ≠ no answer: on Enter with zero
   thread hits, embed the query (existing embed service, ~0.5s warm) → cosine
   vs active topic centroids → serve above-threshold as `semantic_threads`
