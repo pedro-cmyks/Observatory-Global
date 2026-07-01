@@ -1,9 +1,11 @@
 # Spec — Atlas Engine R3: the unification (spine + lenses + relations, all five brains)
 
-Date: 2026-07-01 · Branch: `v3-intel-layer` · Status: **DRAFT v3 for Pedro review**
-(v1 rewritten after a 4-agent deep read of ~20 specs + 9 papers → v2; v3 folds
-Pedro's category challenge — anchored-emergent categories, NOT a fixed 32 — and
-resolves all decisions §9. Reconciliation ledger = §11.) Author: Claude (Opus 4.8).
+Date: 2026-07-01 · Branch: `v3-intel-layer` · Status: **CLOSED + VALIDATED** (v3).
+Arc: v1 → 4-agent deep read of ~20 specs + 9 papers → v2 (~30 corrections, ledger
+§11) → Pedro's "why fixed 32?" → v3 anchored-emergent categories + all decisions
+resolved (§9) → CLOSED: claims verified vs prod + the riskiest new idea proven with
+a live PoC (§12); build started (R3.0 schema + R3.7 retirement shipped, R3.1 typing
+validated + running). Author: Claude (Opus 4.8).
 
 **This is a CONVERGENCE spec, not a new invention.** It ties together work built
 piecemeal across the last ~20 specs + 9 papers and finishes the un-flipped pieces.
@@ -158,11 +160,16 @@ category level must be as EMERGENT as the story + event levels. Resolution =
 - **Run on the 30-min classifier cron, NOT nightly** — nightly typing leaves fresh
   stories uncategorized for a day → the badge asymmetry reappears as a TEMPORAL one
   (§11 F-C4.2). R3.4a proves pure-cron work is daytime-safe.
-- **Method (E-R3-a, RESOLVED — Pedro):** local **Path B bootstrap encoder** (MiniLM
-  head over the e5 substrate, $0/call) for the bulk seed-anchor assignment + the
-  coarse emergent clustering; **DeepSeek** (cheap, already integrated — Pedro's call
-  over a local LLM) for LOW-CONFIDENCE typing + labeling the emergent categories.
-  Prototype path reuses `research_semantic` centroid machinery.
+- **Method (E-R3-a, RESOLVED + VALIDATED 2026-07-01, §12):** **DeepSeek is the PRIMARY
+  typer.** Validation proved the cheap centroid-vs-seed-prototype COSINE FAILS (sims
+  collapse into a 0.78–0.85 band, argmax spurious — "Las Vegas Travel Guide"→Earthquake,
+  "Canada Bosnia Draw"→Currency-stress), while DeepSeek types sensibly (crisis→right
+  seed, non-crisis sport/travel/legal→honest reject). DeepSeek is cheap + already
+  integrated (Pedro's call). **Path B local encoder is the future $0 DISTILLATION** —
+  train it on DeepSeek's topic→category labels (the Paper-1 distillation loop) to
+  replace the API once it clears the 85–90% gate. Cosine is demoted to a cheap
+  candidate-narrowing / emergent-clustering signal, NOT the typer. Shipped:
+  `backend/scripts/compute_category_typing.py`.
 - **Living-set cadence (Path C):** the anchored-emergent set is re-curated every 4–8
   weeks (promote stable emergent categories to seeds; split/merge/retire) — the
   taxonomy is a LIVING set, the honest answer to "why fixed."
@@ -393,9 +400,9 @@ serving risk), and PR3.1–PR3.2 gate R3.2's headline paper claim.
 - **E-R3-h — category structure [NEW, Pedro's challenge].** **ANCHORED-EMERGENT**, not
   a fixed 32. Crisis-32 = seed anchors + editorial lens; emergent super-clusters extend
   the set (open, grows via Path C). §3.1. This is the biggest change from v1.
-- **E-R3-a — typing method.** **Path B local encoder** (MiniLM/e5, $0/call) for the
-  bulk + coarse emergent clustering; **DeepSeek** (cheap, already integrated — Pedro's
-  call over a local LLM) for low-confidence typing + emergent-category labeling.
+- **E-R3-a — typing method [VALIDATED §12].** **DeepSeek is the PRIMARY typer**
+  (cosine seed-prototype FAILS — proven); Path B local encoder = the future $0
+  distillation of DeepSeek's labels. Cosine demoted to candidate-narrowing only.
 - **E-R3-b — atlas after collapse.** Category vocabulary + filter view + the crisis
   seed-anchor set; removed from the served story list; `anchor_topics` kept internal.
 - **E-R3-c — cutover boldness.** Flip ONLY after R3.1 + R3.3 + serving-seam carry-
@@ -489,3 +496,44 @@ A/B discipline, honesty invariants, compute discipline), the member-ref schema, 
 recall-done premise, the R2 complete-linkage@0.98 findings, the attention/movement
 role split. The spine was right; the review fixed the SEAMS, the second EVENT axis,
 the freshness/typing cadence, the omitted lifecycle, and the paper incoherence.
+
+---
+
+## 12. Validation (2026-07-01 — the claims + the riskiest new idea, verified)
+This spec is CLOSED + VALIDATED: the load-bearing factual claims were checked against
+prod DB + code, and the single riskiest NEW idea (anchored-emergent typing + its
+method) was proven with a live PoC before committing to it at scale.
+
+**Facts verified against prod (not asserted):**
+- Two populations: `atlas_topics`=30 (typed) ‖ `dynamic_topics` active served (typed
+  by R3.7 sweep 392→**348**); `dynamic_topics` has NO `parent_domain` — confirmed.
+- candidate-v2 = **32 categories + a reject POLICY** (not 33) — confirmed in the JSON
+  (`n_categories: 32`). The live `apply_v2_reject.py` is a binary DEMOTER, not typing.
+- `events_v2`=1,023,222 (CAMEO, no text → co-occurrence-bindable, not embeddable);
+  `acled_conflicts_v2`=0 (dead); `topic_members` has ZERO `movement` rows — confirmed.
+- `gdelt_hint_ablation.py` does not exist (the 41.6% reproducibility gate is unbuilt).
+
+**Built + verified this session (the build has started, not just specced):**
+- **R3.0 schema** — migration 059 applied: `topic_members` member_kind/member_ref/
+  evidence_role + 'attention' role; `topic_movement`; `dynamic_topics` category/
+  crisis_class/category_confidence. Relationship endpoint (live consumer) unaffected.
+- **R3.7 retirement** — the bootstrap over-promotion (44 stale 28–36-day topics like
+  "Frankie Valli Tour Cancellation" wrongly re-activated) swept to `deprecated`;
+  serving 392→348, prod `/threads` confirmed the dead topics gone (reversible, 48 ids
+  saved). Pedro's retention model live: retire from serving, keep the row.
+- **R3.1 typing** — `compute_category_typing.py`, validated then run:
+  - **Cosine seed-prototype FAILS** — 24/30 "anchored" but the argmax is spurious
+    (sims collapse into 0.78–0.85; "Las Vegas Travel Guide"→Earthquake, "Canada Bosnia
+    Draw"→Currency-stress). This is the F3.2b taxonomy-is-hard finding, reproduced.
+  - **DeepSeek types correctly** — 14/14 sensible (Ukraine→Armed-Conflict, Hitzewelle→
+    Heat-health, Cepeda→Election-Legitimacy; Las Vegas Travel / World-Cup / class-action
+    → honest non_crisis reject). This VALIDATES the anchored-emergent design AND fixes
+    E-R3-a to DeepSeek-primary (Path B = future $0 distillation of its labels).
+  - Full write over all 348 active topics running (DeepSeek, cheap API, not heavy M1).
+
+**What remains is engineering with resolved decisions** (no open design questions):
+R3.4a movement (gated on membership fullness pre-F4), R3.3 umbrella-fold + stable id,
+R3.2/F4 cutover (the serving-seam carry-forward + gold gate), R3.4b/5/6/8 roles, the
+narrative-subthread axis, and the PR3 paper-coherence track (§8 ledger). Each is
+scoped, constrained (§4), and decided (§9). The design is settled; the risky ideas
+are proven.
