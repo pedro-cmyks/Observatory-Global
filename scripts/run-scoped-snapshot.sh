@@ -85,3 +85,9 @@ cd "$ROOT_DIR"
 $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.build_umbrella_topics \
   --threshold "${ATLAS_UMBRELLA_THRESHOLD:-0.98}" \
   || echo "[scoped-snapshot] umbrella build failed (non-fatal)" >&2
+
+# Step 4: R3.4b — bind events to topics PRECISELY via source_url (movement role,
+# verified=false, #232). events_v2.source_url = signals_v2.source_url -> the article's
+# topic. Pure-SQL, cheap. Non-fatal.
+$TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.compute_event_movement --write \
+  || echo "[scoped-snapshot] event movement bind failed (non-fatal)" >&2
