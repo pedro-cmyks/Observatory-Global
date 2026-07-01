@@ -135,20 +135,24 @@ async def main() -> None:
                 child_crisis = [rows[i]["crisis_class"] for i in idxs
                                 if rows[i]["crisis_class"] and rows[i]["crisis_class"] != "non_crisis"]
                 dom_crisis = max(set(child_crisis), key=child_crisis.count) if child_crisis else "non_crisis"
+                dom_relevant = dom_crisis != "non_crisis"
+                dom_category = dom_crisis if dom_relevant else None  # R3 open category (crisis seed)
                 uid = await conn.fetchval(
                     "INSERT INTO dynamic_topics "
                     "(identity_key, label, state, is_umbrella, centroid_vec, agg_n_signals, "
-                    " mean_cohesion, crisis_class, n_snapshots, snapshots_since_seen, is_roundup, "
-                    " first_seen, last_seen) "
-                    "VALUES ($1,$2,'active',true,$3,$4,$5,$6,1,0,false,"
+                    " mean_cohesion, crisis_class, category, crisis_relevant, n_snapshots, "
+                    " snapshots_since_seen, is_roundup, first_seen, last_seen) "
+                    "VALUES ($1,$2,'active',true,$3,$4,$5,$6,$8,$9,1,0,false,"
                     " (SELECT MIN(first_seen) FROM dynamic_topics WHERE id = ANY($7::bigint[])),"
                     " (SELECT MAX(last_seen) FROM dynamic_topics WHERE id = ANY($7::bigint[]))) "
                     "ON CONFLICT (identity_key) DO UPDATE SET label=EXCLUDED.label, "
                     " centroid_vec=EXCLUDED.centroid_vec, agg_n_signals=EXCLUDED.agg_n_signals, "
                     " mean_cohesion=EXCLUDED.mean_cohesion, crisis_class=EXCLUDED.crisis_class, "
+                    " category=EXCLUDED.category, crisis_relevant=EXCLUDED.crisis_relevant, "
                     " last_seen=EXCLUDED.last_seen, updated_at=now() "
                     "RETURNING id",
-                    ident, head["label"], [float(x) for x in cen], agg, coh, dom_crisis, child_ids)
+                    ident, head["label"], [float(x) for x in cen], agg, coh, dom_crisis, child_ids,
+                    dom_category, dom_relevant)
                 await conn.execute(
                     "UPDATE dynamic_topics SET parent_id = $1 WHERE id = ANY($2::bigint[])",
                     uid, child_ids)

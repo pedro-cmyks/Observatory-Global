@@ -998,8 +998,9 @@ SELECT
     dt.agg_n_signals,
     dt.mean_cohesion,
     dt.noise_rate,
-    dt.category,            -- R3.1 emergent category (open)
-    dt.crisis_class,        -- R3.1 seed-32 class or 'non_crisis' (the badge)
+    dt.category,            -- R3.1 open category (crisis seed OR emergent) = the badge
+    dt.crisis_class,        -- (legacy) seed-32 class or 'non_crisis'
+    dt.crisis_relevant,     -- R3 lens flag: is this crisis-relevant? (analyst filter)
     COALESCE((
         -- current volume = kept-signal count at the topic's LATEST snapshot. SUM
         -- (not LIMIT 1) so an R2 umbrella (N child clusters at one snapshot) reflects
@@ -1075,8 +1076,9 @@ SELECT
     dt.agg_n_signals,
     dt.mean_cohesion,
     dt.noise_rate,
-    dt.category,            -- R3.1 emergent category (open)
-    dt.crisis_class,        -- R3.1 seed-32 class or 'non_crisis' (the badge)
+    dt.category,            -- R3.1 open category (crisis seed OR emergent) = the badge
+    dt.crisis_class,        -- (legacy) seed-32 class or 'non_crisis'
+    dt.crisis_relevant,     -- R3 lens flag: is this crisis-relevant? (analyst filter)
     COALESCE(MAX(ec.velocity), 0)::int AS changed_10h,
     ARRAY(
         SELECT DISTINCT code
@@ -1123,12 +1125,13 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
     # Reuse parent_domain to carry the badge so the existing frontend renders it — a
     # dynamic thread stops showing the generic "narrative thread" badge and shows its
     # crisis class, killing the atlas-vs-dynamic badge asymmetry.
-    crisis_class = _record_get(topic_row, "crisis_class")
     category = _record_get(topic_row, "category")
-    # badge = crisis class if a crisis; else the emergent category (World Cup, Travel…);
-    # else None (a diverse non_crisis singleton keeps the generic "narrative thread").
-    badge_domain = (crisis_class if (crisis_class and crisis_class != "non_crisis")
-                    else category)
+    crisis_relevant = _record_get(topic_row, "crisis_relevant")
+    # R3 (crisis-relevance-as-lens): the OPEN category IS the badge for every story —
+    # crisis seed ("Armed Conflict") or emergent ("World Cup 2026"). No crisis/non_crisis
+    # second class: a diverse uncategorized singleton simply has no category (generic
+    # badge). `crisis_relevant` is a separate FLAG the analyst filters on, not a divide.
+    badge_domain = category
 
     sources: dict[str, int] = {}
     persons: dict[str, int] = {}
@@ -1164,9 +1167,9 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         "label": label_text,
         "summary": label_text,
         "anchor_topics": [str(_record_get(topic_row, "identity_key") or f"dynamic-topic-{topic_id}")],
-        "parent_domain": badge_domain,          # R3.1 crisis_class as the badge
-        "crisis_class": crisis_class,
+        "parent_domain": badge_domain,          # R3: the open category IS the badge
         "category": category,
+        "crisis_relevant": bool(crisis_relevant) if crisis_relevant is not None else None,
         "signal_count": signal_count,
         "lifetime_signal_count": lifetime_signals,
         "source_count": source_count,

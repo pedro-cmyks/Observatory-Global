@@ -128,9 +128,13 @@ async def main() -> None:
         if args.write:
             async with conn.transaction():
                 for _id, _lbl, cat, crisis, conf in typed:
+                    # R3 crisis-relevance-as-lens: category = the OPEN category (crisis
+                    # seed label for crisis; emergent labeling fills non-crisis later),
+                    # crisis_relevant = the flag. crisis_class kept legacy for back-compat.
                     await conn.execute(
                         "UPDATE dynamic_topics SET category=$2, crisis_class=$3, "
-                        "category_confidence=$4 WHERE id=$1", _id, cat, crisis, float(conf))
+                        "crisis_relevant=$4, category_confidence=$5 WHERE id=$1",
+                        _id, cat, crisis, crisis != "non_crisis", float(conf))
             print(f"wrote {len(typed)} typings (seed-anchored; emergent clustering = off-peak follow)")
     finally:
         await conn.close()
