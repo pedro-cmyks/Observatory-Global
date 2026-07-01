@@ -1,7 +1,8 @@
 # Paper Staleness Ledger (PR3.0)
 
-Date opened: 2026-07-01 · Owner: engine track · Status: **ACTIVE** (PR3.1 + PR3.3
-doc pass done 2026-07-01 — 6 resolved, 1 partial, 4 experiment rows open; see the
+Date opened: 2026-07-01 · Owner: engine track · Status: **ACTIVE** (doc track
+CLOSED 2026-07-01 — 10 resolved, 1 partial: PR3-10's temporal hold-out is
+DATA-LIMITED + `role_noise_rate` calibration remains; see the
 "PR3 reconciliation pass" note at the bottom)
 Companion: `docs/specs/2026-07-01-atlas-engine-r3-unification.md` §8 (the PR3
 paper-coherence track). Purpose (Pedro, 2026-07-01): the papers drifted from the
@@ -26,7 +27,7 @@ each finding by its `F-D-*` id in the R3 §11 ledger.
 | id | paper · loc | claim as written | current engine reality (2026-07-01) | fix | status |
 |---|---|---|---|---|---|
 | **PR3-01** | P1 skeleton R1 + master-plan; **precision-to-90** §obj; **session-summary**; **spend-ledger** | FOUR un-reconciled Atlas precision numbers: **41.6%** (N660/3-vendor) · **50.79%** (N189/6-model) · **59.02%** (N61) · learned-gate **90%@64%**; and LLM **78.6%** vs **95.08%** | different N + annotator panels + gold sets; the 78.6 vs 95.08 gap is the label-drift confound P1 itself warns of | **PR3.1:** declare ONE canonical regime (recommend 3-vendor N660 headline), footnote the rest; reconcile the LLM split by naming the gold set each used | **RESOLVED 2026-07-01** — P1 skeleton §"Canonical benchmark regime (PR3.1)" declares 3-vendor N660 (41.6%/78.6%) as headline; 50.79/59.02/scope-gate footnoted as panel/N/coverage variants; 78.6-vs-95.08 resolved as different gold sets |
-| **PR3-02** | P1 skeleton §Benchmark; labeling-guide; methodology-outline validation-map | benchmark = **30 atlas_topics × 4 buckets**, "256 rows / 30 topics" | R3.2 collapses atlas_topics from a served population to an attribute; served pop = **348 stories** (R3.7) | **PR3.2:** re-scope P1 benchmark as measuring the crisis-ANCHOR precision; add open-set category coverage/coherence for emergent extensions | **PARTIAL 2026-07-01** — the reject-GATE≠TYPING note + open-set framing added to P1 (§"Reject GATE ≠ category TYPING", canonical-regime open-set language); the FULL re-scope (a formal benchmark section measuring crisis-anchor precision + an open-set coverage/coherence metric for the emergent extensions) is a PR3.2 authoring task, not just a footnote — REMAINS OPEN |
+| **PR3-02** | P1 skeleton §Benchmark; labeling-guide; methodology-outline validation-map | benchmark = **30 atlas_topics × 4 buckets**, "256 rows / 30 topics" | R3.2 collapses atlas_topics from a served population to an attribute; served pop = **348 stories** (R3.7) | **PR3.2:** re-scope P1 benchmark as measuring the crisis-ANCHOR precision; add open-set category coverage/coherence for emergent extensions | **RESOLVED 2026-07-01** — P1 skeleton gained the formal §"Benchmark universe re-scope (PR3.2): crisis-anchor precision + open-set coverage" (placed after the canonical-regime section): Part A = crisis-anchor precision on the crisis-only held-out split (48–54% de-biased, κ 0.734 gold, CIs, anchoring control mandatory, 90% target); Part B = emergent extensions delegated to P8's coverage/coherence/dynamism; the 41.6→48–54 bridge stated as a QUESTION change (force-fits excluded from the crisis denominator via the reject class), not one measurement; gaps named (temporal hold-out DATA-LIMITED, role_noise_rate open). The stale "UNMEASURED" clause in §"Reject GATE ≠ category TYPING" updated to cite the landed PR3-10 numbers |
 | **PR3-03** | P6 master-plan L448-451; P8 skeleton baseline L26/L115 | topic set **FROZEN**, "last updated 06-29 17:00, 54/68 active >3d stale, lifecycle not retiring" (present tense) | FIXED — former revived mindful/off-peak (P8 Intervention-1); R1 wrote 731 clusters; 392→348 served | **PR3.3:** rewrite frozen claims to past-tense before/after; note R3.7 (B1 retirement) as the lifecycle fix | **RESOLVED 2026-07-01** — master-plan P6 dynamism bullet + P8 SHARPENED bullet + P8 skeleton baseline section all past-tensed to before→after (68→392→348, R3.7 retirement cited as the lifecycle fix); P8 baseline header banner-marked SUPERSEDED |
 | **PR3-04** | R3 spec v1 §2 vs CLAUDE.md top | "candidate-v2 NOT wired" ‖ "v2 reject gate LIVE" read as a contradiction | BOTH true: the reject GATE (binary demote) is live; category TYPING is unbuilt — different ops | fixed in R3 v3 §2/§3.1 (reject≠typing); no paper edit, but note in P1 taxonomy section | **RESOLVED 2026-07-01** — spec already resolved; the P1 taxonomy-section note now added (§"Reject GATE ≠ category TYPING", clarifying `apply_v2_reject.py` binary demoter vs R3.1 `compute_category_typing.py`) |
 | **PR3-05** | master-plan L96-104; unified-engine; gdelt-decoupling; R3 §4.1 | `gdelt_hint_ablation.py` is the reproducibility GATE on the 41.6% | BUILT + RUN 2026-07-01 | **PR3.4 / §4.1 build-dep:** build `gdelt_hint_ablation.py` before any theme-hint change; it is a required P1 result (recall-delta on theme-drop) | **RESOLVED 2026-07-01** — `backend/scripts/gdelt_hint_ablation.py` + report `docs/research/embedding-ablation/2026-07-01-gdelt-hint-ablation.md`. RESULT: theme-hint-dependent assignments (lex_count=0) are 20.2% correct ≪ 40.9% baseline = net NOISE; ablated (lexicon-standalone) precision 40.9%→**48.3%** (+7.4pp); recall cost 35 corrects (13%), 86–100% semantically recoverable at a moderate cut (threshold-cliff, [0.73,0.80] band). VERDICT: REMOVE-OK on the §3.2 noise branch. Theme-hint change is now unblocked. |
@@ -50,10 +51,14 @@ each finding by its `F-D-*` id in the R3 §11 ledger.
 The PR3.1 + PR3.3 doc reconciliation ran this date. Result:
 - **RESOLVED (6):** PR3-01, PR3-04, PR3-06, PR3-07, PR3-08, PR3-03 (see each row's
   status cell for the exact edit + location).
-- **PARTIAL (1):** PR3-02 — the reject-GATE≠TYPING clarification + open-set framing
-  landed in P1, but the full benchmark-universe re-scope (a formal crisis-anchor
-  precision section + an open-set coverage/coherence metric for emergent categories)
-  is a PR3.2 *authoring* task and REMAINS the open doc-track item.
+- **PR3-02 RESOLVED 2026-07-01 (was the last open doc-track item).** The full
+  benchmark-universe re-scope authored into the P1 skeleton as §"Benchmark universe
+  re-scope (PR3.2)": Part A crisis-anchor precision (48–54% de-biased successor to
+  41.6%, κ 0.734, CIs, anchoring control mandatory) + Part B open-set
+  coverage/coherence/dynamism delegated to P8 + the explicit 41.6→48–54 bridge
+  (question change, not one measurement) + honest gaps. **The PR3 doc track is now
+  CLOSED**; remaining ledger work is experimental only (PR3-10's temporal hold-out,
+  DATA-LIMITED, + `role_noise_rate` calibration).
 - **PR3-05 RESOLVED 2026-07-01** (`gdelt_hint_ablation.py` built + run): theme-hints
   are a NET NOISE source on the canonical benchmark (theme-only 20.2% ≪ 40.9%
   baseline; ablated 48.3%). Removal unblocked. See the row above + the report.

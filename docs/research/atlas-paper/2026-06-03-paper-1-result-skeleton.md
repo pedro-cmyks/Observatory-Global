@@ -95,6 +95,78 @@ different, smaller gold set. This is itself a Paper-1 finding: **LLM-judge/basel
 precision must be read against a fixed, declared gold set** — the production-label
 judge (and any mismatched-gold comparison) is confounded by label drift.
 
+## Benchmark universe re-scope (PR3.2): crisis-anchor precision + open-set coverage
+
+**Re-scope (2026-07-01, R3 spec §3.1/§8, staleness ledger PR3-02).** The canonical
+regime above measures a universe the engine has since superseded: **30 fixed
+`atlas_topics` × 4 stratification buckets** — a FIXED-taxonomy category layer in
+which every signal must land in one of 30 crisis topics. R3.1 made the taxonomy
+**ANCHORED-EMERGENT**: the crisis-32 (#204 candidate-v2) are **seed anchors + an
+editorial lens, not the typing target**; emergent super-clusters extend the set;
+`category` is OPEN for every story; `crisis_relevant` is a flag/filter (mig 061),
+never suppression. R3.2 collapses `atlas_topics` from a served population to an
+attribute. Served population (R3.7): **348 active stories, typed 348/348 = 182
+crisis-anchored + 166 non-crisis** (DeepSeek-primary typer; cosine seed-prototype
+matching measured spurious). One fixed-taxonomy precision number cannot evaluate
+this engine — the benchmark is now **two parts**.
+
+### Part A — crisis-anchor precision (the fixed-taxonomy half, the successor to 41.6%)
+
+Precision of crisis-class assignment on the **crisis-only held-out split** of the
+ensemble gold. Current measurement (ledger PR3-10):
+
+| quantity | value | artifact |
+|---|---|---|
+| crisis-anchor precision, hinted | 53.8% (170/316) | `docs/research/embedding-ablation/2026-07-01-crisis-only-precision-and-kappa.md` |
+| crisis-anchor precision, blind (unanchored) | 48.2% | `docs/research/embedding-ablation/2026-07-01-anchoring-control.json` |
+| **de-biased current band** | **48–54% (48% floor)** | hint measured ~5.6pp optimistic → anchoring control is MANDATORY in this regime |
+| gold reliability | Fleiss κ 0.734 binary / 0.623 4-cat | `docs/research/embedding-ablation/2026-07-01-gold-kappa.json` |
+| CI machinery (proven on the canonical N660) | baseline 40.9% [37.2, 44.7] · ablated 48.3% [43.8, 52.7] · Δ +7.4pp [5.2, 9.6] | `docs/research/embedding-ablation/2026-07-01-ablation-cis.json` |
+| target | 90% verified-evidence | unreached |
+
+Regime rules for Part A: crisis-only denominator; Wilson + bootstrap CIs on every
+reported point; blind-vs-hinted anchoring control on any LLM-in-loop scoring; gold
+= the ensemble-κ base. External reference (PR3-09,
+`docs/research/embedding-ablation/2026-07-01-external-baseline.md`): HDBSCAN-global
+cliffs at every `min_cluster_size`; flat KMeans/Agglo reach in-sample coherence
+parity but carry no identity/lifecycle — Atlas's edge is scoping + lifecycle, which
+Part A does not measure and Part B partly does.
+
+### Part B — open-set evaluation for the emergent extensions (delegated to Paper 8)
+
+The 166 non-crisis stories (→ 15 emergent super-categories @0.95 complete-linkage +
+open domains) are NOT scored on fixed-taxonomy precision — that metric is undefined
+for an open, growing set. They are evaluated on Paper 8's metrics: **COVERAGE**
+(share of corpus explained), **COHERENCE** (member↔centroid), and **DYNAMISM**
+(category births/deaths; R3.7 retirement/resurrection). Paper 1 cross-references
+these (`docs/research/atlas-paper/2026-06-30-paper-8-result-skeleton.md` + the
+master-plan P8 section) and does not duplicate them.
+
+### The bridge: 41.6% → 48–54% is NOT the same measurement
+
+The number moved partly because the QUESTION changed, and the paper must say how:
+
+- **Old universe:** "of everything assigned into the 30 fixed crisis topics, how
+  much is correct?" With no reject class, ~49% of usable assignments were
+  out-of-scope force-fits scoring 27.1% — they pin the headline at 41.6% and
+  charge non-crisis content to the crisis classifier.
+- **New universe:** "of stories genuinely in a crisis anchor's scope, how well are
+  they classed?" The OUT_OF_SCOPE reject class (#204 candidate-v2) excludes
+  force-fits from the crisis denominator.
+
+So 41.6% → 48–54% is part **denominator hygiene** (force-fits the old universe
+wrongly charged to the classifier) and part **real engine change** (reject class +
+typing). Any "improved by X pp" claim must declare which universe it is measured
+in; cross-universe deltas are not improvement claims.
+
+### Open gaps (honest)
+
+- **Temporal hold-out: DATA-LIMITED.** Batch-03 gold carries no timestamps and the
+  underlying signals were purged; requires a fresh labeled window (ledger PR3-10).
+- **`role_noise_rate` calibration:** open (ledger PR3-10, the remaining item).
+- **The 90% north-star:** unreached in either universe; 48–54% is the honest
+  current position of the crisis-anchor classifier.
+
 ## Research Questions
 
 | RQ | Status | Evidence |
@@ -401,10 +473,11 @@ gate was live, category typing was not. The κ=0.739 above validates the candida
 LABEL SPACE (reliability of the annotation), which is the precondition for typing, not
 the typing precision itself. The **crisis-only in-category precision** — the actual
 "successor to 41.6%" — is measured on a crisis-only held-out κ split with Wilson/
-bootstrap CIs and an anchoring control; that split is **UNMEASURED as of 2026-07-01**
-(κ 0.739 is reject-driven on a non-crisis-heavy sample) and is scheduled as a
-PR3.4 experiment (ledger PR3-10). Until it lands, the headline of §"Canonical
-benchmark regime" (41.6% / 78.6%, N=660) remains Paper 1's stated precision result.
+bootstrap CIs and an anchoring control; that split **landed 2026-07-01** (ledger
+PR3-10): **48–54% de-biased** (53.8% hinted / 48.2% blind, anchoring hint ~5.6pp
+optimistic) — see §"Benchmark universe re-scope (PR3.2)" for the full regime. The
+headline of §"Canonical benchmark regime" (41.6% / 78.6%, N=660) remains Paper 1's
+stated result for the OLD universe; the two are bridged, not interchangeable.
 
 ## The split-brain is FIVE pipelines, not three (2026-06-30 extension)
 

@@ -10,6 +10,42 @@
 > and narrows further if telemetry shows one persona dominates.) **Anti-goal:**
 > no new surface/capability until telemetry shows users reaching a value moment.
 
+**2026-07-01 (PM — CONNECTION REVIEW + HYGIENE PASS, read alongside the
+parallel-tracks block).** Pedro asked for a full coherence review (specs ↔ papers ↔
+vision ↔ issues) then "work everything actionable." Review verdict: convergence
+real (R3 = genuine umbrella; PR3 ledger mechanism works); remaining risks =
+MAINTENANCE not design. All actionable items EXECUTED same session:
+(1) **Telemetry READ for the first time (T5.1 debt):** 181 app_opens / 14 sessions
+since 06-26 but only 3 value moments (none since 06-28) — AND `/brief` (the PWA
+consumer front door) fired ZERO events (`app_open` only fires on `/app`). Fixed:
+`brief_open` on mount + `brief_thread_open`+`first_value_moment{kind:brief_thread}`
+in `openThread` (BriefNewspaper.tsx; distinct event to avoid double-count with the
+console's deep-link `thread_open`). Verified end-to-end (preview → 202 → prod rows).
+**Read telemetry weekly — the wedge anti-goal is ungoverned without the reading.**
+(2) **R3.1 typing cadence contradiction FIXED:** spec §3.1 mandates 30-min typing;
+build had it nightly-only. `run-atlas-topic-classifier.sh` Step 4 now runs
+`compute_category_typing --deepseek --write --only-untyped` every 30 min (new flag;
+incremental crisis_class IS NULL; steady-state 0 API calls; lazy torch import).
+Tested live ("no topics to type"), synced byte-identical to ALW.
+(3) **nlp-fleet watchdog** (`scripts/nlp-fleet-watchdog.sh` + launchd 15-min,
+INSTALLED + verified "up"): the fleet died silently 06-29→07-01 (2nd silent-death
+incident after #240) — checks loaded/PID/heartbeat-freshness (45m), kickstarts.
+Failure branches untested by design (didn't kill the live fleet).
+(4) **PR3-02 CLOSED (agent-authored):** P1 skeleton gained §"Benchmark universe
+re-scope (PR3.2)" — Part A crisis-anchor precision (48–54% band, κ, CIs, anchoring
+mandatory) + Part B open-set delegated to P8 + the 41.6%→48–54% bridge (question
+change, not one measurement). Ledger: 10 resolved / 1 partial (PR3-10 residue);
+doc track CLOSED. (5) **R3 spec addenda:** §4.1 gate SATISFIED (PR3-05 REMOVE-OK),
+§12 ablation-exists correction, §3.1 cadence-implemented note. (6) **Issues:**
+**#243** = follow-ups checklist (multilingual re-check, #241 lever 1 Pedro-gated,
+burst=2, uk/bg, role_noise_rate, temporal-holdout window, scoped-snapshot first
+fire, theme-hint removal); #184 re-scoped (M1 fleet superseded the ask); #157
+updated (82.1%/87.5% measured). (7) vitest 136/136 (fixed the stale #204 label
+expectation in exportFormatters.test.ts — was the standing 1-fail). Multilingual
+drain measured LIVE: ~2.1K xlm signals/hr, 660 non-EN nlp_persons at check.
+Residual named debt (not urgent, tracked): two membership regimes (v1-compat ‖
+unified-v2) until F4; consumers must UNION (the relationship-endpoint bug class).
+
 **2026-07-01 (PARALLEL-TRACKS SESSION — read FIRST; full handoff
 `docs/state/2026-07-01-parallel-tracks-session.md`).** Two explicit parallel tracks
 (Pedro: "que no se me pierda el uno o el otro"), ALL shipped + VALIDATED (69 tests,
@@ -97,7 +133,9 @@ as a LENS (Pedro): the crisis/non_crisis binary → `category` (open, every stor
 relevant` (flag/filter), mig 061.** Findings: topic centroids diffuse (cosine unreliable →
 DeepSeek is the typer); R3.4b event-movement DATA-LIMITED (CAMEO country-level, #232);
 cutover R3.2 = low-priority (user-facing unification already delivered via badge; pure
-atlas-collapse risks coverage). Typing wired into the nightly cron. Commits 67f4484→2e22cd5.
+atlas-collapse risks coverage). Typing wired into the nightly cron **+ (2026-07-01)
+the 30-min classifier cron Step 4 (`--only-untyped` incremental — spec §3.1/F-C4.2
+cadence, fresh stories badge within a cycle)**. Commits 67f4484→2e22cd5.
 
 Last updated: 2026-06-30. **TRACK CONSOLIDATION — COMPLETE (read this FIRST):**
 the two parallel chats (engine/taxonomy ‖ frontend/L2) have MERGED into ONE living
@@ -105,7 +143,8 @@ track — the engine handoff was absorbed 2026-06-30, so this is now the SINGLE
 track owning BOTH engine and frontend (no more "reserved" split). State now owned:
 prod serves construction **v1**; **v2 reject gate LIVE** (reversible); pending
 off-peak = gold-growth pass + F4 unified-v2 cutover + the attention/anomaly engine
-extension; ⚠ the M1 classifier runner Step 3 is un-versioned (see handoff §5).
+extension. (Un-versioned-runner risk RESOLVED 2026-07-01 — runner versioned +
+byte-identical with the executed AtlasLocalWorker copy, now incl. Step 4 typing.)
 Original merge rationale —
 the L2 audit showed the split-brain is one problem, two ends (the engine's missing
 attention+anomaly roles ARE the L2 surfaces). Plan + rationale:
@@ -165,9 +204,10 @@ mig 057 (evidence+discussion populated, mood sparse, movement blocked #232).
 PENDING off-peak: gold-growth pass (lifts gate balanced 61.5%→~80%), F4 cutover,
 and the **attention/anomaly engine extension** (the 5-brains analysis — L2 spec
 §"unified-engine connection", fold into `2026-06-29-atlas-unified-engine.md`).
-⚠ **Un-versioned risk:** the M1 classifier runner Step 3
-(`run-atlas-topic-classifier.sh`) is NOT in git — re-sync `apply_v2_reject.py` +
-`v2_gate.json` to AtlasLocalWorker on any engine-code change (handoff §5).
+**Un-versioned risk RESOLVED 2026-07-01:** `scripts/run-atlas-topic-classifier.sh`
+versioned + synced byte-identical to AtlasLocalWorker (incl. new Step 4 incremental
+category typing); still re-sync `apply_v2_reject.py` + `v2_gate.json` +
+`compute_category_typing.py` on engine-code changes.
 
 **2026-06-30 (parallel-chat L2 session, frontend-only — A3/A4/C3 closeout):**
 Verify-before-assume paid off — the "REMAINING L2" list above was STALE.

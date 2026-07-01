@@ -160,6 +160,12 @@ category level must be as EMERGENT as the story + event levels. Resolution =
 - **Run on the 30-min classifier cron, NOT nightly** — nightly typing leaves fresh
   stories uncategorized for a day → the badge asymmetry reappears as a TEMPORAL one
   (§11 F-C4.2). R3.4a proves pure-cron work is daytime-safe.
+  **[2026-07-01 addendum: IMPLEMENTED — the build initially wired typing only into
+  the nightly scoped-snapshot (a spec↔impl contradiction caught in review); fixed
+  same day: `run-atlas-topic-classifier.sh` Step 4 runs `compute_category_typing
+  --deepseek --write --only-untyped` every 30 min (incremental: crisis_class IS
+  NULL only, steady-state = 0 API calls, no torch load — lazy embedder import);
+  the nightly pass remains the full sweep + emergent clustering.]**
 - **Method (E-R3-a, RESOLVED + VALIDATED 2026-07-01, §12):** **DeepSeek is the PRIMARY
   typer.** Validation proved the cheap centroid-vs-seed-prototype COSINE FAILS (sims
   collapse into a 0.78–0.85 band, argmax spurious — "Las Vegas Travel Guide"→Earthquake,
@@ -274,6 +280,10 @@ are unbuilt (§11 F-C4.9).
    (§11 F-D-I4-5). This is a BUILD DEPENDENCY, not a checkbox: any theme-hint change
    without the ablation breaks Paper-1 reproducibility. The `KILL` polysemy (armed-
    conflict AND gender-violence) is the concrete defect it must measure.
+   **[2026-07-01 addendum: GATE SATISFIED — built + run (PR3-05, `0cb9f25`):
+   theme-hint-dependent assignments 20.2% ≪ 40.9% baseline = net noise; ablated
+   48.3% (+7.4pp [5.2,9.6]); verdict REMOVE-OK. Theme-hint removal is UNBLOCKED
+   on the §3.2 noise branch.]**
 2. **Honesty invariants (verbatim).** evidence never mixes discussion/mood/movement/
    attention; `gated_signal_count` evidence-only; `verified=false` on social+
    attention+movement; OUT_OF_SCOPE labeled never force-fit AND stays retrievable;
@@ -512,6 +522,7 @@ method) was proven with a live PoC before committing to it at scale.
 - `events_v2`=1,023,222 (CAMEO, no text → co-occurrence-bindable, not embeddable);
   `acled_conflicts_v2`=0 (dead); `topic_members` has ZERO `movement` rows — confirmed.
 - `gdelt_hint_ablation.py` does not exist (the 41.6% reproducibility gate is unbuilt).
+  **[2026-07-01 addendum: now BUILT + RUN — see §4.1 addendum + ledger PR3-05.]**
 
 **Built + verified this session (the build has started, not just specced):**
 - **R3.0 schema** — migration 059 applied: `topic_members` member_kind/member_ref/
