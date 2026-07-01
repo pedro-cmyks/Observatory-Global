@@ -536,9 +536,48 @@ method) was proven with a live PoC before committing to it at scale.
     (serving the badge = R3.6). The emergent super-category label for the 166 non_crisis
     is the off-peak clustering follow.
 
-**What remains is engineering with resolved decisions** (no open design questions):
-R3.4a movement (gated on membership fullness pre-F4), R3.3 umbrella-fold + stable id,
-R3.2/F4 cutover (the serving-seam carry-forward + gold gate), R3.4b/5/6/8 roles, the
-narrative-subthread axis, and the PR3 paper-coherence track (§8 ledger). Each is
-scoped, constrained (§4), and decided (§9). The design is settled; the risky ideas
-are proven.
+**More phases shipped this session (implementa todo pass):**
+- **R3.0b** mig 060 — the hot-PK swap (member_kind/member_ref, signal_id nullable,
+  default-ref trigger). Event/trend members insert; relationship endpoint unaffected.
+- **R3.3** umbrella stable id (upsert on identity_key — verified stable across rebuilds,
+  fixes the ephemeral-id defect) + crisis_class inheritance (Ukraine→Armed-Conflict).
+- **R3.6-partial** category badge LIVE — dynamic threads serve crisis_class as the
+  badge (Iraq→Corruption Investigation, Red Heat Wave→Heat-health); emergent categories
+  for the coherent non_crisis (World Cup 2026, Travel & Tourism). The atlas-vs-dynamic
+  badge asymmetry is fixed for the categorizable population.
+- **R3.1 emergent-extension** — the 166 non_crisis coarse-clustered @0.95 → 15 emergent
+  super-categories (World Cup / Travel / Cuisine / Commodities); 123 diverse singletons
+  keep their own label honestly.
+
+**META-FINDING (shapes the rest):** topic CENTROIDS are diffuse — cheap cosine over
+them is unreliable. It broke the crisis typing (→ DeepSeek), the emergent clustering
+(→ tight 0.95 cut), and would break semantic attention-binding. The reliable path is
+LLM judgment (DeepSeek) or better DATA, not cosine. Consequences:
+- **R3.4b event-movement = DATA-LIMITED** (not engine-limited): `events_v2` (CAMEO) is
+  country-level + text-less + noisy actors, so country+time binding OVER-binds (every
+  crisis topic in a country gets the same events) and precise entity binding is sparse.
+  The Sudan events→thread answer needs a better event source (#232; `acled_conflicts_v2`
+  =0/dead). Script built, NOT run to serving (a coarse over-binding would mis-serve).
+- **R3.5 attention** likely hits the same cosine-noise; use DeepSeek or a
+  trend-magnitude prior, not naive centroid cosine.
+
+**What genuinely remains** (each scoped/decided, but real work — not a rush):
+- **R3.2/F4 cutover** — the one high-risk piece. A nuance surfaced building it: R1/R2/R3
+  enriched `dynamic_topics` (scoped, typed, umbrella'd, retired), NOT the F3 `unified-v2`
+  topic_members experiment. So "the one population" to serve is the enriched
+  `dynamic_topics`; collapsing `atlas_topics` needs a COVERAGE CHECK first (do the
+  dynamic stories cover what the big atlas category-threads covered, before removing
+  atlas from serving) + the serving-seam carry-forward + gold gate. A dedicated gated
+  pass, not an unsupervised flip. **REFRAME (the important one):** the USER-FACING
+  unification — one population where every thread carries a category, killing the
+  atlas-vs-dynamic badge asymmetry Pedro flagged — is ALREADY DELIVERED (R3.1 typing +
+  R3.6-partial badge; the current serving already merges dynamic + atlas_extra ranked +
+  deduped). The "pure cutover" (remove atlas as served rows, make it attribute-only) is
+  architectural cleanup that RISKS coverage loss (big atlas category-threads with no
+  dynamic equivalent would vanish) for marginal user-facing gain. So it is LOW-priority
+  + gated, not the finish line — the finish line (categorized one-population serving)
+  was reached without it.
+- R3.4a movement (needs F4's clean membership; pre-F4 `assigned_at` is ETL-timed),
+  R3.5 attention (DeepSeek/magnitude, not cosine), R3.6 full one-shape + relationship
+  differentiation, R3.8 evidence-role classifier (schema ready), the narrative-subthread
+  axis, and the PR3 paper track.
