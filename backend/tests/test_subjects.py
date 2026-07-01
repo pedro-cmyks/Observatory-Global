@@ -65,6 +65,22 @@ def test_classify_with_ner_type(name, ner, expected):
     assert classify_subject(name, ner_type=ner) == expected
 
 
+# ── gazetteer OVERRIDES a NER mistype (2026-07-01, multilingual-NER noise fix) ──
+@pytest.mark.parametrize("name,ner,expected", [
+    ("England", "PERSON", "place"),        # NER mistype on sports headlines
+    ("Brazil", "PERSON", "place"),
+    ("LaLiga", "PERSON", "organization"),
+    ("la liga", "PERSON", "organization"),
+    ("el niño", "PERSON", "event"),
+    # real people NOT in the gazetteer keep NER's type (override is exact-match only)
+    ("H. Kane", "PERSON", "person"),
+    ("Netanyahu", "PERSON", "person"),
+    ("Gustavo Petro", "PERSON", "person"),
+])
+def test_gazetteer_overrides_ner_mistype(name, ner, expected):
+    assert classify_subject(name, ner_type=ner) == expected
+
+
 # ── classify_subject: untyped (GDELT) inference ──
 @pytest.mark.parametrize("name,expected", [
     # places (the live leaks: español + truncated GDELT forms)

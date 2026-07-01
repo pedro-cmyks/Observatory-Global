@@ -43,6 +43,10 @@ _ORG_NAMES: frozenset[str] = frozenset({
     "bafana bafana", "naciones unidas", "united nations", "union europea",
     "unión europea", "european union", "african union", "union africana",
     "estado islamico", "estado islámico", "islamic state",
+    # Football leagues/competitions — the multilingual NER mistypes these as PERSON
+    # (2026-07-01 live finding); they are never a person's name.
+    "laliga", "la liga", "premier league", "serie a", "bundesliga", "ligue 1",
+    "champions league", "europa league", "eredivisie", "mls",
 })
 _PLACE_NAMES: frozenset[str] = frozenset({
     "america latina", "america latin", "latina america", "latin america",
@@ -51,16 +55,25 @@ _PLACE_NAMES: frozenset[str] = frozenset({
     "emiratos arabes", "casa blanca", "nueva york", "nueva delhi",
     "ciudad de mexico", "ciudad de méxico", "sudafrica", "sudáfrica",
     "republica dominicana", "república dominicana",
+    # Country names the NER mistypes as PERSON in entity-dense/sports headlines
+    # (2026-07-01 live finding: "England 1-1 Congo DR" → England→PERSON). Single-word
+    # country names are places-as-subject; person-collision is negligible.
+    "england", "scotland", "wales", "spain", "germany", "italy", "brazil",
+    "argentina", "portugal", "netherlands", "belgium", "croatia", "morocco",
+    "senegal", "uruguay", "colombia", "ecuador", "nigeria", "cameroon",
 })
 
 
 def classify_subject(name: str, ner_type: str | None = None) -> str | None:
     """Return a product subject type for ``name``, or None if it is not a
-    surfaceable subject. Trusts ``ner_type`` (spaCy label) when present."""
+    surfaceable subject. The curated gazetteer OVERRIDES ``ner_type`` for known
+    unambiguous non-persons (2026-07-01): the multilingual NER wins-over-gazetteer
+    at serving and mistypes entity-dense/sports names (``England``→PERSON,
+    ``LaLiga``→PERSON). These sets contain only names that are NEVER a real person
+    (el niño, bafana bafana, america latina, england, laliga), so overriding a NER
+    mistype is safe; NER still types everything not in the gazetteer."""
     if not name:
         return None
-    if ner_type:
-        return _SPACY_TYPE_MAP.get(ner_type)
     lower = name.lower().strip()
     if lower in _EVENT_NAMES:
         return "event"
@@ -68,6 +81,8 @@ def classify_subject(name: str, ner_type: str | None = None) -> str | None:
         return "organization"
     if lower in _PLACE_NAMES or lower in _GEO_NAME_BLOCKLIST:
         return "place"
+    if ner_type:
+        return _SPACY_TYPE_MAP.get(ner_type)
     if _is_valid_person(name):
         return "person"
     return None
