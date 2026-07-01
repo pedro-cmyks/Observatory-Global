@@ -4,6 +4,26 @@
 · **Principle (Pedro):** add a source ONLY to fix an identified root-cause gap, never for
 novelty. Every recommendation below names the exact gap it closes.
 
+## Execution status — 2026-07-01 (SHIPPED)
+
+Both tracks built, verified, deployed:
+- **§1 source_url binding — PERSISTED + CRON'D.** `compute_event_movement --write` runs in the
+  scoped-snapshot runner Step 4 (M1). 520 movement members live (Iran/Sudan precise, zero
+  country fan-out).
+- **§2 disaster sources — BUILT + DEPLOYED.** `disaster_events_v2` (mig 062); `ingest_disasters.py`
+  (USGS FDSN + GDACS GeoRSS, no key) wired into `ingest_loop` every 8th cycle — live-verified 248
+  events (23 USGS quakes @max M6.0 + 225 GDACS hazards). `bind_disaster_movement.py` binds
+  geo-temporally (type→category + dominant-evidence-country + window overlap) in runner Step 4b —
+  verified zero fan-out: 6 JP quakes→"Japan Earthquakes", PH quake→"Philippines 7.8 Tsunami",
+  BR flood→"Heavy Rains in Pernambuco", GB storm→"Orkney Stormy Summer".
+- **Latent bug fixed (surfaced by §2):** the #168 relationship endpoint's role-count SQL filtered
+  ALL roles by the v1-compat engine_version, so movement (movement-v1 + disaster-v1) was NEVER
+  counted. Movement is the event layer, engine-version-independent → now counted for any
+  `member_kind='event'`. Japan Earthquakes: evidence 17, movement 8.
+- **REMAINING (unchanged):** EM-DAT stays offline-only; Event Mentions #159 widens §1 recall;
+  unified-v2 F3 swaps the `dyn_sig` CTE to full membership; GDACS magnitude parse is best-effort
+  (alert_level carries severity meanwhile).
+
 ---
 
 ## 0. The root-cause gap
