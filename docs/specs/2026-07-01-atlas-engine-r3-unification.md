@@ -546,8 +546,17 @@ method) was proven with a live PoC before committing to it at scale.
   for the coherent non_crisis (World Cup 2026, Travel & Tourism). The atlas-vs-dynamic
   badge asymmetry is fixed for the categorizable population.
 - **R3.1 emergent-extension** — the 166 non_crisis coarse-clustered @0.95 → 15 emergent
-  super-categories (World Cup / Travel / Cuisine / Commodities); 123 diverse singletons
-  keep their own label honestly.
+  super-categories (World Cup / Travel / Cuisine / Commodities); the diverse singletons
+  get an open non-crisis domain (Sports / Business / Obituary…).
+- **Crisis-relevance as a LENS (Pedro, 2026-07-01) — a model correction.** Pedro:
+  Atlas tracks NARRATIVES; a World Cup is a narrative, not a "reject". So the
+  crisis/non_crisis BINARY (which made non-crisis second-class) is replaced: `category`
+  is the OPEN category for EVERY story (crisis seed OR emergent OR open domain) = the
+  badge; `crisis_relevant` is a FLAG the analyst filters on ("show me the serious
+  stuff"), NOT a taxonomy divide. mig 061 + serving (badge=category, crisis_relevant in
+  the payload) + the typers write it; umbrellas inherit it; wired into the nightly cron.
+  This is the same open-set principle as the anchored-emergent fix, applied to the
+  crisis axis: relevance is a lens over an open category space, not a closed gate.
 
 **META-FINDING (shapes the rest):** topic CENTROIDS are diffuse — cheap cosine over
 them is unreliable. It broke the crisis typing (→ DeepSeek), the emergent clustering

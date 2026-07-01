@@ -59,7 +59,15 @@ honest-reject). Remaining = engineering w/ resolved decisions (§9): R3.4a movem
 R3.3 umbrella-fold+stable-id, R3.2/F4 cutover (serving-seam carry-forward + gold gate),
 roles R3.4b/5/6/8, narrative-subthread axis, PR3 paper track (`docs/research/atlas-
 paper/2026-07-01-paper-staleness-ledger.md` — 4 un-reconciled precision numbers,
-`gdelt_hint_ablation.py` unbuilt, missing external baseline). Commits 67f4484→6edb99f.
+`gdelt_hint_ablation.py` unbuilt, missing external baseline). **R3 BUILD (implementa-todo
+pass):** shipped R3.0/R3.0b (mig 059/060 schema+PK-swap), R3.1 (DeepSeek typing 348/348 +
+emergent categories + open non-crisis domains), R3.3 (umbrella stable-id + category
+inherit), R3.6-partial (category badge LIVE), R3.7 (retirement 392→348). **Crisis-relevance
+as a LENS (Pedro): the crisis/non_crisis binary → `category` (open, every story) + `crisis_
+relevant` (flag/filter), mig 061.** Findings: topic centroids diffuse (cosine unreliable →
+DeepSeek is the typer); R3.4b event-movement DATA-LIMITED (CAMEO country-level, #232);
+cutover R3.2 = low-priority (user-facing unification already delivered via badge; pure
+atlas-collapse risks coverage). Typing wired into the nightly cron. Commits 67f4484→2e22cd5.
 
 Last updated: 2026-06-30. **TRACK CONSOLIDATION — COMPLETE (read this FIRST):**
 the two parallel chats (engine/taxonomy ‖ frontend/L2) have MERGED into ONE living
