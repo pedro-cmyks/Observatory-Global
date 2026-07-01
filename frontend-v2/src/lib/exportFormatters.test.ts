@@ -29,7 +29,8 @@ describe('exportFormatters', () => {
     expect(md).toContain('- **Total Signals:** 42')
     expect(md).toContain('- reuters.com: 12 signals (wire)')
     expect(md).toContain('- CO: 8 signals')
-    expect(md).toContain('- Protest: 7 co-occurrences')
+    // #204 taxonomy label rename: PROTEST -> "Protests & Unrest"
+    expect(md).toContain('- Protests & Unrest: 7 co-occurrences')
   })
 
   it('escapes theme signal CSV fields with commas and quotes', () => {

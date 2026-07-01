@@ -9,6 +9,7 @@ import { readBriefingCache } from '../lib/briefingPrefetch'
 import { resolveThreadThemeTarget } from '../lib/threadThemeTarget'
 import { selectLeadThread } from '../lib/briefLead'
 import { coverageChipTip, COVERAGE_CHIP_LABEL } from '../lib/countryChips'
+import { track, trackOnce } from '../lib/telemetry'
 import { OfflineBanner } from '../components/OfflineBanner'
 import './BriefNewspaper.css'
 
@@ -241,6 +242,10 @@ export function BriefNewspaper() {
         }
     }, [])
 
+    // T5.1: /brief had ZERO telemetry (app_open only fires on /app) — the
+    // consumer front door was invisible to the value-moment funnel.
+    useEffect(() => { track('brief_open') }, [])
+
     useEffect(() => {
         fetchData(hours)
     }, [hours, fetchData])
@@ -330,6 +335,11 @@ export function BriefNewspaper() {
     const openThread = (thread: TopThread, country?: string | null) => {
         const target = resolveThreadThemeTarget(thread)
         if (!target) return
+        // T5.1: opening a story from the Brief IS the consumer value moment.
+        // Distinct event (not thread_open — the console fires that on the
+        // deep-link mount, this avoids double-counting the same open).
+        track('brief_thread_open', { thread: target.theme })
+        trackOnce('first_value_moment', { kind: 'brief_thread' })
         const params = new URLSearchParams()
         params.set('theme', target.theme)
         const cc = country ?? target.originCountry
