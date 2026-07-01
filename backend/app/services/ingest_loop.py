@@ -211,15 +211,32 @@ async def main():
                 import asyncpg, os as _os
                 db_url = _os.environ.get("DATABASE_URL") or _os.environ.get("SUPABASE_DB_URL")
                 if db_url:
-                    log.info("Retention cleanup starting (deleting unprocessed signals >90 days)...")
+                    log.info("Retention cleanup starting...")
                     _conn = await asyncpg.connect(db_url)
-                    result = await _conn.execute("""
-                        DELETE FROM signals_v2
-                        WHERE nlp_processed_at IS NULL
-                          AND created_at < NOW() - INTERVAL '90 days'
-                    """)
-                    await _conn.close()
-                    log.info("Retention cleanup complete: %s", result)
+                    try:
+                        # Raw signals: drop un-enriched rows older than 90 days.
+                        r_sig = await _conn.execute("""
+                            DELETE FROM signals_v2
+                            WHERE nlp_processed_at IS NULL
+                              AND created_at < NOW() - INTERVAL '90 days'
+                        """)
+                        # Hourly aggregates + GDELT events grow unbounded otherwise
+                        # (were 60d / ~11 GB before the 2026-07-01 cleanup). Hot serving
+                        # window is <=8 days (workspace/concept reads); keep 14d as a safe
+                        # margin. Long-term trends live in historical_*_daily. Plain DELETE
+                        # keeps them bounded and autovacuum reuses the space (no VACUUM FULL
+                        # in the loop — it needs an exclusive lock and can't run in a txn).
+                        r_tch = await _conn.execute(
+                            "DELETE FROM theme_country_hourly_v2 WHERE hour < NOW() - INTERVAL '14 days'")
+                        r_th = await _conn.execute(
+                            "DELETE FROM theme_hourly_v2 WHERE hour < NOW() - INTERVAL '14 days'")
+                        r_ev = await _conn.execute(
+                            "DELETE FROM events_v2 WHERE timestamp < NOW() - INTERVAL '14 days'")
+                    finally:
+                        await _conn.close()
+                    log.info(
+                        "Retention cleanup complete: signals=%s theme_country_hourly=%s "
+                        "theme_hourly=%s events=%s", r_sig, r_tch, r_th, r_ev)
             except Exception:
                 log.exception("Retention cleanup failed — continuing")
 
