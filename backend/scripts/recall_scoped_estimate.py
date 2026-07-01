@@ -60,13 +60,25 @@ def _parse_vec(t: str) -> list[float]:
 
 async def _one(pool, sem, cc, hours, cap, done, total):
     async with sem:
-        async with pool.acquire() as conn:
-            await conn.execute("SET statement_timeout = '600s'")
-            recs = await conn.fetch(_FETCH, cc, hours, cap)
-            if len(recs) < 50:
-                return None
-            ids = [int(r["id"]) for r in recs]
-            global_in = await conn.fetchval(_BASELINE, ids) or 0
+        recs = None
+        # Retry: under parallel load big fetches sometimes drop the connection
+        # ("connection was closed in the middle of operation") — a fresh acquire
+        # recovers, and dropping a high-volume country would bias the aggregate.
+        for attempt in range(3):
+            try:
+                async with pool.acquire() as conn:
+                    await conn.execute("SET statement_timeout = '600s'")
+                    recs = await conn.fetch(_FETCH, cc, hours, cap)
+                    if len(recs) < 50:
+                        return None
+                    ids = [int(r["id"]) for r in recs]
+                    global_in = await conn.fetchval(_BASELINE, ids) or 0
+                break
+            except (asyncpg.PostgresError, ConnectionError, OSError) as ex:
+                if attempt == 2:
+                    print(f"  {cc}: FAILED after retries ({ex})", file=sys.stderr, flush=True)
+                    raise
+                await asyncio.sleep(3)
         n = len(recs)
         embs = np.array([_parse_vec(r["emb"]) for r in recs], dtype=np.float32)
         labels = await asyncio.to_thread(_cluster, embs, 5, 2, "leaf")
@@ -101,7 +113,10 @@ async def main() -> None:
         sys.exit(2)
 
     t0 = time.time()
-    pool = await asyncpg.create_pool(db, min_size=2, max_size=args.concurrency + 1)
+    pool = await asyncpg.create_pool(
+        db, min_size=2, max_size=args.concurrency + 3,
+        max_inactive_connection_lifetime=0,  # don't let asyncpg reap mid-run
+    )
     try:
         async with pool.acquire() as conn:
             await conn.execute("SET statement_timeout = '600s'")
