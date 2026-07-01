@@ -33,7 +33,7 @@ each finding by its `F-D-*` id in the R3 §11 ledger.
 | **PR3-06** | master-plan cross-ref index (L716, "Updated 2026-06-26") | index has no row for unified-engine F0-F3, the A/B, candidate-v2/κ, R0-R3, R3 | the index (the map) lags the engine by ~5 weeks; P1/P8 skeletons were updated past it | **PR3.3:** append F0-F4 / R0-R3 / candidate-v2 / R3 rows; make index-lag a standing ledger trigger | **RESOLVED 2026-07-01** — index re-dated 2026-07-01 with 9 new rows (R3 unification, R3.1 typing, crisis-relevance lens, R1 scoped, R2 umbrella, R3.7 retirement, F3 A/B, F0–F2, canonical regime); index-lag noted as a standing ledger trigger |
 | **PR3-07** | master-plan pub-order L674; P1 close-criteria L179-186 | "Paper 1 closes 4-8 weeks from [2026-05-27] with current data + mig-042" | 5 weeks elapsed; mig-042 lexicon + 30-topic benchmark superseded by the unified engine + candidate-v2; the A/B + κ are now P1's two biggest sections | **PR3.1/PR3.2:** absorb A/B + κ-0.739 + R3.1 precision-lift into the close-criteria | **RESOLVED 2026-07-01** — master-plan pub-order Paper-1 line rewritten: the 4–8-week/mig-042 estimate marked superseded; close-criteria now name the A/B, κ base, canonical regime, and R3.1 lift, with the unbuilt experiments (PR3-05/09/10) as the remaining gates |
 | **PR3-08** | master-plan P8 L594 vs P8 skeleton | coverage "**0.2%**" ‖ "**5.6%** embedded / **2.5%** total" | different denominators (served/ingested vs embedded/embedded), presented without them → looks inconsistent | **PR3.3:** cite the denominator each time; defer to the P8-skeleton precise figures | **RESOLVED 2026-07-01** — master-plan P8 "0.2%" line now carries an inline denominator gloss (served÷ingested vs 5.6%-of-embedded/2.5%-of-ingested), both flagged as superseded "before" numbers pointing to the scoped-pass lift |
-| **PR3-09** | P1 + P8 validation-plan §Baseline-families | ≥1 EXTERNAL baseline (BERTopic / flat-embedding / TDT / event-graph) REQUIRED for submission | R3's A/B is v1-compat vs unified-v2 — both internal Atlas; no external baseline anywhere; P8 BERTopic "parked" | **PR3.4:** build ≥1 external baseline; the internal A/B alone does not meet the stated bar | **OPEN — EXPERIMENT** (build, not doc edit) |
+| **PR3-09** | P1 + P8 validation-plan §Baseline-families | ≥1 EXTERNAL baseline (BERTopic / flat-embedding / TDT / event-graph) REQUIRED for submission | BUILT + RUN 2026-07-01 | **PR3.4:** build ≥1 external baseline; the internal A/B alone does not meet the stated bar | **RESOLVED 2026-07-01** — `backend/scripts/external_baseline_comparison.py` + report `docs/research/embedding-ablation/2026-07-01-external-baseline.md`. Panel (KMeans + Agglomerative flat-embedding + HDBSCAN-global = BERTopic core) over the same e5 corpus. RESULT: HDBSCAN-global (the standard density method) CLIFFS at every mcs — mega-blob (43.6%@mcs10) or collapse (4.6% cover@mcs25, 0 topics@mcs75) = the measured justification for Atlas's scoped design. Flat KMeans/Agglo reach coherence PARITY (0.88/0.87 vs Atlas 0.849) but in-sample + no identity/lifecycle/noise-rejection. Honest takeaway: Atlas's edge is scoping (dissolves the cliff) + lifecycle, NOT raw one-shot coherence. BERTopic-proper (UMAP+cTFIDF) is the py3.12 follow-up (numba-blocked on py3.14). |
 | **PR3-10** | P1 methodology-outline §8; master-plan Master-criteria | temporal hold-out week; `role_noise_rate` calibration; anchoring-effect (30 blind vs hinted); Wilson/bootstrap CIs; **crisis-only in-category κ split** — all "not started" | R3.1/R3.2 measure on 168h windows with no temporal hold-out, no CIs, no anchoring control on the LLM-in-loop typing; the crisis-only precision (the real successor to 41.6%) is UNMEASURED | **PR3.4:** schedule each as a ledger row with an owner; gate R3.1's precision claim on them | **OPEN — EXPERIMENT** (build, not doc edit) |
 | **PR3-11** | P3 seed "Evidence to collect" | per-component heat ablation + Kendall-tau composite-vs-volume | unbuilt; R3.4a/R3.5 claim "volume≠importance transferred" but schedule no ablation | **PR3.4:** the movement/attention roles are the substrate — run the P3 ablation | **OPEN — EXPERIMENT** (build, not doc edit) |
 
@@ -57,12 +57,15 @@ The PR3.1 + PR3.3 doc reconciliation ran this date. Result:
 - **PR3-05 RESOLVED 2026-07-01** (`gdelt_hint_ablation.py` built + run): theme-hints
   are a NET NOISE source on the canonical benchmark (theme-only 20.2% ≪ 40.9%
   baseline; ablated 48.3%). Removal unblocked. See the row above + the report.
-- **OPEN — the EXPERIMENT backlog (build, not doc edits): PR3-09, PR3-10, PR3-11.**
-  These are the ongoing paper-track work: ≥1 external baseline — BERTopic/flat-embedding/
-  TDT (PR3-09, P1+P8 both require it, the internal A/B does not satisfy the bar);
-  the crisis-only in-category κ split + temporal hold-out + Wilson/bootstrap CIs +
-  anchoring control (PR3-10, gates R3.1's precision claim); per-component heat
-  ablation + Kendall-tau (PR3-11). None can be closed by editing prose.
+- **PR3-09 RESOLVED 2026-07-01** (`external_baseline_comparison.py` built + run): the
+  external baseline P1+P8 require. HDBSCAN-global (BERTopic core) cliffs at every mcs
+  (mega-blob/collapse) = justification for scoped design; flat KMeans/Agglo reach
+  coherence parity in-sample but no identity/lifecycle. See the row above + report.
+- **OPEN — the EXPERIMENT backlog (build, not doc edits): PR3-10, PR3-11.**
+  These are the ongoing paper-track work: the crisis-only in-category κ split + temporal
+  hold-out + Wilson/bootstrap CIs + anchoring control (PR3-10, gates R3.1's precision
+  claim); per-component heat ablation + Kendall-tau (PR3-11). None can be closed by
+  editing prose. (PR3-09 BERTopic-proper UMAP+cTFIDF is a py3.12 follow-up, non-blocking.)
 - **Files touched this pass:** `2026-06-03-paper-1-result-skeleton.md` (canonical
   regime + reject-vs-typing note), `2026-05-27-atlas-papers-master-plan.md` (P6/P8
   dynamism past-tensed, P8 0.2% denominator gloss, cross-ref index +9 rows +

@@ -1,0 +1,44 @@
+{
+  "n_docs": 8000,
+  "atlas_gate": 0.85,
+  "k_atlas": 251,
+  "note": "same e5 corpus + same label-free metrics; BERTopic-proper numba-blocked on py3.14 (its core HDBSCAN-over-embeddings IS the HDBSCAN-global row).",
+  "results": [
+    {
+      "method": "Atlas (scoped, gated)",
+      "n_topics": 251,
+      "coverage_pct": 89.7,
+      "coherence": 0.849,
+      "median_topic_size": 7,
+      "max_topic_size": 524,
+      "blob_frac_pct": 6.5
+    },
+    {
+      "method": "KMeans (flat, K=251)",
+      "n_topics": 251,
+      "coverage_pct": 100.0,
+      "coherence": 0.883,
+      "median_topic_size": 12,
+      "max_topic_size": 269,
+      "blob_frac_pct": 3.4
+    },
+    {
+      "method": "Agglomerative/Ward (flat, K=251)",
+      "n_topics": 251,
+      "coverage_pct": 100.0,
+      "coherence": 0.866,
+      "median_topic_size": 25,
+      "max_topic_size": 128,
+      "blob_frac_pct": 1.6
+    },
+    {
+      "method": "HDBSCAN-global (mcs=20)",
+      "n_topics": 3,
+      "coverage_pct": 59.1,
+      "coherence": 0.892,
+      "median_topic_size": 38,
+      "max_topic_size": 4657,
+      "blob_frac_pct": 58.2
+    }
+  ]
+}
