@@ -43,12 +43,18 @@ NER_MODEL_XLM = os.getenv("NLP_NER_MODEL_XLM", "Davlan/xlm-roberta-base-ner-hrl"
 NLP_MULTILINGUAL_NER = os.getenv("NLP_MULTILINGUAL_NER", "xlm").lower()  # xlm | spacy
 # Davlan HRL labels (PER/ORG/LOC/DATE/MISC) -> the kept entity schema; DATE/MISC dropped.
 _HF_NER_LABEL_MAP = {"PER": "PERSON", "PERSON": "PERSON", "ORG": "ORG", "LOC": "LOC"}
-# Languages where the xlm model is UNRELIABLE (offline eval 2026-07-01: Davlan HRL has no
-# Russian → ru precision 0/3). Route these to the English model (extracts ~nothing from a
-# non-Latin script = clean-empty → the typed gazetteer carries the subject honestly) rather
-# than writing garbage entities. Measured strong: zh/fa/ar/ko/de/pt (70–100% precision).
+# Davlan is strong for its trained langs + non-Latin transfer (zh/fa/ar/ko/de/pt 70–100%
+# precision, measured) but has NO Russian (ru precision 0/3). A second model — wikineural —
+# covers ru (measured 87.5% precision, 100% extract) but not the non-Latin set. So route
+# Cyrillic langs to wikineural, everything-else-non-English to Davlan. Loaded lazily (only
+# when a Cyrillic row is present) to keep the mindful M1 worker's memory bounded.
+NER_MODEL_CYRILLIC = os.getenv("NLP_NER_MODEL_CYRILLIC", "Babelscape/wikineural-multilingual-ner")
+NLP_CYRILLIC_LANGS = {  # wikineural covers ru; uk/be/bg via the same family (untested → guarded)
+    x.strip() for x in os.getenv("NLP_CYRILLIC_LANGS", "ru").split(",") if x.strip()
+}
+# Langs neither model handles → skip to the English model (clean-empty → gazetteer carries it).
 NLP_XLM_NER_SKIP_LANGS = {
-    x.strip() for x in os.getenv("NLP_XLM_NER_SKIP_LANGS", "ru").split(",") if x.strip()
+    x.strip() for x in os.getenv("NLP_XLM_NER_SKIP_LANGS", "").split(",") if x.strip()
 }
 
 MODEL_VERSION_TAG = {
@@ -519,6 +525,7 @@ async def _run_ner_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) ->
     # non-Latin with correct types) or spacy (xx_ent_wiki_sm, the legacy Latin-only path).
     nlp_xx = None
     hf_ner = None
+    hf_cyr = None
     if _multilingual_enabled():
         if NLP_MULTILINGUAL_NER == "xlm":
             try:
@@ -527,6 +534,15 @@ async def _run_ner_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) ->
                     "token-classification", model=NER_MODEL_XLM,
                     aggregation_strategy="simple", device=-1,
                 )
+                # Cyrillic secondary (wikineural) — loaded ONLY if this batch has such a row.
+                if any((r["source_lang"] or "").lower() in NLP_CYRILLIC_LANGS for r in rows):
+                    try:
+                        hf_cyr = hf_pipeline(
+                            "token-classification", model=NER_MODEL_CYRILLIC,
+                            aggregation_strategy="simple", device=-1,
+                        )
+                    except Exception:
+                        logger.exception("cyrillic NER load failed — ru falls back to en")
             except Exception:
                 logger.exception("xlm NER load failed — falling back to spaCy xx")
                 nlp_xx = _load(SPACY_MODEL_XX)
@@ -537,7 +553,9 @@ async def _run_ner_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) ->
     for row in rows:
         lang = (row["source_lang"] or "").lower()
         non_en = bool(lang and lang != "en")
-        if non_en and hf_ner is not None and lang not in NLP_XLM_NER_SKIP_LANGS:
+        if lang in NLP_CYRILLIC_LANGS and hf_cyr is not None:
+            entities = _extract_entities_hf(hf_cyr, row["headline"], lang or None)
+        elif non_en and hf_ner is not None and lang not in NLP_XLM_NER_SKIP_LANGS:
             entities = _extract_entities_hf(hf_ner, row["headline"], lang or None)
         else:
             nlp = nlp_xx if (non_en and nlp_xx is not None) else nlp_en
@@ -549,6 +567,8 @@ async def _run_ner_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) ->
         del nlp_xx
     if hf_ner is not None:
         del hf_ner
+    if hf_cyr is not None:
+        del hf_cyr
     gc.collect()
 
     if not dry_run and records:

@@ -97,11 +97,15 @@ on the M1 worker, monitor throughput + a spot-check of verified non-English subj
   | ru | 0% | 12.5% | **0% (0/3)** |
   | **overall** | — | — | **82.1%** |
 
-  Huge recall lift for non-Latin (zh/fa/ar/ko were ~0 with `xx`) at 70–100% precision. **ru is the
-  one gap** — Davlan HRL has no Russian; Cyrillic transfer fails. → a **skip-guard**
-  (`NLP_XLM_NER_SKIP_LANGS=ru`, default) routes ru to the English model (clean-empty on Cyrillic →
-  the typed gazetteer carries ru honestly, no garbage written). Follow-up: a Cyrillic-capable NER
-  model for ru/uk/bg.
+  Huge recall lift for non-Latin (zh/fa/ar/ko were ~0 with `xx`) at 70–100% precision. **ru was the
+  one gap** — Davlan HRL has no Russian; Cyrillic transfer fails (0/3).
+  → **ru gap CLOSED (2026-07-01, task #2):** `Babelscape/wikineural-multilingual-ner` covers
+  Russian — measured **100% extract, 87.5% precision (14/16)** on ru headlines (vs Davlan 0/3).
+  The pipeline now routes Cyrillic langs (`NLP_CYRILLIC_LANGS=ru`) to wikineural, everything-else-
+  non-English to Davlan, English to `en_core_web_sm` — a lazy second model loaded only when a ru
+  row is present (bounds M1 memory). No single model covers everything (Davlan = non-Latin
+  transfer; wikineural = ru + European), so the two-model route is the measured optimum. wikineural
+  pre-baked in mlvenv. Follow-up: validate uk/bg (same family, untested).
 - **Step 3 (pre-bake):** `protobuf 7.35.1` + `sentencepiece` installed in mlvenv (persists — it IS
   the M1 worker venv); Davlan model cached (~1.1GB). `nlp_pipeline.py` synced to AtlasLocalWorker
   (dormant).
