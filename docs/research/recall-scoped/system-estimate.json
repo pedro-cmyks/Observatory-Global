@@ -1,0 +1,1196 @@
+{
+  "countries": 117,
+  "errors": [
+    "connection was closed in the middle of operation",
+    "connection was closed in the middle of operation",
+    "connection was closed in the middle of operation",
+    "connection was closed in the middle of operation",
+    "connection was closed in the middle of operation",
+    "connection was closed in the middle of operation",
+    "connection was closed in the middle of operation",
+    "connection was closed in the middle of operation",
+    "connection was closed in the middle of operation"
+  ],
+  "total_signals": 131210,
+  "system_global_recall_pct": 4.94,
+  "system_scoped_recall_pct": 26.72,
+  "lift_x": 5.4,
+  "total_scoped_clusters": 3662,
+  "blob_countries": [
+    "TZ",
+    "DO"
+  ],
+  "elapsed_sec": 1691,
+  "per_country": [
+    {
+      "country": "US",
+      "n": 6000,
+      "global_in_topic": 802,
+      "global_recall_pct": 13.37,
+      "scoped_clustered": 2244,
+      "scoped_recall_pct": 37.4,
+      "clusters": 215,
+      "blob": false
+    },
+    {
+      "country": "DE",
+      "n": 6000,
+      "global_in_topic": 265,
+      "global_recall_pct": 4.42,
+      "scoped_clustered": 2073,
+      "scoped_recall_pct": 34.55,
+      "clusters": 253,
+      "blob": false
+    },
+    {
+      "country": "IT",
+      "n": 6000,
+      "global_in_topic": 232,
+      "global_recall_pct": 3.87,
+      "scoped_clustered": 1273,
+      "scoped_recall_pct": 21.22,
+      "clusters": 147,
+      "blob": false
+    },
+    {
+      "country": "TR",
+      "n": 6000,
+      "global_in_topic": 251,
+      "global_recall_pct": 4.18,
+      "scoped_clustered": 1351,
+      "scoped_recall_pct": 22.52,
+      "clusters": 172,
+      "blob": false
+    },
+    {
+      "country": "UA",
+      "n": 6000,
+      "global_in_topic": 437,
+      "global_recall_pct": 7.28,
+      "scoped_clustered": 1378,
+      "scoped_recall_pct": 22.97,
+      "clusters": 143,
+      "blob": false
+    },
+    {
+      "country": "GR",
+      "n": 6000,
+      "global_in_topic": 362,
+      "global_recall_pct": 6.03,
+      "scoped_clustered": 2021,
+      "scoped_recall_pct": 33.68,
+      "clusters": 215,
+      "blob": false
+    },
+    {
+      "country": "MX",
+      "n": 5377,
+      "global_in_topic": 218,
+      "global_recall_pct": 4.05,
+      "scoped_clustered": 1333,
+      "scoped_recall_pct": 24.79,
+      "clusters": 126,
+      "blob": false
+    },
+    {
+      "country": "BR",
+      "n": 4941,
+      "global_in_topic": 133,
+      "global_recall_pct": 2.69,
+      "scoped_clustered": 885,
+      "scoped_recall_pct": 17.91,
+      "clusters": 93,
+      "blob": false
+    },
+    {
+      "country": "IR",
+      "n": 4831,
+      "global_in_topic": 341,
+      "global_recall_pct": 7.06,
+      "scoped_clustered": 1538,
+      "scoped_recall_pct": 31.84,
+      "clusters": 151,
+      "blob": false
+    },
+    {
+      "country": "ID",
+      "n": 3716,
+      "global_in_topic": 101,
+      "global_recall_pct": 2.72,
+      "scoped_clustered": 684,
+      "scoped_recall_pct": 18.41,
+      "clusters": 66,
+      "blob": false
+    },
+    {
+      "country": "KR",
+      "n": 3695,
+      "global_in_topic": 124,
+      "global_recall_pct": 3.36,
+      "scoped_clustered": 776,
+      "scoped_recall_pct": 21.0,
+      "clusters": 90,
+      "blob": false
+    },
+    {
+      "country": "EG",
+      "n": 3630,
+      "global_in_topic": 191,
+      "global_recall_pct": 5.26,
+      "scoped_clustered": 733,
+      "scoped_recall_pct": 20.19,
+      "clusters": 83,
+      "blob": false
+    },
+    {
+      "country": "AR",
+      "n": 3624,
+      "global_in_topic": 119,
+      "global_recall_pct": 3.28,
+      "scoped_clustered": 685,
+      "scoped_recall_pct": 18.9,
+      "clusters": 73,
+      "blob": false
+    },
+    {
+      "country": "IL",
+      "n": 3275,
+      "global_in_topic": 196,
+      "global_recall_pct": 5.98,
+      "scoped_clustered": 716,
+      "scoped_recall_pct": 21.86,
+      "clusters": 77,
+      "blob": false
+    },
+    {
+      "country": "PL",
+      "n": 2594,
+      "global_in_topic": 143,
+      "global_recall_pct": 5.51,
+      "scoped_clustered": 468,
+      "scoped_recall_pct": 18.04,
+      "clusters": 51,
+      "blob": false
+    },
+    {
+      "country": "JP",
+      "n": 2516,
+      "global_in_topic": 97,
+      "global_recall_pct": 3.86,
+      "scoped_clustered": 749,
+      "scoped_recall_pct": 29.77,
+      "clusters": 70,
+      "blob": false
+    },
+    {
+      "country": "VN",
+      "n": 2461,
+      "global_in_topic": 142,
+      "global_recall_pct": 5.77,
+      "scoped_clustered": 715,
+      "scoped_recall_pct": 29.05,
+      "clusters": 71,
+      "blob": false
+    },
+    {
+      "country": "SE",
+      "n": 2013,
+      "global_in_topic": 58,
+      "global_recall_pct": 2.88,
+      "scoped_clustered": 309,
+      "scoped_recall_pct": 15.35,
+      "clusters": 38,
+      "blob": false
+    },
+    {
+      "country": "NG",
+      "n": 1901,
+      "global_in_topic": 162,
+      "global_recall_pct": 8.52,
+      "scoped_clustered": 525,
+      "scoped_recall_pct": 27.62,
+      "clusters": 60,
+      "blob": false
+    },
+    {
+      "country": "RO",
+      "n": 1854,
+      "global_in_topic": 126,
+      "global_recall_pct": 6.8,
+      "scoped_clustered": 265,
+      "scoped_recall_pct": 14.29,
+      "clusters": 28,
+      "blob": false
+    },
+    {
+      "country": "TW",
+      "n": 1747,
+      "global_in_topic": 53,
+      "global_recall_pct": 3.03,
+      "scoped_clustered": 471,
+      "scoped_recall_pct": 26.96,
+      "clusters": 46,
+      "blob": false
+    },
+    {
+      "country": "AT",
+      "n": 1693,
+      "global_in_topic": 39,
+      "global_recall_pct": 2.3,
+      "scoped_clustered": 476,
+      "scoped_recall_pct": 28.12,
+      "clusters": 53,
+      "blob": false
+    },
+    {
+      "country": "CO",
+      "n": 1690,
+      "global_in_topic": 65,
+      "global_recall_pct": 3.85,
+      "scoped_clustered": 389,
+      "scoped_recall_pct": 23.02,
+      "clusters": 35,
+      "blob": false
+    },
+    {
+      "country": "BE",
+      "n": 1538,
+      "global_in_topic": 74,
+      "global_recall_pct": 4.81,
+      "scoped_clustered": 472,
+      "scoped_recall_pct": 30.69,
+      "clusters": 54,
+      "blob": false
+    },
+    {
+      "country": "BD",
+      "n": 1458,
+      "global_in_topic": 21,
+      "global_recall_pct": 1.44,
+      "scoped_clustered": 424,
+      "scoped_recall_pct": 29.08,
+      "clusters": 46,
+      "blob": false
+    },
+    {
+      "country": "NL",
+      "n": 1349,
+      "global_in_topic": 43,
+      "global_recall_pct": 3.19,
+      "scoped_clustered": 404,
+      "scoped_recall_pct": 29.95,
+      "clusters": 47,
+      "blob": false
+    },
+    {
+      "country": "PK",
+      "n": 1326,
+      "global_in_topic": 56,
+      "global_recall_pct": 4.22,
+      "scoped_clustered": 483,
+      "scoped_recall_pct": 36.43,
+      "clusters": 50,
+      "blob": false
+    },
+    {
+      "country": "CH",
+      "n": 1311,
+      "global_in_topic": 48,
+      "global_recall_pct": 3.66,
+      "scoped_clustered": 381,
+      "scoped_recall_pct": 29.06,
+      "clusters": 47,
+      "blob": false
+    },
+    {
+      "country": "BG",
+      "n": 1218,
+      "global_in_topic": 91,
+      "global_recall_pct": 7.47,
+      "scoped_clustered": 328,
+      "scoped_recall_pct": 26.93,
+      "clusters": 36,
+      "blob": false
+    },
+    {
+      "country": "IE",
+      "n": 1052,
+      "global_in_topic": 55,
+      "global_recall_pct": 5.23,
+      "scoped_clustered": 348,
+      "scoped_recall_pct": 33.08,
+      "clusters": 38,
+      "blob": false
+    },
+    {
+      "country": "SA",
+      "n": 984,
+      "global_in_topic": 31,
+      "global_recall_pct": 3.15,
+      "scoped_clustered": 285,
+      "scoped_recall_pct": 28.96,
+      "clusters": 32,
+      "blob": false
+    },
+    {
+      "country": "LS",
+      "n": 959,
+      "global_in_topic": 61,
+      "global_recall_pct": 6.36,
+      "scoped_clustered": 376,
+      "scoped_recall_pct": 39.21,
+      "clusters": 31,
+      "blob": false
+    },
+    {
+      "country": "NZ",
+      "n": 942,
+      "global_in_topic": 27,
+      "global_recall_pct": 2.87,
+      "scoped_clustered": 269,
+      "scoped_recall_pct": 28.56,
+      "clusters": 28,
+      "blob": false
+    },
+    {
+      "country": "ZA",
+      "n": 929,
+      "global_in_topic": 40,
+      "global_recall_pct": 4.31,
+      "scoped_clustered": 311,
+      "scoped_recall_pct": 33.48,
+      "clusters": 32,
+      "blob": false
+    },
+    {
+      "country": "PH",
+      "n": 887,
+      "global_in_topic": 39,
+      "global_recall_pct": 4.4,
+      "scoped_clustered": 156,
+      "scoped_recall_pct": 17.59,
+      "clusters": 21,
+      "blob": false
+    },
+    {
+      "country": "PE",
+      "n": 834,
+      "global_in_topic": 38,
+      "global_recall_pct": 4.56,
+      "scoped_clustered": 194,
+      "scoped_recall_pct": 23.26,
+      "clusters": 21,
+      "blob": false
+    },
+    {
+      "country": "RB",
+      "n": 828,
+      "global_in_topic": 22,
+      "global_recall_pct": 2.66,
+      "scoped_clustered": 248,
+      "scoped_recall_pct": 29.95,
+      "clusters": 26,
+      "blob": false
+    },
+    {
+      "country": "NP",
+      "n": 826,
+      "global_in_topic": 14,
+      "global_recall_pct": 1.69,
+      "scoped_clustered": 162,
+      "scoped_recall_pct": 19.61,
+      "clusters": 16,
+      "blob": false
+    },
+    {
+      "country": "TH",
+      "n": 773,
+      "global_in_topic": 30,
+      "global_recall_pct": 3.88,
+      "scoped_clustered": 247,
+      "scoped_recall_pct": 31.95,
+      "clusters": 24,
+      "blob": false
+    },
+    {
+      "country": "IQ",
+      "n": 750,
+      "global_in_topic": 25,
+      "global_recall_pct": 3.33,
+      "scoped_clustered": 284,
+      "scoped_recall_pct": 37.87,
+      "clusters": 22,
+      "blob": false
+    },
+    {
+      "country": "NO",
+      "n": 746,
+      "global_in_topic": 36,
+      "global_recall_pct": 4.83,
+      "scoped_clustered": 168,
+      "scoped_recall_pct": 22.52,
+      "clusters": 15,
+      "blob": false
+    },
+    {
+      "country": "AL",
+      "n": 744,
+      "global_in_topic": 46,
+      "global_recall_pct": 6.18,
+      "scoped_clustered": 205,
+      "scoped_recall_pct": 27.55,
+      "clusters": 15,
+      "blob": false
+    },
+    {
+      "country": "MK",
+      "n": 738,
+      "global_in_topic": 22,
+      "global_recall_pct": 2.98,
+      "scoped_clustered": 235,
+      "scoped_recall_pct": 31.84,
+      "clusters": 34,
+      "blob": false
+    },
+    {
+      "country": "CY",
+      "n": 735,
+      "global_in_topic": 33,
+      "global_recall_pct": 4.49,
+      "scoped_clustered": 150,
+      "scoped_recall_pct": 20.41,
+      "clusters": 18,
+      "blob": false
+    },
+    {
+      "country": "HU",
+      "n": 729,
+      "global_in_topic": 31,
+      "global_recall_pct": 4.25,
+      "scoped_clustered": 174,
+      "scoped_recall_pct": 23.87,
+      "clusters": 19,
+      "blob": false
+    },
+    {
+      "country": "QA",
+      "n": 715,
+      "global_in_topic": 47,
+      "global_recall_pct": 6.57,
+      "scoped_clustered": 264,
+      "scoped_recall_pct": 36.92,
+      "clusters": 27,
+      "blob": false
+    },
+    {
+      "country": "HR",
+      "n": 703,
+      "global_in_topic": 8,
+      "global_recall_pct": 1.14,
+      "scoped_clustered": 186,
+      "scoped_recall_pct": 26.46,
+      "clusters": 19,
+      "blob": false
+    },
+    {
+      "country": "MA",
+      "n": 674,
+      "global_in_topic": 26,
+      "global_recall_pct": 3.86,
+      "scoped_clustered": 193,
+      "scoped_recall_pct": 28.64,
+      "clusters": 15,
+      "blob": false
+    },
+    {
+      "country": "DK",
+      "n": 651,
+      "global_in_topic": 34,
+      "global_recall_pct": 5.22,
+      "scoped_clustered": 157,
+      "scoped_recall_pct": 24.12,
+      "clusters": 19,
+      "blob": false
+    },
+    {
+      "country": "AE",
+      "n": 643,
+      "global_in_topic": 41,
+      "global_recall_pct": 6.38,
+      "scoped_clustered": 288,
+      "scoped_recall_pct": 44.79,
+      "clusters": 24,
+      "blob": false
+    },
+    {
+      "country": "CL",
+      "n": 623,
+      "global_in_topic": 19,
+      "global_recall_pct": 3.05,
+      "scoped_clustered": 117,
+      "scoped_recall_pct": 18.78,
+      "clusters": 12,
+      "blob": false
+    },
+    {
+      "country": "MY",
+      "n": 613,
+      "global_in_topic": 15,
+      "global_recall_pct": 2.45,
+      "scoped_clustered": 164,
+      "scoped_recall_pct": 26.75,
+      "clusters": 18,
+      "blob": false
+    },
+    {
+      "country": "CZ",
+      "n": 591,
+      "global_in_topic": 16,
+      "global_recall_pct": 2.71,
+      "scoped_clustered": 203,
+      "scoped_recall_pct": 34.35,
+      "clusters": 18,
+      "blob": false
+    },
+    {
+      "country": "SG",
+      "n": 588,
+      "global_in_topic": 24,
+      "global_recall_pct": 4.08,
+      "scoped_clustered": 201,
+      "scoped_recall_pct": 34.18,
+      "clusters": 18,
+      "blob": false
+    },
+    {
+      "country": "EC",
+      "n": 567,
+      "global_in_topic": 11,
+      "global_recall_pct": 1.94,
+      "scoped_clustered": 172,
+      "scoped_recall_pct": 30.34,
+      "clusters": 12,
+      "blob": false
+    },
+    {
+      "country": "SY",
+      "n": 562,
+      "global_in_topic": 35,
+      "global_recall_pct": 6.23,
+      "scoped_clustered": 176,
+      "scoped_recall_pct": 31.32,
+      "clusters": 19,
+      "blob": false
+    },
+    {
+      "country": "RI",
+      "n": 548,
+      "global_in_topic": 17,
+      "global_recall_pct": 3.1,
+      "scoped_clustered": 92,
+      "scoped_recall_pct": 16.79,
+      "clusters": 13,
+      "blob": false
+    },
+    {
+      "country": "AM",
+      "n": 525,
+      "global_in_topic": 26,
+      "global_recall_pct": 4.95,
+      "scoped_clustered": 122,
+      "scoped_recall_pct": 23.24,
+      "clusters": 16,
+      "blob": false
+    },
+    {
+      "country": "FI",
+      "n": 486,
+      "global_in_topic": 17,
+      "global_recall_pct": 3.5,
+      "scoped_clustered": 108,
+      "scoped_recall_pct": 22.22,
+      "clusters": 13,
+      "blob": false
+    },
+    {
+      "country": "AJ",
+      "n": 477,
+      "global_in_topic": 19,
+      "global_recall_pct": 3.98,
+      "scoped_clustered": 154,
+      "scoped_recall_pct": 32.29,
+      "clusters": 17,
+      "blob": false
+    },
+    {
+      "country": "GH",
+      "n": 461,
+      "global_in_topic": 25,
+      "global_recall_pct": 5.42,
+      "scoped_clustered": 73,
+      "scoped_recall_pct": 15.84,
+      "clusters": 7,
+      "blob": false
+    },
+    {
+      "country": "BY",
+      "n": 431,
+      "global_in_topic": 12,
+      "global_recall_pct": 2.78,
+      "scoped_clustered": 37,
+      "scoped_recall_pct": 8.58,
+      "clusters": 6,
+      "blob": false
+    },
+    {
+      "country": "JO",
+      "n": 418,
+      "global_in_topic": 14,
+      "global_recall_pct": 3.35,
+      "scoped_clustered": 160,
+      "scoped_recall_pct": 38.28,
+      "clusters": 13,
+      "blob": false
+    },
+    {
+      "country": "CU",
+      "n": 414,
+      "global_in_topic": 15,
+      "global_recall_pct": 3.62,
+      "scoped_clustered": 74,
+      "scoped_recall_pct": 17.87,
+      "clusters": 10,
+      "blob": false
+    },
+    {
+      "country": "DZ",
+      "n": 404,
+      "global_in_topic": 4,
+      "global_recall_pct": 0.99,
+      "scoped_clustered": 139,
+      "scoped_recall_pct": 34.41,
+      "clusters": 12,
+      "blob": false
+    },
+    {
+      "country": "PA",
+      "n": 364,
+      "global_in_topic": 23,
+      "global_recall_pct": 6.32,
+      "scoped_clustered": 72,
+      "scoped_recall_pct": 19.78,
+      "clusters": 9,
+      "blob": false
+    },
+    {
+      "country": "UY",
+      "n": 358,
+      "global_in_topic": 6,
+      "global_recall_pct": 1.68,
+      "scoped_clustered": 63,
+      "scoped_recall_pct": 17.6,
+      "clusters": 8,
+      "blob": false
+    },
+    {
+      "country": "AF",
+      "n": 342,
+      "global_in_topic": 17,
+      "global_recall_pct": 4.97,
+      "scoped_clustered": 137,
+      "scoped_recall_pct": 40.06,
+      "clusters": 19,
+      "blob": false
+    },
+    {
+      "country": "MD",
+      "n": 340,
+      "global_in_topic": 26,
+      "global_recall_pct": 7.65,
+      "scoped_clustered": 147,
+      "scoped_recall_pct": 43.24,
+      "clusters": 4,
+      "blob": false
+    },
+    {
+      "country": "MU",
+      "n": 333,
+      "global_in_topic": 8,
+      "global_recall_pct": 2.4,
+      "scoped_clustered": 154,
+      "scoped_recall_pct": 46.25,
+      "clusters": 16,
+      "blob": false
+    },
+    {
+      "country": "LT",
+      "n": 323,
+      "global_in_topic": 28,
+      "global_recall_pct": 8.67,
+      "scoped_clustered": 92,
+      "scoped_recall_pct": 28.48,
+      "clusters": 13,
+      "blob": false
+    },
+    {
+      "country": "LY",
+      "n": 310,
+      "global_in_topic": 7,
+      "global_recall_pct": 2.26,
+      "scoped_clustered": 102,
+      "scoped_recall_pct": 32.9,
+      "clusters": 6,
+      "blob": false
+    },
+    {
+      "country": "SK",
+      "n": 291,
+      "global_in_topic": 9,
+      "global_recall_pct": 3.09,
+      "scoped_clustered": 51,
+      "scoped_recall_pct": 17.53,
+      "clusters": 5,
+      "blob": false
+    },
+    {
+      "country": "LK",
+      "n": 288,
+      "global_in_topic": 13,
+      "global_recall_pct": 4.51,
+      "scoped_clustered": 94,
+      "scoped_recall_pct": 32.64,
+      "clusters": 8,
+      "blob": false
+    },
+    {
+      "country": "CI",
+      "n": 284,
+      "global_in_topic": 9,
+      "global_recall_pct": 3.17,
+      "scoped_clustered": 67,
+      "scoped_recall_pct": 23.59,
+      "clusters": 6,
+      "blob": false
+    },
+    {
+      "country": "PM",
+      "n": 282,
+      "global_in_topic": 10,
+      "global_recall_pct": 3.55,
+      "scoped_clustered": 83,
+      "scoped_recall_pct": 29.43,
+      "clusters": 10,
+      "blob": false
+    },
+    {
+      "country": "PT",
+      "n": 278,
+      "global_in_topic": 11,
+      "global_recall_pct": 3.96,
+      "scoped_clustered": 0,
+      "scoped_recall_pct": 0.0,
+      "clusters": 0,
+      "blob": false
+    },
+    {
+      "country": "BO",
+      "n": 265,
+      "global_in_topic": 8,
+      "global_recall_pct": 3.02,
+      "scoped_clustered": 68,
+      "scoped_recall_pct": 25.66,
+      "clusters": 5,
+      "blob": false
+    },
+    {
+      "country": "SI",
+      "n": 262,
+      "global_in_topic": 3,
+      "global_recall_pct": 1.15,
+      "scoped_clustered": 44,
+      "scoped_recall_pct": 16.79,
+      "clusters": 7,
+      "blob": false
+    },
+    {
+      "country": "OS",
+      "n": 259,
+      "global_in_topic": 13,
+      "global_recall_pct": 5.02,
+      "scoped_clustered": 99,
+      "scoped_recall_pct": 38.22,
+      "clusters": 12,
+      "blob": false
+    },
+    {
+      "country": "KE",
+      "n": 254,
+      "global_in_topic": 11,
+      "global_recall_pct": 4.33,
+      "scoped_clustered": 48,
+      "scoped_recall_pct": 18.9,
+      "clusters": 6,
+      "blob": false
+    },
+    {
+      "country": "CD",
+      "n": 254,
+      "global_in_topic": 45,
+      "global_recall_pct": 17.72,
+      "scoped_clustered": 141,
+      "scoped_recall_pct": 55.51,
+      "clusters": 14,
+      "blob": false
+    },
+    {
+      "country": "KV",
+      "n": 253,
+      "global_in_topic": 8,
+      "global_recall_pct": 3.16,
+      "scoped_clustered": 111,
+      "scoped_recall_pct": 43.87,
+      "clusters": 12,
+      "blob": false
+    },
+    {
+      "country": "BA",
+      "n": 249,
+      "global_in_topic": 7,
+      "global_recall_pct": 2.81,
+      "scoped_clustered": 131,
+      "scoped_recall_pct": 52.61,
+      "clusters": 11,
+      "blob": false
+    },
+    {
+      "country": "KZ",
+      "n": 244,
+      "global_in_topic": 12,
+      "global_recall_pct": 4.92,
+      "scoped_clustered": 58,
+      "scoped_recall_pct": 23.77,
+      "clusters": 4,
+      "blob": false
+    },
+    {
+      "country": "KG",
+      "n": 240,
+      "global_in_topic": 21,
+      "global_recall_pct": 8.75,
+      "scoped_clustered": 44,
+      "scoped_recall_pct": 18.33,
+      "clusters": 6,
+      "blob": false
+    },
+    {
+      "country": "HK",
+      "n": 235,
+      "global_in_topic": 7,
+      "global_recall_pct": 2.98,
+      "scoped_clustered": 65,
+      "scoped_recall_pct": 27.66,
+      "clusters": 8,
+      "blob": false
+    },
+    {
+      "country": "BF",
+      "n": 222,
+      "global_in_topic": 13,
+      "global_recall_pct": 5.86,
+      "scoped_clustered": 80,
+      "scoped_recall_pct": 36.04,
+      "clusters": 9,
+      "blob": false
+    },
+    {
+      "country": "LU",
+      "n": 217,
+      "global_in_topic": 4,
+      "global_recall_pct": 1.84,
+      "scoped_clustered": 67,
+      "scoped_recall_pct": 30.88,
+      "clusters": 8,
+      "blob": false
+    },
+    {
+      "country": "YM",
+      "n": 198,
+      "global_in_topic": 5,
+      "global_recall_pct": 2.53,
+      "scoped_clustered": 73,
+      "scoped_recall_pct": 36.87,
+      "clusters": 5,
+      "blob": false
+    },
+    {
+      "country": "HT",
+      "n": 194,
+      "global_in_topic": 34,
+      "global_recall_pct": 17.53,
+      "scoped_clustered": 71,
+      "scoped_recall_pct": 36.6,
+      "clusters": 7,
+      "blob": false
+    },
+    {
+      "country": "TN",
+      "n": 194,
+      "global_in_topic": 2,
+      "global_recall_pct": 1.03,
+      "scoped_clustered": 45,
+      "scoped_recall_pct": 23.2,
+      "clusters": 7,
+      "blob": false
+    },
+    {
+      "country": "WE",
+      "n": 192,
+      "global_in_topic": 9,
+      "global_recall_pct": 4.69,
+      "scoped_clustered": 112,
+      "scoped_recall_pct": 58.33,
+      "clusters": 10,
+      "blob": false
+    },
+    {
+      "country": "SN",
+      "n": 189,
+      "global_in_topic": 1,
+      "global_recall_pct": 0.53,
+      "scoped_clustered": 33,
+      "scoped_recall_pct": 17.46,
+      "clusters": 2,
+      "blob": false
+    },
+    {
+      "country": "BK",
+      "n": 173,
+      "global_in_topic": 6,
+      "global_recall_pct": 3.47,
+      "scoped_clustered": 71,
+      "scoped_recall_pct": 41.04,
+      "clusters": 5,
+      "blob": false
+    },
+    {
+      "country": "GT",
+      "n": 171,
+      "global_in_topic": 7,
+      "global_recall_pct": 4.09,
+      "scoped_clustered": 26,
+      "scoped_recall_pct": 15.2,
+      "clusters": 3,
+      "blob": false
+    },
+    {
+      "country": "LV",
+      "n": 166,
+      "global_in_topic": 10,
+      "global_recall_pct": 6.02,
+      "scoped_clustered": 39,
+      "scoped_recall_pct": 23.49,
+      "clusters": 4,
+      "blob": false
+    },
+    {
+      "country": "UG",
+      "n": 163,
+      "global_in_topic": 30,
+      "global_recall_pct": 18.4,
+      "scoped_clustered": 34,
+      "scoped_recall_pct": 20.86,
+      "clusters": 5,
+      "blob": false
+    },
+    {
+      "country": "FJ",
+      "n": 160,
+      "global_in_topic": 1,
+      "global_recall_pct": 0.62,
+      "scoped_clustered": 59,
+      "scoped_recall_pct": 36.88,
+      "clusters": 7,
+      "blob": false
+    },
+    {
+      "country": "CG",
+      "n": 155,
+      "global_in_topic": 16,
+      "global_recall_pct": 10.32,
+      "scoped_clustered": 66,
+      "scoped_recall_pct": 42.58,
+      "clusters": 9,
+      "blob": false
+    },
+    {
+      "country": "RS",
+      "n": 153,
+      "global_in_topic": 1,
+      "global_recall_pct": 0.65,
+      "scoped_clustered": 16,
+      "scoped_recall_pct": 10.46,
+      "clusters": 2,
+      "blob": false
+    },
+    {
+      "country": "EE",
+      "n": 152,
+      "global_in_topic": 8,
+      "global_recall_pct": 5.26,
+      "scoped_clustered": 57,
+      "scoped_recall_pct": 37.5,
+      "clusters": 5,
+      "blob": false
+    },
+    {
+      "country": "UZ",
+      "n": 146,
+      "global_in_topic": 5,
+      "global_recall_pct": 3.42,
+      "scoped_clustered": 73,
+      "scoped_recall_pct": 50.0,
+      "clusters": 4,
+      "blob": false
+    },
+    {
+      "country": "GZ",
+      "n": 143,
+      "global_in_topic": 6,
+      "global_recall_pct": 4.2,
+      "scoped_clustered": 81,
+      "scoped_recall_pct": 56.64,
+      "clusters": 4,
+      "blob": false
+    },
+    {
+      "country": "TZ",
+      "n": 142,
+      "global_in_topic": 2,
+      "global_recall_pct": 1.41,
+      "scoped_clustered": 85,
+      "scoped_recall_pct": 59.86,
+      "clusters": 3,
+      "blob": true
+    },
+    {
+      "country": "DO",
+      "n": 137,
+      "global_in_topic": 8,
+      "global_recall_pct": 5.84,
+      "scoped_clustered": 94,
+      "scoped_recall_pct": 68.61,
+      "clusters": 3,
+      "blob": true
+    },
+    {
+      "country": "SD",
+      "n": 134,
+      "global_in_topic": 6,
+      "global_recall_pct": 4.48,
+      "scoped_clustered": 88,
+      "scoped_recall_pct": 65.67,
+      "clusters": 5,
+      "blob": false
+    },
+    {
+      "country": "GG",
+      "n": 132,
+      "global_in_topic": 5,
+      "global_recall_pct": 3.79,
+      "scoped_clustered": 51,
+      "scoped_recall_pct": 38.64,
+      "clusters": 6,
+      "blob": false
+    },
+    {
+      "country": "ET",
+      "n": 131,
+      "global_in_topic": 3,
+      "global_recall_pct": 2.29,
+      "scoped_clustered": 76,
+      "scoped_recall_pct": 58.02,
+      "clusters": 3,
+      "blob": false
+    },
+    {
+      "country": "HN",
+      "n": 126,
+      "global_in_topic": 3,
+      "global_recall_pct": 2.38,
+      "scoped_clustered": 0,
+      "scoped_recall_pct": 0.0,
+      "clusters": 0,
+      "blob": false
+    },
+    {
+      "country": "ZW",
+      "n": 125,
+      "global_in_topic": 4,
+      "global_recall_pct": 3.2,
+      "scoped_clustered": 58,
+      "scoped_recall_pct": 46.4,
+      "clusters": 3,
+      "blob": false
+    },
+    {
+      "country": "RE",
+      "n": 122,
+      "global_in_topic": 4,
+      "global_recall_pct": 3.28,
+      "scoped_clustered": 77,
+      "scoped_recall_pct": 63.11,
+      "clusters": 5,
+      "blob": false
+    },
+    {
+      "country": "IC",
+      "n": 121,
+      "global_in_topic": 5,
+      "global_recall_pct": 4.13,
+      "scoped_clustered": 44,
+      "scoped_recall_pct": 36.36,
+      "clusters": 4,
+      "blob": false
+    },
+    {
+      "country": "ML",
+      "n": 116,
+      "global_in_topic": 2,
+      "global_recall_pct": 1.72,
+      "scoped_clustered": 45,
+      "scoped_recall_pct": 38.79,
+      "clusters": 3,
+      "blob": false
+    },
+    {
+      "country": "KH",
+      "n": 115,
+      "global_in_topic": 2,
+      "global_recall_pct": 1.74,
+      "scoped_clustered": 72,
+      "scoped_recall_pct": 62.61,
+      "clusters": 3,
+      "blob": false
+    },
+    {
+      "country": "AZ",
+      "n": 105,
+      "global_in_topic": 7,
+      "global_recall_pct": 6.67,
+      "scoped_clustered": 48,
+      "scoped_recall_pct": 45.71,
+      "clusters": 3,
+      "blob": false
+    },
+    {
+      "country": "JM",
+      "n": 100,
+      "global_in_topic": 5,
+      "global_recall_pct": 5.0,
+      "scoped_clustered": 0,
+      "scoped_recall_pct": 0.0,
+      "clusters": 0,
+      "blob": false
+    }
+  ]
+}

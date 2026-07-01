@@ -56,8 +56,18 @@ country the regional stories are the majority, not noise. **The #229 scoped-pass
 hypothesis is confirmed with data, and it GENERALIZES** — CN is the voice-gap case
 (non-English, clustered ~0% globally), so scoped passes also dissolve the
 multilingual ASSIGNMENT bottleneck (T1.5 / Paper 5): non-English regional stories
-cluster fine when given their own space. Next: R1 (the production per-country
-loop, off-peak). INFRA note found en route: the big `vec::text` fetch hits the DB
+cluster fine when given their own space.
+
+**SYSTEM-WIDE estimate (117 countries / 131,210 signals, `recall_scoped_estimate.py`):
+global recall 4.94% → scoped 26.72% (~5.4×), forming 3,662 clusters vs ~68 topics
+today (~54× more narratives).** Universal across countries (US 37%, DE/GR 34%,
+IR 32%…). So the recall ceiling is intrinsic to a GLOBAL pass, not to the data —
+partitioning recovers ~5× the coverage. This is the number that justifies R1.
+(9 highest-volume countries still dropped on connection under load; TZ/DO blobbed
+— flagged; would only add to the total.)
+
+Next: R1 (the production per-country loop, off-peak). INFRA note found en route:
+the big `vec::text` fetch hits the DB
 statement_timeout (the SAME one that froze the embed cron) — the engine's
 large-vector queries need a higher server-side `statement_timeout`.
 

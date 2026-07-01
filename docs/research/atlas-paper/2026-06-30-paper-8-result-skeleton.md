@@ -102,10 +102,29 @@ regional stories are the majority rather than drowned minorities. **It
 generalizes** — and CN is the key second case: a non-English, voice-gap country
 that clusters ~0% globally clusters at 33% scoped, so scoped passes ALSO dissolve
 the multilingual ASSIGNMENT bottleneck (the result that ties Paper 8 to Paper 5 /
-T1.5). The "ceiling is intrinsic" null is refuted for both the high-volume and the
-voice-gap case. Next: the production per-country loop (R1). Artifacts:
-`docs/research/recall-scoped/scoped-probe-{US,CN}.{json,md}`; method:
-`backend/scripts/recall_scoped_probe.py`.
+T1.5).
+
+**System-wide (the decisive result, 2026-06-30):** the per-country method was run
+over **117 countries / 131,210 country-attributable signals** (all countries with
+≥100 embedded signals, cap 6,000/country, 168h; parallel, read-only). Aggregate:
+
+| | recall | topics/clusters |
+|---|---|---|
+| **global (today)** | **4.94%** | ~68 |
+| **scoped (every country within)** | **26.72%** | **3,662** |
+| **effect** | **~5.4× recall** | **~54× more narratives** |
+
+Every country lifts (US 37%, DE/GR 34%, IR 32%, MX 25%, from single-digit
+global); the lift is universal, not driven by a few. So the "recall ceiling is
+intrinsic to headline-only short text" null is refuted **at the system level**: it
+is intrinsic to a *global* pass, not to the data — partitioning recovers it. This
+is the number that justifies the production per-country loop (R1). Caveats
+(honest): 9 of the highest-volume countries still dropped on connection under
+parallel load (their inclusion would only add signal + topics, same pattern); 2
+countries (TZ, DO) blobbed and are flagged; the 6,000/country cap samples the
+largest countries. Artifacts:
+`docs/research/recall-scoped/{scoped-probe-US,scoped-probe-CN,system-estimate}.{json,md}`;
+method: `backend/scripts/recall_scoped_{probe,estimate}.py`.
 
 ## Negative-result honesty
 Both negatives (5.6% coverage, frozen lifecycle) are recorded BEFORE the fixes,
