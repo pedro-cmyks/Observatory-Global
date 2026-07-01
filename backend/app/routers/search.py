@@ -465,21 +465,29 @@ async def unified_search(
                               SELECT 1 FROM dynamic_topic_members dtmc
                               JOIN emergent_clusters ecc ON ecc.id = dtmc.emergent_cluster_id
                               WHERE dtmc.dynamic_topic_id = dt.id
-                                AND $2 = ANY(ecc.top_country_codes)))
+                                AND {country_pred}))
                         ORDER BY LOWER(dt.label), dt.agg_n_signals DESC
                     ) t
                     ORDER BY t.last_seen DESC, t.agg_n_signals DESC
                     LIMIT 6
                 """
+                # Pure-country: PRIMARY-country scope (top_country_codes[1]) —
+                # ANY() let global threads that merely touch the country leak
+                # in ("Ukraine War Updates" for a BF query). Compound queries
+                # keep the looser ANY (the label already narrows).
+                country_pred = (
+                    "ecc.top_country_codes[1] = $2" if pure_country
+                    else "$2 = ANY(ecc.top_country_codes)"
+                )
                 try:
                     thread_rows = await conn.fetch(
-                        _LIVE_THREADS_SQL.format(match="ALL"),
+                        _LIVE_THREADS_SQL.format(match="ALL", country_pred=country_pred),
                         thread_tokens, country_filter,
                         timeout=SEARCH_MATCH_TIMEOUT_SECONDS)
                     match_kind = "all"
                     if not thread_rows and len(thread_tokens) > 1:
                         thread_rows = await conn.fetch(
-                            _LIVE_THREADS_SQL.format(match="ANY"),
+                            _LIVE_THREADS_SQL.format(match="ANY", country_pred=country_pred),
                             thread_tokens, country_filter,
                             timeout=SEARCH_MATCH_TIMEOUT_SECONDS)
                         match_kind = "partial"
@@ -602,7 +610,10 @@ async def unified_search(
         })
 
     countries = db_result.get("countries", [])
-    if country_match and not any(c.get("code") == country_match["code"] for c in countries):
+    if country_match:
+        # Prefer the alias table's display name — DB entries from signals carry
+        # the bare code as name ("BF"/"BF").
+        countries = [c for c in countries if c.get("code") != country_match["code"]]
         countries = [{"code": country_match["code"], "name": country_match["name"]}, *countries]
 
     has_direct_results = (
