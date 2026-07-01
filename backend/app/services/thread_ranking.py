@@ -49,6 +49,7 @@ _LANE_RANK_MULTIPLIER = {
 _NON_NEWS_CATEGORY_TOKENS = (
     "lifestyle", "sport", "entertainment", "travel", "tourism", "cuisine",
     "food", "celebrit", "fashion", "music", "gaming", "hotel", "recipe",
+    "football", "soccer", "world cup",
 )
 
 
