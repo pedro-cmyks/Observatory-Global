@@ -112,9 +112,34 @@ R2 is the cheap layer that makes serving feel live without streaming clustering:
   `centroid_vec` is `real[]` — cast `::vector` for the pgvector cosine operator.
 - **R2.2 — build.** `build_umbrella_topics.py` + schema migration (parent_id/
   is_umbrella). Write umbrellas, parent the children. Reversible.
+  **RESULT (2026-07-01):** migration 058 applied; `build_umbrella_topics.py`
+  written + validated on the 392-active set. Two findings:
+  (1) **single-link union-find CHAINS** — at 0.95/0.97 it transitively merged
+  World-Cup matches + heatwaves + unrelated topics into garbage megagroups
+  ("Egypt vs Iran World Cup" ← 25 incl. Iraq Anti-Corruption). Fixed with greedy
+  **COMPLETE-linkage** (a group forms only if ALL cross-pairs ≥ threshold) — the
+  same-EVENT vs same-THEME guard, in the algorithm not just the threshold.
+  (2) **threshold 0.98, not the spec's 0.95** — some topic centroids are diffuse
+  (short-headline e5 means for generic/roundup topics sit near many things), so
+  the same-event cut is TIGHTER than expected; 0.98 complete-linkage is clean
+  (Venezuela Earthquake ×2, France Heatwave ×2, Egypt World Cup ×4, Xpeng ×3),
+  0.96 still leaked ("Football Transfer News" ← Sudan Conflict). **26 umbrellas
+  over 55 children, 337 singletons → 363 top-level** (from 392). Umbrella members
+  = union of children's (so the umbrella aggregates counts/countries/evidence via
+  the existing serving query). Reversible: `parent_id=NULL` + delete umbrella rows.
 - **R2.3 — serve.** Serving reads top-level umbrellas globally, children on drill +
   country. A/B vs the flat R1 serving (does the global list get more legible without
   losing any story — every child still reachable).
+  **CODE READY, DEPLOY-BLOCKED (2026-07-01):** `_DYNAMIC_TOPICS_SQL` gained
+  `AND dt.parent_id IS NULL` (global list = top-level; the flat query is unchanged
+  for country/drill since umbrellas carry union members + detail is by id). The
+  filter is INERT without umbrellas (all topics have parent_id NULL → all show), so
+  it is safe to deploy anytime. Backend deploy needs Pedro's Fly auth
+  (`flyctl auth login`; no token in env). **Sequence:** (1) Pedro deploys the
+  serving code; (2) run `python -m backend.scripts.build_umbrella_topics
+  --threshold 0.98`; (3) verify prod `/threads` shows umbrellas + no dup children.
+  Until (1), the umbrellas are rolled back (prod serves the clean 392-flat) so the
+  undeployed old code can't show umbrella+child duplication.
 - **R2.4 — cadence.** Wire the umbrella pass into the 30min/hourly path (cheap) so
   the hierarchy stays live between nightly R1 formations.
 

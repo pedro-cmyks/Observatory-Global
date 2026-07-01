@@ -1028,6 +1028,9 @@ FROM dynamic_topics dt
 LEFT JOIN dynamic_topic_members dtm ON dtm.dynamic_topic_id = dt.id
 LEFT JOIN emergent_clusters ec ON ec.id = dtm.emergent_cluster_id
 WHERE dt.state = 'active'
+  AND dt.parent_id IS NULL   -- R2: global list = top-level (umbrellas + singletons);
+                             -- childed dups (same event, other countries) hide under
+                             -- their umbrella + surface on drill / country view.
   AND dt.last_seen > NOW() - ($1::int * INTERVAL '1 hour')
 GROUP BY dt.id
 ORDER BY recent_n_signals DESC, dt.last_seen DESC
