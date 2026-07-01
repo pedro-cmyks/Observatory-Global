@@ -26,18 +26,25 @@ import asyncpg
 
 
 async def _pending_rows(conn: asyncpg.Connection, hours: int, max_n: int):
-    # One representative per headline (latest id), only where no embedding
-    # exists yet. Mirrors the snapshot dedup (length >= 20).
+    # One representative per headline (latest id), only where no embedding exists
+    # yet. #241 Lever 2 (selective): dedup handles syndication; the outer ORDER BY
+    # timestamp DESC PRIORITISES RECENT distinct headlines — the embed capacity goes
+    # to the served window first, not to alphabetical order (the old query took the
+    # first max_n headlines A→Z, so recent stories could starve behind the backlog).
+    # No skipping = no recall risk; just spend the scarce embed budget where it serves.
     return await conn.fetch(
         f"""
-        SELECT DISTINCT ON (s.headline) s.id, s.headline
-        FROM signals_v2 s
-        LEFT JOIN signal_embeddings e ON e.signal_id = s.id
-        WHERE s.timestamp > NOW() - INTERVAL '{int(hours)} hours'
-          AND s.headline IS NOT NULL
-          AND length(s.headline) >= 20
-          AND e.signal_id IS NULL
-        ORDER BY s.headline, s.id DESC
+        SELECT d.id, d.headline FROM (
+            SELECT DISTINCT ON (s.headline) s.id, s.headline, s.timestamp
+            FROM signals_v2 s
+            LEFT JOIN signal_embeddings e ON e.signal_id = s.id
+            WHERE s.timestamp > NOW() - INTERVAL '{int(hours)} hours'
+              AND s.headline IS NOT NULL
+              AND length(s.headline) >= 20
+              AND e.signal_id IS NULL
+            ORDER BY s.headline, s.id DESC
+        ) d
+        ORDER BY d.timestamp DESC
         LIMIT {int(max_n)}
         """
     )
@@ -54,6 +61,13 @@ async def main() -> int:
                              "~5x faster (measured 2026-06-26) with no index drop.")
     parser.add_argument("--max-signals", type=int, default=200_000)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--bulk-reindex", action="store_true",
+                        help="#241 fix: DROP the HNSW index, bulk-insert at ~22K/s (vs "
+                             "~16/s with the live index), then REBUILD single-threaded "
+                             "(~4min/276K; parallel build fails on Supabase shmem). "
+                             "Off-peak only — the semantic lane degrades to lexical "
+                             "during the rebuild. The rebuild runs in a finally so the "
+                             "index is never left dropped. OFF by default.")
     args = parser.parse_args()
 
     from app.services.research_semantic import embed_texts, embedder_available
@@ -71,6 +85,11 @@ async def main() -> int:
               f"({before - len(rows)} junk skipped)", file=sys.stderr)
         if args.dry_run:
             return 0
+
+        if args.bulk_reindex:
+            await conn.execute("DROP INDEX IF EXISTS idx_signal_embeddings_vec")
+            print("bulk-reindex: HNSW index DROPPED — inserts run un-indexed (~22K/s); "
+                  "semantic lane on lexical fallback until rebuild", file=sys.stderr)
 
         started = time.monotonic()
         written = 0
@@ -130,6 +149,19 @@ async def main() -> int:
                     d.result()
         finally:
             await write_pool.close()
+            if args.bulk_reindex:
+                # ALWAYS rebuild (finally) so a failed insert never leaves the index
+                # dropped. Single-threaded — the parallel build hits Supabase's shmem cap.
+                print("bulk-reindex: rebuilding HNSW index (single-threaded ~4min/276K)…",
+                      file=sys.stderr)
+                await conn.execute("SET max_parallel_maintenance_workers = 0")
+                await conn.execute("SET maintenance_work_mem = '256MB'")
+                await conn.execute("SET statement_timeout = '1200s'")
+                await conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_signal_embeddings_vec "
+                    "ON signal_embeddings USING hnsw (vec halfvec_cosine_ops) "
+                    "WITH (m='16', ef_construction='64')")
+                print("bulk-reindex: HNSW index REBUILT", file=sys.stderr)
 
         swept = await conn.execute(
             f"DELETE FROM signal_embeddings WHERE embedded_at < NOW() - INTERVAL '{int(args.retention_days)} days'"
