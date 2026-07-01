@@ -10,6 +10,31 @@
 > and narrows further if telemetry shows one persona dominates.) **Anti-goal:**
 > no new surface/capability until telemetry shows users reaching a value moment.
 
+**2026-07-01 (PM3 — SEARCH ENGINE P1 + EE DESIGN PASS + review execution).**
+Pedro: search = the hard core; EE map = OUR design, prioritize; execute the
+review plan; ACLED de-blocked (#46). ALL SHIPPED+DEPLOYED: (1) **Search P1**
+(`docs/specs/2026-07-01-search-engine-plan.md`): unified search NEVER queried
+dynamic_topics — live threads invisible. `live_threads` segment (token-AND ILIKE
++ partial fallback + country scope + label-dedupe) + "Live Threads" FIRST in
+SearchBar → `onThemeSelect('dynamic-topic-<id>')`. Prod: 'Lebanon Israel
+agreement' → 3 threads → click opens detail; 'burkina faso' → thread+signals
+(P2 finding: match_country lacks small-country aliases). #245 CLOSED. P2=country
+-scoped, P3=semantic-on-submit, P4=search telemetry. (2) **Equal Earth design
+pass** (`c72baae0`, review doc §5): default/reset now FIT-WORLD (fitHeight
+over-zoomed narrow panels onto Africa, scaleExtent min=1 couldn't zoom out;
+kFit + letterbox-center + wrap on zoom-in); heat rank^1.6 normalize (the 422
+fix fed 250 countries into the old [0.1,1] min-max → rainbow world; heals BOTH
+engines); Geist canvas labels. Verified: world-fit + click→CountryBrief+#234
+re-scope. HONEST: engine = geoCylindricalEqualArea(30) NOT geoEqualEarth
+(rectangular wrap trade; equal-AREA holds; rename label?). Route to default:
+Pedro eyeball (desktop+MOBILE) → flip default → fly-to-bounds + marker clicks →
+retire MapLibre. (3) **#244 CLOSED** (`dc5d9812`): landing cards deep-link
+?theme=&entry=landing + tour DEFERS on intent-carrying entry (browser-verified).
+(4) **#246 CLOSED** (+`949d8192`): damp consumes served category (crisis_
+relevant=False + lifestyle-family token → 0.45; football/world-cup added);
+prod: hotel review AND 'Canadá Clasifica' out of top-10, real news leads.
+Next per plan: search P2 (Burkina case full) → design #247 batch A → P3.
+
 **2026-07-01 (PM2 — L0→L3 DEEP REVIEW, read FIRST for product state; full doc
 `docs/specs/2026-07-01-l0-l3-deep-review.md`).** Pedro: fly re-auth (done,
 browser flow) + judge the FOUNDATION (data congruence L0→L3, design vs
