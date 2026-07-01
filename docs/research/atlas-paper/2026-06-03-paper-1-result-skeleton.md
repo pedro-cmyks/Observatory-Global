@@ -142,12 +142,15 @@ Current baselines:
 - LLM zero-shot classifier.
 - LLM few-shot classifier.
 
-Open baselines:
+Open baselines — RESOLVED 2026-07-01 (see the PR3 experiment results section below):
 
-- lex-only;
-- theme-only;
-- BERTopic/open clustering;
-- temporal holdout.
+- lex-only / theme-only → DONE: `gdelt_hint_ablation.py` (PR3-05) — theme-hint-dependent
+  assignments are 20.2% correct ≪ 40.9% baseline (net noise); lexicon-standalone lifts to 48.3%.
+- BERTopic / open clustering → DONE: `external_baseline_comparison.py` (PR3-09) — HDBSCAN-global
+  (BERTopic core) cliffs at every mcs (0/8 top-overlap justification for scoped design); flat
+  KMeans/Agglo reach in-sample coherence parity but no identity/lifecycle.
+- temporal holdout → DATA-LIMITED: batch-03 gold has no timestamp + signals purged (needs a fresh
+  labeled window).
 
 ## Results Section Skeleton
 
@@ -196,6 +199,44 @@ Artifact:
 
 Artifact:
 `docs/research/atlas-paper/phase-1-validation/2026-06-02-rq1-improvement-methods.md`
+
+## PR3 experiment results (2026-07-01) — the reproducibility + rigor gates, RUN
+
+The four experiments P1 required (the ledger's PR3-05/09/10) are now built + measured. All
+offline, repeatable, artifacts under `docs/research/embedding-ablation/`.
+
+**Statistical rigor (PR3-10 CIs, bootstrap 5000 + Wilson, batch-03 N660):**
+
+| quantity | point | 95% CI |
+|---|---:|---|
+| baseline precision (theme-hints on) | 40.9% | [37.2, 44.7] |
+| ablated (lexicon-standalone) | 48.3% | [43.8, 52.7] |
+| Δ ablated − baseline | +7.4pp | [5.2, 9.6] (excludes 0 = significant) |
+| theme-hint-dependent precision | 20.2% | [14.9, 26.8] (non-overlap w/ baseline) |
+
+**Theme-hint ablation (PR3-05):** theme-hint-dependent assignments (lex_count=0) are 20.2% correct
+— HALF the baseline; the theme-only path is a NET NOISE source (the KILL-class idiom hypothesis,
+measured). Semantic recovers 86–100% of the small true-loss at a moderate threshold (cliff in the
+[0.73,0.80] e5 band). Verdict: theme-hints removable. `2026-07-01-gdelt-hint-ablation.md`.
+
+**Crisis-only precision — the successor to 41.6% (PR3-10):** the taxonomy was 100%-crisis; ~49%
+of usable assignments are non-crisis force-fits at 27.1% precision (they pin the headline number,
+not the crisis classifier). Restricted to genuine crisis: **48% (unanchored) – 54% (hinted)** —
+the anchoring control shows the category hint was ~5.6pp optimistic; 48% is the conservative floor,
+still ≫ 40.9%. `2026-07-01-crisis-only-precision-and-kappa.md`.
+
+**Gold reliability (PR3-10 κ):** Fleiss binary 0.734 / 4-cat 0.623 = substantial — the 41.6% rests
+on a reliable gold, not annotator noise. `2026-07-01-gold-kappa.json`.
+
+**External baseline (PR3-09):** on the same e5 corpus, HDBSCAN-global (BERTopic's core) cliffs at
+every `min_cluster_size` (mega-blob 43.6% @mcs10 / collapse @mcs25 / 0 topics @mcs75) — 0/8 top
+overlap with Atlas's scoped topics = the measured justification for scoping. Flat KMeans/Agglo reach
+in-sample coherence parity (0.88 vs 0.849) but provide no identity/lifecycle/noise-rejection.
+Honest framing: Atlas's edge is scoping + lifecycle, NOT raw one-shot coherence.
+`2026-07-01-external-baseline.md`.
+
+**Two levers compound:** theme-hint removal (+7.4pp, significant) and the crisis reject class
+(+7–13pp) attack DIFFERENT noise; a v2 engine applying both clears well above the 41.6% headline.
 
 ## Discussion Skeleton
 

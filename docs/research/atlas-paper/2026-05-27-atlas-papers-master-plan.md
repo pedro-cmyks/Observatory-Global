@@ -189,6 +189,15 @@ the most to analyst-relevant ranking.
 - `heat_countries` API exposes the ranking.
 - `heat_voluminous_countries` lens for volume comparison.
 
+**Result — ablation RUN (2026-07-01, PR3-11):** the core claim is now MEASURED, not asserted.
+`external_baseline_comparison`-style pull of `/heat/countries` (N=200): **Kendall-τ(composite rank
+vs volume rank) = −0.198** (mildly NEGATIVE — not a volume proxy); top-8-by-composite vs
+top-8-by-volume overlap **0/8** (GT/CR/CI/HN small-country anomalies vs GB/CN/IN/RU firehoses).
+Per-component: `surprise_kl` (+0.401 composite / −0.558 volume) + `source_diversity` (+0.486) drive
+the divergence; `local_voice_ratio` (+0.413) is the one volume-leaning term, damped. Artifact:
+`docs/research/embedding-ablation/2026-07-01-heat-ablation.md`. (Kendall-τ + per-component ablation
+= the two deliverables the P3 seed named.)
+
 **Product evidence accrued (2026-06-25):** the volume≠importance thesis was put
 on the map and verified in production (#231). The map `country-heat-fill` had
 regressed to `/nodes` `.heat`, which is **volume-rank** (US 1.0, GB 0.40, CN
