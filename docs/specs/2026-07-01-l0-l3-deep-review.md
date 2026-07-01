@@ -213,3 +213,64 @@ surface — Pedro likes it for a reason); #152 headline min-width fix intact;
 ## §2a — Data-congruence agent full report
 
 *(appended verbatim below)*
+
+---
+
+### Verdicts per surface (agent, live-traced 2026-07-01 ~21:20 UTC)
+
+| Surface | Verdict | Key finding |
+|---|---|---|
+| L0 Landing | MINOR-ISSUES | hero stats live from /health + /threads ✓; "126 countries / 31 languages / 0.71 entropy" hardcoded (still ~true: live 123/53/0.717) — will drift silently |
+| L1 Brief | MINOR-ISSUES | lead/watchlist/heat all == /threads & /heat (same ranking fn) ✓; stats were starved by the dead matview (FIXED ✅) |
+| L2 Console | MINOR-ISSUES | #214 counts EXACT (CO/IT spot-checks); heat=composite ✓; semantic neighbors real ✓; 3 defects found → all FIXED ✅ same-session |
+| L3 Workbench | **SOUND** | scores present; ledger reconciles EXACTLY (83 = 9+2+72, every omission reasoned); semantic lane live; pin-log + telemetry writing |
+
+### The 5 ranked problems (agent) — status after same-session fixes
+
+1. 🔴→✅ **`country_hourly_v2` refresh dead since ~08:00 UTC, silently** — outgrew
+   the DB statement_timeout (measured 2m35s vs ~120s default). Brief stats,
+   `/stats`, geo detail, anomaly baselines served a 24h window missing 13h
+   (58% of data), failure handler was a bare `print`. FIXED `abd61cd0`:
+   session-level `statement_timeout=600s` + RESET (CONCURRENTLY can't run in
+   a txn) + `logger.error`; manual backfill refresh verified raw==agg across
+   the dead window; prod `/stats` 24h now 163,956 (was 71,108).
+2. 🔴→✅ **`changed_10h` = lifetime MAX velocity** (`thread_intelligence.py`,
+   both list + detail SQL): 69/101 multi-snapshot topics overstated movement,
+   feeding trend arrows + 35% of `rank_threads` — the #224 stale-looks-alive
+   pathology regrowing. FIXED `abd61cd0`: velocity at the LATEST snapshot
+   (SUM for umbrellas).
+3. 🟠→✅ **Relationship endpoint asserted "no discussion/mood" falsely** —
+   discussion/mood pinned to `engine_version='v1-compat'` (structurally ~0)
+   while unified-v2 held 74+74. FIXED `abd61cd0` (engine-agnostic, deduped
+   by signal): dt-84 now serves discussion 10 / mood 10 (was 0/0) with a
+   truthful rationale. The v1‖v2 UNION debt, paid at this consumer.
+4. 🟡 **NER coverage collapsed to 2% of daily inflow** (166K/24h unprocessed,
+   5.2-day lag) — the "verified subjects" tier is dark; gazetteer carries
+   typing honestly. Cause stack: fleet 2-day death (watchdog now guards) +
+   burst=1 memory guard + multilingual drain cost. → #243 (model-caching,
+   burst=2) is the lever; labels stay honest meanwhile.
+5. 🟡 **Editorial damp ignores the served category** — hotel review at #3-4
+   global. → #246 (damp should consume R3.1 `category`/`crisis_relevant`).
+
+### Remaining minor (tracked)
+- Landing hardcoded diversity stats (swap to `/api/v2/voice-mix` fetch) — small.
+- Forum lane provenance says `reddit`/`subreddit` for Lemmy items — label fix.
+- Wiki pageviews missing days 06-26/06-29; trends currently FRESH (0.78h).
+- 4 signals with future timestamps (publisher-date noise).
+- **ReliefWeb near-silent: 2 ngo rows/7d** — #180 was closed as "live" this
+  morning; REOPENED with this measurement (wired ≠ producing).
+- Dynamic topics refresh nightly (snapshot 17.6h old at audit) vs atlas live
+  counts — two freshness regimes interleaved in one ranked list (design note
+  for the 3-speed cadence deferral, R3 §10).
+- `is_umbrella` not serialized in /threads payload (umbrellas serve fine;
+  frontend just can't distinguish them yet — matters for hierarchy rendering).
+
+### Verified SOUND — do not re-audit (agent's list, condensed)
+Brief lead = same ranking as /threads (identical order/ids live); #214 list==
+detail counts exact; below-gate UNVERIFIED tray renders; heat = composite
+(fresh matview, volume only in glow); window-scoped atlas counts; category
+badge served+rendered; SignalDetail neighbors = real HNSW (sim .944/.928 with
+honest gate labels); R2 umbrellas genuinely in the served top-list; research
+ledger reconciles exactly with inspectable omissions; pin-events + telemetry
+(incl. the new brief_open) writing; trends fresh; conflict markers honestly
+labeled gdelt_events (never claim ACLED); forum lane verified=false.
