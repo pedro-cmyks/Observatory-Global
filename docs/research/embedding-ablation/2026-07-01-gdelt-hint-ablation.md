@@ -68,6 +68,22 @@ So theme-hints can be demoted from a hard candidate-generator to (at most) a wea
 feature — consistent with the unified-engine plan. **Net effect: precision 40.9% → 48.3%, recall
 cost ≤ 13% and 86–100% semantically recoverable.**
 
+## Statistical rigor — CIs (PR3-10 slice, bootstrap 5000 + Wilson, batch-03 gold)
+
+| quantity | point | Wilson 95% | bootstrap 95% |
+|---|---|---|---|
+| baseline precision (with hints) | 40.9% | [37.2, 44.7] | [37.3, 44.7] |
+| ablated (lexicon-standalone) | 48.3% | [43.8, 52.7] | [43.7, 52.8] |
+| theme-hint-dependent precision | 20.2% | [14.9, 26.8] | [14.5, 26.0] |
+| **Δ ablated − baseline** | **+7.4pp** | — | **[5.2, 9.6]** |
+
+Two intervals settle the claim: (1) the **ablation delta CI [5.2, 9.6] excludes zero** — removing
+theme-hints improves precision *significantly*, not by noise. (2) theme-dependent [14.9, 26.8] and
+baseline [37.2, 44.7] are **non-overlapping** — the theme-only path is significantly worse than the
+engine average, confirming it is a net noise source, not a chance dip. (Computed by
+`external`-style bootstrap in the PR3-10 slice; the baseline CI matches the canonical 41.6% band
+[37.8, 45.5].)
+
 ## Honest caveats (paper-grade)
 - **The ablated engine assumes lexicon becomes a standalone candidate-generator** (today it is
   gated behind the theme JOIN). The ablation MEASURES the outcome; making `lexicon_terms` a

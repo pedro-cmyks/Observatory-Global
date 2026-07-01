@@ -1,0 +1,48 @@
+{
+  "baseline": {
+    "k": 270,
+    "n": 660,
+    "pct": 40.9,
+    "wilson95": [
+      37.2,
+      44.7
+    ],
+    "bootstrap95": [
+      37.3,
+      44.7
+    ]
+  },
+  "ablated_lexicon_standalone": {
+    "k": 235,
+    "n": 487,
+    "pct": 48.3,
+    "wilson95": [
+      43.8,
+      52.7
+    ],
+    "bootstrap95": [
+      43.7,
+      52.8
+    ]
+  },
+  "theme_dependent": {
+    "k": 35,
+    "n": 173,
+    "pct": 20.2,
+    "wilson95": [
+      14.9,
+      26.8
+    ],
+    "bootstrap95": [
+      14.5,
+      26.0
+    ]
+  },
+  "delta_ablated_minus_baseline": {
+    "pct": 7.4,
+    "bootstrap95": [
+      5.2,
+      9.6
+    ]
+  }
+}
