@@ -21,6 +21,12 @@ LOCAL_ENV="${ATLAS_LOCAL_ENV:-$ROOT_DIR/.env}"
 MIN_EMBEDDED="${ATLAS_SCOPED_MIN_EMBEDDED:-100}"
 TOP_PER_COUNTRY="${ATLAS_SCOPED_TOP_PER_COUNTRY:-25}"
 PER_COUNTRY_CAP="${ATLAS_SCOPED_CAP:-6000}"
+# Scoped regime: regional topics are 8-30 signals at ~0.97 cohesion; volume_min=30
+# (global-regime default) starves them. 12 recalibrated + purity-verified (2026-07-01
+# bootstrap: 256 admitted topics cohesion 0.969 / noise 0.081). persist_min stays the
+# default 2 (dynamism — a NEW regional story proves across 2 nightly snapshots before
+# it serves; the initial set was bootstrap-promoted once by hand).
+VOLUME_MIN="${ATLAS_SCOPED_VOLUME_MIN:-12}"
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 mkdir -p "$LOG_DIR"
@@ -47,9 +53,12 @@ $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.run_scoped_snapshot \
 
 # Step 2: fold the just-written snapshot into dynamic_topics (serving) with the
 # #224 anchor-guard + the retire/age lifecycle. Non-fatal.
+# INCREMENTAL only — NEVER pass --rebuild here: --rebuild TRUNCATEs dynamic_topics
+# (destroys topic history + resurrection identities). Incremental only appends/ages;
+# retired topics stay in the table as resurrection targets (Pedro, 2026-07-01).
 if [[ -f "$STUDENT_JSON" ]]; then
   ( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.project_dynamic_topics \
-      --student-model "$STUDENT_JSON" ) \
+      --student-model "$STUDENT_JSON" --volume-min "$VOLUME_MIN" ) \
     || echo "[scoped-snapshot] dynamic_topics projection failed (non-fatal)" >&2
 else
   echo "[scoped-snapshot] student model missing ($STUDENT_JSON) — skip projection" >&2

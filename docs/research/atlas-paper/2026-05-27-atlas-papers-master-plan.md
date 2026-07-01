@@ -526,6 +526,31 @@ the seven analyst questions than commodity dashboards.
   presented as a typed, reason-chipped connection set, never a fabricated thread.
   This is the analyst-workflow method that turns the focus lens from "re-scope
   every surface" into "show me where this one item sits in the narrative graph."
+- **Evolution graph as ENGINE-TRUTH view (Pedro's direction, 2026-06-30 — noted,
+  build after R2):** the thread evolution graph should be fed by *the same
+  substrate the engine/classifier eats* — the embedded signals entering the
+  vector space + their typed `topic_members` membership — so it visualizes WHICH
+  signals classified into this thread, in what ROLE (evidence / discussion / mood
+  / movement), and HOW they relate in embedding space to *form* the narrative; as
+  signals enter and fade the graph evolves over time buckets, and a larger thread
+  is an **umbrella** (R2) whose children/sub-themes appear and drop across the
+  window. **Honest correction of the current state:** today's
+  `TemporalNarrativeGraph.tsx` is fed by signal *metadata* — country/person/source
+  co-occurrence + related-GDELT-`theme` links (`temporalNarrativeGraph.ts:176`)
+  from one theme's signals — NOT the embedding substrate or `topic_members`. So
+  this is a **reframe/upgrade, not a description of what ships**: make the graph an
+  engine-truth view (semantic-neighbor edges from `signal_embeddings`, typed
+  membership nodes, `splitting`/`merged`/`fading` lifecycle states, umbrella→child
+  hierarchy) instead of a parallel metadata proxy that can *disagree* with the
+  engine. **Method value the paper can claim:** a visualization fed by the
+  classifier's own substrate is *falsifiable against the engine* — the analyst
+  sees the actual basis of the thread (what is evidence vs discussion, which
+  cross-country children sit under the umbrella, what entered/left this window),
+  not a proxy. Ties to R2 (centroid-of-centroids umbrella), `topic_members` roles
+  (Paper 4), and on-demand any-window construction (Paper 4 decision 5,
+  2026-06-23). Constraint: the current force-graph is desktop-only
+  (`ThemeDetail.tsx:744` `!isMobile` — off by design, a canvas doesn't rank on a
+  phone); the engine-truth reframe needs a mobile-native shape (#236).
 
 **Evidence to collect:**
 - Analyst task-completion study (10-15 analysts, structured tasks).

@@ -665,7 +665,17 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
     db = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
     if not db:
         raise SystemExit("DATABASE_URL required")
-    cfg = LifecycleConfig()
+    # Gate overrides (reversible — defaults unchanged). The scoped-clustering regime
+    # (#229 R1) produces tight regional topics of 8-30 signals at ~0.97 cohesion; the
+    # default volume_min=30 is calibrated for the old global regime (100s-of-signal
+    # threads) and starves them. --volume-min recalibrates for scoped; --persist-min 1
+    # is the one-time bootstrap so the first scoped snapshot can promote (normally 2).
+    overrides: dict[str, Any] = {}
+    if getattr(args, "persist_min", None) is not None:
+        overrides["persist_min"] = args.persist_min
+    if getattr(args, "volume_min", None) is not None:
+        overrides["volume_min"] = args.volume_min
+    cfg = LifecycleConfig(**overrides)
     conn = await asyncpg.connect(db)
     try:
         clusters = await load_clusters(conn)
@@ -727,6 +737,10 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--dry-run", action="store_true", help="compute without writing")
     ap.add_argument("--rebuild", action="store_true", help="rebuild from all snapshots (TRUNCATE first)")
     ap.add_argument("--student-model", help="path to evidence-role student json for the noise quality gate")
+    ap.add_argument("--persist-min", type=int, default=None,
+                    help="override LifecycleConfig.persist_min (snapshots-seen to promote; scoped bootstrap uses 1)")
+    ap.add_argument("--volume-min", type=int, default=None,
+                    help="override LifecycleConfig.volume_min (min agg kept signals to promote; scoped regime ~12)")
     return ap.parse_args()
 
 

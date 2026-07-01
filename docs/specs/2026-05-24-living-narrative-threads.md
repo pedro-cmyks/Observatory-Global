@@ -408,3 +408,29 @@ pipelines that never reconcile) is replaced by ONE typed-membership table
   byte-exact list parity before the flip — the same calibrate-then-prove method
   this spec used for ranking, now applied to a serving-layer swap. The A/B over
   v1-compat vs unified-v2 (F3) IS Paper 1's split-brain-vs-unified experiment.
+
+## 2026-06-30 — R-track engine work operationalizes decisions 3 + 5 (pointer)
+The #229 recall engine work (`docs/specs/2026-06-30-atlas-engine-recall-scoped-
+clustering.md`, Paper 8) is the implementation path for the two thread-model
+decisions taken 2026-06-23 that were spec'd-not-built:
+- **Decision 3 (hierarchical threads)** = **R2**: cluster the scoped-cluster
+  *centroids* (embedding-of-embeddings) into parent **umbrella** topics with the
+  per-country/regional clusters as children. This is what collapses the
+  cross-country duplication R1 introduces (same global story once per country)
+  and fixes the "US–Iran ≈ 7 flat threads" fragmentation — the umbrella IS the
+  parent, the scoped clusters ARE the children. R2 spec authored after R1.
+- **Decision 5 (on-demand any-window)** = the three-speed cadence: **formation**
+  (R1 HDBSCAN, nightly, discovers new topics) / **assignment** (nearest-centroid,
+  every 30min with ingest, existing topics grow + velocity moves — the
+  `build_unified_topics` ≥0.88 path) / **umbrella** (cheap centroid re-cluster,
+  hourly / on-read, re-scoped per requested window). Movement numbers = Kalman
+  #219 (the "stock ticker"). "Instant/live like a market" = assignment + movement
+  + umbrella-on-read; full streaming clustering is NOT required.
+- **Evolution-graph reframe (2026-06-30, Pedro):** the thread evolution graph
+  should be fed by the engine's own substrate (`signal_embeddings` +
+  `topic_members` roles), not signal metadata — see the master plan Paper 7
+  addition. A larger thread renders as its umbrella + children entering/leaving
+  across time buckets. Build after R2. Desktop-only today (`ThemeDetail:744`);
+  needs a mobile-native shape (#236).
+R1 (production per-country former) is the foundation all three sit on — it is in
+flight 2026-06-30/07-01; R2/graph are built ON its output.

@@ -137,6 +137,12 @@ async def main() -> None:
         base = 0
         for cc in ccs:
             done += 1
+            # Resilience for the unattended ~1.5h run: if the connection dropped
+            # (Supabase can close a long-lived one), reconnect before this country
+            # so a single blip doesn't fail every remaining country.
+            if conn.is_closed():
+                conn = await asyncpg.connect(db)
+                await conn.execute("SET statement_timeout = '600s'")
             try:
                 res = await _country_clusters(conn, cc, args.hours, args.per_country_cap,
                                               args.mcs, args.ms, gate, args.min_kept,
@@ -145,6 +151,12 @@ async def main() -> None:
                 failed += 1
                 print(f"  [{done}/{len(ccs)}] {cc}: FETCH/CLUSTER failed ({ex})",
                       file=sys.stderr, flush=True)
+                try:
+                    if not conn.is_closed() and isinstance(
+                            ex, (asyncpg.PostgresConnectionError, ConnectionError, OSError)):
+                        await conn.close()  # force a fresh reconnect next iteration
+                except Exception:
+                    pass
                 continue
             if res is None:
                 print(f"  [{done}/{len(ccs)}] {cc}: no gated clusters", file=sys.stderr, flush=True)

@@ -126,6 +126,81 @@ largest countries. Artifacts:
 `docs/research/recall-scoped/{scoped-probe-US,scoped-probe-CN,system-estimate}.{json,md}`;
 method: `backend/scripts/recall_scoped_{probe,estimate}.py`.
 
+## Intervention 3 — coverage → SERVED: the R1 production run (RESULT 2026-07-01)
+Interventions 1–2 were read-only measurements. R1 turns the measured lift into a
+*served* before/after: `backend/scripts/run_scoped_snapshot.py` formed + wrote
+scoped topics for **all 126 countries** with ≥100 embedded signals under ONE
+`snapshot_at`, then `project_dynamic_topics` folded them into `dynamic_topics`.
+
+**Write result (emergent_clusters):** **731 clusters, 126/126 countries, 0
+failed, ~49min** (mindful `taskpolicy -b`). Quality is the headline: **no blob**
+(largest cluster 101 signals against a 6,000/country cap), **mean cohesion
+0.968**, median 11 signals — i.e. many *tight regional* topics, not few mega-bins.
+**Honesty invariant confirmed live:** 26 countries yielded NONE ("no gated
+clusters", e.g. TW/KH/AZ/JM) — real recovery, not fabricated black-holes; each
+country is its own `cluster_id` block so a single-country blob cannot contaminate
+the rest. So the R0 measurement reproduces at production scale: partitioning
+recovers tight regional topics that a global pass drowns, with diversity as a
+side effect — **VE/CA/UA/DE/FR/IR/RU/GR all hit the 25-topic cap while US took 23**
+(a global pass would let the English/US volume dominate; scoped gives each country
+equal footing — the Paper 5 voice tie-in, structural not tuned).
+
+**Serving result — a measured promotion-gate recalibration:** the write does not
+serve itself. The lifecycle promotion gate (`LifecycleConfig`) was calibrated for
+the *old global regime*: `persist_min=2` (blocks every first-snapshot topic) and
+`volume_min=30` (a real global thread was 100s of signals). Against the scoped
+regime — regional topics of 8-30 signals — only **50 of 510 quality-clean topics
+cleared `volume_min=30`**. Measured histogram of quality-clean fresh candidates
+(cohesion ≥0.5, noise <0.5, not roundup) at each threshold: **v30=50, v20=135,
+v15=205, v10=389**. So the gate, not the engine, was the serving bottleneck. The
+recalibration (Pedro's call, "bootstrap now + measure purity"): promote clean
+candidates at **`volume_min=12`** (one-time `persist_min=1` bootstrap). **Serving
+went 68 → 392 active topics (~4.6×)**, and the **purity held** — the 256
+newly-admitted small topics (12-29 signals) measured **cohesion 0.969 / noise
+0.081**, and a manual sample of the smallest (12-16 signals) were all real
+specific stories ("Shooting in German Youth Center", "Venezuela Earthquake
+Disaster", "Pakistan-Afghanistan Border Clashes", "Twin Storms Pound Japan"), not
+noise. Because the noise/roundup gates are *independent of volume*, lowering
+volume admits smaller-but-equally-clean topics, not noisier ones — the reason the
+recalibration is safe, stated as a falsifiable claim and confirmed. Reversible:
+311 promoted ids saved. The recurring nightly cron carries `volume_min=12` at
+steady state (with `persist_min=2` restored, so *new* regional stories prove
+across two nightly snapshots before serving — dynamism, not one-shot).
+
+### Retention + resurrection (the dynamism mechanism, verified 2026-07-01)
+Pedro's design concern — "don't lose a topic that was ever classified; let the
+table grow; let a topic resurge without re-classifying." Verified this is already
+the architecture, and it is the dynamism curve's mechanism:
+- **No deletion.** The only `DELETE`/`TRUNCATE` is `project_dynamic_topics
+  --rebuild`; the incremental nightly path (and the cron, guarded) never deletes.
+  Retirement is a `state` (`active→deprecated→retired`), never a row drop — the
+  row keeps its centroid, members, and history.
+- **Resurrection, not re-classification.** A retired topic whose centroid is
+  matched by a new cluster (≥0.88) re-opens as `candidate` under its SAME
+  `identity_key` (`next_state`), history intact, members appended. `hydrate_topics`
+  loads ALL states unfiltered, so retired topics remain assignment/resurrection
+  targets — Pedro's "more topics in the table = more places to classify into."
+- **Why still retire from serving.** Never-retiring is precisely the frozen-68
+  negative above: serving fills with dead topics and stops tracking the live
+  world. The resolution is the separation this paper measures — **retire from
+  SERVING (freshness) while keeping in the TABLE (history + resurrection)**. That
+  separation, not a longer/shorter timer, is the dynamism result.
+
+## Intervention 4 — coverage → LEGIBILITY: the R2 umbrella (centroid-of-centroids, next)
+R1 raises recall but leaves two legibility gaps, both to be measured as R2's
+before/after: (a) **cross-country duplication** — a global story (e.g. France
+heatwave) forms one scoped cluster per country, correct for country-scoped
+serving but N-fold in a global list; (b) **fragmentation** — a single evolving
+story appears as many flat threads (Paper 4 finding: US–Iran ≈ 7 flat threads).
+R2 = a cheap SECOND clustering pass over the ~2k scoped *centroids* (not the 200K
+signals) → **parent umbrella topics** with the per-country/regional clusters as
+children. This is embedding-of-embeddings: it collapses cross-country duplicates
+into one umbrella (children preserved) and gives the "big story = parent + child
+sub-threads" hierarchy (Paper 4 decision 3, 2026-06-23). The experiment sequence
+recorded for the paper: **R0 (measure) → R1 (produce/serve) → R2 (umbrella
+hierarchy) → R3 (A/B cutover on a measured recall lift without purity loss).** R2
+spec is authored AFTER R1 completes, parameterized on R1's actual output.
+
 ## Negative-result honesty
 Both negatives (5.6% coverage, frozen lifecycle) are recorded BEFORE the fixes,
 with the exact prod queries in the engine recall spec §1 — so each lever's lift
