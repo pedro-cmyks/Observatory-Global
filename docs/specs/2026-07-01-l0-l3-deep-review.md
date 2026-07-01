@@ -274,3 +274,51 @@ honest gate labels); R2 umbrellas genuinely in the served top-list; research
 ledger reconciles exactly with inspectable omissions; pin-events + telemetry
 (incl. the new brief_open) writing; trends fresh; conflict markers honestly
 labeled gdelt_events (never claim ACLED); forum lane verified=false.
+
+---
+
+## 5. Equal Earth map — dedicated design pass (Pedro's priority, added 2026-07-01 PM3)
+
+**Assessment: the strongest piece of original design in the product** — and it
+was shipping with two defects that hid that quality.
+
+What's genuinely good (preserve): the infinite horizontal wrap (3-tile strip,
+seamless ±180° rotation); the heat-CONDUCTION render (Gaussian-blurred heat
+bleeding across borders — the weather-radar identity, Pedro's idea, no map
+library does this); animated alert semantics (anomaly radar pings, pulsing
+conflict dots); day/night terminator; zoom-gated country labels; GPU-composited
+CSS transform (no per-frame SVG re-raster — the mobile "se tuesta" fix);
+graticule + vignette (situation-room look); NO WebGL (the mobile blank-map
+class deleted by construction); shared single projection instance (SVG, canvas,
+hit-test can't drift); shared heat source with MapLibre.
+
+Defects found + FIXED (`c72baae0`):
+1. 🔴→✅ **The default view never showed the world.** `fitHeight` over-zoomed
+   any panel narrower than the world strip (500×625 opened on "somewhere in
+   Africa") and `scaleExtent` min=1 could never zoom OUT. Now: `kFit` world-fit
+   default + dblclick reset, vertical letterbox centered, wrap re-engages on
+   zoom-in. Browser-verified: world visible, click-at-fit opens CountryBrief +
+   #234 re-scope repaints.
+2. 🔴→✅ **Rainbow world after the heat-fill fix.** The `[0.1,1.0]` min-max
+   (tuned for the warm top-80) stretched ALL ~200 countries across the full
+   ramp once the 422 was fixed — everything colored, nothing hot. Now
+   rank^1.6: bottom third ≈ transparent, middle cyan/green, top decile
+   yellow→red (shared with MapLibre — both engines healed).
+3. 🟡→✅ Canvas labels now Geist (was system sans).
+
+Honest naming note: the engine is `geoCylindricalEqualArea().parallel(30)`
+(Behrmann-family), NOT `geoEqualEarth` — a deliberate trade (the infinite wrap
+needs a RECTANGULAR projection; true Equal Earth's curved outline can't tile).
+Equal-AREA honesty is preserved — the ADR-0005 principle holds — but the
+toggle label "EQ EARTH" is now approximate. Either rename the label (e.g.
+"EQUAL AREA") or note it in Docs; do not silently claim Equal Earth.
+
+**Route recommendation (#212 was closed as shipped; the road to DEFAULT):**
+1. Pedro's visual sign-off on desktop + MOBILE (the spec's P6 gate — never
+   done; mobile is the whole reason the SVG engine exists).
+2. Promote Equal Earth to default (`atlas.mapProjection` default flip).
+3. Parity follow-ups before retiring MapLibre: #234 fly-to-bounds on focus
+   (EE re-scopes heat but doesn't pan/zoom to the focused country), marker
+   interactivity (ACLED/chokepoint clicks are MapLibre-only).
+4. Retire MapLibre + react-map-gl (bundle drop ~1MB+, kills the WebGL mobile
+   bug permanently) — separate commit per the spec.
