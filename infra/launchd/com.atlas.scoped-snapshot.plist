@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.atlas.scoped-snapshot</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/pedro/AtlasLocalWorker/run-scoped-snapshot.sh</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/pedro/AtlasLocalWorker</string>
+
+  <!-- RunAtLoad FALSE: this is a ~1–1.5h HDBSCAN+label job; firing on load during
+       work hours risks a load spike. Fires only on schedule. -->
+  <key>RunAtLoad</key>
+  <false/>
+
+  <!-- Mindful: efficiency cores + low QoS (runner also wraps python in
+       `taskpolicy -b`) so it yields to foreground work. -->
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>Nice</key>
+  <integer>10</integer>
+
+  <!-- R1 REPLACES the global com.atlas.emergent-snapshot (scoped = superset).
+       ONCE nightly, off-peak, in the gap between the embed cron (23:30 → 05:30)
+       so the two never stack (a load-177 crash happened from stacked compute). -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>2</integer>
+    <key>Minute</key>
+    <integer>30</integer>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/Users/pedro/AtlasLocalWorker/logs/scoped-snapshot.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/pedro/AtlasLocalWorker/logs/scoped-snapshot.err.log</string>
+</dict>
+</plist>
