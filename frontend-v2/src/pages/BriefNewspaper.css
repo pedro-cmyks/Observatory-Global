@@ -1278,6 +1278,15 @@
     .brief-thread-meta { flex: 1 1 100%; justify-content: flex-start; flex-wrap: wrap; gap: 8px; }
     .brief-spark { width: 56px; flex-shrink: 0; }
 
+    /* the LEAD's thread kicker isn't inside a .brief-thread-row, so the
+       ellipsis above never engaged — a long thread label pushed the whole
+       page 70px sideways at 375w (found in the 2026-07-01 L0-L3 review).
+       Constrain it + clip any residual sideways scroll page-wide (child
+       scrollers like the heat strip keep their own overflow-x). */
+    .brief-lead-story { min-width: 0; }
+    .brief-lead-story .brief-thread-label { max-width: calc(100vw - 64px); }
+    .brief-page { overflow-x: clip; }
+
     /* Readable body text on phones (serif at 11–13px was too small). */
     .brief-thread-label { font-size: 15px; }
     .brief-lead-whynow { font-size: 14px; line-height: 1.45; }
