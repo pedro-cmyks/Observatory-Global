@@ -32,7 +32,7 @@ import numpy as np
 # Children pool = the served set. Only active, non-umbrella topics with a centroid.
 _LOAD = """
     SELECT id, identity_key, label, agg_n_signals,
-           COALESCE(mean_cohesion, 0.0) AS mean_cohesion, centroid_vec
+           COALESCE(mean_cohesion, 0.0) AS mean_cohesion, centroid_vec, crisis_class
     FROM dynamic_topics
     WHERE state = 'active' AND is_umbrella = false AND centroid_vec IS NOT NULL
     ORDER BY id
@@ -111,13 +111,15 @@ async def main() -> None:
 
         written = 0
         async with conn.transaction():
-            # rebuild derived umbrellas (children never deleted — only re-parented).
-            # umbrella MEMBERS (union of children's) are derived too → clear + rebuild.
+            # R3.3: STABLE umbrella identity (`umbrella:<min_child_id>`) — UPSERT instead
+            # of delete-all+recreate, so ids survive nightly rebuilds (drill/pin links
+            # don't churn). Children never deleted — only re-parented; umbrella MEMBERS
+            # (union of children's) are derived → cleared + rebuilt each pass.
             await conn.execute("UPDATE dynamic_topics SET parent_id = NULL WHERE parent_id IS NOT NULL")
             await conn.execute(
                 "DELETE FROM dynamic_topic_members WHERE dynamic_topic_id IN "
                 "(SELECT id FROM dynamic_topics WHERE is_umbrella = true)")
-            await conn.execute("DELETE FROM dynamic_topics WHERE is_umbrella = true")
+            new_keys: list[str] = []
             for root, idxs in multi.items():
                 order = sorted(idxs, key=lambda i: -rows[i]["agg_n_signals"])
                 head = rows[order[0]]
@@ -127,16 +129,26 @@ async def main() -> None:
                 coh = float(np.mean([rows[i]["mean_cohesion"] for i in idxs]))
                 child_ids = [int(rows[i]["id"]) for i in idxs]
                 ident = f"umbrella:{min(child_ids)}"
+                new_keys.append(ident)
+                # R3.3 category inheritance: dominant child crisis_class (the badge);
+                # a real multi-category event still reads its distribution via children.
+                child_crisis = [rows[i]["crisis_class"] for i in idxs
+                                if rows[i]["crisis_class"] and rows[i]["crisis_class"] != "non_crisis"]
+                dom_crisis = max(set(child_crisis), key=child_crisis.count) if child_crisis else "non_crisis"
                 uid = await conn.fetchval(
                     "INSERT INTO dynamic_topics "
                     "(identity_key, label, state, is_umbrella, centroid_vec, agg_n_signals, "
-                    " mean_cohesion, n_snapshots, snapshots_since_seen, is_roundup, "
+                    " mean_cohesion, crisis_class, n_snapshots, snapshots_since_seen, is_roundup, "
                     " first_seen, last_seen) "
-                    "VALUES ($1,$2,'active',true,$3,$4,$5,1,0,false,"
-                    " (SELECT MIN(first_seen) FROM dynamic_topics WHERE id = ANY($6::bigint[])),"
-                    " (SELECT MAX(last_seen) FROM dynamic_topics WHERE id = ANY($6::bigint[]))) "
+                    "VALUES ($1,$2,'active',true,$3,$4,$5,$6,1,0,false,"
+                    " (SELECT MIN(first_seen) FROM dynamic_topics WHERE id = ANY($7::bigint[])),"
+                    " (SELECT MAX(last_seen) FROM dynamic_topics WHERE id = ANY($7::bigint[]))) "
+                    "ON CONFLICT (identity_key) DO UPDATE SET label=EXCLUDED.label, "
+                    " centroid_vec=EXCLUDED.centroid_vec, agg_n_signals=EXCLUDED.agg_n_signals, "
+                    " mean_cohesion=EXCLUDED.mean_cohesion, crisis_class=EXCLUDED.crisis_class, "
+                    " last_seen=EXCLUDED.last_seen, updated_at=now() "
                     "RETURNING id",
-                    ident, head["label"], [float(x) for x in cen], agg, coh, child_ids)
+                    ident, head["label"], [float(x) for x in cen], agg, coh, dom_crisis, child_ids)
                 await conn.execute(
                     "UPDATE dynamic_topics SET parent_id = $1 WHERE id = ANY($2::bigint[])",
                     uid, child_ids)
@@ -150,6 +162,10 @@ async def main() -> None:
                     "ON CONFLICT DO NOTHING",
                     uid, child_ids)
                 written += 1
+            # stable-id cleanup: remove only umbrellas whose component vanished this pass
+            await conn.execute(
+                "DELETE FROM dynamic_topics WHERE is_umbrella = true "
+                "AND identity_key <> ALL($1::text[])", new_keys or [""])
         print(f"WROTE {written} umbrellas over {n_children} children "
               f"(top-level serving set = {written + (n - n_children)})")
     finally:
