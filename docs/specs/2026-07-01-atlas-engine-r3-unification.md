@@ -1,8 +1,9 @@
 # Spec — Atlas Engine R3: the unification (spine + lenses + relations, all five brains)
 
-Date: 2026-07-01 · Branch: `v3-intel-layer` · Status: **DRAFT v2 for Pedro review**
-(v1 rewritten 2026-07-01 after a 4-agent deep read of all ~20 specs + 9 papers;
-the reconciliation ledger of every finding is §11). Author: Claude (Opus 4.8).
+Date: 2026-07-01 · Branch: `v3-intel-layer` · Status: **DRAFT v3 for Pedro review**
+(v1 rewritten after a 4-agent deep read of ~20 specs + 9 papers → v2; v3 folds
+Pedro's category challenge — anchored-emergent categories, NOT a fixed 32 — and
+resolves all decisions §9. Reconciliation ledger = §11.) Author: Claude (Opus 4.8).
 
 **This is a CONVERGENCE spec, not a new invention.** It ties together work built
 piecemeal across the last ~20 specs + 9 papers and finishes the un-flipped pieces.
@@ -51,7 +52,7 @@ the biggest v1 miss):
 
 | level | axis | example | today | R3 |
 |---|---|---|---|---|
-| **CATEGORY** | crisis-taxonomy class (32 + OUT_OF_SCOPE reject) | "climate disaster" | 30 `atlas_topics` peer rows | an **attribute** `category`+`category_confidence` on each story; also a filter view. NOT peer rows |
+| **CATEGORY** | ANCHORED-EMERGENT super-cluster (crisis-32 = seed anchors + emergent extensions; open, grows — §3.1) | emergent "Middle East conflict" · crisis-lens "armed conflict" | 30 FIXED `atlas_topics` peer rows | an **attribute** `category`(emergent)+`crisis_class`(seed-32 lens or `non_crisis`)+`category_confidence`; also a filter view. NOT peer rows |
 | **EVENT — geographic** | same-event across countries/languages | France Heatwave → {DE,FR,GB} | R2 umbrella (complete-linkage @0.98) | `event_parent` (fold R2 onto the unified population) |
 | **EVENT — narrative** | sub-narratives of ONE big story (decision 3) | US–Iran → {base strikes, satellite imagery, water infra, protests} | UNBUILT (US–Iran serves as ~7 flat threads) | `narrative_parent`/`subthread` — the ACTUAL Paper-4 decision 3, **NOT delivered by the umbrella** |
 | **STORY** | the specific narrative | "Venezuela Earthquake Death Toll" | `dynamic_topics` | the ONE served population; typed w/ category, optionally under an event |
@@ -100,7 +101,8 @@ that CATEGORY/EVENT/relationship-type are LENSES on the thread, never peer objec
   26 umbrellas; global dedup + country children LIVE.
 - **Taxonomy candidate-v2 (#204)** — **32 categories + an OUT_OF_SCOPE reject
   POLICY** (NOT 33; §11 F-D), κ 0.739 (reject-driven on a non-crisis sample; the
-  crisis-only in-category κ is UNMEASURED). **CORRECTION:** the LIVE prod thing is
+  crisis-only in-category κ is UNMEASURED). **R3.1 repositions these 32 as SEED
+  ANCHORS + an editorial lens, NOT the typing target** (anchored-emergent, §3.1). **CORRECTION:** the LIVE prod thing is
   `apply_v2_reject.py` — a **BINARY keep/reject DEMOTER** within existing lexical
   assignments; it does **NOT** assign categories. So **category TYPING is genuinely
   unbuilt**; R3.1 is a new operation on the same e5 substrate, NOT the reject gate
@@ -121,29 +123,53 @@ that CATEGORY/EVENT/relationship-type are LENSES on the thread, never peer objec
 
 ## 3. What R3 must do (dependency order)
 
-### R3.1 — TYPE every story with a category (the PRECISION lever, Paper 1's dominant finding)
-- Classify every story into **32 candidate-v2 categories + OUT_OF_SCOPE** (NOT 33);
-  store `category`+`category_confidence`. Method (E-R3-a): consider the pre-designed
-  **Path B bootstrap encoder** (MiniLM head over e5, 85–90% gate, `ai-assisted-
-  taxonomy Path B`) alongside semantic-vs-prototype + LLM-for-low-confidence; the
-  prototype path REUSES `research_semantic` centroid machinery (§11 F-C2.5).
-- **Wire OUT_OF_SCOPE + per-category excludes into `backend/app/` assignment** — the
-  missing production link (today OUT_OF_SCOPE lives only in offline `ensemble/`).
-  Distinct from the shipped reject GATE (which demotes, doesn't type).
-- **Run on the 30-min classifier cron, NOT nightly** (§11 F-C4.2, critical): nightly
-  typing leaves fresh stories UNCATEGORIZED for a day → the badge asymmetry R3.1
-  fixes reappears as a TEMPORAL asymmetry. R3.4a already proves pure-cron work is
-  daytime-safe; category typing rides the same slot.
-- **OUT_OF_SCOPE ≠ suppressed** (§11 F-C4.6 + funnel principle): a coherent
-  non-crisis story (regional news, sports→protest) is labeled `uncategorized`, stays
-  SERVED + retrievable, never demoted out of the corpus. The crisis-only taxonomy has
-  no home for coherent non-crisis; do NOT let the reject class delete it. Also fold
-  decision 4 (RE-LABEL generic-but-coherent clusters, not gate them) into new-topic
-  labeling.
-- **Measure** the topical-precision lift on a **crisis-only held-out gold split**
-  (the κ-0.739 aggregate is reject-driven; the in-category number is unmeasured —
-  §11 F-D-M5-2), with Wilson/bootstrap CIs + anchoring-effect control if an LLM is in
-  the loop; target = the **90%** verified north-star, not just "above 40–52%".
+### R3.1 — CATEGORIZE every story: ANCHORED-EMERGENT, not forced into a fixed 32 (Pedro, 2026-07-01)
+**Corrected premise (Pedro's challenge, §11 F-Pedro32).** v1 said "type every story
+into 32 fixed categories + reject." Wrong: a fixed, small, CLOSED crisis taxonomy
+contradicts the whole open-set/emergent engine (R1/R2 discover emergent topics) AND
+*is* the 40–52% precision ceiling — forcing an open world into 32 buckets. The
+category level must be as EMERGENT as the story + event levels. Resolution =
+**anchored-emergent categories:**
+- **The crisis-32 (#204 candidate-v2) are SEED ANCHORS, not the target set** —
+  curated, κ-validated, high editorial value. A story near a seed centroid takes that
+  crisis class (the comparable, editorial label). The seeds are the category-level
+  anchor-guard (same role the #224 anchor centroid plays at the story level).
+- **Emergent super-clusters EXTEND the set** — coarse clustering of the story/event
+  centroids (one more level of embedding-of-embeddings: story→event→CATEGORY) forms
+  NEW categories for what no seed fits. The number GROWS with the world; **32 is the
+  crisis FLOOR, not a ceiling.** Anchored (not pure-emergent) so the coarsest level
+  doesn't mega-blob into "news."
+- **Non-crisis coherent stories** take their emergent category, labeled honestly —
+  NEVER force-fit to a crisis class NOR deleted. The **reject/OUT_OF_SCOPE becomes a
+  crisis-RELEVANCE flag** (`crisis_class = non_crisis`), an editorial-lens value,
+  never suppression (§11 F-C4.6, funnel principle). Folds decision 4 (RE-LABEL
+  generic-but-coherent clusters, not gate them).
+- So the crisis-32 is **repositioned from "the typing target" to a SEED + an editorial
+  LENS** (like entity/geo/source in §1b) over an emergent category level. One move
+  resolves Pedro's "why 32/fixed/few," the precision ceiling, and the non-crisis-home
+  problem — and keeps the taxonomy's editorial value + Paper-1's measurable crisis
+  subset.
+- **Store** `category` (emergent id + label) + `crisis_class` (a seed-32 class or
+  `non_crisis`) + `category_confidence`. A multi-frame event carries a category
+  DISTRIBUTION (§3.3), not one.
+- **Wire it into `backend/app/` assignment** (today OUT_OF_SCOPE + excludes live only
+  in offline `ensemble/`) — DISTINCT from the shipped reject GATE (`apply_v2_reject.py`,
+  a binary demoter, NOT typing; §11 F-D-I4-4).
+- **Run on the 30-min classifier cron, NOT nightly** — nightly typing leaves fresh
+  stories uncategorized for a day → the badge asymmetry reappears as a TEMPORAL one
+  (§11 F-C4.2). R3.4a proves pure-cron work is daytime-safe.
+- **Method (E-R3-a, RESOLVED — Pedro):** local **Path B bootstrap encoder** (MiniLM
+  head over the e5 substrate, $0/call) for the bulk seed-anchor assignment + the
+  coarse emergent clustering; **DeepSeek** (cheap, already integrated — Pedro's call
+  over a local LLM) for LOW-CONFIDENCE typing + labeling the emergent categories.
+  Prototype path reuses `research_semantic` centroid machinery.
+- **Living-set cadence (Path C):** the anchored-emergent set is re-curated every 4–8
+  weeks (promote stable emergent categories to seeds; split/merge/retire) — the
+  taxonomy is a LIVING set, the honest answer to "why fixed."
+- **Measure:** crisis-anchored precision on a **crisis-only held-out κ split** (with
+  Wilson/bootstrap CIs + anchoring control) toward the **90%** north-star; the
+  EMERGENT categories are open-set, evaluated on coverage + coherence (Paper 8), not
+  fixed-taxonomy precision.
 
 ### R3.2 — COLLAPSE atlas to an attribute + F4 cutover (the SERVING SEAM — most of the risk)
 Serving stops emitting `atlas_topics` as peer threads; ONE population; `category`
@@ -320,28 +346,75 @@ Each role (movement/attention/typing) independently flag-gated + isolated `engin
 
 ---
 
-## 8. Paper impact + PAPER-COHERENCE fixes (a prerequisite, not an afterthought)
+## 8. Paper impact + the PAPER-COHERENCE TRACK (PR3 — a work-route, not a note)
 R3 delivers paper results (P1 successor-to-41.6% + the taxonomy-precision experiment;
 P4 hierarchy + typed membership; P8 recall + multimodal + dynamism; P3 volume≠importance
 via movement/attention-as-lens; P7 one topic view). **But the deep read found the paper
-canon is INCOHERENT and R3.2 supersedes its benchmark frame (§11 F-D-I4-*). Before
-R3's headline claim is defensible, a paper-track pass must:**
-1. **Reconcile FOUR un-reconciled Atlas-precision numbers** (41.6% N660/3-vendor · 50.79% N189/6-model · 59.02% N61 · gate-90%) + two LLM (78.6/95.08) into ONE canonical regime; footnote the rest. R3.2's "successor to 41.6%" is ambiguous until this is done.
-2. **Re-frame Paper 1's sampling universe:** the 30-atlas_topic × 4-bucket benchmark measures the CATEGORY layer, not the 418-story population R3.2 serves.
-3. **Update P6/master-plan** frozen-lifecycle claims to past-tense (fixed) + append the F0–F4 / R0–R3 / candidate-v2 rows to the stale (2026-06-26) cross-ref index.
-4. **Schedule the required-but-unbuilt experiments** R3 depends on: `gdelt_hint_ablation.py` (M5-1), crisis-only κ (M5-2), temporal hold-out week (M5-3), external baseline (M5-10), per-component heat ablation (M5-6), CIs+anchoring (M5-8).
+canon INCOHERENT + stale, and R3.2 supersedes its benchmark frame (§11 F-D-I4-*).**
+Pedro's instruction (2026-07-01): don't patch papers ad-hoc — **build a ROUTE to
+document the staleness + work it off.** The route:
+
+- **PR3.0 — the STALENESS LEDGER (the documentation mechanism).** A living doc
+  `docs/research/atlas-paper/2026-07-01-paper-staleness-ledger.md`: one row per stale
+  claim = `{paper · §/line · claim-as-written · current engine reality · why stale ·
+  fix (edit/experiment) · owner · status}`. Seeded from §11 F-D. Every future engine
+  change that invalidates a paper number appends a row (the discipline the master-plan
+  cross-ref index already broke by lagging to 2026-06-26). This makes "the papers are
+  disorganized" a tracked, closeable list instead of a vibe.
+- **PR3.1 — declare ONE canonical benchmark regime.** FOUR un-reconciled Atlas
+  numbers live in "active" docs: 41.6% (N660 / 3-vendor consensus) · 50.79% (N189 /
+  6-model balanced) · 59.02% (N61 reviewed) · learned-gate 90%@64%. Pick the canonical
+  regime (recommend the 3-vendor N660 as P1's headline, the others as annotator-panel/
+  N variants footnoted), and resolve the 78.6% vs 95.08% LLM split (different gold
+  sets = the exact confound P1 warns of). R3.2's "successor to 41.6%" is ambiguous
+  until this lands.
+- **PR3.2 — re-frame Paper-1's sampling UNIVERSE.** The 30-atlas_topic × 4-bucket
+  benchmark measured the CATEGORY layer of a FIXED taxonomy — which R3.1 turns
+  anchored-emergent and R3.2 collapses to an attribute. Re-scope P1's benchmark as
+  measuring the crisis-anchor precision, and add the open-set category coverage/
+  coherence metric (Paper 8) for the emergent extensions.
+- **PR3.3 — past-tense the fixed negatives + refresh the index.** P6/master-plan/P8
+  assert the frozen lifecycle + "68/30 active topics" in the present; they are fixed
+  (former revived; 418/392 served). Rewrite to before/after; append the F0–F4 / R0–R3 /
+  candidate-v2 / R3 rows to the master-plan cross-ref index (stale since 2026-06-26).
+- **PR3.4 — schedule the required-but-UNBUILT experiments R3 depends on** (each a
+  ledger row with an owner): `gdelt_hint_ablation.py` (M5-1, also §4.1 build-dep),
+  crisis-only κ split (M5-2), temporal hold-out week (M5-3), ≥1 external baseline —
+  BERTopic/flat-embedding/TDT (M5-10, P1+P8 REQUIRE it; the internal A/B doesn't
+  satisfy the bar), per-component heat ablation + Kendall-tau (M5-6), Wilson/bootstrap
+  CIs + anchoring control (M5-8), dynamism curve (M5-5).
+
+PR3 runs in PARALLEL with the R3 build (it is doc + offline experiment work, no
+serving risk), and PR3.1–PR3.2 gate R3.2's headline paper claim.
 
 ---
 
-## 9. Decisions (need Pedro) + defaults
-- **E-R3-a — typing method.** Semantic-prototype (reuse research_semantic) + LLM
-  low-conf; EVALUATE Path B encoder (pre-designed, 85–90% gate) before choosing.
-- **E-R3-b — atlas after collapse.** Category vocabulary + filter view; remove from the story list. Keep `anchor_topics` populated internally.
-- **E-R3-c — cutover boldness.** Flip ONLY after R3.1 + R3.3 + serving-seam carry-forward + the §7 gold gate. Cheap/safe (typing, movement, retirement, umbrella-fold) first; flip last.
-- **E-R3-d — member-ref hot PK.** Extend `topic_members` (member_kind/member_ref + nullable evidence_role) — one DDL for event-movement + attention + the rhetorical role layer.
-- **E-R3-e — narrative-subthread axis.** Confirm: is the semantic sub-thread decomposition (decision 3's real content) IN R3 or a fast-follow? v1 wrongly claimed it delivered.
-- **E-R3-f — movement provider precedence.** `topic_movement` supersedes vs feeds Kalman #219 — pick one authoritative velocity provider.
-- **E-R3-g — R3 scope.** R3.0/1/3/4a/7/2 (schema, typing, umbrella-fold, movement, retirement, cutover) as core; R3.4b/5/6/8 (event-movement, attention, one-shape, evidence-role) as the immediate follow.
+## 9. Decisions — RESOLVED (Pedro, 2026-07-01)
+- **E-R3-h — category structure [NEW, Pedro's challenge].** **ANCHORED-EMERGENT**, not
+  a fixed 32. Crisis-32 = seed anchors + editorial lens; emergent super-clusters extend
+  the set (open, grows via Path C). §3.1. This is the biggest change from v1.
+- **E-R3-a — typing method.** **Path B local encoder** (MiniLM/e5, $0/call) for the
+  bulk + coarse emergent clustering; **DeepSeek** (cheap, already integrated — Pedro's
+  call over a local LLM) for low-confidence typing + emergent-category labeling.
+- **E-R3-b — atlas after collapse.** Category vocabulary + filter view + the crisis
+  seed-anchor set; removed from the served story list; `anchor_topics` kept internal.
+- **E-R3-c — cutover boldness.** Flip ONLY after R3.1 + R3.3 + serving-seam carry-
+  forward + the §7 gold gate. Cheap/safe first (typing, movement, retirement, umbrella-
+  fold); flip last.
+- **E-R3-d — member-ref hot PK.** Extend `topic_members` (member_kind/member_ref +
+  nullable `evidence_role`) — one DDL for event-movement + attention + the rhetorical
+  role layer.
+- **E-R3-e — narrative-subthread axis.** The semantic sub-thread decomposition
+  (decision 3's real content, distinct from the geographic umbrella) is a NAMED
+  IMMEDIATE FAST-FOLLOW after R3.3, NOT claimed delivered by the umbrella (v1's error).
+  Confirm order at build time.
+- **E-R3-f — movement provider precedence.** `topic_movement` (z-score) is the
+  authoritative velocity provider; it emits the `changed_10h`/`trend`/`velocity_10h`
+  shape; Kalman #219 stays a candidate v2 that FEEDS it if promoted, never a competing
+  serving provider.
+- **E-R3-g — R3 scope (confirmed).** CORE = R3.0/1/3/4a/7/2 (schema, anchored-emergent
+  typing, umbrella-fold, movement, retirement, cutover). IMMEDIATE FOLLOW = R3.4b/5/6/8
+  + the narrative-subthread axis (E-R3-e). PARALLEL = the PR3 paper-coherence track (§8).
 
 ## 10. Deferred (explicitly NOT R3)
 Causal cross-vocab linking (unified §14); wiki attention (#104); the hourly/on-read
@@ -358,6 +431,11 @@ Every material finding + how this v2 resolves it. F-A = engine agent, F-B = surf
 agent, F-C = thread/research agent, F-D = paper agent.
 
 **Framing (biggest):**
+- **F-Pedro32** (Pedro, 2026-07-01) "why 32 fixed categories? why so few?" — a fixed
+  closed crisis taxonomy contradicts the open-set engine + IS the 40–52% ceiling →
+  §3.1 rewritten to ANCHORED-EMERGENT (crisis-32 = seed anchors + emergent extensions,
+  the set grows; crisis-taxonomy repositioned to seed + editorial lens). The single
+  biggest v2→v3 change.
 - **F-C4.1** EVENT conflated geographic (umbrella) vs narrative (decision-3 subthread) → §1a splits them; decision 3 NOT claimed done.
 - **F-A4.1** 3 levels ⊂ canon object model → §1 = spine + lenses (1b) + relation layer (1c).
 - **F-A3.15 / voice** subject≠origin≠language → §1b keeps subject-country + voice lens separate.
