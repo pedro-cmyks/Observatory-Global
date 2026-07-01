@@ -109,7 +109,14 @@ on the M1 worker, monitor throughput + a spot-check of verified non-English subj
 - **Step 3 (pre-bake):** `protobuf 7.35.1` + `sentencepiece` installed in mlvenv (persists — it IS
   the M1 worker venv); Davlan model cached (~1.1GB). `nlp_pipeline.py` synced to AtlasLocalWorker
   (dormant).
-- **Step 4 (PENDING PEDRO'S GO — touches serving):** `fly`/launchd flip `NLP_MULTILINGUAL_MODE=on`
-  on the M1 worker ONLY (Fly stays EN-light, #184). Then non-English `nlp_persons` populate →
-  `key_subjects` flip unverified→verified across CountryBrief/EntityPanel/ThemeDetail; monitor M1
-  throughput + spot-check a surface. Reversible (mode back to off).
+- **Step 4 (DONE 2026-07-01, Pedro's go):** flipped `ATLAS_NLP_MULTILINGUAL=on` in the M1 `.env`
+  (runner maps → `NLP_MULTILINGUAL_MODE=on`). **Discovery:** the M1 NLP fleet had been DOWN since
+  06-29 (SIGTERM, never reloaded) — so NER was starved AND the flip required (re)starting it.
+  Bootstrapped `com.atlas.nlp-fleet`; shadow `--once` validated live first (Catalan/Norwegian NER
+  correct), then flipped to on. **VERIFIED:** production non-English `nlp_persons` writing
+  (`NER[xlm-v1]`; it/es/fr/ko/tr in the first minutes; ko = non-Latin via Davlan). **Memory guard:**
+  multilingual workers are heavier than the EN-only ones `burst=2` was sized for → changed the
+  supervisor floor `max(2,…)`→`max(1,…)` + set `ATLAS_NLP_BURST_WORKERS=1` (the 8GB M1 crashed at
+  load 177 once; 54% free with 1 worker). Reversible (`ATLAS_NLP_MULTILINGUAL=off` + restart).
+  Follow-up: throughput is lower under multilingual (per-cycle model loads ~300s); model-caching
+  across cycles + a bump back to burst=2 once RAM is confirmed comfortable are the optimisations.

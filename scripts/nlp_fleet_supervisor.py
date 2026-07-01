@@ -47,7 +47,11 @@ WORKER_ROOT = os.getenv("ATLAS_LOCAL_WORKER_DIR", "/Users/pedro/AtlasLocalWorker
 BACKEND_DIR = os.getenv("ATLAS_NLP_BACKEND_DIR", os.path.join(WORKER_ROOT, "backend"))
 VENV_PY = os.getenv("ATLAS_NLP_VENV_PY", os.path.join(WORKER_ROOT, "mlvenv", "bin", "python"))
 
-BURST_WORKERS = max(2, int(os.getenv("NLP_FLEET_BURST_WORKERS", "2")))
+# floor of 1 (was 2): multilingual workers (Davlan + wikineural + XLM sentiment/framing) are
+# heavier than the EN-only workers burst=2 was sized for — allow burst=1 for a safe rollout on
+# the 8GB M1 (it crashed at load 177 once). Bump ATLAS_NLP_BURST_WORKERS back to 2 if RAM proves
+# comfortable under multilingual.
+BURST_WORKERS = max(1, int(os.getenv("NLP_FLEET_BURST_WORKERS", "2")))
 IDLE_SECONDS = int(os.getenv("NLP_FLEET_IDLE_SECONDS", "180"))
 CHECK_SECONDS = int(os.getenv("NLP_FLEET_CHECK_SECONDS", "30"))
 REQUIRE_AC = os.getenv("NLP_FLEET_REQUIRE_AC", "1").lower() not in {"0", "false", "no"}
