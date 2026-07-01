@@ -668,15 +668,18 @@ function AppContent() {
           .filter((it: any) => it.country_code && typeof it.atlas_heat === 'number')
           .map((it: any) => [String(it.country_code).toUpperCase(), it.atlas_heat as number] as const)
         if (!vals.length) return
-        const heats = vals.map((v: readonly [string, number]) => v[1])
-        const lo = Math.min(...heats)
-        const hi = Math.max(...heats)
-        const span = Math.max(hi - lo, 0.001)
+        // Rank-normalize + gamma instead of flat min-max→[0.1,1]. The old floor
+        // was tuned when the endpoint served only the warm top-80; once ALL ~200
+        // countries arrive (heat-fill 422 fixed 2026-07-01) min-max stretched the
+        // COLD majority across the full ramp → rainbow world, nothing "hot".
+        // Rank^1.6: bottom third ≈ transparent-faint, warm middle cyan/green,
+        // top decile yellow→red — anomalies pop again (#231 semantics).
+        const sorted = [...vals].sort((a, b) => a[1] - b[1])
+        const n = Math.max(sorted.length - 1, 1)
         const m = new Map<string, number>()
-        for (const [code, raw] of vals) {
-          // normalize to [0.1, 1.0] — coolest country still faintly visible
-          m.set(code, 0.1 + 0.9 * ((raw - lo) / span))
-        }
+        sorted.forEach(([code], i) => {
+          m.set(code, Math.pow(i / n, 1.6))
+        })
         setHeatComposite(m)
       })
       .catch(() => { /* map falls back to volume-intensity if composite unavailable */ })

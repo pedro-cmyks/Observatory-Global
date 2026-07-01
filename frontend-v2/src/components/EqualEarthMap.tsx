@@ -217,17 +217,30 @@ export function EqualEarthMap({
         )
     }), [paths, heatStates, showHeatmap, selectedIso, handleCountryClick])
 
+    // Fit-the-WORLD scale: the k at which the full world width fits the panel.
+    // fitHeight alone over-zoomed narrow panels (a 500×625 panel opened on
+    // "somewhere in Africa" and scaleExtent min=1 could never zoom OUT to the
+    // world — 2026-07-01 design pass). Default + dblclick-reset now show the
+    // whole world; zooming in re-enters the wrapping strip.
+    const kFit = useMemo(
+        () => (ee ? Math.min(1, size.w / ee.worldWidth) : 1),
+        [ee, size.w],
+    )
+
     // Wrap the raw pan into an infinite horizontal strip: X wraps modulo the
     // world period (so panning sideways rotates the globe seamlessly across the
     // ±180° seam — 3 tiles below cover the view); Y clamps to the poles (no
-    // vertical pan past the top/bottom edges). The jump-by-period in X is
-    // invisible because the tiles are identical.
+    // vertical pan past the top/bottom edges) and CENTERS the world vertically
+    // when it is shorter than the panel (the fit-world view). The jump-by-period
+    // in X is invisible because the tiles are identical.
     const period = ee ? ee.worldWidth * transform.k : 0
     const applied = useMemo<ViewTransform>(() => {
         if (!ee || period <= 0) return transform
         const x = transform.x - Math.round(transform.x / period) * period // nearest-zero window
-        const minY = Math.min(0, size.h - ee.worldHeight * transform.k)
-        const y = Math.max(minY, Math.min(0, transform.y))
+        const wh = ee.worldHeight * transform.k
+        const y = wh <= size.h
+            ? (size.h - wh) / 2 // letterbox: center vertically
+            : Math.max(size.h - wh, Math.min(0, transform.y))
         return { k: transform.k, x, y }
     }, [transform, ee, period, size.h])
 
@@ -255,10 +268,25 @@ export function EqualEarthMap({
         return () => { sel.on('.zoom', null) }
     }, [])
 
+    /** The fit-the-world transform (world width fits the panel, centered). */
+    const fitTransform = useCallback(() => {
+        return zoomIdentity.translate((size.w * (1 - kFit)) / 2, 0).scale(kFit)
+    }, [size.w, kFit])
+
+    // Whenever the projection (re)fits — first mount, panel resize — allow
+    // zooming out to the world and START there (also re-fits on resize).
+    useEffect(() => {
+        const el = containerRef.current
+        const zb = zoomRef.current
+        if (!el || !zb || !ee) return
+        zb.scaleExtent([kFit, 12])
+        select(el).call(zb.transform, fitTransform())
+    }, [ee, kFit, fitTransform])
+
     const resetView = useCallback(() => {
         const el = containerRef.current
-        if (el && zoomRef.current) select(el).call(zoomRef.current.transform, zoomIdentity)
-    }, [])
+        if (el && zoomRef.current) select(el).call(zoomRef.current.transform, fitTransform())
+    }, [fitTransform])
 
     // --- Canvas overlay: terminator + flows + markers (screen-space draw, so
     // widths/radii stay constant under zoom). Driven by a single rAF animation
@@ -405,7 +433,7 @@ export function EqualEarthMap({
             // space → never scale weird). Fade in over the threshold.
             if (applied.k > 2.2 && labels) {
                 const a = Math.min(1, (applied.k - 2.2) / 1.5)
-                ctx.font = '600 11px ui-sans-serif, system-ui, sans-serif'
+                ctx.font = '600 11px "Geist Variable", ui-sans-serif, system-ui, sans-serif'
                 ctx.textAlign = 'center'
                 ctx.textBaseline = 'middle'
                 for (const lb of labels) {
