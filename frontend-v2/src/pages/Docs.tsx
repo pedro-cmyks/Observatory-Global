@@ -25,7 +25,7 @@ const NAV = [
             { id: 'gdelt-gkg', label: 'GDELT GKG' },
             { id: 'gdelt-events', label: 'GDELT Events' },
             { id: 'news-apis', label: 'News APIs' },
-            { id: 'reddit', label: 'Reddit' },
+            { id: 'social', label: 'Social & Forums' },
             { id: 'google-trends', label: 'Google Trends' },
             { id: 'wikipedia', label: 'Wikipedia' },
         ]
@@ -36,6 +36,7 @@ const NAV = [
     { id: 'cross-source', label: 'Cross-Source Intelligence' },
     { id: 'voice-coverage', label: 'Voice & Coverage' },
     { id: 'the-math', label: 'The Math' },
+    { id: 'research-validation', label: 'Research & Validation' },
     { id: 'api-reference', label: 'API Reference' },
 ]
 
@@ -148,6 +149,8 @@ export function Docs() {
                             <tr><td>MediaStack</td><td>Country-specific media expansion</td><td>2 h</td><td>LatAm and regional coverage</td></tr>
                             <tr><td>NewsAPI.org</td><td>Targeted crisis-query coverage</td><td>2 h</td><td>Focused crisis monitoring</td></tr>
                             <tr><td>Reddit</td><td>Public social commentary from geopolitical subreddits</td><td>60 min</td><td>Commentary layer, not news evidence</td></tr>
+                            <tr><td>Bluesky</td><td>Public social posts via the Jetstream firehose</td><td>~60 min</td><td>Global social commentary, multilingual</td></tr>
+                            <tr><td>Lemmy</td><td>Federated forum posts across public instances</td><td>~60 min</td><td>Instance-tagged social commentary</td></tr>
                             <tr><td>Google Trends</td><td>Public search interest by keyword and country</td><td>30 min</td><td>Availability varies by country</td></tr>
                             <tr><td>Wikipedia Pageviews</td><td>Article reading volume by language/country</td><td>24 h</td><td>Reference-seeking public attention</td></tr>
                         </tbody>
@@ -237,12 +240,15 @@ export function Docs() {
                         analytic conclusion.
                     </div>
                     <div className="docs-callout" id="multilingual-methodology">
-                        <strong>Multilingual NLP:</strong> multilingual enrichment is live. A cross-lingual model
-                        (XLM-RoBERTa) labels sentiment, entities, and framing on non-English signals in the same
-                        pass as English, so new CJK, Russian, Persian, and Arabic coverage is scored in-window
-                        rather than dropped. NLP is still treated as an enrichment layer, not ground truth — the
-                        remaining limiter is throughput, not language. Semantic recall is language-agnostic
-                        separately, via the embedding layer (see Cross-Source Intelligence).
+                        <strong>Multilingual NLP:</strong> the language-agnostic layer is the embedding model — a
+                        multilingual e5 encoder embeds every signal regardless of language, so recall, threading,
+                        and semantic neighbors already work across CJK, Russian, Persian, and Arabic (see
+                        Cross-Source Intelligence). The <em>labeling</em> layer (sentiment, entities, framing) is
+                        currently English-first: RoBERTa sentiment and spaCy NER run on English signals, and
+                        non-English entities are typed by a multilingual gazetteer and flagged
+                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}> unverified</code> rather than
+                        asserted. Full cross-lingual NLP labeling (an XLM path) is gated on worker throughput and a
+                        non-Latin NER model — not on by default today. NLP is an enrichment layer, never ground truth.
                     </div>
                 </section>
 
@@ -405,6 +411,37 @@ export function Docs() {
                                 <div className="docs-source-meta-item">Class <span>commentary</span></div>
                             </div>
                         </div>
+                        <div className="docs-source-card">
+                            <div className="docs-source-card-head">
+                                <span className="docs-source-badge badge-wiki">SOCIAL</span>
+                                <span className="docs-source-title">Bluesky Firehose</span>
+                            </div>
+                            <p>
+                                Public Bluesky posts are drained from the Jetstream firehose (no credentials, one
+                                global network). Country is inferred by NER geocode and language from the post's own
+                                tag. Like Reddit it is commentary — it attaches to threads as discussion, never as
+                                article evidence, and never seeds a cluster.
+                            </p>
+                            <div className="docs-source-meta">
+                                <div className="docs-source-meta-item">Latency <span>~60 min</span></div>
+                                <div className="docs-source-meta-item">Class <span>commentary</span></div>
+                            </div>
+                        </div>
+                        <div className="docs-source-card">
+                            <div className="docs-source-card-head">
+                                <span className="docs-source-badge badge-wiki">SOCIAL</span>
+                                <span className="docs-source-title">Lemmy Instances</span>
+                            </div>
+                            <p>
+                                Federated forum posts are pulled from public Lemmy instances, with each instance mapped
+                                to a source origin country (the same ownership model used for news feeds). Also
+                                commentary: embedded and attached as discussion, kept out of cluster seeding.
+                            </p>
+                            <div className="docs-source-meta">
+                                <div className="docs-source-meta-item">Latency <span>~60 min</span></div>
+                                <div className="docs-source-meta-item">Class <span>commentary</span></div>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -501,17 +538,21 @@ export function Docs() {
                     </div>
                 </section>
 
-                <section className="docs-section" id="reddit">
-                    <h3>Reddit — Commentary Signal</h3>
+                <section className="docs-section" id="social">
+                    <h3>Social &amp; Forums — Commentary Signal</h3>
                     <p>
-                        Reddit adds a social-discussion layer across geopolitical and country-specific communities.
-                        Atlas should keep it distinct from article evidence with a commentary classification so social
-                        attention does not contaminate media-source scoring.
+                        Three social layers feed Atlas as <em>commentary</em>, never article evidence: Reddit
+                        (geopolitical and country subreddits), Bluesky (the Jetstream firehose), and Lemmy (federated
+                        forum instances). All three are embedded with the same multilingual model as news, then
+                        attached to narrative threads with a <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>discussion</code> role
+                        so social attention is scored separately and does not contaminate media-source scoring.
                     </p>
                     <p>
-                        The useful pattern is early movement: if a theme appears in Reddit before it spreads through
-                        media sources, it can become an investigation lead. It still needs corroboration from media,
-                        public-attention, or institutional sources before being treated as evidence.
+                        A clustering guard keeps social signals out of thread <em>seeding</em> — they can join and
+                        discuss a thread, but a topic is never created from social posts alone. The useful pattern is
+                        early movement: a theme surfacing in discussion before media can become an investigation lead,
+                        but it still needs corroboration from media, public-attention, or institutional sources before
+                        it is treated as evidence.
                     </p>
                 </section>
 
@@ -605,25 +646,65 @@ countries_v2         Country centroids and metadata`}
                     </p>
                     <h3>How threads are formed</h3>
                     <p>
-                        Every few hours a clustering job groups recent signals by the similarity of their
-                        e5 text embeddings (HDBSCAN), labels each surviving cluster, and writes it to
+                        A clustering job groups signals by the similarity of their e5 text embeddings (HDBSCAN),
+                        labels each surviving cluster, and writes it to
                         <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}> dynamic_topics</code>. A quality gate drops
                         incoherent clusters, and a content-entropy roundup classifier diverts
                         "miscellaneous regional news" buckets to a separate tray instead of the live list.
-                        Because clustering runs over the persisted embedding corpus — not just the most
-                        recent rows — non-English narratives surface as their own threads rather than being
-                        absorbed into English ones.
+                    </p>
+                    <p>
+                        Clustering runs over the <strong>persisted embedding corpus</strong>, not just the most recent
+                        rows, and in <strong>scoped per-country passes</strong> as well as globally. A single global
+                        pass drowns regional stories; scoping the clustering to each country recovers narratives a
+                        worldwide pass would bury — a local corruption probe, a national heatwave — and lets
+                        non-English narratives surface as their own threads instead of being absorbed into English ones.
                     </p>
                     <h3>How threads are served</h3>
                     <p>
-                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>/api/v2/threads</code> serves these dynamic
-                        topics first, then fills any remaining slots with broader atlas-topic aggregates so
-                        the list is never starved. Per-thread counts, velocity, and the hourly sparkline are
-                        computed against pre-aggregated hourly tables and the GIN-indexed
+                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>/api/v2/threads</code> ranks dynamic and
+                        atlas-topic threads together by a single relevance score — log-damped volume, relative
+                        movement, and coherence — with <strong>no bias by origin</strong>. A persistent atlas topic
+                        that keeps growing is a live thread and is not demoted just for being an aggregate; a loose
+                        cluster is held back by the coherence term. (The older "dynamic first, then fill with atlas"
+                        rule was retired in favor of this unified ranking.) Per-thread counts, velocity, and the
+                        hourly sparkline are computed against pre-aggregated hourly tables and the GIN-indexed
                         <code style={{ fontFamily: 'monospace' }}> themes</code> array on
-                        <code style={{ fontFamily: 'monospace' }}> signals_v2</code> (array-overlap
-                        <code style={{ fontFamily: 'monospace' }}> &&</code> lookups), so any window from 1 hour to 7
+                        <code style={{ fontFamily: 'monospace' }}> signals_v2</code>, so any window from 1 hour to 7
                         days answers within the statement timeout.
+                    </p>
+                    <h3>Categories &amp; crisis relevance</h3>
+                    <p>
+                        Every thread carries an open <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>category</code>
+                        (shown as a badge) and a <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>crisis_relevant</code>
+                        flag. The category set is <em>anchored-emergent</em>: a seed set of crisis domains (armed
+                        conflict, disaster, economic shock, and so on) anchors the taxonomy, but the set grows —
+                        emergent non-crisis domains get their own categories rather than being force-fit. Typing is
+                        done by an LLM reading each thread's evidence (embedding cosine alone proved unreliable), so
+                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}> crisis_relevant</code> is an analyst
+                        filter — narrow to crises, or keep the full picture — not a hidden gate.
+                    </p>
+                    <h3>Umbrella hierarchy</h3>
+                    <p>
+                        Related threads are grouped under <strong>umbrella</strong> topics (a centroid-of-centroids
+                        clustering with complete linkage). The global list shows top-level items — umbrellas plus
+                        standalone threads, de-duplicated — so one big story reads as one row; drilling in, or opening
+                        a country view, expands the umbrella into its child threads
+                        (<code style={{ fontFamily: 'monospace' }}>parent_id</code> /
+                        <code style={{ fontFamily: 'monospace' }}> is_umbrella</code>). Umbrellas are rebuilt each pass,
+                        so a country view surfaces the region-specific children a global row would otherwise hide.
+                    </p>
+                    <h3>Typed membership &amp; relationship</h3>
+                    <p>
+                        A thread's members are typed by role —
+                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}> evidence</code> (media /
+                        institutional), <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>discussion</code>
+                        (social / forum), <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>mood</code>
+                        (sentiment), and <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>movement</code>.
+                        From the ratio of those roles Atlas classifies each thread's <em>relationship</em> — media-led,
+                        public-led, social-led, silent-risk (public attention with thin media), or uncoupled — served
+                        by <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>/api/v2/topic/{'{id}'}/relationship</code>.
+                        These differentiate as social and public-attention volume grows; today most threads are
+                        media-led.
                     </p>
                     <h3>Thread fields explained</h3>
                     <table className="docs-table">
@@ -638,6 +719,9 @@ countries_v2         Country centroids and metadata`}
                             <tr><td>top_countries</td><td>Top 3 countries by signal count for this theme</td></tr>
                             <tr><td>top_persons</td><td>Most-mentioned people within this theme in the window</td></tr>
                             <tr><td>hourly_timeline</td><td>Array of {'{hour, count}'} objects for the sparkline chart</td></tr>
+                            <tr><td>category</td><td>Open category badge — crisis-anchored, LLM-typed from evidence</td></tr>
+                            <tr><td>crisis_relevant</td><td>Analyst filter flag: is this thread crisis-relevant?</td></tr>
+                            <tr><td>is_umbrella / parent_id</td><td>Umbrella grouping — top-level umbrella vs child thread</td></tr>
                             <tr><td>has_public_interest</td><td>True if theme words match Google trending keywords</td></tr>
                             <tr><td>has_wiki_activity</td><td>True if theme words match Wikipedia article titles</td></tr>
                         </tbody>
@@ -955,19 +1039,62 @@ Typical range in practice: [-10, +10].
 avg_sentiment per theme = AVG(sentiment) across all signals in window`}
                     </div>
 
-                    <h3>Crisis score</h3>
+                    <h3>Crisis relevance (category typing)</h3>
+                    <p>
+                        Crisis is no longer a per-signal keyword-weight sum. Each <em>thread</em> is typed into an
+                        open category and marked <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>crisis_relevant</code>
+                        by an LLM reading its evidence, against an anchored-emergent taxonomy (crisis domains seed the
+                        set; emergent domains extend it). Embedding cosine alone was measured to be unreliable for
+                        this, so the classifier — not a lexicon — is the typer, and crisis relevance is exposed as a
+                        filter rather than a hidden gate.
+                    </p>
                     <div className="docs-formula">
-                        <div className="docs-formula-label">Per-signal crisis classification</div>
+                        <div className="docs-formula-label">Legacy per-signal crisis heuristic (fast tagging)</div>
                         {`crisis_score = Σ weights[theme] for each crisis_theme in signal.themes
                / len(crisis_themes)
 
-Themes are matched against a crisis keyword taxonomy.
-Severity is derived from the max-weight crisis theme present:
-  weight ≥ 0.8 → "critical"
-  weight ≥ 0.5 → "high"
-  weight ≥ 0.3 → "medium"
-  else         → "low"`}
+Themes matched against a crisis keyword taxonomy; severity from the
+max-weight crisis theme present:
+  weight ≥ 0.8 → "critical"   weight ≥ 0.5 → "high"
+  weight ≥ 0.3 → "medium"     else → "low"`}
                     </div>
+                </section>
+
+                <hr className="docs-divider" />
+
+                {/* ── Research & Validation ── */}
+                <section className="docs-section" id="research-validation">
+                    <div className="docs-section-eyebrow">Methodology Program</div>
+                    <h2>Research &amp; Validation</h2>
+                    <p className="docs-lead">
+                        Atlas is built alongside a research track that treats the engine as an experiment, not a
+                        finished product. The methods behind narrative discovery, taxonomy typing, and cross-source
+                        validation are written up as a set of working papers — and, importantly, the papers are kept
+                        honest against what the engine actually does.
+                    </p>
+                    <div className="docs-callout">
+                        <strong>Papers are registered and tracked.</strong> A master plan indexes the paper set
+                        (open-set narrative discovery, taxonomy precision, cross-source validation, heat / attention,
+                        analyst workflow). A <em>staleness ledger</em> records every claim in a paper that an engine
+                        change has invalidated, as a closeable row — so a number in a paper either matches the live
+                        system or is logged as pending reconciliation. Drift is registered, not hidden.
+                    </div>
+                    <h3>Measured vs. pending</h3>
+                    <p>
+                        Two results anchor the current write-up. First, an <strong>A/B</strong> comparing the old
+                        split-brain construction (a lexical theme path and an embedding path that never reconciled)
+                        against the unified single-substrate engine — the unified engine wins on coherence, purity,
+                        and blob-resistance. Second, a taxonomy revision validated by <strong>inter-annotator
+                        agreement</strong> across a model ensemble, which lifts labeling agreement by adding an
+                        explicit reject class instead of force-fitting every story into a crisis category.
+                    </p>
+                    <p>
+                        The track is deliberately honest about what is <em>not</em> done: several required experiments
+                        — a theme-hint ablation, at least one external baseline (e.g. BERTopic), a temporal hold-out
+                        with confidence intervals, and a crisis-only in-category agreement split — are logged as open
+                        rows rather than claimed. The aim is validation you can audit, matching the product's own
+                        no-silent-filtering principle.
+                    </p>
                 </section>
 
                 <hr className="docs-divider" />
@@ -1006,6 +1133,18 @@ Severity is derived from the max-weight crisis theme present:
                         <div className="docs-endpoint-body">
                             Detail for one thread: evidence signals, hourly timeline, top countries, and the
                             key subjects (typed people, organizations, places, and events) most associated with it.
+                        </div>
+                    </div>
+
+                    <div className="docs-endpoint">
+                        <div className="docs-endpoint-header">
+                            <span className="docs-method">GET</span>
+                            <span className="docs-endpoint-path">/api/v2/topic/{'{topic_id}'}/relationship</span>
+                        </div>
+                        <div className="docs-endpoint-body">
+                            The media/public/social relationship type for one thread — media-led, public-led,
+                            social-led, silent-risk, or uncoupled — derived from the ratio of typed member roles
+                            (evidence / discussion / mood / movement).
                         </div>
                     </div>
 
