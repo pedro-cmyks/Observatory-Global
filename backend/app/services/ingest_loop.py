@@ -155,6 +155,18 @@ async def main():
             except Exception:
                 log.exception("Bluesky ingestion failed — continuing")
 
+        # ── Disaster events (USGS + GDACS): every 8th cycle (~2 hours) ──
+        # Structured natural-hazard events CAMEO can't represent (event-source-eval §2).
+        # Low-volume + slow-onset → 2h cadence. Free, no key. Offset (==2) to spread load.
+        if gdelt_cycle % 8 == 2:
+            try:
+                log.info("Disaster events (USGS+GDACS) ingestion starting...")
+                from app.services.ingest_disasters import ingest_disasters
+                n = await ingest_disasters(hours=24)
+                log.info("Disaster ingestion complete (%d events).", n)
+            except Exception:
+                log.exception("Disaster ingestion failed — continuing")
+
         # ── MediaStack ES/PT: every 8th cycle (~2 hours) ──
         if gdelt_cycle % 8 == 0:
             try:

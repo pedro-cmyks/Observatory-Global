@@ -1985,8 +1985,15 @@ _TOPIC_ROLE_COUNTS_SQL = """
 SELECT role, COUNT(*)::int AS n
 FROM topic_members
 WHERE topic_id = $1
-  AND engine_version = $2
   AND assigned_at >= NOW() - ($3::int * INTERVAL '1 hour')
+  AND (
+        -- the signal pipeline (evidence/discussion/mood) is engine-versioned
+        (role IN ('evidence','discussion','mood') AND engine_version = $2)
+        -- movement is the EVENT layer (CAMEO movement-v1 + disaster-v1), a
+        -- separate substrate keyed by member_ref, independent of the signal
+        -- engine version — count every event-kind movement member
+     OR (role = 'movement' AND member_kind = 'event')
+      )
 GROUP BY role
 """
 

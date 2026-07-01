@@ -107,8 +107,9 @@ def test_fetch_threads_merges_atlas_and_emergent():
     # The old source-tier merge is gone.
     assert "atlas_fill" not in block
     assert "dynamic_topics stays canonical" not in block
-    # Atlas-only when filtered by topic/country
-    assert "is_atlas_filtered" in block
+    # Atlas-only when filtered by topic / multi-country (unified-ranking refactor
+    # renamed is_atlas_filtered -> atlas_only + single_country)
+    assert "atlas_only" in block
 
 
 def test_fetch_thread_detail_dispatches_on_prefix():

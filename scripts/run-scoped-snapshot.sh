@@ -91,3 +91,10 @@ $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.build_umbrella_topics \
 # topic. Pure-SQL, cheap. Non-fatal.
 $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.compute_event_movement --write \
   || echo "[scoped-snapshot] event movement bind failed (non-fatal)" >&2
+
+# Step 4b: disaster events (USGS+GDACS) -> disaster-category topics, geo-temporal
+# (movement role, verified=false, event-source-eval §2). The hazards CAMEO can't
+# represent (quake/flood/cyclone/wildfire). Ingest runs on Fly; this only BINDS the
+# already-ingested rows to the fresh active topic set. Pure-SQL, cheap. Non-fatal.
+( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.bind_disaster_movement --write ) \
+  || echo "[scoped-snapshot] disaster movement bind failed (non-fatal)" >&2
