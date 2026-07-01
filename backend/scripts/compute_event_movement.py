@@ -31,12 +31,13 @@ dissolves the topic. The serving surface reads role='movement' as "this thread h
 connected events" (ConflictEventPanel), verified=false (it's provenance/context, never
 counted as evidence).
 
-CONSTRAINT (spec §10): dynamic-topic membership is currently reachable only through the
-capped `emergent_clusters.sample_signal_ids` (~24 signals/topic). So today this binds the
-events whose article happens to be in a topic's SAMPLE (~1.6K events / ~83 topics over 168h).
-FULL per-signal dynamic membership arrives with unified-v2 (F3, `topic_members` role='evidence'
-for dynamic) — when it lands, swap the `dyn_sig` CTE to read the full membership and coverage
-jumps to the full ~82% match rate. The join is written so that swap is a one-CTE change.
+MEMBERSHIP (spec §10 + F3, 2026-07-01): the `dyn_sig` CTE UNIONs two per-signal sources —
+the capped `emergent_clusters.sample_signal_ids` (~24 signals/topic) AND unified-v2 full
+membership (`topic_members` role='evidence', engine_version='unified-v2'). Measured near-
+DISJOINT (overlap 5 signals) so the union ~doubles visible membership and lifts binding +57%
+(2733 -> 4298 events / 168h). unified-v2 is a precise ≥0.88 subset (smaller than the sample) —
+it AUGMENTS, never replaces. When unified-v2 grows toward full corpus coverage, this same
+union keeps widening with no code change.
 
   python -m backend.scripts.compute_event_movement --dry-run
   python -m backend.scripts.compute_event_movement --write     # NOT run without precision confirmed
@@ -73,8 +74,12 @@ WITH latest AS (
     GROUP BY dynamic_topic_id
 ),
 dyn_sig AS (
-    -- signal_id -> (dynamic topic, label) for ACTIVE topics at their latest snapshot.
-    -- SWAP-POINT for unified-v2 full membership (see module docstring).
+    -- signal_id -> (dynamic topic, label) for ACTIVE topics. TWO membership sources
+    -- UNIONed (F3, 2026-07-01): the per-cluster capped SAMPLE + unified-v2 full
+    -- membership. Measured near-DISJOINT (overlap 5 of ~9.6K+8.5K signals) → the union
+    -- ~doubles visible membership and lifts event binding +57% (2733 -> 4298 events/168h).
+    -- unified-v2 alone is a precise ≥0.88 SUBSET (smaller than the sample), so it AUGMENTS,
+    -- never replaces, the sample.
     SELECT DISTINCT sid AS signal_id, dt.id AS topic_id, dt.label AS topic_label
     FROM dynamic_topics dt
     JOIN latest ls ON ls.dynamic_topic_id = dt.id
@@ -83,6 +88,14 @@ dyn_sig AS (
     JOIN emergent_clusters ec ON ec.id = dtm.emergent_cluster_id
     CROSS JOIN LATERAL unnest(COALESCE(ec.sample_signal_ids, ARRAY[]::bigint[])) AS sid
     WHERE dt.state = 'active'
+    UNION
+    SELECT DISTINCT tm.signal_id, dt.id AS topic_id, dt.label AS topic_label
+    FROM topic_members tm
+    JOIN dynamic_topics dt ON dt.id = split_part(tm.topic_id, '-', 3)::bigint
+    WHERE tm.engine_version = 'unified-v2' AND tm.role = 'evidence'
+      AND tm.member_kind = 'signal' AND tm.signal_id IS NOT NULL
+      AND tm.topic_id LIKE 'dynamic-topic-%'
+      AND dt.state = 'active'
 ),
 bound AS (
     SELECT
