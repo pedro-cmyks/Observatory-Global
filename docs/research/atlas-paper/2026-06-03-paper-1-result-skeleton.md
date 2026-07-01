@@ -19,6 +19,82 @@ measured path forward is not more keyword editing alone; it is a layered model:
 scope gate, evidence-role student, topic remediation, and dynamic topic
 self-curation.
 
+## Canonical benchmark regime (PR3.1)
+
+**Reconciliation (2026-07-01, R3 §8.1 / staleness ledger PR3-01, PR3-07).** Four
+Atlas precision numbers and two LLM baselines accumulated across "active" docs
+under different sample sizes, annotator panels, and gold sets. Read straight, they
+look like the same metric disagreeing with itself; they are not. This section
+declares the ONE canonical regime for Paper 1's headline and demotes the rest to
+labeled variants so no reader — and no downstream doc (e.g. R3.2's "successor to
+41.6%") — has to guess which number is the claim.
+
+### The canonical regime
+
+Paper 1's **headline precision comparison is the 3-vendor consensus benchmark
+(batch-03, N=660 usable)**:
+
+| Model | Precision | Wilson interval | Gold set |
+|---|---:|---|---|
+| **Atlas v2** | **41.6%** | [37.8, 45.5] | 3-vendor consensus (batch-03) |
+| **LLM zero-shot** | **78.6%** | [75.3, 81.7] | 3-vendor consensus (batch-03) |
+| LLM few-shot | 81.1% | [77.7, 84.0] | 3-vendor consensus (batch-03) |
+
+This regime is canonical because it is the largest sample (N=660 usable / 691
+drawn), uses an independent 3-annotator panel (deepseek-chat, gpt-4.1,
+claude-sonnet-4-6) with majority-vote consensus gold and a reported Fleiss
+κ=0.625, and — decisively — **scores Atlas and the LLM baseline on the SAME gold
+set**, so the ~37pp gap is a real head-to-head, not an artifact of two different
+answer keys. Primary artifact:
+`docs/research/atlas-paper/phase-1-validation/reports/llm-baseline/2026-06-02-comparison-atlas-vs-llm-n660.md`.
+
+### The other Atlas numbers (labeled variants, NOT competing headlines)
+
+Each is a valid measurement of a *different* quantity; footnoted here, never
+presented as the headline:
+
+- **59.02% (N=61 reviewed, CI [46.50, 70.46]).** Human-reviewed gold, batches
+  01+02 combined (`2026-05-27-session-summary.md` L176). Smaller N, single primary
+  reviewer, and it *failed* the precision gate — Paper 1 keeps it as **diagnostic
+  human-reviewed evidence**, not the scale result. Higher than 41.6% mainly
+  because N is small and the reviewed sample is not the batch-03 stratification.
+- **50.79% (N=189, CI [43.72, 57.83], 30 topics).** Atlas v2 full-taxonomy
+  precision under a **balanced 6-model** LLM consensus (`2026-05-28-precision-to-90-roadmap.md`
+  L9). Differs from 41.6% by a *different annotator panel* (6 balanced models vs
+  3-vendor) and a *different balanced sample* (N=189). This is the roadmap's
+  starting point for the "51% → 90%" plan; it is the same phenomenon as 41.6%
+  measured on a different panel, NOT a contradiction.
+- **Scope-gate / learned-gate precision (a coverage trade, not a full-taxonomy
+  number).** The M1 scope gate lifts precision to **70.3% at 37.3% coverage** on
+  scored rows (§R3 below); the later Path-B learned scope gate reached the higher
+  **~90%-band precision at reduced coverage** (`2026-05-29`, precision-to-90 Phase
+  B). These are **precision-at-coverage points on the gate curve**, achieved by
+  *abstaining* on low-confidence rows — they answer "how high can precision go if
+  we trade recall?", a different question from the full-taxonomy headline (which
+  assigns everything). They belong in the **R3 improvement-levers** table, never in
+  the headline row.
+
+### The LLM baseline split (78.6% vs 95.08%) — resolved
+
+Two LLM zero-shot numbers exist and they are **not comparable, because they are
+scored on different gold sets** — which is precisely the label-drift confound this
+paper warns of (see §"LLM-judge cross-check", and Limitations):
+
+- **78.6%** = LLM zero-shot vs the **N=660 3-vendor consensus** gold (the canonical
+  regime above).
+- **95.08%** (Wilson CI [86.51, 98.31]) = Sonnet-4.6 zero-shot vs the **N=61
+  human-reviewed** gold (`2026-05-28-precision-to-90-roadmap.md` L44).
+
+The gap is not a modeling result; it is the **answer key changing**. Against a
+smaller human-reviewed key an LLM looks near-ceiling (95%); against the larger,
+independent 3-vendor consensus key the same class of model sits at ~79%. The
+canonical, apples-to-apples number Paper 1 reports is **78.6% (N=660)**; the 95.08%
+is cited only as the *existence proof that ≥90% is reachable in principle by a
+semantic reader* (its role in the precision-to-90 roadmap), explicitly flagged as a
+different, smaller gold set. This is itself a Paper-1 finding: **LLM-judge/baseline
+precision must be read against a fixed, declared gold set** — the production-label
+judge (and any mismatched-gold comparison) is confounded by label drift.
+
 ## Research Questions
 
 | RQ | Status | Evidence |
@@ -270,6 +346,24 @@ benchmark the production-label judge could not provide. Full method:
 `docs/research/taxonomy-revision/2026-06-29-taxonomy-revision-methodology.md`;
 dataset: `goldset.json`. The next P1 number is the v2-gate precision lift on a
 held-out gold split.
+
+**Reject GATE ≠ category TYPING (PR3-04, R3 §2/§3.1 / staleness ledger).** Two
+things share the "v2" name and must not be read as one: (1) the LIVE production
+thing is `apply_v2_reject.py` (`gate_model='v2-gate-e5-lr-1'`) — a **binary
+keep/reject demoter** within the existing lexical assignments (it demotes force-fit
+evidence, reversibly), NOT a category classifier; (2) **category typing** — assign
+each story its crisis class or an emergent/open category — was genuinely UNBUILT at
+the time of the κ benchmark and is a *new* operation on the e5 substrate (shipped
+2026-07-01 as R3.1's `compute_category_typing.py`, DeepSeek-primary). So "candidate-v2
+NOT wired" and "v2 reject gate LIVE" are both true and not a contradiction: the reject
+gate was live, category typing was not. The κ=0.739 above validates the candidate-v2
+LABEL SPACE (reliability of the annotation), which is the precondition for typing, not
+the typing precision itself. The **crisis-only in-category precision** — the actual
+"successor to 41.6%" — is measured on a crisis-only held-out κ split with Wilson/
+bootstrap CIs and an anchoring control; that split is **UNMEASURED as of 2026-07-01**
+(κ 0.739 is reject-driven on a non-crisis-heavy sample) and is scheduled as a
+PR3.4 experiment (ledger PR3-10). Until it lands, the headline of §"Canonical
+benchmark regime" (41.6% / 78.6%, N=660) remains Paper 1's stated precision result.
 
 ## The split-brain is FIVE pipelines, not three (2026-06-30 extension)
 

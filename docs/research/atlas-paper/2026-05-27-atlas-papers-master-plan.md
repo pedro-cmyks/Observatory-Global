@@ -442,15 +442,27 @@ prod), which SHARPENS the old `~0.2%` funnel and adds a second dimension:
   gate. The HDBSCAN purity/recall cliff is characterized (no global config gives
   both); the lever is **scoped passes** (spec
   `2026-06-30-atlas-engine-recall-scoped-clustering.md`, R0 probe written).
-- **Dynamism (new):** the served topic set was found **FROZEN** — `dynamic_topics`
+- **Dynamism — a measured before→after (FIXED; not a live negative — PR3.3).**
+  *Before (2026-06-30):* the served topic set was **FROZEN** — `dynamic_topics`
   last updated 06-29 17:00 (the topic-forming cron was disabled in a 06-29 infra
   consolidation; the successor `unified-v2` built but was not served), and 54/68
   "active" topics had `last_seen` > 3 days (the lifecycle wasn't retiring). **A
-  fixed topic count from a streaming feed is itself a failure signal.** Root cause
-  + fix logged (the embed runner's fatal embed-step aborted the chain; the
-  emergent-snapshot former was revived mindful/off-peak 06-30).
+  fixed topic count from a streaming feed is itself a failure signal.** Root cause:
+  the M1 embed runner's fatal embed-step aborted the projection chain before topic
+  formation. *After (shipped 2026-06-30 → 2026-07-01):* the emergent-snapshot former
+  was revived mindful/off-peak and the embed step made non-fatal (P8 Intervention 1);
+  R1 scoped clustering then WROTE **731 clusters over 126/126 countries** and, via a
+  measured promotion-gate recalibration (`volume_min` 30→12, purity held: cohesion
+  0.969 / noise 0.081 on the newly-admitted small topics), **served 68 → 392 active
+  topics (~4.6×)**; a subsequent R3.7 retirement sweep dropped 44 wrongly-re-activated
+  stale bootstrap topics to `deprecated`, settling serving at **348** (P8 Intervention 3,
+  §"Retention + resurrection"). So "68 active topics" was the *frozen* count, not a
+  live measure; the lifecycle now retires-from-serving while retaining rows for
+  resurrection (Pedro's retention model). The coverage number likewise moved from
+  the frozen-global 5.6% baseline toward the scoped ~26.7% system estimate (R1).
 Both are **Paper 8's** result (`2026-06-30-paper-8-result-skeleton.md`: open-set
-discovery = coverage + dynamism, published as a measured negative-before-fix).
+discovery = coverage + dynamism, published as a measured negative-before-fix — the
+before AND the after now recorded).
 This is also the temporal-tier analogue of what the hot window surfaces vs what is
 retained — directly relevant to bucket/retention justification.
 
@@ -591,7 +603,12 @@ schema rigor of v2.
 is now instrumented end-to-end and the recall ceiling is measured. Prod, 24h:
 174K ingested signals → 71K persisted embedding corpus → HDBSCAN over the corpus
 yields only ~23 clusters/snapshot → ~50 stable served threads ≈ **0.2% of the
-signal mass**; the remainder stays HDBSCAN noise. Key result for this paper: the
+signal mass** *(denominator = served-thread signals ÷ ingested signals — the
+coarsest funnel figure; the 2026-06-30 re-measure below reports **5.6% of
+embedded / 2.5% of ingested**, a different and sharper denominator pair, PR3-08.
+Both are "before" numbers, since superseded by the scoped-clustering lift — see
+the SHARPENED block and the P8 result skeleton's Interventions 2–3)*; the
+remainder stays HDBSCAN noise. Key result for this paper: the
 bottleneck is **RECALL of the discovery step, not the promotion/approval gate** —
 measured 0 candidates qualify-but-stuck, 150/181 candidates single-snapshot, 114
 <30 signals; fast-tracking high-volume candidates would promote 0 topics. So the
@@ -609,16 +626,21 @@ exact queries. (1) **Coverage, sharper:** 534K signals → 239K embedded → onl
 **13,354 in any topic = 5.6% of embedded**; per-country **<1%** even at high
 volume (US 24,709→136/0.6%, CN 8,720→4/0.0%). Confirms the bottleneck is
 clustering ASSIGNMENT, not embedding/gate. Lever specced + R0 probe written
-(`2026-06-30-atlas-engine-recall-scoped-clustering.md`). (2) **NEW — dynamism:**
-the served topic set was found FROZEN (`dynamic_topics` last updated 06-29 17:00;
-the forming cron disabled in the consolidation; 54/68 "active" topics >3d stale,
-the lifecycle not retiring). **A fixed topic count from a streaming feed is itself
-a failure signal** — open-set discovery is not just coverage but *dynamism*
-(topics appear/retire with the world). Root cause (a fatal embed-step aborted the
-projection chain) diagnosed + fixed; the former revived mindful/off-peak →
-natural before/after on the dynamism curve, verification scheduled. So Paper 8 now
+(`2026-06-30-atlas-engine-recall-scoped-clustering.md`); **since produced+served
+by R1 — global 5.6% → scoped ~26.7% system estimate, 731 clusters/126 countries**
+(P8 Intervention 2–3). (2) **dynamism — before→after, FIXED (PR3.3):** *before* the
+served topic set was FROZEN (`dynamic_topics` last updated 06-29 17:00; the forming
+cron disabled in the consolidation; 54/68 "active" topics >3d stale, the lifecycle
+not retiring). **A fixed topic count from a streaming feed is itself a failure
+signal** — open-set discovery is not just coverage but *dynamism* (topics
+appear/retire with the world). Root cause (a fatal embed-step aborted the projection
+chain). *After (2026-06-30 → 07-01):* the former was revived mindful/off-peak and
+the embed step made non-fatal; the lifecycle now retires-from-serving while retaining
+rows for resurrection; **serving went 68 → 392 → 348 active** (R1 gate recalibration
+`volume_min` 30→12 with purity held, then the R3.7 retirement sweep). So Paper 8 now
 has TWO measured negatives-before-fix (coverage + dynamism) with localized causes
-and controlled interventions — the systems-paper contribution.
+and controlled interventions **whose after-state is now recorded, not just
+scheduled** — the systems-paper contribution.
 
 **Product evidence accrued (2026-06-26, L2 deep review — forums structurally
 excluded from discovery):** the open-set funnel was found to throw away an entire
@@ -672,8 +694,15 @@ unreachable-modality result).
 
 ## Recommended publication order
 
-1. **Paper 1** (topic classification + distillation) — closes 4-8
-   weeks from today with current data and migration 042.
+1. **Paper 1** (topic classification + distillation) — *the 2026-05-27 "closes
+   4–8 weeks with current data + mig-042" estimate is superseded (PR3-07).* The
+   mig-042 lexicon + 30-topic benchmark were overtaken by the unified engine and
+   candidate-v2; Paper 1's two largest sections are now the **v1-vs-unified A/B**
+   (the split-brain experiment, PASS-effective) and the **ensemble-κ 0.739 gold
+   benchmark**. Close-criteria absorb the canonical regime (PR3.1), the A/B, the
+   κ base, and the R3.1 crisis-only precision lift; the remaining gates are the
+   still-UNBUILT experiments (`gdelt_hint_ablation.py`, crisis-only κ split,
+   temporal hold-out, ≥1 external baseline — PR3.4 / ledger PR3-05/09/10).
 2. **Paper 5** (sentiment fusion) — uses LLM-as-annotator extension
    to provide gold; can land 8-12 weeks after Paper 1.
 3. **Paper 4** (thread aggregation) — depends on Papers 1 + 5 to
@@ -713,12 +742,24 @@ For any paper in the series to ship:
 
 ## Cross-reference index (product ↔ paper)
 
-Updated 2026-06-26 with the L2 deep-review findings
+Updated **2026-07-01** (PR3.3 — appended the unified-engine F0–F4, the A/B result,
+candidate-v2/κ-0.739, R0–R3, and the crisis-relevance lens; the index had lagged to
+2026-06-26, which is itself a staleness-ledger trigger, PR3-06). Prior refresh
+2026-06-26 with the L2 deep-review findings
 (`docs/specs/2026-06-26-l2-deep-review.md`, which carries the full per-surface
 paper-alignment table in its §5). Newest mappings on top:
 
 | Product finding / surface | Paper(s) | Where folded |
 |---|---|---|
+| **R3 unification (2026-07-01, spec `2026-07-01-atlas-engine-r3-unification.md`):** one served population, `atlas_topics` collapsed to a `category` attribute; SPINE (stories) + orthogonal LENSES (entity/geo/source) + deferred typed-relation layer; anchored-emergent category level (crisis-32 = seed anchors, emergent super-clusters extend the set) | **P4** (hierarchy: category/event/story levels + typed membership) + **P1** (the anchored-emergent taxonomy is the successor to the fixed-32 benchmark) + **P7** (one topic view, all lenses re-scope) | R3 spec §1/§3; P4 spec `2026-05-24-living-narrative-threads.md`; P1 "Canonical benchmark regime" + "Taxonomy revision" |
+| **R3.1 category typing (2026-07-01):** DeepSeek-primary typer (cosine seed-prototype FAILS — diffuse centroids, proven); 348/348 stories typed (182 crisis-anchored + 166 non-crisis honest-labeled, not suppressed); Path B local encoder = future $0 distillation | **P1** (typing precision = the crisis-only successor to 41.6%; the DeepSeek→local distillation loop) | R3 spec §3.1/§12; P1 "Reject GATE ≠ category TYPING" note |
+| **Crisis-relevance as a LENS (2026-07-01, Pedro's correction):** `category` is the OPEN category for EVERY story (badge); `crisis_relevant` is a FLAG the analyst filters on, NOT a taxonomy divide — a World Cup is a narrative, not a "reject" | **P1** (open-set category space, not a closed crisis gate) + **P7** (relevance as an analyst lens) + **P8** (open-set principle) | R3 spec §12 "Crisis-relevance as a LENS"; P1 "Canonical benchmark regime" (open-set framing) |
+| **R1 scoped clustering (2026-06-30→07-01):** per-country partitioned HDBSCAN dissolves the global recall cliff — global 4.94% → scoped 26.72% (~5.4×), 731 clusters/126 countries, no blob (cohesion 0.968); promotion-gate recalibration `volume_min` 30→12 served 68→392→348 active, purity held | **P8** (coverage lever — the measured before→after; ties to P5 voice: CN 0%→33% scoped) | P8 result skeleton Interventions 2–3; master-plan P6/P8 (past-tensed, PR3.3) |
+| **R2 umbrella (2026-07-01):** complete-linkage @0.98 over active-topic centroids collapses cross-country duplication into geographic-event umbrellas (26 umbrellas / 55 children); single-link CHAINS → complete-linkage is the same-EVENT-not-same-THEME guard (in the algorithm, not the threshold) | **P8** (legibility before→after) + **P4** (event-parent hierarchy, the geographic axis of decision 3) | P8 Intervention 4; P4 spec (event levels) |
+| **R3.7 retirement / lifecycle (2026-07-01):** `snapshots_since_seen` aging → active→deprecated→retired (retire from SERVING, keep the row for resurrection); fixes the frozen-68 negative (Pedro's retention model) | **P8** (dynamism sub-claim — the mechanism, not a timer) | P8 "Retention + resurrection"; master-plan P6/P8 (past-tensed) |
+| **Unified Engine F3 A/B (2026-06-29):** v1-compat (split-brain) vs unified-v2 over the e5 substrate — v2 wins coherence 0.930>0.908, evidence-purity 100%>98.1%, black-hole 12.1%<19.0%, topics≥3 103>66; member-recall settled without human gold (v1's surplus = over-assignment); LLM-judge cross-check found shared-member on-topic only 40–52% → the dominant lever is TAXONOMY (#204), not the engine | **P1** (THE split-brain-vs-unified experiment; the label-drift confound in the judge) | P1 result skeleton "Split-brain → unified: the A/B result" + "LLM-judge cross-check" |
+| **Unified Engine F0–F2 (2026-06-29):** typed `topic_members` (mig 057, roles evidence/discussion/mood + F0.3 read-flag + LIST parity gate); F1 Bluesky+Lemmy forum ingest (social, `verified=false`); F2 social-seed clustering guard | **P4** (typed membership + relationship types) + **P8** (forum modality enters discovery via the embedding path) | P1 §"A/B"; P4 spec; P8 "forum modality" |
+| **Canonical benchmark regime (2026-07-01, PR3.1):** ONE headline = 3-vendor N660 (Atlas 41.6% / LLM 78.6%); 50.79%/59.02%/scope-gate footnoted as N/panel/coverage variants; 78.6 vs 95.08 LLM split resolved as different gold sets (the label-drift confound) | **P1** (headline reconciliation) | P1 result skeleton "Canonical benchmark regime (PR3.1)"; staleness ledger PR3-01/PR3-07 |
 | Taxonomy revision (#204): ensemble LLM annotation builds a 732-item gold base, Fleiss κ 0.739 (substantial); force-fit 30–46% → OUT_OF_SCOPE reject class; the taxonomy is the classification label space | **P1** (eval method + unconfounded benchmark + the precision-lift successor to 41.6%) | P1 result skeleton "Taxonomy revision — ensemble-κ gold benchmark" + the taxonomy methodology doc |
 | Unified Engine F0 (2026-06-29): typed `topic_members` membership replaces the split-brain; 5 relationship types (`media/public/social-led, silent-risk, uncoupled`) from role-count ratios; read-flag + A/B parity gate before serving swap | **P4** (typed membership + relationship method) + **P1** (the v1-vs-unified A/B IS the split-brain experiment; silent-risk-as-ratio) + **P7** (press-vs-public in one topic view) | P4 spec `2026-05-24-living-narrative-threads.md` "Typed membership + relationship types (2026-06-29)"; P1 = the §11 A/B; serving = P7 |
 | #214 one-count semantics (gated vs raw) + UNVERIFIED tray; killed positional "critical"; thread KEY SUBJECTS via `rank_key_people` | **P4** (primary), with P1 (gate is P1's result) + P3 (volume-as-importance leak) | P4 "Product evidence accrued (2026-06-26)" + new ablation in P4 "Evidence to collect" |

@@ -14,9 +14,15 @@ persisting list? Two sub-claims a deployed system must defend:
 1. **Coverage** — what fraction of the signal mass is assigned to a topic.
 2. **Dynamism** — does the topic set track reality over time, or freeze.
 
-## Measured baseline (live prod, 2026-06-30) — a DIAGNOSTIC negative
+## Measured baseline (live prod, 2026-06-30) — a DIAGNOSTIC negative [BEFORE state, SUPERSEDED]
 
-**Coverage is tiny and it is a clustering-recall problem, not embedding or
+> **Status (PR3.3, 2026-07-01):** this section is the measured **before** snapshot,
+> preserved as the negative-before-fix. It has since been FIXED — see Interventions
+> 1–4 below (dynamism revived + R1 scoped clustering served 68→392→348 active topics;
+> coverage lifted global 5.6% → scoped ~26.7% system estimate). Read the numbers here
+> as the diagnostic baseline, not the live state.
+
+**Coverage was tiny and it was a clustering-recall problem, not embedding or
 promotion:**
 - 534,000 signals → **239,233 embedded** → only **13,354 distinct signals in any
   topic = 5.6% of embedded (2.5% of total).**
@@ -25,16 +31,19 @@ promotion:**
   pass drops ~94% of embedded signals as noise. (The HDBSCAN purity/recall cliff
   is characterized in `gdelt-decoupling §8`: no global config gives both.)
 
-**Dynamism is broken — the topic set is frozen + sticky:**
-- `dynamic_topics` / `emergent_clusters` last updated **2026-06-29 17:00**; the
-  topic-forming cron was disabled in a 2026-06-29 infra consolidation and the
-  successor engine (`unified-v2`) builds but is **not served** → serving reads a
+**Dynamism was broken — the topic set was frozen + sticky (now FIXED, see
+Interventions 1 + 3):**
+- `dynamic_topics` / `emergent_clusters` were last updated **2026-06-29 17:00**; the
+  topic-forming cron had been disabled in a 2026-06-29 infra consolidation and the
+  successor engine (`unified-v2`) built but was **not served** → serving read a
   **~1-day-frozen snapshot**; **0 new topics in ~1 day.**
-- Lifecycle is sticky: **54 of 68 "active" topics have `last_seen` > 3 days** yet
-  remain `active`; **185 candidates** stuck un-promoted; only 14 ever retired.
-- So "68 active topics" is not a measure of the live world — it is an accumulated,
+- Lifecycle was sticky: **54 of 68 "active" topics had `last_seen` > 3 days** yet
+  remained `active`; **185 candidates** stuck un-promoted; only 14 ever retired.
+- So "68 active topics" was not a measure of the live world — it was an accumulated,
   stale list. **A fixed topic count from a streaming feed is itself the failure
-  signal.**
+  signal.** (Resolved 2026-07-01: R1 scoped clustering + gate recalibration served
+  **392** then a retirement sweep settled at **348** active; the lifecycle now
+  retires-from-serving while retaining rows — §"Retention + resurrection".)
 
 ## The thesis the result will defend
 Open-set discovery needs BOTH (a) **recall** — partition-scoped clustering over
