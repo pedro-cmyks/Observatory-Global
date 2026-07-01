@@ -53,7 +53,10 @@ def _require_admin_token(token: str | None) -> None:
 async def get_country_heat(
     request: Request,
     hours: int = Query(24, ge=1, le=720, description="Time window in hours (v1 supports 24)"),
-    limit: int = Query(50, ge=1, le=200),
+    # le=250: the map composite fill requests limit=250 to cover ALL countries
+    # (#231 "fetch all"); the old le=200 cap 422'd that request and silently
+    # broke the heat layer (found 2026-07-01 in the L0-L3 review).
+    limit: int = Query(50, ge=1, le=250),
 ):
     """Return countries ranked by Atlas composite heat (see methodology doc)."""
     cache_key = f"heat:countries:{hours}:{limit}"
