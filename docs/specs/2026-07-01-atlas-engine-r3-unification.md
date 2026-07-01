@@ -1,289 +1,413 @@
-# Spec — Atlas Engine R3: the unification (one model, 3 levels, all five brains)
+# Spec — Atlas Engine R3: the unification (spine + lenses + relations, all five brains)
 
-Date: 2026-07-01 · Branch: `v3-intel-layer` · Status: **DRAFT for Pedro review**
-Author: Claude (Opus 4.8).
+Date: 2026-07-01 · Branch: `v3-intel-layer` · Status: **DRAFT v2 for Pedro review**
+(v1 rewritten 2026-07-01 after a 4-agent deep read of all ~20 specs + 9 papers;
+the reconciliation ledger of every finding is §11). Author: Claude (Opus 4.8).
 
-**This is a CONVERGENCE spec, not a new invention.** It ties together work that
-was built piecemeal across the last ~15 specs and finishes the pieces left
-un-flipped. Read alongside — and it supersedes the "next steps" of — these, which
-it was written against (not in a vacuum):
-
-- `2026-06-29-atlas-unified-engine.md` — the approved engine (F0–F4). **R3 = F4 +
-  F3.3, reframed.** Its `topic_members` typed model + A/B discipline are the spine.
-- `2026-06-30-atlas-engine-attention-anomaly-roles.md` — the 5-brains (attention +
-  anomaly→movement). Its explicit gate was "recall FIRST" — **recall is now DONE**
-  (R1/R2), so its held phases UNBLOCK here.
-- `2026-06-30-atlas-engine-recall-scoped-clustering.md` (R0/R1) + `2026-07-01-
-  atlas-engine-r2-umbrella-hierarchy.md` (R2) — the topic FORMER R3 sits on.
-- `2026-06-29-atlas-engine-gdelt-decoupling-syndication.md` — GDELT-as-feature +
-  the `KILL` polysemy + syndication; the ablation gate R3 must respect.
-- `2026-05-24-living-narrative-threads.md` (Paper 4) — decisions 3 (hierarchy) +
-  5 (any-window). R3 delivers decision 3 as the EVENT level.
-- Papers: `2026-06-03-paper-1-result-skeleton.md` (the A/B IS its experiment; the
-  40–52% taxonomy ceiling = #204), `2026-06-30-paper-8-result-skeleton.md`
-  (recall/coverage), `2026-05-27-atlas-papers-master-plan.md`.
+**This is a CONVERGENCE spec, not a new invention.** It ties together work built
+piecemeal across the last ~20 specs + 9 papers and finishes the un-flipped pieces.
+Read alongside — it supersedes the "next steps" of — the specs cited inline; the
+canonical objects come from `2026-05-25-atlas-narrative-intelligence-framework.md`,
+the engine from `2026-06-29-atlas-unified-engine.md` (F0–F4), the thread model +
+Pedro's 6 decisions from `2026-05-24-living-narrative-threads.md`, the surface
+charter from `2026-06-26-l2-deep-review.md §"unified-engine connection"`, the
+roles from `2026-06-30-atlas-engine-attention-anomaly-roles.md`, recall/umbrella
+from `2026-06-30-recall-scoped-clustering.md` + `2026-07-01-r2-umbrella-hierarchy.md`,
+research contract from `2026-06-09-research-thread-builder-workbench.md`, and the
+paper constraints from `2026-06-03-paper-1-result-skeleton.md` + `2026-05-27-
+atlas-papers-master-plan.md`.
 
 ---
 
-## 0. Why this spec exists (Pedro, 2026-07-01)
+## 0. Why (Pedro, 2026-07-01)
 
-Pedro, looking at prod, asked the question we keep returning to: *"why are there
-still TWO — atlas and dynamic? there should be ONE."* He is right. Verified on
-prod today:
-
+Pedro, on prod: *"why are there still TWO — atlas and dynamic? there should be
+ONE."* Verified today:
 ```
 atlas_topics (lexical, 30, WITH parent_domain)   → badge "CLIMATE DISASTER" etc.
 dynamic_topics active (embedding, 418, NO domain) → badge "narrative thread"
-fetch_threads:  rank_threads(dynamic + atlas_extra)   ← serves BOTH, merged by score only
-topic_members:  v1-compat 29968 · unified-v2 8643     ← the unified engine EXISTS, is not served
-dynamic_topics has NO parent_domain column            ← so scoped topics can never be typed
+fetch_threads: rank_threads(dynamic + atlas_extra)   ← serves BOTH, merged by score
+topic_members: v1-compat 29968 · unified-v2 8643     ← unified engine EXISTS, unserved
+dynamic_topics has NO parent_domain column           ← scoped topics can't be typed
 ```
-
-Three things where there should be one. The deeper diagnosis (the insight that
-organizes R3): **it is not just two pipelines — it is two LEVELS OF ABSTRACTION
-served as peers.** An atlas topic ("Constitutional crisis", 2.0k signals, the
-whole world) is a broad CATEGORY; a dynamic topic ("Venezuela Earthquake Death
-Toll") is a specific STORY; the R2 umbrella ("France Heatwave" across countries)
-is the EVENT in between. Flattening category + event + story into one ranked list
-is why it reads wrong. The whole split-brain arc has been closing this one seam
-from different ends; R3 finishes it with an explicit hierarchy.
+It is not two pipelines — it is two LEVELS OF ABSTRACTION served as peers. atlas =
+broad CATEGORY, dynamic = specific STORY, umbrella (R2) = the EVENT between. R3
+finishes the split-brain arc with an explicit model.
 
 ---
 
-## 1. The end-state — ONE model, three levels
+## 1. The end-state — a SPINE, orthogonal LENSES, and a deferred RELATION layer
 
-One population of narrative STORIES (embedding-discovered, the R1/unified-v2
-engine). Category and Event are not separate populations — they are an **attribute**
-and a **grouping** ON the stories:
+**Correction from the deep review (§11 F1):** the earlier "3 levels" draft was a
+SUBSET of the canon object model (`narrative-framework §Core Objects`:
+signal/evidence_item/domain_anchor/parent_thread/child_thread/entity_thread/
+geo_lens/source_lane/relation/quality_envelope). R3 is that canon, made one
+population. Three parts:
 
-| level | what it is | today | R3 target |
-|---|---|---|---|
-| **CATEGORY** | crisis-taxonomy class (climate disaster, political legitimacy) + the OUT_OF_SCOPE reject class | a separate population of 30 `atlas_topics` | an **attribute** on every story (`category`, from #204 candidate-v2); also a filter view. NOT peer threads |
-| **EVENT** | same-event group across countries/languages (France Heatwave DE/FR/GB) | R2 umbrella over `dynamic_topics` (built 2026-07-01) | the EVENT grouping over the ONE unified population (fold R2 in) |
-| **STORY** | the specific narrative (Venezuela Earthquake Death Toll) | `dynamic_topics` (R1) ‖ served beside atlas | the ONE served population; every story typed with a category + optionally under an event |
+### 1a. The compositional SPINE (what a served row IS)
+ONE population of STORIES (embedding-discovered, unified-v2 engine). Two grouping
+axes ABOVE a story — **they are orthogonal, both real, both needed** (§11 F-C4.1,
+the biggest v1 miss):
 
-Every served row is a STORY carrying `{category, event_parent, country, roles}`.
-"atlas vs dynamic" disappears: atlas becomes the CATEGORY attribute + a category
-filter; the badge stops being "climate disaster vs narrative thread" and becomes
-"every thread has a category."
+| level | axis | example | today | R3 |
+|---|---|---|---|---|
+| **CATEGORY** | crisis-taxonomy class (32 + OUT_OF_SCOPE reject) | "climate disaster" | 30 `atlas_topics` peer rows | an **attribute** `category`+`category_confidence` on each story; also a filter view. NOT peer rows |
+| **EVENT — geographic** | same-event across countries/languages | France Heatwave → {DE,FR,GB} | R2 umbrella (complete-linkage @0.98) | `event_parent` (fold R2 onto the unified population) |
+| **EVENT — narrative** | sub-narratives of ONE big story (decision 3) | US–Iran → {base strikes, satellite imagery, water infra, protests} | UNBUILT (US–Iran serves as ~7 flat threads) | `narrative_parent`/`subthread` — the ACTUAL Paper-4 decision 3, **NOT delivered by the umbrella** |
+| **STORY** | the specific narrative | "Venezuela Earthquake Death Toll" | `dynamic_topics` | the ONE served population; typed w/ category, optionally under an event |
+
+A story serves standalone (no event_parent, category or OUT_OF_SCOPE) as a
+FIRST-CLASS row — the country view's most valuable rows (emerging local-only
+stories, R1's win) are exactly the ones with no cross-country event (§11 F-B4.8).
+
+### 1b. Orthogonal LENSES (re-scope the SAME population, already built)
+entity / geo / source are NOT levels — they are LENSES over the one population
+(`narrative-framework §Product Surface Contract`; `atlas-focus-model`). Already
+shipped: focus propagation #234 (`lib/focusRelation.ts` `computeFocusRelation` →
+`{kind,value,dominantCountry,relationCountries,relationActive}`, honest-by-
+construction), voice mix (source lens: subject≠origin≠language, §11 F-A3.15),
+source integrity. **R3 must expose the story so these lenses re-scope it — it
+does not invent new lenses.** CRITICAL: a story's `country` is the SUBJECT country;
+the SPEAKER (`source_origin_country`) + AUDIENCE (`source_lang`) + `is_state_media`
+are the voice lens and must never collapse into one "country" attribute
+(voice-relation §1; §11 F-A3.15).
+
+### 1c. The typed RELATION layer (deferred, named — not silently absent)
+`narrative-framework §Thread Relations` + `workbench §E` define typed relations
+(`supports / contradicts / same_actor_as / same_place_as / frame_contrast_with /
+causal_claim / temporal_precedes / regional_spillover / infrastructure_dependency`)
+and the `related_threads` contract (co-occurrence/entity/geo siblings — already
+shipped as rarity-weighted sibling chips, §11 F-C5.1). R3 does NOT build the typed
+relation graph (that is a later spec), but MUST (a) keep serving `related_threads`,
+(b) consolidate the THREE existing related-computations (contract `related_threads`
+‖ sibling chips ‖ `tm2` co-occ in `THREADS_SQL_TOPIC_MEMBERS`) into one, (c) state
+that CATEGORY/EVENT/relationship-type are LENSES on the thread, never peer objects
+(`workbench §Terminology`, §11 F-C4.5).
 
 ---
 
-## 2. Inventory — what is ALREADY built (R3 must NOT rebuild)
+## 2. Inventory — ALREADY built (R3 must NOT rebuild)
 
-The reason R3 is convergence, not invention. Built + verified:
-
-- **Typed membership** — `topic_members` (mig 057), roles evidence/discussion/mood,
+- **Typed membership** `topic_members` (mig 057), roles evidence/discussion/mood,
   `engine_version` v1-compat + unified-v2 (unified-engine F0).
-- **Unified construction v2** — `build_unified_topics.py` (F3.1): every embedded
-  signal → nearest active centroid ≥0.88 + HDBSCAN-leaf new-topic formation;
-  recurring on the M1 embed cron. **A/B WINS** (F3.2: coherence 0.930>0.908,
-  black-hole 12.1%<19.0%, topics≥3 103>66; Paper 1's experiment).
-- **Recall (R1)** — scoped per-country clustering; 68→418 served, cohesion 0.968.
-  *(This is what CLEARS the attention-anomaly spec's "recall first" gate.)*
-- **Event level (R2)** — `build_umbrella_topics.py`, complete-linkage @0.98; 26
-  umbrellas; global dedup + country-view children LIVE on Fly.
-- **Taxonomy candidate-v2 (#204)** — ensemble-κ gold, **κ 0.739**, the OUT_OF_SCOPE
-  reject class + per-category excludes. BUILT + validated, **NOT wired** to
-  production assignment/gate (the missing link R3.1 needs).
-- **The read-flag** — `ATLAS_SERVE_THREADS_FROM_TOPIC_MEMBERS` (F0.3, default OFF,
-  parity PASS). The switch R3 flips.
+- **Unified construction v2** `build_unified_topics.py` (F3.1), recurring on the M1
+  embed cron; **A/B WINS** (F3.2: coherence 0.930>0.908, black-hole 12.1%<19.0%,
+  topics≥3 103>66 = Paper 1's experiment).
+- **Recall (R1)** scoped per-country; 68→**418** (392 active served); clears the
+  attention-anomaly spec's "recall first" gate.
+- **Event-geographic (R2)** `build_umbrella_topics.py`, complete-linkage @0.98
+  (single-link CHAINS — must stay complete-linkage; 0.98 not 0.95, both measured);
+  26 umbrellas; global dedup + country children LIVE.
+- **Taxonomy candidate-v2 (#204)** — **32 categories + an OUT_OF_SCOPE reject
+  POLICY** (NOT 33; §11 F-D), κ 0.739 (reject-driven on a non-crisis sample; the
+  crisis-only in-category κ is UNMEASURED). **CORRECTION:** the LIVE prod thing is
+  `apply_v2_reject.py` — a **BINARY keep/reject DEMOTER** within existing lexical
+  assignments; it does **NOT** assign categories. So **category TYPING is genuinely
+  unbuilt**; R3.1 is a new operation on the same e5 substrate, NOT the reject gate
+  (§11 F-D-I4-4).
+- **The read-flag** `ATLAS_SERVE_THREADS_FROM_TOPIC_MEMBERS` (F0.3, default OFF,
+  LIST parity PASS). NOTE (§11 F-A4.2): this flag governs the ATLAS-evidence read
+  path ONLY; the dynamic/living population serves via `_DYNAMIC_TOPICS_SQL`. F4 must
+  converge BOTH paths — the flag alone does not unify serving.
 - **Forum ingest (F1)** Bluesky+Lemmy, **F2** social-seed guard.
-
-So R3 wires + flips + folds; it builds only the genuinely-missing roles.
-
----
-
-## 3. What R3 must do (the gaps, in dependency order)
-
-### R3.1 — TYPE every story with a category (kills the badge asymmetry) — the precision lever
-The `parent_domain` badge asymmetry (atlas typed, dynamic untyped) is the visible
-face of the split. Fix: **classify every story-topic into the #204 candidate-v2
-taxonomy** (33-way + OUT_OF_SCOPE), storing `category` + `category_confidence` on
-the topic. Two honest sub-decisions:
-- Method: embed the topic's centroid/label + members, classify against the
-  candidate-v2 category prototypes (semantic), OR the ensemble prompt on the
-  topic label. Start semantic (cheap, local); reserve LLM for low-confidence.
-- **This is also the #204 wiring** (the missing production link): the OUT_OF_SCOPE
-  reject + per-category excludes go into the classifier, not just the gold set.
-- Paper 1 payoff: this is the "does typing every topic move the 40–52% topical
-  precision" experiment — the taxonomy lever F3.2b identified as dominant.
-- Honesty: a topic that is OUT_OF_SCOPE is **labeled uncategorized, not force-fit**
-  (the reject class is the whole point — no fake "Heat-health" for an Amazon-buy).
-
-### R3.2 — COLLAPSE atlas_topics from a population to an attribute + F4 cutover
-- Serving stops emitting `atlas_topics` as peer threads. `fetch_threads` serves
-  ONE population (the unified stories); `category` (R3.1) carries what the atlas
-  badge used to. Atlas survives as: (a) the category vocabulary, (b) a category
-  FILTER view ("show all political-legitimacy stories") — NOT rows in the story list.
-- This IS unified-engine **F4** (flip `ATLAS_SERVE_THREADS_FROM_TOPIC_MEMBERS` →
-  serve unified-v2), reframed: the cutover is not just "serve v2 members," it is
-  "serve ONE typed population." Gated on the §7 gate.
-
-### R3.3 — FOLD the R2 umbrella into the unified population (event level)
-R2 built umbrellas over `dynamic_topics`; F4 serves `topic_members`/unified-v2.
-These must reconcile or the umbrella breaks at cutover. R3.3 makes the umbrella a
-grouping over the ONE served population (centroid-of-centroids over the unified
-topics, same complete-linkage @0.98). The EVENT level then sits natively on the
-unified model, not on a soon-to-be-legacy table. (Also: give the umbrella a
-`category` from its children — the umbrella inherits the dominant child category.)
-
-### R3.4 — the ANOMALY/MOVEMENT brains (now UNBLOCKED by recall) — answers "how do the events relate?"
-The attention-anomaly spec HELD these on recall; recall is done. Two distinct
-pieces (verified 2026-07-01: `events_v2`=1,023,222 GDELT CAMEO rows,
-`acled_conflicts_v2`=0, `topic_members` has ZERO `movement` rows):
-- **R3.4a — `anomaly→movement` (topic property, cheap, ships first).** Per-topic
-  volume-vs-baseline z-score → `topic_movement` (attention-anomaly G2). Pure-SQL on
-  the classifier cron. Makes each thread carry its OWN movement (retires the
-  fake-"critical" lead). No schema change, no #232 blocker.
-- **R3.4b — event-`movement` role (#232, the Sudan question).** Bind the conflict
-  events (`events_v2` CAMEO — the Darfur "military force" rows the analyst SEES in
-  the anomaly panel) to the topic they belong to. Events are **co-occurrence-
-  bindable, NOT embeddable** (verified — no text to embed), so binding = country +
-  time-window + entity overlap, NOT centroid cosine. Needs the **member-ref schema**
-  (attention-anomaly G0: `member_kind`/`member_ref`, nullable `signal_id`). This is
-  the direct answer to Pedro's Sudan finding: today the Darfur events and "Sudan
-  Conflict Escalation" are two panels that never reconcile; R3.4b makes the event a
-  typed `movement` member of the thread.
-
-### R3.5 — the ATTENTION brain (trends first, wiki held) — the 5th brain
-Bind Google Trends (`trends_v2`, 24,902 rows/24h — real volume) to topics
-semantically (embed keyword → cosine vs centroid), typed `attention`,
-`verified=false`. Wiki (`wiki_pageviews_v2`, 1,700/7d, thin) stays HELD on #104.
-Reuses the member-ref schema from R3.4b (one DDL, two roles). Recall being done is
-exactly what makes this worth it (the topic surface is 418, not 68).
-
-### R3.6 — unify the id namespace + serving one shape
-The unified spec kept dual ids (`atlas-slug` / `dynamic-topic-N`) "to unify at F3."
-R3 finishes it: one id space for the served population; `/threads`, `/theme/{id}`,
-`/topic/{id}/relationship`, country-view all project from the one model by role +
-level. The `relationship` 5-types (#168) finally differentiate on real
-attention/discussion/movement data (not all `media-led`).
+- **Serving contract already shipped** (must survive cutover): `rank_threads`
+  (0.45·log-vol+0.35·movement+0.20·coherence, **no source bias**) + editorial-lane
+  damp (lifestyle/sport/entertainment) + `headline_diversity`/single-domain demote;
+  the `living-narrative-threads-v0` field set; #214 count semantics; `/signal/{id}/
+  context` + `connections-v0`; person→thread `?person=` (atlas-slug matching);
+  `research plan` `investigative_score` inputs.
 
 ---
 
-## 4. Hard constraints R3 MUST respect (extracted from the specs + papers)
+## 3. What R3 must do (dependency order)
 
-1. **GDELT-theme removal is ablation-gated (Paper 1).** Themes stay an OPTIONAL
-   confidence feature; removing them entirely needs `gdelt_hint_ablation.py` to
-   prove no recall loss — else Paper 1's 41.6% number stops being reproducible.
-   R3.1 uses themes as a feature, never as the category source of truth.
-2. **Honesty invariants (verbatim).** evidence never mixes discussion/mood/
-   movement/attention; `gated_signal_count` evidence-only; `verified=false` on
-   social + attention + movement; OUT_OF_SCOPE is labeled, never force-fit; no
-   silent blanks (coverage note instead).
-3. **Black-hole #224.** The anchor-guard + `leaf` selection preserved; the A/B
-   gate blocks any cutover that worsens black-hole/noise.
-4. **F4 gold gate (F3.2b).** The cutover's precision gate must use a **FIXED
-   precise gold label set** (the candidate-v2 goldset, κ 0.739), NOT production
-   labels — the production-label judge is confounded by label drift.
-5. **Compute discipline.** Heavy steps (re-classify, embed trends, umbrella-on-
-   unified) run OFF-PEAK on the M1 embed schedule; the M1 crashed at load 177 from
-   stacked compute. Daytime-safe: schema, pure-SQL movement.
-6. **Hot-PK migration (member-ref).** The `topic_members` PK change is the riskiest
-   DDL — reversible, off-peak, after backing up the v1-compat parity check.
-7. **Recall/taxonomy are the coverage/precision levers, not roles.** Roles enrich;
-   they do not fix coverage (recall, done) or topical precision (taxonomy, R3.1).
-   Don't mistake role-work for the precision result (attention-anomaly self-eval).
+### R3.1 — TYPE every story with a category (the PRECISION lever, Paper 1's dominant finding)
+- Classify every story into **32 candidate-v2 categories + OUT_OF_SCOPE** (NOT 33);
+  store `category`+`category_confidence`. Method (E-R3-a): consider the pre-designed
+  **Path B bootstrap encoder** (MiniLM head over e5, 85–90% gate, `ai-assisted-
+  taxonomy Path B`) alongside semantic-vs-prototype + LLM-for-low-confidence; the
+  prototype path REUSES `research_semantic` centroid machinery (§11 F-C2.5).
+- **Wire OUT_OF_SCOPE + per-category excludes into `backend/app/` assignment** — the
+  missing production link (today OUT_OF_SCOPE lives only in offline `ensemble/`).
+  Distinct from the shipped reject GATE (which demotes, doesn't type).
+- **Run on the 30-min classifier cron, NOT nightly** (§11 F-C4.2, critical): nightly
+  typing leaves fresh stories UNCATEGORIZED for a day → the badge asymmetry R3.1
+  fixes reappears as a TEMPORAL asymmetry. R3.4a already proves pure-cron work is
+  daytime-safe; category typing rides the same slot.
+- **OUT_OF_SCOPE ≠ suppressed** (§11 F-C4.6 + funnel principle): a coherent
+  non-crisis story (regional news, sports→protest) is labeled `uncategorized`, stays
+  SERVED + retrievable, never demoted out of the corpus. The crisis-only taxonomy has
+  no home for coherent non-crisis; do NOT let the reject class delete it. Also fold
+  decision 4 (RE-LABEL generic-but-coherent clusters, not gate them) into new-topic
+  labeling.
+- **Measure** the topical-precision lift on a **crisis-only held-out gold split**
+  (the κ-0.739 aggregate is reject-driven; the in-category number is unmeasured —
+  §11 F-D-M5-2), with Wilson/bootstrap CIs + anchoring-effect control if an LLM is in
+  the loop; target = the **90%** verified north-star, not just "above 40–52%".
+
+### R3.2 — COLLAPSE atlas to an attribute + F4 cutover (the SERVING SEAM — most of the risk)
+Serving stops emitting `atlas_topics` as peer threads; ONE population; `category`
+carries the badge; atlas survives as the category vocabulary + a filter view. This
+is unified-engine F4. **The cutover MUST carry the shipped serving contract forward
+(§11 F-B4.1/4.4/4.5/4.6, C4.3) — any of these dropped = a verified regression:**
+- **Ranking:** reuse `rank_threads` + editorial-lane damp + `headline_diversity`
+  over the new population, else "Las Vegas Travel Guide"/syndication regress to #1.
+  Weights were calibrated on the merged dynamic+atlas pop R3.2 dissolves →
+  RECALIBRATE or prove ranking-ORDER parity (not just membership).
+- **Both read paths converge:** the F0.3 flag (atlas-evidence) AND `_DYNAMIC_TOPICS_SQL`
+  (dynamic/umbrella) must serve from the one model; flipping the flag alone leaves
+  dynamic on the old path.
+- **Count semantics #214 parity-locked:** `signal_count`(raw) / `gated_signal_count`
+  / `gate_scored_count` / `discussion_count` + the UNVERIFIED scored-but-zero tray;
+  the umbrella inherits `gated_signal_count`.
+- **id-unify survivors:** `/signal/{id}/context` + `connections-v0` (basis
+  member/semantic/entity/co-occurrence/keyword), the `slug--cc` parse, person→thread
+  `?person=` (atlas-slug `_PERSON_TOPIC_SLUGS_SQL` → must re-point to unified ids),
+  focus propagation queries, the two map engines' thread fly-to, the pin-event log
+  `plan_id/anchor_id` join, and `merged`-state ALIASES — all need an **id-migration/
+  alias map** (§11 F-B4.1/4.6, C1.1/2.11).
+
+### R3.3 — FOLD the R2 umbrella (geographic event) onto the unified population + STABLE id
+Re-home `build_umbrella_topics` on the unified population (same complete-linkage
+@0.98 — the same-EVENT-not-same-THEME cut; keep it distinct from R3.1's taxonomy
+prototypes so the two NEVER cross-contaminate, §11 F-A3.6). **Adopt the stable
+umbrella identity NOW** (`umbrella:<min_child_id>` upsert), not deferred — nightly
+rebuild churns ids and breaks drill/pins/relationship (§11 F-A4.4). An event carries
+a category **DISTRIBUTION**, not a single dominant-child category (a real event is
+multi-frame: Iran water = climate+political+conflict+humanitarian; §11 F-C4.7).
+Populate the reserved `subthreads` contract field. The narrative-subthread axis
+(1a EVENT-narrative) is a SEPARATE, still-unbuilt relation — R3.3 delivers only the
+geographic axis; do not claim decision 3 complete.
+
+### R3.4 — the ANOMALY / MOVEMENT brains (unblocked by recall). Disambiguate 3 "movements" (§11 F-A4.8):
+(i) the movement-DRIVER taxonomy (9 typed reasons a thread moves — `narrative-
+framework`), NOT built, deferred; (ii) `topic_movement` = the volume-vs-baseline
+z-score PROPERTY; (iii) the `movement` ROLE = events bound as members.
+- **R3.4a — `topic_movement` property (cheap, ships first).** Per-topic volume vs
+  168h baseline → z-score, on the 30-min cron. Retires the fake-"critical" lead (the
+  L2 CI case; feeds the ALREADY-SHIPPED B1 serving consumer, don't reinvent). **Provider
+  precedence must be declared:** it emits the `changed_10h`/`trend`/`velocity_10h`
+  shape the thread contract + `investigative_score.movement_signal` read, and it
+  either SUPERSEDES or FEEDS the Kalman #219 feed — pick one (§11 F-C4.8).
+- **R3.4b — event-`movement` role (#232, the Sudan answer).** Bind `events_v2` (1.02M
+  GDELT CAMEO — the Darfur rows in the anomaly panel; `acled_conflicts_v2`=0, dead)
+  to the topic by **country+time+entity co-occurrence** (events are NOT embeddable) —
+  REUSE `computeFocusRelation`'s relation algebra (§11 F-C5.2), don't invent binding.
+  Needs the member-ref schema (R3.0). The event stays independently addressable
+  (ConflictEventPanel), never dissolving into the country (P-FOCUS, §11 F-B3.9).
+
+### R3.5 — the ATTENTION brain (trends first, wiki held) + the gap-box consumer
+Bind `trends_v2` (24,902/24h) semantically → typed `attention`, `verified=false`
+(wiki 1,700/7d HELD on #104). Off-peak pre-embed on the M1 cron (the surface spec
+pre-specifies this, §11 F-B2.4). **Wire the INVERSE too:** trends attention with NO
+bound topic = `uncoupled-attention`/silent-risk (#168/#172) → feeds the reserved
+GAP BOX ("what Atlas can't see"), the honesty-thesis surface R3 v1 left with no
+consumer (§11 F-B4.7).
+
+### R3.6 — serve ONE shape + the roles differentiate + lanes R3 v1 omitted
+`/threads`, `/theme/{id}`, `/topic/{id}/relationship`, `/signal/{id}/context`,
+`connections`, country-view all project from the one model by role + level. The 5
+relationship types (#168) differentiate ONLY after F1 forum volume + R3.4/R3.5
+populate discussion/mood/movement/attention (data-gated, not just the flip; measure
+"what fraction leave media-led", §11 F-D-M5-7). **Add the two omitted serving lanes:**
+`forum_sentiment` press-vs-public split (P-STREAM — `mood` members exist; just a
+serve-time split by `source_family`, §11 F-B4.3) and the research evidence-role
+projection (below).
+
+### R3.7 — dynamic-topic RETIREMENT / lifecycle (B1) — a unified population still ROTS without it
+**R3 v1 omitted this entirely (§11 F-A1.9).** Pure-SQL `snapshots_since_seen`/
+`last_seen` → active→dormant→retired, so "active" = alive NOW not "ever seen" (54/68
+old topics were >3d stale yet active). This is Pedro's retention/resurrection model
+(retire from SERVING, keep the row for resurrection) + Paper 8's dynamism sub-claim.
+The one population needs lifecycle aging or it accumulates like the old one.
+
+### R3.8 — carry the research evidence-role layer (a SEPARATE attribute on members)
+R3's 5 roles (evidence/discussion/mood/movement/attention) are a PROVENANCE
+taxonomy; research needs a RHETORICAL one (`primary_event/direct_evidence/
+background_context/actor_statement/analysis/reaction/weak_support/contradiction/
+osint_verification/noise`), and **`contradiction` is load-bearing for claim
+verification** (the Iran "rain theft" forcing case; §11 F-C4.4/2.3). R3 does NOT
+build the classifier (Paper 1 Phase 4) but MUST shape `topic_members` so a second
+`evidence_role` attribute lands WITHOUT another migration (add the nullable column in
+R3.0). R3 must not claim the analyst surface complete while contradiction/credibility
+are unbuilt (§11 F-C4.9).
 
 ---
 
-## 5. Reconciliation — the tensions R3 resolves (so nothing regresses)
+## 4. Hard constraints (extracted from the specs + papers)
 
-- **umbrella (R2) vs unified-v2:** R2 sits on `dynamic_topics`; F4 serves
-  unified-v2. → R3.3 folds the umbrella onto the unified population BEFORE/with F4,
-  so the EVENT level survives the cutover.
-- **three artifacts → one:** atlas_topics (category attribute + filter),
-  dynamic_topics/unified-v2 (the one story population), topic_members (the
-  membership of that population). After R3, "atlas_topics as served threads" is gone.
-- **recall sequencing (attention-anomaly spec):** its "recall first" gate is
-  CLEARED (R1/R2). Recorded so the held G-phases proceed.
-- **taxonomy is the precision lever, not the engine (F3.2b):** R3.2 (engine
-  cutover) buys cleaner topics; R3.1 (category typing + #204 wiring) is what moves
-  user-facing precision. R3 does BOTH, in that order, and measures them separately.
-- **id namespace:** resolved at R3.6 (the unified-spec's deferred F3 decision).
-
----
-
-## 6. Phases (executable; heavy = off-peak)
-
-- **R3.0 — schema (daytime-safe).** `topic_members` role CHECK += `attention`;
-  `member_kind`/`member_ref` + nullable `signal_id` (unlocks R3.4b + R3.5);
-  `topic_movement` table; `category`/`category_confidence` on the topic model.
-  Reversible. (= attention-anomaly G0 + a category column.)
-- **R3.1 — category typing + #204 wiring (off-peak).** Classify every story into
-  candidate-v2 (+ reject); wire OUT_OF_SCOPE/excludes into assignment. Measure the
-  topical-precision lift on the κ-0.739 held-out split (the Paper 1 number).
-- **R3.4a — anomaly→movement (daytime-safe, pure-SQL).** `topic_movement` on the
-  classifier cron. Ships early — it is cheap and answers the "critical lead" honesty.
-- **R3.3 — umbrella-on-unified (off-peak).** Re-home `build_umbrella_topics` on the
-  unified population; umbrella inherits child category.
-- **R3.2 / F4 — cutover to one population (off-peak, gated).** Flip serving to
-  unified-v2 + collapse atlas to attribute/filter. ONLY on the §7 gate.
-- **R3.4b — event-movement (#232, off-peak).** Co-occurrence bind `events_v2` →
-  `movement` members via the member-ref schema. (The Sudan answer.)
-- **R3.5 — attention (trends), off-peak.** Embed+bind `trends_v2`; wiki held.
-- **R3.6 — id unify + serving one shape + relationship types differentiate.**
-
-Ordering rationale: schema first (unblocks everything); the two CHEAP wins
-(category typing precision + anomaly-movement honesty) before the risky cutover;
-the cutover only after the umbrella is folded so nothing regresses; the event/
-attention roles last (they enrich the already-unified surface).
+1. **GDELT-theme removal is ablation-gated (Paper 1's 41.6%).** Themes = optional
+   feature; removal needs `gdelt_hint_ablation.py` — **which DOES NOT EXIST yet**
+   (§11 F-D-I4-5). This is a BUILD DEPENDENCY, not a checkbox: any theme-hint change
+   without the ablation breaks Paper-1 reproducibility. The `KILL` polysemy (armed-
+   conflict AND gender-violence) is the concrete defect it must measure.
+2. **Honesty invariants (verbatim).** evidence never mixes discussion/mood/movement/
+   attention; `gated_signal_count` evidence-only; `verified=false` on social+
+   attention+movement; OUT_OF_SCOPE labeled never force-fit AND stays retrievable;
+   NO silent filtering — every category/event/role assignment carries a visible
+   basis + reason code; no silent blanks (coverage note).
+3. **Black-hole #224.** anchor-guard + `leaf` preserved; A/B blocks worsening. No
+   global HDBSCAN gives recall+purity (the cliff). Umbrella stays complete-linkage.
+4. **F4 gold gate uses a FIXED precise gold set (κ 0.739), NOT production labels**
+   (F3.2b — the production-label judge is confounded by label drift). Plus a
+   crisis-only in-category split (unmeasured today) for the R3.1 precision claim.
+5. **Compute discipline.** Heavy passes off-peak on the M1 embed schedule (crashed at
+   load 177). Daytime-safe: schema, pure-SQL movement, 30-min-cron category typing.
+6. **Member-ref hot-PK migration** reversible, off-peak, after backing up the v1-compat
+   parity check. One DDL serves event-movement + attention + the `evidence_role` column.
+7. **INFRA — `statement_timeout`.** Large `vec::text` centroid re-fetches hit the DB
+   `statement_timeout` (the SAME failure that froze the embed cron — §11 F-A3.13). Any
+   R3 pass re-fetching centroids/vectors at scale (R3.1 typing, R3.3 umbrella, R3.5
+   trends) must raise server-side timeout or batch. Concrete, not theoretical.
+8. **Preserve the shipped contract fields** (§11 F-C1.7/2.1): `velocity_10h`,
+   `sentiment_swing_10h` (ONE product sentiment — nlp, never a competing GDELT tone;
+   §11 F-C4.10), `trend`, `anchor_topics` (internal atlas slugs), `subthreads`,
+   `related_threads`, `quality{lex_pct,...}` bands, the `investigative_score` inputs,
+   `retrieval_lane`/`match_basis` (member_centroid/topic_description/signal_headline).
+9. **Recall + taxonomy are the coverage/precision levers; roles ENRICH.** Don't mistake
+   role-work for the precision result.
+10. **Scope discipline (anti-goal).** R3 = reconciliation of existing capability, no
+    new user surface until telemetry (master-consolidation §4). Frontend hierarchy
+    rendering stays deferred (§10) — data model first.
 
 ---
 
-## 7. A/B + acceptance (the cutover gate — same discipline as F3/F4)
-
-Extend `engine_ab_report.py`. Cutover (R3.2/F4) flips ONLY when, on the fixed gold set:
-- unified-v2 ≥ v1 on coherence, evidence-purity, recall; no worse on black-hole/noise (F3 gate, already PASS);
-- **+ R3.1 category typing raises topical precision above the ~40–52% baseline on the κ-0.739 held-out split** (the new gate — the taxonomy lever, measured);
-- serving parity holds where it must (the F0.3 parity harness) EXCEPT the intended change (one population, category attribute);
-- honesty invariants hold (no OUT_OF_SCOPE force-fit; verified=false roles never in `gated_signal_count`).
-
-Each role (movement, attention) is independently flag-gated + A/B-measured
-(`ATLAS_ENGINE_TOPIC_MOVEMENT`, `ATLAS_ENGINE_ATTENTION`), isolated `engine_version`.
-
----
-
-## 8. Paper impact (the backing — written, not just referenced)
-
-- **Paper 1** — R3.2/F4 delivers the measured SUCCESSOR to the 41.6% number on the
-  served unified engine; R3.1 is the "does typing move the 40–52% taxonomy ceiling"
-  result (the dominant lever F3.2b named). The unification is reported as a
-  5-pipeline reconciliation (3 done + attention/movement measured).
-- **Paper 4** — the 3-level hierarchy (category→event→story) IS decision 3
-  (hierarchical threads) delivered; typed membership + the differentiated 5
-  relationship types.
-- **Paper 8** — recall (R1/R2) + the movement/attention roles extend open-set
-  discovery to multi-modal (events + attention as modalities); coverage curve served.
-- **Paper 3** — anomaly→movement + attention-as-lens (not ranking) = the
-  volume≠importance principle, transferred.
-- **Paper 7** — press + forum + events + attention in ONE topic view = the analyst
-  surface; the category attribute makes the badge honest.
+## 5. Reconciliation of tensions (so nothing regresses)
+- **EVENT is two axes** (geographic umbrella ‖ narrative subthread) — R3.3 does the
+  first; the second is named-unbuilt. Do not claim decision 3 done.
+- **umbrella (R2, on dynamic_topics) vs unified-v2** → R3.3 folds it + stable id BEFORE F4.
+- **three artifacts → one** (atlas=attribute+filter, unified-v2=population, topic_members=membership).
+- **serving seam** — the whole shipped contract (ranking/counts/context/person) carries forward (R3.2).
+- **freshness** — construction stays nightly (3-speed cadence deferred, §10) BUT category (R3.1) + movement (R3.4a) run on the 30-min cron, so the badge/movement are fresh even if FORMATION is nightly (resolves the decision-5 temporal-asymmetry, §11 F-C4.2).
+- **taxonomy is the precision lever, not the engine** (F3.2b): R3.1 moves precision; R3.2 buys cleaner topics; measured separately.
+- **three related-computations → one** (contract/siblings/tm2, §11 F-C5.1).
+- **three movement providers** — declare `topic_movement` precedence vs changed_10h vs Kalman (§11 F-C4.8).
 
 ---
 
-## 9. Decisions (need Pedro) + my defaults
+## 6. Phases (heavy = off-peak)
+- **R3.0 — schema (daytime-safe).** role CHECK += `attention`; `member_kind`/
+  `member_ref` (nullable `signal_id`); `topic_movement`; `category`/`category_confidence`
+  + nullable `evidence_role` on the topic/member model; `parent_id`/`is_umbrella`
+  already exist (R2). Reversible.
+- **R3.1 — category typing + #204 wiring (30-min cron).** The precision lever.
+- **R3.4a — anomaly→movement (30-min cron, pure-SQL).** Ships early; cheap; fresh.
+- **R3.7 — B1 retirement (pure-SQL).** Cheap; keeps the population honest.
+- **R3.3 — umbrella-on-unified + stable id + category-distribution (off-peak).**
+- **R3.2 / F4 — cutover to one population (off-peak, gated).** Only after R3.1 +
+  R3.3 + the §7 gate + the serving-seam carry-forward verified.
+- **R3.4b — event-movement (#232, off-peak).** The Sudan answer.
+- **R3.5 — attention (trends) + gap-box (off-peak).**
+- **R3.6 / R3.8 — one shape, lanes differentiate, forum_sentiment + evidence-role projection.**
 
-- **E-R3-a — category typing method.** *Default:* semantic (centroid vs candidate-v2
-  category prototypes) with LLM only for low-confidence; cheap, local, off-peak.
-- **E-R3-b — atlas after collapse.** *Default:* keep atlas as the category
-  vocabulary + a category FILTER view; remove it from the served story list. *Alt:*
-  keep a few genuinely-broad atlas "domain" rows as pinned category headers.
-- **E-R3-c — cutover boldness.** *Default:* flip serving to unified-v2 ONLY after
-  R3.1 (typing) + R3.3 (umbrella folded) + the §7 gold gate — not before. The three
-  cheap/safe pieces (typing, movement, umbrella-fold) land first; the flip is last.
-- **E-R3-d — member-ref schema (the hot PK).** *Default:* extend `topic_members`
-  (member_kind/member_ref, nullable signal_id) — one DDL serves both event-movement
-  (#232) and attention; on-thesis "one typed table." Reversible, off-peak.
-- **E-R3-e — scope of R3 vs a follow-up.** *Default:* R3 = R3.0–R3.4 (schema,
-  typing, cutover, anomaly-movement, event-movement); R3.5 attention + R3.6 id-unify
-  can be a fast follow if R3 gets large. Confirm.
+Ordering: schema unblocks all; the cheap fresh wins (typing precision, movement,
+retirement) before the risky cutover; cutover only after the umbrella is folded +
+the seam carries; roles enrich the already-unified surface last.
+
+---
+
+## 7. A/B + acceptance (the cutover gate — extended)
+Extend `engine_ab_report.py`. F4/R3.2 flips ONLY when, on the fixed gold set:
+- unified-v2 ≥ v1 on coherence, evidence-purity, recall; no worse on black-hole/noise (F3, PASS);
+- **R3.1 category typing raises topical precision on the CRISIS-ONLY held-out split** (with Wilson/bootstrap CI + anchoring control), toward the 90% target;
+- **cross-source-binding** metric held (does a topic hold press+forum about one event — the unification payoff, §11 F-A4.10);
+- **ranking-ORDER parity** (not just membership) or an explicit recalibration of `rank_threads`;
+- **count-semantics #214 fields parity-locked**;
+- **≥1 EXTERNAL baseline** (BERTopic / flat-embedding / TDT) — Paper 1 AND Paper 8's validation plan REQUIRE it; the internal v1-vs-v2 A/B alone does not satisfy the bar (§11 F-D-M5-10);
+- **dynamism curve** (births/deaths/day, median active-age, promotion latency) served + measured (Paper 8 sub-claim, §11 F-D-M5-5);
+- honesty invariants hold (no OUT_OF_SCOPE force-fit or suppression; verified=false roles never in `gated_signal_count`).
+Each role (movement/attention/typing) independently flag-gated + isolated `engine_version`.
+
+---
+
+## 8. Paper impact + PAPER-COHERENCE fixes (a prerequisite, not an afterthought)
+R3 delivers paper results (P1 successor-to-41.6% + the taxonomy-precision experiment;
+P4 hierarchy + typed membership; P8 recall + multimodal + dynamism; P3 volume≠importance
+via movement/attention-as-lens; P7 one topic view). **But the deep read found the paper
+canon is INCOHERENT and R3.2 supersedes its benchmark frame (§11 F-D-I4-*). Before
+R3's headline claim is defensible, a paper-track pass must:**
+1. **Reconcile FOUR un-reconciled Atlas-precision numbers** (41.6% N660/3-vendor · 50.79% N189/6-model · 59.02% N61 · gate-90%) + two LLM (78.6/95.08) into ONE canonical regime; footnote the rest. R3.2's "successor to 41.6%" is ambiguous until this is done.
+2. **Re-frame Paper 1's sampling universe:** the 30-atlas_topic × 4-bucket benchmark measures the CATEGORY layer, not the 418-story population R3.2 serves.
+3. **Update P6/master-plan** frozen-lifecycle claims to past-tense (fixed) + append the F0–F4 / R0–R3 / candidate-v2 rows to the stale (2026-06-26) cross-ref index.
+4. **Schedule the required-but-unbuilt experiments** R3 depends on: `gdelt_hint_ablation.py` (M5-1), crisis-only κ (M5-2), temporal hold-out week (M5-3), external baseline (M5-10), per-component heat ablation (M5-6), CIs+anchoring (M5-8).
+
+---
+
+## 9. Decisions (need Pedro) + defaults
+- **E-R3-a — typing method.** Semantic-prototype (reuse research_semantic) + LLM
+  low-conf; EVALUATE Path B encoder (pre-designed, 85–90% gate) before choosing.
+- **E-R3-b — atlas after collapse.** Category vocabulary + filter view; remove from the story list. Keep `anchor_topics` populated internally.
+- **E-R3-c — cutover boldness.** Flip ONLY after R3.1 + R3.3 + serving-seam carry-forward + the §7 gold gate. Cheap/safe (typing, movement, retirement, umbrella-fold) first; flip last.
+- **E-R3-d — member-ref hot PK.** Extend `topic_members` (member_kind/member_ref + nullable evidence_role) — one DDL for event-movement + attention + the rhetorical role layer.
+- **E-R3-e — narrative-subthread axis.** Confirm: is the semantic sub-thread decomposition (decision 3's real content) IN R3 or a fast-follow? v1 wrongly claimed it delivered.
+- **E-R3-f — movement provider precedence.** `topic_movement` supersedes vs feeds Kalman #219 — pick one authoritative velocity provider.
+- **E-R3-g — R3 scope.** R3.0/1/3/4a/7/2 (schema, typing, umbrella-fold, movement, retirement, cutover) as core; R3.4b/5/6/8 (event-movement, attention, one-shape, evidence-role) as the immediate follow.
 
 ## 10. Deferred (explicitly NOT R3)
-- Causal cross-vocabulary linking (unified-engine §14 — still out).
-- Wiki attention (thin, #104).
-- The hourly/on-read umbrella + the assignment-30min "ticker" (the 3-speed cadence
-  upgrade; R3 keeps the nightly cadence).
-- Frontend: rendering the category→event→story hierarchy visibly (umbrella
-  expand/collapse, category chips) — a UI track once R3's data model lands.
+Causal cross-vocab linking (unified §14); wiki attention (#104); the hourly/on-read
+umbrella + 30-min assignment "ticker" 3-speed cadence UPGRADE (R3 keeps nightly
+FORMATION, but note R3.1/R3.4a already deliver 30-min freshness for category+movement);
+the typed RELATION graph (1c); the rhetorical evidence-role CLASSIFIER (Paper 1 Phase
+4 — R3 only shapes the schema for it); frontend hierarchy rendering (umbrella
+expand/collapse, category chips) — data model first.
+
+---
+
+## 11. Deep-review reconciliation ledger (4-agent read of ~20 specs + 9 papers, 2026-07-01)
+Every material finding + how this v2 resolves it. F-A = engine agent, F-B = surface
+agent, F-C = thread/research agent, F-D = paper agent.
+
+**Framing (biggest):**
+- **F-C4.1** EVENT conflated geographic (umbrella) vs narrative (decision-3 subthread) → §1a splits them; decision 3 NOT claimed done.
+- **F-A4.1** 3 levels ⊂ canon object model → §1 = spine + lenses (1b) + relation layer (1c).
+- **F-A3.15 / voice** subject≠origin≠language → §1b keeps subject-country + voice lens separate.
+
+**Category typing (R3.1):**
+- **F-D** 32 + reject POLICY, not 33; the LIVE gate is binary reject, not typing → §2 + §3.1 corrected.
+- **F-C4.2** nightly typing = temporal badge asymmetry → §3.1 runs on 30-min cron.
+- **F-C4.6 / F-C3-dec4** OUT_OF_SCOPE mis-serves coherent non-crisis + decision-4 re-label → §3.1 OUT_OF_SCOPE ≠ suppressed + fold re-label.
+- **F-A1.12** Path B encoder ignored → §3.1 / E-R3-a evaluate it.
+- **F-D-M5-2 / bucket2-3** crisis-only κ + 90% target → §3.1 + §7.
+
+**Serving seam (R3.2 — the dominant risk cluster):**
+- **F-B4.5 / F-C4.3** rank_threads + editorial-lane + headline_diversity + weight recalibration → §3.2 + §7 ranking-order parity.
+- **F-A4.2 / F-B** F0.3 flag ≠ dynamic unfreeze → §3.2 both read paths converge.
+- **F-B4.4** #214 count semantics parity-lock → §3.2 + §7.
+- **F-B4.1/4.6** `/signal/{id}/context`+connections + person atlas-slug matching + id/alias map → §3.2.
+- **F-B4.10** two map engines consume thread ids → §3.2 id survivors.
+
+**Umbrella / event (R3.3):**
+- **F-A4.4** ephemeral umbrella id → §3.3 stable id NOW.
+- **F-C4.7** single inherited category wrong → §3.3 category DISTRIBUTION.
+- **F-A3.6** same-EVENT-vs-same-THEME cross-contamination invariant → §3.3.
+
+**Movement / roles:**
+- **F-A4.8 / F-C4.8** three "movement" meanings + provider precedence → §3.4 + E-R3-f.
+- **F-C5.2** reuse computeFocusRelation for binding → §3.4b.
+- **F-C4.10** single product sentiment → §4.8.
+- **F-B4.3** forum_sentiment lens unserved → §3.6.
+- **F-B4.7** gap-box off uncoupled-attention → §3.5.
+- **F-C4.4/4.9** research 11 evidence-roles + `contradiction` unserved → §3.8 (schema-ready, classifier deferred).
+
+**Omitted entirely:**
+- **F-A1.9** B1 retirement → §3.7.
+- **F-A3.13** statement_timeout blocker → §4.7.
+- **F-B4.8** local-only standalone story first-class → §1a.
+- **F-C5.1** three related-computations → §1c consolidate.
+- **F-A1.3** new-topic labeling under-specced → folded into R3.1 re-label + F3.1 step 5.
+
+**Paper coherence (F-D — a prerequisite):**
+- **F-D-I4-1** four un-reconciled precision numbers → §8.1.
+- **F-D-I4-2** 30-topic benchmark universe superseded → §8.2.
+- **F-D-I4-3** frozen-lifecycle asserted present-tense but fixed → §8.3.
+- **F-D-I4-5/M5-1** gdelt_hint_ablation.py unbuilt → §4.1 build dependency.
+- **F-D-I4-6** master-plan cross-ref index stale → §8.3.
+- **F-D-M5-10** external baseline required (P1+P8) → §7.
+- **F-D-M5-5** dynamism curve → §7.
+- **F-D-M5-8** CIs + anchoring → §3.1 + §7.
+
+**Verified accurate in v1 (no change):** the unified-engine spine (F0–F4, roles,
+A/B discipline, honesty invariants, compute discipline), the member-ref schema, the
+recall-done premise, the R2 complete-linkage@0.98 findings, the attention/movement
+role split. The spine was right; the review fixed the SEAMS, the second EVENT axis,
+the freshness/typing cadence, the omitted lifecycle, and the paper incoherence.
