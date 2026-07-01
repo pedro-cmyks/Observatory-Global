@@ -986,7 +986,9 @@ _EMERGENT_SAMPLE_SIGNALS_SQL = """
 """
 
 
-_DYNAMIC_TOPICS_SQL = """
+# Shared SELECT/FROM for the dynamic-topics list. Two WHERE tails below (global
+# top-level vs country-scoped children) share it so they can never drift.
+_DYNAMIC_TOPICS_SELECT = """
 SELECT
     dt.id,
     dt.identity_key,
@@ -996,9 +998,6 @@ SELECT
     dt.agg_n_signals,
     dt.mean_cohesion,
     dt.noise_rate,
-    -- current volume (#224): the latest member cluster's kept-signal count.
-    -- Lifetime agg_n_signals accumulates forever and let stale identities
-    -- dominate the list by construction.
     COALESCE((
         -- current volume = kept-signal count at the topic's LATEST snapshot. SUM
         -- (not LIMIT 1) so an R2 umbrella (N child clusters at one snapshot) reflects
@@ -1032,15 +1031,36 @@ SELECT
 FROM dynamic_topics dt
 LEFT JOIN dynamic_topic_members dtm ON dtm.dynamic_topic_id = dt.id
 LEFT JOIN emergent_clusters ec ON ec.id = dtm.emergent_cluster_id
-WHERE dt.state = 'active'
-  AND dt.parent_id IS NULL   -- R2: global list = top-level (umbrellas + singletons);
-                             -- childed dups (same event, other countries) hide under
-                             -- their umbrella + surface on drill / country view.
-  AND dt.last_seen > NOW() - ($1::int * INTERVAL '1 hour')
+"""
+
+_DYNAMIC_TOPICS_TAIL = """
 GROUP BY dt.id
 ORDER BY recent_n_signals DESC, dt.last_seen DESC
 LIMIT $2
 """
+
+# Global list = top-level (umbrellas + singletons); childed dups hide under their
+# umbrella and surface on drill / country view.
+_DYNAMIC_TOPICS_SQL = _DYNAMIC_TOPICS_SELECT + """
+WHERE dt.state = 'active'
+  AND dt.parent_id IS NULL
+  AND dt.last_seen > NOW() - ($1::int * INTERVAL '1 hour')
+""" + _DYNAMIC_TOPICS_TAIL
+
+# Country view = the per-country CHILDREN, scoped by the PRIMARY country of a member
+# cluster ($3) — the R1 scoped topics for that country (e.g. "Venezuela Earthquake
+# Death Toll" for VE), not the global atlas-generic ones. Umbrellas are global →
+# excluded; children are NOT parent-filtered (a country wants its own version).
+_DYNAMIC_TOPICS_COUNTRY_SQL = _DYNAMIC_TOPICS_SELECT + """
+WHERE dt.state = 'active'
+  AND dt.is_umbrella = false
+  AND EXISTS (
+      SELECT 1 FROM dynamic_topic_members dtmc
+      JOIN emergent_clusters ecc ON ecc.id = dtmc.emergent_cluster_id
+      WHERE dtmc.dynamic_topic_id = dt.id AND ecc.top_country_codes[1] = $3
+  )
+  AND dt.last_seen > NOW() - ($1::int * INTERVAL '1 hour')
+""" + _DYNAMIC_TOPICS_TAIL
 
 
 _DYNAMIC_TOPIC_DETAIL_SQL = """
@@ -1182,6 +1202,7 @@ async def _fetch_dynamic_threads_with_conn(
     *,
     hours: int,
     limit: int,
+    country_code: str | None = None,
 ) -> list[dict[str, Any]]:
     has_topics = await conn.fetchval(
         "SELECT to_regclass('dynamic_topics') IS NOT NULL"
@@ -1195,7 +1216,13 @@ async def _fetch_dynamic_threads_with_conn(
     # row over the full active set; cold it lands ~7-9s and an 8s cap intermittently
     # degraded it to atlas-only (dropping the R2 umbrellas). Redis caches the result
     # so the cold hit is once per window. (Perf follow-up: fold the array subqueries.)
-    topic_rows = await conn.fetch(_DYNAMIC_TOPICS_SQL, hours, limit, timeout=15)
+    if country_code:
+        # country view = R1 scoped CHILDREN whose primary country is country_code
+        topic_rows = await conn.fetch(
+            _DYNAMIC_TOPICS_COUNTRY_SQL, hours, limit, country_code.upper(), timeout=15
+        )
+    else:
+        topic_rows = await conn.fetch(_DYNAMIC_TOPICS_SQL, hours, limit, timeout=15)
     threads: list[dict[str, Any]] = []
     for topic in topic_rows:
         sample_ids = list(topic["sample_signal_ids"] or [])
@@ -1771,14 +1798,21 @@ async def fetch_threads(
     analog yet. Emergent threads have their own detail dispatch via the
     `emergent-cluster-<id>` thread_id prefix.
     """
-    is_atlas_filtered = bool(topic_slug or country_codes)
+    # Dynamic topics apply for the GLOBAL list and for a SINGLE-country view (the R1
+    # scoped children for that country — "Venezuela Earthquake" for VE, not the atlas
+    # generic "Armed conflict in Venezuela"). topic_slug + multi-country stay atlas-only
+    # (no dynamic analog for an atlas slug; multi-country isn't a scoped partition).
+    single_country = (
+        country_codes[0] if (country_codes and len(country_codes) == 1) else None
+    )
+    atlas_only = bool(topic_slug) or (bool(country_codes) and single_country is None)
 
     async def _merged(active_conn: Any) -> list[dict[str, Any]]:
         dynamic: list[dict[str, Any]] = []
-        if not is_atlas_filtered:
+        if not atlas_only:
             try:
                 dynamic = await _fetch_dynamic_threads_with_conn(
-                    active_conn, hours=hours, limit=limit,
+                    active_conn, hours=hours, limit=limit, country_code=single_country,
                 )
             except Exception as exc:
                 logger.warning("dynamic topics degraded: %s", exc)
@@ -1790,7 +1824,7 @@ async def fetch_threads(
             topic_slug=topic_slug,
             country_codes=country_codes,
         )
-        if is_atlas_filtered:
+        if atlas_only:
             return atlas
         if dynamic:
             # Unified ranking (Pedro, 2026-06-24): the living/aggregate split was
@@ -1814,6 +1848,8 @@ async def fetch_threads(
             ranked = rank_threads(dynamic + atlas_extra)
             return dedupe_same_event_threads(ranked)[:limit]
         else:
+            if single_country is not None:
+                return atlas  # country view with no scoped topics → atlas only
             try:
                 emergent = await _fetch_emergent_threads_with_conn(
                     active_conn, hours=hours, limit=limit,
