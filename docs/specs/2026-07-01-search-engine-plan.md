@@ -22,14 +22,15 @@ recall.
   via member top_country_codes, umbrellas included. Frontend: "Live Threads"
   section FIRST in the dropdown → `onThemeSelect('dynamic-topic-<id>')` (the
   existing contract). Cache key v8→v9.
-- **P2 — country-scoped search (the Burkina Faso case). (a)+(c-coverage) SHIPPED 2026-07-01** (`44b7580e`+`4116f038`): +129 country aliases (full UN coverage en+es), pure-country queries surface the country's PRIMARY-country live threads inline (compound queries keep the looser ANY scope), alias display-name wins over bare-code DB entries. Prod: 'burkina faso' → (BF, Burkina Faso) + 'Burkina Faso Cuts Ties With France'. REMAINING (b): (a) A country-name
-  query returns the country entry PLUS its top live threads inline (one hop:
-  "what's happening in X" → X's stories, not just X's brief). (b) Search
-  WITHIN a focused country: when FocusContext has a country, the SearchBar
-  scopes live_threads/signals to it and labels the scope ("in Burkina Faso ✕").
-  (c) **Measured P1 finding: `match_country` does NOT recognize "burkina
-  faso"** — Pedro's literal example gets threads+signals but no country entry;
-  the alias table needs full-coverage (all ~200 countries + es/fr forms).
+- **P2 — country-scoped search (the Burkina Faso case). MOSTLY SHIPPED
+  2026-07-01** (`44b7580e`+`4116f038`): +129 country aliases (full UN coverage,
+  en + principal es forms — the base ~70 missed "burkina faso", Pedro's literal
+  example); pure-country queries surface the country's live threads inline,
+  scoped to PRIMARY country (compound queries keep the looser ANY scope);
+  alias display-name wins over bare-code DB entries. Prod: 'burkina faso' →
+  (BF, Burkina Faso) + 'Burkina Faso Cuts Ties With France'.
+  **REMAINING:** search WITHIN a focused country — when FocusContext has a
+  country, the SearchBar passes it and labels the scope ("in Burkina Faso ✕").
 - **P3 — semantic on-submit.** Lexical misses ≠ no answer: on Enter with zero
   thread hits, embed the query (existing embed service, ~0.5s warm) → cosine
   vs active topic centroids → serve above-threshold as `semantic_threads`
