@@ -64,6 +64,17 @@ else
   echo "[scoped-snapshot] student model missing ($STUDENT_JSON) — skip projection" >&2
 fi
 
+# Step 2.5: R3.1 — category typing (anchored-emergent + crisis-relevance lens) via
+# DeepSeek, then emergent super-categories + open non-crisis domains. BEFORE the umbrella
+# build so umbrellas inherit category/crisis_relevant. DeepSeek = cheap API, off-peak.
+cd "$ROOT_DIR"
+$TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.compute_category_typing --deepseek --write \
+  || echo "[scoped-snapshot] category typing failed (non-fatal)" >&2
+$TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.label_emergent_categories --write --threshold 0.95 \
+  || echo "[scoped-snapshot] emergent labeling failed (non-fatal)" >&2
+$TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.type_noncrisis_domains --write \
+  || echo "[scoped-snapshot] non-crisis domains failed (non-fatal)" >&2
+
 # Step 3: R2 — rebuild the umbrella hierarchy (centroid-of-centroids) over the fresh
 # active set. Cheap (~hundreds of centroids, seconds). Collapses same-EVENT
 # cross-country dups into parent umbrellas so the global list stays de-duped + gives
