@@ -1,0 +1,25 @@
+{
+  "n": 200,
+  "kendall_tau": -0.198,
+  "top8_composite": [
+    "GT",
+    "CR",
+    "CI",
+    "HN",
+    "MZ",
+    "SI",
+    "TT",
+    "ET"
+  ],
+  "top8_volume": [
+    "GB",
+    "CN",
+    "IN",
+    "RU",
+    "DE",
+    "FR",
+    "TR",
+    "MX"
+  ],
+  "overlap": 0
+}
