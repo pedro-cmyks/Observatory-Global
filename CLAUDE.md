@@ -40,6 +40,27 @@ evolution-graph-as-engine-truth; P4 R-pointer. Umbrellas are EPHEMERAL (rebuilt 
 pass, ids change) — drill by id works within a fetch; stable-umbrella-id is a follow-up.
 Perf follow-up: the top-level query is ~7s cold (array subqueries; Redis-cached).
 
+**2026-07-01 (PM) — R2 umbrella SHIPPED + R3 unification spec CLOSED+VALIDATED + R3
+build started.** R2 (event level) LIVE on Fly (`build_umbrella_topics.py`, complete-
+linkage @0.98, 26 umbrellas; global dedup + country-view serving R1-specifics). **R3 =
+the unification** (`docs/specs/2026-07-01-atlas-engine-r3-unification.md`, **CLOSED +
+VALIDATED** after a 4-agent deep read of ~20 specs + 9 papers): kills the atlas‖dynamic
+split → ONE story population, a SPINE category→event→story + orthogonal LENSES
+(entity/geo/source, already built) + a deferred typed-RELATION layer. Pedro's challenge
+fixed the taxonomy: **ANCHORED-EMERGENT categories** — the crisis-32 (#204) are SEED
+ANCHORS + an editorial lens, NOT a fixed target; the set GROWS (resolves the 40-52%
+precision ceiling + open-set consistency). EVENT = TWO axes (geographic umbrella ‖
+narrative subthread; decision 3 NOT delivered by the umbrella). **Build STARTED:**
+R3.0 schema (mig 059: member-ref cols + `attention` role + `topic_movement` +
+category cols); R3.7 retirement (392→348, swept the R1-bootstrap over-promotion,
+retention model live); **R3.1 typing** (`compute_category_typing.py` — DeepSeek-
+validated: cosine FAILS, DeepSeek typed **348/348 = 182 crisis + 166 non_crisis**
+honest-reject). Remaining = engineering w/ resolved decisions (§9): R3.4a movement,
+R3.3 umbrella-fold+stable-id, R3.2/F4 cutover (serving-seam carry-forward + gold gate),
+roles R3.4b/5/6/8, narrative-subthread axis, PR3 paper track (`docs/research/atlas-
+paper/2026-07-01-paper-staleness-ledger.md` — 4 un-reconciled precision numbers,
+`gdelt_hint_ablation.py` unbuilt, missing external baseline). Commits 67f4484→6edb99f.
+
 Last updated: 2026-06-30. **TRACK CONSOLIDATION — COMPLETE (read this FIRST):**
 the two parallel chats (engine/taxonomy ‖ frontend/L2) have MERGED into ONE living
 track — the engine handoff was absorbed 2026-06-30, so this is now the SINGLE

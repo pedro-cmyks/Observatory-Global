@@ -529,7 +529,12 @@ method) was proven with a live PoC before committing to it at scale.
     Heat-health, Cepeda→Election-Legitimacy; Las Vegas Travel / World-Cup / class-action
     → honest non_crisis reject). This VALIDATES the anchored-emergent design AND fixes
     E-R3-a to DeepSeek-primary (Path B = future $0 distillation of its labels).
-  - Full write over all 348 active topics running (DeepSeek, cheap API, not heavy M1).
+  - Full write DONE: **348/348 typed — 182 crisis (seed-anchored) + 166 non_crisis
+    (honest reject, not suppressed)**; top classes Armed-Conflict 57, Earthquake 17,
+    Gang-control 17, Constitutional-crisis 14. Every story now carries a category, like
+    atlas carried `parent_domain` — the badge asymmetry fixed AT THE DATA LEVEL
+    (serving the badge = R3.6). The emergent super-category label for the 166 non_crisis
+    is the off-peak clustering follow.
 
 **What remains is engineering with resolved decisions** (no open design questions):
 R3.4a movement (gated on membership fullness pre-F4), R3.3 umbrella-fold + stable id,
