@@ -137,6 +137,12 @@ export function OnboardingCoachmark({ runId = 0, onOpenBrief, onOpenWorkspace, e
     const [step, setStep] = useState(0)
     const [visible, setVisible] = useState(() => {
         try {
+            // #244: an intent-carrying entry (landing story card / brief deep
+            // link opened a specific theme/country) must NOT be covered by the
+            // tour — the user came for a story, show it. Deferred, not marked
+            // seen: the tour still fires on their next plain visit.
+            const params = new URLSearchParams(window.location.search)
+            if (params.get('theme') || params.get('country') || params.get('attention')) return false
             return !localStorage.getItem(STORAGE_KEY)
         } catch {
             return false

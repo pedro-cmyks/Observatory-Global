@@ -160,19 +160,19 @@ export function Landing() {
                     )}
                     {lead && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <button onClick={() => navigate('/app')} className="lp-lead-card text-left lg:col-span-2 bg-bg-surface border border-border-subtle rounded-xl p-8 hover:border-primary/50 transition-colors">
+                            <button onClick={() => navigate(`/app?theme=${encodeURIComponent(lead.id)}&entry=landing`)} className="lp-lead-card text-left lg:col-span-2 bg-bg-surface border border-border-subtle rounded-xl p-8 hover:border-primary/50 transition-colors">
                                 <span className={`lp-trend lp-trend--${lead.trend} font-technical-label uppercase tracking-wider`}>{TREND_LABEL[lead.trend] ?? lead.trend}</span>
                                 <h3 className="font-headline-md text-text-primary text-2xl md:text-3xl mt-3 leading-snug">{lead.label}</h3>
                                 <p className="font-body-main text-text-secondary mt-3 tabular-nums">Across {lead.countries} {lead.countries === 1 ? 'country' : 'countries'} — open the thread to see who's covering it and how.</p>
                             </button>
                             <div className="flex flex-col gap-3">
                                 {rest.map(m => (
-                                    <button key={m.id} onClick={() => navigate('/app')} className="text-left bg-bg-surface/60 border border-border-subtle rounded-lg px-5 py-4 hover:border-primary/40 transition-colors">
+                                    <button key={m.id} onClick={() => navigate(`/app?theme=${encodeURIComponent(m.id)}&entry=landing`)} className="text-left bg-bg-surface/60 border border-border-subtle rounded-lg px-5 py-4 hover:border-primary/40 transition-colors">
                                         <div className="flex items-center justify-between gap-3">
                                             <span className="font-body-strong text-text-primary text-sm leading-snug">{m.label}</span>
                                             <span className={`lp-trend lp-trend--${m.trend} font-technical-label uppercase shrink-0`}>{TREND_LABEL[m.trend] ?? m.trend}</span>
                                         </div>
-                                        <span className="font-technical-label text-technical-label text-text-secondary tabular-nums">{m.countries} countries</span>
+                                        <span className="font-technical-label text-technical-label text-text-secondary tabular-nums">{m.countries} {m.countries === 1 ? 'country' : 'countries'}</span>
                                     </button>
                                 ))}
                             </div>

@@ -40,9 +40,25 @@ _LANE_RANK_MULTIPLIER = {
 }
 
 
+# #246 (2026-07-01): the label-keyword lane missed "Hannah St Hotel Review"
+# (#3-4 global) while the served R3.1 category — 'Health & Lifestyle' — knew.
+# The damp now consumes the thread's OWN category first: crisis_relevant=False
+# AND a lifestyle-family category → damp; otherwise fall back to label lanes.
+# Conservative token set: business/politics/obituary emergent domains are NOT
+# damped (news); crisis_relevant None (untyped) never damps by category.
+_NON_NEWS_CATEGORY_TOKENS = (
+    "lifestyle", "sport", "entertainment", "travel", "tourism", "cuisine",
+    "food", "celebrit", "fashion", "music", "gaming", "hotel", "recipe",
+)
+
+
 def lane_rank_multiplier(thread: dict) -> float:
-    """Damp factor in (0, 1] from the thread label's editorial lane. Label-only
-    (threads don't carry member themes here) — a v1 the keyword sets can grow."""
+    """Damp factor in (0, 1] — the served category (R3.1) first, then the
+    label's editorial lane as fallback (a v1 the keyword sets can grow)."""
+    if thread.get("crisis_relevant") is False:
+        cat = str(thread.get("parent_domain") or thread.get("category") or "").lower()
+        if cat and any(tok in cat for tok in _NON_NEWS_CATEGORY_TOKENS):
+            return _LANE_RANK_MULTIPLIER["lifestyle"]
     lane = classify_stream_lane([], str(thread.get("label") or ""))
     return _LANE_RANK_MULTIPLIER.get(lane, 1.0)
 
