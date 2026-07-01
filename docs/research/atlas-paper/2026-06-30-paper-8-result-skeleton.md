@@ -186,7 +186,25 @@ the architecture, and it is the dynamism curve's mechanism:
   SERVING (freshness) while keeping in the TABLE (history + resurrection)**. That
   separation, not a longer/shorter timer, is the dynamism result.
 
-## Intervention 4 — coverage → LEGIBILITY: the R2 umbrella (centroid-of-centroids, next)
+## Intervention 4 — coverage → LEGIBILITY: the R2 umbrella (SHIPPED + SERVED 2026-07-01)
+**RESULT:** `build_umbrella_topics.py` clusters the active topic centroids into parent
+umbrellas. Method finding: **single-link union-find CHAINS** (transitively merged
+World-Cup matches + heatwaves + unrelated topics into garbage megagroups) → greedy
+**COMPLETE-linkage** (a group forms only if ALL cross-pairs ≥ threshold) is the
+same-EVENT-vs-same-THEME guard, in the algorithm not the threshold. Threshold **0.98,
+not 0.95** — some short-headline centroids are diffuse (generic/roundup topics sit near
+many things), so the same-event cut is tighter than expected (0.96 still leaked
+"Football Transfer News" ← Sudan Conflict). Output: **26 umbrellas over 55 children**
+(Venezuela Earthquake ×2, France Heatwave ×2, Egypt World Cup ×4). Serving is LIVE on
+Fly: global `/threads` = top-level (umbrellas + singletons) — verified **"dup labels
+NONE", 6 umbrellas in the top-40**; the country view merges the R1 scoped children with
+atlas per country. So the legibility before/after is served: the cross-country
+duplication R1 introduced is collapsed WITHOUT losing a child (every child reachable via
+drill/country). Ranking fix worth noting for the paper: an umbrella's "current volume"
+is the SUM of its child clusters at the latest snapshot (a single-cluster LIMIT-1 buried
+umbrellas below the fold) — the aggregate-of-aggregates must aggregate at serving too.
+
+### (original plan, for reference)
 R1 raises recall but leaves two legibility gaps, both to be measured as R2's
 before/after: (a) **cross-country duplication** — a global story (e.g. France
 heatwave) forms one scoped cluster per country, correct for country-scoped

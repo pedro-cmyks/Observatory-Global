@@ -25,15 +25,20 @@ Italian "Attentato a Ranucci", Sydney). Key finding: the promotion gate
 REPLACES the global `emergent-snapshot` — armed, first autonomous fire tonight.
 **Retention/resurrection = the design (Pedro's ask, already built):** never deletes;
 retire = serving-hidden state; a retired topic resurrects on centroid match (same
-`identity_key`, history intact). **R2 = NEXT**
-(`docs/specs/2026-07-01-atlas-engine-r2-umbrella-hierarchy.md`, DRAFT): umbrella
-hierarchy (centroid-of-centroids) collapses cross-country dups (R2.1 measured: 984
-pairs ≥0.97, max 0.999) + parent/child threads; 4 decisions pending Pedro. Commits
-`66b69e4`+`6f69457`+CLAUDE (NOT pushed). Sync note: R1 chain re-synced to
-AtlasLocalWorker (`run_scoped_snapshot.py`/`project_dynamic_topics.py`/runner). Papers:
-P8 Interventions 3/4 + retention; P7 evolution-graph-as-engine-truth; P4 R-pointer.
-Follow-up: country-view `?country_code=` still serves atlas-generic labels, not R1
-specifics.
+`identity_key`, history intact). **R2 SHIPPED + SERVED (LIVE on Fly, 2026-07-01)**
+(`docs/specs/2026-07-01-atlas-engine-r2-umbrella-hierarchy.md`): umbrella hierarchy
+(centroid-of-centroids) — `build_umbrella_topics.py` COMPLETE-linkage @0.98 (single-link
+CHAINS; 0.95 leaks — both measured) → **26 umbrellas over 55 children**; migration 058
+(`parent_id`/`is_umbrella`). Serving: global `/threads` = top-level (umbrellas +
+singletons, dups collapsed — VERIFIED "dup labels NONE", 6 umbrellas in top-40);
+recent_n = SUM at latest snapshot (so umbrellas rank); dynamic-fetch timeout 8→15s.
+**Country-view FIXED**: `?country_code=CC` now merges R1 scoped children (primary-country,
+e.g. "Venezuela Earthquake Casualties" for VE) with atlas — was atlas-generic only.
+R2.4 = umbrella build wired into the nightly cron (Step 3). **Deployed to Fly (x4),
+pushed** (`66b69e4`→`9293667`). Papers: P8 Interventions 3/4 + retention; P7
+evolution-graph-as-engine-truth; P4 R-pointer. Umbrellas are EPHEMERAL (rebuilt each
+pass, ids change) — drill by id works within a fetch; stable-umbrella-id is a follow-up.
+Perf follow-up: the top-level query is ~7s cold (array subqueries; Redis-cached).
 
 Last updated: 2026-06-30. **TRACK CONSOLIDATION — COMPLETE (read this FIRST):**
 the two parallel chats (engine/taxonomy ‖ frontend/L2) have MERGED into ONE living

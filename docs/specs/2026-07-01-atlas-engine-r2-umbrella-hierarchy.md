@@ -1,6 +1,6 @@
 # Spec — Atlas Engine R2: umbrella hierarchy (centroid-of-centroids) (#229)
 
-Date: 2026-07-01 · Author: Claude (Opus 4.8) · Status: **DRAFT for Pedro review**
+Date: 2026-07-01 · Author: Claude (Opus 4.8) · Status: **SHIPPED + SERVED (LIVE on Fly, 2026-07-01)** — defaults confirmed by Pedro ("haz todo")
 Companion: `2026-06-30-atlas-engine-recall-scoped-clustering.md` (R0/R1/R3),
 Paper 8 (`2026-06-30-paper-8-result-skeleton.md`, Interventions 3/4), Paper 4
 (`2026-05-24-living-narrative-threads.md`, decision 3 = hierarchical threads).
@@ -130,7 +130,7 @@ R2 is the cheap layer that makes serving feel live without streaming clustering:
 - **R2.3 — serve.** Serving reads top-level umbrellas globally, children on drill +
   country. A/B vs the flat R1 serving (does the global list get more legible without
   losing any story — every child still reachable).
-  **CODE READY, DEPLOY-BLOCKED (2026-07-01):** `_DYNAMIC_TOPICS_SQL` gained
+  **SHIPPED + SERVED (2026-07-01):** `_DYNAMIC_TOPICS_SQL` gained
   `AND dt.parent_id IS NULL` (global list = top-level; the flat query is unchanged
   for country/drill since umbrellas carry union members + detail is by id). The
   filter is INERT without umbrellas (all topics have parent_id NULL → all show), so
@@ -140,8 +140,12 @@ R2 is the cheap layer that makes serving feel live without streaming clustering:
   --threshold 0.98`; (3) verify prod `/threads` shows umbrellas + no dup children.
   Until (1), the umbrellas are rolled back (prod serves the clean 392-flat) so the
   undeployed old code can't show umbrella+child duplication.
-- **R2.4 — cadence.** Wire the umbrella pass into the 30min/hourly path (cheap) so
-  the hierarchy stays live between nightly R1 formations.
+- **R2.4 — cadence.** **DONE (nightly):** the umbrella build is Step 3 of
+  `run-scoped-snapshot.sh` (after project), so the hierarchy rebuilds on the fresh
+  active set each night. Hourly/on-read (between nightly formations) is the remaining
+  upgrade; umbrellas are cheap enough for it. NOTE: umbrellas are EPHEMERAL (rebuilt +
+  re-id'd each pass) — a stable umbrella identity (`umbrella:<min_child_id>` upsert) is
+  the follow-up for durable drill links.
 
 ## 6. Decisions needed (Pedro)
 - **E-R2-a schema:** parent_id self-ref (default) vs separate table.
