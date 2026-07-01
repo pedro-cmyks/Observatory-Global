@@ -46,6 +46,32 @@ drain measured LIVE: ~2.1K xlm signals/hr, 660 non-EN nlp_persons at check.
 Residual named debt (not urgent, tracked): two membership regimes (v1-compat ‖
 unified-v2) until F4; consumers must UNION (the relationship-endpoint bug class).
 
+**2026-07-01 (PM cont. — ISSUE-HYGIENE SWEEP, 42→26 open).** Pedro: audit every
+open issue (stale vs current), close or advance, in parallel. 3 Explore agents
+verified issues vs CODE (not docs); every close carries file:line/commit evidence.
+**CLOSED 17:** #240 (watchdogs + false-healthy fix), #228 (§6 items 1-4 verified,
+micro-polish noted), #178 (pub-vs-render timestamps exist), #176 (hygiene stack
+end-to-end + today's photo-credit guard), #212 (Equal Earth SHIPPED w/ toggle),
+#148 (**IMPLEMENTED this session** — Show-all-publishers toggle, `a77a822`,
+browser-verified 5→10→5), #145 (serving-layer filters), #134 (Docs use-cases),
+#180 (reliefweb path live), #164 (ADR-0004 exists+implemented), #158 (CJK batches),
+#153 (superseded→#237), #222 (superseded by R1 — the 15K cap is gone), #219
+(E-R3-f: Kalman never a serving provider), #196 (stale — vessels 200 live), #184
+(fleet superseded the ask), #157 (benchmark ran: 82.1%/87.5%). **Commented 7:**
+#154 (audits ~75%, serving-integration remains, pair w/ #217), #185 (agent misread
+CORRECTED — mining unbuilt + deprioritized by PR3-05), #221 (confidence half only),
+#140 (screenshots remain), #46 (blocked on Pedro's ACLED registration), #239
+(program not started), #243 (new blockers below). **ALSO SHIPPED:** photo-agency
+person filter `2264ecf` (`_PHOTO_CREDIT_TOKENS` in utils.py — "jonathan borba
+unsplash" /country/IT leak; 72 tests) — **⚠ NOT DEPLOYED: fly token EXPIRED**
+('missing third-party discharge'), backend deploy blocked on `fly auth login`
+(Pedro, interactive). The expiry also had embed-watchdog reporting FALSE "up"
+(fly error → empty list → healthy); fixed `171459b` (logs FLY ERROR now); embed
+service itself verified ALIVE (semantic smoke). Remaining open = genuinely-valid
+work: #233/#173 (not built), #220/#217/#221 (contracts), #161/#159 (GDELT research),
+#156 (quota), #226/#151 (markets), #235/#237/#238/#239 (programs), #166/#106/#46
+(blocked/design), #140, #236 (mobile polish), #241/#243 (ops), #204 (living).
+
 **2026-07-01 (PARALLEL-TRACKS SESSION — read FIRST; full handoff
 `docs/state/2026-07-01-parallel-tracks-session.md`).** Two explicit parallel tracks
 (Pedro: "que no se me pierda el uno o el otro"), ALL shipped + VALIDATED (69 tests,
