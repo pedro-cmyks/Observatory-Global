@@ -10,6 +10,41 @@
 > and narrows further if telemetry shows one persona dominates.) **Anti-goal:**
 > no new surface/capability until telemetry shows users reaching a value moment.
 
+**2026-07-01 (PM2 — L0→L3 DEEP REVIEW, read FIRST for product state; full doc
+`docs/specs/2026-07-01-l0-l3-deep-review.md`).** Pedro: fly re-auth (done,
+browser flow) + judge the FOUNDATION (data congruence L0→L3, design vs
+DESIGN.md, persona walkthroughs) — "que no estemos construyendo sobre algo
+malo." **VERDICT: foundation SOUND** — every traced number = real Atlas data,
+honesty labels hold, L3 workbench ledger reconciles EXACTLY; problems = seams +
+silent breaks + design debt, not rot. **4 defects found live + FIXED + DEPLOYED
+same session:** (1) map heat fill 422 on EVERY request (frontend limit=250 vs
+endpoint le=200 — the recurring "dark map"; `c9eaffac`); (2) **`country_hourly_
+v2` matview DEAD since 08:00 UTC** (refresh outgrew statement_timeout, 2m35s
+measured; brief stats//stats/geo/anomaly served 24h missing 13h, handler was a
+bare print → session timeout 600s + RESET + logger.error + manual backfill,
+raw==agg verified; `abd61cd0`); (3) `changed_10h` dynamic = LIFETIME MAX
+velocity (69/101 topics inflated movement → trend arrows + 0.35 rank term; now
+latest-snapshot, SUM for umbrellas; same commit); (4) relationship endpoint
+pinned discussion/mood to v1-compat (~0 there) → asserted "press-only" falsely
+(dt-84 had 10+10 in unified-v2; now engine-agnostic deduped — the v1‖v2 UNION
+debt paid at this consumer; verified live 10/10). Also fixed: mobile Brief 71px
+overflow (`f8b880a1`). **Persona findings → issues:** #244 landing story-click
+drops intent (no deep-link + tour stacks); #245 search never surfaces LIVE
+threads (workbench DOES find them — 49 anchors, DIRECT 0.83); #246 lifestyle
+damp ignores served category (hotel review #3-4 global; mechanism: thread_
+ranking.py keys label keywords only); #247 design program (audit computed **142
+WCAG-fail text declarations** — the "letras que se pierden" exact list; Docs
+hero = CYAN+other bg vs landing emerald; **Brief uses Georgia, never got
+Fraunces — inverted**; EntityPanel alien palette 0 vars; ≥8 label styles/~25
+badge families; token PLUMBING correct, adoption is the gap; batches A/B/C
+shippable); #248 byline-persons + entertainment-about-crisis noise classes.
+#180 REOPENED (reliefweb 2 ngo rows/7d — wired ≠ producing; morning close was
+wrong). Pipeline health: NER 2%/24h (5.2d lag — #243 urgency), embeddings 8.7%
+of fresh, trends FRESH 0.78h, gate 24.1% kept, 373 active topics 100% typed.
+Backend suite 976 passed (3 test files excluded: pre-existing broken
+`anthropic` pkg import in .venv). Landing diversity stats hardcoded (~true,
+will drift). Full sound-list + remaining minors in the review doc §2a.
+
 **2026-07-01 (PM — CONNECTION REVIEW + HYGIENE PASS, read alongside the
 parallel-tracks block).** Pedro asked for a full coherence review (specs ↔ papers ↔
 vision ↔ issues) then "work everything actionable." Review verdict: convergence
