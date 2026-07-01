@@ -1019,7 +1019,21 @@ SELECT
               SELECT MAX(snapshot_at) FROM dynamic_topic_members WHERE dynamic_topic_id = dt.id
           )
     ), 0)::int AS recent_n_signals,
-    COALESCE(MAX(ec.velocity), 0)::int AS changed_10h,
+    COALESCE((
+        -- movement = velocity at the topic's LATEST snapshot only. The old
+        -- MAX(ec.velocity) spanned ALL snapshots (a lifetime max): 69/101
+        -- multi-snapshot active topics served inflated changed_10h, feeding
+        -- the trend arrow AND the 0.35 movement term in rank_threads — the
+        -- #224 stale-looks-alive pathology (2026-07-01 L0-L3 data audit).
+        -- SUM so an R2 umbrella aggregates its children's current velocity.
+        SELECT SUM(ec5.velocity)
+        FROM dynamic_topic_members dtm5
+        JOIN emergent_clusters ec5 ON ec5.id = dtm5.emergent_cluster_id
+        WHERE dtm5.dynamic_topic_id = dt.id
+          AND dtm5.snapshot_at = (
+              SELECT MAX(snapshot_at) FROM dynamic_topic_members WHERE dynamic_topic_id = dt.id
+          )
+    ), 0)::int AS changed_10h,
     ARRAY(
         SELECT DISTINCT code
         FROM dynamic_topic_members dtm2
@@ -1084,7 +1098,21 @@ SELECT
     dt.category,            -- R3.1 open category (crisis seed OR emergent) = the badge
     dt.crisis_class,        -- (legacy) seed-32 class or 'non_crisis'
     dt.crisis_relevant,     -- R3 lens flag: is this crisis-relevant? (analyst filter)
-    COALESCE(MAX(ec.velocity), 0)::int AS changed_10h,
+    COALESCE((
+        -- movement = velocity at the topic's LATEST snapshot only. The old
+        -- MAX(ec.velocity) spanned ALL snapshots (a lifetime max): 69/101
+        -- multi-snapshot active topics served inflated changed_10h, feeding
+        -- the trend arrow AND the 0.35 movement term in rank_threads — the
+        -- #224 stale-looks-alive pathology (2026-07-01 L0-L3 data audit).
+        -- SUM so an R2 umbrella aggregates its children's current velocity.
+        SELECT SUM(ec5.velocity)
+        FROM dynamic_topic_members dtm5
+        JOIN emergent_clusters ec5 ON ec5.id = dtm5.emergent_cluster_id
+        WHERE dtm5.dynamic_topic_id = dt.id
+          AND dtm5.snapshot_at = (
+              SELECT MAX(snapshot_at) FROM dynamic_topic_members WHERE dynamic_topic_id = dt.id
+          )
+    ), 0)::int AS changed_10h,
     ARRAY(
         SELECT DISTINCT code
         FROM dynamic_topic_members dtm2
@@ -1982,13 +2010,20 @@ async def fetch_thread_detail(
 
 # ── Unified Engine F0.4 — topic relationship (spec §9.2) ─────────────────────
 _TOPIC_ROLE_COUNTS_SQL = """
-SELECT role, COUNT(*)::int AS n
+SELECT role, COUNT(DISTINCT COALESCE(signal_id::text, member_ref))::int AS n
 FROM topic_members
 WHERE topic_id = $1
   AND assigned_at >= NOW() - ($3::int * INTERVAL '1 hour')
   AND (
-        -- the signal pipeline (evidence/discussion/mood) is engine-versioned
-        (role IN ('evidence','discussion','mood') AND engine_version = $2)
+        -- evidence stays engine-versioned (serving parity with the gated counts)
+        (role = 'evidence' AND engine_version = $2)
+        -- discussion/mood: the v1-compat engine holds ~0 of these (mood is
+        -- structurally empty there) while unified-v2 carries the real social
+        -- lanes — pinning to $2 made the endpoint assert "no discussion/mood"
+        -- for topics that HAVE both (2026-07-01 L0-L3 audit). Count them
+        -- engine-agnostic, deduped by signal so a member in both engines
+        -- counts once. This is the documented v1‖v2 UNION debt, paid here.
+     OR (role IN ('discussion','mood'))
         -- movement is the EVENT layer (CAMEO movement-v1 + disaster-v1), a
         -- separate substrate keyed by member_ref, independent of the signal
         -- engine version — count every event-kind movement member

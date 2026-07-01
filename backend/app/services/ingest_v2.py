@@ -466,7 +466,17 @@ async def refresh_aggregates(pool: asyncpg.Pool):
             return
 
     async with pool.acquire() as conn:
-        await conn.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY country_hourly_v2")
+        # The refresh outgrew the DB default statement_timeout (~120s): measured
+        # 2m35s on 2026-07-01, when it silently died for 13h and every
+        # country_hourly_v2 consumer (brief stats, /stats, geo detail, anomaly
+        # baselines) served a truncated window (R3 spec §4.7 failure class).
+        # CONCURRENTLY can't run inside a transaction, so raise the timeout at
+        # session level and always reset before the conn returns to the pool.
+        await conn.execute("SET statement_timeout = '600s'")
+        try:
+            await conn.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY country_hourly_v2")
+        finally:
+            await conn.execute("RESET statement_timeout")
     _last_matview_refresh = now
 
 async def run_ingestion():
@@ -507,7 +517,9 @@ async def run_ingestion():
             await refresh_aggregates(pool)
             print("Refreshed aggregates")
         except Exception as e:
-            print(f"refresh_aggregates failed: {e}")
+            # LOUD: a silent matview death starves brief stats / /stats / geo
+            # detail / anomaly baselines for hours (2026-07-01 incident).
+            logger.error("refresh_aggregates FAILED — country_hourly_v2 going stale: %s", e)
 
         # Update theme_hourly_v2 pre-aggregation (enables fast narratives for any window).
         # nlp_signal_count + avg_nlp_sentiment let downstream readers pick transformer
