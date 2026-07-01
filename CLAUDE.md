@@ -10,6 +10,36 @@
 > and narrows further if telemetry shows one persona dominates.) **Anti-goal:**
 > no new surface/capability until telemetry shows users reaching a value moment.
 
+**2026-07-01 (PARALLEL-TRACKS SESSION — read FIRST; full handoff
+`docs/state/2026-07-01-parallel-tracks-session.md`).** Two explicit parallel tracks
+(Pedro: "que no se me pierda el uno o el otro"), ALL shipped + VALIDATED (69 tests,
+prod 4/4 200, git clean). **⚠ MULTILINGUAL NLP IS NOW LIVE ON M1** — the biggest state
+change: `ATLAS_NLP_MULTILINGUAL=on` in `/Users/pedro/AtlasLocalWorker/.env`. The
+2026-06-25 "not worth it" was WRONG (blockers = a missing `protobuf` + only trying the
+free spaCy). Now: Davlan xlm-roberta NER (82% precision, non-Latin) + wikineural for ru
+(87.5%) + XLM sentiment; `nlp_pipeline.py` routes non-en→Davlan, ru→wikineural, en→spaCy.
+**Discovery: the M1 NLP fleet had been DOWN since 06-29** (bootstrapped it — NER was
+starved). **Memory guard: burst=1** (supervisor floor `max(2)→max(1)`; 8GB M1, heavier
+multilingual workers). Production non-English `nlp_persons` now writing (`NER[xlm-v1]`).
+**Surface payoff ACCUMULATES over days** (mindful drain ~169s/cycle) — re-check
+`/country/IT` etc. show verified non-English subjects tomorrow. **REVERSIBLE:**
+`ATLAS_NLP_MULTILINGUAL=off` + restart `com.atlas.nlp-fleet`. Quality fix from live
+monitoring (`980ff1c`, deployed): `subjects.classify_subject` now checks the gazetteer
+BEFORE NER (was NER-wins → England/LaLiga→PERSON leaked; gazetteer overrides mistypes).
+**Event sources:** disaster ingest LIVE (USGS+GDACS, mig 062 `disaster_events_v2`, 250
+events, `ingest_disasters.py` 8th cycle) + geo-temporal binding (`bind_disaster_movement.py`,
+runner Step 4b, zero fan-out) — the hazards CAMEO can't represent; relationship endpoint
+movement-count bug fixed. F3 event UNION (`compute_event_movement` reads sample ∪ unified-v2,
++57% coverage). **#241 embed:** Lever 2 (recency) shipped in `embed_hot_corpus`; Lever 1
+(`--bulk-reindex` drop/rebuild) READY but OFF — Pedro reviews before enabling (drops prod
+index ~4min). **Papers: PR3 experiment backlog DONE + WRITTEN** (ledger
+`docs/research/atlas-paper/2026-07-01-paper-staleness-ledger.md`): PR3-05 theme-hint
+ablation (theme-hints are NET NOISE, 20.2%≪40.9%, removal→48.3%, REMOVE-OK), PR3-09
+external baseline (HDBSCAN-global cliffs 0/8, Atlas edge = scoping+lifecycle not raw
+coherence), PR3-10 CIs+κ0.734+crisis-only **48–54% = the successor to 41.6%** (anchoring-
+controlled), PR3-11 heat ablation (Kendall-τ vs volume −0.198, volume≠importance measured);
+folded into P1 skeleton + P3 master-plan. 16 commits `992b445`→`004a101`.
+
 **2026-07-01 — R1 SCOPED CLUSTERING SHIPPED + SERVED (#229, read FIRST for engine).**
 The recall lever landed. R1 (`backend/scripts/run_scoped_snapshot.py`) clusters
 per-country over the persisted corpus (dissolves the global HDBSCAN purity/recall
