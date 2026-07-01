@@ -120,3 +120,23 @@ on the M1 worker, monitor throughput + a spot-check of verified non-English subj
   load 177 once; 54% free with 1 worker). Reversible (`ATLAS_NLP_MULTILINGUAL=off` + restart).
   Follow-up: throughput is lower under multilingual (per-cycle model loads ~300s); model-caching
   across cycles + a bump back to burst=2 once RAM is confirmed comfortable are the optimisations.
+
+## Post-flip live monitoring (2026-07-01, task #5) — honest state
+The flip WRITES production non-English `nlp_persons`, but two findings temper the immediate payoff:
+1. **Surface payoff ACCUMULATES, not instant.** After ~30 min only ~26 non-English signals were
+   NER'd (gentle/burst=1 multilingual rate ~300s/cycle). The served `key_subjects` (e.g. prod
+   `/country/IT`) still show the OLD GDELT-unverified pool ("margo evardson unsplash", "benvenuti
+   lapresse sipa" = photo credits typed as people) — the large existing pool dominates the
+   window-aggregation until the verified NER accumulates over hours/days. The flip is correct but
+   its surface value is a slow drain, not a switch.
+2. **Live NER noise on sports / entity-dense headlines.** Spot-check showed `England`→PERSON,
+   `LaLiga`→PERSON, `il motto…`→PERSON on ⚽ football headlines — worse than the 82% general-news
+   eval, because (a) sports headlines are entity-dense/ambiguous and (b) at SERVING NER-wins-over-
+   gazetteer (`merge_entity_rows`), so a NER mistype of a known place/org is NOT corrected. News
+   headlines are fine; sports (a damped lane) is the weak spot.
+
+**Follow-ups (Track A, prioritised):** (a) at serving, prefer the gazetteer type when a NER-PERSON
+exact-matches a known place/org (fixes England→PERSON leaking as verified) — a `subjects.py`
+change; (b) the existing GDELT non-English subject noise (photo credits) is what verified NER
+replaces AS IT ACCUMULATES — re-check the surfaces in a day; (c) model-caching + burst=2 to speed
+the drain.

@@ -45,8 +45,27 @@ drops theme-hints AND applies the reject class should clear both, well above the
 - Crisis-only precision is over the same batch-03 window; no temporal hold-out yet.
 - κ is on the consensus decision, not on the (unbuilt) crisis-vs-non-crisis boundary itself.
 
-## PR3-10 status after this
-DONE: Wilson/bootstrap CIs (CI slice) + inter-annotator κ + crisis-only precision. REMAINS:
-temporal hold-out week, anchoring-effect control (blind vs hinted), `role_noise_rate` calibration.
-The two biggest unknowns — is the gold reliable, and what is the crisis-only number — are now
-answered (κ 0.734; 53.8%).
+## Anchoring control (blind vs hinted) — the crisis-only number, de-biased
+The 53.8% split showed DeepSeek the ASSIGNED category ("is this about category X?"). Re-running
+BLIND (headline only, "is this a genuine crisis or not?") tests whether the hint anchored the judgment:
+
+| framing | crisis-only precision | IN-rate |
+|---|---|---|
+| hinted (assigned category shown) | 53.8% (170/316) | 47.9% |
+| **blind (unanchored)** | **48.2% (188/390)** | 59.1% |
+
+The hint made the judge STRICTER (47.9% vs 59.1% IN) → the hinted 53.8% is **~5.6pp optimistic**.
+The de-biased, conservative crisis-only number is **≈48.2%** — still clearly above the 40.9%
+baseline (+7.3pp blind / +12.9pp hinted). The claim (crisis-only ≫ headline) holds either way;
+report the range **48–54%** with 48% as the unanchored floor.
+
+## Temporal hold-out — DATA-LIMITED (honest gap)
+Not computable on this gold: the batch-03 consensus rows carry NO timestamp, and the underlying
+signals have been PURGED from `signals_v2` (retention). A true temporal hold-out needs a FRESH
+labeled window from a different week — future work, flagged as data-limited (not a computable-now item).
+
+## PR3-10 status after this — 4 of 5 done
+DONE: Wilson/bootstrap CIs + inter-annotator κ (0.734) + crisis-only precision (48–54%, anchoring-
+controlled) + anchoring-effect control. DATA-LIMITED: temporal hold-out (needs fresh labels).
+REMAINS: `role_noise_rate` calibration. The core unknowns are answered — the gold is reliable
+(κ 0.734) and the crisis-only successor to 41.6% is **≈48% (unanchored) to 54% (hinted)**.
