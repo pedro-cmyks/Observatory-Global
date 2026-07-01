@@ -1,0 +1,28 @@
+{
+  "gold": "../docs/research/atlas-paper/phase-1-validation/labels/2026-06-02-atlas-v2-batch-03.consensus-gold.jsonl",
+  "stage1": {
+    "n_total_rows": 691,
+    "n_usable": 660,
+    "baseline_correct": 270,
+    "baseline_precision_pct": 40.9,
+    "ablated_n_assignments": 487,
+    "ablated_correct": 235,
+    "ablated_precision_pct": 48.3,
+    "theme_dependent_n": 173,
+    "theme_dependent_correct": 35,
+    "theme_dependent_notcorrect": 138,
+    "theme_dependent_precision_pct": 20.2,
+    "recall_cost_frac_of_correct_pct": 13.0
+  },
+  "stage2": {
+    "available": true,
+    "threshold": 0.78,
+    "n_theme_dependent_correct": 35,
+    "semantic_recovered": 18,
+    "semantic_recall_pct": 51.4,
+    "sim_min": 0.728,
+    "sim_median": 0.78,
+    "sim_max": 0.804
+  },
+  "verdict": "REMOVE-OK: theme-dependent is noise (20.2% < baseline 40.9%) AND semantic recovers 51.4% of the lost corrects."
+}
