@@ -1125,7 +1125,10 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
     # crisis class, killing the atlas-vs-dynamic badge asymmetry.
     crisis_class = _record_get(topic_row, "crisis_class")
     category = _record_get(topic_row, "category")
-    badge_domain = crisis_class if (crisis_class and crisis_class != "non_crisis") else None
+    # badge = crisis class if a crisis; else the emergent category (World Cup, Travel…);
+    # else None (a diverse non_crisis singleton keeps the generic "narrative thread").
+    badge_domain = (crisis_class if (crisis_class and crisis_class != "non_crisis")
+                    else category)
 
     sources: dict[str, int] = {}
     persons: dict[str, int] = {}
