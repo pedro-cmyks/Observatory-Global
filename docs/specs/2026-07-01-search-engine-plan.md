@@ -22,7 +22,7 @@ recall.
   via member top_country_codes, umbrellas included. Frontend: "Live Threads"
   section FIRST in the dropdown → `onThemeSelect('dynamic-topic-<id>')` (the
   existing contract). Cache key v8→v9.
-- **P2 — country-scoped search (the Burkina Faso case).** (a) A country-name
+- **P2 — country-scoped search (the Burkina Faso case). (a)+(c-coverage) SHIPPED 2026-07-01** (`44b7580e`+`4116f038`): +129 country aliases (full UN coverage en+es), pure-country queries surface the country's PRIMARY-country live threads inline (compound queries keep the looser ANY scope), alias display-name wins over bare-code DB entries. Prod: 'burkina faso' → (BF, Burkina Faso) + 'Burkina Faso Cuts Ties With France'. REMAINING (b): (a) A country-name
   query returns the country entry PLUS its top live threads inline (one hop:
   "what's happening in X" → X's stories, not just X's brief). (b) Search
   WITHIN a focused country: when FocusContext has a country, the SearchBar
