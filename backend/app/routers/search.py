@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 
 from fastapi import APIRouter, Query
 from app import db
@@ -389,7 +390,7 @@ async def unified_search(
     query_variants = build_query_variants(topic_query)
     normalized_query = query_variants[0] if query_variants else topic_query.lower().strip()
 
-    cache_key = f"usearch:v8:{query_lower}:{hours}:{country_filter or 'all'}"
+    cache_key = f"usearch:v9:{query_lower}:{hours}:{country_filter or 'all'}"
     if app.state.redis:
         try:
             cached = await app.state.redis.get(cache_key)
@@ -422,11 +423,68 @@ async def unified_search(
     # --- 4b. Public attention + headline matches ---
     public_attention = []
     signal_matches = []
+    live_threads = []
     fuzzy_suggestions = []
     degraded_segments = list(db_result.get("degraded_segments", []))
     try:
         async with db.pool.acquire() as conn:
             like_queries = [f"%{variant}%" for variant in query_variants]
+
+            # --- 4a-bis. LIVE THREADS (#245 / search-engine-plan P1) ---
+            # The served dynamic_topics ARE the product's processed answer; a
+            # search that can't find them sends users past Atlas's own output.
+            # Token-AND over the label (every ≥3-char token must appear), then
+            # a token-ANY fallback marked 'partial'. Optional country scope via
+            # member top_country_codes (the "Burkina Faso" case).
+            thread_tokens = [
+                f"%{t}%" for t in re.split(r"[^a-z0-9áéíóúüñ]+", topic_query.lower())
+                if len(t) >= 3
+            ][:6]
+            if thread_tokens:
+                _LIVE_THREADS_SQL = """
+                    SELECT dt.id, dt.label, dt.category, dt.crisis_relevant,
+                           dt.agg_n_signals, dt.is_umbrella
+                    FROM dynamic_topics dt
+                    WHERE dt.state = 'active'
+                      AND dt.label ILIKE {match} ($1::text[])
+                      AND ($2::text IS NULL OR EXISTS (
+                          SELECT 1 FROM dynamic_topic_members dtmc
+                          JOIN emergent_clusters ecc ON ecc.id = dtmc.emergent_cluster_id
+                          WHERE dtmc.dynamic_topic_id = dt.id
+                            AND $2 = ANY(ecc.top_country_codes)))
+                    ORDER BY dt.last_seen DESC, dt.agg_n_signals DESC
+                    LIMIT 6
+                """
+                try:
+                    thread_rows = await conn.fetch(
+                        _LIVE_THREADS_SQL.format(match="ALL"),
+                        thread_tokens, country_filter,
+                        timeout=SEARCH_MATCH_TIMEOUT_SECONDS)
+                    match_kind = "all"
+                    if not thread_rows and len(thread_tokens) > 1:
+                        thread_rows = await conn.fetch(
+                            _LIVE_THREADS_SQL.format(match="ANY"),
+                            thread_tokens, country_filter,
+                            timeout=SEARCH_MATCH_TIMEOUT_SECONDS)
+                        match_kind = "partial"
+                except Exception as exc:
+                    logger.warning("Unified search live_threads degraded for q=%r: %r", q, exc)
+                    degraded_segments.append("live_threads")
+                    thread_rows = []
+                    match_kind = "all"
+                live_threads = [
+                    {
+                        "id": f"dynamic-topic-{r['id']}",
+                        "label": r["label"],
+                        "category": r["category"],
+                        "crisis_relevant": bool(r["crisis_relevant"]),
+                        "total_signals": int(r["agg_n_signals"] or 0),
+                        "is_umbrella": bool(r["is_umbrella"]),
+                        "match": match_kind,
+                    }
+                    for r in thread_rows
+                ]
+
             wiki_days = max(1, min(7, (hours + 23) // 24))
             try:
                 wiki_rows = await conn.fetch("""
@@ -532,7 +590,8 @@ async def unified_search(
         countries = [{"code": country_match["code"], "name": country_match["name"]}, *countries]
 
     has_direct_results = (
-        any(t.get("total_signals", 0) > 0 for t in merged_themes)
+        bool(live_threads)
+        or any(t.get("total_signals", 0) > 0 for t in merged_themes)
         or any(p.get("total_signals", 0) > 0 for p in db_result.get("persons", []))
         or bool(countries)
         or bool(public_attention)
@@ -572,6 +631,7 @@ async def unified_search(
             signal_matches=signal_matches,
         ) else [],
         "region": region_match,
+        "live_threads": live_threads,
         "persons": db_result.get("persons", []),
         "countries": countries,
         "public_attention": public_attention,

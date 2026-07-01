@@ -173,11 +173,23 @@ interface FuzzySuggestionResult {
     signal_count: number
 }
 
+/** A served living thread matched by label (#245 / search-engine-plan P1). */
+interface LiveThreadResult {
+    id: string // 'dynamic-topic-<n>' — the theme-detail contract id
+    label: string
+    category: string | null
+    crisis_relevant: boolean
+    total_signals: number
+    is_umbrella: boolean
+    match: 'all' | 'partial'
+}
+
 interface SearchResult {
     query?: string
     normalized_query?: string
     query_variants?: string[]
     themes: ThemeResult[]
+    live_threads?: LiveThreadResult[]
     persons: PersonResult[]
     countries: CountryResult[]
     concepts?: ConceptResult[]
@@ -254,6 +266,13 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
         setQuery('')
         setResults(null)
         setParsedQuery({ topic: '', countryCode: null, countryDisplay: null })
+    }
+
+    const handleLiveThreadClick = (t: LiveThreadResult) => {
+        // The served dynamic-topic id IS the theme contract — same path a
+        // NarrativeThreads row takes (#245: search now reaches live threads).
+        onThemeSelect(t.id, parsedQuery.countryCode ?? undefined, parsedQuery.countryDisplay ?? undefined)
+        close()
     }
 
     const handleThemeClick = (t: ThemeResult) => {
@@ -413,6 +432,23 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                                 >
                                     {suggestion.value}
                                 </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {results?.live_threads && results.live_threads.length > 0 && (
+                        <div className="search-section">
+                            <div className="search-section-label">Live Threads</div>
+                            {results.live_threads.map(t => (
+                                <div key={t.id} className="search-item search-item--thread" onClick={() => handleLiveThreadClick(t)}>
+                                    <span className="search-item-tag thread-tag">{t.is_umbrella ? 'EVENT' : 'THREAD'}</span>
+                                    <span className="search-item-name">{t.label}</span>
+                                    <span className="search-item-meta">
+                                        {t.total_signals.toLocaleString()} signals
+                                        {t.category ? ` · ${t.category}` : ''}
+                                        {t.match === 'partial' ? ' · partial match' : ''}
+                                    </span>
+                                </div>
                             ))}
                         </div>
                     )}

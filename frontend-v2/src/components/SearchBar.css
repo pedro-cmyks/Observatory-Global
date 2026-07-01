@@ -394,3 +394,14 @@
     background: rgba(99, 102, 241, 0.08);
     border-color: rgba(99, 102, 241, 0.6);
 }
+
+/* Live-thread results (#245): the served stories, first section in the list */
+.search-item--thread .thread-tag {
+    background: rgba(104, 219, 174, 0.14);
+    color: #68dbae;
+    border: 1px solid rgba(104, 219, 174, 0.35);
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    letter-spacing: 0.06em;
+}
