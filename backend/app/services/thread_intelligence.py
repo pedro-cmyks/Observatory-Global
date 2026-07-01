@@ -998,6 +998,8 @@ SELECT
     dt.agg_n_signals,
     dt.mean_cohesion,
     dt.noise_rate,
+    dt.category,            -- R3.1 emergent category (open)
+    dt.crisis_class,        -- R3.1 seed-32 class or 'non_crisis' (the badge)
     COALESCE((
         -- current volume = kept-signal count at the topic's LATEST snapshot. SUM
         -- (not LIMIT 1) so an R2 umbrella (N child clusters at one snapshot) reflects
@@ -1073,6 +1075,8 @@ SELECT
     dt.agg_n_signals,
     dt.mean_cohesion,
     dt.noise_rate,
+    dt.category,            -- R3.1 emergent category (open)
+    dt.crisis_class,        -- R3.1 seed-32 class or 'non_crisis' (the badge)
     COALESCE(MAX(ec.velocity), 0)::int AS changed_10h,
     ARRAY(
         SELECT DISTINCT code
@@ -1115,6 +1119,13 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
     cohesion = _record_get(topic_row, "mean_cohesion")
     first_seen = _record_get(topic_row, "first_seen")
     country_codes = [str(code) for code in (_record_get(topic_row, "top_country_codes") or [])]
+    # R3.1: the story's category (crisis_class = a seed-32 class, or 'non_crisis').
+    # Reuse parent_domain to carry the badge so the existing frontend renders it — a
+    # dynamic thread stops showing the generic "narrative thread" badge and shows its
+    # crisis class, killing the atlas-vs-dynamic badge asymmetry.
+    crisis_class = _record_get(topic_row, "crisis_class")
+    category = _record_get(topic_row, "category")
+    badge_domain = crisis_class if (crisis_class and crisis_class != "non_crisis") else None
 
     sources: dict[str, int] = {}
     persons: dict[str, int] = {}
@@ -1150,7 +1161,9 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         "label": label_text,
         "summary": label_text,
         "anchor_topics": [str(_record_get(topic_row, "identity_key") or f"dynamic-topic-{topic_id}")],
-        "parent_domain": None,
+        "parent_domain": badge_domain,          # R3.1 crisis_class as the badge
+        "crisis_class": crisis_class,
+        "category": category,
         "signal_count": signal_count,
         "lifetime_signal_count": lifetime_signals,
         "source_count": source_count,
