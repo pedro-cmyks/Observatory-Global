@@ -441,18 +441,27 @@ async def unified_search(
                 if len(t) >= 3
             ][:6]
             if thread_tokens:
+                # DISTINCT ON label: R1 scoped passes can mint near-duplicate
+                # topics for one event across countries; serving dedupes them
+                # under the R2 umbrella but a label search would list all 6 —
+                # keep the highest-volume one per label.
                 _LIVE_THREADS_SQL = """
-                    SELECT dt.id, dt.label, dt.category, dt.crisis_relevant,
-                           dt.agg_n_signals, dt.is_umbrella
-                    FROM dynamic_topics dt
-                    WHERE dt.state = 'active'
-                      AND dt.label ILIKE {match} ($1::text[])
-                      AND ($2::text IS NULL OR EXISTS (
-                          SELECT 1 FROM dynamic_topic_members dtmc
-                          JOIN emergent_clusters ecc ON ecc.id = dtmc.emergent_cluster_id
-                          WHERE dtmc.dynamic_topic_id = dt.id
-                            AND $2 = ANY(ecc.top_country_codes)))
-                    ORDER BY dt.last_seen DESC, dt.agg_n_signals DESC
+                    SELECT id, label, category, crisis_relevant, agg_n_signals, is_umbrella
+                    FROM (
+                        SELECT DISTINCT ON (LOWER(dt.label))
+                               dt.id, dt.label, dt.category, dt.crisis_relevant,
+                               dt.agg_n_signals, dt.is_umbrella, dt.last_seen
+                        FROM dynamic_topics dt
+                        WHERE dt.state = 'active'
+                          AND dt.label ILIKE {match} ($1::text[])
+                          AND ($2::text IS NULL OR EXISTS (
+                              SELECT 1 FROM dynamic_topic_members dtmc
+                              JOIN emergent_clusters ecc ON ecc.id = dtmc.emergent_cluster_id
+                              WHERE dtmc.dynamic_topic_id = dt.id
+                                AND $2 = ANY(ecc.top_country_codes)))
+                        ORDER BY LOWER(dt.label), dt.agg_n_signals DESC
+                    ) t
+                    ORDER BY t.last_seen DESC, t.agg_n_signals DESC
                     LIMIT 6
                 """
                 try:
