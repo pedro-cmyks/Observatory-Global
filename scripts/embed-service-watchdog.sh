@@ -21,7 +21,13 @@ if ! command -v fly >/dev/null 2>&1; then
 fi
 
 # MAIN nlp_worker = proc=nlp_worker AND not a standby AND not already started.
-down="$(fly machine list -a "$APP" --json 2>/dev/null | python3 -c "
+# NOTE: a fly failure must NOT read as "everything up" — that false-healthy hid
+# an expired fly token (found 2026-07-01: 'missing third-party discharge').
+if ! machines_json="$(fly machine list -a "$APP" --json 2>>"$LOG")"; then
+  echo "$(ts) FLY ERROR — cannot verify embed service (token expired? run 'fly auth login')" >> "$LOG"
+  exit 0
+fi
+down="$(printf '%s' "$machines_json" | python3 -c "
 import sys, json
 try:
     ms = json.load(sys.stdin)
