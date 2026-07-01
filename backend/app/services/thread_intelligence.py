@@ -1000,12 +1000,17 @@ SELECT
     -- Lifetime agg_n_signals accumulates forever and let stale identities
     -- dominate the list by construction.
     COALESCE((
-        SELECT ec4.n_signals
+        -- current volume = kept-signal count at the topic's LATEST snapshot. SUM
+        -- (not LIMIT 1) so an R2 umbrella (N child clusters at one snapshot) reflects
+        -- its whole current volume; a normal topic has one cluster/snapshot so the
+        -- sum equals that single cluster — unchanged behaviour.
+        SELECT SUM(ec4.n_signals)
         FROM dynamic_topic_members dtm4
         JOIN emergent_clusters ec4 ON ec4.id = dtm4.emergent_cluster_id
         WHERE dtm4.dynamic_topic_id = dt.id
-        ORDER BY dtm4.snapshot_at DESC
-        LIMIT 1
+          AND dtm4.snapshot_at = (
+              SELECT MAX(snapshot_at) FROM dynamic_topic_members WHERE dynamic_topic_id = dt.id
+          )
     ), 0)::int AS recent_n_signals,
     COALESCE(MAX(ec.velocity), 0)::int AS changed_10h,
     ARRAY(
@@ -1186,7 +1191,11 @@ async def _fetch_dynamic_threads_with_conn(
     )
     if not has_topics or not has_members:
         return []
-    topic_rows = await conn.fetch(_DYNAMIC_TOPICS_SQL, hours, limit, timeout=8)
+    # 15s (was 8): the top-level query runs several correlated array subqueries per
+    # row over the full active set; cold it lands ~7-9s and an 8s cap intermittently
+    # degraded it to atlas-only (dropping the R2 umbrellas). Redis caches the result
+    # so the cold hit is once per window. (Perf follow-up: fold the array subqueries.)
+    topic_rows = await conn.fetch(_DYNAMIC_TOPICS_SQL, hours, limit, timeout=15)
     threads: list[dict[str, Any]] = []
     for topic in topic_rows:
         sample_ids = list(topic["sample_signal_ids"] or [])

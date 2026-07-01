@@ -63,3 +63,14 @@ if [[ -f "$STUDENT_JSON" ]]; then
 else
   echo "[scoped-snapshot] student model missing ($STUDENT_JSON) — skip projection" >&2
 fi
+
+# Step 3: R2 — rebuild the umbrella hierarchy (centroid-of-centroids) over the fresh
+# active set. Cheap (~hundreds of centroids, seconds). Collapses same-EVENT
+# cross-country dups into parent umbrellas so the global list stays de-duped + gives
+# the parent/child thread hierarchy. Idempotent + reversible (rebuilds only the
+# DERIVED umbrella rows; never deletes a child). Threshold 0.98 = the measured
+# same-event cut (complete-linkage; below it, diffuse centroids leak same-theme).
+cd "$ROOT_DIR"
+$TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.build_umbrella_topics \
+  --threshold "${ATLAS_UMBRELLA_THRESHOLD:-0.98}" \
+  || echo "[scoped-snapshot] umbrella build failed (non-fatal)" >&2
