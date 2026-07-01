@@ -765,6 +765,11 @@ def assemble_thread(
         "summary": label,
         "anchor_topics": [topic_slug],
         "parent_domain": parent_domain,
+        # atlas topics ARE the crisis taxonomy → crisis_relevant=true, category=domain.
+        # Consistent with the R3 lens WITHOUT collapsing atlas (the pure collapse is
+        # coverage-risky while dynamic recall is partial — kept as a future step).
+        "category": parent_domain,
+        "crisis_relevant": True,
         "signal_count": signal_count,
         # #214: gate-kept count (detail shows only these). gate_scored=0 means the
         # gate hasn't scored this topic yet (pending), not "0 relevant".

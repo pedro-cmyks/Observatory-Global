@@ -32,7 +32,8 @@ import numpy as np
 # Children pool = the served set. Only active, non-umbrella topics with a centroid.
 _LOAD = """
     SELECT id, identity_key, label, agg_n_signals,
-           COALESCE(mean_cohesion, 0.0) AS mean_cohesion, centroid_vec, crisis_class
+           COALESCE(mean_cohesion, 0.0) AS mean_cohesion, centroid_vec,
+           crisis_class, category, crisis_relevant
     FROM dynamic_topics
     WHERE state = 'active' AND is_umbrella = false AND centroid_vec IS NOT NULL
     ORDER BY id
@@ -132,11 +133,15 @@ async def main() -> None:
                 new_keys.append(ident)
                 # R3.3 category inheritance: dominant child crisis_class (the badge);
                 # a real multi-category event still reads its distribution via children.
+                # inherit the dominant child CATEGORY (crisis seed OR emergent) + the
+                # crisis-relevance lens by majority — so non-crisis umbrellas (World Cup)
+                # carry their emergent category too, not NULL.
+                child_cats = [rows[i]["category"] for i in idxs if rows[i]["category"]]
+                dom_category = max(set(child_cats), key=child_cats.count) if child_cats else None
+                dom_relevant = sum(1 for i in idxs if rows[i]["crisis_relevant"]) * 2 >= len(idxs)
                 child_crisis = [rows[i]["crisis_class"] for i in idxs
                                 if rows[i]["crisis_class"] and rows[i]["crisis_class"] != "non_crisis"]
                 dom_crisis = max(set(child_crisis), key=child_crisis.count) if child_crisis else "non_crisis"
-                dom_relevant = dom_crisis != "non_crisis"
-                dom_category = dom_crisis if dom_relevant else None  # R3 open category (crisis seed)
                 uid = await conn.fetchval(
                     "INSERT INTO dynamic_topics "
                     "(identity_key, label, state, is_umbrella, centroid_vec, agg_n_signals, "
