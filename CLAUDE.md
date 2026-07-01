@@ -10,6 +10,31 @@
 > and narrows further if telemetry shows one persona dominates.) **Anti-goal:**
 > no new surface/capability until telemetry shows users reaching a value moment.
 
+**2026-07-01 — R1 SCOPED CLUSTERING SHIPPED + SERVED (#229, read FIRST for engine).**
+The recall lever landed. R1 (`backend/scripts/run_scoped_snapshot.py`) clusters
+per-country over the persisted corpus (dissolves the global HDBSCAN purity/recall
+cliff): wrote **731 tight topics, 126 countries, cohesion 0.968, no blob, 26
+honest-empty**. Serving bootstrap-promoted **68→392 active** (purity held: admitted
+topics cohesion 0.969 / noise 0.081, real stories). Prod `/threads` VERIFIED serving
+scoped regionals a global pass drowned (Iraq Anti-Corruption, France Heatwave,
+Italian "Attentato a Ranucci", Sydney). Key finding: the promotion gate
+(`LifecycleConfig`) was calibrated for the OLD global regime (`persist_min=2` +
+`volume_min=30`); scoped topics are 8-30 signals → recalibrated to `volume_min=12`
+(MEASURED histogram v30=50/v15=205/v10=389, not guessed; 311 revert ids saved).
+**Recurring cron** `com.atlas.scoped-snapshot` (02:30, mindful, NEVER `--rebuild`)
+REPLACES the global `emergent-snapshot` — armed, first autonomous fire tonight.
+**Retention/resurrection = the design (Pedro's ask, already built):** never deletes;
+retire = serving-hidden state; a retired topic resurrects on centroid match (same
+`identity_key`, history intact). **R2 = NEXT**
+(`docs/specs/2026-07-01-atlas-engine-r2-umbrella-hierarchy.md`, DRAFT): umbrella
+hierarchy (centroid-of-centroids) collapses cross-country dups (R2.1 measured: 984
+pairs ≥0.97, max 0.999) + parent/child threads; 4 decisions pending Pedro. Commits
+`66b69e4`+`6f69457`+CLAUDE (NOT pushed). Sync note: R1 chain re-synced to
+AtlasLocalWorker (`run_scoped_snapshot.py`/`project_dynamic_topics.py`/runner). Papers:
+P8 Interventions 3/4 + retention; P7 evolution-graph-as-engine-truth; P4 R-pointer.
+Follow-up: country-view `?country_code=` still serves atlas-generic labels, not R1
+specifics.
+
 Last updated: 2026-06-30. **TRACK CONSOLIDATION — COMPLETE (read this FIRST):**
 the two parallel chats (engine/taxonomy ‖ frontend/L2) have MERGED into ONE living
 track — the engine handoff was absorbed 2026-06-30, so this is now the SINGLE
