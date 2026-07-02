@@ -130,3 +130,10 @@ involved matters equally (companies, agencies, armed groups).
 ## K. Design license (standing)
 Panels may be REDESIGNED — structure, not just skin — wherever it makes the
 information read better. Redesign is always valid if legibility wins.
+
+## Execution status (running log)
+- **A1 fly**: VERIFIED WORKING in current bundle (browser: click Senegal → scale 2.5 + brief). Pedro's no-fly = pre-fix SW-stale bundle.
+- **A2 flows**: ✅ FIXED `4fb25a11` — country focus returned 0 flows BY CONSTRUCTION (backend filtered signals to the focus country → no partner vectors). VE now: 34 arcs (PL/DE/ES/MX↔VE). Small countries can still be honest-zero (thresholds).
+- **Desktop strip regression** (found executing): ✅ FIXED `b0680068` — aspect cut 1.4 (panels world-fit, phones strip).
+- **B1/B2 (#250)**: ✅ FIXED `467f2022` — 72h decay floor; VE leads with the earthquake (92+22). Promotion sweep RETIRED (noise gate was right; see #250 close).
+- NEXT: C3 wiki multilingual filter, G2 compare broken, D9 insight editorial pass, C1 forum line in CountryBrief, E1/E2, F2 stream hover, G1, J entities audit, D10 reading order, A3/A4/A5.
