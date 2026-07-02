@@ -896,9 +896,13 @@ function AppContent() {
   // Zoom-adaptive flow limiting to reduce visual clutter
   const visibleFlows = useMemo(() => {
     // Determine the base set of flows:
-    // If we have a country selected, use the unfiltered map-level flows to ensure
-    // we see all connections for that country, even if nodes are focus-filtered.
-    const baseFlows = selectedCountryCode ? (unfilteredFlows || flows) : flows;
+    // On country focus, the FOCUSED fetch is now the authoritative source —
+    // the backend computes pairs FOR that country (4fb25a11); the global
+    // top-100 rarely contains small-country pairs, which is why focused
+    // countries drew zero arcs (capture-doc A2). Unfiltered stays a fallback.
+    const baseFlows = selectedCountryCode
+      ? (flows.length ? flows : (unfilteredFlows || []))
+      : flows;
     let filteredFlows = [...baseFlows];
 
     if (selectedCountryCode) {

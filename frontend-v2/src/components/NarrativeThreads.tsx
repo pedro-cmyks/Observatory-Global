@@ -152,8 +152,15 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 limit: String(fetchLimit),
             })
             if (filter.country) params.set('country_code', filter.country)
-            const res = await fetch(`/api/v2/threads?${params.toString()}`)
-            if (!res.ok) return
+            let res = await fetch(`/api/v2/threads?${params.toString()}`)
+            if (!res.ok) {
+                // One quick retry: a cold country-scoped query can 500 once,
+                // which silently left the GLOBAL list under a "Scoped to X"
+                // strip until the 5-min interval (capture-doc §B, live-seen).
+                await new Promise(r => setTimeout(r, 2500))
+                res = await fetch(`/api/v2/threads?${params.toString()}`)
+                if (!res.ok) return
+            }
             const data = await res.json()
             setNarratives((data.threads || []).map(normalizeThread))
             setEffectiveHours(data.hours ?? null)
