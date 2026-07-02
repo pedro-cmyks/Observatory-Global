@@ -291,6 +291,10 @@ async def fetch_semantic_signal_matches(
         LIMIT {int(limit * 3)}
         """,
         vec_literal,
+        # Without the HNSW index this is a full seq-scan over ~476K halfvecs —
+        # it hung the whole research plan 40s+ (2026-07-02, index rebuild
+        # window). Bounded: degrade to a lane gap, never a hung plan.
+        timeout=6,
     )
     import html as _html
     matches = []
