@@ -556,7 +556,14 @@ async def _atlas_topic_detail(
     # explicitly asked — show the raw material labeled below-gate (gateKept
     # false per row, 'below_gate_evidence' warning) instead of an empty
     # panel that contradicts the list count.
-    below_gate_fallback = (not gate_pending) and gated_n == 0 and raw_n > 0
+    # Extended 2026-07-02 (Pedro's election-legitimacy case: 1,066 assigned /
+    # 1 kept → the detail showed ONE Philippine signal as if it were the whole
+    # 1.1k-signal story): a NEAR-zero kept set on a large assignment pool is
+    # the same contradiction as zero — fall back to below-gate evidence when
+    # the gate kept under 5 rows out of 20+.
+    below_gate_fallback = (not gate_pending) and raw_n > 0 and (
+        gated_n == 0 or (gated_n < 5 and raw_n >= 20)
+    )
     kept_clause = "" if (gate_pending or below_gate_fallback) else " AND a.gate_kept"
 
     signals = await conn.fetch(f"""
@@ -1701,12 +1708,28 @@ def _vector_text(values) -> str:
     return "[" + ",".join(f"{float(v):.6f}" for v in values) + "]"
 
 
+def _radial_drift(samples: list) -> float | None:
+    """Semantic drift of a body: mean centroid-distance of its LATE half of
+    signals minus its EARLY half (Pedro 2026-07-02 — the comet tail should
+    mean "moving away from / toward the story", measured, not decorative).
+    Positive = receding from the thread; negative = approaching. None when
+    there are too few samples to split honestly."""
+    if len(samples) < 4:
+        return None
+    ordered = sorted(samples, key=lambda p: p[0])
+    half = len(ordered) // 2
+    early = sum(d for _, d in ordered[:half]) / half
+    late = sum(d for _, d in ordered[half:]) / (len(ordered) - half)
+    return round(late - early, 5)
+
+
 def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 12) -> list:
     """Aggregate member-signal rows into orbital bodies (pure, testable).
 
     ``rows``: dicts with timestamp (datetime), country_code, persons (list),
     dist (float). Returns typed entity bodies + country bodies with per-body
-    signal counts, presence window, raw timestamps, and mean centroid distance.
+    signal counts, presence window, raw timestamps, mean centroid distance,
+    and radial drift (late-vs-early distance trend).
     """
     from app.services.subjects import classify_subject
 
@@ -1717,19 +1740,21 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
         dist = float(r["dist"])
         cc = (r.get("country_code") or "").strip().upper()
         if cc:
-            b = countries.setdefault(cc, {"n": 0, "dist_total": 0.0, "timestamps": []})
+            b = countries.setdefault(cc, {"n": 0, "dist_total": 0.0, "timestamps": [], "samples": []})
             b["n"] += 1
             b["dist_total"] += dist
             b["timestamps"].append(ts)
+            b["samples"].append((ts, dist))
         for person in (r.get("persons") or []):
             name = (person or "").strip()
             if not name:
                 continue
             key = name.lower()
-            b = entities.setdefault(key, {"label": name, "n": 0, "dist_total": 0.0, "timestamps": []})
+            b = entities.setdefault(key, {"label": name, "n": 0, "dist_total": 0.0, "timestamps": [], "samples": []})
             b["n"] += 1
             b["dist_total"] += dist
             b["timestamps"].append(ts)
+            b["samples"].append((ts, dist))
 
     bodies = []
     ranked_entities = sorted(entities.values(), key=lambda b: -b["n"])[:max_entities]
@@ -1744,6 +1769,7 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
             "type": subject_type,
             "n": b["n"],
             "dist": round(b["dist_total"] / b["n"], 5),
+            "drift": _radial_drift(b["samples"]),
             "first_seen": stamps[0].isoformat(),
             "last_seen": stamps[-1].isoformat(),
             "timestamps": [t.isoformat() for t in stamps],
@@ -1757,6 +1783,7 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
             "type": "country",
             "n": b["n"],
             "dist": round(b["dist_total"] / b["n"], 5),
+            "drift": _radial_drift(b["samples"]),
             "first_seen": stamps[0].isoformat(),
             "last_seen": stamps[-1].isoformat(),
             "timestamps": [t.isoformat() for t in stamps],

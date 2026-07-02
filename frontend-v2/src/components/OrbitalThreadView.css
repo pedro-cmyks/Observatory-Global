@@ -172,9 +172,15 @@
 }
 
 .orbital-legend-comet {
+  background: transparent;
+  border: 1.5px dashed rgba(226, 232, 240, 0.75);
+  border-radius: 50% !important;
+}
+
+.orbital-legend-tail {
   background: linear-gradient(90deg, #e2e8f0, transparent);
   border-radius: 2px !important;
-  width: 12px !important;
+  width: 14px !important;
   height: 3px !important;
 }
 

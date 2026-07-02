@@ -16,9 +16,27 @@ export interface OrbitalBody {
   type: 'person' | 'organization' | 'place' | 'event' | 'country'
   n: number
   dist: number
+  /** Radial drift: late-half mean distance − early-half (backend-measured).
+      Positive = receding from the story, negative = approaching. Null when
+      too few signals to split honestly. */
+  drift?: number | null
   first_seen: string
   last_seen: string
   timestamps: string[]
+}
+
+/**
+ * Tail length in px for a measured drift, scaled by the thread's distance
+ * span so tails are comparable within one system. Returns 0 (no tail) when
+ * drift is unknown or negligible (<12% of the span — noise floor).
+ */
+export function driftTailLength(drift: number | null | undefined, distSpan: number, maxPx = 46): number {
+  if (drift == null || distSpan <= 1e-9) return 0
+  const rel = Math.abs(drift) / distSpan
+  // Noise floor measured on dt-981 (2026-07-02): real drifts run 5-10% of the
+  // thread's distance span, so 4% separates signal from jitter.
+  if (rel < 0.04) return 0
+  return Math.min(maxPx, 8 + rel * maxPx * 1.6)
 }
 
 export interface OrbitalWindow {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
     angleAt,
     bodyRadius,
+    driftTailLength,
     entrantsBetween,
     isComet,
     normalizeDistances,
@@ -114,6 +115,12 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
 
     const bodies = payload?.bodies ?? []
     const norm = useMemo(() => normalizeDistances(bodies), [bodies])
+    // Thread's distance band — scales drift tails so they compare within one system.
+    const distSpan = useMemo(() => {
+        if (bodies.length === 0) return 0
+        const ds = bodies.map(b => b.dist)
+        return Math.max(...ds) - Math.min(...ds)
+    }, [bodies])
 
     const width = size.w
     const height = size.h
@@ -240,27 +247,38 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                         )
                     })()}
 
-                    {/* comet tails first (under bodies) */}
-                    {visible.filter(p => p.comet).map(p => {
-                        const dirX = Math.cos(p.angle - 0.4)
-                        const dirY = Math.sin(p.angle - 0.4)
+                    {/* drift tails (under bodies): the tail is a MEASURED
+                        vector — late-vs-early mean distance to the centroid.
+                        Pointing OUTWARD = the body's coverage is receding from
+                        the story; INWARD = converging on it (Pedro 2026-07-02:
+                        "la cola = alejándose del tema", made literal). */}
+                    {visible.map(p => {
+                        const tail = driftTailLength(p.body.drift, distSpan)
+                        if (tail === 0) return null
+                        const receding = (p.body.drift ?? 0) > 0
+                        const rx = p.x - cx
+                        const ry = p.y - cy
+                        const rlen = Math.hypot(rx, ry) || 1
+                        // The tail TRAILS: receding body leaves its tail toward
+                        // the center it left; approaching body from the outside.
+                        const dir = receding ? -1 : 1
+                        const tx = p.x + dir * (rx / rlen) * tail
+                        const ty = p.y + dir * (ry / rlen) * tail
                         const r0 = bodyRadius(p.body.n)
                         return (
                             <g key={`tail-${p.body.id}`} pointerEvents="none">
                                 <line
-                                    x1={p.x} y1={p.y}
-                                    x2={p.x - 40 * dirX} y2={p.y - 40 * dirY}
+                                    x1={p.x} y1={p.y} x2={tx} y2={ty}
                                     stroke={TYPE_COLORS[p.body.type]}
-                                    strokeOpacity={p.alpha * 0.18}
-                                    strokeWidth={r0 * 1.5}
+                                    strokeOpacity={p.alpha * 0.16}
+                                    strokeWidth={r0 * 1.4}
                                     strokeLinecap="round"
                                 />
                                 <line
-                                    x1={p.x} y1={p.y}
-                                    x2={p.x - 30 * dirX} y2={p.y - 30 * dirY}
+                                    x1={p.x} y1={p.y} x2={tx} y2={ty}
                                     stroke={TYPE_COLORS[p.body.type]}
                                     strokeOpacity={p.alpha * 0.5}
-                                    strokeWidth={1.4}
+                                    strokeWidth={1.3}
                                     strokeLinecap="round"
                                 />
                             </g>
@@ -284,8 +302,9 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                                 cx={p.x} cy={p.y}
                                 r={bodyRadius(p.body.n)}
                                 fill={`url(#orb-grad-${p.body.type})`}
-                                stroke={hovered?.id === p.body.id ? 'rgba(248,250,252,0.9)' : 'rgba(226,232,240,0.25)'}
-                                strokeWidth={hovered?.id === p.body.id ? 1.4 : 0.6}
+                                stroke={hovered?.id === p.body.id ? 'rgba(248,250,252,0.9)' : p.comet ? 'rgba(226,232,240,0.7)' : 'rgba(226,232,240,0.25)'}
+                                strokeWidth={hovered?.id === p.body.id ? 1.4 : p.comet ? 1 : 0.6}
+                                strokeDasharray={p.comet ? '3 2.2' : undefined}
                             />
                             {(labelIds.has(p.body.id) || hovered?.id === p.body.id) && (
                                 <text x={p.x} y={p.y + bodyRadius(p.body.n) + 12} className="orbital-body-label">
@@ -319,6 +338,9 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                         </span>
                         <strong>{bodyLabel(hovered)}</strong>
                         <em>{hovered.n} signal{hovered.n === 1 ? '' : 's'} · orbit {(hovered.dist).toFixed(3)}</em>
+                        {hovered.drift != null && Math.abs(hovered.drift) > 1e-6 && (
+                            <em>{hovered.drift > 0 ? '↗ receding from the story' : '↘ converging on it'} ({hovered.drift > 0 ? '+' : ''}{hovered.drift.toFixed(3)})</em>
+                        )}
                         <em>
                             {new Date(hovered.first_seen).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                             {' → '}
@@ -350,7 +372,8 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                 {(Object.entries(TYPE_COLORS) as Array<[OrbitalBody['type'], string]>).map(([type, color]) => (
                     <span key={type}><i style={{ background: color }} />{type}</span>
                 ))}
-                <span data-tip="Present for under a quarter of the story's lifespan"><i className="orbital-legend-comet" />comet</span>
+                <span data-tip="Dashed ring: present for under a quarter of the story's lifespan — a brief visitor"><i className="orbital-legend-comet" />comet</span>
+                <span data-tip="The tail is MEASURED drift: mean centroid-distance of the body's late signals vs its early ones. Outward tail = its coverage is receding from the story; inward = converging on it"><i className="orbital-legend-tail" />tail = semantic drift</span>
                 <span className="orbital-legend-note" data-tip="Orbit radius = semantic distance of the body's coverage to the thread centroid (closer = same story)">
                     closer orbit = semantically closer{payload.centroid_basis === 'computed' ? ' · computed centroid' : ''}
                 </span>

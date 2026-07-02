@@ -84,6 +84,21 @@ describe('comets', () => {
   })
 })
 
+describe('drift tail — measured recede/approach, never decorative', () => {
+  it('no tail without data or below the noise floor; scales with drift', async () => {
+    const { driftTailLength } = await import('./orbitalLayout')
+    const span = 0.02 // thread's distance band
+    expect(driftTailLength(null, span)).toBe(0)
+    expect(driftTailLength(undefined, span)).toBe(0)
+    expect(driftTailLength(0.0004, span)).toBe(0) // 2% of span = noise
+    const small = driftTailLength(0.004, span)    // 20% of span
+    const big = driftTailLength(0.02, span)       // 100% of span
+    expect(small).toBeGreaterThan(0)
+    expect(big).toBeGreaterThan(small)
+    expect(big).toBeLessThanOrEqual(46)
+  })
+})
+
 describe('entrantsBetween — the acceptance question', () => {
   it('answers "who entered this story this week?"', () => {
     const early = body({ id: 'a', first_seen: '2026-06-20T00:00:00Z' })

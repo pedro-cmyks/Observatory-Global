@@ -65,3 +65,24 @@ def test_entity_cap_keeps_highest_volume():
 
 def test_vector_text_is_pgvector_input():
     assert _vector_text([0.5, -1.0]) == "[0.500000,-1.000000]"
+
+
+def test_radial_drift_measures_late_vs_early_distance():
+    # receding body: early signals close (0.03), late signals far (0.05)
+    rows = [
+        _row(0, persons=["drifter x"], dist=0.03),
+        _row(1, persons=["drifter x"], dist=0.03),
+        _row(10, persons=["drifter x"], dist=0.05),
+        _row(11, persons=["drifter x"], dist=0.05),
+        # approaching body, reversed
+        _row(0, persons=["comer y"], dist=0.05),
+        _row(1, persons=["comer y"], dist=0.05),
+        _row(10, persons=["comer y"], dist=0.03),
+        _row(11, persons=["comer y"], dist=0.03),
+        # too few samples -> honest None
+        _row(5, persons=["single z"], dist=0.04),
+    ]
+    by_id = {b["id"]: b for b in build_orbital_bodies(rows)}
+    assert by_id["entity-drifter x"]["drift"] == 0.02   # receding
+    assert by_id["entity-comer y"]["drift"] == -0.02    # approaching
+    assert by_id["entity-single z"]["drift"] is None
