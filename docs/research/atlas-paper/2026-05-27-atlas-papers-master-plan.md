@@ -602,6 +602,31 @@ the seven analyst questions than commodity dashboards.
   swallowed `dynamic-topic-*` ids (dispatch-order bug, `b3fcfa79`) — every
   dynamic thread opened EMPTY at long windows; the old graph also silently
   hid on `graphSignals: []` payloads (`?? ` gate).
+- **Universe View — the field itself (MVP shipped 2026-07-02; spec
+  `docs/specs/2026-07-02-universe-view.md`):** the whole living story
+  population (348 active topics) rendered as one navigable field — the orbital
+  view's "section of the vector field" completed with the field it sections.
+  **The method contribution is the two-layer honesty split:** positions come
+  from a projection that is KNOWN weak (PCA top-2 = ~17% explained variance,
+  measured) and are labeled "approximate by design", while RELATIONS are
+  computed in the full 768-dim space (top-3 cosine neighbors per node; the
+  threshold alternative was measured and rejected — e5 centroid NN sims p50
+  0.943 make any threshold explode) and labeled "exact". The legend says
+  "positions approximate · relations exact" — the visualization TEACHES its
+  own epistemics. Categories render as data-driven constellations (55% blend
+  toward category-mean anchors — the "attractor" metaphor made literal from
+  real geometry). Time follows the §I model at population scale: no window
+  filter; every body carries first_seen + a 30-day activity timeline, the
+  scrubber makes stories be BORN and decay (72h half-life, floored) —
+  browser-verified: scrub to Jun 11 → 27 of 348 alive; NOW → 348 alive, 212
+  born-this-week. Zoom hierarchy = one visual language: universe → click →
+  that story's orbital system. Cross-refs: node radius log-damped (P3
+  volume≠importance at the population level); umbrellas excluded as
+  fabricated-body risk (P4 lifecycle honesty); the field IS the open-set
+  claim rendered (P8 — every emergent story visible in one frame, no
+  taxonomy gate). Candidate P7 evaluation: overview tasks ("what distinct
+  crises are running right now?", "which stories cluster semantically but
+  sit in different categories?") vs the thread list.
 
 **Evidence to collect:**
 - Analyst task-completion study (10-15 analysts, structured tasks).
@@ -658,6 +683,20 @@ documented case: the Peru vote-recount, 92 signals, never clustered), stratified
 sampling. The persisted-corpus clustering (which dissolved the 15K hot-window
 cap) is already shipped (`--from-persisted` cron); recall measurement on the full
 corpus is the next experiment. (CLAUDE.md 2026-06-12 #229 / 2026-06-25.)
+
+**Product evidence (2026-07-02) — the open-set population rendered as one
+frame:** the Universe View (spec `docs/specs/2026-07-02-universe-view.md`)
+shows every active discovered topic (348, no taxonomy gate) as a body in the
+projected e5 field, categories as data-driven constellations, top-3
+full-space neighbors as edges. Two P8-relevant observations it operationalizes:
+(1) the field visually exposes CROSS-CATEGORY semantic neighbors — stories the
+open taxonomy separates but the geometry binds (candidate merge/umbrella
+evidence); (2) the time scrubber replays the population's births/decays over
+30 days — the dynamism criterion (PR3.3's "a fixed topic count is itself a
+failure") made directly inspectable. Also captured (assessment, not built):
+trajectory/"gravity" metrics over the same substrate — capture rate as leading
+heat indicator, centroid drift as measured mutation, convergence as merge
+forecast — all backtestable against persisted snapshots (universe spec §6).
 
 **Product evidence SHARPENED + a second dimension (2026-06-30) — see the result
 skeleton `2026-06-30-paper-8-result-skeleton.md`:** re-measured on live prod with

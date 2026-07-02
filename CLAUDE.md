@@ -10,6 +10,27 @@
 > and narrows further if telemetry shows one persona dominates.) **Anti-goal:**
 > no new surface/capability until telemetry shows users reaching a value moment.
 
+**2026-07-02 (PM — UNIVERSE VIEW MVP SHIPPED, /goal run).** Pedro's vector-
+field framing ("todo el universo en un campo vectorial; un tema = una sección")
+built literal: **`GET /api/v2/universe`** (universe-v0, `app/routers/universe.py`)
+— 348 active story topics (umbrellas excluded), positions = numpy-SVD PCA
+blended 55% to category anchors (48 constellations, data-driven attractors),
+**edges = top-3 cosine neighbors in FULL 768-dim space** (thresholds rejected:
+NN sims p50 0.943 → 0.92 gives 1,534 edges; measured), 30d daily activity
+timeline per node, 158KB, 10-min cache. **Honesty split = the design:** PCA
+top-2 explains ~17% (measured) → legend says "positions approximate ·
+relations exact", meta carries both bases. Frontend: command-bar **UNIVERSE**
+button → full-screen overlay (`UniverseView.tsx` + pure `universeLayout.ts`,
+5 vitest; zoom/pan, hover→neighbor-subgraph highlight, click→closes+opens
+that thread's ORBITAL system — universe→system one visual language). §I time:
+scrubber births/decays stories (72h half-life, floor). Browser-verified:
+348 bodies/836 edges/24 constellations; scrub Jun 11→27 alive; hover card;
+click→STORY SYSTEM. 150/150 vitest + 3 pytest, deployed Fly+pushed. Docs:
+spec `2026-07-02-universe-view.md` (+§6 trajectory/"gravity" metrics
+assessment — capture rate/drift/convergence, backtestable, #219 Kalman =
+seed); P7+P8 grown in master plan. NEXT: Pedro eyeball; drift trails
+(emergent_clusters per-snapshot centroids exist); L3 universe-builder.
+
 **2026-07-02 (L11 SOLAR SYSTEM — Orbital Thread View SHIPPED + E2 root-caused).**
 Design+prototype session (parallel chat; did NOT touch BriefNewspaper/search.py/
 thread_ranking). (1) **E2 DIAGNOSED + FIXED (`b3fcfa79`, deployed):** the >24h
