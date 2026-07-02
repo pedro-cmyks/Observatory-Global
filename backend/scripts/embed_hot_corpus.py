@@ -154,10 +154,15 @@ async def main() -> int:
                 # dropped. Single-threaded — the parallel build hits Supabase's shmem cap.
                 print("bulk-reindex: rebuilding HNSW index (single-threaded ~4min/276K)…",
                       file=sys.stderr)
-                await conn.execute("SET max_parallel_maintenance_workers = 0")
-                await conn.execute("SET maintenance_work_mem = '256MB'")
-                await conn.execute("SET statement_timeout = '1200s'")
+                # ONE batch: through the Supabase transaction pooler, separate
+                # execute() calls can land on DIFFERENT backends — the SETs were
+                # lost and CREATE INDEX ran with the default statement_timeout
+                # (the 2026-07-02 rebuild died exactly there). A multi-statement
+                # simple-query batch is one implicit transaction = one backend.
                 await conn.execute(
+                    "SET max_parallel_maintenance_workers = 0; "
+                    "SET maintenance_work_mem = '256MB'; "
+                    "SET statement_timeout = 0; "
                     "CREATE INDEX IF NOT EXISTS idx_signal_embeddings_vec "
                     "ON signal_embeddings USING hnsw (vec halfvec_cosine_ops) "
                     "WITH (m='16', ef_construction='64')")
