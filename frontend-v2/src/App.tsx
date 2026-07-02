@@ -39,6 +39,7 @@ import { resolveThreadThemeTarget } from './lib/threadThemeTarget'
 import { buildHistoricalCoverageCue } from './lib/historicalCoverageCue'
 import ResearchPlanPanel from './components/ResearchPlanPanel'
 import WorkbenchPanel from './components/WorkbenchPanel'
+import { UniverseView } from './components/UniverseView'
 import { createInvestigation } from './lib/workbench'
 
 // Terminal Panels
@@ -288,6 +289,8 @@ function AppContent() {
   const [showBriefing, setShowBriefing] = useState(false)
   // Workbench (Phase 2, #213): investigation memory overlay + research plan
   const [workbenchOpen, setWorkbenchOpen] = useState(false)
+  // Universe view (L11): the whole living story population as one field
+  const [universeOpen, setUniverseOpen] = useState(false)
   const [researchQuery, setResearchQuery] = useState<string | null>(null)
   const [wbRefresh, setWbRefresh] = useState(0)
   const [tourRunId, setTourRunId] = useState(0)
@@ -1516,6 +1519,13 @@ function AppContent() {
           >
             WORKBENCH
           </button>
+          <button
+            className={`time-btn workbench-btn ${universeOpen ? 'active' : ''}`}
+            data-tip="Universe: every living story as a body — semantic relations, categories as constellations, time as motion"
+            onClick={() => setUniverseOpen(open => !open)}
+          >
+            UNIVERSE
+          </button>
         </div>
         <div className="command-bar-right">
           <div className="stats">
@@ -2326,6 +2336,26 @@ function AppContent() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {universeOpen && (
+        <div className="universe-overlay">
+          <div className="universe-overlay-header">
+            <span>
+              <span className="universe-overlay-title">STORY UNIVERSE</span>
+              <span className="universe-overlay-sub">every living thread, positioned by meaning · related in full vector space · alive in time</span>
+            </span>
+            <button className="universe-overlay-close" onClick={() => setUniverseOpen(false)}>×</button>
+          </div>
+          <div className="universe-overlay-body">
+            <UniverseView
+              onThemeSelect={(themeId) => {
+                setUniverseOpen(false)
+                handleThemeSelect(themeId)
+              }}
+            />
           </div>
         </div>
       )}
