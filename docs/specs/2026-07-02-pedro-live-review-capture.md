@@ -163,3 +163,11 @@ information read better. Redesign is always valid if legibility wins.
   chokepoint panels; country-click fallthrough verified; dot-precision needs
   Pedro's real canvas). Remaining minor: zoom-adaptive flow density in EE.
   Pedro confirmed arcs + heat re-scope LIVE on Mercator screenshot 13:26.
+- **C3** ✅ (web-infrastructure wiki class multilingual + CountryBrief was the
+  ONE unfiltered surface — fixed; 'Cookie (informatique)' dead; real cyber
+  stories pass — tested). **G2** ✅ — finding: person search NEVER worked (the
+  aggregate measures 14-25s → permanently degraded-empty on BOTH endpoints);
+  fixed structurally with person_vocab (mig 063) rebuilt by the M1 cron +
+  /api/v2/persons/suggest (ms); prod-verified. **G1** ✅ tech-token person
+  filter. **F2** ✅ hover-lift (pause existed, affordance didn't).
+  NEXT: D9 insight editorial pass, E1/E2, D10 reading order, J entities audit.
