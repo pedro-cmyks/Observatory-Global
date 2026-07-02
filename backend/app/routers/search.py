@@ -419,7 +419,7 @@ async def unified_search(
     query_variants = build_query_variants(topic_query)
     normalized_query = query_variants[0] if query_variants else topic_query.lower().strip()
 
-    cache_key = f"usearch:v10:{query_lower}:{hours}:{country_filter or 'all'}"
+    cache_key = f"usearch:v11:{query_lower}:{hours}:{country_filter or 'all'}"
     if app.state.redis:
         try:
             cached = await app.state.redis.get(cache_key)
@@ -581,7 +581,7 @@ async def unified_search(
                     FROM signals_v2
                     WHERE timestamp > NOW() - INTERVAL '{hours} hours'
                       AND (
-                        (headline IS NOT NULL AND unaccent(LOWER(headline)) LIKE ANY($1::text[]))
+                        (headline IS NOT NULL AND f_unaccent(LOWER(headline)) LIKE ANY($1::text[]))
                         OR (source_name IS NOT NULL AND LOWER(source_name) LIKE ANY($1::text[]))
                       )
                       {signal_country_clause}
