@@ -72,6 +72,8 @@ export interface EqualEarthMapProps {
     /** GDELT code to pan/zoom the view to (the #234 fly-to, EE edition). */
     flyCountry?: string | null
     onCountryClick: (gdeltCode: string, name: string) => void
+    /** Marker click (Mercator parity): chokepoint / conflict-event dots. */
+    onMarkerClick?: (kind: 'chokepoint' | 'acled', properties: Record<string, unknown>) => void
     /** Overlay layers (flows/markers/terminator), same data MapLibre uses. */
     overlay?: OverlayData
 }
@@ -82,6 +84,7 @@ export function EqualEarthMap({
     selectedCountryCode,
     flyCountry,
     onCountryClick,
+    onMarkerClick,
     overlay,
 }: EqualEarthMapProps) {
     const containerRef = useRef<HTMLDivElement>(null)
@@ -317,6 +320,38 @@ export function EqualEarthMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [flyCountry, ee, features])
 
+    // Mercator parity: clicking a chokepoint/conflict dot opens its panel
+    // instead of falling through to the country. Capture-phase hit test over
+    // the same projected positions the canvas draws.
+    const handleMarkerCapture = useCallback((e: React.MouseEvent) => {
+        if (!onMarkerClick || !ee || !overlay || movedRef.current) return
+        const rect = containerRef.current?.getBoundingClientRect()
+        if (!rect) return
+        const cx = e.clientX - rect.left, cy = e.clientY - rect.top
+        const per = ee.worldWidth * applied.k
+        const seams = per > 0 ? [0, -per, per] : [0]
+        const near = (coords: unknown, tol: number) => {
+            if (!Array.isArray(coords)) return false
+            const p = ee.toScreen(coords as [number, number], applied)
+            if (!p) return false
+            return seams.some(off => Math.hypot(p[0] + off - cx, p[1] - cy) <= tol)
+        }
+        for (const f of overlay.acled.features) {
+            if (near(f.geometry.coordinates, 12)) {
+                e.stopPropagation()
+                onMarkerClick('acled', f.properties)
+                return
+            }
+        }
+        for (const f of overlay.chokepoints.features) {
+            if (near(f.geometry.coordinates, 14)) {
+                e.stopPropagation()
+                onMarkerClick('chokepoint', f.properties)
+                return
+            }
+        }
+    }, [onMarkerClick, ee, overlay, applied])
+
     const resetView = useCallback(() => {
         const el = containerRef.current
         if (el && zoomRef.current) select(el).call(zoomRef.current.transform, fitTransform())
@@ -492,6 +527,7 @@ export function EqualEarthMap({
             ref={containerRef}
             className="equal-earth-map"
             onDoubleClick={resetView}
+            onClickCapture={handleMarkerCapture}
         >
             {ee && (
                 // GPU-composited pan/zoom: the transform is a CSS transform on

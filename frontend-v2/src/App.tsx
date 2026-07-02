@@ -1620,6 +1620,23 @@ function AppContent() {
                   selectedCountryCode={selectedCountryCode}
                   flyCountry={mapFlyCountry}
                   overlay={nativeOverlayData}
+                  onMarkerClick={(kind, p) => {
+                    // Mirrors the MapLibre layer handlers (parity audit).
+                    if (kind === 'chokepoint') {
+                      const cp = CHOKEPOINTS.find(item => item.id === p?.id)
+                      if (!cp) return
+                      setSelectedChokepoint(prev => prev?.id === cp.id ? null : cp)
+                      setMapFlyCountry(cp.primaryCountry)
+                    } else {
+                      setSelectedConflictEvent({
+                        type: String(p.type || ''), country: String(p.country || ''), place: String(p.place || ''),
+                        actor1: String(p.actor1 || ''), actor2: String(p.actor2 || ''), date: String(p.date || ''),
+                        fatalities: Number(p.fatalities) || 0, mentions: Number(p.mentions) || 0,
+                        lat: p.lat != null && p.lat !== '' ? Number(p.lat) : null,
+                        lon: p.lon != null && p.lon !== '' ? Number(p.lon) : null,
+                      })
+                    }
+                  }}
                   onCountryClick={(gdelt, name) => {
                     handleCountryClick(gdelt)
                     setFocus('country', gdelt, name || gdelt)
