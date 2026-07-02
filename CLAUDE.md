@@ -46,8 +46,16 @@ render retired). Axis fix ×2: center-of-mass rotation + THE REAL BUG:
 mount-only ResizeObserver behind the loading branch → svg 1200px in a
 590px panel (why it "rotaba por fuera"); callback-ref fixes universe +
 orbital. Umbrellas: excluded from field, story system opens via travel
-(children = field bodies). 153/153 vitest. NEXT: Pedro eyeball; #234
-focus-lens in universe; mobile pinch; drift trails; L3 universe-builder.
+(children = field bodies). 153/153 vitest. **V4 (Pedro: "llegar desde la
+nube", `c769c4c4`):** universe = DISCOVERY entry + FULL focus lens. Root
+cause: theme-focus era GDELT-only (`ANY(themes)`) → thread ids matcheaban 0
+→ paneles silenciosamente globales (la razón del viejo "thread-open clears
+focus by design"). `focus_filters.thread_focus_filter` (dynamic-topic-N /
+atlas slug → typed topic_members membership) compartido por /nodes + /focus.
+Verified: click en la nube → orbital viaja + ThemeDetail + GLOBE "Filtered:
+<thread>" + AnomalyPanel "THREAD → RU" + cuerpo activo ANILLADO en el campo.
+NEXT: Pedro eyeball; country/person→field direction; mobile pinch; drift
+trails; L3 universe-builder.
 
 **2026-07-02 (L11 SOLAR SYSTEM — Orbital Thread View SHIPPED + E2 root-caused).**
 Design+prototype session (parallel chat; did NOT touch BriefNewspaper/search.py/

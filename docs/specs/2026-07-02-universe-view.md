@@ -82,10 +82,18 @@ system still opens via travel — their children are the field bodies.
 - Mobile: NO fifth tab. Same toggle inside the Map tab (tab bar already at 4).
   Touch: drag-rotate works via pointer events; pinch-zoom deferred (wheel-only
   today, noted).
-- Focus-lens integration (#234, NEXT after this ships): the universe
-  self-subscribes like every panel — focused country lights its primary
-  stories, focused person lights the threads they appear in
-  (`/threads?person=` exists), open thread lights its body + neighbors.
+- Focus-lens integration (#234): **SHIPPED for the thread direction
+  (`c769c4c4`, Pedro's "llegar desde la nube")** — the universe is the
+  DISCOVERY entry (browse without knowing what you seek; search demands you
+  already know). Clicking a body = full focus lens: root cause fixed in the
+  backend, theme-focus was GDELT-only (`ANY(themes)`) so every thread id
+  matched 0 and panels silently stayed global; thread-shaped values now
+  resolve through typed `topic_members` (`app/services/focus_filters.py`,
+  shared by /nodes + /focus). Verified: click in cloud → orbital travels +
+  ThemeDetail opens + GLOBE re-scopes ("Filtered: <thread>") + AnomalyPanel
+  re-scopes (THREAD → dominant country) + the open thread's body renders
+  RINGED back in the field. Remaining directions: focused country/person →
+  light their stories in the field.
 
 ### 7.2 The moving cloud (motion = real data, rotation = real depth)
 - **Rotation is honest depth, not decoration:** the backend serves PCA top-3
