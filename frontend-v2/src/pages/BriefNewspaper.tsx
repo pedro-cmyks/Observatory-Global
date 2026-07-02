@@ -91,6 +91,7 @@ interface BriefingData {
         avg_sentiment: number
     }
     top_countries: { code: string; name: string; signals: number; sentiment: number; sentiment_source?: string; nlp_coverage?: number }[]
+    category_counts?: { category: string; topics: number; signals: number }[]
     negative_sentiment: { code: string; name: string; sentiment: number; signals: number; sentiment_source?: string; nlp_coverage?: number }[]
     positive_sentiment: { code: string; name: string; sentiment: number; signals: number; sentiment_source?: string; nlp_coverage?: number }[]
     top_themes: {
@@ -850,17 +851,38 @@ export function BriefNewspaper() {
                             ))}
                         </div>
                         <div className="brief-bottom-col">
-                            <h3 className="brief-bottom-heading" data-tip="Taxonomy index — themes are a navigation aid, not the story model. Narrative Threads above are the editorial unit.">By Theme</h3>
-                            {data.top_themes.slice(0, 6).map(t => (
-                                <button
-                                    key={t.theme}
-                                    className="brief-bottom-country"
-                                    onClick={() => goToAtlas(`theme=${encodeURIComponent(t.theme)}${countryFilter ? `&country=${countryFilter}` : ''}`)}
-                                >
-                                    <span>{getThemeIcon(t.theme)} {getThemeLabel(t.theme)}</span>
-                                    <span className="brief-bottom-num">{t.count.toLocaleString()}</span>
-                                </button>
-                            ))}
+                            {(data.category_counts?.length ?? 0) > 0 ? (
+                                /* #249: Atlas's OWN R3.1 categories — the GDELT
+                                   taxonomy index retired once every story carries
+                                   a category. Search opens the category term. */
+                                <>
+                                    <h3 className="brief-bottom-heading" data-tip="Atlas category index — every live story is typed into an open category (crisis anchors + emergent).">By Category</h3>
+                                    {data.category_counts!.slice(0, 6).map(c => (
+                                        <button
+                                            key={c.category}
+                                            className="brief-bottom-country"
+                                            onClick={() => goToAtlas(`q=${encodeURIComponent(c.category)}`)}
+                                        >
+                                            <span>{c.category}</span>
+                                            <span className="brief-bottom-num">{c.signals.toLocaleString()}</span>
+                                        </button>
+                                    ))}
+                                </>
+                            ) : (
+                                <>
+                                    <h3 className="brief-bottom-heading" data-tip="Taxonomy index — themes are a navigation aid, not the story model. Narrative Threads above are the editorial unit.">By Theme</h3>
+                                    {data.top_themes.slice(0, 6).map(t => (
+                                        <button
+                                            key={t.theme}
+                                            className="brief-bottom-country"
+                                            onClick={() => goToAtlas(`theme=${encodeURIComponent(t.theme)}${countryFilter ? `&country=${countryFilter}` : ''}`)}
+                                        >
+                                            <span>{getThemeIcon(t.theme)} {getThemeLabel(t.theme)}</span>
+                                            <span className="brief-bottom-num">{t.count.toLocaleString()}</span>
+                                        </button>
+                                    ))}
+                                </>
+                            )}
                         </div>
                     </section>
 

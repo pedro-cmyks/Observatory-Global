@@ -175,7 +175,9 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 JOIN countries_v2 c ON h.country_code = c.code
                 WHERE h.hour > NOW() - ($1::int * INTERVAL '1 hour')
                 GROUP BY h.country_code, c.name
-                HAVING SUM(h.signal_count) > 10
+                HAVING SUM(h.signal_count) > 50  -- #249: >10 let 11-signal micro-countries
+                -- ('Antilles' legacy AN, bare 'RM') top most-negative/positive
+                -- with noise averages; 50 is the floor for a meaningful mean
             )
             SELECT country_code, name,
                    sig_total::bigint                          AS total,
@@ -215,7 +217,9 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 JOIN countries_v2 c ON h.country_code = c.code
                 WHERE h.hour > NOW() - ($1::int * INTERVAL '1 hour')
                 GROUP BY h.country_code, c.name
-                HAVING SUM(h.signal_count) > 10
+                HAVING SUM(h.signal_count) > 50  -- #249: >10 let 11-signal micro-countries
+                -- ('Antilles' legacy AN, bare 'RM') top most-negative/positive
+                -- with noise averages; 50 is the floor for a meaningful mean
             )
             SELECT country_code, name,
                    sig_total::bigint                          AS total,
@@ -238,6 +242,31 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             FROM agg
             ORDER BY chosen_sentiment_raw DESC LIMIT 10
         """, hours, NLP_COVERAGE_THRESHOLD, NLP_SENTIMENT_SCALE)
+
+        # #249: the Brief's back-matter index should be ATLAS categories (R3.1 —
+        # our own open category level), not the GDELT taxonomy. Counts = current
+        # (latest-snapshot) volume per category over active top-level stories.
+        category_counts = await _fetch_section(conn, degraded_segments, "category_counts", """
+            SELECT dt.category,
+                   COUNT(DISTINCT dt.id)::int    AS topics,
+                   COALESCE(SUM(x.n), 0)::bigint AS signals
+            FROM dynamic_topics dt
+            JOIN LATERAL (
+                SELECT SUM(ec.n_signals) AS n
+                FROM dynamic_topic_members m
+                JOIN emergent_clusters ec ON ec.id = m.emergent_cluster_id
+                WHERE m.dynamic_topic_id = dt.id
+                  AND m.snapshot_at = (
+                      SELECT MAX(snapshot_at) FROM dynamic_topic_members
+                      WHERE dynamic_topic_id = dt.id)
+            ) x ON true
+            WHERE dt.state = 'active' AND dt.parent_id IS NULL
+              AND dt.category IS NOT NULL
+            GROUP BY dt.category
+            ORDER BY signals DESC
+            LIMIT 8
+        """)
+
         # Long windows should use compact processed historical tables, not raw
         # historical scans. For hot windows, theme_hourly_v2 remains the live
         # pre-agg populated by ingest_v2.refresh. The legacy
@@ -694,6 +723,10 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             },
             "top_countries": [serialize_country_row(r) for r in top_countries],
             "negative_sentiment": [serialize_country_row(r) for r in negative_sentiment],
+            "category_counts": [
+                {"category": r["category"], "topics": int(r["topics"]), "signals": int(r["signals"])}
+                for r in category_counts
+            ],
             "positive_sentiment": [serialize_country_row(r) for r in positive_sentiment],
             "heat_countries": [
                 {
