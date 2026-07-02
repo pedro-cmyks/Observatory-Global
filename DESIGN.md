@@ -749,11 +749,11 @@ The workspace is an investigation board. It should feel like a separate but conn
 
 ## Typography
 
-Use Outfit for brand and major display moments. It should feel geometric and confident, never playful.
+Use Fraunces for brand and major display moments (the wordmark, hero headlines, the Brief's editorial voice). It should feel literary and confident, never playful.
 
-Use Plus Jakarta Sans for the working interface. It carries body copy, panel summaries, settings, and dense rows.
+Use Geist for the working interface. It carries body copy, panel summaries, settings, and dense rows.
 
-Use Space Grotesk and mono fallbacks for command labels, uppercase metadata, counters, badges, tabs, and timestamps. These labels should be small, uppercase, and letter-spaced.
+Use Geist Mono for command labels, uppercase metadata, counters, badges, tabs, and timestamps. These labels should be small, uppercase, and letter-spaced.
 
 Use Georgia only in the daily brief and editorial analysis moments. The serif voice signals “read this as a brief,” while the console sans/mono voice signals “interact and investigate.”
 
