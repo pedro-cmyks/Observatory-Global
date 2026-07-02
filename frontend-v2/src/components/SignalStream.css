@@ -148,12 +148,20 @@
     background: rgba(255, 255, 255, 0.02);
     border-radius: 4px;
     gap: 8px;
-    transition: background 0.2s;
+    transition: background 0.2s, transform 0.15s ease, box-shadow 0.15s ease;
     border-left: 2px solid transparent;
 }
 
+/* F2 (capture-doc): the hovered signal LIFTS out of the stream — a separate
+   layer above the flow (which pauses on container hover) so clicking is easy
+   and the pause is visible. */
 .signal-row:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(12, 24, 43, 0.98);
+    position: relative;
+    z-index: 3;
+    transform: translateX(6px) scale(1.015);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(104, 219, 174, 0.25);
+    border-left-color: var(--color-accent-primary, #68dbae);
 }
 
 /* Pin button only appears on hover */

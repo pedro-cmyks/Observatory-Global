@@ -50,6 +50,15 @@ _PHOTO_CREDIT_TOKENS: set[str] = {
     "lapresse", "sipa", "zuma", "dreamstime", "depositphotos",
 }
 
+# Tech products/protocols GDELT tags as "persons" ("nvidia gpus" served with a
+# PERSON badge — capture-doc G1). Token-level; deliberately excludes words that
+# occur in real names ("ai" — Ai Weiwei; "meta" — surnames).
+_TECH_NON_PERSON_TOKENS: set[str] = {
+    "gpu", "gpus", "chatgpt", "iphone", "ipad", "android", "bitcoin",
+    "ethereum", "blockchain", "crypto", "wifi", "nvidia", "openai",
+    "playstation", "xbox", "tiktok", "whatsapp", "instagram",
+}
+
 
 def _is_valid_person(name: str) -> bool:
     lower = name.lower()
@@ -63,6 +72,8 @@ def _is_valid_person(name: str) -> bool:
         and tokens[0] not in _LEADING_NON_NAME_TOKENS
         # photo credits scraped as "people" ("peter hansen unsplash")
         and not any(t in _PHOTO_CREDIT_TOKENS for t in tokens)
+        # tech products tagged as people ("nvidia gpus")
+        and not any(t in _TECH_NON_PERSON_TOKENS for t in tokens)
         # a real two-word name never repeats the exact same token
         # ("bafana bafana", "new new")
         and len(set(tokens)) > 1
