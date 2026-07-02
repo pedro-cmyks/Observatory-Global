@@ -82,3 +82,21 @@ def test_gate_is_perfect_over_fixture():
     drops = [n for n in VALID_PEOPLE if not _is_valid_person(n)]
     assert not leaks, f"non-people leaked through: {leaks}"
     assert not drops, f"real people wrongly dropped: {drops}"
+
+
+class TestBylineScrape:
+    """#248: 'By ' credit glued onto the name — 'bysarah falson' (44 live signals)."""
+
+    def test_rejects_byline_scrapes(self):
+        from app.utils import _is_valid_person
+        assert not _is_valid_person("bysarah falson")
+        assert not _is_valid_person("bykristie kellahan")
+        assert not _is_valid_person("bycatherine marshall")
+
+    def test_keeps_real_by_names(self):
+        from app.utils import _is_valid_person
+        # Byron = real given name ('ron' is 3 letters, under the floor);
+        # Byungjae → 'ungjae' is not a name.
+        assert _is_valid_person("byron buxton")
+        assert _is_valid_person("byron donalds")
+        assert _is_valid_person("byungjae kim")

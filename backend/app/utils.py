@@ -50,6 +50,27 @@ _PHOTO_CREDIT_TOKENS: set[str] = {
     "lapresse", "sipa", "zuma", "dreamstime", "depositphotos",
 }
 
+# Byline scrape class (#248): GDELT glues the "By " credit onto the name →
+# "bysarah falson" (44 signals, live). Rule: first token = "by" + a common
+# given name of >=4 letters. The length floor protects REAL "by…" names —
+# Byron (ron, 3) Buxton/Donalds and Byungjae (ungjae, not a name) survive.
+_BYLINE_GIVEN_NAMES: set[str] = {
+    "sarah", "kristie", "catherine", "john", "james", "mary", "jane", "david",
+    "michael", "peter", "laura", "anna", "emma", "lucy", "mark", "paul",
+    "susan", "karen", "linda", "nancy", "lisa", "emily", "rachel", "hannah",
+    "george", "thomas", "daniel", "matthew", "andrew", "joshua", "ryan",
+    "jessica", "amanda", "melissa", "stephanie", "rebecca", "michelle",
+    "jennifer", "elizabeth", "william", "richard", "joseph", "charles",
+    "christopher", "anthony", "steven", "kevin", "brian", "jason", "chris",
+}
+
+
+def _is_byline_scrape(first_token: str) -> bool:
+    if not first_token.startswith("by") or len(first_token) < 6:
+        return False
+    return first_token[2:] in _BYLINE_GIVEN_NAMES
+
+
 # Tech products/protocols GDELT tags as "persons" ("nvidia gpus" served with a
 # PERSON badge — capture-doc G1). Token-level; deliberately excludes words that
 # occur in real names ("ai" — Ai Weiwei; "meta" — surnames).
@@ -70,6 +91,8 @@ def _is_valid_person(name: str) -> bool:
         and lower not in _NON_PERSON_PHRASES
         and tokens[0] not in _GEO_FIRST_WORDS
         and tokens[0] not in _LEADING_NON_NAME_TOKENS
+        # byline scrape glued to the name ("bysarah falson")
+        and not _is_byline_scrape(tokens[0])
         # photo credits scraped as "people" ("peter hansen unsplash")
         and not any(t in _PHOTO_CREDIT_TOKENS for t in tokens)
         # tech products tagged as people ("nvidia gpus")
