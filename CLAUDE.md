@@ -45,6 +45,37 @@ opacity KEPT — Pedro approved Landing as-is). REMAINING #247: C1/C2/C3 (panel-
 header/badge/EntityPanel-palette consolidations — M-effort, specs in the audit).
 Search remaining: P2-focus-chip, P3 semantic-on-submit, P4 telemetry.
 
+**2026-07-02 (OVERNIGHT STATE + MORNING CHECKLIST — read FIRST).** Night close
+2026-07-01 ~23:40. Shipped late: EE map = DEFAULT + Pedro's 2 live regressions
+fixed same hour (`51793494`: portrait fills height w/ strip world, landscape
+world-fits; fly-to-country now works in EE for every entry — verified on
+phone, PWA needed the double-refresh SW cycle); L0 CLOSED (landing stats live
+from /voice-mix, `5e5f8046`); forum lane source:'forum' (was claiming reddit
+for Lemmy); #247 = 5/6 batches DONE (A contrast 139+43 fixes · B Fraunces/Docs
+identity · C3 EntityPanel violet · D truncation tips · E canon de-contradicted
+— only C1/C2 headers+badges remain, need per-panel eyeball); search P1+P2 LIVE
+(live-threads segment + 129 country aliases + pure-country→primary threads;
+'burkina faso' resolves). New: **#249** (Brief BY THEME still GDELT → swap to
+R3.1 categories; + dup counts 5,774 smell + Antilles/RM country leaks).
+**OVERNIGHT COMPUTE (self-managing):** #241 lever-1 bulk-reindex RUNNING
+(196K embeds, ~13/s CPU-bound — note: NOT the 228/s theory; MPS contention w/
+NER measured, fleet PAUSED for it) → HNSW rebuild at end; ETA ~04:00-05:00.
+`restore-after-bulk-reindex.sh` (nohup, ALW) auto-bootstraps nlp-fleet +
+fleet-watchdog + embed-cron when the process exits, EVEN IF this session died.
+Semantic lane on lexical fallback until rebuild. Scoped-snapshot fires 02:30.
+**MORNING CHECKLIST:** (1) reindex done? `psql: SELECT count(*) FROM
+signal_embeddings` (~476K) + `SELECT indexname FROM pg_indexes WHERE tablename=
+'signal_embeddings'` (idx_signal_embeddings_vec MUST exist) + research/plan
+smoke (semantic anchors back); (2) restorer log `~/AtlasLocalWorker/logs/
+restore-after-reindex.log` + `launchctl list | grep atlas` (fleet/watchdog/
+embed-cron up); (3) scoped-snapshot first fire (launchctl exit 0 + fresh
+dynamic_topics snapshot_at ~02:30-03:30, incl. Step 4b disaster binding);
+(4) multilingual drain: verified subjects growing (IT had carabinieri/Roma);
+(5) NER burst resumes + consider burst=2 (RAM was 42% free w/ 1 worker).
+**QUEUE:** #247 C1/C2 → #249 → search P3 (semantic-on-submit) + P4 (telemetry)
+→ #248 noise classes → L3 depth track (T1.1 dossier who-says-what). #243 has
+the full ops list.
+
 **2026-07-01 (PM2 — L0→L3 DEEP REVIEW, read FIRST for product state; full doc
 `docs/specs/2026-07-01-l0-l3-deep-review.md`).** Pedro: fly re-auth (done,
 browser flow) + judge the FOUNDATION (data congruence L0→L3, design vs
