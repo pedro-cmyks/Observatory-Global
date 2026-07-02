@@ -1051,12 +1051,9 @@ SELECT
         LIMIT 24
     ) AS sample_signal_ids
 FROM dynamic_topics dt
-LEFT JOIN dynamic_topic_members dtm ON dtm.dynamic_topic_id = dt.id
-LEFT JOIN emergent_clusters ec ON ec.id = dtm.emergent_cluster_id
 """
 
 _DYNAMIC_TOPICS_TAIL = """
-GROUP BY dt.id
 ORDER BY recent_n_signals DESC, dt.last_seen DESC
 LIMIT $2
 """
@@ -1136,11 +1133,8 @@ SELECT
         LIMIT 32
     ) AS sample_signal_ids
 FROM dynamic_topics dt
-LEFT JOIN dynamic_topic_members dtm ON dtm.dynamic_topic_id = dt.id
-LEFT JOIN emergent_clusters ec ON ec.id = dtm.emergent_cluster_id
 WHERE dt.id = $1
   AND dt.state = 'active'
-GROUP BY dt.id
 """
 
 

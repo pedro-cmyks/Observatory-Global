@@ -634,7 +634,13 @@ function AppContent() {
       if (country) setMapFlyCountry(country)
       return
     }
-    if (!attention) return
+    if (!attention) {
+      // Pure-country deep link (?country=VE): useUrlSync hydrates the focus,
+      // but nothing flew the map — the click path flies, the link path didn't
+      // (capture-doc A1, Pedro's browser check).
+      if (country) setMapFlyCountry(country)
+      return
+    }
     const title = attention.replace(/_/g, ' ').trim()
     if (theme) {
       setSelectedPublicAttention(null)
