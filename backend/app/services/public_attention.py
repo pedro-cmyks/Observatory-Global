@@ -38,10 +38,10 @@ def parse_dynamic_topic_id(thread: str | None) -> int | None:
 
 
 def subreddit_label(source_name: str | None) -> str | None:
-    """'reddit/r/colombia' -> 'r/colombia'; pass through anything else."""
+    """'reddit/r/colombia' -> 'r/colombia'; 'lemmy/x@inst' -> 'x@inst'; pass through."""
     if not source_name:
         return None
-    if source_name.startswith("reddit/"):
+    if source_name.startswith(("reddit/", "lemmy/")):
         return source_name.split("/", 1)[1]
     return source_name
 
@@ -90,7 +90,7 @@ async def fetch_forum_attention(
         for r in rows
     ]
     return {
-        "source": "reddit",
+        "source": "forum",  # Reddit + Lemmy + Bluesky — "reddit" mislabeled Lemmy items (L0-L3 audit)
         "lane": "discussion",
         "verified": False,
         "count": len(items),
@@ -115,7 +115,7 @@ async def fetch_forum_thread_attention(
     centroid or no forum signal is embedded yet.
     """
     empty = {
-        "source": "reddit",
+        "source": "forum",  # Reddit + Lemmy + Bluesky — "reddit" mislabeled Lemmy items (L0-L3 audit)
         "lane": "discussion",
         "verified": False,
         "thread_id": topic_id,
@@ -167,7 +167,7 @@ async def fetch_forum_thread_attention(
         for m in members
     ]
     return {
-        "source": "reddit",
+        "source": "forum",  # Reddit + Lemmy + Bluesky — "reddit" mislabeled Lemmy items (L0-L3 audit)
         "lane": "discussion",
         "verified": False,
         "thread_id": topic_id,

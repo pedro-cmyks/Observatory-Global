@@ -49,8 +49,25 @@ export function Landing() {
     const [liveSignals, setLiveSignals] = useState<string | null>(null)
     const [liveStatus, setLiveStatus] = useState<'live' | 'degraded' | null>(null)
     const [movers, setMovers] = useState<Mover[] | null>(null)
+    // L0 review item: these were hardcoded marketing numbers (126/31/0.71,
+    // measured 2026-06-23) that would drift silently — now fetched live from
+    // /api/v2/voice-mix with the last-known values as fallback.
+    const [voice, setVoice] = useState<{ countries: number; langs: number; entropy: string } | null>(null)
 
     useEffect(() => { prefetchBriefing(24) }, [])
+
+    useEffect(() => {
+        fetch('/api/v2/voice-mix?hours=168')
+            .then(r => r.ok ? r.json() : null)
+            .then(d => {
+                if (d?.distinct_origin_countries) setVoice({
+                    countries: d.distinct_origin_countries,
+                    langs: d.distinct_known_languages ?? 31,
+                    entropy: (d.voice_entropy ?? 0.71).toFixed(2),
+                })
+            })
+            .catch(() => {})
+    }, [])
 
     useEffect(() => {
         fetch('/health')
@@ -143,7 +160,7 @@ export function Landing() {
 
                     <div className="flex flex-wrap justify-center gap-x-10 gap-y-3 mt-10 font-technical-label text-technical-label text-text-secondary uppercase tracking-wider">
                         <span className="tabular-nums"><span className="text-primary">{liveSignals ?? '—'}</span> signals indexed</span>
-                        <span className="tabular-nums"><span className="text-primary">126</span> countries of voice</span>
+                        <span className="tabular-nums"><span className="text-primary">{voice?.countries ?? 126}</span> countries of voice</span>
                         <span><span className="text-primary">{liveStatus === 'degraded' ? 'Degraded' : 'Live'}</span> · ingesting every 15 min</span>
                     </div>
                 </section>
@@ -285,9 +302,9 @@ export function Landing() {
                             <h3 className="font-headline-md text-text-primary text-xl md:text-2xl mb-3">Global without the monoculture.</h3>
                             <p className="font-body-main text-text-secondary text-sm mb-5">"Global" is a measured claim. Atlas separates a country being <em>talked about</em> from a country having its own <em>voice</em> — self-coverage by outlet ownership, not language.</p>
                             <div className="flex gap-8">
-                                <div><div className="font-headline-md text-primary text-2xl tabular-nums">126</div><div className="font-technical-label text-technical-label text-text-secondary uppercase">countries of voice</div></div>
-                                <div><div className="font-headline-md text-primary text-2xl tabular-nums">31</div><div className="font-technical-label text-technical-label text-text-secondary uppercase">languages ingested</div></div>
-                                <div><div className="font-headline-md text-primary text-2xl tabular-nums">0.71</div><div className="font-technical-label text-technical-label text-text-secondary uppercase">voice entropy</div></div>
+                                <div><div className="font-headline-md text-primary text-2xl tabular-nums">{voice?.countries ?? 126}</div><div className="font-technical-label text-technical-label text-text-secondary uppercase">countries of voice</div></div>
+                                <div><div className="font-headline-md text-primary text-2xl tabular-nums">{voice?.langs ?? 31}</div><div className="font-technical-label text-technical-label text-text-secondary uppercase">languages ingested</div></div>
+                                <div><div className="font-headline-md text-primary text-2xl tabular-nums">{voice?.entropy ?? "0.71"}</div><div className="font-technical-label text-technical-label text-text-secondary uppercase">voice entropy</div></div>
                             </div>
                         </div>
                     </div>
