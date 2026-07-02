@@ -275,7 +275,9 @@ export function EqualEarthMap({
      *  PORTRAIT panels (phones) FILL the height with the wrapping strip —
      *  the world-fit default left a thin band on mobile (Pedro 2026-07-01). */
     const fitTransform = useCallback(() => {
-        if (size.h > size.w) return zoomIdentity // fill height, strip world
+        // h>w alone misfired on DESKTOP (the map panel is 499×625 → strip view
+        // on a monitor). Phones are ~2.2 tall; panels ~1.25. Cut at 1.4.
+        if (size.h > size.w * 1.4) return zoomIdentity // phone: fill height
         return zoomIdentity.translate((size.w * (1 - kFit)) / 2, 0).scale(kFit)
     }, [size.w, size.h, kFit])
 
