@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { track } from '../lib/telemetry'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { useFocus } from '../contexts/FocusContext'
 import type { RegionFilter } from '../contexts/FocusContext'
@@ -232,7 +233,23 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
             const countryParam = parsed.countryCode ? `&country=${parsed.countryCode}` : ''
             const res = await fetch(`/api/v2/search/unified?q=${encodeURIComponent(searchQ)}&hours=168${countryParam}`)
             if (res.ok) {
-                setResults(await res.json())
+                const data = await res.json()
+                setResults(data)
+                // P4 search telemetry: the wedge question is "do people FIND?"
+                // — log what each settled query surfaced, esp. zero-results.
+                const counts = {
+                    live_threads: data?.live_threads?.length ?? 0,
+                    themes: data?.themes?.length ?? 0,
+                    persons: data?.persons?.length ?? 0,
+                    countries: data?.countries?.length ?? 0,
+                    concepts: data?.concepts?.length ?? 0,
+                }
+                track('search_query', {
+                    q_len: searchQ.length,
+                    country_scoped: !!parsed.countryCode,
+                    ...counts,
+                    zero: Object.values(counts).every(n => n === 0),
+                })
             } else {
                 // Fallback to basic search if unified endpoint not available yet
                 const fallback = await fetch(`/api/v2/search?q=${encodeURIComponent(searchQ)}&hours=168`)
@@ -269,6 +286,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
     }
 
     const handleLiveThreadClick = (t: LiveThreadResult) => {
+        track('search_result_click', { segment: 'live_thread', q_len: query.length })
         // The served dynamic-topic id IS the theme contract — same path a
         // NarrativeThreads row takes (#245: search now reaches live threads).
         onThemeSelect(t.id, parsedQuery.countryCode ?? undefined, parsedQuery.countryDisplay ?? undefined)
@@ -276,6 +294,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
     }
 
     const handleThemeClick = (t: ThemeResult) => {
+        track('search_result_click', { segment: 'theme', q_len: query.length })
         if (parsedQuery.countryCode) {
             setCountry(parsedQuery.countryCode)
             setTheme(t.theme)
@@ -290,6 +309,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
     }
 
     const handlePersonClick = (p: PersonResult) => {
+        track('search_result_click', { segment: 'person', q_len: query.length })
         setFocus('person', p.person, p.person)
         if (p.top_countries[0]) setMapFlyCountry(p.top_countries[0].code)
         close()

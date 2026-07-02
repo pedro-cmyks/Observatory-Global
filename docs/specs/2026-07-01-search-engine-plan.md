@@ -56,3 +56,26 @@ Order: P1 search (done) → #244 landing seam (S) → #246 damp-by-category (S)
 L3 depth track. ACLED (#46): explicitly NOT a blocker (Pedro 2026-07-01) —
 alternates (USGS/GDACS/CAMEO) already carry the event layer; discard if never
 granted.
+
+## P4 SHIPPED (2026-07-02)
+Events: `search_query` (q_len, country_scoped, per-segment counts, zero) on
+each settled query; `search_result_click` (segment, q_len) on live_thread/
+theme/person selects. Verified end-to-end (preview → 202 → prod row:
+'burkina faso' → live_threads:1, themes:4, zero:false).
+
+**Weekly reading (run with the telemetry read, T5.1 discipline):**
+```sql
+-- Do searchers FIND? zero-rate + click-through by segment, last 7d
+SELECT
+  count(*) FILTER (WHERE event='search_query')                          AS queries,
+  count(*) FILTER (WHERE event='search_query'
+                     AND (props->>'zero')::bool)                        AS zero_result,
+  count(*) FILTER (WHERE event='search_result_click')                   AS clicks,
+  mode() WITHIN GROUP (ORDER BY props->>'segment')
+    FILTER (WHERE event='search_result_click')                          AS top_segment
+FROM telemetry_events
+WHERE event LIKE 'search%' AND created_at > NOW() - INTERVAL '7 days';
+-- zero_result queries = the recall gap list; pull their q_len distribution
+-- before touching ranking.
+```
+Remaining: P3 semantic-on-submit (prompt in docs/prompts/).
