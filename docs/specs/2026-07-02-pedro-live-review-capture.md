@@ -171,3 +171,46 @@ information read better. Redesign is always valid if legibility wins.
   /api/v2/persons/suggest (ms); prod-verified. **G1** ✅ tech-token person
   filter. **F2** ✅ hover-lift (pause existed, affordance didn't).
   NEXT: D9 insight editorial pass, E1/E2, D10 reading order, J entities audit.
+
+## L. PA round 2 (Pedro live, 15:47 screenshot)
+- **L1 🔴 Mbappé hole**: PA item = 2.4M wiki views, "12 countries", **0 media
+  signals** — mid-World-Cup, France's top scorer. Impossible → the PA→media
+  match is losing everything. Prime suspect: accent/diacritic mismatch
+  ("Mbappé" vs GDELT's "kylian mbappe") + possibly the sports-lane filter.
+  Likely affects MOST PA items (his generalization). DIAGNOSE + FIX.
+- **L2** Random PA items (".xyz", stray names) in the global dock — wiki/trend
+  garbage class; filter.
+- **L3 (concept Q)** "Un foro no es public attention": taxonomy split —
+  search/wiki = people LOOKING (attention proxies); forums = people TALKING
+  (conversation). Consider renaming/splitting the lane: ATTENTION (search/wiki)
+  vs DISCUSSION (forums) — the discussion lane already exists in threads; the
+  PA surface should not conflate. Ties C1.
+- **L4** PA focus should re-center the map on where that attention concentrates
+  (#234 family — PA lens).
+- **L5** Anomaly-alert box reads cut off at the bottom — layout.
+- **L6** Stream pacing: news must enter ONE BY ONE, continuously spaced — not a
+  burst then dry-out. Drip cadence should adapt so the buffer lasts until the
+  next poll ("que se vea que están entrando constantemente"). Categories can
+  stay, but the feel = constant arrival. (Pause verified working — the stream
+  had simply run out.)
+- **L7** MAP KEY: "Sources: GDELT 2.0" is stale (GDELT+RSS+NewsData+social+
+  USGS/GDACS today). "Conflict events · 500": riots/other-violence never seen —
+  verify the class mapping is real; and WHERE do natural disasters (we ingest
+  USGS/GDACS!) appear on the map? Candidate: disaster markers layer.
+- **L8** Reset ↺ semantic upgrade: reset should re-center on the HOTTEST region
+  (composite), not just the default strip — "que empiece siempre en lo más
+  caliente". (The dead-button fix itself is deployed; his machine had the old
+  bundle — the behavior he described, clearing toggles, was the pre-fix code.)
+- **L9** Pitch/tilt: liked it, but self-resolved — NOT needed ("ocupa bien la
+  pantalla"). No action.
+- **L10 (validation)** The arcs DELIGHT: "el mundo no se conecta con África, es
+  Europa↔US↔India↔China — qué bacanería, nada más viendo el mapa" — the
+  product thesis working on sight.
+- **L11 (E2 concept — Pedro's "locura")**: evolution graph as a SOLAR SYSTEM —
+  the thread at center; entities/countries/subthreads = planets/comets that
+  enter orbit, interact for a while, leave; threads themselves orbiting larger
+  attractors (categories/events) = a GALAXY of information. Time = orbital
+  motion. Feed into the E2/§I redesign (P7 evolution-graph-as-engine-truth).
+- **L12** "Outlet" classification judged wrong somewhere he clicked ("outlet no
+  tenemos — clasificar como eventos/conflictos/desastres") — locate the surface
+  labeling things 'outlet' and re-type. NEEDS LOCATION (ask/inspect).
