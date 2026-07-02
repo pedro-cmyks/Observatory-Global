@@ -1292,3 +1292,39 @@
     .related-chip-wrap { min-width: 0; }
     .related-chip-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
+
+/* E3: how-covered inline peek — expanded card spans the grid */
+.framing-card:has(.framing-peek) {
+    grid-column: 1 / -1;
+}
+.framing-peek {
+    margin-top: 8px;
+    border-top: 1px solid var(--color-border-subtle, rgba(255,255,255,0.08));
+    padding-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    cursor: default;
+}
+.framing-peek-row {
+    font-size: 0.82rem;
+    line-height: 1.35;
+    color: var(--color-text-primary, #e2e8f0);
+    text-decoration: none;
+}
+.framing-peek-row:hover { text-decoration: underline; }
+.framing-peek-empty {
+    font-size: 0.78rem;
+    color: var(--color-text-muted, #64748b);
+    margin: 0;
+}
+.framing-peek-full {
+    align-self: flex-start;
+    background: none;
+    border: 1px solid var(--color-border-medium, rgba(29,158,117,0.28));
+    color: var(--color-accent, #34d399);
+    font-size: 0.75rem;
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}

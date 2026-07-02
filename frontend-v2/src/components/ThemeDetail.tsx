@@ -184,6 +184,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         document.body.style.overflow = 'hidden'
         return () => { document.body.style.overflow = prev }
     }, [isMobile])
+    // E3: how-covered cards expand IN PLACE (mini coverage peek) instead of
+    // jumping straight to the big country panel.
+    const [expandedFraming, setExpandedFraming] = useState<string | null>(null)
     const [drillCountry, setDrillCountry] = useState<string | null>(initialDrillCountry || null)
     const [drillCountryName, setDrillCountryName] = useState<string | null>(
         initialDrillCountry ? (originCountryName || initialDrillCountry) : null
@@ -914,11 +917,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                                 <div
                                                     key={cf.country_code}
                                                     className={`framing-card${isOrigin ? ' framing-card-origin' : ''}`}
-                                                    onClick={() => onCountryCardClick
-                                                        ? onCountryCardClick(cf.country_code, cf.country_name)
-                                                        : (setDrillCountry(cf.country_code), setDrillCountryName(cf.country_name))
-                                                    }
-                                                    data-tip={`See ${cf.country_name}'s coverage`}
+                                                    onClick={() => setExpandedFraming(prev =>
+                                                        prev === cf.country_code ? null : cf.country_code)}
+                                                    data-tip={`Peek ${cf.country_name}'s coverage`}
                                                 >
                                                     <div className="framing-card-header">
                                                         <span className="framing-rank">#{cf.volumeRank ?? idx + 1}</span>
@@ -952,6 +953,35 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                                                 </span>
                                                             ))}
                                                     </div>
+                                                    {expandedFraming === cf.country_code && (() => {
+                                                        const peek = data.signals
+                                                            .filter(sig => sig.country === cf.country_code && sig.headline)
+                                                            .slice(0, 4)
+                                                        return (
+                                                            <div className="framing-peek" onClick={e => e.stopPropagation()}>
+                                                                {peek.length > 0 ? peek.map((sig, j) => (
+                                                                    <a key={j} href={sig.url} target="_blank" rel="noopener noreferrer" className="framing-peek-row">
+                                                                        {typeof sig.id === 'number'
+                                                                            ? <TranslatableHeadline signalId={sig.id} original={sig.headline!} sourceLang={sig.source_lang} />
+                                                                            : sig.headline}
+                                                                    </a>
+                                                                )) : (
+                                                                    <p className="framing-peek-empty">
+                                                                        No {cf.country_name} headlines in the fetched sample — open the full view.
+                                                                    </p>
+                                                                )}
+                                                                <button
+                                                                    type="button"
+                                                                    className="framing-peek-full"
+                                                                    onClick={() => onCountryCardClick
+                                                                        ? onCountryCardClick(cf.country_code, cf.country_name)
+                                                                        : (setDrillCountry(cf.country_code), setDrillCountryName(cf.country_name))}
+                                                                >
+                                                                    Full {cf.country_name} coverage ↗
+                                                                </button>
+                                                            </div>
+                                                        )
+                                                    })()}
                                                 </div>
                                             )
                                         })}
