@@ -144,3 +144,17 @@ information read better. Redesign is always valid if legibility wins.
   the global top-100 → still zero arcs for small countries). Deep-link
   ?country= now also flies. Arc DRAW verified to the data layer; pixel-confirm
   needs a real browser (headless preview pauses the canvas rAF).
+
+## Mercator ↔ Equal Earth PARITY AUDIT (Pedro's ask, code-level 2026-07-02)
+| Capability | Mercator | EE | Status |
+|---|---|---|---|
+| Heat composite fill + focus re-scope | ✓ | ✓ | SHARED (countryHeatStates — one source) |
+| Fly-to (click / deep-link / thread / person) | ✓ | ✓ | fixed this session |
+| Flow arcs | ✓ | ✓ data-wise | focused-fetch now primary (03d43f8a); CO=35, VE=20+ pairs |
+| Anomaly rings / conflict dots / chokepoints / planes / ships / terminator | ✓ | ✓ | canvas overlay |
+| **Hover tooltip (country name/count)** | ✓ MapTooltip | ✗ | **GAP → implementing now** |
+| **Marker CLICKS (ACLED event / chokepoint open)** | ✓ | ✗ | known spec gap — canvas non-interactive v1; NEXT after tooltip |
+| Zoom-adaptive flow density | ✓ (viewState.zoom) | ~ (fixed 25) | minor — feed EE k into visibleFlows later |
+| Basemap streets/city labels | ✓ | by-design ✗ | abstract country-level identity; EE has zoom-in country labels |
+| Pitch/bearing/two-stage reset | ✓ | by-design ✗ | 2D projection |
+| Default view | fills panel | **strip fills panel (Pedro 2026-07-02)** | world reachable by zoom-out (scaleExtent min=kFit) |

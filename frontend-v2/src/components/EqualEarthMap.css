@@ -66,3 +66,18 @@
 .equal-earth-country:hover {
     fill: rgba(104, 219, 174, 0.18);
 }
+
+/* hover tooltip — Mercator parity (country name on hover) */
+.equal-earth-tooltip {
+    position: fixed;
+    z-index: 50;
+    pointer-events: none;
+    background: rgba(7, 13, 23, 0.92);
+    border: 1px solid var(--color-border-medium, rgba(29, 158, 117, 0.28));
+    color: var(--color-text-primary, #e2e8f0);
+    font-family: var(--font-mono, monospace);
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+}

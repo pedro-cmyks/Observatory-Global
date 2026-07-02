@@ -94,6 +94,9 @@ export function EqualEarthMap({
     // idle so the browser re-rasterizes the vector crisp at the current zoom
     // (with will-change always on, the cached bitmap scales → blur/pixelation).
     const [gesturing, setGesturing] = useState(false)
+    // Parity gap vs Mercator (capture-doc audit): hover tooltip with the
+    // country name. Screen-space; cleared on leave/pan.
+    const [hover, setHover] = useState<{ name: string; x: number; y: number } | null>(null)
 
     // Container size — drives the projection fit. The map can mount at 0×0
     // inside a hidden mobile tab and only get a real box when the tab is shown,
@@ -215,6 +218,8 @@ export function EqualEarthMap({
                 stroke={isSel ? '#68dbae' : (heat > 0.3 ? heatGlowColor(heat) : 'rgba(120,140,170,0.18)')}
                 strokeWidth={isSel ? 1.8 : 0.3}
                 onClick={() => handleCountryClick(p.iso, p.name)}
+                onMouseMove={(e) => setHover({ name: p.name, x: e.clientX, y: e.clientY })}
+                onMouseLeave={() => setHover(null)}
                 style={{ cursor: 'pointer' }}
             />
         )
@@ -257,7 +262,7 @@ export function EqualEarthMap({
         if (!el) return
         const zb = d3zoom<HTMLDivElement, unknown>()
             .scaleExtent([1, 12])
-            .on('start', () => { movedRef.current = false; setGesturing(true) })
+            .on('start', () => { movedRef.current = false; setGesturing(true); setHover(null) })
             .on('zoom', (event) => {
                 if (event.sourceEvent) movedRef.current = true
                 const t = event.transform
@@ -275,11 +280,12 @@ export function EqualEarthMap({
      *  PORTRAIT panels (phones) FILL the height with the wrapping strip —
      *  the world-fit default left a thin band on mobile (Pedro 2026-07-01). */
     const fitTransform = useCallback(() => {
-        // h>w alone misfired on DESKTOP (the map panel is 499×625 → strip view
-        // on a monitor). Phones are ~2.2 tall; panels ~1.25. Cut at 1.4.
-        if (size.h > size.w * 1.4) return zoomIdentity // phone: fill height
-        return zoomIdentity.translate((size.w * (1 - kFit)) / 2, 0).scale(kFit)
-    }, [size.w, size.h, kFit])
+        // Pedro (2026-07-02): the strip EVERYWHERE — the world-fit letterbox
+        // left dead black space above/below on desktop. Default/reset = fill
+        // the available height (fitHeight = k1 identity); the world stays
+        // reachable by zooming OUT (scaleExtent min = kFit).
+        return zoomIdentity
+    }, [])
 
     // Whenever the projection (re)fits — first mount, panel resize — allow
     // zooming out to the world and START there (also re-fits on resize).
@@ -544,6 +550,14 @@ export function EqualEarthMap({
                     className="equal-earth-canvas"
                     style={{ width: size.w, height: size.h }}
                 />
+            )}
+            {hover && (
+                <div
+                    className="equal-earth-tooltip"
+                    style={{ left: hover.x + 12, top: hover.y - 10 }}
+                >
+                    {hover.name}
+                </div>
             )}
             <div className="equal-earth-vignette" />
         </div>
