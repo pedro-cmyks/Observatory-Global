@@ -93,6 +93,7 @@ interface BriefData {
     publicAttention?: {
         searches: Array<{ keyword: string; rank?: number | null }>;
         wikiArticles: Array<{ title: string; views?: number | null }>;
+        forum?: Array<{ headline?: string | null; subreddit?: string | null; url?: string }>;
     };
     indicators?: Indicators;
     error?: string;
@@ -254,7 +255,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             setIndicators(null);
 
             try {
-                const [nodeRes, indicatorsRes, signalsRes, trendsRes, wikiRes, threadsRes, voiceRes] = await Promise.all([
+                const [nodeRes, indicatorsRes, signalsRes, trendsRes, wikiRes, threadsRes, voiceRes, forumRes] = await Promise.all([
                     optionalFetchResponse(() => fetch(`/api/v2/nodes?focus_type=country&focus_value=${countryCode}&hours=${timeWindow}&limit=1`, { signal: controller.signal })),
                     optionalFetchResponse(() => fetch(`/api/indicators/country/${countryCode}?hours=${timeWindow}`, { signal: controller.signal })),
                     fetch(`/api/v2/signals?country_code=${countryCode}&hours=${timeWindow}&limit=500`, { signal: controller.signal }),
@@ -262,6 +263,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     optionalFetchResponse(() => fetch(getPublicAttentionTopUrl(5, countryCode), { signal: controller.signal })),
                     optionalFetchResponse(() => fetch(`/api/v2/threads?hours=${timeWindow}&limit=24&country_code=${countryCode}`, { signal: controller.signal })),
                     optionalFetchResponse(() => fetch(`/api/v2/voice-mix?hours=${Math.max(timeWindow, 168)}&country=${countryCode}`, { signal: controller.signal })),
+                    optionalFetchResponse(() => fetch(`/api/v2/public-attention?country=${countryCode}&limit=4&hours=${Math.max(timeWindow, 336)}`, { signal: controller.signal })),
                 ]);
 
                 if (!signalsRes.ok) {
@@ -278,6 +280,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 const signalsPayload = await signalsRes.json() as SignalsResponse;
                 const trendsPayload = trendsRes?.ok ? await trendsRes.json() as TrendsResponse : null;
                 const wikiPayload = wikiRes?.ok ? await wikiRes.json() as WikiTopResponse : null;
+                const forumPayload = forumRes?.ok ? await forumRes.json() as { forum?: { items?: Array<{ headline?: string | null; subreddit?: string | null; url?: string; source_lang?: string | null; id?: number }> } } : null;
                 const threadsPayload = threadsRes?.ok ? await threadsRes.json() as ThreadsResponse : null;
                 const voicePayload = voiceRes?.ok ? await voiceRes.json() as { relation?: VoiceMixRelation } : null;
                 if (!controller.signal.aborted) setVoiceMix(voicePayload?.relation ?? null);
@@ -352,6 +355,9 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     publicAttention: {
                         searches: (trendsPayload?.trending ?? []).slice(0, 5),
                         wikiArticles: Array.from(new Map((wikiPayload?.articles ?? []).map((a: { title: string }) => [a.title, a])).values()).slice(0, 5),
+                        // L3 (Pedro): forums ARE public attention — one surface,
+                        // per-source badges; forum items stay verified=false.
+                        forum: (forumPayload?.forum?.items ?? []).slice(0, 4),
                     },
                     indicators: indicatorsData,
                     foreignSourcePct: null,
@@ -639,6 +645,26 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                             ))
                         ) : (
                             <div className="cb-attention-empty">No Wikipedia pageview data for this proxy.</div>
+                        )}
+                    </div>
+                    <div className="cb-attention-column">
+                        <span className="cb-attention-heading">Forum <span className="cb-forum-unverified">unverified</span></span>
+                        {(data.publicAttention?.forum ?? []).length > 0 ? (
+                            data.publicAttention!.forum!.map((f, i) => (
+                                <a
+                                    key={i}
+                                    className="cb-attention-row cb-attention-row--forum"
+                                    href={f.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    data-tip={f.subreddit ? `Discussion on ${f.subreddit} — open thread` : 'Open discussion'}
+                                >
+                                    <span>{f.headline || '(untitled)'}</span>
+                                    {f.subreddit && <strong className="cb-forum-src">{f.subreddit}</strong>}
+                                </a>
+                            ))
+                        ) : (
+                            <div className="cb-attention-empty">No forum discussion mentioning this country in the window.</div>
                         )}
                     </div>
                 </div>

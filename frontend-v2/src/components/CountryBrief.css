@@ -788,3 +788,18 @@
     margin-top: 0.35rem;
 }
 .source-show-all-btn:hover { color: #68dbae; border-color: rgba(104, 219, 174, 0.4); }
+
+/* L3/C1: forums ARE public attention (Pedro) — third column, honest badges */
+.cb-forum-unverified {
+    font-size: 8px;
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.35);
+    border-radius: 3px;
+    padding: 0 4px;
+    margin-left: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.cb-attention-row--forum { text-decoration: none; color: inherit; display: flex; justify-content: space-between; gap: 8px; }
+.cb-attention-row--forum span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cb-forum-src { font-size: 9px; color: var(--color-text-muted); font-weight: 400; flex-shrink: 0; }

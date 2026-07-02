@@ -180,11 +180,12 @@ information read better. Redesign is always valid if legibility wins.
   Likely affects MOST PA items (his generalization). DIAGNOSE + FIX.
 - **L2** Random PA items (".xyz", stray names) in the global dock — wiki/trend
   garbage class; filter.
-- **L3 (concept Q)** "Un foro no es public attention": taxonomy split —
-  search/wiki = people LOOKING (attention proxies); forums = people TALKING
-  (conversation). Consider renaming/splitting the lane: ATTENTION (search/wiki)
-  vs DISCUSSION (forums) — the discussion lane already exists in threads; the
-  PA surface should not conflate. Ties C1.
+- **L3 (RESOLVED — Pedro's correction 2026-07-02)**: a forum IS public
+  attention — "a lo que están atentos es de lo que están discutiendo." Do NOT
+  split the lanes: ONE Public Attention surface containing search + wiki +
+  FORUM, with honest per-source badges ([S]/[W]/[F], verified=false on forum
+  items) — the dock already models this. C1 therefore = add the FORUM column
+  inside CountryBrief's PA section (endpoint exists).
 - **L4** PA focus should re-center the map on where that attention concentrates
   (#234 family — PA lens).
 - **L5** Anomaly-alert box reads cut off at the bottom — layout.
