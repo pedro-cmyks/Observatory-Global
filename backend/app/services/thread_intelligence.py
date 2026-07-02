@@ -1066,7 +1066,10 @@ LIMIT $2
 _DYNAMIC_TOPICS_SQL = _DYNAMIC_TOPICS_SELECT + """
 WHERE dt.state = 'active'
   AND dt.parent_id IS NULL
-  AND dt.last_seen > NOW() - ($1::int * INTERVAL '1 hour')
+  AND dt.last_seen > NOW() - (GREATEST($1::int, 72) * INTERVAL '1 hour')
+  -- #250: 72h floor — a major event (VE earthquake, 380+169 signals) fell off
+  -- its own country's view at hour 25 (cliff). Ranking still favors fresh;
+  -- recent-but-fading stories DECAY down the list instead of vanishing.
 """ + _DYNAMIC_TOPICS_TAIL
 
 # Country view = the per-country CHILDREN, scoped by the PRIMARY country of a member
@@ -1081,7 +1084,10 @@ WHERE dt.state = 'active'
       JOIN emergent_clusters ecc ON ecc.id = dtmc.emergent_cluster_id
       WHERE dtmc.dynamic_topic_id = dt.id AND ecc.top_country_codes[1] = $3
   )
-  AND dt.last_seen > NOW() - ($1::int * INTERVAL '1 hour')
+  AND dt.last_seen > NOW() - (GREATEST($1::int, 72) * INTERVAL '1 hour')
+  -- #250: 72h floor — a major event (VE earthquake, 380+169 signals) fell off
+  -- its own country's view at hour 25 (cliff). Ranking still favors fresh;
+  -- recent-but-fading stories DECAY down the list instead of vanishing.
 """ + _DYNAMIC_TOPICS_TAIL
 
 
