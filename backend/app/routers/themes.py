@@ -714,7 +714,15 @@ async def get_theme_details(
     signals_hours = min(hours, 48) if hours > 24 else hours
     try:
         async with db.pool.acquire() as conn:
-            if use_processed_history(hours) and "-" in theme_code:
+            # dynamic-topic-<id> / cluster-<id> ids contain "-" but are NOT
+            # atlas slugs — they have dedicated resolvers below. Letting them
+            # into the historical branch returned total=0 for every dynamic
+            # thread at hours>24 (E2 diagnosis 2026-07-02).
+            _has_dedicated_resolver = (
+                theme_code.lower().startswith("dynamic-topic-")
+                or theme_code.lower().startswith("cluster-")
+            )
+            if use_processed_history(hours) and "-" in theme_code and not _has_dedicated_resolver:
                 topic_slug = theme_code.lower()
                 historical = await query_historical_topic_detail(
                     conn,
