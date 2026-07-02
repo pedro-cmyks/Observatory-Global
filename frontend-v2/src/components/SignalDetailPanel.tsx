@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
+import { buildKeySubjects, type SubjectType } from '../lib/countryBriefSubjects'
 import './SignalDetailPanel.css'
 
 // Per-signal narrative context (#228 §2.3): the Narrative Threads this signal
@@ -270,22 +271,35 @@ export const SignalDetailPanel: React.FC<Props> = ({
                         </details>
                     )}
 
-                    {signal.persons.length > 0 && (
-                        <div>
-                            <div className="sdp-section-label">People</div>
-                            <div className="sdp-tags">
-                                {signal.persons.map(p => (
-                                    <span
-                                        key={p}
-                                        className="sdp-person-tag"
-                                        onClick={() => { onPersonClick(p); onClose(); }}
-                                    >
-                                        {p}
-                                    </span>
-                                ))}
+                    {signal.persons.length > 0 && (() => {
+                        // J: the raw GDELT persons array carries orgs/places
+                        // mistyped as people ("nvidia gpus"). Type via the shared
+                        // subjects gazetteer; only real persons stay clickable.
+                        const SDP_BADGE: Record<SubjectType, string> = {
+                            person: 'person', place: 'place', organization: 'org',
+                            group: 'group', event: 'event',
+                        }
+                        const subjects = buildKeySubjects(
+                            signal.persons.map(name => ({ name, count: 1 })), 12)
+                        if (subjects.length === 0) return null
+                        return (
+                            <div>
+                                <div className="sdp-section-label">Key Subjects</div>
+                                <div className="sdp-tags">
+                                    {subjects.map(s => (
+                                        <span
+                                            key={`${s.type}:${s.name}`}
+                                            className={`sdp-person-tag${s.type === 'person' ? '' : ' sdp-person-tag--static'}`}
+                                            data-tip={s.type === 'person' ? undefined : SDP_BADGE[s.type]}
+                                            onClick={s.type === 'person' ? () => { onPersonClick(s.name); onClose(); } : undefined}
+                                        >
+                                            {s.name}
+                                        </span>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )
+                    })()}
 
                     {/* SEMANTIC NEIGHBORS — nearest signals in embedding space,
                         each labeled with similarity + gate status. Replaces the

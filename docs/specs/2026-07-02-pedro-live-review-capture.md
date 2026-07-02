@@ -278,3 +278,10 @@ before code.
   measured 161/72h) → Mercator circles + EE triangles, per-type palette, click
   opens USGS/GDACS page, Legend "Natural Hazards · N". Prod API 68 events.
   Riots/other-violence dot classes verified present in conflict layer (legend).
+- **J** ✅ AUDIT ANSWERED: orgs/places/events DO surface — Key Subjects with
+  type badges in CountryBrief + EntityPanel + ThemeDetail (the #176 reframe).
+  Gap found+fixed: SignalDetailPanel labeled raw GDELT persons "People" —
+  now typed Key Subjects (shared gazetteer; non-persons visible, unclickable).
+  DEEPER GAP (captured, not built): GDELT GKG ORGANIZATIONS field is NOT
+  ingested — signal-level org data doesn't exist; NER orgs only. Ingesting it
+  = the real "which companies/agencies/armed groups" answer. → issue-worthy.

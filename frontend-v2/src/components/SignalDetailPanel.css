@@ -431,3 +431,12 @@
     color: #68dbae;
     font-variant-numeric: tabular-nums;
 }
+
+/* J: non-person subjects (org/place/event) — visible but not clickable */
+.sdp-person-tag--static {
+    cursor: default;
+    opacity: 0.75;
+}
+.sdp-person-tag--static:hover {
+    background: transparent;
+}
