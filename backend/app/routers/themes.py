@@ -1683,3 +1683,192 @@ async def get_theme_spikes(
     except Exception as e:
         traceback.print_exc()
         return {"theme_code": theme_code, "spikes": [], "error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Orbital Thread View (E2/L11 — spec docs/specs/2026-07-02-orbital-thread-view.md)
+# ---------------------------------------------------------------------------
+
+def _vector_text(values) -> str:
+    """pgvector text input format for a python float sequence."""
+    return "[" + ",".join(f"{float(v):.6f}" for v in values) + "]"
+
+
+def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 12) -> list:
+    """Aggregate member-signal rows into orbital bodies (pure, testable).
+
+    ``rows``: dicts with timestamp (datetime), country_code, persons (list),
+    dist (float). Returns typed entity bodies + country bodies with per-body
+    signal counts, presence window, raw timestamps, and mean centroid distance.
+    """
+    from app.services.subjects import classify_subject
+
+    entities: dict = {}
+    countries: dict = {}
+    for r in rows:
+        ts = r["timestamp"]
+        dist = float(r["dist"])
+        cc = (r.get("country_code") or "").strip().upper()
+        if cc:
+            b = countries.setdefault(cc, {"n": 0, "dist_total": 0.0, "timestamps": []})
+            b["n"] += 1
+            b["dist_total"] += dist
+            b["timestamps"].append(ts)
+        for person in (r.get("persons") or []):
+            name = (person or "").strip()
+            if not name:
+                continue
+            key = name.lower()
+            b = entities.setdefault(key, {"label": name, "n": 0, "dist_total": 0.0, "timestamps": []})
+            b["n"] += 1
+            b["dist_total"] += dist
+            b["timestamps"].append(ts)
+
+    bodies = []
+    ranked_entities = sorted(entities.values(), key=lambda b: -b["n"])[:max_entities]
+    for b in ranked_entities:
+        subject_type = classify_subject(b["label"])
+        if subject_type is None:
+            continue
+        stamps = sorted(b["timestamps"])
+        bodies.append({
+            "id": f"entity-{b['label'].lower()}",
+            "label": b["label"],
+            "type": subject_type,
+            "n": b["n"],
+            "dist": round(b["dist_total"] / b["n"], 5),
+            "first_seen": stamps[0].isoformat(),
+            "last_seen": stamps[-1].isoformat(),
+            "timestamps": [t.isoformat() for t in stamps],
+        })
+    ranked_countries = sorted(countries.items(), key=lambda kv: -kv[1]["n"])[:max_countries]
+    for cc, b in ranked_countries:
+        stamps = sorted(b["timestamps"])
+        bodies.append({
+            "id": f"country-{cc}",
+            "label": cc,
+            "type": "country",
+            "n": b["n"],
+            "dist": round(b["dist_total"] / b["n"], 5),
+            "first_seen": stamps[0].isoformat(),
+            "last_seen": stamps[-1].isoformat(),
+            "timestamps": [t.isoformat() for t in stamps],
+        })
+    return bodies
+
+
+@router.get("/api/v2/theme/{theme_code}/orbital")
+async def get_theme_orbital(
+    theme_code: str,
+    hours: int = Query(168, ge=1, le=8760),
+):
+    """Orbital Thread View data: thread center + orbiting bodies with REAL
+    semantic distance (member signal embeddings vs the topic centroid).
+    Contract orbital-thread-v0; honest empties, never fabricated layout."""
+    empty = {
+        "contract": "orbital-thread-v0",
+        "theme": theme_code,
+        "hours": hours,
+        "center": None,
+        "bodies": [],
+    }
+    try:
+        async with db.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 15000")
+            centroid_text: Optional[str] = None
+            centroid_basis = "stored"
+            center = None
+            topic_id_text = theme_code.lower()
+
+            if topic_id_text.startswith("dynamic-topic-") and topic_id_text[len("dynamic-topic-"):].isdigit():
+                topic_row = await conn.fetchrow(
+                    "SELECT id, label, category, crisis_relevant, centroid_vec"
+                    " FROM dynamic_topics WHERE id = $1 AND state = 'active'",
+                    int(topic_id_text[len("dynamic-topic-"):]),
+                )
+                if not topic_row:
+                    return {**empty, "reason": "topic_not_found"}
+                center = {
+                    "label": topic_row["label"],
+                    "category": topic_row["category"],
+                    "crisis_relevant": bool(topic_row["crisis_relevant"])
+                        if topic_row["crisis_relevant"] is not None else None,
+                }
+                if topic_row["centroid_vec"]:
+                    centroid_text = _vector_text(topic_row["centroid_vec"])
+            elif "-" in topic_id_text:
+                # Thread ids may carry the '--cc' suffix — strip like the detail path.
+                atlas_slug = topic_id_text.split("--")[0]
+                atlas_row = await conn.fetchrow(
+                    "SELECT slug, label, parent_domain FROM atlas_topics WHERE slug = $1",
+                    atlas_slug,
+                )
+                if not atlas_row:
+                    return {**empty, "reason": "topic_not_found"}
+                topic_id_text = atlas_slug
+                center = {
+                    "label": atlas_row["label"],
+                    "category": atlas_row["parent_domain"],
+                    "crisis_relevant": None,
+                }
+            else:
+                return {**empty, "reason": "unsupported_theme_kind"}
+
+            member_ids = [
+                r["signal_id"] for r in await conn.fetch(
+                    """
+                    SELECT DISTINCT signal_id FROM topic_members
+                    WHERE topic_id = $1 AND role = 'evidence' AND signal_id IS NOT NULL
+                    """,
+                    topic_id_text,
+                )
+            ]
+            if not member_ids:
+                return {**empty, "center": center, "reason": "no_members"}
+
+            if centroid_text is None:
+                centroid_basis = "computed"
+                centroid_text = await conn.fetchval(
+                    """
+                    SELECT avg(vec::vector(768))::text FROM signal_embeddings
+                    WHERE signal_id = ANY($1::bigint[])
+                    """,
+                    member_ids,
+                )
+                if not centroid_text:
+                    return {**empty, "center": center, "reason": "no_embeddings"}
+
+            rows = await conn.fetch(
+                f"""
+                SELECT s.id, s.timestamp, s.country_code, s.persons,
+                       (se.vec::vector(768) <=> $2::vector(768)) AS dist
+                FROM signals_v2 s
+                JOIN signal_embeddings se ON se.signal_id = s.id
+                WHERE s.id = ANY($1::bigint[])
+                  AND s.timestamp > NOW() - INTERVAL '{int(hours)} hours'
+                """,
+                member_ids, centroid_text,
+            )
+            if not rows:
+                return {**empty, "center": center, "reason": "no_embedded_members_in_window"}
+
+            bodies = build_orbital_bodies([dict(r) for r in rows])
+            stamps = sorted(r["timestamp"] for r in rows)
+            return {
+                "contract": "orbital-thread-v0",
+                "theme": theme_code,
+                "hours": hours,
+                "centroid_basis": centroid_basis,
+                "center": {
+                    **(center or {}),
+                    "member_count": len(rows),
+                    "window": {
+                        "start": stamps[0].isoformat(),
+                        "end": stamps[-1].isoformat(),
+                    },
+                },
+                "bodies": bodies,
+            }
+    except Exception as exc:
+        logger.error("orbital view failed for %s: %s", theme_code, exc)
+        return {**empty, "reason": "error"}
