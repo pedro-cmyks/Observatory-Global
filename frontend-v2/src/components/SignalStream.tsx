@@ -40,6 +40,11 @@ const formatRelativeAge = (addedAt: number, now: number): string => {
 const CRITICAL_THEMES = ['TAX_TERROR', 'ARMEDCONFLICT', 'CRISISLEX_C03_DEAD_WOUNDED', 'KILL', 'MILITARY']
 const ELEVATED_THEMES = ['SOC_PROTEST', 'EPU_POLICY', 'CRIME', 'ARREST', 'DISASTER']
 const MARITIME_KEYWORDS = /suezmax|vessel|maritime|shipping|tanker|LNG|MMSI|strait|harbor|harbour|crude oil|container ship/i
+// L12: content classes Pedro asked for — filter by WHAT the signal is about,
+// not only how urgent it is. Conflict/disaster mirror the map layers.
+const CONFLICT_THEMES = ['ARMEDCONFLICT', 'TAX_TERROR', 'MILITARY', 'KILL', 'REBELLION', 'CEASEFIRE', 'PEACEKEEP']
+const DISASTER_THEMES = ['NATURAL_DISASTER', 'DISASTER', 'EARTHQUAKE', 'FLOOD', 'WILDFIRE', 'HURRICANE', 'CYCLONE', 'DROUGHT', 'VOLCANO']
+const DISASTER_KEYWORDS = /earthquake|sismo|terremoto|flood|inundaci|wildfire|incendio forestal|hurricane|hurac[aá]n|cyclone|cicl[oó]n|tsunami|volcan|erupci|landslide|deslizamiento/i
 
 // Filter out malformed GDELT document IDs and garbage headlines
 const isValidHeadline = (title: string | null): boolean => {
@@ -133,7 +138,7 @@ export const SignalStream: React.FC = () => {
     const [velocity, setVelocity] = useState<Velocity | null>(null)
     const [allowlist, setAllowlist] = useState<string[]>([])
     const [isHovered, setIsHovered] = useState(false)
-    const [streamFilter, setStreamFilter] = useState<'all' | 'critical' | 'elevated' | 'notable' | 'trend' | 'person' | 'maritime'>('notable')
+    const [streamFilter, setStreamFilter] = useState<'all' | 'critical' | 'elevated' | 'notable' | 'conflict' | 'disaster' | 'trend' | 'person' | 'maritime'>('notable')
     const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
     const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null)
     const isHoveredRef = useRef(false)
@@ -343,6 +348,8 @@ export const SignalStream: React.FC = () => {
         if (streamFilter === 'all') return true
         if (streamFilter === 'person') return sig.persons?.length > 0
         if (streamFilter === 'maritime') return MARITIME_KEYWORDS.test(sig.headline || '') || sig.themes.some(t => t.includes('MARITIME') || t.includes('VESSEL'))
+        if (streamFilter === 'conflict') return sig.themes.some(t => CONFLICT_THEMES.some(c2 => t.includes(c2)))
+        if (streamFilter === 'disaster') return sig.themes.some(t => DISASTER_THEMES.some(d => t.includes(d))) || DISASTER_KEYWORDS.test(sig.headline || '')
         // Analyst-grade tabs: never surface sports/entertainment noise lanes.
         if (isNoiseLane(sig)) return false
         if (streamFilter === 'trend') return sig.themes.some(t => HIGH_PRIORITY_THEMES.some(h => t.includes(h)))
@@ -399,7 +406,7 @@ export const SignalStream: React.FC = () => {
                         </button>
                     ))}
                     <span className="stream-filter-sep" />
-                    {(['trend', 'person', 'maritime'] as const).map(f => (
+                    {(['conflict', 'disaster', 'trend', 'person', 'maritime'] as const).map(f => (
                         <button
                             key={f}
                             className={`stream-filter-tab${streamFilter === f ? ' active' : ''}`}

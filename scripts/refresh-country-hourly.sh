@@ -6,6 +6,20 @@
 # psql from the M1 over the SESSION-mode pooler (port 5432) is the proven path
 # (manual backfill 2026-07-01 ran 2m35s fine).
 set -uo pipefail
+# Never overlap with a previous run still refreshing (a contended refresh can
+# outlive the 30-min cadence — two CONCURRENTLY refreshes thrash each other,
+# observed 2026-07-02). macOS has no flock(1): use an atomic mkdir lock with
+# stale expiry (>45 min = crashed run, reclaim).
+LOCKDIR="/tmp/atlas-country-hourly.lock"
+if ! mkdir "$LOCKDIR" 2>/dev/null; then
+  if [ -n "$(find "$LOCKDIR" -maxdepth 0 -mmin +45 2>/dev/null)" ]; then
+    rmdir "$LOCKDIR" 2>/dev/null; mkdir "$LOCKDIR" 2>/dev/null || exit 0
+  else
+    echo "$(date '+%F %T') previous refresh still running — skip" >> "$HOME/AtlasLocalWorker/logs/matview-refresh.log"
+    exit 0
+  fi
+fi
+trap 'rmdir "$LOCKDIR" 2>/dev/null' EXIT
 ENV_FILE="${ATLAS_ENV_FILE:-$HOME/AtlasLocalWorker/.env}"
 LOG="$HOME/AtlasLocalWorker/logs/matview-refresh.log"
 [ -f "$ENV_FILE" ] && { set -a; source "$ENV_FILE"; set +a; }

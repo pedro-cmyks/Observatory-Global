@@ -456,28 +456,13 @@ async def update_countries(pool: asyncpg.Pool):
 _last_matview_refresh: Optional[datetime] = None
 
 async def refresh_aggregates(pool: asyncpg.Pool):
-    """Refresh the materialized view — throttled to once per 28 minutes to reduce CPU spikes."""
-    global _last_matview_refresh
-    now = datetime.now(timezone.utc)
-    if _last_matview_refresh is not None:
-        minutes_since = (now - _last_matview_refresh).total_seconds() / 60
-        if minutes_since < 28:
-            print(f"Skipping matview refresh — last refresh was {minutes_since:.1f}m ago")
-            return
-
-    async with pool.acquire() as conn:
-        # The refresh outgrew the DB default statement_timeout (~120s): measured
-        # 2m35s on 2026-07-01, when it silently died for 13h and every
-        # country_hourly_v2 consumer (brief stats, /stats, geo detail, anomaly
-        # baselines) served a truncated window (R3 spec §4.7 failure class).
-        # CONCURRENTLY can't run inside a transaction, so raise the timeout at
-        # session level and always reset before the conn returns to the pool.
-        await conn.execute("SET statement_timeout = '600s'")
-        try:
-            await conn.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY country_hourly_v2")
-        finally:
-            await conn.execute("RESET statement_timeout")
-    _last_matview_refresh = now
+    """country_hourly_v2 refresh is OWNED by the M1 cron (refresh-country-hourly.sh,
+    session-mode psql) since 2026-07-02. This API-side path is retired: through
+    the Supabase TRANSACTION pooler the session SET above never reached the
+    backend running the REFRESH, so it ran UNBOUNDED — and collided with the M1
+    cron's refresh (two CONCURRENTLY refreshes observed 2026-07-02 18:20 UTC,
+    8m+ each, IO-starving /api/v2/signals into intermittent 500s)."""
+    return
 
 async def run_ingestion():
     """Main ingestion function."""

@@ -23,7 +23,7 @@ export interface RegionFilter {
     countries: string[]
 }
 
-export type StreamLevel = 'all' | 'critical' | 'elevated' | 'notable' | 'trend' | 'person' | 'maritime' | null
+export type StreamLevel = 'all' | 'critical' | 'elevated' | 'notable' | 'conflict' | 'disaster' | 'trend' | 'person' | 'maritime' | null
 
 export interface GlobalFilter {
     thread: string | null
