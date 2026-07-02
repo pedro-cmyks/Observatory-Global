@@ -16,6 +16,17 @@ describe('isPublicAttentionRelevant', () => {
         expect(isPublicAttentionRelevant('Wicked (2024 film)')).toBe(false)
     })
 
+    it('drops web-infrastructure articles inflated by consent banners (C3)', () => {
+        // 4M views / 0 media / 1 country — the live 2026-07-02 case.
+        expect(isPublicAttentionRelevant('Cookie (informatique)')).toBe(false)
+        expect(isPublicAttentionRelevant('HTTP cookie')).toBe(false)
+        expect(isPublicAttentionRelevant('CAPTCHA')).toBe(false)
+        expect(isPublicAttentionRelevant('Navegador web')).toBe(false)
+        // Real stories with techy words must PASS.
+        expect(isPublicAttentionRelevant('Iran cyberattack')).toBe(true)
+        expect(isPublicAttentionRelevant('Internet shutdown in Sudan')).toBe(true)
+    })
+
     it('drops non-English sports tournaments and leagues', () => {
         expect(isPublicAttentionRelevant('Copa Mundial de Fútbol de 2026')).toBe(false)
         expect(isPublicAttentionRelevant('Coupe du monde de football')).toBe(false)

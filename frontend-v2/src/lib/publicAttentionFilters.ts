@@ -10,6 +10,12 @@ const PUBLIC_ATTENTION_NOISE = [
     /\b(Main Page|Accueil principal|Hoofdpagina|Pagina principale|Hauptseite|Portada|P[aá]gina principal|Strona główna|Главная страница)\b/i,
     // Disambiguated film / TV / album / game articles (the "(2026 film)" style).
     /\((\d{4} )?(film|movie|TV series|video game|album|song|pel[ií]cula)\)/i,
+    // Web-infrastructure articles inflated by consent banners / browser-UI
+    // links, not by attention — "Cookie (informatique)" hit 4M views with zero
+    // media and one country (capture-doc C3). Disambiguated-tech parentheticals
+    // in any major language + the perennial consent-traffic titles.
+    /\((inform[aá]ti(?:que|ca)|computing|Internet|Informatik|informatica)\)/i,
+    /^(HTTP cookie|Cookie|Cach[eé]|CAPTCHA|QR code|C[oó]digo QR|Web browser|Navigateur web|Navegador web)$/i,
     // Non-English sports tournaments/leagues the English patterns above miss.
     /\b(Copa Mundial|Coupe du monde|Coppa del Mondo|Mundial de F[uú]tbol|Weltmeisterschaft|Bundesliga|La Liga|Serie A|Ligue 1)\b/i,
 ]

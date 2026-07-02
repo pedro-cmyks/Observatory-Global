@@ -25,6 +25,7 @@ import {
     getTrendingSearchesUrl,
 } from '../lib/publicAttention';
 import { buildCountryBriefThreadSummary, type CountryBriefThreadInput } from '../lib/countryBriefThreads';
+import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters';
 import { optionalFetchResponse } from '../lib/countryBriefFetch';
 
 // ThemeChange interface reserved for future use
@@ -607,7 +608,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     <div className="cb-attention-column">
                         <span className="cb-attention-heading">Search</span>
                         {(data.publicAttention?.searches ?? []).length > 0 ? (
-                            data.publicAttention!.searches.slice(0, 4).map(item => (
+                            data.publicAttention!.searches.filter(x => isPublicAttentionRelevant(x.keyword)).slice(0, 4).map(item => (
                                 <div
                                     key={item.keyword}
                                     className={`cb-attention-row${onAttentionItemClick ? ' cb-attention-row--clickable' : ''}`}
@@ -625,7 +626,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     <div className="cb-attention-column">
                         <span className="cb-attention-heading">Wiki</span>
                         {(data.publicAttention?.wikiArticles ?? []).length > 0 ? (
-                            data.publicAttention!.wikiArticles.slice(0, 4).map(item => (
+                            data.publicAttention!.wikiArticles.filter(w => isPublicAttentionRelevant(w.title)).slice(0, 4).map(item => (
                                 <div
                                     key={item.title}
                                     className={`cb-attention-row${onAttentionItemClick ? ' cb-attention-row--clickable' : ''}`}
