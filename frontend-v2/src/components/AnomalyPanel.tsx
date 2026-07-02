@@ -40,7 +40,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
     const scopeCountry = activeCountry ?? relationCountry
     const activeTheme = filter.theme
     const streamLevel = filter.streamLevel
-    const [wikiArticles, setWikiArticles] = useState<{ title: string; views: number; country_count?: number }[]>([])
+    const [wikiArticles, setWikiArticles] = useState<{ title: string; views: number; country_count?: number; top_country?: string | null }[]>([])
     const [wikiLoading, setWikiLoading] = useState(true)
     const [wikiError, setWikiError] = useState(false)
     const [trendSearches, setTrendSearches] = useState<{ keyword: string; rank?: number | null; timestamp?: string }[]>([])
@@ -55,7 +55,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
         fetch(getPublicAttentionTopUrl(10, scopeCountry ?? undefined))
             .then(r => r.ok ? r.json() : null)
             .then(d => {
-                type WikiItem = { title: string; views: number; country_count?: number }
+                type WikiItem = { title: string; views: number; country_count?: number; top_country?: string | null }
                 const raw: WikiItem[] = d?.articles ?? []
                 const deduped = Array.from(new Map(raw.map(a => [a.title, a])).values())
                 setWikiArticles(deduped.filter(a => isPublicAttentionRelevant(a.title)))
@@ -293,6 +293,10 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                                             } else {
                                                 onWikiClick?.(displayTitle)
                                             }
+                                            // L4: re-center the map where this
+                                            // attention concentrates.
+                                            const dest = scopeCountry ?? a.top_country
+                                            if (dest) setMapFlyCountry(dest)
                                         } : undefined}
                                         data-tip={canOpen ? `Investigate "${displayTitle}"` : undefined}
                                     >

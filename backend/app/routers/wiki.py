@@ -25,10 +25,13 @@ async def get_wiki_top_articles(
                     LIMIT $3
                 """, country_code.upper(), days, limit)
             else:
-                # Global aggregate: sum views across all countries
+                # Global aggregate: sum views across all countries.
+                # top_country = where this attention concentrates (the
+                # highest-view edition row) so the map can fly there (L4).
                 rows = await conn.fetch("""
                     SELECT article_title, SUM(views) as views, MIN(rank) as rank,
-                           COUNT(DISTINCT country_code) as country_count
+                           COUNT(DISTINCT country_code) as country_count,
+                           (array_agg(country_code ORDER BY views DESC))[1] as top_country
                     FROM wiki_pageviews_v2
                     WHERE fetch_date >= CURRENT_DATE - $1::int
                     GROUP BY article_title
@@ -44,6 +47,7 @@ async def get_wiki_top_articles(
                         "rank": r['rank'],
                         "language": r.get('language'),
                         "country_count": r.get('country_count'),
+                        "top_country": r.get('top_country'),
                     }
                     for r in rows
                 ],
