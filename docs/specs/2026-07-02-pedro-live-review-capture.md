@@ -232,3 +232,26 @@ ALL / CRITICAL / ELEVATED / NOTABLE / TREND / PERSON / MARITIME — mixes
 PRIORITY tiers with TYPE lanes; Pedro doubts their usefulness and suggested
 typing by CONTENT instead (events / conflicts / disasters). Rework candidate:
 keep 2 priority chips + retype the rest by story class.
+
+## L11 extended (Pedro, round 2) — orbital PHYSICS = relatedness
+- Distance AND orbital velocity encode HOW related a body is to the thread:
+  closer orbit = same category (they orbit together because they belong
+  together); velocity = strength/recency of the interaction. Comets = entities
+  that swing by briefly (a person who enters a story for two days).
+- **L3 as UNIVERSE BUILDER**: the Workbench (level 3) builds YOUR universe —
+  the investigation question at the center, pinned threads/entities/countries
+  as bodies you capture into orbit; Atlas's galaxy is the shared sky, your
+  investigation is your own solar system carved from it. ("¿Por qué no
+  construye su propio universo alrededor de la investigación de uno?")
+- Design session material: E2 redesign + L3 workspace = the same visual
+  language (P7). Physics mapping draft: orbit radius = semantic distance to
+  the center; angular velocity = interaction intensity; entry/exit = the §I
+  time dimension; body size = volume; color = category.
+- **E1** ✅ `720a05aa` — dynamic threads fed the AI insight the GDELT universe
+  (data_points 0/0/0 → fabricated numbers). Dynamic branch: true latest-
+  snapshot total + sample-based countries/sources. Prod: dt-981 = 78/2/18
+  real. NOTE: insight TEXT currently `insight_no_credits` (Anthropic key dry)
+  — candidate: swap the insight provider to DeepSeek (already integrated).
+- **D9** ✅ story-first country insight (browser-verified VE). **Feeding
+  matrix** written. **L11-extended + L3-universe-builder** captured (orbital
+  physics = relatedness; the Workbench builds YOUR universe).
