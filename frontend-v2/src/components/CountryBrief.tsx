@@ -499,11 +499,17 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     topThemes: data.top_themes,
                     topSearches: data.publicAttention?.searches,
                     topWikiArticles: data.publicAttention?.wikiArticles,
+                    topThread: (() => {
+                        const t = threadSummary.rows.find(r => !r.belowGate)
+                        return t ? { label: t.label, count: t.count } : undefined
+                    })(),
                 })}
                 {(() => {
-                    const people = data.keySubjects.filter(s => s.type === 'person');
-                    return people.length > 0
-                        ? ` People most visible in the media layer include ${people.slice(0, 2).map(p => p.name).join(' and ')}.`
+                    // D9: only name people with real corroboration — a 1-signal
+                    // byline told the reader nothing ("include Agnes").
+                    const people = data.keySubjects.filter(s => s.type === 'person' && (s.count ?? 0) >= 5);
+                    return people.length >= 2
+                        ? ` Most-covered figures: ${people.slice(0, 2).map(p => p.name).join(' and ')}.`
                         : '';
                 })()}
             </p>

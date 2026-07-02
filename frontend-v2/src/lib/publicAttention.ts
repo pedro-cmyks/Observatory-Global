@@ -67,7 +67,8 @@ export function buildCountryPublicAttentionNarrative({
   topThemes,
   topSearches = [],
   topWikiArticles = [],
-}: CountryNarrativeInput): string {
+  topThread,
+}: CountryNarrativeInput & { topThread?: { label: string; count: number; trend?: string | null } }): string {
   const readableThemes = topThemes
     .filter(theme => theme.name && !theme.name.startsWith('WORLDLANGUAGES_') && !theme.name.startsWith('TAX_WORLDLANGUAGES_'))
     .slice(0, 3)
@@ -76,6 +77,19 @@ export function buildCountryPublicAttentionNarrative({
   const mediaClause = readableThemes.length > 0
     ? `led by ${compactJoin(readableThemes)}`
     : 'without a dominant media theme yet'
+
+  // D9 (Pedro's review): the reader wants the STORY first — "Sudán shows 138
+  // signals led by conflict… people include Agnes" says nothing. Lead with the
+  // country's top narrative thread when one exists.
+  if (topThread?.label) {
+    const trendBit = topThread.trend === 'surging' ? ' and accelerating'
+      : topThread.trend === 'fading' ? ' but fading' : ''
+    const attentionBits2: string[] = []
+    if (topSearches.length > 0) attentionBits2.push(`searches around ${compactJoin(topSearches.slice(0, 2).map(i => i.keyword))}`)
+    if (topWikiArticles.length > 0) attentionBits2.push(`Wikipedia reads on ${compactJoin(topWikiArticles.slice(0, 1).map(i => i.title))}`)
+    const attn = attentionBits2.length > 0 ? ` Public attention: ${attentionBits2.join('; ')}.` : ''
+    return `“${topThread.label}” leads ${countryName}'s coverage — ${topThread.count.toLocaleString()} signals${trendBit}, within ${signalCount.toLocaleString()} total this ${hours}h window.${attn}`
+  }
 
   const attentionBits: string[] = []
   if (topSearches.length > 0) {

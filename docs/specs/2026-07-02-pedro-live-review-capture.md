@@ -215,3 +215,20 @@ information read better. Redesign is always valid if legibility wins.
 - **L12** "Outlet" classification judged wrong somewhere he clicked ("outlet no
   tenemos — clasificar como eventos/conflictos/desastres") — locate the surface
   labeling things 'outlet' and re-type. NEEDS LOCATION (ask/inspect).
+
+## Feeding matrix (Pedro's recurring question — answered honestly, 2026-07-02)
+| Source | Feeds narrative threads? | How / Why not |
+|---|---|---|
+| **Forums** (Lemmy/Bluesky/Reddit) | ✅ YES | embedded + attached as DISCUSSION members (semantic ≥0.90); deliberately never SEED clusters (F2 guard) — they join stories, don't invent them |
+| **Events/Disasters** (CAMEO, USGS/GDACS) | ✅ YES | bound as MOVEMENT members (R3.4b geo-temporal) |
+| **Search** (Google Trends) | ❌ not yet | R3.5 unbuilt — held on the diffuse-centroid finding (binding needs DeepSeek/magnitude, not cosine) |
+| **Wiki** pageviews | ❌ not yet | same R3.5 + #104 thin data |
+| **Anomaly alerts** | N/A | they're an OUTPUT (volume vs baseline over signals), a lens — not an input |
+R3.5 is the named gap: attention→topic binding + the uncoupled-attention
+gap-box (#168/#172). Until then search/wiki enrich SURFACES only.
+
+## L12 located: Signal Stream lane tabs (under LIVE)
+ALL / CRITICAL / ELEVATED / NOTABLE / TREND / PERSON / MARITIME — mixes
+PRIORITY tiers with TYPE lanes; Pedro doubts their usefulness and suggested
+typing by CONTENT instead (events / conflicts / disasters). Rework candidate:
+keep 2 priority chips + retype the rest by story class.
