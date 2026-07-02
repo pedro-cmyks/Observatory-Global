@@ -514,6 +514,150 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 })()}
             </p>
 
+            {/* Narrative Threads */}
+            <section className="brief-section">
+                <div className="cb-section-label">Narrative Threads</div>
+                <div className="theme-list">
+                    {/* B1: no positional "critical" marker — a country volume spike
+                        doesn't make the first thread critical. B2 (#214): show the
+                        GATED count (what the detail panel serves), with raw on hover,
+                        and split below-gate threads into the UNVERIFIED tray below so
+                        raw coverage stops masquerading as a confident thread. */}
+                    {threadSummary.rows
+                        .filter(t => !t.belowGate)
+                        .slice(0, 8)
+                        .map((thread, i) => (
+                        <button
+                            key={i}
+                            className="theme-chip"
+                            onClick={() => onThemeSelect?.(thread.name)}
+                            data-tip={thread.rawCount > thread.count
+                                ? `${thread.count} verified of ${thread.rawCount} assigned · open thread`
+                                : `Click to open ${thread.label} narrative thread`}
+                        >
+                            <span className="theme-name">{thread.label}</span>
+                            <span className="theme-count">{thread.count}</span>
+                        </button>
+                    ))}
+                </div>
+                {threadSummary.rows.some(t => t.belowGate) && (
+                    <details className="cb-belowgate-tray">
+                        <summary>
+                            {threadSummary.rows.filter(t => t.belowGate).length} unverified · raw coverage, nothing cleared the relevance gate
+                        </summary>
+                        <div className="theme-list">
+                            {threadSummary.rows
+                                .filter(t => t.belowGate)
+                                .slice(0, 8)
+                                .map((thread, i) => (
+                                <button
+                                    key={i}
+                                    className="theme-chip theme-chip--unverified"
+                                    onClick={() => onThemeSelect?.(thread.name)}
+                                    data-tip={`${thread.rawCount} assigned, 0 cleared the gate — open to inspect the raw coverage`}
+                                >
+                                    <span className="theme-name">{thread.label}</span>
+                                    <span className="theme-count">{thread.rawCount}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </details>
+                )}
+            </section>
+
+            {/* Public Attention */}
+            <section className="brief-section">
+                <div className="cb-section-label">Public Attention <span className="cb-section-subcopy">people-side proxy</span></div>
+                <p className="cb-public-attention-note">
+                    Google searches and Wikipedia pageviews are country/language-edition proxies. They enrich the media picture, but they are not a population-normalized opinion poll.
+                </p>
+                <div className="cb-attention-grid">
+                    <div className="cb-attention-column">
+                        <span className="cb-attention-heading">Search</span>
+                        {(data.publicAttention?.searches ?? []).length > 0 ? (
+                            data.publicAttention!.searches.filter(x => isPublicAttentionRelevant(x.keyword)).slice(0, 4).map(item => (
+                                <div
+                                    key={item.keyword}
+                                    className={`cb-attention-row${onAttentionItemClick ? ' cb-attention-row--clickable' : ''}`}
+                                    onClick={onAttentionItemClick ? () => onAttentionItemClick(item.keyword) : undefined}
+                                    data-tip={onAttentionItemClick ? `Investigate "${item.keyword}"` : undefined}
+                                >
+                                    <span>{item.keyword}</span>
+                                    <strong>{item.rank ? `#${item.rank}` : 'trend'}</strong>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="cb-attention-empty">No Google Trends data for this window.</div>
+                        )}
+                    </div>
+                    <div className="cb-attention-column">
+                        <span className="cb-attention-heading">Wiki</span>
+                        {(data.publicAttention?.wikiArticles ?? []).length > 0 ? (
+                            data.publicAttention!.wikiArticles.filter(w => isPublicAttentionRelevant(w.title)).slice(0, 4).map(item => (
+                                <div
+                                    key={item.title}
+                                    className={`cb-attention-row${onAttentionItemClick ? ' cb-attention-row--clickable' : ''}`}
+                                    onClick={onAttentionItemClick ? () => onAttentionItemClick(item.title.replace(/_/g, ' ')) : undefined}
+                                    data-tip={onAttentionItemClick ? `Investigate "${item.title.replace(/_/g, ' ')}"` : undefined}
+                                >
+                                    <span>{item.title.replace(/_/g, ' ')}</span>
+                                    <strong>{(item.views ?? 0).toLocaleString()}</strong>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="cb-attention-empty">No Wikipedia pageview data for this proxy.</div>
+                        )}
+                    </div>
+                    <div className="cb-attention-column">
+                        <span className="cb-attention-heading">Forum <span className="cb-forum-unverified">unverified</span></span>
+                        {(data.publicAttention?.forum ?? []).length > 0 ? (
+                            data.publicAttention!.forum!.map((f, i) => (
+                                <a
+                                    key={i}
+                                    className="cb-attention-row cb-attention-row--forum"
+                                    href={f.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    data-tip={f.subreddit ? `Discussion on ${f.subreddit} — open thread` : 'Open discussion'}
+                                >
+                                    <span>{f.headline || '(untitled)'}</span>
+                                    {f.subreddit && <strong className="cb-forum-src">{f.subreddit}</strong>}
+                                </a>
+                            ))
+                        ) : (
+                            <div className="cb-attention-empty">No forum discussion mentioning this country in the window.</div>
+                        )}
+                    </div>
+                </div>
+            </section>
+
+            {/* Key Subjects — typed: person is one type, not the only one (#176) */}
+            {data.keySubjects.length > 0 && (
+                <section className="brief-section">
+                    <div className="cb-section-label">Key Subjects <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>people, places &amp; topics in the coverage</span></div>
+                    <div className="brief-person-list">
+                        {data.keySubjects.map(subject => {
+                            const clickable = subject.type === 'person';
+                            return (
+                                <button
+                                    key={`${subject.type}:${subject.name}`}
+                                    className="brief-person-chip"
+                                    onClick={clickable ? () => setPerson(subject.name) : undefined}
+                                    disabled={!clickable}
+                                    data-tip={clickable
+                                        ? `${subject.count} mentions — open person focus`
+                                        : `${subject.type} · ${subject.count} mentions`}
+                                >
+                                    <span className="brief-subject-badge" data-type={subject.type}>{SUBJECT_BADGE[subject.type]}</span>
+                                    <span className="brief-person-name">{subject.name}</span>
+                                    <span className="brief-person-count">{subject.count}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </section>
+            )}
+
             {/* Trust Indicators */}
             {indicators && !(indicators as Indicators & { error?: string }).error && (
                 <section className="brief-section">
@@ -609,150 +753,6 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     </p>
                 )}
             </section>
-
-            {/* Public Attention */}
-            <section className="brief-section">
-                <div className="cb-section-label">Public Attention <span className="cb-section-subcopy">people-side proxy</span></div>
-                <p className="cb-public-attention-note">
-                    Google searches and Wikipedia pageviews are country/language-edition proxies. They enrich the media picture, but they are not a population-normalized opinion poll.
-                </p>
-                <div className="cb-attention-grid">
-                    <div className="cb-attention-column">
-                        <span className="cb-attention-heading">Search</span>
-                        {(data.publicAttention?.searches ?? []).length > 0 ? (
-                            data.publicAttention!.searches.filter(x => isPublicAttentionRelevant(x.keyword)).slice(0, 4).map(item => (
-                                <div
-                                    key={item.keyword}
-                                    className={`cb-attention-row${onAttentionItemClick ? ' cb-attention-row--clickable' : ''}`}
-                                    onClick={onAttentionItemClick ? () => onAttentionItemClick(item.keyword) : undefined}
-                                    data-tip={onAttentionItemClick ? `Investigate "${item.keyword}"` : undefined}
-                                >
-                                    <span>{item.keyword}</span>
-                                    <strong>{item.rank ? `#${item.rank}` : 'trend'}</strong>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="cb-attention-empty">No Google Trends data for this window.</div>
-                        )}
-                    </div>
-                    <div className="cb-attention-column">
-                        <span className="cb-attention-heading">Wiki</span>
-                        {(data.publicAttention?.wikiArticles ?? []).length > 0 ? (
-                            data.publicAttention!.wikiArticles.filter(w => isPublicAttentionRelevant(w.title)).slice(0, 4).map(item => (
-                                <div
-                                    key={item.title}
-                                    className={`cb-attention-row${onAttentionItemClick ? ' cb-attention-row--clickable' : ''}`}
-                                    onClick={onAttentionItemClick ? () => onAttentionItemClick(item.title.replace(/_/g, ' ')) : undefined}
-                                    data-tip={onAttentionItemClick ? `Investigate "${item.title.replace(/_/g, ' ')}"` : undefined}
-                                >
-                                    <span>{item.title.replace(/_/g, ' ')}</span>
-                                    <strong>{(item.views ?? 0).toLocaleString()}</strong>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="cb-attention-empty">No Wikipedia pageview data for this proxy.</div>
-                        )}
-                    </div>
-                    <div className="cb-attention-column">
-                        <span className="cb-attention-heading">Forum <span className="cb-forum-unverified">unverified</span></span>
-                        {(data.publicAttention?.forum ?? []).length > 0 ? (
-                            data.publicAttention!.forum!.map((f, i) => (
-                                <a
-                                    key={i}
-                                    className="cb-attention-row cb-attention-row--forum"
-                                    href={f.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    data-tip={f.subreddit ? `Discussion on ${f.subreddit} — open thread` : 'Open discussion'}
-                                >
-                                    <span>{f.headline || '(untitled)'}</span>
-                                    {f.subreddit && <strong className="cb-forum-src">{f.subreddit}</strong>}
-                                </a>
-                            ))
-                        ) : (
-                            <div className="cb-attention-empty">No forum discussion mentioning this country in the window.</div>
-                        )}
-                    </div>
-                </div>
-            </section>
-
-            {/* Narrative Threads */}
-            <section className="brief-section">
-                <div className="cb-section-label">Narrative Threads</div>
-                <div className="theme-list">
-                    {/* B1: no positional "critical" marker — a country volume spike
-                        doesn't make the first thread critical. B2 (#214): show the
-                        GATED count (what the detail panel serves), with raw on hover,
-                        and split below-gate threads into the UNVERIFIED tray below so
-                        raw coverage stops masquerading as a confident thread. */}
-                    {threadSummary.rows
-                        .filter(t => !t.belowGate)
-                        .slice(0, 8)
-                        .map((thread, i) => (
-                        <button
-                            key={i}
-                            className="theme-chip"
-                            onClick={() => onThemeSelect?.(thread.name)}
-                            data-tip={thread.rawCount > thread.count
-                                ? `${thread.count} verified of ${thread.rawCount} assigned · open thread`
-                                : `Click to open ${thread.label} narrative thread`}
-                        >
-                            <span className="theme-name">{thread.label}</span>
-                            <span className="theme-count">{thread.count}</span>
-                        </button>
-                    ))}
-                </div>
-                {threadSummary.rows.some(t => t.belowGate) && (
-                    <details className="cb-belowgate-tray">
-                        <summary>
-                            {threadSummary.rows.filter(t => t.belowGate).length} unverified · raw coverage, nothing cleared the relevance gate
-                        </summary>
-                        <div className="theme-list">
-                            {threadSummary.rows
-                                .filter(t => t.belowGate)
-                                .slice(0, 8)
-                                .map((thread, i) => (
-                                <button
-                                    key={i}
-                                    className="theme-chip theme-chip--unverified"
-                                    onClick={() => onThemeSelect?.(thread.name)}
-                                    data-tip={`${thread.rawCount} assigned, 0 cleared the gate — open to inspect the raw coverage`}
-                                >
-                                    <span className="theme-name">{thread.label}</span>
-                                    <span className="theme-count">{thread.rawCount}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </details>
-                )}
-            </section>
-
-            {/* Key Subjects — typed: person is one type, not the only one (#176) */}
-            {data.keySubjects.length > 0 && (
-                <section className="brief-section">
-                    <div className="cb-section-label">Key Subjects <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>people, places &amp; topics in the coverage</span></div>
-                    <div className="brief-person-list">
-                        {data.keySubjects.map(subject => {
-                            const clickable = subject.type === 'person';
-                            return (
-                                <button
-                                    key={`${subject.type}:${subject.name}`}
-                                    className="brief-person-chip"
-                                    onClick={clickable ? () => setPerson(subject.name) : undefined}
-                                    disabled={!clickable}
-                                    data-tip={clickable
-                                        ? `${subject.count} mentions — open person focus`
-                                        : `${subject.type} · ${subject.count} mentions`}
-                                >
-                                    <span className="brief-subject-badge" data-type={subject.type}>{SUBJECT_BADGE[subject.type]}</span>
-                                    <span className="brief-person-name">{subject.name}</span>
-                                    <span className="brief-person-count">{subject.count}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </section>
-            )}
 
             {/* Top Sources */}
             <section className="brief-section">
