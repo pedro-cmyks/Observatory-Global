@@ -61,8 +61,20 @@ distancia semántica se preserva exacto), gradientes por tipo, glow del
 centro + core compacto con label DEBAJO, starfield determinístico, colas
 de cometa afiladas, línea de conexión en hover con la distancia medida,
 labels de banda (closest/edge), texto con halo. Verified 587×859 svg =
-panel completo. NEXT: Pedro eyeball; country/person→field direction;
-mobile pinch; drift trails; L3 universe-builder.
+panel completo. **V6 (Pedro review 2, `415ed1fd`):** (1) cola RE-CODIFICADA
+= drift semántico MEDIDO (late-half vs early-half mean dist; afuera =
+alejándose del tema, adentro = convergiendo; floor 4% del span medido);
+cometa = anillo punteado; hover muestra el drift. Prod dt-981: netanyahu
++0.0038 receding, rubio −0.0077 converging. (2) **DATA BUG (Pedro's
+election-legitimacy screenshot): gate kept 1/1,066 en 24h** → detail
+mostraba UNA señal filipina como historia de 1.1k; below-gate fallback
+extendido a near-zero keeps (gated<5, raw≥20) → 200 rows/15 países bajo
+UNVERIFIED. ⚠ El keep-rate 0.1% del gate en un topic político = problema
+de ENGINE (gate recall), pendiente de programa — no de superficie.
+PENDIENTES de la review: universe trajectories (posiciones moviéndose con
+el scrub — emergent_clusters per-snapshot centroids), pseudo-3D tilt
+orbital, discussion-attach noise (Mbappé/LinkedIn en dt-981, semantic
+0.90 attach quality → #248 class). NEXT igual + esos.
 
 **2026-07-02 (L11 SOLAR SYSTEM — Orbital Thread View SHIPPED + E2 root-caused).**
 Design+prototype session (parallel chat; did NOT touch BriefNewspaper/search.py/
