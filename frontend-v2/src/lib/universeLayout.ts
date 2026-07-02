@@ -15,6 +15,10 @@ export interface UniverseNode {
   n: number
   x: number
   y: number
+  /** PCA third component — rotatable depth (spec §7.2). */
+  z?: number
+  /** Best full-space neighbor similarity — low = semantic orphan. */
+  nn_sim?: number
   first_seen: string | null
   last_seen: string | null
   timeline: Array<{ day: string; n: number }>
@@ -78,4 +82,42 @@ export function categoryColor(category: string): string {
 /** Edge stroke opacity from full-space similarity: 0.90 → faint, 0.99+ → strong. */
 export function edgeOpacity(sim: number): number {
   return Math.max(0.05, Math.min(0.6, (sim - 0.9) * 6))
+}
+
+/**
+ * Yaw the cloud around its vertical axis through the [0.5, 0.5, 0.5] center
+ * (spec §7.2 — rotation is honest depth: x/z are real PCA components, so
+ * turning the cloud separates points any single 2D projection overlaps).
+ * Returns the projected x and a depth ∈ [0,1]-ish (0 = nearest to viewer).
+ */
+export function yawProject(x: number, z: number | undefined, yaw: number): { px: number; depth: number } {
+  const zc = (z ?? 0.5) - 0.5
+  const xc = x - 0.5
+  const cos = Math.cos(yaw)
+  const sin = Math.sin(yaw)
+  return {
+    px: xc * cos - zc * sin + 0.5,
+    depth: xc * sin + zc * cos + 0.5,
+  }
+}
+
+/** Depth cue: near bodies render larger (depth 0 → 1.25×, depth 1 → 0.75×). */
+export function depthScale(depth: number): number {
+  return 1.25 - 0.5 * Math.max(0, Math.min(1, depth))
+}
+
+/** Depth cue: far bodies dim (never below 0.45 — depth is a cue, not a filter). */
+export function depthAlpha(depth: number): number {
+  return Math.max(0.45, 1 - 0.55 * Math.max(0, Math.min(1, depth)))
+}
+
+/**
+ * Semantic orphan: best full-space neighbor below the population's isolated
+ * band (measured NN-sim p10 ≈ 0.893 on 2026-07-02). A story unlike every
+ * other living story — the open-set frontier (P8).
+ */
+export const ORPHAN_NN_SIM = 0.893
+
+export function isOrphan(node: UniverseNode): boolean {
+  return node.nn_sim !== undefined && node.nn_sim < ORPHAN_NN_SIM
 }

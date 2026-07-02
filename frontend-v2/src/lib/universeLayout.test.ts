@@ -62,6 +62,30 @@ describe('bornBetween — new stories in a trailing window', () => {
   })
 })
 
+describe('rotation = honest depth (spec §7.2)', () => {
+  it('yaw 0 keeps x; yaw π mirrors around center; depth stays bounded-ish', async () => {
+    const { yawProject, depthScale, depthAlpha } = await import('./universeLayout')
+    const at0 = yawProject(0.8, 0.5, 0)
+    expect(at0.px).toBeCloseTo(0.8, 6)
+    const atPi = yawProject(0.8, 0.5, Math.PI)
+    expect(atPi.px).toBeCloseTo(0.2, 6)
+    // quarter turn: x becomes depth — the rotation reveals the z structure
+    const quarter = yawProject(0.8, 0.9, Math.PI / 2)
+    expect(quarter.px).toBeCloseTo(0.1, 6)
+    expect(quarter.depth).toBeCloseTo(0.8, 6)
+    // depth cues: nearer = larger + brighter, and dimming floors (cue, not filter)
+    expect(depthScale(0)).toBeGreaterThan(depthScale(1))
+    expect(depthAlpha(1)).toBeGreaterThanOrEqual(0.45)
+  })
+
+  it('orphan = best neighbor below the measured isolated band', async () => {
+    const { isOrphan } = await import('./universeLayout')
+    expect(isOrphan(node({ nn_sim: 0.85 }))).toBe(true)
+    expect(isOrphan(node({ nn_sim: 0.95 }))).toBe(false)
+    expect(isOrphan(node({ nn_sim: undefined }))).toBe(false) // no data → never claim orphan
+  })
+})
+
 describe('visual encodings', () => {
   it('radius log-damps volume so a 3K story cannot bury a 50-signal story', () => {
     expect(universeRadius(3000) / universeRadius(50)).toBeLessThan(2.5)

@@ -2,9 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
     bornBetween,
     categoryColor,
+    depthAlpha,
+    depthScale,
     edgeOpacity,
+    isOrphan,
     universeAlpha,
     universeRadius,
+    yawProject,
     type UniverseEdge,
     type UniverseNode,
 } from '../lib/universeLayout'
@@ -14,7 +18,7 @@ interface UniversePayload {
     contract: string
     nodes: UniverseNode[]
     edges: UniverseEdge[]
-    anchors: Array<{ category: string; x: number; y: number; count: number }>
+    anchors: Array<{ category: string; x: number; y: number; z?: number; count: number }>
     meta: { topic_count: number; edge_basis: string; position_basis: string; timeline_days: number } | null
     reason?: string
 }
@@ -31,9 +35,32 @@ export function UniverseView({ onThemeSelect }: UniverseViewProps) {
     const [scrubPct, setScrubPct] = useState(100)
     const [hoveredId, setHoveredId] = useState<string | null>(null)
     const [view, setView] = useState({ k: 1, tx: 0, ty: 0 })
-    const dragRef = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null)
+    // Yaw: the cloud's rotation around its vertical axis (spec §7.2). Slow
+    // ambient spin; ANY interaction (hover/drag) pauses it — camera, not time.
+    const [yaw, setYaw] = useState(0)
+    const spinPausedRef = useRef(false)
+    const dragRef = useRef<{ x: number; y: number; ty: number; yaw: number } | null>(null)
     const containerRef = useRef<HTMLDivElement | null>(null)
     const [size, setSize] = useState({ w: 1200, h: 700 })
+
+    useEffect(() => {
+        let raf = 0
+        let last = performance.now()
+        const tick = (now: number) => {
+            const dt = (now - last) / 1000
+            last = now
+            if (!spinPausedRef.current && !document.hidden) {
+                setYaw(y => y + dt * 0.06) // ~1 turn / 105s — ambient, not dizzy
+            }
+            raf = requestAnimationFrame(tick)
+        }
+        raf = requestAnimationFrame(tick)
+        return () => cancelAnimationFrame(raf)
+    }, [])
+
+    useEffect(() => {
+        spinPausedRef.current = hoveredId !== null
+    }, [hoveredId])
 
     useEffect(() => {
         const element = containerRef.current
@@ -82,6 +109,23 @@ export function UniverseView({ onThemeSelect }: UniverseViewProps) {
     const px = (x: number) => (margin + x * (size.w - 2 * margin)) * view.k + view.tx
     const py = (y: number) => (margin + y * (size.h - 2 * margin)) * view.k + view.ty
 
+    // Rotate the cloud (real PCA depth), then map to screen. Far bodies render
+    // first, smaller and dimmer — turning the field separates what overlaps.
+    const projected = useMemo(() => {
+        const out = new Map<string, { sx: number; sy: number; depth: number }>()
+        for (const n of nodes) {
+            const p = yawProject(n.x, n.z, yaw)
+            out.set(n.id, { sx: px(p.px), sy: py(n.y), depth: p.depth })
+        }
+        return out
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [nodes, yaw, view, size])
+
+    const depthOrdered = useMemo(
+        () => [...nodes].sort((a, b) => (projected.get(b.id)?.depth ?? 0) - (projected.get(a.id)?.depth ?? 0)),
+        [nodes, projected],
+    )
+
     const alphaById = useMemo(() => {
         const out = new Map<string, number>()
         for (const n of nodes) out.set(n.id, universeAlpha(n, scrubT))
@@ -128,68 +172,85 @@ export function UniverseView({ onThemeSelect }: UniverseViewProps) {
                     })
                 }}
                 onPointerDown={e => {
-                    dragRef.current = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty }
+                    spinPausedRef.current = true
+                    dragRef.current = { x: e.clientX, y: e.clientY, ty: view.ty, yaw }
                 }}
                 onPointerMove={e => {
                     const d = dragRef.current
                     if (!d) return
-                    setView(v => ({ ...v, tx: d.tx + (e.clientX - d.x), ty: d.ty + (e.clientY - d.y) }))
+                    // horizontal drag ROTATES the cloud; vertical drag pans
+                    setYaw(d.yaw + (e.clientX - d.x) * 0.004)
+                    setView(v => ({ ...v, ty: d.ty + (e.clientY - d.y) }))
                 }}
-                onPointerUp={() => { dragRef.current = null }}
-                onPointerLeave={() => { dragRef.current = null }}
+                onPointerUp={() => { dragRef.current = null; spinPausedRef.current = hoveredId !== null }}
+                onPointerLeave={() => { dragRef.current = null; spinPausedRef.current = hoveredId !== null }}
             >
                 <svg width={size.w} height={size.h} role="img" aria-label="Atlas story universe">
-                    {/* constellation labels */}
-                    {payload.anchors.filter(a => a.count >= 4).map(a => (
-                        <text key={a.category} x={px(a.x)} y={py(a.y)} className="universe-constellation">
-                            {a.category}
-                        </text>
-                    ))}
+                    {/* constellation labels (rotate with the cloud) */}
+                    {payload.anchors.filter(a => a.count >= 4).map(a => {
+                        const p = yawProject(a.x, a.z, yaw)
+                        return (
+                            <text
+                                key={a.category}
+                                x={px(p.px)} y={py(a.y)}
+                                className="universe-constellation"
+                                opacity={depthAlpha(p.depth) * 0.9}
+                            >
+                                {a.category}
+                            </text>
+                        )
+                    })}
 
                     {/* semantic edges (full-space truth) */}
                     {edges.map(e => {
-                        const na = nodeById.get(e.a)
-                        const nb = nodeById.get(e.b)
-                        if (!na || !nb) return null
+                        const pa = projected.get(e.a)
+                        const pb = projected.get(e.b)
+                        if (!pa || !pb) return null
                         const aa = alphaById.get(e.a) ?? 0
                         const ab = alphaById.get(e.b) ?? 0
                         if (aa === 0 || ab === 0) return null
                         const highlighted = neighborIds ? (neighborIds.has(e.a) && neighborIds.has(e.b)) : true
+                        const depthDim = depthAlpha(Math.max(pa.depth, pb.depth))
                         return (
                             <line
                                 key={`${e.a}-${e.b}`}
-                                x1={px(na.x)} y1={py(na.y)} x2={px(nb.x)} y2={py(nb.y)}
+                                x1={pa.sx} y1={pa.sy} x2={pb.sx} y2={pb.sy}
                                 stroke="#7dd3fc"
-                                strokeOpacity={highlighted ? edgeOpacity(e.sim) * Math.min(aa, ab) : 0.02}
+                                strokeOpacity={highlighted ? edgeOpacity(e.sim) * Math.min(aa, ab) * depthDim : 0.02}
                                 strokeWidth={highlighted && neighborIds ? 1.4 : 0.7}
                             />
                         )
                     })}
 
-                    {/* story bodies */}
-                    {nodes.map(n => {
+                    {/* story bodies — far first, near last (painter's order) */}
+                    {depthOrdered.map(n => {
                         const alpha = alphaById.get(n.id) ?? 0
                         if (alpha === 0) return null
+                        const p = projected.get(n.id)
+                        if (!p) return null
                         const dimmed = neighborIds !== null && !neighborIds.has(n.id)
+                        const orphan = isOrphan(n)
+                        const r = universeRadius(n.n) * Math.min(1.6, Math.max(0.8, view.k)) * depthScale(p.depth)
                         return (
                             <g
                                 key={n.id}
                                 className="universe-body"
-                                opacity={dimmed ? 0.12 : alpha}
+                                opacity={(dimmed ? 0.12 : alpha) * depthAlpha(p.depth)}
                                 onMouseEnter={() => setHoveredId(n.id)}
                                 onMouseLeave={() => setHoveredId(h => (h === n.id ? null : h))}
                                 onClick={() => onThemeSelect(n.id)}
                             >
                                 <circle
-                                    cx={px(n.x)} cy={py(n.y)}
-                                    r={universeRadius(n.n) * Math.min(1.6, Math.max(0.8, view.k))}
+                                    cx={p.sx} cy={p.sy}
+                                    r={r}
                                     fill={categoryColor(n.category)}
                                     fillOpacity={0.85}
-                                    stroke={n.crisis_relevant ? 'rgba(248,113,113,0.85)' : 'rgba(226,232,240,0.35)'}
-                                    strokeWidth={n.crisis_relevant ? 1.4 : 0.6}
+                                    stroke={n.crisis_relevant ? 'rgba(248,113,113,0.85)' : orphan ? 'rgba(226,232,240,0.8)' : 'rgba(226,232,240,0.35)'}
+                                    strokeWidth={n.crisis_relevant ? 1.4 : orphan ? 1.1 : 0.6}
+                                    strokeDasharray={orphan ? '3 2.4' : undefined}
                                 />
                                 {(labeledIds.has(n.id) || hoveredId === n.id) && (
-                                    <text x={px(n.x)} y={py(n.y) + universeRadius(n.n) + 11} className="universe-body-label">
+                                    <text x={p.sx} y={p.sy + r + 11} className="universe-body-label">
                                         {n.label.length > 30 ? `${n.label.slice(0, 28)}…` : n.label}
                                     </text>
                                 )}
@@ -202,7 +263,7 @@ export function UniverseView({ onThemeSelect }: UniverseViewProps) {
                     <div className="universe-hover">
                         <span style={{ color: categoryColor(hovered.category) }}>{hovered.category}</span>
                         <strong>{hovered.label}</strong>
-                        <em>{hovered.n.toLocaleString()} signals{hovered.crisis_relevant ? ' · crisis-relevant' : ''}</em>
+                        <em>{hovered.n.toLocaleString()} signals{hovered.crisis_relevant ? ' · crisis-relevant' : ''}{isOrphan(hovered) ? ' · ORPHAN (unlike every other story)' : ''}</em>
                         <em>
                             {hovered.first_seen ? new Date(hovered.first_seen).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
                             {' → '}
@@ -233,8 +294,9 @@ export function UniverseView({ onThemeSelect }: UniverseViewProps) {
                 <span><i className="universe-legend-dot" />size = volume (log)</span>
                 <span><i className="universe-legend-edge" />line = semantic proximity (measured in full 768-dim space)</span>
                 <span><i className="universe-legend-crisis" />red ring = crisis-relevant</span>
+                <span data-tip="Best semantic neighbor below the isolated band — a story unlike every other living story"><i className="universe-legend-orphan" />dashed = orphan</span>
                 <span className="universe-legend-note" data-tip={payload.meta?.position_basis ?? ''}>
-                    positions approximate · relations exact · scroll to zoom, drag to pan
+                    positions approximate · relations exact · drag to rotate, scroll to zoom
                 </span>
             </div>
         </div>

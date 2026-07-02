@@ -1674,6 +1674,13 @@ function AppContent() {
                 SHIPS{showVessels && vesselData.length > 0 ? ` ${vesselData.length}` : ''}{showVessels && !vesselConnected ? ' ⏳' : ''}
               </button>
               <button
+                className={`layer-btn ${universeOpen ? 'active' : ''}`}
+                onClick={() => setUniverseOpen(open => !open)}
+                data-tip="Universe — the same stories in the semantic projection: every living thread as a body, categories as constellations, relations measured in full vector space. The globe shows WHERE; the universe shows WHAT relates to WHAT."
+              >
+                UNIVERSE
+              </button>
+              <button
                 className="layer-btn layer-btn--reset"
                 onClick={() => {
                   // The ↺ was MapLibre-only — dead on the default EE map
@@ -1930,6 +1937,18 @@ function AppContent() {
               disasterCount={disasterEvents.length}
               anomalyCount={enhancedNodes.filter((n: any) => n.isAnomaly).length}
             />
+            {/* Universe: the same stories in the semantic projection — mounts
+                OVER the map (map stays mounted; display:none crash lesson). */}
+            {universeOpen && (
+              <div className="universe-panel">
+                <UniverseView
+                  onThemeSelect={(themeId) => {
+                    setUniverseOpen(false)
+                    handleThemeSelect(themeId)
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -2336,26 +2355,6 @@ function AppContent() {
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
-
-      {universeOpen && (
-        <div className="universe-overlay">
-          <div className="universe-overlay-header">
-            <span>
-              <span className="universe-overlay-title">STORY UNIVERSE</span>
-              <span className="universe-overlay-sub">every living thread, positioned by meaning · related in full vector space · alive in time</span>
-            </span>
-            <button className="universe-overlay-close" onClick={() => setUniverseOpen(false)}>×</button>
-          </div>
-          <div className="universe-overlay-body">
-            <UniverseView
-              onThemeSelect={(themeId) => {
-                setUniverseOpen(false)
-                handleThemeSelect(themeId)
-              }}
-            />
           </div>
         </div>
       )}

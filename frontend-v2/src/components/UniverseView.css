@@ -145,6 +145,25 @@
   border: 1.5px solid rgba(248, 113, 113, 0.85);
 }
 
+.universe-legend-orphan {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(226, 232, 240, 0.8);
+}
+
+/* Map-panel mode: universe mounts OVER the map container (map stays mounted
+   underneath — avoids the display:none/unmount canvas crash class). */
+.universe-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  background: #0b0e13;
+  padding: 8px 10px 10px;
+}
+
 .universe-legend-note {
   margin-left: auto;
   font-style: italic;
