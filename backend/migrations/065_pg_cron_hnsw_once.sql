@@ -1,0 +1,16 @@
+-- 065: pg_cron enabled + one-shot HNSW rebuild scheduled INSIDE the database
+-- (Pedro 2026-07-02: heavy DB work must not depend on the M1 at all).
+-- The job self-unschedules as its FIRST statement, so a failed build never
+-- retries (the retry loop is how the Supabase IO burst budget died on 07-01).
+-- Applied live via MCP 2026-07-02; kept here for the record.
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+-- SELECT cron.schedule('hnsw-rebuild-once', '15 8 * * *', $job$
+-- SELECT cron.unschedule('hnsw-rebuild-once');
+-- SET statement_timeout = '5400s';
+-- SET maintenance_work_mem = '512MB';
+-- SET max_parallel_maintenance_workers = 0;
+-- DROP INDEX IF EXISTS idx_signal_embeddings_vec;
+-- CREATE INDEX idx_signal_embeddings_vec ON signal_embeddings
+--   USING hnsw (vec halfvec_cosine_ops) WITH (m = 16, ef_construction = 64);
+-- ANALYZE signal_embeddings;
+-- $job$);
