@@ -572,6 +572,36 @@ the seven analyst questions than commodity dashboards.
   2026-06-23). Constraint: the current force-graph is desktop-only
   (`ThemeDetail.tsx:744` `!isMobile` — off by design, a canvas doesn't rank on a
   phone); the engine-truth reframe needs a mobile-native shape (#236).
+- **Orbital Thread View — the engine-truth reframe SHIPPED as a solar system
+  (L11/E2, prototype 2026-07-02; spec `docs/specs/2026-07-02-orbital-thread-view.md`):**
+  the evolution graph was replaced by a 2D radial "story system" where every
+  visual degree of freedom maps to a MEASURED engine quantity — **orbit radius =
+  semantic distance** (member `signal_embeddings` ↔ `dynamic_topics.centroid_vec`
+  cosine, min-max normalized per thread; computed mean-of-members centroid for
+  atlas topics, labeled), **angular velocity = interaction intensity** (a body's
+  angle advances with its cumulative member signals up to the scrubbed time),
+  **entry/exit = the time dimension** (invisible before `first_seen`; opacity
+  DECAYS exponentially after last activity — the §I criticality-decay model,
+  never a window cliff), **comets = transient participants** (presence span
+  < 25% of the thread window — a visual class no list surface can show), size =
+  volume, color = typed subject (person/org/place/event/country). **Method
+  claims the paper can make:** (1) unlike the metadata-proxy force graph it
+  replaces, the view is *falsifiable against the engine* — radius IS the
+  classifier's own distance measure, so a body that looks misplaced is an engine
+  finding, not a layout artifact; (2) motion is INTERACTION, not animation — all
+  dynamics are driven by a time scrubber (deterministic layout per (bodies,
+  scrub-t), pure functions in `lib/orbitalLayout.ts`, vitest-frozen), preserving
+  the analyst's reading posture; (3) the acceptance metric is a TASK, not
+  aesthetics — "who entered this story this week?" must be answered faster than
+  from the signal list (the view carries an explicit entrants counter to make
+  the comparison measurable). Evaluation pending (Pedro task-time pass on live
+  threads); a Paper 7 contribution IF evaluated. Phase-2 concept captured in
+  spec §7: the L3 Workbench as *universe builder* (investigation question at
+  center, pinned items as captured bodies — same visual language, second
+  consumer). E2 diagnosis fixed en route: the >24h processed-history branch
+  swallowed `dynamic-topic-*` ids (dispatch-order bug, `b3fcfa79`) — every
+  dynamic thread opened EMPTY at long windows; the old graph also silently
+  hid on `graphSignals: []` payloads (`?? ` gate).
 
 **Evidence to collect:**
 - Analyst task-completion study (10-15 analysts, structured tasks).

@@ -10,6 +10,29 @@
 > and narrows further if telemetry shows one persona dominates.) **Anti-goal:**
 > no new surface/capability until telemetry shows users reaching a value moment.
 
+**2026-07-02 (L11 SOLAR SYSTEM — Orbital Thread View SHIPPED + E2 root-caused).**
+Design+prototype session (parallel chat; did NOT touch BriefNewspaper/search.py/
+thread_ranking). (1) **E2 DIAGNOSED + FIXED (`b3fcfa79`, deployed):** the >24h
+processed-history branch ran BEFORE the dynamic-topic resolver and "dynamic-
+topic-981" contains "-" → EVERY dynamic thread opened EMPTY (total=0) at hours
+>24; plus the old graph silently hides when `graphSignals: []` (`??` gate) and
+at 24h renders a 1-signal bucket that reads broken. Guard added; prod-verified
+(dt-981@72h: 0→78). (2) **Orbital Thread View** (spec `docs/specs/2026-07-02-
+orbital-thread-view.md`): STORY SYSTEM section in ThemeDetail, DEFAULT over the
+legacy graph (toggle ◉Orbits/⌗Graph keeps it). Radius = REAL semantic distance
+(member embeddings ↔ centroid, `<=>`; atlas = computed avg centroid, labeled);
+angle sweeps with cumulative interactions via TIME SCRUBBER (no idle animation);
+presence decays exp (§I decay-not-cliff, floor 0.22); comets = span <25% of
+window; entrants counter = the acceptance task ("who entered this week?").
+Backend `GET /api/v2/theme/{id}/orbital` (orbital-thread-v0, honest empty
+reasons; member query windowed on assigned_at — atlas 26s→3.9s), 4 pytest;
+pure layout `lib/orbitalLayout.ts`, 6 vitest. Browser-verified BOTH paths
+(dt-981 30 bodies + atlas 35; scrub 10%→bodies 10→6; hover "PERSON · COMET";
+toggle→legacy canvas). 145/145 vitest, build green, deployed Fly. Paper 7
+method note grown in master plan (falsifiable-against-engine + motion-as-
+interaction + task-not-aesthetics acceptance). Phase 2 = L3 universe-builder,
+SPEC ONLY (§7). NEXT: Pedro eyeball + task-time pass; mobile shape (#236).
+
 **2026-07-01 (PM3 — SEARCH ENGINE P1 + EE DESIGN PASS + review execution).**
 Pedro: search = the hard core; EE map = OUR design, prioritize; execute the
 review plan; ACLED de-blocked (#46). ALL SHIPPED+DEPLOYED: (1) **Search P1**
