@@ -63,7 +63,7 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
     const [scrubPct, setScrubPct] = useState(100)
     const [hovered, setHovered] = useState<OrbitalBody | null>(null)
     const containerRef = useRef<HTMLDivElement | null>(null)
-    const [width, setWidth] = useState(560)
+    const [size, setSize] = useState({ w: 560, h: 380 })
 
     // Callback ref, not mount-effect: the canvas div is absent during the
     // loading/empty branches, so a mount-only observer never attaches and the
@@ -74,14 +74,14 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
         resizeObserverRef.current?.disconnect()
         resizeObserverRef.current = null
         if (!element) return
-        const apply = (w: number) => setWidth(prev => {
-            const next = Math.max(360, Math.round(w))
-            return prev === next ? prev : next
+        const apply = (w: number, h: number) => setSize(prev => {
+            const next = { w: Math.max(360, Math.round(w)), h: Math.max(300, Math.round(h)) }
+            return prev.w === next.w && prev.h === next.h ? prev : next
         })
-        apply(element.clientWidth)
+        apply(element.clientWidth, element.clientHeight)
         const observer = new ResizeObserver(entries => {
-            const w = entries[0]?.contentRect.width
-            if (w) apply(w)
+            const rect = entries[0]?.contentRect
+            if (rect) apply(rect.width, rect.height)
         })
         observer.observe(element)
         resizeObserverRef.current = observer
@@ -115,11 +115,19 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
     const bodies = payload?.bodies ?? []
     const norm = useMemo(() => normalizeDistances(bodies), [bodies])
 
-    const height = 380
+    const width = size.w
+    const height = size.h
     const cx = width / 2
     const cy = height / 2
-    const rMin = 62
-    const rMax = Math.min(cx, cy) - 28
+    // Fill the panel: orbits are ellipses — a UNIFORM stretch of the radial
+    // field, so the radial ORDER (semantic distance) is preserved exactly.
+    const availX = cx - 44
+    const availY = cy - 40
+    const rBase = Math.min(availX, availY)
+    const ex = Math.min(1.5, availX / rBase)
+    const ey = Math.min(1.5, availY / rBase)
+    const rMin = Math.max(54, rBase * 0.28)
+    const rMax = rBase
 
     const placed = useMemo(() => {
         if (!window_) return []
@@ -131,8 +139,8 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                 body,
                 alpha,
                 comet: isComet(body, window_),
-                x: cx + r * Math.cos(angle),
-                y: cy + r * Math.sin(angle),
+                x: cx + r * ex * Math.cos(angle),
+                y: cy + r * ey * Math.sin(angle),
                 angle,
                 r,
             }
@@ -174,24 +182,88 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
         <section className="orbital-section">
             <div className="orbital-canvas" ref={attachCanvas}>
                 <svg width={width} height={height} role="img" aria-label={`Orbital view of ${themeLabel}`}>
-                    {/* static orbit ring guides */}
+                    <defs>
+                        {(Object.entries(TYPE_COLORS) as Array<[OrbitalBody['type'], string]>).map(([type, color]) => (
+                            <radialGradient key={type} id={`orb-grad-${type}`} cx="35%" cy="32%" r="75%">
+                                <stop offset="0%" stopColor="#f8fafc" stopOpacity="0.9" />
+                                <stop offset="28%" stopColor={color} stopOpacity="0.95" />
+                                <stop offset="100%" stopColor={color} stopOpacity="0.65" />
+                            </radialGradient>
+                        ))}
+                        <radialGradient id="orb-center-glow" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stopColor="#34d399" stopOpacity="0.35" />
+                            <stop offset="55%" stopColor="#34d399" stopOpacity="0.08" />
+                            <stop offset="100%" stopColor="#34d399" stopOpacity="0" />
+                        </radialGradient>
+                    </defs>
+
+                    {/* starfield — deterministic, decorative only */}
+                    {Array.from({ length: 70 }, (_, i) => {
+                        const h = (i * 2654435761) % 100_000
+                        return (
+                            <circle
+                                key={`star-${i}`}
+                                cx={(h % 997) / 997 * width}
+                                cy={((h * 31) % 991) / 991 * height}
+                                r={i % 7 === 0 ? 1.1 : 0.6}
+                                fill="#e2e8f0"
+                                opacity={0.06 + ((h % 23) / 23) * 0.16}
+                            />
+                        )
+                    })}
+
+                    {/* static orbit ring guides (ellipses — uniform stretch,
+                        radial ORDER = semantic distance preserved exactly) */}
                     {[0, 0.5, 1].map(g => (
-                        <circle key={g} cx={cx} cy={cy} r={orbitRadius(g, rMin, rMax)} className="orbital-ring" />
+                        <ellipse
+                            key={g}
+                            cx={cx} cy={cy}
+                            rx={orbitRadius(g, rMin, rMax) * ex}
+                            ry={orbitRadius(g, rMin, rMax) * ey}
+                            className="orbital-ring"
+                        />
                     ))}
+                    <text x={cx} y={cy - orbitRadius(0, rMin, rMax) * ey - 6} className="orbital-ring-label">closest · same story</text>
+                    <text x={cx} y={cy - orbitRadius(1, rMin, rMax) * ey + 14} className="orbital-ring-label orbital-ring-label--far">edge of the story</text>
+
+                    {/* hover connection: body → center, the distance made visible */}
+                    {hovered && (() => {
+                        const p = visible.find(v => v.body.id === hovered.id)
+                        if (!p) return null
+                        return (
+                            <g pointerEvents="none">
+                                <line x1={cx} y1={cy} x2={p.x} y2={p.y} className="orbital-hover-link" />
+                                <text x={(cx + p.x) / 2} y={(cy + p.y) / 2 - 6} className="orbital-hover-link-label">
+                                    {hovered.dist.toFixed(3)}
+                                </text>
+                            </g>
+                        )
+                    })()}
 
                     {/* comet tails first (under bodies) */}
                     {visible.filter(p => p.comet).map(p => {
-                        const tailLen = 26
-                        const tx = p.x - tailLen * Math.cos(p.angle - 0.35)
-                        const ty = p.y - tailLen * Math.sin(p.angle - 0.35)
+                        const dirX = Math.cos(p.angle - 0.4)
+                        const dirY = Math.sin(p.angle - 0.4)
+                        const r0 = bodyRadius(p.body.n)
                         return (
-                            <line
-                                key={`tail-${p.body.id}`}
-                                x1={p.x} y1={p.y} x2={tx} y2={ty}
-                                stroke={TYPE_COLORS[p.body.type]}
-                                strokeOpacity={p.alpha * 0.45}
-                                strokeWidth={1.6}
-                            />
+                            <g key={`tail-${p.body.id}`} pointerEvents="none">
+                                <line
+                                    x1={p.x} y1={p.y}
+                                    x2={p.x - 40 * dirX} y2={p.y - 40 * dirY}
+                                    stroke={TYPE_COLORS[p.body.type]}
+                                    strokeOpacity={p.alpha * 0.18}
+                                    strokeWidth={r0 * 1.5}
+                                    strokeLinecap="round"
+                                />
+                                <line
+                                    x1={p.x} y1={p.y}
+                                    x2={p.x - 30 * dirX} y2={p.y - 30 * dirY}
+                                    stroke={TYPE_COLORS[p.body.type]}
+                                    strokeOpacity={p.alpha * 0.5}
+                                    strokeWidth={1.4}
+                                    strokeLinecap="round"
+                                />
+                            </g>
                         )
                     })}
 
@@ -211,29 +283,30 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                             <circle
                                 cx={p.x} cy={p.y}
                                 r={bodyRadius(p.body.n)}
-                                fill={TYPE_COLORS[p.body.type]}
-                                fillOpacity={0.85}
-                                stroke="rgba(226,232,240,0.5)"
-                                strokeWidth={hovered?.id === p.body.id ? 1.6 : 0.7}
+                                fill={`url(#orb-grad-${p.body.type})`}
+                                stroke={hovered?.id === p.body.id ? 'rgba(248,250,252,0.9)' : 'rgba(226,232,240,0.25)'}
+                                strokeWidth={hovered?.id === p.body.id ? 1.4 : 0.6}
                             />
                             {(labelIds.has(p.body.id) || hovered?.id === p.body.id) && (
-                                <text x={p.x} y={p.y + bodyRadius(p.body.n) + 11} className="orbital-body-label">
+                                <text x={p.x} y={p.y + bodyRadius(p.body.n) + 12} className="orbital-body-label">
                                     {bodyLabel(p.body)}
                                 </text>
                             )}
                         </g>
                     ))}
 
-                    {/* center: the thread — prefer the engine's own label
-                        (deep-links may only carry a generic id-derived name) */}
+                    {/* center: the thread — glow + compact core; label sits
+                        BELOW the core (a big labeled disk read as a button);
+                        prefers the engine's own name over id-derived labels */}
                     <g>
-                        <circle cx={cx} cy={cy} r={30} className="orbital-center" />
-                        <text x={cx} y={cy - 2} className="orbital-center-label">
-                            {(() => { const l = payload.center.label || themeLabel; return l.length > 26 ? `${l.slice(0, 24)}…` : l })()}
+                        <circle cx={cx} cy={cy} r={64} fill="url(#orb-center-glow)" pointerEvents="none" />
+                        <circle cx={cx} cy={cy} r={22} className="orbital-center" />
+                        <text x={cx} y={cy + 40} className="orbital-center-label">
+                            {(() => { const l = payload.center.label || themeLabel; return l.length > 30 ? `${l.slice(0, 28)}…` : l })()}
                         </text>
                         {payload.center.category && (
-                            <text x={cx} y={cy + 12} className="orbital-center-category">
-                                {payload.center.category}
+                            <text x={cx} y={cy + 53} className="orbital-center-category">
+                                {payload.center.category}{payload.center.crisis_relevant ? ' · crisis' : ''}
                             </text>
                         )}
                     </g>

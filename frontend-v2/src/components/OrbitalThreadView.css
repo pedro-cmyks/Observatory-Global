@@ -1,14 +1,50 @@
 .orbital-section {
   padding: 4px 0 12px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
 }
 
 .orbital-canvas {
   position: relative;
   width: 100%;
-  background: radial-gradient(ellipse at center, rgba(30, 41, 59, 0.35) 0%, rgba(11, 14, 19, 0.05) 70%);
+  flex: 1;
+  min-height: 300px;
+  background:
+    radial-gradient(ellipse at 50% 45%, rgba(30, 41, 59, 0.55) 0%, rgba(11, 14, 19, 0.1) 62%),
+    radial-gradient(ellipse at 80% 15%, rgba(23, 37, 84, 0.28) 0%, transparent 55%),
+    #0b0e13;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 10px;
   overflow: hidden;
+}
+
+.orbital-ring-label {
+  fill: rgba(148, 163, 184, 0.4);
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.orbital-ring-label--far {
+  fill: rgba(148, 163, 184, 0.28);
+}
+
+.orbital-hover-link {
+  stroke: rgba(226, 232, 240, 0.35);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.orbital-hover-link-label {
+  fill: #cbd5e1;
+  font-size: 9px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  text-anchor: middle;
+  pointer-events: none;
 }
 
 .orbital-ring {
@@ -19,16 +55,19 @@
 }
 
 .orbital-center {
-  fill: rgba(16, 185, 129, 0.16);
-  stroke: rgba(52, 211, 153, 0.8);
-  stroke-width: 1.4;
+  fill: rgba(16, 185, 129, 0.22);
+  stroke: rgba(52, 211, 153, 0.9);
+  stroke-width: 1.2;
 }
 
 .orbital-center-label {
-  fill: #e2e8f0;
-  font-size: 11px;
+  fill: #f1f5f9;
+  font-size: 11.5px;
   font-weight: 600;
   text-anchor: middle;
+  paint-order: stroke;
+  stroke: rgba(11, 14, 19, 0.85);
+  stroke-width: 3px;
 }
 
 .orbital-center-category {
@@ -44,6 +83,9 @@
   font-size: 9.5px;
   text-anchor: middle;
   pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(11, 14, 19, 0.8);
+  stroke-width: 2.5px;
 }
 
 .orbital-body--clickable {
