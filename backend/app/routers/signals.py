@@ -61,6 +61,7 @@ async def get_signals(
     since: Optional[datetime] = Query(None, description="Fetch signals since this timestamp"),
     limit: int = Query(50, ge=1, le=500),
     lane: Optional[str] = Query(None, description="Filter to a stream lane: analyst|sports|entertainment|general"),
+    source: Optional[str] = Query(None, description="Filter to one publisher (exact source_name — the CountryBrief publisher expand, D8)"),
     sort: str = Query("recent", description="recent | relevance (analyst-grade ranking)"),
     own_voice_mix: bool = Query(True, description="Interleave recent non-English native-voice signals into the global stream so GDELT's English firehose doesn't bury them"),
 ):
@@ -115,6 +116,11 @@ async def get_signals(
             param_count += 1
             conditions.append(f"EXISTS (SELECT 1 FROM unnest(persons) p WHERE LOWER(p) LIKE LOWER(${param_count}))")
             params.append(f"%{person}%")
+
+        if source:
+            param_count += 1
+            conditions.append(f"source_name = ${param_count}")
+            params.append(source)
         
         where_clause = " AND ".join(conditions)
 

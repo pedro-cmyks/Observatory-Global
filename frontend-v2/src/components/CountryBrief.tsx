@@ -232,6 +232,38 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
     // Top Publishers: click expands the source's recent coverage inline (same
     // pattern as ThemeDetail), not a jump straight to the bare profile panel.
     const [expandedSource, setExpandedSource] = useState<string | null>(null);
+    // D8: the local top_stories sample rarely contains a given publisher's
+    // articles — expanding used to say "no recent coverage" next to a real
+    // count. Fetch that publisher's window signals on demand instead.
+    const [sourceFetch, setSourceFetch] = useState<{ name: string; stories: Array<{ id?: number; headline?: string | null; url: string; timestamp: string; source_lang?: string | null }>; loading: boolean } | null>(null);
+    useEffect(() => {
+        if (!expandedSource) { setSourceFetch(null); return; }
+        const local = (data?.top_stories || []).filter(st => st.source === expandedSource);
+        if (local.length > 0) { setSourceFetch(null); return; }
+        let ignore = false;
+        setSourceFetch({ name: expandedSource, stories: [], loading: true });
+        fetch(`/api/v2/signals?country_code=${countryCode}&source=${encodeURIComponent(expandedSource)}&hours=${timeWindow}&limit=8`)
+            .then(r => r.ok ? r.json() : null)
+            .then(d => {
+                if (ignore) return;
+                // Stored headlines can carry HTML entities (&#x639;…) — decode
+                // before render (the _serialize_evidence class of bug).
+                const decode = (t: string | null | undefined) => {
+                    if (!t) return t;
+                    const el = document.createElement('textarea');
+                    el.innerHTML = t;
+                    return el.value;
+                };
+                const stories = (d?.signals || []).map((sig: { id?: number; headline?: string | null; source_url?: string; url?: string; timestamp: string; source_lang?: string | null }) => ({
+                    id: sig.id, headline: decode(sig.headline), url: sig.source_url || sig.url || '#',
+                    timestamp: sig.timestamp, source_lang: sig.source_lang,
+                }));
+                setSourceFetch({ name: expandedSource, stories, loading: false });
+            })
+            .catch(() => { if (!ignore) setSourceFetch({ name: expandedSource, stories: [], loading: false }); });
+        return () => { ignore = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [expandedSource, countryCode, timeWindow]);
     const [showAllSources, setShowAllSources] = useState(false);
 
     const downloadMarkdown = (filename: string, content: string) => {
@@ -772,9 +804,13 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                         // source profile ↗" link to the full panel. No silent
                         // jump to the bare profile.
                         const isOpen = expandedSource === source.name
-                        const srcStories = isOpen
+                        const localStories = isOpen
                             ? (data.top_stories || []).filter(s => s.source === source.name)
                             : []
+                        const srcStories = localStories.length > 0
+                            ? localStories
+                            : (isOpen && sourceFetch?.name === source.name ? sourceFetch.stories : [])
+                        const srcLoading = isOpen && localStories.length === 0 && sourceFetch?.name === source.name && sourceFetch.loading
                         return (
                             <div key={i} className="source-group">
                                 <button
@@ -798,10 +834,12 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                                 Full source profile ↗
                                             </button>
                                         )}
-                                        {srcStories.length === 0 ? (
+                                        {srcLoading ? (
+                                            <p className="coverage-source-empty">Loading {source.name}'s coverage…</p>
+                                        ) : srcStories.length === 0 ? (
                                             <p className="coverage-source-empty">
-                                                No recent articles from {source.name} in the last {timeWindow}h fetched —
-                                                this source has {source.count} total over the period.
+                                                Couldn't fetch {source.name}'s articles right now —
+                                                the {source.count}-signal count is from the {timeWindow}h window.
                                             </p>
                                         ) : (
                                             <div className="coverage-articles">
