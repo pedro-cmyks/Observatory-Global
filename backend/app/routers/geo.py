@@ -572,6 +572,64 @@ async def get_acled_conflicts(
     except Exception as e:
         return {"conflicts": [], "error": str(e)}
 
+# =============================================================================
+# DISASTER EVENTS API (USGS + GDACS, mig 062) — the hazards CAMEO can't represent
+# =============================================================================
+
+@router.get("/api/v2/disasters")
+async def get_disaster_events(
+    hours: int = Query(72, ge=1, le=336),
+    limit: int = Query(200, ge=1, le=500),
+):
+    """Recent natural-hazard events for the map layer (capture-doc L7).
+
+    Green-alert wildfires are excluded — GDACS emits ~160 minor ones per 72h
+    (measured 2026-07-02) and they drown the significant events. Everything
+    else serves: all earthquakes/floods/cyclones/droughts + Orange/Red fires.
+    """
+    try:
+        async with db.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT event_id, source, event_type, title, country_code,
+                       latitude, longitude, magnitude, alert_level, event_time,
+                       url, population_affected
+                FROM disaster_events_v2
+                WHERE event_time >= NOW() - ($1::int * INTERVAL '1 hour')
+                  AND latitude IS NOT NULL AND longitude IS NOT NULL
+                  AND NOT (event_type = 'wildfire'
+                           AND COALESCE(alert_level, 'Green') ILIKE 'green')
+                ORDER BY CASE LOWER(COALESCE(alert_level, ''))
+                             WHEN 'red' THEN 0 WHEN 'orange' THEN 1 ELSE 2 END,
+                         COALESCE(magnitude, 0) DESC, event_time DESC
+                LIMIT $2
+            """, hours, limit)
+        events = [
+            {
+                "id": r["event_id"],
+                "source": r["source"],
+                "type": r["event_type"],
+                "title": r["title"],
+                "country": r["country_code"],
+                "latitude": r["latitude"],
+                "longitude": r["longitude"],
+                "magnitude": r["magnitude"],
+                "alert": r["alert_level"],
+                "time": r["event_time"].isoformat(),
+                "url": r["url"],
+                "population_affected": r["population_affected"],
+            }
+            for r in rows
+        ]
+        return {
+            "events": events,
+            "count": len(events),
+            "hours": hours,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as e:
+        return {"events": [], "error": str(e)}
+
+
 @router.get("/api/v2/correlation")
 async def get_correlation(
     mode: str = Query("country", description="mode: 'country' or 'theme'"),

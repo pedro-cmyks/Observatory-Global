@@ -14,6 +14,7 @@ interface LegendProps {
     vesselConnected?: boolean
     aircraftError?: boolean
     conflictCount?: number
+    disasterCount?: number
     anomalyCount?: number
 }
 
@@ -69,6 +70,7 @@ export const Legend: React.FC<LegendProps> = ({
     vesselConnected = false,
     aircraftError = false,
     conflictCount = 0,
+    disasterCount = 0,
     anomalyCount = 0,
 }) => {
     // On phones the expanded legend floats over the stream/workbench; start
@@ -215,6 +217,18 @@ export const Legend: React.FC<LegendProps> = ({
                         <Swatch color="rgba(239,68,68,0.9)" label="Battle / Explosion" tip="Armed clashes or explosive events (GDELT events)" />
                         <Swatch color="rgba(249,115,22,0.85)" label="Riot / Protest" tip="Civil unrest events (GDELT events)" />
                         <Swatch color="rgba(234,179,8,0.8)" label="Other violence" tip="Other violent or strategic events (GDELT events)" />
+                    </div>
+                </div>
+            )}
+
+            {disasterCount > 0 && (
+                <div style={{ marginBottom: '12px' }}>
+                    <SectionHeader label={`Natural Hazards · ${disasterCount}`} tip="Structured disaster events from USGS (earthquakes) and GDACS (multi-hazard), last 72h. Minor green-alert wildfires are excluded. Click a marker to open the authoritative event page." />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <Swatch color="rgba(251,191,36,0.85)" label="Earthquake" tip="USGS — size scales with magnitude" />
+                        <Swatch color="rgba(56,189,248,0.85)" label="Flood" tip="GDACS flood events" />
+                        <Swatch color="rgba(167,139,250,0.85)" label="Cyclone" tip="GDACS tropical cyclones" />
+                        <Swatch color="rgba(249,115,22,0.85)" label="Wildfire (Orange/Red)" tip="GDACS significant wildfires only" />
                     </div>
                 </div>
             )}

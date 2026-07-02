@@ -374,6 +374,11 @@ function AppContent() {
   const [showVessels, setShowVessels] = useState(false)
   const [vesselData, setVesselData] = useState([])
   const [vesselConnected, setVesselConnected] = useState(false)
+  const [disasterEvents, setDisasterEvents] = useState<Array<{
+    id: string; source: string; type: string; title: string | null;
+    country: string | null; latitude: number; longitude: number;
+    magnitude: number | null; alert: string | null; time: string; url: string | null;
+  }>>([])
   // #231: baseline-normalized composite heat (velocity/surprise/diversity/
   // voice) per country. The map fill must use THIS, not /nodes volume-rank
   // heat (which made the US permanently reddest). Keyed by ISO2.
@@ -423,6 +428,26 @@ function AppContent() {
     const interval = setInterval(fetchVessels, 30000)
     return () => clearInterval(interval)
   }, [showVessels])
+
+  // Disaster events (USGS+GDACS, capture-doc L7) — the hazards CAMEO can't
+  // represent, finally painted. Fixed 72h window (hazard relevance horizon,
+  // independent of the news time-range); 15-min refresh matches ingest cadence.
+  useEffect(() => {
+    const fetchDisasters = async () => {
+      try {
+        const res = await fetch('/api/v2/disasters?hours=72')
+        if (res.ok) {
+          const data = await res.json()
+          setDisasterEvents(data.events || [])
+        }
+      } catch (err) {
+        console.error('Failed to fetch disasters:', err)
+      }
+    }
+    fetchDisasters()
+    const interval = setInterval(fetchDisasters, 15 * 60_000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Auto-enable SHIPS when focused country has strategically relevant chokepoints
   useEffect(() => {
@@ -1095,11 +1120,33 @@ function AppContent() {
             },
           })),
       },
+      disasters: {
+        type: 'FeatureCollection' as const,
+        features: disasterEvents
+          .filter(ev => ev.longitude != null && ev.latitude != null)
+          .map(ev => {
+            const alert = (ev.alert || '').toLowerCase()
+            const radius = ev.type === 'earthquake' && ev.magnitude
+              ? Math.min(Math.max(4, (ev.magnitude - 3) * 2.2), 10)
+              : alert === 'red' ? 8 : alert === 'orange' ? 6 : 4.5
+            return {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [ev.longitude, ev.latitude] },
+              properties: {
+                dtype: ev.type, title: ev.title || '', alert: ev.alert || '',
+                magnitude: ev.magnitude ?? null, url: ev.url || '',
+                country: ev.country || '', radius,
+                lat: ev.latitude, lon: ev.longitude,
+              },
+            }
+          }),
+      },
       terminator: buildTerminatorData(showTerminator && !crisisEnabled),
     }
   }, [
     activeChokepoints,
     acledConflicts,
+    disasterEvents,
     chokepointCounts,
     enhancedNodes,
     filter.theme,
@@ -1126,6 +1173,7 @@ function AppContent() {
     setGeoJsonData(map, 'atlas-aircraft', nativeOverlayData.aircraft)
     setGeoJsonData(map, 'atlas-vessels', nativeOverlayData.vessels)
     setGeoJsonData(map, 'atlas-acled', nativeOverlayData.acled)
+    setGeoJsonData(map, 'atlas-disasters', nativeOverlayData.disasters)
     setGeoJsonData(map, 'atlas-terminator', nativeOverlayData.terminator)
 
     ensureLayer(map, {
@@ -1195,6 +1243,28 @@ function AppContent() {
         'circle-color': ['case', ['>', ['coalesce', ['get', 'speed'], 0], 10], 'rgba(0, 220, 200, 0.9)', 'rgba(0, 180, 160, 0.6)'],
       },
     })
+    // L7: natural-hazard events (USGS+GDACS). Cool-hued, white-stroked dots so
+    // they read as HAZARD, distinct from the warm conflict palette.
+    ensureLayer(map, {
+      id: 'atlas-disasters-circle',
+      type: 'circle',
+      source: 'atlas-disasters',
+      paint: {
+        'circle-radius': ['coalesce', ['get', 'radius'], 5],
+        'circle-color': [
+          'match', ['get', 'dtype'],
+          'earthquake', 'rgba(251, 191, 36, 0.82)',
+          'volcano', 'rgba(248, 113, 113, 0.82)',
+          'flood', 'rgba(56, 189, 248, 0.82)',
+          'cyclone', 'rgba(167, 139, 250, 0.82)',
+          'wildfire', 'rgba(249, 115, 22, 0.82)',
+          'drought', 'rgba(202, 138, 4, 0.82)',
+          'rgba(148, 163, 184, 0.8)',
+        ],
+        'circle-stroke-color': 'rgba(255, 255, 255, 0.55)',
+        'circle-stroke-width': 1.4,
+      },
+    })
     ensureLayer(map, {
       id: 'atlas-acled-circle',
       type: 'circle',
@@ -1222,9 +1292,11 @@ function AppContent() {
     setLayerVisibility(map, 'atlas-aircraft-circle', showAircraft)
     setLayerVisibility(map, 'atlas-vessels-circle', showVessels)
     setLayerVisibility(map, 'atlas-acled-circle', (acledConflicts?.length ?? 0) > 0)
+    setLayerVisibility(map, 'atlas-disasters-circle', disasterEvents.length > 0)
     setLayerVisibility(map, 'atlas-terminator-fill', showTerminator && !crisisEnabled)
   }, [
     acledConflicts,
+    disasterEvents,
     crisisEnabled,
     filter.theme,
     mapReady,
@@ -1275,9 +1347,23 @@ function AppContent() {
     map.on('click', 'atlas-chokepoints-circle', handleChokepointClick)
     map.on('mouseenter', 'atlas-chokepoints-circle', enter)
     map.on('mouseleave', 'atlas-chokepoints-circle', leave)
+    // L7: a disaster dot flies to the event and opens the authoritative
+    // source page (USGS/GDACS) — no in-app panel for hazards yet.
+    const handleDisasterClick = (e: any) => {
+      const p = e.features?.[0]?.properties
+      if (!p) return
+      if (p.lat != null && p.lon != null) {
+        map.flyTo({ center: [Number(p.lon), Number(p.lat)], zoom: 5, duration: 1200 })
+      }
+      if (p.url) window.open(String(p.url), '_blank', 'noopener,noreferrer')
+    }
+
     map.on('click', 'atlas-acled-circle', handleAcledClick)
     map.on('mouseenter', 'atlas-acled-circle', enter)
     map.on('mouseleave', 'atlas-acled-circle', leave)
+    map.on('click', 'atlas-disasters-circle', handleDisasterClick)
+    map.on('mouseenter', 'atlas-disasters-circle', enter)
+    map.on('mouseleave', 'atlas-disasters-circle', leave)
 
     return () => {
       // The map may already be torn down (projection switch unmounts MapGL):
@@ -1294,6 +1380,11 @@ function AppContent() {
           map.off('click', 'atlas-acled-circle', handleAcledClick)
           map.off('mouseenter', 'atlas-acled-circle', enter)
           map.off('mouseleave', 'atlas-acled-circle', leave)
+        }
+        if (map.getLayer('atlas-disasters-circle')) {
+          map.off('click', 'atlas-disasters-circle', handleDisasterClick)
+          map.off('mouseenter', 'atlas-disasters-circle', enter)
+          map.off('mouseleave', 'atlas-disasters-circle', leave)
         }
       } catch { /* map already removed */ }
     }
@@ -1644,6 +1735,8 @@ function AppContent() {
                       if (!cp) return
                       setSelectedChokepoint(prev => prev?.id === cp.id ? null : cp)
                       setMapFlyCountry(cp.primaryCountry)
+                    } else if (kind === 'disaster') {
+                      if (p.url) window.open(String(p.url), '_blank', 'noopener,noreferrer')
                     } else {
                       setSelectedConflictEvent({
                         type: String(p.type || ''), country: String(p.country || ''), place: String(p.place || ''),
@@ -1824,6 +1917,7 @@ function AppContent() {
               vesselConnected={vesselConnected}
               aircraftError={aircraftError}
               conflictCount={acledConflicts?.length ?? 0}
+              disasterCount={disasterEvents.length}
               anomalyCount={enhancedNodes.filter((n: any) => n.isAnomaly).length}
             />
           </div>

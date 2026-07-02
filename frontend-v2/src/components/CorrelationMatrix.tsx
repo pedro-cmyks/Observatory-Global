@@ -45,7 +45,11 @@ export const CorrelationMatrix: React.FC = () => {
             const res = await fetch(`/api/v2/correlation?mode=${mode}&hours=${hours}&limit=12`)
             if (res.ok) {
                 const jsonData = await res.json()
-                setData(jsonData)
+                // Deploy-window / error responses can lack `matrix` — setting
+                // them crashed the panel (reading .length of undefined).
+                if (Array.isArray(jsonData?.matrix) && Array.isArray(jsonData?.entities)) {
+                    setData(jsonData)
+                }
             }
         } catch (e) {
             console.error('[CorrelationMatrix] Fetch error:', e)

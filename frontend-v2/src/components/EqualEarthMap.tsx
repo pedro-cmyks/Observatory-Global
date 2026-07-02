@@ -62,6 +62,7 @@ export interface OverlayData {
     aircraft: FC
     vessels: FC
     acled: FC
+    disasters?: FC
     terminator: FC
 }
 
@@ -75,7 +76,7 @@ export interface EqualEarthMapProps {
     resetNonce?: number
     onCountryClick: (gdeltCode: string, name: string) => void
     /** Marker click (Mercator parity): chokepoint / conflict-event dots. */
-    onMarkerClick?: (kind: 'chokepoint' | 'acled', properties: Record<string, unknown>) => void
+    onMarkerClick?: (kind: 'chokepoint' | 'acled' | 'disaster', properties: Record<string, unknown>) => void
     /** Overlay layers (flows/markers/terminator), same data MapLibre uses. */
     overlay?: OverlayData
 }
@@ -346,6 +347,13 @@ export function EqualEarthMap({
                 return
             }
         }
+        for (const f of overlay.disasters?.features ?? []) {
+            if (near(f.geometry.coordinates, 12)) {
+                e.stopPropagation()
+                onMarkerClick('disaster', f.properties)
+                return
+            }
+        }
         for (const f of overlay.chokepoints.features) {
             if (near(f.geometry.coordinates, 14)) {
                 e.stopPropagation()
@@ -469,6 +477,31 @@ export function EqualEarthMap({
             }
             for (const f of overlay.vessels.features) {
                 dot(f.geometry.coordinates, 2.5, 'rgba(120,200,255,0.7)')
+            }
+
+            // L7: natural hazards — static triangles (a hazard is a fact, not an
+            // alarm), cool-hued + white stroke, distinct from the warm conflict
+            // pulse. Screen-space size so zoom doesn't scale them.
+            const DISASTER_COLORS: Record<string, string> = {
+                earthquake: 'rgba(251,191,36,0.85)', volcano: 'rgba(248,113,113,0.85)',
+                flood: 'rgba(56,189,248,0.85)', cyclone: 'rgba(167,139,250,0.85)',
+                wildfire: 'rgba(249,115,22,0.85)', drought: 'rgba(202,138,4,0.85)',
+            }
+            for (const f of overlay.disasters?.features ?? []) {
+                const c = f.geometry.coordinates
+                if (!Array.isArray(c)) continue
+                const p = pt(c as [number, number]); if (!p) continue
+                const r = Math.min(num(f.properties.radius, 5), 8)
+                const col = DISASTER_COLORS[String(f.properties.dtype)] ?? 'rgba(148,163,184,0.8)'
+                ringsAt(p, (sx, sy) => {
+                    ctx.beginPath()
+                    ctx.moveTo(sx, sy - r)
+                    ctx.lineTo(sx - r * 0.87, sy + r * 0.5)
+                    ctx.lineTo(sx + r * 0.87, sy + r * 0.5)
+                    ctx.closePath()
+                    ctx.fillStyle = col; ctx.fill()
+                    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.stroke()
+                })
             }
 
             // 4. ALERT markers — animated. Conflict dots pulse; anomaly rings ping.
