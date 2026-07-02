@@ -274,3 +274,7 @@ before code.
 - **L2** ✅ domain-title noise class + trends lane filtered + global forum lane requires geolocation (XX excluded). Prod: Taiwan/Kyiv/Trump vs CSS-blog randoms.
 - **L5** ✅ anomaly col scrolls instead of clipping second subsection.
 - **L4** ✅ wiki/top serves top_country; PA wiki click flies map there.
+- **L7 (disasters-on-map)** ✅ /api/v2/disasters (Green-wildfire spam excluded,
+  measured 161/72h) → Mercator circles + EE triangles, per-type palette, click
+  opens USGS/GDACS page, Legend "Natural Hazards · N". Prod API 68 events.
+  Riots/other-violence dot classes verified present in conflict layer (legend).
