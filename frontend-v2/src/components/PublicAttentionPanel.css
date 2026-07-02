@@ -27,7 +27,7 @@
 .pap-kicker,
 .pap-section-label,
 .pap-metric-label {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-family: var(--font-mono, 'Geist Mono Variable', monospace);
     text-transform: uppercase;
     letter-spacing: 0.08em;
 }
@@ -104,7 +104,7 @@
 
 .pap-contrast-band span {
     color: var(--color-text-muted);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-family: var(--font-mono, 'Geist Mono Variable', monospace);
     font-size: 9px;
     letter-spacing: 0.1em;
 }
@@ -133,7 +133,7 @@
 .pap-scope-band span {
     display: block;
     color: #67e8f9;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-family: var(--font-mono, 'Geist Mono Variable', monospace);
     font-size: 10px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -286,7 +286,7 @@
     display: flex;
     gap: 8px;
     color: var(--color-text-muted);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-family: var(--font-mono, 'Geist Mono Variable', monospace);
     font-size: 10px;
     margin-bottom: 5px;
 }

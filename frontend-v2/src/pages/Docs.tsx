@@ -71,10 +71,10 @@ export function Docs() {
             <nav className="docs-topnav">
                 <a className="docs-brand" href="/" onClick={e => { e.preventDefault(); navigate('/') }}>
                     <span className="docs-brand-dot" />
-                    ATLAS
+                    Atlas
                 </a>
-                <span style={{ fontSize: '12px', color: '#334155', fontFamily: 'JetBrains Mono, monospace' }}>/</span>
-                <span style={{ fontSize: '12px', color: '#64748b' }}>Documentation</span>
+                <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono, monospace)' }}>/</span>
+                <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Documentation</span>
                 <div className="docs-topnav-links">
                     <a onClick={() => navigate('/app')} style={{ cursor: 'pointer' }}>Dashboard</a>
                     <a href="https://github.com/pedro-cmyks/Observatory-Global" target="_blank" rel="noopener noreferrer">GitHub</a>
@@ -246,7 +246,7 @@ export function Docs() {
                         Cross-Source Intelligence). The <em>labeling</em> layer (sentiment, entities, framing) is
                         currently English-first: RoBERTa sentiment and spaCy NER run on English signals, and
                         non-English entities are typed by a multilingual gazetteer and flagged
-                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}> unverified</code> rather than
+                        <code style={{ fontFamily: 'monospace', color: '#68dbae' }}> unverified</code> rather than
                         asserted. Full cross-lingual NLP labeling (an XLM path) is gated on worker throughput and a
                         non-Latin NER model — not on by default today. NLP is an enrichment layer, never ground truth.
                     </div>
@@ -449,7 +449,7 @@ export function Docs() {
                     <h3>GDELT GKG — Field Mapping</h3>
                     <p>
                         Each GKG record is a news article. Atlas extracts the following fields from the V2 GKG
-                        tab-separated format and normalizes them into <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>signals_v2</code>:
+                        tab-separated format and normalizes them into <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>signals_v2</code>:
                     </p>
                     <table className="docs-table">
                         <thead><tr><th>GKG Field</th><th>Column Index</th><th>Atlas Field</th><th>Notes</th></tr></thead>
@@ -497,7 +497,7 @@ export function Docs() {
                     <h3>Google Trends — Public Interest Signal</h3>
                     <p>
                         Google Trends data is ingested from the public RSS feed
-                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>trends.google.com/trending/rss</code>
+                        <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>trends.google.com/trending/rss</code>
                         every 30 minutes across 50+ country codes. Each record stores the keyword, its rank,
                         approximate search volume, and the country. The Anomaly Panel's right column shows the
                         top globally-trending keywords (ranked by how many countries searched for the same term).
@@ -544,7 +544,7 @@ export function Docs() {
                         Three social layers feed Atlas as <em>commentary</em>, never article evidence: Reddit
                         (geopolitical and country subreddits), Bluesky (the Jetstream firehose), and Lemmy (federated
                         forum instances). All three are embedded with the same multilingual model as news, then
-                        attached to narrative threads with a <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>discussion</code> role
+                        attached to narrative threads with a <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>discussion</code> role
                         so social attention is scored separately and does not contaminate media-source scoring.
                     </p>
                     <p>
@@ -595,8 +595,8 @@ export function Docs() {
                             <div className="docs-pipeline-step-body">
                                 <h4>Insert into signals_v2</h4>
                                 <p>
-                                    Parsed signals are batch-inserted with <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>ON CONFLICT DO NOTHING</code> (deduplication
-                                    by source URL and timestamp where available). The <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>themes</code> column
+                                    Parsed signals are batch-inserted with <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>ON CONFLICT DO NOTHING</code> (deduplication
+                                    by source URL and timestamp where available). The <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>themes</code> column
                                     stores a PostgreSQL <code style={{ fontFamily: 'monospace' }}>text[]</code> array with a GIN index
                                     enabling fast <code style={{ fontFamily: 'monospace' }}>&&</code> array-overlap queries.
                                 </p>
@@ -640,7 +640,7 @@ countries_v2         Country centroids and metadata`}
                     <p className="docs-lead">
                         A narrative thread is a <em>living topic</em> — a cluster of semantically related
                         signals that Atlas discovers by grouping message embeddings, not a fixed GDELT
-                        theme code. Each thread is backed by a <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>dynamic_topics</code> record
+                        theme code. Each thread is backed by a <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>dynamic_topics</code> record
                         and characterized by its volume, velocity, geographic spread, and sentiment
                         trajectory. A GDELT theme code is one input to a signal — never the identity of a thread.
                     </p>
@@ -648,7 +648,7 @@ countries_v2         Country centroids and metadata`}
                     <p>
                         A clustering job groups signals by the similarity of their e5 text embeddings (HDBSCAN),
                         labels each surviving cluster, and writes it to
-                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}> dynamic_topics</code>. A quality gate drops
+                        <code style={{ fontFamily: 'monospace', color: '#68dbae' }}> dynamic_topics</code>. A quality gate drops
                         incoherent clusters, and a content-entropy roundup classifier diverts
                         "miscellaneous regional news" buckets to a separate tray instead of the live list.
                     </p>
@@ -661,7 +661,7 @@ countries_v2         Country centroids and metadata`}
                     </p>
                     <h3>How threads are served</h3>
                     <p>
-                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>/api/v2/threads</code> ranks dynamic and
+                        <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>/api/v2/threads</code> ranks dynamic and
                         atlas-topic threads together by a single relevance score — log-damped volume, relative
                         movement, and coherence — with <strong>no bias by origin</strong>. A persistent atlas topic
                         that keeps growing is a live thread and is not demoted just for being an aggregate; a loose
@@ -674,13 +674,13 @@ countries_v2         Country centroids and metadata`}
                     </p>
                     <h3>Categories &amp; crisis relevance</h3>
                     <p>
-                        Every thread carries an open <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>category</code>
-                        (shown as a badge) and a <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>crisis_relevant</code>
+                        Every thread carries an open <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>category</code>
+                        (shown as a badge) and a <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>crisis_relevant</code>
                         flag. The category set is <em>anchored-emergent</em>: a seed set of crisis domains (armed
                         conflict, disaster, economic shock, and so on) anchors the taxonomy, but the set grows —
                         emergent non-crisis domains get their own categories rather than being force-fit. Typing is
                         done by an LLM reading each thread's evidence (embedding cosine alone proved unreliable), so
-                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}> crisis_relevant</code> is an analyst
+                        <code style={{ fontFamily: 'monospace', color: '#68dbae' }}> crisis_relevant</code> is an analyst
                         filter — narrow to crises, or keep the full picture — not a hidden gate.
                     </p>
                     <h3>Umbrella hierarchy</h3>
@@ -696,13 +696,13 @@ countries_v2         Country centroids and metadata`}
                     <h3>Typed membership &amp; relationship</h3>
                     <p>
                         A thread's members are typed by role —
-                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}> evidence</code> (media /
-                        institutional), <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>discussion</code>
-                        (social / forum), <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>mood</code>
-                        (sentiment), and <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>movement</code>.
+                        <code style={{ fontFamily: 'monospace', color: '#68dbae' }}> evidence</code> (media /
+                        institutional), <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>discussion</code>
+                        (social / forum), <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>mood</code>
+                        (sentiment), and <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>movement</code>.
                         From the ratio of those roles Atlas classifies each thread's <em>relationship</em> — media-led,
                         public-led, social-led, silent-risk (public attention with thin media), or uncoupled — served
-                        by <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>/api/v2/topic/{'{id}'}/relationship</code>.
+                        by <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>/api/v2/topic/{'{id}'}/relationship</code>.
                         These differentiate as social and public-attention volume grows; today most threads are
                         media-led.
                     </p>
@@ -745,7 +745,7 @@ countries_v2         Country centroids and metadata`}
                         A deterministic intent parser reads the query, then several discovery lanes run in
                         parallel: country context, country-scoped and global narrative threads, public
                         attention, related branches, and a language-agnostic semantic lane over
-                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}> signal_embeddings</code>.
+                        <code style={{ fontFamily: 'monospace', color: '#68dbae' }}> signal_embeddings</code>.
                         Every result is an <strong>anchor</strong>, labelled by the role it can play as evidence
                         so nothing arrives unqualified.
                     </p>
@@ -780,7 +780,7 @@ countries_v2         Country centroids and metadata`}
                     </div>
                     <h3>Ranking you can inspect</h3>
                     <p>
-                        Anchors are ordered by an <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>investigative_score</code> that
+                        Anchors are ordered by an <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>investigative_score</code> that
                         weighs intent fit, evidence strength, movement, and source value. Ranking is never
                         silent filtering:
                     </p>
@@ -838,7 +838,7 @@ countries_v2         Country centroids and metadata`}
                     <h3>Semantic matching across sources</h3>
                     <p>
                         The strongest cross-source link is semantic, not keyword. Atlas embeds signal text with a
-                        multilingual e5 model and stores the vectors in <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>signal_embeddings</code> (pgvector,
+                        multilingual e5 model and stores the vectors in <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>signal_embeddings</code> (pgvector,
                         HNSW index). Because the embedding space is language-agnostic, a Persian headline and an
                         English one about the same event land near each other — so a thread, a research anchor, or the
                         "semantic neighbors" on a signal can connect coverage that shares no literal keywords. This is
@@ -856,7 +856,7 @@ countries_v2         Country centroids and metadata`}
                             <div className="docs-pipeline-step-body">
                                 <h4>Theme label word extraction</h4>
                                 <p>
-                                    The GDELT theme code (e.g. <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>ECON_INFLATION</code>) is
+                                    The GDELT theme code (e.g. <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>ECON_INFLATION</code>) is
                                     resolved to a human label ("Inflation"). Words longer than 3 characters
                                     are extracted as search terms.
                                 </p>
@@ -879,7 +879,7 @@ countries_v2         Country centroids and metadata`}
                             <div className="docs-pipeline-step-body">
                                 <h4>Batch Wikipedia query</h4>
                                 <p>
-                                    Same pattern against <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>wiki_pageviews_v2</code>
+                                    Same pattern against <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>wiki_pageviews_v2</code>
                                     for the last 3 days. Article titles that partially match the theme
                                     words trigger <code style={{ fontFamily: 'monospace', color: '#fbbf24' }}>has_wiki_activity</code> true.
                                 </p>
@@ -910,12 +910,12 @@ countries_v2         Country centroids and metadata`}
                         British eyes in Persian — not Iranian voice. Atlas measures self-coverage by outlet
                         ownership (origin country = subject country). A foreign outlet publishing in a local
                         language is tracked in a separate
-                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}> soft_power_local_language</code> bucket
+                        <code style={{ fontFamily: 'monospace', color: '#68dbae' }}> soft_power_local_language</code> bucket
                         and never counted as domestic voice.
                     </div>
                     <h3>Voice Mix metrics</h3>
                     <p>
-                        Served by <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>/api/v2/voice-mix</code> and
+                        Served by <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>/api/v2/voice-mix</code> and
                         surfaced in the Country Brief as "X% covered by its own press":
                     </p>
                     <table className="docs-table">
@@ -1042,7 +1042,7 @@ avg_sentiment per theme = AVG(sentiment) across all signals in window`}
                     <h3>Crisis relevance (category typing)</h3>
                     <p>
                         Crisis is no longer a per-signal keyword-weight sum. Each <em>thread</em> is typed into an
-                        open category and marked <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>crisis_relevant</code>
+                        open category and marked <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>crisis_relevant</code>
                         by an LLM reading its evidence, against an anchored-emergent taxonomy (crisis domains seed the
                         set; emergent domains extend it). Embedding cosine alone was measured to be unreliable for
                         this, so the classifier — not a lexicon — is the typer, and crisis relevance is exposed as a
@@ -1104,7 +1104,7 @@ max-weight crisis theme present:
                     <div className="docs-section-eyebrow">Endpoints</div>
                     <h2>API Reference</h2>
                     <p className="docs-lead">
-                        The Atlas backend exposes a REST API at <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>atlas-api-pedro.fly.dev</code>.
+                        The Atlas backend exposes a REST API at <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>atlas-api-pedro.fly.dev</code>.
                         All endpoints return JSON and support CORS for the frontend domain.
                     </p>
 
@@ -1119,9 +1119,9 @@ max-weight crisis theme present:
                             list is never starved. Cached in Redis.
                             <br /><br />
                             <strong style={{ color: '#e2e8f0' }}>Params:</strong>{' '}
-                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>hours</code>,{' '}
-                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>limit</code>,{' '}
-                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>country_code</code> (optional)
+                            <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>hours</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>limit</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>country_code</code> (optional)
                         </div>
                     </div>
 
@@ -1158,8 +1158,8 @@ max-weight crisis theme present:
                             rows with movement. Global or country-scoped.
                             <br /><br />
                             <strong style={{ color: '#e2e8f0' }}>Params:</strong>{' '}
-                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>hours</code>,{' '}
-                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>country</code> (optional)
+                            <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>hours</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>country</code> (optional)
                         </div>
                     </div>
 
@@ -1174,8 +1174,8 @@ max-weight crisis theme present:
                             downranking ledger, and a low-confidence tray. Backs the Workspace investigation flow.
                             <br /><br />
                             <strong style={{ color: '#e2e8f0' }}>Body:</strong>{' '}
-                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>query</code>,{' '}
-                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>hours</code>
+                            <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>query</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>hours</code>
                         </div>
                     </div>
 
@@ -1190,8 +1190,8 @@ max-weight crisis theme present:
                             versus foreign or soft-power sources.
                             <br /><br />
                             <strong style={{ color: '#e2e8f0' }}>Params:</strong>{' '}
-                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>hours</code>,{' '}
-                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>country</code> (optional)
+                            <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>hours</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>country</code> (optional)
                         </div>
                     </div>
 
@@ -1227,8 +1227,8 @@ max-weight crisis theme present:
                             Powers globe glow density.
                             <br /><br />
                             <strong style={{ color: '#e2e8f0' }}>Params:</strong>{' '}
-                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>range</code> (1h / 6h / 24h / 7d / 30d),{' '}
-                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>country</code> (optional ISO code)
+                            <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>range</code> (1h / 6h / 24h / 7d / 30d),{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>country</code> (optional ISO code)
                         </div>
                     </div>
 
@@ -1242,10 +1242,10 @@ max-weight crisis theme present:
                             on-demand translation. Optionally filtered by country or theme.
                             <br /><br />
                             <strong style={{ color: '#e2e8f0' }}>Params:</strong>{' '}
-                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>limit</code>,{' '}
-                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>hours</code>,{' '}
-                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>country</code>,{' '}
-                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>theme</code>
+                            <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>limit</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>hours</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>country</code>,{' '}
+                            <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>theme</code>
                         </div>
                     </div>
 
@@ -1256,7 +1256,7 @@ max-weight crisis theme present:
                         </div>
                         <div className="docs-endpoint-body">
                             On-demand headline translation to the viewer's language, cached in
-                            <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}> signal_translations</code>. Powers the
+                            <code style={{ fontFamily: 'monospace', color: '#68dbae' }}> signal_translations</code>. Powers the
                             "translated by default · See original" affordance in the Signal Stream and Brief.
                         </div>
                     </div>
@@ -1306,12 +1306,12 @@ max-weight crisis theme present:
                         </div>
                     </div>
 
-                    <p style={{ fontSize: '12px', color: '#64748b', marginTop: '20px' }}>
-                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>/api/v2/narratives</code> remains as a
-                        legacy GDELT-theme-ranked endpoint; <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>/api/v2/threads</code> is
-                        the current product. <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>/api/v2/acled</code>,{' '}
-                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>/api/v2/vessels</code>, and{' '}
-                        <code style={{ fontFamily: 'monospace', color: '#38bdf8' }}>/api/v2/aircraft</code> back map-only layers and are not narrative inputs.
+                    <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '20px' }}>
+                        <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>/api/v2/narratives</code> remains as a
+                        legacy GDELT-theme-ranked endpoint; <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>/api/v2/threads</code> is
+                        the current product. <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>/api/v2/acled</code>,{' '}
+                        <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>/api/v2/vessels</code>, and{' '}
+                        <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>/api/v2/aircraft</code> back map-only layers and are not narrative inputs.
                     </p>
 
                     <div className="docs-callout" style={{ marginTop: '32px' }}>

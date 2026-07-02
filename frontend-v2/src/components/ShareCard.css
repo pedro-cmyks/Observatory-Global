@@ -2,7 +2,7 @@
   background: transparent;
   border: 1px solid rgba(29, 158, 117, 0.4);
   color: #1D9E75;
-  font-family: 'SF Mono', 'Fira Mono', monospace;
+  font-family: var(--font-mono, 'Geist Mono Variable', monospace);
   font-size: 11px;
   letter-spacing: 0.04em;
   padding: 5px 10px;
@@ -25,10 +25,10 @@
   padding: 40px;
   background: #0b0e13;
   color: #e2e8f0;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Fraunces', Georgia, serif;
 }
 .share-card-kicker {
-  font-family: 'SF Mono', 'Fira Mono', monospace;
+  font-family: var(--font-mono, 'Geist Mono Variable', monospace);
   font-size: 13px;
   letter-spacing: 0.12em;
   color: #1D9E75;
@@ -53,7 +53,7 @@
   margin-bottom: 8px;
 }
 .share-card-url {
-  font-family: 'SF Mono', 'Fira Mono', monospace;
+  font-family: var(--font-mono, 'Geist Mono Variable', monospace);
   font-size: 12px;
   color: var(--color-text-muted);
   margin-top: 24px;

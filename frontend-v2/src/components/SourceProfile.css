@@ -116,7 +116,7 @@
     font-size: 1.25rem;
     font-weight: 700;
     margin-bottom: 0.25rem;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'Geist Mono Variable', monospace);
 }
 
 .source-metric-label {
@@ -168,14 +168,14 @@
     text-align: right;
     color: #9ca3af;
     font-size: 0.75rem;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'Geist Mono Variable', monospace);
 }
 
 .source-sentiment {
     width: 40px;
     text-align: right;
     font-size: 0.75rem;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'Geist Mono Variable', monospace);
 }
 
 .source-loading {

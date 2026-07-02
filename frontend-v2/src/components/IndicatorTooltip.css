@@ -23,12 +23,12 @@
 }
 
 .indicator-score {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono, 'Geist Mono Variable', monospace);
   font-weight: 600;
 }
 
 .indicator-zscore {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono, 'Geist Mono Variable', monospace);
   font-size: 0.75rem;
   color: var(--color-text-muted);
 }
@@ -85,7 +85,7 @@
 }
 
 .tooltip-score {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono, 'Geist Mono Variable', monospace);
   font-weight: 600;
   font-size: 0.875rem;
 }

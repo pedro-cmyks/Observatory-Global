@@ -35,6 +35,7 @@
     --font-sans: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-technical: 'Geist Mono Variable', 'Geist Mono', 'SF Mono', monospace;
     --font-mono: 'Geist Mono Variable', 'Geist Mono', 'SF Mono', monospace;
+    --font-serif: 'Fraunces', Georgia, serif; /* #247 B3: was referenced but never defined */
 
     --panel-padding: 14px;
     --panel-radius: 6px;
