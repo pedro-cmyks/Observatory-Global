@@ -28,8 +28,17 @@ scrubber births/decays stories (72h half-life, floor). Browser-verified:
 click→STORY SYSTEM. 150/150 vitest + 3 pytest, deployed Fly+pushed. Docs:
 spec `2026-07-02-universe-view.md` (+§6 trajectory/"gravity" metrics
 assessment — capture rate/drift/convergence, backtestable, #219 Kalman =
-seed); P7+P8 grown in master plan. NEXT: Pedro eyeball; drift trails
-(emergent_clusters per-snapshot centroids exist); L3 universe-builder.
+seed); P7+P8 grown in master plan. **V2 same day (Pedro: panel + motion,
+`7a257ff9`):** UNIVERSE = toggle EN el GLOBE toolbar (mounts OVER the map —
+display:none crash lesson; overlay retired, command-bar button = shortcut);
+cloud ROTATES — backend serves PCA top-3 (z = honest depth) + nn_sim; drag
+= yaw, ambient spin pauses on hover/drag, depth cues near-big/far-dim.
+**Orphans** (nn_sim < p10 0.893, dashed): live finding — the 35 orphans are
+EXACTLY the isolated lifestyle class (hotel reviews/travel guides); field
+detects semantic oddity unsupervised (P8/#248 evidence). Spec §7 = working
+section (7.2 moving cloud; trajectories v3 = per-snapshot centroids in
+emergent_clusters). NEXT: Pedro eyeball; #234 focus-lens in universe;
+mobile pinch; drift trails; L3 universe-builder.
 
 **2026-07-02 (L11 SOLAR SYSTEM — Orbital Thread View SHIPPED + E2 root-caused).**
 Design+prototype session (parallel chat; did NOT touch BriefNewspaper/search.py/
