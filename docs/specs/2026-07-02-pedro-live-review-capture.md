@@ -285,3 +285,20 @@ before code.
   DEEPER GAP (captured, not built): GDELT GKG ORGANIZATIONS field is NOT
   ingested — signal-level org data doesn't exist; NER orgs only. Ingesting it
   = the real "which companies/agencies/armed groups" answer. → issue-worthy.
+- **E3** ✅ how-covered card → inline peek (4 country headlines, translatable)
+  + explicit "Full coverage ↗" button. Browser-verified dt-981/LB.
+- **E4 ANSWERED**: volume cut is right for coverage-share AND the subject
+  country is always spliced to front when absent (originCountry logic,
+  ThemeDetail:874) — no change needed.
+- **D11** ✅ getCountryFlag was a stub returning the raw code ("SD Sudan") —
+  real flag emoji + GDELT→ISO remap. Verified 🇸🇩.
+- **J** ✅ (see above) + #251 filed for GKG ORGANIZATIONS ingestion.
+- **L12 (outlet)**: exhaustive grep — NO surface renders "outlet" as a
+  classification (only tooltip prose). Needs Pedro's screenshot to locate.
+  Stream-tab retype (priority vs content mix) = design decision, captured.
+- **A4 ANSWERED**: Sudan dots = conflict events at REAL per-event lat/lon
+  (GDELT coords, not centroids); anomaly rings = country-level. Legend now
+  documents both classes + Natural Hazards. Dock lists them country-scoped.
+- **HNSW**: moved M1-launchd → pg_cron INSIDE Supabase (Pedro: nothing heavy
+  depends on his machine). Job 'hnsw-rebuild-once' 08:15 UTC, self-unschedules
+  FIRST (failure ≠ retry). Check cron.job_run_details tomorrow.
