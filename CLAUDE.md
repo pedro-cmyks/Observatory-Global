@@ -54,8 +54,15 @@ focus by design"). `focus_filters.thread_focus_filter` (dynamic-topic-N /
 atlas slug → typed topic_members membership) compartido por /nodes + /focus.
 Verified: click en la nube → orbital viaja + ThemeDetail + GLOBE "Filtered:
 <thread>" + AnomalyPanel "THREAD → RU" + cuerpo activo ANILLADO en el campo.
-NEXT: Pedro eyeball; country/person→field direction; mobile pinch; drift
-trails; L3 universe-builder.
+**V5 (Pedro: "se clipea + muy redondo", `4c40e62a`):** orbital POLISH —
+canvas height-aware (fijo 380px era el clipping), órbitas ELÍPTICAS
+(stretch uniforme del campo radial → llena el panel, el ORDEN radial =
+distancia semántica se preserva exacto), gradientes por tipo, glow del
+centro + core compacto con label DEBAJO, starfield determinístico, colas
+de cometa afiladas, línea de conexión en hover con la distancia medida,
+labels de banda (closest/edge), texto con halo. Verified 587×859 svg =
+panel completo. NEXT: Pedro eyeball; country/person→field direction;
+mobile pinch; drift trails; L3 universe-builder.
 
 **2026-07-02 (L11 SOLAR SYSTEM — Orbital Thread View SHIPPED + E2 root-caused).**
 Design+prototype session (parallel chat; did NOT touch BriefNewspaper/search.py/
