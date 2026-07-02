@@ -1309,59 +1309,116 @@ async def get_theme_insight(
 
     # --- Lightweight DB queries ---
     tc = theme_code.upper()
-    try:
-        async with db.pool.acquire() as conn:
-            # Aggregate stats
-            stats_row = await conn.fetchrow(
-                f"""
-                SELECT
-                    COUNT(*)                          AS total_signals,
-                    COUNT(DISTINCT country_code)      AS country_count,
-                    COUNT(DISTINCT source_name)       AS source_count,
-                    AVG(sentiment)                    AS global_sentiment
-                FROM signals_v2
-                WHERE $1 = ANY(themes)
-                  AND timestamp > NOW() - INTERVAL '{hours} hours'
-                """,
-                tc,
-            )
+    # E1 (capture-doc): dynamic threads matched ZERO rows here ($1=ANY(themes)
+    # is the GDELT universe) → data_points 0/0/0 → empty/fabricated insight for
+    # the product's PRIMARY thread type. Resolve their own membership instead.
+    dyn_id = None
+    if theme_code.lower().startswith("dynamic-topic-"):
+        try:
+            dyn_id = int(theme_code.split("-")[-1])
+        except ValueError:
+            dyn_id = None
+    if dyn_id is not None:
+        try:
+            async with db.pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    """
+                    SELECT dt.label,
+                           COALESCE((SELECT SUM(ec.n_signals)
+                             FROM dynamic_topic_members m
+                             JOIN emergent_clusters ec ON ec.id = m.emergent_cluster_id
+                             WHERE m.dynamic_topic_id = dt.id
+                               AND m.snapshot_at = (SELECT MAX(snapshot_at)
+                                   FROM dynamic_topic_members WHERE dynamic_topic_id = dt.id)
+                           ), 0)::int AS total_n,
+                           ARRAY(
+                             SELECT DISTINCT sid FROM dynamic_topic_members m2
+                             JOIN emergent_clusters ec2 ON ec2.id = m2.emergent_cluster_id
+                             CROSS JOIN LATERAL unnest(COALESCE(ec2.sample_signal_ids, ARRAY[]::bigint[])) sid
+                             WHERE m2.dynamic_topic_id = dt.id LIMIT 48
+                           ) AS sample_ids
+                    FROM dynamic_topics dt WHERE dt.id = $1
+                    """, dyn_id, timeout=8)
+                if not row:
+                    return {"theme": theme_code, "insight": None, "error": "not_found",
+                            "data_points": {}, "generated_at": generated_at}
+                sample_ids = list(row["sample_ids"] or [])
+                sstats = await conn.fetchrow(
+                    """
+                    SELECT COUNT(*) AS n, COUNT(DISTINCT country_code) AS cc,
+                           COUNT(DISTINCT source_name) AS sc, AVG(sentiment) AS avg_s
+                    FROM signals_v2 WHERE id = ANY($1::bigint[])
+                    """, sample_ids, timeout=8) if sample_ids else None
+                stats_row = {
+                    "total_signals": int(row["total_n"] or 0),
+                    "country_count": int(sstats["cc"] or 0) if sstats else 0,
+                    "source_count": int(sstats["sc"] or 0) if sstats else 0,
+                    "global_sentiment": float(sstats["avg_s"] or 0.0) if sstats else 0.0,
+                }
+                country_rows = await conn.fetch(
+                    """
+                    SELECT country_code, COUNT(*) AS cnt, AVG(sentiment) AS avg_sent
+                    FROM signals_v2 WHERE id = ANY($1::bigint[]) AND country_code IS NOT NULL
+                    GROUP BY country_code ORDER BY cnt DESC LIMIT 5
+                    """, sample_ids, timeout=8) if sample_ids else []
+                trend_row = {"recent": 0, "previous": 0}
+        except Exception as db_err:
+            return {"theme": theme_code, "insight": None, "error": "db_error",
+                    "detail": str(db_err), "data_points": {}, "generated_at": generated_at}
+    else:
+      try:
+          async with db.pool.acquire() as conn:
+              # Aggregate stats
+              stats_row = await conn.fetchrow(
+                  f"""
+                  SELECT
+                      COUNT(*)                          AS total_signals,
+                      COUNT(DISTINCT country_code)      AS country_count,
+                      COUNT(DISTINCT source_name)       AS source_count,
+                      AVG(sentiment)                    AS global_sentiment
+                  FROM signals_v2
+                  WHERE $1 = ANY(themes)
+                    AND timestamp > NOW() - INTERVAL '{hours} hours'
+                  """,
+                  tc,
+              )
 
-            # Top 5 countries by volume
-            country_rows = await conn.fetch(
-                f"""
-                SELECT country_code, COUNT(*) AS cnt, AVG(sentiment) AS avg_sent
-                FROM signals_v2
-                WHERE $1 = ANY(themes)
-                  AND timestamp > NOW() - INTERVAL '{hours} hours'
-                GROUP BY country_code
-                ORDER BY cnt DESC
-                LIMIT 5
-                """,
-                tc,
-            )
+              # Top 5 countries by volume
+              country_rows = await conn.fetch(
+                  f"""
+                  SELECT country_code, COUNT(*) AS cnt, AVG(sentiment) AS avg_sent
+                  FROM signals_v2
+                  WHERE $1 = ANY(themes)
+                    AND timestamp > NOW() - INTERVAL '{hours} hours'
+                  GROUP BY country_code
+                  ORDER BY cnt DESC
+                  LIMIT 5
+                  """,
+                  tc,
+              )
 
-            # Volume trend: last 6h vs previous 6h
-            trend_row = await conn.fetchrow(
-                """
-                SELECT
-                    SUM(CASE WHEN timestamp > NOW() - INTERVAL '6 hours' THEN 1 ELSE 0 END)          AS recent,
-                    SUM(CASE WHEN timestamp BETWEEN NOW() - INTERVAL '12 hours'
-                                             AND NOW() - INTERVAL '6 hours'  THEN 1 ELSE 0 END)     AS previous
-                FROM signals_v2
-                WHERE $1 = ANY(themes)
-                  AND timestamp > NOW() - INTERVAL '12 hours'
-                """,
-                tc,
-            )
-    except Exception as db_err:
-        return {
-            "theme": theme_code.upper(),
-            "insight": None,
-            "error": "db_error",
-            "detail": str(db_err),
-            "data_points": {},
-            "generated_at": generated_at,
-        }
+              # Volume trend: last 6h vs previous 6h
+              trend_row = await conn.fetchrow(
+                  """
+                  SELECT
+                      SUM(CASE WHEN timestamp > NOW() - INTERVAL '6 hours' THEN 1 ELSE 0 END)          AS recent,
+                      SUM(CASE WHEN timestamp BETWEEN NOW() - INTERVAL '12 hours'
+                                               AND NOW() - INTERVAL '6 hours'  THEN 1 ELSE 0 END)     AS previous
+                  FROM signals_v2
+                  WHERE $1 = ANY(themes)
+                    AND timestamp > NOW() - INTERVAL '12 hours'
+                  """,
+                  tc,
+              )
+      except Exception as db_err:
+          return {
+              "theme": theme_code.upper(),
+              "insight": None,
+              "error": "db_error",
+              "detail": str(db_err),
+              "data_points": {},
+              "generated_at": generated_at,
+          }
 
     total_signals = int(stats_row["total_signals"] or 0)
     country_count = int(stats_row["country_count"] or 0)
