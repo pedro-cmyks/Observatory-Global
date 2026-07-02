@@ -4,8 +4,8 @@
     top: 120px;
     width: 300px;
     max-height: calc(100vh - 150px);
-    background: linear-gradient(180deg, #0a1628 0%, #0d1f3c 100%);
-    border: 1px solid #1e3a5f;
+    background: linear-gradient(180deg, var(--color-bg-secondary) 0%, #0d1f3c 100%);
+    border: 1px solid rgba(167, 139, 250, 0.22);
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
@@ -14,7 +14,7 @@
 
 .focus-summary-header {
     padding: 16px;
-    border-bottom: 1px solid #1e3a5f;
+    border-bottom: 1px solid rgba(167, 139, 250, 0.22);
     background: rgba(30, 58, 95, 0.3);
 }
 
@@ -36,13 +36,13 @@
     border: 1px solid #3d7ab8;
     border-radius: 4px;
     padding: 4px 8px;
-    color: #6ba3d6;
+    color: #a78bfa;
     cursor: pointer;
     font-size: 11px;
 }
 
 .focus-clear-btn:hover {
-    background: rgba(59, 130, 246, 0.2);
+    background: rgba(167, 139, 250, 0.2);
 }
 
 .focus-summary-title {
@@ -60,7 +60,7 @@
 
 .focus-summary-loading {
     margin-top: 8px;
-    color: #6ba3d6;
+    color: #a78bfa;
     font-size: 12px;
 }
 
@@ -69,7 +69,7 @@
     display: flex;
     gap: 16px;
     font-size: 12px;
-    color: #6ba3d6;
+    color: #a78bfa;
 }
 
 .focus-summary-stats strong {
@@ -88,7 +88,7 @@
 
 .focus-section h4 {
     font-size: 11px;
-    color: #6ba3d6;
+    color: #a78bfa;
     text-transform: uppercase;
     margin: 0 0 8px;
     letter-spacing: 0.5px;
@@ -101,8 +101,8 @@
 }
 
 .focus-topic-chip {
-    background: rgba(59, 130, 246, 0.2);
-    border: 1px solid rgba(59, 130, 246, 0.3);
+    background: rgba(167, 139, 250, 0.2);
+    border: 1px solid rgba(167, 139, 250, 0.3);
     border-radius: 12px;
     padding: 4px 10px;
     font-size: 11px;
@@ -111,7 +111,7 @@
 }
 
 .focus-topic-chip:hover {
-    background: rgba(59, 130, 246, 0.3);
+    background: rgba(167, 139, 250, 0.3);
 }
 
 .focus-topic-count {
@@ -138,7 +138,7 @@
 
 .focus-source-count {
     font-size: 11px;
-    color: #6ba3d6;
+    color: #a78bfa;
 }
 
 .focus-headline-link {
@@ -159,5 +159,5 @@
 
 .focus-headline-source {
     font-size: 10px;
-    color: #6ba3d6;
+    color: #a78bfa;
 }

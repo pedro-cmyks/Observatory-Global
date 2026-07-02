@@ -6,7 +6,7 @@
     width: 22rem;
     max-width: 100vw;
     background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
-    border-left: 1px solid #1e3a5f;
+    border-left: 1px solid rgba(167, 139, 250, 0.22);
     overflow-y: auto;
     z-index: 100;
     display: flex;
@@ -33,8 +33,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 10px 14px;
-    background: #0a1628;
-    border-bottom: 1px solid #1e3a5f;
+    background: var(--color-bg-secondary);
+    border-bottom: 1px solid rgba(167, 139, 250, 0.22);
     position: sticky;
     top: 0;
     z-index: 10;
@@ -204,7 +204,7 @@
 }
 
 .entity-country-code {
-    color: #63b3ed;
+    color: #a78bfa;
     font-size: 10px;
     font-weight: 600;
     width: 24px;
@@ -266,7 +266,7 @@
 .entity-theme-chip:hover {
     background: rgba(99, 179, 237, 0.1);
     border-color: rgba(99, 179, 237, 0.3);
-    color: #63b3ed;
+    color: #a78bfa;
 }
 
 .entity-theme-groups {
