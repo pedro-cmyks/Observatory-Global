@@ -81,3 +81,10 @@
     border-radius: 4px;
     white-space: nowrap;
 }
+
+/* A5: the color's MEANING at the point of hover — "why is this country blue
+   while news is breaking there": blue = at ITS OWN baseline, not "calm". */
+.equal-earth-tooltip-heat {
+    color: var(--color-text-muted, #94a3b8);
+    font-size: 10px;
+}

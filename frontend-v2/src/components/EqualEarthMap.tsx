@@ -103,7 +103,7 @@ export function EqualEarthMap({
     const [gesturing, setGesturing] = useState(false)
     // Parity gap vs Mercator (capture-doc audit): hover tooltip with the
     // country name. Screen-space; cleared on leave/pan.
-    const [hover, setHover] = useState<{ name: string; x: number; y: number } | null>(null)
+    const [hover, setHover] = useState<{ name: string; heat: number; x: number; y: number } | null>(null)
 
     // Container size — drives the projection fit. The map can mount at 0×0
     // inside a hidden mobile tab and only get a real box when the tab is shown,
@@ -225,7 +225,7 @@ export function EqualEarthMap({
                 stroke={isSel ? '#68dbae' : (heat > 0.3 ? heatGlowColor(heat) : 'rgba(120,140,170,0.18)')}
                 strokeWidth={isSel ? 1.8 : 0.3}
                 onClick={() => handleCountryClick(p.iso, p.name)}
-                onMouseMove={(e) => setHover({ name: p.name, x: e.clientX, y: e.clientY })}
+                onMouseMove={(e) => setHover({ name: p.name, heat, x: e.clientX, y: e.clientY })}
                 onMouseLeave={() => setHover(null)}
                 style={{ cursor: 'pointer' }}
             />
@@ -635,6 +635,12 @@ export function EqualEarthMap({
                     style={{ left: hover.x + 12, top: hover.y - 10 }}
                 >
                     {hover.name}
+                    <span className="equal-earth-tooltip-heat">
+                        {hover.heat > 0.66 ? ' · strongly above its norm'
+                            : hover.heat > 0.33 ? ' · above its norm'
+                            : hover.heat > 0.05 ? ' · slightly above its norm'
+                            : ' · at its baseline'}
+                    </span>
                 </div>
             )}
             <div className="equal-earth-vignette" />
