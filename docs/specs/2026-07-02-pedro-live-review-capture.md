@@ -270,3 +270,7 @@ measure it; (3) 3D is a trap — 2D radial, firm no.
 VERDICT: prototype on ONE thread detail replacing the evolution graph,
 evaluated on task time. Paper 7 contribution IF evaluated. Design session
 before code.
+- **D10** ✅ story-first CountryBrief order (Threads→PA→Subjects→meta→Publishers), browser-verified SD.
+- **L2** ✅ domain-title noise class + trends lane filtered + global forum lane requires geolocation (XX excluded). Prod: Taiwan/Kyiv/Trump vs CSS-blog randoms.
+- **L5** ✅ anomaly col scrolls instead of clipping second subsection.
+- **L4** ✅ wiki/top serves top_country; PA wiki click flies map there.
