@@ -302,3 +302,19 @@ before code.
 - **HNSW**: moved M1-launchd → pg_cron INSIDE Supabase (Pedro: nothing heavy
   depends on his machine). Job 'hnsw-rebuild-once' 08:15 UTC, self-unschedules
   FIRST (failure ≠ retry). Check cron.job_run_details tomorrow.
+- **L12** ✅ LOCATED (Pedro: the stream tabs) + SHIPPED: CONFLICT + DISASTER
+  content tabs added next to TREND/PERSON/MARITIME. Theme lists dodge the
+  KILL⊂SKILLS and DISASTER⊂MAN_MADE substring traps (validated vs 300 prod
+  signals). Honest cap: precision bounded by GDELT's loose tagging — same
+  bound as the existing CRITICAL/ELEVATED tabs. "outlet" was a misread of
+  these tab labels; no code change needed for that word.
+- **INCIDENT (18:20 UTC)**: /signals flapping 500 — TWO country_hourly_v2
+  refreshes at once (API's zombie refresh path, unbounded via pooler-dropped
+  SET ‖ M1 cron). Killed orphan; refresh_aggregates retired to no-op; M1 cron
+  got an atomic mkdir lock (macOS has NO flock — a flock guard would have
+  silently skipped every run; caught pre-deploy). Signals 200/~1s after.
+- **RESOURCE MAP (Pedro's economy question)**: M1 = all heavy ML (free);
+  Supabase = storage+serving only (fixed tier; index builds are server-side
+  BY NATURE — a Postgres index cannot be built by another machine; pg_cron
+  costs the same as M1-triggered psql, just removes the Mac dependency);
+  Fly = API+ingest+e5 query service (cents); Vercel = static (free).
