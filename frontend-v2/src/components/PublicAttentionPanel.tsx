@@ -130,7 +130,17 @@ export function PublicAttentionPanel({ item, timeRange, onClose, onThemeSelect, 
         countryCount: fromSearchAttention?.country_count ?? item.country_count
     }
 
-    const signalMatches = useMemo(() => searchData?.signal_matches ?? [], [searchData?.signal_matches])
+    // C5: dedupe syndicated copies (same headline, N outlets) — the raw
+    // matches showed "Iran threatens…" twice back to back.
+    const signalMatches = useMemo(() => {
+        const seen = new Set<string>()
+        return (searchData?.signal_matches ?? []).filter((sig: { headline?: string | null }) => {
+            const key = (sig.headline || '').toLowerCase().trim()
+            if (!key || seen.has(key)) return false
+            seen.add(key)
+            return true
+        })
+    }, [searchData?.signal_matches])
 
     const countries = useMemo(() => {
         const counts = new Map<string, number>()
