@@ -136,6 +136,7 @@ export const SignalStream: React.FC = () => {
     const [streamFilter, setStreamFilter] = useState<'all' | 'critical' | 'elevated' | 'notable' | 'trend' | 'person' | 'maritime'>('notable')
     const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
     const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null)
+    const isHoveredRef = useRef(false)
     const listRef = useRef<HTMLDivElement>(null)
     const latestTimestampRef = useRef<string | null>(null)
     const dripQueueRef = useRef<StreamItem[]>([])
@@ -296,6 +297,7 @@ export const SignalStream: React.FC = () => {
     // Drip-reveal: pop one queued signal every ~1 second for a live-stream feel
     useEffect(() => {
         const drip = setInterval(() => {
+            if (isHoveredRef.current) return // F2: pause the VISIBLE flow too
             if (dripQueueRef.current.length === 0) return
             // Drip faster when a batch is waiting so the stream stays alive between 15-min ingests.
             const batch = dripQueueRef.current.length > 30 ? 3 : dripQueueRef.current.length > 12 ? 2 : 1
@@ -410,8 +412,8 @@ export const SignalStream: React.FC = () => {
             <div
                 className="signal-list"
                 ref={listRef}
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
+                onMouseEnter={() => { isHoveredRef.current = true; setIsHovered(true) }}
+                onMouseLeave={() => { isHoveredRef.current = false; setIsHovered(false) }}
             >
                 {visibleItems.length === 0 ? (
                     <div className="empty-state">No signals found</div>
@@ -421,7 +423,19 @@ export const SignalStream: React.FC = () => {
                             const itemKey = `signal-${sig.id}`
                             const isNew = newItemIds.has(itemKey)
                             return (
-                                <div key={sig.id} className={`signal-row priority-${getSignalPriority(sig)}${isNew ? ' new-entry' : ''}`}>
+                                <div
+                                    key={sig.id}
+                                    className={`signal-row priority-${getSignalPriority(sig)}${isNew ? ' new-entry' : ''}`}
+                                    onClick={(e) => {
+                                        // F2: the WHOLE banner opens the story — not just
+                                        // the headline letters. Inner pills keep their own
+                                        // actions (they stopPropagation or match below).
+                                        const t = e.target as HTMLElement
+                                        if (t.closest('a, button, .country-chip, .person-tag, .theme-tag, .pin-btn')) return
+                                        setSelectedSignal(sig)
+                                    }}
+                                    style={{ cursor: 'pointer' }}
+                                >
                                     <div className="signal-meta">
                                         <span className="time">{formatRelativeAge(sig.addedAt ?? new Date(sig.timestamp).getTime(), nowTs)}</span>
                                         <span 

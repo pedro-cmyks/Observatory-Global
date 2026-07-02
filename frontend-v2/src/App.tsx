@@ -348,6 +348,7 @@ function AppContent() {
   // Equal-area is the DEFAULT since 2026-07-01 (Pedro's visual sign-off — the
   // ADR-0005 P6 gate): equal-area honesty + no WebGL (mobile blank-map class
   // gone). Mercator remains available via Settings; explicit choice persists.
+  const [eeResetNonce, setEeResetNonce] = useState(0)
   const [mapProjection, setMapProjection] = useState<'mercator' | 'equalEarth'>(
     () => (localStorage.getItem('atlas.mapProjection') === 'mercator' ? 'mercator' : 'equalEarth'),
   )
@@ -1574,6 +1575,17 @@ function AppContent() {
               <button
                 className="layer-btn layer-btn--reset"
                 onClick={() => {
+                  // The ↺ was MapLibre-only — dead on the default EE map
+                  // (Pedro 2026-07-02): reset EE's transform + clear focus.
+                  if (mapProjection === 'equalEarth') {
+                    setSelectedCountry(null)
+                    setSelectedCountryCode(null)
+                    setShowFlows(false)
+                    clearFocus()
+                    setMapFlyCountry(null)
+                    setEeResetNonce(n => n + 1)
+                    return
+                  }
                   const map = mapRef.current?.getMap()
                   // #147: after rotating/tilting users get lost — pitch and
                   // bearing were never restored. First press on a tilted map
@@ -1619,6 +1631,7 @@ function AppContent() {
                   showHeatmap={showHeatmap}
                   selectedCountryCode={selectedCountryCode}
                   flyCountry={mapFlyCountry}
+                  resetNonce={eeResetNonce}
                   overlay={nativeOverlayData}
                   onMarkerClick={(kind, p) => {
                     // Mirrors the MapLibre layer handlers (parity audit).

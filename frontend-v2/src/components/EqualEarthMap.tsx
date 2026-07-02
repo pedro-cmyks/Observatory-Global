@@ -71,6 +71,8 @@ export interface EqualEarthMapProps {
     selectedCountryCode: string | null
     /** GDELT code to pan/zoom the view to (the #234 fly-to, EE edition). */
     flyCountry?: string | null
+    /** Bump to reset the view (the toolbar ↺ — was MapLibre-only). */
+    resetNonce?: number
     onCountryClick: (gdeltCode: string, name: string) => void
     /** Marker click (Mercator parity): chokepoint / conflict-event dots. */
     onMarkerClick?: (kind: 'chokepoint' | 'acled', properties: Record<string, unknown>) => void
@@ -83,6 +85,7 @@ export function EqualEarthMap({
     showHeatmap,
     selectedCountryCode,
     flyCountry,
+    resetNonce,
     onCountryClick,
     onMarkerClick,
     overlay,
@@ -521,6 +524,12 @@ export function EqualEarthMap({
         raf = requestAnimationFrame(frame)
         return () => cancelAnimationFrame(raf)
     }, [])
+
+    // Toolbar ↺ (was dead on EE — it only spoke MapLibre).
+    useEffect(() => {
+        if (resetNonce) resetView()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [resetNonce])
 
     return (
         <div
