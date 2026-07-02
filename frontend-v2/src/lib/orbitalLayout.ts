@@ -20,6 +20,9 @@ export interface OrbitalBody {
       Positive = receding from the story, negative = approaching. Null when
       too few signals to split honestly. */
   drift?: number | null
+  /** Mean tone of the body's member signals (±1 scale; same metric the rest
+      of Atlas calls avg sentiment). */
+  tone?: number | null
   first_seen: string
   last_seen: string
   timestamps: string[]
@@ -131,4 +134,18 @@ export function entrantsBetween(bodies: OrbitalBody[], tFrom: number, tTo: numbe
     const first = Date.parse(b.first_seen)
     return first >= tFrom && first <= tTo
   })
+}
+
+/**
+ * Border color for a body's tone. The orbital payload carries the RAW
+ * signals_v2 scale (≈±10; ThemeDetail shows the same number as "avg
+ * sentiment" — one metric, two labels), so the neutral band is ±1.0
+ * (equivalent to ±0.1 on the normalized ±1 scale). Fill stays the TYPE;
+ * the rim carries the feeling.
+ */
+export function toneStroke(tone: number | null | undefined): string {
+  if (tone == null) return 'rgba(226, 232, 240, 0.25)'
+  if (tone > 1.0) return 'rgba(52, 211, 153, 0.85)'
+  if (tone < -1.0) return 'rgba(248, 113, 113, 0.85)'
+  return 'rgba(226, 232, 240, 0.35)'
 }

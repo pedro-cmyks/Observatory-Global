@@ -80,6 +80,8 @@ interface ThemeData {
         volumeRank?: number
     }>
     relatedConcepts?: Array<{ slug: string; label: string; description: string }>
+    /** R3 spine: the specific living stories under this atlas topic/category */
+    memberStories?: Array<{ id: string; label: string; n: number; last_seen: string | null; crisis_relevant: boolean | null }>
 }
 
 interface ThemeDetailProps {
@@ -713,6 +715,33 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             entirely instead of showing an empty placeholder. */}
                         {showDrift && (
                             <NarrativeDrift themeCode={theme} countryCode={drillCountry || originCountry} days={14} />
+                        )}
+
+                        {/* R3 spine drill-down: the SPECIFIC living stories under
+                            this atlas topic (category) — big topics open into their
+                            small stories (Pedro 2026-07-02). */}
+                        {data.memberStories && data.memberStories.length > 0 && (
+                            <div className="theme-section">
+                                <div className="theme-section-title" style={{ color: '#34d399' }}>
+                                    STORIES INSIDE THIS TOPIC · {data.memberStories.length}
+                                </div>
+                                <div className="member-stories">
+                                    {data.memberStories.map(story => (
+                                        <button
+                                            key={story.id}
+                                            className="member-story-row"
+                                            onClick={() => onThemeSelect?.(story.id)}
+                                            data-tip={`Open this specific story (${story.n} signals)`}
+                                        >
+                                            <span className="member-story-label">
+                                                {story.crisis_relevant ? <span className="member-story-crisis">●</span> : null}
+                                                {story.label}
+                                            </span>
+                                            <span className="member-story-meta">{story.n} sig</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         )}
 
                         {/* RELATED INVESTIGATIONS (Concepts) */}

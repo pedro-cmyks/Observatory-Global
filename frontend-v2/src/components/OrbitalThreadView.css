@@ -198,3 +198,10 @@
   border-radius: 10px;
   text-align: center;
 }
+
+.orbital-legend-tone {
+  background: transparent;
+  border: 1.5px solid rgba(248, 113, 113, 0.85);
+  border-right-color: rgba(52, 211, 153, 0.85);
+  border-radius: 50% !important;
+}

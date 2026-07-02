@@ -3,6 +3,7 @@ import {
     angleAt,
     bodyRadius,
     driftTailLength,
+    toneStroke,
     entrantsBetween,
     isComet,
     normalizeDistances,
@@ -302,8 +303,8 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                                 cx={p.x} cy={p.y}
                                 r={bodyRadius(p.body.n)}
                                 fill={`url(#orb-grad-${p.body.type})`}
-                                stroke={hovered?.id === p.body.id ? 'rgba(248,250,252,0.9)' : p.comet ? 'rgba(226,232,240,0.7)' : 'rgba(226,232,240,0.25)'}
-                                strokeWidth={hovered?.id === p.body.id ? 1.4 : p.comet ? 1 : 0.6}
+                                stroke={hovered?.id === p.body.id ? 'rgba(248,250,252,0.9)' : toneStroke(p.body.tone)}
+                                strokeWidth={hovered?.id === p.body.id ? 1.4 : (p.body.tone != null && Math.abs(p.body.tone) > 1.0 ? 1.5 : 0.7)}
                                 strokeDasharray={p.comet ? '3 2.2' : undefined}
                             />
                             {(labelIds.has(p.body.id) || hovered?.id === p.body.id) && (
@@ -337,7 +338,7 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                             {hovered.type}{window_ && isComet(hovered, window_) ? ' · comet' : ''}
                         </span>
                         <strong>{bodyLabel(hovered)}</strong>
-                        <em>{hovered.n} signal{hovered.n === 1 ? '' : 's'} · orbit {(hovered.dist).toFixed(3)}</em>
+                        <em>{hovered.n} signal{hovered.n === 1 ? '' : 's'} · orbit {(hovered.dist).toFixed(3)}{hovered.tone != null ? ` · tone ${hovered.tone > 0 ? '+' : ''}${hovered.tone.toFixed(2)}` : ''}</em>
                         {hovered.drift != null && Math.abs(hovered.drift) > 1e-6 && (
                             <em>{hovered.drift > 0 ? '↗ receding from the story' : '↘ converging on it'} ({hovered.drift > 0 ? '+' : ''}{hovered.drift.toFixed(3)})</em>
                         )}
@@ -373,6 +374,7 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                     <span key={type}><i style={{ background: color }} />{type}</span>
                 ))}
                 <span data-tip="Dashed ring: present for under a quarter of the story's lifespan — a brief visitor"><i className="orbital-legend-comet" />comet</span>
+                <span data-tip="Rim color = mean tone of the body's coverage (green positive / red negative / gray neutral) — the same metric shown elsewhere as avg sentiment"><i className="orbital-legend-tone" />rim = tone</span>
                 <span data-tip="The tail is MEASURED drift: mean centroid-distance of the body's late signals vs its early ones. Outward tail = its coverage is receding from the story; inward = converging on it"><i className="orbital-legend-tail" />tail = semantic drift</span>
                 <span className="orbital-legend-note" data-tip="Orbit radius = semantic distance of the body's coverage to the thread centroid (closer = same story)">
                     closer orbit = semantically closer{payload.centroid_basis === 'computed' ? ' · computed centroid' : ''}

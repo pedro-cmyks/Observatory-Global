@@ -111,3 +111,13 @@ describe('entrantsBetween — the acceptance question', () => {
     expect(found.map(b => b.id)).toEqual(['b'])
   })
 })
+
+describe('tone rim — raw signals scale, neutral band ±1.0', () => {
+  it('colors positive/negative beyond the band, neutral inside, honest without data', async () => {
+    const { toneStroke } = await import('./orbitalLayout')
+    expect(toneStroke(1.2)).toContain('52, 211, 153')   // positive green
+    expect(toneStroke(-1.8)).toContain('248, 113, 113') // negative red
+    expect(toneStroke(0.45)).toContain('226, 232, 240') // neutral gray
+    expect(toneStroke(null)).toContain('0.25')          // no data → faintest
+  })
+})

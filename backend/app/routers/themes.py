@@ -657,7 +657,38 @@ async def _atlas_topic_detail(
     if below_gate_fallback:
         warnings.append("below_gate_evidence")
 
+    # R3 spine drill-down (Pedro 2026-07-02: "los temas grandes deben dejar
+    # ver los temas pequeños"): an atlas topic is a CATEGORY; R3.1 typed every
+    # dynamic story with its category (seeded from atlas labels), so the
+    # specific stories under this topic are already linked in data — serve
+    # them instead of leaving the big bucket opaque.
+    try:
+        member_story_rows = await conn.fetch(
+            """
+            SELECT dt.id, dt.label, dt.agg_n_signals, dt.last_seen, dt.crisis_relevant
+            FROM dynamic_topics dt
+            JOIN atlas_topics at ON LOWER(dt.category) = LOWER(at.label)
+            WHERE at.slug = $1 AND dt.state = 'active' AND NOT dt.is_umbrella
+            ORDER BY dt.last_seen DESC, dt.agg_n_signals DESC
+            LIMIT 12
+            """,
+            slug,
+        )
+    except Exception:
+        member_story_rows = []
+    member_stories = [
+        {
+            "id": f"dynamic-topic-{r['id']}",
+            "label": r["label"],
+            "n": int(r["agg_n_signals"] or 0),
+            "last_seen": r["last_seen"].isoformat() if r["last_seen"] else None,
+            "crisis_relevant": bool(r["crisis_relevant"]) if r["crisis_relevant"] is not None else None,
+        }
+        for r in member_story_rows
+    ]
+
     return {
+        "memberStories": member_stories,
         "theme": slug,
         "label": label,
         "country": country_code,
@@ -1738,11 +1769,13 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
     for r in rows:
         ts = r["timestamp"]
         dist = float(r["dist"])
+        tone = float(r.get("sentiment") or 0)
         cc = (r.get("country_code") or "").strip().upper()
         if cc:
-            b = countries.setdefault(cc, {"n": 0, "dist_total": 0.0, "timestamps": [], "samples": []})
+            b = countries.setdefault(cc, {"n": 0, "dist_total": 0.0, "tone_total": 0.0, "timestamps": [], "samples": []})
             b["n"] += 1
             b["dist_total"] += dist
+            b["tone_total"] += tone
             b["timestamps"].append(ts)
             b["samples"].append((ts, dist))
         for person in (r.get("persons") or []):
@@ -1750,9 +1783,10 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
             if not name:
                 continue
             key = name.lower()
-            b = entities.setdefault(key, {"label": name, "n": 0, "dist_total": 0.0, "timestamps": [], "samples": []})
+            b = entities.setdefault(key, {"label": name, "n": 0, "dist_total": 0.0, "tone_total": 0.0, "timestamps": [], "samples": []})
             b["n"] += 1
             b["dist_total"] += dist
+            b["tone_total"] += tone
             b["timestamps"].append(ts)
             b["samples"].append((ts, dist))
 
@@ -1770,6 +1804,7 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
             "n": b["n"],
             "dist": round(b["dist_total"] / b["n"], 5),
             "drift": _radial_drift(b["samples"]),
+            "tone": round(b["tone_total"] / b["n"], 3),
             "first_seen": stamps[0].isoformat(),
             "last_seen": stamps[-1].isoformat(),
             "timestamps": [t.isoformat() for t in stamps],
@@ -1784,6 +1819,7 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
             "n": b["n"],
             "dist": round(b["dist_total"] / b["n"], 5),
             "drift": _radial_drift(b["samples"]),
+            "tone": round(b["tone_total"] / b["n"], 3),
             "first_seen": stamps[0].isoformat(),
             "last_seen": stamps[-1].isoformat(),
             "timestamps": [t.isoformat() for t in stamps],
@@ -1879,6 +1915,7 @@ async def get_theme_orbital(
             rows = await conn.fetch(
                 f"""
                 SELECT s.id, s.timestamp, s.country_code, s.persons,
+                       COALESCE(s.nlp_sentiment, s.sentiment) AS sentiment,
                        (se.vec::vector(768) <=> $2::vector(768)) AS dist
                 FROM signals_v2 s
                 JOIN signal_embeddings se ON se.signal_id = s.id

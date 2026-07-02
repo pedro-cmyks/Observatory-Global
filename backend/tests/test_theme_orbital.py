@@ -13,13 +13,23 @@ from app.routers.themes import build_orbital_bodies, _vector_text
 T0 = datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
 
 
-def _row(hours_offset: float, country="LB", persons=None, dist=0.04):
+def _row(hours_offset: float, country="LB", persons=None, dist=0.04, sentiment=0.0):
     return {
         "timestamp": T0 + timedelta(hours=hours_offset),
         "country_code": country,
         "persons": persons or [],
         "dist": dist,
+        "sentiment": sentiment,
     }
+
+
+def test_tone_is_mean_sentiment_per_body():
+    rows = [
+        _row(0, persons=["angry actor"], sentiment=-0.6),
+        _row(1, persons=["angry actor"], sentiment=-0.2),
+    ]
+    body = next(b for b in build_orbital_bodies(rows) if b["id"] == "entity-angry actor")
+    assert body["tone"] == -0.4
 
 
 def test_bodies_carry_type_presence_and_mean_distance():
