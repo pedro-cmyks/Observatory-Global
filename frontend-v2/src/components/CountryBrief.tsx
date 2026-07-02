@@ -164,10 +164,18 @@ interface CountryBriefProps {
     inline?: boolean;
 }
 
-// Country flag emoji from code
-// Country flag wrapper
+// Country flag emoji from code (D11: this was a stub returning the raw code —
+// the header read "SD Sudan"). GDELT codes that differ from ISO2 are remapped
+// first so the regional-indicator pair resolves to a real flag.
+const GDELT_TO_ISO_FLAG: Record<string, string> = {
+    CH: 'CN', RI: 'ID', RB: 'RS', KV: 'XK', CG: 'CD', CF: 'CG',
+    KS: 'KR', KN: 'KP', GZ: 'PS', UK: 'GB',
+};
 const getCountryFlag = (code: string): string => {
-    return code;
+    const iso = GDELT_TO_ISO_FLAG[code?.toUpperCase?.() ?? ''] ?? code;
+    if (!iso || iso.length !== 2 || !/^[A-Za-z]{2}$/.test(iso)) return '';
+    const codePoints = iso.toUpperCase().split('').map(c => 0x1F1E6 + c.charCodeAt(0) - 65);
+    return String.fromCodePoint(...codePoints);
 };
 
 function incrementCount(map: Map<string, number>, value: string | undefined) {
