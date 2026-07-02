@@ -158,3 +158,8 @@ information read better. Redesign is always valid if legibility wins.
 | Basemap streets/city labels | ✓ | by-design ✗ | abstract country-level identity; EE has zoom-in country labels |
 | Pitch/bearing/two-stage reset | ✓ | by-design ✗ | 2D projection |
 | Default view | fills panel | **strip fills panel (Pedro 2026-07-02)** | world reachable by zoom-out (scaleExtent min=kFit) |
+- **Parity closure round**: strip default everywhere ✅ (Pedro), hover tooltip ✅
+  (browser-verified), marker CLICKS ✅ (capture-phase hit test → ConflictEvent/
+  chokepoint panels; country-click fallthrough verified; dot-precision needs
+  Pedro's real canvas). Remaining minor: zoom-adaptive flow density in EE.
+  Pedro confirmed arcs + heat re-scope LIVE on Mercator screenshot 13:26.
