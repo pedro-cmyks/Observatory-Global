@@ -69,6 +69,8 @@ export interface EqualEarthMapProps {
     heatStates: CountryHeatStates
     showHeatmap: boolean
     selectedCountryCode: string | null
+    /** GDELT code to pan/zoom the view to (the #234 fly-to, EE edition). */
+    flyCountry?: string | null
     onCountryClick: (gdeltCode: string, name: string) => void
     /** Overlay layers (flows/markers/terminator), same data MapLibre uses. */
     overlay?: OverlayData
@@ -78,6 +80,7 @@ export function EqualEarthMap({
     heatStates,
     showHeatmap,
     selectedCountryCode,
+    flyCountry,
     onCountryClick,
     overlay,
 }: EqualEarthMapProps) {
@@ -268,10 +271,13 @@ export function EqualEarthMap({
         return () => { sel.on('.zoom', null) }
     }, [])
 
-    /** The fit-the-world transform (world width fits the panel, centered). */
+    /** Default view: LANDSCAPE panels fit the whole world (letterboxed);
+     *  PORTRAIT panels (phones) FILL the height with the wrapping strip —
+     *  the world-fit default left a thin band on mobile (Pedro 2026-07-01). */
     const fitTransform = useCallback(() => {
+        if (size.h > size.w) return zoomIdentity // fill height, strip world
         return zoomIdentity.translate((size.w * (1 - kFit)) / 2, 0).scale(kFit)
-    }, [size.w, kFit])
+    }, [size.w, size.h, kFit])
 
     // Whenever the projection (re)fits — first mount, panel resize — allow
     // zooming out to the world and START there (also re-fits on resize).
@@ -282,6 +288,26 @@ export function EqualEarthMap({
         zb.scaleExtent([kFit, 12])
         select(el).call(zb.transform, fitTransform())
     }, [ee, kFit, fitTransform])
+
+    // #234 fly-to for the EE engine: when App sets a fly target (country
+    // click, thread top-country, person's dominant country), center its
+    // projected centroid. MapLibre animates; EE jumps (v1 — acceptable).
+    useEffect(() => {
+        if (!flyCountry || !ee || features.length === 0) return
+        const iso = GDELT_TO_ISO[flyCountry] ?? flyCountry
+        const f = features.find(ft => String(ft.properties.ISO_A2 ?? ft.properties.ISO_A2_EH ?? '') === iso)
+        if (!f) return
+        try {
+            const c = geoCentroid(f as never) as [number, number]
+            const p = ee.project(c)
+            if (!p) return
+            const k = Math.max(2.5, transform.k)
+            const t = zoomIdentity.translate(size.w / 2 - p[0] * k, size.h / 2 - p[1] * k).scale(k)
+            const el = containerRef.current
+            if (el && zoomRef.current) select(el).call(zoomRef.current.transform, t)
+        } catch { /* centroid can fail on degenerate geometries */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [flyCountry, ee, features])
 
     const resetView = useCallback(() => {
         const el = containerRef.current

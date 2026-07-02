@@ -1608,6 +1608,7 @@ function AppContent() {
                   heatStates={heatStates}
                   showHeatmap={showHeatmap}
                   selectedCountryCode={selectedCountryCode}
+                  flyCountry={mapFlyCountry}
                   overlay={nativeOverlayData}
                   onCountryClick={(gdelt, name) => {
                     handleCountryClick(gdelt)
