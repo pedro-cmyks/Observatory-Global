@@ -68,7 +68,7 @@ async def fetch_forum_attention(
         # Global lane: only geolocated discussion. Un-anchored social posts
         # ("CSS tricks for markdown blogs") are noise in a global intelligence
         # dock — a post must at least name a place to rank globally (L2).
-        where.append("s.country_code IS NOT NULL")
+        where.append("s.country_code IS NOT NULL AND s.country_code <> 'XX'")
     params.append(limit)
     sql = f"""
         SELECT s.id, s.timestamp, s.country_code, s.source_name,
