@@ -57,6 +57,35 @@ Measured on dt-981 (Lebanon-Israel Framework Agreement): 58 members, 58/58 embed
 
 The Workbench (L3) reuses the same visual language: the INVESTIGATION QUESTION at center; pinned threads/entities/countries = bodies captured into YOUR orbit. Atlas's galaxy is the shared sky; an investigation carves its own solar system from it. Mapping: radius = semantic distance of pinned item to the investigation query embedding (research_semantic already embeds queries); velocity = pin-interaction recency (`research_pin_events` exists, #218); entry/exit = pin/unpin history. Same component, second consumer — build only after the ThemeDetail prototype survives Pedro's task-time evaluation (wedge anti-goal: no new surface until value moment).
 
+## 7b. Round-2 evolution (Pedro live review, 2026-07-02 PM — SHIPPED unless noted)
+
+- **Tail = MEASURED semantic drift** (`415ed1fd`): late-half vs early-half mean
+  centroid-distance per body. Outward = receding from the story, inward =
+  converging. 4% noise floor of the thread's distance span (measured dt-981).
+  Comet demoted to a dashed ring. Pedro's own reading of the tail, made literal.
+- **Rim = tone** (`547662db`): body fill stays TYPE, rim carries mean tone of
+  the body's coverage (raw signals scale, neutral band ±1.0). Unifies the
+  tone/avg-sentiment naming split in this surface.
+- **R3 spine drill-down** (`547662db`): atlas topics are CATEGORIES; every R3.1
+  category-typed dynamic story under one is served as `memberStories` — "los
+  temas grandes dejan ver los temas pequeños". First surface slice of the
+  atlas‖dynamic unification; the engine cutover (R3.2/F4) stays gold-gated.
+- **Gate case logged**: election-legitimacy kept 1/1,066 in 24h (0.1%) —
+  below-gate fallback extended to near-zero keeps (<5 of ≥20); the keep-rate
+  itself = engine program (gate recall), NOT a surface fix.
+- **MOONS + GRAVITY FIELDS (Pedro concept — SPEC ONLY, next session):** bodies
+  need not be lone planets. (a) *Moons*: sub-entities that co-occur tightly
+  with ONE body (an org/place appearing almost only alongside a person within
+  the thread) orbit that body, not the center — computable from co-occurrence
+  + shared-signal ratio. (b) *Gravity fields*: body↔body semantic attraction —
+  each body's position embeds as the mean of its member-signal vectors, so
+  pairwise body distances are measurable in full space (same method as
+  universe edges, one level down); strong pairs could curve toward each other
+  or link. Both are REAL quantities, no fabricated physics; assess against the
+  legibility budget before building (assessment risk #2: must not turn the
+  system into a hairball — moons probably need a hover/expand gesture, not
+  always-on).
+
 ## 8. Out of scope (v1)
 
 Subthread bodies (umbrella children orbit only for umbrella topics — later); galaxy view (threads orbiting categories); MapLibre-style zoom; mobile.

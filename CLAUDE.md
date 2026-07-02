@@ -75,6 +75,17 @@ PENDIENTES de la review: universe trajectories (posiciones moviéndose con
 el scrub — emergent_clusters per-snapshot centroids), pseudo-3D tilt
 orbital, discussion-attach noise (Mbappé/LinkedIn en dt-981, semantic
 0.90 attach quality → #248 class). NEXT igual + esos.
+**V7 (Pedro round 3, `547662db`):** (1) rim = TONE en cuerpos orbitales
+(fill=tipo, borde=tono medio; escala raw ±10, banda neutra ±1.0 — unifica
+el split tone/avg-sentiment de nombres); (2) **R3 SPINE DRILL-DOWN** —
+Pedro: "todos son atlas topics dinámicos; los grandes deben dejar ver los
+pequeños" = la unificación R3. Slice de superficie shipped: atlas topic =
+categoría → sus historias R3.1-tipadas servidas como `memberStories` +
+sección STORIES INSIDE THIS TOPIC clickeable (election-legitimacy → 9:
+Cepeda CO/Fujimori PE/Atiku NG; verified click→abre). Cutover engine
+R3.2/F4 sigue gold-gated — esto es la cara de usuario. (3) Moons+gravity
+fields (concepto Pedro) SPEC ONLY en orbital spec §7b — co-ocurrencia →
+lunas, body↔body distancia semántica → atracción; sesión propia.
 
 **2026-07-02 (L11 SOLAR SYSTEM — Orbital Thread View SHIPPED + E2 root-caused).**
 Design+prototype session (parallel chat; did NOT touch BriefNewspaper/search.py/
