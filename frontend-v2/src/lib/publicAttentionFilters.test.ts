@@ -40,3 +40,16 @@ describe('isPublicAttentionRelevant', () => {
         expect(isPublicAttentionRelevant('Sudan ceasefire talks')).toBe(true)
     })
 })
+
+describe('bare-domain garbage (capture-doc L2)', () => {
+    it('drops domain-form titles', () => {
+        expect(isPublicAttentionRelevant('.xyz')).toBe(false)
+        expect(isPublicAttentionRelevant('example.xyz')).toBe(false)
+        expect(isPublicAttentionRelevant('bit.ly')).toBe(false)
+        expect(isPublicAttentionRelevant('Amazon.com')).toBe(false)
+    })
+    it('keeps titles that merely contain dots or tech words', () => {
+        expect(isPublicAttentionRelevant('U.S. sanctions on Iran')).toBe(true)
+        expect(isPublicAttentionRelevant('Sudan ceasefire talks')).toBe(true)
+    })
+})

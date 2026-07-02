@@ -64,6 +64,11 @@ async def fetch_forum_attention(
     if country:
         params.append(country)
         where.append(f"s.country_code = ${len(params)}")
+    else:
+        # Global lane: only geolocated discussion. Un-anchored social posts
+        # ("CSS tricks for markdown blogs") are noise in a global intelligence
+        # dock — a post must at least name a place to rank globally (L2).
+        where.append("s.country_code IS NOT NULL")
     params.append(limit)
     sql = f"""
         SELECT s.id, s.timestamp, s.country_code, s.source_name,

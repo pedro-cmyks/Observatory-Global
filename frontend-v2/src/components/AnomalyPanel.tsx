@@ -70,7 +70,10 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
         fetch(getTrendingSearchesUrl(8, 24, scopeCountry))
             .then(r => r.ok ? r.json() : null)
             .then(d => {
-                const items = d?.trending ?? []
+                // L2: trends lane was the only unfiltered PA lane (".xyz" garbage)
+                const items = (d?.trending ?? []).filter(
+                    (t: { keyword: string }) => isPublicAttentionRelevant(t.keyword)
+                )
                 setTrendSearches(items)
                 if (items.length > 0 && items[0].timestamp) {
                     const ageH = (Date.now() - new Date(items[0].timestamp).getTime()) / 3_600_000

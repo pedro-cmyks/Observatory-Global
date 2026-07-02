@@ -18,6 +18,11 @@ const PUBLIC_ATTENTION_NOISE = [
     /^(HTTP cookie|Cookie|Cach[eé]|CAPTCHA|QR code|C[oó]digo QR|Web browser|Navigateur web|Navegador web)$/i,
     // Non-English sports tournaments/leagues the English patterns above miss.
     /\b(Copa Mundial|Coupe du monde|Coppa del Mondo|Mundial de F[uú]tbol|Weltmeisterschaft|Bundesliga|La Liga|Serie A|Ligue 1)\b/i,
+    // Bare-domain titles (".xyz" in the global dock — capture-doc L2). A title
+    // that IS a domain/TLD is redirect or consent traffic, not attention.
+    // Trade-off accepted: also drops "Amazon.com"-style company articles.
+    /^\.?[\w-]+\.(xyz|com|net|org|io|co|tv|me|ly|gg|info|biz|online|site|app|dev)$/i,
+    /^\.\w+$/,
 ]
 
 export function isPublicAttentionRelevant(title: string): boolean {
