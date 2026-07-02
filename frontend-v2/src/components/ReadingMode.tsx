@@ -160,7 +160,7 @@ export function ReadingMode({ items, onClose }: ReadingModeProps) {
                 </div>
 
                 <footer className="rm-footer">
-                    Sources: GDELT 2.0 · Atlas Signal Stream · {new Date().toUTCString()}
+                    Sources: GDELT 2.0 + 219 RSS + NewsData + social · Atlas Signal Stream · {new Date().toUTCString()}
                 </footer>
             </div>
         </div>

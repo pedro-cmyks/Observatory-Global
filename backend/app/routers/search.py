@@ -419,7 +419,7 @@ async def unified_search(
     query_variants = build_query_variants(topic_query)
     normalized_query = query_variants[0] if query_variants else topic_query.lower().strip()
 
-    cache_key = f"usearch:v9:{query_lower}:{hours}:{country_filter or 'all'}"
+    cache_key = f"usearch:v10:{query_lower}:{hours}:{country_filter or 'all'}"
     if app.state.redis:
         try:
             cached = await app.state.redis.get(cache_key)
@@ -562,8 +562,17 @@ async def unified_search(
                 for r in wiki_rows
             ]
 
+            # L1 (Mbappé hole): headlines WITH diacritics never matched the
+            # unaccented variants — 'Kylian Mbappé' in the headline vs pattern
+            # '%kylian mbappe%'. unaccent() both sides (extension enabled).
+            # Also try the SURNAME alone for multi-word person-like queries —
+            # most headlines say just 'Mbappé' (24h: 3 → 27 matches measured).
+            signal_like = list(like_queries)
+            _toks = [t for t in re.split(r"[^a-z0-9]+", normalized_query) if len(t) >= 4]
+            if len(_toks) >= 2:
+                signal_like.append(f"%{_toks[-1]}%")
             signal_country_clause = "AND country_code = $2" if country_filter else ""
-            signal_params = [like_queries]
+            signal_params = [signal_like]
             if country_filter:
                 signal_params.append(country_filter)
             try:
@@ -572,12 +581,12 @@ async def unified_search(
                     FROM signals_v2
                     WHERE timestamp > NOW() - INTERVAL '{hours} hours'
                       AND (
-                        (headline IS NOT NULL AND LOWER(headline) LIKE ANY($1::text[]))
+                        (headline IS NOT NULL AND unaccent(LOWER(headline)) LIKE ANY($1::text[]))
                         OR (source_name IS NOT NULL AND LOWER(source_name) LIKE ANY($1::text[]))
                       )
                       {signal_country_clause}
                     ORDER BY timestamp DESC
-                    LIMIT 6
+                    LIMIT 12
                 """, *signal_params, timeout=SEARCH_MATCH_TIMEOUT_SECONDS)
             except Exception as exc:
                 logger.warning("Unified search signal_matches degraded for q=%r country=%r: %r", q, country_filter, exc)

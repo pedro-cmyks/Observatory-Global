@@ -29,6 +29,7 @@ interface ThemeResult {
 }
 
 interface SearchResult {
+    degraded_segments?: string[]
     public_attention?: Array<{ title: string; views: number; country_count: number }>
     signal_matches?: SignalMatchResult[]
     themes?: ThemeResult[]
@@ -161,7 +162,9 @@ export function PublicAttentionPanel({ item, timeRange, onClose, onThemeSelect, 
         ? `${countries.slice(0, 3).map(c => c.name).join(', ')} are connected here because their recent signals mention "${title}" while also sharing themes like ${themes.slice(0, 3).map(t => getThemeLabel(t.theme)).join(', ')}.`
         : signalMatches.length > 0
             ? `Atlas found recent media signals that mention "${title}" and mapped their source countries, themes, and headlines.`
-            : `Atlas found public attention for "${title}" but no matching media signals in the selected time window yet.`
+            : (searchData?.degraded_segments?.includes('signal_matches')
+                ? `The media-match lookup degraded for this request — retry in a moment before reading this as absence.`
+                : `Atlas found public attention for "${title}" but no matching media signals in the selected time window yet.`)
 
     const contrastNote = signalMatches.length > 0
         ? `${formatCount(attention.views)} public reads are being compared against ${signalMatches.length} media signal${signalMatches.length === 1 ? '' : 's'} in this window. Use a theme below to see how the topic enters the narrative graph.`

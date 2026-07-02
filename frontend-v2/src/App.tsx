@@ -1582,8 +1582,12 @@ function AppContent() {
                     setSelectedCountryCode(null)
                     setShowFlows(false)
                     clearFocus()
-                    setMapFlyCountry(null)
                     setEeResetNonce(n => n + 1)
+                    // L8 (Pedro): reset re-centers on the HOTTEST region (the
+                    // composite, not volume) — 'que empiece en lo más caliente'.
+                    let hottest: string | null = null, hv = -1
+                    heatComposite.forEach((v, code) => { if (v > hv) { hv = v; hottest = code } })
+                    setMapFlyCountry(hottest)
                     return
                   }
                   const map = mapRef.current?.getMap()

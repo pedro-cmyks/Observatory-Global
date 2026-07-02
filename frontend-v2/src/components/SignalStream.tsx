@@ -299,8 +299,11 @@ export const SignalStream: React.FC = () => {
         const drip = setInterval(() => {
             if (isHoveredRef.current) return // F2: pause the VISIBLE flow too
             if (dripQueueRef.current.length === 0) return
-            // Drip faster when a batch is waiting so the stream stays alive between 15-min ingests.
-            const batch = dripQueueRef.current.length > 30 ? 3 : dripQueueRef.current.length > 12 ? 2 : 1
+            // L6 (Pedro): news must feel like a CONSTANT one-by-one arrival —
+            // never a burst that drains the buffer and leaves the stream dead
+            // until the next poll. One item per tick; the tick itself is fixed,
+            // so a 50-item batch lasts ~2.5 min instead of dumping in 30s.
+            const batch = 1
             for (let i = 0; i < batch; i++) {
                 if (dripQueueRef.current.length === 0) break
                 const next = dripQueueRef.current.shift()!
@@ -311,7 +314,7 @@ export const SignalStream: React.FC = () => {
                 const stamped = { ...next, addedAt: next.addedAt ?? Date.now() }
                 setItems(prev => mergeStreamItems([stamped], prev, MAX_STREAM_ITEMS))
             }
-        }, 1800)
+        }, 3000)
         return () => clearInterval(drip)
     }, [])
 

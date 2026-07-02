@@ -86,8 +86,10 @@ export const Legend: React.FC<LegendProps> = ({
 
     // Only credit sources that feed a currently-visible map layer, so the
     // footer never claims a feed (AIS, ADS-B) the user isn't seeing.
-    // Country nodes / heat / flows all derive from GDELT signals (always on).
-    const activeSources = ['GDELT 2.0']
+    // Country nodes / heat / flows derive from the FULL signal corpus — the
+    // 'GDELT 2.0'-only label was stale (L7): 219 RSS feeds, NewsData, and the
+    // social lane all feed signals_v2; conflict dots are GDELT CAMEO events.
+    const activeSources = ['GDELT 2.0', 'RSS ×219', 'NewsData', 'Social']
     if (showVessels) activeSources.push('AIS Stream')
     if (showAircraft) activeSources.push('ADS-B Exchange')
 
