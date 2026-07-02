@@ -45,6 +45,57 @@ Trajectories + "gravity" over this same data — all backtestable because snapsh
 - entity migration between attractors. #219 Kalman (approved) is the trajectory-tracking seed.
 First step stays the read-only historical script over `emergent_clusters` snapshots (validate capture-rate lead on VE earthquake / Lebanon-Israel).
 
-## 7. Known limits (v1)
+## 7. V2 — map-panel citizenship + the moving cloud (Pedro, 2026-07-02 PM — WORKING SECTION)
+
+Pedro's direction, verbatim intent: the universe is too big to live only inside
+an overlay — it belongs in the MAP PANEL as a peer view of the globe ("otra
+manera de ver la información"); and the flat cloud must ROTATE and MOVE ("en el
+universo todo se está moviendo hacia todos lados y el tiempo está pasando…
+el tiempo hacia atrás me llevaría a ver una foto en un instante en el que todo
+tiene alguna posición relativa con el resto").
+
+### 7.1 Map-panel toggle (universe = projection peer of the globe)
+- The map and the universe are the SAME information in two projection bases:
+  globe = geographic (where), universe = semantic (what/how related). A
+  GLOBE|UNIVERSE toggle in the map toolbar switches basis.
+- Render: universe mounts ABSOLUTELY over the map container (map stays mounted
+  underneath — avoids the known `display:none`/unmount canvas crash class).
+- Command-bar UNIVERSE button becomes the shortcut for this panel mode; the
+  full-screen overlay is RETIRED (one entry point — wedge anti-goal, no
+  surface proliferation).
+- Mobile: NO fifth tab. Same toggle inside the Map tab (tab bar already at 4).
+  Touch: drag-rotate works via pointer events; pinch-zoom deferred (wheel-only
+  today, noted).
+- Focus-lens integration (#234, NEXT after this ships): the universe
+  self-subscribes like every panel — focused country lights its primary
+  stories, focused person lights the threads they appear in
+  (`/threads?person=` exists), open thread lights its body + neighbors.
+
+### 7.2 The moving cloud (motion = real data, rotation = real depth)
+- **Rotation is honest depth, not decoration:** the backend serves PCA top-3
+  (x, y, z), category-blended in 3D. The view rotates the cloud around its
+  vertical axis (drag = yaw; slow auto-spin, pauses on hover/drag/hidden tab).
+  Rotating separates points that overlap in any single 2D projection — the
+  rotation REVEALS structure, satisfying "solo plano no" without fabricating
+  a layout. Depth cues: far bodies smaller + dimmer, near bodies larger.
+- **Orphans (huérfanos):** bodies whose BEST full-space neighbor sim falls
+  below the population p10 (~0.89) are semantically isolated — genuinely
+  unlike every other living story. Styled distinctly (dashed ring) + legend.
+  P8 value: orphans = unique narratives, the open-set frontier.
+- **Time stays the master clock:** the scrubber remains the §I instrument —
+  scrub back = "la foto del instante", presence/decay as shipped. Rotation is
+  camera, never time.
+- **Who moves and how (SPEC ONLY, v3):** true per-body TRAJECTORIES exist in
+  the data — `emergent_clusters` persists per-snapshot centroids, so a topic's
+  position at time t is reconstructible; scrubbing would then move bodies
+  along their REAL drift paths (narrative mutation made visible), and
+  velocity = measured centroid drift. This is the §6 trajectory program
+  rendered; build after the panel version survives Pedro's eyeball.
+- Rule inheritance: the analyst ORBITAL view (thread detail) keeps its
+  no-idle-animation rule — it is a reading surface. The universe is an
+  overview/orientation surface; slow ambient rotation is allowed BY PEDRO'S
+  CALL here, and pauses the moment the user interacts.
+
+## 8. Known limits (v1)
 
 Position projection lies locally (mitigated by exact edges + the labels); no drift trails yet (needs per-snapshot centroid JOIN — data exists in `emergent_clusters`); no umbrella hulls; desktop only; scrubber granularity = daily buckets; 3D nube-de-puntos deliberately NOT built (projection honesty + analyst task-time rule — a 3D fly-through is demo-ware until it beats a task).
