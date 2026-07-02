@@ -116,7 +116,7 @@
 .onboarding-skip {
     background: none;
     border: none;
-    color: #64748b;
+    color: var(--color-text-muted);
     padding: 7px 0;
 }
 

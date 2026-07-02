@@ -20,12 +20,12 @@
   font-weight: 600;
   letter-spacing: 1.2px;
   text-transform: uppercase;
-  color: #475569;
+  color: var(--color-text-muted);
 }
 
 .panel-error-msg {
   font-size: 11px;
-  color: #64748b;
+  color: var(--color-text-muted);
   letter-spacing: 0.5px;
 }
 
@@ -35,7 +35,7 @@
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 3px;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.8px;

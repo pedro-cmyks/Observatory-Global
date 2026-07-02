@@ -76,7 +76,7 @@
     font-family: 'SF Mono', 'Fira Mono', monospace;
     font-size: 10px;
     letter-spacing: 0.08em;
-    color: #64748b;
+    color: var(--color-text-muted);
     margin-top: 6px;
     text-transform: uppercase;
 }
@@ -92,7 +92,7 @@
 .brief-range-btn {
     background: none;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #64748b;
+    color: var(--color-text-muted);
     font-family: 'SF Mono', 'Fira Mono', monospace;
     font-size: 10px;
     letter-spacing: 0.04em;
@@ -146,7 +146,7 @@
     font-family: 'SF Mono', 'Fira Mono', monospace;
     font-size: 9px;
     letter-spacing: 0.12em;
-    color: #64748b;
+    color: var(--color-text-muted);
     text-transform: uppercase;
 }
 
@@ -223,7 +223,7 @@
     font-family: 'SF Mono', 'Fira Mono', monospace;
     font-size: 9px;
     letter-spacing: 0.12em;
-    color: #64748b;
+    color: var(--color-text-muted);
     text-transform: uppercase;
     margin-right: 4px;
 }
@@ -252,7 +252,7 @@
 .brief-filter-clear {
     background: none;
     border: none;
-    color: #64748b;
+    color: var(--color-text-muted);
     font-size: 14px;
     cursor: pointer;
     padding: 0 4px;
@@ -277,7 +277,7 @@
     width: 180px;
     transition: border-color 0.15s;
 }
-.brief-filter-input::placeholder { color: #475569; }
+.brief-filter-input::placeholder { color: var(--color-text-muted); }
 .brief-filter-input:focus { border-color: rgba(29, 158, 117, 0.5); }
 
 .brief-country-dropdown {
@@ -312,13 +312,13 @@
 .brief-country-option:hover { background: rgba(29, 158, 117, 0.1); color: #e2e8f0; }
 
 .brief-country-option.empty {
-    color: #64748b;
+    color: var(--color-text-muted);
 }
 
 .brief-country-option-count {
     font-family: 'SF Mono', 'Fira Mono', monospace;
     font-size: 9px;
-    color: #475569;
+    color: var(--color-text-muted);
     flex-shrink: 0;
 }
 
@@ -395,7 +395,7 @@
 .brief-article-count {
     font-family: 'SF Mono', 'Fira Mono', monospace;
     font-size: 9px;
-    color: #475569;
+    color: var(--color-text-muted);
     letter-spacing: 0.05em;
     white-space: nowrap;
 }
@@ -433,7 +433,7 @@
 }
 
 .brief-pill-count {
-    color: #475569;
+    color: var(--color-text-muted);
     font-size: 8px;
 }
 
@@ -480,13 +480,13 @@
 .brief-headline-source {
     font-family: 'SF Mono', 'Fira Mono', monospace;
     font-size: 9px;
-    color: #475569;
+    color: var(--color-text-muted);
 }
 
 .brief-theme-link {
     background: none;
     border: none;
-    color: #475569;
+    color: var(--color-text-muted);
     font-family: 'SF Mono', 'Fira Mono', monospace;
     font-size: 9px;
     letter-spacing: 0.06em;
@@ -520,7 +520,7 @@
     font-family: 'SF Mono', 'Fira Mono', monospace;
     font-size: 9px;
     letter-spacing: 0.15em;
-    color: #475569;
+    color: var(--color-text-muted);
     text-transform: uppercase;
     margin: 0 0 6px;
     padding-bottom: 6px;
@@ -609,7 +609,7 @@
 .brief-atlas-sub {
     font-family: 'SF Mono', 'Fira Mono', monospace;
     font-size: 9px;
-    color: #64748b;
+    color: var(--color-text-muted);
     font-variant-numeric: tabular-nums;
 }
 
@@ -658,7 +658,7 @@
 .brief-bottom-num {
     font-family: 'SF Mono', 'Fira Mono', monospace;
     font-size: 10px;
-    color: #475569;
+    color: var(--color-text-muted);
     margin-left: 8px;
     flex-shrink: 0;
 }
@@ -682,7 +682,7 @@
 .brief-source-count {
     font-family: 'SF Mono', 'Fira Mono', monospace;
     font-size: 9px;
-    color: #475569;
+    color: var(--color-text-muted);
     flex-shrink: 0;
 }
 
@@ -699,7 +699,7 @@
     font-family: 'SF Mono', 'Fira Mono', monospace;
     font-size: 9px;
     letter-spacing: 0.15em;
-    color: #475569;
+    color: var(--color-text-muted);
     text-transform: uppercase;
     margin: 0;
 }
@@ -729,7 +729,7 @@
     align-items: center;
     gap: 20px;
     padding: 80px 40px;
-    color: #475569;
+    color: var(--color-text-muted);
     font-family: 'SF Mono', 'Fira Mono', monospace;
     font-size: 11px;
     letter-spacing: 0.08em;
@@ -811,7 +811,7 @@
 .brief-minimap-label {
     font-family: 'SF Mono', 'Fira Mono', monospace;
     font-size: 9px;
-    color: #4a6a8a;
+    color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.15em;
     margin-bottom: 4px;
@@ -869,7 +869,7 @@
 
 .brief-watch-date {
     font-size: 10px;
-    color: #475569;
+    color: var(--color-text-muted);
     margin-top: 2px;
 }
 
@@ -895,7 +895,7 @@
 .brief-watch-remove {
     background: none;
     border: none;
-    color: #475569;
+    color: var(--color-text-muted);
     font-size: 16px;
     cursor: pointer;
     line-height: 1;
@@ -919,7 +919,7 @@
 }
 
 .brief-watch-count.loading {
-    color: #475569;
+    color: var(--color-text-muted);
 }
 
 .brief-watch-delta {
@@ -940,7 +940,7 @@
 }
 
 .brief-watch-delta.neutral {
-    color: #64748b;
+    color: var(--color-text-muted);
     background: rgba(100, 116, 139, 0.1);
 }
 
@@ -990,7 +990,7 @@
 .brief-lead-sub {
     font-family: 'SF Mono', 'Fira Mono', monospace;
     font-size: 11px;
-    color: #64748b;
+    color: var(--color-text-muted);
 }
 
 .brief-lead-whynow {
@@ -1067,7 +1067,7 @@
 
 .brief-thread-headline {
     font-size: 11px;
-    color: #64748b;
+    color: var(--color-text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1099,7 +1099,7 @@
 
 .brief-thread-trend-up { color: #4ade80; }
 .brief-thread-trend-down { color: #f87171; }
-.brief-thread-trend-flat { color: #64748b; }
+.brief-thread-trend-flat { color: var(--color-text-muted); }
 
 .brief-thread-chip {
     font-family: 'SF Mono', 'Fira Mono', monospace;
@@ -1231,7 +1231,7 @@
 }
 
 .brief-sentsrc--weak {
-    color: #64748b;
+    color: var(--color-text-muted);
     border-color: rgba(148, 163, 184, 0.25);
 }
 
@@ -1241,7 +1241,7 @@
     font-size: 9px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: #64748b;
+    color: var(--color-text-muted);
     margin-right: 4px;
     align-self: center;
 }

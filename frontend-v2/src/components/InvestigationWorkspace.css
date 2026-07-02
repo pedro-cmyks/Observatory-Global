@@ -274,7 +274,7 @@
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 6px;
-    color: #64748b;
+    color: var(--color-text-muted);
 }
 
 .workspace-search input {
@@ -471,7 +471,7 @@
 .workspace-empty {
     text-align: center;
     padding: 32px 14px;
-    color: #64748b;
+    color: var(--color-text-muted);
     font-size: 13px;
 }
 
@@ -600,7 +600,7 @@
 .workspace-action-btn {
     background: transparent;
     border: none;
-    color: #64748b;
+    color: var(--color-text-muted);
     padding: 4px;
     cursor: pointer;
     border-radius: 4px;
@@ -642,7 +642,7 @@
 }
 
 .workspace-textarea::placeholder {
-    color: #475569;
+    color: var(--color-text-muted);
 }
 
 .workspace-toggle-tab {

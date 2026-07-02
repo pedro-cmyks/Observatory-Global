@@ -47,7 +47,7 @@ export const THEME_INTEL_NOIR: Theme = {
         bgPanel: 'linear-gradient(180deg, rgba(12, 24, 43, 0.94) 0%, rgba(7, 13, 23, 0.91) 100%)',
         textPrimary: '#e2e8f0',
         textSecondary: 'rgba(226, 232, 240, 0.68)',
-        textMuted: 'rgba(226, 232, 240, 0.42)',
+        textMuted: 'rgba(226, 232, 240, 0.55)', // #247 A1: 0.55 = AA floor; 0.42 failed 3.52:1
         borderSubtle: 'rgba(29, 158, 117, 0.15)',
         borderMedium: 'rgba(29, 158, 117, 0.28)',
         borderStrong: 'rgba(104, 219, 174, 0.5)',

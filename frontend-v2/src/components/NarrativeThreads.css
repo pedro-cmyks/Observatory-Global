@@ -129,7 +129,7 @@
 
 /* Country suffix in thread label */
 .narrative-label-country {
-    color: #64748b;
+    color: var(--color-text-muted);
     font-weight: 400;
 }
 

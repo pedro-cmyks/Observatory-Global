@@ -11,7 +11,7 @@
 
     --color-text-primary: #e2e8f0;
     --color-text-secondary: rgba(226, 232, 240, 0.68);
-    --color-text-muted: rgba(226, 232, 240, 0.42);
+    --color-text-muted: rgba(226, 232, 240, 0.55); /* 0.55 = the AA 4.5:1 floor on bg.primary (#247 A1; 0.42 was 3.52:1) */
 
     --color-border-subtle: rgba(29, 158, 117, 0.15);
     --color-border-medium: rgba(29, 158, 117, 0.28);

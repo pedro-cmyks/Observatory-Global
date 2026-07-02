@@ -36,7 +36,7 @@
 
 .compare-vs {
     font-size: 10px;
-    color: #4a5568;
+    color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }

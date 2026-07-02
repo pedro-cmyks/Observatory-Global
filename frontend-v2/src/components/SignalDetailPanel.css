@@ -39,14 +39,14 @@
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.08em;
-    color: #64748b;
+    color: var(--color-text-muted);
     text-transform: uppercase;
 }
 
 .sdp-close {
     background: none;
     border: none;
-    color: #64748b;
+    color: var(--color-text-muted);
     font-size: 16px;
     cursor: pointer;
     padding: 2px 6px;
@@ -121,7 +121,7 @@
     margin-left: auto;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 10px;
-    color: #475569;
+    color: var(--color-text-muted);
 }
 
 .sdp-sentiment-row {
@@ -133,7 +133,7 @@
 .sdp-sentiment-label {
     font-size: 10px;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    color: #64748b;
+    color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.06em;
     flex-shrink: 0;
@@ -170,7 +170,7 @@
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #475569;
+    color: var(--color-text-muted);
     margin-bottom: 6px;
 }
 
@@ -281,7 +281,7 @@
 
 .sdp-related-source {
     font-size: 9px;
-    color: #475569;
+    color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.4px;
 }

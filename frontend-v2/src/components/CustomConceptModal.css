@@ -39,7 +39,7 @@
 .concept-modal-close {
     background: none;
     border: none;
-    color: #64748b;
+    color: var(--color-text-muted);
     cursor: pointer;
     padding: 2px;
     display: flex;
@@ -73,7 +73,7 @@
     font-weight: 400;
     text-transform: none;
     letter-spacing: 0;
-    color: #475569;
+    color: var(--color-text-muted);
 }
 
 .concept-input {
@@ -108,7 +108,7 @@
 .concept-theme-search-icon {
     position: absolute;
     left: 10px;
-    color: #475569;
+    color: var(--color-text-muted);
     pointer-events: none;
 }
 
@@ -120,7 +120,7 @@
     position: absolute;
     right: 10px;
     font-size: 11px;
-    color: #475569;
+    color: var(--color-text-muted);
 }
 
 .concept-theme-hits {
@@ -182,7 +182,7 @@
 
 .concept-theme-empty {
     font-size: 11px;
-    color: #475569;
+    color: var(--color-text-muted);
     margin: 4px 0 0;
 }
 

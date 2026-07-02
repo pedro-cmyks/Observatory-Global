@@ -30,7 +30,7 @@
 .indicator-zscore {
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .indicator-help {

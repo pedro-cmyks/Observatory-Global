@@ -109,7 +109,7 @@
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 9px;
     letter-spacing: 0.1em;
-    color: #64748b;
+    color: var(--color-text-muted);
     text-transform: uppercase;
 }
 
@@ -169,7 +169,7 @@
     padding: 18px;
     border: 1px solid rgba(148, 163, 184, 0.1);
     border-radius: 6px;
-    color: #64748b;
+    color: var(--color-text-muted);
     text-align: center;
 }
 
@@ -216,7 +216,7 @@
 .thread-focus-evidence span {
     display: block;
     margin-top: 5px;
-    color: #64748b;
+    color: var(--color-text-muted);
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 10px;
 }
@@ -420,7 +420,7 @@
 .thread-focus-packet-source-count {
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 10px;
-    color: #64748b;
+    color: var(--color-text-muted);
     min-width: 28px;
     text-align: right;
 }
@@ -458,7 +458,7 @@
 .thread-focus-related-count {
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 9px;
-    color: #64748b;
+    color: var(--color-text-muted);
     padding: 1px 4px;
     background: rgba(148, 163, 184, 0.08);
     border-radius: 3px;

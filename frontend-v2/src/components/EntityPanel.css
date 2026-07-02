@@ -59,14 +59,14 @@
 
 .entity-timerange {
     font-size: 9px;
-    color: #4a5568;
+    color: var(--color-text-muted);
     letter-spacing: 0.5px;
 }
 
 .entity-close {
     background: none;
     border: none;
-    color: #4a5568;
+    color: var(--color-text-muted);
     font-size: 18px;
     cursor: pointer;
     padding: 0;
@@ -97,13 +97,13 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    color: #64748b;
+    color: var(--color-text-muted);
     font-size: 10px;
     flex-wrap: wrap;
 }
 
 .entity-dot {
-    color: #475569;
+    color: var(--color-text-muted);
 }
 
 /* Loading skeleton */
@@ -146,7 +146,7 @@
     font-size: 9px;
     text-transform: uppercase;
     letter-spacing: 1.2px;
-    color: #4a5568;
+    color: var(--color-text-muted);
     margin-bottom: 10px;
 }
 
@@ -197,7 +197,7 @@
 }
 
 .entity-country-rank {
-    color: #475569;
+    color: var(--color-text-muted);
     font-size: 9px;
     width: 18px;
     flex-shrink: 0;
@@ -227,7 +227,7 @@
 }
 
 .entity-country-count {
-    color: #64748b;
+    color: var(--color-text-muted);
     font-size: 10px;
     width: 30px;
     text-align: right;
@@ -282,7 +282,7 @@
 }
 
 .entity-theme-group-label {
-    color: #64748b;
+    color: var(--color-text-muted);
     font-size: 9px;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-weight: 700;
@@ -314,7 +314,7 @@
 }
 
 .entity-source-count {
-    color: #64748b;
+    color: var(--color-text-muted);
     font-size: 10px;
     flex-shrink: 0;
     font-variant-numeric: tabular-nums;
@@ -338,7 +338,7 @@
 
 .framing-spread-label {
     font-size: 9px;
-    color: #64748b;
+    color: var(--color-text-muted);
     white-space: nowrap;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -374,7 +374,7 @@
 
 .framing-col-header {
     font-size: 9px;
-    color: #64748b;
+    color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     margin-bottom: 4px;
@@ -422,14 +422,14 @@
 
 .framing-neutral-label {
     font-size: 9px;
-    color: #64748b;
+    color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
 
 .framing-neutral-source {
     font-size: 10px;
-    color: #64748b;
+    color: var(--color-text-muted);
     padding: 1px 5px;
     background: rgba(255,255,255,0.04);
     border-radius: 3px;
@@ -491,14 +491,14 @@
 .entity-empty {
     padding: 40px 20px;
     text-align: center;
-    color: #4a5568;
+    color: var(--color-text-muted);
     font-size: 12px;
 }
 
 /* Geographic narrative */
 .entity-geo-narrative {
     font-size: 10px;
-    color: #64748b;
+    color: var(--color-text-muted);
     font-style: italic;
     margin-top: 3px;
     line-height: 1.4;
@@ -537,7 +537,7 @@
 
 .entity-person-count {
     font-size: 9px;
-    color: #64748b;
+    color: var(--color-text-muted);
     flex-shrink: 0;
     font-variant-numeric: tabular-nums;
 }

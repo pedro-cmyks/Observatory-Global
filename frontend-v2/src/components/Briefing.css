@@ -59,7 +59,7 @@
 .briefing-loading {
     text-align: center;
     padding: 40px;
-    color: #666;
+    color: var(--color-text-muted);
 }
 
 .briefing-stats {
@@ -85,7 +85,7 @@
 
 .stat-label {
     font-size: 9px;
-    color: #666;
+    color: var(--color-text-muted);
     text-transform: uppercase;
 }
 
@@ -178,7 +178,7 @@
 }
 
 .chip-count {
-    color: #666;
+    color: var(--color-text-muted);
     font-size: 10px;
 }
 

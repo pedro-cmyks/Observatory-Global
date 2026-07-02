@@ -35,7 +35,7 @@
 }
 
 .csm-input::placeholder {
-    color: #475569;
+    color: var(--color-text-muted);
 }
 
 .csm-spinner {
@@ -84,12 +84,12 @@
 
 .csm-meta {
     font-size: 10px;
-    color: #64748b;
+    color: var(--color-text-muted);
 }
 
 .csm-empty {
     padding: 12px;
     font-size: 11px;
-    color: #475569;
+    color: var(--color-text-muted);
     text-align: center;
 }

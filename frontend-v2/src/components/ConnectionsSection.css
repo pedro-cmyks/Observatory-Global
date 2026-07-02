@@ -113,7 +113,7 @@
 }
 
 .connections-gate--assigned { color: #1D9E75; }
-.connections-gate--below_gate { color: #6b7585; }
+.connections-gate--below_gate { color: var(--color-text-muted); }
 
 .connections-neighbor-headline {
     font-size: 12px;

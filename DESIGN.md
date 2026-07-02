@@ -60,7 +60,7 @@ tokens:
         description: Secondary body copy and low-priority labels.
       muted:
         type: color
-        value: "rgba(226, 232, 240, 0.42)"
+        value: "rgba(226, 232, 240, 0.55)"
         description: Metadata, counters, and inactive controls.
       faint:
         type: color

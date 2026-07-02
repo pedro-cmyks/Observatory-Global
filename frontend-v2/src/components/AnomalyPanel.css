@@ -280,7 +280,7 @@
 
 .ap-confidence-label {
     font-size: 8.5px;
-    color: #475569;
+    color: var(--color-text-muted);
     padding: 0 10px 4px;
     letter-spacing: 0.04em;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
