@@ -186,8 +186,16 @@ async def get_nodes(
             if focus_type and focus_value:
                 # Build focus filter based on type
                 if focus_type == "theme":
-                    focus_filter = "$1 = ANY(themes)"
-                    filter_value = focus_value.upper()
+                    # Thread ids (dynamic-topic-<id>/atlas slugs) resolve via
+                    # typed membership — ANY(themes) is GDELT-only and returned
+                    # 0 for every thread, leaving panels silently global.
+                    from app.services.focus_filters import thread_focus_filter
+                    thread_filter = thread_focus_filter(focus_value)
+                    if thread_filter:
+                        focus_filter, filter_value = thread_filter
+                    else:
+                        focus_filter = "$1 = ANY(themes)"
+                        filter_value = focus_value.upper()
                 elif focus_type == "person":
                     focus_filter = "EXISTS (SELECT 1 FROM unnest(persons) p WHERE LOWER(p) LIKE LOWER($1))"
                     filter_value = f"%{focus_value}%"

@@ -349,16 +349,26 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                         if (!p) return null
                         const dimmed = neighborIds !== null && !neighborIds.has(n.id)
                         const orphan = isOrphan(n)
+                        const isActive = n.id === activeTheme
                         const r = universeRadius(n.n) * Math.min(1.6, Math.max(0.8, view.k)) * depthScale(p.depth)
                         return (
                             <g
                                 key={n.id}
                                 className="universe-body"
-                                opacity={(dimmed ? 0.12 : alpha) * depthAlpha(p.depth)}
+                                opacity={(dimmed && !isActive ? 0.12 : Math.max(alpha, isActive ? 0.95 : 0)) * depthAlpha(p.depth)}
                                 onMouseEnter={() => setHoveredId(n.id)}
                                 onMouseLeave={() => setHoveredId(h => (h === n.id ? null : h))}
                                 onClick={() => onThemeSelect(n.id)}
                             >
+                                {isActive && (
+                                    <circle
+                                        cx={p.sx} cy={p.sy}
+                                        r={r + 5}
+                                        fill="none"
+                                        stroke="rgba(52, 211, 153, 0.9)"
+                                        strokeWidth={1.6}
+                                    />
+                                )}
                                 <circle
                                     cx={p.sx} cy={p.sy}
                                     r={r}

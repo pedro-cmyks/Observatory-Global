@@ -36,8 +36,15 @@ async def get_focus_data(
     async with db.pool.acquire() as conn:
         # Build WHERE clause based on focus type
         if focus_type == "theme":
-            focus_filter = "$1 = ANY(themes)"
-            filter_value = value.upper()
+            # Thread ids resolve via typed membership (see focus_filters) —
+            # ANY(themes) is GDELT-only and blanked the lens for threads.
+            from app.services.focus_filters import thread_focus_filter
+            thread_filter = thread_focus_filter(value)
+            if thread_filter:
+                focus_filter, filter_value = thread_filter
+            else:
+                focus_filter = "$1 = ANY(themes)"
+                filter_value = value.upper()
         elif focus_type == "person":
             focus_filter = "EXISTS (SELECT 1 FROM unnest(persons) p WHERE LOWER(p) LIKE LOWER($1))"
             filter_value = f"%{value}%"
