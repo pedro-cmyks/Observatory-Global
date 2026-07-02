@@ -38,10 +38,13 @@ _cache: dict = {"at": 0.0, "payload": None}
 
 
 def _project_universe(vectors, categories):
-    """Global PCA (numpy SVD) blended toward per-category anchors.
+    """Global PCA top-3 (numpy SVD) blended toward per-category anchors.
 
-    Pure given (vectors, categories); returns (positions[n,2], anchors:
-    {category: [x, y]}). Positions normalized to [0, 1]^2.
+    Pure given (vectors, categories); returns (positions[n,3], anchors:
+    {category: [x, y, z]}). Positions normalized to [0, 1]^3 — the third
+    component gives the cloud REAL rotatable depth (spec §7.2): the frontend
+    yaws the cloud around its vertical axis, separating points any single 2D
+    projection overlaps.
     """
     import numpy as np
 
@@ -49,14 +52,14 @@ def _project_universe(vectors, categories):
     M = M / np.linalg.norm(M, axis=1, keepdims=True)
     centered = M - M.mean(axis=0)
     U, S, _ = np.linalg.svd(centered, full_matrices=False)
-    xy = U[:, :2] * S[:2]
+    xyz = U[:, :3] * S[:3]
 
     anchors: dict = {}
     for cat in set(categories):
         mask = [c == cat for c in categories]
-        anchors[cat] = xy[mask].mean(axis=0)
+        anchors[cat] = xyz[mask].mean(axis=0)
     blended = np.array([
-        (1 - CATEGORY_PULL) * xy[i] + CATEGORY_PULL * anchors[categories[i]]
+        (1 - CATEGORY_PULL) * xyz[i] + CATEGORY_PULL * anchors[categories[i]]
         for i in range(len(categories))
     ])
     lo = blended.min(axis=0)
@@ -70,21 +73,28 @@ def _project_universe(vectors, categories):
 
 
 def _nearest_edges(M, ids, k: int = NEIGHBORS_PER_NODE):
-    """Top-k cosine neighbors per node in FULL space; deduped undirected."""
+    """Top-k cosine neighbors per node in FULL space; deduped undirected.
+
+    Also returns each node's best-neighbor sim (nn_sim) — a node whose best
+    neighbor is far is a semantic ORPHAN (spec §7.2), a story unlike every
+    other living story.
+    """
     import numpy as np
 
     sims = M @ M.T
     np.fill_diagonal(sims, -1.0)
+    nn_sims = [round(float(sims[i].max()), 4) for i in range(len(ids))]
     edges: dict = {}
     for i in range(len(ids)):
         for j in np.argsort(-sims[i])[:k]:
             j = int(j)
             key = (min(i, j), max(i, j))
             edges[key] = float(sims[i][j])
-    return [
+    edge_list = [
         {"a": ids[i], "b": ids[j], "sim": round(sim, 4)}
         for (i, j), sim in sorted(edges.items(), key=lambda kv: -kv[1])
     ]
+    return edge_list, nn_sims
 
 
 @router.get("/api/v2/universe")
@@ -127,7 +137,7 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
         [list(r["centroid_vec"]) for r in rows], categories,
     )
     ids = [f"dynamic-topic-{r['id']}" for r in rows]
-    edges = _nearest_edges(M, ids)
+    edges, nn_sims = _nearest_edges(M, ids)
 
     timeline_by_topic: dict = {}
     for a in activity:
@@ -147,6 +157,8 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
             "n": int(r["agg_n_signals"] or 0),
             "x": round(float(positions[i][0]), 4),
             "y": round(float(positions[i][1]), 4),
+            "z": round(float(positions[i][2]), 4),
+            "nn_sim": nn_sims[i],
             "first_seen": r["first_seen"].isoformat() if r["first_seen"] else None,
             "last_seen": r["last_seen"].isoformat() if r["last_seen"] else None,
             "timeline": timeline_by_topic.get(ids[i], []),
@@ -160,13 +172,14 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
         "edges": edges,
         "anchors": [
             {"category": cat, "x": round(a[0], 4), "y": round(a[1], 4),
+             "z": round(a[2], 4),
              "count": sum(1 for c in categories if c == cat)}
             for cat, a in anchors.items()
         ],
         "meta": {
             "topic_count": len(nodes),
             "edge_basis": f"top-{NEIGHBORS_PER_NODE} cosine neighbors in full 768-dim space",
-            "position_basis": "global PCA blended to category anchors — approximate by design",
+            "position_basis": "global PCA top-3 blended to category anchors — approximate by design; z = rotatable depth",
             "timeline_days": days,
         },
     }
