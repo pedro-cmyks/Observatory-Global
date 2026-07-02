@@ -38,7 +38,10 @@ export function CompareSearchModal({ onSelect, onClose }: Props) {
         if (q.length < 2) { setResults([]); return }
         setLoading(true)
         try {
-            const res = await fetch(`/api/v2/search/unified?q=${encodeURIComponent(q)}&hours=168`)
+            // G2 (capture-doc): BOTH search endpoints' person aggregate times
+            // out (~14-25s live unnest) → persons always empty → Compare With
+            // never found anyone. The materialized vocab answers in ms.
+            const res = await fetch(`/api/v2/persons/suggest?q=${encodeURIComponent(q)}`)
             if (res.ok) {
                 const data = await res.json()
                 setResults((data.persons ?? []).slice(0, 8))

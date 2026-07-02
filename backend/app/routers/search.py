@@ -359,6 +359,35 @@ async def query_thread(
     return result
 
 
+@router.get("/api/v2/persons/suggest")
+async def persons_suggest(
+    q: str = Query(..., min_length=2, max_length=60),
+):
+    """Person typeahead over the materialized vocab (mig 063, capture-doc G2).
+    The live unnest aggregate costs ~14-25s; this table answers in ms and is
+    rebuilt every 30 min by the M1 cron alongside the matview refresh."""
+    rows = []
+    try:
+        async with db.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT person, signal_count
+                FROM person_vocab
+                WHERE person ILIKE '%' || $1 || '%'
+                ORDER BY signal_count DESC
+                LIMIT 8
+                """,
+                q.strip().lower(), timeout=4)
+    except Exception as exc:
+        logger.warning("persons/suggest degraded for q=%r: %r", q, exc)
+    return {
+        "persons": [
+            {"person": r["person"], "total_signals": int(r["signal_count"]), "top_countries": []}
+            for r in rows
+        ]
+    }
+
+
 @router.get("/api/v2/search/unified")
 async def unified_search(
     q: str = Query(..., min_length=2, description="Search query"),
