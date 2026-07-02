@@ -54,6 +54,22 @@ universo todo se está moviendo hacia todos lados y el tiempo está pasando…
 el tiempo hacia atrás me llevaría a ver una foto en un instante en el que todo
 tiene alguna posición relativa con el resto").
 
+**STATUS: 7.1 + 7.2 SHIPPED 2026-07-02 PM (`db186ad4`), browser-verified.**
+Implementation notes vs the plan: (a) tabs are dock-style GLOBE|UNIVERSE in
+the panel header (not a layer chip) — layer chips + MAP KEY are globe-only;
+the universe carries its own classifiers (CRISIS / ORPHANS filters, first of
+the "otros clasificadores"). (b) Opening a thread TRAVELS to its orbit inside
+the panel (zoom+fade → OrbitalThreadView, "← UNIVERSE" back); STORY SYSTEM
+was REMOVED from ThemeDetail (one home; the legacy TemporalNarrativeGraph
+render was retired with it, component kept on disk). (c) The off-center
+rotation axis had TWO causes, both fixed: rotate around the cloud's center
+of MASS (bbox-center orbits externally when mass is skewed), and — the real
+one — a mount-only ResizeObserver never attached because the canvas div sits
+behind the loading branch, leaving the svg at 1200px inside a ~590px panel;
+callback-ref pattern now sizes both universe and orbital views. (d) Umbrella
+threads (e.g. dt-981) are excluded from the FIELD by design but their story
+system still opens via travel — their children are the field bodies.
+
 ### 7.1 Map-panel toggle (universe = projection peer of the globe)
 - The map and the universe are the SAME information in two projection bases:
   globe = geographic (where), universe = semantic (what/how related). A

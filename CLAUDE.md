@@ -37,8 +37,17 @@ cloud ROTATES — backend serves PCA top-3 (z = honest depth) + nn_sim; drag
 EXACTLY the isolated lifestyle class (hotel reviews/travel guides); field
 detects semantic oddity unsupervised (P8/#248 evidence). Spec §7 = working
 section (7.2 moving cloud; trajectories v3 = per-snapshot centroids in
-emergent_clusters). NEXT: Pedro eyeball; #234 focus-lens in universe;
-mobile pinch; drift trails; L3 universe-builder.
+emergent_clusters). **V3 same day (Pedro round 2, `db186ad4`):** UNIVERSE =
+dock-style GLOBE|UNIVERSE TABS in the map panel (layer chips + MAP KEY
+globe-only; universe has OWN classifiers CRISIS/ORPHANS); thread-open
+TRAVELS to its orbit INSIDE the panel (zoom+fade → orbital, ← UNIVERSE
+back) — STORY SYSTEM removed from ThemeDetail (one home; legacy graph
+render retired). Axis fix ×2: center-of-mass rotation + THE REAL BUG:
+mount-only ResizeObserver behind the loading branch → svg 1200px in a
+590px panel (why it "rotaba por fuera"); callback-ref fixes universe +
+orbital. Umbrellas: excluded from field, story system opens via travel
+(children = field bodies). 153/153 vitest. NEXT: Pedro eyeball; #234
+focus-lens in universe; mobile pinch; drift trails; L3 universe-builder.
 
 **2026-07-02 (L11 SOLAR SYSTEM — Orbital Thread View SHIPPED + E2 root-caused).**
 Design+prototype session (parallel chat; did NOT touch BriefNewspaper/search.py/
