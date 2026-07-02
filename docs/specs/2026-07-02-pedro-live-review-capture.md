@@ -318,3 +318,12 @@ before code.
   BY NATURE — a Postgres index cannot be built by another machine; pg_cron
   costs the same as M1-triggered psql, just removes the Mac dependency);
   Fly = API+ingest+e5 query service (cents); Vercel = static (free).
+- **D8** ✅ /signals?source= + on-demand publisher fetch (dostor.org/SD: 3
+  Arabic headlines where "no recent coverage" contradicted the count; HTML
+  entities decoded).
+- **C5** ✅ VERIFIED working (Mamdani 12 real matches — trigram/unaccent fix
+  carried this surface) + syndication dedupe added.
+- **A5** ✅ EE hover tooltip carries the color's meaning ("· at its baseline"
+  / "· strongly above its norm") — verified live on Venezuela itself.
+- QUEUE DRAINED: remaining = design sessions (E2/L11 solar-system+universe,
+  C4→#247 C1/C2) + programs (#249 GDELT eviction, #248 noise, search P3/P4).
