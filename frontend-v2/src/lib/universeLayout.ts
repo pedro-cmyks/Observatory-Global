@@ -85,20 +85,44 @@ export function edgeOpacity(sim: number): number {
 }
 
 /**
- * Yaw the cloud around its vertical axis through the [0.5, 0.5, 0.5] center
- * (spec §7.2 — rotation is honest depth: x/z are real PCA components, so
- * turning the cloud separates points any single 2D projection overlaps).
- * Returns the projected x and a depth ∈ [0,1]-ish (0 = nearest to viewer).
+ * Yaw the cloud around its vertical axis (spec §7.2 — rotation is honest
+ * depth: x/z are real PCA components, so turning the cloud separates points
+ * any single 2D projection overlaps).
+ *
+ * The rotation axis passes through (cx, cz) — callers should pass the cloud's
+ * CENTER OF MASS, not the bounding-box center: normalized [0,1] coords put
+ * the bbox center at 0.5, but the mass can sit off-center, which made the
+ * cloud orbit an external axis (Pedro's "rota como por fuera", 2026-07-02).
+ * The projected x is re-centered so the mass center lands back on 0.5 (the
+ * panel center after screen mapping).
  */
-export function yawProject(x: number, z: number | undefined, yaw: number): { px: number; depth: number } {
-  const zc = (z ?? 0.5) - 0.5
-  const xc = x - 0.5
+export function yawProject(
+  x: number,
+  z: number | undefined,
+  yaw: number,
+  cx = 0.5,
+  cz = 0.5,
+): { px: number; depth: number } {
+  const zc = (z ?? cz) - cz
+  const xc = x - cx
   const cos = Math.cos(yaw)
   const sin = Math.sin(yaw)
   return {
     px: xc * cos - zc * sin + 0.5,
     depth: xc * sin + zc * cos + 0.5,
   }
+}
+
+/** Center of mass of the cloud (x and z means) — the honest rotation axis. */
+export function cloudCenter(nodes: UniverseNode[]): { cx: number; cz: number } {
+  if (nodes.length === 0) return { cx: 0.5, cz: 0.5 }
+  let sx = 0
+  let sz = 0
+  for (const n of nodes) {
+    sx += n.x
+    sz += n.z ?? 0.5
+  }
+  return { cx: sx / nodes.length, cz: sz / nodes.length }
 }
 
 /** Depth cue: near bodies render larger (depth 0 → 1.25×, depth 1 → 0.75×). */

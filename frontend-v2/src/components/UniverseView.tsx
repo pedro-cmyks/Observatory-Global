@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
     bornBetween,
     categoryColor,
+    cloudCenter,
     depthAlpha,
     depthScale,
     edgeOpacity,
@@ -12,6 +13,7 @@ import {
     type UniverseEdge,
     type UniverseNode,
 } from '../lib/universeLayout'
+import { OrbitalThreadView } from './OrbitalThreadView'
 import './UniverseView.css'
 
 interface UniversePayload {
@@ -25,18 +27,32 @@ interface UniversePayload {
 
 interface UniverseViewProps {
     onThemeSelect: (themeId: string) => void
+    /** Open thread (if any): the panel travels to that orbit and shows its
+        story system here — one place for the same information (Pedro §7.3). */
+    activeTheme?: string | null
+    activeThemeLabel?: string
+    hours?: number
+    onPersonSelect?: (name: string) => void
+    onCountrySelect?: (code: string) => void
 }
 
 const WEEK_MS = 7 * 24 * 3_600_000
 
-export function UniverseView({ onThemeSelect }: UniverseViewProps) {
+export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hours = 24, onPersonSelect, onCountrySelect }: UniverseViewProps) {
     const [payload, setPayload] = useState<UniversePayload | null>(null)
     const [loading, setLoading] = useState(true)
     const [scrubPct, setScrubPct] = useState(100)
     const [hoveredId, setHoveredId] = useState<string | null>(null)
     const [view, setView] = useState({ k: 1, tx: 0, ty: 0 })
-    // Yaw: the cloud's rotation around its vertical axis (spec §7.2). Slow
-    // ambient spin; ANY interaction (hover/drag) pauses it — camera, not time.
+    // Universe's OWN classifiers (not the globe's HEAT/FLOW): filter the field
+    // by what matters semantically here.
+    const [crisisOnly, setCrisisOnly] = useState(false)
+    const [orphansOnly, setOrphansOnly] = useState(false)
+    // Travel state: when a thread is open we are AT its orbit; back returns to the field.
+    const [orbitalVisible, setOrbitalVisible] = useState(false)
+    const [traveling, setTraveling] = useState(false)
+    // Yaw: rotation around the cloud's center of MASS (spec §7.2). Ambient
+    // spin pauses on any interaction — camera, not time.
     const [yaw, setYaw] = useState(0)
     const spinPausedRef = useRef(false)
     const dragRef = useRef<{ x: number; y: number; ty: number; yaw: number } | null>(null)
@@ -62,15 +78,27 @@ export function UniverseView({ onThemeSelect }: UniverseViewProps) {
         spinPausedRef.current = hoveredId !== null
     }, [hoveredId])
 
-    useEffect(() => {
-        const element = containerRef.current
+    // Callback ref: the canvas div does NOT exist during the loading/orbital
+    // branches, so a mount-only observer never fires and the svg stays at the
+    // 1200×700 default inside a ~590px panel (the off-center rotation axis
+    // Pedro saw was this, not the rotation math).
+    const resizeObserverRef = useRef<ResizeObserver | null>(null)
+    const attachCanvas = useMemo(() => (element: HTMLDivElement | null) => {
+        containerRef.current = element
+        resizeObserverRef.current?.disconnect()
+        resizeObserverRef.current = null
         if (!element) return
+        const apply = (w: number, h: number) => {
+            const next = { w: Math.max(360, w), h: Math.max(280, h) }
+            setSize(prev => (prev.w === next.w && prev.h === next.h ? prev : next))
+        }
+        apply(element.clientWidth, element.clientHeight)
         const observer = new ResizeObserver(entries => {
             const rect = entries[0]?.contentRect
-            if (rect) setSize({ w: Math.max(480, rect.width), h: Math.max(360, rect.height) })
+            if (rect) apply(rect.width, rect.height)
         })
         observer.observe(element)
-        return () => observer.disconnect()
+        resizeObserverRef.current = observer
     }, [])
 
     useEffect(() => {
@@ -83,14 +111,20 @@ export function UniverseView({ onThemeSelect }: UniverseViewProps) {
         return () => { cancelled = true }
     }, [])
 
-    const nodes = useMemo(() => payload?.nodes ?? [], [payload])
+    const allNodes = useMemo(() => payload?.nodes ?? [], [payload])
+    const nodes = useMemo(
+        () => allNodes.filter(n =>
+            (!crisisOnly || n.crisis_relevant === true) && (!orphansOnly || isOrphan(n)),
+        ),
+        [allNodes, crisisOnly, orphansOnly],
+    )
     const edges = useMemo(() => payload?.edges ?? [], [payload])
 
     const timeSpan = useMemo(() => {
-        const firsts = nodes.map(n => (n.first_seen ? Date.parse(n.first_seen) : Infinity))
+        const firsts = allNodes.map(n => (n.first_seen ? Date.parse(n.first_seen) : Infinity))
         const start = Math.min(...(firsts.length ? firsts : [Date.now()]))
         return { start, end: Date.now() }
-    }, [nodes])
+    }, [allNodes])
 
     const scrubT = timeSpan.start + (timeSpan.end - timeSpan.start) * (scrubPct / 100)
 
@@ -109,22 +143,53 @@ export function UniverseView({ onThemeSelect }: UniverseViewProps) {
     const px = (x: number) => (margin + x * (size.w - 2 * margin)) * view.k + view.tx
     const py = (y: number) => (margin + y * (size.h - 2 * margin)) * view.k + view.ty
 
-    // Rotate the cloud (real PCA depth), then map to screen. Far bodies render
-    // first, smaller and dimmer — turning the field separates what overlaps.
+    // Rotation axis = center of MASS of the full cloud (stable across filters),
+    // re-centered to the panel middle — never an external orbit.
+    const { cx: massX, cz: massZ } = useMemo(() => cloudCenter(allNodes), [allNodes])
+    const massY = useMemo(
+        () => (allNodes.length ? allNodes.reduce((s, n) => s + n.y, 0) / allNodes.length : 0.5),
+        [allNodes],
+    )
+
     const projected = useMemo(() => {
         const out = new Map<string, { sx: number; sy: number; depth: number }>()
         for (const n of nodes) {
-            const p = yawProject(n.x, n.z, yaw)
-            out.set(n.id, { sx: px(p.px), sy: py(n.y), depth: p.depth })
+            const p = yawProject(n.x, n.z, yaw, massX, massZ)
+            out.set(n.id, { sx: px(p.px), sy: py(n.y - massY + 0.5), depth: p.depth })
         }
         return out
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [nodes, yaw, view, size])
+    }, [nodes, yaw, view, size, massX, massZ, massY])
 
     const depthOrdered = useMemo(
         () => [...nodes].sort((a, b) => (projected.get(b.id)?.depth ?? 0) - (projected.get(a.id)?.depth ?? 0)),
         [nodes, projected],
     )
+
+    // Travel: an open thread pulls the camera to its body, then the story
+    // system appears in this panel (the "viaje").
+    useEffect(() => {
+        if (!activeTheme) {
+            setOrbitalVisible(false)
+            setTraveling(false)
+            return
+        }
+        const body = allNodes.find(n => n.id === activeTheme)
+        setTraveling(true)
+        if (body) {
+            const p = yawProject(body.x, body.z, yaw, massX, massZ)
+            const targetX = (margin + p.px * (size.w - 2 * margin))
+            const targetY = (margin + (body.y - massY + 0.5) * (size.h - 2 * margin))
+            const k = 2.6
+            setView({ k, tx: size.w / 2 - targetX * k, ty: size.h / 2 - targetY * k })
+        }
+        const id = window.setTimeout(() => {
+            setOrbitalVisible(true)
+            setTraveling(false)
+        }, body ? 520 : 120)
+        return () => window.clearTimeout(id)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTheme])
 
     const alphaById = useMemo(() => {
         const out = new Map<string, number>()
@@ -147,15 +212,69 @@ export function UniverseView({ onThemeSelect }: UniverseViewProps) {
     const atNow = scrubPct === 100
 
     if (loading) return <div className="universe-empty">Charting the universe…</div>
-    if (!payload || nodes.length === 0) {
+    if (!payload || allNodes.length === 0) {
         return <div className="universe-empty">Universe data unavailable{payload?.reason ? ` (${payload.reason})` : ''}.</div>
+    }
+
+    // AT an orbit: the story system replaces the field until back/close.
+    if (activeTheme && orbitalVisible) {
+        const fieldLabel = allNodes.find(n => n.id === activeTheme)?.label
+        const orbitLabel = fieldLabel ?? activeThemeLabel ?? activeTheme
+        return (
+            <div className="universe-root">
+                <div className="universe-orbit-bar">
+                    <button
+                        className="universe-orbit-back"
+                        onClick={() => setOrbitalVisible(false)}
+                        data-tip="Back to the full story universe"
+                    >
+                        ← UNIVERSE
+                    </button>
+                    <span className="universe-orbit-title">{orbitLabel}</span>
+                </div>
+                <div className="universe-orbit-body">
+                    <OrbitalThreadView
+                        theme={activeTheme}
+                        themeLabel={orbitLabel}
+                        hours={hours}
+                        onCountrySelect={onCountrySelect}
+                        onPersonSelect={onPersonSelect}
+                    />
+                </div>
+            </div>
+        )
     }
 
     return (
         <div className="universe-root">
+            <div className="universe-filters">
+                <button
+                    className={`universe-filter ${crisisOnly ? 'active' : ''}`}
+                    onClick={() => setCrisisOnly(v => !v)}
+                    data-tip="Only crisis-relevant stories (R3.1 flag)"
+                >
+                    CRISIS
+                </button>
+                <button
+                    className={`universe-filter ${orphansOnly ? 'active' : ''}`}
+                    onClick={() => setOrphansOnly(v => !v)}
+                    data-tip="Only semantic orphans — stories unlike every other living story"
+                >
+                    ORPHANS
+                </button>
+                {activeTheme && !orbitalVisible && !traveling && (
+                    <button
+                        className="universe-filter"
+                        onClick={() => setOrbitalVisible(true)}
+                        data-tip="Return to the open story's system"
+                    >
+                        ◉ TO ORBIT
+                    </button>
+                )}
+            </div>
             <div
-                className="universe-canvas"
-                ref={containerRef}
+                className={`universe-canvas${traveling ? ' universe-canvas--traveling' : ''}`}
+                ref={attachCanvas}
                 onWheel={e => {
                     e.preventDefault()
                     const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12
@@ -187,12 +306,12 @@ export function UniverseView({ onThemeSelect }: UniverseViewProps) {
             >
                 <svg width={size.w} height={size.h} role="img" aria-label="Atlas story universe">
                     {/* constellation labels (rotate with the cloud) */}
-                    {payload.anchors.filter(a => a.count >= 4).map(a => {
-                        const p = yawProject(a.x, a.z, yaw)
+                    {!orphansOnly && payload.anchors.filter(a => a.count >= 4).map(a => {
+                        const p = yawProject(a.x, a.z, yaw, massX, massZ)
                         return (
                             <text
                                 key={a.category}
-                                x={px(p.px)} y={py(a.y)}
+                                x={px(p.px)} y={py(a.y - massY + 0.5)}
                                 className="universe-constellation"
                                 opacity={depthAlpha(p.depth) * 0.9}
                             >

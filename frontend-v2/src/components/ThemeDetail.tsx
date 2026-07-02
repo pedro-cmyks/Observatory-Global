@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { CompareBar } from './CompareBar'
 import { NarrativeDrift } from './NarrativeDrift'
@@ -15,18 +15,12 @@ const SUBJECT_BADGE: Record<SubjectType, string> = {
     person: 'person', place: 'place', organization: 'org', group: 'group', event: 'event',
 }
 import { resolveCountryName } from '../lib/countryNames'
-import { PanelErrorBoundary } from './PanelErrorBoundary'
-import { OrbitalThreadView } from './OrbitalThreadView'
 import { PanelSkeleton, PanelSkeletonGrid } from './PanelSkeleton'
 import { CoverageBadge, type CoverageMeta } from './CoverageBadge'
 import type { PublicAttentionOrigin } from '../lib/publicAttention'
-import type { TemporalNarrativeBucket } from '../lib/temporalNarrativeGraph'
 import { buildThemeDetailEmptyState } from '../lib/themeDetailEmptyState'
 import './ThemeDetail.css'
 
-const TemporalNarrativeGraph = lazy(() =>
-    import('./TemporalNarrativeGraph').then(module => ({ default: module.TemporalNarrativeGraph }))
-)
 
 interface ThemeData {
     theme: string
@@ -176,9 +170,6 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     const [selectedSource, setSelectedSource] = useState<string | null>(null)
     const [showAllCoverage, setShowAllCoverage] = useState(false)
     const [showDrift, setShowDrift] = useState(false)
-    // E2/L11: orbital view is the default evolution surface; the old force
-    // graph stays one toggle away while the prototype is evaluated.
-    const [evolutionView, setEvolutionView] = useState<'orbits' | 'graph'>('orbits')
 
     // On phones the thread read is a full-screen overlay; lock the cockpit
     // behind it so background scroll doesn't bleed through.
@@ -196,7 +187,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         initialDrillCountry ? (originCountryName || initialDrillCountry) : null
     )
     const detailRef = useRef<HTMLDivElement>(null)
-    const { pinItem, unpinItem, isPinned, setIsOpen: openWorkspace } = useWorkspace()
+    const { pinItem, unpinItem, isPinned } = useWorkspace()
     const isDynamicTopic = theme.toLowerCase().startsWith('dynamic-topic-')
     // Custom query thread: token shape is `query-thread::<raw user query>`.
     // The raw text is preserved (accents/spaces) for the /search/thread builder.
@@ -441,42 +432,6 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                 sentiment_label: c.sentiment > 0.1 ? 'positive' : c.sentiment < -0.1 ? 'negative' : 'neutral',
             })))
         : []
-
-    const pinTemporalSnapshot = (bucket: TemporalNarrativeBucket) => {
-        const snapshotId = `temporal-${theme}-${bucket.id}`
-        const countries = bucket.nodes
-            .filter(node => node.type === 'country')
-            .map(node => ({ code: node.id.replace(/^country-/, ''), label: node.label, count: node.count }))
-        const sources = bucket.nodes
-            .filter(node => node.type === 'source')
-            .map(node => ({ name: node.label, count: node.count }))
-        const people = bucket.nodes
-            .filter(node => node.type === 'person')
-            .map(node => ({ name: node.label, count: node.count }))
-        const relatedThemes = bucket.nodes
-            .filter(node => node.type === 'theme' && node.id !== `theme-${theme}`)
-            .map(node => ({ theme: node.id.replace(/^theme-/, ''), label: node.label, count: node.count }))
-
-        pinItem({
-            id: snapshotId,
-            type: 'temporal_snapshot',
-            title: `${displayLabel} · ${bucket.label}`,
-            urlParams: `?theme=${encodeURIComponent(theme)}`,
-            meta: {
-                theme,
-                themeLabel: displayLabel,
-                bucketLabel: bucket.label,
-                signalCount: bucket.signalCount,
-                start: bucket.start,
-                end: bucket.end,
-                countries,
-                sources,
-                people,
-                relatedThemes,
-            },
-        })
-        openWorkspace(true)
-    }
 
     const handlePin = () => {
         if (pinned) {
@@ -746,76 +701,11 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             </div>
                         )}
 
-                        {/* Evolution surface (desktop only). Default = Orbital Thread
-                            View (E2/L11: orbit radius = semantic distance, scrubbed time
-                            = §I decay); the legacy force graph stays behind the toggle. */}
-                        {!isMobile && (
-                            <div className="theme-section">
-                                <div className="theme-section-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    STORY SYSTEM
-                                    <span style={{ display: 'inline-flex', gap: 4, marginLeft: 'auto' }}>
-                                        <button
-                                            className="temporal-graph-workspace-btn"
-                                            style={evolutionView === 'orbits' ? { borderColor: '#34d399', color: '#34d399' } : undefined}
-                                            onClick={() => setEvolutionView('orbits')}
-                                            data-tip="Orbital view: who orbits this story, how close, entering and leaving over time"
-                                        >
-                                            ◉ Orbits
-                                        </button>
-                                        <button
-                                            className="temporal-graph-workspace-btn"
-                                            style={evolutionView === 'graph' ? { borderColor: '#34d399', color: '#34d399' } : undefined}
-                                            onClick={() => setEvolutionView('graph')}
-                                            data-tip="Legacy evolution graph (force layout over hourly buckets)"
-                                        >
-                                            ⌗ Graph
-                                        </button>
-                                    </span>
-                                </div>
-                                {evolutionView === 'orbits' && (
-                                    <PanelErrorBoundary panelName="Orbital Thread View">
-                                        <OrbitalThreadView
-                                            theme={theme}
-                                            themeLabel={displayLabel}
-                                            hours={hours}
-                                            onCountrySelect={(code) => {
-                                                setDrillCountry(code)
-                                                setDrillCountryName(code)
-                                                onCountryCardClick?.(code, code)
-                                            }}
-                                            onPersonSelect={onPersonClick}
-                                        />
-                                    </PanelErrorBoundary>
-                                )}
-                            </div>
-                        )}
-                        {!isMobile && evolutionView === 'graph' && (data.graphSignals?.length ?? data.signals.length) > 0 && (
-                            <PanelErrorBoundary panelName="Evolution Graph">
-                                <Suspense fallback={<div className="temporal-graph-loading">Loading evolution graph...</div>}>
-                                    <TemporalNarrativeGraph
-                                        theme={theme}
-                                        themeLabel={displayLabel}
-                                        signals={data.graphSignals?.length ? data.graphSignals : data.signals}
-                                        onThemeSelect={onThemeSelect}
-                                        onCountrySelect={(code) => {
-                                            setDrillCountry(code)
-                                            setDrillCountryName(code)
-                                            onCountryCardClick?.(code, code)
-                                        }}
-                                        onPersonSelect={onPersonClick}
-                                        onSourceSelect={onSourceClick}
-                                        onOpenInWorkspace={() => {
-                                            const pid = `theme-${theme}`
-                                            if (!isPinned(pid)) {
-                                                pinItem({ id: pid, type: 'theme', title: displayLabel, urlParams: `?theme=${encodeURIComponent(theme)}` })
-                                            }
-                                            openWorkspace(true)
-                                        }}
-                                        onPinSnapshot={pinTemporalSnapshot}
-                                    />
-                                </Suspense>
-                            </PanelErrorBoundary>
-                        )}
+                        {/* STORY SYSTEM lives in the map panel's UNIVERSE tab
+                            (spec 2026-07-02-universe-view.md §7.3): opening a
+                            thread travels to its orbit THERE — same information,
+                            one home. The legacy evolution graph was retired with
+                            the move (component kept: TemporalNarrativeGraph). */}
 
                         {/* Narrative Drift timeline — deferred so AEIL explanation
                             renders first. NarrativeDrift renders null when there is

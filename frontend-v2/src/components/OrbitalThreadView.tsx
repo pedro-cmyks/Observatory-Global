@@ -65,15 +65,26 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
     const containerRef = useRef<HTMLDivElement | null>(null)
     const [width, setWidth] = useState(560)
 
-    useEffect(() => {
-        const element = containerRef.current
+    // Callback ref, not mount-effect: the canvas div is absent during the
+    // loading/empty branches, so a mount-only observer never attaches and the
+    // svg keeps its default width (the UniverseView off-center-axis bug class).
+    const resizeObserverRef = useRef<ResizeObserver | null>(null)
+    const attachCanvas = useMemo(() => (element: HTMLDivElement | null) => {
+        containerRef.current = element
+        resizeObserverRef.current?.disconnect()
+        resizeObserverRef.current = null
         if (!element) return
+        const apply = (w: number) => setWidth(prev => {
+            const next = Math.max(360, Math.round(w))
+            return prev === next ? prev : next
+        })
+        apply(element.clientWidth)
         const observer = new ResizeObserver(entries => {
             const w = entries[0]?.contentRect.width
-            if (w) setWidth(Math.max(360, w))
+            if (w) apply(w)
         })
         observer.observe(element)
-        return () => observer.disconnect()
+        resizeObserverRef.current = observer
     }, [])
 
     // §I time-model: the orbital view reads the story's OWN timeline (at least
@@ -161,7 +172,7 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
 
     return (
         <section className="orbital-section">
-            <div className="orbital-canvas" ref={containerRef}>
+            <div className="orbital-canvas" ref={attachCanvas}>
                 <svg width={width} height={height} role="img" aria-label={`Orbital view of ${themeLabel}`}>
                     {/* static orbit ring guides */}
                     {[0, 0.5, 1].map(g => (
@@ -213,11 +224,12 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                         </g>
                     ))}
 
-                    {/* center: the thread */}
+                    {/* center: the thread — prefer the engine's own label
+                        (deep-links may only carry a generic id-derived name) */}
                     <g>
                         <circle cx={cx} cy={cy} r={30} className="orbital-center" />
                         <text x={cx} y={cy - 2} className="orbital-center-label">
-                            {themeLabel.length > 26 ? `${themeLabel.slice(0, 24)}…` : themeLabel}
+                            {(() => { const l = payload.center.label || themeLabel; return l.length > 26 ? `${l.slice(0, 24)}…` : l })()}
                         </text>
                         {payload.center.category && (
                             <text x={cx} y={cy + 12} className="orbital-center-category">

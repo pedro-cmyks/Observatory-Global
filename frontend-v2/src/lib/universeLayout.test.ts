@@ -78,6 +78,25 @@ describe('rotation = honest depth (spec §7.2)', () => {
     expect(depthAlpha(1)).toBeGreaterThanOrEqual(0.45)
   })
 
+  it('rotation axis = center of MASS, and mass re-centers to 0.5 (panel center)', async () => {
+    const { yawProject, cloudCenter } = await import('./universeLayout')
+    // off-center cloud: mass sits at x≈0.8 — bbox-center rotation would orbit externally
+    const cloud = [
+      node({ id: 'a', x: 0.7, z: 0.8 }),
+      node({ id: 'b', x: 0.8, z: 0.8 }),
+      node({ id: 'c', x: 0.9, z: 0.8 }),
+    ]
+    const { cx, cz } = cloudCenter(cloud)
+    expect(cx).toBeCloseTo(0.8, 6)
+    // at ANY yaw, the mass center projects to 0.5 — the axis stays in the panel center
+    for (const yaw of [0, 1.1, Math.PI, 4.4]) {
+      const projectedMean = cloud
+        .map(n => yawProject(n.x, n.z, yaw, cx, cz).px)
+        .reduce((a, b) => a + b, 0) / cloud.length
+      expect(projectedMean).toBeCloseTo(0.5, 6)
+    }
+  })
+
   it('orphan = best neighbor below the measured isolated band', async () => {
     const { isOrphan } = await import('./universeLayout')
     expect(isOrphan(node({ nn_sim: 0.85 }))).toBe(true)

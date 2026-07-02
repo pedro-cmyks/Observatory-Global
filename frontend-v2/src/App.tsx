@@ -40,6 +40,7 @@ import { buildHistoricalCoverageCue } from './lib/historicalCoverageCue'
 import ResearchPlanPanel from './components/ResearchPlanPanel'
 import WorkbenchPanel from './components/WorkbenchPanel'
 import { UniverseView } from './components/UniverseView'
+import { getThemeLabel } from './lib/themeLabels'
 import { createInvestigation } from './lib/workbench'
 
 // Terminal Panels
@@ -1627,11 +1628,25 @@ function AppContent() {
           <div className="panel-header">
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                GLOBE
-                <PanelHelpButton panel="globe" />
+                <button
+                  className={`dock-tab ${!universeOpen ? 'active' : ''}`}
+                  onClick={() => setUniverseOpen(false)}
+                  data-tip="Geographic projection — narrative activity by country"
+                >
+                  GLOBE
+                </button>
+                <button
+                  className={`dock-tab ${universeOpen ? 'active' : ''}`}
+                  onClick={() => setUniverseOpen(true)}
+                  data-tip="Semantic projection — every living story as a body; categories as constellations; relations measured in full vector space"
+                >
+                  UNIVERSE
+                </button>
+                {!universeOpen && <PanelHelpButton panel="globe" />}
               </span>
-              <span className="panel-subtitle">narrative activity by country</span>
+              <span className="panel-subtitle">{universeOpen ? 'stories by meaning · alive in time' : 'narrative activity by country'}</span>
             </div>
+            {!universeOpen && (
             <div className="panel-header-controls">
               <button
                 className={`layer-btn ${showHeatmap ? 'active' : ''}`}
@@ -1672,13 +1687,6 @@ function AppContent() {
                 }
               >
                 SHIPS{showVessels && vesselData.length > 0 ? ` ${vesselData.length}` : ''}{showVessels && !vesselConnected ? ' ⏳' : ''}
-              </button>
-              <button
-                className={`layer-btn ${universeOpen ? 'active' : ''}`}
-                onClick={() => setUniverseOpen(open => !open)}
-                data-tip="Universe — the same stories in the semantic projection: every living thread as a body, categories as constellations, relations measured in full vector space. The globe shows WHERE; the universe shows WHAT relates to WHAT."
-              >
-                UNIVERSE
               </button>
               <button
                 className="layer-btn layer-btn--reset"
@@ -1734,6 +1742,7 @@ function AppContent() {
                 ↺
               </button>
             </div>
+            )}
           </div>
           <div className="panel-content">
             <MapErrorBoundary>
@@ -1919,7 +1928,7 @@ function AppContent() {
               )}
               <div className="globe-vignette" />
             </MapErrorBoundary>
-            <Legend
+            {!universeOpen && <Legend
               showHeatmap={showHeatmap}
               // #179: flows render whenever a country/theme filter is active,
               // not only when the FLOWS toggle is on — the legend must follow
@@ -1936,16 +1945,19 @@ function AppContent() {
               conflictCount={acledConflicts?.length ?? 0}
               disasterCount={disasterEvents.length}
               anomalyCount={enhancedNodes.filter((n: any) => n.isAnomaly).length}
-            />
-            {/* Universe: the same stories in the semantic projection — mounts
-                OVER the map (map stays mounted; display:none crash lesson). */}
+            />}
+            {/* Universe tab: the same stories in the semantic projection —
+                mounts OVER the map (map stays mounted; display:none crash
+                lesson). An open thread travels to its orbit HERE (spec §7.3). */}
             {universeOpen && (
               <div className="universe-panel">
                 <UniverseView
-                  onThemeSelect={(themeId) => {
-                    setUniverseOpen(false)
-                    handleThemeSelect(themeId)
-                  }}
+                  onThemeSelect={(themeId) => handleThemeSelect(themeId)}
+                  activeTheme={selectedTheme?.theme ?? null}
+                  activeThemeLabel={selectedTheme ? (selectedTheme.thread?.label ?? getThemeLabel(selectedTheme.theme)) : undefined}
+                  hours={timeRangeToHours(timeRange)}
+                  onPersonSelect={(name) => { setFocus('person', name, name); setMapFlyCountry(null) }}
+                  onCountrySelect={(code) => { setMapFlyCountry(code); setRightPanelThemeCountry({ code, name: code }) }}
                 />
               </div>
             )}
