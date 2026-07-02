@@ -1814,11 +1814,15 @@ async def get_theme_orbital(
             else:
                 return {**empty, "reason": "unsupported_theme_kind"}
 
+            # Window on assigned_at (carries source assignment time since the
+            # F0.3 ETL fix) — atlas topics hold ALL-TIME members (3K+ ids), and
+            # an unbounded set made the computed-centroid path take ~26s cold.
             member_ids = [
                 r["signal_id"] for r in await conn.fetch(
-                    """
+                    f"""
                     SELECT DISTINCT signal_id FROM topic_members
                     WHERE topic_id = $1 AND role = 'evidence' AND signal_id IS NOT NULL
+                      AND assigned_at > NOW() - INTERVAL '{int(hours)} hours'
                     """,
                     topic_id_text,
                 )

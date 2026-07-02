@@ -1,0 +1,152 @@
+.orbital-section {
+  padding: 4px 0 12px;
+}
+
+.orbital-canvas {
+  position: relative;
+  width: 100%;
+  background: radial-gradient(ellipse at center, rgba(30, 41, 59, 0.35) 0%, rgba(11, 14, 19, 0.05) 70%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.orbital-ring {
+  fill: none;
+  stroke: rgba(148, 163, 184, 0.14);
+  stroke-width: 1;
+  stroke-dasharray: 3 5;
+}
+
+.orbital-center {
+  fill: rgba(16, 185, 129, 0.16);
+  stroke: rgba(52, 211, 153, 0.8);
+  stroke-width: 1.4;
+}
+
+.orbital-center-label {
+  fill: #e2e8f0;
+  font-size: 11px;
+  font-weight: 600;
+  text-anchor: middle;
+}
+
+.orbital-center-category {
+  fill: #64748b;
+  font-size: 9px;
+  text-anchor: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.orbital-body-label {
+  fill: #cbd5e1;
+  font-size: 9.5px;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.orbital-body--clickable {
+  cursor: pointer;
+}
+
+.orbital-hover {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: rgba(11, 14, 19, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  pointer-events: none;
+  max-width: 240px;
+}
+
+.orbital-hover-type {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.orbital-hover strong {
+  color: #e2e8f0;
+  font-size: 12px;
+}
+
+.orbital-hover em {
+  color: var(--color-text-muted, #94a3b8);
+  font-size: 10px;
+  font-style: normal;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+
+.orbital-scrubber {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.orbital-scrubber input[type='range'] {
+  flex: 1;
+  accent-color: #34d399;
+}
+
+.orbital-scrubber-time {
+  min-width: 108px;
+  color: #cbd5e1;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 10px;
+}
+
+.orbital-scrubber-entrants {
+  color: #34d399;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.orbital-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  color: var(--color-text-muted, #94a3b8);
+  font-size: 9.5px;
+  text-transform: capitalize;
+}
+
+.orbital-legend i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+
+.orbital-legend-comet {
+  background: linear-gradient(90deg, #e2e8f0, transparent);
+  border-radius: 2px !important;
+  width: 12px !important;
+  height: 3px !important;
+}
+
+.orbital-legend-note {
+  margin-left: auto;
+  text-transform: none;
+  font-style: italic;
+}
+
+.orbital-empty {
+  padding: 18px 12px;
+  color: var(--color-text-muted, #94a3b8);
+  font-size: 11px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  text-align: center;
+}

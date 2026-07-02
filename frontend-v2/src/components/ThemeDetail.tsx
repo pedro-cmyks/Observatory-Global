@@ -16,6 +16,7 @@ const SUBJECT_BADGE: Record<SubjectType, string> = {
 }
 import { resolveCountryName } from '../lib/countryNames'
 import { PanelErrorBoundary } from './PanelErrorBoundary'
+import { OrbitalThreadView } from './OrbitalThreadView'
 import { PanelSkeleton, PanelSkeletonGrid } from './PanelSkeleton'
 import { CoverageBadge, type CoverageMeta } from './CoverageBadge'
 import type { PublicAttentionOrigin } from '../lib/publicAttention'
@@ -175,6 +176,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     const [selectedSource, setSelectedSource] = useState<string | null>(null)
     const [showAllCoverage, setShowAllCoverage] = useState(false)
     const [showDrift, setShowDrift] = useState(false)
+    // E2/L11: orbital view is the default evolution surface; the old force
+    // graph stays one toggle away while the prototype is evaluated.
+    const [evolutionView, setEvolutionView] = useState<'orbits' | 'graph'>('orbits')
 
     // On phones the thread read is a full-screen overlay; lock the cockpit
     // behind it so background scroll doesn't bleed through.
@@ -742,9 +746,50 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             </div>
                         )}
 
-                        {/* Evolution Graph: relationship structure over sampled coverage time buckets.
-                            Hidden on phones — a force-graph is a desktop surface (consumer MVP). */}
-                        {!isMobile && (data.graphSignals?.length ?? data.signals.length) > 0 && (
+                        {/* Evolution surface (desktop only). Default = Orbital Thread
+                            View (E2/L11: orbit radius = semantic distance, scrubbed time
+                            = §I decay); the legacy force graph stays behind the toggle. */}
+                        {!isMobile && (
+                            <div className="theme-section">
+                                <div className="theme-section-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    STORY SYSTEM
+                                    <span style={{ display: 'inline-flex', gap: 4, marginLeft: 'auto' }}>
+                                        <button
+                                            className="temporal-graph-workspace-btn"
+                                            style={evolutionView === 'orbits' ? { borderColor: '#34d399', color: '#34d399' } : undefined}
+                                            onClick={() => setEvolutionView('orbits')}
+                                            data-tip="Orbital view: who orbits this story, how close, entering and leaving over time"
+                                        >
+                                            ◉ Orbits
+                                        </button>
+                                        <button
+                                            className="temporal-graph-workspace-btn"
+                                            style={evolutionView === 'graph' ? { borderColor: '#34d399', color: '#34d399' } : undefined}
+                                            onClick={() => setEvolutionView('graph')}
+                                            data-tip="Legacy evolution graph (force layout over hourly buckets)"
+                                        >
+                                            ⌗ Graph
+                                        </button>
+                                    </span>
+                                </div>
+                                {evolutionView === 'orbits' && (
+                                    <PanelErrorBoundary panelName="Orbital Thread View">
+                                        <OrbitalThreadView
+                                            theme={theme}
+                                            themeLabel={displayLabel}
+                                            hours={hours}
+                                            onCountrySelect={(code) => {
+                                                setDrillCountry(code)
+                                                setDrillCountryName(code)
+                                                onCountryCardClick?.(code, code)
+                                            }}
+                                            onPersonSelect={onPersonClick}
+                                        />
+                                    </PanelErrorBoundary>
+                                )}
+                            </div>
+                        )}
+                        {!isMobile && evolutionView === 'graph' && (data.graphSignals?.length ?? data.signals.length) > 0 && (
                             <PanelErrorBoundary panelName="Evolution Graph">
                                 <Suspense fallback={<div className="temporal-graph-loading">Loading evolution graph...</div>}>
                                     <TemporalNarrativeGraph
