@@ -255,3 +255,18 @@ keep 2 priority chips + retype the rest by story class.
 - **D9** ✅ story-first country insight (browser-verified VE). **Feeding
   matrix** written. **L11-extended + L3-universe-builder** captured (orbital
   physics = relatedness; the Workbench builds YOUR universe).
+
+## L11 — Claude's honest assessment (Pedro asked)
+STRONG: the metaphor is structurally honest — every visual DOF maps to a real
+engine quantity (orbit radius=semantic distance, velocity=membership
+intensity, entry/exit=assigned_at/first-last-seen, size=volume, color=R3.1
+category). Buildable with EXISTING data. 'Comets' shows what no current
+surface can (transient entities). L3-universe-builder gives the Workbench an
+identity it lacks.
+RISKS: (1) perpetual animation kills analyst reading — mitigate: static rings,
+motion driven by a TIME SCRUBBER (interaction, not idle); (2) beauty>utility
+trap — must beat the list on task time ('who entered this story this week?'),
+measure it; (3) 3D is a trap — 2D radial, firm no.
+VERDICT: prototype on ONE thread detail replacing the evolution graph,
+evaluated on task time. Paper 7 contribution IF evaluated. Design session
+before code.
