@@ -451,7 +451,7 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
                                             className="entity-headline"
                                         >
                                             <span className="entity-headline-source">{h.source}</span>
-                                            <span className="entity-headline-title">{displayText}</span>
+                                            <span className="entity-headline-title" data-tip={displayText}>{displayText}</span>
                                         </a>
                                     )
                                 })}

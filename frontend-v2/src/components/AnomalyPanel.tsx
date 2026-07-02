@@ -121,7 +121,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                     {overallSeverity.toUpperCase()}
                 </span>
                 {activeTheme && (
-                    <span className="ap-focus-badge ap-focus-theme" title={`Narrative Thread active: ${getThemeLabel(activeTheme)}`}>
+                    <span className="ap-focus-badge ap-focus-theme" data-tip={`Narrative Thread active: ${getThemeLabel(activeTheme)}`}>
                         THREAD: {getThemeLabel(activeTheme).slice(0, 22)}
                     </span>
                 )}
@@ -132,7 +132,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                 )}
                 {relationCountry && (
                     <span className="ap-focus-badge ap-focus-theme"
-                        title={`Re-scoped to the focus's dominant country: ${resolveCountryName(relationCountry)}`}>
+                        data-tip={`Re-scoped to the focus's dominant country: ${resolveCountryName(relationCountry)}`}>
                         {(relation.value || '').toUpperCase().slice(0, 14)} → {relationCountry}
                     </span>
                 )}

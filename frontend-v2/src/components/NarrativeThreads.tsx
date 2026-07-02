@@ -382,7 +382,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                             <div className="narrative-label">
                                 <span className={`sentiment-dot ${n.sentiment_swing_10h && n.sentiment_swing_10h > 0.1 ? 'pos' : n.sentiment_swing_10h && n.sentiment_swing_10h < -0.1 ? 'neg' : 'neu'}`} data-tip={`10h sentiment swing: ${n.sentiment_swing_10h == null ? 'not available' : n.sentiment_swing_10h.toFixed(2)}`} />
                                 <span className={`trend-arrow ${n.trend}`}>{trendArrow}</span>
-                                <span className="narrative-label-text">
+                                <span className="narrative-label-text" data-tip={n.label}>
                                     {n.label}
                                     <span className="narrative-cluster-label">
                                         {domainLabel}
