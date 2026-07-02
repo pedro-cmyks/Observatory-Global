@@ -128,3 +128,30 @@
         inset 0 0 20px rgba(74, 222, 128, 0.05),
         0 0 1px rgba(74, 222, 128, 0.3);
 }
+
+/* #247 C2: canonical coverage badge — was defined (divergently) in both
+   NarrativeThreads.css and CountryBrief.css. One recipe, contextual margins
+   stay local. */
+.coverage-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    font-family: var(--font-mono, monospace);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    cursor: default;
+    vertical-align: middle;
+}
+.coverage-badge--thin {
+    background: rgba(251, 146, 60, 0.15);
+    color: #fb923c;
+    border: 1px solid rgba(251, 146, 60, 0.35);
+}
+.coverage-badge--limited {
+    background: rgba(250, 204, 21, 0.12);
+    color: #fbbf24;
+    border: 1px solid rgba(250, 204, 21, 0.3);
+}
