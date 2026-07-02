@@ -143,10 +143,10 @@
 }
 
 .entity-section-label {
-    font-size: 9px;
+    font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 1.2px;
-    color: var(--color-text-muted);
+    letter-spacing: 0.08em;
+    color: var(--color-text-secondary);
     margin-bottom: 10px;
 }
 

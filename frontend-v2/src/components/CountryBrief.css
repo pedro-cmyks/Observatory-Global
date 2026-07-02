@@ -643,9 +643,10 @@
     line-height: 1.2;
 }
 .cb-metric-label {
-    font-family: 'SF Mono', 'Fira Mono', monospace;
-    font-size: 9px;
-    color: var(--color-text-muted);
+    font-family: var(--font-mono, monospace);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--color-text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.1em;
     margin-top: 2px;

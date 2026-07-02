@@ -133,10 +133,10 @@
 }
 
 .theme-stat-label {
-    font-size: 9px;
+    font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: var(--color-text-muted);
+    letter-spacing: 0.08em;
+    color: var(--color-text-secondary);
     font-family: var(--font-mono);
     white-space: nowrap;
 }
@@ -262,10 +262,10 @@
 }
 
 .theme-section h3 {
-    font-size: 12px;
+    font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: #94a3b8;
+    letter-spacing: 0.08em;
+    color: var(--color-text-secondary);
     margin: 0 0 8px 0;
     font-weight: 600;
 }
