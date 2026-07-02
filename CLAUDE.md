@@ -34,6 +34,16 @@ retire MapLibre. (3) **#244 CLOSED** (`dc5d9812`): landing cards deep-link
 relevant=False + lifestyle-family token → 0.45; football/world-cup added);
 prod: hotel review AND 'Canadá Clasifica' out of top-10, real news leads.
 Next per plan: search P2 (Burkina case full) → design #247 batch A → P3.
+**PM4 (goal run):** EE = DEFAULT (Pedro sign-off, `44b7580e`); search P2 shipped
+(+129 country aliases — 'burkina faso' now resolves; pure-country query → its
+PRIMARY-country threads inline, prod-verified); **#247 batches A/B/D/E SHIPPED**
+(`159b6309`→`827ef3b9`): muted→0.55 AA floor + 139 grays tokenized; Brief got
+FRAUNCES + Docs re-skinned to Atlas identity (cyan→emerald x60, Fraunces
+wordmark); ghost fonts killed (--font-serif now defined); truncation data-tips;
+DESIGN.md prose de-contradicted + tailwind surface-* de-leaked (Landing 0.55
+opacity KEPT — Pedro approved Landing as-is). REMAINING #247: C1/C2/C3 (panel-
+header/badge/EntityPanel-palette consolidations — M-effort, specs in the audit).
+Search remaining: P2-focus-chip, P3 semantic-on-submit, P4 telemetry.
 
 **2026-07-01 (PM2 — L0→L3 DEEP REVIEW, read FIRST for product state; full doc
 `docs/specs/2026-07-01-l0-l3-deep-review.md`).** Pedro: fly re-auth (done,
