@@ -137,3 +137,10 @@ information read better. Redesign is always valid if legibility wins.
 - **Desktop strip regression** (found executing): ✅ FIXED `b0680068` — aspect cut 1.4 (panels world-fit, phones strip).
 - **B1/B2 (#250)**: ✅ FIXED `467f2022` — 72h decay floor; VE leads with the earthquake (92+22). Promotion sweep RETIRED (noise gate was right; see #250 close).
 - NEXT: C3 wiki multilingual filter, G2 compare broken, D9 insight editorial pass, C1 forum line in CountryBrief, E1/E2, F2 stream hover, G1, J entities audit, D10 reading order, A3/A4/A5.
+- **A2 round 2** (Pedro: "sigue sin funcionar en EE"): TWO more layers found+fixed
+  `6685a006`+ this commit — (1) country threads query had DEAD JOINs → 12s cold
+  → 500 → the panel silently kept the GLOBAL list under "Scoped to Venezuela"
+  (now 1.4s + a 2.5s retry); (2) visibleFlows ignored the FOCUSED fetch (used
+  the global top-100 → still zero arcs for small countries). Deep-link
+  ?country= now also flies. Arc DRAW verified to the data layer; pixel-confirm
+  needs a real browser (headless preview pauses the canvas rAF).
