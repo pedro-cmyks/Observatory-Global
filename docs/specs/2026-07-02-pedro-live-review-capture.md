@@ -92,3 +92,41 @@ Venezuela, qué temas se relacionan."
 - Browser-first verification for ALL of the above (screenshots + interaction).
 - M1 compute is available for whatever needs it.
 - Keep the existing queue (index rebuild tonight, #247 remainder, search P3/P4).
+
+## I. TIME MODEL RETHINK (Pedro, follow-up — possibly the biggest idea here)
+Verbatim intent: stop treating the time-range as a GLOBAL FILTER that CUTS data
+("filtrar de entrada mocha muchas cosas") — serve ALL available information by
+default, and make TIME legible INSIDE the information instead:
+- Heat map: keeps its 24h semantics (it's a "now" instrument).
+- Per-surface time ranges: the range selector becomes SPECIFIC to what you're
+  viewing, not a global guillotine.
+- Within surfaces: CHRONOLOGY must be discernible — when did each thing happen;
+  today everything reads as one undifferentiated "now".
+- The Venezuela failure is the motivating case: a critical event at hour 25
+  stops being "critical" because the map/window shows 24h — criticality should
+  DECAY, not cliff.
+- Direct tie to thread construction: news develop continuously; threads should
+  carry their own timeline as a first-class read, not be pre-filtered into a
+  window.
+This reframes #250's fixes (a) as the first step of a larger direction:
+time-as-dimension-inside-the-data, not time-as-entry-filter.
+
+## E2 (updated) — evolution graph: rethink the CONCEPT, not just fix the load
+Pedro: loves the idea — "qué se relaciona con qué y CÓMO se ha estado
+relacionando EN EL TIEMPO; cosas entran y salen, los contratos entre las partes
+cambian a medida que avanza el tiempo." If the current graph never loads,
+redesign it around that: a temporal relation view (entities/countries/threads
+entering/leaving a story's orbit over time). Connects directly to §I (time as
+a visible dimension) and to P7's evolution-graph-as-engine-truth framing.
+
+## J. Entities beyond persons — question + label audit
+Surfaces only ever say PERSONS ("mentioned persons", person pills). We type
+subjects as person/org/place/event since the 06-24 SUBJECTS reframe — but do
+ORG/entity types ever actually SURFACE anywhere? Audit: where do orgs show, and
+if nowhere, either surface them (key subjects already carries types) or rename
+labels honestly. "Mentioned persons" is important — but WHICH ENTITIES are
+involved matters equally (companies, agencies, armed groups).
+
+## K. Design license (standing)
+Panels may be REDESIGNED — structure, not just skin — wherever it makes the
+information read better. Redesign is always valid if legibility wins.
