@@ -87,8 +87,14 @@ async def get_flows(
                     focus_filter = "AND EXISTS (SELECT 1 FROM unnest(persons) p WHERE LOWER(p) LIKE LOWER($1))"
                     filter_value = f"%{focus_value}%"
                 elif focus_type == "country":
-                    focus_filter = "AND country_code = $1"
-                    filter_value = focus_value.upper()
+                    # A2 fix (2026-07-02): filtering SIGNALS to the focus country
+                    # removed every potential PARTNER vector — co-occurrence needs
+                    # the focus country's themes vs OTHER countries' themes, so a
+                    # country focus returned 0 flows BY CONSTRUCTION (Senegal,
+                    # Pedro's live review). Vectors stay global; pairs are
+                    # filtered to those involving the country after scoring.
+                    focus_filter = ""
+                    filter_value = None
                 elif focus_type == "source":
                     focus_filter = "AND LOWER(source_name) LIKE LOWER($1)"
                     filter_value = f"%{focus_value}%"
@@ -187,6 +193,10 @@ async def get_flows(
             
             # Sort by strength and return top flows
             flows.sort(key=lambda x: x['strength'], reverse=True)
+
+            if focus_type == "country" and focus_value:
+                fc = focus_value.upper()
+                flows = [f for f in flows if fc in (f["sourceCountry"], f["targetCountry"])]
 
             result = {"flows": flows[:100], "total": len(flows)}
             if hasattr(app.state, "redis") and app.state.redis:
