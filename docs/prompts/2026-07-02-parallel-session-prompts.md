@@ -37,7 +37,7 @@ Prod-verify con "crisis hídrica en Teherán". NO tocar: BriefNewspaper,
 ThemeDetail.
 ```
 
-## Search P4 — telemetría de búsqueda
+## Search P4 — telemetría de búsqueda (✅ TOMADO por el hilo principal, SHIPPED 2026-07-02)
 ```
 Implementa search P4 (docs/specs/2026-07-01-search-engine-plan.md, repo
 ObservatorioGlobal): eventos search_query / search_result_click (segmento,
