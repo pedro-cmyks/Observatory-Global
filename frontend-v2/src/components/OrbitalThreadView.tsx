@@ -66,6 +66,9 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
     const [hovered, setHovered] = useState<OrbitalBody | null>(null)
     const containerRef = useRef<HTMLDivElement | null>(null)
     const [size, setSize] = useState({ w: 560, h: 380 })
+    // Zoom/pan so you can get closer to the moons + planets (Pedro 2026-07-03).
+    const [view, setView] = useState({ k: 1, tx: 0, ty: 0 })
+    const panRef = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null)
 
     // Callback ref, not mount-effect: the canvas div is absent during the
     // loading/empty branches, so a mount-only observer never attaches and the
@@ -214,7 +217,33 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
 
     return (
         <section className="orbital-section">
-            <div className="orbital-canvas" ref={attachCanvas}>
+            <div
+                className="orbital-canvas"
+                ref={attachCanvas}
+                onWheel={e => {
+                    e.preventDefault()
+                    const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15
+                    const rect = containerRef.current?.getBoundingClientRect()
+                    const mx = e.clientX - (rect?.left ?? 0)
+                    const my = e.clientY - (rect?.top ?? 0)
+                    setView(v => {
+                        const k = Math.min(6, Math.max(1, v.k * factor))
+                        return { k, tx: mx - (mx - v.tx) * (k / v.k), ty: my - (my - v.ty) * (k / v.k) }
+                    })
+                }}
+                onPointerDown={e => { panRef.current = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty } }}
+                onPointerMove={e => {
+                    const p = panRef.current
+                    if (!p) return
+                    setView(v => ({ ...v, tx: p.tx + (e.clientX - p.x), ty: p.ty + (e.clientY - p.y) }))
+                }}
+                onPointerUp={() => { panRef.current = null }}
+                onPointerLeave={() => { panRef.current = null }}
+                style={{ cursor: view.k > 1 ? 'grab' : 'default' }}
+            >
+                {view.k > 1 && (
+                    <button className="orbital-reset" onClick={() => setView({ k: 1, tx: 0, ty: 0 })} data-tip="Reset zoom">⌖</button>
+                )}
                 <svg width={width} height={height} role="img" aria-label={`Orbital view of ${themeLabel}`}>
                     <defs>
                         {(Object.entries(TYPE_COLORS) as Array<[OrbitalBody['type'], string]>).map(([type, color]) => (
@@ -231,6 +260,7 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                         </radialGradient>
                     </defs>
 
+                    <g transform={`translate(${view.tx} ${view.ty}) scale(${view.k})`}>
                     {/* starfield — deterministic, decorative only */}
                     {Array.from({ length: 70 }, (_, i) => {
                         const h = (i * 2654435761) % 100_000
@@ -355,6 +385,7 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                                 {payload.center.category}{payload.center.crisis_relevant ? ' · crisis' : ''}
                             </text>
                         )}
+                    </g>
                     </g>
                 </svg>
 

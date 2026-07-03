@@ -80,7 +80,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
     const draggingRef = useRef(false) // true during any active drag — spin must not resume mid-drag
     // Incremental drag: store the LAST pointer pos + mode; each move composes
     // a small rotation (trackball) or pans. lastAngle tracks two-finger twist.
-    const dragRef = useRef<{ lastX: number; lastY: number; mode: 'orbit' | 'roll' | 'pan'; tx: number; ty: number } | null>(null)
+    const dragRef = useRef<{ lastX: number; lastY: number; downX: number; downY: number; moved: boolean; mode: 'orbit' | 'roll' | 'pan'; tx: number; ty: number } | null>(null)
     // Multi-touch: track active pointers for two-finger pan + pinch-zoom.
     const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map())
     const pinchRef = useRef<{ dist: number; cx: number; cy: number; tx: number; ty: number; k: number; angle: number } | null>(null)
@@ -219,6 +219,21 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
         () => [...nodes].sort((a, b) => (projected.get(b.id)?.depth ?? 0) - (projected.get(a.id)?.depth ?? 0)),
         [nodes, projected],
     )
+
+    // Hit-test a click at canvas-local (lx,ly) → the nearest visible body whose
+    // rendered disk covers the point (nearest depth wins on overlap).
+    const hitTestBody = (lx: number, ly: number): string | null => {
+        let best: { id: string; depth: number } | null = null
+        for (const n of nodes) {
+            const p = projected.get(n.id)
+            if (!p) continue
+            const r = universeRadius(n.n) * Math.min(1.6, Math.max(0.8, view.k)) * depthScale(p.depth)
+            if (Math.hypot(lx - p.sx, ly - p.sy) <= r + 6) {
+                if (!best || p.depth > best.depth) best = { id: n.id, depth: p.depth }
+            }
+        }
+        return best?.id ?? null
+    }
 
     // Inverse-focus lens (the GRAVITY WELL): a focused country/person lights
     // its stories; the rest dims. A ghost "sun" sits at the barycenter of the
@@ -380,16 +395,9 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                         ✋ MOVE
                     </button>
                     <button
-                        className={`universe-filter ${navMode === 'roll' ? 'active' : ''}`}
-                        onClick={() => setNavMode('roll')}
-                        data-tip="Drag horizontally to ROLL (spin the field around the view axis). Also: alt-drag, or two-finger twist on touch"
-                    >
-                        ↻ ROLL
-                    </button>
-                    <button
                         className="universe-filter"
                         onClick={() => { setRot(IDENTITY_ROT); setView({ k: 1, tx: 0, ty: 0 }) }}
-                        data-tip="Reset the camera"
+                        data-tip="Reset the camera. (Roll still available: alt-drag or two-finger twist)"
                     >
                         ⌖
                     </button>
@@ -437,7 +445,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                             (navMode === 'pan' || e.shiftKey || e.button === 2 || e.button === 1) ? 'pan'
                             : (navMode === 'roll' || e.altKey || e.ctrlKey || e.metaKey) ? 'roll'
                             : 'orbit'
-                        dragRef.current = { lastX: e.clientX, lastY: e.clientY, mode, tx: view.tx, ty: view.ty }
+                        dragRef.current = { lastX: e.clientX, lastY: e.clientY, downX: e.clientX, downY: e.clientY, moved: false, mode, tx: view.tx, ty: view.ty }
                     }
                 }}
                 onPointerMove={e => {
@@ -466,6 +474,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                     const dx = e.clientX - d.lastX
                     const dy = e.clientY - d.lastY
                     d.lastX = e.clientX; d.lastY = e.clientY
+                    if (Math.hypot(e.clientX - d.downX, e.clientY - d.downY) > 5) d.moved = true
                     if (d.mode === 'pan') {
                         setView(v => ({ ...v, tx: v.tx + dx, ty: v.ty + dy }))
                     } else if (d.mode === 'roll') {
@@ -477,6 +486,18 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                     }
                 }}
                 onPointerUp={e => {
+                    // A tap that didn't drag = a CLICK → open the body under the
+                    // pointer. Pointer-capture eats the SVG <g> onClick, so we
+                    // hit-test here (works for mouse AND touch). Fixes "click
+                    // does nothing" (Pedro 2026-07-03 — free-nav regression).
+                    const d = dragRef.current
+                    if (d && !d.moved && pointersRef.current.size === 1) {
+                        const rect = containerRef.current?.getBoundingClientRect()
+                        const lx = e.clientX - (rect?.left ?? 0)
+                        const ly = e.clientY - (rect?.top ?? 0)
+                        const hit = hitTestBody(lx, ly)
+                        if (hit) onThemeSelect(hit)
+                    }
                     pointersRef.current.delete(e.pointerId)
                     if (pointersRef.current.size < 2) pinchRef.current = null
                     if (pointersRef.current.size === 0) { dragRef.current = null; draggingRef.current = false }
@@ -595,7 +616,6 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                                 opacity={(dimmed && !isActive && !lit ? 0.08 : Math.max(alpha, isActive || lit ? 0.95 : 0)) * depthAlpha(p.depth)}
                                                 onMouseEnter={() => { lastInteractionRef.current = performance.now(); setHoveredId(n.id) }}
                                 onMouseLeave={() => setHoveredId(h => (h === n.id ? null : h))}
-                                onClick={() => onThemeSelect(n.id)}
                             >
                                 {heatingIds.has(n.id) && !dimmed && (
                                     <circle
