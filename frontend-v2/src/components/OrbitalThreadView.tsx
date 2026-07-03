@@ -363,8 +363,14 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                                 strokeWidth={hovered?.id === p.body.id ? 1.4 : (p.body.tone != null && Math.abs(p.body.tone) > 1.0 ? 1.5 : 0.7)}
                                 strokeDasharray={p.comet ? '3 2.2' : undefined}
                             />
-                            {(labelIds.has(p.body.id) || hovered?.id === p.body.id) && (
-                                <text x={p.x} y={p.y + bodyRadius(p.body.n) + 12} className="orbital-body-label">
+                            {/* zoomed in there's room — label everything so you
+                                can read the moon/planet names (Pedro 2026-07-03) */}
+                            {(labelIds.has(p.body.id) || hovered?.id === p.body.id || view.k >= 1.6) && (
+                                <text
+                                    x={p.x} y={p.y + bodyRadius(p.body.n) + 12}
+                                    className="orbital-body-label"
+                                    style={{ fontSize: `${9.5 / view.k}px` }}
+                                >
                                     {bodyLabel(p.body)}
                                 </text>
                             )}

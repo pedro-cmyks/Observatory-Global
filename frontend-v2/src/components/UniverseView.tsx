@@ -518,7 +518,11 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                         const lx = e.clientX - (rect?.left ?? 0)
                         const ly = e.clientY - (rect?.top ?? 0)
                         const hit = hitTestBody(lx, ly)
-                        if (hit) onThemeSelect(hit)
+                        // Clicking the ALREADY-open thread re-enters its orbit
+                        // (onThemeSelect no-ops when the theme is unchanged, so
+                        // the same node felt "dead" — Pedro 2026-07-03).
+                        if (hit && hit === activeTheme) setOrbitalVisible(true)
+                        else if (hit) onThemeSelect(hit)
                     }
                     pointersRef.current.delete(e.pointerId)
                     if (pointersRef.current.size < 2) pinchRef.current = null
