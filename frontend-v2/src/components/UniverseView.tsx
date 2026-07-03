@@ -196,15 +196,23 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
         [allNodes],
     )
 
-    // Shared projection: free two-axis rotation about the mass center, then
-    // screen-map. Used by every layer so nodes/edges/labels/trails agree.
+    // Shared projection: free two-axis rotation about the mass center, then a
+    // PERSPECTIVE divide using the real depth (Pedro 2026-07-03 "como en el
+    // espacio": zoom in and your planet grows while the rest recedes toward the
+    // distance). Perspective strengthens with zoom; at k=1 it's orthographic
+    // (the honest map). `scale` = the per-body size/spread factor (near > 1,
+    // far < 1). Positions stay a labeled approximation — this is a camera.
+    const perspSpread = Math.min(1.6, Math.max(0, (view.k - 1) * 0.8))
     const project3 = (x: number, y: number, z: number | undefined) => {
         const p = applyRot(rot, x, y, z, massX, massY, massZ)
-        return { sx: px(p.px), sy: py(p.py), depth: p.depth }
+        const scale = 1 / (1 + (p.depth - 0.5) * 2.4 * perspSpread)
+        const pxp = 0.5 + (p.px - 0.5) * scale
+        const pyp = 0.5 + (p.py - 0.5) * scale
+        return { sx: px(pxp), sy: py(pyp), depth: p.depth, scale }
     }
 
     const projected = useMemo(() => {
-        const out = new Map<string, { sx: number; sy: number; depth: number }>()
+        const out = new Map<string, { sx: number; sy: number; depth: number; scale: number }>()
         for (const n of nodes) {
             // trajectories (spec 7.2): the position AT the scrubbed moment,
             // interpolated along the topic's real snapshot track
@@ -227,7 +235,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
         for (const n of nodes) {
             const p = projected.get(n.id)
             if (!p) continue
-            const r = universeRadius(n.n) * Math.min(1.6, Math.max(0.8, view.k)) * depthScale(p.depth)
+            const r = universeRadius(n.n) * Math.min(3.5, Math.max(0.8, view.k)) * depthScale(p.depth) * (p.scale ?? 1)
             if (Math.hypot(lx - p.sx, ly - p.sy) <= r + 6) {
                 if (!best || p.depth > best.depth) best = { id: n.id, depth: p.depth }
             }
@@ -627,7 +635,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                         const dimmed = (neighborIds !== null && !neighborIds.has(n.id)) || (litActive && !lit)
                         const orphan = isOrphan(n)
                         const isActive = n.id === activeTheme
-                        const r = universeRadius(n.n) * Math.min(1.6, Math.max(0.8, view.k)) * depthScale(p.depth)
+                        const r = universeRadius(n.n) * Math.min(3.5, Math.max(0.8, view.k)) * depthScale(p.depth) * (p.scale ?? 1)
                         return (
                             <g
                                 key={n.id}
