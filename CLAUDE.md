@@ -75,6 +75,22 @@ PENDIENTES de la review: universe trajectories (posiciones moviéndose con
 el scrub — emergent_clusters per-snapshot centroids), pseudo-3D tilt
 orbital, discussion-attach noise (Mbappé/LinkedIn en dt-981, semantic
 0.90 attach quality → #248 class). NEXT igual + esos.
+**2026-07-03 (PM — INTERACTION FIXES + movement covers whole population, `1387e288`).**
+(1) Pedro live review: CLICK on a universe body DID NOTHING (free-nav regression —
+setPointerCapture ate the <g> onClick) → non-drag tap hit-tests the body (mouse+
+touch) → opens its thread. ROLL mode DROPPED (redundant w/ free trackball orbit;
+roll still on alt-drag/twist). Orbital thread view now ZOOMS+PANS (wheel/drag/reset)
+to get closer to moons/planets. (2) Movement unification step: `compute_topic_movement`
+now runs the Kalman over ALL topic_ids in topic_members (unified membership) → 290
+dyn + 59 atlas = 349; the shared field spans the WHOLE thread population. NOT flipped:
+threads-panel ranking still uses inline changed_10h — reading topic_movement there
+changes front-page ORDERING → gated on A/B + Pedro ok. (3) Answered the threads-serving
+Q: unified score 0.45·vol(log)+0.35·movement+0.20·coherence, no hierarchy; "generic
+names" = atlas CATEGORIES winning on volume (R3 tension + #204 label quality).
+NEXT: backtest (does Kalman velocity/surprise LEAD volume? — likely underpowered on
+the thin corpus, honest finding either way); threads read topic_movement (gated);
+substrate #2.
+
 **2026-07-03 (PM — KALMAN #219 MOVEMENT FIELD POPULATED, `3befea33`, read FIRST).**
 Pedro's call executed: Kalman = the movement DESTINATION (smoothed velocity/
 surprise over the SAME signals_v2 volume lineage, NOT a competitor to
