@@ -117,3 +117,29 @@ describe('visual encodings', () => {
     expect(edgeOpacity(0.9)).toBeGreaterThanOrEqual(0.05)
   })
 })
+
+describe('trajectories — positions move along the REAL track', () => {
+  it('interpolates between snapshots; clamps before; eases to now after', async () => {
+    const { positionAt } = await import('./universeLayout')
+    const b = node({
+      x: 0.9, y: 0.9, z: 0.9, // current position
+      track: [
+        { t: '2026-06-20T00:00:00Z', x: 0.1, y: 0.1, z: 0.1 },
+        { t: '2026-06-22T00:00:00Z', x: 0.3, y: 0.1, z: 0.1 },
+      ],
+    })
+    const before = positionAt(b, Date.parse('2026-06-19T00:00:00Z'))
+    expect(before.x).toBe(0.1)
+    const mid = positionAt(b, Date.parse('2026-06-21T00:00:00Z'))
+    expect(mid.x).toBeCloseTo(0.2, 6) // halfway between snapshots
+    const nowish = positionAt(b, Date.now())
+    expect(nowish.x).toBeCloseTo(0.9, 6) // at NOW = current centroid
+  })
+
+  it('no track → static current position', async () => {
+    const { positionAt } = await import('./universeLayout')
+    const b = node({ x: 0.4, y: 0.6, z: 0.5, track: [] })
+    const p = positionAt(b, Date.parse('2026-06-21T00:00:00Z'))
+    expect(p).toEqual({ x: 0.4, y: 0.6, z: 0.5 })
+  })
+})

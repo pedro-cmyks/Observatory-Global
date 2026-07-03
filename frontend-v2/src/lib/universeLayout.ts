@@ -22,6 +22,16 @@ export interface UniverseNode {
   first_seen: string | null
   last_seen: string | null
   timeline: Array<{ day: string; n: number }>
+  /** Historical positions: per-snapshot cluster centroids projected into the
+      CURRENT layout frame — the topic's real path through the field. */
+  track?: TrackPoint[]
+}
+
+export interface TrackPoint {
+  t: string
+  x: number
+  y: number
+  z?: number
 }
 
 export interface UniverseEdge {
@@ -144,4 +154,41 @@ export const ORPHAN_NN_SIM = 0.893
 
 export function isOrphan(node: UniverseNode): boolean {
   return node.nn_sim !== undefined && node.nn_sim < ORPHAN_NN_SIM
+}
+
+/**
+ * Position of a node at scrub time t: linear interpolation along its REAL
+ * historical track (spec §7.2 trajectories — measured drift, no fabricated
+ * motion). Before the first snapshot → first point; at/after the last →
+ * the node's current position (the "now" centroid). No track → static.
+ */
+export function positionAt(node: UniverseNode, t: number): { x: number; y: number; z: number } {
+  const nowPos = { x: node.x, y: node.y, z: node.z ?? 0.5 }
+  const track = node.track
+  if (!track || track.length === 0) return nowPos
+  const times = track.map(p => Date.parse(p.t))
+  if (t <= times[0]) return { x: track[0].x, y: track[0].y, z: track[0].z ?? 0.5 }
+  if (t >= times[times.length - 1]) {
+    // between the last snapshot and NOW, ease toward the current centroid
+    const last = track[track.length - 1]
+    const lastT = times[times.length - 1]
+    const nowT = Date.now()
+    if (nowT <= lastT) return nowPos
+    const f = Math.min(1, (t - lastT) / (nowT - lastT))
+    return {
+      x: last.x + (nowPos.x - last.x) * f,
+      y: last.y + (nowPos.y - last.y) * f,
+      z: (last.z ?? 0.5) + (nowPos.z - (last.z ?? 0.5)) * f,
+    }
+  }
+  let i = 1
+  while (times[i] < t) i++
+  const a = track[i - 1]
+  const b = track[i]
+  const f = (t - times[i - 1]) / (times[i] - times[i - 1])
+  return {
+    x: a.x + (b.x - a.x) * f,
+    y: a.y + (b.y - a.y) * f,
+    z: (a.z ?? 0.5) + ((b.z ?? 0.5) - (a.z ?? 0.5)) * f,
+  }
 }

@@ -7,6 +7,7 @@ import {
     depthScale,
     edgeOpacity,
     isOrphan,
+    positionAt,
     universeAlpha,
     universeRadius,
     yawProject,
@@ -154,12 +155,15 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
     const projected = useMemo(() => {
         const out = new Map<string, { sx: number; sy: number; depth: number }>()
         for (const n of nodes) {
-            const p = yawProject(n.x, n.z, yaw, massX, massZ)
-            out.set(n.id, { sx: px(p.px), sy: py(n.y - massY + 0.5), depth: p.depth })
+            // trajectories (spec 7.2): the position AT the scrubbed moment,
+            // interpolated along the topic's real snapshot track
+            const pos = positionAt(n, scrubT)
+            const p = yawProject(pos.x, pos.z, yaw, massX, massZ)
+            out.set(n.id, { sx: px(p.px), sy: py(pos.y - massY + 0.5), depth: p.depth })
         }
         return out
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [nodes, yaw, view, size, massX, massZ, massY])
+    }, [nodes, yaw, view, size, massX, massZ, massY, scrubT])
 
     const depthOrdered = useMemo(
         () => [...nodes].sort((a, b) => (projected.get(b.id)?.depth ?? 0) - (projected.get(a.id)?.depth ?? 0)),
@@ -319,6 +323,28 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                             </text>
                         )
                     })}
+
+                    {/* hovered node's REAL path through the field */}
+                    {hoveredId && (() => {
+                        const n = nodeById.get(hoveredId)
+                        if (!n?.track || n.track.length < 2) return null
+                        const pts = [...n.track.map(tp => ({ x: tp.x, y: tp.y, z: tp.z })), { x: n.x, y: n.y, z: n.z }]
+                        const screen = pts.map(pt => {
+                            const p = yawProject(pt.x, pt.z, yaw, massX, massZ)
+                            return `${px(p.px)},${py(pt.y - massY + 0.5)}`
+                        })
+                        return (
+                            <polyline
+                                points={screen.join(' ')}
+                                fill="none"
+                                stroke={categoryColor(n.category)}
+                                strokeOpacity={0.45}
+                                strokeWidth={1.2}
+                                strokeDasharray="2 3"
+                                pointerEvents="none"
+                            />
+                        )
+                    })()}
 
                     {/* semantic edges (full-space truth) */}
                     {edges.map(e => {

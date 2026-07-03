@@ -50,8 +50,9 @@ def _project_universe(vectors, categories):
 
     M = np.asarray(vectors, dtype=np.float32)
     M = M / np.linalg.norm(M, axis=1, keepdims=True)
-    centered = M - M.mean(axis=0)
-    U, S, _ = np.linalg.svd(centered, full_matrices=False)
+    mean = M.mean(axis=0)
+    centered = M - mean
+    U, S, Vt = np.linalg.svd(centered, full_matrices=False)
     xyz = U[:, :3] * S[:3]
 
     anchors: dict = {}
@@ -69,7 +70,27 @@ def _project_universe(vectors, categories):
     anchor_positions = {
         cat: ((a - lo) / span).tolist() for cat, a in anchors.items()
     }
-    return positions, anchor_positions, M
+    # Basis so HISTORICAL centroids project into the SAME frame (trajectories):
+    # normalize → subtract mean → Vt3 → blend to the topic's anchor → lo/span.
+    basis = {"mean": mean, "vt3": Vt[:3], "anchors_xyz": anchors, "lo": lo, "span": span}
+    return positions, anchor_positions, M, basis
+
+
+def _project_history(vector, category, basis):
+    """Project one historical centroid into the current layout frame (pure)."""
+    import numpy as np
+
+    v = np.asarray(vector, dtype=np.float32)
+    norm = np.linalg.norm(v)
+    if norm < 1e-9:
+        return None
+    v = v / norm
+    xyz = (v - basis["mean"]) @ basis["vt3"].T
+    anchor = basis["anchors_xyz"].get(category)
+    if anchor is not None:
+        xyz = (1 - CATEGORY_PULL) * xyz + CATEGORY_PULL * anchor
+    out = (xyz - basis["lo"]) / basis["span"]
+    return [round(float(out[0]), 4), round(float(out[1]), 4), round(float(out[2]), 4)]
 
 
 def _nearest_edges(M, ids, k: int = NEIGHBORS_PER_NODE):
@@ -128,12 +149,26 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
                   AND assigned_at > NOW() - INTERVAL '{int(days)} days'
                 GROUP BY 1, 2
             """)
+
+            # Trajectories: per-snapshot cluster centroids give each topic a
+            # REAL historical path through the field (spec §7.2 "who moves and
+            # how" — measured drift, no fabricated motion).
+            history = await conn.fetch(f"""
+                SELECT dtm.dynamic_topic_id, ec.snapshot_at, ec.centroid_vec
+                FROM dynamic_topic_members dtm
+                JOIN emergent_clusters ec ON ec.id = dtm.emergent_cluster_id
+                JOIN dynamic_topics dt ON dt.id = dtm.dynamic_topic_id
+                WHERE dt.state = 'active' AND NOT dt.is_umbrella
+                  AND ec.snapshot_at > NOW() - INTERVAL '{int(days)} days'
+                  AND ec.centroid_vec IS NOT NULL
+                ORDER BY dtm.dynamic_topic_id, ec.snapshot_at
+            """)
     except Exception as exc:
         logger.error("universe query failed: %s", exc)
         return {**empty, "reason": "error"}
 
     categories = [r["category"] or "Uncategorized" for r in rows]
-    positions, anchors, M = _project_universe(
+    positions, anchors, M, basis = _project_universe(
         [list(r["centroid_vec"]) for r in rows], categories,
     )
     ids = [f"dynamic-topic-{r['id']}" for r in rows]
@@ -146,6 +181,30 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
         )
     for tl in timeline_by_topic.values():
         tl.sort(key=lambda d: d["day"])
+
+    # Build tracks: mean the centroids per (topic, snapshot), project into
+    # the current frame, downsample to ≤16 points per topic.
+    category_by_topic = {int(r["id"]): categories[i] for i, r in enumerate(rows)}
+    snapshots_by_topic: dict = {}
+    for h in history:
+        tid = int(h["dynamic_topic_id"])
+        if tid not in category_by_topic:
+            continue
+        snapshots_by_topic.setdefault(tid, {}).setdefault(h["snapshot_at"], []).append(h["centroid_vec"])
+    track_by_topic: dict = {}
+    for tid, by_snapshot in snapshots_by_topic.items():
+        cat = category_by_topic[tid]
+        points = []
+        for snap_at in sorted(by_snapshot):
+            vecs = by_snapshot[snap_at]
+            mean_vec = [sum(col) / len(col) for col in zip(*vecs)] if len(vecs) > 1 else list(vecs[0])
+            pos = _project_history(mean_vec, cat, basis)
+            if pos:
+                points.append({"t": snap_at.isoformat(), "x": pos[0], "y": pos[1], "z": pos[2]})
+        if len(points) > 16:
+            step = (len(points) - 1) / 15
+            points = [points[round(i * step)] for i in range(16)]
+        track_by_topic[tid] = points
 
     nodes = [
         {
@@ -162,6 +221,7 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
             "first_seen": r["first_seen"].isoformat() if r["first_seen"] else None,
             "last_seen": r["last_seen"].isoformat() if r["last_seen"] else None,
             "timeline": timeline_by_topic.get(ids[i], []),
+            "track": track_by_topic.get(int(r["id"]), []),
         }
         for i, r in enumerate(rows)
     ]
