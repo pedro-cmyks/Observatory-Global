@@ -101,6 +101,14 @@ moved) and shows which stories are GAINING gravity now. **Two approaches
 weighed:** (A) per-body velocity glyph vs (B) convergence/merge detector.
 Chose A — direct, honest, every body carries a measured signal; B (pairs
 approaching → merge forecast) is rarer + harder to validate, parked.
+- **SHIPPED: #219 Kalman shared field (`3befea33`).** `topic_movement`
+  (empty until now) is populated by `compute_topic_movement.py` — the pilot's
+  tiny Kalman over each topic's 3h-bucketed signals_v2 volume (7d) →
+  smoothed velocity/surprise/trend, movement-kalman-v1, wired into the M1
+  embed cron. The universe reads `topic_movement.velocity` (tanh) + trend,
+  relative changed_10h as fallback. One movement field, every surface reads it
+  (the topic_members-unification principle applied to MOVEMENT). Threads-panel
+  adoption + the leading-indicator backtest are the follow-ups.
 - **Metric = relative `changed_10h`** (REVISED 2026-07-03 after Pedro's
   consistency challenge, `c136e842`). The first cut used a snapshot n_signals
   proxy — WRONG: a confounded (clustering-window-dependent), low-resolution

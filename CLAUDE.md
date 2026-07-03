@@ -75,6 +75,24 @@ PENDIENTES de la review: universe trajectories (posiciones moviéndose con
 el scrub — emergent_clusters per-snapshot centroids), pseudo-3D tilt
 orbital, discussion-attach noise (Mbappé/LinkedIn en dt-981, semantic
 0.90 attach quality → #248 class). NEXT igual + esos.
+**2026-07-03 (PM — KALMAN #219 MOVEMENT FIELD POPULATED, `3befea33`, read FIRST).**
+Pedro's call executed: Kalman = the movement DESTINATION (smoothed velocity/
+surprise over the SAME signals_v2 volume lineage, NOT a competitor to
+changed_10h). `topic_movement` existed but was EMPTY; now it's the ONE shared
+movement field. mig 066 (Kalman cols) + `compute_topic_movement.py` (runs the
+read-only pilot's tiny Kalman over each topic's 3h-bucketed signals_v2 volume/
+7d → smoothed_intensity/velocity/uncertainty/surprise/trend, upsert
+movement-kalman-v1). Wired into the M1 embed runner AFTER the topic_members ETL
+(fresh members→movement); synced to AtlasLocalWorker. Universe reads
+topic_movement.velocity (tanh) + trend, relative changed_10h fallback.
+Populated 101 topics (feed LIVE for the first time). Verified: universe
+velocity now differentiated + carries Kalman trend ("surging"), 8-halo rank.
+ARCH: movement defined ONCE → Kalman smooths → every surface reads it (same
+principle as topic_members unification, applied to MOVEMENT). PENDING: threads
+panel should ALSO read topic_movement (still computes its own changed_10h —
+same lineage so consistent, but not yet the shared field); the backtest (does
+surprise/velocity LEAD volume?) validates the predictive claim. 161 vitest.
+
 **2026-07-03 (PM — VELOCITY CONSISTENCY FIX, `c136e842`, read FIRST).**
 Pedro's recurring split-brain smell = CORRECT. The universe velocity had grown
 its OWN source (emergent_clusters snapshot n_signals) — a confounded proxy +
