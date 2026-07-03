@@ -1,0 +1,40 @@
+{
+  "verdict": "no_lead",
+  "params": {
+    "horizon_snaps": 3,
+    "n_boot": 1000,
+    "min_points": 200,
+    "min_history_snaps": 5,
+    "source": "emergent_clusters snapshot series"
+  },
+  "n_points": 786,
+  "n_topics": 36,
+  "forward_spearman": {
+    "velocity": {
+      "corr": -0.2236,
+      "ci95": [
+        -0.2909,
+        -0.1528
+      ]
+    },
+    "surprise": {
+      "corr": -0.0886,
+      "ci95": [
+        -0.1599,
+        -0.0157
+      ]
+    },
+    "changed10h": {
+      "corr": 0.0378,
+      "ci95": [
+        -0.0373,
+        0.107
+      ]
+    }
+  },
+  "velocity_minus_naive_diff_ci95": [
+    -0.336,
+    -0.1867
+  ]
+}
+
