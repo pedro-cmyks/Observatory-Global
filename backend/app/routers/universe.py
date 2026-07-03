@@ -76,6 +76,22 @@ def _project_universe(vectors, categories):
     return positions, anchor_positions, M, basis
 
 
+def _attention_velocity(series: list[int]) -> float:
+    """Normalized attention ACCELERATION from a topic's daily size series
+    (spec §7.6). >0 = the topic is gaining signals faster lately (heating);
+    <0 = cooling. Compares the recent third vs the prior third of the window,
+    normalized by the series scale so small and large topics are comparable.
+    Honest: this is MEASURED acceleration, not a prediction — the
+    'leading-indicator' claim is a separate backtest (docs §7.6)."""
+    if len(series) < 4:
+        return 0.0
+    k = max(1, len(series) // 3)
+    recent = sum(series[-k:]) / k
+    prior = sum(series[:k]) / k
+    scale = max(1.0, (recent + prior) / 2)
+    return round((recent - prior) / scale, 4)
+
+
 def _project_history(vector, category, basis):
     """Project one historical centroid into the current layout frame (pure)."""
     import numpy as np
@@ -140,21 +156,14 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
             if len(rows) < 3:
                 return {**empty, "reason": "not_enough_topics"}
 
-            activity = await conn.fetch(f"""
-                SELECT topic_id, date_trunc('day', assigned_at) AS day,
-                       count(*) AS n
-                FROM topic_members
-                WHERE topic_id LIKE 'dynamic-topic-%'
-                  AND role = 'evidence'
-                  AND assigned_at > NOW() - INTERVAL '{int(days)} days'
-                GROUP BY 1, 2
-            """)
-
-            # Trajectories: per-snapshot cluster centroids give each topic a
-            # REAL historical path through the field (spec §7.2 "who moves and
-            # how" — measured drift, no fabricated motion).
+            # Trajectories + growth: per-snapshot cluster centroids give each
+            # topic a REAL path through the field (spec §7.2), and ec.n_signals
+            # gives its SIZE over time — the honest growth curve (the assigned_at
+            # timeline collapsed to one bucket after an ETL re-stamp; snapshots
+            # are the durable source). One pull feeds track + timeline + velocity.
             history = await conn.fetch(f"""
-                SELECT dtm.dynamic_topic_id, ec.snapshot_at, ec.centroid_vec
+                SELECT dtm.dynamic_topic_id, ec.snapshot_at, ec.centroid_vec,
+                       ec.n_signals
                 FROM dynamic_topic_members dtm
                 JOIN emergent_clusters ec ON ec.id = dtm.emergent_cluster_id
                 JOIN dynamic_topics dt ON dt.id = dtm.dynamic_topic_id
@@ -209,26 +218,34 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
     ids = [f"dynamic-topic-{r['id']}" for r in rows]
     edges, nn_sims = _nearest_edges(M, ids)
 
-    timeline_by_topic: dict = {}
-    for a in activity:
-        timeline_by_topic.setdefault(a["topic_id"], []).append(
-            {"day": a["day"].date().isoformat(), "n": int(a["n"])}
-        )
-    for tl in timeline_by_topic.values():
-        tl.sort(key=lambda d: d["day"])
-
-    # Build tracks: mean the centroids per (topic, snapshot), project into
-    # the current frame, downsample to ≤16 points per topic.
-    category_by_topic = {int(r["id"]): categories[i] for i, r in enumerate(rows)}
+    # Per-topic daily size series from snapshots (durable growth curve) →
+    # timeline for the scrubber + attention velocity.
+    size_series: dict = {}  # tid -> {day: max n_signals that day}
     snapshots_by_topic: dict = {}
+    category_by_topic = {int(r["id"]): categories[i] for i, r in enumerate(rows)}
     for h in history:
         tid = int(h["dynamic_topic_id"])
         if tid not in category_by_topic:
             continue
         snapshots_by_topic.setdefault(tid, {}).setdefault(h["snapshot_at"], []).append(h["centroid_vec"])
+        day = h["snapshot_at"].date().isoformat()
+        n = int(h["n_signals"] or 0)
+        cur = size_series.setdefault(tid, {})
+        cur[day] = max(cur.get(day, 0), n)
+
+    timeline_by_topic: dict = {}
+    velocity_by_topic: dict = {}
+    for tid, by_day in size_series.items():
+        series = [by_day[d] for d in sorted(by_day)]
+        timeline_by_topic[f"dynamic-topic-{tid}"] = [
+            {"day": d, "n": by_day[d]} for d in sorted(by_day)
+        ]
+        velocity_by_topic[tid] = _attention_velocity(series)
     track_by_topic: dict = {}
     for tid, by_snapshot in snapshots_by_topic.items():
-        cat = category_by_topic[tid]
+        cat = category_by_topic.get(tid)
+        if cat is None:
+            continue
         points = []
         for snap_at in sorted(by_snapshot):
             vecs = by_snapshot[snap_at]
@@ -259,6 +276,7 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
             "track": track_by_topic.get(int(r["id"]), []),
             "countries": countries_by_topic.get(ids[i], []),
             "persons": persons_by_topic.get(ids[i], []),
+            "velocity": velocity_by_topic.get(int(r["id"]), 0.0),
         }
         for i, r in enumerate(rows)
     ]

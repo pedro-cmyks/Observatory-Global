@@ -29,6 +29,9 @@ export interface UniverseNode {
       inverse-focus lens: a focused entity lights the stories it appears in. */
   countries?: string[]
   persons?: string[]
+  /** Measured attention acceleration (spec §7.6): >0 heating, <0 cooling.
+      NOT a prediction — the leading-indicator claim is a separate backtest. */
+  velocity?: number
 }
 
 export interface TrackPoint {
@@ -278,4 +281,19 @@ export function entitySpread(litNodes: UniverseNode[]): {
   const categories = cats.size
   const shape = categories <= 2 ? 'concentrated' : categories >= 5 ? 'cross-cutting' : 'mixed'
   return { stories: litNodes.length, categories, shape }
+}
+
+/** A story is HEATING when its measured attention acceleration clears the
+    noise floor. Static cue (no animation — thermal discipline). */
+export const HEAT_FLOOR = 0.2
+
+export function isHeating(node: UniverseNode): boolean {
+  return (node.velocity ?? 0) >= HEAT_FLOOR
+}
+
+/** Warm-halo radius multiplier for a heating body, scaled by velocity. */
+export function heatHalo(velocity: number | undefined): number {
+  const v = velocity ?? 0
+  if (v < HEAT_FLOOR) return 0
+  return Math.min(3.2, 1.6 + v * 1.4)
 }

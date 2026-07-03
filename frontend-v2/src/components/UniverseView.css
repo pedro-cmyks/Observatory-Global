@@ -349,3 +349,34 @@
 .universe-footprint-shape--cross-cutting { color: #fbbf24; }
 .universe-footprint-shape--concentrated { color: #7dd3fc; }
 .universe-footprint-shape--mixed { color: #a78bfa; }
+
+/* Attention velocity — heating readout + hover cue */
+.universe-heating-readout {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px;
+  background: rgba(11, 14, 19, 0.9);
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  border-radius: 8px;
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.universe-heating-count {
+  color: #fb923c;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.universe-heating-top {
+  color: var(--color-text-muted, #94a3b8);
+  font-size: 9.5px;
+}
+
+.universe-hover-heat {
+  color: #fb923c !important;
+}

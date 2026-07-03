@@ -188,3 +188,15 @@ describe('inverse-focus lens', () => {
     expect(entitySpread([nodes[0]]).shape).toBe('concentrated') // 1 category
   })
 })
+
+describe('attention velocity — heating cue', () => {
+  it('heating clears the floor; halo scales with velocity; cooling = no halo', async () => {
+    const { isHeating, heatHalo, HEAT_FLOOR } = await import('./universeLayout')
+    expect(isHeating(node({ velocity: 0.5 }))).toBe(true)
+    expect(isHeating(node({ velocity: 0.05 }))).toBe(false)
+    expect(isHeating(node({ velocity: -0.8 }))).toBe(false)
+    expect(heatHalo(0.05)).toBe(0)                       // below floor → no halo
+    expect(heatHalo(0.6)).toBeGreaterThan(heatHalo(HEAT_FLOOR + 0.01))
+    expect(heatHalo(5)).toBeLessThanOrEqual(3.2)         // clamped
+  })
+})

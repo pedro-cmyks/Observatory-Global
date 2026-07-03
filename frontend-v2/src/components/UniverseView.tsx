@@ -7,6 +7,8 @@ import {
     depthScale,
     edgeOpacity,
     entitySpread,
+    heatHalo,
+    isHeating,
     isOrphan,
     litNodeIds,
     positionAt,
@@ -241,6 +243,11 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [focusKey])
     const litActive = litIds.size > 0
+    // Heating stories (measured attention acceleration) — the top mover named.
+    const heating = useMemo(
+        () => nodes.filter(isHeating).sort((a, b) => (b.velocity ?? 0) - (a.velocity ?? 0)),
+        [nodes],
+    )
     const litNodes = useMemo(() => nodes.filter(n => litIds.has(n.id)), [nodes, litIds])
     const spread = useMemo(() => (litActive ? entitySpread(litNodes) : null), [litActive, litNodes])
     const sun = useMemo(() => {
@@ -485,6 +492,13 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                 onDragStart={e => e.preventDefault()}
             >
                 <svg width={size.w} height={size.h} role="img" aria-label="Atlas story universe">
+                    <defs>
+                        <radialGradient id="universe-heat-halo" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stopColor="#fb923c" stopOpacity="0.55" />
+                            <stop offset="45%" stopColor="#f97316" stopOpacity="0.22" />
+                            <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
+                        </radialGradient>
+                    </defs>
                     {/* constellation labels (rotate with the cloud) */}
                     {!orphansOnly && payload.anchors.filter(a => a.count >= 4).map(a => {
                         const p = project3(a.x, a.y, a.z)
@@ -584,6 +598,14 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                                 onMouseLeave={() => setHoveredId(h => (h === n.id ? null : h))}
                                 onClick={() => onThemeSelect(n.id)}
                             >
+                                {isHeating(n) && !dimmed && (
+                                    <circle
+                                        cx={p.sx} cy={p.sy}
+                                        r={r * heatHalo(n.velocity)}
+                                        fill="url(#universe-heat-halo)"
+                                        pointerEvents="none"
+                                    />
+                                )}
                                 {isActive && (
                                     <circle
                                         cx={p.sx} cy={p.sy}
@@ -640,6 +662,14 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                             {hovered.last_seen ? new Date(hovered.last_seen).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
                         </em>
                         <em className="universe-hover-cta">click to open its story system</em>
+                        {isHeating(hovered) && <em className="universe-hover-heat">heating · accel {(hovered.velocity ?? 0).toFixed(2)}</em>}
+                    </div>
+                )}
+
+                {!litActive && heating.length > 0 && (
+                    <div className="universe-heating-readout" data-tip="Stories whose signal count is accelerating over the snapshot history — measured attention velocity, not a prediction">
+                        <span className="universe-heating-count">🔥 {heating.length} heating</span>
+                        <span className="universe-heating-top">{heating[0].label.length > 26 ? `${heating[0].label.slice(0, 24)}…` : heating[0].label}</span>
                     </div>
                 )}
             </div>
