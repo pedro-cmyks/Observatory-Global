@@ -76,22 +76,6 @@ def _project_universe(vectors, categories):
     return positions, anchor_positions, M, basis
 
 
-def _attention_velocity(series: list[int]) -> float:
-    """Normalized attention ACCELERATION from a topic's daily size series
-    (spec §7.6). >0 = the topic is gaining signals faster lately (heating);
-    <0 = cooling. Compares the recent third vs the prior third of the window,
-    normalized by the series scale so small and large topics are comparable.
-    Honest: this is MEASURED acceleration, not a prediction — the
-    'leading-indicator' claim is a separate backtest (docs §7.6)."""
-    if len(series) < 4:
-        return 0.0
-    k = max(1, len(series) // 3)
-    recent = sum(series[-k:]) / k
-    prior = sum(series[:k]) / k
-    scale = max(1.0, (recent + prior) / 2)
-    return round((recent - prior) / scale, 4)
-
-
 def _project_history(vector, category, basis):
     """Project one historical centroid into the current layout frame (pure)."""
     import numpy as np
@@ -186,6 +170,23 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
                 )
                 SELECT topic_id, country_code, persons FROM mem
             """)
+
+            # Attention velocity — the SAME movement lineage the rest of Atlas
+            # speaks (changed_10h from signals_v2 timestamps), NOT a snapshot
+            # proxy. One movement number everywhere (Pedro 2026-07-03: kill the
+            # split-brain). NET 10h delta vs the prior 10h, per dynamic topic.
+            movement_rows = await conn.fetch("""
+                SELECT tm.topic_id,
+                       COUNT(*) FILTER (WHERE s.timestamp >= NOW() - INTERVAL '10 hours')
+                         - COUNT(*) FILTER (
+                             WHERE s.timestamp < NOW() - INTERVAL '10 hours'
+                               AND s.timestamp >= NOW() - INTERVAL '20 hours'
+                           ) AS changed_10h,
+                       COUNT(*) FILTER (WHERE s.timestamp >= NOW() - INTERVAL '20 hours') AS recent_vol
+                FROM topic_members tm JOIN signals_v2 s ON s.id = tm.signal_id
+                WHERE tm.topic_id LIKE 'dynamic-topic-%' AND tm.role = 'evidence'
+                GROUP BY tm.topic_id
+            """)
     except Exception as exc:
         logger.error("universe query failed: %s", exc)
         return {**empty, "reason": "error"}
@@ -234,13 +235,24 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
         cur[day] = max(cur.get(day, 0), n)
 
     timeline_by_topic: dict = {}
-    velocity_by_topic: dict = {}
     for tid, by_day in size_series.items():
-        series = [by_day[d] for d in sorted(by_day)]
         timeline_by_topic[f"dynamic-topic-{tid}"] = [
             {"day": d, "n": by_day[d]} for d in sorted(by_day)
         ]
-        velocity_by_topic[tid] = _attention_velocity(series)
+
+    # Velocity = RELATIVE changed_10h (the shared movement signal, same as
+    # thread_ranking's movement term): net 10h delta over recent volume, so a
+    # syndication burst on a big topic can't masquerade as a surge. One number,
+    # consistent with the Narrative Threads "▲ Accelerating".
+    velocity_by_topic: dict = {}
+    for m in movement_rows:
+        tid_text = m["topic_id"]
+        if not tid_text.startswith("dynamic-topic-"):
+            continue
+        tid = int(tid_text[len("dynamic-topic-"):])
+        recent = int(m["recent_vol"] or 0)
+        ch = int(m["changed_10h"] or 0)
+        velocity_by_topic[tid] = round(ch / max(6, recent), 4) if recent else 0.0
     track_by_topic: dict = {}
     for tid, by_snapshot in snapshots_by_topic.items():
         cat = category_by_topic.get(tid)

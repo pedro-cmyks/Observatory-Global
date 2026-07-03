@@ -7,8 +7,8 @@ import {
     depthScale,
     edgeOpacity,
     entitySpread,
+    fastestRising,
     heatHalo,
-    isHeating,
     isOrphan,
     litNodeIds,
     positionAt,
@@ -243,11 +243,10 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [focusKey])
     const litActive = litIds.size > 0
-    // Heating stories (measured attention acceleration) — the top mover named.
-    const heating = useMemo(
-        () => nodes.filter(isHeating).sort((a, b) => (b.velocity ?? 0) - (a.velocity ?? 0)),
-        [nodes],
-    )
+    // Fastest-rising stories — relative changed_10h (the shared movement
+    // signal), RANK-based so a thin/fresh corpus can't saturate it.
+    const heating = useMemo(() => fastestRising(nodes), [nodes])
+    const heatingIds = useMemo(() => new Set(heating.map(n => n.id)), [heating])
     const litNodes = useMemo(() => nodes.filter(n => litIds.has(n.id)), [nodes, litIds])
     const spread = useMemo(() => (litActive ? entitySpread(litNodes) : null), [litActive, litNodes])
     const sun = useMemo(() => {
@@ -598,7 +597,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                                 onMouseLeave={() => setHoveredId(h => (h === n.id ? null : h))}
                                 onClick={() => onThemeSelect(n.id)}
                             >
-                                {isHeating(n) && !dimmed && (
+                                {heatingIds.has(n.id) && !dimmed && (
                                     <circle
                                         cx={p.sx} cy={p.sy}
                                         r={r * heatHalo(n.velocity)}
@@ -662,18 +661,18 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                             {hovered.last_seen ? new Date(hovered.last_seen).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
                         </em>
                         <em className="universe-hover-cta">click to open its story system</em>
-                        {isHeating(hovered) && <em className="universe-hover-heat">heating · accel {(hovered.velocity ?? 0).toFixed(2)}</em>}
+                        {heatingIds.has(hovered.id) && <em className="universe-hover-heat">rising · rel. Δ10h {(hovered.velocity ?? 0).toFixed(2)}</em>}
                     </div>
                 )}
 
                 {!litActive && heating.length > 0 && (
-                    <div className="universe-heating-readout" data-tip="Stories whose signal count is accelerating over the snapshot history — measured attention velocity, not a prediction">
+                    <div className="universe-heating-readout" data-tip="Fastest-rising stories now — relative net signal change over the last 10h vs the prior 10h (the same movement signal as the threads panel). Measured, not a prediction">
                         <span className="universe-heating-count">
                             <svg width="9" height="11" viewBox="0 0 9 11" aria-hidden="true" style={{ marginRight: 5, verticalAlign: '-1px' }}>
                                 {/* upward spark — rising attention, vector not emoji */}
                                 <path d="M4.5 0 L9 5.5 L6 5 L7 11 L4.5 7 L2 11 L3 5 L0 5.5 Z" fill="#fb923c" />
                             </svg>
-                            {heating.length} heating
+                            Fastest rising
                         </span>
                         <span className="universe-heating-top">{heating[0].label.length > 26 ? `${heating[0].label.slice(0, 24)}…` : heating[0].label}</span>
                     </div>

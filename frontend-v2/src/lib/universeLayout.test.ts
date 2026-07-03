@@ -189,14 +189,18 @@ describe('inverse-focus lens', () => {
   })
 })
 
-describe('attention velocity — heating cue', () => {
-  it('heating clears the floor; halo scales with velocity; cooling = no halo', async () => {
-    const { isHeating, heatHalo, HEAT_FLOOR } = await import('./universeLayout')
-    expect(isHeating(node({ velocity: 0.5 }))).toBe(true)
-    expect(isHeating(node({ velocity: 0.05 }))).toBe(false)
-    expect(isHeating(node({ velocity: -0.8 }))).toBe(false)
-    expect(heatHalo(0.05)).toBe(0)                       // below floor → no halo
-    expect(heatHalo(0.6)).toBeGreaterThan(heatHalo(HEAT_FLOOR + 0.01))
-    expect(heatHalo(5)).toBeLessThanOrEqual(3.2)         // clamped
+describe('attention velocity — rank-based rising (consistent movement source)', () => {
+  it('fastestRising = top movers above the floor; halo scales with velocity', async () => {
+    const { fastestRising, heatHalo, MOVING_FLOOR } = await import('./universeLayout')
+    const ns = [
+      node({ id: 'hot', velocity: 0.9 }),
+      node({ id: 'warm', velocity: 0.3 }),
+      node({ id: 'flat', velocity: 0.02 }),
+      node({ id: 'cool', velocity: -0.5 }),
+    ]
+    const rising = fastestRising(ns).map(n => n.id)
+    expect(rising).toEqual(['hot', 'warm'])   // ordered, floor excludes flat/cool
+    expect(heatHalo(0.9)).toBeGreaterThan(heatHalo(MOVING_FLOOR + 0.01))
+    expect(heatHalo(5)).toBeLessThanOrEqual(3.2)
   })
 })

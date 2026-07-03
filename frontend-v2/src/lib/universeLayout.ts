@@ -283,17 +283,23 @@ export function entitySpread(litNodes: UniverseNode[]): {
   return { stories: litNodes.length, categories, shape }
 }
 
-/** A story is HEATING when its measured attention acceleration clears the
-    noise floor. Static cue (no animation — thermal discipline). */
-export const HEAT_FLOOR = 0.2
+/** Movement = relative changed_10h (the SAME signal thread_ranking / the
+    Narrative Threads "▲ Accelerating" use — one number everywhere, not a
+    snapshot proxy). A thin/fresh corpus saturates the absolute value, so
+    "rising" is RANK-based (the top movers now), robust to corpus density. */
+export const MOVING_FLOOR = 0.12
+export const MAX_RISING = 8
 
-export function isHeating(node: UniverseNode): boolean {
-  return (node.velocity ?? 0) >= HEAT_FLOOR
+/** The fastest-rising stories right now, top-N by velocity above the floor. */
+export function fastestRising(nodes: UniverseNode[]): UniverseNode[] {
+  return nodes
+    .filter(n => (n.velocity ?? 0) > MOVING_FLOOR)
+    .sort((a, b) => (b.velocity ?? 0) - (a.velocity ?? 0))
+    .slice(0, MAX_RISING)
 }
 
-/** Warm-halo radius multiplier for a heating body, scaled by velocity. */
+/** Warm-halo radius multiplier scaled by velocity (for a rising body). */
 export function heatHalo(velocity: number | undefined): number {
   const v = velocity ?? 0
-  if (v < HEAT_FLOOR) return 0
   return Math.min(3.2, 1.6 + v * 1.4)
 }

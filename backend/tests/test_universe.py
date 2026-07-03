@@ -79,13 +79,3 @@ def test_history_projects_into_current_frame():
     assert abs(replayed[1] - float(positions[0][1])) < 0.02
     # zero vector -> honest None
     assert _project_history([0.0] * 768, "alpha", basis) is None
-
-
-def test_attention_velocity_heating_vs_cooling():
-    from app.routers.universe import _attention_velocity
-    # rising series → positive (heating), falling → negative (cooling)
-    assert _attention_velocity([10, 12, 20, 40, 60]) > 0.3
-    assert _attention_velocity([60, 40, 20, 12, 10]) < -0.3
-    # flat → ~0; too short → 0 (honest, no claim)
-    assert abs(_attention_velocity([20, 20, 20, 20])) < 0.05
-    assert _attention_velocity([5, 9]) == 0.0
