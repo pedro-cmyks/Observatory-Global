@@ -75,6 +75,18 @@ PENDIENTES de la review: universe trajectories (posiciones moviéndose con
 el scrub — emergent_clusters per-snapshot centroids), pseudo-3D tilt
 orbital, discussion-attach noise (Mbappé/LinkedIn en dt-981, semantic
 0.90 attach quality → #248 class). NEXT igual + esos.
+**2026-07-03 (PM — INVERSE-FOCUS GRAVITY WELL, `e108da9f`, read FIRST).**
+Focus país/persona en Atlas → ilumina SUS historias en el campo (la otra
+mitad de #234). Dos propuestas pesadas (propose/counter): dim pasivo (A) vs
+entity-as-gravity-well (B) — elegí B como OVERLAY honesto: sol fantasma en el
+baricentro + líneas de gravedad + readout de FOOTPRINT (N historias / M
+categorías, concentrado vs transversal) SIN distorsionar las posiciones
+semánticas. Backend: top countries+persons por nodo en el payload (cacheado).
+Frontend: litNodeIds+entitySpread (puro, vitest); cámara enmarca. Verificado
+en browser: country=US → 46 historias / 28 categorías / CROSS-CUTTING + 46
+líneas + sol. 160 vitest. Señal investigativa: transversal (figura dominante)
+vs concentrado (actor de una sola historia).
+
 **2026-07-03 (PM — FREE 3D ROLL, `c2f85fee`, read FIRST).** Pedro: "roll
 disponible 3D, para donde sea". Weighed TWO approaches per his instruction
 (judge + counter-propose + weigh, web-grounded arcball/gimbal-lock): Euler

@@ -95,6 +95,27 @@ system still opens via travel — their children are the field bodies.
   RINGED back in the field. Remaining directions: focused country/person →
   light their stories in the field.
 
+### 7.5 Inverse-focus lens — the GRAVITY WELL (Pedro 2026-07-03) — SHIPPED (`e108da9f`)
+The other direction of #234: a country/person focused ELSEWHERE in Atlas
+lights its stories IN the field. **Two approaches weighed (propose/counter):**
+- **A. Passive constellation dim:** dim all but the entity's stories. Cheap,
+  answers "which stories".
+- **B. Entity-as-gravity-well (chosen):** a ghost SUN at the barycenter of the
+  entity's stories + gravity lines to each + a FOOTPRINT readout — N stories
+  across M categories, CONCENTRATED (single-thread actor) vs CROSS-CUTTING
+  (spans the narrative space). B answers "which stories AND what shape does
+  this entity have in the narrative universe" — an investigative signal A
+  can't give (a politician across 8 categories = a dominant cross-cutting
+  figure; concentrated in 1 = a single-story actor).
+- **Judgment:** B is strictly richer and, as an OVERLAY (sun + lines, never a
+  position distortion), just as honest — the semantic positions stay true.
+  Chose B; kept A's dim as the base layer under it.
+Backend: per-node top countries+persons in the universe payload (cached 10m,
+~4s cold). Frontend: `litNodeIds` + `entitySpread` (pure, vitest); dim non-lit
+to ghost, label lit, sun+gravity-lines, footprint readout, camera frames the
+lit constellation. **Browser-verified:** country=US → 46 stories / 28
+categories / CROSS-CUTTING, 46 gravity lines + sun, footprint badge live.
+
 ### 7.4 Free 3D rotation with ROLL (Pedro 2026-07-03) — SHIPPED (`c2f85fee`)
 Pedro: "roll disponible 3D... moverme para donde sea, sin restringir a un eje".
 **Two approaches weighed (his instruction: judge, counter-propose, weigh) —
