@@ -75,6 +75,21 @@ PENDIENTES de la review: universe trajectories (posiciones moviéndose con
 el scrub — emergent_clusters per-snapshot centroids), pseudo-3D tilt
 orbital, discussion-attach noise (Mbappé/LinkedIn en dt-981, semantic
 0.90 attach quality → #248 class). NEXT igual + esos.
+**2026-07-03 (PM — PERSPECTIVE ZOOM + open-thread highlight, `24757126`).**
+(1) Zoom is now PERSPECTIVE (Pedro "como en el espacio": zoom in → your planet
+grows, the rest recedes), not uniform scale. Perspective divide on the real
+PCA z (exaggerated 2.4× — z is low-variance), strengthens with zoom, k=1 stays
+orthographic; focused-body radius unclamped to 3.5×. Verified radii spread
+5.4→9.7, focused 31→65px. Weighed perspective-camera (chosen, uses real z) vs
+fisheye (warps positions, rejected). (2) Back-to-UNIVERSE frames + highlights
+the open thread (green glow + "◆ open story" label, camera k=1.5) → see WHERE
+it sits. (3) Click regression fixed (hit-test on tap), ROLL button dropped,
+orbital zoom stronger. Consistency Q answered: same brain — movement unified
+to topic_movement (whole population); highlight/camera/perspective are pure
+frontend VIEW, zero new compute (projection is a view of shared engine facts,
+not a parallel truth). NEXT unchanged: backtest, threads-read-topic_movement
+(gated), substrate #2.
+
 **2026-07-03 (PM — INTERACTION FIXES + movement covers whole population, `1387e288`).**
 (1) Pedro live review: CLICK on a universe body DID NOTHING (free-nav regression —
 setPointerCapture ate the <g> onClick) → non-drag tap hit-tests the body (mouse+
