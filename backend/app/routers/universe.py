@@ -171,10 +171,18 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
                 SELECT topic_id, country_code, persons FROM mem
             """)
 
-            # Attention velocity — the SAME movement lineage the rest of Atlas
-            # speaks (changed_10h from signals_v2 timestamps), NOT a snapshot
-            # proxy. One movement number everywhere (Pedro 2026-07-03: kill the
-            # split-brain). NET 10h delta vs the prior 10h, per dynamic topic.
+            # Attention velocity = the SHARED movement field (#219 Kalman,
+            # topic_movement) — the smoothed velocity/surprise over the SAME
+            # signals_v2 volume lineage the whole product speaks. One movement
+            # number everywhere (Pedro 2026-07-03: kill the split-brain).
+            # Fallback to a live relative changed_10h when a topic has no
+            # Kalman row yet (fresh topic between cron runs).
+            kalman_rows = await conn.fetch("""
+                SELECT DISTINCT ON (topic_id) topic_id, velocity, surprise, trend
+                FROM topic_movement
+                WHERE engine_version = 'movement-kalman-v1'
+                ORDER BY topic_id, window_end DESC
+            """)
             movement_rows = await conn.fetch("""
                 SELECT tm.topic_id,
                        COUNT(*) FILTER (WHERE s.timestamp >= NOW() - INTERVAL '10 hours')
@@ -240,16 +248,27 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
             {"day": d, "n": by_day[d]} for d in sorted(by_day)
         ]
 
-    # Velocity = RELATIVE changed_10h (the shared movement signal, same as
-    # thread_ranking's movement term): net 10h delta over recent volume, so a
-    # syndication burst on a big topic can't masquerade as a surge. One number,
-    # consistent with the Narrative Threads "▲ Accelerating".
+    # Velocity: the shared movement field (#219 Kalman) first, live relative
+    # changed_10h as the fallback. Kalman velocity is in log-intensity/6h;
+    # squash to a comparable ~[-1,1] with tanh so the frontend's rank/halo
+    # scale is stable regardless of source.
+    import math
     velocity_by_topic: dict = {}
-    for m in movement_rows:
+    trend_by_topic: dict = {}
+    for k in kalman_rows:
+        tid_text = k["topic_id"]
+        if not tid_text.startswith("dynamic-topic-"):
+            continue
+        tid = int(tid_text[len("dynamic-topic-"):])
+        velocity_by_topic[tid] = round(math.tanh(float(k["velocity"] or 0.0)), 4)
+        trend_by_topic[tid] = k["trend"]
+    for m in movement_rows:  # fallback for topics with no Kalman row yet
         tid_text = m["topic_id"]
         if not tid_text.startswith("dynamic-topic-"):
             continue
         tid = int(tid_text[len("dynamic-topic-"):])
+        if tid in velocity_by_topic:
+            continue
         recent = int(m["recent_vol"] or 0)
         ch = int(m["changed_10h"] or 0)
         velocity_by_topic[tid] = round(ch / max(6, recent), 4) if recent else 0.0
@@ -289,6 +308,7 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
             "countries": countries_by_topic.get(ids[i], []),
             "persons": persons_by_topic.get(ids[i], []),
             "velocity": velocity_by_topic.get(int(r["id"]), 0.0),
+            "trend": trend_by_topic.get(int(r["id"])),
         }
         for i, r in enumerate(rows)
     ]

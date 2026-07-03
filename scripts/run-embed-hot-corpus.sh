@@ -81,6 +81,12 @@ PROJECT_HOURS="${ATLAS_DISCUSSION_HOURS:-336}"
 "$MLVENV/bin/python" -m scripts.etl_topic_members --hours "$PROJECT_HOURS" \
   || echo "[embed-hot-corpus] topic_members ETL failed (non-fatal)" >&2
 
+# Step 3b: shared MOVEMENT field (#219 Kalman) — smoothed velocity/surprise per
+# topic over the signals_v2 volume lineage, written to topic_movement. The ONE
+# movement number the universe + threads read (raw changed_10h fallback).
+"$MLVENV/bin/python" -m scripts.compute_topic_movement \
+  || echo "[embed-hot-corpus] topic_movement (Kalman) failed (non-fatal)" >&2
+
 # Step 4: Unified Engine F3 — rebuild the unified-v2 construction in parallel
 # (engine_version='unified-v2', isolated from v1 serving) so the A/B
 # (engine_ab_report.py) reflects the current window and the measured cutover gate

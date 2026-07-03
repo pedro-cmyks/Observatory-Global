@@ -661,7 +661,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                             {hovered.last_seen ? new Date(hovered.last_seen).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
                         </em>
                         <em className="universe-hover-cta">click to open its story system</em>
-                        {heatingIds.has(hovered.id) && <em className="universe-hover-heat">rising · rel. Δ10h {(hovered.velocity ?? 0).toFixed(2)}</em>}
+                        {heatingIds.has(hovered.id) && <em className="universe-hover-heat">{hovered.trend ? hovered.trend : 'rising'} · movement {(hovered.velocity ?? 0).toFixed(2)}</em>}
                     </div>
                 )}
 

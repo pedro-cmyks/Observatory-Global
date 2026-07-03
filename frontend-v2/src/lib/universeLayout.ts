@@ -29,9 +29,11 @@ export interface UniverseNode {
       inverse-focus lens: a focused entity lights the stories it appears in. */
   countries?: string[]
   persons?: string[]
-  /** Measured attention acceleration (spec §7.6): >0 heating, <0 cooling.
-      NOT a prediction — the leading-indicator claim is a separate backtest. */
+  /** Attention velocity — the SHARED movement field (#219 Kalman,
+      topic_movement.velocity, tanh-squashed). MEASURED, not a prediction. */
   velocity?: number
+  /** Kalman trend label: surging / rising / steady / cooling. */
+  trend?: string
 }
 
 export interface TrackPoint {
