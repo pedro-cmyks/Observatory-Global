@@ -109,12 +109,16 @@ system still opens via travel — their children are the field bodies.
 - **Time stays the master clock:** the scrubber remains the §I instrument —
   scrub back = "la foto del instante", presence/decay as shipped. Rotation is
   camera, never time.
-- **Who moves and how (SPEC ONLY, v3):** true per-body TRAJECTORIES exist in
-  the data — `emergent_clusters` persists per-snapshot centroids, so a topic's
-  position at time t is reconstructible; scrubbing would then move bodies
-  along their REAL drift paths (narrative mutation made visible), and
-  velocity = measured centroid drift. This is the §6 trajectory program
-  rendered; build after the panel version survives Pedro's eyeball.
+- **Who moves and how — SHIPPED (`95d3a120`, 2026-07-02 PM):** per-snapshot
+  cluster centroids (87 snapshots/30d) project into the CURRENT layout frame
+  via the saved PCA basis → `node.track` (≤16 pts, 348/348 topics). The
+  scrubber now MOVES every body along its real path (interpolated; eases from
+  the last snapshot to the "now" centroid); hover draws the route as a fading
+  polyline. Narrative drift made visible — measured, never fabricated.
+  Browser-verified: scrub to Jun 13 → bodies relocate to that day's positions.
+  Honest caveat: young topics have 1-point tracks (static until their second
+  snapshot); the frame is TODAY's basis, so ancient positions are "where that
+  content would sit in today's map", not a re-fit of the past space.
 - Rule inheritance: the analyst ORBITAL view (thread detail) keeps its
   no-idle-animation rule — it is a reading surface. The universe is an
   overview/orientation surface; slow ambient rotation is allowed BY PEDRO'S

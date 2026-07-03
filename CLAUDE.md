@@ -75,6 +75,12 @@ PENDIENTES de la review: universe trajectories (posiciones moviéndose con
 el scrub — emergent_clusters per-snapshot centroids), pseudo-3D tilt
 orbital, discussion-attach noise (Mbappé/LinkedIn en dt-981, semantic
 0.90 attach quality → #248 class). NEXT igual + esos.
+**V8 (sigamos, `95d3a120`): UNIVERSE TRAJECTORIES** — el scrub MUEVE las
+posiciones por sus rutas REALES: centroides por-snapshot (emergent_clusters,
+87 snapshots/30d) proyectados a la base PCA actual → node.track (348/348
+topics); interpolación + ease al centroide actual; hover dibuja la ruta
+(polyline). Verified: scrub Jun 13 → cuerpos en SUS posiciones de ese día.
+Caveat honesto: topics jóvenes = track de 1 punto; el frame es la base de HOY.
 **V7 (Pedro round 3, `547662db`):** (1) rim = TONE en cuerpos orbitales
 (fill=tipo, borde=tono medio; escala raw ±10, banda neutra ±1.0 — unifica
 el split tone/avg-sentiment de nombres); (2) **R3 SPINE DRILL-DOWN** —
