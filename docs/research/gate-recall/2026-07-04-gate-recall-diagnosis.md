@@ -83,3 +83,38 @@ stops discarding the 0.4–0.9 election coverage, serves it as clearly-labeled
 extended coverage, and leaves the verified bar exactly where Paper 1 needs it.
 Queue **#2** as the standing engine program (recall at the source), sequenced with
 #229 clustering recall + #204 taxonomy. This matches the alignment doc's #1 lever.
+
+---
+
+## UPDATE — the better gate is already trained (measured, not a retrain)
+
+Pedro chose the retrain track. Measure-first found the retrain is ~80% done:
+the Phase-B probe already compared embeddings, and a gate variant on **OpenAI
+`text-embedding-3-small` (1536-dim), `2026-05-29-scope-gate-v1.json`, is trained
+but NOT deployed**. Production runs the `-e5base` variant (local/free), which
+costs a large recall penalty at the same 90% precision:
+
+| topic | e5base (deployed) | v1 OpenAI (on disk) |
+|---|---|---|
+| global @90% prec | 0.749 (AUC .940) | **0.843 (AUC .956)** |
+| agriculture-crop-risk | 0.032 | **0.758** |
+| telecom-internet-shutdown | 0.250 | **0.864** |
+| oil-gas-supply-risk | 0.033 | **0.333** |
+| election-legitimacy-dispute | 0.263 | **0.395** |
+| currency-debt-stress | 0.105 | 0.263 |
+| sanctions-diplomatic-pressure | 0.417 | 0.278 (worse) |
+
+v1 also has **0 abstain topics** (e5base had 3). e5base was chosen so the gate
+scores locally on already-stored e5 vectors ($0); v1 needs an OpenAI embedding of
+`"headline | topic_label"` at scoring time (~$0.004/day at current volume —
+trivial) but lifts recall dramatically on exactly the hard topics.
+
+**So the retrain is a DEPLOY + RE-SCORE of the existing v1 artifact, not training
+from scratch.** Work: (1) point `apply_scope_gate` at `scope-gate-v1.json` +
+embed `headline|label` via OpenAI in the classifier cron (needs `OPENAI_API_KEY`);
+(2) backfill re-score to refresh served `gate_kept`; (3) verify 90% precision
+holds (OOF says it does). election-legitimacy still only reaches 0.395 — it stays
+a genuinely hard topic; going further needs more gold positives (only 38) or
+topic-aware features, a smaller follow-on. Recommendation: deploy v1 (the measured
++9pp / hard-topic win) now; treat the election-legitimacy residue as a later
+gold/feature pass.
