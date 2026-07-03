@@ -144,19 +144,23 @@ describe('trajectories — positions move along the REAL track', () => {
   })
 })
 
-describe('rotateProject — free two-axis orbit', () => {
-  it('yaw 0 pitch 0 is identity; yaw mixes x/z; pitch mixes y/z', async () => {
-    const { rotateProject } = await import('./universeLayout')
-    const id = rotateProject(0.8, 0.7, 0.5, 0, 0)
-    expect(id.px).toBeCloseTo(0.8, 6)
-    expect(id.py).toBeCloseTo(0.7, 6)
-    // quarter yaw: x depth-swaps with z
-    const y = rotateProject(0.8, 0.5, 0.9, Math.PI / 2, 0)
-    expect(y.px).toBeCloseTo(0.1, 6)   // -(z-0.5)+0.5
-    expect(y.depth).toBeCloseTo(0.8, 6)
-    // quarter pitch: y depth-swaps with z
-    const p = rotateProject(0.5, 0.8, 0.9, 0, Math.PI / 2)
-    expect(p.py).toBeCloseTo(0.1, 6)
-    expect(p.depth).toBeCloseTo(0.8, 6)
+
+describe('free 3D rotation matrix (arcball/trackball)', () => {
+  it('identity passes through; Y-rot sends x into depth; Z-rot (roll) sends x into y', async () => {
+    const { applyRot, IDENTITY_ROT, rotY, rotZ, mul3 } = await import('./universeLayout')
+    const id = applyRot(IDENTITY_ROT, 0.8, 0.7, 0.5)
+    expect(id.px).toBeCloseTo(0.8, 6); expect(id.py).toBeCloseTo(0.7, 6)
+    // quarter yaw around Y: x(0.8, right of center) rotates into depth (near, 0.2)
+    const y = applyRot(rotY(Math.PI / 2), 0.8, 0.5, 0.5)
+    expect(y.depth).toBeCloseTo(0.2, 6)
+    expect(y.px).toBeCloseTo(0.5, 6)
+    // ROLL: quarter Z rotation spins the screen plane — x(0.8)→py
+    const r = applyRot(rotZ(Math.PI / 2), 0.8, 0.5, 0.5)
+    expect(r.py).toBeCloseTo(0.8, 6)
+    expect(r.px).toBeCloseTo(0.5, 6)
+    // composition is a valid rotation (orthonormal): applying then no-op stays put
+    const composed = mul3(rotZ(0.3), rotY(0.4))
+    const back = applyRot(mul3(composed, mul3(rotY(-0.4), rotZ(-0.3))), 0.9, 0.2, 0.7)
+    expect(back.px).toBeCloseTo(0.9, 5); expect(back.py).toBeCloseTo(0.2, 5)
   })
 })

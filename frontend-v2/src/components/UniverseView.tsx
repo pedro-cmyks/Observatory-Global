@@ -10,7 +10,13 @@ import {
     positionAt,
     universeAlpha,
     universeRadius,
-    rotateProject,
+    applyRot,
+    IDENTITY_ROT,
+    mul3,
+    rotX,
+    rotY,
+    rotZ,
+    type Rot3,
     type UniverseEdge,
     type UniverseNode,
 } from '../lib/universeLayout'
@@ -54,20 +60,22 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
     const [traveling, setTraveling] = useState(false)
     // Yaw: rotation around the cloud's center of MASS (spec §7.2). Ambient
     // spin pauses on any interaction — camera, not time.
-    const [yaw, setYaw] = useState(0)
-    // pitch = the second rotation axis (free orbit, Pedro's "sin restringir a
-    // un eje"). Clamped so the cloud never flips fully upside down.
-    const [pitch, setPitch] = useState(0)
+    // Orientation as an accumulated 3x3 rotation matrix (trackball/arcball —
+    // Pedro 2026-07-03 "roll disponible 3D... para donde sea"). Free 3-axis
+    // rotation: no gimbal lock, no clamp, any orientation. Chosen over Euler
+    // yaw/pitch/roll after weighing both (spec §7.4) + web-grounded review.
+    const [rot, setRot] = useState<Rot3>(IDENTITY_ROT)
     // Nav mode: drag ROTATES by default (fly around), or PANS (drag the cloud
     // across the screen). Two-finger touch always pans+zooms regardless.
-    const [navMode, setNavMode] = useState<'rotate' | 'pan'>('rotate')
+    const [navMode, setNavMode] = useState<'rotate' | 'pan' | 'roll'>('rotate')
     const spinPausedRef = useRef(false)
-    const dragRef = useRef<{
-        x: number; y: number; yaw: number; pitch: number; tx: number; ty: number; pan: boolean
-    } | null>(null)
+    const draggingRef = useRef(false) // true during any active drag — spin must not resume mid-drag
+    // Incremental drag: store the LAST pointer pos + mode; each move composes
+    // a small rotation (trackball) or pans. lastAngle tracks two-finger twist.
+    const dragRef = useRef<{ lastX: number; lastY: number; mode: 'orbit' | 'roll' | 'pan'; tx: number; ty: number } | null>(null)
     // Multi-touch: track active pointers for two-finger pan + pinch-zoom.
     const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map())
-    const pinchRef = useRef<{ dist: number; cx: number; cy: number; tx: number; ty: number; k: number } | null>(null)
+    const pinchRef = useRef<{ dist: number; cx: number; cy: number; tx: number; ty: number; k: number; angle: number } | null>(null)
     const containerRef = useRef<HTMLDivElement | null>(null)
     const [size, setSize] = useState({ w: 1200, h: 700 })
 
@@ -89,8 +97,9 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
             acc += dt
             const resting = now - lastInteractionRef.current > 90_000
             if (acc >= 100) { // ~10fps
-                if (!spinPausedRef.current && !document.hidden && !resting) {
-                    setYaw(y => y + (acc / 1000) * 0.06) // ~1 turn / 105s
+                if (!spinPausedRef.current && !draggingRef.current && !document.hidden && !resting) {
+                    const dyaw = (acc / 1000) * 0.06 // ~1 turn / 105s
+                    setRot(r => mul3(rotY(dyaw), r)) // ambient spin about screen-vertical
                 }
                 acc = 0
             }
@@ -103,6 +112,8 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
     useEffect(() => {
         spinPausedRef.current = hoveredId !== null
     }, [hoveredId])
+    // note: draggingRef independently holds the spin during drags (set in
+    // the pointer handlers) so a hover-leave mid-drag never resumes the spin
 
     // Callback ref: the canvas div does NOT exist during the loading/orbital
     // branches, so a mount-only observer never fires and the svg stays at the
@@ -180,7 +191,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
     // Shared projection: free two-axis rotation about the mass center, then
     // screen-map. Used by every layer so nodes/edges/labels/trails agree.
     const project3 = (x: number, y: number, z: number | undefined) => {
-        const p = rotateProject(x, y, z, yaw, pitch, massX, massY, massZ)
+        const p = applyRot(rot, x, y, z, massX, massY, massZ)
         return { sx: px(p.px), sy: py(p.py), depth: p.depth }
     }
 
@@ -194,7 +205,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
         }
         return out
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [nodes, yaw, pitch, view, size, massX, massZ, massY, scrubT])
+    }, [nodes, rot, view, size, massX, massZ, massY, scrubT])
 
     const depthOrdered = useMemo(
         () => [...nodes].sort((a, b) => (projected.get(b.id)?.depth ?? 0) - (projected.get(a.id)?.depth ?? 0)),
@@ -212,7 +223,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
         const body = allNodes.find(n => n.id === activeTheme)
         setTraveling(true)
         if (body) {
-            const p = rotateProject(body.x, body.y, body.z, yaw, pitch, massX, massY, massZ)
+            const p = applyRot(rot, body.x, body.y, body.z, massX, massY, massZ)
             const targetX = (margin + p.px * (size.w - 2 * margin))
             const targetY = (margin + p.py * (size.h - 2 * margin))
             const k = 2.6
@@ -310,7 +321,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                     <button
                         className={`universe-filter ${navMode === 'rotate' ? 'active' : ''}`}
                         onClick={() => setNavMode('rotate')}
-                        data-tip="Drag to orbit the galaxy freely (both axes). Shift-drag or two fingers to move it"
+                        data-tip="Drag to orbit the galaxy freely in 3D (any axis). Alt-drag or two-finger twist = roll. Shift-drag / two fingers = move"
                     >
                         ⟲ ORBIT
                     </button>
@@ -322,8 +333,15 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                         ✋ MOVE
                     </button>
                     <button
+                        className={`universe-filter ${navMode === 'roll' ? 'active' : ''}`}
+                        onClick={() => setNavMode('roll')}
+                        data-tip="Drag horizontally to ROLL (spin the field around the view axis). Also: alt-drag, or two-finger twist on touch"
+                    >
+                        ↻ ROLL
+                    </button>
+                    <button
                         className="universe-filter"
-                        onClick={() => { setYaw(0); setPitch(0); setView({ k: 1, tx: 0, ty: 0 }) }}
+                        onClick={() => { setRot(IDENTITY_ROT); setView({ k: 1, tx: 0, ty: 0 }) }}
                         data-tip="Reset the camera"
                     >
                         ⌖
@@ -352,60 +370,74 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                     e.preventDefault()
                     try { (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId) } catch { /* synthetic/inactive pointer */ }
                     spinPausedRef.current = true
+                    draggingRef.current = true
                     lastInteractionRef.current = performance.now()
                     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
                     if (pointersRef.current.size === 2) {
-                        // begin pinch: two fingers = pan + zoom (touch)
+                        // begin pinch: two fingers = pan + zoom + TWIST→roll (touch)
                         const pts = [...pointersRef.current.values()]
                         pinchRef.current = {
                             dist: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y),
                             cx: (pts[0].x + pts[1].x) / 2,
                             cy: (pts[0].y + pts[1].y) / 2,
+                            angle: Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x),
                             tx: view.tx, ty: view.ty, k: view.k,
                         }
                         dragRef.current = null
                     } else {
-                        // shift OR pan-mode OR right/middle button = PAN; else ROTATE
-                        const pan = navMode === 'pan' || e.shiftKey || e.button === 2 || e.button === 1
-                        dragRef.current = { x: e.clientX, y: e.clientY, yaw, pitch, tx: view.tx, ty: view.ty, pan }
+                        // pan-mode/shift/right/middle = PAN; alt/ctrl = ROLL; else ORBIT
+                        const mode: 'orbit' | 'roll' | 'pan' =
+                            (navMode === 'pan' || e.shiftKey || e.button === 2 || e.button === 1) ? 'pan'
+                            : (navMode === 'roll' || e.altKey || e.ctrlKey || e.metaKey) ? 'roll'
+                            : 'orbit'
+                        dragRef.current = { lastX: e.clientX, lastY: e.clientY, mode, tx: view.tx, ty: view.ty }
                     }
                 }}
                 onPointerMove={e => {
                     if (pointersRef.current.has(e.pointerId)) {
                         pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
                     }
-                    // two-finger pinch → pan + zoom about the finger midpoint
+                    // two-finger: pan + pinch-zoom + twist→roll about the midpoint
                     if (pinchRef.current && pointersRef.current.size === 2) {
                         const pts = [...pointersRef.current.values()]
                         const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
                         const cx = (pts[0].x + pts[1].x) / 2
                         const cy = (pts[0].y + pts[1].y) / 2
+                        const angle = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x)
                         const p = pinchRef.current
                         const k = Math.min(8, Math.max(0.6, p.k * (dist / Math.max(1, p.dist))))
                         setView({ k, tx: p.tx + (cx - p.cx), ty: p.ty + (cy - p.cy) })
+                        const dRoll = angle - p.angle
+                        if (Math.abs(dRoll) > 1e-4) setRot(r => mul3(rotZ(dRoll), r))
+                        pinchRef.current = { ...p, angle }
+                        lastInteractionRef.current = performance.now()
                         return
                     }
                     const d = dragRef.current
                     if (!d) return
                     lastInteractionRef.current = performance.now()
-                    if (d.pan) {
-                        setView(v => ({ ...v, tx: d.tx + (e.clientX - d.x), ty: d.ty + (e.clientY - d.y) }))
+                    const dx = e.clientX - d.lastX
+                    const dy = e.clientY - d.lastY
+                    d.lastX = e.clientX; d.lastY = e.clientY
+                    if (d.mode === 'pan') {
+                        setView(v => ({ ...v, tx: v.tx + dx, ty: v.ty + dy }))
+                    } else if (d.mode === 'roll') {
+                        setRot(r => mul3(rotZ(dx * 0.01), r))
                     } else {
-                        // free orbit: dx → yaw, dy → pitch (clamped so it never flips)
-                        setYaw(d.yaw + (e.clientX - d.x) * 0.006)
-                        setPitch(Math.max(-1.2, Math.min(1.2, d.pitch + (e.clientY - d.y) * 0.006)))
+                        // free trackball orbit: screen-space incremental rotation
+                        // (premultiply → no fixed up-vector, roll emerges from combined drags)
+                        setRot(r => mul3(mul3(rotX(-dy * 0.006), rotY(dx * 0.006)), r))
                     }
                 }}
                 onPointerUp={e => {
                     pointersRef.current.delete(e.pointerId)
                     if (pointersRef.current.size < 2) pinchRef.current = null
-                    if (pointersRef.current.size === 0) dragRef.current = null
+                    if (pointersRef.current.size === 0) { dragRef.current = null; draggingRef.current = false }
                     spinPausedRef.current = hoveredId !== null
                 }}
                 onPointerLeave={e => {
                     pointersRef.current.delete(e.pointerId)
-                    pinchRef.current = null
-                    dragRef.current = null
+                    if (pointersRef.current.size === 0) { pinchRef.current = null; dragRef.current = null; draggingRef.current = false }
                     spinPausedRef.current = hoveredId !== null
                 }}
                 onContextMenu={e => e.preventDefault()}

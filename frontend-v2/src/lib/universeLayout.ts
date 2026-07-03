@@ -124,32 +124,54 @@ export function yawProject(
 }
 
 /**
- * Full two-axis rotation of a point around the cloud center (cx,cy,cz):
- * yaw spins around the vertical (Y) axis (mixes x,z), pitch tilts around the
- * horizontal (X) axis (mixes y,z). Free orbit — Pedro's "moverme alrededor de
- * la galaxia libremente, sin restringir a un eje". Returns normalized px,py
- * (frame re-centered at 0.5) + depth (0 near … 1 far).
+ * Free 3D rotation via an accumulated 3x3 matrix (trackball/arcball — Pedro
+ * 2026-07-03: "roll disponible 3D... moverme para donde sea, sin restringir a
+ * un eje"). Replaces the clamped yaw/pitch Euler pair: no gimbal lock, any
+ * orientation, roll included. Rows are the matrix, row-major [r00..r22].
  */
-export function rotateProject(
-  x: number,
-  y: number,
-  z: number | undefined,
-  yaw: number,
-  pitch: number,
-  cx = 0.5,
-  cy = 0.5,
-  cz = 0.5,
+export type Rot3 = [number, number, number, number, number, number, number, number, number]
+
+export const IDENTITY_ROT: Rot3 = [1, 0, 0, 0, 1, 0, 0, 0, 1]
+
+export function rotX(a: number): Rot3 {
+  const c = Math.cos(a), s = Math.sin(a)
+  return [1, 0, 0, 0, c, -s, 0, s, c]
+}
+export function rotY(a: number): Rot3 {
+  const c = Math.cos(a), s = Math.sin(a)
+  return [c, 0, s, 0, 1, 0, -s, 0, c]
+}
+export function rotZ(a: number): Rot3 {
+  const c = Math.cos(a), s = Math.sin(a)
+  return [c, -s, 0, s, c, 0, 0, 0, 1]
+}
+
+/** Matrix product A·B (both row-major 3x3). */
+export function mul3(a: Rot3, b: Rot3): Rot3 {
+  const o = new Array(9) as number[]
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      o[r * 3 + c] = a[r * 3] * b[c] + a[r * 3 + 1] * b[3 + c] + a[r * 3 + 2] * b[6 + c]
+    }
+  }
+  return o as Rot3
+}
+
+/**
+ * Project a point through the rotation about the cloud center (cx,cy,cz):
+ * translate to center, apply rot, re-center to 0.5. Returns normalized px,py
+ * (screen frame) + depth (0 near … 1 far, for painter order + depth cues).
+ */
+export function applyRot(
+  rot: Rot3, x: number, y: number, z: number | undefined,
+  cx = 0.5, cy = 0.5, cz = 0.5,
 ): { px: number; py: number; depth: number } {
-  const xc = x - cx
-  const yc = y - cy
-  const zc = (z ?? cz) - cz
-  const cyaw = Math.cos(yaw), syaw = Math.sin(yaw)
-  const x1 = xc * cyaw - zc * syaw
-  const z1 = xc * syaw + zc * cyaw
-  const cp = Math.cos(pitch), sp = Math.sin(pitch)
-  const y2 = yc * cp - z1 * sp
-  const z2 = yc * sp + z1 * cp
-  return { px: x1 + 0.5, py: y2 + 0.5, depth: z2 + 0.5 }
+  const xc = x - cx, yc = y - cy, zc = (z ?? cz) - cz
+  return {
+    px: rot[0] * xc + rot[1] * yc + rot[2] * zc + 0.5,
+    py: rot[3] * xc + rot[4] * yc + rot[5] * zc + 0.5,
+    depth: rot[6] * xc + rot[7] * yc + rot[8] * zc + 0.5,
+  }
 }
 
 /** Center of mass of the cloud (x and z means) — the honest rotation axis. */
