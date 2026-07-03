@@ -101,9 +101,19 @@ moved) and shows which stories are GAINING gravity now. **Two approaches
 weighed:** (A) per-body velocity glyph vs (B) convergence/merge detector.
 Chose A — direct, honest, every body carries a measured signal; B (pairs
 approaching → merge forecast) is rarer + harder to validate, parked.
-- Metric `_attention_velocity`: normalized acceleration = recent-third vs
-  prior-third of the topic's daily SIZE series (from emergent_clusters
-  snapshot n_signals). >0 heating, <0 cooling.
+- **Metric = relative `changed_10h`** (REVISED 2026-07-03 after Pedro's
+  consistency challenge, `c136e842`). The first cut used a snapshot n_signals
+  proxy — WRONG: a confounded (clustering-window-dependent), low-resolution
+  (3-point/30d) THIRD movement brain that could disagree with the Narrative
+  Threads "▲ Accelerating". Founded decision: `changed_10h` wins on
+  provenance (direct signals_v2 timestamps), resolution (live 10h vs prior
+  10h), and consistency (it is the ONE movement number thread_ranking + the
+  panel already speak). Now velocity = net 10h delta / recent volume, same
+  lineage. Rank-based "Fastest rising" (top-8), robust to corpus density (a
+  thin/fresh corpus saturates the absolute — that is the substrate #2 problem,
+  not a metric one). Destination = Kalman: `topic_movement` (#219, schema
+  exists but EMPTY) is the smoothed/zscore form of this SAME lineage every
+  surface should read next. ONE movement field, at two fidelities.
 - Frontend: warm STATIC halo (no animation — thermal discipline after the
   panic) scaled by velocity on heating bodies + a "🔥 N heating · top mover"
   readout + hover accel value.

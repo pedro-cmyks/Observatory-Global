@@ -75,6 +75,22 @@ PENDIENTES de la review: universe trajectories (posiciones moviéndose con
 el scrub — emergent_clusters per-snapshot centroids), pseudo-3D tilt
 orbital, discussion-attach noise (Mbappé/LinkedIn en dt-981, semantic
 0.90 attach quality → #248 class). NEXT igual + esos.
+**2026-07-03 (PM — VELOCITY CONSISTENCY FIX, `c136e842`, read FIRST).**
+Pedro's recurring split-brain smell = CORRECT. The universe velocity had grown
+its OWN source (emergent_clusters snapshot n_signals) — a confounded proxy +
+a THIRD movement brain vs the Narrative Threads "▲ Accelerating". FOUNDED
+decision (provenance + resolution + consistency): `changed_10h` (direct
+signals_v2 delta, the ONE number thread_ranking + the panel already use) beats
+the snapshot proxy. Rewired universe velocity → relative changed_10h; snapshot
+fn deleted. Rank-based "Fastest rising" top-8 (thin corpus saturates the
+absolute — substrate #2, not a metric bug). Emoji→vector spark. **Kalman is
+the DESTINATION** (Pedro right): `topic_movement` #219 schema EXISTS but EMPTY
+= the smoothed/zscore form of the SAME lineage → populate it next, every
+surface reads that one field (raw changed_10h fallback). Backtest validates
+the zscore leading-indicator claim, not the raw delta. Principle = the
+topic_members unification applied to MOVEMENT: define it ONCE, read everywhere.
+161 vitest.
+
 **2026-07-03 (PM — ATTENTION VELOCITY / heating bodies, `6f019213`, read FIRST).**
 Trayectorias v2 = capa de gravedad PREDICTIVA. Dos propuestas (propose/counter):
 velocity-glyph por cuerpo (A) vs detector de convergencia/merge (B) — elegí A.
