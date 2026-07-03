@@ -668,7 +668,13 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
 
                 {!litActive && heating.length > 0 && (
                     <div className="universe-heating-readout" data-tip="Stories whose signal count is accelerating over the snapshot history — measured attention velocity, not a prediction">
-                        <span className="universe-heating-count">🔥 {heating.length} heating</span>
+                        <span className="universe-heating-count">
+                            <svg width="9" height="11" viewBox="0 0 9 11" aria-hidden="true" style={{ marginRight: 5, verticalAlign: '-1px' }}>
+                                {/* upward spark — rising attention, vector not emoji */}
+                                <path d="M4.5 0 L9 5.5 L6 5 L7 11 L4.5 7 L2 11 L3 5 L0 5.5 Z" fill="#fb923c" />
+                            </svg>
+                            {heating.length} heating
+                        </span>
                         <span className="universe-heating-top">{heating[0].label.length > 26 ? `${heating[0].label.slice(0, 24)}…` : heating[0].label}</span>
                     </div>
                 )}
