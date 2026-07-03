@@ -95,6 +95,20 @@ system still opens via travel — their children are the field bodies.
   RINGED back in the field. Remaining directions: focused country/person →
   light their stories in the field.
 
+### 7.3 Free navigation (Pedro 2026-07-03) — SHIPPED (`7113222a`)
+The single-axis yaw + fixed-y model was too restrictive ("quiero moverme
+alrededor de la galaxia libremente, sin restringir a un eje... y arrastrar el
+cúmulo, no solo rotarlo"). Now:
+- `rotateProject`: two-axis free orbit — yaw (x/z) + pitch (y/z), pitch clamped
+  ±1.2 rad so the cloud never flips. Depth stays honest (real PCA z).
+- ORBIT | MOVE mode toggle (+ reset ⌖). Default drag orbits; MOVE mode /
+  shift-drag / right-middle button pans the whole cloud across the screen.
+  Two-finger touch = pan + pinch-zoom (mobile). setPointerCapture keeps the
+  drag alive outside the element.
+- **Text-selection bug fixed**: dragging over the SVG labels selected them
+  (panel turned blue, drag did nothing) — `user-select:none` +
+  `touch-action:none` + `preventDefault` on the canvas.
+
 ### 7.2 The moving cloud (motion = real data, rotation = real depth)
 - **Rotation is honest depth, not decoration:** the backend serves PCA top-3
   (x, y, z), category-blended in 3D. The view rotates the cloud around its

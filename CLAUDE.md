@@ -75,6 +75,24 @@ PENDIENTES de la review: universe trajectories (posiciones moviéndose con
 el scrub — emergent_clusters per-snapshot centroids), pseudo-3D tilt
 orbital, discussion-attach noise (Mbappé/LinkedIn en dt-981, semantic
 0.90 attach quality → #248 class). NEXT igual + esos.
+**2026-07-03 (AM — FREE NAV + Paper-1 framing, read FIRST).** Pedro's product
+thesis LOGGED: **Atlas = Paper 1** (narrative threads + how we classify/relate
+information); every other paper (P2-P8) is BACKING for P1. The universe is
+becoming the SPATIAL INDEX of Atlas — discovery entry + focus lens + R3 spine +
+time, one surface. **Universe FREE NAVIGATION shipped (`7113222a`):**
+two-axis free orbit (yaw+pitch via `rotateProject`, pitch clamped ±1.2) + ORBIT|
+MOVE mode toggle + pan (drag the whole cloud) + two-finger pan/pinch on mobile +
+reset. **Fixed the text-selection bug** (drag turned the panel blue / selected
+labels instead of moving): user-select:none + touch-action:none + preventDefault.
+Browser-verified (rotate non-uniform dx-spread 244, pan uniform +100px, selection
+empty). Spec §7.3. Reindex recovery: HNSW rebuilt, 144K embeddings (FK-violation
+stopped it early on retention-deleted rows; catchup relaunched). Orbital + moons
+verified live on atlas threads (amy-coney-barrett = moon of trump, measured
+co-occurrence). NEXT (Pedro's "qué falta para ser eje"): (1) substrate
+reliability = the real blocker — reindex/ETL/gate all had bad nights on the M1;
+(2) inverse focus country/person→field; (3) task-time evaluation (bacano≠eje);
+(4) trajectories v2 = capture-rate as leading heat indicator (#219 Kalman seed).
+
 **2026-07-03 (madrugada — PANIC POST-MORTEM + RECOVERY + V9, read FIRST).**
 (1) **El apagón de Pedro = KERNEL PANIC 00:06:45**: "userspace watchdog
 timeout: no successful checkins from WindowServer in 134 seconds".
