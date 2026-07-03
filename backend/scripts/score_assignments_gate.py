@@ -80,7 +80,50 @@ def _matched_terms(evidence: Any) -> float:
     return 0.0
 
 
+def _is_openai(model_name: str) -> bool:
+    return model_name.startswith("text-embedding-")
+
+
+def _text_for(model_name: str, headline: str, label: str) -> str:
+    """Match the gate's TRAINING text exactly. e5 was trained on the
+    'query: ' retrieval prefix; the OpenAI gate on the bare 'headline | label'
+    (train_scope_gate._texts). Mismatching the prefix silently corrupts scores."""
+    h, t = (headline or "").strip(), (label or "").strip()
+    return f"query: {h} | {t}" if not _is_openai(model_name) else f"{h} | {t}"
+
+
+def _build_openai_embedder(model_name: str):
+    """Live OpenAI embeddings for the OpenAI-space gate (v1). ~$0.00002/signal."""
+    import openai
+
+    key = os.environ.get("OPENAI_API_KEY")
+    if not key:
+        print("OPENAI_API_KEY not set", file=sys.stderr)
+        sys.exit(2)
+    client = openai.OpenAI(api_key=key, timeout=60.0)
+
+    def embed(texts: list[str]) -> np.ndarray:
+        vecs: list[list[float]] = []
+        for i in range(0, len(texts), 512):
+            chunk = texts[i : i + 512]
+            for attempt in range(1, 6):
+                try:
+                    resp = client.embeddings.create(model=model_name, input=chunk)
+                    break
+                except Exception:  # noqa: BLE001 — retry transient API/network errors
+                    if attempt == 5:
+                        raise
+                    import time
+                    time.sleep(2.0 * attempt)
+            vecs.extend(d.embedding for d in resp.data)
+        return np.asarray(vecs, dtype=np.float64)
+
+    return embed, "openai"
+
+
 def _build_embedder(model_name: str):
+    if _is_openai(model_name):
+        return _build_openai_embedder(model_name)
     import torch
     from transformers import AutoModel, AutoTokenizer
 
@@ -133,37 +176,47 @@ async def run(args: argparse.Namespace) -> None:
         sys.exit(2)
 
     gate = _load_gate(args.gate)
-    embed, device = _build_embedder(gate["feature_spec"]["embedding_model"])
-    print(f"gate {args.gate_id} | encoder {gate['feature_spec']['embedding_model']} on {device}",
-          file=sys.stderr)
+    model_name = gate["feature_spec"]["embedding_model"]
+    embed, device = _build_embedder(model_name)
+    print(f"gate {args.gate_id} | encoder {model_name} on {device}"
+          + (" | DRY-RUN (no writes)" if args.dry_run else ""), file=sys.stderr)
 
     conn = await asyncpg.connect(db)
     total = 0
+    per_topic: dict[str, list[int]] = {}  # slug -> [kept, n] (dry-run report)
     try:
         while True:
             rows = await conn.fetch(SELECT_SQL, args.rescore, args.window_hours, args.batch)
             if not rows:
                 break
-            texts = [f"query: {(r['headline'] or '').strip()} | {(r['label'] or '').strip()}" for r in rows]
+            texts = [_text_for(model_name, r["headline"], r["label"]) for r in rows]
             emb = embed(texts)
             conf = np.array([float(r["confidence"]) for r in rows])
             mt = np.array([_matched_terms(r["evidence"]) for r in rows])
             slugs = [r["slug"] for r in rows]
             scores, kept = _score_and_decide(gate, emb, conf, mt, slugs)
-            await conn.executemany(UPDATE_SQL, [
-                (r["signal_id"], r["topic_id"], float(sc), bool(k), args.gate_id)
-                for r, sc, k in zip(rows, scores, kept)
-            ])
+            if not args.dry_run:
+                await conn.executemany(UPDATE_SQL, [
+                    (r["signal_id"], r["topic_id"], float(sc), bool(k), args.gate_id)
+                    for r, sc, k in zip(rows, scores, kept)
+                ])
+            for slug, k in zip(slugs, kept):
+                agg = per_topic.setdefault(slug, [0, 0])
+                agg[0] += int(k); agg[1] += 1
             total += len(rows)
-            kept_n = sum(kept)
-            print(f"  scored {total} (+{len(rows)}, kept {kept_n})", file=sys.stderr)
+            print(f"  scored {total} (+{len(rows)}, kept {sum(kept)})", file=sys.stderr)
             if args.rescore or len(rows) < args.batch:
-                # in --rescore mode the NULL filter never shrinks the pool; one pass only
                 if args.rescore:
                     break
     finally:
         await conn.close()
-    print(json.dumps({"scored": total, "gate_id": args.gate_id}, indent=2))
+    out = {"scored": total, "gate_id": args.gate_id, "dry_run": args.dry_run}
+    if args.dry_run:
+        out["per_topic_keep"] = {
+            s: {"kept": k, "n": n, "keep_pct": round(100.0 * k / n, 1)}
+            for s, (k, n) in sorted(per_topic.items(), key=lambda x: -x[1][1])
+        }
+    print(json.dumps(out, indent=2))
 
 
 def main() -> None:
@@ -173,6 +226,7 @@ def main() -> None:
     ap.add_argument("--window-hours", type=int, default=0, help="0 = all joinable; else recent window.")
     ap.add_argument("--batch", type=int, default=512)
     ap.add_argument("--rescore", action="store_true", help="Re-score even rows that already have a score.")
+    ap.add_argument("--dry-run", action="store_true", help="Score + report per-topic keep, but write nothing.")
     args = ap.parse_args()
     asyncio.run(run(args))
 
