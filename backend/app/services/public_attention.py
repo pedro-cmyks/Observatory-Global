@@ -103,6 +103,19 @@ async def fetch_forum_attention(
     }
 
 
+def adaptive_noise_cut(background_sims: list[float], *, floor: float, sigmas: float = 2.5) -> float:
+    """Per-centroid discussion threshold: mean + ``sigmas``·σ of similarities
+    against a random social background, never below ``floor``. The e5
+    multilingual noise floor varies per centroid (measured 0.898 vs 0.936 on
+    two live threads), so a fixed threshold either serves noise or starves
+    real discussion. Too small a sample → keep the floor (honest default)."""
+    if len(background_sims) < 40:
+        return floor
+    mean = sum(background_sims) / len(background_sims)
+    var = sum((x - mean) ** 2 for x in background_sims) / len(background_sims)
+    return max(floor, mean + sigmas * (var ** 0.5))
+
+
 async def fetch_forum_thread_attention(
     *,
     topic_id: int,
@@ -156,13 +169,37 @@ async def fetch_forum_thread_attention(
             vec_literal,
             FORUM_SOURCE_FAMILY,
         )
+        # Adaptive noise floor (Pedro's Iraq case, 2026-07-02: Pasta Grannies
+        # served at 0.85 "similarity"): the e5 multilingual noise floor VARIES
+        # per centroid — measured: unrelated social posts hit 0.898 vs dt-800
+        # but 0.936 vs dt-52, so no fixed threshold separates. Estimate THIS
+        # centroid's background (mean + 2.5σ over a random social sample) and
+        # only serve discussion clearly above it; an empty list is honest,
+        # noise dressed as discussion is not.
+        background = await conn.fetch(
+            f"""
+            SELECT 1 - (e.vec <=> $1::halfvec) AS sim
+            FROM signal_embeddings e
+            JOIN signals_v2 s ON s.id = e.signal_id
+            WHERE s.source_family = $2
+              AND s.timestamp > NOW() - INTERVAL '{int(max(hours, 96))} hours'
+            ORDER BY random()
+            LIMIT 200
+            """,
+            vec_literal,
+            FORUM_SOURCE_FAMILY,
+        )
+
+    noise_cut = adaptive_noise_cut(
+        [float(b["sim"]) for b in background], floor=min_similarity,
+    )
 
     raw = [
         {**dict(r), "timestamp": r["timestamp"].isoformat() if r["timestamp"] else None}
         for r in rows
     ]
     members = build_semantic_members(
-        raw, min_similarity=min_similarity, limit=limit
+        raw, min_similarity=noise_cut, limit=limit
     )
     items = [
         {
@@ -178,4 +215,5 @@ async def fetch_forum_thread_attention(
         "thread_id": topic_id,
         "count": len(items),
         "items": items,
+        "noise_floor": round(noise_cut, 4),
     }

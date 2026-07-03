@@ -60,20 +60,34 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
     const containerRef = useRef<HTMLDivElement | null>(null)
     const [size, setSize] = useState({ w: 1200, h: 700 })
 
+    // Ambient spin, THERMALLY POLITE (2026-07-03 kernel panic post-mortem:
+    // WindowServer watchdog timeout — a 60fps React re-render of 348 SVG
+    // bodies contributes exactly that kind of compositor load):
+    //  - yaw updates at ~10fps, not every frame
+    //  - stops entirely while the orbital view covers the field
+    //  - auto-rests after 90s without interaction; any hover/drag re-arms it
+    const lastInteractionRef = useRef(performance.now())
     useEffect(() => {
+        if (orbitalVisible) return // field hidden — no reason to animate
         let raf = 0
         let last = performance.now()
+        let acc = 0
         const tick = (now: number) => {
-            const dt = (now - last) / 1000
+            const dt = now - last
             last = now
-            if (!spinPausedRef.current && !document.hidden) {
-                setYaw(y => y + dt * 0.06) // ~1 turn / 105s — ambient, not dizzy
+            acc += dt
+            const resting = now - lastInteractionRef.current > 90_000
+            if (acc >= 100) { // ~10fps
+                if (!spinPausedRef.current && !document.hidden && !resting) {
+                    setYaw(y => y + (acc / 1000) * 0.06) // ~1 turn / 105s
+                }
+                acc = 0
             }
             raf = requestAnimationFrame(tick)
         }
         raf = requestAnimationFrame(tick)
         return () => cancelAnimationFrame(raf)
-    }, [])
+    }, [orbitalVisible])
 
     useEffect(() => {
         spinPausedRef.current = hoveredId !== null
@@ -296,6 +310,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                 }}
                 onPointerDown={e => {
                     spinPausedRef.current = true
+                    lastInteractionRef.current = performance.now()
                     dragRef.current = { x: e.clientX, y: e.clientY, ty: view.ty, yaw }
                 }}
                 onPointerMove={e => {
@@ -382,7 +397,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                                 key={n.id}
                                 className="universe-body"
                                 opacity={(dimmed && !isActive ? 0.12 : Math.max(alpha, isActive ? 0.95 : 0)) * depthAlpha(p.depth)}
-                                onMouseEnter={() => setHoveredId(n.id)}
+                                                onMouseEnter={() => { lastInteractionRef.current = performance.now(); setHoveredId(n.id) }}
                                 onMouseLeave={() => setHoveredId(h => (h === n.id ? null : h))}
                                 onClick={() => onThemeSelect(n.id)}
                             >
