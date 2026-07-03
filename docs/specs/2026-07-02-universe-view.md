@@ -95,6 +95,28 @@ system still opens via travel — their children are the field bodies.
   RINGED back in the field. Remaining directions: focused country/person →
   light their stories in the field.
 
+### 7.6 Attention velocity — heating bodies (trajectories v2) — SHIPPED (`6f019213`)
+The predictive-gravity layer: the universe stops being only descriptive (what
+moved) and shows which stories are GAINING gravity now. **Two approaches
+weighed:** (A) per-body velocity glyph vs (B) convergence/merge detector.
+Chose A — direct, honest, every body carries a measured signal; B (pairs
+approaching → merge forecast) is rarer + harder to validate, parked.
+- Metric `_attention_velocity`: normalized acceleration = recent-third vs
+  prior-third of the topic's daily SIZE series (from emergent_clusters
+  snapshot n_signals). >0 heating, <0 cooling.
+- Frontend: warm STATIC halo (no animation — thermal discipline after the
+  panic) scaled by velocity on heating bodies + a "🔥 N heating · top mover"
+  readout + hover accel value.
+- **Honesty:** this is MEASURED acceleration, NOT a prediction. The
+  leading-indicator claim (does acceleration PRECEDE volume?) is a separate
+  read-only backtest over persisted snapshots — the P3/P8 experiment, not yet
+  run (needs a stable snapshot window; the substrate is mid-recovery).
+- **Substrate fix bundled:** the scrubber timeline had collapsed to one bucket
+  per topic (an ETL re-stamp flattened `topic_members.assigned_at`); rebuilt
+  timeline + velocity from the durable snapshot series (median 3 / max 18 days
+  again). Browser-verified: heating readout + halo live; scrub Jun 10 → 7 of
+  101 alive. Prod: US-Iran cooling -1.15, Canada Bosnia heating +0.54.
+
 ### 7.5 Inverse-focus lens — the GRAVITY WELL (Pedro 2026-07-03) — SHIPPED (`e108da9f`)
 The other direction of #234: a country/person focused ELSEWHERE in Atlas
 lights its stories IN the field. **Two approaches weighed (propose/counter):**

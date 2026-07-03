@@ -75,6 +75,21 @@ PENDIENTES de la review: universe trajectories (posiciones moviéndose con
 el scrub — emergent_clusters per-snapshot centroids), pseudo-3D tilt
 orbital, discussion-attach noise (Mbappé/LinkedIn en dt-981, semantic
 0.90 attach quality → #248 class). NEXT igual + esos.
+**2026-07-03 (PM — ATTENTION VELOCITY / heating bodies, `6f019213`, read FIRST).**
+Trayectorias v2 = capa de gravedad PREDICTIVA. Dos propuestas (propose/counter):
+velocity-glyph por cuerpo (A) vs detector de convergencia/merge (B) — elegí A.
+`_attention_velocity` = aceleración normalizada (tercio reciente vs tercio
+previo de la serie diaria de tamaño desde emergent_clusters snapshots). Halo
+cálido ESTÁTICO (sin animación — disciplina térmica) escalado por velocity +
+readout "🔥 N heating · top". FRAMING HONESTO: aceleración MEDIDA, no
+predicción — el claim de indicador-adelantado es un backtest read-only (P3/P8,
+pendiente, el sustrato está recuperándose). **Bonus fix del sustrato:** el
+timeline del scrubber había colapsado a 1 bucket/topic (ETL re-estampó
+assigned_at); reconstruido timeline + velocity desde la serie durable de
+snapshots (median 3/max 18 días de nuevo). Verificado browser: readout+halo
+vivos; scrub Jun 10 → 7 de 101. Prod: US-Iran enfriándose -1.15, Canada Bosnia
+calentándose +0.54. 161 vitest.
+
 **2026-07-03 (PM — INVERSE-FOCUS GRAVITY WELL, `e108da9f`, read FIRST).**
 Focus país/persona en Atlas → ilumina SUS historias en el campo (la otra
 mitad de #234). Dos propuestas pesadas (propose/counter): dim pasivo (A) vs
