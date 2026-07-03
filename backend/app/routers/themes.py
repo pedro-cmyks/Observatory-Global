@@ -1770,25 +1770,30 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
         ts = r["timestamp"]
         dist = float(r["dist"])
         tone = float(r.get("sentiment") or 0)
+        sid = r.get("id")
         cc = (r.get("country_code") or "").strip().upper()
         if cc:
-            b = countries.setdefault(cc, {"n": 0, "dist_total": 0.0, "tone_total": 0.0, "timestamps": [], "samples": []})
+            b = countries.setdefault(cc, {"n": 0, "dist_total": 0.0, "tone_total": 0.0, "timestamps": [], "samples": [], "signal_ids": set()})
             b["n"] += 1
             b["dist_total"] += dist
             b["tone_total"] += tone
             b["timestamps"].append(ts)
             b["samples"].append((ts, dist))
+            if sid is not None:
+                b["signal_ids"].add(sid)
         for person in (r.get("persons") or []):
             name = (person or "").strip()
             if not name:
                 continue
             key = name.lower()
-            b = entities.setdefault(key, {"label": name, "n": 0, "dist_total": 0.0, "tone_total": 0.0, "timestamps": [], "samples": []})
+            b = entities.setdefault(key, {"label": name, "n": 0, "dist_total": 0.0, "tone_total": 0.0, "timestamps": [], "samples": [], "signal_ids": set()})
             b["n"] += 1
             b["dist_total"] += dist
             b["tone_total"] += tone
             b["timestamps"].append(ts)
             b["samples"].append((ts, dist))
+            if sid is not None:
+                b["signal_ids"].add(sid)
 
     bodies = []
     ranked_entities = sorted(entities.values(), key=lambda b: -b["n"])[:max_entities]
@@ -1808,6 +1813,7 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
             "first_seen": stamps[0].isoformat(),
             "last_seen": stamps[-1].isoformat(),
             "timestamps": [t.isoformat() for t in stamps],
+            "_signal_ids": b["signal_ids"],
         })
     ranked_countries = sorted(countries.items(), key=lambda kv: -kv[1]["n"])[:max_countries]
     for cc, b in ranked_countries:
@@ -1823,7 +1829,31 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
             "first_seen": stamps[0].isoformat(),
             "last_seen": stamps[-1].isoformat(),
             "timestamps": [t.isoformat() for t in stamps],
+            "_signal_ids": b["signal_ids"],
         })
+
+    # MOONS (Pedro 2026-07-02, spec 7b): a small ENTITY that appears almost
+    # only inside a bigger entity's signals is its satellite — co-occurrence
+    # measured on shared member signals, no fabricated physics. Countries
+    # never become moons (a country is a stage, not a companion).
+    entity_bodies = [b for b in bodies if b["type"] != "country"]
+    for small in entity_bodies:
+        if small["n"] > 6:
+            continue
+        best = None
+        for big in entity_bodies:
+            if big is small or big["n"] < max(4, small["n"] * 2):
+                continue
+            if not small["_signal_ids"]:
+                continue
+            overlap = len(small["_signal_ids"] & big["_signal_ids"]) / len(small["_signal_ids"])
+            if overlap >= 0.75 and (best is None or big["n"] > best[1]["n"]):
+                best = (overlap, big)
+        if best:
+            small["moon_of"] = best[1]["id"]
+            small["moon_overlap"] = round(best[0], 3)
+    for b in bodies:
+        b.pop("_signal_ids", None)
     return bodies
 
 
@@ -1898,6 +1928,42 @@ async def get_theme_orbital(
                 )
             ]
             if not member_ids:
+                # §I: a story keeps ITS OWN timeline — when the request window
+                # has aged past every assignment (dt-981 went empty the night
+                # its Jun-26 members crossed the 168h line), serve the most
+                # recent members instead of an empty system. LIMIT keeps the
+                # atlas perf bound (unbounded was the 26s cold path).
+                member_ids = [
+                    r["signal_id"] for r in await conn.fetch(
+                        """
+                        SELECT signal_id FROM (
+                            SELECT DISTINCT ON (signal_id) signal_id, assigned_at
+                            FROM topic_members
+                            WHERE topic_id = $1 AND role = 'evidence' AND signal_id IS NOT NULL
+                            ORDER BY signal_id, assigned_at DESC
+                        ) m ORDER BY m.assigned_at DESC LIMIT 400
+                        """,
+                        topic_id_text,
+                    )
+                ]
+            if not member_ids and topic_id_text.startswith("dynamic-topic-"):
+                # topic_members is an ETL projection and can be mid-rebuild
+                # (2026-07-03: the nightly pass left dt-981 at 0 rows). The
+                # engine's own member record — sample_signal_ids via the
+                # topic's clusters — is the same source the detail serves.
+                member_ids = [
+                    r["signal_id"] for r in await conn.fetch(
+                        """
+                        SELECT DISTINCT sid.signal_id
+                        FROM dynamic_topic_members dtm
+                        JOIN emergent_clusters ec ON ec.id = dtm.emergent_cluster_id
+                        LEFT JOIN LATERAL unnest(ec.sample_signal_ids) AS sid(signal_id) ON TRUE
+                        WHERE dtm.dynamic_topic_id = $1 AND sid.signal_id IS NOT NULL
+                        """,
+                        int(topic_id_text[len("dynamic-topic-"):]),
+                    )
+                ]
+            if not member_ids:
                 return {**empty, "center": center, "reason": "no_members"}
 
             if centroid_text is None:
@@ -1920,12 +1986,11 @@ async def get_theme_orbital(
                 FROM signals_v2 s
                 JOIN signal_embeddings se ON se.signal_id = s.id
                 WHERE s.id = ANY($1::bigint[])
-                  AND s.timestamp > NOW() - INTERVAL '{int(hours)} hours'
                 """,
                 member_ids, centroid_text,
             )
             if not rows:
-                return {**empty, "center": center, "reason": "no_embedded_members_in_window"}
+                return {**empty, "center": center, "reason": "no_embedded_members"}
 
             bodies = build_orbital_bodies([dict(r) for r in rows])
             stamps = sorted(r["timestamp"] for r in rows)

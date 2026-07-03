@@ -205,3 +205,11 @@
   border-right-color: rgba(52, 211, 153, 0.85);
   border-radius: 50% !important;
 }
+
+.orbital-legend-moon {
+  width: 5px !important;
+  height: 5px !important;
+  border-radius: 50%;
+  background: #e2e8f0;
+  opacity: 0.8;
+}

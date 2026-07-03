@@ -20,9 +20,13 @@ export interface OrbitalBody {
       Positive = receding from the story, negative = approaching. Null when
       too few signals to split honestly. */
   drift?: number | null
-  /** Mean tone of the body's member signals (±1 scale; same metric the rest
-      of Atlas calls avg sentiment). */
+  /** Mean tone of the body's member signals (raw signals scale; same metric
+      the rest of Atlas calls avg sentiment). */
   tone?: number | null
+  /** Set when this small entity appears almost only inside another body's
+      signals (co-occurrence ≥75%) — it orbits THAT body, not the center. */
+  moon_of?: string
+  moon_overlap?: number
   first_seen: string
   last_seen: string
   timestamps: string[]

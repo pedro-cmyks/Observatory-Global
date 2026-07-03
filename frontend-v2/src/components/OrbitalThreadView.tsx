@@ -51,7 +51,7 @@ const EMPTY_REASONS: Record<string, string> = {
     unsupported_theme_kind: 'Orbital view needs a thread (dynamic or atlas topic), not a raw GDELT code.',
     no_members: 'No typed members recorded for this thread yet — the nightly engine pass populates them.',
     no_embeddings: 'Member signals are not embedded yet, so semantic distance cannot be measured.',
-    no_embedded_members_in_window: 'No embedded member signals inside this time window.',
+    no_embedded_members: 'Member signals are not embedded yet, so semantic distance cannot be measured.',
     error: 'Orbital data unavailable right now.',
 }
 
@@ -139,7 +139,8 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
 
     const placed = useMemo(() => {
         if (!window_) return []
-        return bodies.map(body => {
+        // pass 1: primary bodies on their own orbits
+        const primary = bodies.filter(b => !b.moon_of).map(body => {
             const alpha = presenceAlpha(body, scrubT)
             const r = orbitRadius(norm.get(body.id) ?? 0.5, rMin, rMax)
             const angle = angleAt(body, scrubT)
@@ -147,12 +148,37 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                 body,
                 alpha,
                 comet: isComet(body, window_),
+                moon: false,
                 x: cx + r * ex * Math.cos(angle),
                 y: cy + r * ey * Math.sin(angle),
                 angle,
                 r,
             }
         })
+        const byId = new Map(primary.map(p => [p.body.id, p]))
+        // pass 2: moons ride their parent's position on a tight sub-orbit
+        // (Pedro spec 7b — co-occurrence makes them satellites, measured)
+        const moons = bodies.filter(b => b.moon_of).map(body => {
+            const parent = byId.get(body.moon_of!)
+            const alpha = presenceAlpha(body, scrubT)
+            const angle = angleAt(body, scrubT)
+            if (!parent) {
+                const r = orbitRadius(norm.get(body.id) ?? 0.5, rMin, rMax)
+                return { body, alpha, comet: isComet(body, window_), moon: false, x: cx + r * ex * Math.cos(angle), y: cy + r * ey * Math.sin(angle), angle, r }
+            }
+            const mr = bodyRadius(parent.body.n) + 9 + bodyRadius(body.n)
+            return {
+                body,
+                alpha: Math.min(alpha, parent.alpha),
+                comet: isComet(body, window_),
+                moon: true,
+                x: parent.x + mr * Math.cos(angle),
+                y: parent.y + mr * Math.sin(angle),
+                angle,
+                r: mr,
+            }
+        })
+        return [...primary, ...moons]
     }, [bodies, norm, scrubT, window_, cx, cy, rMax])
 
     const visible = placed.filter(p => p.alpha > 0)
@@ -335,7 +361,7 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                 {hovered && (
                     <div className="orbital-hover">
                         <span className="orbital-hover-type" style={{ color: TYPE_COLORS[hovered.type] }}>
-                            {hovered.type}{window_ && isComet(hovered, window_) ? ' · comet' : ''}
+                            {hovered.type}{window_ && isComet(hovered, window_) ? ' · comet' : ''}{hovered.moon_of ? ` · moon (${Math.round((hovered.moon_overlap ?? 0) * 100)}% shared coverage)` : ''}
                         </span>
                         <strong>{bodyLabel(hovered)}</strong>
                         <em>{hovered.n} signal{hovered.n === 1 ? '' : 's'} · orbit {(hovered.dist).toFixed(3)}{hovered.tone != null ? ` · tone ${hovered.tone > 0 ? '+' : ''}${hovered.tone.toFixed(2)}` : ''}</em>
@@ -374,6 +400,7 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                     <span key={type}><i style={{ background: color }} />{type}</span>
                 ))}
                 <span data-tip="Dashed ring: present for under a quarter of the story's lifespan — a brief visitor"><i className="orbital-legend-comet" />comet</span>
+                <span data-tip="A small entity that appears almost only inside its parent's coverage (75%+ shared signals) orbits that body, not the center"><i className="orbital-legend-moon" />moon</span>
                 <span data-tip="Rim color = mean tone of the body's coverage (green positive / red negative / gray neutral) — the same metric shown elsewhere as avg sentiment"><i className="orbital-legend-tone" />rim = tone</span>
                 <span data-tip="The tail is MEASURED drift: mean centroid-distance of the body's late signals vs its early ones. Outward tail = its coverage is receding from the story; inward = converging on it"><i className="orbital-legend-tail" />tail = semantic drift</span>
                 <span className="orbital-legend-note" data-tip="Orbit radius = semantic distance of the body's coverage to the thread centroid (closer = same story)">
