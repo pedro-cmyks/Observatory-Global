@@ -75,6 +75,35 @@ PENDIENTES de la review: universe trajectories (posiciones moviéndose con
 el scrub — emergent_clusters per-snapshot centroids), pseudo-3D tilt
 orbital, discussion-attach noise (Mbappé/LinkedIn en dt-981, semantic
 0.90 attach quality → #248 class). NEXT igual + esos.
+**2026-07-03 (madrugada — PANIC POST-MORTEM + RECOVERY + V9, read FIRST).**
+(1) **El apagón de Pedro = KERNEL PANIC 00:06:45**: "userspace watchdog
+timeout: no successful checkins from WindowServer in 134 seconds".
+Contribuyentes: universe auto-spin re-renderizando 348 nodos SVG a 60fps
+(MITIGADO `91073ca4`: yaw ~10fps, para con orbital abierto, auto-rest 90s
+idle, re-arma con interacción) + **mysqld homebrew crash-loop (99 crash
+reports, NO es Atlas — Pedro: `brew services stop mysql` si no lo usas)**.
+(2) **EL PANIC MATÓ EL BULK-REINDEX A MITAD**: signal_embeddings quedó en
+18K de ~476K, SIN índice HNSW; el relanzamiento post-reboot murió con
+ModuleNotFoundError (cwd equivocado). RELANZADO 2026-07-03 ~01:20 (nohup
+taskpolicy -b, cwd backend, mlvenv, `embed-bulk-reindex-recovery.log`,
+113,591 pendientes ≈2.5h; HNSW al final; restore-watcher re-bootstrapea
+fleet+embed-cron al salir). Hasta entonces: semantic lane lexical-only,
+orbital sin distancias. (3) **PA-thread attach NOISE (Pasta Grannies al
+85% en Irak-anticorrupción): floor adaptativo por-centroide** (`91073ca4`,
+mean+2.5σ vs fondo social random; medido: el piso e5 VARÍA 0.875-0.900
+por thread → umbral fijo 0.82 siempre servía basura). Prod: dt-800
+noise_floor 0.875 → 0 items = vacío honesto; hallazgo: HOY casi ningún
+thread tiene discusión de foro genuina (misma conclusión que silent-risk).
+(4) **V9 MOONS (`3e8d8d6c`, spec 7b)**: entidad chica con ≥75% de señales
+compartidas orbita a su cuerpo padre (co-ocurrencia medida; países nunca
+son lunas); hover muestra % compartido. + Member resolution endurecida:
+ventana envejecida → últimos 400; topic_members mid-rebuild (el ETL dejó
+dynamic en 677 filas/108 topics esta noche — ⚠ pipeline pendiente) →
+sample_signal_ids. Moons SIN verificación visual hasta el backfill.
+PENDIENTES: verificar reindex al terminar (count ~476K + HNSW) + moons
+eyeball; translate-por-texto para PA dock (queries trends, M); focus
+inverso país/persona→campo; ETL dynamic projection (por qué 677 filas).
+
 **V8 (sigamos, `95d3a120`): UNIVERSE TRAJECTORIES** — el scrub MUEVE las
 posiciones por sus rutas REALES: centroides por-snapshot (emergent_clusters,
 87 snapshots/30d) proyectados a la base PCA actual → node.track (348/348
