@@ -35,7 +35,13 @@ FLY_APP="${ATLAS_FLY_APP:-atlas-api-pedro}"
 LOG_DIR="${ATLAS_LOCAL_LOG_DIR:-$ROOT_DIR/logs}"
 WINDOW_HOURS="${ATLAS_TOPIC_WINDOW_HOURS:-0.5}"
 MLVENV="${ATLAS_MLVENV:-/Users/pedro/AtlasLocalWorker/mlvenv}"
-GATE_JSON="${ATLAS_GATE_JSON:-/Users/pedro/AtlasLocalWorker/models/2026-05-29-scope-gate-v1-e5base.json}"
+# Scope gate: OpenAI text-embedding-3-small variant (2026-07-04) — the bake-off
+# proved it beats every local embedder (recall 0.843 vs e5base 0.749 @90% prec;
+# hard topics lift huge). Needs OPENAI_API_KEY (sourced from .env below).
+# REVERSIBLE: set ATLAS_GATE_JSON back to the -e5base.json + ATLAS_GATE_ID to
+# atlas-scope-gate-v1-e5base for the free local path.
+GATE_JSON="${ATLAS_GATE_JSON:-/Users/pedro/AtlasLocalWorker/models/2026-05-29-scope-gate-v1.json}"
+GATE_ID="${ATLAS_GATE_ID:-atlas-scope-gate-v1-openai}"
 GATE_WINDOW_HOURS="${ATLAS_GATE_WINDOW_HOURS:-1}"
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
@@ -83,6 +89,7 @@ if [[ -x "$MLVENV/bin/python" && -f "$GATE_JSON" ]]; then
   "$MLVENV/bin/python" "$BACKEND_DIR/scripts/score_assignments_gate.py" \
     --window-hours "$GATE_WINDOW_HOURS" \
     --gate "$GATE_JSON" \
+    --gate-id "$GATE_ID" \
     || echo "[atlas-topic] scope-gate scoring failed (non-fatal)" >&2
 else
   echo "[atlas-topic] skip scope-gate: mlvenv or gate JSON missing ($MLVENV / $GATE_JSON)" >&2
