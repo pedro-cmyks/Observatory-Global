@@ -75,6 +75,20 @@ PENDIENTES de la review: universe trajectories (posiciones moviéndose con
 el scrub — emergent_clusters per-snapshot centroids), pseudo-3D tilt
 orbital, discussion-attach noise (Mbappé/LinkedIn en dt-981, semantic
 0.90 attach quality → #248 class). NEXT igual + esos.
+**2026-07-03 (PM — FREE 3D ROLL, `c2f85fee`, read FIRST).** Pedro: "roll
+disponible 3D, para donde sea". Weighed TWO approaches per his instruction
+(judge + counter-propose + weigh, web-grounded arcball/gimbal-lock): Euler
+yaw/pitch/roll (clamped, gimbal-limited) vs accumulated 3×3 TRACKBALL MATRIX
+— chose the matrix (no gimbal lock, no clamp, any orientation; positions are
+approximate PCA anyway so exploration ergonomics win). `Rot3` +
+applyRot/mul3/rotX/Y/Z (pure vitest). Modes ORBIT|MOVE|ROLL + reset; roll also
+alt-drag / two-finger twist. Ambient spin composes into the matrix, firmly
+paused during any drag (draggingRef fix: hover-leave no longer resumes spin
+mid-drag). **Physically verified in the BROWSER (Pedro's rule): ~172° roll
+flipped the field rigidly (constellation labels bottom→top); orbit/pan/reset
+live; console clean.** 158 vitest. Research subagent + web grounded the choice.
+Spec §7.4.
+
 **2026-07-03 (AM — FREE NAV + Paper-1 framing, read FIRST).** Pedro's product
 thesis LOGGED: **Atlas = Paper 1** (narrative threads + how we classify/relate
 information); every other paper (P2-P8) is BACKING for P1. The universe is

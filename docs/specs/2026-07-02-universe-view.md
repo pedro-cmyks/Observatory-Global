@@ -95,6 +95,29 @@ system still opens via travel — their children are the field bodies.
   RINGED back in the field. Remaining directions: focused country/person →
   light their stories in the field.
 
+### 7.4 Free 3D rotation with ROLL (Pedro 2026-07-03) — SHIPPED (`c2f85fee`)
+Pedro: "roll disponible 3D... moverme para donde sea, sin restringir a un eje".
+**Two approaches weighed (his instruction: judge, counter-propose, weigh) —
+web-grounded (Shoemake arcball, three.js Trackball, gimbal-lock theory):**
+- **A. Euler yaw/pitch/roll** (3 scalars): cheap extension. Roll-as-final-2D
+  is exact under orthographic projection. BUT pitch stays clamped ±1.2 rad to
+  dodge gimbal lock → NOT "para donde sea"; combining roll with yaw/pitch
+  makes the axes stop matching what the user sees.
+- **B. Accumulated 3×3 trackball matrix** (chosen): each drag composes an
+  incremental screen-space rotation; roll is Rz. No gimbal lock, no clamp, any
+  orientation; roll emerges from combined drags + explicit control.
+- **Judgment:** A wins only on effort; Pedro asked for unrestricted 3-axis
+  TWICE, and positions are approximate anyway (PCA ~17%) so the payoff is
+  exploration ergonomics, exactly where arcball wins. Chose B. Kept A's
+  roll-as-2D insight as the fallback.
+Impl: `Rot3` + `applyRot/mul3/rotX/rotY/rotZ` (pure, vitest incl. rigid-roll +
+orthonormality). Modes ORBIT | MOVE | ROLL + reset; roll also alt-drag /
+two-finger twist. Ambient spin composes into the matrix, firmly paused during
+any drag (draggingRef — a hover-leave mid-drag no longer resumes the spin).
+**Physically verified in the browser (Pedro's rule — not from code):** a ~172°
+roll spun the whole field rigidly around center (constellation labels flipped
+bottom→top); orbit/pan/reset live; console clean on the working bundle.
+
 ### 7.3 Free navigation (Pedro 2026-07-03) — SHIPPED (`7113222a`)
 The single-axis yaw + fixed-y model was too restrictive ("quiero moverme
 alrededor de la galaxia libremente, sin restringir a un eje... y arrastrar el
