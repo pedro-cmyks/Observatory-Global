@@ -333,8 +333,22 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                 <div className="universe-orbit-bar">
                     <button
                         className="universe-orbit-back"
-                        onClick={() => setOrbitalVisible(false)}
-                        data-tip="Back to the full story universe"
+                        onClick={() => {
+                            setOrbitalVisible(false)
+                            // Frame the open thread's body in the FIELD at a
+                            // moderate zoom so you see WHERE it sits in the
+                            // world, highlighted (Pedro 2026-07-03 — "la
+                            // conexión más grande").
+                            const body = allNodes.find(n => n.id === activeTheme)
+                            if (body) {
+                                const p = applyRot(rot, body.x, body.y, body.z, massX, massY, massZ)
+                                const tx0 = margin + p.px * (size.w - 2 * margin)
+                                const ty0 = margin + p.py * (size.h - 2 * margin)
+                                const k = 1.5
+                                setView({ k, tx: size.w / 2 - tx0 * k, ty: size.h / 2 - ty0 * k })
+                            }
+                        }}
+                        data-tip="Back to the field — see where this story sits in the world"
                     >
                         ← UNIVERSE
                     </button>
@@ -518,6 +532,11 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                             <stop offset="45%" stopColor="#f97316" stopOpacity="0.22" />
                             <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
                         </radialGradient>
+                        <radialGradient id="universe-active-glow" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stopColor="#34d399" stopOpacity="0.5" />
+                            <stop offset="55%" stopColor="#34d399" stopOpacity="0.14" />
+                            <stop offset="100%" stopColor="#34d399" stopOpacity="0" />
+                        </radialGradient>
                     </defs>
                     {/* constellation labels (rotate with the cloud) */}
                     {!orphansOnly && payload.anchors.filter(a => a.count >= 4).map(a => {
@@ -626,13 +645,12 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                                     />
                                 )}
                                 {isActive && (
-                                    <circle
-                                        cx={p.sx} cy={p.sy}
-                                        r={r + 5}
-                                        fill="none"
-                                        stroke="rgba(52, 211, 153, 0.9)"
-                                        strokeWidth={1.6}
-                                    />
+                                    <>
+                                        <circle cx={p.sx} cy={p.sy} r={r + 16} fill="url(#universe-active-glow)" pointerEvents="none" />
+                                        <circle cx={p.sx} cy={p.sy} r={r + 5} fill="none" stroke="rgba(52, 211, 153, 0.95)" strokeWidth={2} />
+                                        <circle cx={p.sx} cy={p.sy} r={r + 9} fill="none" stroke="rgba(52, 211, 153, 0.4)" strokeWidth={1} />
+                                        <text x={p.sx} y={p.sy - r - 8} className="universe-active-label">◆ open story</text>
+                                    </>
                                 )}
                                 <circle
                                     cx={p.sx} cy={p.sy}

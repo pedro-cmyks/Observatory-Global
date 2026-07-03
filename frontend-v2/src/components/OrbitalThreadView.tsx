@@ -222,12 +222,12 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                 ref={attachCanvas}
                 onWheel={e => {
                     e.preventDefault()
-                    const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15
+                    const factor = e.deltaY < 0 ? 1.3 : 1 / 1.3
                     const rect = containerRef.current?.getBoundingClientRect()
                     const mx = e.clientX - (rect?.left ?? 0)
                     const my = e.clientY - (rect?.top ?? 0)
                     setView(v => {
-                        const k = Math.min(6, Math.max(1, v.k * factor))
+                        const k = Math.min(10, Math.max(1, v.k * factor))
                         return { k, tx: mx - (mx - v.tx) * (k / v.k), ty: my - (my - v.ty) * (k / v.k) }
                     })
                 }}
