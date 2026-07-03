@@ -75,6 +75,27 @@ PENDIENTES de la review: universe trajectories (posiciones moviéndose con
 el scrub — emergent_clusters per-snapshot centroids), pseudo-3D tilt
 orbital, discussion-attach noise (Mbappé/LinkedIn en dt-981, semantic
 0.90 attach quality → #248 class). NEXT igual + esos.
+**2026-07-04 (SUBSTRATE #2 DIAGNOSED + crons revived, ops — read FIRST).**
+Root cause of the thin/frozen data (only 101 stories, universe/movement/heating
+all noise-thin): NOT fundamentally thin data — the M1 CRONS STOPPED FIRING ~20h
+ago (log mtimes: embed 07-03 06:59, clustering 03:24; machine was AWAKE, sleep
+prevented — scheduling broke, likely my earlier manual bulk-reindex+restore
+cycle left launchd in a bad state). Chain: embed cron stalled → 11h stale
+embeddings → the 07-03 clustering ran on INCOMPLETE embeds → formed 186 clusters
+(vs 07-02s 1049) → only 101 active stories → everything downstream thin.
+Ingest itself is HEALTHY (157K/24h fresh). FIXED: re-bootstrapped scoped-snapshot
++ embed-hot-corpus + emergent-snapshot (scheduling reset; kickstart proved
+clustering runs); kicked a mindful embed catchup (clears the backlog). SAFETY:
+two heavy ML jobs at once spiked load to 16.3 on the 8-core M1 (the kernel-panic
+zone — WindowServer at 35%) → killed the premature clustering kickstart, kept
+the foundational embed. DURABLE PLAN (not yet built): (1) CHAIN embed→cluster
+(sequence, not independent schedules) so clustering never runs on stale embeds —
+the real structural fix; (2) a scoped-snapshot watchdog (like embed-watchdog) to
+catch stalls; (3) harden restore-after-bulk-reindex (it likely broke the
+schedules). Substrate thickens over the next hours as embed catches up + the
+re-bootstrapped clustering fires. This is the honest blocker under universe/
+movement/heating — mechanics are correct, data was starved by dead crons.
+
 **2026-07-03 (PM — PERSPECTIVE ZOOM + open-thread highlight, `24757126`).**
 (1) Zoom is now PERSPECTIVE (Pedro "como en el espacio": zoom in → your planet
 grows, the rest recedes), not uniform scale. Perspective divide on the real
