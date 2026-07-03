@@ -30,23 +30,29 @@ WINDOW_DAYS = 7
 BUCKET_HOURS = 3  # coarser than 1h → smoother, cheaper, less zero-noise
 
 
-async def _hourly_observations(conn, topic_id: str) -> list[Observation]:
+async def _series_by_topic(conn) -> dict[str, list[Observation]]:
+    """Hourly volume per topic over topic_members — the UNIFIED membership, so
+    this covers atlas categories AND dynamic stories in one pass (movement is
+    ONE field for the whole thread population, Pedro 2026-07-03)."""
     rows = await conn.fetch(
         f"""
-        SELECT date_bin('{BUCKET_HOURS} hours', s.timestamp,
+        SELECT tm.topic_id,
+               date_bin('{BUCKET_HOURS} hours', s.timestamp,
                         TIMESTAMPTZ '2020-01-01') AS bucket,
                COUNT(*) AS n
         FROM topic_members tm JOIN signals_v2 s ON s.id = tm.signal_id
-        WHERE tm.topic_id = $1 AND tm.role = 'evidence'
+        WHERE tm.role = 'evidence'
           AND s.timestamp > NOW() - INTERVAL '{WINDOW_DAYS} days'
-        GROUP BY 1 ORDER BY 1
-        """,
-        topic_id,
+        GROUP BY tm.topic_id, bucket
+        ORDER BY tm.topic_id, bucket
+        """
     )
-    return [
-        Observation(snapshot_at=r["bucket"], n_signals=int(r["n"]))
-        for r in rows
-    ]
+    out: dict[str, list[Observation]] = {}
+    for r in rows:
+        out.setdefault(r["topic_id"], []).append(
+            Observation(snapshot_at=r["bucket"], n_signals=int(r["n"]))
+        )
+    return out
 
 
 async def main() -> None:
@@ -56,15 +62,11 @@ async def main() -> None:
 
     conn = await asyncpg.connect(os.environ["DATABASE_URL"], statement_cache_size=0)
     try:
-        topics = await conn.fetch(
-            "SELECT id FROM dynamic_topics WHERE state = 'active' AND NOT is_umbrella"
-        )
+        series = await _series_by_topic(conn)
         now = datetime.now(timezone.utc)
         written = 0
         rows_out = []
-        for t in topics:
-            topic_id = f"dynamic-topic-{t['id']}"
-            obs = await _hourly_observations(conn, topic_id)
+        for topic_id, obs in series.items():
             if not obs:
                 continue
             est = estimate_state(obs)
