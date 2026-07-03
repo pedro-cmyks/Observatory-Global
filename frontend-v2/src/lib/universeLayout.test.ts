@@ -164,3 +164,27 @@ describe('free 3D rotation matrix (arcball/trackball)', () => {
     expect(back.px).toBeCloseTo(0.9, 5); expect(back.py).toBeCloseTo(0.2, 5)
   })
 })
+
+describe('inverse-focus lens', () => {
+  const nodes = [
+    node({ id: 'a', category: 'War', countries: ['US','IR'], persons: ['donald trump'] }),
+    node({ id: 'b', category: 'Economy', countries: ['GB'], persons: ['donald trump','jane doe'] }),
+    node({ id: 'c', category: 'Health', countries: ['FR'], persons: ['someone else'] }),
+    node({ id: 'd', category: 'Sports', countries: ['US'], persons: ['donald trump'] }),
+  ]
+  it('lights stories matching a focused country/person, nothing without focus', async () => {
+    const { litNodeIds } = await import('./universeLayout')
+    expect([...litNodeIds(nodes, 'person', 'Donald Trump')].sort()).toEqual(['a','b','d'])
+    expect([...litNodeIds(nodes, 'country', 'us')].sort()).toEqual(['a','d'])
+    expect(litNodeIds(nodes, null, null).size).toBe(0)
+  })
+  it('spread = concentrated vs cross-cutting by category count', async () => {
+    const { entitySpread, litNodeIds } = await import('./universeLayout')
+    const trump = nodes.filter(n => litNodeIds(nodes, 'person', 'donald trump').has(n.id))
+    const s = entitySpread(trump)
+    expect(s.stories).toBe(3)
+    expect(s.categories).toBe(3) // War, Economy, Sports
+    expect(s.shape).toBe('mixed')
+    expect(entitySpread([nodes[0]]).shape).toBe('concentrated') // 1 category
+  })
+})

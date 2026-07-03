@@ -6,7 +6,9 @@ import {
     depthAlpha,
     depthScale,
     edgeOpacity,
+    entitySpread,
     isOrphan,
+    litNodeIds,
     positionAt,
     universeAlpha,
     universeRadius,
@@ -39,13 +41,17 @@ interface UniverseViewProps {
     activeTheme?: string | null
     activeThemeLabel?: string
     hours?: number
+    /** Inverse-focus lens: a country/person focused elsewhere in Atlas lights
+        ITS stories in the field (Pedro 2026-07-03 — the gravity well). */
+    focusKind?: 'country' | 'person' | null
+    focusValue?: string | null
     onPersonSelect?: (name: string) => void
     onCountrySelect?: (code: string) => void
 }
 
 const WEEK_MS = 7 * 24 * 3_600_000
 
-export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hours = 24, onPersonSelect, onCountrySelect }: UniverseViewProps) {
+export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hours = 24, focusKind = null, focusValue = null, onPersonSelect, onCountrySelect }: UniverseViewProps) {
     const [payload, setPayload] = useState<UniversePayload | null>(null)
     const [loading, setLoading] = useState(true)
     const [scrubPct, setScrubPct] = useState(100)
@@ -211,6 +217,41 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
         () => [...nodes].sort((a, b) => (projected.get(b.id)?.depth ?? 0) - (projected.get(a.id)?.depth ?? 0)),
         [nodes, projected],
     )
+
+    // Inverse-focus lens (the GRAVITY WELL): a focused country/person lights
+    // its stories; the rest dims. A ghost "sun" sits at the barycenter of the
+    // lit stories with gravity lines to each — and a readout of the entity's
+    // narrative FOOTPRINT (concentrated vs cross-cutting).
+    const litIds = useMemo(() => litNodeIds(nodes, focusKind, focusValue), [nodes, focusKind, focusValue])
+    // Frame the lit constellation when the focus changes (one-shot per entity).
+    const focusKey = `${focusKind}:${focusValue}`
+    useEffect(() => {
+        const ids = litNodeIds(nodes, focusKind, focusValue)
+        if (ids.size === 0 || nodes.length === 0) return
+        const lit = nodes.filter(n => ids.has(n.id))
+        // barycenter in normalized rotated space → recenter with a gentle zoom
+        let bx = 0, by = 0, k = 0
+        for (const n of lit) { const p = applyRot(rot, n.x, n.y, n.z, massX, massY, massZ); bx += p.px; by += p.py; k++ }
+        if (!k) return
+        bx /= k; by /= k
+        const zoom = 1.5
+        const targetX = (margin + bx * (size.w - 2 * margin))
+        const targetY = (margin + by * (size.h - 2 * margin))
+        setView({ k: zoom, tx: size.w / 2 - targetX * zoom, ty: size.h / 2 - targetY * zoom })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [focusKey])
+    const litActive = litIds.size > 0
+    const litNodes = useMemo(() => nodes.filter(n => litIds.has(n.id)), [nodes, litIds])
+    const spread = useMemo(() => (litActive ? entitySpread(litNodes) : null), [litActive, litNodes])
+    const sun = useMemo(() => {
+        if (!litActive) return null
+        let sx = 0, sy = 0, k = 0
+        for (const n of litNodes) {
+            const p = projected.get(n.id)
+            if (p) { sx += p.sx; sy += p.sy; k++ }
+        }
+        return k ? { sx: sx / k, sy: sy / k } : null
+    }, [litActive, litNodes, projected])
 
     // Travel: an open thread pulls the camera to its body, then the story
     // system appears in this panel (the "viaje").
@@ -502,13 +543,35 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                         )
                     })}
 
+                    {/* GRAVITY WELL: focused entity's ghost sun at the barycenter
+                        of its stories + a line to each lit story (drawn under
+                        the bodies). The sun is an OVERLAY — it never moves the
+                        semantic positions, so the field stays honest. */}
+                    {litActive && sun && (
+                        <g pointerEvents="none">
+                            {litNodes.map(n => {
+                                const p = projected.get(n.id)
+                                if (!p) return null
+                                return (
+                                    <line key={`grav-${n.id}`}
+                                        x1={sun.sx} y1={sun.sy} x2={p.sx} y2={p.sy}
+                                        stroke="#fbbf24" strokeOpacity={0.28} strokeWidth={1} />
+                                )
+                            })}
+                            <circle cx={sun.sx} cy={sun.sy} r={9} fill="#fbbf24" fillOpacity={0.22} />
+                            <circle cx={sun.sx} cy={sun.sy} r={4} fill="#fde68a" />
+                        </g>
+                    )}
+
                     {/* story bodies — far first, near last (painter's order) */}
                     {depthOrdered.map(n => {
                         const alpha = alphaById.get(n.id) ?? 0
                         if (alpha === 0) return null
                         const p = projected.get(n.id)
                         if (!p) return null
-                        const dimmed = neighborIds !== null && !neighborIds.has(n.id)
+                        // when an entity is focused, its stories stay lit, the rest ghosts
+                        const lit = litActive && litIds.has(n.id)
+                        const dimmed = (neighborIds !== null && !neighborIds.has(n.id)) || (litActive && !lit)
                         const orphan = isOrphan(n)
                         const isActive = n.id === activeTheme
                         const r = universeRadius(n.n) * Math.min(1.6, Math.max(0.8, view.k)) * depthScale(p.depth)
@@ -516,7 +579,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                             <g
                                 key={n.id}
                                 className="universe-body"
-                                opacity={(dimmed && !isActive ? 0.12 : Math.max(alpha, isActive ? 0.95 : 0)) * depthAlpha(p.depth)}
+                                opacity={(dimmed && !isActive && !lit ? 0.08 : Math.max(alpha, isActive || lit ? 0.95 : 0)) * depthAlpha(p.depth)}
                                                 onMouseEnter={() => { lastInteractionRef.current = performance.now(); setHoveredId(n.id) }}
                                 onMouseLeave={() => setHoveredId(h => (h === n.id ? null : h))}
                                 onClick={() => onThemeSelect(n.id)}
@@ -539,7 +602,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                                     strokeWidth={n.crisis_relevant ? 1.4 : orphan ? 1.1 : 0.6}
                                     strokeDasharray={orphan ? '3 2.4' : undefined}
                                 />
-                                {(labeledIds.has(n.id) || hoveredId === n.id) && (
+                                {(labeledIds.has(n.id) || hoveredId === n.id || lit) && (
                                     <text x={p.sx} y={p.sy + r + 11} className="universe-body-label">
                                         {n.label.length > 30 ? `${n.label.slice(0, 28)}…` : n.label}
                                     </text>
@@ -548,6 +611,23 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                         )
                     })}
                 </svg>
+
+                {litActive && spread && (
+                    <div className="universe-footprint">
+                        <span className="universe-footprint-entity">{focusValue}</span>
+                        <span className="universe-footprint-stat">
+                            {spread.stories} {spread.stories === 1 ? 'story' : 'stories'} · {spread.categories} {spread.categories === 1 ? 'category' : 'categories'}
+                        </span>
+                        <span className={`universe-footprint-shape universe-footprint-shape--${spread.shape}`}
+                            data-tip={spread.shape === 'cross-cutting'
+                                ? 'This entity spans many narrative categories — a dominant, cross-cutting figure right now'
+                                : spread.shape === 'concentrated'
+                                    ? 'This entity sits in one or two stories — a focused, single-thread actor'
+                                    : 'This entity spans a few narrative categories'}>
+                            {spread.shape === 'cross-cutting' ? '◇ cross-cutting' : spread.shape === 'concentrated' ? '◈ concentrated' : '◈ mixed'}
+                        </span>
+                    </div>
+                )}
 
                 {hovered && (
                     <div className="universe-hover">

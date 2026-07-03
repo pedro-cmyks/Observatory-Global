@@ -307,3 +307,45 @@
   gap: 4px;
   margin-left: auto;
 }
+
+/* Inverse-focus gravity well: the entity's narrative footprint readout */
+.universe-footprint {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-end;
+  padding: 8px 11px;
+  background: rgba(11, 14, 19, 0.9);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.universe-footprint-entity {
+  color: #fde68a;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.universe-footprint-stat {
+  color: var(--color-text-muted, #94a3b8);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 10px;
+}
+
+.universe-footprint-shape {
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 1px;
+  pointer-events: auto;
+}
+
+.universe-footprint-shape--cross-cutting { color: #fbbf24; }
+.universe-footprint-shape--concentrated { color: #7dd3fc; }
+.universe-footprint-shape--mixed { color: #a78bfa; }

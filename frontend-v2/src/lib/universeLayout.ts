@@ -25,6 +25,10 @@ export interface UniverseNode {
   /** Historical positions: per-snapshot cluster centroids projected into the
       CURRENT layout frame — the topic's real path through the field. */
   track?: TrackPoint[]
+  /** Top countries (codes) + persons (lowercased) in this story — the
+      inverse-focus lens: a focused entity lights the stories it appears in. */
+  countries?: string[]
+  persons?: string[]
 }
 
 export interface TrackPoint {
@@ -242,4 +246,36 @@ export function positionAt(node: UniverseNode, t: number): { x: number; y: numbe
     y: a.y + (b.y - a.y) * f,
     z: (a.z ?? 0.5) + ((b.z ?? 0.5) - (a.z ?? 0.5)) * f,
   }
+}
+
+/**
+ * Inverse-focus lens (Pedro 2026-07-03): the ids of stories a focused entity
+ * appears in. Country by code (case-insensitive), person by name (lowercase).
+ */
+export function litNodeIds(
+  nodes: UniverseNode[], kind: 'country' | 'person' | null, value: string | null,
+): Set<string> {
+  const out = new Set<string>()
+  if (!kind || !value) return out
+  const v = value.trim().toLowerCase()
+  for (const n of nodes) {
+    if (kind === 'country' && (n.countries ?? []).some(c => c.toLowerCase() === v)) out.add(n.id)
+    if (kind === 'person' && (n.persons ?? []).some(p => p.toLowerCase() === v)) out.add(n.id)
+  }
+  return out
+}
+
+/**
+ * The entity's narrative FOOTPRINT: how many stories, across how many
+ * categories, and whether it is CONCENTRATED (a single-story actor) or
+ * CROSS-CUTTING (a figure that spans the narrative space) — the investigative
+ * signal the gravity-well overlay surfaces.
+ */
+export function entitySpread(litNodes: UniverseNode[]): {
+  stories: number; categories: number; shape: 'concentrated' | 'mixed' | 'cross-cutting'
+} {
+  const cats = new Set(litNodes.map(n => n.category))
+  const categories = cats.size
+  const shape = categories <= 2 ? 'concentrated' : categories >= 5 ? 'cross-cutting' : 'mixed'
+  return { stories: litNodes.length, categories, shape }
 }

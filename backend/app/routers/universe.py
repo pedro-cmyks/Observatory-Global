@@ -163,9 +163,44 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
                   AND ec.centroid_vec IS NOT NULL
                 ORDER BY dtm.dynamic_topic_id, ec.snapshot_at
             """)
+
+            # Per-node entity membership → the INVERSE-FOCUS lens (Pedro
+            # 2026-07-03): focusing a country/person elsewhere in Atlas lights
+            # THAT entity's stories in the field. Countries by code, persons by
+            # name; both cheap over the small topic_members set, cached 10 min.
+            entity_rows = await conn.fetch(f"""
+                WITH mem AS (
+                    SELECT tm.topic_id, s.country_code, s.persons
+                    FROM topic_members tm JOIN signals_v2 s ON s.id = tm.signal_id
+                    WHERE tm.topic_id LIKE 'dynamic-topic-%' AND tm.role = 'evidence'
+                      AND tm.assigned_at > NOW() - INTERVAL '{int(days)} days'
+                )
+                SELECT topic_id, country_code, persons FROM mem
+            """)
     except Exception as exc:
         logger.error("universe query failed: %s", exc)
         return {**empty, "reason": "error"}
+
+    # Aggregate top countries + persons per topic (bounded).
+    country_ct: dict = {}
+    person_ct: dict = {}
+    for r in entity_rows:
+        tid = r["topic_id"]
+        cc = (r["country_code"] or "").strip().upper()
+        if cc:
+            country_ct.setdefault(tid, {})[cc] = country_ct.setdefault(tid, {}).get(cc, 0) + 1
+        for p in (r["persons"] or []):
+            name = (p or "").strip().lower()
+            if name:
+                person_ct.setdefault(tid, {})[name] = person_ct.setdefault(tid, {}).get(name, 0) + 1
+    countries_by_topic = {
+        tid: [c for c, _ in sorted(cc.items(), key=lambda kv: -kv[1])[:6]]
+        for tid, cc in country_ct.items()
+    }
+    persons_by_topic = {
+        tid: [p for p, _ in sorted(pp.items(), key=lambda kv: -kv[1])[:8]]
+        for tid, pp in person_ct.items()
+    }
 
     categories = [r["category"] or "Uncategorized" for r in rows]
     positions, anchors, M, basis = _project_universe(
@@ -222,6 +257,8 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
             "last_seen": r["last_seen"].isoformat() if r["last_seen"] else None,
             "timeline": timeline_by_topic.get(ids[i], []),
             "track": track_by_topic.get(int(r["id"]), []),
+            "countries": countries_by_topic.get(ids[i], []),
+            "persons": persons_by_topic.get(ids[i], []),
         }
         for i, r in enumerate(rows)
     ]

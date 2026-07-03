@@ -1956,6 +1956,8 @@ function AppContent() {
                   activeTheme={selectedTheme?.theme ?? null}
                   activeThemeLabel={selectedTheme ? (selectedTheme.thread?.label ?? getThemeLabel(selectedTheme.theme)) : undefined}
                   hours={timeRangeToHours(timeRange)}
+                  focusKind={focus.type === 'person' ? 'person' : filter.country ? 'country' : null}
+                  focusValue={focus.type === 'person' ? focus.value : (filter.country ?? null)}
                   onPersonSelect={(name) => { setFocus('person', name, name); setMapFlyCountry(null) }}
                   onCountrySelect={(code) => { setMapFlyCountry(code); setRightPanelThemeCountry({ code, name: code }) }}
                 />
