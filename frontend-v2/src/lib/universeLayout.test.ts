@@ -143,3 +143,20 @@ describe('trajectories — positions move along the REAL track', () => {
     expect(p).toEqual({ x: 0.4, y: 0.6, z: 0.5 })
   })
 })
+
+describe('rotateProject — free two-axis orbit', () => {
+  it('yaw 0 pitch 0 is identity; yaw mixes x/z; pitch mixes y/z', async () => {
+    const { rotateProject } = await import('./universeLayout')
+    const id = rotateProject(0.8, 0.7, 0.5, 0, 0)
+    expect(id.px).toBeCloseTo(0.8, 6)
+    expect(id.py).toBeCloseTo(0.7, 6)
+    // quarter yaw: x depth-swaps with z
+    const y = rotateProject(0.8, 0.5, 0.9, Math.PI / 2, 0)
+    expect(y.px).toBeCloseTo(0.1, 6)   // -(z-0.5)+0.5
+    expect(y.depth).toBeCloseTo(0.8, 6)
+    // quarter pitch: y depth-swaps with z
+    const p = rotateProject(0.5, 0.8, 0.9, 0, Math.PI / 2)
+    expect(p.py).toBeCloseTo(0.1, 6)
+    expect(p.depth).toBeCloseTo(0.8, 6)
+  })
+})

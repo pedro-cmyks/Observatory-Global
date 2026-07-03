@@ -10,7 +10,7 @@ import {
     positionAt,
     universeAlpha,
     universeRadius,
-    yawProject,
+    rotateProject,
     type UniverseEdge,
     type UniverseNode,
 } from '../lib/universeLayout'
@@ -55,8 +55,19 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
     // Yaw: rotation around the cloud's center of MASS (spec §7.2). Ambient
     // spin pauses on any interaction — camera, not time.
     const [yaw, setYaw] = useState(0)
+    // pitch = the second rotation axis (free orbit, Pedro's "sin restringir a
+    // un eje"). Clamped so the cloud never flips fully upside down.
+    const [pitch, setPitch] = useState(0)
+    // Nav mode: drag ROTATES by default (fly around), or PANS (drag the cloud
+    // across the screen). Two-finger touch always pans+zooms regardless.
+    const [navMode, setNavMode] = useState<'rotate' | 'pan'>('rotate')
     const spinPausedRef = useRef(false)
-    const dragRef = useRef<{ x: number; y: number; ty: number; yaw: number } | null>(null)
+    const dragRef = useRef<{
+        x: number; y: number; yaw: number; pitch: number; tx: number; ty: number; pan: boolean
+    } | null>(null)
+    // Multi-touch: track active pointers for two-finger pan + pinch-zoom.
+    const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map())
+    const pinchRef = useRef<{ dist: number; cx: number; cy: number; tx: number; ty: number; k: number } | null>(null)
     const containerRef = useRef<HTMLDivElement | null>(null)
     const [size, setSize] = useState({ w: 1200, h: 700 })
 
@@ -166,18 +177,24 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
         [allNodes],
     )
 
+    // Shared projection: free two-axis rotation about the mass center, then
+    // screen-map. Used by every layer so nodes/edges/labels/trails agree.
+    const project3 = (x: number, y: number, z: number | undefined) => {
+        const p = rotateProject(x, y, z, yaw, pitch, massX, massY, massZ)
+        return { sx: px(p.px), sy: py(p.py), depth: p.depth }
+    }
+
     const projected = useMemo(() => {
         const out = new Map<string, { sx: number; sy: number; depth: number }>()
         for (const n of nodes) {
             // trajectories (spec 7.2): the position AT the scrubbed moment,
             // interpolated along the topic's real snapshot track
             const pos = positionAt(n, scrubT)
-            const p = yawProject(pos.x, pos.z, yaw, massX, massZ)
-            out.set(n.id, { sx: px(p.px), sy: py(pos.y - massY + 0.5), depth: p.depth })
+            out.set(n.id, project3(pos.x, pos.y, pos.z))
         }
         return out
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [nodes, yaw, view, size, massX, massZ, massY, scrubT])
+    }, [nodes, yaw, pitch, view, size, massX, massZ, massY, scrubT])
 
     const depthOrdered = useMemo(
         () => [...nodes].sort((a, b) => (projected.get(b.id)?.depth ?? 0) - (projected.get(a.id)?.depth ?? 0)),
@@ -195,9 +212,9 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
         const body = allNodes.find(n => n.id === activeTheme)
         setTraveling(true)
         if (body) {
-            const p = yawProject(body.x, body.z, yaw, massX, massZ)
+            const p = rotateProject(body.x, body.y, body.z, yaw, pitch, massX, massY, massZ)
             const targetX = (margin + p.px * (size.w - 2 * margin))
-            const targetY = (margin + (body.y - massY + 0.5) * (size.h - 2 * margin))
+            const targetY = (margin + p.py * (size.h - 2 * margin))
             const k = 2.6
             setView({ k, tx: size.w / 2 - targetX * k, ty: size.h / 2 - targetY * k })
         }
@@ -289,6 +306,29 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                         ◉ TO ORBIT
                     </button>
                 )}
+                <span className="universe-nav-modes">
+                    <button
+                        className={`universe-filter ${navMode === 'rotate' ? 'active' : ''}`}
+                        onClick={() => setNavMode('rotate')}
+                        data-tip="Drag to orbit the galaxy freely (both axes). Shift-drag or two fingers to move it"
+                    >
+                        ⟲ ORBIT
+                    </button>
+                    <button
+                        className={`universe-filter ${navMode === 'pan' ? 'active' : ''}`}
+                        onClick={() => setNavMode('pan')}
+                        data-tip="Drag to move the whole cloud across the screen. Scroll or pinch to zoom"
+                    >
+                        ✋ MOVE
+                    </button>
+                    <button
+                        className="universe-filter"
+                        onClick={() => { setYaw(0); setPitch(0); setView({ k: 1, tx: 0, ty: 0 }) }}
+                        data-tip="Reset the camera"
+                    >
+                        ⌖
+                    </button>
+                </span>
             </div>
             <div
                 className={`universe-canvas${traveling ? ' universe-canvas--traveling' : ''}`}
@@ -309,28 +349,76 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                     })
                 }}
                 onPointerDown={e => {
+                    e.preventDefault()
+                    try { (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId) } catch { /* synthetic/inactive pointer */ }
                     spinPausedRef.current = true
                     lastInteractionRef.current = performance.now()
-                    dragRef.current = { x: e.clientX, y: e.clientY, ty: view.ty, yaw }
+                    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+                    if (pointersRef.current.size === 2) {
+                        // begin pinch: two fingers = pan + zoom (touch)
+                        const pts = [...pointersRef.current.values()]
+                        pinchRef.current = {
+                            dist: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y),
+                            cx: (pts[0].x + pts[1].x) / 2,
+                            cy: (pts[0].y + pts[1].y) / 2,
+                            tx: view.tx, ty: view.ty, k: view.k,
+                        }
+                        dragRef.current = null
+                    } else {
+                        // shift OR pan-mode OR right/middle button = PAN; else ROTATE
+                        const pan = navMode === 'pan' || e.shiftKey || e.button === 2 || e.button === 1
+                        dragRef.current = { x: e.clientX, y: e.clientY, yaw, pitch, tx: view.tx, ty: view.ty, pan }
+                    }
                 }}
                 onPointerMove={e => {
+                    if (pointersRef.current.has(e.pointerId)) {
+                        pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+                    }
+                    // two-finger pinch → pan + zoom about the finger midpoint
+                    if (pinchRef.current && pointersRef.current.size === 2) {
+                        const pts = [...pointersRef.current.values()]
+                        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
+                        const cx = (pts[0].x + pts[1].x) / 2
+                        const cy = (pts[0].y + pts[1].y) / 2
+                        const p = pinchRef.current
+                        const k = Math.min(8, Math.max(0.6, p.k * (dist / Math.max(1, p.dist))))
+                        setView({ k, tx: p.tx + (cx - p.cx), ty: p.ty + (cy - p.cy) })
+                        return
+                    }
                     const d = dragRef.current
                     if (!d) return
-                    // horizontal drag ROTATES the cloud; vertical drag pans
-                    setYaw(d.yaw + (e.clientX - d.x) * 0.004)
-                    setView(v => ({ ...v, ty: d.ty + (e.clientY - d.y) }))
+                    lastInteractionRef.current = performance.now()
+                    if (d.pan) {
+                        setView(v => ({ ...v, tx: d.tx + (e.clientX - d.x), ty: d.ty + (e.clientY - d.y) }))
+                    } else {
+                        // free orbit: dx → yaw, dy → pitch (clamped so it never flips)
+                        setYaw(d.yaw + (e.clientX - d.x) * 0.006)
+                        setPitch(Math.max(-1.2, Math.min(1.2, d.pitch + (e.clientY - d.y) * 0.006)))
+                    }
                 }}
-                onPointerUp={() => { dragRef.current = null; spinPausedRef.current = hoveredId !== null }}
-                onPointerLeave={() => { dragRef.current = null; spinPausedRef.current = hoveredId !== null }}
+                onPointerUp={e => {
+                    pointersRef.current.delete(e.pointerId)
+                    if (pointersRef.current.size < 2) pinchRef.current = null
+                    if (pointersRef.current.size === 0) dragRef.current = null
+                    spinPausedRef.current = hoveredId !== null
+                }}
+                onPointerLeave={e => {
+                    pointersRef.current.delete(e.pointerId)
+                    pinchRef.current = null
+                    dragRef.current = null
+                    spinPausedRef.current = hoveredId !== null
+                }}
+                onContextMenu={e => e.preventDefault()}
+                onDragStart={e => e.preventDefault()}
             >
                 <svg width={size.w} height={size.h} role="img" aria-label="Atlas story universe">
                     {/* constellation labels (rotate with the cloud) */}
                     {!orphansOnly && payload.anchors.filter(a => a.count >= 4).map(a => {
-                        const p = yawProject(a.x, a.z, yaw, massX, massZ)
+                        const p = project3(a.x, a.y, a.z)
                         return (
                             <text
                                 key={a.category}
-                                x={px(p.px)} y={py(a.y - massY + 0.5)}
+                                x={p.sx} y={p.sy}
                                 className="universe-constellation"
                                 opacity={depthAlpha(p.depth) * 0.9}
                             >
@@ -345,8 +433,8 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                         if (!n?.track || n.track.length < 2) return null
                         const pts = [...n.track.map(tp => ({ x: tp.x, y: tp.y, z: tp.z })), { x: n.x, y: n.y, z: n.z }]
                         const screen = pts.map(pt => {
-                            const p = yawProject(pt.x, pt.z, yaw, massX, massZ)
-                            return `${px(p.px)},${py(pt.y - massY + 0.5)}`
+                            const p = project3(pt.x, pt.y, pt.z)
+                            return `${p.sx},${p.sy}`
                         })
                         return (
                             <polyline

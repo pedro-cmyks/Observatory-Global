@@ -123,6 +123,35 @@ export function yawProject(
   }
 }
 
+/**
+ * Full two-axis rotation of a point around the cloud center (cx,cy,cz):
+ * yaw spins around the vertical (Y) axis (mixes x,z), pitch tilts around the
+ * horizontal (X) axis (mixes y,z). Free orbit — Pedro's "moverme alrededor de
+ * la galaxia libremente, sin restringir a un eje". Returns normalized px,py
+ * (frame re-centered at 0.5) + depth (0 near … 1 far).
+ */
+export function rotateProject(
+  x: number,
+  y: number,
+  z: number | undefined,
+  yaw: number,
+  pitch: number,
+  cx = 0.5,
+  cy = 0.5,
+  cz = 0.5,
+): { px: number; py: number; depth: number } {
+  const xc = x - cx
+  const yc = y - cy
+  const zc = (z ?? cz) - cz
+  const cyaw = Math.cos(yaw), syaw = Math.sin(yaw)
+  const x1 = xc * cyaw - zc * syaw
+  const z1 = xc * syaw + zc * cyaw
+  const cp = Math.cos(pitch), sp = Math.sin(pitch)
+  const y2 = yc * cp - z1 * sp
+  const z2 = yc * sp + z1 * cp
+  return { px: x1 + 0.5, py: y2 + 0.5, depth: z2 + 0.5 }
+}
+
 /** Center of mass of the cloud (x and z means) — the honest rotation axis. */
 export function cloudCenter(nodes: UniverseNode[]): { cx: number; cz: number } {
   if (nodes.length === 0) return { cx: 0.5, cz: 0.5 }

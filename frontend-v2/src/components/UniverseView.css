@@ -292,3 +292,18 @@
   display: flex;
   flex-direction: column;
 }
+
+/* Free navigation: kill text selection so drag moves the cloud, not selects
+   labels (Pedro 2026-07-03: dragging turned the panel blue instead of moving). */
+.universe-canvas {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.universe-canvas svg text { user-select: none; -webkit-user-select: none; }
+
+.universe-nav-modes {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
