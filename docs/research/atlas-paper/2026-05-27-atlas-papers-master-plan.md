@@ -858,3 +858,14 @@ spec, not promoted to the paper track.
 Update `2026-05-27-methodology-paper-outline.md` so that it is
 explicitly labeled "Paper 1 of the Atlas methodology series" and
 references this master plan as the framing document.
+
+## 2026-07-04 — cross-ref pointer
+
+Session deltas for P1 (two-tier precision serving; gold-growth small-n
+calibration-variance finding; PR3-05 hint-removal implemented as mig 067),
+P4 (Kalman leading-indicator backtest: NEGATIVE, movement is descriptive),
+P7 (Atlas-vs-web task evidence: discovery-radar vs answer-tool; search→story
+workflow), P8 (forum hobby noise class): see
+`docs/state/2026-07-04-alignment.md` §"EOD reconciliation" for the full map,
+artifacts in `docs/research/gate-recall/`, `docs/research/movement-backtest/`,
+`docs/research/eval/`.
