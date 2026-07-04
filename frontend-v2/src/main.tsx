@@ -1,4 +1,4 @@
-import { Component, StrictMode, useEffect, type ReactNode } from 'react'
+import { Component, StrictMode, useEffect, useState, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { installWarmCache, bumpWarmCacheGeneration } from './lib/fetchWarmCache'
@@ -12,6 +12,36 @@ function WarmCacheRouteReset() {
   const location = useLocation()
   useEffect(() => { bumpWarmCacheGeneration() }, [location.pathname])
   return null
+}
+
+// #239 slice 2 — keep-alive shell. Route switches used to UNMOUNT the whole
+// console/Brief tree (all state + the EE map died on every Brief↔App hop).
+// With MapLibre deprecated (2026-07-04) the display:none crash class is gone:
+// EE is a plain canvas that already handles display:none→block resizes. Each
+// pane mounts on first visit and then stays alive hidden; deep-link params
+// keep working because App/Brief are now URL-reactive with pathname guards.
+function AppBriefKeepAlive() {
+  const { pathname } = useLocation()
+  const isApp = pathname === '/app'
+  const isBrief = pathname === '/brief'
+  const [appOn, setAppOn] = useState(isApp)
+  const [briefOn, setBriefOn] = useState(isBrief)
+  useEffect(() => { if (isApp) setAppOn(true) }, [isApp])
+  useEffect(() => { if (isBrief) setBriefOn(true) }, [isBrief])
+  return (
+    <>
+      {(appOn || isApp) && (
+        <div style={isApp ? { display: 'contents' } : { display: 'none' }}>
+          <App />
+        </div>
+      )}
+      {(briefOn || isBrief) && (
+        <div style={isBrief ? { display: 'contents' } : { display: 'none' }}>
+          <BriefNewspaper />
+        </div>
+      )}
+    </>
+  )
 }
 import '@fontsource-variable/geist/index.css'
 import '@fontsource-variable/geist-mono/index.css'
@@ -51,10 +81,14 @@ createRoot(document.getElementById('root')!).render(
       <ThemeProvider>
         <BrowserRouter>
           <WarmCacheRouteReset />
+          {/* App+Brief live OUTSIDE <Routes> so route switches hide, never
+              unmount them (#239 slice 2). Their Route entries render null —
+              they only claim the paths so '*' doesn't send them to Landing. */}
+          <AppBriefKeepAlive />
           <Routes>
             <Route path="/" element={<Landing />} />
-            <Route path="/app" element={<App />} />
-            <Route path="/brief" element={<BriefNewspaper />} />
+            <Route path="/app" element={null} />
+            <Route path="/brief" element={null} />
             <Route path="/docs" element={<Docs />} />
             <Route path="/docs/*" element={<Docs />} />
             <Route path="*" element={<Landing />} />

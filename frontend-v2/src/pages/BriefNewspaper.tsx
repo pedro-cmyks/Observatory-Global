@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSavedWatches, fetchWatchCount } from '../hooks/useSavedWatches'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { COUNTRY_OPTIONS, resolveCountryName } from '../lib/countryNames'
@@ -211,6 +211,20 @@ export function BriefNewspaper() {
     const [showCountryDropdown, setShowCountryDropdown] = useState(false)
     const countryInputRef = useRef<HTMLInputElement>(null)
     const [now] = useState(new Date())
+
+    // #239 keep-alive: the Brief stays mounted across App↔Brief switches, so
+    // URL params must keep driving state after mount (the useState initializers
+    // above run once). Internal changes write the same params back via
+    // setSearchParams, so this sync is loop-safe. pathname-guarded: /app's
+    // params must never drive the hidden Brief.
+    const location = useLocation()
+    useEffect(() => {
+        if (location.pathname !== '/brief') return
+        setCountryFilter(countryParam)
+        if (TIME_RANGE_OPTIONS.includes(rangeParam as TimeRange)) {
+            setTimeRange(rangeParam as TimeRange)
+        }
+    }, [location.pathname, countryParam, rangeParam])
 
     const hours = timeRangeToHours(timeRange)
 

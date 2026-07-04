@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 // MapLibre DEPRECATED 2026-07-04 (Pedro): the legacy mercator map lived behind
 // a settings toggle, cost 1MB on every /app load, and carried the
 // display:none crash class that blocked the keep-alive shell (#239 slice 2).
@@ -216,6 +216,9 @@ function UtcClock() {
 
 function AppContent() {
   const navigate = useNavigate()
+  const location = useLocation()
+  // Last search-string handled by the deep-link effect (keep-alive guard).
+  const deepLinkProcessedRef = useRef<string | null>(null)
 
   // Sync filter state ↔ URL params for shareable links
   useUrlSync()
@@ -566,8 +569,17 @@ function AppContent() {
     if (filter.theme) setTheme(null)
   }
 
+  // Reactive to the URL (not mount-only): under the #239 keep-alive shell the
+  // console stays mounted across Brief↔App switches, so a Brief deep-link
+  // (?theme=&country=) must re-trigger on search-param change. Guarded by a
+  // last-processed ref so the same params never double-fire.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
+    // Only the console's own URL: under keep-alive App stays mounted while the
+    // user is on /brief, and Brief's params must never drive the console.
+    if (location.pathname !== '/app') return
+    if (deepLinkProcessedRef.current === location.search) return
+    deepLinkProcessedRef.current = location.search
+    const params = new URLSearchParams(location.search)
     const attention = params.get('attention')
     const theme = params.get('theme')
     const country = params.get('country') || undefined
@@ -599,7 +611,7 @@ function AppContent() {
     }
     handlePublicAttentionSelect({ title })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [location.search, location.pathname])
 
   // Focus-aware data from provider - auto-refetches when focus/range changes
   const { nodes, flows, unfilteredFlows, acledConflicts, loading, isRefetching, refetch, timeRange, setTimeRange, meta: focusMeta } = useFocusData()
