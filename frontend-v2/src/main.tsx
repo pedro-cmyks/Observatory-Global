@@ -1,6 +1,18 @@
-import { Component, StrictMode, type ReactNode } from 'react'
+import { Component, StrictMode, useEffect, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { installWarmCache, bumpWarmCacheGeneration } from './lib/fetchWarmCache'
+
+// #239 slice 1: route switches remount the whole tree (Brief↔App) and refire
+// every fetch — the warm cache paints the first request per URL instantly
+// from the last known response and revalidates in the background.
+installWarmCache()
+
+function WarmCacheRouteReset() {
+  const location = useLocation()
+  useEffect(() => { bumpWarmCacheGeneration() }, [location.pathname])
+  return null
+}
 import '@fontsource-variable/geist/index.css'
 import '@fontsource-variable/geist-mono/index.css'
 import './index.css'
@@ -38,6 +50,7 @@ createRoot(document.getElementById('root')!).render(
     <RootErrorBoundary>
       <ThemeProvider>
         <BrowserRouter>
+          <WarmCacheRouteReset />
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/app" element={<App />} />
