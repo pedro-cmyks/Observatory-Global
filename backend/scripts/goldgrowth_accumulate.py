@@ -45,6 +45,26 @@ BASE_POS = {              # positives already in the frozen 5k corpus (2026-05-2
 
 SCRIPTS = Path(__file__).resolve().parent
 
+# #204 candidate-v2: sharpened category boundaries (definition/includes/
+# excludes) attach to every candidate row so the annotators judge against the
+# ensemble-validated taxonomy instead of the bare label (the 76%→96%
+# agreement lever). Keyed by slugified label.
+_CANDIDATE_V2 = (SCRIPTS.parent.parent / "docs" / "research" / "taxonomy-revision"
+                 / "candidate-v2.json")
+
+
+def _slugify(label: str) -> str:
+    import re as _re
+    return _re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-")
+
+
+def load_category_boundaries() -> dict[str, dict]:
+    try:
+        cats = json.loads(_CANDIDATE_V2.read_text(encoding="utf-8"))["categories"]
+        return {_slugify(c["label"]): c for c in cats}
+    except Exception:
+        return {}  # boundaries are an enhancement, never a blocker
+
 
 def accumulated_positives(corpus: Path) -> dict[str, int]:
     pos: dict[str, int] = {}
@@ -61,6 +81,7 @@ def accumulated_positives(corpus: Path) -> dict[str, int]:
 async def sample(state_dir: Path, out: Path, topics: list[str], seen: set[int]) -> int:
     import asyncpg
     conn = await asyncpg.connect(os.environ["DATABASE_URL"], statement_cache_size=0)
+    boundaries = load_category_boundaries()
     n_out = 0
     try:
         with out.open("w", encoding="utf-8") as f:
@@ -94,6 +115,7 @@ async def sample(state_dir: Path, out: Path, topics: list[str], seen: set[int]) 
                             ev = json.loads(ev)
                         except Exception:
                             ev = {}
+                    b = boundaries.get(r["slug"], {})
                     f.write(json.dumps({
                         "signal_id": sid, "headline": r["headline"],
                         "source_lang": r["source_lang"], "country_code": r["country_code"],
@@ -103,6 +125,9 @@ async def sample(state_dir: Path, out: Path, topics: list[str], seen: set[int]) 
                         "assigned_topic_label": r["label"],
                         "atlas_confidence": float(r["confidence"] or 0),
                         "atlas_matched_terms": float(len((ev or {}).get("matched_terms") or [])),
+                        **({"category_definition": b.get("definition"),
+                            "category_includes": b.get("includes"),
+                            "category_excludes": b.get("excludes")} if b else {}),
                     }, ensure_ascii=False) + "\n")
                     seen.add(sid)
                     taken += 1

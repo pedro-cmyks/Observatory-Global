@@ -132,19 +132,31 @@ def _build_user_prompt(row: dict[str, Any]) -> str:
     themes = row.get("themes") or []
     if not isinstance(themes, list):
         themes = []
-    return "\n".join(
-        [
-            f"headline: {str(row.get('headline', '')).strip()}",
-            f"themes: {', '.join(themes) if themes else '(none)'}",
-            f"source_lang: {row.get('source_lang') or 'unknown'}",
-            f"country_code: {row.get('country_code') or 'unknown'}",
-            f"source_name: {row.get('source_name') or 'unknown'}",
-            f"atlas_assigned_topic_slug: {row.get('assigned_topic_slug')}",
-            f"atlas_assigned_topic_label: {row.get('assigned_topic_label')}",
+    lines = [
+        f"headline: {str(row.get('headline', '')).strip()}",
+        f"themes: {', '.join(themes) if themes else '(none)'}",
+        f"source_lang: {row.get('source_lang') or 'unknown'}",
+        f"country_code: {row.get('country_code') or 'unknown'}",
+        f"source_name: {row.get('source_name') or 'unknown'}",
+        f"atlas_assigned_topic_slug: {row.get('assigned_topic_slug')}",
+        f"atlas_assigned_topic_label: {row.get('assigned_topic_label')}",
+    ]
+    # #204 candidate-v2 boundary wiring (2026-07-04): when the caller attaches
+    # the taxonomy's sharpened category boundaries, the judge sees them — the
+    # ensemble-validated fix for the 40-52% label-precision ceiling was sharp
+    # includes/excludes + a rigorous reject policy, not new category names.
+    if row.get("category_definition"):
+        lines += [
             "",
-            "OUTPUT (strict JSON, no prose):",
+            f"category_definition: {row['category_definition']}",
+            f"category_includes: {row.get('category_includes') or '(unspecified)'}",
+            f"category_excludes: {row.get('category_excludes') or '(unspecified)'}",
+            "Judge STRICTLY against these boundaries: a headline matching the "
+            "excludes list (or merely containing crisis words without being "
+            "substantively about this category) is `incorrect`.",
         ]
-    )
+    lines += ["", "OUTPUT (strict JSON, no prose):"]
+    return "\n".join(lines)
 
 
 _JSON_OBJECT_RE = re.compile(r"\{[\s\S]*\}")
