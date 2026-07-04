@@ -516,7 +516,7 @@ def _extended_gate_thresholds() -> tuple[dict, float]:
     if _EXT_THRESHOLDS is None:
         import json as _json
         from pathlib import Path as _Path
-        p = _Path(__file__).resolve().parents[2] / "models" / "scope_gate_extended_thresholds.json"
+        p = _Path(__file__).resolve().parents[1] / "data" / "scope_gate_extended_thresholds.json"
         try:
             d = _json.loads(p.read_text(encoding="utf-8"))
             _EXT_THRESHOLDS = (d.get("per_topic_threshold", {}), float(d.get("global_threshold", 1.0)))
