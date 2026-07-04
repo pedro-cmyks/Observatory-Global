@@ -294,3 +294,33 @@ Also from Pedro's phone review: universe FINGER NAVIGATION is poor on mobile
 (drag/pinch fight the page) → #236 mobile program, universe item added.
 Roundup-label regex debt visible again ('Noticias Regionales Variadas' evades
 'roundup' matching) — #224 class, folded into the engine-session item.
+
+---
+
+# F4 cutover assessment (2026-07-04 night — debt item 4, ASSESSMENT ONLY)
+
+Question: should the unified-v2 construction cutover (F4) unpark?
+
+**Status of the gates set on 2026-06-29/30:**
+1. Recurring v2 build — ✅ DONE (runs on the M1 embed cron since `ba7460d`).
+2. New-topic labeling (§6 step 5) — ❌ still unbuilt (v2's residual HDBSCAN
+   topics have no label pass).
+3. Gold confirmation — ⚠ arriving: the gold-growth accumulator (03:30 cron)
+   reaches usable volume in ~2 weeks; the same corpus can gate F4.
+4. Read-path parametrization — ❌ not built (serving still reads v1-compat).
+
+**What changed since parking:** the F3.2 A/B already proved v2 structurally
+better (coherence .930>.908, purity 100%>98.1%, black-hole 12.1%<19.0%); the
+F3.2b confound showed topical precision is a TAXONOMY problem either way —
+and today's #204 boundary wiring + the accumulator attack exactly that. The
+2026-07-04 identity-collapse incident is also EVIDENCE FOR v2: the transient
+came from the v1 lifecycle's identity-continuity fragility; v2's assign-to-
+nearest-centroid design is less identity-brittle.
+
+**Recommendation: STAY PARKED ~2 more weeks, then unpark deliberately.**
+Sequence: accumulator hits 200-pos targets → gate retrain (variance-aware) →
+τ_sem calibration + semantic lane (same gold session) → THEN F4 with the
+grown gold as its gate + the labeling pass built in the same session. One
+measured engine session instead of three partial ones. Risk of waiting: the
+v1‖v2 dual-regime consumer-bug class persists 2 more weeks (known, bounded —
+consumers UNION per the rule).
