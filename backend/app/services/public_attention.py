@@ -46,6 +46,48 @@ def subreddit_label(source_name: str | None) -> str | None:
     return source_name
 
 
+# #248 hobby/personal noise class (2026-07-04, Pedro's dt-981 review: "Little
+# wolf girl I made my daughter" crochet@lemmy.ca ranking in the GLOBAL forum
+# dock). Fediverse communities are self-labeled topics — the community NAME is
+# a stronger signal than any headline keyword. Damp, never gate: hobby posts
+# sort BELOW news discussion and carry lane='hobby' so nothing is silently
+# dropped (an analyst can still scroll to them).
+_HOBBY_COMMUNITIES = {
+    "crochet", "knitting", "sewing", "quilting", "crossstitch", "embroidery",
+    "woodworking", "diy", "crafts", "gardening", "houseplants", "plants",
+    "cooking", "baking", "recipes", "food", "fooddiscussion", "mealtimevideos",
+    "aviation", "flying", "trains", "modelrailroads", "cars", "motorcycles",
+    "gaming", "games", "boardgames", "rpg", "dnd", "patientgamers", "steam",
+    "pcgaming", "nintendo", "playstation", "xbox", "retrogaming",
+    "photography", "art", "drawing", "painting", "sketchdaily", "music",
+    "guitar", "piano", "hiking", "camping", "fishing", "cycling", "running",
+    "fitness", "sports", "soccer", "nfl", "nba", "formula1", "baseball",
+    "cats", "dogs", "pets", "aww", "birding", "aquariums",
+    "asklemmy", "showerthoughts", "mildlyinteresting", "casualconversation",
+    "movies", "television", "anime", "manga", "books", "fantasy", "scifi",
+}
+_HOBBY_HEADLINE_MARKERS = (
+    "i made ", "i built ", "i finished ", "my first ", "look at my ",
+    "finally finished", "wip:", "[oc]", "what's your favorite",
+    "whats your favorite", "recommendations?", "any recommendations",
+)
+
+
+def _forum_noise_lane(subreddit: str | None, headline: str | None) -> str | None:
+    """'hobby' when the community or headline reads personal/hobby; else the
+    stream noise lane (sports/entertainment/lifestyle) or None for news-y."""
+    from app.services.stream_relevance import classify_stream_lane
+
+    community = (subreddit or "").split("@")[0].strip().lower()
+    if community in _HOBBY_COMMUNITIES:
+        return "hobby"
+    h = (headline or "").lower()
+    if any(m in h for m in _HOBBY_HEADLINE_MARKERS):
+        return "hobby"
+    lane = classify_stream_lane([], headline)
+    return lane if lane in ("sports", "entertainment", "lifestyle") else None
+
+
 async def fetch_forum_attention(
     *, country: str | None, hours: int, limit: int = 30
 ) -> dict[str, Any]:
@@ -53,6 +95,8 @@ async def fetch_forum_attention(
 
     Returns a discussion-lane block — labeled ``verified=False`` so callers can
     never mistake it for evidence. Degrades to an empty list on error/no rows.
+    News-y discussion sorts first; hobby/sports/entertainment posts are damped
+    to the bottom with a ``lane`` tag (#248) — never dropped.
     """
     where = [
         "s.source_family = $1",
@@ -69,7 +113,7 @@ async def fetch_forum_attention(
         # ("CSS tricks for markdown blogs") are noise in a global intelligence
         # dock — a post must at least name a place to rank globally (L2).
         where.append("s.country_code IS NOT NULL AND s.country_code <> 'XX'")
-    params.append(limit)
+    params.append(limit * 3)  # overfetch so the noise damp still fills the dock
     sql = f"""
         SELECT s.id, s.timestamp, s.country_code, s.source_name,
                s.source_url, s.headline, s.source_lang
@@ -82,18 +126,23 @@ async def fetch_forum_attention(
         await conn.execute("SET statement_timeout = 8000")
         rows = await conn.fetch(sql, *params)
 
-    items = [
-        {
+    items = []
+    for r in rows:
+        sub = subreddit_label(r["source_name"])
+        noise = _forum_noise_lane(sub, r["headline"])
+        items.append({
             "id": r["id"],
             "timestamp": r["timestamp"].isoformat(),
             "country": r["country_code"],
-            "subreddit": subreddit_label(r["source_name"]),
+            "subreddit": sub,
             "headline": r["headline"],
             "url": r["source_url"],
             "source_lang": (r["source_lang"] or "").strip() or None,
-        }
-        for r in rows
-    ]
+            **({"lane": noise} if noise else {}),
+        })
+    # Damp, don't gate: news-y discussion first (fresh→old), noise after.
+    items.sort(key=lambda it: (1 if it.get("lane") else 0,))
+    items = items[:limit]
     return {
         "source": "forum",  # Reddit + Lemmy + Bluesky — "reddit" mislabeled Lemmy items (L0-L3 audit)
         "lane": "discussion",
