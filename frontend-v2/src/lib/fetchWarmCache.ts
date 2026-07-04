@@ -24,6 +24,19 @@ const SS_PREFIX = 'atlas_warm:'
 
 const WHITELIST = /^\/api\/v2\/(nodes|flows|threads|anomalies|correlation|conflict-markers|disasters|briefing|universe|voice-mix|stats|heat\/countries|public-attention)([/?]|$)/
 
+// Hidden-pane poll damp (#239 follow-up): under the keep-alive shell the
+// console keeps polling while the user reads the Brief (battery/data waste on
+// mobile/PWA). These endpoints feed ONLY console surfaces — when the user is
+// on /brief (or the tab is hidden) their polls are answered from cache with
+// no network. /threads and /briefing stay OUT (shared with visible surfaces).
+const CONSOLE_ONLY = /^\/api\/v2\/(nodes|flows|correlation|conflict-markers|anomalies|disasters|universe|heat\/countries|public-attention)([/?]|$)/
+
+function pollDamped(url: string): boolean {
+    if (!CONSOLE_ONLY.test(url)) return false
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return true
+    return typeof window !== 'undefined' && window.location.pathname === '/brief'
+}
+
 type Entry = { t: number; body: string; status: number; contentType: string }
 
 const memCache = new Map<string, Entry>()
@@ -71,6 +84,21 @@ export function installWarmCache(): void {
         const method = (init?.method ?? (typeof input === 'object' && 'method' in input ? (input as Request).method : 'GET')).toUpperCase()
 
         if (method !== 'GET' || !WHITELIST.test(url)) return orig(input as RequestInfo, init)
+
+        // Hidden-pane damp: console-only polls answered from cache, no network.
+        // Falls through to a real fetch when there's no fresh cache entry so a
+        // cold surface still populates (honest floor).
+        if (pollDamped(url)) {
+            const cached = getFresh(url)
+            if (cached) {
+                const w2 = window as unknown as { __atlasPollDamped?: number }
+                w2.__atlasPollDamped = (w2.__atlasPollDamped ?? 0) + 1
+                return new Response(cached.body, {
+                    status: cached.status,
+                    headers: { 'content-type': cached.contentType, 'x-atlas-warm-cache': 'damped' },
+                })
+            }
+        }
 
         const firstThisGen = !seenThisGen.has(url)
         seenThisGen.add(url)
