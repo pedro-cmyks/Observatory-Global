@@ -267,3 +267,30 @@ the morning version of this doc were executed the same day.**
 6. Universe spec §7 is a working section — the shipped state (free-nav,
    perspective, trajectories, moons) deserves a consolidation pass into the
    spec when the surface next changes.
+
+---
+
+# INCIDENT ADDENDUM (2026-07-04 ~16:30) — universe collapsed to 6, restored to 47
+
+Pedro's phone screenshot: universe showed "6 alive". NOT a gate problem — a
+**lifecycle transient after the substrate recovery**: the 07:30 clustering ran
+on the recovered embedding corpus and formed NEW identities (285 clusters →
+745 candidates at persistence=1); the 08:06 lifecycle pass retired/demoted the
+old actives (no fresh evidence under their identities) and the promotion gate
+(persist≥2) admitted only 6. Root question left OPEN: **why didn't the
+resurrection mechanism centroid-match the retired identities to the new
+clusters?** (Identity continuity broke across the degraded 07-03 run + the
+recovered 07-04 run.) That's an engine-session item.
+
+Fix applied (the R1 bootstrap playbook, measured + reversible):
+- RESURRECTED 33 retired (last_seen ≥ 07-03, n≥30, noise<0.3, non-roundup) —
+  ids in /tmp/universe-recovery/resurrected-ids.txt
+- PROMOTED 10 clean candidates (n≥12, noise<0.3, tight non-roundup regex)
+- Prod verified: universe 6 → **47 nodes / 108 edges**, real stories back.
+- Tonight's snapshots add persistence to the 745 new candidates → natural
+  promotions resume; the transient self-heals from here.
+
+Also from Pedro's phone review: universe FINGER NAVIGATION is poor on mobile
+(drag/pinch fight the page) → #236 mobile program, universe item added.
+Roundup-label regex debt visible again ('Noticias Regionales Variadas' evades
+'roundup' matching) — #224 class, folded into the engine-session item.
