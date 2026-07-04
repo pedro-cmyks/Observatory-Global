@@ -41,6 +41,46 @@ MIN_TOPIC_POSITIVES = 10  # below this, a per-topic threshold is not trustworthy
 DEFAULT_EMBED_MODEL = "text-embedding-3-small"
 
 
+def _bootstrap_threshold(
+    scores: np.ndarray, y: np.ndarray, target: float,
+    n_boot: int = 300, pct: float = 75.0, seed: int = 11,
+) -> dict[str, Any]:
+    """Variance-aware operating point (goldgrowth round-1 finding: per-topic
+    thresholds at <100 positives swing wildly with a handful of boundary
+    rows). Bootstrap the OOF rows, compute the precision-target threshold per
+    resample, and deploy the PCT-th percentile of those thresholds — a
+    conservative point that holds the precision target across resamples
+    instead of on one lucky draw. Reports the bootstrap recall spread so the
+    stability is inspectable."""
+    rng = np.random.default_rng(seed)
+    n = len(y)
+    thrs: list[float] = []
+    recs: list[float] = []
+    for _ in range(n_boot):
+        idx = rng.integers(0, n, n)
+        op = _threshold_at_precision(scores[idx], y[idx], target)
+        if op["threshold"] is not None:
+            thrs.append(op["threshold"])
+            recs.append(op["recall"])
+    if len(thrs) < n_boot * 0.5:  # target unreachable in most resamples
+        return {"threshold": None, "precision": None, "recall": 0.0, "kept": 0,
+                "mode_note": "bootstrap_unreachable"}
+    thr = float(np.percentile(thrs, pct))
+    kept = scores >= thr
+    tp = int((y[kept] == 1).sum())
+    fp = int((y[kept] == 0).sum())
+    return {
+        "threshold": round(thr, 5),
+        "precision": round(tp / max(tp + fp, 1), 4),
+        "recall": round(tp / max(int(y.sum()), 1), 4),
+        "kept": int(kept.sum()),
+        "recall_ci": [round(float(np.percentile(recs, 5)), 4),
+                      round(float(np.percentile(recs, 95)), 4)],
+        "thr_spread": [round(float(np.percentile(thrs, 5)), 5),
+                       round(float(np.percentile(thrs, 95)), 5)],
+    }
+
+
 def _threshold_at_precision(
     scores: np.ndarray, y: np.ndarray, target: float
 ) -> dict[str, Any]:
@@ -77,6 +117,10 @@ def main() -> None:
     ap.add_argument("--out", type=Path, default=base / "models/2026-05-29-scope-gate-v1.json")
     ap.add_argument("--report", type=Path, default=base / "models/2026-05-29-scope-gate-v1.calibration.json")
     ap.add_argument("--target-precision", type=float, default=0.90)
+    ap.add_argument("--bootstrap-thresholds", type=int, default=0, metavar="N",
+                    help="Variance-aware per-topic calibration: N bootstrap "
+                         "resamples, deploy the 75th-pct threshold (0 = off, "
+                         "classic single-draw operating point).")
     ap.add_argument("--embed-model", default=DEFAULT_EMBED_MODEL,
                     help="Embedding model id recorded in the gate (must match the --embeddings source).")
     args = ap.parse_args()
@@ -115,7 +159,11 @@ def main() -> None:
                 "reason": f"only {n_pos} positives (< {MIN_TOPIC_POSITIVES})",
             }
             continue
-        op = _threshold_at_precision(ps, ys, args.target_precision)
+        if args.bootstrap_thresholds > 0:
+            op = _bootstrap_threshold(ps, ys, args.target_precision,
+                                      n_boot=args.bootstrap_thresholds)
+        else:
+            op = _threshold_at_precision(ps, ys, args.target_precision)
         if op["threshold"] is None:
             per_topic[slug] = {
                 "n": n, "n_positive": n_pos, "mode": "abstain",
@@ -123,7 +171,8 @@ def main() -> None:
                 "reason": f"cannot reach {args.target_precision:.0%} precision at any threshold",
             }
         else:
-            per_topic[slug] = {"n": n, "n_positive": n_pos, "mode": "calibrated", **op}
+            mode = "calibrated_bootstrap" if args.bootstrap_thresholds > 0 else "calibrated"
+            per_topic[slug] = {"n": n, "n_positive": n_pos, "mode": mode, **op}
 
     # --- final model on ALL rows (deployment weights) ---
     mu, sd = G._standardize_fit(X)
