@@ -10,6 +10,54 @@
 > and narrows further if telemetry shows one persona dominates.) **Anti-goal:**
 > no new surface/capability until telemetry shows users reaching a value moment.
 
+**2026-07-04 (PM — SHIP DAY: search→story · #239 closed end-to-end · MapLibre
+DEPRECATED · gold accumulator, read FIRST for product state).** Eight ships,
+all browser-verified + prod: (1) **Search → STORY panel** (`c84e6627`): Enter/
+"◆ Open the story" on a natural query renders the research-plan anchors as the
+cross-thread narrative IN the stream slot (ResearchPlanPanel reused; Build-a-
+thread demoted to power tool; Start-investigation stays = the Workbench ramp —
+L3 now has a natural entry instead of being the unreachable layer). Race fixed
+(searchSeqRef: late search response can't reopen the dropdown). (2) **#239
+CLOSED end-to-end**, Pedro's load-time complaint: slice 1 warm-cache fetch shim
+(`ab964f0d`, lib/fetchWarmCache.ts — first request per URL after a route change
+serves cached + background-revalidates; polls untouched; Brief re-entry 3ms) +
+**MapLibre DEPRECATED** (`1c99ded1`, Pedro's call: legacy mercator behind a
+settings toggle cost 1MB on EVERY /app load without mounting + carried the
+display:none crash class; EE has full parity — ~450 lines out of App.tsx, deps
+uninstalled, maplibre chunk GONE from dist) + slice 2 **keep-alive shell**
+(`775fe945`, main.tsx AppBriefKeepAlive OUTSIDE Routes: App+Brief mount once,
+switches = display toggles, DOM sentinel survives round-trip; deep-links kept
+correct — App/Brief now URL-REACTIVE with pathname guards so the hidden pane's
+params never cross). Net: first load −1MB, Brief↔App instant with state intact.
+(3) **mig 067 hint pruning** (`de0bab98`, applied): junk GDELT theme-hints
+pruned per measured keep-rate (<2% @ n≥40) — election-legitimacy rawTotal
+2,002→112 (rail now says 18, was the lying 1.4k); PR3-05 REMOVE-OK finally
+IMPLEMENTED, surgically (kept signal-bearing hints: ARMEDCONFLICT 15%,
+CORRUPTION 77% — naive lex-required would kill 569 verified non-English rows).
+(4) **#248 forum hobby damp** (`74488ffe`, deployed): fediverse community name
+= the topic signal (crochet@lemmy.ca self-identifies); damp-not-gate, 3 tests.
+(5) **Orbital perspective zoom** (`5e2943b3`): radii counter-scaled k^-0.55 →
+moons visibly detach (Pedro's "las lunas no se alejan"); verified k=4.83 →
+separations 4.83× vs bodies 2.03×. (6) **GOLD-GROWTH round 1 = honest negative**
+(`0b327128`): 226 decision-band candidates → 2-vendor labels (80% agree, +70
+positives) → retrain → **NOT deployed: per-topic thresholds at 40-60 positives
+are HIGH-VARIANCE** (election recall@90 swung .39→.55→.24 across corpus
+variants; deploying = statistical self-deception). Pipeline repeatable at
+pennies; **com.atlas.goldgrowth cron ARMED** (`e7fd6d92`, 03:30 nightly,
+~$0.15/night, samples+labels until 200 pos/topic ≈ 2 weeks) → then ONE retrain
+with variance-aware calibration (bootstrap CI-lower). (7) Kalman **backtest**
+(`afbddb42`): velocity does NOT lead volume (mean-reverts, h1 −0.477) →
+changed_10h stays the ordering source, topic_movement = display-only. DECIDED.
+(8) Ops: `atlas-cron-freshness-watchdog` (30-min launchd, kickstarts stale
+crons by DB freshness, never two heavy jobs) + substrate #2 closed (crons
+re-bootstrapped, embeddings fresh 176K). Alignment doc:
+`docs/state/2026-07-04-alignment.md` (+EOD reconciliation §). Eval doc (the
+bacano≠eje pass): `docs/research/eval/2026-07-04-atlas-vs-websearch-eval.md` —
+**Atlas = EJE for discovery** (tone map pointed at India's election-legitimacy
+crisis, web-confirmed, unreachable from a Peru-first search). NEXT: candidate-
+v2 wiring (#204), semantic assignment lane, retrain-at-200-pos, hidden-pane
+poll pause (mobile), telemetry weekly read.
+
 **2026-07-04 (GATE RECALL ARC — eval→diagnosis→OpenAI cutover→two-tier, read
 FIRST for engine).** Full evidence chain in one session: (1) **Atlas-vs-web EVAL
 (the "bacano≠eje" pass, `docs/research/eval/2026-07-04-atlas-vs-websearch-eval.md`):

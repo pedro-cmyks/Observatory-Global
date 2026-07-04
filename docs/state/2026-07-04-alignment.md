@@ -198,3 +198,72 @@ Given viz + engine plumbing are largely shipped and the validation gap is open:
    candidate-v2 (OUT_OF_SCOPE + excludes) into the gate — the two levers that
    actually move topical precision, unlike F4 or new roles. Defer F4 cutover and
    the attention role behind these (both gated / low-ROI until recall lands).
+
+---
+
+# EOD reconciliation (2026-07-04 night) — how today maps to the open tracks
+
+Today's ships, placed in the standing structure. Verdict up front: **the tracks
+are ALIGNED — nothing shipped today is off-roadmap; three recommended moves from
+the morning version of this doc were executed the same day.**
+
+## Against this doc's "recommended next 3 moves" (morning)
+
+1. ~~Harden substrate crons~~ → **DONE** (freshness-watchdog + goldgrowth cron;
+   substrate #2 closed).
+2. ~~Run the eje/validation pass~~ → **DONE** (`docs/research/eval/
+   2026-07-04-atlas-vs-websearch-eval.md`): Atlas = eje for DISCOVERY; the
+   telemetry-value-moment gap now has its qualitative answer. Quantitative
+   task-time telemetry still pending (search_story_open now emits — read weekly).
+3. ~~Attack recall #229/#204~~ → **PARTIALLY DONE, honestly**: gate arc
+   (OpenAI cutover + two-tier + mig 067 hint pruning = PR3-05 finally applied)
+   shipped; gold-growth revealed the variance ceiling → accumulator cron armed;
+   **still open**: #204 candidate-v2 wiring, semantic assignment lane, the
+   retrain-at-200-positives.
+
+## Specs touched or affected today
+
+| Spec | Status after today |
+|---|---|
+| `2026-07-01-search-engine-plan.md` | **P3 (semantic-on-submit) DELIVERED in different form**: the story panel (Enter → research-plan anchors, semantic lane included) supersedes the planned dropdown-semantic approach. P4 telemetry partially live (`search_story_open`, `search_query` events). P2-focus-chip still open. |
+| `2026-06-09-research-thread-builder-workbench.md` | The Workbench thesis ("search produces anchors, user pins") finally got its FRONT DOOR: search→story = the missing L2 entry to the L3 flow. Phase 3 (report from pins) unchanged/open. |
+| ADR-0005 / EE map | **CLOSED COMPLETELY**: "retire MapLibre" (the last listed step) executed 2026-07-04. EE is the only map. |
+| `2026-07-02-orbital-thread-view.md` | Perspective zoom (k^-0.55 counter-scale) shipped — moons detach. Spec's §7b moons arc now fully built + polished. |
+| `2026-07-02-universe-view.md` | Unchanged today; §6 trajectory metrics got its FIRST backtest result (Kalman does NOT lead — the capture-rate/leading-heat hypothesis needs a different observable). |
+| R3 unification / F-series | Unchanged; F4 cutover stays gold-gated. mig 067 is R3-adjacent hygiene (assignment candidate quality). |
+
+## Paper track deltas (P1–P8)
+
+- **P1 (classification/benchmark)**: THREE new method-grade artifacts:
+  (a) two-tier serving = precision-tier framing (verified 90% / extended 75%)
+  — an honest-serving pattern worth a paper §; (b) **gold-growth variance
+  finding** (`gate-recall/2026-07-04-goldgrowth-round1.md`): per-topic
+  threshold calibration is unstable below ~200 positives — a real
+  small-n-calibration methods result, and the justification for the
+  accumulator design; (c) mig 067 = PR3-05's REMOVE-OK finally implemented,
+  with the surgical keep-rate rule (<2% @ n≥40) as the documented method.
+- **P4 (threads/movement)**: Kalman backtest CLOSED the leading-indicator
+  question negatively (velocity mean-reverts; `movement-backtest/`); ordering
+  stays changed_10h. Denominator honesty (067) feeds the ranking-input story.
+- **P7 (viz/analyst workflow)**: the Atlas-vs-web eval IS the P7 task-time
+  evidence (discovery-radar vs answer-tool split, India case); search→story +
+  keep-alive + warm-cache are the workflow-latency method (task-time ↓).
+- **P8 (open-set/noise)**: #248 forum hobby damp (community-name-as-topic
+  signal) joins the noise-class taxonomy.
+- P2/P3/P5/P6: no movement today.
+
+## Not aligned yet / honest debts
+
+1. **#204 candidate-v2 is still unwired** (built 2026-06-29, OUT_OF_SCOPE
+   policy + excludes never reached the gate/assignment prompts) — the biggest
+   built-but-idle asset.
+2. **Semantic assignment lane** (embedding candidate-generation; would catch
+   the India-SIR class no lexicon matches) — designed in conversation, not spec'd.
+3. **Telemetry weekly read** — the wedge anti-goal is ungoverned without it;
+   new events (search_story_open) make the next read more informative.
+4. **F4 cutover** — parked (correctly, gold-gated), but the v1‖v2 dual regime
+   remains the standing consumer-bug class.
+5. Hidden-pane polling under keep-alive (mobile battery) — noted in #239.
+6. Universe spec §7 is a working section — the shipped state (free-nav,
+   perspective, trajectories, moons) deserves a consolidation pass into the
+   spec when the surface next changes.
