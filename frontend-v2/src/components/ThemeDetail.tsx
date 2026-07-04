@@ -33,6 +33,9 @@ interface ThemeData {
     // panel number reconciled with the list instead of silently disagreeing.
     rawTotal?: number
     gated?: number
+    verified?: number
+    extended?: number
+    extendedThreshold?: number
     gatePending?: boolean
     gateCoverage?: number | null
     avgSentiment: number
@@ -639,6 +642,22 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 0 signals cleared the quality gate for this slice — showing the{' '}
                                 {data.rawTotal?.toLocaleString()} assigned signals as UNVERIFIED evidence.
                                 Treat headlines below as candidate material, not confirmed coverage.
+                            </div>
+                        )}
+
+                        {data.warnings?.includes('extended_coverage') && (data.extended ?? 0) > 0 && (
+                            <div
+                                className="theme-extended-banner"
+                                style={{
+                                    fontSize: 10, lineHeight: 1.5, padding: '6px 10px', margin: '0 0 8px',
+                                    borderRadius: 6, border: '1px solid rgba(96,165,250,0.35)',
+                                    background: 'rgba(96,165,250,0.07)', color: 'rgba(147,197,253,0.95)',
+                                }}
+                                data-tip="Verified = kept by the 90%-precision gate. Extended = cleared a lower ~75%-precision bar — likely on-topic, shown so honest coverage isn't dropped, but weigh it lighter."
+                            >
+                                <strong>{(data.verified ?? 0).toLocaleString()} verified</strong> ·{' '}
+                                <strong>+{(data.extended ?? 0).toLocaleString()} extended coverage</strong>{' '}
+                                (~75% confidence). Extended rows likely on-topic — weighed lighter than verified.
                             </div>
                         )}
 

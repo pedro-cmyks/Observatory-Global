@@ -504,6 +504,36 @@ async def _dynamic_topic_detail(
     }
 
 
+_EXT_THRESHOLDS: Optional[tuple[dict, float]] = None
+
+
+def _extended_gate_thresholds() -> tuple[dict, float]:
+    """Per-topic 'extended coverage' thresholds (~75% precision) — the second
+    tier BELOW the 90%-precision gate_kept, ABOVE raw below-gate. Lets a detail
+    surface honest graded coverage instead of dumping raw. Missing file →
+    ({}, 1.0) = tier disabled (nothing ever qualifies as extended)."""
+    global _EXT_THRESHOLDS
+    if _EXT_THRESHOLDS is None:
+        import json as _json
+        from pathlib import Path as _Path
+        p = _Path(__file__).resolve().parents[2] / "models" / "scope_gate_extended_thresholds.json"
+        try:
+            d = _json.loads(p.read_text(encoding="utf-8"))
+            _EXT_THRESHOLDS = (d.get("per_topic_threshold", {}), float(d.get("global_threshold", 1.0)))
+        except Exception:
+            _EXT_THRESHOLDS = ({}, 1.0)
+    return _EXT_THRESHOLDS
+
+
+def _gate_tier(gate_kept, gate_score, ext_thr: float) -> str:
+    """verified (90% precise) · extended (~75%) · candidate (below both)."""
+    if gate_kept:
+        return "verified"
+    if gate_score is not None and float(gate_score) >= ext_thr:
+        return "extended"
+    return "candidate"
+
+
 async def _atlas_topic_detail(
     conn,
     *,
@@ -538,33 +568,42 @@ async def _atlas_topic_detail(
         params.append(country_code)
     where_clause = " AND ".join(where)
 
+    per_topic_ext, global_ext = _extended_gate_thresholds()
+    ext_thr = float(per_topic_ext.get(slug, global_ext))
+    ext_ph = f"${len(params) + 1}"
+    counts_params = params + [ext_thr]
+
     counts = await conn.fetchrow(f"""
         SELECT COUNT(*)::bigint                                       AS raw,
                COUNT(*) FILTER (WHERE a.gate_kept)::bigint            AS gated,
-               COUNT(*) FILTER (WHERE a.gate_kept IS NOT NULL)::bigint AS scored
+               COUNT(*) FILTER (WHERE a.gate_kept IS NOT NULL)::bigint AS scored,
+               COUNT(*) FILTER (WHERE a.gate_kept IS NOT NULL AND NOT a.gate_kept
+                                     AND a.gate_score >= {ext_ph})::bigint AS extended
         FROM signal_topic_assignments a
         JOIN signals_v2 s ON s.id = a.signal_id
         WHERE {where_clause}
-    """, *params)
+    """, *counts_params)
     raw_n = int(counts["raw"] or 0) if counts else 0
     gated_n = int(counts["gated"] or 0) if counts else 0
     scored_n = int(counts["scored"] or 0) if counts else 0
+    extended_n = int(counts["extended"] or 0) if counts else 0
     gate_pending = scored_n == 0
-    # Once scored, show only the gate-kept (precise) evidence; otherwise all.
-    # Pipeline Funnel Principle (#214, 2026-06-12): when the gate kept ZERO
-    # signals but raw assignments exist, the user who opened this detail
-    # explicitly asked — show the raw material labeled below-gate (gateKept
-    # false per row, 'below_gate_evidence' warning) instead of an empty
-    # panel that contradicts the list count.
-    # Extended 2026-07-02 (Pedro's election-legitimacy case: 1,066 assigned /
-    # 1 kept → the detail showed ONE Philippine signal as if it were the whole
-    # 1.1k-signal story): a NEAR-zero kept set on a large assignment pool is
-    # the same contradiction as zero — fall back to below-gate evidence when
-    # the gate kept under 5 rows out of 20+.
+    # Two-tier coverage (2026-07-04, Pedro): serve VERIFIED (gate_kept, 90%
+    # precision) + EXTENDED (gate_score >= the ~75%-precision per-topic
+    # threshold) as graded, labeled coverage — instead of the old binary that
+    # dumped ALL raw below-gate when the 90% tier kept near-zero (#214 / the
+    # election-legitimacy '1 of 1,269' case). Raw fallback stays as the last
+    # resort ONLY when even the extended tier is near-empty on a large pool.
+    served_n = gated_n + extended_n
     below_gate_fallback = (not gate_pending) and raw_n > 0 and (
-        gated_n == 0 or (gated_n < 5 and raw_n >= 20)
+        served_n == 0 or (served_n < 5 and raw_n >= 20)
     )
-    kept_clause = "" if (gate_pending or below_gate_fallback) else " AND a.gate_kept"
+    if gate_pending or below_gate_fallback:
+        serve_clause = ""
+        serve_params = params
+    else:
+        serve_clause = f" AND (a.gate_kept OR a.gate_score >= {ext_ph})"
+        serve_params = params + [ext_thr]
 
     signals = await conn.fetch(f"""
         SELECT s.id, s.source_lang, s.timestamp, s.country_code, s.source_name,
@@ -572,10 +611,10 @@ async def _atlas_topic_detail(
                a.gate_score, a.gate_kept
         FROM signal_topic_assignments a
         JOIN signals_v2 s ON s.id = a.signal_id
-        WHERE {where_clause}{kept_clause}
+        WHERE {where_clause}{serve_clause}
         ORDER BY s.timestamp DESC
         LIMIT 200
-    """, *params)
+    """, *serve_params)
 
     country_breakdown = await conn.fetch(f"""
         SELECT s.country_code,
@@ -583,11 +622,11 @@ async def _atlas_topic_detail(
                AVG(s.sentiment) AS avg_sentiment
         FROM signal_topic_assignments a
         JOIN signals_v2 s ON s.id = a.signal_id
-        WHERE {where_clause}{kept_clause} AND s.country_code IS NOT NULL
+        WHERE {where_clause}{serve_clause} AND s.country_code IS NOT NULL
         GROUP BY s.country_code
         ORDER BY count DESC
         LIMIT 15
-    """, *params)
+    """, *serve_params)
 
     timeline = await conn.fetch(f"""
         SELECT date_trunc('hour', s.timestamp) AS hour,
@@ -595,10 +634,10 @@ async def _atlas_topic_detail(
                AVG(s.sentiment) AS avg_sentiment
         FROM signal_topic_assignments a
         JOIN signals_v2 s ON s.id = a.signal_id
-        WHERE {where_clause}{kept_clause}
+        WHERE {where_clause}{serve_clause}
         GROUP BY hour
         ORDER BY hour
-    """, *params)
+    """, *serve_params)
 
     top_sources = await conn.fetch(f"""
         SELECT s.source_name,
@@ -606,11 +645,11 @@ async def _atlas_topic_detail(
                AVG(s.sentiment) AS avg_sentiment
         FROM signal_topic_assignments a
         JOIN signals_v2 s ON s.id = a.signal_id
-        WHERE {where_clause}{kept_clause} AND s.source_name IS NOT NULL
+        WHERE {where_clause}{serve_clause} AND s.source_name IS NOT NULL
         GROUP BY s.source_name
         ORDER BY count DESC
         LIMIT 20
-    """, *params)
+    """, *serve_params)
 
     sample = len(signals)
     avg_sentiment = (
@@ -650,12 +689,15 @@ async def _atlas_topic_detail(
             "persons": (r["persons"] or [])[:5],
             "gateScore": float(r["gate_score"]) if r["gate_score"] is not None else None,
             "gateKept": bool(r["gate_kept"]) if r["gate_kept"] is not None else None,
+            "tier": _gate_tier(r["gate_kept"], r["gate_score"], ext_thr),
         }
 
     signal_rows = [_sig(r) for r in signals]
     warnings = ["atlas_topic_gated"] + (["gate_pending"] if gate_pending else [])
     if below_gate_fallback:
         warnings.append("below_gate_evidence")
+    elif not gate_pending and extended_n > 0:
+        warnings.append("extended_coverage")
 
     # R3 spine drill-down (Pedro 2026-07-02: "los temas grandes deben dejar
     # ver los temas pequeños"): an atlas topic is a CATEGORY; R3.1 typed every
@@ -693,9 +735,12 @@ async def _atlas_topic_detail(
         "label": label,
         "country": country_code,
         "hours": hours,
-        "total": raw_n if gate_pending else gated_n,
+        "total": raw_n if (gate_pending or below_gate_fallback) else served_n,
         "rawTotal": raw_n,
         "gated": gated_n,
+        "verified": gated_n,
+        "extended": extended_n,
+        "extendedThreshold": round(ext_thr, 4),
         "gateScored": scored_n,
         "gateCoverage": round(gated_n / scored_n, 4) if scored_n else None,
         "gatePending": gate_pending,
