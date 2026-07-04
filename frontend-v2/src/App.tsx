@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import MapGL from 'react-map-gl/maplibre'
-import type { MapRef } from 'react-map-gl/maplibre'
-import 'maplibre-gl/dist/maplibre-gl.css'
+// MapLibre DEPRECATED 2026-07-04 (Pedro): the legacy mercator map lived behind
+// a settings toggle, cost 1MB on every /app load, and carried the
+// display:none crash class that blocked the keep-alive shell (#239 slice 2).
+// EqualEarthMap has full parity (flows/aircraft/vessels/terminator/markers).
 import './App.css'
 import { useCrisis } from './contexts/CrisisContext'
-import { useTheme } from './contexts/ThemeContext'
 import { SearchBar } from './components/SearchBar'
 import { Briefing } from './components/Briefing'
 import { ThemeDetail } from './components/ThemeDetail'
@@ -130,33 +130,6 @@ function buildTerminatorData(visible: boolean): FeatureCollection {
   }
 }
 
-function setGeoJsonData(map: any, sourceId: string, data: FeatureCollection) {
-  const source = map.getSource(sourceId)
-  if (source?.setData) {
-    source.setData(data)
-    return
-  }
-  if (!source) {
-    map.addSource(sourceId, { type: 'geojson', data })
-  }
-}
-
-function ensureLayer(map: any, layer: any) {
-  // Guard: during a tab switch / teardown the map can be undefined or mid-
-  // removal; calling getLayer then throws and crash-loops the whole console.
-  if (!map || typeof map.getLayer !== 'function') return
-  if (!map.getLayer(layer.id)) {
-    map.addLayer(layer)
-  }
-}
-
-function setLayerVisibility(map: any, layerId: string, visible: boolean) {
-  if (!map || typeof map.getLayer !== 'function') return
-  if (map.getLayer(layerId)) {
-    map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none')
-  }
-}
-
 interface CountryDetail {
   countryCode: string
   name?: string
@@ -175,26 +148,12 @@ interface PublicAttentionSelection extends PublicAttentionOrigin {
 // removed sentimentColor
 // removed generateNarrative et al.
 
-// Initial map view
-const INITIAL_VIEW = {
-  longitude: 0,
-  latitude: 20,
-  zoom: 1.5,
-  pitch: 0,
-  bearing: 0
-}
 
 const getNodePriority = (node: NodeData) => [
   node.heat ?? node.intensity ?? 0,
   node.signalCount ?? 0,
 ]
 
-const pickTopAttentionNode = (nodes: NodeData[]) => nodes.reduce((max, node) => {
-  const [nodeHeat, nodeSignals] = getNodePriority(node)
-  const [maxHeat, maxSignals] = getNodePriority(max)
-  if (nodeHeat !== maxHeat) return nodeHeat > maxHeat ? node : max
-  return nodeSignals > maxSignals ? node : max
-}, nodes[0])
 
 // Error boundary to prevent Deck.gl/WebGL crashes from black-screening the entire app
 interface MapErrorBoundaryState { hasError: boolean }
@@ -341,7 +300,6 @@ function AppContent() {
     ? 'You came in from the Brief. Atlas will show the full console first, then you can keep exploring the country or narrative you selected.'
     : undefined
   // const [timeWindow, setTimeWindow] = useState(24) // Replaced by context
-  const [viewState, setViewState] = useState(INITIAL_VIEW)
   const [tooltip] = useState<TooltipData | null>(null)
 
   // Comparison & Overlay states
@@ -349,30 +307,13 @@ function AppContent() {
   const [comparePerson, setComparePerson] = useState<{ a: string, b: string } | null>(null)
   const [compareTheme, setCompareTheme] = useState<{ a: string, b: string } | null>(null)
 
-  const mapRef = useRef<MapRef>(null)
-  const isGlobe = false
-  // #212 / ADR-0005: Equal Earth is a parallel switchable view. Default Mercator
-  // (zero prod risk) until visual sign-off; persisted so the choice sticks.
-  // Equal-area is the DEFAULT since 2026-07-01 (Pedro's visual sign-off — the
-  // ADR-0005 P6 gate): equal-area honesty + no WebGL (mobile blank-map class
-  // gone). Mercator remains available via Settings; explicit choice persists.
+  // Equal-area EE canvas is THE map (default since 2026-07-01, Pedro's
+  // ADR-0005 P6 sign-off; MapLibre/mercator deprecated 2026-07-04).
   const [eeResetNonce, setEeResetNonce] = useState(0)
-  const [mapProjection, setMapProjection] = useState<'mercator' | 'equalEarth'>(
-    () => (localStorage.getItem('atlas.mapProjection') === 'mercator' ? 'mercator' : 'equalEarth'),
-  )
-  const toggleProjection = useCallback(() => {
-    setMapProjection(p => {
-      const next = p === 'mercator' ? 'equalEarth' : 'mercator'
-      localStorage.setItem('atlas.mapProjection', next)
-      return next
-    })
-  }, [])
 
   // Focus hook for click-to-focus
   const { setFocus, focus, clearFocus, setCountry, filter, setTheme, mapFlyCountry, setMapFlyCountry, isActive } = useFocus()
 
-  // Theme for layer styling
-  const { themeId } = useTheme()
 
   // Layer visibility
   const [showHeatmap, setShowHeatmap] = useState(true)
@@ -494,46 +435,13 @@ function AppContent() {
     )
   }, [aircraftData, filter.country, showAircraft])
 
-  // Map readiness gate — prevents DeckGL from crashing before WebGL context is ready
-  const [mapReady, setMapReady] = useState(false)
-  // Map-load watchdog: the basemap style is an EXTERNAL carto CDN fetch. On a
-  // flaky mobile network it can stall, onLoad never fires, and the map stays
-  // blank ("no carga nada"). If the map isn't ready after a grace period, remount
-  // it (via key) to re-request the style. Capped so it can't loop.
-  const [mapRetry, setMapRetry] = useState(0)
-  // Mobile map fix: the app opens on the Stream tab, so the map panel is laid
-  // out at 0×0 (collapsed). MapLibre initialised in a 0-size container loads the
-  // style but never fetches/renders tiles, and a later resize() doesn't recover
-  // it → a permanently blank map. Fix: don't MOUNT MapGL until its container is
-  // really sized (the first time the Map tab is shown). Desktop is always sized.
-  const [mapEverShown, setMapEverShown] = useState(!isMobile)
-  useEffect(() => {
-    if (!isMobile || mobileTab === 'map') setMapEverShown(true)
-  }, [isMobile, mobileTab])
-  useEffect(() => {
-    // Don't burn the (capped) retries before the map is even mounted.
-    if (mapReady || mapRetry >= 2 || !mapEverShown) return
-    const t = setTimeout(() => {
-      if (!mapReady) setMapRetry(r => r + 1)
-    }, 9000)
-    return () => clearTimeout(t)
-  }, [mapReady, mapRetry, mapEverShown])
+  // EE canvas renders synchronously — the whole MapLibre readiness dance
+  // (onLoad gate, CDN-style watchdog, 0×0-container mount guard, mercator
+  // teardown reset) died with the deprecation. Ready is a constant.
+  const mapReady = true
 
   // T5.1: instrument the App console open (the denominator for time-to-value).
   useEffect(() => { track('app_open') }, [])
-
-  // Tracks when the 13MB GeoJSON source has actually finished loading
-  const [heatSourceReady, setHeatSourceReady] = useState(false)
-
-  // When switching to Equal Earth, MapLibre unmounts — gate its readiness off so
-  // its layer effects never touch a torn-down map (the `this.style.getLayer`
-  // crash). Returning to Mercator remounts MapGL; its onLoad sets these true.
-  useEffect(() => {
-    if (mapProjection !== 'mercator') {
-      setMapReady(false)
-      setHeatSourceReady(false)
-    }
-  }, [mapProjection])
 
   // Settings toggles
   const [showTerminator, setShowTerminator] = useState(false)
@@ -733,21 +641,12 @@ function AppContent() {
 
   // Initial map stays global. The hotspot reset button performs focused fly-to on demand.
 
-  // Fly to top country when theme clicked in NarrativeThreads
+  // Fly to top country when theme clicked in NarrativeThreads. EE consumes the
+  // flyCountry prop transition; this just clears it after EE has latched.
   useEffect(() => {
-    if (!mapFlyCountry || !mapReady) return
-    const node = nodes.find(n => n.id === mapFlyCountry)
-    const coord = node ? [node.lon, node.lat] : COUNTRY_COORDS[mapFlyCountry.toUpperCase()] ?? null
-    if (coord) {
-      mapRef.current?.getMap()?.flyTo({
-        center: coord as [number, number],
-        zoom: node ? 3 : 4,
-        duration: 2000,
-        essential: true
-      })
-    }
+    if (!mapFlyCountry) return
     setMapFlyCountry(null)
-  }, [mapFlyCountry, mapReady])
+  }, [mapFlyCountry])
 
   // #234: focusing a person/thread centers the map on where its coverage
   // concentrates — the dominant country of the focus-scoped nodes. The trick
@@ -771,20 +670,13 @@ function AppContent() {
     if (dominant?.id) { setMapFlyCountry(dominant.id); flyTargetRef.current = null }
   }, [nodes, mapReady, setMapFlyCountry])
 
-  // Sync Global Focus to CountrySlide-over + fly to country
+  // Sync Global Focus to CountrySlide-over; EE flies via the flyCountry prop.
   useEffect(() => {
     if (focus.type === 'country' && focus.value && focus.value !== selectedCountryCode) {
       handleCountryClick(focus.value)
-      const node = nodes.find(n => n.id === focus.value)
-      if (node && mapReady) {
-        mapRef.current?.getMap()?.flyTo({
-          center: [node.lon, node.lat],
-          zoom: 3,
-          duration: 2000,
-          essential: true
-        })
-      }
+      setMapFlyCountry(focus.value)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus.type, focus.value, selectedCountryCode])
 
   // Open ThemeDetail when theme is focused via FocusContext (e.g. NarrativeThreads click)
@@ -871,13 +763,6 @@ function AppContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile, selectedTheme, focus.type, selectedSourceProfile, rightPanelThemeCountry, selectedCountry, selectedCountryCode, selectedPublicAttention])
 
-  // The map lives in a tab panel that is display:none on other tabs; MapLibre
-  // can't size a hidden container, so resize it once the Map tab is shown.
-  useEffect(() => {
-    if (!isMobile || mobileTab !== 'map') return
-    const t = setTimeout(() => mapRef.current?.getMap()?.resize(), 120)
-    return () => clearTimeout(t)
-  }, [isMobile, mobileTab])
 
   // --- Session Trail Tracking ---
   useEffect(() => {
@@ -948,12 +833,13 @@ function AppContent() {
       );
     }
 
-    const zoom = viewState?.zoom ?? 1.5
-    const maxFlows = zoom < 2 ? 25 : zoom < 4 ? 40 : 60
+    // EE is a fixed world-fit canvas (no zoom state) — the old MapLibre
+    // zoom-scaled flow cap collapses to the world-view budget.
+    const maxFlows = 25
     return filteredFlows
       .sort((a, b) => (b.strength || 0) - (a.strength || 0))
       .slice(0, maxFlows)
-  }, [flows, unfilteredFlows, viewState?.zoom, selectedCountryCode])
+  }, [flows, unfilteredFlows, selectedCountryCode])
 
   // Get crisis state for terminator auto-hide and anomalies
   const { enabled: crisisEnabled, anomalies } = useCrisis()
@@ -977,8 +863,6 @@ function AppContent() {
     })
   }, [nodes, anomalies])
 
-  // Track which countries have heat state set (for cleanup on data change)
-  const prevHeatCountries = useRef<Set<string>>(new Set())
 
   // Per-country heat + intensity — SINGLE SOURCE OF TRUTH for both the MapLibre
   // map (feature-states below) and the Equal Earth map (#212). See
@@ -994,51 +878,6 @@ function AppContent() {
       entityFocus,
     })
   }, [enhancedNodes, heatComposite, visibleFlows, selectedCountryCode, isActive, focus.type, focus.value])
-
-  // Update MapLibre native country heat feature-states when node data changes
-  // Must wait for heatSourceReady (GeoJSON downloaded), not just mapReady
-  useEffect(() => {
-    if (mapProjection !== 'mercator') return
-    const map = mapRef.current?.getMap()
-    if (!map || !heatSourceReady || heatStates.size === 0) return
-
-    // heatStates is computed by the shared helper (single source of truth with
-    // the Equal Earth map). Here we just push it into MapLibre feature-states.
-    const currentCodes = new Set<string>()
-    heatStates.forEach((st, code) => {
-      map.setFeatureState(
-        { source: 'country-heat', id: code },
-        { intensity: st.intensity, heat: st.heat }
-      )
-      currentCodes.add(code)
-    })
-
-    // Clear countries no longer in the data
-    prevHeatCountries.current.forEach(code => {
-      if (!currentCodes.has(code)) {
-        map.setFeatureState(
-          { source: 'country-heat', id: code },
-          { intensity: 0, heat: 0 }
-        )
-      }
-    })
-
-    prevHeatCountries.current = currentCodes
-  }, [heatStates, heatSourceReady, mapProjection])
-
-  // Toggle country heat layer visibility when GLOW button is pressed
-  useEffect(() => {
-    if (mapProjection !== 'mercator') return
-    const map = mapRef.current?.getMap()
-    if (!map || !mapReady) return
-
-    if (map.getLayer('country-heat-fill')) {
-      map.setPaintProperty('country-heat-fill', 'fill-opacity', showHeatmap ? 0.5 : 0)
-    }
-    if (map.getLayer('country-heat-glow')) {
-      map.setLayoutProperty('country-heat-glow', 'visibility', showHeatmap ? 'visible' : 'none')
-    }
-  }, [showHeatmap, mapReady, mapProjection])
 
   const nativeOverlayData = useMemo(() => {
     const activeChokepointSet = new Set(activeChokepoints)
@@ -1172,233 +1011,8 @@ function AppContent() {
     crisisEnabled,
   ])
 
-  useEffect(() => {
-    if (mapProjection !== 'mercator') return
-    const map = mapRef.current?.getMap()
-    if (!map || !mapReady) return
-
-    setGeoJsonData(map, 'atlas-flows', nativeOverlayData.flows)
-    setGeoJsonData(map, 'atlas-anomaly', nativeOverlayData.anomaly)
-    setGeoJsonData(map, 'atlas-chokepoints', nativeOverlayData.chokepoints)
-    setGeoJsonData(map, 'atlas-aircraft', nativeOverlayData.aircraft)
-    setGeoJsonData(map, 'atlas-vessels', nativeOverlayData.vessels)
-    setGeoJsonData(map, 'atlas-acled', nativeOverlayData.acled)
-    setGeoJsonData(map, 'atlas-disasters', nativeOverlayData.disasters)
-    setGeoJsonData(map, 'atlas-terminator', nativeOverlayData.terminator)
-
-    ensureLayer(map, {
-      id: 'atlas-terminator-fill',
-      type: 'fill',
-      source: 'atlas-terminator',
-      paint: {
-        'fill-color': 'rgba(0, 8, 25, 1)',
-        'fill-opacity': ['coalesce', ['get', 'opacity'], 0],
-      },
-    })
-    ensureLayer(map, {
-      id: 'atlas-flows-line',
-      type: 'line',
-      source: 'atlas-flows',
-      layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: {
-        'line-color': themeId === 'retro-radar' ? 'rgba(74, 222, 128, 0.55)' : 'rgba(100, 140, 180, 0.52)',
-        'line-width': ['interpolate', ['linear'], ['coalesce', ['get', 'strength'], 0], 0, 0.8, 1, 3],
-        'line-opacity': 0.45,
-      },
-    })
-    ensureLayer(map, {
-      id: 'atlas-anomaly-ring',
-      type: 'circle',
-      source: 'atlas-anomaly',
-      paint: {
-        'circle-radius': ['coalesce', ['get', 'radius'], 8],
-        'circle-color': 'rgba(239, 68, 68, 0)',
-        'circle-stroke-color': 'rgba(239, 68, 68, 0.95)',
-        'circle-stroke-width': 2,
-      },
-    })
-    ensureLayer(map, {
-      id: 'atlas-chokepoints-circle',
-      type: 'circle',
-      source: 'atlas-chokepoints',
-      paint: {
-        'circle-radius': ['case', ['get', 'active'], 18, 11],
-        'circle-color': ['case', ['get', 'active'], 'rgba(0, 220, 200, 0.16)', 'rgba(0, 180, 160, 0.08)'],
-        'circle-stroke-color': ['case', ['get', 'active'], 'rgba(0, 255, 210, 0.8)', 'rgba(0, 180, 160, 0.35)'],
-        'circle-stroke-width': ['case', ['get', 'active'], 2, 1],
-      },
-    })
-    ensureLayer(map, {
-      id: 'atlas-aircraft-circle',
-      type: 'circle',
-      source: 'atlas-aircraft',
-      paint: {
-        'circle-radius': ['case', ['>', ['coalesce', ['get', 'alt'], 0], 10000], 2, 3],
-        'circle-color': [
-          'case',
-          ['>', ['coalesce', ['get', 'alt'], 0], 10000],
-          'rgba(255, 255, 255, 0.78)',
-          ['>', ['coalesce', ['get', 'alt'], 0], 5000],
-          'rgba(255, 210, 80, 0.72)',
-          'rgba(255, 140, 40, 0.68)',
-        ],
-      },
-    })
-    ensureLayer(map, {
-      id: 'atlas-vessels-circle',
-      type: 'circle',
-      source: 'atlas-vessels',
-      paint: {
-        'circle-radius': ['case', ['>', ['coalesce', ['get', 'speed'], 0], 14], 4, 3],
-        'circle-color': ['case', ['>', ['coalesce', ['get', 'speed'], 0], 10], 'rgba(0, 220, 200, 0.9)', 'rgba(0, 180, 160, 0.6)'],
-      },
-    })
-    // L7: natural-hazard events (USGS+GDACS). Cool-hued, white-stroked dots so
-    // they read as HAZARD, distinct from the warm conflict palette.
-    ensureLayer(map, {
-      id: 'atlas-disasters-circle',
-      type: 'circle',
-      source: 'atlas-disasters',
-      paint: {
-        'circle-radius': ['coalesce', ['get', 'radius'], 5],
-        'circle-color': [
-          'match', ['get', 'dtype'],
-          'earthquake', 'rgba(251, 191, 36, 0.82)',
-          'volcano', 'rgba(248, 113, 113, 0.82)',
-          'flood', 'rgba(56, 189, 248, 0.82)',
-          'cyclone', 'rgba(167, 139, 250, 0.82)',
-          'wildfire', 'rgba(249, 115, 22, 0.82)',
-          'drought', 'rgba(202, 138, 4, 0.82)',
-          'rgba(148, 163, 184, 0.8)',
-        ],
-        'circle-stroke-color': 'rgba(255, 255, 255, 0.55)',
-        'circle-stroke-width': 1.4,
-      },
-    })
-    ensureLayer(map, {
-      id: 'atlas-acled-circle',
-      type: 'circle',
-      source: 'atlas-acled',
-      paint: {
-        'circle-radius': ['coalesce', ['get', 'radius'], 5],
-        'circle-color': [
-          'case',
-          ['in', 'Battle', ['coalesce', ['get', 'type'], '']],
-          'rgba(239, 68, 68, 0.86)',
-          ['in', 'Explosion', ['coalesce', ['get', 'type'], '']],
-          'rgba(239, 68, 68, 0.86)',
-          ['in', 'Riot', ['coalesce', ['get', 'type'], '']],
-          'rgba(249, 115, 22, 0.78)',
-          'rgba(234, 179, 8, 0.7)',
-        ],
-        'circle-stroke-color': 'rgba(255, 255, 255, 0.32)',
-        'circle-stroke-width': 1,
-      },
-    })
-
-    setLayerVisibility(map, 'atlas-flows-line', showFlows || !!selectedCountryCode || !!filter.theme)
-    setLayerVisibility(map, 'atlas-anomaly-ring', !crisisEnabled)
-    setLayerVisibility(map, 'atlas-chokepoints-circle', showVessels)
-    setLayerVisibility(map, 'atlas-aircraft-circle', showAircraft)
-    setLayerVisibility(map, 'atlas-vessels-circle', showVessels)
-    setLayerVisibility(map, 'atlas-acled-circle', (acledConflicts?.length ?? 0) > 0)
-    setLayerVisibility(map, 'atlas-disasters-circle', disasterEvents.length > 0)
-    setLayerVisibility(map, 'atlas-terminator-fill', showTerminator && !crisisEnabled)
-  }, [
-    acledConflicts,
-    disasterEvents,
-    crisisEnabled,
-    filter.theme,
-    mapReady,
-    nativeOverlayData,
-    selectedCountryCode,
-    showAircraft,
-    showFlows,
-    showTerminator,
-    showVessels,
-    themeId,
-    mapProjection,
-  ])
-
-  useEffect(() => {
-    if (mapProjection !== 'mercator') return
-    const map = mapRef.current?.getMap()
-    if (!map || !mapReady) return
-
-    const handleChokepointClick = (e: any) => {
-      const feature = e.features?.[0]
-      if (!feature) return
-      const cp = CHOKEPOINTS.find(item => item.id === feature.properties?.id)
-      if (!cp) return
-      setSelectedChokepoint(prev => prev?.id === cp.id ? null : cp)
-      setMapFlyCountry(cp.primaryCountry)
-    }
-    const enter = () => { map.getCanvas().style.cursor = 'pointer' }
-    const leave = () => { map.getCanvas().style.cursor = '' }
-
-    // T3.3 P-FOCUS: a conflict event click centers the EVENT (panel + fly to its
-    // exact location), instead of falling through to the country fill.
-    const handleAcledClick = (e: any) => {
-      const p = e.features?.[0]?.properties
-      if (!p) return
-      const ev: ConflictEventFocus = {
-        type: p.type || '', country: p.country || '', place: p.place || '',
-        actor1: p.actor1 || '', actor2: p.actor2 || '', date: p.date || '',
-        fatalities: Number(p.fatalities) || 0, mentions: Number(p.mentions) || 0,
-        lat: p.lat != null && p.lat !== '' ? Number(p.lat) : null,
-        lon: p.lon != null && p.lon !== '' ? Number(p.lon) : null,
-      }
-      setSelectedConflictEvent(ev)
-      if (ev.lat != null && ev.lon != null) {
-        map.flyTo({ center: [ev.lon, ev.lat], zoom: 5, duration: 1200 })
-      }
-    }
-
-    map.on('click', 'atlas-chokepoints-circle', handleChokepointClick)
-    map.on('mouseenter', 'atlas-chokepoints-circle', enter)
-    map.on('mouseleave', 'atlas-chokepoints-circle', leave)
-    // L7: a disaster dot flies to the event and opens the authoritative
-    // source page (USGS/GDACS) — no in-app panel for hazards yet.
-    const handleDisasterClick = (e: any) => {
-      const p = e.features?.[0]?.properties
-      if (!p) return
-      if (p.lat != null && p.lon != null) {
-        map.flyTo({ center: [Number(p.lon), Number(p.lat)], zoom: 5, duration: 1200 })
-      }
-      if (p.url) window.open(String(p.url), '_blank', 'noopener,noreferrer')
-    }
-
-    map.on('click', 'atlas-acled-circle', handleAcledClick)
-    map.on('mouseenter', 'atlas-acled-circle', enter)
-    map.on('mouseleave', 'atlas-acled-circle', leave)
-    map.on('click', 'atlas-disasters-circle', handleDisasterClick)
-    map.on('mouseenter', 'atlas-disasters-circle', enter)
-    map.on('mouseleave', 'atlas-disasters-circle', leave)
-
-    return () => {
-      // The map may already be torn down (projection switch unmounts MapGL):
-      // map.getLayer() reaches into a destroyed `this.style` and throws. Guard
-      // on map.style and swallow teardown races.
-      try {
-        if (!(map as any).style) return
-        if (map.getLayer('atlas-chokepoints-circle')) {
-          map.off('click', 'atlas-chokepoints-circle', handleChokepointClick)
-          map.off('mouseenter', 'atlas-chokepoints-circle', enter)
-          map.off('mouseleave', 'atlas-chokepoints-circle', leave)
-        }
-        if (map.getLayer('atlas-acled-circle')) {
-          map.off('click', 'atlas-acled-circle', handleAcledClick)
-          map.off('mouseenter', 'atlas-acled-circle', enter)
-          map.off('mouseleave', 'atlas-acled-circle', leave)
-        }
-        if (map.getLayer('atlas-disasters-circle')) {
-          map.off('click', 'atlas-disasters-circle', handleDisasterClick)
-          map.off('mouseenter', 'atlas-disasters-circle', enter)
-          map.off('mouseleave', 'atlas-disasters-circle', leave)
-        }
-      } catch { /* map already removed */ }
-    }
-  }, [mapReady, setMapFlyCountry, mapProjection])
+  // (MapLibre overlay-push + native layer-handler effects removed with the
+  //  2026-07-04 deprecation — EE renders overlays from nativeOverlayData.)
 
   // Total signals for stats
   const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
@@ -1616,8 +1230,6 @@ function AppContent() {
             onToggleTerminator={setShowTerminator}
             sizeBoost={sizeBoost}
             onToggleSizeBoost={setSizeBoost}
-            mapProjection={mapProjection}
-            onToggleProjection={toggleProjection}
             open={settingsOpen}
             onClose={() => setSettingsOpen(false)}
           />
@@ -1701,50 +1313,17 @@ function AppContent() {
               <button
                 className="layer-btn layer-btn--reset"
                 onClick={() => {
-                  // The ↺ was MapLibre-only — dead on the default EE map
-                  // (Pedro 2026-07-02): reset EE's transform + clear focus.
-                  if (mapProjection === 'equalEarth') {
-                    setSelectedCountry(null)
-                    setSelectedCountryCode(null)
-                    setShowFlows(false)
-                    clearFocus()
-                    setEeResetNonce(n => n + 1)
-                    // L8 (Pedro): reset re-centers on the HOTTEST region (the
-                    // composite, not volume) — 'que empiece en lo más caliente'.
-                    let hottest: string | null = null, hv = -1
-                    heatComposite.forEach((v, code) => { if (v > hv) { hv = v; hottest = code } })
-                    setMapFlyCountry(hottest)
-                    return
-                  }
-                  const map = mapRef.current?.getMap()
-                  // #147: after rotating/tilting users get lost — pitch and
-                  // bearing were never restored. First press on a tilted map
-                  // resets to the flat north-up default; pressing again (map
-                  // already flat) flies to the hotspot as before.
-                  const isTilted = map
-                    ? Math.abs(map.getPitch()) > 1 || Math.abs(map.getBearing()) > 1
-                    : false
-                  if (isTilted) {
-                    map?.flyTo({
-                      center: [INITIAL_VIEW.longitude, INITIAL_VIEW.latitude],
-                      zoom: INITIAL_VIEW.zoom,
-                      pitch: 0,
-                      bearing: 0,
-                      duration: 1200,
-                      essential: true,
-                    })
-                    return
-                  }
+                  // Reset EE's transform + clear focus; re-center on the
+                  // HOTTEST region (the composite, not volume) — L8, Pedro:
+                  // 'que empiece en lo más caliente'.
                   setSelectedCountry(null)
                   setSelectedCountryCode(null)
                   setShowFlows(false)
                   clearFocus()
-                  if (nodes.length > 0) {
-                    const hottest = pickTopAttentionNode(nodes)
-                    map?.flyTo({ center: [hottest.lon, hottest.lat], zoom: 2.5, duration: 1800, essential: true })
-                  } else {
-                    setViewState(INITIAL_VIEW)
-                  }
+                  setEeResetNonce(n => n + 1)
+                  let hottest: string | null = null, hv = -1
+                  heatComposite.forEach((v, code) => { if (v > hv) { hv = v; hottest = code } })
+                  setMapFlyCountry(hottest)
                 }}
                 data-tip="Tilted or rotated: reset to flat north-up view. Already flat: fly to highest-attention region"
                 aria-label="Reset map view or fly to highest-attention region"
@@ -1756,7 +1335,7 @@ function AppContent() {
           </div>
           <div className="panel-content">
             <MapErrorBoundary>
-              {mapProjection === 'equalEarth' ? (
+              {(  /* EE canvas — the one map; MapLibre deprecated 2026-07-04 */
                 <EqualEarthMap
                   heatStates={heatStates}
                   showHeatmap={showHeatmap}
@@ -1789,152 +1368,6 @@ function AppContent() {
                     setMapFlyCountry(gdelt)
                   }}
                 />
-              ) : mapEverShown ? (
-              <MapGL
-                key={`map-${mapRetry}`}
-                ref={mapRef}
-                mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
-                attributionControl={false}
-                projection={isGlobe ? 'globe' : 'mercator'}
-                {...viewState}
-                onError={(e: any) => { console.warn('[map] load error', e?.error?.message || e) }}
-                onMove={evt => setViewState(evt.viewState as any)}
-                onLoad={(e) => {
-                  const map = e.target
-
-                  // Atmosphere
-                  if (typeof (map as any).setFog === 'function') {
-                    ; (map as any).setFog({
-                      'color': 'rgba(10, 15, 26, 0.8)',
-                      'horizon-blend': 0.08,
-                      'high-color': '#1a3050',
-                      'space-color': '#050510',
-                      'star-intensity': 0.15
-                    })
-                  }
-
-                  // Country heat source — loads GeoJSON once, colors driven by feature-state
-                  map.addSource('country-heat', {
-                    type: 'geojson',
-                    data: '/data/countries.geojson',
-                    promoteId: 'ISO_A2'
-                  })
-
-                  // Layer 1: Country shape fill
-                  // fill-color uses 'heat' (z-score deviation from baseline) so a small country
-                  // spiking above its own norm appears redder than the US on a quiet day
-                  map.addLayer({
-                    id: 'country-heat-fill',
-                    type: 'fill',
-                    source: 'country-heat',
-                    paint: {
-                      // Stops span the normalized [0.1,1.0] heat band with a
-                      // full cool→hot ramp (blue→cyan→amber→red) so the world
-                      // reads like a weather radar, not a flat orange (#231).
-                      'fill-color': [
-                        'interpolate', ['linear'],
-                        ['coalesce', ['feature-state', 'heat'], 0],
-                        0, 'rgba(0, 0, 0, 0)',
-                        0.1, 'rgba(20, 50, 120, 40)',
-                        0.3, 'rgba(25, 90, 150, 60)',
-                        0.5, 'rgba(40, 140, 120, 75)',
-                        0.65, 'rgba(190, 130, 30, 95)',
-                        0.82, 'rgba(220, 75, 20, 115)',
-                        1.0, 'rgba(238, 35, 10, 145)'
-                      ],
-                      'fill-opacity': 0.5
-                    }
-                  })
-
-                  // Layer 2: Border glow — color driven by heat, width by intensity (volume)
-                  map.addLayer({
-                    id: 'country-heat-glow',
-                    type: 'line',
-                    source: 'country-heat',
-                    paint: {
-                      'line-color': [
-                        'interpolate', ['linear'],
-                        ['coalesce', ['feature-state', 'heat'], 0],
-                        0, 'rgba(0, 0, 0, 0)',
-                        0.1, 'rgba(30, 60, 140, 30)',
-                        0.3, 'rgba(35, 110, 160, 50)',
-                        0.5, 'rgba(50, 160, 130, 65)',
-                        0.65, 'rgba(205, 140, 35, 80)',
-                        0.82, 'rgba(230, 80, 20, 100)',
-                        1.0, 'rgba(248, 45, 10, 125)'
-                      ],
-                      'line-width': [
-                        'interpolate', ['linear'],
-                        ['coalesce', ['feature-state', 'intensity'], 0],
-                        0, 0,
-                        0.05, 2,
-                        0.5, 6,
-                        1.0, 10
-                      ],
-                      'line-blur': 4,
-                      'line-opacity': 0.7
-                    }
-                  })
-
-                  // Listen for GeoJSON source to finish downloading
-                  const onSourceData = (e: any) => {
-                    if (e.sourceId === 'country-heat' && e.isSourceLoaded) {
-                      setHeatSourceReady(true)
-                      map.off('sourcedata', onSourceData)
-                    }
-                  }
-                  if (map.isSourceLoaded('country-heat')) {
-                    setHeatSourceReady(true)
-                  } else {
-                    map.on('sourcedata', onSourceData)
-                  }
-
-                  // Fallback: if sourcedata event doesn't fire within 3s, force ready
-                  setTimeout(() => setHeatSourceReady(true), 3000)
-
-                  // Country territory click — ISO_A2 → GDELT/FIPS mapping for mismatches
-                  const ISO_TO_GDELT: Record<string, string> = {
-                    CN: 'CH', ID: 'RI', RS: 'RB', XK: 'KV', MK: 'MK',
-                    CD: 'CG', CG: 'CF', TZ: 'TZ', KR: 'KS', KP: 'KN',
-                    PS: 'GZ', EI: 'EI',
-                  }
-                  map.on('click', 'country-heat-fill', (e: any) => {
-                    if (!e.features?.length) return
-                    const props = e.features[0].properties
-                    const iso = props?.ISO_A2 || props?.ISO_A2_EH || ''
-                    if (!iso || iso === '-99') return
-                    const gdelt = ISO_TO_GDELT[iso] || iso
-                    handleCountryClick(gdelt)
-                    setFocus('country', gdelt, props?.NAME || gdelt)
-                    setMapFlyCountry(gdelt)
-                  })
-                  map.on('mouseenter', 'country-heat-fill', () => {
-                    map.getCanvas().style.cursor = 'pointer'
-                  })
-                  map.on('mouseleave', 'country-heat-fill', () => {
-                    map.getCanvas().style.cursor = ''
-                  })
-
-                  // iOS Safari (and other mobile GPUs) can silently DROP the
-                  // WebGL context under memory pressure — the map goes blank
-                  // with no JS error and never recovers on its own. Catch the
-                  // loss and force a remount so MapLibre rebuilds the context.
-                  // (Capped so a genuinely unsupported device can't loop.)
-                  try {
-                    map.getCanvas().addEventListener('webglcontextlost', (ev: Event) => {
-                      ev.preventDefault()
-                      console.warn('[map] webgl context lost — remounting')
-                      setMapReady(false)
-                      setMapRetry(r => (r < 4 ? r + 1 : r))
-                    }, { once: true })
-                  } catch { /* canvas not ready — ignore */ }
-
-                  setMapReady(true)
-                }}
-              >
-              </MapGL>
-              ) : (
-                <div className="map-lazy-placeholder" />
               )}
               <div className="globe-vignette" />
             </MapErrorBoundary>

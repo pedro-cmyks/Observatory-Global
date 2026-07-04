@@ -6,8 +6,6 @@ interface SettingsPanelProps {
     onToggleTerminator: (v: boolean) => void;
     sizeBoost: boolean;
     onToggleSizeBoost: (v: boolean) => void;
-    mapProjection?: 'mercator' | 'equalEarth';
-    onToggleProjection?: () => void;
     // Controlled mode (#152): when `open` is provided the trigger button is
     // not rendered — the command bar's overflow menu owns the toggle.
     open?: boolean;
@@ -19,8 +17,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     onToggleTerminator,
     sizeBoost,
     onToggleSizeBoost,
-    mapProjection,
-    onToggleProjection,
     open: controlledOpen,
     onClose,
 }) => {
@@ -82,30 +78,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
             <div style={{ marginBottom: '16px' }}>
                 <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: '8px' }}>Map Options</div>
-
-                {mapProjection && onToggleProjection && (
-                    <div style={{ marginBottom: '14px' }}>
-                        <div style={{ fontSize: '12px', color: 'var(--color-text-primary)', marginBottom: '6px' }}>Projection</div>
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                            {(['equalEarth', 'mercator'] as const).map((proj) => (
-                                <button
-                                    key={proj}
-                                    onClick={() => { if (mapProjection !== proj) onToggleProjection(); }}
-                                    className={`layer-btn ${mapProjection === proj ? 'active' : ''}`}
-                                    style={{ flex: 1, fontSize: '11px' }}
-                                    data-tip={proj === 'equalEarth'
-                                        ? 'Equal-area strip — honest country sizes, infinite horizontal pan'
-                                        : 'Web Mercator — familiar, but inflates the north'}
-                                >
-                                    {proj === 'equalEarth' ? 'EQUAL AREA' : 'MERCATOR'}
-                                </button>
-                            ))}
-                        </div>
-                        <span style={{ fontSize: '10px', color: 'var(--color-text-muted)', display: 'block', marginTop: '5px' }}>
-                            Equal-area shows true country sizes (no north inflation).
-                        </span>
-                    </div>
-                )}
 
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '12px', cursor: 'pointer' }}>
                     <input

@@ -14,18 +14,15 @@
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
     "@fontsource-variable/geist-mono": "^5.2.8",
-    "@types/maplibre-gl": "^1.13.2",
     "d3-geo-projection": "^4.0.0",
     "d3-scale": "^4.0.2",
     "d3-scale-chromatic": "^3.1.0",
     "html-to-image": "^1.11.13",
     "lucide-react": "^0.562.0",
-    "maplibre-gl": "^5.13.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-force-graph-2d": "^1.29.1",
     "react-grid-layout": "^2.2.3",
-    "react-map-gl": "^8.1.0",
     "react-router-dom": "^7.14.2",
     "react-simple-maps": "^3.0.0",
     "recharts": "^3.8.1"
