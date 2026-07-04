@@ -215,6 +215,13 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
     const scrubDate = new Date(scrubT)
     const atNow = scrubPct === 100
 
+    // Perspective zoom (Pedro 2026-07-03 "las lunas no se alejan"): inside
+    // scale(k) a uniform zoom grows body radii AND separations at the same
+    // rate, so moons read as still mounted on their parent. Counter-scale
+    // radii by k^-0.55 → bodies render ~k^0.45 while distances render k →
+    // separation/size grows k^0.55 and moons visibly detach as you approach.
+    const zoomShrink = Math.pow(view.k, -0.55)
+
     return (
         <section className="orbital-section">
             <div
@@ -321,7 +328,7 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                         const dir = receding ? -1 : 1
                         const tx = p.x + dir * (rx / rlen) * tail
                         const ty = p.y + dir * (ry / rlen) * tail
-                        const r0 = bodyRadius(p.body.n)
+                        const r0 = bodyRadius(p.body.n) * zoomShrink
                         return (
                             <g key={`tail-${p.body.id}`} pointerEvents="none">
                                 <line
@@ -357,7 +364,7 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                         >
                             <circle
                                 cx={p.x} cy={p.y}
-                                r={bodyRadius(p.body.n)}
+                                r={bodyRadius(p.body.n) * zoomShrink}
                                 fill={`url(#orb-grad-${p.body.type})`}
                                 stroke={hovered?.id === p.body.id ? 'rgba(248,250,252,0.9)' : toneStroke(p.body.tone)}
                                 strokeWidth={hovered?.id === p.body.id ? 1.4 : (p.body.tone != null && Math.abs(p.body.tone) > 1.0 ? 1.5 : 0.7)}
@@ -367,7 +374,7 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                                 can read the moon/planet names (Pedro 2026-07-03) */}
                             {(labelIds.has(p.body.id) || hovered?.id === p.body.id || view.k >= 1.6) && (
                                 <text
-                                    x={p.x} y={p.y + bodyRadius(p.body.n) + 12}
+                                    x={p.x} y={p.y + bodyRadius(p.body.n) * zoomShrink + 12 / view.k}
                                     className="orbital-body-label"
                                     style={{ fontSize: `${9.5 / view.k}px` }}
                                 >
