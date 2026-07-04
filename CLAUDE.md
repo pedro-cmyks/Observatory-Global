@@ -10,6 +10,41 @@
 > and narrows further if telemetry shows one persona dominates.) **Anti-goal:**
 > no new surface/capability until telemetry shows users reaching a value moment.
 
+**2026-07-04 (GATE RECALL ARC — eval→diagnosis→OpenAI cutover→two-tier, read
+FIRST for engine).** Full evidence chain in one session: (1) **Atlas-vs-web EVAL
+(the "bacano≠eje" pass, `docs/research/eval/2026-07-04-atlas-vs-websearch-eval.md`):
+Atlas = EJE for discovery** — its tone map pointed at India (−1.5, 143 sig) on
+election-legitimacy and the web CONFIRMED a real crisis (Banerjee/SIR purge/vote-
+chor) unreachable from a "Peru election" search; web wins verified depth. Blocker
+exposed: gate kept 1/1,269 → all UNVERIFIED. (2) **Diagnosis
+(`docs/research/gate-recall/2026-07-04-gate-recall-diagnosis.md`): NOT a bug —
+the per-topic ≥90%-precision policy forces thr≈0.99 on hard topics** (74 signals
+≥0.5 dropped; the 0.35-0.5 band is real coverage: FBI Georgia, WA mail-in, Peru
+JNE). (3) **Bake-off:** no local embedder matches OpenAI (m-e5-large 0.742,
+bge-m3 0.745, e5base 0.749 vs OpenAI 0.843 @90%); Pedro funded $30 →
+**scope gate CUT OVER to OpenAI** (`score_assignments_gate.py` OpenAI branch,
+text format 'headline | label' NO query-prefix; cron gate-id
+atlas-scope-gate-v1-openai; reversible ATLAS_GATE_JSON/ATLAS_GATE_ID; 48h
+backfilled ~$0.006). Live: agriculture 0→44%, armed-conflict 17%, overall 25%.
+(4) **TWO-TIER coverage SHIPPED (Fly `f2c28eca`):** `_atlas_topic_detail` serves
+VERIFIED (gate_kept 90%) + EXTENDED (score ≥ per-topic 75%-precision threshold,
+`backend/app/data/scope_gate_extended_thresholds.json` — models/ is NOT in the
+Docker image, app/data is) + per-signal `tier` + warning `extended_coverage`;
+ThemeDetail banner "N verified · +M extended (~75%)". Prod verified:
+election-legitimacy total 1→14 (6 verified + 8 extended, extThr 0.954); overall
+coverage 25→38%. **HONEST RESIDUE: election-legitimacy stays modest — its real
+lever is the LEXICAL ASSIGNMENT (~2,000 loose signals inflate the denominator),
+not the gate.** Also this session: Kalman BACKTEST (velocity does NOT lead
+volume — mean-reverts, h1 −0.477; changed_10h stays the ordering source,
+topic_movement = display-only; `backtest_movement_leading.py` +
+`docs/research/movement-backtest/`); substrate #2 closed (crons re-bootstrapped,
+embed fresh 176K, `atlas-cron-freshness-watchdog` 30-min launchd — checks DB
+freshness, kickstarts stale crons, never two heavy jobs); alignment doc
+`docs/state/2026-07-04-alignment.md`; label bug (map key shows dynamic-topic-821
+raw id — Legend getThemeLabel only maps GDELT codes) spawned as task. NEXT:
+lexical-assignment precision (election-legit denominator), universe orbital
+moon-zoom bug (zoom didn't propagate to orbital canvas), #248 noise lanes.
+
 **2026-07-02 (PM — UNIVERSE VIEW MVP SHIPPED, /goal run).** Pedro's vector-
 field framing ("todo el universo en un campo vectorial; un tema = una sección")
 built literal: **`GET /api/v2/universe`** (universe-v0, `app/routers/universe.py`)
