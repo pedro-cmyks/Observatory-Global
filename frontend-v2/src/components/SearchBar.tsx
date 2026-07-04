@@ -206,10 +206,14 @@ interface SearchBarProps {
     onCountrySelect: (code: string) => void
     onPublicAttentionSelect?: (item: PublicAttentionResult) => void
     onStartInvestigation?: (query: string) => void
+    /** Natural query → cross-thread STORY panel (research-plan anchors in the
+     *  stream slot). Primary CTA + Enter (2026-07-04, Pedro: a search's first
+     *  answer is the story, not a thread builder). */
+    onOpenStory?: (query: string) => void
     externalQuery?: { q: string; id: number }
 }
 
-export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSelect, onStartInvestigation, externalQuery }: SearchBarProps) {
+export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSelect, onStartInvestigation, onOpenStory, externalQuery }: SearchBarProps) {
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<SearchResult | null>(null)
     const [parsedQuery, setParsedQuery] = useState<ParsedQuery>({ topic: '', countryCode: null, countryDisplay: null })
@@ -217,8 +221,12 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
     const [loading, setLoading] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
     const { setFocus, setMapFlyCountry, setCountry, setTheme, setRegion } = useFocus()
+    // Guards the close-vs-inflight-response race: pressing Enter (story) while
+    // a search is in flight must not let the late response reopen the dropdown.
+    const searchSeqRef = useRef(0)
 
     const doSearch = useCallback(async (q: string) => {
+        const seq = ++searchSeqRef.current
         if (q.length < 2) {
             setResults(null)
             setIsOpen(false)
@@ -232,8 +240,10 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
         try {
             const countryParam = parsed.countryCode ? `&country=${parsed.countryCode}` : ''
             const res = await fetch(`/api/v2/search/unified?q=${encodeURIComponent(searchQ)}&hours=168${countryParam}`)
+            if (seq !== searchSeqRef.current) return  // closed/superseded while in flight
             if (res.ok) {
                 const data = await res.json()
+                if (seq !== searchSeqRef.current) return
                 setResults(data)
                 // P4 search telemetry: the wedge question is "do people FIND?"
                 // — log what each settled query surfaced, esp. zero-results.
@@ -253,8 +263,10 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
             } else {
                 // Fallback to basic search if unified endpoint not available yet
                 const fallback = await fetch(`/api/v2/search?q=${encodeURIComponent(searchQ)}&hours=168`)
+                if (seq !== searchSeqRef.current) return
                 setResults(fallback.ok ? await fallback.json() : { themes: [], persons: [], countries: [] })
             }
+            if (seq !== searchSeqRef.current) return
             setIsOpen(true)
             // Warm the custom query-thread cache so clicking the option is instant.
             fetch(`/api/v2/search/thread?q=${encodeURIComponent(searchQ)}&hours=168${countryParam}`).catch(() => { })
@@ -279,6 +291,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
     }, [externalQuery, doSearch])
 
     const close = () => {
+        searchSeqRef.current++  // invalidate any in-flight search response
         setIsOpen(false)
         setQuery('')
         setResults(null)
@@ -362,6 +375,16 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
         close()
     }
 
+    // The primary answer to a natural query: the cross-thread STORY (research-
+    // plan anchors — threads, who-says-what, gaps) rendered in the stream slot.
+    const handleOpenStory = () => {
+        const raw = query.trim()
+        if (raw.length < 3 || !onOpenStory) return
+        track('search_result_click', { segment: 'story', q_len: raw.length })
+        onOpenStory(raw)
+        close()
+    }
+
     const hasResults = hasVisibleSearchResults(results)
     const expandedVariants = (results?.query_variants || [])
         .filter(v => v && v !== results?.normalized_query)
@@ -383,6 +406,11 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => results && setIsOpen(true)}
+                    onKeyDown={(e) => {
+                        // Enter = the story (cross-thread narrative), the
+                        // natural-search contract. IME-safe.
+                        if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleOpenStory()
+                    }}
                 />
                 {loading && <span className="search-loading">·</span>}
                 {query && !loading && (
@@ -399,13 +427,14 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                         </div>
                     )}
 
-                    {query.trim().length >= 2 && (
-                        <button className="search-query-thread-cta" onClick={handleQueryThreadClick}>
-                            <span className="search-query-thread-icon">🧵</span>
+                    {onOpenStory && query.trim().length >= 3 && (
+                        <button className="search-query-thread-cta" onClick={handleOpenStory}
+                            data-tip="The cross-thread story: matching live threads, who says what, coverage gaps — press Enter">
+                            <span className="search-query-thread-icon">◆</span>
                             <span className="search-query-thread-text">
-                                Build a thread for <strong>“{query.trim()}”</strong>
+                                Open the story for <strong>“{query.trim()}”</strong>
                             </span>
-                            <span className="search-query-thread-hint">custom narrative →</span>
+                            <span className="search-query-thread-hint">↵ cross-thread narrative</span>
                         </button>
                     )}
 
@@ -574,6 +603,20 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
 
                     {!hasResults && !loading && (
                         <div className="search-empty">No results for "{parsedQuery.topic}"</div>
+                    )}
+
+                    {/* demoted (2026-07-04): the raw query-thread builder is a
+                        power tool, not the front door — the story CTA leads. */}
+                    {query.trim().length >= 2 && (
+                        <button className="search-query-thread-cta search-query-thread-cta--secondary"
+                            onClick={handleQueryThreadClick}
+                            style={{ opacity: 0.65, fontSize: '0.85em' }}>
+                            <span className="search-query-thread-icon">🧵</span>
+                            <span className="search-query-thread-text">
+                                Build a custom thread for <strong>“{query.trim()}”</strong>
+                            </span>
+                            <span className="search-query-thread-hint">power tool →</span>
+                        </button>
                     )}
 
                 </div>

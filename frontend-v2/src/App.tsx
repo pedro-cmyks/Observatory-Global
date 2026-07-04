@@ -293,6 +293,10 @@ function AppContent() {
   // Universe view (L11): the whole living story population as one field
   const [universeOpen, setUniverseOpen] = useState(false)
   const [researchQuery, setResearchQuery] = useState<string | null>(null)
+  // Search-submit story panel (2026-07-04, Pedro): a natural query's first
+  // answer is the CROSS-THREAD STORY (research-plan anchors in the stream
+  // slot), not a thread builder and not the Workbench.
+  const [storyQuery, setStoryQuery] = useState<string | null>(null)
   const [wbRefresh, setWbRefresh] = useState(0)
   const [tourRunId, setTourRunId] = useState(0)
   // A4: one-time contextual walkthrough on the first country selection.
@@ -538,6 +542,7 @@ function AppContent() {
 
   // Click handlers
   function handleCountryClick(countryCode: string) {
+    setStoryQuery(null) // story panel yields to an explicit country open
     setSelectedPublicAttention(null)
     setSelectedThread(null)
     // Country nav must take the stream slot: clear any open ThemeDetail so the
@@ -621,6 +626,7 @@ function AppContent() {
     // T5.1: a thread open is a value moment (the analyst reached real narrative).
     track('thread_open')
     trackOnce('first_value_moment', { kind: 'thread' })
+    setStoryQuery(null) // story panel yields to an explicit thread open
     setSelectedPublicAttention(null)
     setSelectedThread(null)
     // Custom query threads are synthetic — they must not pollute FocusContext
@@ -1469,6 +1475,10 @@ function AppContent() {
               onThemeSelect={handleThemeSelect}
               onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
               onPublicAttentionSelect={handlePublicAttentionSelect}
+              onOpenStory={(q) => {
+                track('search_story_open', { q_len: q.length })
+                setStoryQuery(q)
+              }}
               onStartInvestigation={(q) => {
                 createInvestigation(q)
                 setResearchQuery(q)
@@ -1968,13 +1978,14 @@ function AppContent() {
 
         {/* Panel 2: SIGNAL STREAM — the intel hub, swaps based on active context */}
         {(() => {
-          const isPerson = focus.type === 'person' && !!focus.value
-          const isThread = !!selectedThread && !isPerson
-          const isTheme = !!selectedTheme && !isPerson && !isThread
-          const isCountry = !!selectedCountryCode && !isPerson && !isTheme && !isThread
-          const isPublicAttention = !!selectedPublicAttention && !isPerson && !isCountry && !isTheme
-          const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme && !isPublicAttention
-          const closeAll = () => { setSelectedTheme(null); setSelectedThread(null); setThemeBackStack([]); setSelectedPublicAttention(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); setSelectedConflictEvent(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null) }
+          const isStory = !!storyQuery
+          const isPerson = focus.type === 'person' && !!focus.value && !isStory
+          const isThread = !!selectedThread && !isPerson && !isStory
+          const isTheme = !!selectedTheme && !isPerson && !isThread && !isStory
+          const isCountry = !!selectedCountryCode && !isPerson && !isTheme && !isThread && !isStory
+          const isPublicAttention = !!selectedPublicAttention && !isPerson && !isCountry && !isTheme && !isStory
+          const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme && !isPublicAttention && !isStory
+          const closeAll = () => { setStoryQuery(null); setSelectedTheme(null); setSelectedThread(null); setThemeBackStack([]); setSelectedPublicAttention(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); setSelectedConflictEvent(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null) }
           // Smart back: one step up, not all the way to stream
           const handleStreamBack = () => {
             if (prevStreamCtx?.type === 'chokepoint') {
@@ -2037,6 +2048,10 @@ function AppContent() {
             </button>
             <span style={{ color: '#94a3b8' }}>{(selectedTheme!.thread?.label || selectedTheme!.theme.replace(/_/g, ' ')).slice(0, 32)}</span>
           </>
+          if (isStory) panelTitle = <>
+            <button className="drill-back-btn" onClick={() => setStoryQuery(null)} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
+            <span style={{ color: '#fbbf24' }}>STORY · {storyQuery!.slice(0, 30)}</span>
+          </>
           if (isThread) panelTitle = <>
             <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
             <span style={{ color: '#2dd4bf' }}>{selectedThread!.label.slice(0, 32)}</span>
@@ -2074,7 +2089,16 @@ function AppContent() {
                 </div>
               )}
               <div className="panel-content">
-                {isPerson ? (
+                {isStory ? (
+                  <ResearchPlanPanel
+                    query={storyQuery!}
+                    hours={Math.max(timeRangeToHours(timeRange), 168)}
+                    countryCode={filter.country}
+                    onOpenThread={(id, label) => { setStoryQuery(null); handleResearchOpenThread(id, label) }}
+                    onOpenCountry={(cc) => { setStoryQuery(null); handleResearchOpenCountry(cc) }}
+                    onBranchQuery={(q) => setStoryQuery(q)}
+                  />
+                ) : isPerson ? (
                   <EntityPanel inline focusType="person" focusValue={focus.value!} timeRange={timeRange}
                     onClose={closeAll}
                     onThemeSelect={(theme) => handleThemeSelect(theme)}
