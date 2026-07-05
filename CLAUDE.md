@@ -215,7 +215,13 @@ vacío con razón); `DayEvidencePanel`: globo scrubbed + click país = LOS
 RECIBOS DE ESE DÍA (links + tier label "FROM THE ARCHIVE — sample" +
 escape "Open live"). Browser-verified ambos tiers (Congo Jun-29 hot vacío
 honesto; Brazil Jun-10 archive 5 recibos). El ciclo time-as-dimension
-S1-S4 COMPLETO. QUEDA del spec L2: X6 móvil (gated en lectura X0) +
+S1-S4 COMPLETO. **X6 PROGRAMADO** (Pedro: "dale con X6 cuando esté la
+lectura"): scheduled task `atlas-telemetry-read-then-x6` dispara
+2026-07-11 09:00 — corre la PRIMERA lectura semanal con el funnel completo
+L1/L2/L3 instrumentado (escribe docs/state/2026-07-11-telemetry-read.md)
+y luego ejecuta el pase móvil X6 dimensionado por lo que diga la lectura
+(Pulse tab verify-first, tap-targets <32px, workbench pane 154px,
+superficies nuevas a 375px). Corre solo con la app abierta +
 re-apuntar /trends... ya hecho; nota: viewport móvil ≤768 desmonta el mapa
 por diseño (el detour de verificación lo re-confirmó).
 
