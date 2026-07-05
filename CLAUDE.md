@@ -133,10 +133,35 @@ random essays confirmados muertos, PWA 7/8. Work spec B0-B5 + decisiones
 D-L1-1..4 (B0 = insight a cadena DeepSeek-fallback + alerta en weekly read;
 B1 = instrumentar el fold; B2 = traducir portada; B3 = gap box con W2d;
 B4 = save-to-investigation gated en B1; B5 = label honesto del heat 24h).
-PENDIENTE del ojo de Pedro — review puro, NO ejecutado. TAMBIÉN: L3 móvil
+TAMBIÉN: L3 móvil
 verificado 375×812 (paridad total post-W1: workbench full-screen apilado,
 research plan 154px apretado = candidato colapsable; pins/dossier iguales;
 localStorage NO sincroniza entre dispositivos — export JSON es el puente).
+**L1 EJECUTADO misma madrugada (Pedro: "el brief es del día" + acepta spec,
+`677eb9d9`, DEPLOYED Fly + Vercel):** Brief FIJO en 24h (selector→label "LAST
+24 HOURS", F6 disuelto por construcción); B0 **insight RESUCITADO** — cadena
+Anthropic→DeepSeek (`app/services/insight_llm.py`), prod sirve prosa con
+provider=deepseek tras ~6 días muerto, weekly read chequea la lane; B1
+brief_section_click por sección + brief_scroll_depth (responde el 12.5%); B2
+TranslatableHeadline en lead+watchlist (backend: source_lang en evidence SQL
++serializer); B3 **GAP BOX ALIMENTADO** (#225 slot): briefing.coverage_gaps =
+categorías raw≥20 y 0 gate-kept/24h — prod sirve 4 reales (trade-export 72,
+fuel-subsidy 64, telecom-shutdown 46, labor-strike 28), "what is missing" ya
+está en L1; B4 **PUENTE L1→L3**: ◇Save en lead/watchlist → investigation
+auto-creada + snapshot congelado de evidence_samples (browser-verified,
+estado compartido con pins del console). **L2 DEEP REVIEW** (cierra las 3
+superficies): `docs/specs/2026-07-05-l2-deep-review.md` — L2 = la más sana
+(2 reviews previos ejecutados; A/B/C tiers verificados HELD); abierto real:
+gate multilingüe SIN re-medir (0/43 es baseline 06-12, correr
+gate_recall_by_language vs gate OpenAI = X1), time-as-dimension S1-S4 sin
+globo (X2; con L1@24h la división temporal quedó limpia: L1=día, L2=tiempo
+como dimensión, L3=tiempo congelado), telemetría L2 = solo thread_open (X0),
+country-view stories-only diferido (X3), dead-code sweep (X4:
+DiscoveryPanel/AtlasHeatList/streamLevel-entity half-wired), tests two-tier
+(X5), móvil #236 (X6). **§5 = mapa de interconectividad L0→L4 completo**
+(todos los puentes existen L0→L3.5; el último — L1→L3 — se cerró esta noche;
+L4 markets = spec only). Decisiones D-L2-1..3 pendientes (la grande: S4
+demote del dropdown de tiempo a control de VISTA).
 
 **2026-07-04/05 (NOCHE — CATEGORÍAS≠HILOS servido + growth loop + retención
 REAL + reclaim 4.1GB, `d40deedf`+`1b6ba3b0`, read FIRST).** Pedro corrigió la
