@@ -127,6 +127,7 @@ export default function ResearchPlanPanel({
         retrievalLane: anchor.retrieval_lane ?? anchor.lane,
         matchBasis: anchor.match_basis,
         investigativeScore: anchor.investigative_score,
+        category: anchor.category ?? undefined,
         open: anchor.open ?? null,
         planId: plan?.plan_id,
         queryText: query,

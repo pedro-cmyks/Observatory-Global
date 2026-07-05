@@ -53,3 +53,75 @@ describe('dossier', () => {
     expect(md).toContain('**Note:** corroborate with imagery')
   })
 })
+
+// ── W3 dossier v2 (L3 review 2026-07-05) ─────────────────────────────────────
+
+import { resolveThreadTopicId, resolvePinnedCountries, type DossierEnrichment } from './dossierEnrichment'
+
+function invWith(pins: Partial<import('./workbench').WorkbenchPin>[]): import('./workbench').Investigation {
+  return {
+    id: 'inv-x', title: 'Peru election', createdAt: '2026-07-05T00:00:00Z',
+    updatedAt: '2026-07-05T00:00:00Z',
+    pins: pins.map((p, i) => ({
+      anchorId: p.anchorId ?? `a-${i}`, anchorType: p.anchorType ?? 'thread',
+      label: p.label ?? `Pin ${i}`, pinnedAt: '2026-07-05T00:00:00Z', ...p,
+    })) as import('./workbench').WorkbenchPin[],
+    trail: [],
+  }
+}
+
+describe('dossier v2', () => {
+  it('groups pins by R3 category, uncategorized last', () => {
+    const inv = invWith([
+      { anchorId: 'a', category: 'election-legitimacy' },
+      { anchorId: 'b' },
+      { anchorId: 'c', category: 'election-legitimacy' },
+    ])
+    const d = buildDossier(inv, '2026-07-05T01:00:00Z')
+    expect(d.categoryGroups).toEqual([
+      { category: 'election-legitimacy', anchorIds: ['a', 'c'] },
+      { category: null, anchorIds: ['b'] },
+    ])
+  })
+
+  it('renders who-says-what + voice sections in markdown, labeled measured-at-generation', () => {
+    const inv = invWith([{ anchorId: 'thread-1', label: 'Election Dispute' }])
+    const enrichment: DossierEnrichment = {
+      measuredAt: '2026-07-05T01:00:00Z',
+      whoSaysWhat: {
+        'thread-1': { relationship: 'media-led', evidenceCount: 120, discussionCount: 4, moodCount: 0, rationale: 'evidence 120 outweighs discussion 4' },
+      },
+      voice: { PE: { selfVoiceRatio: 0.31, dominantOutsider: 'US', stateMediaPct: 5, topForeignOrigins: ['US', 'ES'] } },
+    }
+    const md = dossierToMarkdown(buildDossier(inv, '2026-07-05T01:00:00Z', enrichment))
+    expect(md).toContain('## Who says what (press vs public)')
+    expect(md).toContain('press 120 · public 4')
+    expect(md).toContain('## Voice (who covers, not just who is covered)')
+    expect(md).toContain('self-voice 31%')
+    expect(md).toContain('dominant outsider US')
+    expect(md).toContain('Measured at generation time')
+  })
+
+  it('resolves thread topic ids from research anchors and panel pins', () => {
+    expect(resolveThreadTopicId({
+      anchorId: 'dynamic-topic-9', anchorType: 'thread', label: 'x', pinnedAt: '',
+      open: { surface: 'thread_detail', params: { thread_id: 'dynamic-topic-9' } },
+    })).toBe('dynamic-topic-9')
+    expect(resolveThreadTopicId({
+      anchorId: 'theme-dynamic-topic-452', anchorType: 'theme', label: 'x', pinnedAt: '',
+      open: { surface: 'l2_params', params: { urlParams: '?theme=dynamic-topic-452' } },
+    })).toBe('dynamic-topic-452')
+    expect(resolveThreadTopicId({
+      anchorId: 'country-pe', anchorType: 'country', label: 'x', pinnedAt: '', open: null,
+    })).toBeNull()
+  })
+
+  it('resolves pinned countries from params and anchor ids, capped and deduped', () => {
+    const inv = invWith([
+      { anchorId: 'country-pe', anchorType: 'country', open: { surface: 'country_brief', params: { country_code: 'PE' } } },
+      { anchorId: 'country-CO', anchorType: 'country', open: { surface: 'l2_params', params: { urlParams: '?country=CO' } } },
+      { anchorId: 'country-pe2', anchorType: 'country', open: { surface: 'country_brief', params: { country_code: 'PE' } } },
+    ])
+    expect(resolvePinnedCountries(inv.pins)).toEqual(['PE', 'CO'])
+  })
+})

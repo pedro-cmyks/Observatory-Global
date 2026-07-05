@@ -23,6 +23,8 @@ export interface WorkbenchPin {
   retrievalLane?: string
   matchBasis?: string
   investigativeScore?: number
+  /** W3: R3 category lens (research-plan-v1 anchors carry it). */
+  category?: string
   open?: { surface: string; params: Record<string, unknown> } | null
   note?: string
   /** #227: frozen evidence at pin time (Phase 3 reads this, not live data). */

@@ -5,6 +5,7 @@
 // snapshot, note, and the investigation trail — never a live re-fetch. It is
 // traceable back to the pinned route, and it says what it cannot answer (gaps).
 import type { Investigation, WorkbenchPin, TrailStep } from './workbench'
+import type { DossierEnrichment } from './dossierEnrichment'
 
 export interface DossierModel {
   title: string
@@ -15,6 +16,11 @@ export interface DossierModel {
   timeline: TrailStep[]
   pins: WorkbenchPin[]
   gaps: string[]
+  /** W3: pins grouped by R3 category (uncategorized pins under null). */
+  categoryGroups: Array<{ category: string | null; anchorIds: string[] }>
+  /** W3: measured-at-generation sections (who-says-what + voice). Absent when
+   *  no enrichment could be fetched — the frozen core never depends on it. */
+  enrichment?: DossierEnrichment
 }
 
 function uniq<T>(xs: T[]): T[] {
@@ -23,10 +29,22 @@ function uniq<T>(xs: T[]): T[] {
 
 /** Pure: build the dossier model from the frozen investigation. `now` is passed
  *  in so the function stays deterministic/testable. */
-export function buildDossier(inv: Investigation, now: string): DossierModel {
+export function buildDossier(
+  inv: Investigation, now: string, enrichment?: DossierEnrichment,
+): DossierModel {
   const pins = inv.pins
   const types = uniq(pins.map(p => p.anchorType).filter(Boolean))
   const queries = uniq(pins.map(p => p.queryText).filter((q): q is string => !!q))
+
+  // W3: R3 category grouping — categorized pins first, uncategorized last.
+  const byCategory = new Map<string | null, string[]>()
+  for (const p of pins) {
+    const key = p.category ?? null
+    byCategory.set(key, [...(byCategory.get(key) ?? []), p.anchorId])
+  }
+  const categoryGroups = [...byCategory.entries()]
+    .map(([category, anchorIds]) => ({ category, anchorIds }))
+    .sort((a, b) => (a.category === null ? 1 : 0) - (b.category === null ? 1 : 0))
 
   const summary = pins.length === 0
     ? 'No pins yet — open a research plan and pin useful anchors to build a report.'
@@ -50,6 +68,9 @@ export function buildDossier(inv: Investigation, now: string): DossierModel {
     gaps.push(`${taxonomy.length} anchor(s) matched the taxonomy description, not found evidence — treat as context, not proof.`)
   }
   gaps.push('This report is frozen at pin time; live counts, gate scores, and threads may have drifted since.')
+  if (enrichment && Object.keys(enrichment.whoSaysWhat).length === 0 && Object.keys(enrichment.voice).length === 0) {
+    gaps.push('Who-says-what and voice sections could not be measured (endpoints unavailable at generation time).')
+  }
 
   return {
     title: inv.title,
@@ -60,6 +81,8 @@ export function buildDossier(inv: Investigation, now: string): DossierModel {
     timeline: inv.trail,
     pins,
     gaps,
+    categoryGroups,
+    enrichment,
   }
 }
 
@@ -96,6 +119,45 @@ export function dossierToMarkdown(d: DossierModel): string {
       lines.push(`*pinned ${fmt(p.pinnedAt)}*`)
       lines.push('')
     }
+  }
+  // W3: the wedge sections — who says what (press vs public) + voice.
+  // Measured at GENERATION time from typed topic_members roles and the
+  // ownership voice-mix; never mixed with the frozen pin evidence.
+  const wsw = d.enrichment?.whoSaysWhat ?? {}
+  if (Object.keys(wsw).length > 0) {
+    lines.push('## Who says what (press vs public)')
+    lines.push(`*Measured at generation time (${fmt(d.enrichment!.measuredAt)}), not frozen — typed member roles: press = verified evidence, public = forum/social discussion (never verified).*`)
+    for (const p of d.pins) {
+      const e = wsw[p.anchorId]
+      if (!e) continue
+      lines.push(`- **${p.label}** — ${e.relationship}: press ${e.evidenceCount} · public ${e.discussionCount}${e.moodCount ? ` · mood ${e.moodCount}` : ''} (${e.rationale})`)
+    }
+    lines.push('')
+  }
+  const voice = d.enrichment?.voice ?? {}
+  if (Object.keys(voice).length > 0) {
+    lines.push('## Voice (who covers, not just who is covered)')
+    lines.push('*Self-voice = outlets OWNED in the country (ownership, not language). Measured at generation time over 168h.*')
+    for (const [cc, v] of Object.entries(voice)) {
+      const bits: string[] = []
+      if (v.selfVoiceRatio !== null) bits.push(`self-voice ${(v.selfVoiceRatio * 100).toFixed(0)}%`)
+      if (v.dominantOutsider) bits.push(`dominant outsider ${v.dominantOutsider}`)
+      if (v.stateMediaPct !== null) bits.push(`state media ${v.stateMediaPct.toFixed(0)}%`)
+      if (v.topForeignOrigins.length) bits.push(`top foreign: ${v.topForeignOrigins.join(', ')}`)
+      lines.push(`- **${cc}** — ${bits.join(' · ')}`)
+    }
+    lines.push('')
+  }
+  const categorized = d.categoryGroups.filter(g => g.category !== null)
+  if (categorized.length > 0) {
+    lines.push('## Categories covered (R3 lens)')
+    for (const g of d.categoryGroups) {
+      const labels = g.anchorIds
+        .map(id => d.pins.find(p => p.anchorId === id)?.label)
+        .filter(Boolean)
+      lines.push(`- **${g.category ?? 'uncategorized'}**: ${labels.join('; ')}`)
+    }
+    lines.push('')
   }
   lines.push('## Timeline')
   for (const s of d.timeline) {
