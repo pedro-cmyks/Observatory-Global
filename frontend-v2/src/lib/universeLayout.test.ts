@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   aliveAt,
+  isSurging,
   bornBetween,
   categoryColor,
   edgeOpacity,
@@ -203,4 +204,19 @@ describe('attention velocity — rank-based rising (consistent movement source)'
     expect(heatHalo(0.9)).toBeGreaterThan(heatHalo(MOVING_FLOOR + 0.01))
     expect(heatHalo(5)).toBeLessThanOrEqual(3.2)
   })
+})
+
+describe('isSurging (crisis_dynamics lens)', () => {
+    const base = { id: 'x', label: 'x', x: 0, y: 0, n: 10 } as never
+    it('surging/accelerating trend qualifies', () => {
+        expect(isSurging({ ...(base as object), trend: 'surging' } as never)).toBe(true)
+        expect(isSurging({ ...(base as object), trend: 'accelerating' } as never)).toBe(true)
+    })
+    it('high velocity qualifies without trend', () => {
+        expect(isSurging({ ...(base as object), velocity: 0.5 } as never)).toBe(true)
+    })
+    it('calm story does not', () => {
+        expect(isSurging({ ...(base as object), trend: 'cooling', velocity: 0.05 } as never)).toBe(false)
+        expect(isSurging(base)).toBe(false)
+    })
 })

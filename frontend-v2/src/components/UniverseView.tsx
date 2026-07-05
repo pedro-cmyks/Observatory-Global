@@ -10,6 +10,7 @@ import {
     fastestRising,
     heatHalo,
     isOrphan,
+    isSurging,
     litNodeIds,
     positionAt,
     universeAlpha,
@@ -63,6 +64,9 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
     // by what matters semantically here.
     const [crisisOnly, setCrisisOnly] = useState(false)
     const [orphansOnly, setOrphansOnly] = useState(false)
+    // crisis_dynamics lens (2026-07-04 reframe): SURGING = measured movement
+    // state from the shared Kalman field — crisis as dynamics, not category.
+    const [surgingOnly, setSurgingOnly] = useState(false)
     // Travel state: when a thread is open we are AT its orbit; back returns to the field.
     const [orbitalVisible, setOrbitalVisible] = useState(false)
     const [traveling, setTraveling] = useState(false)
@@ -159,9 +163,11 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
     const allNodes = useMemo(() => payload?.nodes ?? [], [payload])
     const nodes = useMemo(
         () => allNodes.filter(n =>
-            (!crisisOnly || n.crisis_relevant === true) && (!orphansOnly || isOrphan(n)),
+            (!crisisOnly || n.crisis_relevant === true)
+            && (!orphansOnly || isOrphan(n))
+            && (!surgingOnly || isSurging(n)),
         ),
-        [allNodes, crisisOnly, orphansOnly],
+        [allNodes, crisisOnly, orphansOnly, surgingOnly],
     )
     const edges = useMemo(() => payload?.edges ?? [], [payload])
 
@@ -379,9 +385,16 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
         <div className="universe-root">
             <div className="universe-filters">
                 <button
+                    className={`universe-filter ${surgingOnly ? 'active' : ''}`}
+                    onClick={() => setSurgingOnly(v => !v)}
+                    data-tip="Crisis as DYNAMICS: stories whose measured movement (Kalman velocity/trend) is surging right now — regardless of content"
+                >
+                    SURGING
+                </button>
+                <button
                     className={`universe-filter ${crisisOnly ? 'active' : ''}`}
                     onClick={() => setCrisisOnly(v => !v)}
-                    data-tip="Only crisis-relevant stories (R3.1 flag)"
+                    data-tip="Harm-potential lens (semantic flag, R3.1) — content judged crisis-relevant; independent of current movement"
                 >
                     CRISIS
                 </button>
@@ -704,7 +717,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                     <div className="universe-hover">
                         <span style={{ color: categoryColor(hovered.category) }}>{hovered.category}</span>
                         <strong>{hovered.label}</strong>
-                        <em>{hovered.n.toLocaleString()} signals{hovered.crisis_relevant ? ' · crisis-relevant' : ''}{isOrphan(hovered) ? ' · ORPHAN (unlike every other story)' : ''}</em>
+                        <em>{hovered.n.toLocaleString()} signals{isSurging(hovered) ? ' · SURGING' : ''}{hovered.crisis_relevant ? ' · crisis-relevant' : ''}{isOrphan(hovered) ? ' · ORPHAN (unlike every other story)' : ''}</em>
                         <em>
                             {hovered.first_seen ? new Date(hovered.first_seen).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
                             {' → '}

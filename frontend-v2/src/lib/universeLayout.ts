@@ -217,6 +217,18 @@ export function isOrphan(node: UniverseNode): boolean {
 }
 
 /**
+ * crisis_dynamics lens (2026-07-04 reframe, Pedro): "crisis" as a MEASURED
+ * STATE — velocity + trend from the shared Kalman movement field — never a
+ * semantic pre-classification. A slow-burn war is harm-relevant but
+ * dynamically calm; a 10× surging story is dynamically hot regardless of
+ * content. Complements (never replaces) the harm lens `crisis_relevant`.
+ */
+export function isSurging(node: UniverseNode): boolean {
+  if (node.trend === 'surging' || node.trend === 'accelerating') return true
+  return (node.velocity ?? 0) > MOVING_FLOOR * 2
+}
+
+/**
  * Position of a node at scrub time t: linear interpolation along its REAL
  * historical track (spec §7.2 trajectories — measured drift, no fabricated
  * motion). Before the first snapshot → first point; at/after the last →
