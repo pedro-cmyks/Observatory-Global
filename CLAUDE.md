@@ -112,6 +112,31 @@ measured-at-generation nunca mezclados; markdown completo). W4 `f830107a`
 no muere en la captura; filas de NarrativeThreads pineables ◆). 163 vitest +
 46 pytest research + builds verdes. PENDIENTE gated: OpenAI-space cutover
 (hot vectors), archive-backed pin open, W5 papers, re-medir taus @pool≥80.
+**L1 DEEP REVIEW mismo tratamiento** (Pedro pidió "de cabo a rabo" + prompts
+IA): `docs/specs/2026-07-05-l1-deep-review.md` — inventario completo
+(secciones→datos→cadencia, stack de 4 caches, tabla block→job→frecuencia) +
+**los 6 prompts IA verbatim** (§4: insight global Claude Haiku, insight tema,
+traducción DeepSeek, labels Claude CLI, typing DeepSeek temp0, thread-note
+deepseek-v4-flash opt-in; why_now/narrative_note = TEMPLATES, no IA).
+HALLAZGOS: (F1) **"EDITOR'S ANALYSIS" MUERTO en prod** — ambos insight
+endpoints devuelven `insight_no_credits` (llave Anthropic seca ~06-29),
+fallback honesto lo disfraza, cero alertas — misma clase silent-death;
+(F2) funnel: 8 sesiones/14d abren el Brief ~4.4 veces c/u (hábito PWA real)
+pero **1 sola clickeó un thread** (12.5% al value moment) — Brief solo tiene
+2 eventos cliente, no se puede distinguir "satisface" de "no invita";
+(F3) front door SIN traducción (TranslatableHeadline existe, no montado ahí);
+(F4) cero puente L1→L3 (Saved Watches ≠ Workbench); (F5) gap box #172 sigue
+vacío Y el W2d de esta noche (category coverage gaps) es exactamente su
+sustrato; (F6) heat strip hardcoded 24h aunque elijas 7d. LO BUENO: #249
+CLOSED (By Category R3 vivo), stories-only fluye vía fetch_threads, Math.
+random essays confirmados muertos, PWA 7/8. Work spec B0-B5 + decisiones
+D-L1-1..4 (B0 = insight a cadena DeepSeek-fallback + alerta en weekly read;
+B1 = instrumentar el fold; B2 = traducir portada; B3 = gap box con W2d;
+B4 = save-to-investigation gated en B1; B5 = label honesto del heat 24h).
+PENDIENTE del ojo de Pedro — review puro, NO ejecutado. TAMBIÉN: L3 móvil
+verificado 375×812 (paridad total post-W1: workbench full-screen apilado,
+research plan 154px apretado = candidato colapsable; pins/dossier iguales;
+localStorage NO sincroniza entre dispositivos — export JSON es el puente).
 
 **2026-07-04/05 (NOCHE — CATEGORÍAS≠HILOS servido + growth loop + retención
 REAL + reclaim 4.1GB, `d40deedf`+`1b6ba3b0`, read FIRST).** Pedro corrigió la
