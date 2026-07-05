@@ -40,8 +40,8 @@ MLVENV="${ATLAS_MLVENV:-/Users/pedro/AtlasLocalWorker/mlvenv}"
 # hard topics lift huge). Needs OPENAI_API_KEY (sourced from .env below).
 # REVERSIBLE: set ATLAS_GATE_JSON back to the -e5base.json + ATLAS_GATE_ID to
 # atlas-scope-gate-v1-e5base for the free local path.
-GATE_JSON="${ATLAS_GATE_JSON:-/Users/pedro/AtlasLocalWorker/models/2026-05-29-scope-gate-v1.json}"
-GATE_ID="${ATLAS_GATE_ID:-atlas-scope-gate-v1-openai}"
+GATE_JSON="${ATLAS_GATE_JSON:-/Users/pedro/AtlasLocalWorker/models/2026-07-05-scope-gate-v4-mega2.json}"
+GATE_ID="${ATLAS_GATE_ID:-atlas-scope-gate-v4-mega2}"
 GATE_WINDOW_HOURS="${ATLAS_GATE_WINDOW_HOURS:-1}"
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"

@@ -26,7 +26,10 @@ def main() -> None:
     client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"], timeout=60.0)
 
     rows = [json.loads(l) for l in args.corpus.read_text(encoding="utf-8").splitlines() if l.strip()]
-    texts = [f"{(r.get('headline') or '').strip()} | {(r.get('assigned_topic_label') or '').strip()}" for r in rows]
+    # Archive rows occasionally carry scraped-garbage "headlines" thousands of
+    # tokens long (OpenAI 400s at 8192). Real headlines fit in 500 chars; cap
+    # hard — the gate never sees more than a headline's worth anyway.
+    texts = [f"{(r.get('headline') or '').strip()[:500]} | {(r.get('assigned_topic_label') or '').strip()}" for r in rows]
 
     vecs: list[list[float]] = []
     for i in range(0, len(texts), 256):
