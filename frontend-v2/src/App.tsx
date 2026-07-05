@@ -1108,6 +1108,7 @@ function AppContent() {
               onStartInvestigation={(q) => {
                 createInvestigation(q)
                 setResearchQuery(q)
+                track('workbench_open', { via: 'start_investigation' })
                 setWorkbenchOpen(true)
                 setWbRefresh(t => t + 1)
               }}
@@ -1152,7 +1153,7 @@ function AppContent() {
           <button
             className={`time-btn workbench-btn ${workbenchOpen ? 'active' : ''}`}
             data-tip="Investigation Workbench: research plans, pins, and saved routes"
-            onClick={() => setWorkbenchOpen(open => !open)}
+            onClick={() => setWorkbenchOpen(open => { if (!open) track('workbench_open'); return !open })}
           >
             WORKBENCH
           </button>

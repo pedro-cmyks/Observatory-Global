@@ -11,6 +11,14 @@
 
 ## Changelog
 
+- **2026-07-05:** Superseded as the working document by
+  `docs/specs/2026-07-05-l3-deep-review.md` (exhaustive L3 review + work spec
+  W0-W5). Key state deltas since this spec: Phase 3 dossier v1 SHIPPED
+  (`DossierView`, #227 CLOSED); the parallel Workspace force-graph pin system
+  is being RETIRED (universe view supersedes it, decision D1); the research
+  backend is being re-substrated onto the current engine (two-tier gate,
+  Kalman movement, R3 categories, recalibrated semantic taus) as
+  `research-plan-v1`. Phases here remain the historical record.
 - **2026-06-10:** Amendments from the implementation review
   (`docs/specs/2026-06-10-research-workflow-spec-review.md`), applied after
   Phases 0.5/1a/1b shipped. Sections below are edited in place (no further

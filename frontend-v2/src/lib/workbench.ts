@@ -47,6 +47,8 @@ export interface Investigation {
   trail: TrailStep[]
 }
 
+import { track, trackOnce } from './telemetry'
+
 const STORE_KEY = 'atlas.workbench.v1'
 const ACTIVE_KEY = 'atlas.workbench.active.v1'
 
@@ -114,6 +116,8 @@ export function createInvestigation(title: string): Investigation {
   store.investigations.push(inv)
   writeStore(store)
   setActiveInvestigation(inv.id)
+  // W0 (L3 review 2026-07-05): the anti-goal is ungovernable without these.
+  track('investigation_created')
   return inv
 }
 
@@ -131,12 +135,20 @@ export function addPin(
   investigationId: string,
   pin: Omit<WorkbenchPin, 'pinnedAt'>,
 ): Investigation | null {
-  return mutate(investigationId, inv => {
+  let added = false
+  const inv = mutate(investigationId, inv => {
     if (inv.pins.some(p => p.anchorId === pin.anchorId)) return // idempotent
     const stamped: WorkbenchPin = { ...pin, pinnedAt: new Date().toISOString() }
     inv.pins.push(stamped)
     inv.trail.push({ at: stamped.pinnedAt, action: 'pin', detail: pin.label })
+    added = true
   })
+  if (added) {
+    track('pin', { anchor_type: pin.anchorType, lane: pin.retrievalLane })
+    // Investigation value moment = created + ≥1 pin (decision D4, 2026-07-05).
+    trackOnce('first_value_moment', { kind: 'investigation' })
+  }
+  return inv
 }
 
 /** #227: edit the analyst's per-pin note (the annotation the dossier carries). */
