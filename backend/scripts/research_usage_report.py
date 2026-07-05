@@ -114,6 +114,23 @@ async def main() -> int:
         pct = 100.0 * vals[s] / base
         print(f"  {s:10s} {vals[s]:>5d}  ({pct:5.1f}% of opened)")
 
+    # B0 (L1 review): AI-lane health — the Editor's Analysis went silently
+    # dark for ~6 days once; the weekly read now checks it explicitly.
+    api = os.environ.get("ATLAS_API_URL", "https://atlas-api-pedro.fly.dev")
+    print("\nAI-lane health (insight endpoints):")
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.get(f"{api}/api/v2/briefing/insight?hours=24")
+            d = r.json()
+            status = d.get("provider") or d.get("error") or ("cached" if d.get("insight") else "unknown")
+            alive = bool(d.get("insight"))
+            print(f"  briefing/insight: {'ALIVE' if alive else 'DEAD'} ({status})")
+            if not alive:
+                print("  ⚠ Editor's Analysis is dark — check ANTHROPIC/DEEPSEEK keys (PB-8).")
+    except Exception as exc:
+        print(f"  check failed: {exc}")
+
     print("\n" + json.dumps({"days": args.days, "funnel": vals}))
     return 0
 

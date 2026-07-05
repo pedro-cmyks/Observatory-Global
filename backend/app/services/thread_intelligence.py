@@ -514,6 +514,7 @@ SELECT
     source_url,
     country_code,
     country_name,
+    source_lang,
     timestamp,
     nlp_sentiment,
     confidence,
@@ -529,6 +530,7 @@ FROM (
         s.source_url,
         s.country_code,
         COALESCE(c.name, s.country_code) AS country_name,
+        s.source_lang,
         s.timestamp,
         s.nlp_sentiment,
         s.themes,
@@ -851,6 +853,9 @@ def _serialize_evidence(row: Any) -> dict[str, Any]:
         "url": _record_get(row, "source_url"),
         "country_code": _record_get(row, "country_code"),
         "country_name": _record_get(row, "country_name"),
+        # B2 (L1 review 2026-07-05): the Brief translates evidence headlines
+        # by default; the viewer needs the source language to decide.
+        "source_lang": _record_get(row, "source_lang"),
         "timestamp": timestamp.isoformat() if hasattr(timestamp, "isoformat") else timestamp,
         "sentiment": _record_get(row, "nlp_sentiment"),
         "confidence": _record_get(row, "confidence"),
@@ -990,6 +995,7 @@ def assemble_emergent_thread(
 _EMERGENT_SAMPLE_SIGNALS_SQL = """
     SELECT id, headline, snippet, source_name, source_url, country_code,
            NULL::text       AS country_name,
+           source_lang,
            timestamp,
            persons,
            themes,

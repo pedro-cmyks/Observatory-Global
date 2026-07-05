@@ -1295,3 +1295,33 @@
     .brief-thread-meta { font-size: 12px; }
     .brief-thread-chip { font-size: 11px; }
 }
+
+/* B3 (2026-07-05): gap box — attention without verified coverage */
+.brief-gapbox { margin: 8px 0; }
+.brief-gap-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    width: 100%; background: transparent; border: none;
+    border-bottom: 1px dotted rgba(120, 120, 120, 0.25);
+    padding: 6px 2px; cursor: pointer; text-align: left;
+    font-family: inherit; color: inherit; gap: 12px;
+}
+.brief-gap-row:hover .brief-gap-label { text-decoration: underline; }
+.brief-gap-label { font-weight: 600; font-size: 0.9rem; }
+.brief-gap-meta { font-size: 0.75rem; color: var(--color-text-muted, #8a8f98); white-space: nowrap; }
+.brief-gap-status--none_verified { color: #b45309; }
+.brief-gap-status--gate_pending { color: #6b7280; font-style: italic; }
+
+/* B4 (2026-07-05): save-to-investigation affordance */
+.brief-save-btn {
+    cursor: pointer; font-size: 0.78rem; color: var(--color-text-muted, #8a8f98);
+    padding: 2px 6px; border-radius: 3px; user-select: none;
+}
+.brief-save-btn:hover { color: #10b981; }
+.brief-save-btn.saved { color: #10b981; font-weight: 600; }
+.brief-lead-actions { display: flex; align-items: baseline; gap: 14px; }
+
+/* Brief fixed edition label (2026-07-05: the Brief is the day's edition) */
+.brief-range-fixed {
+    font-size: 0.7rem; letter-spacing: 0.12em; font-weight: 600;
+    color: var(--color-text-muted, #8a8f98); text-transform: uppercase;
+}

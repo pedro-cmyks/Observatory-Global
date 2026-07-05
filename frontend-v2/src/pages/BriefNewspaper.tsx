@@ -4,12 +4,13 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { COUNTRY_OPTIONS, resolveCountryName } from '../lib/countryNames'
-import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours, type TimeRange } from '../lib/timeRanges'
 import { readBriefingCache } from '../lib/briefingPrefetch'
 import { resolveThreadThemeTarget } from '../lib/threadThemeTarget'
 import { selectLeadThread } from '../lib/briefLead'
 import { coverageChipTip, COVERAGE_CHIP_LABEL } from '../lib/countryChips'
 import { track, trackOnce } from '../lib/telemetry'
+import { TranslatableHeadline } from '../components/TranslatableHeadline'
+import { addPin, createInvestigation, getActiveInvestigationId, getInvestigation, removePin } from '../lib/workbench'
 import { OfflineBanner } from '../components/OfflineBanner'
 import './BriefNewspaper.css'
 
@@ -47,6 +48,7 @@ interface ThreadEvidence {
     headline: string
     source?: string
     country_code?: string | null
+    source_lang?: string | null
     url?: string
 }
 
@@ -91,6 +93,14 @@ interface BriefingData {
         avg_sentiment: number
     }
     top_countries: { code: string; name: string; signals: number; sentiment: number; sentiment_source?: string; nlp_coverage?: number }[]
+    coverage_gaps?: {
+        slug: string
+        label: string
+        raw_signals: number
+        verified: number
+        scored: number
+        status: 'gate_pending' | 'none_verified'
+    }[]
     category_counts?: { category: string; topics: number; signals: number }[]
     negative_sentiment: { code: string; name: string; sentiment: number; signals: number; sentiment_source?: string; nlp_coverage?: number }[]
     positive_sentiment: { code: string; name: string; sentiment: number; signals: number; sentiment_source?: string; nlp_coverage?: number }[]
@@ -190,13 +200,7 @@ function Sparkline({ timeline }: { timeline?: TimelinePoint[] }) {
 export function BriefNewspaper() {
     const navigate = useNavigate()
     const [searchParams, setSearchParams] = useSearchParams()
-    const rangeParam = searchParams.get('range')
     const countryParam = searchParams.get('country')?.toUpperCase() ?? null
-    const initialRange = TIME_RANGE_OPTIONS.includes(rangeParam as TimeRange)
-        ? (rangeParam as TimeRange)
-        : '24h'
-
-    const [timeRange, setTimeRange] = useState<TimeRange>(initialRange)
     const { watches, remove: removeWatch, markSeen } = useSavedWatches()
     const [watchCounts, setWatchCounts] = useState<Record<string, number | null>>({})
     const [data, setData] = useState<BriefingData | null>(null)
@@ -221,12 +225,11 @@ export function BriefNewspaper() {
     useEffect(() => {
         if (location.pathname !== '/brief') return
         setCountryFilter(countryParam)
-        if (TIME_RANGE_OPTIONS.includes(rangeParam as TimeRange)) {
-            setTimeRange(rangeParam as TimeRange)
-        }
-    }, [location.pathname, countryParam, rangeParam])
+    }, [location.pathname, countryParam])
 
-    const hours = timeRangeToHours(timeRange)
+    // Pedro (2026-07-05): the Brief is the DAY's edition — always 24h. Other
+    // windows live in the console; time-as-dimension belongs to L2 scrubbers.
+    const hours = 24
 
     const fetchData = useCallback(async (h: number) => {
         setLoading(true)
@@ -260,6 +263,19 @@ export function BriefNewspaper() {
     // T5.1: /brief had ZERO telemetry (app_open only fires on /app) — the
     // consumer front door was invisible to the value-moment funnel.
     useEffect(() => { track('brief_open') }, [])
+
+    // B1: one-shot scroll-depth signal — did the reader get past the fold?
+    useEffect(() => {
+        const onScroll = () => {
+            const el = document.documentElement
+            if ((el.scrollTop + window.innerHeight) / el.scrollHeight > 0.6) {
+                trackOnce('brief_scroll_depth', { pct: 60 })
+                window.removeEventListener('scroll', onScroll)
+            }
+        }
+        window.addEventListener('scroll', onScroll, { passive: true })
+        return () => window.removeEventListener('scroll', onScroll)
+    }, [])
 
     useEffect(() => {
         fetchData(hours)
@@ -329,19 +345,60 @@ export function BriefNewspaper() {
         return () => { cancelled = true }
     }, [watches])
 
-    const handleRangeChange = (range: TimeRange) => {
-        setTimeRange(range)
-        setSearchParams(countryFilter ? { range, country: countryFilter } : { range })
-    }
-
     const selectCountry = (code: string | null) => {
         setCountryFilter(code)
         setCountryQuery('')
         setShowCountryDropdown(false)
-        setSearchParams(code ? { range: timeRange, country: code } : { range: timeRange })
+        setSearchParams(code ? { country: code } : {})
     }
 
-    const goToAtlas = (params?: string) => {
+    // B4 (2026-07-05, L1→L3 bridge): save a Brief thread into the active
+    // investigation (workbench lib directly — the Brief route mounts no
+    // WorkspaceProvider). Snapshot frozen from the payload's own evidence.
+    const [wbTick, setWbTick] = useState(0)
+    const savedIds = (() => {
+        void wbTick
+        const id = getActiveInvestigationId()
+        const inv = id ? getInvestigation(id) : null
+        return new Set((inv?.pins ?? []).map(pin => pin.anchorId))
+    })()
+
+    const toggleSaveThread = (t: TopThread, e?: React.MouseEvent) => {
+        e?.stopPropagation()
+        const target = resolveThreadThemeTarget(t)
+        if (!target) return
+        const anchorId = `theme-${target.theme}`
+        let invId = getActiveInvestigationId()
+        if (!invId || !getInvestigation(invId)) invId = createInvestigation(t.label).id
+        if (savedIds.has(anchorId)) {
+            removePin(invId, anchorId)
+        } else {
+            track('brief_section_click', { section: 'save_thread' })
+            addPin(invId, {
+                anchorId,
+                anchorType: 'theme',
+                label: t.label,
+                open: {
+                    surface: 'l2_params',
+                    params: { urlParams: `?theme=${encodeURIComponent(target.theme)}${target.originCountry ? `&country=${target.originCountry}` : ''}` },
+                },
+                snapshot: {
+                    capturedAt: new Date().toISOString(),
+                    summary: `${t.label} · ${t.signal_count.toLocaleString()} signals · 24h brief`,
+                    metrics: { signals: t.signal_count, changed_10h: t.changed_10h ?? 0 },
+                    evidence: (t.evidence_samples ?? []).slice(0, 3).map(ev => ({
+                        headline: ev.headline, source: ev.source, url: ev.url,
+                    })),
+                },
+            })
+        }
+        setWbTick(x => x + 1)
+    }
+
+    const goToAtlas = (params?: string, section?: string) => {
+        // B1 (2026-07-05): per-section engagement — answers whether the front
+        // page satisfies at the surface or fails to invite depth (12.5% ramp).
+        if (section) track('brief_section_click', { section })
         const next = new URLSearchParams(params)
         next.set('entry', 'brief')
         navigate(`/app?${next.toString()}`)
@@ -403,7 +460,7 @@ export function BriefNewspaper() {
         // In country view every thread is already scoped — repeating the
         // country chip on each row is noise.
         const chips = (t.top_countries ?? []).filter(cc => cc !== country).slice(0, 2)
-        const headline = t.evidence_samples?.[0]?.headline
+        const evidence = t.evidence_samples?.[0]
         return (
             <button
                 key={t.thread_id}
@@ -412,9 +469,25 @@ export function BriefNewspaper() {
             >
                 <span className="brief-thread-main">
                     <span className="brief-thread-label">{t.label}</span>
-                    {headline && <span className="brief-thread-headline">{headline}</span>}
+                    {evidence?.headline && (
+                        <span className="brief-thread-headline">
+                            {evidence.id != null
+                                ? <TranslatableHeadline signalId={Number(evidence.id)} original={evidence.headline} sourceLang={evidence.source_lang} />
+                                : evidence.headline}
+                        </span>
+                    )}
                 </span>
                 <span className="brief-thread-meta">
+                    <span
+                        role="button"
+                        tabIndex={0}
+                        className={`brief-save-btn ${savedIds.has(`theme-${resolveThreadThemeTarget(t)?.theme}`) ? 'saved' : ''}`}
+                        data-tip={savedIds.has(`theme-${resolveThreadThemeTarget(t)?.theme}`) ? 'Remove from investigation' : 'Save to investigation'}
+                        onClick={e => toggleSaveThread(t, e)}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); toggleSaveThread(t) } }}
+                    >
+                        {savedIds.has(`theme-${resolveThreadThemeTarget(t)?.theme}`) ? '◆' : '◇'}
+                    </span>
                     <Sparkline timeline={t.hourly_timeline} />
                     <span className="brief-thread-count">{t.signal_count.toLocaleString()}</span>
                     {arrow && (
@@ -439,7 +512,7 @@ export function BriefNewspaper() {
             <header className="brief-masthead">
                 <div className="brief-nav-actions">
                     <button className="brief-back" onClick={() => navigate('/')}>← Home</button>
-                    <button className="brief-back brief-back-primary" onClick={() => goToAtlas(countryFilter ? `country=${countryFilter}` : undefined)}>Open Console</button>
+                    <button className="brief-back brief-back-primary" onClick={() => goToAtlas(countryFilter ? `country=${countryFilter}` : undefined, 'masthead_console')}>Open Console</button>
                 </div>
                 <div className="brief-masthead-center">
                     <div className="brief-edition-flag">INTELLIGENCE BRIEF</div>
@@ -447,15 +520,9 @@ export function BriefNewspaper() {
                     <div className="brief-dateline">{dateStr}</div>
                 </div>
                 <div className="brief-range-selector">
-                    {TIME_RANGE_OPTIONS.slice(0, 5).map(r => (
-                        <button
-                            key={r}
-                            className={`brief-range-btn ${timeRange === r ? 'active' : ''}`}
-                            onClick={() => handleRangeChange(r)}
-                        >
-                            {TIME_RANGE_LABELS[r]}
-                        </button>
-                    ))}
+                    <span className="brief-range-fixed" data-tip="The Brief is the day's edition — always the last 24 hours. For other time windows, open the console.">
+                        LAST 24 HOURS
+                    </span>
                 </div>
             </header>
 
@@ -606,7 +673,11 @@ export function BriefNewspaper() {
                                         <ul className="brief-headlines">
                                             {(leadThread.evidence_samples ?? []).slice(0, 3).map((s, i) => (
                                                 <li key={s.id ?? i} className="brief-headline-item">
-                                                    <span className="brief-headline-text">{s.headline}</span>
+                                                    <span className="brief-headline-text">
+                                                        {s.id != null
+                                                            ? <TranslatableHeadline signalId={Number(s.id)} original={s.headline} sourceLang={s.source_lang} />
+                                                            : s.headline}
+                                                    </span>
                                                     <span className="brief-headline-meta">
                                                         {s.country_code && (
                                                             <span className="brief-headline-country">{resolveCountryName(s.country_code, s.country_code)}</span>
@@ -628,7 +699,19 @@ export function BriefNewspaper() {
                                             })}
                                         </div>
                                     )}
-                                    <span className="brief-theme-link">Open thread →</span>
+                                    <span className="brief-lead-actions">
+                                        <span className="brief-theme-link">Open thread →</span>
+                                        <span
+                                            role="button"
+                                            tabIndex={0}
+                                            className={`brief-save-btn ${leadThread && savedIds.has(`theme-${resolveThreadThemeTarget(leadThread)?.theme}`) ? 'saved' : ''}`}
+                                            data-tip="Save this story into your investigation (Workbench)"
+                                            onClick={e => { e.stopPropagation(); toggleSaveThread(leadThread) }}
+                                            onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); toggleSaveThread(leadThread) } }}
+                                        >
+                                            {leadThread && savedIds.has(`theme-${resolveThreadThemeTarget(leadThread)?.theme}`) ? '◆ Saved' : '◇ Save'}
+                                        </span>
+                                    </span>
                                 </section>
                             ) : (
                                 <section className="brief-lead-story brief-lead-empty">
@@ -691,7 +774,7 @@ export function BriefNewspaper() {
                                                     <button
                                                         key={h.code}
                                                         className="brief-heat-card"
-                                                        onClick={() => goToAtlas(`country=${h.code}`)}
+                                                        onClick={() => goToAtlas(`country=${h.code}`, 'heating_up')}
                                                     >
                                                         <span className="brief-heat-name">{resolveCountryName(h.code, h.name)}</span>
                                                         <span className="brief-heat-val">{Math.round(h.heat * 100)}</span>
@@ -705,6 +788,37 @@ export function BriefNewspaper() {
                                 </>
                             )}
 
+                            {/* B3 GAP BOX (#225 reserved slot, fed 2026-07-05): attention
+                                without verified coverage — the wedge's "what is missing". */}
+                            {(data.coverage_gaps ?? []).length > 0 && (
+                                <>
+                                    <section className="brief-gapbox">
+                                        <h3
+                                            className="brief-bottom-heading"
+                                            data-tip="Categories with real coverage in the last 24h where NOTHING cleared the quality gate — attention without verified evidence. 'gate pending' means not yet scored, not rejected."
+                                        >
+                                            Coverage Gaps — unverified attention
+                                        </h3>
+                                        {data.coverage_gaps!.map(g => (
+                                            <button
+                                                key={g.slug}
+                                                className="brief-gap-row"
+                                                onClick={() => goToAtlas(`theme=${encodeURIComponent(g.slug)}`, 'gap_box')}
+                                            >
+                                                <span className="brief-gap-label">{g.label}</span>
+                                                <span className="brief-gap-meta">
+                                                    {g.raw_signals.toLocaleString()} signals · 0 verified ·{' '}
+                                                    <span className={`brief-gap-status brief-gap-status--${g.status}`}>
+                                                        {g.status === 'gate_pending' ? 'gate pending' : 'none cleared the gate'}
+                                                    </span>
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </section>
+                                    <div className="brief-rule thin" />
+                                </>
+                            )}
+
                             {/* MAP — demoted to half-width beside Most Active (surfaces review §4.7) */}
                             <section className="brief-map-row">
                                 <div className="brief-minimap brief-minimap-demoted">
@@ -712,7 +826,7 @@ export function BriefNewspaper() {
                                         className="brief-minimap-label"
                                         data-tip="Signal density: how many media signals Atlas captured per country in this window. Darker = more coverage. Coverage volume reflects media attention, not geopolitical importance."
                                     >
-                                        Signal density — {TIME_RANGE_LABELS[timeRange]}
+                                        Signal density — last 24h
                                     </div>
                                     <ComposableMap
                                         projection="geoEqualEarth"
@@ -752,7 +866,7 @@ export function BriefNewspaper() {
                                         <button
                                             key={c.code}
                                             className="brief-bottom-country"
-                                            onClick={() => goToAtlas(`country=${c.code}`)}
+                                            onClick={() => goToAtlas(`country=${c.code}`, 'most_active')}
                                         >
                                             <span>{resolveCountryName(c.code, c.name)}</span>
                                             <span className="brief-bottom-num">{c.signals.toLocaleString()}</span>
@@ -829,7 +943,7 @@ export function BriefNewspaper() {
                                 <button
                                     key={c.code}
                                     className="brief-bottom-country"
-                                    onClick={() => goToAtlas(`country=${c.code}`)}
+                                    onClick={() => goToAtlas(`country=${c.code}`, 'most_negative')}
                                 >
                                     <span>{resolveCountryName(c.code, c.name)}</span>
                                     <span className="brief-bottom-num negative">
@@ -845,7 +959,7 @@ export function BriefNewspaper() {
                                 <button
                                     key={c.code}
                                     className="brief-bottom-country"
-                                    onClick={() => goToAtlas(`country=${c.code}`)}
+                                    onClick={() => goToAtlas(`country=${c.code}`, 'most_positive')}
                                 >
                                     <span>{resolveCountryName(c.code, c.name)}</span>
                                     <span className="brief-bottom-num positive">
@@ -875,7 +989,7 @@ export function BriefNewspaper() {
                                         <button
                                             key={c.category}
                                             className="brief-bottom-country"
-                                            onClick={() => goToAtlas(`q=${encodeURIComponent(c.category)}`)}
+                                            onClick={() => goToAtlas(`q=${encodeURIComponent(c.category)}`, 'by_category')}
                                         >
                                             <span>{c.category}</span>
                                             <span className="brief-bottom-num">{c.signals.toLocaleString()}</span>
@@ -889,7 +1003,7 @@ export function BriefNewspaper() {
                                         <button
                                             key={t.theme}
                                             className="brief-bottom-country"
-                                            onClick={() => goToAtlas(`theme=${encodeURIComponent(t.theme)}${countryFilter ? `&country=${countryFilter}` : ''}`)}
+                                            onClick={() => goToAtlas(`theme=${encodeURIComponent(t.theme)}${countryFilter ? `&country=${countryFilter}` : ''}`, 'by_theme')}
                                         >
                                             <span>{getThemeIcon(t.theme)} {getThemeLabel(t.theme)}</span>
                                             <span className="brief-bottom-num">{t.count.toLocaleString()}</span>
@@ -967,7 +1081,7 @@ export function BriefNewspaper() {
                     {/* CTA — enter Atlas */}
                     <section className="brief-cta">
                         <p className="brief-cta-label">Full intelligence terminal</p>
-                        <button className="brief-cta-btn" onClick={() => goToAtlas(countryFilter ? `country=${countryFilter}` : undefined)}>
+                        <button className="brief-cta-btn" onClick={() => goToAtlas(countryFilter ? `country=${countryFilter}` : undefined, 'final_cta')}>
                             Enter Atlas →
                         </button>
                     </section>

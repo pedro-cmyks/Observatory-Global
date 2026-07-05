@@ -267,6 +267,26 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             LIMIT 8
         """)
 
+        # B3 (L1 review 2026-07-05): the #225 gap box, finally fed — categories
+        # where coverage EXISTS in the window but NOTHING clears the quality
+        # gate ("attention without verified coverage" — the wedge's "what is
+        # missing"). Honest by construction: raw>=20 avoids thin-noise rows;
+        # gate_pending (scored=0) is labeled, never conflated with rejected.
+        coverage_gaps = await _fetch_section(conn, degraded_segments, "coverage_gaps", """
+            SELECT t.slug, t.label,
+                   COUNT(*)::int AS raw_signals,
+                   COUNT(*) FILTER (WHERE a.gate_kept)::int AS verified,
+                   COUNT(*) FILTER (WHERE a.gate_score IS NOT NULL)::int AS scored
+            FROM signal_topic_assignments a
+            JOIN atlas_topics t ON t.id = a.topic_id
+            WHERE a.assigned_at > NOW() - ($1::int * INTERVAL '1 hour')
+            GROUP BY t.slug, t.label
+            HAVING COUNT(*) >= 20
+               AND COUNT(*) FILTER (WHERE a.gate_kept) = 0
+            ORDER BY raw_signals DESC
+            LIMIT 6
+        """, hours)
+
         # Long windows should use compact processed historical tables, not raw
         # historical scans. For hot windows, theme_hourly_v2 remains the live
         # pre-agg populated by ingest_v2.refresh. The legacy
@@ -727,6 +747,18 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 {"category": r["category"], "topics": int(r["topics"]), "signals": int(r["signals"])}
                 for r in category_counts
             ],
+            # B3: gap box — attention without verified coverage (see query note).
+            "coverage_gaps": [
+                {
+                    "slug": r["slug"],
+                    "label": r["label"],
+                    "raw_signals": int(r["raw_signals"]),
+                    "verified": int(r["verified"]),
+                    "scored": int(r["scored"]),
+                    "status": "gate_pending" if int(r["scored"]) == 0 else "none_verified",
+                }
+                for r in coverage_gaps
+            ],
             "positive_sentiment": [serialize_country_row(r) for r in positive_sentiment],
             "heat_countries": [
                 {
@@ -979,10 +1011,6 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
         for r in top_countries
     ])
 
-    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
-    if not anthropic_key:
-        return {"insight": None, "error": "insight_unavailable", "generated_at": generated_at}
-
     user_prompt = (
         f"Summarize the global information landscape over the last {hours} hours.\n"
         f"- Total coverage: {total:,} articles across {countries} countries\n"
@@ -998,22 +1026,17 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
         "Be concise, neutral, and analytical. No markdown, no bullet points — flowing prose only."
     )
 
-    try:
-        import anthropic as _anthropic
-        client = _anthropic.AsyncAnthropic(api_key=anthropic_key)
-        response = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=200,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}],
-        )
-        insight_text = next((b.text for b in response.content if b.type == "text"), None)
-    except Exception as e:
-        err = str(e)
-        code = "insight_no_credits" if "credit balance" in err.lower() else "insight_unavailable"
-        return {"insight": None, "error": code, "generated_at": generated_at}
+    # B0 (2026-07-05): provider chain Anthropic → DeepSeek — the Anthropic-only
+    # path went silently dark for ~6 days on dry credits; the chain + the
+    # provider field make an AI-lane death visible to the weekly read.
+    from app.services.insight_llm import generate_insight
+    insight_text, provider, error_code = await generate_insight(
+        system_prompt, user_prompt, max_tokens=200,
+    )
+    if insight_text is None:
+        return {"insight": None, "error": error_code, "generated_at": generated_at}
 
-    result = {"insight": insight_text, "generated_at": generated_at, "cached": False}
+    result = {"insight": insight_text, "provider": provider, "generated_at": generated_at, "cached": False}
     if hasattr(app.state, "redis") and app.state.redis:
         try:
             await app.state.redis.setex(cache_key, 1800, json.dumps(result))

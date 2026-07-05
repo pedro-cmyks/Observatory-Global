@@ -1553,7 +1553,6 @@ async def get_theme_insight(
             trend_description = "stable"
 
     # --- LLM call ---
-    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
     insight_provider = os.getenv("INSIGHT_PROVIDER", "anthropic").lower()
     theme_label = _clean_theme_label(theme_code)
 
@@ -1604,26 +1603,15 @@ async def get_theme_insight(
             except Exception as ollama_err:
                 print(f"[insight] Ollama call failed: {ollama_err}")
 
-    # Anthropic (Claude Haiku) — primary path
-    if insight_text is None and anthropic_key:
-        try:
-            import anthropic
-
-            async_client = anthropic.AsyncAnthropic(api_key=anthropic_key)
-            response = await async_client.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=256,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_prompt}],
-            )
-            insight_text = next(
-                (block.text for block in response.content if block.type == "text"),
-                None,
-            )
-        except Exception as llm_err:
-            err_msg = str(llm_err)
-            print(f"[insight] Claude Haiku call failed: {err_msg}")
-            error_code = "insight_no_credits" if "credit balance" in err_msg.lower() else "insight_unavailable"
+    # B0 (2026-07-05): provider chain Anthropic → DeepSeek (insight_llm) —
+    # replaces the Anthropic-only path that went silently dark on dry credits.
+    provider: Optional[str] = "ollama" if insight_text is not None else None
+    if insight_text is None:
+        from app.services.insight_llm import generate_insight
+        insight_text, provider, error_code = await generate_insight(
+            system_prompt, user_prompt, max_tokens=256,
+        )
+        if insight_text is None:
             return {
                 "theme": theme_code.upper(),
                 "insight": None,
@@ -1632,19 +1620,10 @@ async def get_theme_insight(
                 "generated_at": generated_at,
             }
 
-    if insight_text is None:
-        # API key missing or provider skipped — return graceful fallback
-        return {
-            "theme": theme_code.upper(),
-            "insight": None,
-            "error": "insight_unavailable",
-            "data_points": data_points,
-            "generated_at": generated_at,
-        }
-
     result = {
         "theme": theme_code.upper(),
         "insight": insight_text,
+        "provider": provider,
         "data_points": data_points,
         "cached": False,
         "generated_at": generated_at,
