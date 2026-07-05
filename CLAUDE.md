@@ -10,7 +10,40 @@
 > and narrows further if telemetry shows one persona dominates.) **Anti-goal:**
 > no new surface/capability until telemetry shows users reaching a value moment.
 
-**2026-07-04 (NIGHT — GOLD BLITZ + GATE v3 DEPLOYED + reframes, read FIRST).**
+**2026-07-04 (DÍA 2 — SEMANTIC LANE LIVE + identity fix + F4 param, `02a03ad5`,
+read FIRST).** Day 2 of the 3-day route executed. (1) **SEMANTIC ASSIGNMENT
+LANE SHIPPED + CRON-LIVE** (spec updated to SHIPPED w/ deviations): e5
+anchor-cosine FAILED calibration honestly (pos/neg p50 delta 0.024, cross-fire
+3169/3186 — same noise floor as the 06-29 ablations; text-rich anchors don't
+fix it). Lane = **OpenAI text-embedding-3-small + ARGMAX rule +
+WILD-calibrated taus** (gold-corpus taus admitted 29.6% of random corpus =
+base-rate transfer failure; wild-junk-quantile taus ≤0.05%/topic → 2.43%
+clearance, 24/30 lanes on — `docs/research/semantic-lane/`). Writes
+method='embedding'/model_version='sem-assign-v0' (mig-019 CHECK has no
+'semantic'); gate grades the lane via `score_assignments_gate.py --lane
+semantic` (same OpenAI space; matched_terms=0 mild-OOD caveat logged). Cron:
+runner Step 2b every 30min (~$0.001/cycle; ATLAS_SEM_LANE_ENABLED; config in
+~/AtlasLocalWorker/config/; runner NOW VERSIONED at `infra/runners/` — it had
+drifted out of repo). **Acceptance HIT first cycle: election-legitimacy lex
+kept 0/18, semantic added 2 VERIFIED (Peru Sánchez-IACHR 0.997, Armenia
+annulment court 0.994) + a literal India-SIR headline entered the candidate
+universe.** Ledger = `sem_assign_report.py` (keep-rates: lex .32 / sem .18).
+(2) **UNIVERSE-COLLAPSE ROOT CAUSE FIXED**: `hydrate_topics` SKIPPED topics
+whose member clusters were wiped from emergent_clusters (`if not mem:
+continue`) → identities re-founded instead of resurrecting. Now falls back to
+persisted dynamic_topics centroid_vec (running centroid = anchor
+approximation, documented); 22 tests pass. (3) **F4 read-path parametrized**:
+`ATLAS_TOPIC_MEMBERS_ENGINE_VERSION` (default v1-compat) — cutover/rollback =
+one env var. Also: scorer dry-run infinite-loop fix; mega2 corpus (13,663
+rows) secured off /tmp (repo gz + /Volumes/Ext/Atlas/Gold/). REMAINING Day-2
+residue → Day 3: unified-new-topic labeling+persistence (unified-new-N ids
+are ephemeral per rebuild — needs dynamic_topics-row persistence before
+DeepSeek labeling), F4 A/B re-run on gold before flip, watch sem-lane
+keep-rates a few cycles (forced-displacement tau 0.163 = lowest, watch junk;
+energy-grid/fuel-subsidy goldP ≤0.07 rely on gate). Day 3 also: browser-verify
+surfaces + handoff playbooks.
+
+**2026-07-04 (NIGHT — GOLD BLITZ + GATE v3 DEPLOYED + reframes).**
 Pedro's question ("¿la información pasada no sirve?") unlocked Day 1 of the
 3-day route (`docs/state/2026-07-04-three-day-route.md`): hot DB holds 7 days
 but the EXTERNAL ARCHIVE holds May-3+ (10.5M rows scanned). Shipped tonight:
