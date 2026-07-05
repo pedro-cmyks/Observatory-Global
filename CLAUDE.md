@@ -88,6 +88,30 @@ wedge (who-says-what vía topic_members roles + voice_mix + tiers #217
 mínimo + gaps por categoría) → W4 captura (universe/threads/signal pinnable,
 puente story-panel→investigation, archive-backed pin open) → W5 Phase 4
 sigue paper-gated. Anti-goal respetado: cero superficies nuevas.
+**EJECUTADO misma sesión (Pedro aceptó + decidió D1-D5):** W0 `ff6e2b33`
+(eventos workbench/investigation/pin + value moment `investigation` +
+`research_usage_report.py` — primer READ de #218; funnel real: 24 opened/0
+workbench/0 pins). W1 `e0f58aeb` (WorkspaceContext = adaptador sobre
+workbench.ts, TODO pin de panel lleva snapshot #227; force-graph RETIRADO
+D1 — InteractiveWorkspace/workspaceGraph/ReadingMode borrados; llave
+`atlas-workspace` drop D5 — aclarado: pins fueron SIEMPRE localStorage del
+usuario, tu server solo guarda eventos anónimos; browser-verified pin→
+badge→dossier→reopen). W2 `80b64681` DEPLOYED Fly (contract
+research-plan-v1: guard sustrato pool<80 DISPARANDO en prod "15 active...
+suppressed"; two-tier verified/extended en evidencia; Kalman en anchors
+"surging" source=kalman-topic-movement; lente categorías + category_summary;
+`recalibrate_research_taus.py` → **junk p50 0.865 vs tau 0.80 / 0.887 vs
+0.84 — taus 06-10 bajo la mediana de junk**, NO subidos a ciegas (pool
+colapsado + sesgo pseudo-query), artefacto
+`docs/research/l3-research-lane/2026-07-05-tau-recalibration.md`; walkthrough
+smoke 2/2 PASS post-deploy). W3 `e4d21759` (dossier v2: who-says-what vía
+roles typed — verificado browser "media-led, press 36 · public 1"; voice
+self-voice/dominant-outsider/state-media; grupos por categoría; frozen vs
+measured-at-generation nunca mezclados; markdown completo). W4 `f830107a`
+(primer PIN sin investigation LA CREA del query — la rampa search→story ya
+no muere en la captura; filas de NarrativeThreads pineables ◆). 163 vitest +
+46 pytest research + builds verdes. PENDIENTE gated: OpenAI-space cutover
+(hot vectors), archive-backed pin open, W5 papers, re-medir taus @pool≥80.
 
 **2026-07-04/05 (NOCHE — CATEGORÍAS≠HILOS servido + growth loop + retención
 REAL + reclaim 4.1GB, `d40deedf`+`1b6ba3b0`, read FIRST).** Pedro corrigió la

@@ -1,7 +1,18 @@
 # L3 Deep Review — the Investigation Layer
 
 **Date:** 2026-07-05 (madrugada, parallel to the archive-embed session)
-**Status:** REVIEW COMPLETE → WORK SPEC (§6). Pending Pedro's read + decisions (§7).
+**Status:** REVIEW COMPLETE → WORK SPEC (§6) → **EXECUTED same session**
+(Pedro accepted + decided D1-D5, 2026-07-05). W0 `ff6e2b33` · W1 `e0f58aeb` ·
+W2 `80b64681` (deployed Fly, prod-smoked: guard firing, Kalman on anchors,
+walkthrough 2/2 PASS) · W3 `e4d21759` · W4 `f830107a`. Decisions: D1 force-graph
+RETIRED (universe supersedes); D2 e5 recalibrated now (artifact
+`docs/research/l3-research-lane/2026-07-05-tau-recalibration.md`), OpenAI gated
+on hot vectors; D3 dossier client-side; D4 investigation value moment added;
+D5 legacy pins dropped (localStorage-only — never server-side; clarified for
+Pedro: Atlas stores no user pins, only anonymous pin EVENTS). Remaining from
+§6: W2a-ii OpenAI-space cutover (gated), W4.4 archive-backed pin open (gated),
+W5 paper-gated, universe hover-card pin (deliberately skipped — travel→
+ThemeDetail pin is 1 click), Brief lead pin (deferred).
 **Method:** 3 exhaustive code/docs sweeps (frontend, backend, specs/issues) + live
 prod verification (endpoint smoke, `research_pin_events`, `telemetry_events`) +
 manual verification of every load-bearing claim (agent claims were grep-checked;
