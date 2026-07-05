@@ -183,9 +183,16 @@ consume). (X5) `test_gate_tiers.py` congela two-tier + below-gate fallback
 /api/v2/trends la lee = sirve vacío, pendiente re-apuntar) + scrubber en
 el GLOBO con label honesto "volume replay" (el heat compuesto no tiene
 historia) + chip AGE "active since" en ThemeDetail (firstSeen del
-dynamic_topics, verificado "active since Jun 2"). QUEDA del spec L2: S3
-peak-drill (gated en serving de archivo), S4 (decisión D-L2-1), X3
-country-view stories-only, X6 móvil, re-apuntar /trends a v2.
+dynamic_topics, verificado "active since Jun 2"). **X3 TAMBIÉN EJECUTADO (`9e9b0c5d`, deployed):** country view =
+stories-only (cierra el diferido 07-04) — R1 scoped children únicamente,
+emergent fallback saltado en scope país (es global = relleno), vacío
+honesto (UA=3 filas todas dynamic; VE=0 honesto); kill-switch nuevo
+ATLAS_COUNTRY_CATEGORY_ROWS (revert independiente de CountryBrief). Y
+/api/v2/trends re-apuntado a v2 (global/country→country_hourly_v2,
+theme→theme_hourly_v2, source→scan acotado signals_v2) — las legacy tenían
+0 filas, el endpoint servía series vacías en silencio; prod: 9 puntos/7d.
+QUEDA del spec L2: S3 peak-drill (gated en serving de archivo), S4
+(decisión D-L2-1 de Pedro), X6 móvil (gated en lectura X0).
 
 **2026-07-04/05 (NOCHE — CATEGORÍAS≠HILOS servido + growth loop + retención
 REAL + reclaim 4.1GB, `d40deedf`+`1b6ba3b0`, read FIRST).** Pedro corrigió la
