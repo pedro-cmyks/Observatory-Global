@@ -162,6 +162,30 @@ DiscoveryPanel/AtlasHeatList/streamLevel-entity half-wired), tests two-tier
 (todos los puentes existen L0→L3.5; el último — L1→L3 — se cerró esta noche;
 L4 markets = spec only). Decisiones D-L2-1..3 pendientes (la grande: S4
 demote del dropdown de tiempo a control de VISTA).
+**L2 SPEC EJECUTADO misma sesión (Pedro: "no esperar semanas, usa la data
+histórica"; `45e21b01`+`16fe7dbb`, DEPLOYED ×3):** (X1) gate-recall
+re-medido vs gate actual: **el sesgo 0/43 español DESAPARECIÓ** (es 2/8
+kept ≈ baseline; solo 'xx' idioma-desconocido flagged +19.6pp = gap de
+metadata source_lang, no del gate; residuo real = poco volumen no-inglés
+SCORED — el cuello movió río arriba). (CALIBRACIÓN CON ARCHIVO — el ask de
+Pedro): `calibrate_openai_headline_tau.py` sobre los shards OpenAI de
+historia completa (6.69M vectores, pools de shards disjuntos): **junk p50
+0.542 / p95 0.725 / p99 0.856 vs e5 p50 0.887 — OpenAI recupera ~0.35 de
+separación**; anclas del cutover D2 asentadas en el artefacto tau. (X0)
+telemetría L2: panel_swap (máquina de estados del stream slot),
+country_click, layer_toggle, dock_tab, scrubber_used{universe,orbital,
+globe}. (X4) dead-code: DiscoveryPanel/AtlasHeatList/CrisisToggle fuera;
+streamLevel/setEntity NO tocados (el agente erró — AnomalyPanel los
+consume). (X5) `test_gate_tiers.py` congela two-tier + below-gate fallback
+(10 tests). (X2) **time-as-dimension S1+S2**: `GET /api/v2/map/replay`
+(map-replay-v0, hot ∪ historical_topic_country_daily → scrub de 30d REAL,
+250 países; hallazgo lateral: `signals_country_hourly` legacy = 0 filas y
+/api/v2/trends la lee = sirve vacío, pendiente re-apuntar) + scrubber en
+el GLOBO con label honesto "volume replay" (el heat compuesto no tiene
+historia) + chip AGE "active since" en ThemeDetail (firstSeen del
+dynamic_topics, verificado "active since Jun 2"). QUEDA del spec L2: S3
+peak-drill (gated en serving de archivo), S4 (decisión D-L2-1), X3
+country-view stories-only, X6 móvil, re-apuntar /trends a v2.
 
 **2026-07-04/05 (NOCHE — CATEGORÍAS≠HILOS servido + growth loop + retención
 REAL + reclaim 4.1GB, `d40deedf`+`1b6ba3b0`, read FIRST).** Pedro corrigió la
