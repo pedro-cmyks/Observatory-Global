@@ -205,8 +205,19 @@ TIME_IS_VIEW=false en lib/timeRanges.ts (una línea). Browser-verified:
 1-Month → nodes range=24h, heat hours=24, scrubber 7→30d, scrub "Jun 10 ·
 volume replay" jala /map/replay?days=30. CONTRATO TEMPORAL COMPLETO por
 capa: L1=el día (24h fijo) · L2=tiempo como dimensión (vista+scrubbers) ·
-L3=tiempo congelado (snapshots). QUEDA del spec L2: S3 peak-drill (gated
-en serving de archivo), X6 móvil (gated en lectura X0).
+L3=tiempo congelado (snapshots). **S3 TAMBIÉN EJECUTADO (el archivo quedó LISTO: pipeline cerrado
+166 shards/6.94M vectores/10.57M filas; `99625db0`, deployed):**
+`populate_historical_evidence_samples.py` llenó la tabla mig-029 (0 filas
+desde mayo) desde las particiones — 60,137 muestras, 62 días, ≤5 headlines
+distinct-source por país-día CON url+fuente, idempotente/resumible;
+`GET /api/v2/evidence/day` (day-evidence-v0, tiers honestos hot|archive,
+vacío con razón); `DayEvidencePanel`: globo scrubbed + click país = LOS
+RECIBOS DE ESE DÍA (links + tier label "FROM THE ARCHIVE — sample" +
+escape "Open live"). Browser-verified ambos tiers (Congo Jun-29 hot vacío
+honesto; Brazil Jun-10 archive 5 recibos). El ciclo time-as-dimension
+S1-S4 COMPLETO. QUEDA del spec L2: X6 móvil (gated en lectura X0) +
+re-apuntar /trends... ya hecho; nota: viewport móvil ≤768 desmonta el mapa
+por diseño (el detour de verificación lo re-confirmó).
 
 **2026-07-04/05 (NOCHE — CATEGORÍAS≠HILOS servido + growth loop + retención
 REAL + reclaim 4.1GB, `d40deedf`+`1b6ba3b0`, read FIRST).** Pedro corrigió la
