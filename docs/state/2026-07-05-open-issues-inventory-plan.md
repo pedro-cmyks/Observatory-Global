@@ -20,12 +20,30 @@ Vercel prod.
 | Grupo | Issues | Acción |
 |---|---|---|
 | A. Cerrables YA (trabajo hecho, falta el cierre formal) | #239 #241 #243 | Verificar hoy → cerrar |
-| B. Cerrables tras verificación con datos que ya corren | #168 #180 #154 #217 | 1 query/eyeball cada uno → cerrar o follow-up estrecho |
+| B. Cerrables tras verificación con datos que ya corren | #168 #180 | 1 query cada uno → cerrar o follow-up estrecho |
 | C. Alimentados por el clusterizado de HOY (~15:00) | #204 #226 #238 | El run de Stage B es el próximo paso concreto de cada uno |
-| D. Trabajo real pendiente (ordenado por esfuerzo/valor) | 15 issues | Quick wins S esta semana; M gated en decisiones |
-| E. Bloqueados en Pedro / calendario | #46 #106 #140 #151 #236 | Decisión o fecha, no código |
+| D. Trabajo real pendiente (ordenado por esfuerzo/valor) | 10 issues | Quick wins S esta semana; M gated en telemetría 07-11 |
+| E. Bloqueados en Pedro / calendario | #46 #106 #140 #236 | Decisión o fecha, no código |
 
-Meta razonable de la semana: **30 → ~18-20 abiertos** sin cerrar nada a ciegas.
+**ACTUALIZACIÓN mismo día (pase de evolución de ruta, Pedro: "responde tú las
+preguntas contra el estado actual"): 7 issues CERRADOS con análisis
+ruta-vieja→ruta-actual en cada uno — 30 → 23 abiertos.**
+
+| Cerrado | Veredicto |
+|---|---|
+| #185 lexicon mining | **ENTREGADO** — el comentario 07-01 "unbuilt" era stale: `mine_lexicon_vocab.py` + 7 `lexicons/*.mined.json` versionados + loader vivo en `lexicon_sentiment.py:233` (seeds ganan). Verificado contra código. |
+| #154 source audit | **ENTREGADO** contra artefactos (voice_mix, self_coverage, funnel, NER lag, gate-recall). Residuo serving-tiers → #217 (único dueño). |
+| #172 silent-risk | **EVOLUCIONÓ** → `coverage_gaps` (gap box L1, 07-05). El mecanismo attention-vs-media medido inviable 2×; reopen si llega fuente real de attention-velocity. |
+| #151 markets overlay | **FOLDED** → #226/L4. Overlay UI gated en que M0 pruebe la relación. |
+| #159 GDELT Event Mentions | **RUTA CAMBIÓ** — trayectoria = sustrato propio (snapshots/Kalman/units); repetición = syndication fix; dirección = democión GDELT (PR3-05, mig 067). |
+| #166 correction loop | **EVOLUCIONÓ** → self-training flywheel (uso analista ≈ 0 medido; labels a escala máquina). Reopen si el read 07-11 muestra pins reales. |
+| #156 NewsAPI budget | **SUPERSEDED** — 219 feeds RSS sin cuota mataron la motivación; queries ya son crisis-targeted. Pregunta honesta restante = retirar la lane (5 min). |
+
+Re-scopeados con ruta actual: **#217** (dueño único de credibility serving,
+gated 07-11), **#161** (external-depth lane del research plan — el eval 07-04
+FORTALECIÓ su motivación; gated 07-11), **#46** (fork registrar-o-degradar,
+comentado con el estado honesto: tabla 0 filas, UI aún lo anuncia),
+**#226/#238** (sustrato del archivo comentado).
 
 ---
 
@@ -107,26 +125,10 @@ Reabierto 07-01 (2 filas ngo/7d; Fly recibe HTTP 202 vacío del RSS).
   trabajo S, entra a la cola D de esta semana. Si por alguna razón ya fluye,
   cerrar con el conteo.
 
-### #154 data(audit) — auditoría de calidad de fuentes
-~75% hecho según el pase del 07-01: `voice_mix_audit`, `self_coverage_report`,
-funnel medido, NER lag medido. El 25% restante era "serving-integration"
-(emparejado con #217).
-- **Verificar:** releer el acceptance del issue contra los artefactos de
-  `docs/research/voice-mix/` + los reports.
-- **Decisión:** cerrar contra artefactos y dejar el residuo de serving en #217
-  (un solo dueño para ese residuo, no dos issues).
-
-### #217 feat(sources) — credibility tiers (capability G)
-W3 (dossier v2, `e4d21759`, 07-05) shipped "tiers #217 mínimo" dentro del
-who-says-what del dossier.
-- **Verificar [browser]:** abrir un dossier L3 → ¿la evidencia lleva tier/voice
-  labels (state-media, self-voice, dominant-outsider)? ¿Eso satisface el forcing
-  case del spec (distinguir conspiracy vs agencia vs mainstream)?
-- **Decisión:** probablemente NO cierra completo — el mínimo del dossier no es
-  la clasificación de credibilidad por outlet del spec. Re-scope el issue al
-  residuo concreto (tabla outlet→tier + surfacing en evidencia) y absorber ahí
-  el residuo de #154. Si Pedro considera que el mínimo basta para el wedge,
-  cerrar ambos.
+### ~~#154~~ / ~~#217~~ — RESUELTO mismo día
+#154 CERRADO contra artefactos; #217 re-scopeado como dueño único del residuo
+(tabla outlet→tier + badge en evidencia, gated en el telemetry read 07-11).
+Ver comentarios en ambos issues.
 
 ---
 
@@ -183,8 +185,7 @@ próxima sesión de engine lo tome con el sustrato correcto.
 2. **#251** GKG ORGANIZATIONS — añadir el campo al parse de ingest (el grep del
    issue muestra que nunca se ingirió); decisión chica: ¿backfill o solo
    forward? Verificar: filas nuevas con orgs pobladas.
-3. **#156** NewsAPI quota budget — reserva + queries dinámicas de crisis; S.
-   Verificar: consumo diario < presupuesto en el log de ingest.
+3. ~~#156~~ — cerrado mismo día (superseded, ver arriba).
 4. **#233** paneles reordenables — RGL ^2.2.3 sigue en deps, el commit
    `e6fbecf` es la referencia de cómo era. S/M frontend. Verificar: drag
    funciona + layout persiste + no rompe el keep-alive shell del 07-04 (¡ojo:
@@ -210,25 +211,13 @@ próxima sesión de engine lo tome con el sustrato correcto.
     `self_coverage_report.py` → lista actual de países en 0% → siguiente wave
     de feeds. Continuo por diseño.
 
-**Gated en decisión de Pedro (proponer, no ejecutar):**
-11. **#185** lexicon mining — candidato a CERRAR-SUPERSEDED: el semantic lane
-    OpenAI + gate v3 + growth loop hacen lo que el mining buscaba, y PR3-05
-    midió que los theme-hints eran ruido neto. Propuesta: cerrar con ese
-    razonamiento.
-12. **#172** silent-risk — la investigación 06-29 lo aparcó honestamente
-    (fuente attention no confiable); PERO el gap box B3 del 07-05
-    (`briefing.coverage_gaps`) ya sirve "what is missing" en L1 por otra vía.
-    Propuesta: re-scope #172 a "attention/coverage ratio cuando trends/wiki
-    mejore" o cerrar apuntando a coverage_gaps como el sucesor.
-13. **#159 / #161** GDELT research (Event Mentions / DOC 2.0) — investigación
-    pura, nadie la ha tocado en un mes. Propuesta: mantener SOLO #161
-    (query-time enrichment encaja con el research plan L3) y cerrar #159 como
-    backlog-explícito (la trayectoria de historias hoy la dan las story units
-    del archivo, no Event Mentions).
-14. **#166** analyst correction loop — el sustrato llegó (W0 telemetry, pins
-    con snapshot, disagreement queue del flywheel). Gate: la lectura de
-    telemetría del 07-11; si hay uso real de pins, diseñar el loop sobre
-    `research_pin_events`.
+**~~Gated en decisión de Pedro~~ — EJECUTADO mismo día (pase de evolución de
+ruta):** #185 cerrado-entregado (el mining SÍ estaba construido — verificado
+contra código, no docs), #172 cerrado-evolucionado (→ coverage_gaps), #159
+cerrado-ruta-cambió, #166 cerrado-evolucionado (→ flywheel), #156
+cerrado-superseded (→ programa de diversidad). #161 KEPT re-scopeado
+(external-depth lane, el eval 07-04 lo fortaleció; gated 07-11). Análisis
+completo en el comentario de cierre de cada issue.
 
 ---
 
@@ -239,7 +228,7 @@ próxima sesión de engine lo tome con el sustrato correcto.
 | #46 ACLED | Registro institucional (email) | Pedro decide si registra o si se degrada a "Coming Soon" permanente y se cierra. `acled_conflicts_v2` = 0 filas — hoy es UI-honesty, no ingest. |
 | #106 mascota | Sesión de diseño dedicada | Agendar o dejar en backlog; sin código pendiente. |
 | #140 manual visual | Grabaciones de pantalla de Pedro | 1 caso de uso grabado desbloquea el primer capítulo. |
-| #151 markets overlay | Track L4 (repo privado futuro) | Propuesta: cerrar como folded-into-#226/L4 — el issue vive mejor en el doc L4. |
+| ~~#151~~ | — | CERRADO mismo día: folded into #226/L4. |
 | #236 mobile | X6 programado 07-11 tras telemetry read | Nada que hacer hoy; el scheduled task ya existe. |
 
 ---
@@ -256,17 +245,17 @@ próxima sesión de engine lo tome con el sustrato correcto.
    convertir en follow-up estrecho según el número.
 
 **Mañana / semana:**
-4. B restante: #217/#154 (un dueño para el residuo serving-tiers).
-5. Quick wins D: #247 C1/C2 → #251 → #156 → #233 (en ese orden; #233 al final
-   por el riesgo de interacción con el keep-alive shell).
-6. Comentar #226 y #238 con el sustrato nuevo (sin ejecutar aún).
+4. Quick wins D: #247 C1/C2 → #251 → #233 (#233 al final por el riesgo de
+   interacción con el keep-alive shell).
 
-**Decisiones para Pedro (5 min, en cualquier momento):**
-- Cerrar #185 como superseded? · Re-scope o cierre de #172? · Fold #151 en
-  L4? · #159 a backlog explícito? · ¿El "tiers mínimo" del dossier basta para
-  #217+#154 o se re-scopea?
+**~~Decisiones para Pedro~~ — RESUELTAS mismo día** (pase de evolución de
+ruta): #185/#172/#151/#159/#166/#156 cerrados con evidencia; #217/#161/#46
+re-scopeados; #226/#238 comentados con el sustrato. Única decisión que
+sobrevive para Pedro: **#46 fork registrar-ACLED-o-degradar-UI** (comentada en
+el issue).
 
-**07-11 (ya programado):** telemetry read → gates #166 y #236 (X6).
+**07-11 (ya programado):** telemetry read → gates #236 (X6), #217 (tiers),
+#161 (depth lane), y condición de reopen de #166.
 
 ---
 
