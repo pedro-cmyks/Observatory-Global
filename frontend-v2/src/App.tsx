@@ -353,6 +353,37 @@ function AppContent() {
   // voice) per country. The map fill must use THIS, not /nodes volume-rank
   // heat (which made the US permanently reddest). Keyed by ISO2.
   const [heatComposite, setHeatComposite] = useState<Map<string, number>>(new Map())
+  // X2/S1 (time-as-dimension, 2026-07-05): globe time scrubber. Volume replay
+  // from the pre-agg — HONESTLY labeled (composite heat has no history).
+  const [replayData, setReplayData] = useState<Record<string, Record<string, number>> | null>(null)
+  const [replayDay, setReplayDay] = useState<string | null>(null)
+  const replayDays = useMemo(() => {
+    const out: string[] = []
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000)
+      out.push(d.toISOString().slice(0, 10))
+    }
+    return out
+  }, [])
+  const ensureReplayData = useCallback(() => {
+    if (replayData) return
+    fetch('/api/v2/map/replay?days=30')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.series) setReplayData(d.series) })
+      .catch(() => { /* scrubber degrades to no-op */ })
+  }, [replayData])
+  const replayHeat = useMemo(() => {
+    if (!replayDay || !replayData) return null
+    const vals = Object.entries(replayData)
+      .map(([cc, days]) => [cc, days[replayDay] ?? 0] as const)
+      .filter(([, n]) => n > 0)
+    const m = new Map<string, number>()
+    if (!vals.length) return m
+    const sorted = [...vals].sort((a, b) => a[1] - b[1])
+    const n = Math.max(sorted.length - 1, 1)
+    sorted.forEach(([code], i) => { m.set(code, Math.pow(i / n, 1.6)) })
+    return m
+  }, [replayDay, replayData])
 
   // Fetch Aircraft data
   useEffect(() => {
@@ -927,12 +958,14 @@ function AppContent() {
       && (focus.type === 'person' || focus.type === 'theme')
     return computeCountryHeatStates({
       enhancedNodes,
-      heatComposite,
+      // S1: a scrubbed day swaps the composite for that day's VOLUME ranks —
+      // the strip label says so; never presented as historical heat.
+      heatComposite: replayHeat ?? heatComposite,
       visibleFlows,
       selectedCountryCode,
       entityFocus,
     })
-  }, [enhancedNodes, heatComposite, visibleFlows, selectedCountryCode, isActive, focus.type, focus.value])
+  }, [enhancedNodes, heatComposite, replayHeat, visibleFlows, selectedCountryCode, isActive, focus.type, focus.value])
 
   const nativeOverlayData = useMemo(() => {
     const activeChokepointSet = new Set(activeChokepoints)
@@ -1416,6 +1449,32 @@ function AppContent() {
                 />
               )}
               <div className="globe-vignette" />
+              {!universeOpen && (
+                <div className="globe-scrubber" data-tip="Scrub the last 30 days — country intensity replays that day's signal VOLUME (the composite heat has no history). NOW restores live heat.">
+                  <button
+                    className={`globe-scrubber-now ${replayDay ? '' : 'active'}`}
+                    onClick={() => setReplayDay(null)}
+                  >NOW</button>
+                  <input
+                    type="range"
+                    min={0}
+                    max={replayDays.length - 1}
+                    value={replayDay ? replayDays.indexOf(replayDay) : replayDays.length - 1}
+                    onChange={e => {
+                      trackOnce('scrubber_used', { surface: 'globe' })
+                      ensureReplayData()
+                      const idx = Number(e.target.value)
+                      setReplayDay(idx >= replayDays.length - 1 ? null : replayDays[idx])
+                    }}
+                    aria-label="Globe time scrubber"
+                  />
+                  <span className="globe-scrubber-label">
+                    {replayDay
+                      ? `${new Date(replayDay + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · volume replay`
+                      : 'NOW · live heat'}
+                  </span>
+                </div>
+              )}
             </MapErrorBoundary>
             {!universeOpen && <Legend
               showHeatmap={showHeatmap}

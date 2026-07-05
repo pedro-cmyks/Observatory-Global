@@ -1633,3 +1633,42 @@
 }
 
 .map-lazy-placeholder { position:absolute; inset:0; background:#0b0e13; }
+
+/* X2/S1 (2026-07-05): globe time scrubber — volume replay, honestly labeled */
+.globe-scrubber {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(10, 15, 24, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 6px;
+  padding: 4px 10px;
+  z-index: 30;
+  backdrop-filter: blur(4px);
+}
+.globe-scrubber input[type="range"] { width: 160px; accent-color: #10b981; }
+.globe-scrubber-now {
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: rgba(148, 163, 184, 0.8);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.globe-scrubber-now.active { color: #10b981; border-color: rgba(16, 185, 129, 0.5); }
+.globe-scrubber-label {
+  font-size: 10px;
+  color: rgba(203, 213, 225, 0.85);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 768px) {
+  .globe-scrubber { bottom: 6px; padding: 3px 8px; }
+  .globe-scrubber input[type="range"] { width: 110px; }
+}

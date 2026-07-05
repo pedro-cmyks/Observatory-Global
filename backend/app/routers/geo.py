@@ -1092,3 +1092,75 @@ async def get_vessels():
         "msgs_filtered": VESSEL_CACHE["msgs_filtered"],
         "message": "Live" if VESSEL_CACHE["connected"] else "Connecting...",
     }
+
+
+@router.get("/api/v2/map/replay")
+async def map_replay(days: int = Query(30, ge=2, le=90)):
+    """X2/S1 (time-as-dimension, 2026-07-05): country×day volume matrix for the
+    globe time scrubber. Reads the pre-agg only — one cheap scan, cached 30min.
+
+    HONESTY: this is VOLUME replay (signals per country per day). The live
+    composite heat (velocity/surprise/diversity/voice) has no history, so the
+    scrubbed view is labeled volume-based by the frontend — never presented as
+    historical heat.
+    """
+    cache_key = f"map:replay:v2:{days}"
+    if hasattr(app.state, "redis") and app.state.redis:
+        try:
+            cached = await app.state.redis.get(cache_key)
+            if cached:
+                return json.loads(cached)
+        except Exception:
+            pass
+
+    if db.pool is None:
+        return {"days": days, "series": {}, "contract": "map-replay-v0", "degraded": True}
+
+    async with db.pool.acquire() as conn:
+        await conn.execute("SET statement_timeout = 15000")
+        # Hot pre-agg holds ~the retention window; the processed ARCHIVE
+        # (historical_topic_country_daily) carries the rest of the range —
+        # the full-history work is what makes a 30d scrub real. Hot wins on
+        # overlapping days (fresher, includes not-yet-compacted hours).
+        hist_rows = await conn.fetch(
+            """
+            SELECT country_code, day, SUM(signal_count)::bigint AS n
+            FROM historical_topic_country_daily
+            WHERE day > NOW() - ($1 * INTERVAL '1 day')
+              AND country_code IS NOT NULL
+            GROUP BY 1, 2
+            """,
+            days,
+        )
+        hot_rows = await conn.fetch(
+            """
+            SELECT country_code,
+                   date_trunc('day', hour)::date AS day,
+                   SUM(signal_count)::bigint AS n
+            FROM country_hourly_v2
+            WHERE hour > NOW() - ($1 * INTERVAL '1 day')
+              AND country_code IS NOT NULL
+            GROUP BY 1, 2
+            """,
+            days,
+        )
+
+    series: Dict[str, Dict[str, int]] = {}
+    for r in hist_rows:
+        series.setdefault(r["country_code"], {})[r["day"].isoformat()] = int(r["n"])
+    for r in hot_rows:  # hot overwrites overlap
+        series.setdefault(r["country_code"], {})[r["day"].isoformat()] = int(r["n"])
+
+    payload = {
+        "days": days,
+        "basis": "volume",
+        "contract": "map-replay-v0",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "series": series,
+    }
+    if hasattr(app.state, "redis") and app.state.redis:
+        try:
+            await app.state.redis.setex(cache_key, 1800, json.dumps(payload))
+        except Exception:
+            pass
+    return payload

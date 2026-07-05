@@ -416,6 +416,9 @@ async def _dynamic_topic_detail(
         "gated": gated_total,
         "snapshotAt": topic_row["last_seen"].isoformat()
             if topic_row["last_seen"] else None,
+        # X2/S2 (time-as-dimension): AGE is first-class — "active since".
+        "firstSeen": topic_row["first_seen"].isoformat()
+            if ("first_seen" in dict(topic_row) and topic_row["first_seen"]) else None,
         "velocity": None,
         "cohesion": float(topic_row["mean_cohesion"])
             if topic_row["mean_cohesion"] is not None else None,
@@ -955,6 +958,7 @@ async def get_theme_details(
                             dt.mean_cohesion,
                             dt.noise_rate,
                             dt.last_seen,
+                            dt.first_seen,
                             COALESCE((
                                 SELECT array_agg(DISTINCT sid.signal_id)
                                 FROM dynamic_topic_members dtm

@@ -38,6 +38,8 @@ interface ThemeData {
     extendedThreshold?: number
     gatePending?: boolean
     gateCoverage?: number | null
+    /** X2/S2 (time-as-dimension): topic lifetime start — AGE is first-class. */
+    firstSeen?: string | null
     avgSentiment: number
     signals: Array<{
         id?: number
@@ -518,6 +520,11 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                         ) : (
                             <p className="theme-detail-meta">
                                 Global · {data?.total || 0} signals · Last {hours}h
+                                {data?.firstSeen && (
+                                    <span className="origin-country-hint" data-tip="Topic lifetime — when this story identity first appeared (not the current window)">
+                                        {' · '}active since {new Date(data.firstSeen).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                    </span>
+                                )}
                                 {originCountryName && (
                                     <span className="origin-country-hint"> · opened from {getFlag(originCountry!)} {originCountryName}</span>
                                 )}
