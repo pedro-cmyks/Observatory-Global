@@ -555,7 +555,9 @@ async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tup
     so the incremental run starts from true state without persisting Counters.
     """
     trows = await conn.fetch(
-        "SELECT id, identity_key, state, snapshots_since_seen FROM dynamic_topics"
+        "SELECT id, identity_key, state, snapshots_since_seen, label, "
+        "centroid_vec, first_seen, last_seen, n_snapshots, agg_n_signals, "
+        "mean_cohesion, noise_rate FROM dynamic_topics"
     )
     mrows = await conn.fetch(
         "SELECT dynamic_topic_id, emergent_cluster_id, snapshot_at "
@@ -575,6 +577,41 @@ async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tup
         mem = members.get(int(tr["id"]), [])
         mem = [m for m in mem if m["cluster_id"] in clusters_by_id]
         if not mem:
+            # IDENTITY-CONTINUITY FIX (2026-07-04 universe-collapse incident):
+            # when a topic's member clusters are gone from emergent_clusters
+            # (retention trim / substrate wipe), the old code SKIPPED the
+            # topic entirely — it never entered the in-memory list, so the
+            # next snapshot's clusters could not centroid-match it and
+            # re-founded the same story under a new identity. Fall back to
+            # the PERSISTED dynamic_topics state instead: the running
+            # centroid_vec doubles as the anchor (approximation — the true
+            # founding anchor is unrecoverable once members are gone, and
+            # the last known position is the honest bound for what the
+            # topic may absorb).
+            if tr["centroid_vec"] is None:
+                continue
+            t = Topic(
+                identity_key=tr["identity_key"], label=tr["label"] or "",
+                centroid=tr["centroid_vec"],
+                snap=tr["last_seen"].isoformat() if tr["last_seen"] else "",
+                n_signals=int(tr["agg_n_signals"] or 0),
+                cohesion=tr["mean_cohesion"], noise=tr["noise_rate"],
+            )
+            if tr["first_seen"]:
+                t.first_seen = tr["first_seen"].isoformat()
+            # preserve the persisted snapshot count so a later touch does
+            # not collapse n_snapshots to 1 (synthetic keys, never real
+            # snapshot ids, so they cannot collide with attach()).
+            n_snaps = max(1, int(tr["n_snapshots"] or 1))
+            t.snapshots = {f"restored:{i}" for i in range(n_snaps - 1)}
+            t.snapshots.add(t.last_seen or "restored:last")
+            t.id = int(tr["id"])
+            t.state = tr["state"]
+            t.since_seen = int(tr["snapshots_since_seen"] or 0)
+            t.new = False
+            t.members = []
+            t.dirty = False
+            topics.append(t)
             continue
         mem.sort(key=lambda m: m["snapshot_at"])
         first = clusters_by_id[mem[0]["cluster_id"]]

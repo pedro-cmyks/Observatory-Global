@@ -1,4 +1,37 @@
-# Semantic assignment lane — spec (2026-07-04, status: PROPOSED)
+# Semantic assignment lane — spec (2026-07-04, status: SHIPPED — see §Execution)
+
+## Execution status (2026-07-04 night, Day-2 session)
+
+SHIPPED, with three measured deviations from the proposal below:
+
+1. **e5 anchor-cosine FAILED calibration** (the §Threshold-discipline risk was
+   real): pos/neg medians 0.789/0.765, AUC 0.735, cross-fire 3169/3186
+   positives firing foreign anchors. Text-rich anchors do NOT fix the e5
+   headline-space noise floor. → Lane runs in **OpenAI text-embedding-3-small
+   space** (the same space that won the gate bake-off), embedding headlines at
+   pass time (~$0.001/cycle at 1h windows); `signal_embeddings` (e5) is NOT
+   used and the `atlas_topic_anchors` pgvector table was dropped unbuilt.
+2. **Rule is ARGMAX + tau, not absolute cosine** (absolute cross-fires ~100%);
+   and taus are **wild-calibrated** — the gold-corpus floor transfers badly
+   (lexicon-pool base rate 40-80% vs wild ~0; gold taus admitted 29.6% of
+   random corpus). tau_T = wild junk quantile (clearance <= 0.05%/topic),
+   lane ON iff gold recall at that tau >= 0.10 → **24/30 lanes on**
+   (`docs/research/semantic-lane/2026-07-04-tau-sem-wild.md`). Scripts:
+   `calibrate_semantic_lane.py` (engines e5|openai), `sem_lane_wildcheck.py`,
+   `calibrate_tau_wild.py`.
+3. **method='embedding'** (mig-019 CHECK has no 'semantic'), lane identity =
+   `model_version='sem-assign-v0'`.
+
+Live results (first cycle, 6h window): 2.43% wild clearance, 357 candidates,
+gate kept 65 (18.2% vs lexicon 32.4% — sem_assign_report.py is the ledger).
+**Acceptance case hit: election-legitimacy lexicon kept 0/18; semantic lane
+added 2 VERIFIED (Peru Sánchez-IACHR appeal 0.997, Armenia vote-annulment
+court 0.994) and surfaced a literal India-SIR headline into the candidate
+universe.** Cron: runner Step 2b (sem_assign_pass --write + gate --lane
+semantic each 30-min cycle; flag ATLAS_SEM_LANE_ENABLED, config synced to
+~/AtlasLocalWorker/config/). Caveat held honestly: gate features for the
+lane carry matched_terms=0 + confidence=cosine (mild OOD) — keep reading the
+per-lane keep-rates before trusting them as precision.
 
 ## Problem (measured)
 

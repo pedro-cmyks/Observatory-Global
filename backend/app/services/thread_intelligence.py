@@ -24,6 +24,17 @@ THREAD_MODEL_VERSION = "theme-hint-lex-v2"
 V1_COMPAT_ENGINE_VERSION = "v1-compat"
 
 
+def topic_members_engine_version() -> str:
+    """F4 read-path parametrization: which engine_version the topic_members
+    read paths serve. Default stays 'v1-compat' — the F4 cutover is ONE env
+    var (ATLAS_TOPIC_MEMBERS_ENGINE_VERSION=unified-v2) once the A/B + gold
+    gate hold, and reverting is the same var back. Only consulted where
+    ATLAS_SERVE_THREADS_FROM_TOPIC_MEMBERS already routes reads through
+    topic_members; the legacy signal_topic_assignments path ignores it."""
+    v = os.environ.get("ATLAS_TOPIC_MEMBERS_ENGINE_VERSION", "").strip()
+    return v or V1_COMPAT_ENGINE_VERSION
+
+
 def serve_threads_from_topic_members() -> bool:
     """F0.3 read-flag (spec 2026-06-29-atlas-unified-engine §10/§16). When ON,
     the atlas-evidence list path reads the typed `topic_members` table
@@ -1498,7 +1509,7 @@ async def _fetch_threads_with_conn(
             limit,
             topic_slug,
             country_codes or None,
-            V1_COMPAT_ENGINE_VERSION,
+            topic_members_engine_version(),
             timeout=8,
         )
     else:
@@ -2049,7 +2060,7 @@ async def fetch_topic_relationship(
         rows = await conn.fetch(
             _TOPIC_ROLE_COUNTS_SQL,
             topic_id,
-            V1_COMPAT_ENGINE_VERSION,
+            topic_members_engine_version(),
             hours,
             timeout=8,
         )

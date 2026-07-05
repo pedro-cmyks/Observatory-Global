@@ -35,14 +35,22 @@ import numpy as np
 
 BASE = Path("docs/research/atlas-paper/phase-1-validation")
 DEFAULT_GATE = BASE / "models/2026-05-29-scope-gate-v1-e5base.json"
+# Lanes the gate can grade. The semantic lane (sem_assign_pass.py) carries
+# confidence = anchor cosine and no matched_terms — slightly OOD vs the
+# lexicon-trained features (mt=0), so review its first per-topic keep report
+# (sem_assign_report.py) before trusting keep-rates there.
+LANES = {
+    "lexicon": ("lexicon", "theme-hint-lex-v2"),
+    "semantic": ("embedding", "sem-assign-v0"),
+}
 SELECT_SQL = """
     SELECT a.signal_id, a.topic_id, t.slug, t.label,
            s.headline, a.confidence, a.evidence
     FROM signal_topic_assignments a
     JOIN atlas_topics t ON t.id = a.topic_id
     JOIN signals_v2 s   ON s.id = a.signal_id
-    WHERE a.method = 'lexicon'
-      AND a.model_version = 'theme-hint-lex-v2'
+    WHERE a.method = $4::text
+      AND a.model_version = $5::text
       AND s.headline IS NOT NULL
       AND ($1::boolean OR a.gate_score IS NULL)
       AND ($2::int = 0 OR a.assigned_at > NOW() - ($2::int * INTERVAL '1 hour'))
@@ -53,7 +61,7 @@ UPDATE_SQL = """
     UPDATE signal_topic_assignments
        SET gate_score = $3, gate_kept = $4, gate_model = $5
      WHERE signal_id = $1 AND topic_id = $2
-       AND method = 'lexicon' AND model_version = 'theme-hint-lex-v2'
+       AND method = $6::text AND model_version = $7::text
 """
 
 
@@ -181,12 +189,14 @@ async def run(args: argparse.Namespace) -> None:
     print(f"gate {args.gate_id} | encoder {model_name} on {device}"
           + (" | DRY-RUN (no writes)" if args.dry_run else ""), file=sys.stderr)
 
+    method, model_version = LANES[args.lane]
     conn = await asyncpg.connect(db)
     total = 0
     per_topic: dict[str, list[int]] = {}  # slug -> [kept, n] (dry-run report)
     try:
         while True:
-            rows = await conn.fetch(SELECT_SQL, args.rescore, args.window_hours, args.batch)
+            rows = await conn.fetch(SELECT_SQL, args.rescore, args.window_hours,
+                                    args.batch, method, model_version)
             if not rows:
                 break
             texts = [_text_for(model_name, r["headline"], r["label"]) for r in rows]
@@ -197,7 +207,8 @@ async def run(args: argparse.Namespace) -> None:
             scores, kept = _score_and_decide(gate, emb, conf, mt, slugs)
             if not args.dry_run:
                 await conn.executemany(UPDATE_SQL, [
-                    (r["signal_id"], r["topic_id"], float(sc), bool(k), args.gate_id)
+                    (r["signal_id"], r["topic_id"], float(sc), bool(k),
+                     args.gate_id, method, model_version)
                     for r, sc, k in zip(rows, scores, kept)
                 ])
             for slug, k in zip(slugs, kept):
@@ -205,9 +216,10 @@ async def run(args: argparse.Namespace) -> None:
                 agg[0] += int(k); agg[1] += 1
             total += len(rows)
             print(f"  scored {total} (+{len(rows)}, kept {sum(kept)})", file=sys.stderr)
-            if args.rescore or len(rows) < args.batch:
-                if args.rescore:
-                    break
+            if args.rescore or args.dry_run or len(rows) < args.batch:
+                # dry-run must break unconditionally: it writes nothing, so the
+                # next SELECT would return the same unscored rows forever.
+                break
     finally:
         await conn.close()
     out = {"scored": total, "gate_id": args.gate_id, "dry_run": args.dry_run}
@@ -226,6 +238,8 @@ def main() -> None:
     ap.add_argument("--window-hours", type=int, default=0, help="0 = all joinable; else recent window.")
     ap.add_argument("--batch", type=int, default=512)
     ap.add_argument("--rescore", action="store_true", help="Re-score even rows that already have a score.")
+    ap.add_argument("--lane", choices=sorted(LANES), default="lexicon",
+                    help="which candidate lane to grade (lexicon | semantic).")
     ap.add_argument("--dry-run", action="store_true", help="Score + report per-topic keep, but write nothing.")
     args = ap.parse_args()
     asyncio.run(run(args))

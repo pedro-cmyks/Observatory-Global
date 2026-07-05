@@ -1,0 +1,1451 @@
+{
+ "schema": "tau-sem-calibration-v1",
+ "corpus": "/tmp/goldgrowth/mega2-corpus.jsonl",
+ "engine": "e5",
+ "model": "intfloat/multilingual-e5-base",
+ "n_rows": 13663,
+ "n_topics": 30,
+ "n_positive": 3186,
+ "primary_floor": 0.6,
+ "global": {
+  "auc_assigned_pair": 0.7345262791583465,
+  "pos_p50": 0.7892062664031982,
+  "neg_p50": 0.765159547328949,
+  "top1_hits_assigned_pct": 0.47368806265095514,
+  "top1_hits_assigned_pos_pct": 0.7102950408035154
+ },
+ "rules": {
+  "absolute": {
+   "agriculture-crop-risk": {
+    "n_eligible": 630,
+    "n_positive": 286,
+    "auc": 0.7846092860627745,
+    "floors": {
+     "0.5": {
+      "tau": 0.7582985758781433,
+      "precision": 0.5,
+      "recall_eligible": 0.9685314685314685,
+      "kept": 554,
+      "recall_all": 0.9685314685314685
+     },
+     "0.6": {
+      "tau": 0.78024822473526,
+      "precision": 0.6010498687664042,
+      "recall_eligible": 0.8006993006993007,
+      "kept": 381,
+      "recall_all": 0.8006993006993007
+     },
+     "0.7": {
+      "tau": 0.7939582467079163,
+      "precision": 0.7,
+      "recall_eligible": 0.6363636363636364,
+      "kept": 260,
+      "recall_all": 0.6363636363636364
+     }
+    }
+   },
+   "armed-conflict-escalation": {
+    "n_eligible": 338,
+    "n_positive": 172,
+    "auc": 0.7771784813673298,
+    "floors": {
+     "0.5": {
+      "tau": 0.6886040568351746,
+      "precision": 0.5088757396449705,
+      "recall_eligible": 1.0,
+      "kept": 338,
+      "recall_all": 1.0000000000000002
+     },
+     "0.6": {
+      "tau": 0.724141001701355,
+      "precision": 0.6007194244604317,
+      "recall_eligible": 0.9709302325581395,
+      "kept": 278,
+      "recall_all": 0.9709302325581395
+     },
+     "0.7": {
+      "tau": 0.742338240146637,
+      "precision": 0.7023255813953488,
+      "recall_eligible": 0.877906976744186,
+      "kept": 215,
+      "recall_all": 0.877906976744186
+     }
+    }
+   },
+   "constitutional-institutional-crisis": {
+    "n_eligible": 187,
+    "n_positive": 28,
+    "auc": 0.7432614555256065,
+    "floors": {
+     "0.5": null,
+     "0.6": null,
+     "0.7": null
+    }
+   },
+   "corruption-investigation": {
+    "n_eligible": 163,
+    "n_positive": 114,
+    "auc": 0.4781596849266022,
+    "floors": {
+     "0.5": {
+      "tau": 0.7002516388893127,
+      "precision": 0.6993865030674846,
+      "recall_eligible": 1.0,
+      "kept": 163,
+      "recall_all": 1.0
+     },
+     "0.6": {
+      "tau": 0.7002516388893127,
+      "precision": 0.6993865030674846,
+      "recall_eligible": 1.0,
+      "kept": 163,
+      "recall_all": 1.0
+     },
+     "0.7": {
+      "tau": 0.7188888788223267,
+      "precision": 0.7037037037037037,
+      "recall_eligible": 1.0,
+      "kept": 162,
+      "recall_all": 1.0
+     }
+    }
+   },
+   "currency-debt-stress": {
+    "n_eligible": 1708,
+    "n_positive": 299,
+    "auc": 0.8866531684749971,
+    "floors": {
+     "0.5": {
+      "tau": 0.77719646692276,
+      "precision": 0.5,
+      "recall_eligible": 0.7859531772575251,
+      "kept": 470,
+      "recall_all": 0.7859531772575251
+     },
+     "0.6": {
+      "tau": 0.7964391112327576,
+      "precision": 0.6,
+      "recall_eligible": 0.3210702341137124,
+      "kept": 160,
+      "recall_all": 0.3210702341137124
+     },
+     "0.7": {
+      "tau": 0.8185824751853943,
+      "precision": 0.7,
+      "recall_eligible": 0.07023411371237458,
+      "kept": 30,
+      "recall_all": 0.07023411371237458
+     }
+    }
+   },
+   "cyberattack-infrastructure": {
+    "n_eligible": 195,
+    "n_positive": 30,
+    "auc": 0.9026262626262627,
+    "floors": {
+     "0.5": {
+      "tau": 0.791195809841156,
+      "precision": 0.5,
+      "recall_eligible": 0.9,
+      "kept": 54,
+      "recall_all": 0.9
+     },
+     "0.6": {
+      "tau": 0.7993493676185608,
+      "precision": 0.6,
+      "recall_eligible": 0.9,
+      "kept": 45,
+      "recall_all": 0.9
+     },
+     "0.7": {
+      "tau": 0.8294669985771179,
+      "precision": 0.7142857142857143,
+      "recall_eligible": 0.16666666666666666,
+      "kept": 7,
+      "recall_all": 0.16666666666666666
+     }
+    }
+   },
+   "disease-outbreak": {
+    "n_eligible": 305,
+    "n_positive": 275,
+    "auc": 0.6113939393939394,
+    "floors": {
+     "0.5": {
+      "tau": 0.7222400307655334,
+      "precision": 0.9016393442622951,
+      "recall_eligible": 1.0,
+      "kept": 305,
+      "recall_all": 1.0
+     },
+     "0.6": {
+      "tau": 0.7222400307655334,
+      "precision": 0.9016393442622951,
+      "recall_eligible": 1.0,
+      "kept": 305,
+      "recall_all": 1.0
+     },
+     "0.7": {
+      "tau": 0.7222400307655334,
+      "precision": 0.9016393442622951,
+      "recall_eligible": 1.0,
+      "kept": 305,
+      "recall_all": 1.0
+     }
+    }
+   },
+   "disinformation-influence-operation": {
+    "n_eligible": 70,
+    "n_positive": 34,
+    "auc": 0.5694444444444444,
+    "floors": {
+     "0.5": {
+      "tau": 0.7464355826377869,
+      "precision": 0.5,
+      "recall_eligible": 0.8529411764705882,
+      "kept": 58,
+      "recall_all": 0.8529411764705882
+     },
+     "0.6": {
+      "tau": 0.7751976847648621,
+      "precision": 0.6153846153846154,
+      "recall_eligible": 0.47058823529411764,
+      "kept": 26,
+      "recall_all": 0.47058823529411764
+     },
+     "0.7": null
+    }
+   },
+   "election-legitimacy-dispute": {
+    "n_eligible": 1874,
+    "n_positive": 203,
+    "auc": 0.8159681380135785,
+    "floors": {
+     "0.5": {
+      "tau": 0.7937335968017578,
+      "precision": 0.5,
+      "recall_eligible": 0.37438423645320196,
+      "kept": 152,
+      "recall_all": 0.37438423645320196
+     },
+     "0.6": {
+      "tau": 0.8011619448661804,
+      "precision": 0.6,
+      "recall_eligible": 0.2512315270935961,
+      "kept": 85,
+      "recall_all": 0.2512315270935961
+     },
+     "0.7": {
+      "tau": 0.8086839914321899,
+      "precision": 0.7021276595744681,
+      "recall_eligible": 0.1625615763546798,
+      "kept": 47,
+      "recall_all": 0.1625615763546798
+     }
+    }
+   },
+   "energy-grid-instability": {
+    "n_eligible": 99,
+    "n_positive": 33,
+    "auc": 0.6795224977043158,
+    "floors": {
+     "0.5": {
+      "tau": 0.7941065430641174,
+      "precision": 0.5,
+      "recall_eligible": 0.42424242424242425,
+      "kept": 28,
+      "recall_all": 0.42424242424242425
+     },
+     "0.6": {
+      "tau": 0.7985363006591797,
+      "precision": 0.6111111111111112,
+      "recall_eligible": 0.3333333333333333,
+      "kept": 18,
+      "recall_all": 0.3333333333333333
+     },
+     "0.7": {
+      "tau": 0.8039098978042603,
+      "precision": 0.7142857142857143,
+      "recall_eligible": 0.30303030303030304,
+      "kept": 14,
+      "recall_all": 0.30303030303030304
+     }
+    }
+   },
+   "flood-landslide-disaster": {
+    "n_eligible": 317,
+    "n_positive": 106,
+    "auc": 0.9173298757041939,
+    "floors": {
+     "0.5": {
+      "tau": 0.7515522241592407,
+      "precision": 0.5,
+      "recall_eligible": 1.0,
+      "kept": 212,
+      "recall_all": 1.0
+     },
+     "0.6": {
+      "tau": 0.7613241076469421,
+      "precision": 0.6,
+      "recall_eligible": 0.9905660377358491,
+      "kept": 175,
+      "recall_all": 0.9905660377358491
+     },
+     "0.7": {
+      "tau": 0.7714587450027466,
+      "precision": 0.7,
+      "recall_eligible": 0.9245283018867925,
+      "kept": 140,
+      "recall_all": 0.9245283018867925
+     }
+    }
+   },
+   "food-price-stress": {
+    "n_eligible": 61,
+    "n_positive": 45,
+    "auc": 0.4736111111111111,
+    "floors": {
+     "0.5": {
+      "tau": 0.7725171446800232,
+      "precision": 0.7377049180327869,
+      "recall_eligible": 1.0,
+      "kept": 61,
+      "recall_all": 1.0
+     },
+     "0.6": {
+      "tau": 0.7725171446800232,
+      "precision": 0.7377049180327869,
+      "recall_eligible": 1.0,
+      "kept": 61,
+      "recall_all": 1.0
+     },
+     "0.7": {
+      "tau": 0.7725171446800232,
+      "precision": 0.7377049180327869,
+      "recall_eligible": 1.0,
+      "kept": 61,
+      "recall_all": 1.0
+     }
+    }
+   },
+   "forced-displacement": {
+    "n_eligible": 140,
+    "n_positive": 60,
+    "auc": 0.6666666666666666,
+    "floors": {
+     "0.5": {
+      "tau": 0.747542679309845,
+      "precision": 0.5,
+      "recall_eligible": 0.9666666666666667,
+      "kept": 116,
+      "recall_all": 0.9666666666666667
+     },
+     "0.6": {
+      "tau": 0.7698153853416443,
+      "precision": 0.6052631578947368,
+      "recall_eligible": 0.38333333333333336,
+      "kept": 38,
+      "recall_all": 0.38333333333333336
+     },
+     "0.7": {
+      "tau": 0.7742684483528137,
+      "precision": 0.71875,
+      "recall_eligible": 0.38333333333333336,
+      "kept": 32,
+      "recall_all": 0.38333333333333336
+     }
+    }
+   },
+   "fuel-subsidy-unrest": {
+    "n_eligible": 2031,
+    "n_positive": 41,
+    "auc": 0.9009559995097438,
+    "floors": {
+     "0.5": null,
+     "0.6": null,
+     "0.7": null
+    }
+   },
+   "gang-control-urban-security": {
+    "n_eligible": 813,
+    "n_positive": 205,
+    "auc": 0.9152358793324775,
+    "floors": {
+     "0.5": {
+      "tau": 0.7360351085662842,
+      "precision": 0.5,
+      "recall_eligible": 0.9170731707317074,
+      "kept": 376,
+      "recall_all": 0.9170731707317074
+     },
+     "0.6": {
+      "tau": 0.743067741394043,
+      "precision": 0.6,
+      "recall_eligible": 0.848780487804878,
+      "kept": 290,
+      "recall_all": 0.848780487804878
+     },
+     "0.7": {
+      "tau": 0.7501455545425415,
+      "precision": 0.7016806722689075,
+      "recall_eligible": 0.8146341463414634,
+      "kept": 238,
+      "recall_all": 0.8146341463414634
+     }
+    }
+   },
+   "gender-violence-rights": {
+    "n_eligible": 164,
+    "n_positive": 109,
+    "auc": 0.7759799833194329,
+    "floors": {
+     "0.5": {
+      "tau": 0.7144439220428467,
+      "precision": 0.6646341463414634,
+      "recall_eligible": 1.0,
+      "kept": 164,
+      "recall_all": 1.0
+     },
+     "0.6": {
+      "tau": 0.7144439220428467,
+      "precision": 0.6646341463414634,
+      "recall_eligible": 1.0,
+      "kept": 164,
+      "recall_all": 1.0
+     },
+     "0.7": {
+      "tau": 0.7472826838493347,
+      "precision": 0.7032258064516129,
+      "recall_eligible": 1.0,
+      "kept": 155,
+      "recall_all": 1.0
+     }
+    }
+   },
+   "heat-health-risk": {
+    "n_eligible": 167,
+    "n_positive": 116,
+    "auc": 0.7648749154834348,
+    "floors": {
+     "0.5": {
+      "tau": 0.7432804703712463,
+      "precision": 0.6946107784431138,
+      "recall_eligible": 1.0,
+      "kept": 167,
+      "recall_all": 1.0
+     },
+     "0.6": {
+      "tau": 0.7432804703712463,
+      "precision": 0.6946107784431138,
+      "recall_eligible": 1.0,
+      "kept": 167,
+      "recall_all": 1.0
+     },
+     "0.7": {
+      "tau": 0.7624596953392029,
+      "precision": 0.703030303030303,
+      "recall_eligible": 1.0,
+      "kept": 165,
+      "recall_all": 1.0
+     }
+    }
+   },
+   "housing-cost-pressure": {
+    "n_eligible": 303,
+    "n_positive": 131,
+    "auc": 0.9532664654713296,
+    "floors": {
+     "0.5": {
+      "tau": 0.7369028925895691,
+      "precision": 0.5,
+      "recall_eligible": 1.0,
+      "kept": 262,
+      "recall_all": 1.0
+     },
+     "0.6": {
+      "tau": 0.7523170709609985,
+      "precision": 0.6009174311926605,
+      "recall_eligible": 1.0,
+      "kept": 218,
+      "recall_all": 1.0
+     },
+     "0.7": {
+      "tau": 0.765386700630188,
+      "precision": 0.7027027027027027,
+      "recall_eligible": 0.9923664122137404,
+      "kept": 185,
+      "recall_all": 0.9923664122137404
+     }
+    }
+   },
+   "humanitarian-access-conflict": {
+    "n_eligible": 154,
+    "n_positive": 12,
+    "auc": 0.7171361502347418,
+    "floors": {
+     "0.5": {
+      "tau": 0.7974260449409485,
+      "precision": 0.5,
+      "recall_eligible": 0.3333333333333333,
+      "kept": 8,
+      "recall_all": 0.3333333333333333
+     },
+     "0.6": null,
+     "0.7": null
+    }
+   },
+   "labor-strike-disruption": {
+    "n_eligible": 154,
+    "n_positive": 96,
+    "auc": 0.7401221264367817,
+    "floors": {
+     "0.5": {
+      "tau": 0.7099005579948425,
+      "precision": 0.6233766233766234,
+      "recall_eligible": 1.0,
+      "kept": 154,
+      "recall_all": 1.0
+     },
+     "0.6": {
+      "tau": 0.7099005579948425,
+      "precision": 0.6233766233766234,
+      "recall_eligible": 1.0,
+      "kept": 154,
+      "recall_all": 1.0
+     },
+     "0.7": {
+      "tau": 0.7460991740226746,
+      "precision": 0.7022900763358778,
+      "recall_eligible": 0.9583333333333334,
+      "kept": 131,
+      "recall_all": 0.9583333333333334
+     }
+    }
+   },
+   "migration-border-pressure": {
+    "n_eligible": 157,
+    "n_positive": 100,
+    "auc": 0.18578947368421053,
+    "floors": {
+     "0.5": {
+      "tau": 0.7275204062461853,
+      "precision": 0.6369426751592356,
+      "recall_eligible": 1.0,
+      "kept": 157,
+      "recall_all": 1.0
+     },
+     "0.6": {
+      "tau": 0.7275204062461853,
+      "precision": 0.6369426751592356,
+      "recall_eligible": 1.0,
+      "kept": 157,
+      "recall_all": 1.0
+     },
+     "0.7": null
+    }
+   },
+   "mining-royalty-risk": {
+    "n_eligible": 165,
+    "n_positive": 0,
+    "auc": NaN,
+    "floors": {
+     "0.5": null,
+     "0.6": null,
+     "0.7": null
+    }
+   },
+   "oil-gas-supply-risk": {
+    "n_eligible": 715,
+    "n_positive": 190,
+    "auc": 0.7819649122807018,
+    "floors": {
+     "0.5": {
+      "tau": 0.7898300290107727,
+      "precision": 0.5,
+      "recall_eligible": 0.5789473684210527,
+      "kept": 220,
+      "recall_all": 0.5789473684210527
+     },
+     "0.6": {
+      "tau": 0.8002326488494873,
+      "precision": 0.6,
+      "recall_eligible": 0.37894736842105264,
+      "kept": 120,
+      "recall_all": 0.37894736842105264
+     },
+     "0.7": {
+      "tau": 0.8073903322219849,
+      "precision": 0.7023809523809523,
+      "recall_eligible": 0.3105263157894737,
+      "kept": 84,
+      "recall_all": 0.31052631578947365
+     }
+    }
+   },
+   "press-freedom-crackdown": {
+    "n_eligible": 2,
+    "n_positive": 1,
+    "auc": 0.0,
+    "floors": {
+     "0.5": null,
+     "0.6": null,
+     "0.7": null
+    }
+   },
+   "sanctions-diplomatic-pressure": {
+    "n_eligible": 718,
+    "n_positive": 276,
+    "auc": 0.8077660830218375,
+    "floors": {
+     "0.5": {
+      "tau": 0.7608038783073425,
+      "precision": 0.5,
+      "recall_eligible": 0.9420289855072463,
+      "kept": 520,
+      "recall_all": 0.9420289855072463
+     },
+     "0.6": {
+      "tau": 0.7699176669120789,
+      "precision": 0.6004901960784313,
+      "recall_eligible": 0.8876811594202898,
+      "kept": 408,
+      "recall_all": 0.8876811594202898
+     },
+     "0.7": {
+      "tau": 0.7983841896057129,
+      "precision": 0.7013888888888888,
+      "recall_eligible": 0.36594202898550726,
+      "kept": 144,
+      "recall_all": 0.36594202898550726
+     }
+    }
+   },
+   "student-youth-protest": {
+    "n_eligible": 11,
+    "n_positive": 3,
+    "auc": 0.625,
+    "floors": {
+     "0.5": null,
+     "0.6": null,
+     "0.7": null
+    }
+   },
+   "telecom-internet-shutdown": {
+    "n_eligible": 1774,
+    "n_positive": 148,
+    "auc": 0.9233486253781457,
+    "floors": {
+     "0.5": {
+      "tau": 0.7999211549758911,
+      "precision": 0.5,
+      "recall_eligible": 0.6756756756756757,
+      "kept": 200,
+      "recall_all": 0.6756756756756757
+     },
+     "0.6": {
+      "tau": 0.8086140155792236,
+      "precision": 0.6,
+      "recall_eligible": 0.44594594594594594,
+      "kept": 110,
+      "recall_all": 0.44594594594594594
+     },
+     "0.7": {
+      "tau": 0.8173091411590576,
+      "precision": 0.7076923076923077,
+      "recall_eligible": 0.3108108108108108,
+      "kept": 65,
+      "recall_all": 0.3108108108108108
+     }
+    }
+   },
+   "trade-export-restriction": {
+    "n_eligible": 149,
+    "n_positive": 33,
+    "auc": 0.7196969696969697,
+    "floors": {
+     "0.5": null,
+     "0.6": null,
+     "0.7": null
+    }
+   },
+   "transport-corridor-disruption": {
+    "n_eligible": 21,
+    "n_positive": 5,
+    "auc": 0.7875,
+    "floors": {
+     "0.5": {
+      "tau": 0.7883803844451904,
+      "precision": 0.5,
+      "recall_eligible": 0.8,
+      "kept": 8,
+      "recall_all": 0.8
+     },
+     "0.6": {
+      "tau": 0.7904325127601624,
+      "precision": 0.6666666666666666,
+      "recall_eligible": 0.8,
+      "kept": 6,
+      "recall_all": 0.8
+     },
+     "0.7": {
+      "tau": 0.791567862033844,
+      "precision": 0.8,
+      "recall_eligible": 0.8,
+      "kept": 5,
+      "recall_all": 0.8
+     }
+    }
+   },
+   "water-stress-drought": {
+    "n_eligible": 78,
+    "n_positive": 35,
+    "auc": 0.8119601328903654,
+    "floors": {
+     "0.5": {
+      "tau": 0.7697165608406067,
+      "precision": 0.5,
+      "recall_eligible": 1.0,
+      "kept": 70,
+      "recall_all": 1.0
+     },
+     "0.6": {
+      "tau": 0.7816594839096069,
+      "precision": 0.6,
+      "recall_eligible": 0.9428571428571428,
+      "kept": 55,
+      "recall_all": 0.9428571428571428
+     },
+     "0.7": {
+      "tau": 0.7902651429176331,
+      "precision": 0.7111111111111111,
+      "recall_eligible": 0.9142857142857143,
+      "kept": 45,
+      "recall_all": 0.9142857142857143
+     }
+    }
+   }
+  },
+  "argmax": {
+   "agriculture-crop-risk": {
+    "n_eligible": 507,
+    "n_positive": 236,
+    "auc": 0.7862123960222653,
+    "floors": {
+     "0.5": {
+      "tau": 0.7557259202003479,
+      "precision": 0.5,
+      "recall_eligible": 0.9830508474576272,
+      "kept": 464,
+      "recall_all": 0.8111888111888111
+     },
+     "0.6": {
+      "tau": 0.7797009348869324,
+      "precision": 0.6006191950464397,
+      "recall_eligible": 0.8220338983050848,
+      "kept": 323,
+      "recall_all": 0.6783216783216784
+     },
+     "0.7": {
+      "tau": 0.792792022228241,
+      "precision": 0.7004405286343612,
+      "recall_eligible": 0.673728813559322,
+      "kept": 227,
+      "recall_all": 0.5559440559440559
+     }
+    }
+   },
+   "armed-conflict-escalation": {
+    "n_eligible": 24,
+    "n_positive": 22,
+    "auc": 0.25,
+    "floors": {
+     "0.5": {
+      "tau": 0.7467746734619141,
+      "precision": 0.9166666666666666,
+      "recall_eligible": 1.0,
+      "kept": 24,
+      "recall_all": 0.12790697674418605
+     },
+     "0.6": {
+      "tau": 0.7467746734619141,
+      "precision": 0.9166666666666666,
+      "recall_eligible": 1.0,
+      "kept": 24,
+      "recall_all": 0.12790697674418605
+     },
+     "0.7": {
+      "tau": 0.7467746734619141,
+      "precision": 0.9166666666666666,
+      "recall_eligible": 1.0,
+      "kept": 24,
+      "recall_all": 0.12790697674418605
+     }
+    }
+   },
+   "constitutional-institutional-crisis": {
+    "n_eligible": 51,
+    "n_positive": 15,
+    "auc": 0.6111111111111112,
+    "floors": {
+     "0.5": {
+      "tau": 0.7970729470252991,
+      "precision": 0.5,
+      "recall_eligible": 0.2,
+      "kept": 6,
+      "recall_all": 0.10714285714285714
+     },
+     "0.6": null,
+     "0.7": null
+    }
+   },
+   "corruption-investigation": {
+    "n_eligible": 146,
+    "n_positive": 112,
+    "auc": 0.2928046218487395,
+    "floors": {
+     "0.5": {
+      "tau": 0.7529399394989014,
+      "precision": 0.7671232876712328,
+      "recall_eligible": 1.0,
+      "kept": 146,
+      "recall_all": 0.9824561403508771
+     },
+     "0.6": {
+      "tau": 0.7529399394989014,
+      "precision": 0.7671232876712328,
+      "recall_eligible": 1.0,
+      "kept": 146,
+      "recall_all": 0.9824561403508771
+     },
+     "0.7": {
+      "tau": 0.7529399394989014,
+      "precision": 0.7671232876712328,
+      "recall_eligible": 1.0,
+      "kept": 146,
+      "recall_all": 0.9824561403508771
+     }
+    }
+   },
+   "currency-debt-stress": {
+    "n_eligible": 613,
+    "n_positive": 264,
+    "auc": 0.704133020751932,
+    "floors": {
+     "0.5": {
+      "tau": 0.7679674029350281,
+      "precision": 0.5,
+      "recall_eligible": 0.9128787878787878,
+      "kept": 482,
+      "recall_all": 0.8060200668896321
+     },
+     "0.6": {
+      "tau": 0.7840490937232971,
+      "precision": 0.6006825938566553,
+      "recall_eligible": 0.6666666666666666,
+      "kept": 293,
+      "recall_all": 0.5886287625418061
+     },
+     "0.7": {
+      "tau": 0.8181747794151306,
+      "precision": 0.7,
+      "recall_eligible": 0.07954545454545454,
+      "kept": 30,
+      "recall_all": 0.07023411371237458
+     }
+    }
+   },
+   "cyberattack-infrastructure": {
+    "n_eligible": 99,
+    "n_positive": 29,
+    "auc": 0.8482758620689655,
+    "floors": {
+     "0.5": {
+      "tau": 0.789175271987915,
+      "precision": 0.5,
+      "recall_eligible": 0.9310344827586207,
+      "kept": 54,
+      "recall_all": 0.9
+     },
+     "0.6": {
+      "tau": 0.794150173664093,
+      "precision": 0.6,
+      "recall_eligible": 0.9310344827586207,
+      "kept": 45,
+      "recall_all": 0.9
+     },
+     "0.7": {
+      "tau": 0.8006453514099121,
+      "precision": 0.7105263157894737,
+      "recall_eligible": 0.9310344827586207,
+      "kept": 38,
+      "recall_all": 0.9
+     }
+    }
+   },
+   "disease-outbreak": {
+    "n_eligible": 216,
+    "n_positive": 202,
+    "auc": 0.6414427157001414,
+    "floors": {
+     "0.5": {
+      "tau": 0.7281349301338196,
+      "precision": 0.9351851851851852,
+      "recall_eligible": 1.0,
+      "kept": 216,
+      "recall_all": 0.7345454545454545
+     },
+     "0.6": {
+      "tau": 0.7281349301338196,
+      "precision": 0.9351851851851852,
+      "recall_eligible": 1.0,
+      "kept": 216,
+      "recall_all": 0.7345454545454545
+     },
+     "0.7": {
+      "tau": 0.7281349301338196,
+      "precision": 0.9351851851851852,
+      "recall_eligible": 1.0,
+      "kept": 216,
+      "recall_all": 0.7345454545454545
+     }
+    }
+   },
+   "disinformation-influence-operation": {
+    "n_eligible": 20,
+    "n_positive": 14,
+    "auc": 0.5,
+    "floors": {
+     "0.5": {
+      "tau": 0.7572456002235413,
+      "precision": 0.7,
+      "recall_eligible": 1.0,
+      "kept": 20,
+      "recall_all": 0.4117647058823529
+     },
+     "0.6": {
+      "tau": 0.7572456002235413,
+      "precision": 0.7,
+      "recall_eligible": 1.0,
+      "kept": 20,
+      "recall_all": 0.4117647058823529
+     },
+     "0.7": {
+      "tau": 0.7572456002235413,
+      "precision": 0.7,
+      "recall_eligible": 1.0,
+      "kept": 20,
+      "recall_all": 0.4117647058823529
+     }
+    }
+   },
+   "election-legitimacy-dispute": {
+    "n_eligible": 1113,
+    "n_positive": 177,
+    "auc": 0.7806569607417065,
+    "floors": {
+     "0.5": {
+      "tau": 0.7927875518798828,
+      "precision": 0.5,
+      "recall_eligible": 0.4180790960451977,
+      "kept": 148,
+      "recall_all": 0.3645320197044335
+     },
+     "0.6": {
+      "tau": 0.8008748292922974,
+      "precision": 0.6046511627906976,
+      "recall_eligible": 0.2937853107344633,
+      "kept": 86,
+      "recall_all": 0.2561576354679803
+     },
+     "0.7": {
+      "tau": 0.807249128818512,
+      "precision": 0.7115384615384616,
+      "recall_eligible": 0.20903954802259886,
+      "kept": 52,
+      "recall_all": 0.18226600985221675
+     }
+    }
+   },
+   "energy-grid-instability": {
+    "n_eligible": 37,
+    "n_positive": 21,
+    "auc": 0.7321428571428571,
+    "floors": {
+     "0.5": {
+      "tau": 0.724107563495636,
+      "precision": 0.5675675675675675,
+      "recall_eligible": 1.0,
+      "kept": 37,
+      "recall_all": 0.6363636363636364
+     },
+     "0.6": {
+      "tau": 0.7538045644760132,
+      "precision": 0.6,
+      "recall_eligible": 1.0,
+      "kept": 35,
+      "recall_all": 0.6363636363636364
+     },
+     "0.7": {
+      "tau": 0.7771255970001221,
+      "precision": 0.7037037037037037,
+      "recall_eligible": 0.9047619047619048,
+      "kept": 27,
+      "recall_all": 0.5757575757575758
+     }
+    }
+   },
+   "flood-landslide-disaster": {
+    "n_eligible": 112,
+    "n_positive": 98,
+    "auc": 0.564868804664723,
+    "floors": {
+     "0.5": {
+      "tau": 0.7428345084190369,
+      "precision": 0.875,
+      "recall_eligible": 1.0,
+      "kept": 112,
+      "recall_all": 0.9245283018867925
+     },
+     "0.6": {
+      "tau": 0.7428345084190369,
+      "precision": 0.875,
+      "recall_eligible": 1.0,
+      "kept": 112,
+      "recall_all": 0.9245283018867925
+     },
+     "0.7": {
+      "tau": 0.7428345084190369,
+      "precision": 0.875,
+      "recall_eligible": 1.0,
+      "kept": 112,
+      "recall_all": 0.9245283018867925
+     }
+    }
+   },
+   "food-price-stress": {
+    "n_eligible": 55,
+    "n_positive": 41,
+    "auc": 0.46689895470383275,
+    "floors": {
+     "0.5": {
+      "tau": 0.7725171446800232,
+      "precision": 0.7454545454545455,
+      "recall_eligible": 1.0,
+      "kept": 55,
+      "recall_all": 0.9111111111111111
+     },
+     "0.6": {
+      "tau": 0.7725171446800232,
+      "precision": 0.7454545454545455,
+      "recall_eligible": 1.0,
+      "kept": 55,
+      "recall_all": 0.9111111111111111
+     },
+     "0.7": {
+      "tau": 0.7725171446800232,
+      "precision": 0.7454545454545455,
+      "recall_eligible": 1.0,
+      "kept": 55,
+      "recall_all": 0.9111111111111111
+     }
+    }
+   },
+   "forced-displacement": {
+    "n_eligible": 11,
+    "n_positive": 7,
+    "auc": 0.7142857142857143,
+    "floors": {
+     "0.5": {
+      "tau": 0.7393180727958679,
+      "precision": 0.6363636363636364,
+      "recall_eligible": 1.0,
+      "kept": 11,
+      "recall_all": 0.11666666666666667
+     },
+     "0.6": {
+      "tau": 0.7393180727958679,
+      "precision": 0.6363636363636364,
+      "recall_eligible": 1.0,
+      "kept": 11,
+      "recall_all": 0.11666666666666667
+     },
+     "0.7": {
+      "tau": 0.762091338634491,
+      "precision": 0.7,
+      "recall_eligible": 1.0,
+      "kept": 10,
+      "recall_all": 0.11666666666666667
+     }
+    }
+   },
+   "fuel-subsidy-unrest": {
+    "n_eligible": 1465,
+    "n_positive": 39,
+    "auc": 0.8955299025425253,
+    "floors": {
+     "0.5": {
+      "tau": 0.8529147505760193,
+      "precision": 0.5,
+      "recall_eligible": 0.1282051282051282,
+      "kept": 10,
+      "recall_all": 0.12195121951219512
+     },
+     "0.6": null,
+     "0.7": null
+    }
+   },
+   "gang-control-urban-security": {
+    "n_eligible": 55,
+    "n_positive": 45,
+    "auc": 0.7244444444444444,
+    "floors": {
+     "0.5": {
+      "tau": 0.7362056374549866,
+      "precision": 0.8181818181818182,
+      "recall_eligible": 1.0,
+      "kept": 55,
+      "recall_all": 0.21951219512195122
+     },
+     "0.6": {
+      "tau": 0.7362056374549866,
+      "precision": 0.8181818181818182,
+      "recall_eligible": 1.0,
+      "kept": 55,
+      "recall_all": 0.21951219512195122
+     },
+     "0.7": {
+      "tau": 0.7362056374549866,
+      "precision": 0.8181818181818182,
+      "recall_eligible": 1.0,
+      "kept": 55,
+      "recall_all": 0.21951219512195122
+     }
+    }
+   },
+   "gender-violence-rights": {
+    "n_eligible": 127,
+    "n_positive": 108,
+    "auc": 0.5687134502923976,
+    "floors": {
+     "0.5": {
+      "tau": 0.7301304340362549,
+      "precision": 0.8503937007874016,
+      "recall_eligible": 1.0,
+      "kept": 127,
+      "recall_all": 0.9908256880733946
+     },
+     "0.6": {
+      "tau": 0.7301304340362549,
+      "precision": 0.8503937007874016,
+      "recall_eligible": 1.0,
+      "kept": 127,
+      "recall_all": 0.9908256880733946
+     },
+     "0.7": {
+      "tau": 0.7301304340362549,
+      "precision": 0.8503937007874016,
+      "recall_eligible": 1.0,
+      "kept": 127,
+      "recall_all": 0.9908256880733946
+     }
+    }
+   },
+   "heat-health-risk": {
+    "n_eligible": 156,
+    "n_positive": 113,
+    "auc": 0.7429512245317966,
+    "floors": {
+     "0.5": {
+      "tau": 0.7624596953392029,
+      "precision": 0.7243589743589743,
+      "recall_eligible": 1.0,
+      "kept": 156,
+      "recall_all": 0.9741379310344828
+     },
+     "0.6": {
+      "tau": 0.7624596953392029,
+      "precision": 0.7243589743589743,
+      "recall_eligible": 1.0,
+      "kept": 156,
+      "recall_all": 0.9741379310344828
+     },
+     "0.7": {
+      "tau": 0.7624596953392029,
+      "precision": 0.7243589743589743,
+      "recall_eligible": 1.0,
+      "kept": 156,
+      "recall_all": 0.9741379310344828
+     }
+    }
+   },
+   "housing-cost-pressure": {
+    "n_eligible": 168,
+    "n_positive": 128,
+    "auc": 0.8853515625,
+    "floors": {
+     "0.5": {
+      "tau": 0.7385146021842957,
+      "precision": 0.7619047619047619,
+      "recall_eligible": 1.0,
+      "kept": 168,
+      "recall_all": 0.9770992366412213
+     },
+     "0.6": {
+      "tau": 0.7385146021842957,
+      "precision": 0.7619047619047619,
+      "recall_eligible": 1.0,
+      "kept": 168,
+      "recall_all": 0.9770992366412213
+     },
+     "0.7": {
+      "tau": 0.7385146021842957,
+      "precision": 0.7619047619047619,
+      "recall_eligible": 1.0,
+      "kept": 168,
+      "recall_all": 0.9770992366412213
+     }
+    }
+   },
+   "humanitarian-access-conflict": {
+    "n_eligible": 33,
+    "n_positive": 6,
+    "auc": 0.7962962962962963,
+    "floors": {
+     "0.5": {
+      "tau": 0.7974260449409485,
+      "precision": 0.5,
+      "recall_eligible": 0.5,
+      "kept": 6,
+      "recall_all": 0.25
+     },
+     "0.6": {
+      "tau": 0.7980585098266602,
+      "precision": 0.6,
+      "recall_eligible": 0.5,
+      "kept": 5,
+      "recall_all": 0.25
+     },
+     "0.7": null
+    }
+   },
+   "labor-strike-disruption": {
+    "n_eligible": 42,
+    "n_positive": 36,
+    "auc": 0.4398148148148148,
+    "floors": {
+     "0.5": {
+      "tau": 0.7478911876678467,
+      "precision": 0.8571428571428571,
+      "recall_eligible": 1.0,
+      "kept": 42,
+      "recall_all": 0.375
+     },
+     "0.6": {
+      "tau": 0.7478911876678467,
+      "precision": 0.8571428571428571,
+      "recall_eligible": 1.0,
+      "kept": 42,
+      "recall_all": 0.375
+     },
+     "0.7": {
+      "tau": 0.7478911876678467,
+      "precision": 0.8571428571428571,
+      "recall_eligible": 1.0,
+      "kept": 42,
+      "recall_all": 0.375
+     }
+    }
+   },
+   "migration-border-pressure": {
+    "n_eligible": 61,
+    "n_positive": 25,
+    "auc": 0.035555555555555556,
+    "floors": {
+     "0.5": null,
+     "0.6": null,
+     "0.7": null
+    }
+   },
+   "mining-royalty-risk": {
+    "n_eligible": 86,
+    "n_positive": 0,
+    "auc": NaN,
+    "floors": {
+     "0.5": null,
+     "0.6": null,
+     "0.7": null
+    }
+   },
+   "oil-gas-supply-risk": {
+    "n_eligible": 387,
+    "n_positive": 155,
+    "auc": 0.6774193548387096,
+    "floors": {
+     "0.5": {
+      "tau": 0.7824227809906006,
+      "precision": 0.5,
+      "recall_eligible": 0.7548387096774194,
+      "kept": 234,
+      "recall_all": 0.6157894736842106
+     },
+     "0.6": {
+      "tau": 0.8002326488494873,
+      "precision": 0.6019417475728155,
+      "recall_eligible": 0.4,
+      "kept": 103,
+      "recall_all": 0.32631578947368417
+     },
+     "0.7": {
+      "tau": 0.808588445186615,
+      "precision": 0.7083333333333334,
+      "recall_eligible": 0.32903225806451614,
+      "kept": 72,
+      "recall_all": 0.26842105263157895
+     }
+    }
+   },
+   "press-freedom-crackdown": {
+    "n_eligible": 2,
+    "n_positive": 1,
+    "auc": 0.0,
+    "floors": {
+     "0.5": null,
+     "0.6": null,
+     "0.7": null
+    }
+   },
+   "sanctions-diplomatic-pressure": {
+    "n_eligible": 364,
+    "n_positive": 172,
+    "auc": 0.7209907945736435,
+    "floors": {
+     "0.5": {
+      "tau": 0.7545972466468811,
+      "precision": 0.5,
+      "recall_eligible": 0.9651162790697675,
+      "kept": 332,
+      "recall_all": 0.6014492753623188
+     },
+     "0.6": {
+      "tau": 0.7699176669120789,
+      "precision": 0.6007751937984496,
+      "recall_eligible": 0.9011627906976745,
+      "kept": 258,
+      "recall_all": 0.5615942028985508
+     },
+     "0.7": {
+      "tau": 0.8095104694366455,
+      "precision": 0.7068965517241379,
+      "recall_eligible": 0.23837209302325582,
+      "kept": 58,
+      "recall_all": 0.14855072463768115
+     }
+    }
+   },
+   "student-youth-protest": {
+    "n_eligible": 2,
+    "n_positive": 1,
+    "auc": 0.0,
+    "floors": {
+     "0.5": null,
+     "0.6": null,
+     "0.7": null
+    }
+   },
+   "telecom-internet-shutdown": {
+    "n_eligible": 368,
+    "n_positive": 138,
+    "auc": 0.847763074984247,
+    "floors": {
+     "0.5": {
+      "tau": 0.7775683403015137,
+      "precision": 0.5,
+      "recall_eligible": 0.9637681159420289,
+      "kept": 266,
+      "recall_all": 0.8986486486486487
+     },
+     "0.6": {
+      "tau": 0.7904565930366516,
+      "precision": 0.6010362694300518,
+      "recall_eligible": 0.8405797101449275,
+      "kept": 193,
+      "recall_all": 0.7837837837837838
+     },
+     "0.7": {
+      "tau": 0.7977029085159302,
+      "precision": 0.7013888888888888,
+      "recall_eligible": 0.7318840579710145,
+      "kept": 144,
+      "recall_all": 0.6824324324324325
+     }
+    }
+   },
+   "trade-export-restriction": {
+    "n_eligible": 87,
+    "n_positive": 31,
+    "auc": 0.7707373271889401,
+    "floors": {
+     "0.5": {
+      "tau": 0.7809733152389526,
+      "precision": 0.5,
+      "recall_eligible": 0.9032258064516129,
+      "kept": 56,
+      "recall_all": 0.8484848484848485
+     },
+     "0.6": {
+      "tau": 0.7884072065353394,
+      "precision": 0.6,
+      "recall_eligible": 0.8709677419354839,
+      "kept": 45,
+      "recall_all": 0.8181818181818182
+     },
+     "0.7": null
+    }
+   },
+   "transport-corridor-disruption": {
+    "n_eligible": 4,
+    "n_positive": 2,
+    "auc": 1.0,
+    "floors": {
+     "0.5": null,
+     "0.6": null,
+     "0.7": null
+    }
+   },
+   "water-stress-drought": {
+    "n_eligible": 61,
+    "n_positive": 25,
+    "auc": 0.8588888888888889,
+    "floors": {
+     "0.5": {
+      "tau": 0.7775067090988159,
+      "precision": 0.5,
+      "recall_eligible": 0.96,
+      "kept": 48,
+      "recall_all": 0.6857142857142857
+     },
+     "0.6": {
+      "tau": 0.7837961912155151,
+      "precision": 0.6,
+      "recall_eligible": 0.96,
+      "kept": 40,
+      "recall_all": 0.6857142857142857
+     },
+     "0.7": {
+      "tau": 0.7902651429176331,
+      "precision": 0.7058823529411765,
+      "recall_eligible": 0.96,
+      "kept": 34,
+      "recall_all": 0.6857142857142857
+     }
+    }
+   }
+  }
+ },
+ "crossfire_absolute": {
+  "n_positive": 3186,
+  "rows_firing_foreign": 3169
+ },
+ "skipped_topics": [],
+ "caveat": "gold corpus is a lexicon-biased sample; precision here is an upper bound for wild-corpus candidate generation"
+}

@@ -1,0 +1,314 @@
+{
+ "schema": "tau-sem-wild-calibration-v0",
+ "model": "text-embedding-3-small",
+ "rule": "argmax",
+ "corpus": "/tmp/goldgrowth/mega2-corpus.jsonl",
+ "n_gold": 13663,
+ "n_wild": 2000,
+ "max_wild_fp": 1,
+ "min_recall": 0.1,
+ "lanes_on": 24,
+ "per_topic": {
+  "agriculture-crop-risk": {
+   "tau": 0.3156,
+   "n_positive": 286,
+   "recall_at_tau": 0.573,
+   "caught": 164,
+   "gold_precision_at_tau": 0.829,
+   "wild_routed": 36,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "armed-conflict-escalation": {
+   "tau": 0.258,
+   "n_positive": 172,
+   "recall_at_tau": 0.076,
+   "caught": 13,
+   "gold_precision_at_tau": 0.333,
+   "wild_routed": 46,
+   "wild_cleared_at_tau": 1,
+   "lane_on": false
+  },
+  "constitutional-institutional-crisis": {
+   "tau": 0.2943,
+   "n_positive": 28,
+   "recall_at_tau": 0.464,
+   "caught": 13,
+   "gold_precision_at_tau": 0.667,
+   "wild_routed": 58,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "corruption-investigation": {
+   "tau": 0.3378,
+   "n_positive": 114,
+   "recall_at_tau": 0.825,
+   "caught": 94,
+   "gold_precision_at_tau": 0.71,
+   "wild_routed": 177,
+   "wild_cleared_at_tau": 0,
+   "lane_on": true
+  },
+  "currency-debt-stress": {
+   "tau": 0.3484,
+   "n_positive": 299,
+   "recall_at_tau": 0.157,
+   "caught": 47,
+   "gold_precision_at_tau": 0.511,
+   "wild_routed": 85,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "cyberattack-infrastructure": {
+   "tau": 0.3126,
+   "n_positive": 30,
+   "recall_at_tau": 0.8,
+   "caught": 24,
+   "gold_precision_at_tau": 0.35,
+   "wild_routed": 28,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "disease-outbreak": {
+   "tau": 0.3409,
+   "n_positive": 275,
+   "recall_at_tau": 0.356,
+   "caught": 98,
+   "gold_precision_at_tau": 0.884,
+   "wild_routed": 48,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "disinformation-influence-operation": {
+   "tau": 0.2428,
+   "n_positive": 34,
+   "recall_at_tau": 0.559,
+   "caught": 19,
+   "gold_precision_at_tau": 0.457,
+   "wild_routed": 38,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "election-legitimacy-dispute": {
+   "tau": 0.2789,
+   "n_positive": 203,
+   "recall_at_tau": 0.567,
+   "caught": 115,
+   "gold_precision_at_tau": 0.474,
+   "wild_routed": 54,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "energy-grid-instability": {
+   "tau": 0.2384,
+   "n_positive": 33,
+   "recall_at_tau": 0.848,
+   "caught": 28,
+   "gold_precision_at_tau": 0.074,
+   "wild_routed": 11,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "flood-landslide-disaster": {
+   "tau": 0.3445,
+   "n_positive": 106,
+   "recall_at_tau": 0.34,
+   "caught": 36,
+   "gold_precision_at_tau": 0.9,
+   "wild_routed": 69,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "food-price-stress": {
+   "tau": 0.331,
+   "n_positive": 45,
+   "recall_at_tau": 0.822,
+   "caught": 37,
+   "gold_precision_at_tau": 0.393,
+   "wild_routed": 59,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "forced-displacement": {
+   "tau": 0.1634,
+   "n_positive": 60,
+   "recall_at_tau": 0.133,
+   "caught": 8,
+   "gold_precision_at_tau": 0.481,
+   "wild_routed": 17,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "fuel-subsidy-unrest": {
+   "tau": 0.3371,
+   "n_positive": 41,
+   "recall_at_tau": 0.951,
+   "caught": 39,
+   "gold_precision_at_tau": 0.075,
+   "wild_routed": 137,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "gang-control-urban-security": {
+   "tau": 0.2555,
+   "n_positive": 205,
+   "recall_at_tau": 0.522,
+   "caught": 107,
+   "gold_precision_at_tau": 0.829,
+   "wild_routed": 35,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "gender-violence-rights": {
+   "tau": 0.3177,
+   "n_positive": 109,
+   "recall_at_tau": 0.028,
+   "caught": 3,
+   "gold_precision_at_tau": 0.6,
+   "wild_routed": 56,
+   "wild_cleared_at_tau": 1,
+   "lane_on": false
+  },
+  "heat-health-risk": {
+   "tau": 0.5034,
+   "n_positive": 116,
+   "recall_at_tau": 0.112,
+   "caught": 13,
+   "gold_precision_at_tau": 0.929,
+   "wild_routed": 122,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "housing-cost-pressure": {
+   "tau": 0.3385,
+   "n_positive": 131,
+   "recall_at_tau": 0.824,
+   "caught": 108,
+   "gold_precision_at_tau": 0.794,
+   "wild_routed": 111,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "humanitarian-access-conflict": {
+   "tau": 0.3446,
+   "n_positive": 12,
+   "recall_at_tau": 0.417,
+   "caught": 5,
+   "gold_precision_at_tau": 0.913,
+   "wild_routed": 81,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "labor-strike-disruption": {
+   "tau": 0.2965,
+   "n_positive": 96,
+   "recall_at_tau": 0.271,
+   "caught": 26,
+   "gold_precision_at_tau": 0.614,
+   "wild_routed": 22,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "migration-border-pressure": {
+   "tau": 0.3432,
+   "n_positive": 100,
+   "recall_at_tau": 0.75,
+   "caught": 75,
+   "gold_precision_at_tau": 0.569,
+   "wild_routed": 101,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "mining-royalty-risk": {
+   "tau": 0.2687,
+   "n_positive": 0,
+   "recall_at_tau": 0.0,
+   "caught": 0,
+   "gold_precision_at_tau": 0.044,
+   "wild_routed": 80,
+   "wild_cleared_at_tau": 1,
+   "lane_on": false
+  },
+  "oil-gas-supply-risk": {
+   "tau": 0.3227,
+   "n_positive": 190,
+   "recall_at_tau": 0.658,
+   "caught": 125,
+   "gold_precision_at_tau": 0.432,
+   "wild_routed": 35,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "press-freedom-crackdown": {
+   "tau": 0.3543,
+   "n_positive": 1,
+   "recall_at_tau": 1.0,
+   "caught": 1,
+   "gold_precision_at_tau": 0.062,
+   "wild_routed": 90,
+   "wild_cleared_at_tau": 1,
+   "lane_on": false
+  },
+  "sanctions-diplomatic-pressure": {
+   "tau": 0.336,
+   "n_positive": 276,
+   "recall_at_tau": 0.587,
+   "caught": 162,
+   "gold_precision_at_tau": 0.806,
+   "wild_routed": 83,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "student-youth-protest": {
+   "tau": 0.3417,
+   "n_positive": 3,
+   "recall_at_tau": 0.333,
+   "caught": 1,
+   "gold_precision_at_tau": 0.2,
+   "wild_routed": 86,
+   "wild_cleared_at_tau": 1,
+   "lane_on": false
+  },
+  "telecom-internet-shutdown": {
+   "tau": 0.274,
+   "n_positive": 148,
+   "recall_at_tau": 0.892,
+   "caught": 132,
+   "gold_precision_at_tau": 0.368,
+   "wild_routed": 49,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "trade-export-restriction": {
+   "tau": 0.2728,
+   "n_positive": 33,
+   "recall_at_tau": 0.848,
+   "caught": 28,
+   "gold_precision_at_tau": 0.433,
+   "wild_routed": 53,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  },
+  "transport-corridor-disruption": {
+   "tau": 0.3067,
+   "n_positive": 5,
+   "recall_at_tau": 0.2,
+   "caught": 1,
+   "gold_precision_at_tau": 0.077,
+   "wild_routed": 100,
+   "wild_cleared_at_tau": 1,
+   "lane_on": false
+  },
+  "water-stress-drought": {
+   "tau": 0.3342,
+   "n_positive": 35,
+   "recall_at_tau": 0.629,
+   "caught": 22,
+   "gold_precision_at_tau": 0.781,
+   "wild_routed": 33,
+   "wild_cleared_at_tau": 1,
+   "lane_on": true
+  }
+ },
+ "note": "tau set by wild junk quantile (base-rate-honest); recall is gold argmax-recall at that tau; gold_precision is measured on lexicon hard negatives (upper bound irrelevant here \u2014 wild junk density is the binding constraint)."
+}

@@ -1,0 +1,1169 @@
+{
+ "schema": "sem-lane-wildcheck-v0",
+ "n_sampled": 2000,
+ "hours": 48,
+ "n_cleared": 593,
+ "clearance_rate": 0.2965,
+ "cleared_already_assigned": 63,
+ "cleared_new_candidates": 530,
+ "per_topic": {
+  "agriculture-crop-risk": {
+   "cleared": 10,
+   "examples": [
+    {
+     "headline": "SAF, Nevi (FI): \"Diversificazione agricola e biocarburanti per aumentare introiti degli agricoltori\"",
+     "sim": 0.297,
+     "lang": "xx",
+     "cc": "IT",
+     "already_assigned": true
+    },
+    {
+     "headline": "Farmer feels lucky to be alive after semi rear-ended his tractor at high speed",
+     "sim": 0.234,
+     "lang": "en",
+     "cc": "CA",
+     "already_assigned": false
+    },
+    {
+     "headline": "Fire guts herbal market, destroys goods worth millions",
+     "sim": 0.257,
+     "lang": "en",
+     "cc": "NG",
+     "already_assigned": false
+    },
+    {
+     "headline": "Arup Baisya | Economic and Political Weekly",
+     "sim": 0.256,
+     "lang": "en",
+     "cc": "IN",
+     "already_assigned": false
+    },
+    {
+     "headline": "July 3 Closing Commodity Prices",
+     "sim": 0.264,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": false
+    },
+    {
+     "headline": "Clima folle, lotta avanzata nei campi: \"Alt Ogm, s&#xEC; all'evoluzione assistita. Piante a prova di caldo e malattie\"",
+     "sim": 0.278,
+     "lang": "xx",
+     "cc": "IT",
+     "already_assigned": false
+    },
+    {
+     "headline": "Winter raises greenhouse production costs in southern Brazil",
+     "sim": 0.265,
+     "lang": "en",
+     "cc": "BR",
+     "already_assigned": false
+    },
+    {
+     "headline": "What, when and how much to harvest as we enter summer | Belleville Intelligencer",
+     "sim": 0.271,
+     "lang": "en",
+     "cc": "CA",
+     "already_assigned": true
+    }
+   ]
+  },
+  "armed-conflict-escalation": {
+   "cleared": 37,
+   "examples": [
+    {
+     "headline": "Fim da escala 6X1 &#xE9; avan&#xE7;o civilizat&#xF3;rio",
+     "sim": 0.143,
+     "lang": "xx",
+     "cc": "BR",
+     "already_assigned": false
+    },
+    {
+     "headline": "RAF flying aces paint the sky red, white and blue for America's 250th birthday",
+     "sim": 0.152,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": false
+    },
+    {
+     "headline": "\u041d\u0430\u0434 \u041b\u0435\u043d\u0438\u043d\u0433\u0440\u0430\u0434\u0441\u043a\u043e\u0439 \u043e\u0431\u043b\u0430\u0441\u0442\u044c\u044e \u0441\u0431\u0438\u043b\u0438 \u0434\u0432\u0430 \u0411\u041f\u041b\u0410",
+     "sim": 0.152,
+     "lang": "ru",
+     "cc": "RU",
+     "already_assigned": false
+    },
+    {
+     "headline": "Az&#x259;rbaycanl&#x131; f&#x259;allar acl&#x131;q eyl&#x259;mini dayand&#x131;r&#x131;blar",
+     "sim": 0.136,
+     "lang": "xx",
+     "cc": "AJ",
+     "already_assigned": true
+    },
+    {
+     "headline": "oh yeah jett also got his first ever reference for artfight that i finished the other day #art #oc",
+     "sim": 0.13,
+     "lang": "en",
+     "cc": "XX",
+     "already_assigned": false
+    },
+    {
+     "headline": "&#x130;zmir'de iki grup aras&#x131;nda silahl&#x131; kavga: Yaral&#x131;lar var!",
+     "sim": 0.217,
+     "lang": "xx",
+     "cc": "TR",
+     "already_assigned": false
+    },
+    {
+     "headline": "&#xA1;Ataque de misil Exocet por estribor!",
+     "sim": 0.21,
+     "lang": "xx",
+     "cc": "AR",
+     "already_assigned": false
+    },
+    {
+     "headline": "While not apposed to doing what is necessary,\n\n25,000 Americans died in the American Revolution.\n\nOver 650,000 Americans, Slaves and other \u201c",
+     "sim": 0.216,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": false
+    }
+   ]
+  },
+  "constitutional-institutional-crisis": {
+   "cleared": 2,
+   "examples": [
+    {
+     "headline": "From Public Flogging to Flock Cameras: How the U.S. Justice System Evolved Over 250 Years [list of books as a syllabus]",
+     "sim": 0.281,
+     "lang": "en",
+     "cc": "XX",
+     "already_assigned": false
+    },
+    {
+     "headline": "Kaloum : petites tensions pendant l'installation de l'ex&#xE9;cutif communal",
+     "sim": 0.284,
+     "lang": "xx",
+     "cc": "GN",
+     "already_assigned": false
+    }
+   ]
+  },
+  "corruption-investigation": {
+   "cleared": 61,
+   "examples": [
+    {
+     "headline": "Texas Attorney General launches investigation into StubHub amid World Cup complaints",
+     "sim": 0.285,
+     "lang": "en",
+     "cc": "SG",
+     "already_assigned": false
+    },
+    {
+     "headline": "Waterford Fianna F&#xE1;il councillor backs Bill Kenneally party probe",
+     "sim": 0.289,
+     "lang": "en",
+     "cc": "IE",
+     "already_assigned": false
+    },
+    {
+     "headline": "Class Action Filed Against Helen of Troy Limited (HELE) Over Securities ...",
+     "sim": 0.217,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": false
+    },
+    {
+     "headline": "Premier's pol-sec lodges police report over alleged defamatory Facebook post",
+     "sim": 0.249,
+     "lang": "en",
+     "cc": "MY",
+     "already_assigned": false
+    },
+    {
+     "headline": "Skarb&#xF3;wka wysy&#x142;a listy. Dowodem materia&#x142;y z kamer",
+     "sim": 0.204,
+     "lang": "xx",
+     "cc": "PL",
+     "already_assigned": false
+    },
+    {
+     "headline": "Scrutiny never more important than at this session at Holyrood",
+     "sim": 0.258,
+     "lang": "en",
+     "cc": "GB",
+     "already_assigned": false
+    },
+    {
+     "headline": "Thai police detain man to facilitate the investigation into Tak Bai bomb blast",
+     "sim": 0.232,
+     "lang": "en",
+     "cc": "TH",
+     "already_assigned": true
+    },
+    {
+     "headline": "Lo detienen municipales con \"cristal\" en la Luis Fuentes Mares",
+     "sim": 0.21,
+     "lang": "xx",
+     "cc": "SE",
+     "already_assigned": false
+    }
+   ]
+  },
+  "cyberattack-infrastructure": {
+   "cleared": 1,
+   "examples": [
+    {
+     "headline": "Cyber Hack podcast back with investigation into the infamous Conti Ransomware Gang",
+     "sim": 0.477,
+     "lang": "en",
+     "cc": "RU",
+     "already_assigned": true
+    }
+   ]
+  },
+  "disease-outbreak": {
+   "cleared": 16,
+   "examples": [
+    {
+     "headline": "Le m&#xE9;decin arriv&#xE9; de Kinshasa gu&#xE9;ri apr&#xE8;s son hospitalisation en France pour Ebola",
+     "sim": 0.202,
+     "lang": "xx",
+     "cc": "CD",
+     "already_assigned": true
+    },
+    {
+     "headline": "Bundibugyo Ebola toll hits 454 as Congo outbreak spreads",
+     "sim": 0.306,
+     "lang": "en",
+     "cc": "CD",
+     "already_assigned": false
+    },
+    {
+     "headline": "Fentanyl: ispezioni all'ospedale Israelitico a Roma, il rischio dei registri non aggiornati",
+     "sim": 0.2,
+     "lang": "xx",
+     "cc": "IT",
+     "already_assigned": false
+    },
+    {
+     "headline": "TV Schedule: What To Watch The Week Of July 5, 2026 &#x2014; New Shows & Movies",
+     "sim": 0.197,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": false
+    },
+    {
+     "headline": "India Adds Record 709 Animal Species in 2025 as Kerala, West Bengal Lead New Discoveries",
+     "sim": 0.221,
+     "lang": "en",
+     "cc": "IN",
+     "already_assigned": true
+    },
+    {
+     "headline": "The FDA Just Approved Medical Maggots for Wound Care. Here's What That Means for Medicine.",
+     "sim": 0.198,
+     "lang": "en",
+     "cc": "AU",
+     "already_assigned": false
+    },
+    {
+     "headline": "#ResidentEvil2\u200b #ResidentEvil\u200b #RE2\u200b #RetroGaming\u200b #GamingShorts\u200b #FunnyGaming\u200b #ChaosGaming\u200b #SurvivalHorror\u200b #LeonSKennedy\u200b #GamingMemes\u200b ",
+     "sim": 0.221,
+     "lang": "en",
+     "cc": "XX",
+     "already_assigned": false
+    },
+    {
+     "headline": "Chester County reports 2 measles cases in Pa. outbreak",
+     "sim": 0.308,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": true
+    }
+   ]
+  },
+  "disinformation-influence-operation": {
+   "cleared": 35,
+   "examples": [
+    {
+     "headline": "Don't believe anything until Trump says it's FAKE. Or a HOAX.",
+     "sim": 0.283,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": false
+    },
+    {
+     "headline": "&#x625;&#x639;&#x644;&#x627;&#x645;&#x64A;&#x629; &#x645;&#x635;&#x631;&#x64A;&#x629; &#x62A;&#x641;&#x627;&#x62C;&#x626; &#x635;&#x644;&#x6",
+     "sim": 0.153,
+     "lang": "xx",
+     "cc": "EG",
+     "already_assigned": false
+    },
+    {
+     "headline": "Respublika - Naujien&#x173; ir &#x17E;ini&#x173; portalas",
+     "sim": 0.159,
+     "lang": "xx",
+     "cc": "LT",
+     "already_assigned": false
+    },
+    {
+     "headline": "Nada Kemenangan Rusia Berubah Drastis ketika Ukraina Terapkan Taktik Asimetris",
+     "sim": 0.199,
+     "lang": "xx",
+     "cc": "RU",
+     "already_assigned": false
+    },
+    {
+     "headline": "Doc Inifpyyq2424325.Shtml",
+     "sim": 0.153,
+     "lang": "xx",
+     "cc": "CN",
+     "already_assigned": false
+    },
+    {
+     "headline": "Argentina's plan for AI-run companies can't avoid humans",
+     "sim": 0.166,
+     "lang": "en",
+     "cc": "AR",
+     "already_assigned": false
+    },
+    {
+     "headline": "How copaganda reporting works",
+     "sim": 0.46,
+     "lang": "en",
+     "cc": "CA",
+     "already_assigned": false
+    },
+    {
+     "headline": "A lot of ADHD'ers process information verbally.\n\nIt can be a super effective strategy, but it also a vulnerable state because our thoughts a",
+     "sim": 0.164,
+     "lang": "en",
+     "cc": "XX",
+     "already_assigned": false
+    }
+   ]
+  },
+  "energy-grid-instability": {
+   "cleared": 7,
+   "examples": [
+    {
+     "headline": "Karwar Social Forestry Division Office Goes Solar, Sells Surplus Power To Grid",
+     "sim": 0.256,
+     "lang": "en",
+     "cc": "IN",
+     "already_assigned": false
+    },
+    {
+     "headline": "Perfect day for a power outage.",
+     "sim": 0.404,
+     "lang": "en",
+     "cc": "XX",
+     "already_assigned": false
+    },
+    {
+     "headline": "Rollins negative on solar, mixed on data centers, avoids Bayer petition",
+     "sim": 0.206,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": false
+    },
+    {
+     "headline": "Right-wing AfD threatens eastern Germany's energy transition",
+     "sim": 0.343,
+     "lang": "en",
+     "cc": "DE",
+     "already_assigned": false
+    },
+    {
+     "headline": "'I did that': the award-winning energy industry apprentice bringing pride and purpose to powerline work | Empower Stories | Build Authority",
+     "sim": 0.235,
+     "lang": "en",
+     "cc": "AU",
+     "already_assigned": false
+    },
+    {
+     "headline": "Tata Power commissions 101-MW wind farm in Maharashtra to supply green power to Mumbai",
+     "sim": 0.19,
+     "lang": "en",
+     "cc": "IN",
+     "already_assigned": false
+    },
+    {
+     "headline": "3 Under-the-Radar AI Energy Stocks to Buy Right Now",
+     "sim": 0.273,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": false
+    }
+   ]
+  },
+  "flood-landslide-disaster": {
+   "cleared": 72,
+   "examples": [
+    {
+     "headline": "Story20260704 9305601",
+     "sim": 0.139,
+     "lang": "xx",
+     "cc": "FR",
+     "already_assigned": false
+    },
+    {
+     "headline": "Quick response by Kelowna Fire Department snuffs suspicious grass fire",
+     "sim": 0.185,
+     "lang": "en",
+     "cc": "CA",
+     "already_assigned": false
+    },
+    {
+     "headline": "Wildfire southwest of Denver forces thousands to evacuate and destroys more than 160 structures",
+     "sim": 0.258,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": false
+    },
+    {
+     "headline": "February &#xAB; 2014 &#xAB;  :::&#x2026;The Tide News Online:::&#x2026;",
+     "sim": 0.246,
+     "lang": "en",
+     "cc": "NG",
+     "already_assigned": false
+    },
+    {
+     "headline": "Koncerter og regnvejr stopper festivalg&#xE6;ster i at tr&#xE6;ne",
+     "sim": 0.177,
+     "lang": "xx",
+     "cc": "DK",
+     "already_assigned": false
+    },
+    {
+     "headline": "Denizli Haber |   Halk Danslar&#x131; Festivali yar&#x131;n final yap&#x131;yor",
+     "sim": 0.169,
+     "lang": "xx",
+     "cc": "TR",
+     "already_assigned": false
+    },
+    {
+     "headline": "Brace for another day of rain fury",
+     "sim": 0.265,
+     "lang": "en",
+     "cc": "IN",
+     "already_assigned": false
+    },
+    {
+     "headline": "Unfall auf Landstra&#xDF;e - ein Toter, zwei Verletzte",
+     "sim": 0.174,
+     "lang": "xx",
+     "cc": "DE",
+     "already_assigned": false
+    }
+   ]
+  },
+  "food-price-stress": {
+   "cleared": 12,
+   "examples": [
+    {
+     "headline": "&#xAB;&#x421;&#x442;&#x440;&#x430;&#x43D;&#x430;.ua&#xBB;: &#x423;&#x43A;&#x440;&#x430;&#x438;&#x43D;&#x435; &#x433;&#x440;&#x43E;&#x437;&#x",
+     "sim": 0.249,
+     "lang": "xx",
+     "cc": "RU",
+     "already_assigned": false
+    },
+    {
+     "headline": "&#x885B;&#x798F;&#x90E8;&#xFF1A;&#x6301;&#x7E8C;&#x5F37;&#x5316;&#x6A6B;&#x5411;&#x9023;&#x7D50;&#x7DAD;&#x8B77;&#x98DF;&#x5B89; | &#x751F;&",
+     "sim": 0.251,
+     "lang": "xx",
+     "cc": "TW",
+     "already_assigned": false
+    },
+    {
+     "headline": "La patata nueva espa&#xF1;ola, en crisis por la importada",
+     "sim": 0.331,
+     "lang": "xx",
+     "cc": "ES",
+     "already_assigned": false
+    },
+    {
+     "headline": "\u300c\u540c\u6642\u306b\u30d1\u30c3\u30b1\u30fc\u30b8\u5165\u308a\u98df\u54c1\u958b\u3051\u305f\u4eba\u6570\u300d\u8d64\u3044\u30b5\u30a4\u30ed\u3067\u30ae\u30cd\u30b9\u8a8d\u5b9a",
+     "sim": 0.231,
+     "lang": "ja",
+     "cc": "JP",
+     "already_assigned": false
+    },
+    {
+     "headline": "Food influencer stunned by Bury Market's hidden food gems",
+     "sim": 0.287,
+     "lang": "en",
+     "cc": "TR",
+     "already_assigned": false
+    },
+    {
+     "headline": "Une nouvelle distribution de nourriture \u00e0 des familles de Gaza gr\u00e2ce \u00e0 vos dons",
+     "sim": 0.235,
+     "lang": "en",
+     "cc": "GZ",
+     "already_assigned": false
+    },
+    {
+     "headline": "&#x706B;&#x9E21;&#x9762;&#x3001;&#x82E6;&#x74DC;&#x53E3;&#x5473;&#x521B;&#x610F;&#x5341;&#x8DB3;&#xFF0C;&#x957F;&#x6C99;&#x51B0;&#x6DC7;&#x6",
+     "sim": 0.257,
+     "lang": "xx",
+     "cc": "CN",
+     "already_assigned": false
+    },
+    {
+     "headline": "Woher kommt das Schnitzel? \u00dcber den Kampf Bauern gegen Wirte um Transparenz am Teller",
+     "sim": 0.263,
+     "lang": "de",
+     "cc": "AT",
+     "already_assigned": false
+    }
+   ]
+  },
+  "forced-displacement": {
+   "cleared": 1,
+   "examples": [
+    {
+     "headline": "Random but\u2026 Sometimes getting to the destination too fast you end up missing the journey where you build character that\u2019s needed to sustain ",
+     "sim": 0.227,
+     "lang": "en",
+     "cc": "XX",
+     "already_assigned": false
+    }
+   ]
+  },
+  "gang-control-urban-security": {
+   "cleared": 45,
+   "examples": [
+    {
+     "headline": "Guys i gotta go to the store real quick, can you keep an eye on them?",
+     "sim": 0.165,
+     "lang": "en",
+     "cc": "XX",
+     "already_assigned": false
+    },
+    {
+     "headline": "\u0412 \u041b\u0435\u043d\u0438\u043d\u0433\u0440\u0430\u0434\u0441\u043a\u043e\u0439 \u043e\u0431\u043b\u0430\u0441\u0442\u0438 \u0441\u043e\u0437\u0434\u0430\u0434\u0443\u0442 \u043a\u043e\u043c\u0438\u0442\u0435\u0442 \u0433\u0440\u0430\u0436\u0434\u0430\u043d\u0441\u043a\u043e\u0439 \u043e\u0431\u043e\u0440\u043e\u043d\u044b",
+     "sim": 0.156,
+     "lang": "ru",
+     "cc": "RU",
+     "already_assigned": false
+    },
+    {
+     "headline": "Funky Taurus Media  - Music Photo Agency  &  Products - Funky Taurus  &  George Clinton  -  UFO Brooklyn",
+     "sim": 0.136,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": true
+    },
+    {
+     "headline": "Incautan m&#xE1;s de 32.500 galones de coca&#xED;na en proceso en Nari&#xF1;o",
+     "sim": 0.164,
+     "lang": "xx",
+     "cc": "CO",
+     "already_assigned": false
+    },
+    {
+     "headline": "Tottenham have Cody Gakpo on list of transfer targets",
+     "sim": 0.132,
+     "lang": "en",
+     "cc": "NL",
+     "already_assigned": false
+    },
+    {
+     "headline": "&#x398;&#x3B5;&#x3C3;&#x3C3;&#x3B1;&#x3BB;&#x3BF;&#x3BD;&#x3AF;&#x3BA;&#x3B7;: &#x388;&#x3BD;&#x3B1;&#x3C2; &#x3C0;&#x3C1;&#x3BF;&#x3C3;&#x3",
+     "sim": 0.22,
+     "lang": "xx",
+     "cc": "GR",
+     "already_assigned": false
+    },
+    {
+     "headline": "From The Invite To The Studio Seth Rogen Loves Scr",
+     "sim": 0.088,
+     "lang": "en",
+     "cc": "CA",
+     "already_assigned": false
+    },
+    {
+     "headline": "Kapolres Basel Warning Cakades Kendalikan Pendukung, 120 Polisi Siaga di 21 TPS",
+     "sim": 0.168,
+     "lang": "xx",
+     "cc": "ID",
+     "already_assigned": false
+    }
+   ]
+  },
+  "gender-violence-rights": {
+   "cleared": 58,
+   "examples": [
+    {
+     "headline": "Il nome di un drink per dare l'allarme il patto del Comune con i locali notturni contro la violenza sulle donne",
+     "sim": 0.219,
+     "lang": "xx",
+     "cc": "IT",
+     "already_assigned": false
+    },
+    {
+     "headline": "Three men not guilty of murder of Lyra McKee",
+     "sim": 0.125,
+     "lang": "en",
+     "cc": "GB",
+     "already_assigned": false
+    },
+    {
+     "headline": "Jury begin deliberations in murder trial over death of 15-year-old in Glasgow",
+     "sim": 0.14,
+     "lang": "en",
+     "cc": "GB",
+     "already_assigned": false
+    },
+    {
+     "headline": "VCE maths enrolments: Victorian student numbers rebound after pandemic slump but gender gap persists",
+     "sim": 0.226,
+     "lang": "en",
+     "cc": "AU",
+     "already_assigned": false
+    },
+    {
+     "headline": "Justicia, la virtud que debe ser cercana a la sociedad",
+     "sim": 0.165,
+     "lang": "xx",
+     "cc": "MX",
+     "already_assigned": false
+    },
+    {
+     "headline": "&#x3A6;&#x3B1;&#x3C1;&#x3B1;&#x3BD;&#x3C4;&#x3BF;&#x3CD;&#x3C1;&#x3B7;&#x3C2;: &#x397; &#x3B1;&#x3C0;&#x3CC;&#x3C3;&#x3C0;&#x3B1;&#x3C3;&#x3",
+     "sim": 0.134,
+     "lang": "xx",
+     "cc": "GB",
+     "already_assigned": false
+    },
+    {
+     "headline": "Acompa&#xF1;ado de su esposa y con visitas \"honorables\": as&#xED; espera Manuel Monsalve su juicio por violaci&#xF3;n | bbcl_investiga",
+     "sim": 0.178,
+     "lang": "xx",
+     "cc": "CL",
+     "already_assigned": false
+    },
+    {
+     "headline": "&#x625;&#x639;&#x644;&#x627;&#x646; &#x643;&#x64A;&#x643;&#x648; &#x641;&#x648;&#x62C;&#x64A;&#x645;&#x648;&#x631;&#x64A; &#x631;&#x633;&#x6",
+     "sim": 0.112,
+     "lang": "xx",
+     "cc": "FR",
+     "already_assigned": false
+    }
+   ]
+  },
+  "heat-health-risk": {
+   "cleared": 43,
+   "examples": [
+    {
+     "headline": "MAP: Where Colorado wildfires are burning",
+     "sim": 0.26,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": false
+    },
+    {
+     "headline": "Caledon's weather, highway closures and top stories",
+     "sim": 0.246,
+     "lang": "en",
+     "cc": "CA",
+     "already_assigned": false
+    },
+    {
+     "headline": "Extreme heat temporarily shuts down Great American State Fair in DC",
+     "sim": 0.435,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": true
+    },
+    {
+     "headline": "Fireworks sold nationwide recalled just ahead of Fourth of July for malfunctions, injury risk",
+     "sim": 0.241,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": false
+    },
+    {
+     "headline": "Caldo, la chiusura anticipata dei nidi comunali anche luned&#xEC; e marted&#xEC; prossimi",
+     "sim": 0.269,
+     "lang": "xx",
+     "cc": "IT",
+     "already_assigned": false
+    },
+    {
+     "headline": "Two cities cancel Fourth of July parades amid record-breaking temperatures",
+     "sim": 0.354,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": false
+    },
+    {
+     "headline": "Harlem NYCHA complex partially without power, AC due to electrical outage amid extreme heat, temperatures",
+     "sim": 0.501,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": true
+    },
+    {
+     "headline": "Open Air Cooking & Selling of Cooked Foods Ban",
+     "sim": 0.269,
+     "lang": "en",
+     "cc": "PG",
+     "already_assigned": false
+    }
+   ]
+  },
+  "housing-cost-pressure": {
+   "cleared": 77,
+   "examples": [
+    {
+     "headline": "Wildfire anxiety mounts amid fast-moving blazes and repeat evacuations",
+     "sim": 0.342,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": true
+    },
+    {
+     "headline": "What the Bengaluru daycare horror says about India's childcare system",
+     "sim": 0.185,
+     "lang": "en",
+     "cc": "IN",
+     "already_assigned": false
+    },
+    {
+     "headline": "&#x41C;&#x430;&#x440;&#x435;&#x437; &#x441;&#x435; &#x43E;&#x43F;&#x440;&#x43E;&#x441;&#x442;&#x438;&#x43E; &#x43E;&#x434; &#x440;&#x435;&#x",
+     "sim": 0.139,
+     "lang": "xx",
+     "cc": "SA",
+     "already_assigned": false
+    },
+    {
+     "headline": "Every year I get grumpier about the 4th of July. This year I feel there\u2019s no reason to celebrate. Also, I have a super anxious dog & he hate",
+     "sim": 0.133,
+     "lang": "en",
+     "cc": "XX",
+     "already_assigned": false
+    },
+    {
+     "headline": "&#x3A1;&#x3CE;&#x3BC;&#x3B7;: &#x3A3;&#x3C5;&#x3BD;&#x3B1;&#x3B3;&#x3B5;&#x3C1;&#x3BC;&#x3CC;&#x3C2; &#x3BC;&#x3B5;&#x3C4;&#x3AC; &#x3C4;&#x",
+     "sim": 0.156,
+     "lang": "xx",
+     "cc": "IT",
+     "already_assigned": false
+    },
+    {
+     "headline": "&#xC7;orlu'daki korkun&#xE7; patlama an&#xFD; kamerada! Apartman&#xFD;n son kat&#xFD; havaya u&#xE7;tu",
+     "sim": 0.215,
+     "lang": "xx",
+     "cc": "TR",
+     "already_assigned": false
+    },
+    {
+     "headline": "Community Planning & Building Director &#x2013; City of Carmel-by-the-Sea",
+     "sim": 0.172,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": false
+    },
+    {
+     "headline": "11 Historic Paint Colors Inspired by America's Most Famous Homes",
+     "sim": 0.15,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": false
+    }
+   ]
+  },
+  "humanitarian-access-conflict": {
+   "cleared": 3,
+   "examples": [
+    {
+     "headline": "Habilitan campamentos transitorios en Guarenas para las familias afectadas por los sismos - Correo del Orinoco | La Artiller&#xED;a del Pens",
+     "sim": 0.255,
+     "lang": "xx",
+     "cc": "VE",
+     "already_assigned": false
+    },
+    {
+     "headline": "Palestinian leadership demands international protection amid West Bank settler assaults",
+     "sim": 0.266,
+     "lang": "en",
+     "cc": "WE",
+     "already_assigned": false
+    },
+    {
+     "headline": "Vijay Prashad: When Children Are the Target",
+     "sim": 0.25,
+     "lang": "en",
+     "cc": "IL",
+     "already_assigned": true
+    }
+   ]
+  },
+  "labor-strike-disruption": {
+   "cleared": 14,
+   "examples": [
+    {
+     "headline": "Benito, abogado: \"Lo normal es contar como d&#xED;a de vacaciones el laborable no trabajado pero sigue siendo legal en Espa&#xF1;a contar lo",
+     "sim": 0.167,
+     "lang": "xx",
+     "cc": "ES",
+     "already_assigned": false
+    },
+    {
+     "headline": "\u81ea\u7531\u958b\u8b1b\u300b\u8ab2\u7a05\u722d\u8b70\u5236\u5ea6\u5316\uff01\u91ab\u5e2b\u52a0\u73ed\u8cbb\u514d\u7a05\u7684\u6cd5\u5236\u5efa\u69cb\u8207\u52de\u6b0a\u6307\u6a19",
+     "sim": 0.18,
+     "lang": "zh",
+     "cc": "TW",
+     "already_assigned": false
+    },
+    {
+     "headline": "Beatriz de Vicente, sobre las malas condiciones en la hosteler&#xED;a: \"Un trabajador contento es un trabajador productivo\"",
+     "sim": 0.16,
+     "lang": "xx",
+     "cc": "ES",
+     "already_assigned": false
+    },
+    {
+     "headline": "Si trabajas de noche la LFT obliga al patr&#xF3;n a pagarte la jornada completa por turnos de 7 horas y a cubrir el cobro doble si excedes e",
+     "sim": 0.196,
+     "lang": "xx",
+     "cc": "MX",
+     "already_assigned": false
+    },
+    {
+     "headline": "America Works Launches \"250 Hires Initiative\" to Celebrate America 250 and Expand Workforce Opportunity Nationwide",
+     "sim": 0.162,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": false
+    },
+    {
+     "headline": "UK services firms report steepest drop in activity for three-and-a-half years",
+     "sim": 0.264,
+     "lang": "en",
+     "cc": "IR",
+     "already_assigned": true
+    },
+    {
+     "headline": "Does your workday have advertisement breaks?",
+     "sim": 0.208,
+     "lang": "en",
+     "cc": "XX",
+     "already_assigned": false
+    },
+    {
+     "headline": "A century of ULCCS: A worker co-op success story from Kerala",
+     "sim": 0.207,
+     "lang": "en",
+     "cc": "IN",
+     "already_assigned": false
+    }
+   ]
+  },
+  "migration-border-pressure": {
+   "cleared": 48,
+   "examples": [
+    {
+     "headline": "U.S. airports where you need most time for layover",
+     "sim": 0.162,
+     "lang": "en",
+     "cc": "JP",
+     "already_assigned": false
+    },
+    {
+     "headline": "&#x421;&#x438;&#x442;&#x443;&#x430;&#x446;&#x456;&#x44F; &#x432; &#x41E;&#x440;&#x43C;&#x443;&#x437;&#x44C;&#x43A;&#x456;&#x439; &#x43F;&#x4",
+     "sim": 0.197,
+     "lang": "xx",
+     "cc": "IR",
+     "already_assigned": false
+    },
+    {
+     "headline": "This immigrant served in the US military. Now he faces deportation",
+     "sim": 0.273,
+     "lang": "en",
+     "cc": "QA",
+     "already_assigned": false
+    },
+    {
+     "headline": "100 riot police guard England hotel as team receive hostile reception in Mexico",
+     "sim": 0.198,
+     "lang": "en",
+     "cc": "MX",
+     "already_assigned": false
+    },
+    {
+     "headline": "M&#xE9;xico vs Inglaterra: CDMX espera 2 millones de visitantes en el FIFA Fan Fest",
+     "sim": 0.17,
+     "lang": "xx",
+     "cc": "MX",
+     "already_assigned": false
+    },
+    {
+     "headline": "Alta Velocit&#xE0; Salerno-Reggio Calabria, 19 associazioni lanciano un appello: \"Basta ritardi, il futuro della Calabria non pu&#xF2; atten",
+     "sim": 0.211,
+     "lang": "xx",
+     "cc": "CV",
+     "already_assigned": false
+    },
+    {
+     "headline": "Traffico Roma del 03-07-2026 ore 18",
+     "sim": 0.217,
+     "lang": "xx",
+     "cc": "FR",
+     "already_assigned": false
+    },
+    {
+     "headline": "Lettland -  Merz betont Bedeutung europ&#xE4;ischer Zusammenarbeit vor Nato-Gipfel",
+     "sim": 0.179,
+     "lang": "xx",
+     "cc": "UA",
+     "already_assigned": false
+    }
+   ]
+  },
+  "oil-gas-supply-risk": {
+   "cleared": 12,
+   "examples": [
+    {
+     "headline": "NO change to LNG policy by Royal Caribbean &#x2013; Jason Liberty",
+     "sim": 0.317,
+     "lang": "en",
+     "cc": "QA",
+     "already_assigned": true
+    },
+    {
+     "headline": "Oil Price Crash: 1 Top Oil Stock to Buy Now",
+     "sim": 0.42,
+     "lang": "en",
+     "cc": "IL",
+     "already_assigned": false
+    },
+    {
+     "headline": "Brent oil forecast cut as oil market softens after Hormuz reopening",
+     "sim": 0.4,
+     "lang": "en",
+     "cc": "MY",
+     "already_assigned": true
+    },
+    {
+     "headline": "Kh&#x1EE7;ng ho&#x1EA3;ng c&#x1EE7;a Ola Electric 2026: Kh&#xE1;ch h&#xE0;ng t&#x1EE9;c gi&#x1EAD;n v&#xE0; th&#x1ECB; ph&#x1EA7;n teo t&#xF",
+     "sim": 0.311,
+     "lang": "xx",
+     "cc": "IN",
+     "already_assigned": false
+    },
+    {
+     "headline": "Iran eyes Japan oil exports as buyers seek longer US waiver",
+     "sim": 0.32,
+     "lang": "en",
+     "cc": "AE",
+     "already_assigned": true
+    },
+    {
+     "headline": "National Pm Modi Inaugurates Barmer Refinery Highlights India Energy Diplomacy During Middle East War And Lpg Crisis 40294794",
+     "sim": 0.374,
+     "lang": "xx",
+     "cc": "IN",
+     "already_assigned": false
+    },
+    {
+     "headline": "PM Modi: India Mitigated West Asia Energy Crisis via Diplomacy",
+     "sim": 0.335,
+     "lang": "en",
+     "cc": "IN",
+     "already_assigned": false
+    },
+    {
+     "headline": "LNG gets costlier as Pakistan increases prices by up to 16.17pc",
+     "sim": 0.379,
+     "lang": "en",
+     "cc": "PK",
+     "already_assigned": true
+    }
+   ]
+  },
+  "sanctions-diplomatic-pressure": {
+   "cleared": 12,
+   "examples": [
+    {
+     "headline": "Rights council seeks unity that Jewish, Muslim envoys couldn't achieve: Miller",
+     "sim": 0.245,
+     "lang": "en",
+     "cc": "AU",
+     "already_assigned": false
+    },
+    {
+     "headline": "Euractiv: \u0415\u0421 \u0432 137-\u043c \u043f\u0430\u043a\u0435\u0442\u0435 \u0441\u0430\u043d\u043a\u0446\u0438\u0439 \u0437\u0430\u043f\u0440\u0435\u0442\u0438\u0442 \u0431\u043e\u0440\u0449 \u0438 \u0432\u044a\u0435\u0437\u0434 \u0434\u0440\u0435\u0441\u0441\u0438\u0440\u043e\u0432\u0449\u0438\u043a\u043e\u0432",
+     "sim": 0.232,
+     "lang": "ru",
+     "cc": "RU",
+     "already_assigned": false
+    },
+    {
+     "headline": "Can Hong Kong\u2019s arbitration skills help the new global space race take off?",
+     "sim": 0.281,
+     "lang": "en",
+     "cc": "HK",
+     "already_assigned": false
+    },
+    {
+     "headline": "UN ambassador taps Ellie Cohanim for senior policy role at UN Mission",
+     "sim": 0.257,
+     "lang": "en",
+     "cc": "IR",
+     "already_assigned": false
+    },
+    {
+     "headline": "Anila Yoganathan - Bulletin of the Atomic Scientists",
+     "sim": 0.244,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": false
+    },
+    {
+     "headline": "USMCA 2026 Joint Review: United States declines to extend Agreement, triggering annual reviews | White & Case LLP",
+     "sim": 0.237,
+     "lang": "en",
+     "cc": "MX",
+     "already_assigned": false
+    },
+    {
+     "headline": "Cuba acusa a Estados Unidos de \"presiones in&#xE9;ditas\" para impedir en la ONU denuncias de sus medidas",
+     "sim": 0.29,
+     "lang": "xx",
+     "cc": "CU",
+     "already_assigned": false
+    },
+    {
+     "headline": "&#x41F;&#x443;&#x442;&#x438;&#x43D; &#x437;&#x430; &#x43F;&#x43E;&#x43C;&#x43E;&#x449;&#x44C; &#x423;&#x43A;&#x440;&#x430;&#x438;&#x43D;&#x4",
+     "sim": 0.285,
+     "lang": "xx",
+     "cc": "UA",
+     "already_assigned": false
+    }
+   ]
+  },
+  "student-youth-protest": {
+   "cleared": 2,
+   "examples": [
+    {
+     "headline": "Johor Umno Youth questions funding sources for PH manifesto promises",
+     "sim": 0.314,
+     "lang": "en",
+     "cc": "MY",
+     "already_assigned": false
+    },
+    {
+     "headline": "Why Ayodele Olawande\u2019s NYSC reform is apt, timely and youthfully relevant",
+     "sim": 0.295,
+     "lang": "en",
+     "cc": "NG",
+     "already_assigned": false
+    }
+   ]
+  },
+  "telecom-internet-shutdown": {
+   "cleared": 1,
+   "examples": [
+    {
+     "headline": "IBGE: uso de celular e internet cai entre crian&#xE7;as pela primeira vez em anos",
+     "sim": 0.325,
+     "lang": "xx",
+     "cc": "AU",
+     "already_assigned": false
+    }
+   ]
+  },
+  "water-stress-drought": {
+   "cleared": 24,
+   "examples": [
+    {
+     "headline": "Reef dodges 'in danger' World Heritage listing again",
+     "sim": 0.263,
+     "lang": "en",
+     "cc": "AU",
+     "already_assigned": false
+    },
+    {
+     "headline": "Dueling viewpoints on the Southwest drought | LETTER | Letters",
+     "sim": 0.4,
+     "lang": "en",
+     "cc": "FR",
+     "already_assigned": true
+    },
+    {
+     "headline": "Piden reforzar vigilancia en plantas de agua &#x2013; Peri&#xF3;dico Z&#xF3;calo | Noticias de Saltillo, Torre&#xF3;n,  Piedras Negras, Monc",
+     "sim": 0.201,
+     "lang": "xx",
+     "cc": "MX",
+     "already_assigned": false
+    },
+    {
+     "headline": "Madaktari watoa mbinu kwa wanafunzi kuikabili baridi",
+     "sim": 0.212,
+     "lang": "sw",
+     "cc": "TZ",
+     "already_assigned": false
+    },
+    {
+     "headline": "Ragiampun leaders warn of El Ni\u00f1o water stress, call for urgent support",
+     "sim": 0.421,
+     "lang": "en",
+     "cc": "PG",
+     "already_assigned": true
+    },
+    {
+     "headline": "Stifling humidity despite rain in Ludhiana, yellow alert hangs over city.",
+     "sim": 0.301,
+     "lang": "en",
+     "cc": "IN",
+     "already_assigned": false
+    },
+    {
+     "headline": "Badegew&#xE4;sser in Europa: Studie stellt EEA-Bewertung infrage",
+     "sim": 0.256,
+     "lang": "xx",
+     "cc": "HU",
+     "already_assigned": false
+    },
+    {
+     "headline": "Wildfires, drought force cancellation of Fourth of July fireworks across western U.S.",
+     "sim": 0.298,
+     "lang": "en",
+     "cc": "US",
+     "already_assigned": true
+    }
+   ]
+  }
+ },
+ "taus_used": {
+  "agriculture-crop-risk": 0.21395432949066162,
+  "armed-conflict-escalation": 0.10561805963516235,
+  "constitutional-institutional-crisis": 0.28107109665870667,
+  "corruption-investigation": 0.2016918808221817,
+  "currency-debt-stress": 0.39226582646369934,
+  "cyberattack-infrastructure": 0.34613126516342163,
+  "disease-outbreak": 0.1864137053489685,
+  "disinformation-influence-operation": 0.13542884588241577,
+  "election-legitimacy-dispute": 0.3052476644515991,
+  "energy-grid-instability": 0.1870441883802414,
+  "flood-landslide-disaster": 0.13339102268218994,
+  "food-price-stress": 0.22846856713294983,
+  "forced-displacement": 0.2056083083152771,
+  "fuel-subsidy-unrest": 0.4654107689857483,
+  "gang-control-urban-security": 0.06309430301189423,
+  "gender-violence-rights": 0.10244880616664886,
+  "heat-health-risk": 0.23187613487243652,
+  "housing-cost-pressure": 0.13213084638118744,
+  "humanitarian-access-conflict": 0.24898482859134674,
+  "labor-strike-disruption": 0.1503564864397049,
+  "migration-border-pressure": 0.16143915057182312,
+  "oil-gas-supply-risk": 0.2979218363761902,
+  "sanctions-diplomatic-pressure": 0.2254800945520401,
+  "student-youth-protest": 0.29045671224594116,
+  "telecom-internet-shutdown": 0.31849753856658936,
+  "water-stress-drought": 0.18224965035915375
+ }
+}
