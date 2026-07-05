@@ -113,15 +113,32 @@ _BLOCKED: frozenset[str] = frozenset({
     "variety.com",
 })
 
+# Bluesky spam bots — bsky.app itself can't be domain-blocked (it would kill
+# the whole Jetstream social lane), so block per-account by DID in the
+# /profile/<did>/post/<rkey> URL path.
+_BLOCKED_BLUESKY_DIDS: frozenset[str] = frozenset({
+    # Sequential number-spelling bot ("Digit: 5,250,037 / In words: ...",
+    # EN/Sanskrit) — flooded signals_v2 and formed a junk HDBSCAN cluster in
+    # the unified-v2 residual (2026-07-04).
+    "did:plc:f4z2nftgrn75h7h3wucdyzaf",
+})
+
 
 def is_blocked(url: str) -> bool:
-    """Return True if this URL's domain is on the blocklist."""
+    """Return True if this URL's domain (or Bluesky account) is on the blocklist."""
     if not url:
         return False
     try:
-        host = urlparse(url).netloc.lower()
+        parsed = urlparse(url)
+        host = parsed.netloc.lower()
         # Strip www. and port
         host = host.removeprefix("www.").split(":")[0]
+        if host == "bsky.app":
+            # Path shape: /profile/<did>/post/<rkey>
+            parts = parsed.path.strip("/").split("/")
+            if len(parts) >= 2 and parts[0] == "profile":
+                return parts[1] in _BLOCKED_BLUESKY_DIDS
+            return False
         # Exact match or subdomain suffix match
         return host in _BLOCKED or any(
             host.endswith("." + blocked) for blocked in _BLOCKED

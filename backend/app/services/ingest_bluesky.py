@@ -33,6 +33,7 @@ import aiohttp
 import asyncpg
 
 from app.services.ingest_rss import extract_country, is_blocked
+from app.services.research_semantic import is_junk_headline
 from app.services.signal_text import clean_snippet
 
 logger = logging.getLogger(__name__)
@@ -97,6 +98,10 @@ def _event_to_signal(ev: dict) -> dict | None:
         return None  # top-level posts only — replies are conversational noise
     text = (record.get("text") or "").strip()
     if len(text) < MIN_TEXT_LEN:
+        return None
+    # Template spam (e.g. the number-spelling bot: "Digit: N / In words: ...")
+    # — filter by shape, not just DID, so a bot switching accounts stays out.
+    if is_junk_headline(text):
         return None
     langs = record.get("langs") or []
     if not langs:

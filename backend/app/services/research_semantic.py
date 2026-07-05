@@ -257,13 +257,26 @@ SIGNAL_LANE_LIMIT = 12
 # Malformed scraped titles pollute the embedding corpus and match anything
 # ("Doc Iniaztwk5508793.Shtml"). Filter at write AND query time.
 import re as _re
-_JUNK_HEADLINE = _re.compile(r"\.s?html?|^doc\s|^untitled", _re.IGNORECASE)
+_JUNK_HEADLINE = _re.compile(r"\.s?html?\b|^doc\s|^untitled\b", _re.IGNORECASE)
+# Number-spelling bot template ("Digit: 5,250,037 / In words: Five Million ...",
+# Bluesky spam, 2026-07-04): anchored "Digit: <number>" or "In words:" followed
+# by a spelled-out number word — never a real headline shape.
+_JUNK_NUMBER_TEMPLATE = _re.compile(
+    r"^\s*digit:\s*[\d,.]+"
+    r"|\bin words:\s*(?:zero|one|two|three|four|five|six|seven|eight|nine|ten"
+    r"|eleven|twelve|(?:thir|four|fif|six|seven|eigh|nine)teen"
+    r"|(?:twen|thir|for|fif|six|seven|eigh|nine)ty"
+    r"|hundred|thousand|million|billion)\b",
+    _re.IGNORECASE,
+)
 
 
 def is_junk_headline(headline: str | None) -> bool:
     if not headline:
         return True
     if _JUNK_HEADLINE.search(headline):
+        return True
+    if _JUNK_NUMBER_TEMPLATE.search(headline):
         return True
     words = [w for w in headline.split() if any(c.isalpha() for c in w)]
     return len(words) < 3  # needs at least three real words to be a headline
