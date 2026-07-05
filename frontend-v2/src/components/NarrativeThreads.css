@@ -470,3 +470,19 @@
     background: rgba(251, 146, 60, 0.12);
     border: 1px solid rgba(251, 146, 60, 0.35);
 }
+
+/* W4 (2026-07-05): per-row pin into the active investigation */
+.narrative-pin {
+    background: transparent;
+    border: none;
+    color: rgba(148, 163, 184, 0.45);
+    cursor: pointer;
+    font-size: 10px;
+    padding: 2px 4px;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: color 0.15s;
+}
+.narrative-pin:hover { color: rgba(226, 232, 240, 0.9); }
+.narrative-pin--active { color: #10b981; }
+.narrative-pin--active:hover { color: #34d399; }

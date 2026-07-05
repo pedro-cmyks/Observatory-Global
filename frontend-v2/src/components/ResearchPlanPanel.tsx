@@ -15,6 +15,7 @@ import {
 } from '../lib/researchPlan';
 import {
   addPin,
+  createInvestigation,
   getActiveInvestigationId,
   getInvestigation,
   recordTrail,
@@ -106,8 +107,14 @@ export default function ResearchPlanPanel({
   }
 
   function handlePinToggle(anchor: ResearchAnchor, rank: number) {
-    const invId = getActiveInvestigationId();
-    if (!invId) return;
+    // W4 (2026-07-05): the first pin with no active investigation CREATES one
+    // from the current query — the search→story ramp no longer dead-ends at
+    // the capture moment.
+    let invId = getActiveInvestigationId();
+    if (!invId || !getInvestigation(invId)) {
+      invId = createInvestigation(query).id;
+      onPinsChanged?.();
+    }
     if (pinnedIds.has(anchor.id)) {
       removePin(invId, anchor.id);
       emit(anchor, 'unpin', rank);
@@ -198,10 +205,12 @@ export default function ResearchPlanPanel({
               {anchor.movement.trend}
             </span>
           )}
-          {!isGap && hasInvestigation && (
+          {!isGap && (
             <button
               className={`rp-pin ${pinnedIds.has(anchor.id) ? 'rp-pin--active' : ''}`}
-              data-tip={pinnedIds.has(anchor.id) ? 'Unpin from investigation' : 'Pin to investigation'}
+              data-tip={pinnedIds.has(anchor.id)
+                ? 'Unpin from investigation'
+                : hasInvestigation ? 'Pin to investigation' : 'Pin — starts an investigation from this query'}
               onClick={() => handlePinToggle(anchor, rank)}
             >
               {pinnedIds.has(anchor.id) ? 'PINNED' : 'PIN'}

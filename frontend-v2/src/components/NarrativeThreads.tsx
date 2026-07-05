@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
+import { useWorkspace } from '../contexts/WorkspaceContext'
 import { timeRangeToHours } from '../lib/timeRanges'
 import { resolveCountryName } from '../lib/countryNames'
 import { buildCountryThreadEmptyState, getNarrativeFetchLimit, getNarrativesForDisplay } from '../lib/narrativeThreadLimits'
@@ -135,6 +136,8 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     const [loading, setLoading] = useState(true)
     const { filter, setCountry, setMapFlyCountry, setPerson } = useFocus()
     const { timeRange } = useFocusData()
+    // W4 (2026-07-05): thread rows are pinnable into the active investigation.
+    const { pinItem, unpinItem, isPinned } = useWorkspace()
 
     // Cap to 24h when browsing globally (spread_pct becomes meaningless at wider windows);
     // when a country is selected, use the full range so client-side filtering has real data.
@@ -410,6 +413,16 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                     <span className="coverage-badge coverage-badge--limited" data-tip={`${n.signal_count} signals — limited coverage`}>~</span>
                                 )}
                             </span>
+                            <button
+                                className={`narrative-pin ${isPinned(`theme-${n.thread_id}`) ? 'narrative-pin--active' : ''}`}
+                                data-tip={isPinned(`theme-${n.thread_id}`) ? 'Unpin from investigation' : 'Pin thread to investigation'}
+                                onClick={e => {
+                                    e.stopPropagation()
+                                    const id = `theme-${n.thread_id}`
+                                    if (isPinned(id)) unpinItem(id)
+                                    else pinItem({ id, type: 'theme', title: n.label, urlParams: `?theme=${encodeURIComponent(n.thread_id)}` })
+                                }}
+                            >◆</button>
                         </div>
 
                         {/* Row 2: Countries, Persons, attention badges + age */}
