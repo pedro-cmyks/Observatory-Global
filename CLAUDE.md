@@ -61,6 +61,34 @@ categorías nuevas esperadas de las unidades era-mayo (Stage B: clustering
 semanal del archivo → próxima sesión). Robot MANUAL hasta eyeball de Pedro
 (reporte `robot-v1-2026-07-05.md`); v0 growth loop sigue armado de puente.
 
+**2026-07-05 (MADRUGADA 2 — L3 DEEP REVIEW, spec de trabajo, sesión paralela).**
+Pedro pidió revisión exhaustiva de L3 mientras el archivo se embebe en la otra
+sesión. Entregable: `docs/specs/2026-07-05-l3-deep-review.md` (review + work
+spec W0-W5 + 5 decisiones D1-D5, PENDIENTE del ojo de Pedro). Verificado en
+código+prod, no en docs: (1) **L3 = split-brain**: Workbench
+(`workbench.ts`, investigations+pins con snapshot #227+dossier, localStorage
+`atlas.workbench.v1`) ‖ Workspace (`WorkspaceContext`, PinnedItem+force-graph,
+`atlas-workspace`) — dos modelos de pin, el dossier solo lee uno, pins de
+ThemeDetail/CountryBrief/Entity/Source nunca llegan al reporte. (2) **Backend
+research congelado en el engine del 06-10/11** (grep-verificado 0 hits):
+lane semántico en e5 + centroides running-mean (el mismo e5 que medimos en
+noise-floor el 06-29/07-04), acoplado a pool-health sin piso (misma
+enfermedad del F4 A/B), movement=changed_10h crudo (no Kalman), gate labels
+pre-two-tier, cero lente R3; EXCEPCIÓN: thread lane hereda `fetch_threads`
+(stories-only fluye gratis). (3) **Uso real ≈ CERO + telemetría ciega**:
+`research_pin_events` = 1 pin en la historia (06-11, ship-day), 0 dossiers
+jamás; no existen event types workbench/investigation; `research_pin_events`
+write-only (#218 nunca consumido). (4) CORRECCIONES al registro: Phase 3
+dossier SÍ está construido (`DossierView.tsx`, `2d4d04e3`) y #227 CLOSED —
+docs 06-09 stale. Spec: W0 instrumentar (primero, barato) → W1 unificar los
+dos sistemas (un store, snapshot en todo pin) → W2 re-sustrato del plan
+(taus e5 re-medidos método wild-junk + guard pool≥80; two-tier labels;
+Kalman; lente categorías; OpenAI gated en hot-vectors) → W3 dossier v2 =
+wedge (who-says-what vía topic_members roles + voice_mix + tiers #217
+mínimo + gaps por categoría) → W4 captura (universe/threads/signal pinnable,
+puente story-panel→investigation, archive-backed pin open) → W5 Phase 4
+sigue paper-gated. Anti-goal respetado: cero superficies nuevas.
+
 **2026-07-04/05 (NOCHE — CATEGORÍAS≠HILOS servido + growth loop + retención
 REAL + reclaim 4.1GB, `d40deedf`+`1b6ba3b0`, read FIRST).** Pedro corrigió la
 falacia de niveles y destapó la retención. (1) **STORIES-ONLY /threads
