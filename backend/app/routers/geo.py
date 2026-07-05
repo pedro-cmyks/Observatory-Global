@@ -1164,3 +1164,96 @@ async def map_replay(days: int = Query(30, ge=2, le=90)):
         except Exception:
             pass
     return payload
+
+
+@router.get("/api/v2/evidence/day")
+async def evidence_for_day(
+    day: str = Query(..., description="YYYY-MM-DD (a scrubbed past day)"),
+    country: Optional[str] = Query(None, min_length=2, max_length=2),
+    limit: int = Query(12, ge=1, le=30),
+):
+    """S3 (time-as-dimension, 2026-07-05): the receipts behind a scrubbed day.
+
+    Two honest tiers:
+      - 'hot'     — day inside the retention window → live signals_v2 sample
+                    (distinct sources, non-junk).
+      - 'archive' — beyond retention → historical_evidence_samples (mig 029,
+                    populated from the external archive partitions;
+                    distinct-source-sample-v1, ≤5/country/day).
+    Empty is empty — with a reason, never filler.
+    """
+    try:
+        from datetime import date as _date
+        target = _date.fromisoformat(day)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="day must be YYYY-MM-DD")
+    cc = country.upper() if country else None
+
+    if db.pool is None:
+        return {"contract": "day-evidence-v0", "day": day, "country": cc,
+                "tier": None, "items": [], "reason": "db_unavailable"}
+
+    async with db.pool.acquire() as conn:
+        await conn.execute("SET statement_timeout = 8000")
+        hot_floor = await conn.fetchval("SELECT MIN(timestamp)::date FROM signals_v2")
+        in_hot = hot_floor is not None and target >= hot_floor
+
+        if in_hot:
+            rows = await conn.fetch(
+                """
+                SELECT DISTINCT ON (LOWER(COALESCE(source_name, headline)))
+                       headline, source_name, source_url, country_code,
+                       timestamp, COALESCE(nlp_sentiment, sentiment) AS sentiment
+                FROM signals_v2
+                WHERE timestamp >= $1::date AND timestamp < $1::date + INTERVAL '1 day'
+                  AND ($2::text IS NULL OR country_code = $2)
+                  AND headline IS NOT NULL
+                ORDER BY LOWER(COALESCE(source_name, headline)), timestamp DESC
+                LIMIT $3
+                """,
+                target, cc, limit,
+            )
+            tier = "hot"
+        else:
+            rows = await conn.fetch(
+                """
+                SELECT headline, source_name, source_url, country_code,
+                       signal_timestamp AS timestamp, sentiment
+                FROM historical_evidence_samples
+                WHERE day = $1::date
+                  AND ($2::text IS NULL OR country_code = $2)
+                  AND model_version = 'hes-v1'
+                ORDER BY country_code, signal_timestamp NULLS LAST
+                LIMIT $3
+                """,
+                target, cc, limit,
+            )
+            tier = "archive"
+
+    import html as _html
+    items = [
+        {
+            "headline": _html.unescape(r["headline"] or ""),
+            "source": r["source_name"],
+            "url": r["source_url"],
+            "country_code": r["country_code"],
+            "timestamp": r["timestamp"].isoformat() if r["timestamp"] else None,
+            "sentiment": float(r["sentiment"]) if r["sentiment"] is not None else None,
+        }
+        for r in rows
+    ]
+    reason = None
+    if not items:
+        reason = ("no_archive_sample_for_day" if tier == "archive"
+                  else "no_signals_for_day")
+    return {
+        "contract": "day-evidence-v0",
+        "day": day,
+        "country": cc,
+        "tier": tier,
+        "items": items,
+        "reason": reason,
+        "note": ("archive tier serves a distinct-source SAMPLE (≤5/country/day) "
+                 "frozen from the external archive — not exhaustive coverage"
+                 if tier == "archive" else None),
+    }

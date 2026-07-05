@@ -48,6 +48,7 @@ import { ThreadFocusPanel } from './components/ThreadFocusPanel'
 import { SignalStream } from './components/SignalStream'
 import { OnboardingCoachmark } from './components/OnboardingCoachmark'
 import { CountryFocusWalkthrough, COUNTRY_WALKTHROUGH_KEY } from './components/CountryFocusWalkthrough'
+import { DayEvidencePanel } from './components/DayEvidencePanel'
 import { CorrelationMatrix } from './components/CorrelationMatrix'
 import { AnomalyPanel } from './components/AnomalyPanel'
 import { SourceIntegrityPanel } from './components/SourceIntegrityPanel'
@@ -357,6 +358,10 @@ function AppContent() {
   // from the pre-agg — HONESTLY labeled (composite heat has no history).
   const [replayData, setReplayData] = useState<Record<string, Record<string, number>> | null>(null)
   const [replayDay, setReplayDay] = useState<string | null>(null)
+  // S3: country clicked WHILE scrubbed → that day's receipts (not the live view).
+  const [dayEvidenceCountry, setDayEvidenceCountry] = useState<string | null>(null)
+  useEffect(() => { if (!replayDay) setDayEvidenceCountry(null) }, [replayDay])
+
   const replayHeat = useMemo(() => {
     if (!replayDay || !replayData) return null
     const vals = Object.entries(replayData)
@@ -1452,6 +1457,8 @@ function AppContent() {
                     }
                   }}
                   onCountryClick={(gdelt, name) => {
+                    // S3: while scrubbed, a country click asks about THAT DAY.
+                    if (replayDay) { setDayEvidenceCountry(gdelt); return }
                     handleCountryClick(gdelt)
                     setFocus('country', gdelt, name || gdelt)
                     setMapFlyCountry(gdelt)
@@ -1459,6 +1466,19 @@ function AppContent() {
                 />
               )}
               <div className="globe-vignette" />
+              {!universeOpen && replayDay && dayEvidenceCountry && (
+                <DayEvidencePanel
+                  day={replayDay}
+                  country={dayEvidenceCountry}
+                  onClose={() => setDayEvidenceCountry(null)}
+                  onOpenLive={() => {
+                    const cc = dayEvidenceCountry
+                    setDayEvidenceCountry(null)
+                    setReplayDay(null)
+                    if (cc) { handleCountryClick(cc); setFocus('country', cc, cc); setMapFlyCountry(cc) }
+                  }}
+                />
+              )}
               {!universeOpen && (
                 <div className="globe-scrubber" data-tip="Scrub the last 30 days — country intensity replays that day's signal VOLUME (the composite heat has no history). NOW restores live heat.">
                   <button
