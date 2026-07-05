@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { trackOnce } from '../lib/telemetry'
 import {
     angleAt,
     bodyRadius,
@@ -430,7 +431,7 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                     min={0}
                     max={100}
                     value={scrubPct}
-                    onChange={e => setScrubPct(Number(e.target.value))}
+                    onChange={e => { trackOnce('scrubber_used', { surface: 'orbital' }); setScrubPct(Number(e.target.value)) }}
                     aria-label="Orbital time scrubber"
                     data-tip="Scrub time: bodies enter, orbit, and fade as the story develops"
                 />

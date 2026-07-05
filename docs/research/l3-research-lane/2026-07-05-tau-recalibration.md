@@ -50,5 +50,22 @@ post-universe-collapse recovery; healthy ≥80).
 - [ ] Signal-lane tau: accumulate ≥100 real `search_query` texts → embed →
       measure query-vs-corpus junk floor → then set. Until then 0.84 stays,
       protected by the tier labels.
-- [ ] Both re-measurements fold into the OpenAI-space cutover decision (D2):
-      when hot-corpus OpenAI vectors exist, calibrate THERE instead.
+- [x] **OpenAI-space calibration DONE from the archive** (Pedro 2026-07-05:
+      "use the historical data, don't wait weeks"). Script:
+      `calibrate_openai_headline_tau.py` over the full-history shards
+      (/Volumes/Ext/Atlas/Embeddings/openai-3-small, 6.69M vectors, global
+      sha1-dedup, disjoint query/corpus shard pools):
+
+      | space | junk p50 | p90 | p95 | p99 | p995 |
+      |---|---|---|---|---|---|
+      | e5 (hot, 7d) | 0.8873 | 0.9255 | 0.939 | 0.9808 | 0.9901 |
+      | **OpenAI 3-small (archive, full history)** | **0.5419** | 0.668 | **0.7248** | 0.8557 | 0.9065 |
+
+      **Reading: OpenAI restores ~0.35 of separation e5 doesn't have.** In e5
+      the entire junk distribution sits ABOVE the serving tau (0.84); in
+      OpenAI a tau of 0.725 (p95) already rejects 95% of random pairs, 0.856
+      (p99) rejects 99%. This is the direct, 6.7M-vector evidence for the D2
+      cutover — and the calibration anchors for it: floor candidate 0.725,
+      strict 0.856, upper anchor 0.9065 (0.5% clearance). Same pseudo-query
+      caveat as e5 (real user queries will sit lower), so ship the cutover at
+      the p95 floor + two-tier labels, tighten with real query samples later.

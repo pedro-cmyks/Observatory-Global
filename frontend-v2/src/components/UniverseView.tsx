@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { trackOnce } from '../lib/telemetry'
 import {
     bornBetween,
     categoryColor,
@@ -749,7 +750,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                 <input
                     type="range"
                     min={0} max={100} value={scrubPct}
-                    onChange={e => setScrubPct(Number(e.target.value))}
+                    onChange={e => { trackOnce('scrubber_used', { surface: 'universe' }); setScrubPct(Number(e.target.value)) }}
                     aria-label="Universe time scrubber"
                     data-tip="Scrub time: stories are born, burn, and fade across the field"
                 />

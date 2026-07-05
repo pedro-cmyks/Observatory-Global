@@ -274,6 +274,10 @@ function AppContent() {
   // removed (#231) — heat is a map property (drives country color), not a
   // bottom list. The composite now colors the map directly.
   const [dockTab, setDockTab] = useState<'anomaly' | 'sources'>('anomaly')
+
+  // X0 (L2 review 2026-07-05): the stream slot is L2's core state machine and
+  // it was invisible to telemetry — panel_swap makes the middle of the
+  // L0→L3 funnel readable.
   // Mobile L2 IA: instead of a long scroll of the desktop cockpit, show one
   // full-screen surface at a time via a bottom tab bar. Default to the live
   // stream (the L2 value). Desktop ignores this.
@@ -315,6 +319,21 @@ function AppContent() {
 
   // Focus hook for click-to-focus
   const { setFocus, focus, clearFocus, setCountry, filter, setTheme, mapFlyCountry, setMapFlyCountry, isActive } = useFocus()
+
+  // X0 (2026-07-05): the stream slot is L2's core state machine — panel_swap
+  // makes the middle of the L0→L3 funnel readable (mirrors the render
+  // priority chain of the stream panel).
+  const activeStreamPanel = storyQuery ? 'story'
+    : focus.type === 'person' && focus.value ? 'person'
+    : selectedPublicAttention ? 'attention'
+    : selectedThread ? 'thread'
+    : (selectedCountry || selectedCountryCode) ? 'country'
+    : selectedTheme ? 'theme'
+    : selectedChokepoint ? 'chokepoint'
+    : 'stream'
+  useEffect(() => {
+    if (activeStreamPanel !== 'stream') track('panel_swap', { to: activeStreamPanel })
+  }, [activeStreamPanel])
 
 
   // Layer visibility
@@ -452,6 +471,7 @@ function AppContent() {
 
   // Click handlers
   function handleCountryClick(countryCode: string) {
+    track('country_click')
     setStoryQuery(null) // story panel yields to an explicit country open
     setSelectedPublicAttention(null)
     setSelectedThread(null)
@@ -1207,7 +1227,6 @@ function AppContent() {
             )}
           </div>
           <UtcClock />
-          {/* <CrisisToggle /> - Hidden per visual clarity update */}
           {isActive && (
             <button
               className="cmd-btn cmd-btn--watch"
@@ -1299,21 +1318,21 @@ function AppContent() {
             <div className="panel-header-controls">
               <button
                 className={`layer-btn ${showHeatmap ? 'active' : ''}`}
-                onClick={() => setShowHeatmap(!showHeatmap)}
+                onClick={() => { track('layer_toggle', { layer: 'heat', on: !showHeatmap }); setShowHeatmap(!showHeatmap) }}
                 data-tip="Country heat layer — color = composite anomaly (velocity, surprise, source diversity, local voice) vs each country's own baseline, NOT raw volume. A small country spiking above its norm outranks a high-volume one. Border thickness = signal volume (evidence density)."
               >
                 HEAT
               </button>
               <button
                 className={`layer-btn ${showFlows ? 'active' : ''}`}
-                onClick={() => setShowFlows(!showFlows)}
+                onClick={() => { track('layer_toggle', { layer: 'flow', on: !showFlows }); setShowFlows(!showFlows) }}
                 data-tip="Narrative flows — arcs connect countries sharing dominant media themes. Width = co-occurrence strength. Non-directional."
               >
                 FLOW
               </button>
               <button
                 className={`layer-btn ${showAircraft ? 'active' : ''} ${showAircraft && aircraftError ? 'layer-btn-error' : ''} ${!showAircraft && (filter.country || filter.theme) ? 'layer-btn-hint' : ''}`}
-                onClick={() => setShowAircraft(!showAircraft)}
+                onClick={() => { track('layer_toggle', { layer: 'plane', on: !showAircraft }); setShowAircraft(!showAircraft) }}
                 data-tip={
                   showAircraft && aircraftError
                     ? 'No aircraft data available'
@@ -1326,7 +1345,7 @@ function AppContent() {
               </button>
               <button
                 className={`layer-btn ${showVessels ? 'active' : ''} ${activeChokepoints.length > 0 && !showVessels ? 'layer-btn-hint' : ''}`}
-                onClick={() => setShowVessels(!showVessels)}
+                onClick={() => { track('layer_toggle', { layer: 'ships', on: !showVessels }); setShowVessels(!showVessels) }}
                 data-tip={
                   showVessels
                     ? `${vesselData.length} vessels at chokepoints${vesselConnected ? ' · live' : ' · connecting...'}`
@@ -1711,14 +1730,14 @@ function AppContent() {
             <div className="dock-tabs">
               <button
                 className={`dock-tab ${dockTab === 'anomaly' ? 'active' : ''}`}
-                onClick={() => setDockTab('anomaly')}
+                onClick={() => { track('dock_tab', { tab: 'anomaly' }); setDockTab('anomaly') }}
                 data-tip="Geo alerts and public attention vs 7-day baseline"
               >
                 ANOMALY ALERT
               </button>
               <button
                 className={`dock-tab ${dockTab === 'sources' ? 'active' : ''}`}
-                onClick={() => setDockTab('sources')}
+                onClick={() => { track('dock_tab', { tab: 'sources' }); setDockTab('sources') }}
                 data-tip="Diversity of information sources"
               >
                 SOURCE INTEGRITY
