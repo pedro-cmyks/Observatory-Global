@@ -191,8 +191,22 @@ ATLAS_COUNTRY_CATEGORY_ROWS (revert independiente de CountryBrief). Y
 /api/v2/trends re-apuntado a v2 (global/country→country_hourly_v2,
 theme→theme_hourly_v2, source→scan acotado signals_v2) — las legacy tenían
 0 filas, el endpoint servía series vacías en silencio; prod: 9 puntos/7d.
-QUEDA del spec L2: S3 peak-drill (gated en serving de archivo), S4
-(decisión D-L2-1 de Pedro), X6 móvil (gated en lectura X0).
+**S4 EJECUTADO (Pedro: "dale con S4, el tiempo como vista";
+`5975f2a6`, Vercel):** el selector de tiempo YA NO re-ventanea la data
+ambiental — corte ambiental/investigativo: AMBIENTE (nodes+flows del mapa,
+heat compuesto, prefetch del Brief) = foto viva 24h SIEMPRE (el heat además
+por fin coincide con la ventana real 24h de country_heat_v2 que las
+selecciones anchas ignoraban en silencio); el selector = lente de VISTA —
+controla el SPAN del scrubber del globo (timeRangeToViewDays: piso 7d → 30
+→ tope 90, replay refetch al crecer) y sigue ventaneando lo INVESTIGATIVO
+(focus summary, theme detail, country view, markers) — "mirar atrás es un
+acto investigativo". Chip VIEW + tooltip honesto. Kill-switch:
+TIME_IS_VIEW=false en lib/timeRanges.ts (una línea). Browser-verified:
+1-Month → nodes range=24h, heat hours=24, scrubber 7→30d, scrub "Jun 10 ·
+volume replay" jala /map/replay?days=30. CONTRATO TEMPORAL COMPLETO por
+capa: L1=el día (24h fijo) · L2=tiempo como dimensión (vista+scrubbers) ·
+L3=tiempo congelado (snapshots). QUEDA del spec L2: S3 peak-drill (gated
+en serving de archivo), X6 móvil (gated en lectura X0).
 
 **2026-07-04/05 (NOCHE — CATEGORÍAS≠HILOS servido + growth loop + retención
 REAL + reclaim 4.1GB, `d40deedf`+`1b6ba3b0`, read FIRST).** Pedro corrigió la
