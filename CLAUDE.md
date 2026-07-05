@@ -43,6 +43,24 @@ keep-rates a few cycles (forced-displacement tau 0.163 = lowest, watch junk;
 energy-grid/fuel-subsidy goldP ≤0.07 rely on gate). Day 3 also: browser-verify
 surfaces + handoff playbooks.
 
+**2026-07-05 (MADRUGADA — ROBOT v1 + ARCHIVO EN PROCESO, `ef87f73d`+`b86400a1`).**
+Pedro: robot sobre TODA la historia, no el hot; "todos los datos históricos
+procesados". (1) **archive_embed_pipeline.py CORRIENDO overnight** (nohup,
+`archive-embed-full.log`): archivo completo → dedupe sha1 global + junk
+filter → OpenAI 3-small → shards fp16 durables en /Volumes/Ext/Atlas/
+Embeddings (resumible; ~$3 total; 130K vectores a las 00:15). (2) **robot_
+categories_v1.py**: estructura-primero sobre las 1,406 identidades (TODOS
+los estados, may31-jul5), corte MEDIDO por silhouette (0.35), naming único
+por grupo, acepta unidades externas (--units-jsonl para el archivo).
+HALLAZGO primera corrida: grupos = eventos/duplicados, no categorías → 2
+guards medidos (intra≥0.80 = SAME-STORY, 17 grupos = work-list de dedup de
+identidades; token dominante ≥60% = EVENT-LEVEL, 39 grupos = material
+umbrella; Mundial cross-idioma agrupado, heatwave 'covered'). **0 inserts
+espurios — las 30 seeds cubren el espacio categorial de esta ventana**;
+categorías nuevas esperadas de las unidades era-mayo (Stage B: clustering
+semanal del archivo → próxima sesión). Robot MANUAL hasta eyeball de Pedro
+(reporte `robot-v1-2026-07-05.md`); v0 growth loop sigue armado de puente.
+
 **2026-07-04/05 (NOCHE — CATEGORÍAS≠HILOS servido + growth loop + retención
 REAL + reclaim 4.1GB, `d40deedf`+`1b6ba3b0`, read FIRST).** Pedro corrigió la
 falacia de niveles y destapó la retención. (1) **STORIES-ONLY /threads
