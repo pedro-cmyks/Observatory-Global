@@ -75,9 +75,15 @@ def _normalize(m: np.ndarray) -> np.ndarray:
 
 
 async def _load_centroids(conn: asyncpg.Connection) -> tuple[list[int], np.ndarray]:
+    # Active topics PLUS v2-born candidates (identity_key 'u2-…', persisted by
+    # the §6-step-5 new-topic pass below). Including them closes the
+    # duplication loop: a story the residual clustering formed last run is
+    # centroid-matched by pass 1 this run instead of re-forming under a new id.
     rows = await conn.fetch(
         """SELECT id, centroid_vec::text AS vec FROM dynamic_topics
-           WHERE state='active' AND centroid_vec IS NOT NULL"""
+           WHERE centroid_vec IS NOT NULL
+             AND (state='active'
+                  OR (state='candidate' AND identity_key LIKE 'u2-%'))"""
     )
     ids = [int(r["id"]) for r in rows]
     mat = _normalize(np.vstack([_parse_vec(r["vec"]) for r in rows])) if rows else np.zeros((0, 768))
@@ -87,7 +93,7 @@ async def _load_centroids(conn: asyncpg.Connection) -> tuple[list[int], np.ndarr
 async def _load_signals(conn: asyncpg.Connection, hours: int, max_n: int) -> list[dict[str, Any]]:
     return await conn.fetch(
         f"""
-        SELECT s.id, s.source_family, s.nlp_sentiment, e.vec::text AS vec
+        SELECT s.id, s.headline, s.source_family, s.nlp_sentiment, e.vec::text AS vec
         FROM signal_embeddings e
         JOIN signals_v2 s ON s.id = e.signal_id
         WHERE s.timestamp > NOW() - ($1::int * INTERVAL '1 hour')
@@ -101,6 +107,90 @@ async def _load_signals(conn: asyncpg.Connection, hours: int, max_n: int) -> lis
 
 def _role_for(family: str | None) -> str:
     return "discussion" if (family or "") == "social" else "evidence"
+
+
+# --- §6 step 5: new-topic labeling + persistence -------------------------
+# A residual cluster is only useful if it SURVIVES as an identity: unlabeled
+# ephemeral 'unified-new-N' ids were wiped by every rebuild's DELETE. Each
+# new cluster now becomes a real dynamic_topics row (state='candidate',
+# identity_key 'u2-<stamp>-<lab>') with a DeepSeek label; members reference
+# 'dynamic-topic-<id>'. Next run, pass 1 centroid-matches those signals to
+# the persisted row (see _load_centroids), so the identity is stable and the
+# normal lifecycle (promotion/retirement/resurrection) applies from there.
+
+_LABEL_PROMPT = (
+    "You label news story clusters. Given these headlines from ONE emerging "
+    "story cluster, return JSON {\"label\": <specific 3-7 word story label, "
+    "named entities preferred>, \"confidence\": <0-1>}. Never generic "
+    "('News Roundup', 'Various Updates') — if the cluster is a grab-bag, "
+    "label it 'Mixed: <dominant theme>'.\nHeadlines:\n{headlines}"
+)
+
+
+def _looks_junk_cluster(headlines: list[str]) -> bool:
+    """Cheap guard so scraped-template spam ("Digit: 5,250,037 / In words:
+    Five Million…" — a live catch, 2026-07-04) never becomes a persisted
+    topic. Junk if headlines are template-repetitive (same first token) or
+    carry almost no alphabetic words."""
+    if not headlines:
+        return True
+    firsts = [h.split()[0].lower() for h in headlines if h.split()]
+    if firsts:
+        top = max(firsts.count(f) for f in set(firsts))
+        if top / len(firsts) > 0.6:
+            return True
+    def alpha_words(h: str) -> int:
+        return sum(1 for w in h.split() if sum(c.isalpha() for c in w) >= 3)
+    return float(np.mean([alpha_words(h) for h in headlines])) < 4.0
+
+
+async def _deepseek_label(headlines: list[str]) -> str | None:
+    key = os.environ.get("DEEPSEEK_API_KEY")
+    if not key:
+        return None
+    import httpx
+    body = {
+        "model": "deepseek-chat",
+        "messages": [{
+            "role": "user",
+            "content": _LABEL_PROMPT.replace(
+                "{headlines}", "\n".join(f"- {h[:140]}" for h in headlines[:12])),
+        }],
+        "response_format": {"type": "json_object"},
+        "temperature": 0.2,
+        "max_tokens": 100,
+    }
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.post(
+                "https://api.deepseek.com/chat/completions", json=body,
+                headers={"Authorization": f"Bearer {key}"}, timeout=30.0)
+            r.raise_for_status()
+            lab = json.loads(r.json()["choices"][0]["message"]["content"]).get("label")
+            return str(lab)[:120] if lab else None
+    except Exception as exc:  # noqa: BLE001 — labeling is best-effort
+        print(f"  new-topic label failed: {exc}", file=sys.stderr)
+        return None
+
+
+async def _persist_new_topic(conn: asyncpg.Connection, lab: int,
+                             centroid: np.ndarray, headlines: list[str],
+                             n_members: int, cohesion: float) -> tuple[int, str]:
+    from datetime import datetime, timezone
+    label = await _deepseek_label(headlines)
+    if not label:
+        label = f"Emerging: {headlines[0][:80]}" if headlines else "Emerging story"
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    row = await conn.fetchrow(
+        """INSERT INTO dynamic_topics (identity_key, state, label, centroid_vec,
+               first_seen, last_seen, n_snapshots, agg_n_signals, mean_cohesion,
+               is_roundup, snapshots_since_seen, last_state_change)
+           VALUES ($1,'candidate',$2,$3,NOW(),NOW(),1,$4,$5,false,0,NOW())
+           ON CONFLICT (identity_key) DO NOTHING RETURNING id""",
+        f"u2-{stamp}-{lab}", label,
+        [float(x) for x in centroid], n_members, float(cohesion),
+    )
+    return (int(row["id"]) if row else -1), label
 
 
 async def run(hours: int, assign_t: float, gate_t: float, max_n: int, dry_run: bool,
@@ -170,7 +260,29 @@ async def run(hours: int, assign_t: float, gate_t: float, max_n: int, dry_run: b
                     continue
                 centroid = centroid / cn
                 cohes = sig_vecs[local] @ centroid
-                tid = f"unified-new-{lab}"
+                if dry_run:
+                    tid = f"unified-new-{lab}"
+                else:
+                    # §6 step 5: persist as a real dynamic_topics candidate
+                    # (labeled, centroid) so the identity survives rebuilds
+                    # and pass 1 matches it next run.
+                    order = np.argsort(-cohes)
+                    top_headlines = [
+                        sig_rows[local[int(k)]]["headline"] for k in order[:12]
+                    ]
+                    if _looks_junk_cluster(top_headlines):
+                        print(f"  new-topic cluster {lab} REJECTED as junk "
+                              f"({len(local)} members, e.g. "
+                              f"\"{top_headlines[0][:60]}\")")
+                        continue
+                    tid_int, label = await _persist_new_topic(
+                        conn, lab, centroid, top_headlines, len(local),
+                        float(np.mean(cohes)))
+                    if tid_int < 0:
+                        tid = f"unified-new-{lab}"  # identity collision; ephemeral
+                    else:
+                        tid = f"dynamic-topic-{tid_int}"
+                        print(f"  new topic {tid}: \"{label}\" ({len(local)} members)")
                 for k, idx in enumerate(local):
                     _emit(idx, tid, float(cohes[k]), float(cohes[k]) >= gate_t)
                 new_topics += 1
