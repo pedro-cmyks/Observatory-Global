@@ -1904,14 +1904,21 @@ async def fetch_threads(
         # the degraded fallback; the category lives on each row as its badge
         # (crisis_class) and in the drill-down (memberStories). A thin
         # substrate yields a SHORT list, never category filler (same honesty
-        # rule as the country 0-threads empty state). SCOPE: global list
-        # only — the single-country view keeps its R1 merge (scoped children
-        # + atlas) because CountryBrief's visible-threads contract counts on
-        # it; migrating that view is a follow-up. Kill-switch:
-        # ATLAS_THREADS_CATEGORY_ROWS=on restores the old merge.
-        if single_country is not None or os.environ.get(
-            "ATLAS_THREADS_CATEGORY_ROWS", ""
-        ).strip().lower() in {"1", "true", "on", "yes"}:
+        # rule as the country 0-threads empty state).
+        # X3 (2026-07-05, closes the 07-04 deferral): the SINGLE-COUNTRY view
+        # is stories-only too — R1 scoped children ("Venezuela Earthquake"),
+        # never atlas category aggregates as filler. A country with no scoped
+        # stories gets a SHORT/empty list (the CLAUDE.md guardrail verbatim).
+        # Kill-switches: ATLAS_THREADS_CATEGORY_ROWS=on restores the merge
+        # everywhere; ATLAS_COUNTRY_CATEGORY_ROWS=on restores it for the
+        # country view only (independent CountryBrief revert).
+        _on = {"1", "true", "on", "yes"}
+        category_rows = (
+            os.environ.get("ATLAS_THREADS_CATEGORY_ROWS", "").strip().lower() in _on
+            or (single_country is not None and os.environ.get(
+                "ATLAS_COUNTRY_CATEGORY_ROWS", "").strip().lower() in _on)
+        )
+        if category_rows:
             dynamic_labels = {
                 str(t.get("label") or "").strip().lower() for t in dynamic
             }
@@ -1923,6 +1930,10 @@ async def fetch_threads(
             return dedupe_same_event_threads(ranked)[:limit]
         if dynamic:
             return dedupe_same_event_threads(rank_threads(dynamic))[:limit]
+        # X3: the emergent fallback is GLOBAL (no country scoping) — serving
+        # it inside a country view would be filler. Honest empty instead.
+        if single_country is not None:
+            return []
         try:
             emergent = await _fetch_emergent_threads_with_conn(
                 active_conn, hours=hours, limit=limit,

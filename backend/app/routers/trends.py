@@ -15,9 +15,15 @@ async def get_trends(
 ):
     """
     Return time series trend data from pre-computed hourly aggregates.
-    Much faster than querying raw signals for historical analysis.
+
+    2026-07-05 (L2 review side-finding): re-pointed from the DEAD legacy
+    tables (signals_country_hourly / signals_theme_hourly /
+    signals_source_hourly — all 0 rows since the v2 migration) to the live
+    v2 pre-aggs. Depth is bounded by the hot retention window (~7d hourly);
+    longer ranges return what exists, honestly partial.
     """
     async with db.pool.acquire() as conn:
+        await conn.execute("SET statement_timeout = 10000")
         # Force daily bucket for longer ranges
         if bucket == "1h" and days > 7:
             bucket = "1d"
@@ -27,11 +33,11 @@ async def get_trends(
         if entity_type == "global":
             rows = await conn.fetch(f"""
                 SELECT
-                    date_trunc('{bucket_interval}', bucket) AS time_bucket,
+                    date_trunc('{bucket_interval}', hour) AS time_bucket,
                     SUM(signal_count) AS signal_count,
                     ROUND(AVG(avg_sentiment)::numeric, 2) AS avg_sentiment
-                FROM signals_country_hourly
-                WHERE bucket > NOW() - ($1 * INTERVAL '1 day')
+                FROM country_hourly_v2
+                WHERE hour > NOW() - ($1 * INTERVAL '1 day')
                 GROUP BY 1
                 ORDER BY 1 ASC
             """, days)
@@ -41,12 +47,12 @@ async def get_trends(
                 return {"error": "entity_value required for country trends"}
             rows = await conn.fetch(f"""
                 SELECT
-                    date_trunc('{bucket_interval}', bucket) AS time_bucket,
+                    date_trunc('{bucket_interval}', hour) AS time_bucket,
                     SUM(signal_count) AS signal_count,
                     ROUND(AVG(avg_sentiment)::numeric, 2) AS avg_sentiment
-                FROM signals_country_hourly
+                FROM country_hourly_v2
                 WHERE country_code = $1
-                  AND bucket > NOW() - ($2 * INTERVAL '1 day')
+                  AND hour > NOW() - ($2 * INTERVAL '1 day')
                 GROUP BY 1
                 ORDER BY 1 ASC
             """, entity_value.upper(), days)
@@ -56,12 +62,12 @@ async def get_trends(
                 return {"error": "entity_value required for theme trends"}
             rows = await conn.fetch(f"""
                 SELECT 
-                    date_trunc('{bucket_interval}', bucket) AS time_bucket,
+                    date_trunc('{bucket_interval}', hour) AS time_bucket,
                     SUM(signal_count) AS signal_count,
                     ROUND(AVG(avg_sentiment)::numeric, 2) AS avg_sentiment
-                FROM signals_theme_hourly
+                FROM theme_hourly_v2
                 WHERE theme ILIKE $1
-                  AND bucket > NOW() - ($2 * INTERVAL '1 day')
+                  AND hour > NOW() - ($2 * INTERVAL '1 day')
                 GROUP BY 1
                 ORDER BY 1 ASC
             """, f"%{entity_value}%", days)
@@ -69,14 +75,15 @@ async def get_trends(
         elif entity_type == "source":
             if not entity_value:
                 return {"error": "entity_value required for source trends"}
+            # No v2 source pre-agg exists — bounded direct scan (hot window).
             rows = await conn.fetch(f"""
-                SELECT 
-                    date_trunc('{bucket_interval}', bucket) AS time_bucket,
-                    SUM(signal_count) AS signal_count,
-                    ROUND(AVG(avg_sentiment)::numeric, 2) AS avg_sentiment
-                FROM signals_source_hourly
+                SELECT
+                    date_trunc('{bucket_interval}', timestamp) AS time_bucket,
+                    COUNT(*) AS signal_count,
+                    ROUND(AVG(sentiment)::numeric, 2) AS avg_sentiment
+                FROM signals_v2
                 WHERE source_name ILIKE $1
-                  AND bucket > NOW() - ($2 * INTERVAL '1 day')
+                  AND timestamp > NOW() - (LEAST($2, 14) * INTERVAL '1 day')
                 GROUP BY 1
                 ORDER BY 1 ASC
             """, f"%{entity_value}%", days)
