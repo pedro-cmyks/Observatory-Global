@@ -40,7 +40,7 @@ import { buildHistoricalCoverageCue } from './lib/historicalCoverageCue'
 import ResearchPlanPanel from './components/ResearchPlanPanel'
 import WorkbenchPanel from './components/WorkbenchPanel'
 import { UniverseView } from './components/UniverseView'
-import { getThemeLabel } from './lib/themeLabels'
+import { getThemeLabel, resolveThreadLabel } from './lib/themeLabels'
 import { createInvestigation } from './lib/workbench'
 
 // Terminal Panels
@@ -1939,6 +1939,7 @@ function AppContent() {
               showTerminator={showTerminator}
               activeCountry={filter.country}
               activeTheme={filter.theme}
+              activeThemeLabel={selectedTheme?.thread?.label ?? selectedThread?.label ?? null}
               vesselCount={vesselData.length}
               vesselConnected={vesselConnected}
               aircraftError={aircraftError}
@@ -2035,7 +2036,7 @@ function AppContent() {
             <button className="drill-back-btn" onClick={themeBackStack.length > 0 ? handleThemeBack : handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>
               {themeBackStack.length > 0 ? `← ${themeBackStack[0].theme.replace(/_/g, ' ').slice(0, 20)}` : '← STREAM'}
             </button>
-            <span style={{ color: '#94a3b8' }}>{(selectedTheme!.thread?.label || selectedTheme!.theme.replace(/_/g, ' ')).slice(0, 32)}</span>
+            <span style={{ color: '#94a3b8' }}>{resolveThreadLabel(selectedTheme!.theme, selectedTheme!.thread?.label).slice(0, 32)}</span>
           </>
           if (isThread) panelTitle = <>
             <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
@@ -2251,6 +2252,7 @@ function AppContent() {
                 <AnomalyPanel
                   onWikiClick={(q) => setExternalSearchQuery({ q, id: Date.now() })}
                   onPublicAttentionSelect={handlePublicAttentionSelect}
+                  activeThemeLabel={selectedTheme?.thread?.label ?? selectedThread?.label ?? null}
                 />
               </PanelErrorBoundary>
             )}
@@ -2261,8 +2263,9 @@ function AppContent() {
               >
                 <SourceIntegrityPanel
                   viewingLabel={
-                    selectedTheme?.thread?.label
-                    ?? selectedTheme?.theme
+                    (selectedTheme
+                      ? resolveThreadLabel(selectedTheme.theme, selectedTheme.thread?.label)
+                      : null)
                     ?? selectedThread?.label
                     ?? selectedPublicAttention?.title
                     ?? selectedChokepoint?.name

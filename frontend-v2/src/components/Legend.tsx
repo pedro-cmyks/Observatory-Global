@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { getThemeLabel } from '../lib/themeLabels'
+import { resolveThreadLabel } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
 
 interface LegendProps {
@@ -10,6 +10,7 @@ interface LegendProps {
     showTerminator: boolean
     activeCountry?: string | null
     activeTheme?: string | null
+    activeThemeLabel?: string | null
     vesselCount?: number
     vesselConnected?: boolean
     aircraftError?: boolean
@@ -66,6 +67,7 @@ export const Legend: React.FC<LegendProps> = ({
     showTerminator,
     activeCountry,
     activeTheme,
+    activeThemeLabel,
     vesselCount = 0,
     vesselConnected = false,
     aircraftError = false,
@@ -83,7 +85,7 @@ export const Legend: React.FC<LegendProps> = ({
     const contextLabel = activeCountry
         ? resolveCountryName(activeCountry)
         : activeTheme
-            ? getThemeLabel(activeTheme)
+            ? resolveThreadLabel(activeTheme, activeThemeLabel)
             : null
 
     // Only credit sources that feed a currently-visible map layer, so the
