@@ -20,12 +20,14 @@ import './WorkbenchPanel.css';
 interface WorkbenchPanelProps {
   onOpenThread?: (threadId: string, label: string) => void;
   onOpenCountry?: (countryCode: string) => void;
+  /** W1: panel pins restore their L2 view from a query-string. */
+  onOpenParams?: (params: string) => void;
   onStartInvestigation?: (query: string) => void;
   refreshToken?: number; // bump to force re-read after external pin changes
 }
 
 export default function WorkbenchPanel({
-  onOpenThread, onOpenCountry, onStartInvestigation, refreshToken,
+  onOpenThread, onOpenCountry, onOpenParams, onStartInvestigation, refreshToken,
 }: WorkbenchPanelProps) {
   const [, setTick] = useState(0);
   const [newTitle, setNewTitle] = useState('');
@@ -66,6 +68,9 @@ export default function WorkbenchPanel({
       onOpenThread?.(String(params.thread_id), pin.label);
     } else if (pin.open?.surface === 'country_brief' && params.country_code) {
       onOpenCountry?.(String(params.country_code));
+    } else if (pin.open?.surface === 'l2_params' && params.urlParams) {
+      // W1: unified panel pins (theme/country/person/source/attention/signal)
+      onOpenParams?.(String(params.urlParams));
     }
   }
 

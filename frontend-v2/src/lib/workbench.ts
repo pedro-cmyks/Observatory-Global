@@ -151,6 +151,18 @@ export function addPin(
   return inv
 }
 
+/** W1: replace/enrich a pin's frozen snapshot (panel pins fetch their evidence
+ *  asynchronously after the pin lands — the pin never waits on the network). */
+export function updatePinSnapshot(
+  investigationId: string, anchorId: string, snapshot: PinSnapshot,
+): Investigation | null {
+  return mutate(investigationId, inv => {
+    const pin = inv.pins.find(p => p.anchorId === anchorId)
+    if (!pin) return
+    pin.snapshot = snapshot
+  })
+}
+
 /** #227: edit the analyst's per-pin note (the annotation the dossier carries). */
 export function updatePinNote(
   investigationId: string, anchorId: string, note: string,

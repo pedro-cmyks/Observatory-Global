@@ -1,10 +1,32 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, useEffect, useMemo, useCallback, type ReactNode } from 'react'
-import { buildWorkspaceGraph, type WorkspaceGraph } from '../lib/workspaceGraph'
-import { buildWorkspaceMarkdown, buildDossierMarkdown, fetchItemSignals } from '../lib/exportFormatters'
+// W1 (L3 deep review 2026-07-05): ONE investigation store.
+//
+// This context used to be a SECOND pin system (PinnedItem + force-graph over
+// localStorage 'atlas-workspace') living beside the Workbench — pins from L2
+// panels never reached the dossier, research-plan pins never reached the
+// panels. It is now a thin ADAPTER over the Workbench investigation store
+// (lib/workbench.ts): every pin is a WorkbenchPin with a #227 frozen snapshot,
+// visible in WorkbenchPanel and DossierView. The force-graph canvas was
+// RETIRED (decision D1 — the universe view superseded it as the spatial
+// surface); the legacy 'atlas-workspace' store is dropped on load (D5).
+import { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef, type ReactNode, type Dispatch, type SetStateAction } from 'react'
+import {
+    addPin as wbAddPin,
+    createInvestigation,
+    getActiveInvestigationId,
+    getInvestigation,
+    recordTrail,
+    removePin as wbRemovePin,
+    updatePinNote,
+    updatePinSnapshot,
+    type PinSnapshot,
+} from '../lib/workbench'
 
 export type PinnedItemType = 'theme' | 'person' | 'country' | 'signal' | 'source' | 'chokepoint' | 'public_attention' | 'temporal_snapshot'
 
+/** Compatibility shape for the panel pin affordances (ThemeDetail,
+ *  CountryBrief, EntityPanel, SourceProfile, PublicAttentionPanel,
+ *  SignalStream). Persisted as a WorkbenchPin, not as this shape. */
 export interface PinnedItem {
     id: string
     type: PinnedItemType
@@ -12,206 +34,177 @@ export interface PinnedItem {
     urlParams: string // the query string to restore this view, e.g. "?theme=ARMEDCONFLICT"
     notes: string
     timestamp: number
-    meta?: Record<string, unknown> // extra data like country code, signal text, etc.
+    meta?: Record<string, unknown>
 }
 
 interface WorkspaceContextType {
+    /** Workbench overlay visibility (the ONE L3 home). */
     isOpen: boolean
-    setIsOpen: (open: boolean) => void
+    setIsOpen: Dispatch<SetStateAction<boolean>>
+    /** Pins of the ACTIVE investigation, in the legacy PinnedItem shape. */
     items: PinnedItem[]
-    graph: WorkspaceGraph
-    graphLoading: boolean
-    graphError: string | null
     pinItem: (item: Omit<PinnedItem, 'notes' | 'timestamp'>) => void
     unpinItem: (id: string) => void
     updateNotes: (id: string, notes: string) => void
     isPinned: (id: string) => boolean
-    exportWorkspace: () => void
-    exportDossier: () => Promise<void>
-    sessionItems: PinnedItem[]
     trackVisit: (item: Omit<PinnedItem, 'notes' | 'timestamp'>) => void
-    clearSession: () => void
+    /** Bumps on every store mutation — pass into refresh tokens. */
+    version: number
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | null>(null)
-const WORKSPACE_GRAPH_HOURS = 24
+const SNAPSHOT_HOURS = 24
 
-function getParam(item: PinnedItem, key: string): string | null {
-    return new URLSearchParams(item.urlParams.replace(/^\?/, '')).get(key)
+function getParam(urlParams: string, key: string): string | null {
+    return new URLSearchParams(urlParams.replace(/^\?/, '')).get(key)
 }
 
-function getPinnedValue(item: PinnedItem): string {
-    if (item.type === 'theme') return getParam(item, 'theme') || item.id.replace(/^theme-/, '')
-    if (item.type === 'country') return getParam(item, 'country') || item.id.replace(/^country-/, '')
-    if (item.type === 'source') return getParam(item, 'source') || item.id.replace(/^source-/, '')
-    if (item.type === 'person') return getParam(item, 'person') || item.id.replace(/^person-/, '')
-    if (item.type === 'public_attention') return getParam(item, 'attention') || item.id.replace(/^public-attention-/, '')
+function pinnedValue(item: Omit<PinnedItem, 'notes' | 'timestamp'>): string {
+    if (item.type === 'theme') return getParam(item.urlParams, 'theme') || item.id.replace(/^theme-/, '')
+    if (item.type === 'country') return getParam(item.urlParams, 'country') || item.id.replace(/^country-/, '')
+    if (item.type === 'source') return getParam(item.urlParams, 'source') || item.id.replace(/^source-/, '')
+    if (item.type === 'person') return getParam(item.urlParams, 'person') || item.id.replace(/^person-/, '')
+    if (item.type === 'public_attention') return getParam(item.urlParams, 'attention') || item.id.replace(/^public-attention-/, '')
     return item.id
 }
 
-async function fetchWorkspaceDetail(item: PinnedItem, signal: AbortSignal): Promise<unknown | undefined> {
-    const value = getPinnedValue(item)
-    if (!value || item.type === 'signal' || item.type === 'chokepoint' || item.type === 'temporal_snapshot') return undefined
+/** #227 for panel pins: freeze what the analyst saw. Tolerant extractor over
+ *  the per-surface detail payloads — a failed fetch still leaves a minimal
+ *  snapshot (label + capturedAt), never blocks the pin. */
+async function fetchPanelSnapshot(item: Omit<PinnedItem, 'notes' | 'timestamp'>): Promise<PinSnapshot | null> {
+    const value = pinnedValue(item)
+    if (!value || item.type === 'signal' || item.type === 'chokepoint' || item.type === 'temporal_snapshot') return null
 
     let url: string | null = null
-    if (item.type === 'theme') {
-        url = `/api/v2/theme/${encodeURIComponent(value)}?hours=${WORKSPACE_GRAPH_HOURS}`
-    } else if (item.type === 'country') {
-        url = `/api/v2/country/${encodeURIComponent(value)}?hours=${WORKSPACE_GRAPH_HOURS}`
-    } else if (item.type === 'person') {
-        const params = new URLSearchParams({
-            focus_type: 'person',
-            value,
-            hours: String(WORKSPACE_GRAPH_HOURS),
-        })
-        url = `/api/v2/focus?${params.toString()}`
-    } else if (item.type === 'source') {
-        url = `/api/v2/source/${encodeURIComponent(value)}/profile?hours=${WORKSPACE_GRAPH_HOURS}`
-    } else if (item.type === 'public_attention') {
-        url = `/api/v2/search/unified?q=${encodeURIComponent(value)}&hours=${WORKSPACE_GRAPH_HOURS}`
+    if (item.type === 'theme') url = `/api/v2/theme/${encodeURIComponent(value)}?hours=${SNAPSHOT_HOURS}`
+    else if (item.type === 'country') url = `/api/v2/country/${encodeURIComponent(value)}?hours=${SNAPSHOT_HOURS}`
+    else if (item.type === 'person') url = `/api/v2/focus?${new URLSearchParams({ focus_type: 'person', value, hours: String(SNAPSHOT_HOURS) })}`
+    else if (item.type === 'source') url = `/api/v2/source/${encodeURIComponent(value)}/profile?hours=${SNAPSHOT_HOURS}`
+    else if (item.type === 'public_attention') url = `/api/v2/search/unified?q=${encodeURIComponent(value)}&hours=${SNAPSHOT_HOURS}`
+    if (!url) return null
+
+    const response = await fetch(url)
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const json = await response.json() as Record<string, unknown>
+
+    // Evidence: first array of headline-shaped rows we can find.
+    const evidence: Array<{ headline: string; source?: string; url?: string }> = []
+    for (const key of ['signals', 'signalSample', 'top_stories', 'evidence_samples', 'results', 'items']) {
+        const arr = json[key]
+        if (!Array.isArray(arr)) continue
+        for (const row of arr.slice(0, 6)) {
+            if (!row || typeof row !== 'object') continue
+            const r = row as Record<string, unknown>
+            const headline = (r.headline ?? r.title ?? r.label) as string | undefined
+            if (!headline) continue
+            evidence.push({
+                headline,
+                source: (r.source ?? r.domain) as string | undefined,
+                url: (r.url ?? r.link) as string | undefined,
+            })
+            if (evidence.length >= 3) break
+        }
+        if (evidence.length > 0) break
     }
 
-    if (!url) return undefined
-    const response = await fetch(url, { signal })
-    if (!response.ok) throw new Error(`${item.title}: HTTP ${response.status}`)
-    const json = await response.json()
-    if (json?.error) throw new Error(`${item.title}: ${json.error}`)
-    return json
+    const metrics: Record<string, string | number> = {}
+    for (const key of ['total', 'signalCount', 'signal_count', 'gated_signal_count']) {
+        const v = json[key]
+        if (typeof v === 'number') { metrics[key] = v; break }
+    }
+
+    const count = Object.values(metrics)[0]
+    return {
+        capturedAt: new Date().toISOString(),
+        summary: `${item.title} · ${item.type}${count !== undefined ? ` · ${count} signals` : ''}`,
+        metrics,
+        evidence,
+    }
+}
+
+function toWorkbenchPin(item: Omit<PinnedItem, 'notes' | 'timestamp'>) {
+    return {
+        anchorId: item.id,
+        anchorType: item.type,
+        label: item.title,
+        open: { surface: 'l2_params', params: { urlParams: item.urlParams } },
+        snapshot: { capturedAt: new Date().toISOString(), summary: `${item.title} · ${item.type}` },
+    }
 }
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
     const [isOpen, setIsOpen] = useState(false)
-    const [items, setItems] = useState<PinnedItem[]>(() => {
-        try {
-            const stored = localStorage.getItem('atlas-workspace')
-            return stored ? JSON.parse(stored) as PinnedItem[] : []
-        } catch (e) {
-            console.error("Failed to load workspace", e)
-            return []
-        }
-    })
-    const [details, setDetails] = useState<Record<string, unknown | undefined>>({})
-    const [graphLoading, setGraphLoading] = useState(false)
-    const [graphError, setGraphError] = useState<string | null>(null)
+    const [version, setVersion] = useState(0)
+    const lastTrailRef = useRef<string | null>(null)
 
-    const [sessionItems, setSessionItems] = useState<PinnedItem[]>([])
-
-    // Save to localStorage when items change
+    // D5 (2026-07-05): drop the legacy second store. Pins were per-browser
+    // localStorage only (never server-side); pre-unification pins are dev-era.
     useEffect(() => {
-        localStorage.setItem('atlas-workspace', JSON.stringify(items))
-    }, [items])
+        try { localStorage.removeItem('atlas-workspace') } catch { /* non-fatal */ }
+    }, [])
 
-    useEffect(() => {
-        const allItems = [...items, ...sessionItems];
-        const uniqueItems = Array.from(new Map(allItems.map(i => [i.id, i])).values());
-        const fetchableItems = uniqueItems.filter(item => item.type !== 'signal' && item.type !== 'chokepoint')
-        if (fetchableItems.length === 0) {
-            Promise.resolve().then(() => {
-                setDetails({})
-                setGraphLoading(false)
-                setGraphError(null)
-            })
-            return
-        }
+    const bump = useCallback(() => setVersion(v => v + 1), [])
 
-        const controller = new AbortController()
+    const items = useMemo<PinnedItem[]>(() => {
+        void version
+        const activeId = getActiveInvestigationId()
+        const inv = activeId ? getInvestigation(activeId) : null
+        if (!inv) return []
+        return inv.pins.map(p => ({
+            id: p.anchorId,
+            type: (p.anchorType as PinnedItemType) ?? 'theme',
+            title: p.label,
+            urlParams: String((p.open?.params as Record<string, unknown> | undefined)?.urlParams ?? ''),
+            notes: p.note ?? '',
+            timestamp: Date.parse(p.pinnedAt) || 0,
+        }))
+    }, [version])
 
-        const loadDetails = async () => {
-            setGraphLoading(true)
-            setGraphError(null)
-
-            try {
-                const results = await Promise.all(fetchableItems.map(async item => {
-                    try {
-                        const detail = await fetchWorkspaceDetail(item, controller.signal)
-                        return [item.id, detail] as const
-                    } catch (error) {
-                        if (controller.signal.aborted) return [item.id, undefined] as const
-                        console.warn('Failed to enrich workspace item', error)
-                        return [item.id, undefined] as const
-                    }
-                }))
-                if (controller.signal.aborted) return
-                setDetails(Object.fromEntries(results))
-            } catch (error) {
-                if (controller.signal.aborted) return
-                setGraphError(error instanceof Error ? error.message : 'Failed to load workspace graph')
-            } finally {
-                if (!controller.signal.aborted) setGraphLoading(false)
-            }
-        }
-
-        void loadDetails()
-
-        return () => controller.abort()
-    }, [items, sessionItems])
+    const ensureInvestigation = useCallback((title: string): string => {
+        const activeId = getActiveInvestigationId()
+        if (activeId && getInvestigation(activeId)) return activeId
+        return createInvestigation(title).id
+    }, [])
 
     const pinItem = useCallback((item: Omit<PinnedItem, 'notes' | 'timestamp'>) => {
-        setItems(prev => {
-            if (prev.find(i => i.id === item.id)) return prev
-            return [{ ...item, notes: '', timestamp: Date.now() }, ...prev]
-        })
-        setIsOpen(true) // auto-open workspace when pinning
-    }, [])
+        const invId = ensureInvestigation(item.title)
+        wbAddPin(invId, toWorkbenchPin(item))
+        bump()
+        // Enrich the frozen snapshot asynchronously; the pin never waits.
+        fetchPanelSnapshot(item)
+            .then(snap => { if (snap) { updatePinSnapshot(invId, item.id, snap); bump() } })
+            .catch(() => { /* minimal snapshot stays */ })
+    }, [bump, ensureInvestigation])
 
     const unpinItem = useCallback((id: string) => {
-        setItems(prev => prev.filter(i => i.id !== id))
-    }, [])
+        const activeId = getActiveInvestigationId()
+        if (!activeId) return
+        wbRemovePin(activeId, id)
+        bump()
+    }, [bump])
 
     const updateNotes = useCallback((id: string, notes: string) => {
-        setItems(prev => prev.map(i => i.id === id ? { ...i, notes } : i))
-    }, [])
+        const activeId = getActiveInvestigationId()
+        if (!activeId) return
+        updatePinNote(activeId, id, notes)
+        bump()
+    }, [bump])
 
     const isPinned = useCallback((id: string) => items.some(i => i.id === id), [items])
-    
+
+    // Visits feed the ACTIVE investigation's trail (deduped against the last
+    // step) — no investigation, no trail; we don't record browsing outside an
+    // investigation context.
     const trackVisit = useCallback((item: Omit<PinnedItem, 'notes' | 'timestamp'>) => {
-        // Only track if it's not already pinned
-        if (items.some(i => i.id === item.id)) return;
-        
-        setSessionItems(prev => {
-            const filtered = prev.filter(i => i.id !== item.id)
-            if (filtered.length !== prev.length && prev[0]?.id === item.id) return prev
-            return [{ ...item, notes: '', timestamp: Date.now() }, ...filtered].slice(0, 20)
-        })
-    }, [items])
-
-    const clearSession = useCallback(() => setSessionItems([]), [])
-
-    const graph = useMemo(() => buildWorkspaceGraph({ items, sessionItems, details }), [items, sessionItems, details])
-
-    const exportWorkspace = useCallback(() => {
-        const md = buildWorkspaceMarkdown({ items, details })
-
-        const blob = new Blob([md], { type: 'text/markdown' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `atlas-workspace-${new Date().toISOString().split('T')[0]}.md`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-    }, [details, items])
-
-    const exportDossier = useCallback(async () => {
-        const dossierItems = items.filter(i => ['theme', 'country', 'person'].includes(i.type))
-        const sections = await Promise.all(
-            dossierItems.map(async item => ({ item, signals: await fetchItemSignals(item) }))
-        )
-        const md = buildDossierMarkdown(sections)
-        const blob = new Blob([md], { type: 'text/markdown' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `atlas-dossier-${new Date().toISOString().split('T')[0]}.md`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-    }, [items])
+        const activeId = getActiveInvestigationId()
+        if (!activeId || !getInvestigation(activeId)) return
+        if (lastTrailRef.current === item.id) return
+        lastTrailRef.current = item.id
+        recordTrail(activeId, 'open', item.title)
+    }, [])
 
     return (
-        <WorkspaceContext.Provider value={{ isOpen, setIsOpen, items, graph, graphLoading, graphError, pinItem, unpinItem, updateNotes, isPinned, exportWorkspace, exportDossier, sessionItems, trackVisit, clearSession }}>
+        <WorkspaceContext.Provider value={{ isOpen, setIsOpen, items, pinItem, unpinItem, updateNotes, isPinned, trackVisit, version }}>
             {children}
         </WorkspaceContext.Provider>
     )

@@ -3,9 +3,7 @@ import {
   buildCountryBriefMarkdown,
   buildThemeBriefingMarkdown,
   buildThemeSignalsCsv,
-  buildWorkspaceMarkdown,
 } from './exportFormatters'
-import type { PinnedItem } from '../contexts/WorkspaceContext'
 
 const generatedAt = new Date('2026-05-06T12:00:00Z')
 
@@ -73,50 +71,4 @@ describe('exportFormatters', () => {
     expect(md).toContain('- elpais.com.co — Armed Conflict — https://example.com')
   })
 
-  it('enriches workspace markdown with fetched detail data when available', () => {
-    const items: PinnedItem[] = [
-      {
-        id: 'theme-ARMEDCONFLICT',
-        type: 'theme',
-        title: 'Armed Conflict',
-        urlParams: '?theme=ARMEDCONFLICT',
-        notes: 'Follow this thread.',
-        timestamp: generatedAt.getTime(),
-      },
-      {
-        id: 'country-CO',
-        type: 'country',
-        title: 'Colombia',
-        urlParams: '?country=CO',
-        notes: '',
-        timestamp: generatedAt.getTime(),
-      },
-    ]
-
-    const md = buildWorkspaceMarkdown({
-      items,
-      details: {
-        'theme-ARMEDCONFLICT': {
-          topSources: [{ name: 'reuters.com', count: 12 }],
-          countryBreakdown: [{ code: 'CO', count: 8 }],
-          relatedThemes: [{ theme: 'PROTEST', count: 7 }],
-        },
-        'country-CO': {
-          sources: [{ name: 'elpais.com.co', count: 9 }],
-          themes: [{ name: 'ARMEDCONFLICT', count: 21 }],
-          keyPersons: [{ name: 'gustavo petro', count: 5 }],
-        },
-      },
-      generatedAt,
-    })
-
-    expect(md).toContain('### Top Sources')
-    expect(md).toContain('- reuters.com: 12 signals')
-    expect(md).toContain('### Top Countries')
-    expect(md).toContain('- CO: 8 signals')
-    expect(md).toContain('### Top Themes')
-    expect(md).toContain('- Armed Conflict: 21 signals')
-    expect(md).toContain('### Key People')
-    expect(md).toContain('- gustavo petro: 5 mentions')
-  })
 })

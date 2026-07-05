@@ -27,10 +27,9 @@ import { PersonCompare } from './components/PersonCompare'
 import { ThemeCompare } from './components/ThemeCompare'
 import { SourceProfile } from './components/SourceProfile'
 import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext'
-import { InvestigationWorkspace } from './components/InvestigationWorkspace'
 import { FocusIndicator } from './components/FocusIndicator'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
-import { Globe, ClipboardList, FolderOpen, HelpCircle, BookmarkPlus, MoreHorizontal, Settings, ChevronDown } from './lib/icons'
+import { Globe, ClipboardList, HelpCircle, BookmarkPlus, MoreHorizontal, Settings, ChevronDown } from './lib/icons'
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
 import { resolveCountryName } from './lib/countryNames'
 import type { PublicAttentionOrigin } from './lib/publicAttention'
@@ -223,7 +222,9 @@ function AppContent() {
   // Sync filter state ↔ URL params for shareable links
   useUrlSync()
 
-  const { trackVisit, setIsOpen, items: workspaceItems, sessionItems } = useWorkspace()
+  // W1 (2026-07-05): one L3 store — the context adapts panel pins onto the
+  // Workbench investigation; isOpen IS the workbench overlay state now.
+  const { trackVisit, isOpen: workbenchOpen, setIsOpen: setWorkbenchOpen, items: workspaceItems, version: wbVersion } = useWorkspace()
 
   // State
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
@@ -250,8 +251,6 @@ function AppContent() {
     | { type: 'country'; code: string; name: string }
   const [prevStreamCtx, setPrevStreamCtx] = useState<PrevCtx | null>(null)
   const [showBriefing, setShowBriefing] = useState(false)
-  // Workbench (Phase 2, #213): investigation memory overlay + research plan
-  const [workbenchOpen, setWorkbenchOpen] = useState(false)
   // Universe view (L11): the whole living story population as one field
   const [universeOpen, setUniverseOpen] = useState(false)
   const [researchQuery, setResearchQuery] = useState<string | null>(null)
@@ -530,6 +529,30 @@ function AppContent() {
     handleCountryClick(countryCode)
     setMapFlyCountry(countryCode)
     setWorkbenchOpen(false)
+  }
+
+  // W1: panel pins (theme/country/person/source/attention) restore their L2
+  // view from a query-string — the param router the retired force-graph used,
+  // now serving WorkbenchPanel pin opens.
+  function handleOpenParams(params: string) {
+    const next = new URLSearchParams(params.replace(/^\?/, ''))
+    const source = next.get('source')
+    const theme = next.get('theme')
+    const country = next.get('country')
+    const person = next.get('person')
+    const attention = next.get('attention')
+    setWorkbenchOpen(false)
+
+    if (attention) { handlePublicAttentionSelect({ title: attention }); return }
+    if (source) { setSelectedSourceProfile(source); return }
+    if (theme && country) {
+      handleThemeSelect(theme, country, country, undefined)
+      setMapFlyCountry(country)
+      return
+    }
+    if (theme) { handleThemeSelect(theme); return }
+    if (country) { handleCountryClick(country); setMapFlyCountry(country); return }
+    if (person) { setFocus('person', person, person); setMapFlyCountry(null); return }
   }
 
   // Theme selection handlers
@@ -1152,10 +1175,12 @@ function AppContent() {
           </div>
           <button
             className={`time-btn workbench-btn ${workbenchOpen ? 'active' : ''}`}
+            data-tour="workspace-button"
             data-tip="Investigation Workbench: research plans, pins, and saved routes"
             onClick={() => setWorkbenchOpen(open => { if (!open) track('workbench_open'); return !open })}
           >
             WORKBENCH
+            {workspaceItems.length > 0 && <span className="cmd-count">{workspaceItems.length}</span>}
           </button>
           <button
             className={`time-btn workbench-btn ${universeOpen ? 'active' : ''}`}
@@ -1198,17 +1223,6 @@ function AppContent() {
           <button className="cmd-btn" data-tour="brief-button" onClick={openBrief} data-tip="Open the intelligence brief">
             <ClipboardList size={13} /> <span className="cmd-btn-label">BRIEF</span>
             {watches.length > 0 && <span className="cmd-count">{watches.length}</span>}
-          </button>
-          <button
-            className="cmd-btn workspace-cmd-btn"
-            data-tour="workspace-button"
-            onClick={() => setIsOpen(true)}
-            data-tip="Open Investigation Workspace"
-          >
-            <FolderOpen size={13} /> <span className="cmd-btn-label">WORKSPACE</span>
-            {(workspaceItems.length + sessionItems.length) > 0 && (
-              <span className="cmd-count">{workspaceItems.length + sessionItems.length}</span>
-            )}
           </button>
           {/* TOUR + Settings live in a "···" overflow menu (#152) so the bar
               keeps only primary actions visible. */}
@@ -1816,9 +1830,10 @@ function AppContent() {
           <div className="workbench-overlay-body">
             <div className="workbench-overlay-left">
               <WorkbenchPanel
-                refreshToken={wbRefresh}
+                refreshToken={wbRefresh + wbVersion}
                 onOpenThread={handleResearchOpenThread}
                 onOpenCountry={handleResearchOpenCountry}
+                onOpenParams={handleOpenParams}
                 onStartInvestigation={(q) => setResearchQuery(q)}
               />
             </div>
@@ -1875,52 +1890,8 @@ function AppContent() {
         />
       )}
 
-      {/* The force-graph workspace is a desktop power surface (pointer pan/zoom);
-          hide it on phones — pins/investigations stay reachable via WORKBENCH. */}
-      {!isMobile && (
-      <PanelErrorBoundary panelName="WORKSPACE">
-      <InvestigationWorkspace
-        onNavigate={(params) => {
-          const next = new URLSearchParams(params.replace(/^\?/, ''))
-          const source = next.get('source')
-          const theme = next.get('theme')
-          const country = next.get('country')
-          const person = next.get('person')
-          const attention = next.get('attention')
-
-          if (attention) {
-            handlePublicAttentionSelect({ title: attention })
-            return
-          }
-          if (source) {
-            setSelectedSourceProfile(source)
-            return
-          }
-          if (theme && country) {
-            handleThemeSelect(theme, country, country, attention ? { title: attention } : undefined)
-            setMapFlyCountry(country)
-            return
-          }
-          if (theme) {
-            handleThemeSelect(theme, undefined, undefined, attention ? { title: attention } : undefined)
-            return
-          }
-          if (country) {
-            handleCountryClick(country)
-            setMapFlyCountry(country)
-            return
-          }
-          if (person) {
-            setFocus('person', person, person)
-            setMapFlyCountry(null)
-            return
-          }
-
-          window.location.search = params;
-        }}
-      />
-      </PanelErrorBoundary>
-      )}
+      {/* W1 (2026-07-05): the force-graph workspace was RETIRED (D1 — the
+          universe view is the spatial surface); pins live in the WORKBENCH. */}
 
       {comparePerson && (
         <PersonCompare
@@ -1949,7 +1920,7 @@ function AppContent() {
       <OnboardingCoachmark
         runId={tourRunId}
         onOpenBrief={openBrief}
-        onOpenWorkspace={() => setIsOpen(true)}
+        onOpenWorkspace={() => setWorkbenchOpen(true)}
         entryContext={tourEntryContext}
       />
       {countryWalkthrough && (
