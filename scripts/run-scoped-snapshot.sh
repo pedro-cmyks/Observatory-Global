@@ -98,3 +98,18 @@ $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.compute_event_movement --wri
 # already-ingested rows to the fresh active topic set. Pure-SQL, cheap. Non-fatal.
 ( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.bind_disaster_movement --write ) \
   || echo "[scoped-snapshot] disaster movement bind failed (non-fatal)" >&2
+
+# Step 5: anchored-emergent category GROWTH (Pedro 2026-07-04: the atlas
+# corpus is not fixed in stone — neither a fixed count nor hand-updated).
+# Aggregates the R3.1 typer's free-form categories; recurring ones (>=3
+# stories, 30d) that clear a MEASURED overlap bar vs the existing anchors
+# get a DeepSeek-drafted taxonomy entry and INSERT as origin='auto'
+# (lexicon-less: born as a typing/semantic lens; the gate covers them as
+# gold accumulates). Cap 2/night; ledger docs/research/taxonomy-revision/
+# auto-growth-ledger.md. Seeds never touched. Disable: ATLAS_CATEGORY_GROWTH=off.
+if [[ "${ATLAS_CATEGORY_GROWTH:-on}" == "on" && -n "${OPENAI_API_KEY:-}" && -n "${DEEPSEEK_API_KEY:-}" ]]; then
+  ( cd "$ROOT_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.grow_atlas_categories --write ) \
+    || echo "[scoped-snapshot] category growth failed (non-fatal)" >&2
+else
+  echo "[scoped-snapshot] skip category growth (off or keys missing)" >&2
+fi

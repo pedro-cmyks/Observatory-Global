@@ -42,9 +42,15 @@ fi
 
 cd "$BACKEND_DIR"
 
+# Hot window (Pedro 2026-07-04): the script's --older-than-hours DEFAULT is
+# 24 — that, not the documented 7d retention, was what trimmed the hot DB to
+# ~1-2 days and starved every 7d consumer (Kalman movement buckets, identity
+# persistence, 168h views). 168h = the real 7-day hot window; prune still
+# only runs AFTER verified archive export. Override: ATLAS_HOT_RETENTION_HOURS.
 exec .venv/bin/python -m scripts.local_hot_cold_catchup \
   --archive-root "$ARCHIVE_ROOT" \
   --output-dir "$OUTPUT_DIR" \
+  --older-than-hours "${ATLAS_HOT_RETENTION_HOURS:-168}" \
   --allow-catch-up-outside-window \
   --execute \
   --execute-prune \
