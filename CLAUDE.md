@@ -43,6 +43,43 @@ keep-rates a few cycles (forced-displacement tau 0.163 = lowest, watch junk;
 energy-grid/fuel-subsidy goldP ≤0.07 rely on gate). Day 3 also: browser-verify
 surfaces + handoff playbooks.
 
+**2026-07-04/05 (NOCHE — CATEGORÍAS≠HILOS servido + growth loop + retención
+REAL + reclaim 4.1GB, `d40deedf`+`1b6ba3b0`, read FIRST).** Pedro corrigió la
+falacia de niveles y destapó la retención. (1) **STORIES-ONLY /threads
+DEPLOYED** (Fly): atlas topic = CATEGORÍA (lente R3), NO fila — supersede el
+unified-ranking del 06-24; lista global sirve solo historias (dynamic;
+emergent fallback; sustrato flaco = lista corta honesta, nunca relleno de
+categorías). Prod verificado: 10 filas todas dynamic-topic-*. Vista
+país/slug conserva el merge R1 (contrato CountryBrief — follow-up).
+Kill-switch ATLAS_THREADS_CATEGORY_ROWS=on. El deploy también subió el F4
+read-path param a prod. (2) **CATEGORY GROWTH LOOP armado** (Pedro: "el
+corpus no es fijo en piedra"): `grow_atlas_categories.py` — categorías
+libres del typer R3.1 recurrentes (≥3 stories/30d) → bar de solape MEDIDO
+(p90 sims inter-anchor = 0.426, espacio OpenAI) → draft DeepSeek → INSERT
+origin='auto' (mig 068), sin lexicón (nace como lente typing/semántico).
+Cap 2/noche, ledger, seeds intocables; Step 5 del scoped-snapshot
+(ATLAS_CATEGORY_GROWTH=off). Validado dry-run; dispara cuando el pool
+re-engorde. **DISEÑO ACORDADO robot v1 (Pedro)**: estructura-primero —
+agglomerative sobre centroides de historias en espacio OpenAI (e5 comprimido
+0.94+ a esa granularidad), umbral MEDIDO, un naming por grupo, recursivo
+(temas→dominios), lifecycle de retiro; v0 nombre-primero queda de puente.
+PRÓXIMA SESIÓN. (3) **RETENCIÓN — culpable real encontrado**: NO el retention
+7d documentado; `local_hot_cold_catchup --older-than-hours` DEFAULT 24 sin
+override en el runner → hot vivía a 1-2 días (Kalman 7d + persistencia
+famélicos). Runner ahora pasa 168h (ATLAS_HOT_RETENTION_HOURS); prune sigue
+solo tras archivo verificado. TAMBIÉN: el job fallaba exit 1 en su VACUUM
+final (statement_timeout del pooler, mismo bug-class matview) → session
+timeout bump. (4) **RECLAIM SUPABASE: 7.16→3.09 GB (−4.1 GB)** — era BLOAT,
+no tablas viejas: signals_v2 3,105→356 MB (¡15KB/fila de churn!),
+signal_embeddings 1,236→205 MB (152K tuplas muertas vs 54K vivas),
+theme_country_hourly 1,406→1,078 MB. Con 7d hot el DB estabiliza ~5-6 GB.
+(5) Respuestas asentadas: pool de centroides = dinámico por lifecycle (16
+active/737 candidate/619 retired hoy, post-collapse), SIN relación con las
+30 categorías; corpus atlas 30 en DB (candidate-v2=32, 2 hazards nunca
+insertadas — el typer ya las emite libres, el growth loop las propondrá
+solo). NEXT: robot v1 estructura-primero · country-view stories-only ·
+A/B F4 re-run @pool≥80 (PB-5) · archivo→identidades (time-as-dimension).
+
 **2026-07-04 (DÍA 2 cont.+DÍA 3 — F4 §6-step-5 + A/B VERDICT + playbooks,
 `a5b61131`+`54368a3a`).** (4) **New-topic labeling+persistence SHIPPED**
 (`build_unified_topics.py`): residual clusters → real dynamic_topics
