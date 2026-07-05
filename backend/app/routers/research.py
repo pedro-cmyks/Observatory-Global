@@ -70,8 +70,10 @@ async def research_plan(body: ResearchPlanRequest) -> dict:
     intent = parse_research_intent(body.query, geo_scope=geo_hint)
 
     normalized = normalize_search_text(body.query)
+    # v3 (2026-07-05): contract bumped to research-plan-v1 — new cache
+    # namespace so stale v0 plans never serve under the new contract.
     cache_key = (
-        f"rplan:v2:{normalized}:{'-'.join(intent['geo_scope']) or 'all'}:{body.hours}"
+        f"rplan:v3:{normalized}:{'-'.join(intent['geo_scope']) or 'all'}:{body.hours}"
     )
     if app.state.redis:
         try:
@@ -101,6 +103,33 @@ async def research_plan(body: ResearchPlanRequest) -> dict:
         async with db.pool.acquire() as conn:
             return await fetch_semantic_signal_matches(conn, query_vec, hours=hours)
 
+    async def _fetch_movement(topic_ids: list[str]) -> dict[str, dict]:
+        """W2c: the shared Kalman movement field (#219) per thread anchor.
+        Only ids present in topic_movement resolve (dynamic-topic-N and any
+        atlas ids the movement cron covers); the rest fall back to changed_10h
+        inside discover_anchors."""
+        if db.pool is None or not topic_ids:
+            return {}
+        async with db.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT DISTINCT ON (topic_id) topic_id, velocity, surprise, trend
+                FROM topic_movement
+                WHERE engine_version = 'movement-kalman-v1'
+                  AND topic_id = ANY($1::text[])
+                ORDER BY topic_id, window_end DESC
+                """,
+                topic_ids,
+            )
+        return {
+            r["topic_id"]: {
+                "velocity": round(float(r["velocity"]), 4) if r["velocity"] is not None else None,
+                "surprise": round(float(r["surprise"]), 4) if r["surprise"] is not None else None,
+                "trend": r["trend"],
+            }
+            for r in rows
+        }
+
     plan = await discover_anchors(
         intent,
         hours=body.hours,
@@ -111,6 +140,10 @@ async def research_plan(body: ResearchPlanRequest) -> dict:
         fetch_centroids_fn=_fetch_centroids,
         fetch_atlas_anchors_fn=_fetch_atlas_anchors,
         fetch_signal_matches_fn=_fetch_signal_matches,
+        fetch_movement_fn=_fetch_movement,
+        # W2a: suppress the member-centroid basis under a collapsed pool
+        # (visible lane_degraded gap instead of silent noise).
+        substrate_min_centroids=80,
     )
     plan = rank_plan(plan)
     plan["query"] = body.query

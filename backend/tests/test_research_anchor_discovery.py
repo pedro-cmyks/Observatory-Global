@@ -165,3 +165,111 @@ def test_unmatched_query_returns_safe_empty_plan():
     assert not any(a["anchor_type"] in ("country", "related_branch")
                    for a in plan["anchors"])
     assert plan["pin_candidates"] == []
+
+
+# ── W2 (research-plan-v1, L3 review 2026-07-05) ──────────────────────────────
+
+def test_contract_is_v1():
+    from app.services.research_anchor_discovery import CONTRACT
+    assert CONTRACT == "research-plan-v1"
+
+
+def test_substrate_guard_suppresses_centroid_basis_with_visible_gap():
+    """W2a: a collapsed centroid pool (< threshold) must suppress the
+    member-centroid basis and say so — never serve pool-noise matches."""
+    intent = parse_research_intent("water crisis Iran")
+
+    async def no_threads(**kwargs):
+        return []
+
+    async def tiny_pool():
+        # 2 active centroids — the post-collapse regime
+        return [
+            {"topic_id": 1, "label": "Water Stress", "n_signals": 10,
+             "centroid_vec": [1.0] + [0.0] * 767},
+            {"topic_id": 2, "label": "Sports", "n_signals": 5,
+             "centroid_vec": [0.0, 1.0] + [0.0] * 766},
+        ]
+
+    plan = asyncio.run(discover_anchors(
+        intent, hours=72,
+        fetch_threads_fn=no_threads, fetch_attention_fn=None,
+        embed_query_fn=lambda _t: [1.0] + [0.0] * 767,
+        fetch_centroids_fn=tiny_pool,
+        substrate_min_centroids=80,
+    ))
+
+    assert not any(a.get("match_basis") == "member_centroid" for a in plan["anchors"])
+    gap = [g for g in plan["coverage_gaps"]
+           if g["gap_type"] == "lane_degraded" and g["lane"] == "semantic"]
+    assert gap and "2 active" in gap[0]["note"]
+
+
+def test_substrate_guard_off_by_default_for_injected_fixtures():
+    """Tests and fixtures inject small pools deliberately — default 0 = off."""
+    intent = parse_research_intent("water crisis Iran")
+
+    async def no_threads(**kwargs):
+        return []
+
+    async def tiny_pool():
+        return [{"topic_id": 1, "label": "Water Stress", "n_signals": 10,
+                 "centroid_vec": [1.0] + [0.0] * 767}]
+
+    plan = asyncio.run(discover_anchors(
+        intent, hours=72,
+        fetch_threads_fn=no_threads, fetch_attention_fn=None,
+        embed_query_fn=lambda _t: [1.0] + [0.0] * 767,
+        fetch_centroids_fn=tiny_pool,
+    ))
+    assert any(a.get("match_basis") == "member_centroid" for a in plan["anchors"])
+
+
+def test_movement_enrichment_kalman_with_changed10h_fallback():
+    """W2c: thread anchors carry the shared Kalman field when available;
+    changed_10h fallback names its source. Ranking lineage unchanged."""
+    intent = parse_research_intent("election dispute Colombia")
+
+    async def threads(**kwargs):
+        return [
+            {"thread_id": "dynamic-topic-9", "label": "Election Dispute",
+             "signal_count": 40, "source_count": 5, "changed_10h": 7,
+             "category": "election-legitimacy", "crisis_relevant": True},
+            {"thread_id": "dynamic-topic-10", "label": "Election Audits",
+             "signal_count": 12, "source_count": 3, "changed_10h": 2,
+             "category": "election-legitimacy", "crisis_relevant": True},
+        ]
+
+    async def movement(topic_ids):
+        assert "dynamic-topic-9" in topic_ids
+        return {"dynamic-topic-9": {"velocity": 1.25, "surprise": 0.4, "trend": "surging"}}
+
+    plan = asyncio.run(discover_anchors(
+        intent, hours=72,
+        fetch_threads_fn=threads, fetch_attention_fn=None,
+        fetch_movement_fn=movement,
+    ))
+    by_id = {a["id"]: a for a in plan["anchors"] if a["anchor_type"] == "thread"}
+    assert by_id["dynamic-topic-9"]["movement"]["source"] == "kalman-topic-movement"
+    assert by_id["dynamic-topic-9"]["movement"]["trend"] == "surging"
+    assert by_id["dynamic-topic-10"]["movement"] == {"changed_10h": 2, "source": "changed_10h"}
+
+
+def test_category_lens_passthrough_and_summary():
+    """W2d: thread anchors carry the R3 category; the plan summarizes it."""
+    intent = parse_research_intent("election dispute Colombia")
+
+    async def threads(**kwargs):
+        return [
+            {"thread_id": "dynamic-topic-9", "label": "Election Dispute",
+             "signal_count": 40, "source_count": 5, "changed_10h": 7,
+             "category": "election-legitimacy", "crisis_relevant": True},
+        ]
+
+    plan = asyncio.run(discover_anchors(
+        intent, hours=72, fetch_threads_fn=threads, fetch_attention_fn=None,
+    ))
+    anchor = next(a for a in plan["anchors"] if a["anchor_type"] == "thread")
+    assert anchor["category"] == "election-legitimacy"
+    assert anchor["crisis_relevant"] is True
+    assert plan["category_summary"] == {"election-legitimacy": 1}

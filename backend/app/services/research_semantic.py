@@ -282,6 +282,43 @@ def is_junk_headline(headline: str | None) -> bool:
     return len(words) < 3  # needs at least three real words to be a headline
 
 
+# W2b (L3 review 2026-07-05): the two-tier gate contract (verified ~90% /
+# extended ~75% / candidate) replaces the old binary assigned|below_gate.
+# Mirrors app/routers/themes._extended_gate_thresholds — duplicated here
+# because themes imports this module (import cycle); themes stays canonical.
+_EXT_THRESHOLDS: tuple[dict[str, float], float] | None = None
+
+
+def _extended_thresholds() -> tuple[dict[str, float], float]:
+    global _EXT_THRESHOLDS
+    if _EXT_THRESHOLDS is None:
+        import json as _json
+        from pathlib import Path as _Path
+        p = _Path(__file__).resolve().parents[1] / "data" / "scope_gate_extended_thresholds.json"
+        try:
+            d = _json.loads(p.read_text(encoding="utf-8"))
+            _EXT_THRESHOLDS = (d.get("per_topic_threshold", {}), float(d.get("global_threshold", 1.0)))
+        except Exception:
+            _EXT_THRESHOLDS = ({}, 1.0)
+    return _EXT_THRESHOLDS
+
+
+def gate_tier_for(
+    gate_kept: bool | None, gate_score: float | None, topic_slug: str | None,
+) -> str:
+    """verified (gate-kept, ~90% precision) · extended (score clears the
+    per-topic ~75% threshold) · assigned (has an assignment below both) ·
+    below_gate (no assignment at all)."""
+    if gate_kept:
+        return "verified"
+    per_topic, global_thr = _extended_thresholds()
+    if gate_score is not None and topic_slug is not None:
+        thr = float(per_topic.get(topic_slug, global_thr))
+        if float(gate_score) >= thr:
+            return "extended"
+    return "assigned" if topic_slug is not None else "below_gate"
+
+
 async def fetch_semantic_signal_matches(
     conn: Any,
     query_vec: list[float],
@@ -295,10 +332,17 @@ async def fetch_semantic_signal_matches(
         f"""
         SELECT s.id, s.headline, s.country_code, s.source_name, s.timestamp,
                1 - (e.vec <=> $1::halfvec) AS similarity,
-               EXISTS (SELECT 1 FROM signal_topic_assignments sta
-                       WHERE sta.signal_id = s.id) AS has_topic
+               g.gate_kept, g.gate_score, g.topic_slug
         FROM signal_embeddings e
         JOIN signals_v2 s ON s.id = e.signal_id
+        LEFT JOIN LATERAL (
+            SELECT sta.gate_kept, sta.gate_score, t.slug AS topic_slug
+            FROM signal_topic_assignments sta
+            JOIN atlas_topics t ON t.id = sta.topic_id
+            WHERE sta.signal_id = s.id
+            ORDER BY sta.gate_kept DESC NULLS LAST, sta.gate_score DESC NULLS LAST
+            LIMIT 1
+        ) g ON true
         WHERE s.timestamp > NOW() - INTERVAL '{int(hours)} hours'
         ORDER BY e.vec <=> $1::halfvec
         LIMIT {int(limit * 3)}
@@ -333,8 +377,12 @@ async def fetch_semantic_signal_matches(
             "source_name": r["source_name"],
             "timestamp": r["timestamp"].isoformat() if r["timestamp"] else None,
             "similarity": round(sim, 4),
-            # gate status per Pipeline Funnel Principle: reachable, labeled
-            "gate_status": "assigned" if r["has_topic"] else "below_gate",
+            # W2b: graded gate tier (verified/extended/assigned/below_gate) —
+            # same two-tier contract the theme detail serves (07-04 cutover).
+            "gate_status": gate_tier_for(
+                r["gate_kept"], r["gate_score"], r["topic_slug"],
+            ),
+            "topic_slug": r["topic_slug"],
         })
         if len(matches) >= limit:
             break

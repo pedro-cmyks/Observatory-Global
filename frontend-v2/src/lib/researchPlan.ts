@@ -15,6 +15,17 @@ export interface ResearchAnchor {
   signal_count?: number
   investigative_score?: number
   visibility?: 'primary' | 'downranked'
+  /** research-plan-v1 (W2d): R3 category lens. */
+  category?: string | null
+  crisis_relevant?: boolean | null
+  /** research-plan-v1 (W2c): shared Kalman movement, changed_10h fallback. */
+  movement?: {
+    source: 'kalman-topic-movement' | 'changed_10h'
+    velocity?: number | null
+    surprise?: number | null
+    trend?: string | null
+    changed_10h?: number
+  }
   open?: { surface: string; params: Record<string, unknown> } | null
 }
 
@@ -33,7 +44,9 @@ export interface SemanticEvidenceItem {
   source_name?: string | null
   timestamp?: string | null
   similarity: number
-  gate_status: 'assigned' | 'below_gate'
+  /** research-plan-v1 (W2b): two-tier gate labels (was assigned|below_gate). */
+  gate_status: 'verified' | 'extended' | 'assigned' | 'below_gate'
+  topic_slug?: string | null
   retrieval_lane: string
   match_basis: string
 }

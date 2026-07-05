@@ -29,10 +29,17 @@ from app.services.research_plan import AXIS_TRIGGERS, COUNTRY_ALIASES
 ThreadFetcher = Callable[..., Awaitable[list[dict[str, Any]]]]
 AttentionFetcher = Callable[..., Awaitable[list[dict[str, Any]]]]
 
-CONTRACT = "research-plan-v0"
+CONTRACT = "research-plan-v1"  # v1 (2026-07-05): two-tier gate labels, Kalman
+# movement enrichment, R3 category passthrough, substrate-health guard.
 THREAD_LANE_LIMIT = 24
 WEAK_SUPPORT_CAP = 3
 PIN_CANDIDATE_CAP = 6
+# W2a: below this many active story centroids the member-centroid semantic
+# basis runs in exactly the post-collapse noise regime measured in the F4 A/B
+# (16-centroid pool → promiscuous matches). Suppress it HONESTLY (visible gap)
+# instead of serving junk; the signal-headline + atlas bases don't depend on
+# pool size and stay on. Router passes 80; tests default to 0 (off).
+SUBSTRATE_MIN_CENTROIDS_DEFAULT = 80
 
 # Human names for gap notes; falls back to the ISO code.
 _COUNTRY_NAMES = {
@@ -80,6 +87,10 @@ def _thread_anchor(
         "signal_count": int(thread.get("signal_count") or 0),
         "source_count": int(thread.get("source_count") or 0),
         "changed_10h": int(thread.get("changed_10h") or 0),
+        # W2d: R3 category lens passthrough (typer output on dynamic topics,
+        # parent domain on atlas) — lets the plan group anchors by category.
+        "category": thread.get("category"),
+        "crisis_relevant": thread.get("crisis_relevant"),
         "quality": thread.get("quality"),
         "confidence": thread.get("confidence"),
         "open": {
@@ -103,6 +114,8 @@ async def discover_anchors(
     fetch_centroids_fn: Callable[..., Awaitable[list[dict[str, Any]]]] | None = None,
     fetch_atlas_anchors_fn: Callable[..., Awaitable[list[dict[str, Any]] | None]] | None = None,
     fetch_signal_matches_fn: Callable[..., Awaitable[list[dict[str, Any]]]] | None = None,
+    fetch_movement_fn: Callable[[list[str]], Awaitable[dict[str, dict[str, Any]]]] | None = None,
+    substrate_min_centroids: int = 0,
 ) -> dict[str, Any]:
     """Discover anchors for parsed intent. Degrades lane-by-lane: a failing
     lane contributes a gap note, never an exception."""
@@ -261,6 +274,22 @@ async def discover_anchors(
                 })
             else:
                 topics = await fetch_centroids_fn()
+                # W2a substrate-health guard: a collapsed centroid pool makes
+                # the member-centroid basis pure noise (F4 A/B finding: v2
+                # quality is coupled to pool health with no floor). Suppress
+                # with a VISIBLE gap; atlas + signal-headline bases proceed.
+                if substrate_min_centroids and len(topics) < substrate_min_centroids:
+                    coverage_gaps.append({
+                        "gap_type": "lane_degraded",
+                        "lane": "semantic",
+                        "note": (
+                            f"Story-centroid pool is thin ({len(topics)} active, "
+                            f"healthy ≥{substrate_min_centroids}); topic-level semantic "
+                            "matches suppressed to avoid noise. Signal-headline "
+                            "evidence below is unaffected."
+                        ),
+                    })
+                    topics = []
                 for cand in semantic_topic_candidates(query_vec, topics):
                     thread_id = f"dynamic-topic-{cand['topic_id']}"
                     if thread_id in seen_thread_ids:
@@ -389,6 +418,35 @@ async def discover_anchors(
             "open": None,
         })
 
+    # ── W2c movement enrichment (Kalman shared field #219) ───────────────
+    # Display/reason enrichment ONLY: investigative_score keeps its
+    # changed_10h lineage (the ranking calibration and the threads-panel
+    # ordering both speak changed_10h; swapping the scale would silently
+    # invalidate the 2026-06-10 calibration). Kalman rides along per anchor.
+    thread_anchor_ids = [
+        str(a["id"]) for a in anchors if a["anchor_type"] == "thread" and a.get("id")
+    ]
+    kalman: dict[str, dict[str, Any]] = {}
+    if fetch_movement_fn is not None and thread_anchor_ids:
+        try:
+            kalman = await fetch_movement_fn(thread_anchor_ids) or {}
+        except Exception:
+            kalman = {}  # movement is enrichment — never degrades the plan
+    for a in anchors:
+        if a["anchor_type"] != "thread":
+            continue
+        m = kalman.get(str(a.get("id")))
+        if m:
+            a["movement"] = {**m, "source": "kalman-topic-movement"}
+        else:
+            a["movement"] = {"changed_10h": int(a.get("changed_10h") or 0), "source": "changed_10h"}
+
+    # ── W2d category lens summary (R3) ────────────────────────────────────
+    category_summary: dict[str, int] = {}
+    for a in anchors:
+        if a["anchor_type"] == "thread" and a.get("category"):
+            category_summary[str(a["category"])] = category_summary.get(str(a["category"]), 0) + 1
+
     # ── Pin candidates + next steps ───────────────────────────────────────
     order = {"direct_evidence": 0, "context": 1, "weak_support": 2}
     pinnable = [
@@ -421,4 +479,5 @@ async def discover_anchors(
         "suggested_next_steps": next_steps,
         "skipped_candidates": skipped_candidates,
         "semantic_evidence": semantic_evidence,
+        "category_summary": category_summary,
     }

@@ -279,3 +279,20 @@ def test_junk_headlines_filtered_and_deduped():
     # real headlines using those words stay
     assert not is_junk_headline("Minister explains the deal in words voters understand")
     assert not is_junk_headline("Digital economy grows five percent this year")
+
+
+# ── W2b two-tier gate labels (L3 review 2026-07-05) ──────────────────────────
+
+def test_gate_tier_for_two_tier_contract(monkeypatch):
+    from app.services import research_semantic as rs
+    monkeypatch.setattr(rs, "_EXT_THRESHOLDS", ({"election-legitimacy": 0.95}, 0.9))
+
+    assert rs.gate_tier_for(True, 0.99, "election-legitimacy") == "verified"
+    # clears the per-topic ~75%-precision threshold → extended
+    assert rs.gate_tier_for(False, 0.96, "election-legitimacy") == "extended"
+    # assigned but below both tiers
+    assert rs.gate_tier_for(False, 0.50, "election-legitimacy") == "assigned"
+    # unknown topic falls back to the global threshold
+    assert rs.gate_tier_for(False, 0.92, "some-new-topic") == "extended"
+    # no assignment at all
+    assert rs.gate_tier_for(None, None, None) == "below_gate"

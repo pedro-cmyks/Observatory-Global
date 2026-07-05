@@ -187,6 +187,16 @@ export default function ResearchPlanPanel({
               {anchor.investigative_score.toFixed(2)}
             </span>
           )}
+          {anchor.category && (
+            <span className="rp-intent-chip rp-intent-chip--axis" data-tip="Atlas category (R3 lens)">
+              {anchor.category.replace(/-/g, ' ')}
+            </span>
+          )}
+          {anchor.movement?.source === 'kalman-topic-movement' && anchor.movement.trend && (
+            <span className="rp-lane" data-tip="Kalman movement trend (shared #219 field)">
+              {anchor.movement.trend}
+            </span>
+          )}
           {!isGap && hasInvestigation && (
             <button
               className={`rp-pin ${pinnedIds.has(anchor.id) ? 'rp-pin--active' : ''}`}
@@ -242,12 +252,15 @@ export default function ResearchPlanPanel({
               <div className="rp-anchor-meta">
                 <span className="rp-lane">semantic {item.similarity.toFixed(2)}</span>
                 <span
-                  className={`rp-badge ${item.gate_status === 'below_gate' ? 'rp-badge--gap' : 'rp-badge--context'}`}
-                  data-tip={item.gate_status === 'below_gate'
-                    ? 'Did not clear the quality gate — candidate material, not verified coverage'
-                    : 'Topic-assigned signal'}
+                  className={`rp-badge ${item.gate_status === 'verified' ? 'rp-badge--direct' : item.gate_status === 'extended' ? 'rp-badge--context' : item.gate_status === 'below_gate' ? 'rp-badge--gap' : 'rp-badge--context'}`}
+                  data-tip={{
+                    verified: 'Cleared the quality gate (~90% precision)',
+                    extended: 'Clears the extended threshold (~75% precision) — graded coverage, below the strict gate',
+                    assigned: 'Topic-assigned but below both gate tiers',
+                    below_gate: 'Did not clear the quality gate — candidate material, not verified coverage',
+                  }[item.gate_status ?? 'below_gate'] ?? 'Gate status unknown'}
                 >
-                  {item.gate_status === 'below_gate' ? 'UNVERIFIED' : 'ASSIGNED'}
+                  {(item.gate_status ?? 'unverified').toUpperCase()}
                 </span>
                 {item.source_name && <span className="rp-score">{item.source_name}</span>}
               </div>
