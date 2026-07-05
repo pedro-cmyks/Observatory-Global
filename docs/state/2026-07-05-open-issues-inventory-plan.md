@@ -19,15 +19,21 @@ Vercel prod.
 
 | Grupo | Issues | Acción |
 |---|---|---|
-| A. Cerrables YA (trabajo hecho, falta el cierre formal) | #239 #241 #243 | Verificar hoy → cerrar |
-| B. Cerrables tras verificación con datos que ya corren | #168 #180 | 1 query cada uno → cerrar o follow-up estrecho |
+| A. ~~Cerrables YA~~ | ~~#239 #241 #243~~ | **CERRADOS mismo día** (evidencia en cada hilo; lo vivo de #243 → **#253** nuevo, NER levers). #239 verificado en código: los 4 componentes incl. poll-damp `4a5fbe9`. |
+| B. Cerrables tras verificación con datos que ya corren | #168 #180 | 1 query cada uno [M1] → cerrar o follow-up estrecho |
 | C. Alimentados por el clusterizado de HOY (~15:00) | #204 #226 #238 | El run de Stage B es el próximo paso concreto de cada uno |
 | D. Trabajo real pendiente (ordenado por esfuerzo/valor) | 10 issues | Quick wins S esta semana; M gated en telemetría 07-11 |
 | E. Bloqueados en Pedro / calendario | #46 #106 #140 #236 | Decisión o fecha, no código |
 
 **ACTUALIZACIÓN mismo día (pase de evolución de ruta, Pedro: "responde tú las
 preguntas contra el estado actual"): 7 issues CERRADOS con análisis
-ruta-vieja→ruta-actual en cada uno — 30 → 23 abiertos.**
+ruta-vieja→ruta-actual en cada uno; luego el lote A ejecutado (+3 cerrados,
++1 abierto #253) — 30 → 21 abiertos.**
+
+**Estado neto del día: 10 cerrados (#239 #241 #243 #154 #185 #172 #151 #159
+#166 #156), 1 creado (#253 NER levers), 4 re-scopeados (#217 #161 #46 +
+#226/#238 comentados). Quedan para el M1: queries de #168/#180 + verificación
+del run Stage B (~15:00) + robot sobre las units (#204).**
 
 | Cerrado | Veredicto |
 |---|---|
