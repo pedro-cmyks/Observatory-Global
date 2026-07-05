@@ -95,6 +95,35 @@ else
   echo "[atlas-topic] skip scope-gate: mlvenv or gate JSON missing ($MLVENV / $GATE_JSON)" >&2
 fi
 
+# Step 2b (2026-07-04, semantic assignment lane): a SECOND candidate lane —
+# argmax anchor-cosine in OpenAI space with WILD-calibrated per-topic taus
+# (docs/research/semantic-lane/2026-07-04-tau-sem-wild.md; e5 absolute cosine
+# FAILED the noise floor and was rejected). Writes method='embedding',
+# model_version='sem-assign-v0'; the gate then grades that lane like any
+# candidate (--lane semantic). ~$0.001/cycle at a 1h window. Flag-gated +
+# non-fatal. Reverse: ATLAS_SEM_LANE_ENABLED=false (existing rows are
+# distinguishable by model_version; two-tier serving already labels them).
+# Config lives in the TCC-allowed ALW tree (launchd cannot read Desktop/iCloud);
+# re-sync from repo docs/research/semantic-lane + docs/research/taxonomy-revision
+# whenever the calibration or taxonomy changes.
+SEM_CALIB="${ATLAS_SEM_CALIB:-/Users/pedro/AtlasLocalWorker/config/2026-07-04-tau-sem-wild.json}"
+SEM_TAX="${ATLAS_SEM_TAXONOMY:-/Users/pedro/AtlasLocalWorker/config/candidate-v2.json}"
+if [[ "${ATLAS_SEM_LANE_ENABLED:-true}" == "true" && -n "${OPENAI_API_KEY:-}" \
+      && -x "$MLVENV/bin/python" && -f "$SEM_CALIB" && -f "$SEM_TAX" ]]; then
+  "$MLVENV/bin/python" "$BACKEND_DIR/scripts/sem_assign_pass.py" \
+    --calibration "$SEM_CALIB" --taxonomy "$SEM_TAX" \
+    --window-hours "${ATLAS_SEM_WINDOW_HOURS:-1}" --write \
+    || echo "[atlas-topic] semantic lane pass failed (non-fatal)" >&2
+  "$MLVENV/bin/python" "$BACKEND_DIR/scripts/score_assignments_gate.py" \
+    --lane semantic \
+    --window-hours "$GATE_WINDOW_HOURS" \
+    --gate "$GATE_JSON" \
+    --gate-id "$GATE_ID" \
+    || echo "[atlas-topic] semantic lane gate scoring failed (non-fatal)" >&2
+else
+  echo "[atlas-topic] skip semantic lane (disabled, no OPENAI_API_KEY, or files missing)" >&2
+fi
+
 # Step 3: v2 force-fit reject (#204) — demote theme-hint-lex-v2 gate_kept rows the
 # v2 e5 gate scores OUT_OF_SCOPE. Numpy-only on mlvenv, $0 (vec already persisted),
 # flag-gated + reversible (tags gate_model=v2-gate-e5-lr-1). Query sees only
