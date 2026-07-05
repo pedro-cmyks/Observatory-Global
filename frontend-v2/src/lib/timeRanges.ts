@@ -27,3 +27,29 @@ export function timeRangeToHours(range: TimeRange): number {
         case 'record': return 8760;
     }
 }
+
+// ── S4: TIME AS A VIEW (Pedro approved 2026-07-05; time-as-dimension spec) ──
+// The selector no longer re-windows AMBIENT data. Ambient surfaces (map
+// nodes/flows/heat, the global threads list, the Brief prefetch) always show
+// the LIVE picture; looking back is an investigative act — the globe
+// scrubber (whose SPAN the selector drives) and the focused/detail surfaces
+// (which still follow the selected lens: focus summary, theme detail,
+// country view, conflict markers).
+// Kill-switch: TIME_IS_VIEW = false restores the old everything-re-windows
+// behavior in one line.
+export const TIME_IS_VIEW = true;
+
+/** The live-picture range every ambient surface pins to under S4. */
+export const AMBIENT_RANGE: TimeRange = '24h';
+
+/** Effective range for ambient (map/threads/brief) data fetches. */
+export function ambientRange(selected: TimeRange): TimeRange {
+    return TIME_IS_VIEW ? AMBIENT_RANGE : selected;
+}
+
+/** Globe-scrubber span (days) driven by the view selector: sub-week lenses
+ *  keep a 7-day floor (a scrubber needs room), 1w→7, 1m→30, 3m/record→90
+ *  (the replay endpoint's cap). */
+export function timeRangeToViewDays(range: TimeRange): number {
+    return Math.max(7, Math.min(90, Math.ceil(timeRangeToHours(range) / 24)));
+}

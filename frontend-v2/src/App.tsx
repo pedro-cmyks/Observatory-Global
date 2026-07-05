@@ -28,7 +28,7 @@ import { ThemeCompare } from './components/ThemeCompare'
 import { SourceProfile } from './components/SourceProfile'
 import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext'
 import { FocusIndicator } from './components/FocusIndicator'
-import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours } from './lib/timeRanges'
+import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours, ambientRange, timeRangeToViewDays } from './lib/timeRanges'
 import { Globe, ClipboardList, HelpCircle, BookmarkPlus, MoreHorizontal, Settings, ChevronDown } from './lib/icons'
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
 import { resolveCountryName } from './lib/countryNames'
@@ -357,21 +357,6 @@ function AppContent() {
   // from the pre-agg — HONESTLY labeled (composite heat has no history).
   const [replayData, setReplayData] = useState<Record<string, Record<string, number>> | null>(null)
   const [replayDay, setReplayDay] = useState<string | null>(null)
-  const replayDays = useMemo(() => {
-    const out: string[] = []
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(Date.now() - i * 86400000)
-      out.push(d.toISOString().slice(0, 10))
-    }
-    return out
-  }, [])
-  const ensureReplayData = useCallback(() => {
-    if (replayData) return
-    fetch('/api/v2/map/replay?days=30')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.series) setReplayData(d.series) })
-      .catch(() => { /* scrubber degrades to no-op */ })
-  }, [replayData])
   const replayHeat = useMemo(() => {
     if (!replayDay || !replayData) return null
     const vals = Object.entries(replayData)
@@ -690,6 +675,26 @@ function AppContent() {
   // Focus-aware data from provider - auto-refetches when focus/range changes
   const { nodes, flows, unfilteredFlows, acledConflicts, loading, isRefetching, refetch, timeRange, setTimeRange, meta: focusMeta } = useFocusData()
 
+  // S4: the VIEW selector drives the scrubber SPAN (7d floor … 90d cap).
+  const viewSpanDays = timeRangeToViewDays(timeRange)
+  const replayDays = useMemo(() => {
+    const out: string[] = []
+    for (let i = viewSpanDays - 1; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000)
+      out.push(d.toISOString().slice(0, 10))
+    }
+    return out
+  }, [viewSpanDays])
+  const replayLoadedSpanRef = useRef(0)
+  const ensureReplayData = useCallback(() => {
+    if (replayData && replayLoadedSpanRef.current >= viewSpanDays) return
+    replayLoadedSpanRef.current = viewSpanDays
+    fetch(`/api/v2/map/replay?days=${viewSpanDays}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.series) setReplayData(d.series) })
+      .catch(() => { /* scrubber degrades to no-op */ })
+  }, [replayData, viewSpanDays])
+
   // #231: fetch the baseline-normalized heat composite for map color (after
   // timeRange is in scope). Falls back silently to volume if unavailable.
   // Fetch ALL countries (not a top-N) and min-max normalize the real value
@@ -698,7 +703,9 @@ function AppContent() {
   // orange and left most of the world dark (#231 follow-up, Pedro's review).
   useEffect(() => {
     let cancelled = false
-    const h = timeRangeToHours(timeRange)
+    // S4: heat is ambient — live 24h picture (also matches country_heat_v2's
+    // hardcoded 24h window, which the old code silently ignored at 1w+).
+    const h = timeRangeToHours(ambientRange(timeRange))
     fetch(`/api/v2/heat/countries?hours=${h}&limit=250`)
       .then(r => r.ok ? r.json() : null)
       .then(d => {
@@ -1138,8 +1145,9 @@ function AppContent() {
     const h = timeRangeToHours(timeRange)
     setPrefetchedBriefing(null)
     setPrefetchedInsight(null)
-    prefetchBriefing(h) // warm sessionStorage so /brief loads without spinner
-    fetch(`/api/v2/briefing?hours=${h}`).then(r => r.json()).then(d => { setPrefetchedBriefing(d); setPrefetchedHours(h) }).catch(() => { })
+    // The Brief is the DAY's edition (fixed 24h, 2026-07-05) — prefetch matches.
+    prefetchBriefing(24) // warm sessionStorage so /brief loads without spinner
+    fetch(`/api/v2/briefing?hours=24`).then(r => r.json()).then(d => { setPrefetchedBriefing(d); setPrefetchedHours(24) }).catch(() => { })
     fetch(`/api/v2/briefing/insight?hours=${h}`).then(r => r.json()).then(d => { if (d.insight) setPrefetchedInsight(d.insight) }).catch(() => { })
   }, [timeRange])
 
@@ -1192,10 +1200,12 @@ function AppContent() {
             />
           </div>
           <div className="time-controls">
+            <span className="time-view-chip" data-tip="VIEW lens (S4): the map, threads and heat always show the LIVE picture. This lens sets the globe scrubber's look-back span and the window of the surfaces you open to investigate (thread detail, country view, focus). Looking back = scrubbing, not re-filtering the present.">VIEW</span>
             {TIME_RANGE_OPTIONS.map(range => (
               <button
                 key={range}
                 className={`time-btn ${timeRange === range ? 'active' : ''}`}
+                data-tip="VIEW lens (S4): the map, threads and heat always show the LIVE picture. This lens sets the globe scrubber's look-back span and the window of the surfaces you open to investigate (thread detail, country view, focus). Looking back = scrubbing, not re-filtering the present."
                 onClick={() => setTimeRange(range)}
               >
                 {TIME_RANGE_LABELS[range]}
@@ -1208,7 +1218,7 @@ function AppContent() {
             <button
               className="time-btn active time-compact-trigger"
               onClick={() => setTimeMenuOpen(open => !open)}
-              data-tip="Time window"
+              data-tip="VIEW lens (S4): the map, threads and heat always show the LIVE picture. This lens sets the globe scrubber's look-back span and the window of the surfaces you open to investigate (thread detail, country view, focus). Looking back = scrubbing, not re-filtering the present."
             >
               {TIME_RANGE_LABELS[timeRange]} <ChevronDown size={11} />
             </button>

@@ -7,7 +7,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { useFocus } from './FocusContext'
-import { type TimeRange, timeRangeToHours } from '../lib/timeRanges'
+import { type TimeRange, timeRangeToHours, ambientRange } from '../lib/timeRanges'
 import { buildFocusRequestKey } from '../lib/focusRequestKey'
 
 // Types
@@ -152,8 +152,11 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
         setState(prev => ({ ...prev, loading: prev.nodes.length === 0, isRefetching: true, error: null }))
 
         try {
-            // Build base params - use range for new API
-            const baseParams = new URLSearchParams({ range: timeRange })
+            // Build base params - use range for new API.
+            // S4 (2026-07-05): nodes/flows are AMBIENT — pinned to the live
+            // picture; the selector is a VIEW lens (scrubber span + the
+            // investigative surfaces below, which keep timeRange).
+            const baseParams = new URLSearchParams({ range: ambientRange(timeRange) })
             
             // Add explicit fields filter for payload reduction
             baseParams.set('fields', 'id,name,lat,lon,signalCount,sentiment,intensity,heat,anomalyLevel')

@@ -1672,3 +1672,17 @@
   .globe-scrubber { bottom: 6px; padding: 3px 8px; }
   .globe-scrubber input[type="range"] { width: 110px; }
 }
+
+/* S4 (2026-07-05): time is a VIEW lens, not a data filter */
+.time-view-chip {
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  color: rgba(16, 185, 129, 0.75);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 3px;
+  padding: 2px 4px;
+  margin-right: 4px;
+  align-self: center;
+  cursor: default;
+}
