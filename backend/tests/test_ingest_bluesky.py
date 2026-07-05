@@ -6,7 +6,13 @@ from datetime import datetime, timezone
 from app.services.ingest_bluesky import _event_to_signal, _parse_created
 
 
-def _ev(text="x" * 80, langs=("en",), reply=False, op="create",
+_REAL_TEXT = (
+    "Parliament passed the emergency budget tonight after a long debate "
+    "over energy subsidies and the deficit."
+)
+
+
+def _ev(text=_REAL_TEXT, langs=("en",), reply=False, op="create",
         collection="app.bsky.feed.post", did="did:plc:abc", rkey="rk1"):
     record = {"text": text, "langs": list(langs), "createdAt": "2026-06-29T18:00:00.000Z"}
     if reply:
@@ -74,5 +80,20 @@ def test_parse_created_garbage_is_now():
 
 
 def test_headline_truncated_to_500():
-    s = _event_to_signal(_ev(text="A" * 900))
+    s = _event_to_signal(_ev(text=(_REAL_TEXT + " ") * 9))
     assert s is not None and len(s["headline"]) == 500
+
+
+def test_number_template_spam_dropped():
+    # the "Digit: N / In words: ..." counting bot (2026-07-04 junk cluster)
+    spam = (
+        "Digit: 5,250,037\n"
+        "In words: Five Million Two Hundred Fifty Thousand Thirty Seven\n"
+        "अङ्कः ५२,५०,०३७"
+    )
+    assert _event_to_signal(_ev(text=spam)) is None
+
+
+def test_blocked_did_dropped():
+    ev = _ev(did="did:plc:f4z2nftgrn75h7h3wucdyzaf")
+    assert _event_to_signal(ev) is None

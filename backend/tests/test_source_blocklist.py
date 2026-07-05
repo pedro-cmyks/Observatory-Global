@@ -38,3 +38,13 @@ def test_blocked_does_not_catch_similar_domains():
     assert is_blocked("https://iheartlocal.org/news/story") is False
     # "newsun.com" is not thesun.co.uk
     assert is_blocked("https://newsun.com/article") is False
+
+
+def test_bluesky_did_blocklist():
+    """Per-account Bluesky blocking: only listed DIDs, never the whole domain."""
+    spam = "https://bsky.app/profile/did:plc:f4z2nftgrn75h7h3wucdyzaf/post/3mpu4mkua5q2p"
+    assert is_blocked(spam) is True
+    # other Bluesky accounts stay open
+    assert is_blocked("https://bsky.app/profile/did:plc:abc123/post/xyz") is False
+    # non-post bsky.app paths don't crash and aren't blocked
+    assert is_blocked("https://bsky.app/") is False

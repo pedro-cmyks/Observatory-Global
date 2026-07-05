@@ -270,3 +270,12 @@ def test_junk_headlines_filtered_and_deduped():
     assert is_junk_headline("12345 67890")  # no real words
     assert not is_junk_headline("Iran faces severe drought as reservoirs reach lows")
     assert not is_junk_headline("El dron ruso que golpeó a Rumania")
+    # number-spelling bot template (Bluesky spam, 2026-07-04)
+    assert is_junk_headline(
+        "Digit: 5,250,037\nIn words: Five Million Two Hundred Fifty Thousand "
+        "Thirty Seven\nअङ्कः ५२,५०,०३७"
+    )
+    assert is_junk_headline("In words: Twenty One Thousand and Five")
+    # real headlines using those words stay
+    assert not is_junk_headline("Minister explains the deal in words voters understand")
+    assert not is_junk_headline("Digital economy grows five percent this year")
