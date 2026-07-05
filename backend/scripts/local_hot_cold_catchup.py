@@ -196,7 +196,14 @@ async def process_and_sync_days(
 async def vacuum_signals(database_url: str) -> None:
     conn = await asyncpg.connect(database_url)
     try:
+        # The pooler's default statement_timeout kills VACUUM on the churned
+        # table (observed 2026-07-04: QueryCanceledError → whole catchup run
+        # exits 1 AFTER archive+prune succeeded — same bug class as the
+        # 2026-07-01 matview refresh). VACUUM cannot run inside a txn, so a
+        # session-level timeout bump is the fix.
+        await conn.execute("SET statement_timeout = '900s'")
         await conn.execute("VACUUM (ANALYZE) public.signals_v2")
+        await conn.execute("RESET statement_timeout")
     finally:
         await conn.close()
 

@@ -1889,15 +1889,23 @@ async def fetch_threads(
         )
         if atlas_only:
             return atlas
-        if dynamic:
-            # Unified ranking (Pedro, 2026-06-24): the living/aggregate split was
-            # a source label dressed as quality — dynamic_topics always first,
-            # atlas filling below. But a persistent atlas topic that keeps
-            # growing is a live thread too. Treat them as one population and
-            # rank by movement + volume + coherence with NO source bias
-            # (rank_threads). Dedup by label, keeping the dynamic (coherent)
-            # version on collision. Coherence in the score is the guardrail that
-            # keeps loose taxonomy bins from dominating by raw volume.
+        # STORIES-ONLY list (Pedro, 2026-07-04 — supersedes the 2026-06-24
+        # "unified ranking" merge): an atlas topic is a CATEGORY (the R3
+        # lens), not a thread. Serving category aggregates as sibling rows
+        # next to real stories was level-mixing ("Gang control and urban
+        # security n=319" beside "Ukraine War Updates n=107"). The global
+        # list serves STORY rows only — dynamic topics, emergent clusters as
+        # the degraded fallback; the category lives on each row as its badge
+        # (crisis_class) and in the drill-down (memberStories). A thin
+        # substrate yields a SHORT list, never category filler (same honesty
+        # rule as the country 0-threads empty state). SCOPE: global list
+        # only — the single-country view keeps its R1 merge (scoped children
+        # + atlas) because CountryBrief's visible-threads contract counts on
+        # it; migrating that view is a follow-up. Kill-switch:
+        # ATLAS_THREADS_CATEGORY_ROWS=on restores the old merge.
+        if single_country is not None or os.environ.get(
+            "ATLAS_THREADS_CATEGORY_ROWS", ""
+        ).strip().lower() in {"1", "true", "on", "yes"}:
             dynamic_labels = {
                 str(t.get("label") or "").strip().lower() for t in dynamic
             }
@@ -1905,22 +1913,18 @@ async def fetch_threads(
                 t for t in atlas
                 if str(t.get("label") or "").strip().lower() not in dynamic_labels
             ]
-            # rank first so the higher-ranked row survives the event-dedupe, then
-            # collapse cross-language duplicates (the language-split case the
-            # exact-label dedupe above cannot catch), then trim to limit.
             ranked = rank_threads(dynamic + atlas_extra)
             return dedupe_same_event_threads(ranked)[:limit]
-        else:
-            if single_country is not None:
-                return atlas  # country view with no scoped topics → atlas only
-            try:
-                emergent = await _fetch_emergent_threads_with_conn(
-                    active_conn, hours=hours, limit=limit,
-                )
-            except Exception as exc:
-                logger.warning("emergent threads degraded: %s", exc)
-                emergent = []
-        return dedupe_same_event_threads(rank_threads(emergent + atlas))[:limit]
+        if dynamic:
+            return dedupe_same_event_threads(rank_threads(dynamic))[:limit]
+        try:
+            emergent = await _fetch_emergent_threads_with_conn(
+                active_conn, hours=hours, limit=limit,
+            )
+        except Exception as exc:
+            logger.warning("emergent threads degraded: %s", exc)
+            emergent = []
+        return dedupe_same_event_threads(rank_threads(emergent))[:limit]
 
     async def _run(active_conn: Any) -> list[dict[str, Any]]:
         threads = await _merged(active_conn)
