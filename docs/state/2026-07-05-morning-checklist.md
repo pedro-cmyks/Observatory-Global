@@ -17,18 +17,17 @@ nohup ~/AtlasLocalWorker/mlvenv/bin/python backend/scripts/archive_embed_pipelin
   --shard-size 50000 >> ~/AtlasLocalWorker/logs/archive-embed-full.log 2>&1 &
 ```
 
-## 2. Stage B — archivo → unidades de historia (la sesión de mañana)
+## 2. Robot — SPEC CERRADO ANOCHE, ejecutar sin re-discutir
 
-Construir `archive_story_units.py`: por semana (meta.jsonl `date`), HDBSCAN
-sobre los shards fp16 → clusters → unidad {label(DeepSeek), centroid,
-first_seen, last_seen, n} → jsonl. Luego:
-```bash
-python backend/scripts/robot_categories_v1.py --units-jsonl <stage-b>.jsonl --min-members 3
-```
-Robot queda MANUAL hasta eyeball de Pedro del reporte. Guards ya puestos
-(same-story ≥0.80 intra · event-level token ≥60%). Primera corrida (solo
-identidades may31-jul5): 0 categorías nuevas — las 30 seeds cubren esa
-ventana; lo nuevo debe salir de la era-mayo.
+**`docs/specs/2026-07-05-category-robot.md`** = la ruta completa acordada
+con Pedro (00:30-01:00). Resumen: producto sigue DOS columnas (fila=historia
+/evento · tag=categoría); el robot emite TRES salidas internas — categoría →
+atlas_topics auto (tag derecho) · **evento canónico → umbrella PERSISTENTE
+is_umbrella=true, UNA fila padre** (Venezuela Earthquake = 1 fila, no 25) ·
+misma-historia → fusión de identidades. Orden: Stage B
+(`archive_story_units.py`, clustering semanal de shards) → robot con
+`--units-jsonl` → salida-evento a umbrellas → fusión → eyeball Pedro →
+armar cron. Guards y umbrales medidos ya implementados.
 
 ## 3. Label-bug WIP (rama aparte, NO mergeada)
 
