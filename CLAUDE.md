@@ -10,6 +10,49 @@
 > and narrows further if telemetry shows one persona dominates.) **Anti-goal:**
 > no new surface/capability until telemetry shows users reaching a value moment.
 
+**2026-07-04 (NIGHT — GOLD BLITZ + GATE v3 DEPLOYED + reframes, read FIRST).**
+Pedro's question ("¿la información pasada no sirve?") unlocked Day 1 of the
+3-day route (`docs/state/2026-07-04-three-day-route.md`): hot DB holds 7 days
+but the EXTERNAL ARCHIVE holds May-3+ (10.5M rows scanned). Shipped tonight:
+(1) **archive_gold_miner.py** — offline lexicon match over 754 gzip
+partitions; election pool 39→21k candidates. Wave-1: 4,160 labeled (2-vendor,
+**86% agreement** with the newly-wired candidate-v2 boundaries; the measured
+answer to Pedro's 70%-junk intuition: **70/30 incorrect/correct = lexicon
+candidate precision ~30%**, a P1 number). Mega corpus **9,274 rows**, hard
+topics 95-286 positives. (2) **FROZEN-HOLDOUT eval (85/15)** — the honest
+apples-to-apples the cross-benchmark comparisons couldn't give: **v1-prod
+precision 0.890 = BELOW its 90% claim on realistic data** (telecom P=0.46; its
+0.843 recall was easy-benchmark artifact); **v3-bootstrap holds 0.924**
+(sanctions P.95/R.46 = 2× v1 recall at higher precision). (3) **GATE v3-MEGA
+DEPLOYED** (cron flipped, 48h re-scored, extended thresholds re-emitted @75%
+bootstrap, Fly deployed; election stays hard — extThr~0.98, below-gate
+fallback carries it; wave-2 (+4,800 thin-topic labels) cooking + semantic lane
+= the recall fixes). `--bootstrap-thresholds` in train_scope_gate = the
+variance cure (75th-pct threshold across 300 resamples + recall CI reported).
+(4) **REFRAME (Pedro): crisis-as-dynamics**
+(`docs/specs/2026-07-04-crisis-as-dynamics-reframe.md`) — crisis is a
+POST-classification; `crisis_dynamics` = f(velocity,surprise,changed_10h)
+adopted; F4 re-framed as "kill the pre-classification lane"; P1's 41.6%
+lineage = historical baseline, documented not defended. First piece SHIPPED:
+**universe SURGING chip** (isSurging over the Kalman field, browser-verified
+55→27 filter; CRISIS chip tooltip renamed to honest harm-lens). (5) **Time-
+as-dimension spec** (`2026-07-04-time-as-dimension.md`, Pedro): data never
+windowed by UI tabs; scrubbers per surface (globe joins universe+orbital);
+AGE/persistence first-class ("active since June 12"); click-a-past-peak →
+that day's evidence (archive-backed). (6) **Self-training flywheel**
+(`2026-07-04-self-training-flywheel.md`): L1 nightly accumulator (armed) + L2
+weekly archive miner + L3 frozen eval slices + L4 disagreement queue; archive
+= training reservoir, labels compound. (7) **Universe collapse INCIDENT**
+(6 alive on Pedro's phone): lifecycle transient post-substrate-recovery
+(07:30 clustering re-founded identities; promotion gate persist≥2 admitted 6)
+— bootstrap-restored 33 retired + 10 candidates → 47 nodes/108 edges prod;
+OPEN root-cause: resurrection didn't centroid-match (engine session, folds
+into F4). ALSO: #204 boundaries wired into annotators; #239 fully closed
+(warm-cache + MapLibre deprecation −1MB + keep-alive shell + hidden-pane poll
+damp); telemetry read (value moments 3→42/wk, dev-noise caveat). NEXT (Day
+2): wave-2 merge → final retrain → semantic lane → F4 prep → crisis_dynamics
+in more surfaces; Day 3: verify + small-model handoff playbooks.
+
 **2026-07-04 (PM — SHIP DAY: search→story · #239 closed end-to-end · MapLibre
 DEPRECATED · gold accumulator, read FIRST for product state).** Eight ships,
 all browser-verified + prod: (1) **Search → STORY panel** (`c84e6627`): Enter/
