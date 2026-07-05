@@ -43,6 +43,39 @@ keep-rates a few cycles (forced-displacement tau 0.163 = lowest, watch junk;
 energy-grid/fuel-subsidy goldP ≤0.07 rely on gate). Day 3 also: browser-verify
 surfaces + handoff playbooks.
 
+**2026-07-04 (DÍA 2 cont.+DÍA 3 — F4 §6-step-5 + A/B VERDICT + playbooks,
+`a5b61131`+`54368a3a`).** (4) **New-topic labeling+persistence SHIPPED**
+(`build_unified_topics.py`): residual clusters → real dynamic_topics
+candidates (identity_key `u2-*`, DeepSeek label, centroid); `_load_centroids`
+includes them → pass-1 matches next run (ephemeral unified-new-N loop
+CLOSED). Live catch: number-spelling SPAM cluster ("Digit: 5,250,037 / In
+words:…") persisted then deleted → `_looks_junk_cluster` guard added; spam-
+source cleanup = open chip (task_9e296e6b). (5) **F4 A/B re-run: NOT YET —
+judged an ARTIFACT** (`docs/research/engine-ab/2026-07-04-f4-ab-rerun.md`):
+post-collapse pool = 16 active centroids → 15k signals → 18 blob-topics at
+assign_t 0.82 (promiscuous end of the measured cliff); the 06-29 PASS ran on
+a 100+-topic pool. **REAL FINDING: v2 quality is COUPLED to dynamic_topics
+pool health with no floor — v1's lexicon lanes degrade gracefully, v2
+doesn't.** Flip criterion now carries a substrate-health precondition (≥80
+active centroids) + structural candidate: v2 should anchor on the full R3
+spine (atlas + scoped topics), not only dynamic centroids. A/B re-run in 2-3
+days = mechanical (PB-5). (6) **DÍA 3 delivered**: `docs/state/
+handoff-playbooks.md` (PB-1 cron health · PB-2 sem-lane monitor/recal/
+disable · PB-3 gate retrain w/ HARD deploy rule · PB-4 two-tier check ·
+PB-5 F4 A/B precondition · PB-6 substrate recovery · PB-7 deploy/reversal
+card · PB-8 telemetry read) + `emit_extended_thresholds.py` (the ad-hoc
+threshold emission is now a script). Surfaces verified vs retrained engine
+at contract level: /threads 10 dyn+atlas ✓; **election-legitimacy fixture
+serving 2 VERIFIED India-SIR-class headlines ("Karandlaje seeks ECI probe
+into SIR", "INDIA Bloc EVM") + 3 extended (Armenia court, Panamá)** ✓;
+universe Kalman trends differentiated (4 surging/7 cooling) ✓ — 16 nodes =
+substrate thinness (tracked), not regression. Sem-lane after several cron
+cycles: keep-rate stable 0.16 vs lex 0.29, grading every cycle. Runner
+canonical copy = `scripts/run-atlas-topic-classifier.sh` (infra/runners dup
+dropped; earlier "not versioned" note was cwd error). NOTE:
+`thread_intelligence.py` F4 param needs the next Fly deploy to reach prod
+(default unchanged, no urgency).
+
 **2026-07-04 (NIGHT — GOLD BLITZ + GATE v3 DEPLOYED + reframes).**
 Pedro's question ("¿la información pasada no sirve?") unlocked Day 1 of the
 3-day route (`docs/state/2026-07-04-three-day-route.md`): hot DB holds 7 days
