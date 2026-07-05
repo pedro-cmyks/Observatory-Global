@@ -213,6 +213,7 @@ async def main() -> int:
                   f"\nunits={len(units)} cut={cut} groups>= "
                   f"{args.min_members}: {len(big)} · overlap bar {overlap_bar:.3f}\n"]
         inserted = 0
+        dup_groups = 0
         # biggest groups first — most evidence first
         for g, idxs in sorted(big.items(), key=lambda kv: -len(kv[1])):
             centroid = V[idxs].mean(axis=0)
@@ -223,7 +224,40 @@ async def main() -> int:
                           (units[i] for i in idxs) if u.get("first_seen")]
             span = (f"{min(span_dates)} → {max(span_dates)}"
                     if span_dates else "n/a")
-            status = "covered" if ms >= overlap_bar else "NEW-candidate"
+            # LEVEL GUARD (first-run finding, 2026-07-05): a tight group of
+            # near-duplicate labels ("Venezuela Earthquake Death Toll" x25)
+            # is ONE STORY re-founded across snapshots (the identity-
+            # continuity fossil record), not a category. Category = DIVERSE
+            # members sharing a theme. Median intra-group sim discriminates:
+            # same-story groups sit ~0.8+; real category groups are looser.
+            gs = V[idxs] @ V[idxs].T
+            giu = np.triu_indices(len(idxs), k=1)
+            intra = float(np.median(gs[giu])) if len(idxs) > 1 else 1.0
+            # second discriminator: one content token dominating the labels
+            # ("venezuela"/"earthquake" in 25/25, "world cup" in 35/35) =
+            # ONE EVENT with varied sub-labels — umbrella material, still
+            # not a category. A real category's members share a THEME, not
+            # a token.
+            stop = {"the", "and", "of", "in", "for", "on", "de", "la", "el",
+                    "updates", "update", "news", "coverage", "crisis", "2026"}
+            from collections import Counter
+            tok_docs: Counter[str] = Counter()
+            for l in member_labels:
+                toks = {t for t in re.findall(r"[a-zà-ÿ]{4,}", l.lower())
+                        if t not in stop}
+                tok_docs.update(toks)
+            dom = (tok_docs.most_common(1)[0][1] / len(member_labels)
+                   if tok_docs else 0.0)
+            if intra >= 0.80:
+                dup_groups += 1
+                status = f"SAME-STORY (intra {intra:.2f} — identity-dedup case)"
+            elif dom >= 0.60:
+                status = (f"EVENT-LEVEL (token '{tok_docs.most_common(1)[0][0]}' "
+                          f"in {dom:.0%} of labels — umbrella, not category)")
+            elif ms >= overlap_bar:
+                status = "covered"
+            else:
+                status = "NEW-candidate"
             report.append(f"## group {g}: {len(idxs)} stories · maxSim "
                           f"{ms:.3f} · {status} · {span}")
             report.extend(f"- {l[:90]}" for l in member_labels[:12])
