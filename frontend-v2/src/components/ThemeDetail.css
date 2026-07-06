@@ -1427,3 +1427,30 @@
   font-size: 10px;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
+
+/* time-as-dimension, thread level — deep history sparkline + day receipts */
+.deep-history-spark {
+  display: flex; align-items: flex-end; gap: 2px;
+  height: 48px; margin: 8px 0; padding: 2px;
+  overflow-x: auto;
+}
+.dh-bar {
+  flex: 1 0 3px; min-width: 3px;
+  background: var(--color-accent, #34d399);
+  opacity: 0.55; border-radius: 1px 1px 0 0; cursor: pointer;
+  transition: opacity 0.1s;
+}
+.dh-bar:hover { opacity: 0.85; }
+.dh-bar-active { opacity: 1; background: #7dd3fc; }
+.deep-history-day { margin-top: 8px; border-top: 1px solid rgba(51,65,85,0.5); padding-top: 6px; }
+.deep-history-day-head {
+  font-family: var(--font-mono, monospace); font-size: 10px;
+  color: var(--color-text-muted, #94a3b8); letter-spacing: 0.04em; margin-bottom: 4px;
+}
+.deep-history-item {
+  display: flex; gap: 6px; align-items: baseline;
+  padding: 3px 0; font-size: 12px;
+}
+.deep-history-item a { color: var(--color-text-primary, #e2e8f0); text-decoration: none; }
+.deep-history-item a:hover { color: #34d399; }
+.dh-cluster { color: var(--color-text-secondary, #cbd5e1); }

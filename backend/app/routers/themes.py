@@ -239,6 +239,27 @@ async def get_focus_data(
             "key_subjects": key_subjects
         }
 
+@router.get("/api/v2/theme/{theme_code}/deep-history")
+async def get_theme_deep_history(
+    theme_code: str,
+    date: str = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$",
+                      description="optional day for that day's receipts"),
+):
+    """Thread-level time-as-dimension (spec 2026-07-04, last surface):
+    the story's ARCHIVE-ERA series back to May-03 (matched story units,
+    centroid cosine, tau reported) + a chosen day's receipts with honest
+    tiers (hot = real assignments; archive = cluster samples)."""
+    from app.services.deep_history import topic_deep_history
+
+    try:
+        async with db.pool.acquire() as conn:
+            return await topic_deep_history(conn, theme_code, date)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("deep-history failed: %s", exc)
+        return {"contract": "deep-history-v0", "available": False,
+                "reason": "internal error"}
+
+
 @router.get("/api/v2/theme/{theme_code}/external-depth")
 async def get_theme_external_depth(theme_code: str):
     """#161 external-depth lane — ON-DEMAND DOC 2.0 enrichment for THIN

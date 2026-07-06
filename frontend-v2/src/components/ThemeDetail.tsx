@@ -182,6 +182,29 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     const [selectedSource, setSelectedSource] = useState<string | null>(null)
     const [showAllCoverage, setShowAllCoverage] = useState(false)
     const [showDrift, setShowDrift] = useState(false)
+    // Deep history (time-as-dimension, thread level): archive-era series
+    // back to May-03 + click-a-day receipts. Fetched on-demand (toggle).
+    const [deepHistory, setDeepHistory] = useState<
+        null | 'loading' | {
+            available: boolean; reason?: string; matched_units?: number;
+            series?: Array<{ day: string; units: number; signals: number }>;
+            day?: { date: string; items: Array<Record<string, unknown>>; empty_reason?: string | null };
+        }>(null)
+    const [deepDay, setDeepDay] = useState<string | null>(null)
+
+    const fetchDeepHistory = async (day?: string) => {
+        if (!day) setDeepHistory('loading')
+        try {
+            const q = day ? `?date=${day}` : ''
+            const r = await fetch(`/api/v2/theme/${encodeURIComponent(theme)}/deep-history${q}`)
+            const j = await r.json()
+            setDeepHistory(j)
+            if (day) setDeepDay(day)
+        } catch {
+            setDeepHistory({ available: false, reason: 'request failed' })
+        }
+    }
+
     // #161 external-depth lane: on-demand DOC 2.0 enrichment for THIN topics.
     // null = not fetched; 'loading'; {available:false,...} = honest gap.
     const [externalDepth, setExternalDepth] = useState<
@@ -1163,6 +1186,74 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 )}
                             </div>
                         )}
+
+                        {/* Deep history (time-as-dimension, thread level): the story's
+                            archive-era series back to May-03 + click-a-day receipts.
+                            On-demand — embeds the label + scans archive units. */}
+                        <div className="theme-section deep-history-section">
+                            <div className="theme-section-title">DEEP HISTORY</div>
+                            {deepHistory === null && (
+                                <button
+                                    className="external-depth-btn"
+                                    onClick={() => fetchDeepHistory()}
+                                    data-tip="This story's full history back to May 3 from the processed archive. Click a day in the sparkline for that day's receipts. Archive units are matched by meaning (approximate) — tier-labeled."
+                                >
+                                    ⧗ Load full history (back to May 3)
+                                </button>
+                            )}
+                            {deepHistory === 'loading' && (
+                                <p className="external-depth-status">Matching archive units…</p>
+                            )}
+                            {deepHistory && deepHistory !== 'loading' && !deepHistory.available && (
+                                <p className="external-depth-status">Deep history unavailable: {deepHistory.reason}</p>
+                            )}
+                            {deepHistory && deepHistory !== 'loading' && deepHistory.available && (deepHistory.series?.length ?? 0) > 0 && (
+                                <div className="deep-history-body">
+                                    <p className="external-depth-caveat">
+                                        {deepHistory.matched_units} archive story-units matched by meaning
+                                        (approximate · {deepHistory.series!.length} days) — click a bar for that day's receipts.
+                                    </p>
+                                    <div className="deep-history-spark">
+                                        {(() => {
+                                            const series = deepHistory.series!
+                                            const max = Math.max(...series.map(p => p.signals), 1)
+                                            return series.map(p => (
+                                                <div
+                                                    key={p.day}
+                                                    className={`dh-bar ${deepDay === p.day ? 'dh-bar-active' : ''}`}
+                                                    style={{ height: `${Math.max(3, (p.signals / max) * 44)}px` }}
+                                                    data-tip={`${p.day}: ${p.signals} signals · ${p.units} clusters`}
+                                                    onClick={() => fetchDeepHistory(p.day)}
+                                                />
+                                            ))
+                                        })()}
+                                    </div>
+                                    {deepDay && deepHistory.day && (
+                                        <div className="deep-history-day">
+                                            <div className="deep-history-day-head">
+                                                {deepDay} — {(deepHistory.day.items?.length ?? 0)} receipts
+                                            </div>
+                                            {(deepHistory.day.items ?? []).length === 0 ? (
+                                                <p className="external-depth-status">{deepHistory.day.empty_reason}</p>
+                                            ) : (deepHistory.day.items ?? []).map((it, i) => {
+                                                const tier = it.tier as string
+                                                const heads = (it.headlines as string[]) || []
+                                                return (
+                                                    <div key={i} className="deep-history-item">
+                                                        <span className={`source-tier-badge source-tier-${tier === 'hot' ? 'reference' : 'state'}`}>
+                                                            {tier === 'hot' ? '● live' : 'archive'}
+                                                        </span>
+                                                        {tier === 'hot'
+                                                            ? <a href={it.url as string} target="_blank" rel="noopener noreferrer">{it.headline as string}</a>
+                                                            : <span className="dh-cluster">{it.cluster_label as string}{heads.length ? ` — ${heads.slice(0,2).join(' · ')}` : ''}</span>}
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
 
                         {/* #161 external-depth lane — offered when the topic is THIN
                             (few gate-verified receipts). On-demand, never automatic:
