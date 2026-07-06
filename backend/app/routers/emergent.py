@@ -17,10 +17,20 @@ if the table is absent (e.g. a deploy that has not yet applied mig 046).
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+import os
+
+from fastapi import APIRouter, Header, HTTPException, Query
 from app import db
 
 router = APIRouter()
+
+
+def _require_admin_token(token: str | None) -> None:
+    expected = os.getenv("ATLAS_ADMIN_TOKEN")
+    if not expected:
+        raise HTTPException(status_code=403, detail="admin token not configured")
+    if token != expected:
+        raise HTTPException(status_code=401, detail="invalid admin token")
 
 
 @router.get("/api/v2/emergent")
@@ -33,8 +43,15 @@ async def get_emergent(
         20, ge=1, le=100,
         description="Top-N clusters to return, sorted by velocity DESC NULLS LAST, n_signals DESC.",
     ),
+    x_atlas_admin_token: str | None = Header(default=None, alias="X-Atlas-Admin-Token"),
 ):
-    """Return the most recent emergent snapshot's clusters within `hours`."""
+    """Return the most recent emergent snapshot's clusters within `hours`.
+
+    Admin-only: this inspector dumps internal cluster fields (gate thresholds,
+    cohesion, vendor agreement, sample signal ids) and no product surface
+    consumes it, so it is gated behind the admin token.
+    """
+    _require_admin_token(x_atlas_admin_token)
     async with db.pool.acquire() as conn:
         has_table = await conn.fetchval(
             "SELECT to_regclass('emergent_clusters') IS NOT NULL"

@@ -39,9 +39,25 @@ app = FastAPI(
     version="2.0.0"
 )
 
+# Per-IP rate limiting (interim pre-accounts hardening — see
+# docs/state/2026-07-06-security-audit.md). MUST be installed BEFORE CORS so
+# CORSMiddleware stays outermost and 429 responses still carry CORS headers.
+from app.rate_limit import install_rate_limiting
+install_rate_limiting(app)
+
+# CORS. Locked to ATLAS_CORS_ORIGINS (comma-separated) when set; otherwise
+# falls back to open with a loud warning so a deploy is never silently
+# broken, but the lock is a one-env-var flip for public launch.
+_cors_origins_env = os.getenv("ATLAS_CORS_ORIGINS", "").strip()
+if _cors_origins_env:
+    _cors_origins = [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
+    print(f"🔒 CORS locked to: {_cors_origins}")
+else:
+    _cors_origins = ["*"]
+    print("⚠️  ATLAS_CORS_ORIGINS unset — CORS open to '*'. Set it before public launch.")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -62,7 +78,14 @@ async def startup():
     """Create async connection pool on startup, with retry for connection saturation."""
     for attempt in range(10):
         try:
-            pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=5)
+            pool = await asyncpg.create_pool(
+                DATABASE_URL,
+                min_size=int(os.getenv("ATLAS_DB_POOL_MIN", "2")),
+                # Raised from 5 to reduce full-API DoS via connection exhaustion
+                # (external-depth holds a conn ~25s). Keep under the Supabase
+                # pooler cap; tune via env if the pooler rejects connections.
+                max_size=int(os.getenv("ATLAS_DB_POOL_MAX", "10")),
+            )
             app.state.pool = pool
             _db.pool = pool
             print(f"✅ Connected to database: {DATABASE_URL.split('@')[1]}")
