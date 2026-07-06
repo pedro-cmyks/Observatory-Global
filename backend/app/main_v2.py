@@ -128,6 +128,7 @@ from app.routers import (
     geo, workspace, briefing, indicators, wiki, events, narratives, heat,
     nlp_corrections, threads, emergent, translate, waitlist, research,
     voice_mix, public_attention, telemetry, attention_threads, universe,
+    dossier,
 )
 
 app.include_router(stats.router)
@@ -154,3 +155,4 @@ app.include_router(translate.router)
 app.include_router(waitlist.router)
 app.include_router(research.router)
 app.include_router(voice_mix.router)
+app.include_router(dossier.router)
