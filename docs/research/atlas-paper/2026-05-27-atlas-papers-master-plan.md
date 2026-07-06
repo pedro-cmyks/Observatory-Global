@@ -853,6 +853,21 @@ chip, single-source-of-truth country select, scope strips) are UX hardening, not
 a paper claim; they touch P7's legibility surface only and are tracked in the L2
 spec, not promoted to the paper track.
 
+## 2026-07-04→06 evolution (universal taxonomy arc — Atlas rules the papers)
+
+| Atlas evolution (shipped, measured) | Paper home | Where it lands |
+|---|---|---|
+| **UNIVERSAL taxonomy pivot** (Pedro: "categorías, no categorías de crisis"; crisis = `crisis_relevant` flag, never the boundary). First 4 auto categories in prod (`origin='auto'`): crime-and-accidents, financial-market-movements, weather-and-climate, daily-news-roundups (explicit noise bucket) | **P1** (the taxonomy is now OPEN-SET in production — the 41.6%→48-54% precision-ceiling story gets its structural resolution: the ceiling was partly the closed crisis frame itself) + **P8** (open-set discovery DELIVERED as product mechanism, not proposal) | P1 skeleton needs a "universal pivot" section; P8 gains the robot as its production method |
+| **Category robot v1** (structure-first): agglomerative over content centroids, MEASURED cut (silhouette sweep 0.35), one-naming-per-group, three-lane routing — category / canonical-event / same-story — w/ measured level guards (intra≥0.80 same-story; token-dominance ≥60% event; blob >200; LLM level check; intra-batch draft dedup) | **P8** (primary method) + **P1** (taxonomy governance: seeds never auto-modified, cap 2/night, ledger, lifecycle retirement) | P8 method section; the 07-05/06 reports are the run artifacts (161 category candidates, 230 events, 180 fusions over 7,808 stories / 62 days) |
+| **Negative result worth keeping**: label re-embedding of non-Latin units groups by SCRIPT, not topic (720-member blob → bogus draft); content centroids fix it. Same class as the e5 noise-floor findings | **P8** (embedding-basis ablation) + P2 (language-representation caveat) | P8 "evidence to collect" → collected |
+| **Semantic assignment lane LIVE** (OpenAI argmax + wild-calibrated taus; e5 absolute FAILED honestly — cross-fire 3169/3186; gold-tau base-rate transfer failure 29.6% wild clearance → wild-quantile calibration). Election-legitimacy fixture: lexicon 0/18 kept vs semantic +2 VERIFIED (Peru IACHR, Armenia court) + literal India-SIR headline entering the candidate universe | **P1** (candidate-generation recall lever + the base-rate-transfer methodology finding) | P1 gate section: the lane is the answer to "the lexicon defines the candidate universe" |
+| **F4 A/B verdict as artifact**: post-collapse pool (16 centroids) → v2 collapses to 18 blob-topics; same engine PASSED on healthy pool 06-29. Finding: v2 quality COUPLED to dynamic-pool health, no floor; v1 lexicon lanes degrade gracefully. Flip criterion now carries substrate-health precondition (≥80 centroids) | **P1** (the A/B needs environmental validity conditions — a methods contribution) + P4 | docs/research/engine-ab/2026-07-04-f4-ab-rerun.md |
+| **Stories-only serving** (level-mixing fallacy: category aggregates served as sibling rows beside stories; supersedes 06-24 unified ranking). Two-column product contract: row = story/event, tag = category | **P7** (surface honesty: levels never mix in one list) + P4 (ranking population definition) | P7 evidence; P4 serving note |
+| **Full-archive processing**: 6.9M unique headlines embedded (May-03→Jul-04, $5), 6,473 daily story units — time-as-dimension substrate + identity-continuity fossil record (the ×25 re-founded stories = measured cost of the hydration bug, now fixed) | **P4** (identity persistence) + P7 (time-as-dimension) + P3 (historical baselines) | P4: identity-continuity fix + fossil evidence; the archive pipeline is infrastructure for every paper's longitudinal claims |
+
+Governance note (standing): Atlas rules the papers — these are RESULTS the
+papers absorb, never constraints on what Atlas builds next.
+
 ## Next action
 
 Update `2026-05-27-methodology-paper-outline.md` so that it is
