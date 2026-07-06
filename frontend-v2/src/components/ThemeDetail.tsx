@@ -67,7 +67,12 @@ interface ThemeData {
     }>
     countryBreakdown: Array<{ code: string; count: number; sentiment: number }>
     relatedThemes: Array<{ theme: string; count: number }>
-    topSources: Array<{ name: string; count: number; sentiment: number; family?: SourceFamily | string | null }>
+    topSources: Array<{
+        name: string; count: number; sentiment: number;
+        family?: SourceFamily | string | null;
+        // #217 capability G: credibility tier — label with provenance, never a filter
+        credibility?: { tier: number; label: string; provenance: string } | null;
+    }>
     topPersons: Array<{ name: string; count: number }>
     timeline: Array<{ hour: string; count: number; sentiment: number }>
     source?: string
@@ -1067,6 +1072,18 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                                     <span className={`source-family-badge ${family.className}`} data-tip={family.tip}>
                                                         {family.label}
                                                     </span>
+                                                    {s.credibility && !['unknown', 'mainstream'].includes(s.credibility.label) && (
+                                                        <span
+                                                            className={`source-tier-badge source-tier-${s.credibility.label}`}
+                                                            data-tip={`Credibility tier: ${s.credibility.label} — ${s.credibility.provenance}`}
+                                                        >
+                                                            {s.credibility.label === 'reference' ? '◆ ref' :
+                                                             s.credibility.label === 'wire' ? '◆ wire' :
+                                                             s.credibility.label === 'state' ? '⚑ state' :
+                                                             s.credibility.label === 'flagged' ? '⚠ flagged' :
+                                                             s.credibility.label}
+                                                        </span>
+                                                    )}
                                                     <span className="source-count">{s.count}</span>
                                                     <span className="source-sentiment" style={{ color: getSentimentColor(s.sentiment) }}>
                                                         {sentimentWord(s.sentiment)}

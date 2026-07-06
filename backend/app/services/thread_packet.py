@@ -12,6 +12,7 @@ import html
 from typing import Any
 
 from app.core.gdelt_taxonomy import classify_source
+from app.services.source_tiers import tier_payload
 from app.utils import extract_domain, rank_key_people
 
 # Social platform domains that classify_source returns "independent" for but
@@ -143,6 +144,11 @@ def build_thread_packet(rows: list, own_topic: str | None = None) -> dict:
             "count": len(vs),
             "sentiment": sum(vs) / len(vs),
             "family": classify_source(sn or ""),
+            # #217 capability G: credibility tier as a LABEL with provenance
+            # (never a filter) — the who-says-what matrix stops presenting
+            # a conspiracy amplifier and a met agency as peers.
+            "credibility": tier_payload(
+                sn, source_family=classify_source(sn or "")),
         }
         for sn, vs in sorted(
             source_counts.items(), key=lambda x: len(x[1]), reverse=True
