@@ -275,42 +275,118 @@ async def insert_reliefweb_signals(pool: asyncpg.Pool, signals: list[dict]) -> i
 
 # ── Main entry point ──────────────────────────────────────────────────────────
 
+# ── Official ReliefWeb API (#180, 2026-07-06) ──────────────────────────────
+# RSS-from-Fly gets an empty HTTP 202 (WAF/CDN edge). The JSON API is the
+# structured path (ISO3 country, no HTML scraping). MEASURED 2026-07-06:
+# v1 is DECOMMISSIONED (410) and v2 now REQUIRES AN APPROVED APPNAME (403,
+# registration at apidoc.reliefweb.int/parameters#appname) — an institutional
+# gate, same class as #46 ACLED, not a code fix. This path is v2-ready; set
+# ATLAS_RELIEFWEB_APPNAME once approved to activate it. Until then the lane
+# serves 0 (honest) — better than the RSS 202 that pretended to work.
+_RW_API = "https://api.reliefweb.int/v2/reports"
+from app.core.iso3_map import ISO3_TO_ISO2 as _ISO3_TO_ISO2
+
+
+async def fetch_reliefweb_api(
+    session: aiohttp.ClientSession, since: datetime, limit: int = 200,
+) -> list[dict]:
+    """Fetch recent reports via the official API. ISO3 → ISO2 via the country
+    field's `iso3`; degrades to [] on any error (honest gap, never raises)."""
+    signals: list[dict] = []
+    appname = os.environ.get("ATLAS_RELIEFWEB_APPNAME")
+    if not appname:
+        logger.info("[RW] API path idle — no approved appname "
+                    "(set ATLAS_RELIEFWEB_APPNAME after registration)")
+        return signals
+    payload = {
+        "filter": {"field": "date.created",
+                   "value": {"from": since.strftime("%Y-%m-%dT%H:%M:%S+00:00")}},
+        "fields": {"include": ["title", "url", "date.created",
+                               "primary_country.iso3", "primary_country.name",
+                               "source.shortname", "body-html"]},
+        "sort": ["date.created:desc"],
+        "limit": limit,
+    }
+    try:
+        async with session.post(
+            _RW_API, json=payload, headers=_HEADERS,
+            timeout=aiohttp.ClientTimeout(total=30),
+        ) as resp:
+            if resp.status != 200:
+                logger.warning("[RW] API returned HTTP %d", resp.status)
+                return signals
+            data = await resp.json()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[RW] API fetch failed: %s", exc)
+        return signals
+
+    for item in data.get("data", []):
+        f = item.get("fields", {})
+        pc = f.get("primary_country") or {}
+        iso3 = (pc.get("iso3") or "").upper()
+        iso2 = _ISO3_TO_ISO2.get(iso3)
+        if not iso2:
+            continue
+        url = f.get("url") or ""
+        if not url or is_blocked(url):
+            continue
+        created = f.get("date", {}).get("created")
+        try:
+            pub = datetime.fromisoformat(created.replace("Z", "+00:00")) \
+                if created else datetime.now(timezone.utc)
+        except (ValueError, AttributeError):
+            pub = datetime.now(timezone.utc)
+        if pub <= since:
+            continue
+        title = (f.get("title") or "")[:500]
+        snippet = strip_html(f.get("body-html") or "")[:500]
+        signals.append({
+            "timestamp": pub, "country_code": iso2,
+            "latitude": None, "longitude": None, "sentiment": 0.0,
+            "source_url": url,
+            "source_name": urlparse(url).netloc.lower().removeprefix("www."),
+            "headline": title or None, "themes": [], "persons": [],
+            "is_crisis": True, "crisis_score": 0.5,
+            "crisis_themes": ["HUMANITARIAN"], "severity": "medium",
+            "event_type": "humanitarian", "source_family": "ngo",
+            "source_lang": "en", "geo_confidence": 0.92,
+            "attribution_method": "reliefweb_api", "is_state_media": False,
+            "signal_class": "humanitarian", "snippet": clean_snippet(snippet),
+        })
+    return signals
+
+
 async def run_reliefweb_ingestion() -> None:
-    """Fetch all ReliefWeb feeds and insert new signals. Called by ingest_loop.py."""
+    """Fetch ReliefWeb reports and insert new signals. Called by ingest_loop.py.
+
+    Primary path = the official JSON API (#180). The legacy RSS feeds stay as
+    an env-gated fallback (ATLAS_RELIEFWEB_RSS_FALLBACK=on) in case the API
+    ever regresses; default is API-only."""
     since = datetime.now(timezone.utc) - timedelta(hours=4)  # wider window — reports are slower
 
     pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=2)
-    total_upserted = 0
-    total_fetched = 0
-
     try:
         async with aiohttp.ClientSession() as session:
-            # Country-specific feeds (high geo confidence)
-            for iso3, iso2 in _CRISIS_FEEDS.items():
-                feed_url = _RW_BASE.format(iso3=iso3)
-                feed_name = f"reliefweb_{iso3}"
-                signals = await fetch_reliefweb_feed(session, feed_name, feed_url, iso2, since)
-                total_fetched += len(signals)
-                if signals:
-                    n = await insert_reliefweb_signals(pool, signals)
-                    total_upserted += n
-                    if n > 0:
-                        logger.info("[RW] %s: %d fetched → %d upserted", feed_name, len(signals), n)
-
-            # Thematic feeds (disasters, no fixed country)
-            for feed_name, feed_url in _THEMATIC_FEEDS:
-                signals = await fetch_reliefweb_feed(session, feed_name, feed_url, None, since)
-                total_fetched += len(signals)
-                if signals:
-                    n = await insert_reliefweb_signals(pool, signals)
-                    total_upserted += n
-                    if n > 0:
-                        logger.info("[RW] %s: %d fetched → %d upserted", feed_name, len(signals), n)
-
+            api_signals = await fetch_reliefweb_api(session, since)
+            n = await insert_reliefweb_signals(pool, api_signals) if api_signals else 0
+            logger.info("[RW] API: %d fetched → %d upserted", len(api_signals), n)
+            if os.environ.get("ATLAS_RELIEFWEB_RSS_FALLBACK", "").lower() in {"1", "true", "on"}:
+                await _run_rss_fallback(session, pool, since)
     finally:
         await pool.close()
 
-    logger.info("[RW] ingestion complete — %d fetched, %d signals upserted", total_fetched, total_upserted)
+
+async def _run_rss_fallback(session, pool, since) -> None:
+    """Legacy RSS path (kept for regression insurance; off by default)."""
+    for iso3, iso2 in _CRISIS_FEEDS.items():
+        signals = await fetch_reliefweb_feed(
+            session, f"reliefweb_{iso3}", _RW_BASE.format(iso3=iso3), iso2, since)
+        if signals:
+            await insert_reliefweb_signals(pool, signals)
+    for feed_name, feed_url in _THEMATIC_FEEDS:
+        signals = await fetch_reliefweb_feed(session, feed_name, feed_url, None, since)
+        if signals:
+            await insert_reliefweb_signals(pool, signals)
 
 
 if __name__ == "__main__":
