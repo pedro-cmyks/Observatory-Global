@@ -1,6 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildDossier, dossierToMarkdown } from '../lib/dossier'
 import { fetchDossierEnrichment, type DossierEnrichment } from '../lib/dossierEnrichment'
+import {
+    connectionsSummaryLines,
+    type ClusterResult, type ConnectionsData,
+} from '../lib/dossierConnections'
+import { DossierConnections } from './DossierConnections'
 import { track, trackOnce } from '../lib/telemetry'
 import type { Investigation } from '../lib/workbench'
 import './DossierView.css'
@@ -16,6 +21,12 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
         [investigation, now, enrichment],
     )
     const [copied, setCopied] = useState(false)
+    // Connection analysis is fetched inside DossierConnections; it hands the
+    // measured data up here so the Markdown export can carry the findings too.
+    const connRef = useRef<{ data: ConnectionsData; cluster: ClusterResult } | null>(null)
+    const onConnections = useCallback((data: ConnectionsData, cluster: ClusterResult) => {
+        connRef.current = { data, cluster }
+    }, [])
 
     // W3: measured sections load after the frozen core renders; a fetch
     // failure leaves the report intact (sections simply absent).
@@ -33,7 +44,16 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
         trackOnce('first_value_moment', { kind: 'dossier' })
     }, [dossier.pinCount])
 
-    const markdown = () => dossierToMarkdown(dossier)
+    const markdown = () => {
+        const base = dossierToMarkdown(dossier)
+        const conn = connRef.current
+        if (!conn || conn.data.nodes.length < 2) return base
+        const block = connectionsSummaryLines(conn.data, conn.cluster).join('\n') + '\n'
+        // Insert the connection findings before the Timeline section.
+        const marker = '\n## Timeline'
+        const at = base.indexOf(marker)
+        return at === -1 ? `${base}\n${block}` : `${base.slice(0, at)}\n${block}${base.slice(at)}`
+    }
 
     const copy = async () => {
         try { await navigator.clipboard.writeText(markdown()); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch { /* ignore */ }
@@ -100,6 +120,16 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
                         ))
                     )}
                 </section>
+
+                {dossier.pinCount >= 2 && (
+                    <section className="dossier-section">
+                        <h2>Connection analysis</h2>
+                        <p className="dossier-meta" data-tip="Do these pinned stories form one narrative, and which sub-clusters connect? Semantic proximity + shared entities, measured now.">
+                            do these stories connect — and which sub-narratives hold?
+                        </p>
+                        <DossierConnections inv={investigation} onData={onConnections} />
+                    </section>
+                )}
 
                 {dossier.enrichment && Object.keys(dossier.enrichment.whoSaysWhat).length > 0 && (
                     <section className="dossier-section">
