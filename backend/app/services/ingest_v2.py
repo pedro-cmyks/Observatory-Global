@@ -324,7 +324,18 @@ def parse_gkg_row(row: list, source_lang: str = "en") -> Optional[dict]:
             if person_name and len(person_name) > 2:
                 persons.append(person_name.lower())
     persons = list(set(persons))[:10]
-    
+
+    # Organizations (V2ENHANCEDORGANIZATIONS - field 13) — the WHO-orgs half
+    # (#251). Same parse shape as persons; companies/agencies/armed-groups.
+    orgs_raw = row[13] if len(row) > 13 else ""
+    organizations = []
+    if orgs_raw:
+        for org in orgs_raw.split(';'):
+            org_name = org.split(',')[0] if ',' in org else org
+            if org_name and len(org_name) > 2:
+                organizations.append(org_name.lower())
+    organizations = list(set(organizations))[:10]
+
     # Tone (V2TONE - field 15)
     tone_raw = row[15] if len(row) > 15 else ""
     sentiment = 0.0
@@ -355,6 +366,7 @@ def parse_gkg_row(row: list, source_lang: str = "en") -> Optional[dict]:
         'headline': headline,
         'themes': themes,
         'persons': persons,
+        'organizations': organizations,
         # Crisis classification fields
         'is_crisis': is_crisis,
         'crisis_score': crisis_score,
@@ -390,10 +402,10 @@ async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                         source_url, source_name, headline, themes, persons,
                         is_crisis, crisis_score, crisis_themes, severity, event_type,
                         source_family, source_lang, geo_confidence, attribution_method, is_state_media,
-                        source_origin_country, signal_class
+                        source_origin_country, signal_class, organizations
                     )
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-                            $16, $17, $18, $19, $20, $21, $22)
+                            $16, $17, $18, $19, $20, $21, $22, $23)
                     ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO NOTHING
                 """,
                     signal['timestamp'],
@@ -418,6 +430,7 @@ async def insert_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                     signal.get('is_state_media', False),
                     signal.get('source_origin_country'),
                     signal.get('signal_class', 'reporting'),
+                    signal.get('organizations'),
                 )
                 # asyncpg returns "INSERT 0 N" — N=0 means conflict (dup)
                 if result == "INSERT 0 1":
