@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { COUNTRY_OPTIONS, resolveCountryName } from '../lib/countryNames'
+import { Flag } from '../components/Flag'
 import { readBriefingCache } from '../lib/briefingPrefetch'
 import { resolveThreadThemeTarget } from '../lib/threadThemeTarget'
 import { selectLeadThread } from '../lib/briefLead'
@@ -620,7 +621,7 @@ export function BriefNewspaper() {
                                                         onMouseDown={e => e.preventDefault()}
                                                         onClick={() => selectCountry(c.code)}
                                                     >
-                                                        <span>{resolveCountryName(c.code, c.name)}</span>
+                                                        <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
                                                         <span className="brief-country-option-count">{c.signals > 0 ? c.signals.toLocaleString() : 'not in top countries'}</span>
                                                     </button>
                                                 ))}
@@ -776,7 +777,7 @@ export function BriefNewspaper() {
                                                         className="brief-heat-card"
                                                         onClick={() => goToAtlas(`country=${h.code}`, 'heating_up')}
                                                     >
-                                                        <span className="brief-heat-name">{resolveCountryName(h.code, h.name)}</span>
+                                                        <span className="brief-heat-name"><Flag code={h.code} /> {resolveCountryName(h.code, h.name)}</span>
                                                         <span className="brief-heat-val">{Math.round(h.heat * 100)}</span>
                                                         {comp && <span className="brief-heat-comp">{comp}</span>}
                                                     </button>
@@ -868,7 +869,7 @@ export function BriefNewspaper() {
                                             className="brief-bottom-country"
                                             onClick={() => goToAtlas(`country=${c.code}`, 'most_active')}
                                         >
-                                            <span>{resolveCountryName(c.code, c.name)}</span>
+                                            <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
                                             <span className="brief-bottom-num">{c.signals.toLocaleString()}</span>
                                         </button>
                                     ))}
@@ -906,7 +907,7 @@ export function BriefNewspaper() {
 
                             <section className="brief-watchlist">
                                 <h3 className="brief-bottom-heading">
-                                    Narrative Threads — {resolveCountryName(countryFilter, countryDetail?.name)}
+                                    Narrative Threads — <Flag code={countryFilter} /> {resolveCountryName(countryFilter, countryDetail?.name)}
                                 </h3>
                                 {countryLoading ? (
                                     <p className="brief-country-note">Checking this country's narrative threads for the selected window…</p>
@@ -945,7 +946,7 @@ export function BriefNewspaper() {
                                     className="brief-bottom-country"
                                     onClick={() => goToAtlas(`country=${c.code}`, 'most_negative')}
                                 >
-                                    <span>{resolveCountryName(c.code, c.name)}</span>
+                                    <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
                                     <span className="brief-bottom-num negative">
                                         {c.sentiment.toFixed(2)}
                                         <SentimentSourceBadge source={c.sentiment_source} coverage={c.nlp_coverage} />
@@ -961,7 +962,7 @@ export function BriefNewspaper() {
                                     className="brief-bottom-country"
                                     onClick={() => goToAtlas(`country=${c.code}`, 'most_positive')}
                                 >
-                                    <span>{resolveCountryName(c.code, c.name)}</span>
+                                    <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
                                     <span className="brief-bottom-num positive">
                                         +{c.sentiment.toFixed(2)}
                                         <SentimentSourceBadge source={c.sentiment_source} coverage={c.nlp_coverage} />

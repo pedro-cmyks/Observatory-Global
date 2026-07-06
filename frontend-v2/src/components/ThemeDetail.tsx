@@ -19,6 +19,7 @@ import { PanelSkeleton, PanelSkeletonGrid } from './PanelSkeleton'
 import { CoverageBadge, type CoverageMeta } from './CoverageBadge'
 import type { PublicAttentionOrigin } from '../lib/publicAttention'
 import { buildThemeDetailEmptyState } from '../lib/themeDetailEmptyState'
+import { Flag } from './Flag'
 import './ThemeDetail.css'
 
 
@@ -452,13 +453,6 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         )
     }
 
-    // Country code to flag emoji
-    const getFlag = (code: string): string => {
-        if (!code || code.length !== 2) return '🌐'
-        const codePoints = code.toUpperCase().split('').map(c => 0x1F1E6 + c.charCodeAt(0) - 65)
-        return String.fromCodePoint(...codePoints)
-    }
-
     // Sentiment bar color for framing cards
     const getFramingSentimentColor = (s: number): string => {
         if (s > 0.5) return '#4ade80'
@@ -575,7 +569,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 >
                                     ← Global
                                 </button>
-                                {' · '}{getFlag(drillCountry)} {drillCountryName} · {data?.total || 0} signals
+                                {' · '}<Flag code={drillCountry} title={drillCountryName} /> {drillCountryName} · {data?.total || 0} signals
                             </p>
                         ) : (
                             <p className="theme-detail-meta">
@@ -586,7 +580,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                     </span>
                                 )}
                                 {originCountryName && (
-                                    <span className="origin-country-hint"> · opened from {getFlag(originCountry!)} {originCountryName}</span>
+                                    <span className="origin-country-hint"> · opened from <Flag code={originCountry!} title={originCountryName} /> {originCountryName}</span>
                                 )}
                                 {originAttention?.title && (
                                     <span className="origin-country-hint"> · opened from Public Attention: {originAttention.title}</span>
@@ -973,7 +967,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                                 >
                                                     <div className="framing-card-header">
                                                         <span className="framing-rank">#{cf.volumeRank ?? idx + 1}</span>
-                                                        <span className="framing-flag">{getFlag(cf.country_code)}</span>
+                                                        <span className="framing-flag"><Flag code={cf.country_code} title={cf.country_name} /></span>
                                                         <span className="framing-country-name">{cf.country_name}</span>
                                                     </div>
                                                     <div className="framing-stats">

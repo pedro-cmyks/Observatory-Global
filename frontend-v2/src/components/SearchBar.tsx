@@ -5,6 +5,7 @@ import { useFocus } from '../contexts/FocusContext'
 import type { RegionFilter } from '../contexts/FocusContext'
 import { Search } from '../lib/icons'
 import { hasVisibleSearchResults } from '../lib/searchResults'
+import { Flag } from './Flag'
 import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters'
 import './SearchBar.css'
 
@@ -441,7 +442,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                     {parsedQuery.countryCode && (
                         <button className="search-query-thread-cta search-query-thread-cta--country" onClick={handleGoToCountry}
                             data-tip="Open the country brief — its threads, voice mix (who covers it) and coverage">
-                            <span className="search-query-thread-icon">🗺</span>
+                            <span className="search-query-thread-icon"><Flag code={parsedQuery.countryCode} title={parsedQuery.countryDisplay ?? parsedQuery.countryCode} /></span>
                             <span className="search-query-thread-text">
                                 Go to <strong>{parsedQuery.countryDisplay}</strong>
                             </span>
@@ -589,10 +590,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                                     <span className="search-item-meta">
                                         {t.total_signals.toLocaleString()} sig
                                         {!parsedQuery.countryCode && t.top_countries.slice(0, 3).map((c, i) => {
-                                            const flag = c.code.length === 2
-                                                ? String.fromCodePoint(...c.code.toUpperCase().split('').map(ch => 0x1F1E6 + ch.charCodeAt(0) - 65))
-                                                : '🌐'
-                                            return <span key={c.code}>{i === 0 ? ' · ' : ' '}{flag} {c.name}</span>
+                                            return <span key={c.code}>{i === 0 ? ' · ' : ' '}<Flag code={c.code} title={c.name} /> {c.name}</span>
                                         })}
                                     </span>
                                 </div>
@@ -612,10 +610,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                                     <span className="search-item-meta">
                                         {p.total_signals.toLocaleString()} sig
                                         {p.top_countries.slice(0, 3).map((c, i) => {
-                                            const flag = c.code.length === 2
-                                                ? String.fromCodePoint(...c.code.toUpperCase().split('').map(ch => 0x1F1E6 + ch.charCodeAt(0) - 65))
-                                                : '🌐'
-                                            return <span key={c.code}>{i === 0 ? ' · ' : ' '}{flag} {c.name}</span>
+                                            return <span key={c.code}>{i === 0 ? ' · ' : ' '}<Flag code={c.code} title={c.name} /> {c.name}</span>
                                         })}
                                     </span>
                                 </div>

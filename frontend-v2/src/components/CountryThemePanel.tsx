@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
+import { Flag } from './Flag'
 import './CountryThemePanel.css'
 
 interface CountryThemePanelProps {
@@ -25,12 +26,6 @@ interface ThemeCountryData {
         sentiment: number
         persons: string[]
     }>
-}
-
-const getFlag = (code: string): string => {
-    if (!code || code.length !== 2) return '🌐'
-    const pts = code.toUpperCase().split('').map(c => 0x1F1E6 + c.charCodeAt(0) - 65)
-    return String.fromCodePoint(...pts)
 }
 
 const getSentimentColor = (s: number) =>
@@ -62,7 +57,7 @@ export function CountryThemePanel({
                     <span className="ctp-icon">{getThemeIcon(theme)}</span>
                     <div className="ctp-titles">
                         <span className="ctp-theme-name">{getThemeLabel(theme)}</span>
-                        <span className="ctp-country-name">{getFlag(countryCode)} {countryName}</span>
+                        <span className="ctp-country-name"><Flag code={countryCode} title={countryName} /> {countryName}</span>
                     </div>
                     <button className="ctp-close" onClick={onClose}>×</button>
                 </div>

@@ -24,7 +24,11 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,woff2,png,svg}'],
+        // SVGs are NOT precached: the bundled flag-icons set (~500 SVGs, several
+        // >100KB) would balloon the precache to ~8MB and force every install to
+        // download all flags. They (and app icon SVGs) are runtime-cached on
+        // demand instead — see the /assets .svg CacheFirst rule below.
+        globPatterns: ['**/*.{js,css,html,woff2,png}'],
         navigateFallbackDenylist: [/^\/api\//],
         // The brief/threads read offline (network-first → last good response);
         // theme detail likewise. Never precache the live API.
@@ -46,6 +50,16 @@ export default defineConfig({
               cacheName: 'atlas-theme',
               networkTimeoutSeconds: 5,
               expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 12 },
+            },
+          },
+          {
+            // Bundled SVG assets (country flags + app icons): fetched on first
+            // render, then served from cache. Keeps them out of the precache.
+            urlPattern: ({ url }) => url.pathname.startsWith('/assets/') && url.pathname.endsWith('.svg'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'atlas-svg',
+              expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 30 },
             },
           },
         ],
