@@ -131,6 +131,11 @@ export function dossierToMarkdown(d: DossierModel): string {
       const e = wsw[p.anchorId]
       if (!e) continue
       lines.push(`- **${p.label}** — ${e.relationship}: press ${e.evidenceCount} · public ${e.discussionCount}${e.moodCount ? ` · mood ${e.moodCount}` : ''} (${e.rationale})`)
+      if (e.sourceTiers) {
+        const tiers = Object.entries(e.sourceTiers).sort((a, b) => b[1] - a[1])
+          .map(([t, n]) => `${t} ${n}`).join(' · ')
+        lines.push(`  - receipts by credibility tier: ${tiers}`)
+      }
     }
     lines.push('')
   }
@@ -156,6 +161,15 @@ export function dossierToMarkdown(d: DossierModel): string {
         .map(id => d.pins.find(p => p.anchorId === id)?.label)
         .filter(Boolean)
       lines.push(`- **${g.category ?? 'uncategorized'}**: ${labels.join('; ')}`)
+    }
+    lines.push('')
+  }
+  const covGaps = d.enrichment?.coverageGaps ?? []
+  if (covGaps.length > 0) {
+    lines.push('## What is missing (attention without verified coverage)')
+    lines.push('*Categories with attention but zero gate-verified coverage in the last 24h. Measured at generation time, global.*')
+    for (const g of covGaps) {
+      lines.push(`- **${g.label}** — ${g.rawSignals} raw signals · ${g.status === 'gate_pending' ? 'awaiting gate' : 'none verified'}`)
     }
     lines.push('')
   }

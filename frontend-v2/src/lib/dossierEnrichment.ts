@@ -16,6 +16,10 @@ export interface WhoSaysWhatEntry {
   discussionCount: number
   moodCount: number
   rationale: string
+  // #217 source-quality of the receipts backing this thread (label counts
+  // over topSources credibility tiers). The wedge's "with the receipts" +
+  // "how good are they".
+  sourceTiers?: Record<string, number>
 }
 
 export interface VoiceEntry {
@@ -25,10 +29,19 @@ export interface VoiceEntry {
   topForeignOrigins: string[]
 }
 
+export interface CoverageGapEntry {
+  label: string
+  rawSignals: number
+  status: string
+}
+
 export interface DossierEnrichment {
   measuredAt: string
   whoSaysWhat: Record<string, WhoSaysWhatEntry>
   voice: Record<string, VoiceEntry>
+  // The wedge's "what is missing": categories with attention but no
+  // gate-verified coverage right now (global, measured at generation).
+  coverageGaps: CoverageGapEntry[]
 }
 
 const THREAD_CAP = 6
@@ -86,13 +99,29 @@ export async function fetchDossierEnrichment(inv: Investigation): Promise<Dossie
       if (!res.ok) return
       const d = await res.json() as Record<string, unknown>
       if (typeof d.relationship !== 'string') return
-      whoSaysWhat[pin.anchorId] = {
+      const entry: WhoSaysWhatEntry = {
         relationship: d.relationship,
         evidenceCount: Number(d.evidence_count ?? 0),
         discussionCount: Number(d.discussion_count ?? 0),
         moodCount: Number(d.mood_count ?? 0),
         rationale: String(d.rationale ?? ''),
       }
+      // #217: fold the source-tier distribution from the thread's topSources.
+      try {
+        const dres = await fetch(`/api/v2/theme/${encodeURIComponent(topicId)}?hours=168`)
+        if (dres.ok) {
+          const detail = await dres.json() as Record<string, unknown>
+          const srcs = Array.isArray(detail.topSources) ? detail.topSources as Array<Record<string, unknown>> : []
+          const tiers: Record<string, number> = {}
+          for (const s of srcs) {
+            const cred = s.credibility as Record<string, unknown> | undefined
+            const label = cred && typeof cred.label === 'string' ? cred.label : 'unknown'
+            tiers[label] = (tiers[label] ?? 0) + 1
+          }
+          if (Object.keys(tiers).length) entry.sourceTiers = tiers
+        }
+      } catch { /* tiers absent, entry stands */ }
+      whoSaysWhat[pin.anchorId] = entry
     } catch { /* section absent, report intact */ }
   })
 
@@ -117,6 +146,21 @@ export async function fetchDossierEnrichment(inv: Investigation): Promise<Dossie
     } catch { /* section absent */ }
   })
 
-  await Promise.allSettled([...threadFetches, ...countryFetches])
-  return { measuredAt: new Date().toISOString(), whoSaysWhat, voice }
+  let coverageGaps: CoverageGapEntry[] = []
+  const gapsFetch = (async () => {
+    try {
+      const res = await fetch('/api/v2/briefing?hours=24')
+      if (!res.ok) return
+      const d = await res.json() as Record<string, unknown>
+      const raw = Array.isArray(d.coverage_gaps) ? d.coverage_gaps as Array<Record<string, unknown>> : []
+      coverageGaps = raw.slice(0, 6).map(g => ({
+        label: String(g.label ?? g.slug ?? ''),
+        rawSignals: Number(g.raw_signals ?? 0),
+        status: String(g.status ?? ''),
+      })).filter(g => g.label)
+    } catch { /* gaps absent */ }
+  })()
+
+  await Promise.allSettled([...threadFetches, ...countryFetches, gapsFetch])
+  return { measuredAt: new Date().toISOString(), whoSaysWhat, voice, coverageGaps }
 }

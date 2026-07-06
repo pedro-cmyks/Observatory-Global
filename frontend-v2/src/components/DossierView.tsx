@@ -120,6 +120,13 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
                                         press {e.evidenceCount} · public {e.discussionCount}
                                         {e.moodCount > 0 ? ` · mood ${e.moodCount}` : ''} — {e.rationale}
                                     </div>
+                                    {e.sourceTiers && (
+                                        <div className="dossier-pin-tiers" data-tip="Credibility tiers of the sources backing this thread (#217) — labels with provenance, measured now.">
+                                            receipts by tier: {Object.entries(e.sourceTiers)
+                                                .sort((a, b) => b[1] - a[1])
+                                                .map(([t, n]) => `${t} ${n}`).join(' · ')}
+                                        </div>
+                                    )}
                                 </div>
                             )
                         })}
@@ -173,6 +180,25 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
                         ))}
                     </ul>
                 </section>
+
+                {dossier.enrichment && dossier.enrichment.coverageGaps.length > 0 && (
+                    <section className="dossier-section">
+                        <h2>What is missing — attention without verified coverage</h2>
+                        <p className="dossier-meta" data-tip="Categories with attention (raw signals) but zero gate-verified coverage in the last 24h. The wedge's 'what is missing', measured at generation.">
+                            measured at generation time · global, last 24h
+                        </p>
+                        <ul className="dossier-timeline">
+                            {dossier.enrichment.coverageGaps.map((g, i) => (
+                                <li key={i}>
+                                    <span className="dossier-tl-action">{g.label}</span>
+                                    <span className="dossier-tl-detail">
+                                        {g.rawSignals} raw signals · {g.status === 'gate_pending' ? 'awaiting gate' : 'none verified'}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                )}
 
                 <section className="dossier-section dossier-gaps">
                     <h2>Gaps &amp; uncertainty</h2>

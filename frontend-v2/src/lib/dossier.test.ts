@@ -92,10 +92,13 @@ describe('dossier v2', () => {
         'thread-1': { relationship: 'media-led', evidenceCount: 120, discussionCount: 4, moodCount: 0, rationale: 'evidence 120 outweighs discussion 4' },
       },
       voice: { PE: { selfVoiceRatio: 0.31, dominantOutsider: 'US', stateMediaPct: 5, topForeignOrigins: ['US', 'ES'] } },
+      coverageGaps: [{ label: 'Trade export restriction', rawSignals: 72, status: 'gate_pending' }],
     }
     const md = dossierToMarkdown(buildDossier(inv, '2026-07-05T01:00:00Z', enrichment))
     expect(md).toContain('## Who says what (press vs public)')
     expect(md).toContain('press 120 · public 4')
+    expect(md).toContain('## What is missing (attention without verified coverage)')
+    expect(md).toContain('Trade export restriction')
     expect(md).toContain('## Voice (who covers, not just who is covered)')
     expect(md).toContain('self-voice 31%')
     expect(md).toContain('dominant outsider US')
