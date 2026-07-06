@@ -182,6 +182,25 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     const [selectedSource, setSelectedSource] = useState<string | null>(null)
     const [showAllCoverage, setShowAllCoverage] = useState(false)
     const [showDrift, setShowDrift] = useState(false)
+    // #161 external-depth lane: on-demand DOC 2.0 enrichment for THIN topics.
+    // null = not fetched; 'loading'; {available:false,...} = honest gap.
+    const [externalDepth, setExternalDepth] = useState<
+        null | 'loading' | {
+            available: boolean; reason?: string; query?: string;
+            items?: Array<{ title: string; url: string; domain: string;
+                language: string | null; verified: boolean;
+                credibility?: { tier: number; label: string; provenance: string } }>
+        }>(null)
+
+    const fetchExternalDepth = async () => {
+        setExternalDepth('loading')
+        try {
+            const r = await fetch(`/api/v2/theme/${encodeURIComponent(theme)}/external-depth`)
+            setExternalDepth(await r.json())
+        } catch {
+            setExternalDepth({ available: false, reason: 'request failed — retry later' })
+        }
+    }
 
     // On phones the thread read is a full-screen overlay; lock the cockpit
     // behind it so background scroll doesn't bleed through.
@@ -1139,6 +1158,56 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                     <div className="coverage-articles coverage-articles--all">
                                         {data.signals.slice(0, 30).map((sig, i) => (
                                             <div key={i}>{renderArticle(sig, { showSource: true })}</div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* #161 external-depth lane — offered when the topic is THIN
+                            (few gate-verified receipts). On-demand, never automatic:
+                            latency is 15-30s and the source is external/unverified. */}
+                        {((data.verified ?? data.total ?? 0) < 10) && (
+                            <div className="theme-section external-depth-section">
+                                <div className="theme-section-title">EXTERNAL DEPTH</div>
+                                {externalDepth === null && (
+                                    <button
+                                        className="external-depth-btn"
+                                        onClick={fetchExternalDepth}
+                                        data-tip="Search GDELT DOC 2.0 full-text index for additional coverage of this thin topic. External source — results are unverified and carry credibility tiers. Takes 15-30s."
+                                    >
+                                        ⊕ Search external coverage (GDELT DOC 2.0)
+                                    </button>
+                                )}
+                                {externalDepth === 'loading' && (
+                                    <p className="external-depth-status">Querying external index… (15-30s, external source)</p>
+                                )}
+                                {externalDepth && externalDepth !== 'loading' && !externalDepth.available && (
+                                    <p className="external-depth-status">
+                                        External lane unavailable: {externalDepth.reason}
+                                    </p>
+                                )}
+                                {externalDepth && externalDepth !== 'loading' && externalDepth.available && (
+                                    <div className="external-depth-results">
+                                        <p className="external-depth-caveat">
+                                            EXTERNAL · UNVERIFIED — {externalDepth.items?.length ?? 0} articles from the DOC 2.0 index
+                                            (query: {externalDepth.query}). Not Atlas evidence; tiers shown per source.
+                                        </p>
+                                        {(externalDepth.items ?? []).slice(0, 12).map((it, i) => (
+                                            <div key={i} className="external-depth-item">
+                                                <a href={it.url} target="_blank" rel="noopener noreferrer">{it.title}</a>
+                                                <span className="external-depth-meta">
+                                                    {it.domain}{it.language ? ` · ${it.language}` : ''}
+                                                    {it.credibility && !['unknown', 'mainstream'].includes(it.credibility.label) && (
+                                                        <span
+                                                            className={`source-tier-badge source-tier-${it.credibility.label}`}
+                                                            data-tip={`Credibility tier: ${it.credibility.label} — ${it.credibility.provenance}`}
+                                                        >
+                                                            {it.credibility.label}
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            </div>
                                         ))}
                                     </div>
                                 )}

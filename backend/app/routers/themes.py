@@ -239,6 +239,58 @@ async def get_focus_data(
             "key_subjects": key_subjects
         }
 
+@router.get("/api/v2/theme/{theme_code}/external-depth")
+async def get_theme_external_depth(theme_code: str):
+    """#161 external-depth lane — ON-DEMAND DOC 2.0 enrichment for THIN
+    topics (probe: 21/39 new verifiable articles on the Armenia fixture).
+    Results are `external · unverified` + #217 credibility tier. Any
+    upstream failure returns an honest lane_unavailable gap, never a 500.
+    Service-side cache 30 min; latency budget 25s (measured 16-35s)."""
+    from app.services.external_depth import fetch_external_depth
+
+    label: str | None = None
+    country: str | None = None
+    known: set[str] = set()
+    try:
+        async with db.pool.acquire() as conn:
+            if theme_code.startswith("dynamic-topic-"):
+                tid = int(theme_code.removeprefix("dynamic-topic-"))
+                row = await conn.fetchrow(
+                    "SELECT label FROM dynamic_topics WHERE id=$1", tid)
+                label = row["label"] if row else None
+                urls = await conn.fetch(
+                    """SELECT s.source_url FROM topic_members tm
+                       JOIN signals_v2 s ON s.id = tm.signal_id
+                       WHERE tm.topic_id = $1 LIMIT 400""", theme_code)
+                known = {r["source_url"] for r in urls if r["source_url"]}
+            else:
+                slug = theme_code.split("--")[0].lower()
+                row = await conn.fetchrow(
+                    "SELECT id, label FROM atlas_topics WHERE slug=$1", slug)
+                if row:
+                    label = row["label"]
+                    urls = await conn.fetch(
+                        """SELECT s.source_url FROM signal_topic_assignments a
+                           JOIN signals_v2 s ON s.id = a.signal_id
+                           WHERE a.topic_id = $1 LIMIT 400""", row["id"])
+                    known = {r["source_url"] for r in urls if r["source_url"]}
+                if "--" in theme_code:
+                    country = theme_code.split("--")[1].upper() or None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("external-depth resolution failed: %s", exc)
+
+    if not label:
+        return {"contract": "external-depth-v0", "available": False,
+                "reason": "topic label not resolvable"}
+    result = await fetch_external_depth(label, country, known)
+    if result is None:
+        return {"contract": "external-depth-v0", "available": False,
+                "reason": "external source unavailable (rate-limit/latency) "
+                          "— retry later; recall is Atlas-only meanwhile"}
+    return {"contract": "external-depth-v0", "available": True,
+            "label": label, **result}
+
+
 @router.get("/api/v2/theme/{theme_code}/drift")
 async def get_theme_drift(
     theme_code: str,
