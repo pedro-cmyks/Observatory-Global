@@ -32,8 +32,18 @@ ruta-vieja→ruta-actual en cada uno; luego el lote A ejecutado (+3 cerrados,
 
 **Estado neto del día: 10 cerrados (#239 #241 #243 #154 #185 #172 #151 #159
 #166 #156), 1 creado (#253 NER levers), 4 re-scopeados (#217 #161 #46 +
-#226/#238 comentados). Quedan para el M1: queries de #168/#180 + verificación
-del run Stage B (~15:00) + robot sobre las units (#204).**
+#226/#238 comentados).**
+
+**CIERRE DEL LOOP [M1] (sesión motor, 07-06 — comentario en el PR #252): las 4
+tareas que este plan dejó para la máquina EJECUTADAS.** (1) Stage B verificado:
+**6,473 units / 62 días** (may-03→jul-04), medoids legibles, top_cc poblado.
+(2) **#204 fue MÁS LEJOS que este plan — §C parcialmente superseded**: pivote a
+taxonomía universal (Pedro), **4 categorías auto EN PROD tras eyeball**, typer
+leyendo la taxonomía viva, robot = Step 5 del cron nocturno (ya NO es "manual
+hasta eyeball" — el eyeball ocurrió; leer #204 como el estado vivo). (3) #168:
+el sustrato YA diferencia (32 topics con discussion+mood en unified-v2) pero el
+ratio sigue media-led — sigue abierto, re-check 07-11. (4) #180 confirmado roto
+(ngo=2/7d) → fix = API oficial ReliefWeb, en cola D.
 
 | Cerrado | Veredicto |
 |---|---|
