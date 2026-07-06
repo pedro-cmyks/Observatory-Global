@@ -243,6 +243,16 @@
     background: linear-gradient(90deg, rgba(20, 184, 166, 0.2), rgba(20, 184, 166, 0.05));
 }
 
+/* "Go to <Country>" — the primary action when a search resolves to a country.
+   Cyan accent distinguishes going to the place from opening the story. */
+.search-query-thread-cta--country {
+    background: linear-gradient(90deg, rgba(56, 189, 248, 0.14), rgba(56, 189, 248, 0.02));
+    border-left: 2px solid rgba(56, 189, 248, 0.55);
+}
+.search-query-thread-cta--country:hover {
+    background: linear-gradient(90deg, rgba(56, 189, 248, 0.22), rgba(56, 189, 248, 0.05));
+}
+
 .search-query-thread-icon {
     font-size: 14px;
     line-height: 1;

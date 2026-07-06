@@ -385,6 +385,17 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
         close()
     }
 
+    // Searching a country name (e.g. "Venezuela") must FIRST offer to open the
+    // COUNTRY itself. Previously the parsed country set countryCode, which HID
+    // the Countries section (gated on !countryCode) — so a country search had no
+    // path to the country brief, only the cross-thread story. This surfaces the
+    // country as the primary action (Pedro 2026-07-06).
+    const handleGoToCountry = () => {
+        if (!parsedQuery.countryCode) return
+        track('search_result_click', { segment: 'country_direct', q_len: query.length })
+        handleCountryClick({ code: parsedQuery.countryCode, name: parsedQuery.countryDisplay ?? parsedQuery.countryCode })
+    }
+
     const hasResults = hasVisibleSearchResults(results)
     const expandedVariants = (results?.query_variants || [])
         .filter(v => v && v !== results?.normalized_query)
@@ -425,6 +436,17 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                             Filtering to: <strong>{parsedQuery.countryDisplay}</strong>
                             <span className="search-context-hint"> · results scoped to this country</span>
                         </div>
+                    )}
+
+                    {parsedQuery.countryCode && (
+                        <button className="search-query-thread-cta search-query-thread-cta--country" onClick={handleGoToCountry}
+                            data-tip="Open the country brief — its threads, voice mix (who covers it) and coverage">
+                            <span className="search-query-thread-icon">🗺</span>
+                            <span className="search-query-thread-text">
+                                Go to <strong>{parsedQuery.countryDisplay}</strong>
+                            </span>
+                            <span className="search-query-thread-hint">country brief →</span>
+                        </button>
                     )}
 
                     {onOpenStory && query.trim().length >= 3 && (
