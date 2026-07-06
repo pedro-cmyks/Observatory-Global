@@ -162,6 +162,47 @@ async def research_plan(body: ResearchPlanRequest) -> dict:
     return plan
 
 
+@router.get("/history")
+async def research_history(query: str, day: str | None = None) -> dict:
+    """Archive activity for a STORY query (time-as-dimension widen, #236).
+
+    The research plan is hot-only (~7d) — a query with 0 anchors ("Maduro"
+    today) still has a real past in the processed archive. This embeds the
+    query and returns its daily activity across the archive window (~61 days,
+    May-04..last-compacted) so the STORY panel can plot when the topic spiked
+    and drill a past day's receipts. Degrades to available:false, never 500s.
+    """
+    q = (query or "").strip()
+    if len(q) < 2:
+        return {"contract": "deep-history-v0", "available": False,
+                "reason": "query too short"}
+    if db.pool is None:
+        return {"contract": "deep-history-v0", "available": False,
+                "reason": "db unavailable"}
+    cache_key = f"rhist:v1:{normalize_search_text(q)}:{day or 'series'}"
+    if app.state.redis:
+        try:
+            cached = await app.state.redis.get(cache_key)
+            if cached:
+                return json.loads(cached)
+        except Exception:
+            pass
+    from app.services.deep_history import query_deep_history
+    try:
+        async with db.pool.acquire() as conn:
+            out = await query_deep_history(conn, q, day)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("research history failed: %s", exc)
+        return {"contract": "deep-history-v0", "available": False,
+                "reason": "archive lane error"}
+    if app.state.redis and out.get("available"):
+        try:
+            await app.state.redis.setex(cache_key, 900, json.dumps(out, default=str))
+        except Exception:
+            pass
+    return out
+
+
 class PinEvent(BaseModel):
     anchor_id: str = Field(..., min_length=1, max_length=300)
     event_type: Literal["impression", "open", "pin", "unpin", "dismiss"]

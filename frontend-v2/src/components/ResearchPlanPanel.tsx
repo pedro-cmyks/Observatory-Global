@@ -21,7 +21,12 @@ import {
   recordTrail,
   removePin,
 } from '../lib/workbench';
+import StoryTimeTravel from './StoryTimeTravel';
 import './ResearchPlanPanel.css';
+
+// Live research lanes are hot-only; the backend clamps `hours` here too. Widen
+// tops out at the live-detail limit — past it, the archive strip is the path.
+const MAX_LIVE_HOURS = 720; // 30 days
 
 interface ResearchPlanPanelProps {
   query: string;
@@ -47,14 +52,21 @@ export default function ResearchPlanPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [showTray, setShowTray] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [hoursOverride, setHoursOverride] = useState<number | null>(null);
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
   const impressionsSent = useRef<string | null>(null);
+
+  // A widen ("30 days") is per-query — a new story resets to the caller window.
+  useEffect(() => { setHoursOverride(null); }, [query]);
+
+  const effectiveHours = Math.min(hoursOverride ?? hours, MAX_LIVE_HOURS);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(false);
-    fetchResearchPlan(query, { hours, countryCode })
+    fetchResearchPlan(query, { hours: effectiveHours, countryCode })
       .then(p => {
         if (cancelled) return;
         setPlan(p);
@@ -75,7 +87,7 @@ export default function ResearchPlanPanel({
         if (!cancelled) { setError(true); setLoading(false); }
       });
     return () => { cancelled = true; };
-  }, [query, hours, countryCode]);
+  }, [query, effectiveHours, countryCode]);
 
   function emit(anchor: ResearchAnchor, eventType: 'open' | 'pin' | 'unpin', rank?: number) {
     if (plan?.plan_id) {
@@ -235,9 +247,42 @@ export default function ResearchPlanPanel({
       <div className="rp-anchors">
         {plan.anchors.map((a, i) => renderAnchor(a, i))}
         {plan.anchors.length === 0 && (
-          <div className="rp-status">NO ANCHORS — try widening the window or rephrasing</div>
+          <div className="rp-empty">
+            <div className="rp-status">
+              No live anchors in the last {Math.round(effectiveHours / 24)} days.
+            </div>
+            <div className="rp-widen">
+              {effectiveHours < MAX_LIVE_HOURS ? (
+                <button
+                  type="button"
+                  className="rp-widen-btn"
+                  onClick={() => setHoursOverride(MAX_LIVE_HOURS)}
+                  data-tip="Re-run the live search over the last 30 days — Atlas's live-detail limit"
+                >
+                  ⤢ Widen to 30 days
+                </button>
+              ) : (
+                <span className="rp-widen-note">
+                  Widened to 30 days — the limit of live detail.
+                </span>
+              )}
+              <span className="rp-widen-hint">
+                To reach further back, travel the archive below.
+              </span>
+            </div>
+            <StoryTimeTravel query={query} />
+          </div>
         )}
       </div>
+
+      {plan.anchors.length > 0 && (
+        <div className="rp-history">
+          <button className="rp-tray-toggle" onClick={() => setShowHistory(s => !s)}>
+            {showHistory ? '▾' : '▸'} ARCHIVE ACTIVITY · TIME TRAVEL
+          </button>
+          {showHistory && <StoryTimeTravel query={query} />}
+        </div>
+      )}
 
       {plan.suggested_next_steps.length > 0 && (
         <div className="rp-next">
