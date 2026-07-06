@@ -4,7 +4,7 @@ import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { useFocusRelation } from '../hooks/useFocusRelation'
 import { resolveCountryName, isKnownCountry } from '../lib/countryNames'
-import { getThemeLabel } from '../lib/themeLabels'
+import { getThemeLabel, resolveThreadLabel } from '../lib/themeLabels'
 import { getPublicAttentionTopUrl, getTrendingSearchesUrl, getForumAttentionUrl } from '../lib/publicAttention'
 import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters'
 import './AnomalyPanel.css'
@@ -19,9 +19,12 @@ const SEVERITY_COLORS: Record<string, string> = {
 interface AnomalyPanelProps {
     onWikiClick?: (query: string) => void
     onPublicAttentionSelect?: (item: { title: string; views?: number; country_count?: number; country?: string; countryName?: string; signalId?: number }) => void
+    // Human label of the open thread (filter.theme is a raw id for
+    // dynamic-topic/atlas threads — getThemeLabel would echo it back mangled).
+    activeThemeLabel?: string | null
 }
 
-export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPublicAttentionSelect }) => {
+export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPublicAttentionSelect, activeThemeLabel }) => {
     const { anomalies: rawAnomalies, nearMisses: rawNearMisses, themeAnomalies, meta, overallSeverity, loading } = useCrisis()
     // E (2026-06-30): drop anomaly rows on un-attributable country codes (e.g.
     // "XX" — the geo tagger emits placeholders that otherwise surfaced as the
@@ -124,8 +127,8 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                     {overallSeverity.toUpperCase()}
                 </span>
                 {activeTheme && (
-                    <span className="ap-focus-badge ap-focus-theme" data-tip={`Narrative Thread active: ${getThemeLabel(activeTheme)}`}>
-                        THREAD: {getThemeLabel(activeTheme).slice(0, 22)}
+                    <span className="ap-focus-badge ap-focus-theme" data-tip={`Narrative Thread active: ${resolveThreadLabel(activeTheme, activeThemeLabel)}`}>
+                        THREAD: {resolveThreadLabel(activeTheme, activeThemeLabel).slice(0, 22)}
                     </span>
                 )}
                 {streamLevel && streamLevel !== 'notable' && streamLevel !== 'all' && !activeTheme && (

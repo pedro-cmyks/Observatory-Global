@@ -253,6 +253,35 @@ export function getThemeLabel(code: string): string {
     return formatThemeWords(upper)
 }
 
+// A narrative-thread id (dynamic-topic-N / emergent-cluster-N / atlas slug
+// "slug--cc") is NOT a GDELT theme code — getThemeLabel would echo it back
+// mangled ("dynamic-topic-821" → "Dynamic Topic 821"). Detect them so callers
+// can prefer the thread's human label.
+export function isThreadId(themeId: string): boolean {
+    return (
+        /^dynamic-topic-/.test(themeId) ||
+        /^emergent-cluster-/.test(themeId) ||
+        /^cluster-/.test(themeId) ||
+        themeId.includes('--')
+    )
+}
+
+// Resolve a label for whatever is in filter.theme. Prefer the KNOWN human label
+// (carried by the open thread's state) for thread ids; fall back to getThemeLabel
+// only for genuine GDELT theme codes.
+export function resolveThreadLabel(themeId: string | null | undefined, knownLabel?: string | null): string {
+    if (knownLabel && knownLabel.trim()) return knownLabel
+    if (!themeId) return 'Unknown'
+    if (isThreadId(themeId)) {
+        const slug = themeId.split('--')[0]
+        // Opaque numeric ids carry no name of their own — never show the raw id.
+        if (/^(dynamic-topic|emergent-cluster|cluster)-\d+$/.test(slug)) return 'Narrative Thread'
+        // Atlas slug ("election-legitimacy--co") → prettify the slug portion.
+        return formatThemeWords(slug.toUpperCase())
+    }
+    return getThemeLabel(themeId)
+}
+
 function formatThemeWords(value: string): string {
     return value
         .replace(/_AND_/g, ' & ')

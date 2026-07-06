@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getThemeLabel } from '../lib/themeLabels'
+import { getThemeLabel, resolveThreadLabel } from '../lib/themeLabels'
 import { timeRangeToHours } from '../lib/timeRanges'
 import { type TimeRange } from '../lib/timeRanges'
 import { useWorkspace } from '../contexts/WorkspaceContext'
@@ -101,7 +101,7 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
 
     const displayName = focusType === 'person'
         ? focusValue.replace(/\b\w/g, c => c.toUpperCase())
-        : getThemeLabel(focusValue)
+        : resolveThreadLabel(focusValue)
 
     const globalSentiment = data?.nodes?.length
         ? data.nodes.reduce((sum, n) => sum + n.avg_sentiment * n.signal_count, 0) /
