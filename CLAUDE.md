@@ -1,5 +1,40 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-06 (DÍA COMPLETO — "lo grande" + cierre de issues con evidencia,
+read FIRST).** Sesión de motor cruzada con la sesión paralela de superficies/
+issues. Arco: telemetría degradada a instrumentación (n=1 usuario mide hábitos
+no valor → gate real = eval-por-tarea + walkthrough de persona; #236/#217/#161
+destrabados). **LO GRANDE ejecutado:** (1) **Robot de categorías COMPLETO
+end-to-end** — corrió sobre TODA la historia (7,800 historias = 1,406
+identidades + 6,473 unidades del archivo Stage-B). Taxonomía UNIVERSAL (Pedro:
+"categorías, no de crisis"; crisis = flag). 3 salidas aplicadas a las 2
+columnas del producto: 4 categorías auto en prod (crime-and-accidents,
+financial-market-movements, weather-and-climate, daily-news-roundups) · **39
+umbrellas de eventos canónicos** (Venezuela Earthquake = 1 fila padre sobre 26
+hijos, `robot_apply_outputs.py`) · **5 fusiones de identidades** (Israel-Líbano
+9→1). El typer lee taxonomía VIVA (era congelada). Robot = Step 5 nocturno.
+(2) **L4 markets M0 (#226 CERRADO)** — event study archivo×Yahoo, veredicto
+gate STOP (0 leads p<0.10, null subpotenciado, re-run octubre mecánico). (3)
+**Time-as-dimension nivel HILO (`2c4260a3`)** — última superficie del ciclo:
+`archive_story_units` (mig 069, 6,473 units) + `deep_history.py` +
+`/deep-history` → serie de 61 días hasta may-04 + recibos por día, tiers
+honestos (hot=asignaciones, archive=clusters). Browser-verified. (4) **Dossier
+v3 (`6d9d6823`)** — el LOOP DE ENTREGA: recibos-por-tier (#217) +
+"what-is-missing" (coverage_gaps) en el reporte + export markdown. Wedge
+completo en el entregable. **ISSUES CERRADOS con evidencia (21→18):** #217
+tiers (SHIPPED, forcing case pasa) · #161 DOC 2.0 (probe + lane, 21/39 nuevos
+Armenia) · #226 M0 (gate STOP) · label-bug de #204 mergeado (resolveThreadLabel
+nunca muestra id crudo). **#180 re-scopeado** a bloqueo institucional (RSS
+202-vacío, API v1=410, v2=403 requiere appname aprobado — misma clase que #46
+ACLED; código v2-listo gated en ATLAS_RELIEFWEB_APPNAME). **Veredicto de estado
+del proyecto**: útil HOY para descubrimiento (medido en eval-por-tarea); las 3
+faltantes para herramienta-diaria = recibos ✅ (#217+#161) · loop de entrega ✅
+(dossier v3) · **sustrato estable 2 semanas** (corre solo, pool recuperándose
+noche a noche, PB-5 dispara A/B F4 @≥80). Dos de tres cerradas por
+construcción; la tercera es tiempo. NEXT: quick wins mecánicos (#251 GKG orgs,
+#247 C1/C2, #233 paneles) + decisiones Pedro (#46/#180 registros, #106 mascota,
+#140 grabaciones).
+
 > **PRODUCT WEDGE (the one user, the one job — master-consolidation T5.2).**
 > Atlas serves the **narrative analyst** — journalist, OSINT/conflict researcher,
 > newsroom desk, or policy/NGO analyst — whose job is **honest situational
