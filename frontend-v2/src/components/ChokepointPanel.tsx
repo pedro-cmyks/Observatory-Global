@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { type Chokepoint } from '../lib/chokepoints'
 import { getThemeLabel } from '../lib/themeLabels'
+import { Flag } from './Flag'
 
 interface CountrySignals {
   code: string
@@ -24,11 +25,6 @@ interface ChokepointPanelProps {
   hours: number
   onCountryClick: (code: string) => void
 }
-
-const isoToFlag = (code: string) =>
-  code?.length === 2
-    ? String.fromCodePoint(...code.toUpperCase().split('').map(c => 0x1F1E6 + c.charCodeAt(0) - 65))
-    : '🌐'
 
 const sentimentColor = (s: number) => s > 0.5 ? '#4ade80' : s < -0.5 ? '#f87171' : '#fbbf24'
 
@@ -106,7 +102,7 @@ export function ChokepointPanel({ chokepoint, vesselCount, hours, onCountryClick
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                     <span style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 500 }}>
-                      {isoToFlag(c.code)} {c.code}
+                      <Flag code={c.code} /> {c.code}
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontSize: 11, color: sentimentColor(c.avg_sentiment), fontFamily: 'var(--font-mono)' }}>
@@ -157,7 +153,7 @@ export function ChokepointPanel({ chokepoint, vesselCount, hours, onCountryClick
               <a key={i} href={sig.url} target="_blank" rel="noopener noreferrer"
                 style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 6, padding: '8px 10px', textDecoration: 'none', display: 'block' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{ fontSize: 11, color: '#94a3b8' }}>{isoToFlag(sig.country)} {sig.source}</span>
+                  <span style={{ fontSize: 11, color: '#94a3b8' }}><Flag code={sig.country} /> {sig.source}</span>
                   <span style={{ fontSize: 10, color: sentimentColor(sig.sentiment), fontFamily: 'var(--font-mono)' }}>
                     {sig.sentiment > 0 ? '+' : ''}{sig.sentiment.toFixed(1)}
                   </span>

@@ -4,6 +4,7 @@ import { useFocusData } from '../contexts/FocusDataContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { timeRangeToHours } from '../lib/timeRanges'
 import { resolveCountryName } from '../lib/countryNames'
+import { Flag } from './Flag'
 import { buildCountryThreadEmptyState, getNarrativeFetchLimit, getNarrativesForDisplay } from '../lib/narrativeThreadLimits'
 import './NarrativeThreads.css'
 
@@ -429,7 +430,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                         <div className="narrative-detail">
                             <div className="narrative-entities">
                                 {n.top_countries.map(c => (
-                                    <button key={c} className={`country-pip country-pip--btn${filter.country === c ? ' country-pip--active' : ''}`} onClick={e => handleCountryPipClick(e, c)} data-tip={`Focus on ${c}`}>{c}</button>
+                                    <button key={c} className={`country-pip country-pip--btn${filter.country === c ? ' country-pip--active' : ''}`} onClick={e => handleCountryPipClick(e, c)} data-tip={`Focus on ${c}`}><Flag code={c} /> {c}</button>
                                 ))}
                                 {n.top_entities.slice(0, 4).map(p => (
                                     <span key={p} className="person-pip">{p}</span>

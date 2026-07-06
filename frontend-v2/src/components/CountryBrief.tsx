@@ -8,6 +8,7 @@ import { Download, Pin, PinOff } from '../lib/icons';
 import './CountryBrief.css';
 import { getThemeLabel } from '../lib/themeLabels';
 import { buildKeySubjects, type KeySubject, type SubjectType } from '../lib/countryBriefSubjects';
+import { Flag } from './Flag';
 
 const SUBJECT_BADGE: Record<SubjectType, string> = {
     person: 'person',
@@ -163,20 +164,6 @@ interface CountryBriefProps {
     onAttentionItemClick?: (query: string) => void;
     inline?: boolean;
 }
-
-// Country flag emoji from code (D11: this was a stub returning the raw code —
-// the header read "SD Sudan"). GDELT codes that differ from ISO2 are remapped
-// first so the regional-indicator pair resolves to a real flag.
-const GDELT_TO_ISO_FLAG: Record<string, string> = {
-    CH: 'CN', RI: 'ID', RB: 'RS', KV: 'XK', CG: 'CD', CF: 'CG',
-    KS: 'KR', KN: 'KP', GZ: 'PS', UK: 'GB',
-};
-const getCountryFlag = (code: string): string => {
-    const iso = GDELT_TO_ISO_FLAG[code?.toUpperCase?.() ?? ''] ?? code;
-    if (!iso || iso.length !== 2 || !/^[A-Za-z]{2}$/.test(iso)) return '';
-    const codePoints = iso.toUpperCase().split('').map(c => 0x1F1E6 + c.charCodeAt(0) - 65);
-    return String.fromCodePoint(...codePoints);
-};
 
 function incrementCount(map: Map<string, number>, value: string | undefined) {
     if (!value) return;
@@ -422,7 +409,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             <div className={cls}>
                 <div className="brief-header">
                     <div className="brief-title">
-                        <span className="country-flag">{getCountryFlag(countryCode)}</span>
+                        <Flag code={countryCode} title={displayCountryName} className="country-flag" />
                         <h2>{displayCountryName}</h2>
                     </div>
                     <button className="close-button" onClick={onClose}>✕</button>
@@ -440,7 +427,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             <div className={cls}>
                 <div className="brief-header">
                     <div className="brief-title">
-                        <span className="country-flag">{getCountryFlag(countryCode)}</span>
+                        <Flag code={countryCode} title={displayCountryName} className="country-flag" />
                         <h2>{displayCountryName}</h2>
                     </div>
                     <button className="close-button" onClick={onClose}>✕</button>
@@ -463,7 +450,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 <div className="brief-title">
                     <div className="cb-kicker">COUNTRY INTELLIGENCE</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span className="country-flag">{getCountryFlag(countryCode)}</span>
+                        <Flag code={countryCode} title={displayCountryName} className="country-flag" />
                         <h2>{displayCountryName}</h2>
                         <button
                             className={`cb-icon-btn${pinned ? ' active' : ''}`}
