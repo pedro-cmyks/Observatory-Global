@@ -205,6 +205,19 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         }
     }
 
+    // #237 community discussion: the forum/social posts behind the thread,
+    // as a non-evidence claim-origin layer. Auto-loads with the detail.
+    const [discussion, setDiscussion] = useState<
+        null | { count: number; items: Array<{ headline: string; platform: string; url: string; origin: string; lang: string }> }>(null)
+    useEffect(() => {
+        let alive = true
+        fetch(`/api/v2/topic/${encodeURIComponent(theme)}/discussion`)
+            .then(r => r.json())
+            .then(d => { if (alive && d?.items) setDiscussion(d) })
+            .catch(() => { /* section absent */ })
+        return () => { alive = false }
+    }, [theme])
+
     // #161 external-depth lane: on-demand DOC 2.0 enrichment for THIN topics.
     // null = not fetched; 'loading'; {available:false,...} = honest gap.
     const [externalDepth, setExternalDepth] = useState<
@@ -1184,6 +1197,24 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                         ))}
                                     </div>
                                 )}
+                            </div>
+                        )}
+
+                        {/* #237 community discussion — the forum/social posts behind
+                            the thread. PUBLIC DISCUSSION, never evidence: the
+                            claim-origin layer, verified=false always. */}
+                        {discussion && discussion.count > 0 && (
+                            <div className="theme-section community-discussion-section">
+                                <div className="theme-section-title">PUBLIC DISCUSSION · UNVERIFIED</div>
+                                <p className="external-depth-caveat" data-tip="Non-traditional / forum / social sources (Bluesky, Lemmy). Shows emergence and claim origin — never evidence, never corroboration.">
+                                    {discussion.count} posts from forum/social — claim-origin layer, not evidence
+                                </p>
+                                {discussion.items.slice(0, 10).map((it, i) => (
+                                    <div key={i} className="community-discussion-item">
+                                        <span className="cd-platform">{it.platform?.replace(/^lemmy\//, '')}{it.origin ? ` · ${it.origin}` : ''}</span>
+                                        <a href={it.url} target="_blank" rel="noopener noreferrer">{it.headline}</a>
+                                    </div>
+                                ))}
                             </div>
                         )}
 

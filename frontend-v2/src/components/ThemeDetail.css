@@ -1454,3 +1454,18 @@
 .deep-history-item a { color: var(--color-text-primary, #e2e8f0); text-decoration: none; }
 .deep-history-item a:hover { color: #34d399; }
 .dh-cluster { color: var(--color-text-secondary, #cbd5e1); }
+
+/* #237 — community discussion (public/forum, non-evidence claim-origin) */
+.community-discussion-item {
+  display: flex; gap: 8px; align-items: baseline;
+  padding: 4px 0; font-size: 12px;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+}
+.community-discussion-item a { color: var(--color-text-secondary, #cbd5e1); text-decoration: none; }
+.community-discussion-item a:hover { color: #a78bfa; }
+.cd-platform {
+  flex: 0 0 auto; min-width: 90px;
+  font-family: var(--font-mono, monospace); font-size: 9px;
+  color: #a78bfa; letter-spacing: 0.02em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px;
+}

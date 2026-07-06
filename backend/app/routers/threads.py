@@ -109,6 +109,26 @@ async def get_topic_relationship(
     return payload
 
 
+@router.get("/topic/{topic_id}/discussion")
+async def get_topic_discussion(
+    topic_id: str,
+    hours: int = Query(168, ge=1, le=720),
+) -> dict:
+    """#237 Phase 1 — the POSTS behind the relationship ratio: forum/social
+    signal attached to this topic as role='discussion'. PUBLIC DISCUSSION,
+    never evidence (verified=false, claim-origin layer only). Degrades to an
+    empty section, never a 500."""
+    from app import db
+    from app.services.community_discussion import fetch_community_discussion
+    base = topic_id.strip().split("--", 1)[0]
+    if db.pool is None:
+        return {"contract": "community-discussion-v0", "topic_id": base,
+                "count": 0, "items": []}
+    async with db.pool.acquire() as conn:
+        return await fetch_community_discussion(
+            conn, base, V1_COMPAT_ENGINE_VERSION)
+
+
 @router.get("/threads/{thread_id}")
 async def get_thread_detail(
     thread_id: str,
