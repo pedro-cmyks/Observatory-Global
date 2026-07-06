@@ -76,6 +76,70 @@ async def _resolve_label(conn: Any, theme_code: str) -> str | None:
     return f"{row['label']}. {(row['description'] or '')[:200]}"
 
 
+async def _archive_horizon(conn: Any) -> dict | None:
+    """The queryable archive window (May-04..last-compacted day). Bounds the
+    honesty label so the UI never implies reach past what exists."""
+    row = await conn.fetchrow(
+        "SELECT MIN(day)::text AS min_day, MAX(day)::text AS max_day, "
+        "COUNT(DISTINCT day) AS days FROM archive_story_units")
+    if not row or not row["min_day"]:
+        return None
+    return {"min_day": row["min_day"], "max_day": row["max_day"],
+            "days": int(row["days"])}
+
+
+async def _match_units(conn: Any, vtxt: str) -> list:
+    """Story-cluster units whose centroid cosine-matches the query/label vec."""
+    return await conn.fetch(
+        """SELECT day::text AS day, label, samples, n_signals, top_cc,
+                  1 - (vec <=> $1::halfvec) AS sim
+           FROM archive_story_units
+           WHERE 1 - (vec <=> $1::halfvec) >= $2
+           ORDER BY day""", vtxt, MATCH_TAU)
+
+
+def _build_series(rows: list) -> list[dict]:
+    """Daily activity for the query.
+
+    `units`/`signals` count everything above the (permissive) match floor —
+    at that floor the count tracks TOTAL archive volume, not topic presence,
+    so it is NOT the spike signal. `peak_sim` (the day's strongest cluster
+    match) IS: it self-scales per query, so the consumer bars height on
+    (peak_sim - tau) and genuine spikes stand out from the flat background.
+    """
+    series: dict[str, dict[str, float]] = {}
+    for r in rows:
+        s = series.setdefault(r["day"], {"units": 0, "signals": 0, "peak_sim": 0.0})
+        s["units"] += 1
+        s["signals"] += int(r["n_signals"])
+        s["peak_sim"] = max(s["peak_sim"], round(float(r["sim"]), 3))
+    return [
+        {"day": d, "units": int(v["units"]), "signals": int(v["signals"]),
+         "peak_sim": round(v["peak_sim"], 3)}
+        for d, v in sorted(series.items())
+    ]
+
+
+def _archive_day_items(rows: list, day: str) -> list[dict]:
+    import json as _json
+    items = []
+    for r in rows:
+        if r["day"] != day:
+            continue
+        samples = r["samples"]
+        if isinstance(samples, str):
+            samples = _json.loads(samples)
+        items.append({
+            "tier": "archive",
+            "cluster_label": r["label"][:160],
+            "headlines": samples,
+            "n_signals": int(r["n_signals"]),
+            "sim": round(float(r["sim"]), 3),
+            "top_cc": list(r["top_cc"] or []),
+        })
+    return items
+
+
 async def topic_deep_history(conn: Any, theme_code: str,
                              day: str | None = None) -> dict:
     label = await _resolve_label(conn, theme_code)
@@ -88,18 +152,7 @@ async def topic_deep_history(conn: Any, theme_code: str,
                 "reason": "embedding lane unavailable (no key or API error)"}
     vtxt = "[" + ",".join(f"{x:.6f}" for x in vec) + "]"
 
-    rows = await conn.fetch(
-        """SELECT day::text AS day, label, samples, n_signals, top_cc,
-                  1 - (vec <=> $1::halfvec) AS sim
-           FROM archive_story_units
-           WHERE 1 - (vec <=> $1::halfvec) >= $2
-           ORDER BY day""", vtxt, MATCH_TAU)
-
-    series: dict[str, dict[str, int]] = {}
-    for r in rows:
-        s = series.setdefault(r["day"], {"units": 0, "signals": 0})
-        s["units"] += 1
-        s["signals"] += int(r["n_signals"])
+    rows = await _match_units(conn, vtxt)
 
     out: dict[str, Any] = {
         "contract": "deep-history-v0",
@@ -107,27 +160,12 @@ async def topic_deep_history(conn: Any, theme_code: str,
         "label": label,
         "match_tau": MATCH_TAU,
         "matched_units": len(rows),
-        "series": [{"day": d, **v} for d, v in sorted(series.items())],
+        "horizon": await _archive_horizon(conn),
+        "series": _build_series(rows),
     }
 
     if day:
-        items = []
-        # archive tier: matched units on that day, their sample headlines
-        for r in rows:
-            if r["day"] != day:
-                continue
-            import json as _json
-            samples = r["samples"]
-            if isinstance(samples, str):
-                samples = _json.loads(samples)
-            items.append({
-                "tier": "archive",
-                "cluster_label": r["label"][:160],
-                "headlines": samples,
-                "n_signals": int(r["n_signals"]),
-                "sim": round(float(r["sim"]), 3),
-                "top_cc": list(r["top_cc"] or []),
-            })
+        items = _archive_day_items(rows, day)
         # hot tier: real assigned signals of this topic that day (if retained)
         try:
             hot = await conn.fetch(
@@ -151,4 +189,47 @@ async def topic_deep_history(conn: Any, theme_code: str,
                       "empty_reason": None if items else
                       "no matched archive units and no retained signals "
                       "for this day"}
+    return out
+
+
+async def query_deep_history(conn: Any, query_text: str,
+                             day: str | None = None) -> dict:
+    """Free-text time-as-dimension over the archive (the STORY-panel widen).
+
+    A research-plan query returning 0 hot anchors ("Maduro" today) still has a
+    real past — this embeds the QUERY directly (same OpenAI/archive space as
+    topic_deep_history) and returns the topic's daily activity across the full
+    archive so the user can see WHEN it spiked and jump to that day's receipts.
+
+    Archive-only by construction: a free-text query has no topic_id to join, so
+    there is no hot tier here — day receipts are the matched story-cluster
+    samples (labeled archive, never passed off as assignments). Bounded to the
+    archive horizon; older is not queryable.
+    """
+    query_text = (query_text or "").strip()
+    if len(query_text) < 2:
+        return {"contract": "deep-history-v0", "available": False,
+                "reason": "query too short"}
+    vec = _embed_label(query_text)
+    if vec is None:
+        return {"contract": "deep-history-v0", "available": False,
+                "reason": "embedding lane unavailable (no key or API error)"}
+    vtxt = "[" + ",".join(f"{x:.6f}" for x in vec) + "]"
+
+    rows = await _match_units(conn, vtxt)
+    out: dict[str, Any] = {
+        "contract": "deep-history-v0",
+        "available": True,
+        "basis": "query",
+        "label": query_text,
+        "match_tau": MATCH_TAU,
+        "matched_units": len(rows),
+        "horizon": await _archive_horizon(conn),
+        "series": _build_series(rows),
+    }
+    if day:
+        items = _archive_day_items(rows, day)
+        out["day"] = {"date": day, "items": items,
+                      "empty_reason": None if items else
+                      "no matched archive story units for this day"}
     return out

@@ -209,3 +209,165 @@
   color: rgba(203, 213, 225, 0.88);
   line-height: 1.4;
 }
+
+/* Empty-state widen + time-travel (#236) */
+.rp-empty { display: flex; flex-direction: column; gap: 8px; }
+
+.rp-widen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 4px;
+}
+
+.rp-widen-btn {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: rgba(56, 189, 248, 0.1);
+  color: rgba(186, 230, 253, 0.95);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.rp-widen-btn:hover { background: rgba(56, 189, 248, 0.2); }
+
+.rp-widen-note {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(148, 163, 184, 0.75);
+}
+
+.rp-widen-hint {
+  font-size: 9px;
+  color: rgba(100, 116, 139, 0.8);
+  line-height: 1.4;
+}
+
+.rp-history {
+  padding: 6px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Archive activity strip */
+.sh-wrap { display: flex; flex-direction: column; gap: 6px; padding-top: 2px; }
+
+.sh-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sh-horizon {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(100, 116, 139, 0.75);
+  white-space: nowrap;
+}
+
+.sh-note {
+  font-size: 10px;
+  color: rgba(148, 163, 184, 0.8);
+  line-height: 1.45;
+  padding: 2px 0;
+}
+
+.sh-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 56px;
+  padding: 2px 0;
+}
+
+.sh-bar {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  border-radius: 1px 1px 0 0;
+  background: rgba(100, 116, 139, 0.18);
+  cursor: default;
+}
+
+.sh-bar--active {
+  background: rgba(56, 189, 248, 0.55);
+  cursor: pointer;
+}
+
+.sh-bar--active:hover { background: rgba(125, 211, 252, 0.85); }
+
+.sh-bar--peak { background: rgba(251, 191, 36, 0.8); }
+.sh-bar--peak:hover { background: rgba(252, 211, 77, 0.95); }
+
+.sh-bar--sel {
+  outline: 1px solid rgba(226, 232, 240, 0.9);
+  outline-offset: -1px;
+}
+
+.sh-legend {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(100, 116, 139, 0.7);
+}
+
+.sh-day {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sh-day-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.sh-day-close {
+  background: none;
+  border: none;
+  color: rgba(148, 163, 184, 0.7);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0 2px;
+}
+
+.sh-day-close:hover { color: rgba(226, 232, 240, 0.95); }
+
+.sh-cluster {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 5px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.sh-cluster-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.sh-cluster-label {
+  font-size: 10px;
+  color: rgba(226, 232, 240, 0.9);
+  line-height: 1.3;
+}
+
+.sh-headline {
+  font-size: 10px;
+  color: rgba(203, 213, 225, 0.82);
+  line-height: 1.4;
+  padding: 1px 0 1px 8px;
+  border-left: 1px solid rgba(56, 189, 248, 0.25);
+  margin-top: 2px;
+}

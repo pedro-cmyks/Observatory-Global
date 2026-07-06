@@ -96,6 +96,41 @@ export async function fetchResearchPlan(
   return res.json() as Promise<ResearchPlan>
 }
 
+// Archive activity for a STORY query (time-as-dimension, #236). The research
+// plan is hot-only (~7d); this reaches the processed archive (~61 days) so the
+// panel can plot when a topic spiked and jump to a past day's receipts.
+export interface StoryHistoryDayItem {
+  tier: 'archive'
+  cluster_label: string
+  headlines: string[]
+  n_signals: number
+  sim: number
+  top_cc: string[]
+}
+
+export interface StoryHistory {
+  contract: string
+  available: boolean
+  reason?: string
+  label?: string
+  match_tau?: number
+  matched_units?: number
+  horizon?: { min_day: string; max_day: string; days: number } | null
+  series?: Array<{ day: string; units: number; signals: number; peak_sim?: number }>
+  day?: { date: string; items: StoryHistoryDayItem[]; empty_reason?: string | null }
+}
+
+export async function fetchStoryHistory(
+  query: string,
+  opts: { day?: string } = {},
+): Promise<StoryHistory> {
+  const params = new URLSearchParams({ query })
+  if (opts.day) params.set('day', opts.day)
+  const res = await fetch(`/api/v2/research/history?${params.toString()}`)
+  if (!res.ok) throw new Error(`story history HTTP ${res.status}`)
+  return res.json() as Promise<StoryHistory>
+}
+
 export interface PinEventInput {
   anchor_id: string
   event_type: 'impression' | 'open' | 'pin' | 'unpin' | 'dismiss'
