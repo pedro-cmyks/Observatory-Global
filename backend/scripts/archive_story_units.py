@@ -79,7 +79,8 @@ def repartition() -> int:
     return 0
 
 
-def cluster(cap: int, mcs: int, out: Path) -> int:
+def cluster(cap: int, mcs: int, out: Path, slice_spec: str | None,
+            jobs: int) -> int:
     import hdbscan
 
     done_days = set()
@@ -91,6 +92,9 @@ def cluster(cap: int, mcs: int, out: Path) -> int:
                 continue
     days = sorted(p.stem for p in DAY_ROOT.glob("*.bin")
                   if p.stem != "unknown")
+    if slice_spec:
+        i, k = (int(x) for x in slice_spec.split("/"))
+        days = [d for j, d in enumerate(days) if j % k == i]
     todo = [d for d in days if d not in done_days]
     print(f"{len(days)} days, {len(todo)} to cluster "
           f"(resume skips {len(done_days)})", file=sys.stderr)
@@ -115,7 +119,7 @@ def cluster(cap: int, mcs: int, out: Path) -> int:
             continue
         labels = hdbscan.HDBSCAN(
             min_cluster_size=mcs, min_samples=4,
-            cluster_selection_method="leaf", core_dist_n_jobs=2,
+            cluster_selection_method="leaf", core_dist_n_jobs=jobs,
         ).fit_predict(V)
         units = 0
         with open(out, "a") as f:
@@ -152,14 +156,19 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("repartition")
     pc = sub.add_parser("cluster")
-    pc.add_argument("--cap", type=int, default=25_000)
+    pc.add_argument("--cap", type=int, default=15_000,
+                    help="per-day sample cap (15k = the live snapshot pull size)")
     pc.add_argument("--mcs", type=int, default=8)
+    pc.add_argument("--slice", default=None, metavar="I/K",
+                    help="process only days where index %% K == I (parallel workers, "
+                         "give each its own --out and merge after)")
+    pc.add_argument("--jobs", type=int, default=4)
     pc.add_argument("--out", type=Path,
                     default=Path("/Volumes/Ext/Atlas/Embeddings/archive-story-units.jsonl"))
     args = ap.parse_args()
     if args.cmd == "repartition":
         return repartition()
-    return cluster(args.cap, args.mcs, args.out)
+    return cluster(args.cap, args.mcs, args.out, args.slice, args.jobs)
 
 
 if __name__ == "__main__":

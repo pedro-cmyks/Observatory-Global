@@ -53,8 +53,12 @@ UNITS_SQL = """
     WHERE label IS NOT NULL AND length(label) >= 8
 """
 
-DRAFT_PROMPT = """You maintain a news-monitoring taxonomy. A structural cluster of
-story topics has emerged. Name the CATEGORY they share.
+DRAFT_PROMPT = """You maintain a GLOBAL news taxonomy — categories span ALL domains
+(politics, conflict, economy, markets, sports, culture, science, health,
+technology, society). Crisis-relevance is a separate flag, NOT a
+requirement: 'Football Tournaments' or 'Commodity Markets' are as valid as
+'Armed Conflict'. A structural cluster of story topics has emerged. Name
+the CATEGORY they share.
 
 Member story labels ({n} stories, {span}):
 {labels}
@@ -67,6 +71,10 @@ Return JSON: {{"label": <2-6 word category label>,
 "parent_domain": <one of: climate-disaster, conflict-security,
 governance-rights, economy-resources, health-social,
 technology-infrastructure, culture-society>}}
+Also return "level": "category" if this is a TIMELESS recurring class of
+stories (Crime & Justice, Commodity Markets), or "level": "event" if it is
+ONE bounded happening or ongoing conflict theater (a specific war, a
+tournament, one country's election cycle).
 If the members share no coherent category (grab-bag), return {{"reject": "grab-bag"}}."""
 
 
@@ -175,7 +183,22 @@ async def main() -> int:
         print(f"{len(rows)} units loaded, {len(units)} after label hygiene "
               f"(states: all — full processed history)", file=sys.stderr)
 
-        V = openai_embed([str(u["label"]) for u in units])
+        # Embedding basis (2026-07-05 fix): archive units carry a CONTENT
+        # centroid (OpenAI space, mean of the day's member headlines) —
+        # cross-language robust. Re-embedding their medoid LABEL grouped
+        # non-Latin units by SCRIPT, not topic (the 720-member blob that
+        # produced the bogus iran-nuclear draft). Identities have no OpenAI
+        # centroid (theirs is e5), so their English labels are embedded.
+        to_embed = [i for i, u in enumerate(units) if not u.get("centroid")]
+        emb = openai_embed([str(units[i]["label"]) for i in to_embed]) \
+            if to_embed else np.zeros((0, 1536), dtype=np.float32)
+        V = np.zeros((len(units), 1536), dtype=np.float32)
+        for j, i in enumerate(to_embed):
+            V[i] = emb[j]
+        for i, u in enumerate(units):
+            if u.get("centroid"):
+                v = np.asarray(u["centroid"], dtype=np.float32)
+                V[i] = v / max(np.linalg.norm(v), 1e-9)
 
         grid = [0.35, 0.40, 0.45, 0.50, 0.55, 0.60]
         cut, diag = measured_cut(V, grid)
@@ -214,13 +237,14 @@ async def main() -> int:
                   f"{args.min_members}: {len(big)} · overlap bar {overlap_bar:.3f}\n"]
         inserted = 0
         dup_groups = 0
+        batch_drafts: list = []
         # biggest groups first — most evidence first
         for g, idxs in sorted(big.items(), key=lambda kv: -len(kv[1])):
             centroid = V[idxs].mean(axis=0)
             centroid /= np.linalg.norm(centroid)
             ms = float((centroid @ E.T).max())
             member_labels = [str(units[i]["label"]) for i in idxs]
-            span_dates = [u.get("first_seen") for u in
+            span_dates = [str(u.get("first_seen")) for u in
                           (units[i] for i in idxs) if u.get("first_seen")]
             span = (f"{min(span_dates)} → {max(span_dates)}"
                     if span_dates else "n/a")
@@ -248,7 +272,9 @@ async def main() -> int:
                 tok_docs.update(toks)
             dom = (tok_docs.most_common(1)[0][1] / len(member_labels)
                    if tok_docs else 0.0)
-            if intra >= 0.80:
+            if len(idxs) > 200:
+                status = f"BLOB ({len(idxs)} members — mega-attractor, never drafted)"
+            elif intra >= 0.80:
                 dup_groups += 1
                 status = f"SAME-STORY (intra {intra:.2f} — identity-dedup case)"
             elif dom >= 0.60:
@@ -269,7 +295,21 @@ async def main() -> int:
                 report.append(f"  -> draft rejected: "
                               f"{(draft or {}).get('reject', 'no draft')}\n")
                 continue
+            if str(draft.get("level", "category")).lower() == "event":
+                report.append(f"  -> LEVEL=event per draft "
+                              f"({draft['slug']}) — umbrella lane, not category\n")
+                continue
             slug = re.sub(r"[^a-z0-9-]", "", str(draft["slug"]).lower())[:60]
+            # intra-batch dedup: 4 near-identical crime drafts came out of
+            # one run (overlap bar only compares vs EXISTING anchors) —
+            # embed each accepted draft and skip newcomers too close to one.
+            dtext = f"{draft['label']}. {draft['definition']}"
+            dv = openai_embed([dtext])[0]
+            if any(float(dv @ pv) >= overlap_bar for pv, _ in batch_drafts):
+                dup_of = max(batch_drafts, key=lambda t: float(dv @ t[0]))[1]
+                report.append(f"  -> intra-batch dup of {dup_of} — skipped\n")
+                continue
+            batch_drafts.append((dv, slug))
             report.append(f"  -> DRAFT {slug}: {draft['definition']}\n")
             if args.write:
                 row = await conn.fetchrow(

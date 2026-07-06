@@ -58,8 +58,12 @@ CANDIDATES_SQL = """
     ORDER BY count(*) DESC
 """
 
-DRAFT_PROMPT = """You maintain a news-crisis monitoring taxonomy. A recurring story
-category has emerged from clustering. Draft its taxonomy entry.
+DRAFT_PROMPT = """You maintain a GLOBAL news taxonomy — categories span ALL domains
+(politics, conflict, economy, markets, sports, culture, science, health,
+technology, society). Crisis-relevance is a separate flag, NOT a
+requirement: 'Football Transfers' or 'Commodity Markets' are as valid as
+'Armed Conflict'. A recurring story category has emerged from clustering.
+Draft its taxonomy entry.
 
 Emergent category name: {name}
 Member story labels: {labels}

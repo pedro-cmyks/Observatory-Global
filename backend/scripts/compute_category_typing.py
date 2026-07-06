@@ -100,10 +100,19 @@ async def main() -> None:
     if not db:
         print("DATABASE_URL required", file=sys.stderr); sys.exit(2)
 
-    # seed prototypes only needed for the (weak) cosine path
-    labels, protos = _load_seed_prototypes() if not args.deepseek else (
-        [c["label"] for c in json.loads(_CANDIDATE.read_text())["categories"]], None)
     conn = await asyncpg.connect(db)
+    # Category menu = the LIVE taxonomy (2026-07-06, Pedro: buckets are
+    # dynamic — seeds + robot-grown origin='auto' rows both count). The
+    # frozen candidate-v2.json stays only as the no-DB fallback for the
+    # cosine path's prototypes.
+    if args.deepseek:
+        live = await conn.fetch(
+            "SELECT label FROM atlas_topics WHERE is_active ORDER BY label")
+        labels = [r["label"] for r in live] or [
+            c["label"] for c in json.loads(_CANDIDATE.read_text())["categories"]]
+        protos = None
+    else:
+        labels, protos = _load_seed_prototypes()
     try:
         limit = args.validate or 1_000_000
         untyped = "AND crisis_class IS NULL " if args.only_untyped else ""

@@ -31,7 +31,7 @@ VOLUME_MIN="${ATLAS_SCOPED_VOLUME_MIN:-12}"
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 mkdir -p "$LOG_DIR"
 
-for key in DATABASE_URL DEEPSEEK_API_KEY; do
+for key in DATABASE_URL DEEPSEEK_API_KEY OPENAI_API_KEY; do
   if [[ -z "${!key:-}" && -r "$LOCAL_ENV" ]]; then
     v="$(grep -E "^${key}=" "$LOCAL_ENV" | tail -n 1 | sed -E "s/^${key}=//" | tr -d '\r' || true)"
     [[ -n "$v" ]] && export "$key=$v"
@@ -99,17 +99,21 @@ $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.compute_event_movement --wri
 ( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.bind_disaster_movement --write ) \
   || echo "[scoped-snapshot] disaster movement bind failed (non-fatal)" >&2
 
-# Step 5: anchored-emergent category GROWTH (Pedro 2026-07-04: the atlas
-# corpus is not fixed in stone — neither a fixed count nor hand-updated).
-# Aggregates the R3.1 typer's free-form categories; recurring ones (>=3
-# stories, 30d) that clear a MEASURED overlap bar vs the existing anchors
-# get a DeepSeek-drafted taxonomy entry and INSERT as origin='auto'
-# (lexicon-less: born as a typing/semantic lens; the gate covers them as
-# gold accumulates). Cap 2/night; ledger docs/research/taxonomy-revision/
-# auto-growth-ledger.md. Seeds never touched. Disable: ATLAS_CATEGORY_GROWTH=off.
+# Step 5: CATEGORY ROBOT (2026-07-06, supersedes the v0 name-first grow loop —
+# Pedro: taxonomy is universal + dynamic; structure-first, over ALL history).
+# robot_categories_v1: groups every dynamic_topics identity + the archive-era
+# story units by content structure (measured cut), routes groups to three
+# lanes (category -> atlas_topics origin='auto' cap 2/night; canonical event
+# -> report/umbrella lane; same-story -> fusion work-list), with intra-batch
+# dedup + LLM level check + blob guard. The 30-min typer reads the LIVE
+# taxonomy, so new buckets receive stories the next cycle. Ledger + dated
+# reports in docs/research/taxonomy-revision/. Disable: ATLAS_CATEGORY_GROWTH=off.
+UNITS_JSONL="${ATLAS_ROBOT_UNITS:-/Volumes/Ext/Atlas/Embeddings/archive-story-units.jsonl}"
 if [[ "${ATLAS_CATEGORY_GROWTH:-on}" == "on" && -n "${OPENAI_API_KEY:-}" && -n "${DEEPSEEK_API_KEY:-}" ]]; then
-  ( cd "$ROOT_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.grow_atlas_categories --write ) \
-    || echo "[scoped-snapshot] category growth failed (non-fatal)" >&2
+  ROBOT_ARGS=(--min-members 3 --max-new 2 --write)
+  [[ -f "$UNITS_JSONL" ]] && ROBOT_ARGS+=(--units-jsonl "$UNITS_JSONL")
+  ( cd "$ROOT_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.robot_categories_v1 "${ROBOT_ARGS[@]}" ) \
+    || echo "[scoped-snapshot] category robot failed (non-fatal)" >&2
 else
-  echo "[scoped-snapshot] skip category growth (off or keys missing)" >&2
+  echo "[scoped-snapshot] skip category robot (off or keys missing)" >&2
 fi
