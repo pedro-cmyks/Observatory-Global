@@ -238,6 +238,7 @@ async def main() -> int:
         inserted = 0
         dup_groups = 0
         batch_drafts: list = []
+        groups_dump: list = []  # machine-readable output for the appliers
         # biggest groups first — most evidence first
         for g, idxs in sorted(big.items(), key=lambda kv: -len(kv[1])):
             centroid = V[idxs].mean(axis=0)
@@ -284,6 +285,21 @@ async def main() -> int:
                 status = "covered"
             else:
                 status = "NEW-candidate"
+            kind = ("blob" if status.startswith("BLOB") else
+                    "same-story" if status.startswith("SAME-STORY") else
+                    "event" if status.startswith("EVENT-LEVEL") else
+                    "covered" if status == "covered" else "new-candidate")
+            groups_dump.append({
+                "group": int(g), "kind": kind, "intra": round(intra, 3),
+                "max_sim_vs_anchors": round(ms, 3), "span": span,
+                "members": [{
+                    "db_id": units[i].get("id"),
+                    "label": str(units[i]["label"])[:160],
+                    "state": units[i].get("state"),
+                    "first_seen": str(units[i].get("first_seen") or ""),
+                    "last_seen": str(units[i].get("last_seen") or ""),
+                } for i in idxs],
+            })
             report.append(f"## group {g}: {len(idxs)} stories · maxSim "
                           f"{ms:.3f} · {status} · {span}")
             report.extend(f"- {l[:90]}" for l in member_labels[:12])
@@ -349,7 +365,12 @@ async def main() -> int:
         rp = Path(args.report_dir) / f"robot-v1-{stamp}.md"
         rp.parent.mkdir(parents=True, exist_ok=True)
         rp.write_text("\n".join(report) + "\n")
+        gp = Path(args.report_dir) / f"robot-v1-{stamp}.groups.json"
+        gp.write_text(json.dumps(
+            {"stamp": stamp, "cut": cut, "overlap_bar": overlap_bar,
+             "groups": groups_dump}, ensure_ascii=False, indent=1))
         print(f"report: {rp}")
+        print(f"groups json: {gp}")
         print(f"{'inserted' if args.write else 'would insert'} {inserted} "
               f"new categories (cap {args.max_new})")
     finally:
