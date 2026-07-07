@@ -132,6 +132,50 @@ def _clean_and_dedupe(rows: list[dict]) -> list[dict]:
     return out
 
 
+def fit_whiten_all_but_top(embs: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
+    """Fit the "all-but-top" whitening transform over a batch.
+
+    Returns (mean, top) where `mean` is the batch centroid and `top` is the
+    (k, dim) matrix of the top-k principal directions of the centered batch.
+    Apply with `apply_whiten_all_but_top`.
+
+    Rationale (2026-07-06/07 signal-separation harness): raw e5 cosine is
+    scale-COMPRESSED — same-story vs diff-story medians sit at ~0.92/0.79, both
+    pegged high, so HDBSCAN density can't separate structure even though the
+    signal-pair AUC is already ~0.985. Subtracting the mean and projecting out
+    the top-1 principal direction (the shared "news" component) de-compresses
+    the geometry (same ~0.56 / diff ~0.00), which is exactly the within-vs-
+    between contrast density clustering needs. See measure_signal_separation.py.
+    """
+    x = embs - embs.mean(axis=0, keepdims=True)
+    mean = embs.mean(axis=0)
+    if k <= 0:
+        return mean, np.zeros((0, embs.shape[1]), dtype=embs.dtype)
+    _, _, Vt = np.linalg.svd(x, full_matrices=False)
+    return mean, Vt[:k]
+
+
+def apply_whiten_all_but_top(embs: np.ndarray, mean: np.ndarray, top: np.ndarray) -> np.ndarray:
+    """Center by `mean`, project out the `top` directions, L2-renormalize.
+
+    Re-normalization matters: HDBSCAN uses euclidean distance, and the pipeline
+    relies on euclidean-on-unit-sphere being monotone in cosine (_cluster's
+    contract). After projecting out a direction the residual is no longer unit
+    norm, so we renormalize to keep that equivalence."""
+    x = embs - mean
+    if top.shape[0] > 0:
+        x = x - (x @ top.T) @ top
+    n = np.linalg.norm(x, axis=1, keepdims=True)
+    n[n == 0] = 1.0
+    return (x / n).astype(np.float32)
+
+
+def whiten_all_but_top(embs: np.ndarray, k: int) -> np.ndarray:
+    """Convenience: fit + apply the all-but-top(k) whitening over one batch."""
+    mean, top = fit_whiten_all_but_top(embs, k)
+    return apply_whiten_all_but_top(embs, mean, top)
+
+
 def _cluster(embs: np.ndarray, min_cluster_size: int, min_samples: int,
              selection_method: str = "leaf"):
     """HDBSCAN on L2-normalized e5 vectors.
@@ -148,12 +192,20 @@ def _cluster(embs: np.ndarray, min_cluster_size: int, min_samples: int,
       - 'eom': excess-of-mass, returns the most stable clusters; can
         merge sub-narratives into one big stable parent.
     """
+    # core-dist parallelism defaults to all cores (-1, unchanged for prod). Set
+    # ATLAS_HDBSCAN_JOBS to cap it — used by the mindful research sweeps so a
+    # 48-config grid on the M1 doesn't stack all-core HDBSCAN on top of Chrome/
+    # iCloud/NLP and spike the load into the WindowServer-watchdog zone.
+    try:
+        _jobs = int(os.getenv("ATLAS_HDBSCAN_JOBS", "-1"))
+    except ValueError:
+        _jobs = -1
     clusterer = hdbscan.HDBSCAN(
         min_cluster_size=min_cluster_size,
         min_samples=min_samples,
         metric="euclidean",
         cluster_selection_method=selection_method,
-        core_dist_n_jobs=-1,
+        core_dist_n_jobs=_jobs,
     )
     labels = clusterer.fit_predict(embs)
     return labels

@@ -45,6 +45,7 @@ from backend.scripts.emergent_poc import (
     _cluster_stats,
     _label_all,
     _load_gate,
+    whiten_all_but_top,
 )
 
 
@@ -295,6 +296,19 @@ async def main() -> None:
     ap.add_argument("--min-cluster-size", type=int, default=20)
     ap.add_argument("--min-samples", type=int, default=10)
     ap.add_argument("--selection", choices=["leaf", "eom"], default="leaf")
+    ap.add_argument("--whiten-k", type=int, default=int(os.getenv("ATLAS_CLUSTER_WHITEN_K", "0")),
+                    help="All-but-top(k) whitening of the embeddings used for HDBSCAN "
+                         "labeling ONLY (de-compresses e5's scale-pegged cosine; see "
+                         "docs/research/embedding-whitening/2026-07-07-whitening-findings.md). "
+                         "0 = OFF (default, current behavior). Reversible. Persisted "
+                         "centroids + sample selection stay in RAW e5 space regardless — "
+                         "serving/dossier/gate vectors are unchanged. NOTE (measured over 3 "
+                         "samples): whitening does NOT reliably cross the recall/purity cliff "
+                         "(that was a one-sample artifact); its reproducible effect is "
+                         "clustering STABILITY — with selection=eom it resists the mega-blob "
+                         "failure mode (holds purity ~1.0 where raw collapses to ~0.15) and "
+                         "lowers noise ~10pp. Only k=1 helps (k>=2 hurts purity). Modest, not "
+                         "a headline win. Do NOT default-on without a production A/B.")
     ap.add_argument("--top-clusters", type=int, default=30)
     ap.add_argument("--top-k-headlines", type=int, default=8)
     ap.add_argument("--gate", type=Path, default=DEFAULT_GATE)
@@ -358,11 +372,21 @@ async def main() -> None:
         embs = embed(texts).astype(np.float32)
         print(f"  embeddings {embs.shape} on {device}", file=sys.stderr)
 
+    # Whitening (if enabled) applies ONLY to the vectors HDBSCAN sees. Everything
+    # downstream — _cluster_stats centroids, the precision gate, _kept_centroid,
+    # _row_raw_sample — keeps using the RAW `embs`, so the persisted centroid_vec,
+    # dossier neighbors, and gate scoring stay in the original e5 space. Whitening
+    # changes only WHICH signals land in a cluster, never the vectors we store.
+    cluster_input = embs
+    if args.whiten_k > 0:
+        cluster_input = whiten_all_but_top(embs, args.whiten_k)
+        print(f"  whitened HDBSCAN input: all-but-top(k={args.whiten_k}) "
+              f"(centroids/serving stay raw e5)", file=sys.stderr)
     print(
         f"clustering HDBSCAN ({args.min_cluster_size}/{args.min_samples}/{args.selection})...",
         file=sys.stderr,
     )
-    labels = _cluster(embs, args.min_cluster_size, args.min_samples, args.selection)
+    labels = _cluster(cluster_input, args.min_cluster_size, args.min_samples, args.selection)
     n_noise = int((labels == -1).sum())
     raw_count = int(((labels != -1).any()) and (int(labels.max()) + 1))
     print(f"  {raw_count} raw clusters | {n_noise} noise ({100*n_noise/len(labels):.1f}%)", file=sys.stderr)
