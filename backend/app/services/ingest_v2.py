@@ -229,10 +229,110 @@ def _extract_source_country(url: str | None) -> str | None:
             'mx': 'MX', 'jp': 'JP', 'kr': 'KR', 'eg': 'EG', 'ng': 'NG',
             'za': 'ZA', 'tr': 'TR', 'pk': 'PK', 'il': 'IL', 'ua': 'UA',
             'pl': 'PL', 'ar': 'AR', 've': 'VE', 'co': 'CO', 'cl': 'CL',
+            # National ccTLDs (high-precision: a country outlet on its own TLD).
+            # Widens #238 override coverage — .pe outlets were resolving to None.
+            'pe': 'PE', 'ec': 'EC', 'bo': 'BO', 'py': 'PY', 'uy': 'UY',
+            'do': 'DO', 'gt': 'GT', 'cr': 'CR', 'pa': 'PA', 'hn': 'HN',
+            'ni': 'NI', 'sv': 'SV', 'cu': 'CU', 'es': 'ES', 'it': 'IT',
+            'pt': 'PT', 'nl': 'NL', 'be': 'BE', 'se': 'SE', 'no': 'NO',
+            'fi': 'FI', 'dk': 'DK', 'gr': 'GR', 'at': 'AT', 'ch': 'CH',
+            'cz': 'CZ', 'sk': 'SK', 'hu': 'HU', 'ro': 'RO', 'bg': 'BG',
+            'rs': 'RS', 'hr': 'HR', 'ie': 'IE', 'id': 'ID', 'my': 'MY',
+            'th': 'TH', 'ph': 'PH', 'vn': 'VN', 'sa': 'SA', 'ae': 'AE',
+            'qa': 'QA', 'lb': 'LB', 'ma': 'MA', 'dz': 'DZ', 'tn': 'TN',
+            'ke': 'KE', 'gh': 'GH', 'tw': 'TW',
         }
         return _TLD_MAP.get(tld)
     except Exception:
         return None
+
+
+# #238 subject-geography core. GDELT's geocoder mis-locates non-English content:
+# a stray token in a Spanish/Portuguese article ("Belén"->Bethlehem, a passing
+# place name) gets tagged, and the naive "first location with lat/lon" pick then
+# stamps a Peruvian farándula story onto the West Bank. Two measured levers:
+#  (1) PROMINENCE — pick the most-MENTIONED country across V2ENHANCEDLOCATIONS,
+#      not the first one. Each ';' block is one mention; frequency = subject.
+#  (2) NON-ENGLISH OUTLET-ORIGIN OVERRIDE — when the translation feed
+#      (source_lang != 'en') yields only single-mention scatter (no location
+#      mentioned twice = no real subject) and the winner conflicts with the
+#      outlet's home country, distrust GDELT geo and fall back to the outlet
+#      country with a low geo_confidence flag. Genuine foreign coverage names
+#      its subject repeatedly (count >= 2) and is left untouched.
+# Reversible: ATLAS_GEO_SUBJECT_GATE=off restores the naive first-pick.
+_GEO_SUBJECT_GATE = os.getenv("ATLAS_GEO_SUBJECT_GATE", "on").lower() not in ("0", "off", "false", "no")
+_GEO_OVERRIDE_CONFIDENCE = 0.35
+
+
+def _select_primary_country(
+    locations: str,
+    source_lang: str,
+    source_origin_country: str | None,
+) -> Optional[tuple]:
+    """Choose (iso_country, lat, lon, geo_confidence, method) from a GKG
+    V2ENHANCEDLOCATIONS field. Returns None when no location geocodes.
+
+    Block format: Type#FullName#CountryCode#ADM1#Lat#Long#FeatureID#Offset
+    """
+    if not locations:
+        return None
+
+    # Tally geocoded mentions by ISO country: [count, earliest_offset, (lat,lon)]
+    tally: dict[str, list] = {}
+    for loc in locations.split(';'):
+        parts = loc.split('#')
+        if len(parts) < 6:
+            continue
+        iso = fips_to_iso(parts[2][:2]) if parts[2] else None
+        if not iso:
+            continue
+        try:
+            lat = float(parts[4]) if parts[4] else None
+        except ValueError:
+            lat = None
+        try:
+            lon = float(parts[5]) if parts[5] else None
+        except ValueError:
+            lon = None
+        try:
+            offset = int(parts[7]) if len(parts) > 7 and parts[7] else 10 ** 9
+        except ValueError:
+            offset = 10 ** 9
+        rec = tally.setdefault(iso, [0, 10 ** 9, None])
+        rec[0] += 1
+        rec[1] = min(rec[1], offset)
+        if rec[2] is None and lat is not None and lon is not None:
+            rec[2] = (lat, lon)
+
+    if not tally:
+        return None
+
+    if not _GEO_SUBJECT_GATE:
+        # Legacy behaviour: first geocoded block wins (earliest offset).
+        iso = min(tally.items(), key=lambda kv: kv[1][1])[0]
+        lat, lon = tally[iso][2] or (None, None)
+        return iso.upper(), lat, lon, 0.85, 'gdelt_geo_first'
+
+    # (1) Prominence: most mentions, tie-break earliest mention.
+    iso, (count, _off, latlon) = min(
+        tally.items(), key=lambda kv: (-kv[1][0], kv[1][1])
+    )
+    lat, lon = latlon or (None, None)
+
+    # (2) Non-English single-mention scatter conflicting with the outlet home
+    # country -> trust the outlet, flag low confidence. Only fires when NO
+    # location is mentioned more than once (max_count == 1), i.e. there is no
+    # dominant subject for GDELT to have gotten right.
+    max_count = max(rec[0] for rec in tally.values())
+    if (
+        source_lang != 'en'
+        and source_origin_country
+        and max_count == 1
+        and iso.upper() != source_origin_country.upper()
+    ):
+        return source_origin_country.upper(), None, None, _GEO_OVERRIDE_CONFIDENCE, 'outlet_origin_override'
+
+    return iso.upper(), lat, lon, 0.85, 'gdelt_geo_prominence'
 
 
 def parse_gkg_row(row: list, source_lang: str = "en") -> Optional[dict]:
@@ -281,29 +381,15 @@ def parse_gkg_row(row: list, source_lang: str = "en") -> Optional[dict]:
         except:
             pass
     
-    # Locations (V2ENHANCEDLOCATIONS - field 10)
+    # Locations (V2ENHANCEDLOCATIONS - field 10). Subject-geography selection
+    # (#238): prominence pick + non-English outlet-origin override. Needs the
+    # outlet home country up front, so compute it here (reused in the return).
     locations = row[10] if len(row) > 10 else ""
-    country_code = None
-    lat = None
-    lon = None
-    
-    if locations:
-        for loc in locations.split(';'):
-            parts = loc.split('#')
-            if len(parts) >= 6:
-                # Extract FIPS code and convert to ISO
-                country_code_fips = parts[2][:2] if parts[2] else None
-                country_code = fips_to_iso(country_code_fips)  # Convert FIPS→ISO
-                try:
-                    lat = float(parts[4]) if parts[4] else None
-                    lon = float(parts[5]) if parts[5] else None
-                except:
-                    pass
-                if country_code and lat and lon:
-                    break
-    
-    if not country_code:
+    source_origin_country = _extract_source_country(source_url)
+    selected = _select_primary_country(locations, source_lang, source_origin_country)
+    if not selected:
         return None
+    country_code, lat, lon, geo_confidence, geo_method = selected
     
     # Themes (V2ENHANCEDTHEMES - field 8)
     themes_raw = row[8] if len(row) > 8 else ""
@@ -357,7 +443,7 @@ def parse_gkg_row(row: list, source_lang: str = "en") -> Optional[dict]:
 
     return {
         'timestamp': timestamp,
-        'country_code': country_code.upper(),
+        'country_code': country_code,
         'latitude': lat,
         'longitude': lon,
         'sentiment': sentiment,
@@ -376,11 +462,11 @@ def parse_gkg_row(row: list, source_lang: str = "en") -> Optional[dict]:
         # Source provenance fields (migration 008)
         'source_family': 'gdelt',
         'source_lang': source_lang,
-        'geo_confidence': 0.85,
+        'geo_confidence': geo_confidence,
         'attribution_method': attribution,
         'is_state_media': False,
         # Geo validation (migration 012)
-        'source_origin_country': _extract_source_country(source_url),
+        'source_origin_country': source_origin_country,
         # Semantic class (migration 021) — GDELT is always editorial reporting
         'signal_class': 'reporting',
     }
