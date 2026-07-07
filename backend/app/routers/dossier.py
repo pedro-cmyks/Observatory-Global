@@ -566,14 +566,30 @@ async def dossier_connections(req: ConnectionsRequest):
 class SynthPin(BaseModel):
     label: str
     type: str | None = None
-    evidence: list[str] = Field(default_factory=list)  # frozen headlines
+    evidence: list[str] = Field(default_factory=list)  # frozen headlines (may carry "— source")
     note: str | None = None
+    # Server-side low-coherence flag on the pin's thread (a conflated black-hole
+    # whose evidence is a mix of unrelated events). Optional — set by a parallel
+    # task; the prompt-level evidence-to-label self-check runs regardless.
+    low_coherence: bool = False
+
+
+class SynthConnectionNode(BaseModel):
+    # Per-pin connectedness from the MEASURED relation graph — the fix for the
+    # over-claim failure: the whole set can read 'grounded' off ONE confirmed edge
+    # while a third pin hangs on only similarity-only edges. This tells the prompt
+    # which pins are the confirmed spine and which are merely topically adjacent.
+    label: str
+    connectedness: str | None = None   # 'confirmed' | 'similar-only' | 'isolated'
+    confirmed_with: list[str] = Field(default_factory=list)  # shared-actor/place partners
+    similar_with: list[str] = Field(default_factory=list)    # semantic-only partners
 
 
 class SynthConnection(BaseModel):
     # 'grounded' (shared actors/places) | 'similar-only' (semantic proximity only)
     # | 'split' | 'isolated' — the basis-weighted verdict from the frontend.
     state: str | None = None
+    nodes: list[SynthConnectionNode] = Field(default_factory=list)  # per-pin connectedness
     links: list[str] = Field(default_factory=list)     # "A ↔ B — shared actor X"
     countries: list[str] = Field(default_factory=list)
     languages: list[str] = Field(default_factory=list)
@@ -591,23 +607,44 @@ class SynthesizeRequest(BaseModel):
 
 _SYNTH_SYSTEM = (
     "You are an intelligence analyst writing a STANDALONE brief from an analyst's "
-    "pinned evidence. A stranger reading ONLY your brief must understand the story. "
-    "You are given: the pinned stories with their frozen evidence headlines, and a "
-    "MEASURED connection verdict between them. Rules:\n"
-    "1. Ground everything in the supplied evidence — never invent facts, numbers, "
-    "actors, or events that are not in the headlines.\n"
-    "2. Be honest about the connection. If the verdict state is 'similar-only', the "
-    "stories share NO actors or places — they are only topically/linguistically "
-    "similar; you MUST say the link is an unproven hypothesis, not a finding. If "
-    "'grounded', name the shared actors/places that connect them. If 'split' or "
-    "'isolated', say the pins do not form one story.\n"
-    "3. Surface the NON-OBVIOUS insight — the thing not visible from any single "
-    "headline (a self-declared alignment, a coverage asymmetry, an actor bridging "
-    "two stories). This is the point of the brief.\n"
-    "4. Name the KEY GAP — what is missing or unproven (e.g. a driver with no "
-    "coverage, one-sided sourcing, no public/forum voice).\n"
+    "pinned evidence. A stranger reading ONLY your brief must understand the story "
+    "AND must NOT be misled into thinking loosely-related pins form one confirmed "
+    "narrative. You are given the pinned stories with their frozen evidence "
+    "headlines (each may end with '— <outlet>'), a MEASURED connection verdict, and "
+    "PER-PIN connectedness. Rules:\n"
+    "1. GROUND everything in the supplied evidence — never invent facts, numbers, "
+    "actors, events, dates, or outcomes that are not in the headlines.\n"
+    "2. LEAD WITH THE CONFIRMED SPINE. Build the through-line ONLY from pins whose "
+    "per-pin connectedness is 'confirmed' (they share a real actor or place); name "
+    "that shared actor/place. A pin marked 'similar-only' shares NO actor or place "
+    "with the others — it is topically or linguistically adjacent, NOT confirmed "
+    "connected. You MUST explicitly bracket such a pin: say it is 'topically "
+    "adjacent, not confirmed connected — possibly an artifact of shared language/"
+    "topic', and do NOT weave it into the main narrative as if the link were proven. "
+    "Even when the overall state is 'grounded', a single confirmed edge does not make "
+    "every pin part of one story. If the state is 'split' or 'isolated', say the pins "
+    "do not form one story.\n"
+    "3. CHECK EVIDENCE-TO-LABEL FIT. For each pin, verify its evidence headlines "
+    "actually name the actors or place in the pin's OWN label. If a pin's bullets do "
+    "NOT support its label (they describe unrelated actors/events — a conflated or "
+    "mis-labelled thread), or the pin is flagged LOW-COHERENCE, do NOT narrate its "
+    "content as if it were about the label: flag that pin as UNRELIABLE (state that "
+    "its evidence does not match its label) and exclude it from the finding.\n"
+    "4. DO NOT ASSERT CONTESTED OUTCOMES AS FACT. Election results, concessions, "
+    "inaugurations, and transfers of power are claims, not givens. Do NOT state one "
+    "as settled fact unless an evidence headline DIRECTLY states it happened. "
+    "Attribute contested or single-sourced outcomes to their source ('reported by "
+    "<outlet>', 'per <outlet>') and prefer hedged phrasing ('reportedly', 'is said "
+    "to') when a headline announces rather than confirms. Surface a date if a "
+    "headline carries one; if outcomes are undated, say the timing is unclear.\n"
+    "5. SURFACE THE NON-OBVIOUS insight visible only across pins (a self-declared "
+    "alignment, a coverage asymmetry, an actor bridging two CONFIRMED stories) — but "
+    "only over the confirmed spine, never over a bracketed or unreliable pin.\n"
+    "6. NAME THE KEY GAP — what is missing or unproven (an unconfirmed link, an "
+    "off-topic/mis-labelled pin, one-sided sourcing, no public/forum voice, undated "
+    "claims).\n"
     "Output STRICT JSON only, no prose around it: "
-    '{"headline": "<=14 words, the finding", "synthesis": "2-4 sentences", '
+    '{"headline": "<=14 words, the confirmed finding", "synthesis": "2-4 sentences", '
     '"gap": "1-2 sentences"}.'
 )
 
@@ -618,7 +655,8 @@ def _synth_user(req: SynthesizeRequest) -> str:
         parts.append(f"Investigation title: {req.title}")
     parts.append("\nPINNED STORIES + frozen evidence:")
     for i, p in enumerate(req.pins, 1):
-        parts.append(f"{i}. {p.label}" + (f" [{p.type}]" if p.type else ""))
+        flag = " [⚠ LOW-COHERENCE thread — evidence may be a conflated mix]" if p.low_coherence else ""
+        parts.append(f"{i}. {p.label}" + (f" [{p.type}]" if p.type else "") + flag)
         for h in p.evidence[:6]:
             parts.append(f"   - {h}")
         if p.note:
@@ -627,6 +665,15 @@ def _synth_user(req: SynthesizeRequest) -> str:
     if c:
         parts.append("\nMEASURED CONNECTION VERDICT:")
         parts.append(f"  state: {c.state or 'unknown'}")
+        if c.nodes:
+            parts.append("  per-pin connectedness (from the measured relation graph):")
+            for nd in c.nodes:
+                line = f"    - {nd.label}: {nd.connectedness or 'unknown'}"
+                if nd.confirmed_with:
+                    line += " — confirmed link (shared actor/place) to " + ", ".join(nd.confirmed_with[:6])
+                if nd.similar_with:
+                    line += " — similarity-only proximity to " + ", ".join(nd.similar_with[:6])
+                parts.append(line)
         if c.links:
             parts.append("  links: " + " | ".join(c.links[:8]))
         if c.countries:
