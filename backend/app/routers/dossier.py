@@ -485,42 +485,42 @@ async def dossier_connections(req: ConnectionsRequest):
                     """,
                     list(exclude_ids),
                 )
-            pin_ids = {bk: node_by_base.get(bk, {}).get("id", bk) for bk in centroids}
-            # The e5 centroid space is compressed (p50 ~0.94), so raw cosine floods
-            # with generic-central topics ("Kate Middleton"). Gate a neighbor on
-            # sharing a DISCRIMINATING label token with the pin (the codebase's
-            # established fix) — same idea as assemble_constellation's attach gate.
-            import re as _re
-            _NB_STOP = {"news", "emerging", "update", "updates", "report", "reports",
-                        "crisis", "live", "breaking", "latest", "daily", "world",
-                        "global", "international", "story", "stories"}
-            def _toks(s: str) -> set:
-                return {t for t in _re.findall(r"[a-záéíóúñü]{4,}", (s or "").lower())
-                        if t not in _NB_STOP}
-            pin_toks = {bk: _toks(labels.get(bk, {}).get("label", "")) for bk in centroids}
+            import numpy as np
+            pin_keys = list(centroids.keys())
+            pin_ids = [node_by_base.get(k, {}).get("id", k) for k in pin_keys]
+            pin_mat = np.asarray([centroids[k] for k in pin_keys], dtype=np.float32)
+            cand_ids = [int(r["id"]) for r in cand]
+            cand_mat = np.asarray([[float(x) for x in r["centroid_vec"]] for r in cand], dtype=np.float32)
+            # all-but-the-top (k=1) WHITENING. The e5 centroid space is an
+            # anisotropic cone (same/diff cosine ~0.91/0.87 — raw cosine floods
+            # with generic-central topics like "Kate Middleton"). Removing the
+            # top-1 principal direction de-compresses it — MEASURED same/diff gap
+            # +0.04→+0.31, AUC 0.80→0.87 (backend/scripts/measure_embedding_
+            # separation.py) — so a fixed threshold separates real neighbors from
+            # noise, AND surfaces genuine bridges (e.g. "Milei attends Fujimori").
+            mu = cand_mat.mean(0, keepdims=True)
+            _, _, Vt = np.linalg.svd(cand_mat - mu, full_matrices=False)
+            pc = Vt[0]
+            def _wnorm(M):
+                Y = M - mu
+                Y = Y - np.outer(Y @ pc, pc)
+                n = np.linalg.norm(Y, axis=1, keepdims=True)
+                n[n == 0] = 1.0
+                return Y / n
+            sims = _wnorm(cand_mat) @ _wnorm(pin_mat).T   # (N_cand, N_pin) whitened cosine
+            NEIGHBOR_TAU = 0.40
             nb: dict[int, dict] = {}
-            for r in cand:
-                cvec = [float(x) for x in r["centroid_vec"]]
-                cid = int(r["id"])
-                ctoks = _toks(r["label"])
-                for base_key, vec in centroids.items():
-                    if len(vec) != len(cvec):
+            for ci in range(len(cand_ids)):
+                for pj in range(len(pin_keys)):
+                    s = float(sims[ci, pj])
+                    if s < NEIGHBOR_TAU:
                         continue
-                    if not (ctoks & pin_toks[base_key]):
-                        continue  # must share a discriminating token with the pin
-                    sim = _cosine(vec, cvec)
-                    if sim < 0.90:
-                        continue
+                    cid = cand_ids[ci]
                     e = nb.get(cid)
                     if e is None:
-                        e = nb[cid] = {"base_id": _tid(cid), "label": r["label"],
-                                       "category": r["category"], "links": []}
-                    s = round(sim, 4)
-                    prev = next((l for l in e["links"] if l["pin"] == pin_ids[base_key]), None)
-                    if prev is None:
-                        e["links"].append({"pin": pin_ids[base_key], "sim": s})
-                    elif s > prev["sim"]:
-                        prev["sim"] = s
+                        e = nb[cid] = {"base_id": _tid(cid), "label": cand[ci]["label"],
+                                       "category": cand[ci]["category"], "links": []}
+                    e["links"].append({"pin": pin_ids[pj], "sim": round(s, 4)})
             # bridges (near >1 pin) first, then strongest single link; cap 8.
             neighbors = sorted(
                 nb.values(),
