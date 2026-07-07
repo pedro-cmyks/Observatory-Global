@@ -23,7 +23,10 @@ DEEPSEEK_MODEL = os.getenv("INSIGHT_DEEPSEEK_MODEL", "deepseek-chat")
 ANTHROPIC_MODEL = os.getenv("INSIGHT_ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
 
 
-async def _anthropic_insight(system: str, user: str, max_tokens: int, api_key: str) -> str | None:
+async def _anthropic_insight(
+    system: str, user: str, max_tokens: int, api_key: str,
+) -> tuple[str | None, dict]:
+    """Returns (text, usage) where usage = {model, input_tokens, output_tokens}."""
     import anthropic as _anthropic
     client = _anthropic.AsyncAnthropic(api_key=api_key)
     response = await client.messages.create(
@@ -32,10 +35,19 @@ async def _anthropic_insight(system: str, user: str, max_tokens: int, api_key: s
         system=system,
         messages=[{"role": "user", "content": user}],
     )
-    return next((b.text for b in response.content if b.type == "text"), None)
+    text = next((b.text for b in response.content if b.type == "text"), None)
+    u = getattr(response, "usage", None)
+    usage = {
+        "model": ANTHROPIC_MODEL,
+        "input_tokens": getattr(u, "input_tokens", 0) or 0,
+        "output_tokens": getattr(u, "output_tokens", 0) or 0,
+    }
+    return text, usage
 
 
-async def _deepseek_insight(system: str, user: str, max_tokens: int, api_key: str) -> str | None:
+async def _deepseek_insight(
+    system: str, user: str, max_tokens: int, api_key: str,
+) -> tuple[str | None, dict]:
     body = {
         "model": DEEPSEEK_MODEL,
         "messages": [
@@ -49,27 +61,44 @@ async def _deepseek_insight(system: str, user: str, max_tokens: int, api_key: st
     async with httpx.AsyncClient() as client:
         r = await client.post(DEEPSEEK_URL, json=body, headers=headers, timeout=20.0)
         r.raise_for_status()
-        content = r.json()["choices"][0]["message"]["content"]
-    return content.strip() if content else None
+        payload = r.json()
+        content = payload["choices"][0]["message"]["content"]
+    u = payload.get("usage") or {}
+    usage = {
+        "model": DEEPSEEK_MODEL,
+        "input_tokens": u.get("prompt_tokens", 0) or 0,
+        "output_tokens": u.get("completion_tokens", 0) or 0,
+    }
+    return (content.strip() if content else None), usage
 
 
 async def generate_insight(
     system: str, user: str, *, max_tokens: int = 256,
-) -> tuple[str | None, str | None, str | None]:
-    """Returns (text, provider, error_code). Exactly one of text/error is set.
+    surface: str | None = None, session_id: str | None = None,
+) -> tuple[str | None, str | None, str | None, dict | None]:
+    """Returns (text, provider, error_code, usage). Exactly one of text/error is set.
+
+    usage = {model, input_tokens, output_tokens} for the provider that answered
+    (None on failure). When `surface` is given, the cost is also logged to the
+    ai_cost_events ledger (fire-and-forget — never blocks or raises).
 
     error codes: 'insight_no_credits' (Anthropic broke AND DeepSeek absent),
     'insight_unavailable' (no provider configured or all failed).
     """
+    from app.services.ai_cost import log_ai_cost
+
     anthropic_key = os.getenv("ANTHROPIC_API_KEY")
     deepseek_key = os.getenv("DEEPSEEK_API_KEY")
     anthropic_error: str | None = None
 
     if anthropic_key:
         try:
-            text = await _anthropic_insight(system, user, max_tokens, anthropic_key)
+            text, usage = await _anthropic_insight(system, user, max_tokens, anthropic_key)
             if text:
-                return text, "anthropic", None
+                if surface:
+                    log_ai_cost(surface, "anthropic", usage["model"],
+                                usage["input_tokens"], usage["output_tokens"], session_id)
+                return text, "anthropic", None, usage
         except Exception as e:
             err = str(e)
             anthropic_error = "insight_no_credits" if "credit balance" in err.lower() else "insight_unavailable"
@@ -77,10 +106,13 @@ async def generate_insight(
 
     if deepseek_key:
         try:
-            text = await _deepseek_insight(system, user, max_tokens, deepseek_key)
+            text, usage = await _deepseek_insight(system, user, max_tokens, deepseek_key)
             if text:
-                return text, "deepseek", None
+                if surface:
+                    log_ai_cost(surface, "deepseek", usage["model"],
+                                usage["input_tokens"], usage["output_tokens"], session_id)
+                return text, "deepseek", None, usage
         except Exception as e:
             logger.warning("deepseek insight failed: %s", str(e)[:200])
 
-    return None, None, anthropic_error or "insight_unavailable"
+    return None, None, anthropic_error or "insight_unavailable", None

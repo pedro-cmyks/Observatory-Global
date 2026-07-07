@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import os
 import time
 from typing import Any
 
@@ -37,7 +38,15 @@ logger = logging.getLogger(__name__)
 
 MAX_PINS = 16
 ROWS_PER_TOPIC = 300          # cap member rows aggregated per topic/role
-SEM_EDGE_THRESHOLD = 0.88     # centroid cosine above which two stories "connect"
+SEM_EDGE_THRESHOLD = 0.88     # RAW centroid cosine — legacy/fallback connect gate
+# Whitened connect gate. Raw e5 centroid cosine floods 0.88-0.96 (every pin
+# "connects"); the GLOBAL all-but-top(k=1) whitening (app/data/e5_whitening.npz)
+# de-compresses the anisotropic cone so a real edge separates from a spurious one.
+# MEASURED on the LatAm head-to-head pins (dt-1419 Keiko ↔ dt-792 Milei = 0.655
+# REAL; dt-52 Cepeda ↔ either = 0.36-0.40 SPURIOUS) — tau 0.50 sits in the wide
+# 0.40→0.655 margin. Raw cosine stays the DISPLAY semantic_sim; whitened drives
+# the connect decision + semantic weight. Reversible: ATLAS_DOSSIER_WHITENED_EDGES=0.
+SEM_EDGE_WHITENED_THRESHOLD = 0.50
 TOP_COUNTRIES = 4             # per-node top countries used for shared-country edges
 CACHE_TTL_S = 120
 
@@ -390,6 +399,25 @@ async def dossier_connections(req: ConnectionsRequest):
     for base, pos in pos_by_base.items():
         node_by_base[base]["pos"] = pos
 
+    # ── Whitened centroids for the connect gate (global asset, batch once) ────
+    # Apply the ONE stored transform (fit on ~100k signal vectors) to the pin
+    # centroids; output rows are unit-norm so a dot product is the whitened
+    # cosine. Falls back to the raw gate if the flag is off or the asset is
+    # unavailable — the CONNECT decision degrades gracefully, never 500s.
+    use_whitened_edges = os.getenv("ATLAS_DOSSIER_WHITENED_EDGES", "1").lower() not in ("0", "false", "no", "")
+    wcentroids: dict[str, Any] = {}
+    if use_whitened_edges and centroids:
+        try:
+            from app.services.whitening import load_whitening, apply_whitening
+            import numpy as np
+            _w = load_whitening()
+            _keys = list(centroids)
+            _wm = apply_whitening(np.asarray([centroids[k] for k in _keys], dtype=np.float32), _w)
+            wcentroids = {_keys[i]: _wm[i] for i in range(len(_keys))}
+        except Exception as exc:
+            logger.warning("dossier whitened edges unavailable, raw gate: %s", exc)
+            wcentroids = {}
+
     # ── Edges ────────────────────────────────────────────────────────────────
     edges: list[dict] = []
     bases = [n["base_id"] for n in nodes]
@@ -402,9 +430,12 @@ async def dossier_connections(req: ConnectionsRequest):
         for j in range(i + 1, len(bases)):
             bi, bj = bases[i], bases[j]
             basis: list[str] = []
-            sim = None
+            sim = None       # RAW cosine — display only
+            wsim = None      # whitened cosine — drives the connect decision
             if bi in centroids and bj in centroids:
                 sim = round(_cosine(centroids[bi], centroids[bj]), 4)
+                if bi in wcentroids and bj in wcentroids:
+                    wsim = round(float(wcentroids[bi] @ wcentroids[bj]), 4)
             shared_countries = sorted(top_country_sets[bi] & top_country_sets[bj])
             shared_persons_all = person_sets[bi] & person_sets[bj]
             shared_persons = sorted(
@@ -412,10 +443,16 @@ async def dossier_connections(req: ConnectionsRequest):
                 if len(person_docs.get(p, ())) <= distinct_df_max
             )
             weight = 0.0
-            semantic = sim is not None and sim >= SEM_EDGE_THRESHOLD
+            # Whitened gate when available; raw ≥ 0.88 fallback otherwise.
+            if wsim is not None:
+                semantic = wsim >= SEM_EDGE_WHITENED_THRESHOLD
+                sem_weight = wsim
+            else:
+                semantic = sim is not None and sim >= SEM_EDGE_THRESHOLD
+                sem_weight = sim
             if semantic:
                 basis.append("semantic")
-                weight = max(weight, float(sim))
+                weight = max(weight, float(sem_weight))
             if shared_countries:
                 basis.append("shared_country")
                 weight = max(weight, 0.6 + 0.1 * len(shared_countries))
@@ -432,6 +469,7 @@ async def dossier_connections(req: ConnectionsRequest):
                 "basis": basis,
                 "weight": round(min(1.0, weight), 4),
                 "semantic_sim": sim,
+                "whitened_sim": wsim,
                 "shared_countries": shared_countries,
                 "shared_persons": shared_persons,
             })
@@ -546,7 +584,8 @@ async def dossier_connections(req: ConnectionsRequest):
             "resolved": len(nodes),
             "umbrellas_collapsed": len(umbrella_ids),
             "collapse_umbrellas": req.collapse_umbrellas,
-            "semantic_threshold": SEM_EDGE_THRESHOLD,
+            "semantic_threshold": SEM_EDGE_WHITENED_THRESHOLD if wcentroids else SEM_EDGE_THRESHOLD,
+            "semantic_space": "whitened-e5-k1" if wcentroids else "raw-e5",
             "distinctive_person_df_max": distinct_df_max,
             "position_basis": "PCA top-2 of pinned e5 centroids — approximate; edges are exact",
         },
@@ -710,8 +749,8 @@ def _extract_json(text: str) -> dict | None:
 async def dossier_synthesize(req: SynthesizeRequest):
     """One grounded LLM pass → standalone {headline, synthesis, gap}."""
     contract = "dossier-synthesis-v1"
-    text, provider, error = await generate_insight(
-        _SYNTH_SYSTEM, _synth_user(req), max_tokens=600,
+    text, provider, error, _usage = await generate_insight(
+        _SYNTH_SYSTEM, _synth_user(req), max_tokens=600, surface="dossier-synthesis",
     )
     if not text:
         return {"contract": contract, "headline": None, "synthesis": None,

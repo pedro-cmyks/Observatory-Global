@@ -69,7 +69,17 @@ async def _deepseek_translate(
     try:
         r = await client.post(DEEPSEEK_URL, json=body, headers=headers, timeout=15.0)
         r.raise_for_status()
-        content = r.json()["choices"][0]["message"]["content"]
+        payload = r.json()
+        content = payload["choices"][0]["message"]["content"]
+        # Cost ledger — real (non-cached, non-identity) DeepSeek call.
+        try:
+            from app.services.ai_cost import log_ai_cost
+            u = payload.get("usage") or {}
+            log_ai_cost("translate", "deepseek", DEEPSEEK_MODEL,
+                        u.get("prompt_tokens", 0) or 0,
+                        u.get("completion_tokens", 0) or 0)
+        except Exception:
+            pass
         return _json.loads(content).get("translated")
     except Exception as exc:
         logger.warning("deepseek translate failed: %s", exc)

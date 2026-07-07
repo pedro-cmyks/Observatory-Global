@@ -456,58 +456,91 @@ async def _emergent_cluster_detail(
     }
 
 
+# Whitened-space coherence tiers (global all-but-top(k=1) asset,
+# app/data/e5_whitening.npz). Raw e5 member-to-centroid cosine compresses into a
+# narrow 0.89-0.99 band (dt-52 Cepeda black-hole 0.939 vs a clean story 0.95 =
+# only a 0.011 gap — too tight to gate reliably). Whitening de-compresses it ~11x:
+# MEASURED 2026-07-07 on the LatAm head-to-head — dt-52 Cepeda 0.531 LOOSE vs
+# dt-1419 Keiko 0.657 / dt-792 Milei 0.816 TIGHT, and the atlas aggregate blobs
+# (trade-export 0.35, heat-health 0.49) fall well below. Cuts calibrated on a
+# 60-topic sample (p25 0.737; real stories ≥0.60, conflated blobs <0.60).
+COH_LOOSE_WHITENED = 0.60
+COH_MIXED_WHITENED = 0.70
+# Raw-space fallback — the exact tiers the #224 guard shipped with; used only when
+# the whitening asset is unavailable or ATLAS_THEME_WHITENED_COHERENCE=0.
+COH_LOOSE_RAW = 0.915
+COH_MIXED_RAW = 0.945
+
+
 async def _thread_coherence(conn, topic_id: int) -> Optional[dict]:
     """Measured black-hole / conflation guard (#224). A thread should be ONE
     story; a frozen-label identity that drifted (e.g. a "Colombia election" label
     over members that are actually Spanish politics + a football fan-fest) is a
     black-hole that silently poisons an investigation when pinned.
 
-    Signal (measured 2026-07-07 over the live corpus, backend/app/routers/dossier
-    landscape): avg member-to-centroid cosine is the coherence axis — NOT country
-    spread. Coherent events stay tight even when globally spread (Mundial 0.95),
-    while junk blobs are loose (0.885). e5 is compressed, so the tiers are:
-      loose  avg<0.915                              → conflated blob (roundups/aggregates)
-      mixed  0.915≤avg<0.945 AND no dominant country → milder conflation (the dt-52 case)
-      tight  otherwise                               → one story
-    Dominant-country events (Israel-Lebanon 0.925/top-share 0.68) stay clean; the
-    only borderline false-positives are multi-country sports knockouts, and this
-    only WARNS (never blocks). Read-only, degrades to None. Reversible: the
-    frontend simply shows no badge when this is absent."""
+    The coherence axis is the avg member-to-centroid cosine — NOT country spread.
+    Computed in the GLOBAL WHITENED e5 space (2026-07-07): raw e5 squashes every
+    thread into 0.89-0.99 so the black-hole/clean gap is ~0.01; the whitening
+    asset de-compresses that gap ~11x, giving a clean split:
+      loose  avg < 0.60                                  → conflated blob (roundups/aggregates)
+      mixed  0.60 ≤ avg < 0.70 AND no dominant country    → milder conflation (the dt-52 class)
+      tight  otherwise                                    → one story
+    Dominant-country events stay clean via the country guard on the mixed tier;
+    this only WARNS (never blocks). Read-only, degrades to None. Reversible via
+    ATLAS_THEME_WHITENED_COHERENCE=0 (falls back to the raw-e5 tiers). The frontend
+    simply shows no badge when this is absent."""
+    use_whitened = os.getenv("ATLAS_THEME_WHITENED_COHERENCE", "1").lower() not in ("0", "false", "no", "")
+    w = None
+    if use_whitened:
+        try:
+            from app.services.whitening import load_whitening
+            w = load_whitening()
+        except Exception:
+            w = None
     try:
-        row = await conn.fetchrow(
+        rows = await conn.fetch(
             """
-            WITH mem AS (
-                SELECT e.vec::vector AS v, upper(s.country_code) AS cc
-                FROM topic_members tm
-                JOIN signal_embeddings e ON e.signal_id = tm.signal_id
-                JOIN signals_v2 s ON s.id = tm.signal_id
-                WHERE tm.topic_id = $1 AND tm.engine_version = 'v1-compat'
-                  AND tm.role = 'evidence'
-                  AND tm.assigned_at > NOW() - INTERVAL '30 days'
-            ),
-            cen AS (SELECT avg(v) AS c FROM mem),
-            cs AS (SELECT 1 - (m.v <=> cen.c) AS cos FROM mem m, cen),
-            cc AS (SELECT cc, count(*) AS k FROM mem WHERE cc IS NOT NULL AND cc <> '' GROUP BY cc)
-            SELECT (SELECT count(*) FROM mem) AS n,
-                   (SELECT avg(cos) FROM cs) AS avg_cos,
-                   (SELECT min(cos) FROM cs) AS min_cos,
-                   (SELECT count(*) FROM cc) AS dcc,
-                   (SELECT max(k)::float / nullif(sum(k), 0) FROM cc) AS top_share
+            SELECT e.vec::text AS v, upper(s.country_code) AS cc
+            FROM topic_members tm
+            JOIN signal_embeddings e ON e.signal_id = tm.signal_id
+            JOIN signals_v2 s ON s.id = tm.signal_id
+            WHERE tm.topic_id = $1 AND tm.engine_version = 'v1-compat'
+              AND tm.role = 'evidence'
+              AND tm.assigned_at > NOW() - INTERVAL '30 days'
+            LIMIT 300
             """,
             f"dynamic-topic-{topic_id}",
         )
     except Exception:
         return None
-    if not row or row["n"] is None or int(row["n"]) < 5 or row["avg_cos"] is None:
+    if not rows or len(rows) < 5:
         return None
-    n = int(row["n"])
-    avg_cos = float(row["avg_cos"])
-    dcc = int(row["dcc"] or 0)
-    top_share = float(row["top_share"]) if row["top_share"] is not None else 1.0
-    if avg_cos < 0.915:
+    import numpy as np
+    from collections import Counter
+
+    V = np.asarray([json.loads(r["v"]) for r in rows], dtype=np.float32)
+    n = len(V)
+    cc_counts = Counter(r["cc"] for r in rows if r["cc"])
+    dcc = len(cc_counts)
+    top_share = (max(cc_counts.values()) / sum(cc_counts.values())) if cc_counts else 1.0
+
+    if w is not None:
+        from app.services.whitening import apply_whitening
+        Vn = apply_whitening(V, w)            # unit-norm rows in whitened space
+        loose_t, mixed_t, space = COH_LOOSE_WHITENED, COH_MIXED_WHITENED, "whitened-e5-k1"
+    else:
+        Vn = V / np.clip(np.linalg.norm(V, axis=1, keepdims=True), 1e-9, None)
+        loose_t, mixed_t, space = COH_LOOSE_RAW, COH_MIXED_RAW, "raw-e5"
+    c = Vn.mean(0)
+    nc = float(np.linalg.norm(c))
+    if nc > 0:
+        c = c / nc
+    avg_cos = float((Vn @ c).mean())
+
+    if avg_cos < loose_t:
         tier = "loose"
         warning = "This thread's coverage does not cohere — it likely conflates unrelated stories. Verify before pinning."
-    elif avg_cos < 0.945 and top_share < 0.5 and dcc >= 3:
+    elif avg_cos < mixed_t and top_share < 0.5 and dcc >= 3:
         tier = "mixed"
         warning = f"Mixed origin: coverage spans {dcc} countries with none dominant and only loose coherence — it may combine several stories."
     else:
@@ -516,6 +549,7 @@ async def _thread_coherence(conn, topic_id: int) -> Optional[dict]:
     return {
         "score": round(avg_cos, 3),
         "tier": tier,
+        "space": space,
         "distinctCountries": dcc,
         "topCountryShare": round(top_share, 2),
         "members": n,
@@ -1760,8 +1794,8 @@ async def get_theme_insight(
     provider: Optional[str] = "ollama" if insight_text is not None else None
     if insight_text is None:
         from app.services.insight_llm import generate_insight
-        insight_text, provider, error_code = await generate_insight(
-            system_prompt, user_prompt, max_tokens=256,
+        insight_text, provider, error_code, _usage = await generate_insight(
+            system_prompt, user_prompt, max_tokens=256, surface="theme-insight",
         )
         if insight_text is None:
             return {

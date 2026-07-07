@@ -49,9 +49,9 @@ def _load_seed_prototypes():
 _DS_URL = "https://api.deepseek.com/chat/completions"
 
 
-async def _ds_type(label: str, cat_labels: list[str], key: str) -> tuple[str, str]:
+async def _ds_type(label: str, cat_labels: list[str], key: str) -> tuple[str, str, dict]:
     """DeepSeek picks the crisis class (the semantic judgment cosine can't do).
-    Returns (crisis_class, 'ds'). OUT_OF_SCOPE -> non_crisis (honest reject)."""
+    Returns (crisis_class, 'ds', usage). OUT_OF_SCOPE -> non_crisis (honest reject)."""
     import httpx
     cats = "\n".join(f"- {c}" for c in cat_labels)
     prompt = (
@@ -67,11 +67,16 @@ async def _ds_type(label: str, cat_labels: list[str], key: str) -> tuple[str, st
         r = await c.post(_DS_URL, json=body,
                          headers={"Authorization": f"Bearer {key}"}, timeout=30.0)
         r.raise_for_status()
-        ans = r.json()["choices"][0]["message"]["content"].strip()
+        payload = r.json()
+        ans = payload["choices"][0]["message"]["content"].strip()
+    u = payload.get("usage") or {}
+    usage = {"input_tokens": u.get("prompt_tokens", 0) or 0,
+             "output_tokens": u.get("completion_tokens", 0) or 0}
     if ans.upper().startswith("OUT_OF_SCOPE") or ans not in cat_labels:
-        return ("non_crisis", "ds") if ans.upper().startswith("OUT") else (
-            (ans, "ds") if ans in cat_labels else ("non_crisis", "ds"))
-    return ans, "ds"
+        crisis = "non_crisis" if ans.upper().startswith("OUT") or ans not in cat_labels else ans
+    else:
+        crisis = ans
+    return crisis, "ds", usage
 
 
 def _type_one(centroid: np.ndarray, labels, protos, threshold):
@@ -128,9 +133,17 @@ async def main() -> None:
         for r in rows:
             if args.deepseek:
                 key = os.environ["DEEPSEEK_API_KEY"]
-                crisis, _ = await _ds_type(r["label"] or "?", labels, key)
+                crisis, _, usage = await _ds_type(r["label"] or "?", labels, key)
                 cat = crisis if crisis != "non_crisis" else None
                 conf = 1.0
+                # Cost ledger — real DeepSeek typing call (amortized/background).
+                try:
+                    from backend.app.services.ai_cost import build_event, write_ai_cost_row
+                    await write_ai_cost_row(conn, build_event(
+                        "typing", "deepseek", "deepseek-chat",
+                        usage["input_tokens"], usage["output_tokens"]))
+                except Exception:
+                    pass
             else:
                 cat, crisis, conf = _type_one(np.asarray(r["centroid_vec"], dtype=np.float32),
                                               labels, protos, args.threshold)

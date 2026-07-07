@@ -51,7 +51,15 @@ def _embed_label(label: str) -> list[float] | None:
                      "Content-Type": "application/json"},
             method="POST")
         with urllib.request.urlopen(req, timeout=20) as r:
-            v = _json.loads(r.read())["data"][0]["embedding"]
+            resp = _json.loads(r.read())
+        v = resp["data"][0]["embedding"]
+        # Cost ledger — OpenAI embeddings have input tokens only.
+        try:
+            from app.services.ai_cost import log_ai_cost
+            toks = (resp.get("usage") or {}).get("total_tokens", 0) or 0
+            log_ai_cost("dossier-embed", "openai", "text-embedding-3-small", toks, 0)
+        except Exception:
+            pass
         _label_vec_cache[label] = (now, v)
         return v
     except Exception as exc:  # noqa: BLE001

@@ -1030,8 +1030,8 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
     # path went silently dark for ~6 days on dry credits; the chain + the
     # provider field make an AI-lane death visible to the weekly read.
     from app.services.insight_llm import generate_insight
-    insight_text, provider, error_code = await generate_insight(
-        system_prompt, user_prompt, max_tokens=200,
+    insight_text, provider, error_code, _usage = await generate_insight(
+        system_prompt, user_prompt, max_tokens=200, surface="brief",
     )
     if insight_text is None:
         return {"insight": None, "error": error_code, "generated_at": generated_at}
