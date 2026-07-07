@@ -275,6 +275,60 @@
     letter-spacing: 0.04em;
 }
 
+/* Secondary action (2026-07-06): the OTHER action for a query + the power
+   tools — reachable but demoted so the primary CTA reads as the one obvious
+   move. Flatter background, quieter text, thinner divider. */
+.search-query-thread-cta--muted {
+    background: rgba(255, 255, 255, 0.015);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 8px 12px;
+    opacity: 0.82;
+}
+.search-query-thread-cta--muted:hover {
+    background: rgba(255, 255, 255, 0.05);
+    opacity: 1;
+}
+.search-query-thread-cta--muted .search-query-thread-icon {
+    font-size: 12px;
+    opacity: 0.8;
+}
+.search-query-thread-cta--muted .search-query-thread-text {
+    color: #cbd5e0;
+    font-size: 11px;
+}
+
+/* The raw match sections, quieter than the primary action above them. */
+.search-results-secondary {
+    opacity: 0.92;
+}
+.search-results-secondary .search-section-label {
+    opacity: 0.85;
+}
+
+/* "More actions" — a subtle affordance hiding the power tools. */
+.search-more {
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.search-more-toggle {
+    display: block;
+    width: 100%;
+    text-align: center;
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    font-family: inherit;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: color 0.12s, background 0.12s;
+}
+.search-more-toggle:hover {
+    color: #cbd5e0;
+    background: rgba(255, 255, 255, 0.03);
+}
+
 .search-expansion-banner {
     display: flex;
     align-items: center;

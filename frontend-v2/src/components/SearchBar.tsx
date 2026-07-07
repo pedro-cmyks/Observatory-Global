@@ -6,6 +6,7 @@ import type { RegionFilter } from '../contexts/FocusContext'
 import { Search } from '../lib/icons'
 import { hasVisibleSearchResults } from '../lib/searchResults'
 import { Flag } from './Flag'
+import { classifyQuery } from '../lib/searchIntent'
 import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters'
 import './SearchBar.css'
 
@@ -94,6 +95,9 @@ interface ParsedQuery {
   topic: string
   countryCode: string | null
   countryDisplay: string | null
+  // True when the query is JUST a country name (nothing left after stripping
+  // it) → the primary action is "Go to <country>", not a topic story.
+  bareCountry: boolean
 }
 
 function parseCompoundQuery(q: string): ParsedQuery {
@@ -105,10 +109,11 @@ function parseCompoundQuery(q: string): ParsedQuery {
         .replace(new RegExp(`\\b${alias}\\b`, 'gi'), '')
         .replace(/[,\s]+/g, ' ')
         .trim()
-      return { topic: topic.length >= 2 ? topic : q, countryCode: code, countryDisplay: display }
+      const bareCountry = topic.length < 2
+      return { topic: bareCountry ? q : topic, countryCode: code, countryDisplay: display, bareCountry }
     }
   }
-  return { topic: q, countryCode: null, countryDisplay: null }
+  return { topic: q, countryCode: null, countryDisplay: null, bareCountry: false }
 }
 
 interface TopCountry {
@@ -217,9 +222,12 @@ interface SearchBarProps {
 export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSelect, onStartInvestigation, onOpenStory, externalQuery }: SearchBarProps) {
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<SearchResult | null>(null)
-    const [parsedQuery, setParsedQuery] = useState<ParsedQuery>({ topic: '', countryCode: null, countryDisplay: null })
+    const [parsedQuery, setParsedQuery] = useState<ParsedQuery>({ topic: '', countryCode: null, countryDisplay: null, bareCountry: false })
     const [isOpen, setIsOpen] = useState(false)
     const [loading, setLoading] = useState(false)
+    // Power tools (build-thread / investigation) collapse behind a "more"
+    // affordance so each query leads with ONE obvious action.
+    const [showMore, setShowMore] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
     const { setFocus, setMapFlyCountry, setCountry, setTheme, setRegion } = useFocus()
     // Guards the close-vs-inflight-response race: pressing Enter (story) while
@@ -228,10 +236,11 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
 
     const doSearch = useCallback(async (q: string) => {
         const seq = ++searchSeqRef.current
+        setShowMore(false)
         if (q.length < 2) {
             setResults(null)
             setIsOpen(false)
-            setParsedQuery({ topic: q, countryCode: null, countryDisplay: null })
+            setParsedQuery({ topic: q, countryCode: null, countryDisplay: null, bareCountry: false })
             return
         }
         const parsed = parseCompoundQuery(q)
@@ -296,7 +305,8 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
         setIsOpen(false)
         setQuery('')
         setResults(null)
-        setParsedQuery({ topic: '', countryCode: null, countryDisplay: null })
+        setShowMore(false)
+        setParsedQuery({ topic: '', countryCode: null, countryDisplay: null, bareCountry: false })
     }
 
     const handleLiveThreadClick = (t: LiveThreadResult) => {
@@ -398,6 +408,19 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
     }
 
     const hasResults = hasVisibleSearchResults(results)
+    // One query → one obvious primary action; everything else demotes.
+    const trimmedQuery = query.trim()
+    const { intent, isInvestigative } = classifyQuery({
+        raw: trimmedQuery,
+        countryCode: parsedQuery.countryCode,
+        bareCountry: parsedQuery.bareCountry,
+    })
+    const canStory = !!onOpenStory && trimmedQuery.length >= 3
+    const canInvestigate = !!onStartInvestigation && trimmedQuery.length >= 8
+    // "Go to <country>" leads a pure-country query; "Open the story" leads a
+    // topic/compound query. The other stays available but visually secondary.
+    const countryIsPrimary = intent === 'country'
+    const storyIsPrimary = (intent === 'topic' || intent === 'compound') && canStory
     const expandedVariants = (results?.query_variants || [])
         .filter(v => v && v !== results?.normalized_query)
         .slice(0, 3)
@@ -439,7 +462,9 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                         </div>
                     )}
 
-                    {parsedQuery.countryCode && (
+                    {/* PRIMARY ACTION — exactly one leads, chosen by intent.
+                        Pure country → Go to <country>; topic/compound → the story. */}
+                    {countryIsPrimary && parsedQuery.countryCode && (
                         <button className="search-query-thread-cta search-query-thread-cta--country" onClick={handleGoToCountry}
                             data-tip="Open the country brief — its threads, voice mix (who covers it) and coverage">
                             <span className="search-query-thread-icon"><Flag code={parsedQuery.countryCode} title={parsedQuery.countryDisplay ?? parsedQuery.countryCode} /></span>
@@ -450,26 +475,52 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                         </button>
                     )}
 
-                    {onOpenStory && query.trim().length >= 3 && (
+                    {storyIsPrimary && (
                         <button className="search-query-thread-cta" onClick={handleOpenStory}
                             data-tip="The cross-thread story: matching live threads, who says what, coverage gaps — press Enter">
                             <span className="search-query-thread-icon">◆</span>
                             <span className="search-query-thread-text">
-                                Open the story for <strong>“{query.trim()}”</strong>
+                                Open the story for <strong>“{trimmedQuery}”</strong>
                             </span>
                             <span className="search-query-thread-hint">↵ cross-thread narrative</span>
                         </button>
                     )}
 
-                    {onStartInvestigation && query.trim().length >= 8 && (
+                    {/* SECONDARY — the OTHER action for this query, still reachable
+                        but visually demoted so it doesn't compete with the lead. */}
+                    {intent === 'compound' && parsedQuery.countryCode && (
+                        <button className="search-query-thread-cta search-query-thread-cta--muted" onClick={handleGoToCountry}
+                            data-tip="Open the country brief for this place">
+                            <span className="search-query-thread-icon"><Flag code={parsedQuery.countryCode} title={parsedQuery.countryDisplay ?? parsedQuery.countryCode} /></span>
+                            <span className="search-query-thread-text">
+                                Go to <strong>{parsedQuery.countryDisplay}</strong>
+                            </span>
+                            <span className="search-query-thread-hint">country brief →</span>
+                        </button>
+                    )}
+
+                    {countryIsPrimary && canStory && (
+                        <button className="search-query-thread-cta search-query-thread-cta--muted" onClick={handleOpenStory}
+                            data-tip="The cross-thread story for this query — press Enter">
+                            <span className="search-query-thread-icon">◆</span>
+                            <span className="search-query-thread-text">
+                                Open the story for <strong>“{trimmedQuery}”</strong>
+                            </span>
+                            <span className="search-query-thread-hint">↵ cross-thread narrative</span>
+                        </button>
+                    )}
+
+                    {/* Investigation inline ONLY when the query clearly reads
+                        investigative; otherwise it lives behind "more". */}
+                    {canInvestigate && isInvestigative && (
                         <button
-                            className="search-query-thread-cta"
+                            className="search-query-thread-cta search-query-thread-cta--muted"
                             data-tip="Open a guided research plan in the Workbench"
-                            onClick={() => { onStartInvestigation(query.trim()); close() }}
+                            onClick={() => { onStartInvestigation!(trimmedQuery); close() }}
                         >
                             <span className="search-query-thread-icon">🔬</span>
                             <span className="search-query-thread-text">
-                                Start investigation for <strong>“{query.trim()}”</strong>
+                                Start investigation for <strong>“{trimmedQuery}”</strong>
                             </span>
                             <span className="search-query-thread-hint">workbench →</span>
                         </button>
@@ -508,6 +559,9 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                         </div>
                     )}
 
+                    {/* SECONDARY — the raw matches (threads/countries/people…),
+                        kept but visually quieter than the primary action. */}
+                    <div className="search-results-secondary">
                     {results?.live_threads && results.live_threads.length > 0 && (
                         <div className="search-section">
                             <div className="search-section-label">Live Threads</div>
@@ -618,23 +672,51 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                         </div>
                     )}
 
+                    </div>
+
                     {!hasResults && !loading && (
                         <div className="search-empty">No results for "{parsedQuery.topic}"</div>
                     )}
 
-                    {/* demoted (2026-07-04): the raw query-thread builder is a
-                        power tool, not the front door — the story CTA leads. */}
-                    {query.trim().length >= 2 && (
-                        <button className="search-query-thread-cta search-query-thread-cta--secondary"
-                            onClick={handleQueryThreadClick}
-                            style={{ opacity: 0.65, fontSize: '0.85em' }}>
-                            <span className="search-query-thread-icon">🧵</span>
-                            <span className="search-query-thread-text">
-                                Build a custom thread for <strong>“{query.trim()}”</strong>
-                            </span>
-                            <span className="search-query-thread-hint">power tool →</span>
-                        </button>
-                    )}
+                    {/* POWER TOOLS behind a subtle "more" — build-a-thread always,
+                        investigation unless it already leads inline. Demoted so the
+                        dropdown presents one obvious action, not a wall of CTAs. */}
+                    {trimmedQuery.length >= 2 && (() => {
+                        const showInvestigateInMore = canInvestigate && !isInvestigative
+                        return (
+                            <div className="search-more">
+                                {!showMore ? (
+                                    <button className="search-more-toggle" onClick={() => setShowMore(true)}
+                                        data-tip="Power tools: build a custom thread, start a Workbench investigation">
+                                        More actions ▾
+                                    </button>
+                                ) : (
+                                    <>
+                                        <button className="search-query-thread-cta search-query-thread-cta--muted"
+                                            onClick={handleQueryThreadClick}
+                                            data-tip="Build a custom Narrative Thread from the exact query text">
+                                            <span className="search-query-thread-icon">🧵</span>
+                                            <span className="search-query-thread-text">
+                                                Build a custom thread for <strong>“{trimmedQuery}”</strong>
+                                            </span>
+                                            <span className="search-query-thread-hint">power tool →</span>
+                                        </button>
+                                        {showInvestigateInMore && (
+                                            <button className="search-query-thread-cta search-query-thread-cta--muted"
+                                                onClick={() => { onStartInvestigation!(trimmedQuery); close() }}
+                                                data-tip="Open a guided research plan in the Workbench">
+                                                <span className="search-query-thread-icon">🔬</span>
+                                                <span className="search-query-thread-text">
+                                                    Start investigation for <strong>“{trimmedQuery}”</strong>
+                                                </span>
+                                                <span className="search-query-thread-hint">workbench →</span>
+                                            </button>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        )
+                    })()}
 
                 </div>
             )}
