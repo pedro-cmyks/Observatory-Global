@@ -20,9 +20,11 @@ generation time; the frozen pin core (lib/dossier.ts) never depends on this.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import math
+import os
 import time
 from typing import Any
 
@@ -41,7 +43,25 @@ SEM_EDGE_THRESHOLD = 0.88     # centroid cosine above which two stories "connect
 TOP_COUNTRIES = 4             # per-node top countries used for shared-country edges
 CACHE_TTL_S = 120
 
+# ── LLM edge verification (the correlation≠causation guard, alt. to whitening) ──
+# e5 centroid space is COMPRESSED: same-language stories score cosine ≥0.88 even
+# when they share no real link (Spanish Colombia politics ~ Spanish Peru politics
+# ~ Spanish football fan-fest). A semantic-only edge (passed the cosine gate but
+# has NO shared actor/country) is therefore SUSPECT. Instead of trusting the
+# number, we ask the insight LLM whether the two stories share a REAL connection
+# (same event / actors acting together / causal-institutional link) and DROP the
+# edge from clustering when the answer is "merely topically similar".
+# Only semantic-ONLY edges are verified — grounded edges (shared actor/place) skip.
+# Reversible: ATLAS_DOSSIER_EDGE_VERIFY=off leaves edges unverified (as before).
+EDGE_VERIFY_ENABLED = os.getenv("ATLAS_DOSSIER_EDGE_VERIFY", "on").lower() in (
+    "on", "1", "true", "yes",
+)
+EDGE_VERIFY_MAX = 24          # bound the LLM calls per request
+HEADLINES_PER_NODE = 6        # evidence headlines handed to the verifier per node
+VERDICT_TTL_S = 3600          # per-pair verdict cache (survives across requests)
+
 _cache: dict = {}
+_verdict_cache: dict = {}     # (base_a, base_b, days) -> (t, connected: bool, why)
 
 
 class ConnectionsRequest(BaseModel):
@@ -98,6 +118,88 @@ def _project_positions(centroids: dict[str, list[float]]) -> dict[str, dict]:
     norm = (xy - lo) / span
     return {ids[i]: {"x": round(float(norm[i][0]), 4), "y": round(float(norm[i][1]), 4)}
             for i in range(len(ids))}
+
+
+_EDGE_VERIFY_SYSTEM = (
+    "You are an intelligence analyst judging whether two news stories are REALLY "
+    "connected or merely look alike. You are given each story's label and a few of "
+    "its evidence headlines. Two stories are CONNECTED only if they are the same "
+    "event, or their actors are acting together / against each other, or there is a "
+    "direct causal or institutional link between them. They are NOT connected when "
+    "they merely share a topic, a country, a language, or a genre (e.g. two "
+    "unrelated elections, two unrelated protests, politics vs a sports fan event) — "
+    "high textual similarity from shared language/topic is NOT a real connection. "
+    "Be strict: when in doubt, answer false. Output STRICT JSON only, no prose: "
+    '{"connected": true|false, "why": "<=16 words"}.'
+)
+
+
+def _edge_verify_user(a_label: str, a_heads: list[str], b_label: str, b_heads: list[str]) -> str:
+    parts = [f"STORY A: {a_label}"]
+    for h in a_heads:
+        parts.append(f"  - {h}")
+    parts.append(f"STORY B: {b_label}")
+    for h in b_heads:
+        parts.append(f"  - {h}")
+    parts.append(
+        "\nDo A and B share a REAL connection (same event, actors acting together, "
+        "or a causal/institutional link), or are they merely topically/linguistically "
+        "similar?"
+    )
+    return "\n".join(parts)
+
+
+async def _verify_one_edge(
+    a_label: str, a_heads: list[str], b_label: str, b_heads: list[str],
+) -> tuple[bool | None, str | None]:
+    """(connected, why). connected is None when the LLM lane is down / unparseable
+    — the caller then leaves the edge unverified (degrade to absence)."""
+    text, _provider, _error = await generate_insight(
+        _EDGE_VERIFY_SYSTEM,
+        _edge_verify_user(a_label, a_heads, b_label, b_heads),
+        max_tokens=120,
+    )
+    if not text:
+        return None, None
+    parsed = _extract_json(text)
+    if not parsed or "connected" not in parsed:
+        return None, None
+    why = parsed.get("why")
+    return bool(parsed.get("connected")), (str(why)[:140] if why else None)
+
+
+async def _verify_semantic_edges(
+    items: list[tuple[dict, str, str]], agg: dict, labels: dict, days: int,
+) -> None:
+    """Concurrently judge each semantic-only edge; set edge['semantic_verified']
+    (True kept / False spurious) + edge['semantic_verify_why']. Cached per pair."""
+    async def _one(edge: dict, bi: str, bj: str) -> None:
+        a_heads = agg.get(bi, {}).get("headlines", [])[:5]
+        b_heads = agg.get(bj, {}).get("headlines", [])[:5]
+        if not a_heads or not b_heads:
+            return  # no evidence to judge on → leave unverified (null)
+        ck = (min(bi, bj), max(bi, bj), days)
+        cached = _verdict_cache.get(ck)
+        if cached and time.monotonic() - cached[0] < VERDICT_TTL_S:
+            edge["semantic_verified"] = cached[1]
+            if cached[2]:
+                edge["semantic_verify_why"] = cached[2]
+            return
+        a_label = (labels.get(bi) or {}).get("label") or bi
+        b_label = (labels.get(bj) or {}).get("label") or bj
+        connected, why = await _verify_one_edge(a_label, a_heads, b_label, b_heads)
+        if connected is None:
+            return  # lane down / unparseable → stays unverified
+        edge["semantic_verified"] = connected
+        if why:
+            edge["semantic_verify_why"] = why
+        _verdict_cache[ck] = (time.monotonic(), connected, why)
+
+    tasks = [_one(e, bi, bj) for (e, bi, bj) in items[:EDGE_VERIFY_MAX]]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    for r in results:
+        if isinstance(r, Exception):
+            logger.warning("dossier edge verify task failed: %s", r)
 
 
 @router.post("/connections")
@@ -213,6 +315,7 @@ async def dossier_connections(req: ConnectionsRequest):
                     WITH ranked AS (
                         SELECT tm.topic_id, tm.role,
                                s.country_code, s.source_lang, s.persons,
+                               s.headline, s.source_name,
                                COALESCE(s.nlp_sentiment, s.sentiment) AS sentiment,
                                s.timestamp,
                                ROW_NUMBER() OVER (
@@ -227,7 +330,7 @@ async def dossier_connections(req: ConnectionsRequest):
                           AND tm.assigned_at > NOW() - INTERVAL '{int(req.days)} days'
                     )
                     SELECT topic_id, role, country_code, source_lang, persons,
-                           sentiment, timestamp
+                           headline, source_name, sentiment, timestamp
                     FROM ranked WHERE rn <= {ROWS_PER_TOPIC}
                     """,
                     underlying,
@@ -262,6 +365,7 @@ async def dossier_connections(req: ConnectionsRequest):
     agg: dict[str, dict] = {k: {
         "country": {}, "lang": {}, "person": {}, "role": {},
         "sent_sum": 0.0, "sent_n": 0, "day": {}, "n": 0,
+        "headlines": [],   # most-recent evidence headlines for the LLM verifier
     } for k in display_keys}
     facet_agg: dict[tuple, dict] = {}   # (umbrella_key, facet) -> {country,n,topics}
     person_docs: dict[str, set] = {}
@@ -281,6 +385,11 @@ async def dossier_connections(req: ConnectionsRequest):
             fa["topics"].add(tid)
         if role == "evidence":
             a["n"] += 1
+            if len(a["headlines"]) < HEADLINES_PER_NODE:
+                h = (row["headline"] or "").strip()
+                if h:
+                    src = (row["source_name"] or "").strip()
+                    a["headlines"].append(f"{h} — {src}" if src else h)
             cc = (row["country_code"] or "").strip().upper()
             if cc:
                 a["country"][cc] = a["country"].get(cc, 0) + 1
@@ -392,6 +501,7 @@ async def dossier_connections(req: ConnectionsRequest):
 
     # ── Edges ────────────────────────────────────────────────────────────────
     edges: list[dict] = []
+    to_verify: list[tuple[dict, str, str]] = []   # (edge, base_a, base_b) semantic-only
     bases = [n["base_id"] for n in nodes]
     top_country_sets = {
         n["base_id"]: {c["cc"] for c in n["countries"][:TOP_COUNTRIES]} for n in nodes
@@ -426,7 +536,10 @@ async def dossier_connections(req: ConnectionsRequest):
                 weight = max(weight, min(0.98, 0.65 + 0.15 * rarity))
             if not basis:
                 continue
-            edges.append({
+            # semantic_verified: None = not applicable (edge already grounded by a
+            # shared actor/place) OR verification did not run. True/False set below
+            # for semantic-ONLY edges once the LLM judge answers.
+            edge = {
                 "a": node_by_base[bi]["id"],
                 "b": node_by_base[bj]["id"],
                 "basis": basis,
@@ -434,7 +547,15 @@ async def dossier_connections(req: ConnectionsRequest):
                 "semantic_sim": sim,
                 "shared_countries": shared_countries,
                 "shared_persons": shared_persons,
-            })
+                "semantic_verified": None,
+            }
+            edges.append(edge)
+            if semantic and not shared_countries and not shared_persons:
+                to_verify.append((edge, bi, bj))
+
+    # ── Verify semantic-only edges with the LLM judge (drop the spurious ones) ──
+    if EDGE_VERIFY_ENABLED and to_verify:
+        await _verify_semantic_edges(to_verify, agg, labels, int(req.days))
 
     edges.sort(key=lambda e: -e["weight"])
 
@@ -549,6 +670,13 @@ async def dossier_connections(req: ConnectionsRequest):
             "semantic_threshold": SEM_EDGE_THRESHOLD,
             "distinctive_person_df_max": distinct_df_max,
             "position_basis": "PCA top-2 of pinned e5 centroids — approximate; edges are exact",
+            "edge_verify": {
+                "enabled": EDGE_VERIFY_ENABLED,
+                # semantic-only edges the LLM judged (kept vs dropped as spurious).
+                "checked": sum(1 for e in edges if e.get("semantic_verified") is not None),
+                "kept": sum(1 for e in edges if e.get("semantic_verified") is True),
+                "dropped": sum(1 for e in edges if e.get("semantic_verified") is False),
+            },
         },
     }
     _cache[cache_key] = (time.monotonic(), payload)

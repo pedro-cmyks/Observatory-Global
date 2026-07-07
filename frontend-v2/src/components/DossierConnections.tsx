@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   fetchConnections, deriveClusters, layoutInvestigativeUniverse, edgeReason, deOverlapLabels,
-  edgeStrength, clusterStrength, sharedBasisNames,
+  edgeStrength, clusterStrength, sharedBasisNames, activeEdges,
   type ConnectionsData, type ConnectionEdge, type ClusterResult,
   type ConnectionNeighbor, type LabelItem,
 } from '../lib/dossierConnections'
@@ -23,6 +23,10 @@ import './DossierConnections.css'
 // stronger connection (that is the false-confidence bug this whole pass removes).
 const STRONG_EDGE = '#1D9E75'
 const WEAK_EDGE = '#64748b'
+// A semantic-only link the LLM judge CONFIRMED as real: muted teal, still dashed
+// (no shared actor/place, so not a solid "confirmed" edge) but clearly set apart
+// from an unverified/raw-cosine dashed slate line.
+const VERIFIED_EDGE = '#4a9d8e'
 
 const UNIVERSE_W = 640
 // Taller (not wider) — width scales the whole viewBox to the container, so a
@@ -55,13 +59,21 @@ export function DossierConnections(
     onData?: (data: ConnectionsData, cluster: ClusterResult) => void
   },
 ) {
-  const [data, setData] = useState<ConnectionsData | null | undefined>(undefined)
+  const [raw, setRaw] = useState<ConnectionsData | null | undefined>(undefined)
 
   useEffect(() => {
     let alive = true
-    fetchConnections(inv).then(d => { if (alive) setData(d) }).catch(() => { if (alive) setData(null) })
+    fetchConnections(inv).then(d => { if (alive) setRaw(d) }).catch(() => { if (alive) setRaw(null) })
     return () => { alive = false }
   }, [inv])
+
+  // Drop the semantic-only edges the LLM judge refuted (semantic_verified===false)
+  // BEFORE clustering/verdict/layout — a spurious similarity must never union two
+  // stories into one narrative. Verified (true) + unverified (null) survive.
+  const data = useMemo<ConnectionsData | null | undefined>(
+    () => (raw ? { ...raw, edges: activeEdges(raw.edges) } : raw),
+    [raw],
+  )
 
   const cluster = useMemo<ClusterResult | null>(
     () => (data ? deriveClusters(data.nodes, data.edges) : null),
@@ -72,9 +84,11 @@ export function DossierConnections(
   onDataRef.current = onData
   useEffect(() => {
     if (data && cluster) {
+      const ev = (data.meta?.edge_verify ?? null) as { dropped?: number } | null
       track('dossier_connections_measured', {
         nodes: data.nodes.length, edges: data.edges.length,
         clusters: cluster.clusters.length, isolated: cluster.isolated.length,
+        edges_dropped_spurious: ev?.dropped ?? 0,
       })
       onDataRef.current?.(data, cluster)
     }
@@ -93,7 +107,7 @@ export function DossierConnections(
 
   return (
     <div className="dcx">
-      <p className="dossier-meta" data-tip="Semantic centroid proximity, shared country, and rarity-weighted shared actors — measured now, not frozen at pin time.">
+      <p className="dossier-meta" data-tip="Semantic centroid proximity, shared country, and rarity-weighted shared actors — measured now, not frozen at pin time. Semantic-only links are LLM-verified before they count.">
         measured at generation time · {data.nodes.length} stories · {data.edges.length} links
       </p>
 
@@ -374,6 +388,7 @@ function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; clust
       <div className="dcx-howto dcx-edge-legend">
         <span><i className="dcx-k-strong-edge" /> solid = confirmed link (shared actor/place)</span>
         <span><i className="dcx-k-weak-edge" /> dashed = similarity only, not a confirmed link</span>
+        <span style={{ color: VERIFIED_EDGE }}>✓ = similarity link the LLM judge verified as real (spurious ones dropped)</span>
         <span>line label = the reason (shared name/country, or ≈cosine if similarity-only)</span>
       </div>
       <svg viewBox={`0 0 ${UNIVERSE_W} ${UNIVERSE_H}`} className="dcx-universe" role="img" aria-label="Investigative universe">
@@ -394,15 +409,19 @@ function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; clust
           if (!a || !b) return null
           const dim = hover && e.a !== hover && e.b !== hover
           const strong = edgeStrength(e) === 'strong'
-          const color = strong ? STRONG_EDGE : WEAK_EDGE
-          const width = strong ? 1.4 + e.weight * 1.8 : 0.75
-          const opacity = dim ? (strong ? 0.10 : 0.06) : (strong ? 0.55 + e.weight * 0.35 : 0.30)
-          const tag = edgeTag(e)
+          // semantic-only link the LLM judge confirmed → distinct verified style.
+          const verifiedWeak = !strong && e.semantic_verified === true
+          const color = strong ? STRONG_EDGE : (verifiedWeak ? VERIFIED_EDGE : WEAK_EDGE)
+          const width = strong ? 1.4 + e.weight * 1.8 : (verifiedWeak ? 1.0 : 0.75)
+          const opacity = dim
+            ? (strong ? 0.10 : 0.06)
+            : (strong ? 0.55 + e.weight * 0.35 : (verifiedWeak ? 0.5 : 0.30))
+          const tag = (verifiedWeak ? '✓ ' : '') + edgeTag(e)
           return (
             <g key={i}>
               <line x1={a.px} y1={a.py} x2={b.px} y2={b.py} stroke={color}
                 strokeWidth={width} strokeOpacity={opacity}
-                strokeDasharray={strong ? undefined : '3 3'} />
+                strokeDasharray={strong ? undefined : (verifiedWeak ? '6 3' : '3 3')} />
               {!dim && tag && (
                 <text x={(a.px + b.px) / 2} y={(a.py + b.py) / 2 - 2} textAnchor="middle"
                   className="dcx-edge-tag" fill={color}>{tag}</text>

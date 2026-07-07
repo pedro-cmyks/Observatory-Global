@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   deriveClusters, layoutInvestigativeUniverse, edgeReason, connectionsSummaryLines,
-  connectionTopicIds, deOverlapLabels,
+  connectionTopicIds, deOverlapLabels, activeEdges,
   edgeStrength, clusterStrength, sharedBasisNames,
   type ConnectionNode, type ConnectionEdge, type ConnectionsData, type LabelItem,
 } from './dossierConnections'
@@ -18,6 +18,26 @@ function node(id: string, over: Partial<ConnectionNode> = {}): ConnectionNode {
 function edge(a: string, b: string, over: Partial<ConnectionEdge> = {}): ConnectionEdge {
   return { a, b, basis: ['semantic'], weight: 0.9, semantic_sim: 0.9, shared_countries: [], shared_persons: [], ...over }
 }
+
+describe('activeEdges (LLM edge-verify guard)', () => {
+  it('drops semantic-only edges the judge refuted, keeps verified + unverified + grounded', () => {
+    const spurious = edge('a', 'b', { semantic_verified: false })
+    const verified = edge('c', 'd', { semantic_verified: true })
+    const unverified = edge('e', 'f', { semantic_verified: null })
+    const grounded = edge('g', 'h', { basis: ['shared_person'], shared_persons: ['fujimori'] })
+    const kept = activeEdges([spurious, verified, unverified, grounded])
+    expect(kept).toEqual([verified, unverified, grounded])
+  })
+
+  it('a refuted semantic-only edge no longer unions two stories into one cluster', () => {
+    const nodes = [node('a'), node('b')]
+    // the only link between a and b is a spurious same-language similarity
+    const edges = activeEdges([edge('a', 'b', { semantic_verified: false })])
+    const r = deriveClusters(nodes, edges)
+    expect(r.clusters.length).toBe(0)
+    expect(r.isolated.map(n => n.id).sort()).toEqual(['a', 'b'])
+  })
+})
 
 describe('deriveClusters', () => {
   it('groups connected pins into sub-narratives and flags isolated ones', () => {
@@ -134,6 +154,9 @@ describe('deOverlapLabels', () => {
 describe('edgeReason', () => {
   it('describes the strongest available basis', () => {
     expect(edgeReason(edge('a', 'b', { semantic_sim: 0.91 }))).toContain('semantic 91%')
+    // a verified semantic-only link says it was LLM-checked
+    expect(edgeReason(edge('a', 'b', { semantic_sim: 0.91, semantic_verified: true, semantic_verify_why: 'same summit' })))
+      .toContain('LLM-verified: same summit')
     expect(edgeReason(edge('a', 'b', { basis: ['shared_country'], semantic_sim: null, shared_countries: ['CO'] }))).toContain('↔ CO')
     expect(edgeReason(edge('a', 'b', { basis: ['shared_person'], semantic_sim: null, shared_persons: ['petro'] }))).toContain('petro')
   })

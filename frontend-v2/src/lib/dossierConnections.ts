@@ -49,6 +49,13 @@ export interface ConnectionEdge {
   semantic_sim: number | null
   shared_countries: string[]
   shared_persons: string[]
+  // LLM edge verification of SEMANTIC-ONLY links (the correlation≠causation guard,
+  // an alternative to embedding whitening). null = not applicable (edge already
+  // grounded by a shared actor/place) or the verifier didn't run; true = the LLM
+  // judge confirmed a real connection; false = spurious similarity (same-language/
+  // topic artifact) → EXCLUDED from clustering + verdict by `activeEdges`.
+  semantic_verified?: boolean | null
+  semantic_verify_why?: string
 }
 
 export interface ConnectionDistributions {
@@ -109,6 +116,15 @@ export async function fetchConnections(
   } catch {
     return null // degrades to absence — the frozen report stands alone
   }
+}
+
+/** Edges that count as real connections: everything EXCEPT semantic-only links
+ *  the LLM judge rejected as spurious (semantic_verified === false). Grounded
+ *  edges (shared actor/place, semantic_verified null) and LLM-confirmed semantic
+ *  links (true) both survive; unverified semantic links (null, lane down) survive
+ *  too — we only ever DROP an edge the judge actively refuted. */
+export function activeEdges(edges: ConnectionEdge[]): ConnectionEdge[] {
+  return edges.filter(e => e.semantic_verified !== false)
 }
 
 // ── Pure clustering ─────────────────────────────────────────────────────────
@@ -341,6 +357,12 @@ export function edgeReason(e: ConnectionEdge): string {
   }
   if (e.shared_countries.length) parts.push(`↔ ${e.shared_countries.join(', ')}`)
   if (e.shared_persons.length) parts.push(`↔ ${e.shared_persons.slice(0, 2).join(', ')}`)
+  // A semantic-only link the LLM judge confirmed → say so, so the report-only
+  // reader knows this dashed link was checked, not just a raw cosine.
+  const semanticOnly = e.shared_countries.length === 0 && e.shared_persons.length === 0
+  if (semanticOnly && e.semantic_verified === true) {
+    parts.push(e.semantic_verify_why ? `LLM-verified: ${e.semantic_verify_why}` : 'LLM-verified real link')
+  }
   return parts.join(' · ') || e.basis.map(b => BASIS_LABEL[b]).join(' · ')
 }
 
@@ -394,6 +416,15 @@ export function connectionsSummaryLines(
   }
   if (data.unresolved.length) {
     lines.push(`- Not in the relation graph (no story centroid): ${data.unresolved.join(', ')}.`)
+  }
+  const ev = (data.meta?.edge_verify ?? null) as
+    | { enabled?: boolean; checked?: number; kept?: number; dropped?: number }
+    | null
+  if (ev && ev.enabled && (ev.checked ?? 0) > 0) {
+    lines.push(
+      `- Semantic-only links LLM-verified: ${ev.checked} checked, ${ev.kept ?? 0} confirmed real, `
+      + `${ev.dropped ?? 0} dropped as spurious similarity (same-language/topic artifact).`,
+    )
   }
   return lines
 }
