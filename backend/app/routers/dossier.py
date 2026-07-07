@@ -123,28 +123,35 @@ def _project_positions(centroids: dict[str, list[float]]) -> dict[str, dict]:
 _EDGE_VERIFY_SYSTEM = (
     "You are an intelligence analyst judging whether two news stories are REALLY "
     "connected or merely look alike. You are given each story's label and a few of "
-    "its evidence headlines. Two stories are CONNECTED only if they are the same "
-    "event, or their actors are acting together / against each other, or there is a "
-    "direct causal or institutional link between them. They are NOT connected when "
-    "they merely share a topic, a country, a language, or a genre (e.g. two "
+    "its actual evidence headlines. Two stories are CONNECTED only if they are the "
+    "same event, or their actors are acting together / against each other, or there "
+    "is a direct causal or institutional link between them. They are NOT connected "
+    "when they merely share a topic, a country, a language, or a genre (e.g. two "
     "unrelated elections, two unrelated protests, politics vs a sports fan event) — "
-    "high textual similarity from shared language/topic is NOT a real connection. "
+    "high textual similarity from shared language/topic is NOT a real connection.\n"
+    "CRITICAL: judge on the EVIDENCE HEADLINES, not the labels. A label is a "
+    "best-effort title that MAY BE WRONG or conflate several unrelated events. If a "
+    "story's headlines are actually about different actors/events than its own "
+    "label, judge by what the HEADLINES say and IGNORE the label. In particular, a "
+    "match that rests only on a name appearing in one story's LABEL while that same "
+    "story's HEADLINES never mention it is NOT a real connection — answer false.\n"
     "Be strict: when in doubt, answer false. Output STRICT JSON only, no prose: "
-    '{"connected": true|false, "why": "<=16 words"}.'
+    '{"connected": true|false, "why": "<=16 words, cite the headline evidence"}.'
 )
 
 
 def _edge_verify_user(a_label: str, a_heads: list[str], b_label: str, b_heads: list[str]) -> str:
-    parts = [f"STORY A: {a_label}"]
+    parts = [f"STORY A label (may be inaccurate): {a_label}", "A evidence headlines:"]
     for h in a_heads:
         parts.append(f"  - {h}")
-    parts.append(f"STORY B: {b_label}")
+    parts.append(f"STORY B label (may be inaccurate): {b_label}")
+    parts.append("B evidence headlines:")
     for h in b_heads:
         parts.append(f"  - {h}")
     parts.append(
-        "\nDo A and B share a REAL connection (same event, actors acting together, "
-        "or a causal/institutional link), or are they merely topically/linguistically "
-        "similar?"
+        "\nBased on the EVIDENCE HEADLINES (not the labels), do A and B share a REAL "
+        "connection (same event, actors acting together, or a causal/institutional "
+        "link), or are they merely topically/linguistically similar?"
     )
     return "\n".join(parts)
 
