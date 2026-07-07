@@ -45,6 +45,10 @@ _cache: dict = {}
 class ConnectionsRequest(BaseModel):
     topic_ids: list[str] = Field(..., min_length=1, max_length=64)
     days: int = Field(30, ge=7, le=90)
+    # Constellation assembly (2026-07-06): when a pin is a child of an umbrella
+    # (an assembled big story), fold it into ONE umbrella node exposing typed
+    # sub-facets, instead of N noisy near-duplicate nodes. Off = legacy flat view.
+    collapse_umbrellas: bool = True
 
 
 def _base_topic_id(raw: str) -> str:
@@ -122,82 +126,166 @@ async def dossier_connections(req: ConnectionsRequest):
     dyn_ids = [int(b[len("dynamic-topic-"):]) for b in base_ids
                if b.startswith("dynamic-topic-") and b[len("dynamic-topic-"):].isdigit()]
 
+    def _tid(i: int) -> str:
+        return f"dynamic-topic-{i}"
+
     try:
         async with db.pool.acquire() as conn:
             await conn.execute("SET statement_timeout = 20000")
 
-            centroid_rows = []
-            label_rows = []
+            pin_rows = []
             if dyn_ids:
-                centroid_rows = await conn.fetch(
+                pin_rows = await conn.fetch(
                     """
-                    SELECT id, label, category, centroid_vec
+                    SELECT id, label, category, centroid_vec, parent_id,
+                           is_umbrella, facet
                     FROM dynamic_topics
-                    WHERE id = ANY($1::int[]) AND centroid_vec IS NOT NULL
+                    WHERE id = ANY($1::int[])
                     """,
                     dyn_ids,
                 )
-                label_rows = await conn.fetch(
-                    "SELECT id, label, category FROM dynamic_topics WHERE id = ANY($1::int[])",
-                    dyn_ids,
-                )
 
-            # Capped member rows per topic/role → all the aggregations.
-            member_rows = await conn.fetch(
-                f"""
-                WITH ranked AS (
-                    SELECT tm.topic_id, tm.role,
-                           s.country_code, s.source_lang, s.persons,
-                           COALESCE(s.nlp_sentiment, s.sentiment) AS sentiment,
-                           s.timestamp,
-                           ROW_NUMBER() OVER (
-                               PARTITION BY tm.topic_id, tm.role
-                               ORDER BY s.timestamp DESC
-                           ) AS rn
-                    FROM topic_members tm
-                    JOIN signals_v2 s ON s.id = tm.signal_id
-                    WHERE tm.topic_id = ANY($1::text[])
-                      AND tm.engine_version = 'v1-compat'
-                      AND tm.role IN ('evidence','discussion','mood')
-                      AND tm.assigned_at > NOW() - INTERVAL '{int(req.days)} days'
+            # ── Constellation assembly: resolve each pin to a DISPLAY node ──────
+            # A pinned CHILD of an umbrella (parent_id) folds into that umbrella;
+            # a pinned umbrella stays; anything else is a standalone node. We then
+            # pull the umbrella's FULL child set so the node shows the assembled
+            # story (all facets), not just the pinned fragments.
+            pin_meta = {int(r["id"]): r for r in pin_rows}
+            umbrella_ids: set[int] = set()      # umbrellas to render (collapsed)
+            standalone_bases: list[str] = []    # non-umbrella pins with no parent
+            collapsed_from: dict[int, list[str]] = {}  # umbrella id -> pin raw ids
+            unresolved: list[str] = []
+
+            for base in base_ids:
+                raw = base_to_raw[base]
+                if not base.startswith("dynamic-topic-"):
+                    standalone_bases.append(base)
+                    continue
+                iid = int(base[len("dynamic-topic-"):]) if base[len("dynamic-topic-"):].isdigit() else None
+                meta = pin_meta.get(iid) if iid is not None else None
+                if meta is None:
+                    standalone_bases.append(base)  # aggregate-only; may resolve via members
+                    continue
+                if req.collapse_umbrellas and meta["is_umbrella"]:
+                    umbrella_ids.add(iid)
+                    collapsed_from.setdefault(iid, []).append(raw)
+                elif req.collapse_umbrellas and meta["parent_id"]:
+                    up = int(meta["parent_id"])
+                    umbrella_ids.add(up)
+                    collapsed_from.setdefault(up, []).append(raw)
+                else:
+                    standalone_bases.append(base)
+
+            # Umbrella rows (label/category/centroid) + their FULL children.
+            umb_rows = {}
+            child_rows = []
+            if umbrella_ids:
+                for r in await conn.fetch(
+                    "SELECT id, label, category, centroid_vec FROM dynamic_topics "
+                    "WHERE id = ANY($1::int[])", list(umbrella_ids),
+                ):
+                    umb_rows[int(r["id"])] = r
+                child_rows = await conn.fetch(
+                    "SELECT id, label, category, facet, parent_id FROM dynamic_topics "
+                    "WHERE parent_id = ANY($1::int[])", list(umbrella_ids),
                 )
-                SELECT topic_id, role, country_code, source_lang, persons,
-                       sentiment, timestamp
-                FROM ranked WHERE rn <= {ROWS_PER_TOPIC}
-                """,
-                base_ids,
-            )
+            children_of: dict[int, list] = {}
+            child_topic_to_umb: dict[str, int] = {}
+            child_facet: dict[str, str] = {}
+            child_label: dict[str, str] = {}
+            for r in child_rows:
+                up = int(r["parent_id"])
+                children_of.setdefault(up, []).append(r)
+                cs = _tid(int(r["id"]))
+                child_topic_to_umb[cs] = up
+                child_facet[cs] = r["facet"] or "core"
+                child_label[cs] = r["label"]
+
+            # Underlying topic ids to aggregate = all umbrella children + standalones.
+            underlying: list[str] = list(child_topic_to_umb.keys()) + standalone_bases
+
+            member_rows = []
+            if underlying:
+                member_rows = await conn.fetch(
+                    f"""
+                    WITH ranked AS (
+                        SELECT tm.topic_id, tm.role,
+                               s.country_code, s.source_lang, s.persons,
+                               COALESCE(s.nlp_sentiment, s.sentiment) AS sentiment,
+                               s.timestamp,
+                               ROW_NUMBER() OVER (
+                                   PARTITION BY tm.topic_id, tm.role
+                                   ORDER BY s.timestamp DESC
+                               ) AS rn
+                        FROM topic_members tm
+                        JOIN signals_v2 s ON s.id = tm.signal_id
+                        WHERE tm.topic_id = ANY($1::text[])
+                          AND tm.engine_version = 'v1-compat'
+                          AND tm.role IN ('evidence','discussion','mood')
+                          AND tm.assigned_at > NOW() - INTERVAL '{int(req.days)} days'
+                    )
+                    SELECT topic_id, role, country_code, source_lang, persons,
+                           sentiment, timestamp
+                    FROM ranked WHERE rn <= {ROWS_PER_TOPIC}
+                    """,
+                    underlying,
+                )
     except Exception as exc:
         logger.error("dossier connections query failed: %s", exc)
         return {**empty, "reason": "error"}
 
-    labels: dict[str, dict] = {}
-    for r in label_rows:
-        labels[f"dynamic-topic-{r['id']}"] = {"label": r["label"], "category": r["category"]}
-    centroids: dict[str, list[float]] = {}
-    for r in centroid_rows:
-        centroids[f"dynamic-topic-{r['id']}"] = [float(x) for x in r["centroid_vec"]]
+    # display-node key: umbrellas keyed by their own dynamic-topic id; standalones
+    # by their base id. Member rows map to a display key via child→umbrella folding.
+    def _display_key(topic_id: str) -> str:
+        up = child_topic_to_umb.get(topic_id)
+        return _tid(up) if up is not None else topic_id
 
-    # ── Aggregate member rows per base topic id ──────────────────────────────
-    agg: dict[str, dict] = {b: {
+    labels: dict[str, dict] = {}
+    centroids: dict[str, list[float]] = {}
+    for uid, r in umb_rows.items():
+        k = _tid(uid)
+        labels[k] = {"label": r["label"], "category": r["category"]}
+        if r["centroid_vec"] is not None:
+            centroids[k] = [float(x) for x in r["centroid_vec"]]
+    for base in standalone_bases:
+        r = pin_meta.get(int(base[len("dynamic-topic-"):])) if base.startswith("dynamic-topic-") and base[len("dynamic-topic-"):].isdigit() else None
+        if r is not None:
+            labels[base] = {"label": r["label"], "category": r["category"]}
+            if r["centroid_vec"] is not None:
+                centroids[base] = [float(x) for x in r["centroid_vec"]]
+
+    display_keys = [_tid(u) for u in umbrella_ids] + standalone_bases
+
+    # ── Aggregate member rows per DISPLAY node + per (umbrella, facet) ─────────
+    agg: dict[str, dict] = {k: {
         "country": {}, "lang": {}, "person": {}, "role": {},
         "sent_sum": 0.0, "sent_n": 0, "day": {}, "n": 0,
-    } for b in base_ids}
-    # Person document-frequency across the pin set → rarity weighting.
+    } for k in display_keys}
+    facet_agg: dict[tuple, dict] = {}   # (umbrella_key, facet) -> {country,n,topics}
     person_docs: dict[str, set] = {}
 
     for row in member_rows:
         tid = row["topic_id"]
-        a = agg.get(tid)
+        key = _display_key(tid)
+        a = agg.get(key)
         if a is None:
             continue
         role = row["role"]
         a["role"][role] = a["role"].get(role, 0) + 1
+        fkey = None
+        if tid in child_topic_to_umb:
+            fkey = (key, child_facet.get(tid, "core"))
+            fa = facet_agg.setdefault(fkey, {"country": {}, "n": 0, "topics": set()})
+            fa["topics"].add(tid)
         if role == "evidence":
             a["n"] += 1
             cc = (row["country_code"] or "").strip().upper()
             if cc:
                 a["country"][cc] = a["country"].get(cc, 0) + 1
+                if fkey:
+                    facet_agg[fkey]["country"][cc] = facet_agg[fkey]["country"].get(cc, 0) + 1
+            if fkey:
+                facet_agg[fkey]["n"] += 1
             lang = (row["source_lang"] or "").strip().lower()
             if lang and lang != "xx":
                 a["lang"][lang] = a["lang"].get(lang, 0) + 1
@@ -213,33 +301,66 @@ async def dossier_connections(req: ConnectionsRequest):
                 name = (p or "").strip().lower()
                 if name:
                     a["person"][name] = a["person"].get(name, 0) + 1
-                    person_docs.setdefault(name, set()).add(tid)
+                    person_docs.setdefault(name, set()).add(key)
 
     def _top(counts: dict, k: int) -> list:
         return sorted(counts.items(), key=lambda kv: -kv[1])[:k]
 
     n_pins = len(base_ids)
-    # A person is DISTINCTIVE if it appears in a minority of the pinned stories
-    # (df ≤ min(3, ~40% of pins)) — the rarity gate that stops a ubiquitous
-    # actor from linking unrelated pins.
-    distinct_df_max = max(1, min(3, math.ceil(0.4 * n_pins)))
+    # A person is DISTINCTIVE if it appears in a minority of the display nodes
+    # (df ≤ min(3, ~40%)) — the rarity gate that stops a ubiquitous actor from
+    # linking unrelated nodes.
+    distinct_df_max = max(1, min(3, math.ceil(0.4 * max(1, len(display_keys)))))
+
+    def _facets_for(ukey: str, uid: int) -> list[dict]:
+        """Typed sub-facets of an umbrella: the assembled constellation by angle."""
+        out = []
+        for (k, facet), fa in facet_agg.items():
+            if k != ukey:
+                continue
+            out.append({
+                "facet": facet,
+                "topic_count": len(fa["topics"]),
+                "evidence_n": fa["n"],
+                "countries": [{"cc": c, "n": v} for c, v in _top(fa["country"], 5)],
+                "topics": [{"id": t, "label": child_label.get(t, t)}
+                           for t in sorted(fa["topics"],
+                                           key=lambda t: -facet_agg[(ukey, facet)]["n"])][:8],
+            })
+        # facets with children but no member rows in-window still exist — include them
+        seen = {f["facet"] for f in out}
+        by_facet: dict[str, list] = {}
+        for r in children_of.get(uid, []):
+            by_facet.setdefault(r["facet"] or "core", []).append(r)
+        for facet, rs in by_facet.items():
+            if facet in seen:
+                continue
+            out.append({
+                "facet": facet, "topic_count": len(rs), "evidence_n": 0,
+                "countries": [],
+                "topics": [{"id": _tid(int(r["id"])), "label": r["label"]} for r in rs[:8]],
+            })
+        out.sort(key=lambda f: (-f["evidence_n"], -f["topic_count"]))
+        return out
 
     nodes = []
-    unresolved = []
-    for base in base_ids:
-        raw_id = base_to_raw[base]
-        a = agg[base]
-        meta = labels.get(base, {})
-        if a["n"] == 0 and base not in centroids and not meta:
-            unresolved.append(raw_id)
+    for key in display_keys:
+        a = agg[key]
+        meta = labels.get(key, {})
+        is_umb = key in {_tid(u) for u in umbrella_ids}
+        if a["n"] == 0 and key not in centroids and not meta and not is_umb:
+            # standalone that resolved to nothing
+            unresolved.append(base_to_raw.get(key, key))
             continue
+        uid = int(key[len("dynamic-topic-"):]) if is_umb else None
         top_persons = [p for p, _ in _top(a["person"], 10)]
-        nodes.append({
-            "id": raw_id,
-            "base_id": base,
-            "label": meta.get("label") or raw_id,
+        node = {
+            "id": (base_to_raw.get(key) or key) if not is_umb else key,
+            "base_id": key,
+            "label": meta.get("label") or key,
             "category": meta.get("category"),
-            "pos": None,  # filled below when a centroid exists
+            "is_umbrella": is_umb,
+            "pos": None,
             "countries": [{"cc": c, "n": n} for c, n in _top(a["country"], 6)],
             "persons": top_persons,
             "languages": [{"lang": l, "n": n} for l, n in _top(a["lang"], 6)],
@@ -250,9 +371,14 @@ async def dossier_connections(req: ConnectionsRequest):
                 "mood": a["role"].get("mood", 0),
             },
             "timeline": [{"day": d, "n": a["day"][d]} for d in sorted(a["day"])],
-            "has_centroid": base in centroids,
+            "has_centroid": key in centroids,
             "n": a["n"],
-        })
+        }
+        if is_umb:
+            node["child_count"] = len(children_of.get(uid, []))
+            node["collapsed_from"] = collapsed_from.get(uid, [])
+            node["facets"] = _facets_for(key, uid)
+        nodes.append(node)
 
     node_by_base = {n["base_id"]: n for n in nodes}
 
@@ -337,7 +463,8 @@ async def dossier_connections(req: ConnectionsRequest):
     }
 
     payload = {
-        "contract": "dossier-connections-v0",
+        # v1: umbrella collapse + typed facets (constellation assembly, 2026-07-06).
+        "contract": "dossier-connections-v1",
         "measured_at": __import__("datetime").datetime.utcnow().isoformat() + "Z",
         "nodes": nodes,
         "edges": edges,
@@ -346,6 +473,8 @@ async def dossier_connections(req: ConnectionsRequest):
         "meta": {
             "pin_count": n_pins,
             "resolved": len(nodes),
+            "umbrellas_collapsed": len(umbrella_ids),
+            "collapse_umbrellas": req.collapse_umbrellas,
             "semantic_threshold": SEM_EDGE_THRESHOLD,
             "distinctive_person_df_max": distinct_df_max,
             "position_basis": "PCA top-2 of pinned e5 centroids — approximate; edges are exact",

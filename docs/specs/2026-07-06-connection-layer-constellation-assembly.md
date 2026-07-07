@@ -79,6 +79,43 @@ coverage distributions. That task delivers the L3 half; it should connect on
 - Never fabricate a connection; never suppress one either — surface the profiles
   and let the analyst find the unimagined link.
 
+## Execution status — engine side SHIPPED (2026-07-06)
+
+§A (engine — assemble the constellation) built + verified against live prod DB:
+- **mig 072** `dynamic_topics.facet` — event-internal narrative role of an umbrella
+  child (distinct from `category` = R3 crisis class).
+- **`backend/scripts/assemble_constellation.py`** — per-umbrella: (1) ATTACH ORPHANS
+  by centroid cosine ≥0.93 GATED on sharing a discriminating SUBJECT token (generic
+  hazard words like "earthquake" excluded via `_GENERIC_EVENT`, so Lakonia/Philippines/
+  Mexico quakes never merge in — e5 space is compressed p50 0.94, cosine alone floods
+  628); (2) RELABEL a facet-polluted umbrella to the canonical event stem; (3) TYPE
+  each child facet (lexical, multilingual) — death-toll / foreign-victims / rescues /
+  international-aid / government-response / aftermath. Reversible (`facet=NULL`).
+  Broad `--apply` gated behind `--all` (dry-run showed sports/crime over-attach +
+  label breakage; per-umbrella review is the safe default).
+- **Applied to umbrella 1837**: "Venezuela Earthquake Death Toll" (a facet label) →
+  **"Venezuela Earthquakes"**; +9 stragglers attached (522 ONU afectados, 1686 death
+  toll 3,342, 258 US aid, 677 Portuguese repatriation, 520 Papa solidaridad…the
+  international-reaction dimension); **35 children typed into 6 facets** (death-toll 17,
+  international-aid 6, foreign-victims 5, rescues 3, aftermath 3, core 1).
+- **Endpoint (`app/routers/dossier.py`, contract → `dossier-connections-v1`)**: pins
+  that are umbrella children COLLAPSE into ONE umbrella node exposing `facets[]`
+  (assembled over the umbrella's FULL child set, each facet with topics + evidence_n +
+  countries) + `collapsed_from` + `child_count`. `collapse_umbrellas=false` = legacy
+  flat view. **VERIFIED**: pinning the ~30 VE-quake fragments → **1 umbrella node + 6
+  facets**, unresolved=0 (was 30 noisy near-duplicates).
+- **#238 (scoped)**: FIPS `WE`(West Bank)/`GZ`(Gaza)→`PS` added to `country_codes`
+  (was leaking raw non-ISO "WE"); backfilled 705 stored rows. HONEST residue: id-52's
+  West-Bank lead is an **upstream GDELT geocoder error** (Spanish Sánchez/PSOE stories
+  mis-located to West Bank), not a conversion gap — a separate ingest-quality task.
+  Facet attachment is centroid-based (geo-independent), so "facets attach to the right
+  umbrella" holds regardless. Tests: `tests/test_assemble_constellation.py` (facet lens
+  + stem) + `tests/test_dossier_connections.py` green.
+
+NOT wired into the nightly cron yet (per-umbrella review recommended until the relabel/
+attach guards are hardened for sports/crime umbrellas) — run `assemble_constellation.py
+--umbrella <id> --apply` after an umbrella build.
+
 ## Pointers
 - Today's dossier + method: the "Double Séisme Venezuela in Venezuela" investigation
   (3 pins, connection note) — dogfooded live.
