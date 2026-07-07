@@ -472,38 +472,45 @@ async def dossier_connections(req: ConnectionsRequest):
             if t.startswith("dynamic-topic-") and t[len("dynamic-topic-"):].isdigit()
         }
         try:
+            # dynamic_topics.centroid_vec is real[] (no pgvector index), so we
+            # scan candidate centroids and cosine them in Python (same _cosine as
+            # the pin↔pin edges). ~1.6k candidates × few pins = cheap.
             async with db.pool.acquire() as conn:
                 await conn.execute("SET statement_timeout = 15000")
-                nb: dict[int, dict] = {}
+                cand = await conn.fetch(
+                    """
+                    SELECT id, label, category, centroid_vec
+                    FROM dynamic_topics
+                    WHERE centroid_vec IS NOT NULL AND NOT (id = ANY($1::int[]))
+                    """,
+                    list(exclude_ids),
+                )
+            pin_ids = {bk: node_by_base.get(bk, {}).get("id", bk) for bk in centroids}
+            nb: dict[int, dict] = {}
+            for r in cand:
+                cvec = [float(x) for x in r["centroid_vec"]]
+                cid = int(r["id"])
                 for base_key, vec in centroids.items():
-                    lit = "[" + ",".join(f"{x:.6f}" for x in vec) + "]"
-                    rows = await conn.fetch(
-                        """
-                        SELECT id, label, category,
-                               1 - (centroid_vec <=> $1::halfvec) AS sim
-                        FROM dynamic_topics
-                        WHERE centroid_vec IS NOT NULL AND NOT (id = ANY($2::int[]))
-                        ORDER BY centroid_vec <=> $1::halfvec
-                        LIMIT 5
-                        """,
-                        lit, list(exclude_ids),
-                    )
-                    pin_id = node_by_base.get(base_key, {}).get("id", base_key)
-                    for r in rows:
-                        sim = float(r["sim"])
-                        if sim < 0.85:
-                            continue
-                        nid = int(r["id"])
-                        e = nb.setdefault(nid, {
-                            "base_id": _tid(nid), "label": r["label"],
-                            "category": r["category"], "links": [],
-                        })
-                        e["links"].append({"pin": pin_id, "sim": round(sim, 4)})
-                # bridges (near >1 pin) first, then strongest single link; cap 8.
-                neighbors = sorted(
-                    nb.values(),
-                    key=lambda e: (-len(e["links"]), -max(l["sim"] for l in e["links"])),
-                )[:8]
+                    if len(vec) != len(cvec):
+                        continue
+                    sim = _cosine(vec, cvec)
+                    if sim < 0.85:
+                        continue
+                    e = nb.get(cid)
+                    if e is None:
+                        e = nb[cid] = {"base_id": _tid(cid), "label": r["label"],
+                                       "category": r["category"], "links": []}
+                    s = round(sim, 4)
+                    prev = next((l for l in e["links"] if l["pin"] == pin_ids[base_key]), None)
+                    if prev is None:
+                        e["links"].append({"pin": pin_ids[base_key], "sim": s})
+                    elif s > prev["sim"]:
+                        prev["sim"] = s
+            # bridges (near >1 pin) first, then strongest single link; cap 8.
+            neighbors = sorted(
+                nb.values(),
+                key=lambda e: (-len(e["links"]), -max(l["sim"] for l in e["links"])),
+            )[:8]
         except Exception as exc:
             logger.warning("dossier neighbors query failed: %s", exc)
             neighbors = []
