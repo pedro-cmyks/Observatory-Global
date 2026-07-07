@@ -41,9 +41,38 @@
     width: 100%; height: auto; display: block;
     background: #0b1119; border-radius: 6px;
 }
-.dcx-node-label { font-size: 8px; fill: #cbd5e1; font-family: 'SF Mono', monospace; pointer-events: none; }
-.dcx-neighbor-label { font-size: 6.5px; fill: #7f8ea3; font-family: 'SF Mono', monospace; pointer-events: none; }
-.dcx-edge-tag { font-size: 7px; font-family: 'SF Mono', monospace; pointer-events: none; opacity: 0.9; }
+.dcx-node-label { font-size: 9px; fill: #e2e8f0; font-family: 'SF Mono', monospace; pointer-events: none; font-weight: 600; paint-order: stroke; stroke: #0b1119; stroke-width: 2.4px; stroke-linejoin: round; }
+.dcx-neighbor-label { font-size: 7px; fill: #94a3b8; font-family: 'SF Mono', monospace; pointer-events: none; paint-order: stroke; stroke: #0b1119; stroke-width: 2px; stroke-linejoin: round; }
+.dcx-neighbor-label.bridge { fill: #cbd5e1; font-size: 7.5px; }
+.dcx-edge-tag { font-size: 7.5px; font-family: 'SF Mono', monospace; pointer-events: none; opacity: 0.95; paint-order: stroke; stroke: #0b1119; stroke-width: 2.4px; stroke-linejoin: round; }
+
+/* How to read the universe — the report-only reader's key */
+.dcx-howto {
+    display: flex; flex-wrap: wrap; gap: 6px 14px;
+    font-size: 10.5px; color: #94a3b8; margin: 0 0 8px; line-height: 1.5;
+}
+.dcx-howto span { display: inline-flex; align-items: center; gap: 4px; }
+.dcx-howto b { font-style: normal; }
+.dcx-k-pin { color: #7dd3fc; font-size: 13px; line-height: 1; }
+.dcx-k-nb { color: #64748b; font-size: 13px; line-height: 1; }
+.dcx-k-bridge { color: #e2e8f0; font-size: 13px; line-height: 1; }
+
+/* Static list of nearby unpinned stories — survives export (no hover needed) */
+.dcx-nearby { margin-top: 10px; border-top: 1px solid rgba(148,163,184,0.12); padding-top: 8px; }
+.dcx-nearby-title {
+    font-family: 'SF Mono', monospace; font-size: 9.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #7f8ea3; margin-bottom: 6px;
+}
+.dcx-nearby-row { display: flex; gap: 8px; align-items: baseline; margin-bottom: 5px; font-size: 11px; }
+.dcx-nearby-tag {
+    flex-shrink: 0; font-family: 'SF Mono', monospace; font-size: 9.5px;
+    color: #8b97a6; background: rgba(148,163,184,0.1); border-radius: 3px;
+    padding: 1px 6px; white-space: nowrap;
+}
+.dcx-nearby-tag.bridge { color: #0b1119; background: #cbd5e1; font-weight: 600; }
+.dcx-nearby-list { display: flex; flex-wrap: wrap; gap: 3px 10px; color: #cbd5e1; }
+.dcx-nearby-item { white-space: nowrap; }
+.dcx-nearby-item em { color: #7f8ea3; font-style: normal; font-size: 10px; }
 
 /* Assembled stories — the constellation folded by facet */
 .dcx-panel-sub { font-size: 11px; color: #8b97a6; margin: 0 0 10px; }
