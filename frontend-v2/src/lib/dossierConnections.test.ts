@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   deriveClusters, layoutInvestigativeUniverse, edgeReason, connectionsSummaryLines,
-  connectionTopicIds,
-  type ConnectionNode, type ConnectionEdge, type ConnectionsData,
+  connectionTopicIds, deOverlapLabels,
+  type ConnectionNode, type ConnectionEdge, type ConnectionsData, type LabelItem,
 } from './dossierConnections'
 import type { Investigation } from './workbench'
 
@@ -84,6 +84,49 @@ describe('layoutInvestigativeUniverse', () => {
     const a = placed.find(n => n.id === 'a')!
     expect(a.px).toBeCloseTo(30, 5)      // x=0 → left pad
     expect(a.py).toBeCloseTo(380 - 30, 5) // y=1 → bottom pad
+  })
+})
+
+describe('deOverlapLabels', () => {
+  it('separates two labels that overlap in x and y into distinct lanes', () => {
+    const items: LabelItem[] = [
+      { id: 'a', cx: 100, halfW: 40, y: 50 },
+      { id: 'b', cx: 110, halfW: 40, y: 52 }, // overlaps a in x and y
+    ]
+    const r = deOverlapLabels(items, 11)
+    expect(Math.abs(r.get('a')! - r.get('b')!)).toBeGreaterThanOrEqual(11)
+  })
+
+  it('leaves horizontally-disjoint labels at their desired y', () => {
+    const items: LabelItem[] = [
+      { id: 'a', cx: 50, halfW: 20, y: 50 },
+      { id: 'b', cx: 200, halfW: 20, y: 50 }, // far apart in x → no collision
+    ]
+    const r = deOverlapLabels(items, 11)
+    expect(r.get('a')).toBe(50)
+    expect(r.get('b')).toBe(50)
+  })
+
+  it('only moves labels upward (never below the desired baseline)', () => {
+    const items: LabelItem[] = [
+      { id: 'a', cx: 100, halfW: 40, y: 50 },
+      { id: 'b', cx: 100, halfW: 40, y: 50 },
+      { id: 'c', cx: 100, halfW: 40, y: 50 },
+    ]
+    const r = deOverlapLabels(items, 11)
+    for (const v of r.values()) expect(v).toBeLessThanOrEqual(50)
+    // three stacked, all distinct
+    expect(new Set(r.values()).size).toBe(3)
+  })
+
+  it('is deterministic', () => {
+    const items: LabelItem[] = [
+      { id: 'a', cx: 100, halfW: 40, y: 50 },
+      { id: 'b', cx: 108, halfW: 40, y: 50 },
+    ]
+    const r1 = deOverlapLabels(items)
+    const r2 = deOverlapLabels(items)
+    expect([...r1.entries()]).toEqual([...r2.entries()])
   })
 })
 

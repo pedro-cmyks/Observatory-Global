@@ -6,8 +6,9 @@
 // MEASURED at generation time; the frozen pin core never depends on it.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  fetchConnections, deriveClusters, layoutInvestigativeUniverse, edgeReason,
+  fetchConnections, deriveClusters, layoutInvestigativeUniverse, edgeReason, deOverlapLabels,
   type ConnectionsData, type ConnectionEdge, type ClusterResult,
+  type ConnectionNeighbor, type LabelItem,
 } from '../lib/dossierConnections'
 import { categoryColor, universeRadius } from '../lib/universeLayout'
 import { createEqualEarth } from '../lib/equalEarthProjection'
@@ -22,7 +23,9 @@ const BASIS_COLOR: Record<string, string> = {
 }
 
 const UNIVERSE_W = 640
-const UNIVERSE_H = 380
+// Taller (not wider) — width scales the whole viewBox to the container, so a
+// wider box shrinks the text; extra HEIGHT gives labels room without shrinking.
+const UNIVERSE_H = 460
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 // The always-visible "why" on a pin↔pin edge — the strongest measured basis, so
@@ -200,7 +203,23 @@ function clusterColor(i: number): string {
 }
 
 // ── Investigative universe (scoped semantic field) ────────────────────────────
+// Approx monospace glyph widths for the two on-canvas label sizes (fontPx*0.6).
+const PIN_CHAR_W = 5.4      // 9px labels
+const NB_CHAR_W = 4.2       // 7px labels
+const truncate = (s: string, max: number) => (s.length > max ? s.slice(0, max - 1) + '…' : s)
+
+interface PlacedNeighbor {
+  base_id: string
+  label: string
+  category: string | null
+  px: number
+  py: number
+  bridge: boolean
+  links: Array<{ pin: string; sim: number }>
+}
+
 function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; cluster: ClusterResult }) {
+  // hover = a pin id OR `nb:<base_id>` for a neighbor star.
   const [hover, setHover] = useState<string | null>(null)
   const placed = useMemo(
     () => layoutInvestigativeUniverse(data.nodes, data.edges, UNIVERSE_W, UNIVERSE_H),
@@ -216,49 +235,95 @@ function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; clust
     return m
   }, [data])
 
-  // Position each unpinned NEIGHBOR near its linked pin(s): a bridge (near >1 pin)
-  // lands between them; a single-pin neighbor sits just outside that pin, spread
-  // by angle. This is the background star-field that makes it a constellation.
-  const neighborPlaced = useMemo(() => {
-    const cx = UNIVERSE_W / 2, cy = UNIVERSE_H / 2
-    const perPin = new Map<string, number>()
-    const out: Array<{ base_id: string; label: string; category: string | null; px: number; py: number; bridge: boolean; links: Array<{ pin: string; sim: number }> }> = []
+  // Group unpinned neighbors: BRIDGES (near >1 pin — the meaningful cross-pin
+  // connectors) vs SINGLE (near one pin — the crowd). Bridges are always
+  // labelled; singles fan out as dots and only reveal a label on hover.
+  const nbGroups = useMemo(() => {
+    const bridges: ConnectionNeighbor[] = []
+    const byPin = new Map<string, ConnectionNeighbor[]>()
     for (const nb of (data.neighbors ?? [])) {
+      const links = nb.links.filter(l => byId.has(l.pin))
+      if (links.length === 0) continue
+      if (links.length > 1) bridges.push(nb)
+      else byPin.set(links[0].pin, [...(byPin.get(links[0].pin) ?? []), nb])
+    }
+    return { bridges, byPin }
+  }, [data, byId])
+
+  // Position neighbors: bridges at the barycenter of their pins; single-pin
+  // neighbors fanned evenly across an arc that points AWAY from the field center
+  // (so they splay outward instead of piling on the pin).
+  const neighborPlaced = useMemo<PlacedNeighbor[]>(() => {
+    const cx = UNIVERSE_W / 2, cy = UNIVERSE_H / 2
+    const out: PlacedNeighbor[] = []
+    const mk = (nb: ConnectionNeighbor, px: number, py: number, bridge: boolean): PlacedNeighbor => ({
+      base_id: nb.base_id, label: nb.label, category: nb.category, links: nb.links, bridge,
+      px: clamp(px, 16, UNIVERSE_W - 16), py: clamp(py, 20, UNIVERSE_H - 14),
+    })
+    for (const nb of nbGroups.bridges) {
       const pts = nb.links.map(l => byId.get(l.pin)).filter(Boolean) as Array<{ px: number; py: number }>
-      if (pts.length === 0) continue
-      let mx = pts.reduce((s, p) => s + p.px, 0) / pts.length
-      let my = pts.reduce((s, p) => s + p.py, 0) / pts.length
-      if (pts.length === 1) {
-        const k = perPin.get(nb.links[0].pin) ?? 0
-        perPin.set(nb.links[0].pin, k + 1)
-        const ang = Math.atan2(pts[0].py - cy, pts[0].px - cx) + (k - 0.5) * 0.8
-        mx = pts[0].px + Math.cos(ang) * 42
-        my = pts[0].py + Math.sin(ang) * 42
-      }
-      out.push({
-        base_id: nb.base_id, label: nb.label, category: nb.category, bridge: pts.length > 1, links: nb.links,
-        px: clamp(mx, 16, UNIVERSE_W - 16), py: clamp(my, 18, UNIVERSE_H - 12),
+      const mx = pts.reduce((s, p) => s + p.px, 0) / pts.length
+      const my = pts.reduce((s, p) => s + p.py, 0) / pts.length
+      out.push(mk(nb, mx, my, true))
+    }
+    for (const [pin, list] of nbGroups.byPin) {
+      const p = byId.get(pin)!
+      const base = Math.atan2(p.py - cy, p.px - cx) // outward direction from center
+      const R = 48 + Math.min(list.length, 8) * 4
+      const span = Math.min(Math.PI * 1.3, Math.max(0.001, list.length - 1) * 0.42)
+      list.forEach((nb, i) => {
+        const frac = list.length === 1 ? 0 : i / (list.length - 1) - 0.5
+        const ang = base + frac * span
+        out.push(mk(nb, p.px + Math.cos(ang) * R, p.py + Math.sin(ang) * R, false))
       })
     }
     return out
-  }, [data, byId])
+  }, [nbGroups, byId])
 
-  const hovered = hover ? byId.get(hover) : null
-  const hoverEdges = hover
-    ? data.edges.filter(e => e.a === hover || e.b === hover)
-    : []
+  // De-overlap the ALWAYS-ON labels (pins + bridges) into vertical lanes.
+  const labelY = useMemo(() => {
+    const items: LabelItem[] = []
+    for (const n of placed) {
+      const t = truncate(n.label, 26)
+      items.push({ id: n.id, cx: n.px, halfW: (t.length * PIN_CHAR_W) / 2, y: n.py - universeRadius(n.n) - 5 })
+    }
+    for (const nb of neighborPlaced) {
+      if (!nb.bridge) continue
+      const t = truncate(nb.label, 22)
+      items.push({ id: `nb:${nb.base_id}`, cx: nb.px, halfW: (t.length * NB_CHAR_W) / 2, y: nb.py - 6 })
+    }
+    return deOverlapLabels(items, 11)
+  }, [placed, neighborPlaced])
+
+  const hovered = hover && !hover.startsWith('nb:') ? byId.get(hover) : null
+  const hoverEdges = hovered ? data.edges.filter(e => e.a === hovered.id || e.b === hovered.id) : []
+  // A single neighbor's label shows when the neighbor itself is hovered, or when
+  // the pin it sits near is hovered (reveal a pin's whole crowd at once).
+  const nbLabelShown = (nb: PlacedNeighbor): boolean =>
+    hover === `nb:${nb.base_id}` || (!!hover && !hover.startsWith('nb:') && nb.links.some(l => l.pin === hover))
+
+  const shortPin = (id: string) => truncate(byId.get(id)?.label ?? id, 18)
 
   return (
     <div className="dcx-panel">
       <div className="dcx-panel-title">Investigative universe</div>
-      <p className="dcx-sub">Bright = your pins · faint = nearby unpinned stories (white ring = a bridge across pins) · edge label = why they connect · position ≈ semantic field</p>
+      <p className="dcx-sub">How the pinned stories relate — and the unpinned stories sitting near them. Hover any node to trace its links.</p>
+      <div className="dcx-howto">
+        <span><b className="dcx-k-pin">●</b> your pins (always labelled)</span>
+        <span><b className="dcx-k-nb">◦</b> nearby unpinned story</span>
+        <span><b className="dcx-k-bridge">◎</b> bridge — near several pins</span>
+        <span><b>≈0.9</b> edge label = why they connect (≈ semantic; else shared country/actor)</span>
+        <span>position ≈ semantic field · closer = more alike</span>
+      </div>
       <svg viewBox={`0 0 ${UNIVERSE_W} ${UNIVERSE_H}`} className="dcx-universe" role="img" aria-label="Investigative universe">
         {/* neighbor links — faint, behind everything */}
         {neighborPlaced.map(nb => nb.links.map((l, j) => {
           const p = byId.get(l.pin)
           if (!p) return null
+          const lit = nbLabelShown(nb)
           return <line key={`${nb.base_id}-${j}`} x1={p.px} y1={p.py} x2={nb.px} y2={nb.py}
-            stroke="#475569" strokeWidth={0.5} strokeDasharray="2 3" strokeOpacity={hover ? 0.12 : 0.3} />
+            stroke={lit ? '#94a3b8' : '#475569'} strokeWidth={lit ? 0.8 : 0.5} strokeDasharray="2 3"
+            strokeOpacity={hover ? (lit ? 0.55 : 0.1) : 0.28} />
         }))}
         {/* edges — with the always-visible WHY (edge tag) */}
         {data.edges.map((e, i) => {
@@ -279,24 +344,41 @@ function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; clust
             </g>
           )
         })}
-        {/* neighbor stars — the unpinned field around the pins (bridges ringed white) */}
-        {neighborPlaced.map(nb => (
-          <g key={nb.base_id} transform={`translate(${nb.px},${nb.py})`} opacity={hover ? 0.4 : 0.85}>
-            <circle r={3} fill={nb.category ? categoryColor(nb.category) : '#64748b'} fillOpacity={0.5}
-              stroke={nb.bridge ? '#e2e8f0' : '#475569'} strokeWidth={nb.bridge ? 1 : 0.5} />
-            <text y={-5} textAnchor="middle" className="dcx-neighbor-label">
-              {nb.label.length > 20 ? nb.label.slice(0, 19) + '…' : nb.label}
-            </text>
-          </g>
-        ))}
-        {/* nodes */}
+        {/* neighbor stars — dots always; single labels on hover, bridges labelled */}
+        {neighborPlaced.map(nb => {
+          const showLabel = nb.bridge || nbLabelShown(nb)
+          // bridges use the de-overlapped lane; single (hover) labels sit just above.
+          const rel = nb.bridge ? (labelY.get(`nb:${nb.base_id}`) ?? (nb.py - 6)) - nb.py : -6
+          const dim = hover ? !nbLabelShown(nb) && hover !== `nb:${nb.base_id}` : false
+          return (
+            <g key={nb.base_id} transform={`translate(${nb.px},${nb.py})`}
+               onMouseEnter={() => setHover(`nb:${nb.base_id}`)} onMouseLeave={() => setHover(null)}
+               style={{ cursor: 'pointer' }} opacity={dim ? 0.35 : 1}>
+              {showLabel && nb.bridge && rel < -8 && (
+                <line x1={0} y1={-4} x2={0} y2={rel + 2} stroke="#475569" strokeWidth={0.4} />
+              )}
+              <circle r={nb.bridge ? 3.5 : 3} fill={nb.category ? categoryColor(nb.category) : '#64748b'}
+                fillOpacity={nb.bridge ? 0.6 : 0.5}
+                stroke={nb.bridge ? '#e2e8f0' : '#475569'} strokeWidth={nb.bridge ? 1.2 : 0.5} />
+              {showLabel && (
+                <text y={rel} textAnchor="middle"
+                  className={`dcx-neighbor-label${nb.bridge ? ' bridge' : ''}`}>
+                  {truncate(nb.label, 22)}
+                </text>
+              )}
+            </g>
+          )
+        })}
+        {/* nodes (pins) */}
         {placed.map(n => {
           const isolated = cluster.isolated.some(x => x.id === n.id)
           const ci = cluster.clusterOf.get(n.id) ?? -1
           const r = universeRadius(n.n)
           const active = hover === n.id
-          const nearHover = hover && (n.id === hover || neighborsOf.get(hover)?.has(n.id))
-          const dim = hover && !nearHover
+          const nearHover = hover && !hover.startsWith('nb:') && (n.id === hover || neighborsOf.get(hover)?.has(n.id))
+          const dim = hover && !hover.startsWith('nb:') && !nearHover
+          const ly = labelY.get(n.id) ?? (n.py - r - 5)
+          const rel = ly - n.py // absolute → relative to node translate
           return (
             <g key={n.id}
                transform={`translate(${n.px},${n.py})`}
@@ -306,11 +388,15 @@ function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; clust
                 <circle r={r + 4} fill="none" stroke="#64748b" strokeWidth={1}
                         strokeDasharray="3 3" />
               )}
+              {/* leader line when the label got pushed up out of the way */}
+              {rel < -r - 8 && (
+                <line x1={0} y1={-r - 2} x2={0} y2={rel + 2} stroke={clusterColor(ci)} strokeWidth={0.5} strokeOpacity={0.5} />
+              )}
               <circle r={r} fill={n.category ? categoryColor(n.category) : '#7dd3fc'}
                       stroke={isolated ? '#64748b' : clusterColor(ci)}
                       strokeWidth={active ? 2.5 : 1.5} />
-              <text y={-r - 4} textAnchor="middle" className="dcx-node-label">
-                {n.label.length > 26 ? n.label.slice(0, 25) + '…' : n.label}
+              <text y={rel} textAnchor="middle" className="dcx-node-label">
+                {truncate(n.label, 26)}
               </text>
             </g>
           )
@@ -334,6 +420,33 @@ function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; clust
                   return <div key={i}>↔ {other?.label ?? otherId} — {edgeReason(e)}</div>
                 })}
           </div>
+        </div>
+      )}
+      {/* Static "nearby" list — the report-only reader gets the names without hover */}
+      {(nbGroups.bridges.length > 0 || nbGroups.byPin.size > 0) && (
+        <div className="dcx-nearby">
+          <div className="dcx-nearby-title">Nearby unpinned stories</div>
+          {nbGroups.bridges.length > 0 && (
+            <div className="dcx-nearby-row">
+              <span className="dcx-nearby-tag bridge">bridges</span>
+              <span className="dcx-nearby-list">
+                {nbGroups.bridges.map(nb => (
+                  <span key={nb.base_id} className="dcx-nearby-item">
+                    {nb.label}
+                    <em> ({nb.links.map(l => shortPin(l.pin)).join(' + ')})</em>
+                  </span>
+                ))}
+              </span>
+            </div>
+          )}
+          {[...nbGroups.byPin.entries()].map(([pin, list]) => (
+            <div key={pin} className="dcx-nearby-row">
+              <span className="dcx-nearby-tag">near {shortPin(pin)}</span>
+              <span className="dcx-nearby-list">
+                {list.map(nb => <span key={nb.base_id} className="dcx-nearby-item">{nb.label}</span>)}
+              </span>
+            </div>
+          ))}
         </div>
       )}
     </div>

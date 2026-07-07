@@ -231,6 +231,48 @@ export function layoutInvestigativeUniverse(
   })
 }
 
+// ── Label de-overlap ─────────────────────────────────────────────────────────
+
+export interface LabelItem {
+  id: string
+  /** center x of the label */
+  cx: number
+  /** half of the label's rendered width */
+  halfW: number
+  /** desired text baseline y (labels sit ABOVE their node) */
+  y: number
+}
+
+/** Push horizontally-overlapping labels UPWARD so none collide, stacking them
+ *  in vertical lanes. Deterministic (stable sort with id tiebreak); pure so it
+ *  is unit-testable. Returns id -> resolved baseline y. Labels are only ever
+ *  moved up (away from their node circle), never sideways — so a label stays
+ *  horizontally over its node and reads unambiguously. */
+export function deOverlapLabels(items: LabelItem[], lineH = 11): Map<string, number> {
+  const sorted = [...items].sort((a, b) => a.y - b.y || (a.id < b.id ? -1 : 1))
+  const out = new Map<string, number>()
+  const placed: LabelItem[] = []
+  for (const it of sorted) {
+    let y = it.y
+    let moved = true
+    let guard = 0
+    while (moved && guard++ < 400) {
+      moved = false
+      for (const p of placed) {
+        const py = out.get(p.id)!
+        const xOverlap = Math.abs(it.cx - p.cx) < it.halfW + p.halfW
+        if (xOverlap && Math.abs(y - py) < lineH) {
+          y = py - lineH // stack this label above the one it collides with
+          moved = true
+        }
+      }
+    }
+    out.set(it.id, y)
+    placed.push(it)
+  }
+  return out
+}
+
 // ── Labels + export ─────────────────────────────────────────────────────────
 
 const BASIS_LABEL: Record<ConnectionBasis, string> = {
