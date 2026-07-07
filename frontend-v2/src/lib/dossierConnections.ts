@@ -25,6 +25,20 @@ export interface ConnectionNode {
   timeline: Array<{ day: string; n: number }>
   has_centroid: boolean
   n: number
+  // Constellation assembly (dossier-connections-v1): an umbrella node folds N
+  // near-duplicate children into ONE story exposing typed sub-facets.
+  is_umbrella?: boolean
+  child_count?: number
+  collapsed_from?: string[]
+  facets?: ConnectionFacet[]
+}
+
+export interface ConnectionFacet {
+  facet: string
+  topic_count: number
+  evidence_n: number
+  countries: Array<{ cc: string; n: number }>
+  topics: Array<{ id: string; label: string }>
 }
 
 export interface ConnectionEdge {

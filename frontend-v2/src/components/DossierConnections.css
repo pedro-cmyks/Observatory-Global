@@ -43,6 +43,19 @@
 }
 .dcx-node-label { font-size: 8px; fill: #cbd5e1; font-family: 'SF Mono', monospace; pointer-events: none; }
 
+/* Assembled stories — the constellation folded by facet */
+.dcx-panel-sub { font-size: 11px; color: #8b97a6; margin: 0 0 10px; }
+.dcx-umbrella + .dcx-umbrella { margin-top: 14px; border-top: 1px solid rgba(148,163,184,0.12); padding-top: 12px; }
+.dcx-umbrella-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.dcx-umbrella-head strong { color: #e2e8f0; font-size: 13px; }
+.dcx-umbrella-meta { font-family: 'SF Mono', monospace; font-size: 10px; color: #8b97a6; white-space: nowrap; }
+.dcx-facets { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.dcx-facet { border-left: 2px solid rgba(29,158,117,0.55); padding: 4px 0 4px 8px; background: rgba(29,158,117,0.05); border-radius: 0 4px 4px 0; }
+.dcx-facet-head { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.dcx-facet-name { color: #cbd5e1; font-size: 12px; font-weight: 600; }
+.dcx-facet-count { font-family: 'SF Mono', monospace; font-size: 9.5px; color: #7f8ea3; white-space: nowrap; }
+.dcx-facet-topics { font-size: 10.5px; color: #94a3b8; margin-top: 3px; line-height: 1.35; }
+
 .dcx-legend { display: flex; gap: 14px; margin-top: 6px; font-size: 10.5px; color: #94a3b8; }
 .dcx-legend span { display: flex; align-items: center; gap: 5px; }
 .dcx-legend i { width: 10px; height: 3px; border-radius: 2px; display: inline-block; }

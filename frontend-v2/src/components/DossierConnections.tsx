@@ -81,6 +81,7 @@ export function DossierConnections(
       </p>
 
       <ClusterVerdict data={data} cluster={cluster} />
+      <AssembledStories data={data} />
       <InvestigativeUniverse data={data} cluster={cluster} />
       <DossierMap data={data} />
       <DossierDistributions data={data} />
@@ -122,6 +123,63 @@ function ClusterVerdict({ data, cluster }: { data: ConnectionsData; cluster: Clu
       {data.unresolved.length > 0 && (
         <p className="dcx-note">Not in the relation graph (no story centroid): {data.unresolved.join(', ')}.</p>
       )}
+    </div>
+  )
+}
+
+// ── Assembled stories (constellation by facet) ───────────────────────────────
+// An umbrella node folds ~N near-duplicate fragments of ONE big event into a
+// single story with typed sub-facets. Lists each assembled story by facet so
+// the analyst navigates "Venezuela Earthquakes → death-toll / aid / foreign-
+// victims / rescues / aftermath" instead of ~30 duplicate rows.
+const FACET_LABEL: Record<string, string> = {
+  'death-toll': 'Death toll',
+  'foreign-victims': 'Foreign victims',
+  'international-aid': 'International aid',
+  'government-response': 'Government response',
+  rescues: 'Rescues',
+  aftermath: 'Aftermath',
+  core: 'Main thread',
+}
+const facetLabel = (f: string): string => FACET_LABEL[f] || f.replace(/-/g, ' ')
+
+function AssembledStories({ data }: { data: ConnectionsData }) {
+  const umbrellas = data.nodes.filter(n => n.is_umbrella && (n.facets?.length ?? 0) > 0)
+  if (umbrellas.length === 0) return null
+  return (
+    <div className="dcx-panel dcx-assembled">
+      <div className="dcx-panel-title">Assembled stories</div>
+      <p className="dcx-panel-sub">
+        Near-duplicate fragments of one event, folded into a single story by facet — the
+        constellation, not the {umbrellas.reduce((s, u) => s + (u.child_count ?? 0), 0)} raw rows.
+      </p>
+      {umbrellas.map(u => (
+        <div key={u.base_id} className="dcx-umbrella">
+          <div className="dcx-umbrella-head">
+            <strong>{u.label}</strong>
+            <span className="dcx-umbrella-meta">
+              {u.child_count ?? 0} fragments · {u.facets!.length} facets
+            </span>
+          </div>
+          <div className="dcx-facets">
+            {u.facets!.map(f => (
+              <div key={f.facet} className="dcx-facet">
+                <div className="dcx-facet-head">
+                  <span className="dcx-facet-name">{facetLabel(f.facet)}</span>
+                  <span className="dcx-facet-count">
+                    {f.topic_count} {f.topic_count === 1 ? 'story' : 'stories'}
+                    {f.evidence_n > 0 ? ` · ${f.evidence_n} signals` : ''}
+                    {f.countries.length > 0 ? ` · ${f.countries.slice(0, 3).map(c => c.cc).join(' ')}` : ''}
+                  </span>
+                </div>
+                {f.topics.length > 0 && (
+                  <div className="dcx-facet-topics">{f.topics.slice(0, 5).map(t => t.label).join(' · ')}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
