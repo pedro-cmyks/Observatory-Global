@@ -24,6 +24,16 @@ const BASIS_COLOR: Record<string, string> = {
 const UNIVERSE_W = 640
 const UNIVERSE_H = 380
 
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
+// The always-visible "why" on a pin↔pin edge — the strongest measured basis, so
+// a reader of the report alone sees WHY two stories connect, not just that they do.
+function edgeTag(e: ConnectionEdge): string {
+  if (e.basis.includes('semantic') && e.semantic_sim != null) return `≈${e.semantic_sim.toFixed(2)}`
+  if (e.shared_countries.length) return e.shared_countries[0]
+  if (e.shared_persons.length) return e.shared_persons[0].split(' ')[0]
+  return ''
+}
+
 // GDELT/FIPS → ISO_A2 (Natural Earth), to match the geojson used by the map.
 const GDELT_TO_ISO: Record<string, string> = {
   CH: 'CN', RI: 'ID', RB: 'RS', KV: 'XK', CG: 'CD', CF: 'CG',
@@ -206,6 +216,33 @@ function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; clust
     return m
   }, [data])
 
+  // Position each unpinned NEIGHBOR near its linked pin(s): a bridge (near >1 pin)
+  // lands between them; a single-pin neighbor sits just outside that pin, spread
+  // by angle. This is the background star-field that makes it a constellation.
+  const neighborPlaced = useMemo(() => {
+    const cx = UNIVERSE_W / 2, cy = UNIVERSE_H / 2
+    const perPin = new Map<string, number>()
+    const out: Array<{ base_id: string; label: string; category: string | null; px: number; py: number; bridge: boolean; links: Array<{ pin: string; sim: number }> }> = []
+    for (const nb of (data.neighbors ?? [])) {
+      const pts = nb.links.map(l => byId.get(l.pin)).filter(Boolean) as Array<{ px: number; py: number }>
+      if (pts.length === 0) continue
+      let mx = pts.reduce((s, p) => s + p.px, 0) / pts.length
+      let my = pts.reduce((s, p) => s + p.py, 0) / pts.length
+      if (pts.length === 1) {
+        const k = perPin.get(nb.links[0].pin) ?? 0
+        perPin.set(nb.links[0].pin, k + 1)
+        const ang = Math.atan2(pts[0].py - cy, pts[0].px - cx) + (k - 0.5) * 0.8
+        mx = pts[0].px + Math.cos(ang) * 42
+        my = pts[0].py + Math.sin(ang) * 42
+      }
+      out.push({
+        base_id: nb.base_id, label: nb.label, category: nb.category, bridge: pts.length > 1, links: nb.links,
+        px: clamp(mx, 16, UNIVERSE_W - 16), py: clamp(my, 18, UNIVERSE_H - 12),
+      })
+    }
+    return out
+  }, [data, byId])
+
   const hovered = hover ? byId.get(hover) : null
   const hoverEdges = hover
     ? data.edges.filter(e => e.a === hover || e.b === hover)
@@ -214,23 +251,44 @@ function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; clust
   return (
     <div className="dcx-panel">
       <div className="dcx-panel-title">Investigative universe</div>
-      <p className="dcx-sub">Each body a pinned story · edges = measured relations · dashed ring = isolated · position ≈ semantic field</p>
+      <p className="dcx-sub">Bright = your pins · faint = nearby unpinned stories (white ring = a bridge across pins) · edge label = why they connect · position ≈ semantic field</p>
       <svg viewBox={`0 0 ${UNIVERSE_W} ${UNIVERSE_H}`} className="dcx-universe" role="img" aria-label="Investigative universe">
-        {/* edges */}
+        {/* neighbor links — faint, behind everything */}
+        {neighborPlaced.map(nb => nb.links.map((l, j) => {
+          const p = byId.get(l.pin)
+          if (!p) return null
+          return <line key={`${nb.base_id}-${j}`} x1={p.px} y1={p.py} x2={nb.px} y2={nb.py}
+            stroke="#475569" strokeWidth={0.5} strokeDasharray="2 3" strokeOpacity={hover ? 0.12 : 0.3} />
+        }))}
+        {/* edges — with the always-visible WHY (edge tag) */}
         {data.edges.map((e, i) => {
           const a = byId.get(e.a), b = byId.get(e.b)
           if (!a || !b) return null
           const dim = hover && e.a !== hover && e.b !== hover
           const color = BASIS_COLOR[e.basis[0]] ?? '#94a3b8'
+          const tag = edgeTag(e)
           return (
-            <line
-              key={i} x1={a.px} y1={a.py} x2={b.px} y2={b.py}
-              stroke={color}
-              strokeWidth={0.6 + e.weight * 2.2}
-              strokeOpacity={dim ? 0.06 : 0.18 + e.weight * 0.5}
-            />
+            <g key={i}>
+              <line x1={a.px} y1={a.py} x2={b.px} y2={b.py} stroke={color}
+                strokeWidth={0.6 + e.weight * 2.2}
+                strokeOpacity={dim ? 0.06 : 0.18 + e.weight * 0.5} />
+              {!dim && tag && (
+                <text x={(a.px + b.px) / 2} y={(a.py + b.py) / 2 - 2} textAnchor="middle"
+                  className="dcx-edge-tag" fill={color}>{tag}</text>
+              )}
+            </g>
           )
         })}
+        {/* neighbor stars — the unpinned field around the pins (bridges ringed white) */}
+        {neighborPlaced.map(nb => (
+          <g key={nb.base_id} transform={`translate(${nb.px},${nb.py})`} opacity={hover ? 0.4 : 0.85}>
+            <circle r={3} fill={nb.category ? categoryColor(nb.category) : '#64748b'} fillOpacity={0.5}
+              stroke={nb.bridge ? '#e2e8f0' : '#475569'} strokeWidth={nb.bridge ? 1 : 0.5} />
+            <text y={-5} textAnchor="middle" className="dcx-neighbor-label">
+              {nb.label.length > 20 ? nb.label.slice(0, 19) + '…' : nb.label}
+            </text>
+          </g>
+        ))}
         {/* nodes */}
         {placed.map(n => {
           const isolated = cluster.isolated.some(x => x.id === n.id)

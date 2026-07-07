@@ -462,12 +462,59 @@ async def dossier_connections(req: ConnectionsRequest):
         "timeline": [{"day": d, "n": timeline_total[d]} for d in sorted(timeline_total)],
     }
 
+    # ── Neighbors: the nearest UNPINNED stories to each pin — the background
+    # field that makes this a CONSTELLATION (context + bridges), not 3 lonely
+    # dots. A neighbor near >1 pin is a bridge (an unpinned link you didn't pin).
+    neighbors: list[dict] = []
+    if centroids:
+        exclude_ids = set(dyn_ids) | set(umbrella_ids) | {
+            int(t[len("dynamic-topic-"):]) for t in child_topic_to_umb
+            if t.startswith("dynamic-topic-") and t[len("dynamic-topic-"):].isdigit()
+        }
+        try:
+            async with db.pool.acquire() as conn:
+                await conn.execute("SET statement_timeout = 15000")
+                nb: dict[int, dict] = {}
+                for base_key, vec in centroids.items():
+                    lit = "[" + ",".join(f"{x:.6f}" for x in vec) + "]"
+                    rows = await conn.fetch(
+                        """
+                        SELECT id, label, category,
+                               1 - (centroid_vec <=> $1::halfvec) AS sim
+                        FROM dynamic_topics
+                        WHERE centroid_vec IS NOT NULL AND NOT (id = ANY($2::int[]))
+                        ORDER BY centroid_vec <=> $1::halfvec
+                        LIMIT 5
+                        """,
+                        lit, list(exclude_ids),
+                    )
+                    pin_id = node_by_base.get(base_key, {}).get("id", base_key)
+                    for r in rows:
+                        sim = float(r["sim"])
+                        if sim < 0.85:
+                            continue
+                        nid = int(r["id"])
+                        e = nb.setdefault(nid, {
+                            "base_id": _tid(nid), "label": r["label"],
+                            "category": r["category"], "links": [],
+                        })
+                        e["links"].append({"pin": pin_id, "sim": round(sim, 4)})
+                # bridges (near >1 pin) first, then strongest single link; cap 8.
+                neighbors = sorted(
+                    nb.values(),
+                    key=lambda e: (-len(e["links"]), -max(l["sim"] for l in e["links"])),
+                )[:8]
+        except Exception as exc:
+            logger.warning("dossier neighbors query failed: %s", exc)
+            neighbors = []
+
     payload = {
         # v1: umbrella collapse + typed facets (constellation assembly, 2026-07-06).
         "contract": "dossier-connections-v1",
         "measured_at": __import__("datetime").datetime.utcnow().isoformat() + "Z",
         "nodes": nodes,
         "edges": edges,
+        "neighbors": neighbors,
         "distributions": distributions,
         "unresolved": unresolved,
         "meta": {

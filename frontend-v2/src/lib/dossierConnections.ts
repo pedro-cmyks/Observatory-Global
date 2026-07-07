@@ -59,11 +59,20 @@ export interface ConnectionDistributions {
   timeline: Array<{ day: string; n: number }>
 }
 
+export interface ConnectionNeighbor {
+  base_id: string
+  label: string
+  category: string | null
+  // which pinned nodes this unpinned story sits near (>1 = a bridge).
+  links: Array<{ pin: string; sim: number }>
+}
+
 export interface ConnectionsData {
   contract: string
   measured_at?: string
   nodes: ConnectionNode[]
   edges: ConnectionEdge[]
+  neighbors?: ConnectionNeighbor[]
   distributions: ConnectionDistributions | null
   unresolved: string[]
   meta?: Record<string, unknown>

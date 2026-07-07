@@ -42,6 +42,8 @@
     background: #0b1119; border-radius: 6px;
 }
 .dcx-node-label { font-size: 8px; fill: #cbd5e1; font-family: 'SF Mono', monospace; pointer-events: none; }
+.dcx-neighbor-label { font-size: 6.5px; fill: #7f8ea3; font-family: 'SF Mono', monospace; pointer-events: none; }
+.dcx-edge-tag { font-size: 7px; font-family: 'SF Mono', monospace; pointer-events: none; opacity: 0.9; }
 
 /* Assembled stories — the constellation folded by facet */
 .dcx-panel-sub { font-size: 11px; color: #8b97a6; margin: 0 0 10px; }
