@@ -1,5 +1,63 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-06/07 (INVESTIGATION SESSION — security → L3 connection layer →
+whitening → flagship dogfood, `e5eb99d5`…`5a366545`, read FIRST). Full handoff:
+`docs/state/2026-07-06-session-handoff.md`.** All merged to v3-intel-layer,
+Fly+Vercel deployed, verified against code/prod (not transcribed).
+**(1) SECURITY pre-launch** (`e5eb99d5`, `docs/state/2026-07-06-security-audit.md`):
+3-sweep audit — SQLi clean, secrets never committed, XSS none; **real gap = the
+API is wide-open**. Interim hardening: per-IP rate limiting (`app/rate_limit.py`,
+keys leftmost `X-Forwarded-For` behind the Vercel proxy — in-file caveat: spoofable
+on a direct Fly hit), CORS lock (`main_v2.py`: `ATLAS_CORS_ORIGINS`, warns+falls to
+`*` when unset), DB pool 5→10, `/api/v2/emergent` admin-gated. `ATLAS_ADMIN_TOKEN`
++ `ATLAS_CORS_ORIGINS` set on Fly.
+**(2) GTM** `docs/state/2026-07-06-gtm-plan.md` — design-partner-led (business/
+cold/M1-bound), doc-only.
+**(3) SEARCH→COUNTRY + polish:** "Go to \<Country\>" primary action
+(`SearchBar.tsx:447`, `51b9496b`); real flags (`Flag.tsx` + `flag-icons ^7.5.0`,
+`b89ca3a3`); time-travel (`StoryTimeTravel.tsx`, `79b4b9f8` — widen story window +
+jump to a topic's spike); **mig 071 natural-hazard categories** (`1d9deb26`) —
+ROOT CAUSE in-migration: candidate-v2 FLAGGED earthquake-volcano/wildfire-storm
+but never wrote them to `atlas_topics`; the DeepSeek typer builds its menu from
+`atlas_topics WHERE is_active` → seismic stories had no bucket → force-fit into
+"Armed conflict escalation" (KILL theme-hint on mig-019 pulls "morts"/"Kill 32").
+Fix seeds both with disaster-specific hints (NATURAL_DISASTER_*, NOT KILL); labels
+match candidate-v2 so prior correct typings hold.
+**(4) L3 CONNECTION LAYER — the big build** (spec
+`docs/specs/2026-07-06-connection-layer-constellation-assembly.md`, `a367ef1e`).
+(a) **Dossier connections** (`app/routers/dossier.py` `POST /connections` +
+`DossierConnections.tsx`, `75809970`): MEASURED relations between pinned topics —
+semantic centroid cosine + shared-country + rarity-weighted shared-person → an
+investigative universe + Equal Earth map + coverage distributions. Response
+contract `dossier-connections-v1` (empty-state payload = `-v0`, both in the
+router). (b) **CONSTELLATION ASSEMBLY** — **mig 072** `dynamic_topics.facet`
+(`a793c7e9`; event-INTERNAL role: death-toll/foreign-victims/international-aid/
+rescues/aftermath/government-response — distinct from `category`; reversible
+`SET facet=NULL`) + `scripts/assemble_constellation.py` (lexical typer folding
+~35 near-dup fragments) + facet-aware endpoint (`f3c0d78e`). Applied to the VE
+earthquake umbrella (topic 1837). Neighbors = background stars + visible edge-why
+(`3a3c26dc`).
+**(5) WHITENING (all-but-top k=1) de-compresses e5** — centroid gap **0.04→0.31,
+AUC 0.80→0.87** (`measure_embedding_separation.py`, `3990af0d`; replaced the
+token-gate hack `77f9d19c`); signal gap **4.4x** (`measure_signal_separation.py`,
+`5a366545`) → **the clustering cliff is compressed-SCALE, not separability**
+(whitened signals = candidate HDBSCAN-recall lever, not yet wired). Applied to
+dossier neighbors (computed via Python cosine — `centroid_vec` is `real[]` not
+pgvector, `07a2865a`). Both harnesses read-only, M1 mlvenv.
+**(6) FLAGSHIP dogfood** (`docs/research/flagship/2026-07-06-{worldcup,latam}-
+expert-brief.md`): LatAm realignment end-to-end (VE earthquake + Colombia/Peru
+elections, pin→note→dossier); **coverage-asymmetry finding** — a 3,342-death quake
+led by French press + Chinese/Syrian state media, US/English absent.
+**(7) METHOD/LESSON:** L3 = multi-lens exploration (surface angles, don't impose a
+thesis); connect on pattern/coverage-dynamics not entity-overlap; the "report must
+stand alone" (Frank) test.
+**OPEN LOOSE ENDS:** search-simplify UNMERGED (SearchBar 3-way conflict — the
+"Go to" action IS merged, the broader simplify is not); geo-mistag fix uncommitted
+in worktree `sweet-bose-c24dd7`; running background tasks at handoff
+(clustering-whitening, map-key z-index, universe-legibility); **PERU not yet
+assembled** into an umbrella (its near-dups show as neighbors — next mechanical
+`assemble_constellation.py` run). Last updated: 2026-07-07.
+
 **2026-07-06 (DÍA COMPLETO — "lo grande" + cierre de issues con evidencia,
 read FIRST).** Sesión de motor cruzada con la sesión paralela de superficies/
 issues. Arco: telemetría degradada a instrumentación (n=1 usuario mide hábitos
