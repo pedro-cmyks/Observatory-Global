@@ -60,6 +60,11 @@ FIPS_TO_ISO = {
     'CG': 'CD',  # DRC (Congo Kinshasa)
     'CF': 'CG',  # Congo Brazzaville
     'RP': 'PH',  # Philippines (FIPS RP; confirmed via Manila Times content)
+    'WE': 'PS',  # West Bank (FIPS WE → ISO PS Palestine; was leaking raw "WE" —
+                 #  GDELT also mis-geocodes some Spanish/EU political stories to WE,
+                 #  an upstream geocoder error, #238; conversion at least yields a
+                 #  valid ISO code instead of a non-ISO leak)
+    'GZ': 'PS',  # Gaza Strip (FIPS GZ → ISO PS Palestine)
     'ZI': 'ZW',  # Zimbabwe
     'WA': 'NA',  # Namibia
     'BC': 'BW',  # Botswana
