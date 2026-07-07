@@ -31,6 +31,32 @@ promotion:**
   pass drops ~94% of embedded signals as noise. (The HDBSCAN purity/recall cliff
   is characterized in `gdelt-decoupling §8`: no global config gives both.)
 
+**The cliff is a WHITENING problem, not an intrinsic one (2026-07-06 — reframes
+the diagnosis above).** The `gdelt-decoupling §8` reading ("no global config
+gives both → the ceiling is intrinsic to headline-only short-text density") is
+now measured to be an artifact of e5 anisotropy, not of the corpus. Harnesses
+`backend/scripts/measure_signal_separation.py` + `measure_embedding_separation.py`
+(read-only, sampled):
+- **Separability is already there:** signal-pair ROC-AUC (same-topic vs
+  different-topic) = **0.985** in raw e5. The space encodes the distinction; the
+  clusterer can't *use* it because raw same/diff cosine is pegged into a narrow
+  **0.916 / 0.788** band (a dominant anisotropic principal direction eats the
+  dynamic range).
+- **"All-but-the-top" k=1 whitening de-compresses it** (subtract mean, project
+  out the top-1 principal direction): signal-level gap **+0.13 → +0.57 (4.4×)**,
+  centroid-level **+0.04 → +0.31 (7×)**, AUC unchanged.
+So there are **two independent recall levers**, not one: R1 scoped clustering
+(partition the space to dodge the global blob) AND whitening (fix the
+scale-compression that blinds the density estimator even *within* a partition).
+The 5.6% "before" number was doubly pessimistic — the global pass, over an
+un-whitened space. **Decisive experiment for this paper's recall claim:** HDBSCAN
+recall/purity on raw vs `all-but-top k=1` whitened signal embeddings (reuse
+`cluster_recall_sweep.py`) + a k-sweep. If the cliff lifts after whitening, the
+open-set ceiling was a fixable geometry defect, not an intrinsic limit — a
+stronger discovery result than the scoped-only story. Already shipped downstream:
+L3 dossier neighbors whiten (`3990af0d`); constellation orphan-attach uses a
+shared-token gate as the interim stand-in (`a793c7e9`).
+
 **Dynamism was broken — the topic set was frozen + sticky (now FIXED, see
 Interventions 1 + 3):**
 - `dynamic_topics` / `emergent_clusters` were last updated **2026-06-29 17:00**; the
@@ -57,6 +83,12 @@ live lifecycle over 5.6% recall still misses 94% of the world.
 - **Coverage curve:** % embedded signals clustered, global vs scoped-by-partition
   (target 5.6% → ≥15%; per-major-country <1% → ≥5%), with the black-hole/purity
   guard (#224) held at baseline.
+- **Whitening ablation (2026-07-06 lever):** the SAME coverage/purity curve on
+  raw e5 vs `all-but-top k=1` whitened embeddings (k-sweep 1/3/5/10), global AND
+  scoped — does removing the anisotropic scale-compression lift the "no config
+  gives both" cliff independently of scoping? Separability is settled (signal-pair
+  AUC 0.985); this measures whether the density estimator recovers structure once
+  the compressed cosine band (0.916/0.788 → +0.57 gap) is un-pegged.
 - **Dynamism curve:** topic births/deaths per day; median `last_seen` age of
   "active" topics (should track the feed, not grow unbounded); candidate→active
   promotion latency; active-set size as a function of real event volume (should

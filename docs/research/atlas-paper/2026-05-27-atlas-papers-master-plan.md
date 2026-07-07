@@ -90,6 +90,42 @@ filter** on both write and query side (`is_junk_headline`, CLAUDE.md
 2026-06-11/12 #223) — a corpus-grounded threshold + noise filter, not a fixed
 constant.
 
+**Substrate finding — e5 anisotropic compression, and its cure (2026-07-06, THE
+reframe of the recall ceiling).** The 2026-06-29 conclusion — "the HDBSCAN
+recall/purity cliff is intrinsic to headline-only short-text density" (§ Paper 8
+negative result; spec `2026-06-29-...-syndication.md` §4B) — is now shown to be
+**wrong in its diagnosis, and the diagnosis matters for every downstream density
+step.** Two read-only harnesses measure it (`backend/scripts/measure_signal_
+separation.py` at the SIGNAL level over `topic_members`, and
+`measure_embedding_separation.py` at the CENTROID level over assembled umbrella
+`parent_id` groups; both compute same-story vs diff-story cosine distributions +
+ROC-AUC, sampled). The finding:
+- **It is NOT a separability problem.** Signal-pair ROC-AUC (same-topic vs
+  different-topic) is already **0.985** in raw e5 — the space *can* tell stories
+  apart almost perfectly. The cliff is therefore not "the embeddings don't
+  encode the distinction."
+- **It IS a compressed-scale problem (anisotropy).** Raw same-story vs
+  diff-story cosine sits at **0.916 / 0.788** — both pegged high, a narrow
+  band a density estimator (HDBSCAN's mutual-reachability, any cosine
+  threshold) cannot resolve. A dominant anisotropic principal direction (the
+  "common cone" of e5) eats the dynamic range.
+- **"All-but-the-top" whitening de-compresses it** (subtract the mean, project
+  out the top-`k` principal directions; `all_but_top(V, k)` in both harnesses).
+  At **k=1** the gap blows open with AUC essentially unchanged (the ordering was
+  always there; only the scale was compressed): **signal level +0.13 → +0.57
+  (4.4×)**, **centroid level +0.04 → +0.31 (7×), AUC 0.80 → 0.87**.
+So the classification/embedding substrate has a *cheap, parameter-free,
+falsifiable* pre-transform that a density clusterer should cross the cliff after.
+This is a Paper-1 substrate contribution (the same measured cure feeds Paper 8's
+recall lever and shipped in L3 dossier neighbors, `3990af0d` — token-gate hack
+replaced by whitening; real bridges surfaced, e.g. "Milei attends Fujimori",
+generic-central noise dropped). It is also a *methods correction to publish*: a
+short-text recall ceiling attributed to "intrinsic density" was an artifact of
+un-whitened anisotropy, not of the corpus. The clustering ablation to run:
+HDBSCAN recall/purity on raw vs `all-but-top k=1` whitened signal embeddings,
+same sweep as `cluster_recall_sweep.py` (does the "no config gives both" cliff
+lift after whitening?).
+
 **Evidence still missing for submission:**
 - Result-bearing draft skeleton with current tables and figures.
 - Temporal generalization hold-out week.
@@ -110,6 +146,13 @@ constant.
   recall vs cut) on the full persisted corpus, not just the band rationale.
 - `role_noise_rate` calibration check: does the cached per-cluster noise rate
   predict reviewed precision on a held-out thread sample?
+- **Whitening clustering ablation (from the 2026-07-06 substrate finding):**
+  HDBSCAN recall/purity on raw e5 vs `all-but-top k=1` whitened signal
+  embeddings (reuse `cluster_recall_sweep.py`), plus a whitening-`k` sweep
+  (k=1/3/5/10) — does the "no config gives both high recall and high purity"
+  cliff lift once the anisotropic scale-compression is removed? Separability is
+  already settled (AUC 0.985); this measures whether the density *estimator*
+  benefits from the de-compressed scale.
 
 **Target venues:** EMNLP industry, ACL Findings, NLP4PI workshop.
 
@@ -309,7 +352,58 @@ review re-confirms the leak is downstream of P1's gate-recall-on-non-English
 problem (CI's spike is French/`xx` local press the English-biased lexical gate
 can't score) — a Paper-1↔Paper-4 dependency the discussion section should state.
 
+**Product evidence accrued (2026-07-06, constellation assembly — the
+over-fragmentation failure mode + its fix).** The thread-as-first-class-unit
+thesis has a measured failure mode this paper must own: Atlas **over-fragments a
+big event**. Live dogfooding on the Venezuela earthquake (3,342 deaths) found it
+represented not as one thread but as a **constellation of ~30 near-duplicate /
+facet threads** in `dynamic_topics` — many identical "Venezuela Earthquake Death
+Toll" plus rescues, UN-affected estimates, foreign-victims-by-nationality
+(Italian/Spanish/Portuguese), aid (Dominican Rep./Uruguay/Ecuador), aftermath,
+epidemic risk, government inspection. The risk-management and international-
+reaction dimensions an analyst asks for both EXIST but scattered across dozens of
+fragments, so no single surface shows the coherent story — a direct consequence
+of headline-level clustering without a same-event reassembly step. **The shipped
+fix (`a793c7e9`, spec `docs/specs/2026-07-06-connection-layer-constellation-
+assembly.md`, contract `dossier-connections-v1`) is the method the paper can
+defend:** reassemble fragments into ONE umbrella with **typed sub-facets** —
+`death-toll`, `foreign-victims (by nationality)`, `rescues`, `international-aid`,
+`government-response / risk-management`, `aftermath`. Mechanism
+(`backend/scripts/assemble_constellation.py`), each step measured/gated:
+- **Orphan attach** by centroid cosine ≥0.93 **GATED on a shared discriminating
+  SUBJECT token** — generic hazard words ("earthquake") excluded via
+  `_GENERIC_EVENT` so Lakonia/Philippines/Mexico quakes never merge in. This gate
+  is a direct consequence of the e5-compression finding above: in the compressed
+  space cosine alone flooded 628 spurious attachments (p50 0.94); the token gate
+  is the interim discriminator (the whitening cure, `3990af0d`, is the principled
+  successor).
+- **Facet typing** = the R3 category lens applied WITHIN an umbrella (lexical,
+  multilingual death-toll / foreign-victims / rescues / aid / govt-response /
+  aftermath).
+- **Serving collapse:** umbrella-child pins COLLAPSE into ONE umbrella node
+  exposing `facets[]` (over the umbrella's FULL child set, each facet with
+  topics + `evidence_n` + countries). **Verified: pinning the ~30 VE-quake
+  fragments → 1 umbrella node + 6 facets, unresolved 0 (was 30 noisy
+  near-duplicates).** Applied to umbrella 1837: relabel "Venezuela Earthquake
+  Death Toll" (a facet label masquerading as the event) → "Venezuela
+  Earthquakes"; +9 stragglers attached (the international-reaction dimension);
+  35 children typed into 6 facets. Reversible (`facet=NULL`); broad apply gated
+  behind `--all` (dry-run showed sports/crime over-attach). Tests:
+  `test_assemble_constellation.py` + `test_dossier_connections.py`.
+This is the syndication/dedup thesis extended from *identical copies* to
+*same-event facets*: the thread contract's unit is the assembled constellation,
+not the fragment, and the facet typing is what makes the reassembled story
+*navigable* rather than a merged blob.
+
 **Evidence to collect:**
+- **Constellation-assembly accuracy (2026-07-06):** on a labeled set of big
+  events, (a) orphan-attach precision/recall of the ≥0.93 + shared-token gate vs
+  cosine-alone (the 628-flood baseline) vs the whitened-cosine successor; (b)
+  facet-typing accuracy against analyst labels (are the 6 facet types the right
+  partition, and does each child land in the right one?); (c) does collapsing
+  fragments → 1 umbrella + N facets measurably reduce analyst time-to-coherent-
+  picture vs the flat ~30-fragment list (the `collapse_umbrellas=false` legacy
+  view is the A/B control)?
 - Thread-level benchmark (sample 30 threads; LLM annotator scores
   each against the 7 questions; compare to analyst judgement).
 - Evidence-role accuracy per thread.
@@ -627,6 +721,57 @@ the seven analyst questions than commodity dashboards.
   taxonomy gate). Candidate P7 evaluation: overview tasks ("what distinct
   crises are running right now?", "which stories cluster semantically but
   sit in different categories?") vs the thread list.
+- **L3 Connection Layer — the multi-lens exploration principle (2026-07-06;
+  spec `docs/specs/2026-07-06-connection-layer-constellation-assembly.md`, first
+  live L3 dogfood pin→note→dossier on the LatAm phase).** The load-bearing
+  method claim, corrected in session: **L3 is NOT the system (or analyst)
+  imposing a single thesis about "the" relationship — it is a multi-lens
+  exploration surface.** The analyst pins (even "crazily") and the system
+  SURFACES angles; it must not close the thesis ("they connect weakly / change
+  the approach"). Three measured sub-findings, each a distinct relation LENS:
+  (1) **Connection is often structural, not entity-level.** Colombia + Peru
+  elections barely share entities (Colombia→Spanish politics, Peru→Peru figures),
+  so a naive entity-overlap test called them "weakly connected" — WRONG lens.
+  They rhyme strongly at the **pattern/category level** (both "election-
+  legitimacy dispute"; both contested right-outsider wins; both loser-cries-
+  fraud) and at the **coverage-dynamics level** (how the information moved). The
+  relation set must be computed on multiple bases — the rarity-weighted-vs-naive-
+  entity finding above (thread siblings) generalized to L3: entity overlap is
+  *one* lens, not the lens.
+  (2) **The measured relation stack shipped** (dossier universe, `3a3c26dc` +
+  `3990af0d`): semantic centroid cosine (WHITENED — the e5-compression cure from
+  Paper 1's substrate finding, `all-but-top k=1`, replacing the token-gate hack;
+  gap +0.04→+0.31, AUC 0.80→0.87, so real bridges like "Milei attends Fujimori"
+  surface and generic-central noise drops) + shared-country + rarity-weighted
+  shared-person, with **visible edge-why** (the analyst sees WHY two pins
+  connect — the reason-code discipline carried into L3, never a silent line).
+  (3) **The exploration posture is itself the method** — never fabricate a
+  connection, never suppress one; surface profiles/facets/angles and let the
+  analyst find the *unimagined* link (the earthquake↔elections link is real but
+  **geopolitical, not topical**: US assertiveness → interim govt → oil interest →
+  disaster under a US-shaped government alongside US-aligned right-wing wins,
+  invisible to a surface entity check, emergent only under exploration). The
+  stand-alone / **"Frank test"**: the dossier must read coherently to an analyst
+  ("Frank") who was NOT in the session — the report stands on its own receipts,
+  not on the exploration path that produced it. The contribution: a connection
+  surface whose lenses are measured (whitened-semantic + geo + rarity-entity +
+  pattern/category + coverage-dynamics) and whose posture is *offer angles, don't
+  decide the relationship*.
+- **Coverage asymmetry as the story — the flagship exhibit (2026-07-06; brief
+  `docs/research/flagship/2026-07-06-latam-realignment-expert-brief.md`).** The
+  who-says-what thesis got its sharpest measured instance: the **3,342-death
+  Venezuela earthquake was led by French press + Chinese/Syrian STATE media, with
+  US/English absent and Spanish below-gate.** "Who covers a disaster — and who
+  stays silent — is geopolitical" is now a concrete, reproducible coverage-
+  distribution exhibit, not an assertion. It sits on the self-voice / voice-mix
+  substrate (Paper 2) but its analyst-facing PAYOFF is a P7 surface: the coverage
+  distribution per assembled story (which languages/origins/state-vs-independent
+  cover it, which are silent) rendered as a lens on the constellation. Companion
+  quantified splits from the same recon (PE 55% self / GB 14% top outsider; CO
+  78% self / VE-covers-CO; VE state-controlled) make "manufactured consensus vs
+  organic coverage" measurable. Candidate evaluation: does the coverage-asymmetry
+  lens change analyst judgement of a story's significance vs the raw thread (the
+  "what's buried / who's silent" task)?
 
 **Evidence to collect:**
 - Analyst task-completion study (10-15 analysts, structured tasks).
@@ -740,6 +885,42 @@ loss is not just clustering granularity but whole source families that the
 theme-join cannot see, recoverable only by the embedding path. (CLAUDE.md
 2026-06-26 / `docs/specs/2026-06-26-l2-deep-review.md` §4.)
 
+**Product evidence (2026-07-06) — the recall ceiling is a WHITENING problem, not
+an intrinsic one (reframes the 2026-06-29 negative result below).** This paper's
+recall story leaned on the 2026-06-29 conclusion that "no HDBSCAN config gives
+both high recall and high purity → the ceiling is intrinsic to headline-only
+short-text density." **That diagnosis is now shown to be an artifact of e5
+anisotropy, not the corpus** (harnesses `backend/scripts/measure_signal_
+separation.py` + `measure_embedding_separation.py`; full statement in Paper 1's
+substrate finding). The signal-pair ROC-AUC is already **0.985** — the space
+separates stories almost perfectly; the cliff is that raw same/diff cosine is
+compressed into a narrow **0.916 / 0.788** band a density estimator can't
+resolve. **"All-but-the-top" k=1 whitening de-compresses it: signal-level gap
++0.13 → +0.57 (4.4×), centroid-level +0.04 → +0.31 (7×), AUC unchanged.** So the
+scoped-clustering lever (R1) and the whitening pre-transform are *independent*
+recall levers — R1 partitions the space to dodge the global blob, whitening fixes
+the scale-compression that made the density estimator unable to find structure
+even within a partition. The clustering ablation to run (raw vs whitened HDBSCAN,
+`cluster_recall_sweep.py`) is the decisive experiment for THIS paper's recall
+claim: if the cliff lifts after whitening, the open-set discovery ceiling was
+never intrinsic — it was a fixable geometry defect, which strengthens the
+semi-automated-discovery thesis (more real narratives are recoverable than the
+5.6% "before" number implied). Shipped downstream already: L3 dossier neighbors
+whiten (`3990af0d`); the constellation orphan-attach token-gate is the interim
+stand-in for whitening (`a793c7e9`, spec `2026-07-06-connection-layer-
+constellation-assembly.md`).
+
+**Product evidence (2026-07-06) — coverage asymmetry = discovery from silence.**
+The flagship exhibit (VE earthquake led by French + Chinese/Syrian STATE media,
+US/English absent, Spanish below-gate; brief `docs/research/flagship/
+2026-07-06-latam-realignment-expert-brief.md`) is a P8-relevant discovery
+observation as well as a P7 surface: which stories a taxonomy/gate *fails to
+surface* is often a function of WHO covers them (English-biased gate → Spanish
+below-gate on a 3,342-death event), so the open-set discovery gap and the
+voice/coverage gap are the same gap seen from two sides. The measured coverage
+distribution per story is the instrument for detecting "narratives the system is
+structurally silent on."
+
 **Evidence to collect:** taxonomy-evolution loop itself (BERTopic + LLM naming +
 human approval); recall vs `min_cluster_size` curve **(2026-06-29: partly
 measured — see negative result below)**; regional-pass yield delta;
@@ -820,15 +1001,22 @@ For any paper in the series to ship:
 
 ## Cross-reference index (product ↔ paper)
 
-Updated **2026-07-01** (PR3.3 — appended the unified-engine F0–F4, the A/B result,
-candidate-v2/κ-0.739, R0–R3, and the crisis-relevance lens; the index had lagged to
-2026-06-26, which is itself a staleness-ledger trigger, PR3-06). Prior refresh
+Updated **2026-07-06** (appended the e5-whitening substrate finding, constellation
+assembly, the L3 connection-layer multi-lens principle, and the coverage-asymmetry
+flagship exhibit — the 4 top rows below). Prior refresh **2026-07-01** (PR3.3 —
+the unified-engine F0–F4, the A/B result, candidate-v2/κ-0.739, R0–R3, and the
+crisis-relevance lens; the index had lagged to 2026-06-26, itself a
+staleness-ledger trigger, PR3-06). Earlier refresh
 2026-06-26 with the L2 deep-review findings
 (`docs/specs/2026-06-26-l2-deep-review.md`, which carries the full per-surface
 paper-alignment table in its §5). Newest mappings on top:
 
 | Product finding / surface | Paper(s) | Where folded |
 |---|---|---|
+| **e5 anisotropic compression + whitening cure (2026-07-06, `5a366545`/`3990af0d`):** the HDBSCAN recall/purity cliff is NOT separability (signal-pair AUC 0.985) but COMPRESSED SCALE (same/diff cosine 0.916/0.788, pegged); "all-but-the-top" k=1 whitening blows the gap open (signal +0.13→+0.57 = 4.4×; centroid +0.04→+0.31 = 7×, AUC unchanged). Reframes the 2026-06-29 "recall ceiling is intrinsic" conclusion. Harnesses `measure_signal_separation.py` + `measure_embedding_separation.py` | **P1** (the classification/embedding SUBSTRATE — a parameter-free, falsifiable pre-transform; methods correction of the "intrinsic density" attribution) + **P8** (independent recall lever alongside R1 scoped clustering) | P1 "Substrate finding — e5 anisotropic compression"; P8 "recall ceiling is a WHITENING problem"; P1/P8 skeletons |
+| **Constellation assembly (2026-07-06, `a793c7e9`, spec `2026-07-06-connection-layer-constellation-assembly.md`, contract `dossier-connections-v1`):** a big event over-fragments into ~30 near-dup/facet threads; reassemble into ONE umbrella + typed sub-facets (death-toll/foreign-victims/rescues/international-aid/govt-response/aftermath). Orphan-attach cosine ≥0.93 GATED on shared discriminating subject token (generic-hazard-excluded; cosine alone flooded 628). Pins collapse: ~30 fragments → 1 node + 6 facets, unresolved 0 | **P4** (thread unit = assembled constellation, not fragment; syndication/dedup extended from identical-copy to same-event-facet) | P4 "Product evidence accrued (2026-07-06, constellation assembly)" + assembly-accuracy study in "Evidence to collect" |
+| **L3 Connection Layer = multi-lens exploration (2026-07-06, `3a3c26dc`+`3990af0d`, first live dogfood):** L3 is NOT an imposed thesis — it SURFACES angles (topical / pattern-category / coverage-dynamics / geopolitical entity-chain). Colombia+Peru rhyme at pattern level though entity-overlap says "weak"; earthquake↔elections link is geopolitical not topical. Relation stack = whitened-semantic + shared-country + rarity-weighted person + visible edge-why; "Frank test" = report stands alone | **P7** (analyst-workflow method: measured lenses + offer-angles-don't-decide posture; rarity-entity finding generalized from thread siblings) | P7 "Evidence available" (L3 Connection Layer principle) |
+| **Coverage asymmetry as the story (2026-07-06, flagship brief):** the 3,342-death VE earthquake led by French press + Chinese/Syrian STATE media, US/English absent, Spanish below-gate — "who covers a disaster and who stays silent is geopolitical." Splits: PE 55% self/GB 14%; CO 78% self/VE-covers-CO; VE state-controlled | **P7** (coverage-distribution lens on the assembled story) + **P8** (discovery-from-silence: English-biased gate → below-gate Spanish on a major event = the discovery gap = the voice gap) + P2 (self-voice substrate) | P7 "Coverage asymmetry as the story"; P8 "coverage asymmetry = discovery from silence" |
 | **R3 unification (2026-07-01, spec `2026-07-01-atlas-engine-r3-unification.md`):** one served population, `atlas_topics` collapsed to a `category` attribute; SPINE (stories) + orthogonal LENSES (entity/geo/source) + deferred typed-relation layer; anchored-emergent category level (crisis-32 = seed anchors, emergent super-clusters extend the set) | **P4** (hierarchy: category/event/story levels + typed membership) + **P1** (the anchored-emergent taxonomy is the successor to the fixed-32 benchmark) + **P7** (one topic view, all lenses re-scope) | R3 spec §1/§3; P4 spec `2026-05-24-living-narrative-threads.md`; P1 "Canonical benchmark regime" + "Taxonomy revision" |
 | **R3.1 category typing (2026-07-01):** DeepSeek-primary typer (cosine seed-prototype FAILS — diffuse centroids, proven); 348/348 stories typed (182 crisis-anchored + 166 non-crisis honest-labeled, not suppressed); Path B local encoder = future $0 distillation | **P1** (typing precision = the crisis-only successor to 41.6%; the DeepSeek→local distillation loop) | R3 spec §3.1/§12; P1 "Reject GATE ≠ category TYPING" note |
 | **Crisis-relevance as a LENS (2026-07-01, Pedro's correction):** `category` is the OPEN category for EVERY story (badge); `crisis_relevant` is a FLAG the analyst filters on, NOT a taxonomy divide — a World Cup is a narrative, not a "reject" | **P1** (open-set category space, not a closed crisis gate) + **P7** (relevance as an analyst lens) + **P8** (open-set principle) | R3 spec §12 "Crisis-relevance as a LENS"; P1 "Canonical benchmark regime" (open-set framing) |

@@ -310,6 +310,49 @@ Honest framing: Atlas's edge is scoping + lifecycle, NOT raw one-shot coherence.
 **Two levers compound:** theme-hint removal (+7.4pp, significant) and the crisis reject class
 (+7–13pp) attack DIFFERENT noise; a v2 engine applying both clears well above the 41.6% headline.
 
+## e5 anisotropic compression — the substrate reframe (2026-07-06)
+
+The external-baseline result above (PR3-09) reads the HDBSCAN-global cliff as
+justification for scoping, and the 2026-06-29 engine notes went further —
+"the recall/purity cliff is intrinsic to headline-only short-text density."
+**That attribution is now measured to be wrong: the cliff is an artifact of e5
+anisotropy (scale compression), not of the corpus.** Two read-only harnesses
+(`backend/scripts/measure_signal_separation.py`, SIGNAL level over
+`topic_members`; `measure_embedding_separation.py`, CENTROID level over assembled
+umbrella `parent_id` groups) compute same-story vs diff-story cosine
+distributions + ROC-AUC.
+
+| space | same p50 | diff p50 | gap | AUC |
+|---|---:|---:|---:|---:|
+| e5 raw (signal) | 0.916 | 0.788 | **+0.13** | **0.985** |
+| all-but-top k=1 (signal) | — | — | **+0.57** (4.4×) | ≈0.985 (unchanged) |
+| e5 raw (centroid) | — | — | +0.04 | 0.80 |
+| all-but-top k=1 (centroid) | — | — | **+0.31** (7×) | 0.87 |
+
+Two things the paper claims from this:
+1. **Separability was never the problem.** Signal-pair AUC is already **0.985**
+   in raw e5 — the space encodes the story distinction almost perfectly. The
+   cliff is that raw same/diff cosine is pegged into a narrow 0.916/0.788 band a
+   density estimator (HDBSCAN mutual-reachability, any cosine threshold) cannot
+   resolve. A single dominant anisotropic principal direction (the e5 "common
+   cone") consumes the dynamic range.
+2. **"All-but-the-top" whitening is a parameter-free, falsifiable cure.**
+   Subtract the mean, project out the top-`k=1` principal direction
+   (`all_but_top(V, k)`): the gap opens 4.4× at the signal level and 7× at the
+   centroid level with the *ordering* (AUC) unchanged — i.e. only the compressed
+   scale is restored, no information is added or lost.
+
+Methods significance: a short-text recall ceiling previously reported as
+"intrinsic density" was an un-whitened-anisotropy artifact. This makes the
+scoped-clustering lever (R1) and whitening **independent** recall levers, and
+gives the substrate a cheap pre-transform. Shipped downstream (L3 dossier
+neighbors whiten, `3990af0d` — real bridges like "Milei attends Fujimori"
+surface, generic-central noise drops). **Decisive experiment still to run:**
+HDBSCAN recall/purity on raw vs `all-but-top k=1` whitened signal embeddings
+(reuse `cluster_recall_sweep.py`) + a k-sweep (1/3/5/10) — does the "no config
+gives both" cliff lift once the scale-compression is removed? Paper-8 owns the
+clustering-recall consequence; Paper 1 owns the substrate claim.
+
 ## Discussion Skeleton
 
 ### Why This Matters For Atlas
