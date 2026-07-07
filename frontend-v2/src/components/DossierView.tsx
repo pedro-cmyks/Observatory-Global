@@ -33,22 +33,32 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
     // pins + the measured connection verdict. Fires once the connection is
     // measured (so the verdict feeds it), or from pins alone as a fallback.
     const [synth, setSynth] = useState<DossierSynthesis | null | undefined>(undefined)
+    // Refs so the single synthesis call always reads the freshest dossier + conn,
+    // and its result lands as long as the component is mounted — independent of
+    // which effect instance fired it (the fallback-timer closure would otherwise
+    // be cancelled the moment `conn` arrives, swallowing the brief).
     const dossierRef = useRef(dossier)
     dossierRef.current = dossier
+    const connRef = useRef(conn)
+    connRef.current = conn
+    const mounted = useRef(true)
+    useEffect(() => () => { mounted.current = false }, [])
     const synthStarted = useRef(false)
     useEffect(() => {
         if (dossier.pinCount === 0) { setSynth(null); return }
         if (synthStarted.current) return
-        let alive = true
         const run = () => {
+            if (synthStarted.current) return
             synthStarted.current = true
-            synthesizeDossier(dossierRef.current, conn).then(s => { if (alive) setSynth(s) })
+            synthesizeDossier(dossierRef.current, connRef.current)
+                .then(s => { if (mounted.current) setSynth(s) })
         }
-        // 1 pin → no connection to wait for; 2+ → wait for the verdict, else fall
-        // back after 9s so a failed connection measurement never blocks the brief.
-        if (dossier.pinCount < 2 || conn) { run(); return () => { alive = false } }
+        // 1 pin → no connection to wait for; 2+ → fire as soon as the verdict is
+        // measured, else fall back after 9s so a failed measurement never blocks
+        // the brief. run() always reads the latest conn via connRef.
+        if (dossier.pinCount < 2 || conn) { run(); return }
         const t = setTimeout(run, 9000)
-        return () => { alive = false; clearTimeout(t) }
+        return () => clearTimeout(t)
     }, [investigation.id, conn, dossier.pinCount])
 
     // W3: measured sections load after the frozen core renders; a fetch
