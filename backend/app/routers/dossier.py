@@ -20,6 +20,7 @@ generation time; the frozen pin core (lib/dossier.ts) never depends on this.
 """
 from __future__ import annotations
 
+import json
 import logging
 import math
 import time
@@ -29,6 +30,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from app import db
+from app.services.insight_llm import generate_insight
 
 router = APIRouter(prefix="/api/v2/dossier", tags=["dossier"])
 logger = logging.getLogger(__name__)
@@ -551,3 +553,132 @@ async def dossier_connections(req: ConnectionsRequest):
     }
     _cache[cache_key] = (time.monotonic(), payload)
     return payload
+
+
+# ── Dossier synthesis (standalone brief) ─────────────────────────────────────
+# The report must STAND ALONE (Frank test): a stranger reading only the brief
+# should understand the story. The templated one-liner can't do that. This runs
+# ONE grounded LLM pass over the FROZEN pin evidence + the MEASURED connection
+# verdict → a headline, a synthesis that names the non-obvious finding, and the
+# key gap. Measured at generation time (labeled as such); never fabricates beyond
+# the evidence; degrades to absence so the frozen report always stands.
+
+class SynthPin(BaseModel):
+    label: str
+    type: str | None = None
+    evidence: list[str] = Field(default_factory=list)  # frozen headlines
+    note: str | None = None
+
+
+class SynthConnection(BaseModel):
+    # 'grounded' (shared actors/places) | 'similar-only' (semantic proximity only)
+    # | 'split' | 'isolated' — the basis-weighted verdict from the frontend.
+    state: str | None = None
+    links: list[str] = Field(default_factory=list)     # "A ↔ B — shared actor X"
+    countries: list[str] = Field(default_factory=list)
+    languages: list[str] = Field(default_factory=list)
+    press: int = 0
+    public: int = 0
+    bridges: list[str] = Field(default_factory=list)    # unpinned stories nearby
+
+
+class SynthesizeRequest(BaseModel):
+    title: str = ""
+    pins: list[SynthPin] = Field(..., min_length=1, max_length=32)
+    connection: SynthConnection | None = None
+    gaps: list[str] = Field(default_factory=list)
+
+
+_SYNTH_SYSTEM = (
+    "You are an intelligence analyst writing a STANDALONE brief from an analyst's "
+    "pinned evidence. A stranger reading ONLY your brief must understand the story. "
+    "You are given: the pinned stories with their frozen evidence headlines, and a "
+    "MEASURED connection verdict between them. Rules:\n"
+    "1. Ground everything in the supplied evidence — never invent facts, numbers, "
+    "actors, or events that are not in the headlines.\n"
+    "2. Be honest about the connection. If the verdict state is 'similar-only', the "
+    "stories share NO actors or places — they are only topically/linguistically "
+    "similar; you MUST say the link is an unproven hypothesis, not a finding. If "
+    "'grounded', name the shared actors/places that connect them. If 'split' or "
+    "'isolated', say the pins do not form one story.\n"
+    "3. Surface the NON-OBVIOUS insight — the thing not visible from any single "
+    "headline (a self-declared alignment, a coverage asymmetry, an actor bridging "
+    "two stories). This is the point of the brief.\n"
+    "4. Name the KEY GAP — what is missing or unproven (e.g. a driver with no "
+    "coverage, one-sided sourcing, no public/forum voice).\n"
+    "Output STRICT JSON only, no prose around it: "
+    '{"headline": "<=14 words, the finding", "synthesis": "2-4 sentences", '
+    '"gap": "1-2 sentences"}.'
+)
+
+
+def _synth_user(req: SynthesizeRequest) -> str:
+    parts: list[str] = []
+    if req.title:
+        parts.append(f"Investigation title: {req.title}")
+    parts.append("\nPINNED STORIES + frozen evidence:")
+    for i, p in enumerate(req.pins, 1):
+        parts.append(f"{i}. {p.label}" + (f" [{p.type}]" if p.type else ""))
+        for h in p.evidence[:6]:
+            parts.append(f"   - {h}")
+        if p.note:
+            parts.append(f"   note: {p.note}")
+    c = req.connection
+    if c:
+        parts.append("\nMEASURED CONNECTION VERDICT:")
+        parts.append(f"  state: {c.state or 'unknown'}")
+        if c.links:
+            parts.append("  links: " + " | ".join(c.links[:8]))
+        if c.countries:
+            parts.append("  countries touched: " + ", ".join(c.countries[:10]))
+        if c.languages:
+            parts.append("  coverage languages: " + ", ".join(c.languages[:8]))
+        parts.append(f"  press signals: {c.press} · public/forum signals: {c.public}")
+        if c.bridges:
+            parts.append("  nearby unpinned stories (bridges): " + " | ".join(c.bridges[:6]))
+    if req.gaps:
+        parts.append("\nKNOWN GAPS (from the frozen report):")
+        for g in req.gaps[:6]:
+            parts.append(f"  - {g}")
+    return "\n".join(parts)
+
+
+def _extract_json(text: str) -> dict | None:
+    """Lenient — providers sometimes fence the JSON or add a sentence around it."""
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        try:
+            return json.loads(text[start:end + 1])
+        except Exception:
+            return None
+    return None
+
+
+@router.post("/synthesize")
+async def dossier_synthesize(req: SynthesizeRequest):
+    """One grounded LLM pass → standalone {headline, synthesis, gap}."""
+    contract = "dossier-synthesis-v1"
+    text, provider, error = await generate_insight(
+        _SYNTH_SYSTEM, _synth_user(req), max_tokens=600,
+    )
+    if not text:
+        return {"contract": contract, "headline": None, "synthesis": None,
+                "gap": None, "provider": None, "error": error or "insight_unavailable"}
+    parsed = _extract_json(text)
+    if not parsed:
+        # non-JSON reply — still useful; hand the prose back as the synthesis.
+        return {"contract": contract, "headline": None, "synthesis": text.strip(),
+                "gap": None, "provider": provider, "error": None}
+    return {
+        "contract": contract,
+        "headline": (parsed.get("headline") or None),
+        "synthesis": (parsed.get("synthesis") or None),
+        "gap": (parsed.get("gap") or None),
+        "provider": provider,
+        "error": None,
+    }

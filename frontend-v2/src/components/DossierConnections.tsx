@@ -4,9 +4,10 @@
 // Earth map of the countries the stories touch, and distributions (coverage by
 // country/language, press vs public, sentiment, combined timeline). All
 // MEASURED at generation time; the frozen pin core never depends on it.
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   fetchConnections, deriveClusters, layoutInvestigativeUniverse, edgeReason, deOverlapLabels,
+  edgeStrength, clusterStrength, sharedBasisNames,
   type ConnectionsData, type ConnectionEdge, type ClusterResult,
   type ConnectionNeighbor, type LabelItem,
 } from '../lib/dossierConnections'
@@ -16,11 +17,12 @@ import { track } from '../lib/telemetry'
 import type { Investigation } from '../lib/workbench'
 import './DossierConnections.css'
 
-const BASIS_COLOR: Record<string, string> = {
-  semantic: '#38bdf8',        // cyan — semantic proximity
-  shared_country: '#f59e0b',  // amber — shared country
-  shared_person: '#a78bfa',   // violet — shared actor
-}
+// Edge visual truth: a link the reader can trust (shared actor/place) is a SOLID
+// green line whose weight scales with evidence; a similarity-only link is a thin
+// DASHED slate line with NO weight scaling — a higher cosine must never read as a
+// stronger connection (that is the false-confidence bug this whole pass removes).
+const STRONG_EDGE = '#1D9E75'
+const WEAK_EDGE = '#64748b'
 
 const UNIVERSE_W = 640
 // Taller (not wider) — width scales the whole viewBox to the container, so a
@@ -31,9 +33,11 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 // The always-visible "why" on a pin↔pin edge — the strongest measured basis, so
 // a reader of the report alone sees WHY two stories connect, not just that they do.
 function edgeTag(e: ConnectionEdge): string {
-  if (e.basis.includes('semantic') && e.semantic_sim != null) return `≈${e.semantic_sim.toFixed(2)}`
-  if (e.shared_countries.length) return e.shared_countries[0]
+  // Strongest basis first — a real shared actor/place must show its NAME, not a
+  // cosine number that would make the confirmed link look fuzzy.
   if (e.shared_persons.length) return e.shared_persons[0].split(' ')[0]
+  if (e.shared_countries.length) return e.shared_countries[0]
+  if (e.basis.includes('semantic') && e.semantic_sim != null) return `≈${e.semantic_sim.toFixed(2)}`
   return ''
 }
 
@@ -103,36 +107,83 @@ export function DossierConnections(
 }
 
 // ── Sub-narrative verdict ─────────────────────────────────────────────────────
+// The claim-truth half of the fix: a cluster held together only by semantic
+// proximity is NOT "one connected narrative" — it is a CAUTION (similar topics,
+// no shared actors/places). Confirmed = at least one shared-actor/place edge.
 function ClusterVerdict({ data, cluster }: { data: ConnectionsData; cluster: ClusterResult }) {
-  return (
-    <div className="dcx-verdict">
-      {cluster.clusters.length === 0 ? (
+  if (cluster.clusters.length === 0) {
+    return (
+      <div className="dcx-verdict" data-state="neutral">
         <p>No sub-narrative connects these pins — every story is isolated. They may not form one narrative.</p>
-      ) : (
-        <>
-          <p>
-            {cluster.clusters.length === 1
-              ? 'These pins form one connected narrative.'
-              : `These pins split into ${cluster.clusters.length} sub-narratives.`}
-            {cluster.isolated.length > 0
-              && ` ${cluster.isolated.length} pin${cluster.isolated.length === 1 ? '' : 's'} connect to nothing (flagged).`}
-          </p>
-          <ul className="dcx-clusters">
-            {cluster.clusters.map((g, i) => (
-              <li key={i}>
-                <span className="dcx-cluster-dot" style={{ background: clusterColor(i) }} />
-                <strong>Sub-narrative {i + 1}</strong> ({g.length}): {g.map(n => n.label).join('; ')}
-              </li>
-            ))}
-            {cluster.isolated.length > 0 && (
-              <li className="dcx-isolated-row">
-                <span className="dcx-cluster-dot dcx-iso-dot" />
-                <strong>Isolated</strong>: {cluster.isolated.map(n => n.label).join('; ')}
-              </li>
-            )}
-          </ul>
-        </>
-      )}
+        {data.unresolved.length > 0 && (
+          <p className="dcx-note">Not in the relation graph (no story centroid): {data.unresolved.join(', ')}.</p>
+        )}
+      </div>
+    )
+  }
+
+  const strengths = cluster.clusters.map(g => clusterStrength(g, data.edges))
+  const single = cluster.clusters.length === 1
+  // Whole-box state: single cluster → its strength; multiple → 'split' (per-cluster
+  // pills carry the nuance, never roll conflicting clusters into one claim).
+  const boxState = single ? (strengths[0] === 'confirmed' ? 'confirmed' : 'caution') : 'split'
+
+  let headline: ReactNode
+  if (single && strengths[0] === 'confirmed') {
+    const via = sharedBasisNames(cluster.clusters[0], data.edges)
+    headline = (
+      <p>
+        <b className="dcx-verdict-glyph" style={{ color: STRONG_EDGE }}>✓</b>{' '}
+        These pins are connected by shared actors or places, not just similar topics.
+        {via.length > 0 && <> Linked via <strong>{via.join(', ')}</strong>.</>}
+      </p>
+    )
+  } else if (single) {
+    headline = (
+      <>
+        <p>
+          <b className="dcx-verdict-glyph" style={{ color: '#f59e0b' }}>⚠</b>{' '}
+          These pins are only <strong>similar in topic</strong> — no shared actors or places connect them.
+        </p>
+        <p className="dcx-note">
+          All links are semantic proximity only. This may reflect shared language or subject matter,
+          not a real coordinated narrative — treat it as a hypothesis to investigate, not a finding.
+        </p>
+      </>
+    )
+  } else {
+    headline = (
+      <p>
+        These pins split into {cluster.clusters.length} sub-narratives.
+        {cluster.isolated.length > 0
+          && ` ${cluster.isolated.length} pin${cluster.isolated.length === 1 ? '' : 's'} connect to nothing (flagged).`}
+      </p>
+    )
+  }
+
+  return (
+    <div className="dcx-verdict" data-state={boxState}>
+      {headline}
+      <ul className="dcx-clusters">
+        {cluster.clusters.map((g, i) => {
+          const confirmed = strengths[i] === 'confirmed'
+          return (
+            <li key={i}>
+              <span className={`dcx-cluster-badge ${confirmed ? 'dcx-cluster-badge--confirmed' : 'dcx-cluster-badge--caution'}`}>
+                {confirmed ? 'CONFIRMED' : 'SIMILAR ONLY'}
+              </span>
+              <span className="dcx-cluster-dot" style={{ background: clusterColor(i) }} />
+              <span><strong>Sub-narrative {i + 1}</strong> ({g.length}): {g.map(n => n.label).join('; ')}</span>
+            </li>
+          )
+        })}
+        {cluster.isolated.length > 0 && (
+          <li className="dcx-isolated-row">
+            <span className="dcx-cluster-dot dcx-iso-dot" />
+            <strong>Isolated</strong>: {cluster.isolated.map(n => n.label).join('; ')}
+          </li>
+        )}
+      </ul>
       {data.unresolved.length > 0 && (
         <p className="dcx-note">Not in the relation graph (no story centroid): {data.unresolved.join(', ')}.</p>
       )}
@@ -234,6 +285,12 @@ function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; clust
     }
     return m
   }, [data])
+  // Per-cluster strength → a similarity-only cluster gets an amber dashed ring on
+  // its nodes (same "dashed = provisional" grammar as the isolated ring).
+  const clusterStrengths = useMemo(
+    () => cluster.clusters.map(g => clusterStrength(g, data.edges)),
+    [cluster, data.edges],
+  )
 
   // Group unpinned neighbors: BRIDGES (near >1 pin — the meaningful cross-pin
   // connectors) vs SINGLE (near one pin — the crowd). Bridges are always
@@ -312,8 +369,12 @@ function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; clust
         <span><b className="dcx-k-pin">●</b> your pins (always labelled)</span>
         <span><b className="dcx-k-nb">◦</b> nearby unpinned story</span>
         <span><b className="dcx-k-bridge">◎</b> bridge — near several pins</span>
-        <span><b>≈0.9</b> edge label = why they connect (≈ semantic; else shared country/actor)</span>
         <span>position ≈ semantic field · closer = more alike</span>
+      </div>
+      <div className="dcx-howto dcx-edge-legend">
+        <span><i className="dcx-k-strong-edge" /> solid = confirmed link (shared actor/place)</span>
+        <span><i className="dcx-k-weak-edge" /> dashed = similarity only, not a confirmed link</span>
+        <span>line label = the reason (shared name/country, or ≈cosine if similarity-only)</span>
       </div>
       <svg viewBox={`0 0 ${UNIVERSE_W} ${UNIVERSE_H}`} className="dcx-universe" role="img" aria-label="Investigative universe">
         {/* neighbor links — faint, behind everything */}
@@ -325,18 +386,23 @@ function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; clust
             stroke={lit ? '#94a3b8' : '#475569'} strokeWidth={lit ? 0.8 : 0.5} strokeDasharray="2 3"
             strokeOpacity={hover ? (lit ? 0.55 : 0.1) : 0.28} />
         }))}
-        {/* edges — with the always-visible WHY (edge tag) */}
+        {/* edges — solid green = confirmed (shared actor/place), dashed slate =
+            similarity-only. Weak edges get NO weight scaling: a higher cosine must
+            not read as a stronger link. Tag = the WHY (actor/country, else ≈cosine). */}
         {data.edges.map((e, i) => {
           const a = byId.get(e.a), b = byId.get(e.b)
           if (!a || !b) return null
           const dim = hover && e.a !== hover && e.b !== hover
-          const color = BASIS_COLOR[e.basis[0]] ?? '#94a3b8'
+          const strong = edgeStrength(e) === 'strong'
+          const color = strong ? STRONG_EDGE : WEAK_EDGE
+          const width = strong ? 1.4 + e.weight * 1.8 : 0.75
+          const opacity = dim ? (strong ? 0.10 : 0.06) : (strong ? 0.55 + e.weight * 0.35 : 0.30)
           const tag = edgeTag(e)
           return (
             <g key={i}>
               <line x1={a.px} y1={a.py} x2={b.px} y2={b.py} stroke={color}
-                strokeWidth={0.6 + e.weight * 2.2}
-                strokeOpacity={dim ? 0.06 : 0.18 + e.weight * 0.5} />
+                strokeWidth={width} strokeOpacity={opacity}
+                strokeDasharray={strong ? undefined : '3 3'} />
               {!dim && tag && (
                 <text x={(a.px + b.px) / 2} y={(a.py + b.py) / 2 - 2} textAnchor="middle"
                   className="dcx-edge-tag" fill={color}>{tag}</text>
@@ -373,6 +439,7 @@ function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; clust
         {placed.map(n => {
           const isolated = cluster.isolated.some(x => x.id === n.id)
           const ci = cluster.clusterOf.get(n.id) ?? -1
+          const weakCluster = ci >= 0 && clusterStrengths[ci] === 'caution'
           const r = universeRadius(n.n)
           const active = hover === n.id
           const nearHover = hover && !hover.startsWith('nb:') && (n.id === hover || neighborsOf.get(hover)?.has(n.id))
@@ -388,6 +455,10 @@ function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; clust
                 <circle r={r + 4} fill="none" stroke="#64748b" strokeWidth={1}
                         strokeDasharray="3 3" />
               )}
+              {weakCluster && !isolated && (
+                <circle r={r + 4} fill="none" stroke="#f59e0b" strokeWidth={1.5}
+                        strokeDasharray="4 2" strokeOpacity={0.7} />
+              )}
               {/* leader line when the label got pushed up out of the way */}
               {rel < -r - 8 && (
                 <line x1={0} y1={-r - 2} x2={0} y2={rel + 2} stroke={clusterColor(ci)} strokeWidth={0.5} strokeOpacity={0.5} />
@@ -402,11 +473,6 @@ function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; clust
           )
         })}
       </svg>
-      <div className="dcx-legend">
-        <span><i style={{ background: BASIS_COLOR.semantic }} /> semantic</span>
-        <span><i style={{ background: BASIS_COLOR.shared_country }} /> shared country</span>
-        <span><i style={{ background: BASIS_COLOR.shared_person }} /> shared actor</span>
-      </div>
       {hovered && (
         <div className="dcx-hovercard">
           <strong>{hovered.label}</strong>

@@ -83,6 +83,17 @@
 .dossier-section p { margin: 0; font-size: 14px; line-height: 1.5; }
 .dossier-empty { color: var(--color-text-muted); font-style: italic; }
 
+/* #2 synthesis — the standalone brief leads the report. */
+.dossier-synthesis {
+    background: rgba(29, 158, 117, 0.05);
+    border: 1px solid rgba(29, 158, 117, 0.2);
+    border-radius: 8px;
+    padding: 14px 16px;
+}
+.dossier-synthesis p { margin: 0 0 8px; }
+.dossier-synth-headline { font-size: 17px !important; font-weight: 650; color: #f3f4f6; line-height: 1.35 !important; }
+.dossier-synth-gap { color: #cbd5e1; font-style: italic; }
+
 .dossier-pin {
     padding: 10px 12px;
     background: rgba(255, 255, 255, 0.02);

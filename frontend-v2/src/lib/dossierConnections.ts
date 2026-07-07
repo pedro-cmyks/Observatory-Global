@@ -168,6 +168,59 @@ export function deriveClusters(nodes: ConnectionNode[], edges: ConnectionEdge[])
   return { clusters, isolated, clusterOf }
 }
 
+// ── Basis-weighted strength (the correlation≠causation guard) ─────────────────
+// A pin↔pin link is STRONG when it rests on a shared ACTOR or shared COUNTRY (a
+// real overlap of reference points) and WEAK when it is semantic-ONLY (embedding
+// proximity). For same-language coverage of related topics, high cosine is
+// largely a linguistic/topical artifact — so a semantic-only cluster must NEVER
+// be presented as "one connected narrative". The verdict + the graph both read
+// off this distinction.
+export type LinkStrength = 'strong' | 'weak'
+
+/** shared actor / shared country present → strong; semantic-only → weak. */
+export function edgeStrength(e: ConnectionEdge): LinkStrength {
+  return e.shared_persons.length > 0 || e.shared_countries.length > 0 ? 'strong' : 'weak'
+}
+
+export type ClusterStrength = 'confirmed' | 'caution'
+
+/** Classify a cluster (≥2 nodes) by the strongest basis on any INTERNAL edge.
+ *  'confirmed' = at least one shared-actor/shared-country edge inside it (one
+ *  real thread is enough to call the group connected); 'caution' = every internal
+ *  edge is semantic-only (similar topics, no shared reference points). */
+export function clusterStrength(nodes: ConnectionNode[], edges: ConnectionEdge[]): ClusterStrength {
+  const ids = new Set(nodes.map(n => n.id))
+  const internal = edges.filter(e => ids.has(e.a) && ids.has(e.b))
+  if (internal.length === 0) return 'caution' // defensive — a ≥2 cluster always has one
+  return internal.some(e => edgeStrength(e) === 'strong') ? 'confirmed' : 'caution'
+}
+
+export type ConnectionState = 'grounded' | 'similar-only' | 'split' | 'isolated'
+
+/** The single basis-weighted verdict state over the whole pinned set — shared by
+ *  the synthesis request and (conceptually) the verdict box. 'grounded' = one
+ *  cluster held by shared actors/places; 'similar-only' = one cluster, semantic
+ *  proximity only; 'split' = ≥2 sub-narratives; 'isolated' = nothing connects. */
+export function connectionState(cluster: ClusterResult, edges: ConnectionEdge[]): ConnectionState {
+  if (cluster.clusters.length === 0) return 'isolated'
+  if (cluster.clusters.length >= 2) return 'split'
+  return clusterStrength(cluster.clusters[0], edges) === 'confirmed' ? 'grounded' : 'similar-only'
+}
+
+/** The concrete shared actors + countries that link a cluster's members — the
+ *  "linked via …" evidence for a confirmed verdict. Deduped, actors first. */
+export function sharedBasisNames(nodes: ConnectionNode[], edges: ConnectionEdge[], max = 4): string[] {
+  const ids = new Set(nodes.map(n => n.id))
+  const persons = new Set<string>()
+  const countries = new Set<string>()
+  for (const e of edges) {
+    if (!ids.has(e.a) || !ids.has(e.b)) continue
+    for (const p of e.shared_persons) persons.add(p)
+    for (const c of e.shared_countries) countries.add(c)
+  }
+  return [...persons, ...countries].slice(0, max)
+}
+
 // ── Pure field layout ───────────────────────────────────────────────────────
 
 export interface PlacedNode extends ConnectionNode {
@@ -305,8 +358,26 @@ export function connectionsSummaryLines(
   if (cluster.clusters.length === 0 && cluster.isolated.length > 0) {
     lines.push('- No sub-narratives: every pinned story is isolated (they do not measurably relate).')
   }
+  // Aggregate verdict — how many sub-narratives are confirmed by shared actors/
+  // places vs similarity-only (must survive to the exported, hover-less report).
+  if (cluster.clusters.length > 0) {
+    const strengths = cluster.clusters.map(g => clusterStrength(g, data.edges))
+    const confirmed = strengths.filter(s => s === 'confirmed').length
+    const caution = strengths.length - confirmed
+    lines.push(
+      `- Of ${strengths.length} sub-narrative${strengths.length === 1 ? '' : 's'}, `
+      + `${confirmed} confirmed by shared actors/places and ${caution} similarity-only `
+      + '(topic/language proximity, not a proven connection).',
+    )
+  }
   cluster.clusters.forEach((g, i) => {
-    lines.push(`- **Sub-narrative ${i + 1}** (${g.length} stories): ${g.map(n => n.label).join('; ')}.`)
+    const strong = clusterStrength(g, data.edges) === 'confirmed'
+    const tag = strong ? '✓ CONFIRMED' : '⚠ SIMILAR ONLY'
+    const via = strong ? sharedBasisNames(g, data.edges) : []
+    const suffix = strong
+      ? (via.length ? ` Linked via ${via.join(', ')}.` : '')
+      : ' No shared actors or places — connection is semantic/topical proximity only; treat as a hypothesis.'
+    lines.push(`- **${tag} — Sub-narrative ${i + 1}** (${g.length} stories): ${g.map(n => n.label).join('; ')}.${suffix}`)
   })
   if (cluster.isolated.length > 0) {
     lines.push(`- **Isolated** (connect to nothing pinned): ${cluster.isolated.map(n => n.label).join('; ')}.`)
@@ -317,7 +388,8 @@ export function connectionsSummaryLines(
     for (const e of strong) {
       const a = data.nodes.find(n => n.id === e.a)?.label ?? e.a
       const b = data.nodes.find(n => n.id === e.b)?.label ?? e.b
-      lines.push(`  - ${a} ↔ ${b} — ${edgeReason(e)}`)
+      const mark = edgeStrength(e) === 'strong' ? '✓' : '≈'
+      lines.push(`  - ${mark} ${a} ↔ ${b} — ${edgeReason(e)}`)
     }
   }
   if (data.unresolved.length) {

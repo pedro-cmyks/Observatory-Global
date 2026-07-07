@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   deriveClusters, layoutInvestigativeUniverse, edgeReason, connectionsSummaryLines,
   connectionTopicIds, deOverlapLabels,
+  edgeStrength, clusterStrength, sharedBasisNames,
   type ConnectionNode, type ConnectionEdge, type ConnectionsData, type LabelItem,
 } from './dossierConnections'
 import type { Investigation } from './workbench'
@@ -160,6 +161,53 @@ describe('connectionsSummaryLines', () => {
     const cluster = deriveClusters(nodes, [])
     const lines = connectionsSummaryLines(data, cluster).join('\n')
     expect(lines).toContain('every pinned story is isolated')
+  })
+})
+
+describe('edgeStrength / clusterStrength (basis-weighting — the correlation guard)', () => {
+  it('semantic-only edge is weak; shared actor/place is strong', () => {
+    expect(edgeStrength(edge('a', 'b'))).toBe('weak') // default = semantic-only
+    expect(edgeStrength(edge('a', 'b', { basis: ['semantic', 'shared_person'], shared_persons: ['fujimori'] }))).toBe('strong')
+    expect(edgeStrength(edge('a', 'b', { basis: ['shared_country'], semantic_sim: null, shared_countries: ['PE'] }))).toBe('strong')
+  })
+
+  it('a cluster held only by semantic edges is CAUTION, one shared actor makes it CONFIRMED', () => {
+    const nodes = [node('a'), node('b'), node('c')]
+    const semanticOnly = [edge('a', 'b', { semantic_sim: 0.94 }), edge('b', 'c', { semantic_sim: 0.92 })]
+    expect(clusterStrength(nodes, semanticOnly)).toBe('caution')
+    // add ONE shared-actor edge inside the cluster → confirmed
+    const withActor = [...semanticOnly, edge('a', 'c', { basis: ['shared_person'], shared_persons: ['milei'] })]
+    expect(clusterStrength(nodes, withActor)).toBe('confirmed')
+  })
+
+  it('sharedBasisNames dedups actors then countries across internal edges', () => {
+    const nodes = [node('a'), node('b'), node('c')]
+    const edges = [
+      edge('a', 'b', { basis: ['shared_person'], shared_persons: ['fujimori'] }),
+      edge('b', 'c', { basis: ['shared_person', 'shared_country'], shared_persons: ['fujimori'], shared_countries: ['PE'] }),
+    ]
+    expect(sharedBasisNames(nodes, edges)).toEqual(['fujimori', 'PE'])
+  })
+})
+
+describe('connectionsSummaryLines — strength framing survives to export', () => {
+  it('labels a semantic-only cluster SIMILAR ONLY with a hypothesis caveat', () => {
+    const nodes = [node('a'), node('b')]
+    const edges = [edge('a', 'b', { semantic_sim: 0.93 })] // semantic-only
+    const data: ConnectionsData = { contract: 'x', nodes, edges, distributions: null, unresolved: [] }
+    const lines = connectionsSummaryLines(data, deriveClusters(nodes, edges)).join('\n')
+    expect(lines).toContain('SIMILAR ONLY')
+    expect(lines).toContain('hypothesis')
+    expect(lines).toContain('similarity-only')
+  })
+
+  it('labels a shared-actor cluster CONFIRMED with the linking actor', () => {
+    const nodes = [node('a'), node('b')]
+    const edges = [edge('a', 'b', { basis: ['shared_person'], shared_persons: ['fujimori'] })]
+    const data: ConnectionsData = { contract: 'x', nodes, edges, distributions: null, unresolved: [] }
+    const lines = connectionsSummaryLines(data, deriveClusters(nodes, edges)).join('\n')
+    expect(lines).toContain('CONFIRMED')
+    expect(lines).toContain('Linked via fujimori')
   })
 })
 

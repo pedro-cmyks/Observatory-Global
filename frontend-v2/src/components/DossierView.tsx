@@ -5,6 +5,7 @@ import {
     connectionsSummaryLines,
     type ClusterResult, type ConnectionsData,
 } from '../lib/dossierConnections'
+import { synthesizeDossier, synthesisMarkdown, type DossierSynthesis } from '../lib/dossierSynthesis'
 import { DossierConnections } from './DossierConnections'
 import { track, trackOnce } from '../lib/telemetry'
 import type { Investigation } from '../lib/workbench'
@@ -22,11 +23,33 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
     )
     const [copied, setCopied] = useState(false)
     // Connection analysis is fetched inside DossierConnections; it hands the
-    // measured data up here so the Markdown export can carry the findings too.
-    const connRef = useRef<{ data: ConnectionsData; cluster: ClusterResult } | null>(null)
+    // measured data up here so the synthesis + Markdown export carry the findings.
+    const [conn, setConn] = useState<{ data: ConnectionsData; cluster: ClusterResult } | null>(null)
     const onConnections = useCallback((data: ConnectionsData, cluster: ClusterResult) => {
-        connRef.current = { data, cluster }
+        setConn({ data, cluster })
     }, [])
+
+    // #2 synthesis — the standalone brief. One grounded LLM pass over the frozen
+    // pins + the measured connection verdict. Fires once the connection is
+    // measured (so the verdict feeds it), or from pins alone as a fallback.
+    const [synth, setSynth] = useState<DossierSynthesis | null | undefined>(undefined)
+    const dossierRef = useRef(dossier)
+    dossierRef.current = dossier
+    const synthStarted = useRef(false)
+    useEffect(() => {
+        if (dossier.pinCount === 0) { setSynth(null); return }
+        if (synthStarted.current) return
+        let alive = true
+        const run = () => {
+            synthStarted.current = true
+            synthesizeDossier(dossierRef.current, conn).then(s => { if (alive) setSynth(s) })
+        }
+        // 1 pin → no connection to wait for; 2+ → wait for the verdict, else fall
+        // back after 9s so a failed connection measurement never blocks the brief.
+        if (dossier.pinCount < 2 || conn) { run(); return () => { alive = false } }
+        const t = setTimeout(run, 9000)
+        return () => { alive = false; clearTimeout(t) }
+    }, [investigation.id, conn, dossier.pinCount])
 
     // W3: measured sections load after the frozen core renders; a fetch
     // failure leaves the report intact (sections simply absent).
@@ -45,8 +68,15 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
     }, [dossier.pinCount])
 
     const markdown = () => {
-        const base = dossierToMarkdown(dossier)
-        const conn = connRef.current
+        let base = dossierToMarkdown(dossier)
+        // Synthesis leads the report (above the templated summary) so the export
+        // opens with the finding, not a pin count.
+        if (synth && (synth.headline || synth.synthesis)) {
+            const sblock = synthesisMarkdown(synth).join('\n')
+            const sMarker = '## Executive summary'
+            const sAt = base.indexOf(sMarker)
+            base = sAt === -1 ? `${sblock}\n${base}` : `${base.slice(0, sAt)}${sblock}\n${base.slice(sAt)}`
+        }
         if (!conn || conn.data.nodes.length < 2) return base
         const block = connectionsSummaryLines(conn.data, conn.cluster).join('\n') + '\n'
         // Insert the connection findings before the Timeline section.
@@ -87,6 +117,26 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
                     Generated {new Date(dossier.generatedAt).toLocaleString()} · {dossier.pinCount} pin{dossier.pinCount === 1 ? '' : 's'} · frozen at pin time
                     {dossier.queries.length > 0 && <> · queries: {dossier.queries.join(' · ')}</>}
                 </div>
+
+                {(synth || (synth === undefined && dossier.pinCount > 0)) && (
+                    <section className="dossier-section dossier-synthesis">
+                        <h2>Synthesis</h2>
+                        {synth === undefined ? (
+                            <p className="dossier-meta">Writing the standalone brief…</p>
+                        ) : synth && (synth.headline || synth.synthesis) ? (
+                            <>
+                                {synth.headline && <p className="dossier-synth-headline">{synth.headline}</p>}
+                                {synth.synthesis && <p>{synth.synthesis}</p>}
+                                {synth.gap && <p className="dossier-synth-gap">Key gap: {synth.gap}</p>}
+                                <p className="dossier-meta" data-tip="One grounded LLM pass over the frozen pins + the measured connection verdict. Measured now, not frozen; degrades to absence.">
+                                    measured at generation time{synth.provider ? ` · ${synth.provider}` : ''} — grounded in pinned evidence + measured connections
+                                </p>
+                            </>
+                        ) : (
+                            <p className="dossier-meta">Synthesis unavailable — the templated summary below stands in.</p>
+                        )}
+                    </section>
+                )}
 
                 <section className="dossier-section">
                     <h2>Executive summary</h2>

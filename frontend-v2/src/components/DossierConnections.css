@@ -13,10 +13,27 @@
     font-size: 12.5px;
     line-height: 1.5;
 }
+/* State-colored so a screenshot/PDF of just this box is self-explanatory —
+   confirmed = green, caution = amber, split/neutral = slate. Glyph (✓/⚠) carries
+   the same signal for colorblind safety + Markdown export. */
+.dcx-verdict[data-state="confirmed"] { background: rgba(29,158,117,0.06); border-color: rgba(29,158,117,0.22); }
+.dcx-verdict[data-state="caution"]   { background: rgba(245,158,11,0.07); border-color: rgba(245,158,11,0.3); }
+.dcx-verdict[data-state="split"]     { background: rgba(148,163,184,0.05); border-color: rgba(148,163,184,0.18); }
+.dcx-verdict[data-state="neutral"]   { background: rgba(148,163,184,0.05); border-color: rgba(148,163,184,0.18); }
+.dcx-verdict-glyph { font-weight: 700; font-size: 13px; }
 .dcx-verdict p { margin: 0 0 6px; color: #e2e8f0; }
 .dcx-clusters { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
 .dcx-clusters li { font-size: 12px; color: #cbd5e1; display: flex; gap: 7px; align-items: baseline; }
 .dcx-cluster-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block; transform: translateY(1px); }
+/* Per-cluster strength pill — reuses .dcx-nearby-tag sizing so it fits the panel
+   grammar. CONFIRMED = shared actor/place; SIMILAR ONLY = semantic proximity. */
+.dcx-cluster-badge {
+    flex-shrink: 0; font-family: 'SF Mono', monospace; font-size: 9.5px;
+    letter-spacing: 0.06em; text-transform: uppercase; padding: 1px 6px;
+    border-radius: 3px; white-space: nowrap; transform: translateY(-1px);
+}
+.dcx-cluster-badge--confirmed { color: #1D9E75; background: rgba(29,158,117,0.16); border: 1px solid rgba(29,158,117,0.4); }
+.dcx-cluster-badge--caution { color: #f59e0b; background: rgba(245,158,11,0.14); border: 1px solid rgba(245,158,11,0.4); }
 .dcx-iso-dot { background: transparent; border: 1.5px dashed #64748b; }
 .dcx-isolated-row { color: #94a3b8; }
 .dcx-note { font-size: 11px; color: #8b97a6; margin: 6px 0 0; font-style: italic; }
@@ -56,6 +73,10 @@
 .dcx-k-pin { color: #7dd3fc; font-size: 13px; line-height: 1; }
 .dcx-k-nb { color: #64748b; font-size: 13px; line-height: 1; }
 .dcx-k-bridge { color: #e2e8f0; font-size: 13px; line-height: 1; }
+/* Edge-strength legend swatches — static, survive Markdown/PDF (no hover). */
+.dcx-edge-legend { margin-top: -2px; }
+.dcx-k-strong-edge { display: inline-block; width: 14px; height: 0; border-top: 2px solid #1D9E75; transform: translateY(-3px); }
+.dcx-k-weak-edge { display: inline-block; width: 14px; height: 0; border-top: 2px dashed #64748b; transform: translateY(-3px); }
 
 /* Static list of nearby unpinned stories — survives export (no hover needed) */
 .dcx-nearby { margin-top: 10px; border-top: 1px solid rgba(148,163,184,0.12); padding-top: 8px; }
@@ -86,10 +107,6 @@
 .dcx-facet-name { color: #cbd5e1; font-size: 12px; font-weight: 600; }
 .dcx-facet-count { font-family: 'SF Mono', monospace; font-size: 9.5px; color: #7f8ea3; white-space: nowrap; }
 .dcx-facet-topics { font-size: 10.5px; color: #94a3b8; margin-top: 3px; line-height: 1.35; }
-
-.dcx-legend { display: flex; gap: 14px; margin-top: 6px; font-size: 10.5px; color: #94a3b8; }
-.dcx-legend span { display: flex; align-items: center; gap: 5px; }
-.dcx-legend i { width: 10px; height: 3px; border-radius: 2px; display: inline-block; }
 
 .dcx-hovercard {
     margin-top: 8px; padding: 8px 10px;
@@ -150,4 +167,6 @@
 @media (max-width: 560px) {
     .dcx-dist-grid { grid-template-columns: 1fr; }
     .dcx-sent-label { width: 90px; }
+    /* stack the strength pill above the sub-narrative label when space is tight */
+    .dcx-clusters li { flex-wrap: wrap; }
 }
