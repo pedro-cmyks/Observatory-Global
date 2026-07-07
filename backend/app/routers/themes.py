@@ -456,6 +456,73 @@ async def _emergent_cluster_detail(
     }
 
 
+async def _thread_coherence(conn, topic_id: int) -> Optional[dict]:
+    """Measured black-hole / conflation guard (#224). A thread should be ONE
+    story; a frozen-label identity that drifted (e.g. a "Colombia election" label
+    over members that are actually Spanish politics + a football fan-fest) is a
+    black-hole that silently poisons an investigation when pinned.
+
+    Signal (measured 2026-07-07 over the live corpus, backend/app/routers/dossier
+    landscape): avg member-to-centroid cosine is the coherence axis — NOT country
+    spread. Coherent events stay tight even when globally spread (Mundial 0.95),
+    while junk blobs are loose (0.885). e5 is compressed, so the tiers are:
+      loose  avg<0.915                              → conflated blob (roundups/aggregates)
+      mixed  0.915≤avg<0.945 AND no dominant country → milder conflation (the dt-52 case)
+      tight  otherwise                               → one story
+    Dominant-country events (Israel-Lebanon 0.925/top-share 0.68) stay clean; the
+    only borderline false-positives are multi-country sports knockouts, and this
+    only WARNS (never blocks). Read-only, degrades to None. Reversible: the
+    frontend simply shows no badge when this is absent."""
+    try:
+        row = await conn.fetchrow(
+            """
+            WITH mem AS (
+                SELECT e.vec::vector AS v, upper(s.country_code) AS cc
+                FROM topic_members tm
+                JOIN signal_embeddings e ON e.signal_id = tm.signal_id
+                JOIN signals_v2 s ON s.id = tm.signal_id
+                WHERE tm.topic_id = $1 AND tm.engine_version = 'v1-compat'
+                  AND tm.role = 'evidence'
+                  AND tm.assigned_at > NOW() - INTERVAL '30 days'
+            ),
+            cen AS (SELECT avg(v) AS c FROM mem),
+            cs AS (SELECT 1 - (m.v <=> cen.c) AS cos FROM mem m, cen),
+            cc AS (SELECT cc, count(*) AS k FROM mem WHERE cc IS NOT NULL AND cc <> '' GROUP BY cc)
+            SELECT (SELECT count(*) FROM mem) AS n,
+                   (SELECT avg(cos) FROM cs) AS avg_cos,
+                   (SELECT min(cos) FROM cs) AS min_cos,
+                   (SELECT count(*) FROM cc) AS dcc,
+                   (SELECT max(k)::float / nullif(sum(k), 0) FROM cc) AS top_share
+            """,
+            f"dynamic-topic-{topic_id}",
+        )
+    except Exception:
+        return None
+    if not row or row["n"] is None or int(row["n"]) < 5 or row["avg_cos"] is None:
+        return None
+    n = int(row["n"])
+    avg_cos = float(row["avg_cos"])
+    dcc = int(row["dcc"] or 0)
+    top_share = float(row["top_share"]) if row["top_share"] is not None else 1.0
+    if avg_cos < 0.915:
+        tier = "loose"
+        warning = "This thread's coverage does not cohere — it likely conflates unrelated stories. Verify before pinning."
+    elif avg_cos < 0.945 and top_share < 0.5 and dcc >= 3:
+        tier = "mixed"
+        warning = f"Mixed origin: coverage spans {dcc} countries with none dominant and only loose coherence — it may combine several stories."
+    else:
+        tier = "tight"
+        warning = None
+    return {
+        "score": round(avg_cos, 3),
+        "tier": tier,
+        "distinctCountries": dcc,
+        "topCountryShare": round(top_share, 2),
+        "members": n,
+        "warning": warning,
+    }
+
+
 async def _dynamic_topic_detail(
     conn,
     *,
@@ -563,6 +630,13 @@ async def _dynamic_topic_detail(
     if semantic_members:
         warnings.append("semantic_members_appended")
 
+    # #224 black-hole guard — measured coherence of the FULL thread (never
+    # country-scoped; conflation is a property of the whole identity). Warns the
+    # analyst before they pin a drifted/mixed thread.
+    coherence = await _thread_coherence(conn, int(topic_row["id"]))
+    if coherence and coherence.get("warning"):
+        warnings.append(f"low_coherence_{coherence['tier']}")
+
     return {
         **base_payload,
         "signalSample": sample,
@@ -576,6 +650,7 @@ async def _dynamic_topic_detail(
         "semanticMembers": semantic_members,
         "semanticMemberCount": len(semantic_members),
         "semanticNonEnglishCount": len(non_english),
+        "coherence": coherence,
         "warnings": warnings,
     }
 

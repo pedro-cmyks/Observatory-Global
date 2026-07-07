@@ -139,6 +139,38 @@ Atlas surfaces it as SEMANTIC similarity + one rich node — it does not yet ass
 the driver or separate "coordinated" from "linguistically similar." A reader of the
 constellation alone could mistake same-language clustering for a coordinated bloc.
 
+## Frank test — cold reader on the generated report (2026-07-07)
+
+After shipping #1 (basis-weighted verdict + honest edge encoding) and #2 (LLM
+synthesis), a fresh editor read ONLY the generated report, zero context. Verdict:
+**"I'd spike this"** — the report does NOT yet stand alone. Precise blockers:
+
+1. **The conflated node is fatal to trust.** The "Cepeda/De la Espriella" pin
+   (301 signals) has evidence bullets about Spain's Sánchez corruption + a
+   Mexico-vs-England World Cup fan fest + an Argentine hearing — NONE mention
+   Cepeda/De la Espriella/Colombia. A cold reader flags it instantly: "if the
+   biggest node's evidence is junk, I don't trust the graph." The #224 black-hole
+   doesn't just float — it discredits the whole dossier.
+2. **No dates, and outcomes asserted as fact.** "Fujimori proclaimed president",
+   "De la Espriella assuming power", "Cepeda conceded" — stated as settled fact,
+   undated, unsourced. Un-briefable.
+3. **`PS 15` visible in the geography** — Palestine as the #2 country in a LatAm
+   story = the black-hole's geo-pollution, and the reader catches it as a
+   data-quality tell.
+4. **The synthesis over-claims coherence.** #1's dashed edges correctly show only
+   Keiko↔Milei is a real link — but the synthesis PROSE still narrated all three
+   as one story. The honesty labels are the report's one virtue; the prose
+   doesn't yet ACT on them.
+
+**Corrected conclusion:** #1/#2 made the report more HONEST (dashed edges, hedged
+synthesis, named gaps) but NOT yet standalone — the underlying DATA (conflated
+node, no dates) still sinks it, and the synthesis must ACT on the strength
+distinction, not just display it. The Frank test worked exactly as intended: it
+converted "looks done" into a precise blocker list. Spawned fixes: synthesis
+honors edge-strength + demands dates (task_06301697); low-coherence warning at
+pin time (task_809d87a8); whiten-e5 edges (task_60b7d395); dossier title from
+synthesis (task_8e0359ec).
+
 ## What this dive says about the PRODUCT (the meta-finding)
 
 - **Capture flow (search→thread→pin→dossier) is genuinely good** — provenance,

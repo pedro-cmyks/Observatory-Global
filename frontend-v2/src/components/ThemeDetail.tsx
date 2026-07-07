@@ -81,6 +81,16 @@ interface ThemeData {
     coverage?: CoverageMeta
     coverageTier?: 'thin' | 'limited' | 'ok'
     warnings?: string[]
+    /** #224 black-hole guard — measured thread coherence (avg member-to-centroid
+     *  cosine). `warning` set when the thread likely conflates unrelated stories. */
+    coherence?: {
+        score: number
+        tier: 'tight' | 'mixed' | 'loose'
+        distinctCountries: number
+        topCountryShare: number
+        members: number
+        warning: string | null
+    } | null
     countryFraming?: Array<{
         country_code: string
         country_name: string
@@ -594,6 +604,16 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                     source={data.source}
                                     warnings={data.warnings}
                                 />
+                            </div>
+                        )}
+                        {data?.coherence?.warning && (
+                            <div
+                                className={`theme-coherence-warn theme-coherence-warn--${data.coherence.tier}`}
+                                data-tip="Measured coherence = average similarity of this thread's coverage to its own centre. A low score means the thread mixes unrelated stories under one label — pinning it can pollute an investigation."
+                            >
+                                <span className="theme-coherence-glyph">⚠</span>
+                                <span>{data.coherence.warning}</span>
+                                <span className="theme-coherence-score">coherence {data.coherence.score.toFixed(2)}</span>
                             </div>
                         )}
                     </div>
