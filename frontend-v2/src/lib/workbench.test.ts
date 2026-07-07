@@ -23,6 +23,7 @@ import {
   getInvestigation,
   listInvestigations,
   removePin,
+  renameInvestigation,
   updatePinNote,
   setActiveInvestigation,
 } from './workbench'
@@ -102,6 +103,22 @@ describe('workbench store', () => {
     expect(parsed.format).toBe('atlas-investigation-v1')
     expect(parsed.investigation.pins[0].anchorId).toBe(PIN.anchorId)
     expect(parsed.investigation.trail.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('rename persists a custom title and survives reopen', () => {
+    const inv = createInvestigation('Cepeda Concedes to De la Espriella')
+    renameInvestigation(inv.id, '  Milei Bridges Peru and Colombia Power Transitions  ')
+    const got = getInvestigation(inv.id)!
+    expect(got.title).toBe('Milei Bridges Peru and Colombia Power Transitions')
+    expect(got.titleCustom).toBe(true)
+  })
+
+  it('rename with a blank title clears the custom override', () => {
+    const inv = createInvestigation('First pin title')
+    renameInvestigation(inv.id, 'Custom')
+    renameInvestigation(inv.id, '   ')
+    const got = getInvestigation(inv.id)!
+    expect(got.titleCustom).toBe(false)
   })
 
   it('delete clears active pointer when needed', () => {

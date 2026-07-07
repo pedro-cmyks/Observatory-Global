@@ -43,6 +43,10 @@ export interface TrailStep {
 export interface Investigation {
   id: string
   title: string
+  /** True once the analyst has explicitly renamed the investigation. The auto
+   *  first-pin title is a fallback label; a custom title wins over the dossier
+   *  synthesis headline. Presentation only — pin snapshots stay frozen. */
+  titleCustom?: boolean
   createdAt: string
   updatedAt: string
   pins: WorkbenchPin[]
@@ -173,6 +177,21 @@ export function updatePinNote(
     const pin = inv.pins.find(p => p.anchorId === anchorId)
     if (!pin) return
     pin.note = note
+  })
+}
+
+/** Rename the investigation (presentation-only — pin snapshots stay frozen).
+ *  Persisted so the title survives reopen; marks titleCustom so it wins over
+ *  the dossier synthesis headline. Empty/blank title clears the override. */
+export function renameInvestigation(id: string, title: string): Investigation | null {
+  const trimmed = title.trim()
+  return mutate(id, inv => {
+    if (trimmed) {
+      inv.title = trimmed
+      inv.titleCustom = true
+    } else {
+      inv.titleCustom = false
+    }
   })
 }
 

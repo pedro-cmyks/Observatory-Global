@@ -39,7 +39,30 @@
     font-weight: 600;
     color: #f3f4f6;
     line-height: 1.15;
+    cursor: text;
 }
+.dossier-title-edit {
+    font-size: 0.9rem;
+    color: rgba(243, 244, 246, 0.35);
+    font-family: var(--font-sans, system-ui, sans-serif);
+}
+.dossier-title:hover .dossier-title-edit { color: #1D9E75; }
+.dossier-title-input {
+    margin: 4px 0 0;
+    width: 100%;
+    min-width: 320px;
+    box-sizing: border-box;
+    font-family: var(--font-serif, Georgia, serif);
+    font-size: 1.7rem;
+    font-weight: 600;
+    color: #f3f4f6;
+    line-height: 1.15;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(29, 158, 117, 0.5);
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+.dossier-title-input:focus { outline: none; border-color: #1D9E75; }
 .dossier-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .dossier-btn {
     background: rgba(29, 158, 117, 0.1);

@@ -8,7 +8,7 @@ import {
 import { synthesizeDossier, synthesisMarkdown, type DossierSynthesis } from '../lib/dossierSynthesis'
 import { DossierConnections } from './DossierConnections'
 import { track, trackOnce } from '../lib/telemetry'
-import type { Investigation } from '../lib/workbench'
+import { renameInvestigation, type Investigation } from '../lib/workbench'
 import './DossierView.css'
 
 /** Phase 3 report view — a structured dossier generated from the FROZEN
@@ -22,6 +22,15 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
         [investigation, now, enrichment],
     )
     const [copied, setCopied] = useState(false)
+    // Title is a presentation/label concern (the frozen pins never change). The
+    // H1 leads with the analyst's explicit rename if any, else the synthesis
+    // headline (a real thesis, not the worst-conflated first-pin), else the
+    // auto first-pin title. Rename persists on the investigation (survives reopen).
+    const [customTitle, setCustomTitle] = useState<string | null>(
+        investigation.titleCustom ? investigation.title : null,
+    )
+    const [editingTitle, setEditingTitle] = useState(false)
+    const [titleDraft, setTitleDraft] = useState('')
     // Connection analysis is fetched inside DossierConnections; it hands the
     // measured data up here so the synthesis + Markdown export carry the findings.
     const [conn, setConn] = useState<{ data: ConnectionsData; cluster: ClusterResult } | null>(null)
@@ -77,8 +86,22 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
         trackOnce('first_value_moment', { kind: 'dossier' })
     }, [dossier.pinCount])
 
+    // Effective title: explicit rename > synthesis headline > auto first-pin title.
+    const effectiveTitle = customTitle ?? (synth?.headline || null) ?? investigation.title
+
+    const startRename = () => { setTitleDraft(effectiveTitle); setEditingTitle(true) }
+    const commitRename = () => {
+        const next = titleDraft.trim()
+        renameInvestigation(investigation.id, next)
+        // Blank clears the override → fall back to synthesis/auto title again.
+        setCustomTitle(next || null)
+        setEditingTitle(false)
+        track('dossier_renamed')
+    }
+
     const markdown = () => {
-        let base = dossierToMarkdown(dossier)
+        // Export/filename use the same chosen title the report leads with.
+        let base = dossierToMarkdown({ ...dossier, title: effectiveTitle })
         // Synthesis leads the report (above the templated summary) so the export
         // opens with the finding, not a pin count.
         if (synth && (synth.headline || synth.synthesis)) {
@@ -103,7 +126,7 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `atlas-report-${investigation.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40)}.md`
+        a.download = `atlas-report-${effectiveTitle.replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40)}.md`
         a.click()
         URL.revokeObjectURL(url)
     }
@@ -114,7 +137,29 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
                 <div className="dossier-head">
                     <div>
                         <div className="dossier-kicker">INVESTIGATION REPORT</div>
-                        <h1 className="dossier-title">{dossier.title}</h1>
+                        {editingTitle ? (
+                            <input
+                                className="dossier-title-input"
+                                autoFocus
+                                value={titleDraft}
+                                placeholder={synth?.headline || investigation.title}
+                                onChange={e => setTitleDraft(e.target.value)}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') commitRename()
+                                    else if (e.key === 'Escape') setEditingTitle(false)
+                                }}
+                                onBlur={commitRename}
+                            />
+                        ) : (
+                            <h1
+                                className="dossier-title"
+                                onClick={startRename}
+                                title="Click to rename this report"
+                            >
+                                {effectiveTitle}
+                                <span className="dossier-title-edit" aria-hidden> ✎</span>
+                            </h1>
+                        )}
                     </div>
                     <div className="dossier-actions">
                         <button className="dossier-btn" onClick={copy}>{copied ? 'Copied' : 'Copy MD'}</button>
