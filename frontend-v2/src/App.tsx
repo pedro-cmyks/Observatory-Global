@@ -1506,7 +1506,13 @@ function AppContent() {
                 </div>
               )}
             </MapErrorBoundary>
-            {!universeOpen && <Legend
+            {/* The map key belongs to the GLOBE only. Hide it when the UNIVERSE
+                tab is active OR a full-screen overlay is up (Investigation
+                Workbench / dossier report inside it / Theme Compare) — those
+                overlays establish trapped stacking contexts (workbench-overlay
+                has backdrop-filter → its z-9700 dossier is pinned at z-60
+                globally) so the Legend's z-800 would otherwise paint on top. */}
+            {!universeOpen && !workbenchOpen && !compareTheme && <Legend
               showHeatmap={showHeatmap}
               // #179: flows render whenever a country/theme filter is active,
               // not only when the FLOWS toggle is on — the legend must follow
