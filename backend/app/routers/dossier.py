@@ -486,15 +486,30 @@ async def dossier_connections(req: ConnectionsRequest):
                     list(exclude_ids),
                 )
             pin_ids = {bk: node_by_base.get(bk, {}).get("id", bk) for bk in centroids}
+            # The e5 centroid space is compressed (p50 ~0.94), so raw cosine floods
+            # with generic-central topics ("Kate Middleton"). Gate a neighbor on
+            # sharing a DISCRIMINATING label token with the pin (the codebase's
+            # established fix) — same idea as assemble_constellation's attach gate.
+            import re as _re
+            _NB_STOP = {"news", "emerging", "update", "updates", "report", "reports",
+                        "crisis", "live", "breaking", "latest", "daily", "world",
+                        "global", "international", "story", "stories"}
+            def _toks(s: str) -> set:
+                return {t for t in _re.findall(r"[a-záéíóúñü]{4,}", (s or "").lower())
+                        if t not in _NB_STOP}
+            pin_toks = {bk: _toks(labels.get(bk, {}).get("label", "")) for bk in centroids}
             nb: dict[int, dict] = {}
             for r in cand:
                 cvec = [float(x) for x in r["centroid_vec"]]
                 cid = int(r["id"])
+                ctoks = _toks(r["label"])
                 for base_key, vec in centroids.items():
                     if len(vec) != len(cvec):
                         continue
+                    if not (ctoks & pin_toks[base_key]):
+                        continue  # must share a discriminating token with the pin
                     sim = _cosine(vec, cvec)
-                    if sim < 0.85:
+                    if sim < 0.90:
                         continue
                     e = nb.get(cid)
                     if e is None:
