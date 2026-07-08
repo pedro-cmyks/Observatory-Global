@@ -84,6 +84,22 @@ the national-ccTLD expansion of `_extract_source_country`.
 Pre-existing broken collector `tests/test_llm_annotator.py` (missing `anthropic`
 pkg, `sys.exit(2)` at import — documented excluded file) is unrelated.
 
+## Post-deploy prod verification (2026-07-08, Fly)
+
+First ~12.3k GDELT rows after deploy: demotion **fired** — e.g. *"El Palau de la
+Música de Valencia acoge…"* reassigned **PS → ES** at `geo_confidence 0.6` (the
+0.6/0.4 markers are impossible pre-deploy, confirming the new path is live). The
+5 residual keyword-negative PS rows turned out to be **genuine** Palestine —
+HTML-entity-encoded Arabic headlines (`&#x641;&#x644;&#x633;…` = فلسطين,
+حماس) — correctly kept (PS-only, no alternative). This also means the diagnostic
+"67% keyword-negative" **over-counted** the true mistag rate: some were
+encoded-Arabic genuine Palestine the ASCII keyword regex couldn't see.
+
+**Hardening** (follow-up commit `0fb543c4`): `parse_gkg_row` now `html.unescape`s
+the corroboration text so an encoded non-Latin Palestine headline with a
+co-geocoded neighbour is protected on the headline path too (previously only the
+ASCII GDELT-themes path caught it). +1 test → **120 geo tests green**.
+
 ## Deploy / backfill
 
 - **Ingest-side, runs on Fly `app`** (`ingest_loop.py` → `parse_gkg_row`, not an
