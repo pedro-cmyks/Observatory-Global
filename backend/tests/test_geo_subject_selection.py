@@ -249,3 +249,18 @@ def test_ambiguous_demote_kill_switch(monkeypatch):
     finally:
         monkeypatch.delenv("ATLAS_GEO_AMBIGUOUS_DEMOTE", raising=False)
         importlib.reload(ingest_v2)
+
+
+def test_encoded_arabic_palestine_corroborated_via_parse():
+    # HTML-entity-encoded Arabic "فلسطين" (Palestine) in the headline + a
+    # co-geocoded Egypt must NOT demote — parse_gkg_row unescapes before the
+    # corroboration check.
+    from app.services.ingest_v2 import parse_gkg_row
+    row = ['20260708120000', '', '', 'outlet', 'http://aljazeera.net/x'] + [''] * 22
+    row[8] = 'GENERAL_GOVERNMENT'
+    row[10] = ('4#Gaza#WE#WE01#31.5#34.4#00#10;4#Gaza#WE#WE01#31.5#34.4#00#60;'
+               '1#Egypt#EG##26.0#30.0#00#90')
+    # &#x641;&#x644;&#x633;&#x637;&#x64A;&#x646; = فلسطين
+    row[26] = '<PAGE_TITLE>&#x641;&#x644;&#x633;&#x637;&#x64A;&#x646; news today report</PAGE_TITLE>'
+    out = parse_gkg_row(row, source_lang='ar')
+    assert out['country_code'] == 'PS'

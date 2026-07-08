@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from typing import Optional
 import os
 import re
+import html as _html
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -451,7 +452,10 @@ def parse_gkg_row(row: list, source_lang: str = "en") -> Optional[dict]:
         locations,
         source_lang,
         source_origin_country,
-        corroboration_text=f"{headline or ''} {themes_raw or ''}",
+        # Unescape so HTML-entity-encoded non-Latin headlines (e.g. Arabic
+        # &#x641;&#x644;&#x633;... = فلسطين) corroborate too, not just the
+        # ASCII GDELT themes.
+        corroboration_text=_html.unescape(f"{headline or ''} {themes_raw or ''}"),
     )
     if not selected:
         return None
