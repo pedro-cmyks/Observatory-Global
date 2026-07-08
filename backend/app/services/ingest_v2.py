@@ -22,6 +22,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 import os
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -263,11 +264,39 @@ def _extract_source_country(url: str | None) -> str | None:
 _GEO_SUBJECT_GATE = os.getenv("ATLAS_GEO_SUBJECT_GATE", "on").lower() not in ("0", "off", "false", "no")
 _GEO_OVERRIDE_CONFIDENCE = 0.35
 
+# #238 ambiguous-geo demotion. Measured 2026-07-08: 67% of GDELT rows tagged PS
+# (Palestine) over 5 days were keyword-negative mistags — Spanish "Belén"
+# (a Peru district / a first name), Portuguese "Belém" (a major Brazilian city),
+# and US "Bethlehem, PA" all resolve to Bethlehem, West Bank (FIPS WE → ISO PS)
+# in GDELT's gazetteer, so a Peruvian farándula or Brazilian city-hall story
+# gets stamped onto Palestine. The prominence pick alone doesn't catch it
+# (repeated "Belém" tokens give PS count ≥ 2) and the outlet-origin override
+# can't fire when the source URL doesn't resolve to a country (65% of the class)
+# or when the feed is English.
+#
+# Lever: when the prominence winner is an AMBIGUOUS-geo country (PS) but the
+# article gives NO Palestine corroboration (headline + GDELT themes carry no
+# Palestine/Gaza/Israel token) AND the same article geocodes a real non-PS
+# subject, reassign to that non-PS subject. A repeated (count ≥ 2) alternative
+# is trusted (conf 0.6); a single-mention alternative is only taken when the
+# outlet-origin override won't fire (conf 0.4, damped). Genuine Palestine
+# coverage names its subject (corroborated → untouched); a PS-only article with
+# no alternative is left as-is (can't disambiguate). Reversible:
+# ATLAS_GEO_AMBIGUOUS_DEMOTE=off.
+_GEO_AMBIGUOUS_DEMOTE = os.getenv("ATLAS_GEO_AMBIGUOUS_DEMOTE", "on").lower() not in ("0", "off", "false", "no")
+_GEO_AMBIGUOUS_ISO = {"PS"}  # Bethlehem(WE)/Gaza(GZ) collision with Belén/Belém
+_PALESTINE_CORROBORATION = re.compile(
+    r"(palestin|gaza|hamas|israel|cisjord|ramallah|rafah|jenin|nablus|hebron|"
+    r"khan\s*y|west\s*bank|بيت\s*لحم|فلسط|غزة|حماس|إسرائيل|الضفة)",
+    re.IGNORECASE,
+)
+
 
 def _select_primary_country(
     locations: str,
     source_lang: str,
     source_origin_country: str | None,
+    corroboration_text: str = "",
 ) -> Optional[tuple]:
     """Choose (iso_country, lat, lon, geo_confidence, method) from a GKG
     V2ENHANCEDLOCATIONS field. Returns None when no location geocodes.
@@ -318,12 +347,42 @@ def _select_primary_country(
         tally.items(), key=lambda kv: (-kv[1][0], kv[1][1])
     )
     lat, lon = latlon or (None, None)
+    max_count = max(rec[0] for rec in tally.values())
+
+    # (1b) Ambiguous-geo demotion (#238, measured 2026-07-08). The prominence
+    # winner is Palestine but the article never corroborates it -> the classic
+    # "Belén"/"Belém"/"Bethlehem, PA" -> Bethlehem, West Bank false geocode.
+    # Reassign to the real non-PS subject in the same article when one exists.
+    if (
+        _GEO_AMBIGUOUS_DEMOTE
+        and iso.upper() in _GEO_AMBIGUOUS_ISO
+        and not (corroboration_text and _PALESTINE_CORROBORATION.search(corroboration_text))
+    ):
+        non_ambiguous = [
+            (c, rec) for c, rec in tally.items() if c.upper() not in _GEO_AMBIGUOUS_ISO
+        ]
+        if non_ambiguous:
+            c2, rec2 = min(non_ambiguous, key=lambda kv: (-kv[1][0], kv[1][1]))
+            ll2 = rec2[2] or (None, None)
+            if rec2[0] >= 2:
+                # A repeated real subject lost only on the ambiguous token.
+                return c2.upper(), ll2[0], ll2[1], 0.6, 'ambiguous_geo_demote'
+            # Single-mention alternative: prefer the outlet override if it will
+            # fire below (scatter with a known outlet); otherwise take the
+            # alternative at damped confidence rather than trust the mistag.
+            outlet_would_fire = (
+                source_lang != 'en'
+                and source_origin_country
+                and max_count == 1
+                and source_origin_country.upper() not in _GEO_AMBIGUOUS_ISO
+            )
+            if not outlet_would_fire:
+                return c2.upper(), ll2[0], ll2[1], 0.4, 'ambiguous_geo_demote_weak'
 
     # (2) Non-English single-mention scatter conflicting with the outlet home
     # country -> trust the outlet, flag low confidence. Only fires when NO
     # location is mentioned more than once (max_count == 1), i.e. there is no
     # dominant subject for GDELT to have gotten right.
-    max_count = max(rec[0] for rec in tally.values())
     if (
         source_lang != 'en'
         and source_origin_country
@@ -382,17 +441,23 @@ def parse_gkg_row(row: list, source_lang: str = "en") -> Optional[dict]:
             pass
     
     # Locations (V2ENHANCEDLOCATIONS - field 10). Subject-geography selection
-    # (#238): prominence pick + non-English outlet-origin override. Needs the
-    # outlet home country up front, so compute it here (reused in the return).
+    # (#238): prominence pick + non-English outlet-origin override + ambiguous-
+    # geo demotion. Needs the outlet home country and the article text (headline
+    # + themes, for Palestine corroboration) up front.
     locations = row[10] if len(row) > 10 else ""
+    themes_raw = row[8] if len(row) > 8 else ""
     source_origin_country = _extract_source_country(source_url)
-    selected = _select_primary_country(locations, source_lang, source_origin_country)
+    selected = _select_primary_country(
+        locations,
+        source_lang,
+        source_origin_country,
+        corroboration_text=f"{headline or ''} {themes_raw or ''}",
+    )
     if not selected:
         return None
     country_code, lat, lon, geo_confidence, geo_method = selected
     
-    # Themes (V2ENHANCEDTHEMES - field 8)
-    themes_raw = row[8] if len(row) > 8 else ""
+    # Themes (V2ENHANCEDTHEMES - field 8; themes_raw computed above)
     themes = []
     if themes_raw:
         for theme in themes_raw.split(';'):

@@ -145,3 +145,107 @@ def test_kill_switch_restores_first_pick(monkeypatch):
     finally:
         monkeypatch.delenv("ATLAS_GEO_SUBJECT_GATE", raising=False)
         importlib.reload(ingest_v2)
+
+
+# ===========================================================================
+# #238 ambiguous-geo demotion (measured 2026-07-08). "Belén"/"Belém"/
+# "Bethlehem, PA" -> Bethlehem, West Bank (FIPS WE -> ISO PS). Prominence winner
+# is PS but the article never corroborates Palestine -> reassign to the real
+# non-PS subject in the same article. Genuine, corroborated Palestine untouched.
+# ===========================================================================
+
+
+def selc(locations, source_lang="xx", origin=None, text=""):
+    return ingest_v2._select_primary_country(locations, source_lang, origin, text)
+
+
+def test_demote_ps_to_repeated_subject_brazil_belem():
+    # Portuguese city-hall story about Belém (Pará, Brazil). GDELT tags
+    # Bethlehem(WE)->PS twice AND Brazil twice; no Palestine token in the text.
+    loc = (
+        "4#Bethlehem#WE#WE00#31.7#35.2#00#5;"
+        "4#Bethlehem#WE#WE00#31.7#35.2#00#60;"
+        "4#Belem, Para, Brazil#BR#BR30#-1.45#-48.5#00#20;"
+        "1#Brazil#BR##-10.0#-55.0#00#90"
+    )
+    out = selc(loc, source_lang="xx", origin="BR",
+               text="Preco do pescado cai em Belem e estimula consumidores")
+    assert out[0] == "BR"
+    assert out[4] == "ambiguous_geo_demote"
+    assert out[3] == 0.6
+
+
+def test_demote_ps_to_repeated_subject_peru_farandula():
+    # Peruvian entertainment story; "Belén" once, Lima/Peru named twice.
+    loc = (
+        "4#Bethlehem#WE#WE00#31.7#35.2#00#5;"
+        "4#Lima, Peru#PE#PE00#-12.0#-77.0#00#40;"
+        "1#Peru#PE##-10.0#-76.0#00#120"
+    )
+    out = selc(loc, source_lang="xx", origin=None,
+               text="Austin Palao protagoniza fuerte pelea con Raimundo")
+    # Winner is PE by prominence already (count 2 > 1); demotion not even needed.
+    assert out[0] == "PE"
+
+
+def test_demote_ps_single_alt_english_bethlehem_pa():
+    # English "Bethlehem, PA" story: WE once, US once, no outlet resolves, no
+    # Palestine corroboration -> take the US alternative at damped confidence.
+    loc = (
+        "4#Bethlehem#WE#WE00#31.7#35.2#00#8;"
+        "3#Pennsylvania, United States#US#USPA#40.8#-75.4#00#30"
+    )
+    out = selc(loc, source_lang="en", origin=None,
+               text="Bethlehem councilmember says rowhomes need space")
+    assert out[0] == "US"
+    assert out[4] == "ambiguous_geo_demote_weak"
+    assert out[3] == 0.4
+
+
+def test_genuine_gaza_corroborated_kept():
+    # Real Gaza coverage: WE tagged twice, headline names Gaza/Hamas -> PS kept.
+    loc = (
+        "4#Gaza#WE#WE01#31.5#34.4#00#10;"
+        "4#Gaza#WE#WE01#31.5#34.4#00#60;"
+        "1#Egypt#EG##26.0#30.0#00#90"
+    )
+    out = selc(loc, source_lang="es", origin="EG",
+               text="Hamas disuelve su gobierno en la Franja de Gaza")
+    assert out[0] == "PS"
+    assert out[4] == "gdelt_geo_prominence"
+
+
+def test_genuine_palestine_corroborated_via_themes_kept():
+    # No Palestine token in the headline but GDELT themes carry it.
+    loc = "1#West Bank#WE##31.9#35.2#00#8;1#United States#US##38.0#-97.0#00#40"
+    out = selc(loc, source_lang="en", origin="US",
+               text="Aid convoy blocked at crossing WB_2733_PALESTINIAN_STATE")
+    assert out[0] == "PS"
+    assert out[4] == "gdelt_geo_prominence"
+
+
+def test_ps_only_no_alternative_kept():
+    # PS is the only geocoded country and no corroboration -> can't disambiguate,
+    # leave it (damp-not-break: no over-correction without evidence).
+    loc = "4#Bethlehem#WE#WE00#31.7#35.2#00#8"
+    out = selc(loc, source_lang="en", origin=None, text="Belen a beautiful name")
+    assert out[0] == "PS"
+    assert out[4] == "gdelt_geo_prominence"
+
+
+def test_ambiguous_demote_kill_switch(monkeypatch):
+    monkeypatch.setenv("ATLAS_GEO_AMBIGUOUS_DEMOTE", "off")
+    mod = importlib.reload(ingest_v2)
+    try:
+        loc = (
+            "4#Bethlehem#WE#WE00#31.7#35.2#00#5;"
+            "4#Bethlehem#WE#WE00#31.7#35.2#00#60;"
+            "4#Belem#BR#BR30#-1.45#-48.5#00#20;"
+            "1#Brazil#BR##-10.0#-55.0#00#90"
+        )
+        out = mod._select_primary_country(loc, "xx", "BR", "Belem noticias")
+        assert out[0] == "PS"
+        assert out[4] == "gdelt_geo_prominence"
+    finally:
+        monkeypatch.delenv("ATLAS_GEO_AMBIGUOUS_DEMOTE", raising=False)
+        importlib.reload(ingest_v2)
