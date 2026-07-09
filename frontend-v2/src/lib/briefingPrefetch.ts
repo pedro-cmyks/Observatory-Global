@@ -24,19 +24,28 @@ export function readBriefingCache(hours: number): { briefing: unknown; insight: 
 export async function prefetchBriefing(hours = 24): Promise<void> {
   if (readBriefingCache(hours)) return
   try {
-    const [briefRes, insightRes] = await Promise.all([
-      fetch(`/api/v2/briefing?hours=${hours}`),
-      fetch(`/api/v2/briefing/insight?hours=${hours}`)
-    ])
+    // Cache the brief as soon as it lands — do NOT wait on the insight LLM
+    // (Anthropic→DeepSeek) call, which can take seconds or hang and would
+    // otherwise leave the prefetch cache empty when the user reaches /brief.
+    const briefRes = await fetch(`/api/v2/briefing?hours=${hours}`)
     if (!briefRes.ok) return
     const briefing = await briefRes.json()
-    let insight: string | null = null
-    if (insightRes.ok) {
-      const insightData = await insightRes.json()
-      if (insightData.insight) insight = insightData.insight
-    }
-    const payload: PrefetchPayload = { briefing, insight, fetchedAt: Date.now(), hours }
+    const payload: PrefetchPayload = { briefing, insight: null, fetchedAt: Date.now(), hours }
     sessionStorage.setItem(CACHE_KEY, JSON.stringify(payload))
+
+    // Fill the insight into the cached payload in the background, best-effort.
+    fetch(`/api/v2/briefing/insight?hours=${hours}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(insightData => {
+        const insight: string | null = insightData?.insight ?? null
+        if (!insight) return
+        const raw = sessionStorage.getItem(CACHE_KEY)
+        if (!raw) return
+        const current: PrefetchPayload = JSON.parse(raw)
+        if (current.hours !== hours) return
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ...current, insight }))
+      })
+      .catch(() => { /* insight is best-effort */ })
   } catch {
     // prefetch is best-effort
   }
