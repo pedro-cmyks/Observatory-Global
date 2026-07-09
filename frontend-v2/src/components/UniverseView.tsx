@@ -109,8 +109,16 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
             last = now
             acc += dt
             const resting = now - lastInteractionRef.current > 90_000
+            // Hidden-panel guard: on mobile the radar/universe panel is
+            // CSS-hidden (display:none) when another tab is active, which
+            // `document.hidden` does NOT catch (it only tracks the whole
+            // browser tab). Without this, the ~1000-element SVG kept
+            // re-rendering at 10fps behind a hidden panel — continuous CPU/
+            // battery burn and the "everything is slow" feel on phones.
+            const panelHidden = containerRef.current !== null
+                && containerRef.current.offsetParent === null
             if (acc >= 100) { // ~10fps
-                if (!spinPausedRef.current && !draggingRef.current && !document.hidden && !resting) {
+                if (!spinPausedRef.current && !draggingRef.current && !document.hidden && !resting && !panelHidden) {
                     const dyaw = (acc / 1000) * 0.06 // ~1 turn / 105s
                     setRot(r => mul3(rotY(dyaw), r)) // ambient spin about screen-vertical
                 }
@@ -153,12 +161,16 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
 
     useEffect(() => {
         let cancelled = false
-        fetch('/api/v2/universe')
+        // Timeout so a slow cache-miss (heavy PCA + neighbor build server-side)
+        // surfaces as an empty state instead of an endless "Assembling…" spinner.
+        const ctrl = new AbortController()
+        const timer = setTimeout(() => ctrl.abort(), 20000)
+        fetch('/api/v2/universe', { signal: ctrl.signal })
             .then(r => r.json())
             .then(json => { if (!cancelled) setPayload(json) })
             .catch(() => { if (!cancelled) setPayload(null) })
-            .finally(() => { if (!cancelled) setLoading(false) })
-        return () => { cancelled = true }
+            .finally(() => { if (!cancelled) { clearTimeout(timer); setLoading(false) } })
+        return () => { cancelled = true; clearTimeout(timer); ctrl.abort() }
     }, [])
 
     const allNodes = useMemo(() => payload?.nodes ?? [], [payload])

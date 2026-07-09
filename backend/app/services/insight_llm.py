@@ -28,7 +28,10 @@ async def _anthropic_insight(
 ) -> tuple[str | None, dict]:
     """Returns (text, usage) where usage = {model, input_tokens, output_tokens}."""
     import anthropic as _anthropic
-    client = _anthropic.AsyncAnthropic(api_key=api_key)
+    # Cap the request: the SDK default timeout is minutes, so a stalled
+    # Anthropic call would otherwise hang the insight lane (and, historically,
+    # the whole Brief render). The chain falls through to DeepSeek on failure.
+    client = _anthropic.AsyncAnthropic(api_key=api_key, timeout=20.0)
     response = await client.messages.create(
         model=ANTHROPIC_MODEL,
         max_tokens=max_tokens,

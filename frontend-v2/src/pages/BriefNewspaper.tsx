@@ -242,21 +242,36 @@ export function BriefNewspaper() {
             if (cached) {
                 setData(cached.briefing as BriefingData)
                 if (cached.insight) setInsight(cached.insight)
-            } else {
-                const [briefRes, insightRes] = await Promise.all([
-                    fetch(`/api/v2/briefing?hours=${h}`),
-                    fetch(`/api/v2/briefing/insight?hours=${h}`)
-                ])
-                if (!briefRes.ok) throw new Error(`Briefing request failed: ${briefRes.status}`)
-                setData(await briefRes.json())
-                if (insightRes.ok) {
-                    const insightData = await insightRes.json()
-                    if (insightData.insight) setInsight(insightData.insight)
-                }
+                setLoading(false)
+                return
             }
+            // The Brief (fast pre-agg query) is the critical path — paint it as
+            // soon as it lands. The AI "Editor's Analysis" insight is an LLM call
+            // (Anthropic→DeepSeek) that can take seconds or hang on dry credits;
+            // NEVER block the front page on it. Fetch it in the background and
+            // fill in the standfirst when it arrives. A hard timeout on the brief
+            // fetch turns a hang into a visible error instead of an endless spinner.
+            const ctrl = new AbortController()
+            const timer = setTimeout(() => ctrl.abort(), 12000)
+            let briefRes: Response
+            try {
+                briefRes = await fetch(`/api/v2/briefing?hours=${h}`, { signal: ctrl.signal })
+            } finally {
+                clearTimeout(timer)
+            }
+            if (!briefRes.ok) throw new Error(`Briefing request failed: ${briefRes.status}`)
+            setData(await briefRes.json())
+            setLoading(false)
+            // Background, non-blocking: the insight fills the standfirst later.
+            const insightCtrl = new AbortController()
+            const insightTimer = setTimeout(() => insightCtrl.abort(), 25000)
+            fetch(`/api/v2/briefing/insight?hours=${h}`, { signal: insightCtrl.signal })
+                .then(r => (r.ok ? r.json() : null))
+                .then(d => { if (d?.insight) setInsight(d.insight) })
+                .catch(() => { /* insight is best-effort; standfirst has a factual fallback */ })
+                .finally(() => clearTimeout(insightTimer))
         } catch (e) {
             console.error(e)
-        } finally {
             setLoading(false)
         }
     }, [])
