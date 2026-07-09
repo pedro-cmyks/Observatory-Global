@@ -79,9 +79,22 @@ async def _load_centroids(conn: asyncpg.Connection) -> tuple[list[int], np.ndarr
     # the §6-step-5 new-topic pass below). Including them closes the
     # duplication loop: a story the residual clustering formed last run is
     # centroid-matched by pass 1 this run instead of re-forming under a new id.
+    #
+    # JUNK GATE (2026-07-09, docs/state/2026-07-09-useful-coverage-gate.md): junk
+    # grab-bags (flagged by scripts/flag_junk_topics.py) are dropped from the
+    # anchor set so their gravity wells stop vacuuming loosely-related signals at
+    # the >=0.82 assign threshold — the vacuumed signals reassign to real topics
+    # or form fresh (guarded) residual clusters, lifting USEFUL coverage. Kept out
+    # of BOTH the active and the u2-candidate lanes (a demoted junk topic is still
+    # a u2 candidate, so state alone would not de-anchor it). Kill-switch:
+    # ATLAS_UNIFIED_EXCLUDE_JUNK=off restores the pre-gate anchor set.
+    junk_clause = ""
+    if os.environ.get("ATLAS_UNIFIED_EXCLUDE_JUNK", "on").lower() != "off":
+        junk_clause = "AND is_junk IS NOT TRUE"
     rows = await conn.fetch(
-        """SELECT id, centroid_vec::text AS vec FROM dynamic_topics
+        f"""SELECT id, centroid_vec::text AS vec FROM dynamic_topics
            WHERE centroid_vec IS NOT NULL
+             {junk_clause}
              AND (state='active'
                   OR (state='candidate' AND identity_key LIKE 'u2-%'))"""
     )
@@ -362,13 +375,16 @@ def main() -> int:
     ap.add_argument("--assign-threshold", type=float, default=DEFAULT_ASSIGN_THRESHOLD)
     ap.add_argument("--gate-threshold", type=float, default=DEFAULT_GATE_THRESHOLD)
     # Assignment window cap = the coverage ceiling (#229 recall-fix 2026-07-08).
-    # At 15000 the build only ever considers ~10% of the ~149k signals/24h, so
-    # story coverage is capped at ~10% BEFORE promotion even cuts it. Raise it
-    # (env ATLAS_UNIFIED_MAX_SIGNALS) to assign a much larger fresh slice to the
-    # active-centroid set; the numpy assign is O(n·centroids) and cheap — the
-    # cost is the embedding fetch + residual HDBSCAN, so scale with the machine.
+    # At 15000 the build only ever considered ~10% of the ~149k signals/24h, so
+    # story coverage was capped BEFORE the gate even cuts it. Default raised to
+    # 40000 (2026-07-09) now that the chunked keyset loader survives the pooler
+    # timeout under load; the runner env ATLAS_UNIFIED_MAX_SIGNALS still overrides
+    # (prod uses 60000). The numpy assign is O(n·centroids) and cheap — the cost
+    # is the embedding fetch + residual HDBSCAN, so scale with the machine. With
+    # the junk gate (ATLAS_UNIFIED_EXCLUDE_JUNK) the extra assigned signals land on
+    # REAL centroids, so the added coverage is useful, not grab-bag fill.
     ap.add_argument("--max-signals", type=int,
-                    default=int(os.environ.get("ATLAS_UNIFIED_MAX_SIGNALS", "15000")))
+                    default=int(os.environ.get("ATLAS_UNIFIED_MAX_SIGNALS", "40000")))
     ap.add_argument("--new-min-cluster-size", type=int, default=8,
                     help="HDBSCAN min_cluster_size for new-topic formation on the residual")
     ap.add_argument("--new-min-samples", type=int, default=5)
