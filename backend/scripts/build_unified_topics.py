@@ -90,10 +90,19 @@ async def _load_centroids(conn: asyncpg.Connection) -> tuple[list[int], np.ndarr
     return ids, mat
 
 
-async def _load_signals(conn: asyncpg.Connection, hours: int, max_n: int) -> list[dict[str, Any]]:
-    return await conn.fetch(
+async def _load_signals(conn: asyncpg.Connection, hours: int, max_n: int,
+                        chunk: int = 8000) -> list[dict[str, Any]]:
+    """Load the newest `max_n` embedded signals in the window, CHUNKED.
+
+    A single fetch of the ~768-dim vectors for a large `max_n` (50k+) exceeds
+    the pooler statement timeout on a loaded DB (measured 2026-07-08: 15k ok,
+    50k/60k both cancelled). Two-phase keyset pagination keeps every statement
+    short: (1) pull the id list (light, no vectors), (2) hydrate the heavy
+    vector rows in id-chunks. Any cap is then safe regardless of DB load.
+    """
+    id_rows = await conn.fetch(
         f"""
-        SELECT s.id, s.headline, s.source_family, s.nlp_sentiment, e.vec::text AS vec
+        SELECT s.id, s.timestamp
         FROM signal_embeddings e
         JOIN signals_v2 s ON s.id = e.signal_id
         WHERE s.timestamp > NOW() - ($1::int * INTERVAL '1 hour')
@@ -103,6 +112,25 @@ async def _load_signals(conn: asyncpg.Connection, hours: int, max_n: int) -> lis
         """,
         hours,
     )
+    if not id_rows:
+        return []
+    order = {int(r["id"]): i for i, r in enumerate(id_rows)}  # preserve recency order
+    ids = list(order.keys())
+    out: list[dict[str, Any]] = []
+    for i in range(0, len(ids), chunk):
+        batch = ids[i:i + chunk]
+        rows = await conn.fetch(
+            """
+            SELECT s.id, s.headline, s.source_family, s.nlp_sentiment, e.vec::text AS vec
+            FROM signal_embeddings e
+            JOIN signals_v2 s ON s.id = e.signal_id
+            WHERE s.id = ANY($1::bigint[])
+            """,
+            batch,
+        )
+        out.extend(dict(r) for r in rows)
+    out.sort(key=lambda r: order.get(int(r["id"]), 1 << 30))  # newest first, stable
+    return out
 
 
 def _role_for(family: str | None) -> str:
@@ -200,6 +228,11 @@ async def run(hours: int, assign_t: float, gate_t: float, max_n: int, dry_run: b
         print("DATABASE_URL not set", file=sys.stderr)
         return 2
     conn = await asyncpg.connect(dsn)
+    # Raising --max-signals means a large embedding fetch; under live embedder
+    # load it can exceed the pooler's default statement_timeout (a 15k fetch is
+    # fine, 50k timed out on 2026-07-08). Match the scoped snapshot's 600s so the
+    # big assign survives a loaded DB. (#229 recall-fix.)
+    await conn.execute("SET statement_timeout = '600s'")
     try:
         topic_ids, centroids = await _load_centroids(conn)
         if not topic_ids:
@@ -328,7 +361,14 @@ def main() -> int:
     ap.add_argument("--hours", type=int, default=48)
     ap.add_argument("--assign-threshold", type=float, default=DEFAULT_ASSIGN_THRESHOLD)
     ap.add_argument("--gate-threshold", type=float, default=DEFAULT_GATE_THRESHOLD)
-    ap.add_argument("--max-signals", type=int, default=15000)
+    # Assignment window cap = the coverage ceiling (#229 recall-fix 2026-07-08).
+    # At 15000 the build only ever considers ~10% of the ~149k signals/24h, so
+    # story coverage is capped at ~10% BEFORE promotion even cuts it. Raise it
+    # (env ATLAS_UNIFIED_MAX_SIGNALS) to assign a much larger fresh slice to the
+    # active-centroid set; the numpy assign is O(n·centroids) and cheap — the
+    # cost is the embedding fetch + residual HDBSCAN, so scale with the machine.
+    ap.add_argument("--max-signals", type=int,
+                    default=int(os.environ.get("ATLAS_UNIFIED_MAX_SIGNALS", "15000")))
     ap.add_argument("--new-min-cluster-size", type=int, default=8,
                     help="HDBSCAN min_cluster_size for new-topic formation on the residual")
     ap.add_argument("--new-min-samples", type=int, default=5)

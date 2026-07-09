@@ -25,38 +25,51 @@ import time
 import asyncpg
 
 
-async def _pending_rows(conn: asyncpg.Connection, hours: int, max_n: int):
-    # Recent signals WITHOUT an embedding, newest first, deduped by headline.
-    #
+async def _pending_rows(
+    conn: asyncpg.Connection, hours: int, max_n: int, chunk_hours: int = 12,
+):
     # THROUGHPUT FIX (2026-07-09): the old query did `DISTINCT ON (s.headline)
     # ORDER BY s.headline` over the WHOLE {hours}h corpus — a full headline
-    # megasort of ~1M rows that timed out on the Supabase pooler's statement_
-    # timeout EVERY run (`QueryCanceledError`), silently starving the embedding
-    # substrate to ~0 (embed step failed non-fatally, coverage collapsed to 0.04%).
+    # megasort of ~1M rows that timed out on the Supabase pooler's short
+    # statement_timeout EVERY run (`QueryCanceledError`), silently starving the
+    # embedding substrate to ~0 (coverage collapsed to 0.04%). A single bounded
+    # query still tripped the pooler's tight limit on the M1's WAN connection.
     #
-    # Now: bound the work by RECENCY first — a timestamp-index scan + a PK
-    # anti-join (`NOT EXISTS`), `ORDER BY timestamp DESC LIMIT max_n` terminates
-    # early and cheap. Then `DISTINCT ON (headline)` dedups syndication WITHIN that
-    # bounded set (a <=max_n in-memory sort, sub-second) — same "one row per
-    # headline, recent first" outcome, none of the full-corpus megasort cost.
-    return await conn.fetch(
-        f"""
-        SELECT DISTINCT ON (recent.headline) recent.id, recent.headline
-        FROM (
-            SELECT s.id, s.headline, s.timestamp
-            FROM signals_v2 s
-            WHERE s.timestamp > NOW() - INTERVAL '{int(hours)} hours'
-              AND s.headline IS NOT NULL
-              AND length(s.headline) >= 20
-              AND NOT EXISTS (
-                  SELECT 1 FROM signal_embeddings e WHERE e.signal_id = s.id
-              )
-            ORDER BY s.timestamp DESC
-            LIMIT {int(max_n)}
-        ) recent
-        ORDER BY recent.headline, recent.id DESC
-        """
-    )
+    # Fix: CHUNK by time — walk the window in {chunk_hours}h slices, newest first.
+    # Each slice's DISTINCT ON (headline) sort is over a small set, so every query
+    # finishes well inside the pooler timeout; dedup across slices in Python and
+    # stop once max_n unique headlines are collected. Recent stories embed first.
+    seen: set = set()
+    out: list = []
+    start = 0
+    while start < hours and len(out) < max_n:
+        end = min(start + chunk_hours, hours)
+        rows = await conn.fetch(
+            f"""
+            SELECT d.id, d.headline FROM (
+                SELECT DISTINCT ON (s.headline) s.id, s.headline, s.timestamp
+                FROM signals_v2 s
+                LEFT JOIN signal_embeddings e ON e.signal_id = s.id
+                WHERE s.timestamp >  NOW() - INTERVAL '{int(end)} hours'
+                  AND s.timestamp <= NOW() - INTERVAL '{int(start)} hours'
+                  AND s.headline IS NOT NULL
+                  AND length(s.headline) >= 20
+                  AND e.signal_id IS NULL
+                ORDER BY s.headline, s.id DESC
+            ) d
+            ORDER BY d.timestamp DESC
+            """
+        )
+        for r in rows:
+            h = r["headline"]
+            if h in seen:
+                continue
+            seen.add(h)
+            out.append(r)
+            if len(out) >= max_n:
+                break
+        start = end
+    return out[:max_n]
 
 
 async def main() -> int:
