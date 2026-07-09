@@ -26,26 +26,35 @@ import asyncpg
 
 
 async def _pending_rows(conn: asyncpg.Connection, hours: int, max_n: int):
-    # One representative per headline (latest id), only where no embedding exists
-    # yet. #241 Lever 2 (selective): dedup handles syndication; the outer ORDER BY
-    # timestamp DESC PRIORITISES RECENT distinct headlines — the embed capacity goes
-    # to the served window first, not to alphabetical order (the old query took the
-    # first max_n headlines A→Z, so recent stories could starve behind the backlog).
-    # No skipping = no recall risk; just spend the scarce embed budget where it serves.
+    # Recent signals WITHOUT an embedding, newest first, deduped by headline.
+    #
+    # THROUGHPUT FIX (2026-07-09): the old query did `DISTINCT ON (s.headline)
+    # ORDER BY s.headline` over the WHOLE {hours}h corpus — a full headline
+    # megasort of ~1M rows that timed out on the Supabase pooler's statement_
+    # timeout EVERY run (`QueryCanceledError`), silently starving the embedding
+    # substrate to ~0 (embed step failed non-fatally, coverage collapsed to 0.04%).
+    #
+    # Now: bound the work by RECENCY first — a timestamp-index scan + a PK
+    # anti-join (`NOT EXISTS`), `ORDER BY timestamp DESC LIMIT max_n` terminates
+    # early and cheap. Then `DISTINCT ON (headline)` dedups syndication WITHIN that
+    # bounded set (a <=max_n in-memory sort, sub-second) — same "one row per
+    # headline, recent first" outcome, none of the full-corpus megasort cost.
     return await conn.fetch(
         f"""
-        SELECT d.id, d.headline FROM (
-            SELECT DISTINCT ON (s.headline) s.id, s.headline, s.timestamp
+        SELECT DISTINCT ON (recent.headline) recent.id, recent.headline
+        FROM (
+            SELECT s.id, s.headline, s.timestamp
             FROM signals_v2 s
-            LEFT JOIN signal_embeddings e ON e.signal_id = s.id
             WHERE s.timestamp > NOW() - INTERVAL '{int(hours)} hours'
               AND s.headline IS NOT NULL
               AND length(s.headline) >= 20
-              AND e.signal_id IS NULL
-            ORDER BY s.headline, s.id DESC
-        ) d
-        ORDER BY d.timestamp DESC
-        LIMIT {int(max_n)}
+              AND NOT EXISTS (
+                  SELECT 1 FROM signal_embeddings e WHERE e.signal_id = s.id
+              )
+            ORDER BY s.timestamp DESC
+            LIMIT {int(max_n)}
+        ) recent
+        ORDER BY recent.headline, recent.id DESC
         """
     )
 
@@ -77,6 +86,14 @@ async def main() -> int:
 
     conn = await asyncpg.connect(os.environ["DATABASE_URL"])
     try:
+        # Belt-and-suspenders: raise the per-statement timeout for THIS session so
+        # a heavy run degrades to slow rather than a silent QueryCanceledError. The
+        # bounded _pending_rows query above is the real fix; this is insurance (the
+        # transaction pooler may cap it, which is fine).
+        try:
+            await conn.execute("SET statement_timeout = '300s'")
+        except Exception:
+            pass
         rows = await _pending_rows(conn, args.hours, args.max_signals)
         from app.services.research_semantic import is_junk_headline
         before = len(rows)
