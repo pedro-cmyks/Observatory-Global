@@ -80,8 +80,11 @@ async def archive_search(
                        "(query embedding lane down)"}
 
     async with db.pool.acquire() as conn:
+        # centroid_vec is halfvec (mig 074) — read as text, parse to floats
+        # (no pgvector codec registered on this pool; the scan is tiny anyway).
         sql = ["SELECT id, label, category, crisis_relevant, country_code,",
-               "period_start, period_end, n_stories, n_signals, centroid_vec,",
+               "period_start, period_end, n_stories, n_signals,",
+               "centroid_vec::text AS centroid_vec,",
                "top_sources FROM archive_topics WHERE 1=1"]
         params: list = []
         if country:
@@ -94,6 +97,10 @@ async def archive_search(
             params.append(date_to)
             sql.append(f"AND period_start <= ${len(params)}")
         rows = [dict(r) for r in await conn.fetch(" ".join(sql), *params)]
+        for r in rows:
+            v = r["centroid_vec"]
+            if isinstance(v, str):
+                r["centroid_vec"] = [float(x) for x in v.strip("[]").split(",")]
         if not rows:
             return {"contract": CONTRACT, "tier": "archive", "query": q,
                     "topics": [],

@@ -387,6 +387,22 @@ async def process_window(conn, args, categories: list[str],
     lookup = load_evidence_lookup(Path(args.archive_root), win_start, win_end)
     print(f"  evidence lookup: {len(lookup)} distinct headlines", file=sys.stderr)
 
+    # Type ALL topics concurrently BEFORE the insert loop — _deepseek is
+    # blocking urllib, so each call runs in a thread; sequential typing of a
+    # few thousand topics took hours, 8-way ≈ minutes.
+    sem = asyncio.Semaphore(max(1, args.type_concurrency))
+
+    async def _type_one(spec):
+        async with sem:
+            return await asyncio.to_thread(
+                label_and_type_topic, [m["headline"] for m in spec["members"]],
+                categories, args.deepseek_key)
+
+    t_typing = time.monotonic()
+    typed = await asyncio.gather(*[_type_one(s) for s in topic_specs])
+    print(f"  typed {len(typed)} topics in {time.monotonic()-t_typing:.0f}s "
+          f"({args.type_concurrency}-way)", file=sys.stderr)
+
     # idempotency: delete-and-replace this build's window before inserting
     async with conn.transaction():
         await conn.execute("SET LOCAL statement_timeout = 0")
@@ -404,10 +420,8 @@ async def process_window(conn, args, categories: list[str],
     daily_rows: list[dict] = []
     evidence_rows: list[dict] = []
     all_assignments: list[dict] = []
-    for spec in topic_specs:
+    for spec, (label, cat, crisis) in zip(topic_specs, typed):
         members, sims, scope = spec["members"], spec["sims"], spec["scope"]
-        label, cat, crisis = label_and_type_topic(
-            [m["headline"] for m in members], categories, args.deepseek_key)
         t = build_topic_row(label=label, category=cat, crisis=crisis, scope=scope,
                             members=members, centroid=spec["centroid"],
                             build_id=args.build_id)
@@ -417,15 +431,19 @@ async def process_window(conn, args, categories: list[str],
             info = lookup.get(m["sha1"]) or {}
             fams[info.get("family", "press")] += 1
             n_signals += info.get("dup", 1)
+        # centroid stored as halfvec (mig 074): 2B/dim halves the table weight
+        # vs REAL[]; written as a text literal cast, same as signal_embeddings.
+        vlit = "[" + ",".join(f"{x:.5f}" for x in t["centroid_vec"]) + "]"
         tid = await conn.fetchval(
             """INSERT INTO archive_topics
                (label, category, crisis_relevant, country_code, period_start,
                 period_end, n_stories, n_signals, centroid_vec, top_sources,
                 sample_story_ids, build_id)
-               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id""",
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::halfvec,$10,$11,$12)
+               RETURNING id""",
             t["label"], t["category"], t["crisis_relevant"], t["country_code"],
             t["period_start"], t["period_end"], t["n_stories"], n_signals,
-            t["centroid_vec"], json.dumps(dict(fams)), t["sample_story_ids"],
+            vlit, json.dumps(dict(fams)), t["sample_story_ids"],
             t["build_id"])
         slug = f"archive-topic-{tid}"
         per_day: dict = defaultdict(int)
@@ -477,9 +495,14 @@ async def amain() -> int:
     p.add_argument("--out-root", default="/Volumes/Ext/Atlas/ArchiveTopics")
     p.add_argument("--archive-root", default="/Volumes/Ext/Atlas/Archive")
     p.add_argument("--max-scope", type=int, default=60000)
-    p.add_argument("--min-stories", type=int, default=8,
+    p.add_argument("--min-stories", type=int, default=12,
                    help="substance floor: skip clusters below this many distinct "
-                        "stories (keeps archive_topics light + DeepSeek cheap)")
+                        "stories (keeps archive_topics light + DeepSeek cheap; "
+                        "measured 2026-07-10: floor=8 still yielded ~750/scope-week "
+                        "on US → hundreds of MB projected, floor=12 targets "
+                        "≈2K/window ≈ 60MB total)")
+    p.add_argument("--type-concurrency", type=int, default=8,
+                   help="parallel DeepSeek typing calls (sequential took hours/window)")
     p.add_argument("--windows", type=int, default=0,
                    help="process at most N windows this run (0 = all remaining)")
     p.add_argument("--dry-run", action="store_true")
