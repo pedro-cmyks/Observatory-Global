@@ -357,16 +357,26 @@ async def process_window(conn, args, categories: list[str],
         sv = np.vstack([vecs[idx_of[id(r)]] for r in srows])
         labels = cluster_scope(sv)
         n_topics = 0
+        n_small = 0
         for cid in sorted(set(labels) - {-1}):
             mask = labels == cid
             members = [r for r, m in zip(srows, mask) if m]
+            # Substance floor (2026-07-10): leaf clustering over a full week
+            # fragments finely (US week = 2,448 raw clusters). Writing every
+            # micro-cluster would put tens of thousands of 6KB centroid rows in
+            # Supabase — breaking the light-DB golden rule — and isn't serving
+            # material anyway. Keep events with real coverage; log the drop.
+            if len(members) < args.min_stories:
+                n_small += 1
+                continue
             centroid = sv[mask].mean(axis=0)
             centroid /= (np.linalg.norm(centroid) + 1e-9)
             topic_specs.append({"scope": scope, "members": members,
                                 "centroid": centroid,
                                 "sims": (sv[mask] @ centroid).tolist()})
             n_topics += 1
-        print(f"  scope {scope}: {len(srows)} stories → {n_topics} clusters",
+        print(f"  scope {scope}: {len(srows)} stories → {n_topics} topics kept "
+              f"({n_small} micro-clusters <{args.min_stories} dropped — logged)",
               file=sys.stderr)
 
     if args.dry_run:
@@ -467,6 +477,9 @@ async def amain() -> int:
     p.add_argument("--out-root", default="/Volumes/Ext/Atlas/ArchiveTopics")
     p.add_argument("--archive-root", default="/Volumes/Ext/Atlas/Archive")
     p.add_argument("--max-scope", type=int, default=60000)
+    p.add_argument("--min-stories", type=int, default=8,
+                   help="substance floor: skip clusters below this many distinct "
+                        "stories (keeps archive_topics light + DeepSeek cheap)")
     p.add_argument("--windows", type=int, default=0,
                    help="process at most N windows this run (0 = all remaining)")
     p.add_argument("--dry-run", action="store_true")
