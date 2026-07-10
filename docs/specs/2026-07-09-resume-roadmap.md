@@ -1,136 +1,122 @@
-# Atlas resume roadmap — structured plan (2026-07-09)
+# Atlas resume roadmap v2 — validated + corrected (2026-07-10)
 
-Written to start immediately on resume. Pairs with the vision doc
-`docs/specs/2026-07-08-narrative-intelligence-vision.md` (the deeper capability
-layers) and today's engine fixes. Principle everywhere: **math/data first, LLM
-only for the brief; measure honestly; never leave data silently unclassified —
-an unclassifiable floor is a RESULT to report, not a black hole.**
+v1 (2026-07-09) was stress-tested by three independent passes: a self-adversarial
+read, a strategy/resource stress-test, and a domain validation of the anomaly
+engine against real OSINT/early-warning practice AND this codebase's own measured
+history. v2 bakes in every correction. Pairs with
+`docs/specs/2026-07-08-narrative-intelligence-vision.md`.
 
-## Where we are (baseline on resume)
-- Embedding: durable (chunked query + `SET LOCAL statement_timeout=0` per insert), cron sustains it off-peak. Draining a ~196K backlog.
-- Clustering recall: 30 → 597 threads; total story coverage 0.04% → ~40%.
-- Quality gate (`topic_junk.py`, mig 074 `is_junk`): junk 38% of coverage → 0 active; **useful coverage ~26%** (the honest number); assign window raised 15k→40k (prod 60k).
-- Geo attribution fixed; mobile perf (#254) merged; dossier layer (verdict/synthesis/black-hole/whitening/cost-ledger) shipped.
-- Operational watch: Supabase DB runs hot under embedder+clustering load (queries timing out) — capacity is a real constraint to monitor.
+## The three verdicts (summary)
+| goal (v1) | verdict | core correction |
+|---|---|---|
+| G1 coverage 80/80 | NEEDS-CHANGE | "80% of firehose" is a SUPPLY metric decoupled from analyst value; the two halves fight (the last 40 points ARE the junk tail). Swap the metric. |
+| G2 web corroboration | SOUND, RESEQUENCE | Closest thing to the sellable artifact but slotted last. Pull FIRST. Naive corroboration re-confirms syndicated wire as "consensus" — weight by source independence. |
+| G3 anomaly engine | NEEDS-CHANGE | Right instinct, wrong architecture: C1-as-specified already FAILED our own 2026-07-03 backtest; C2 is the parked #172 dead end. Rebuild around proven patterns + two free detectors the plan missed. |
+| G4 vision layers | SOUND north-star | Propagation/origin rests on INGEST timestamps ≠ first utterance — "coordinated vs organic" would be confidently wrong without a hard guardrail. |
 
----
-
-## GOAL 1 — Coverage 80% of the firehose, 80% of that USEFUL
-Target: cover ≥80% of daily signals in a story, ≥80% of covered = useful (real
-stories, not junk). Current: ~40% total / ~26% useful.
-
-**The honest-floor mandate (Pedro):** if a high % of the firehose is genuine
-garbage/unclassifiable, that is a MEASURED RESULT, reported — not stagnant
-unclassified data. Every signal ends in one labeled bucket: `useful story` /
-`junk (typed: roundup/celebrity/listicle/…)` / `unclassifiable-noise (measured)`.
-
-Workstream A steps (sequenced):
-1. **A0 — measure the honest ceiling + floor FIRST.** Take 24h signals; classify
-   every one into {in-useful-thread, in-junk-thread, unassigned}. For the
-   unassigned, split into (a) real-but-unclustered (recall gap) vs (b) genuine
-   noise/unclassifiable — using the junk gate + a residual-cluster probe. Report
-   the three-way split. This number defines what "80%" even means.
-2. **A1 — push the assignment window** (already 40k/60k). Measure coverage vs
-   window size; find where useful-coverage plateaus (the numpy assign is cheap;
-   cost is embed-fetch + residual HDBSCAN — scale on the M1).
-3. **A2 — scoped/regional + multilingual passes** (#229 lever 2 / R1). Global
-   HDBSCAN drowns regional stories (Peru recount, a Colombian sub-story). Cluster
-   per-country/per-language over the persisted corpus so mid-size real stories
-   form their own threads → lifts recall WITHOUT lowering purity.
-4. **A3 — language coverage.** Non-English volume vs GDELT English firehose; the
-   voice-mix program. Ensure the 80% isn't 80%-of-English.
-5. **A4 — cadence/staleness.** Build runs 3×/day; 24h active-member coverage
-   decays between runs. Consider more frequent scoped passes or a rolling assign.
-
-Measure: total-cover %, useful-cover %, junk %, unclassifiable-floor % — all four,
-every run. Success = useful-cover ≥ 0.8 × total AND total ≥ 0.8 (or the honest
-floor explains the gap).
+Cross-cutting: the serving/batch **shared Supabase is the constraint that breaks
+G1/G3/G4** — it gets its own workstream (v1 only "watched" it). The **dates gap**
+from the Frank test (undated claims) was missing from v1 — restored.
 
 ---
 
-## GOAL 2 — Investigations backbone + whole-internet corroboration
-Objective: an investigation is not just Atlas-internal; it CORROBORATES against
-the open web, so a finding is cross-checked against what the whole internet says.
+## NEW SEQUENCE — wedge-test first
+> The single highest-leverage act on resume: **put ONE complete, independence-
+> corroborated report in front of a real analyst on a marquee story, with the
+> engine as it stands today — and measure A0 in the same sitting.** Everything
+> else optimizes a deliverable whose market value is still an assumption.
 
-Current: dossier/connection layer + `deep-research` skill (web fan-out → fetch →
-adversarial verify → cited synthesis) exists but is NOT wired into the analyst flow.
+### Phase 0 — The wedge test + honest baseline (days, not weeks)
+- **P0.1 Marquee dogfood:** pick a marquee story (English-ok; multilingual off
+  the critical path for this). Build the investigation on the CURRENT engine.
+- **P0.2 Corroboration lane v0 (G2 pulled forward):** run the deep-research web
+  harness over the thesis + pinned actors. **Weight by source INDEPENDENCE**
+  (cluster syndicated copies; count independently-operated outlets, not
+  articles). Attach as a labeled "web corroboration" section.
+- **P0.3 Dates fix (Frank-test debt):** evidence carries dates; synthesis
+  attributes and dates contested outcomes. Small, unblocks "stands alone".
+- **P0.4 A0 measurement:** 3-way split of 24h signals — useful-story / junk-typed
+  / unclassifiable-noise (measured). Defines the honest denominator + floor.
+- **P0.5 Show it** to a real analyst (or the coldest available proxy) + Frank
+  test. Their reaction = the roadmap's steering signal.
+- KILL/PIVOT: if independence-clustered corroboration collapses to ≈1 source
+  (all wire), pivot corroboration to curated high-independence source lists.
 
-Workstream B steps:
-1. **B1 — the corroboration lane.** When an analyst pins/builds an investigation,
-   run a bounded web-search pass (the deep-research harness) over the thesis +
-   pinned actors: who else reports this, what does the open web confirm/contradict,
-   what's the established vs contested split. Attach as a "web corroboration"
-   section, clearly separated from Atlas-measured findings.
-2. **B2 — structured backbone.** Atlas-internal (measured: who-says-what, voice,
-   coverage gaps) + web-corroboration (external truth check) + the LLM synthesis
-   (grounded, cited, glass-box) = the full report. Each layer labeled by trust.
-3. **B3 — contradiction surfacing.** Where Atlas's coverage-derived picture
-   disagrees with the open web = itself a finding (a coverage bias / a gap).
-Measure: on a test investigation, does web corroboration confirm/contradict Atlas,
-and does the report stand alone (Frank test) with the corroboration layer.
+### Phase 1 — Infra split (the constraint)
+- **P1.1 NOW (cheap):** heavy-job mutex — clustering/embed/flag jobs never run
+  concurrently against serving; stagger crons; keep serving queries light.
+- **P1.2 NEXT:** separate batch workload from serving — read-replica or separate
+  batch project; batch writes merged in bounded transactions.
+- **P1.3 EVENTUAL:** local analytics store (e.g. DuckDB over the existing
+  embedding/archive shards on the M1) so heavy scans never touch Postgres.
+- KILL: if scoped passes (P2) breach serving-latency SLA without the split, stop
+  scaling coverage until P1.2 lands.
 
----
+### Phase 2 — Substrate quality (G1 rebuilt, metric swapped)
+- **METRIC:** kill "80% of firehose". New primary metric = **query-conditional
+  investigation recall**: for a gold set of ~20 real analyst queries (elections,
+  disasters, conflicts, finance…), does Atlas have a clean thread answering each?
+  Target: ≥80% of gold queries answered by a useful thread. Secondary: useful
+  coverage % of the SUBSTANTIVE corpus (A0's denominator) + the honest floor,
+  reported every run. Coverage stays a substrate-health metric, not the goal.
+- **P2.1** Gold query set (the analyst-value yardstick + the eval harness seed).
+- **P2.2** Scoped/regional + per-language passes (A2) — recall for mid-size real
+  stories, gated on P1 capacity.
+- **P2.3** Window pushes only to the measured plateau (A1); A4 cadence
+  micro-optimization DELETED from the critical path.
 
-## GOAL 3 — EMERGING / ANOMALOUS story detection (the new profile — the anti-bias engine)
-Objective (Pedro's new capability): surface stories that are EMERGING, out of the
-public eye, happening with STRANGE VOLUME, or forming NOVEL RELATIONS not visible
-at a glance — the things the analyst is NOT looking for, that their worldview
-biases them away from. Atlas finds what you'd miss.
+### Phase 3 — Anomaly engine (G3 rebuilt on validated patterns)
+Build order (domain-validated, formulas in the validation record):
+- **P3.1 C4 novel relations** — generalize the PROVEN #234 rarity-weighted
+  pattern: `score(a,b) = 1/sqrt(df(a)·df(b)) · log(1+c(a,b)) · source_diversity`,
+  c() deduped at TOPIC level (kills syndication), diversity floor ≥2, exclude
+  df=1 unless NER-verified, percentile threshold (top ~1%/7d), reason codes,
+  label "first time in Atlas's corpus" (never "first time").
+- **P3.2 C1 REDEFINED** — actor/category-level (never ephemeral topic — kills
+  cold-start), input = distinct-(origin,outlet) volume (kills syndication),
+  deseasonalized, ≥21-day eligibility ("new entrant" is a separate honest
+  bucket), surprise_z percentile-thresholded. **Re-run the leading-indicator
+  backtest on the corrected series BEFORE trusting it** (the raw version
+  already failed 2026-07-03).
+- **P3.3 C6 movement fusion (NEW, ~free):** flights/vessels/conflict feeds are
+  ingested but viz-only (#232). Wire movement anomalies as leading triggers —
+  the actual Bellingcat pattern; upstream of press, zero new ingestion.
+- **P3.4 C7 voice-asymmetry detector (NEW):** formalize the LatAm-earthquake
+  finding — high volume + language/origin concentration absent from the
+  analyst's languages = standing under-the-radar flag. Built on the voice-mix
+  infra no competitor has; operationalizes Pedro's anti-bias framing.
+- C2 NOT rebuilt as specified (parked #172 negative) — its useful residue folds
+  into C7 + per-keyword trends (a topic's OWN distinguishing keywords, never
+  global top-N). C5 = a LENS over C1/C4 outputs (distant-from-focus ∩ flagged),
+  never a standalone panel.
+- **Validation (non-circular):** weekly pre-registered blind sample → web-
+  corroborate (P0.2 lane) → classify artifact / real-but-mainstream / true
+  under-the-radar; report precision honestly. KILL any detector <~30% eyeball
+  precision. Plus retrospective replay of known under-covered cases with a
+  shuffled-baseline negative control.
 
-Current raw material: Kalman movement (velocity/surprise), universe orphans
-(semantic oddities), heat, the parked #172 silent-risk, co-occurrence edges.
+### Phase 4 — Vision layers (G4, guarded)
+- 5W+H report, stance/framing, pin-carries-full-context, incremental
+  constellation — per the vision doc.
+- **HARD GUARDRAIL:** propagation/origin claims held until first-seen ordering
+  beats the measured ingest-lag noise floor on a labeled case (ingest timestamp
+  ≠ first utterance). Stance held until inter-annotator agreement clears a
+  threshold. Until then: report sequence honestly as "first seen BY ATLAS".
 
-Workstream C steps (the highest-novelty, most-differentiating work):
-1. **C1 — anomalous volume vs baseline.** A topic whose volume/velocity is strange
-   against ITS OWN history (Kalman surprise) OR against its expected level — a
-   spike with no obvious trigger. Already have the Kalman field; turn `surprise`
-   into a ranked "unusual right now" surface.
-2. **C2 — coverage-vs-attention ratio (the under-the-radar signal, done right).**
-   A story with real coverage volume but LOW public attention (trends/forum/wiki)
-   = happening but not in the public eye. The revived, measured #172 — the honest
-   version (needs an attention denominator that isn't sports/celebrity-dominated).
-3. **C3 — novelty / out-of-distribution.** A topic that fits NO existing category,
-   or an actor/topic pair that co-occurs for the FIRST time (a relation never seen
-   before). Compare emerging topics against the historical topic set + the
-   category taxonomy → flag genuinely-new vs known-recurring.
-4. **C4 — novel relations (discovery, not validation).** The connection layer,
-   inverted: rarity-weighted co-occurrence between actors/topics that appear
-   together unusually — surface links a human wouldn't draw. (The dossier connects
-   what you pinned; C4 proposes what you SHOULD look at.)
-5. **C5 — the anti-bias panel.** Explicitly surface stories DISTANT from the
-   analyst's current focus (geo/topic/language) — "you are not looking at this,
-   and it's moving." Counters the worldview bias Pedro named.
-Measure (task-time): does it surface a real under-the-radar story a human wouldn't
-have found? Does a flagged "novel relation" hold up on inspection?
+## Deleted from v1 (low value / measured dead ends)
+- The literal "80% of firehose" number (direction kept, metric swapped).
+- C5 as a standalone workstream; C2 as specified; A4 cadence micro-opt;
+  A3 multilingual OFF the wedge-test critical path (returns in Phase 2).
 
----
+## Standing principles (unchanged)
+Math/data first, LLM only for the brief (glass-box, cited). Honest floors are
+results, not failures. Measure before build; kill criteria attached to every
+phase. Engine-heavy work in isolated chats; consolidate to v3-intel-layer;
+sync executed copies to ~/AtlasLocalWorker.
 
-## GOAL 4 — The narrative-intelligence vision (deeper layers, now unblocked)
-From `2026-07-08-narrative-intelligence-vision.md` (substrate now healthy enough to
-build on): the report answers 5W+H; stance/framing (who is favored, honest);
-temporal propagation + origin (who started it, coordinated vs organic — the
-signature capability); pin-carries-full-thread-context; incremental constellation
-in the Workbench (not only at report time); actor = ANY entity (person/org/
-company/phenomenon/object/system).
-
----
-
-## SEQUENCING on resume — "empezar de una"
-1. **A0 first** (measure the honest coverage ceiling + junk floor + unclassifiable
-   floor). One measurement session; it defines the 80/80 target and grounds all else.
-2. **A1–A2** push useful coverage toward 80/80 (window + scoped/multilingual passes).
-3. **C1–C2 in parallel** — the emerging/anomalous engine is the highest-novelty,
-   most-differentiating capability and reuses existing Kalman/attention material;
-   start it alongside coverage.
-4. Then **B (web corroboration)** + **C3–C5 (novelty/relations/anti-bias)** +
-   the **Goal-4 vision layers**, in that rough order of leverage.
-5. Throughout: watch Supabase capacity; keep the cron sustaining embedding;
-   spawn engine-heavy work to isolated chats, consolidate to `v3-intel-layer`.
-
-## First concrete actions when we return
-- Run A0: the 3-way signal classification (useful / junk-typed / unclassifiable),
-  reported as a table — the honest state of the firehose.
-- Stand up C1: rank topics by Kalman `surprise` into an "Unusual now" list; eyeball
-  whether it surfaces real under-the-radar movement.
-- Re-run the LatAm investigation on the now-full+clean engine as the dogfood that
-  validates coverage + geo + (eventually) the corroboration + anomaly layers.
+## First actions on resume (in order)
+1. P0.4 A0 (the honest 3-way table) + P0.1 pick the marquee story — same sitting.
+2. P0.2 corroboration lane v0 + P0.3 dates fix → generate THE report.
+3. P0.5 cold-read (Frank) + analyst eyeball → steer.
+4. P1.1 heavy-job mutex (one evening of ops).
+5. P3.1 C4 novel-relations (the first anomaly detector, proven pattern).
