@@ -25,29 +25,57 @@ import time
 import asyncpg
 
 
-async def _pending_rows(conn: asyncpg.Connection, hours: int, max_n: int):
+async def _pending_rows(
+    conn: asyncpg.Connection, hours: int, max_n: int, chunk_hours: int = 12
+):
     # One representative per headline (latest id), only where no embedding exists
-    # yet. #241 Lever 2 (selective): dedup handles syndication; the outer ORDER BY
-    # timestamp DESC PRIORITISES RECENT distinct headlines — the embed capacity goes
-    # to the served window first, not to alphabetical order (the old query took the
-    # first max_n headlines A→Z, so recent stories could starve behind the backlog).
-    # No skipping = no recall risk; just spend the scarce embed budget where it serves.
-    return await conn.fetch(
-        f"""
-        SELECT d.id, d.headline FROM (
-            SELECT DISTINCT ON (s.headline) s.id, s.headline, s.timestamp
-            FROM signals_v2 s
-            LEFT JOIN signal_embeddings e ON e.signal_id = s.id
-            WHERE s.timestamp > NOW() - INTERVAL '{int(hours)} hours'
-              AND s.headline IS NOT NULL
-              AND length(s.headline) >= 20
-              AND e.signal_id IS NULL
-            ORDER BY s.headline, s.id DESC
-        ) d
-        ORDER BY d.timestamp DESC
-        LIMIT {int(max_n)}
-        """
-    )
+    # yet, NEWEST FIRST. #241 Lever 2: dedup handles syndication; recency-priority
+    # spends the scarce embed budget on the served window first.
+    #
+    # 2026-07-08 throughput fix: the old query did ONE `DISTINCT ON (headline)`
+    # megasort over the whole `hours` window (~700K rows/168h, no btree on
+    # headline). Through the Supabase pooler's hard 2-min statement_timeout that
+    # sort was killed under cron-time load → the embed step produced ~0 and the
+    # substrate starved (0.6% of 24h signals embedded). Now:
+    #   • statement_timeout is lifted for THIS session (session-mode pooler, see
+    #     main()) so no query is guillotined mid-run, AND
+    #   • the window is walked in `chunk_hours` slices most-recent-first, so each
+    #     DISTINCT ON sort is bounded (one 12h slice ≈ 50K rows, ~8s) and we STOP
+    #     once max_n newest distinct headlines are collected — the backlog tail
+    #     never has to sort at all.
+    # Cross-slice syndication (same headline straddling a slice boundary) is
+    # deduped in Python via `seen`; the newer (earlier-slice) instance wins.
+    seen: set = set()
+    out: list = []
+    start = 0
+    while start < hours and len(out) < max_n:
+        end = min(start + chunk_hours, hours)
+        rows = await conn.fetch(
+            f"""
+            SELECT d.id, d.headline FROM (
+                SELECT DISTINCT ON (s.headline) s.id, s.headline, s.timestamp
+                FROM signals_v2 s
+                LEFT JOIN signal_embeddings e ON e.signal_id = s.id
+                WHERE s.timestamp >  NOW() - INTERVAL '{int(end)} hours'
+                  AND s.timestamp <= NOW() - INTERVAL '{int(start)} hours'
+                  AND s.headline IS NOT NULL
+                  AND length(s.headline) >= 20
+                  AND e.signal_id IS NULL
+                ORDER BY s.headline, s.id DESC
+            ) d
+            ORDER BY d.timestamp DESC
+            """
+        )
+        for r in rows:
+            h = r["headline"]
+            if h in seen:
+                continue
+            seen.add(h)
+            out.append(r)
+            if len(out) >= max_n:
+                break
+        start = end
+    return out[:max_n]
 
 
 async def main() -> int:
@@ -62,12 +90,14 @@ async def main() -> int:
     parser.add_argument("--max-signals", type=int, default=200_000)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--bulk-reindex", action="store_true",
-                        help="#241 fix: DROP the HNSW index, bulk-insert at ~22K/s (vs "
-                             "~16/s with the live index), then REBUILD single-threaded "
-                             "(~4min/276K; parallel build fails on Supabase shmem). "
-                             "Off-peak only — the semantic lane degrades to lexical "
-                             "during the rebuild. The rebuild runs in a finally so the "
-                             "index is never left dropped. OFF by default.")
+                        help="#241 fix: DROP the HNSW index, bulk-insert fast (no live-"
+                             "index cost), then REBUILD single-threaded at "
+                             "maintenance_work_mem='384MB' (~3-4min/253K IN-MEMORY; 256MB "
+                             "thrashed to disk at ~4 tuples/min — see the rebuild block). "
+                             "ONE-TIME CATCH-UP ONLY, off-peak — NOT for the cron (the "
+                             "rebuild cost makes 3x/day non-viable) and the semantic lane "
+                             "degrades to lexical during the rebuild. The rebuild runs in "
+                             "a finally so the index is never left dropped. OFF by default.")
     args = parser.parse_args()
 
     from app.services.research_semantic import embed_texts, embedder_available
@@ -77,6 +107,12 @@ async def main() -> int:
 
     conn = await asyncpg.connect(os.environ["DATABASE_URL"])
     try:
+        # Lift the pooler's default 2-min statement_timeout for this session
+        # (Supabase session-mode pooler, port 5432, honours SET per-connection —
+        # verified). Both the dedup select and the HNSW inserts legitimately run
+        # longer than 2 min on the M1↔Supabase WAN; without this they are killed
+        # mid-run and the embed step yields ~0 (the 2026-07-08 starvation).
+        await conn.execute("SET statement_timeout = 0")
         rows = await _pending_rows(conn, args.hours, args.max_signals)
         from app.services.research_semantic import is_junk_headline
         before = len(rows)
@@ -93,10 +129,17 @@ async def main() -> int:
 
         started = time.monotonic()
         written = 0
+        # WHERE EXISTS closes most of the retention race: a signal selected as
+        # pending can be retention-deleted from signals_v2 before its embedding is
+        # written → ForeignKeyViolationError abends the whole 256-row batch. The
+        # EXISTS filter drops just-deleted ids in-statement; the rare remaining
+        # race (delete commits after the EXISTS read) is caught in _write and the
+        # batch retried against the still-present ids.
         _INSERT = """
             INSERT INTO signal_embeddings (signal_id, vec)
             SELECT t.id, t.v::halfvec
             FROM unnest($1::bigint[], $2::text[]) AS t(id, v)
+            WHERE EXISTS (SELECT 1 FROM signals_v2 s WHERE s.id = t.id)
             ON CONFLICT (signal_id) DO NOTHING
         """
         # Parallel writes: embedding is fast (~100-228/s on MPS) but a single
@@ -105,13 +148,43 @@ async def main() -> int:
         # faster (measured 2026-06-26: 27/s serial -> 142/s at 4-way) and needs
         # NO index drop — HNSW handles concurrent inserts.
         cc = max(1, args.write_concurrency)
+
         write_pool = await asyncpg.create_pool(
             os.environ["DATABASE_URL"], min_size=cc, max_size=cc,
         )
 
+        async def _insert(wc: asyncpg.Connection, ids: list, vlits: list) -> None:
+            # SET LOCAL (not a plain SET via pool `init`) is the ONLY reliable way
+            # to lift the pooler's 2-min statement_timeout for a pooled write:
+            # asyncpg runs `RESET ALL` when a connection is RELEASED, which wipes
+            # any session-level SET → a reused pool conn reverts to 2min and the
+            # slow live-HNSW insert over the WAN is killed mid-run (the 2026-07-08
+            # DIAG: "cancel after 124s on 256 rows; conn timeout=2min"). SET LOCAL
+            # is transaction-scoped, so it is re-applied fresh inside every write
+            # and survives the reset cycle.
+            async with wc.transaction():
+                await wc.execute("SET LOCAL statement_timeout = 0")
+                await wc.execute(_INSERT, ids, vlits)
+
         async def _write(ids: list, vlits: list) -> None:
             async with write_pool.acquire() as wc:
-                await wc.execute(_INSERT, ids, vlits)
+                try:
+                    await _insert(wc, ids, vlits)
+                except asyncpg.exceptions.ForeignKeyViolationError:
+                    # Retention deleted a signal between select and insert. Refilter
+                    # to ids still present and retry once; drop the rest (they
+                    # re-enter next run if re-ingested). Rare tail of the race.
+                    present = await wc.fetch(
+                        "SELECT s.id FROM signals_v2 s "
+                        "WHERE s.id = ANY($1::bigint[])",
+                        ids,
+                    )
+                    keep = {r["id"] for r in present}
+                    fids, fvlits = zip(*[
+                        (i, v) for i, v in zip(ids, vlits) if i in keep
+                    ]) if keep else ((), ())
+                    if fids:
+                        await _insert(wc, list(fids), list(fvlits))
 
         pending: set = set()
         try:
@@ -161,7 +234,14 @@ async def main() -> int:
                 # simple-query batch is one implicit transaction = one backend.
                 await conn.execute(
                     "SET max_parallel_maintenance_workers = 0; "
-                    "SET maintenance_work_mem = '256MB'; "
+                    # 2026-07-08: 256MB was TOO SMALL for the 253K×768 halfvec
+                    # working set (~371MB) → pgvector built the HNSW graph ON DISK
+                    # (wait_event=DataFileRead, ~4 tuples/min, ~3.5-DAY projection).
+                    # 384MB just clears the working set → in-memory build ~1,255
+                    # tuples/s (~3-4 min total). Ceiling on this small instance
+                    # (shared_buffers=256MB); do NOT raise further without checking
+                    # instance RAM (OOM risk).
+                    "SET maintenance_work_mem = '384MB'; "
                     "SET statement_timeout = 0; "
                     "CREATE INDEX IF NOT EXISTS idx_signal_embeddings_vec "
                     "ON signal_embeddings USING hnsw (vec halfvec_cosine_ops) "
