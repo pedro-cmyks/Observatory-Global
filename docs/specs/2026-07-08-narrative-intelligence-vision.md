@@ -15,6 +15,20 @@ signals threaded + actors/geo attributed correctly, none of this is trustworthy.
 - **L3 Workbench/dossier** = **"data about the data"** — the exposition. You pin
   threads, combine several, and the report exposes the deeper relations.
 
+## Investigations anchor on STORIES, not cluster-run artifacts (Pedro 2026-07-10)
+A story that happened never goes stale — time is a DIMENSION of the narrative,
+not an expiry date. What IS ephemeral is the thread OBJECT (a grouping produced
+by one clustering run; it can be contaminated, partial, or rebuilt away).
+Measured proof: the NATO-Ankara story = 5,317 signals / 16 languages / 71
+countries over 7 days, while the thread object dt-755 captured only 148 of them
+mixed with Arabic front-page junk. PRINCIPLE: an investigation must be able to
+anchor on the STORY (query + actors + time range over the persistent signal
+base + archive), so its validity never depends on the quality of the latest
+clustering run. The search→story path (cross-thread narrative from a query) is
+the existing story-first entry; pins should freeze story-level context, and a
+rebuilt/cleaner thread object later ENRICHES the investigation instead of
+invalidating it.
+
 ## The pin should carry the WHOLE thread (key correction)
 When you pin a NARRATIVE THREAD (not just a topic) into the Workbench, it should
 carry **everything the thread holds**: all its surface data, **all connected
