@@ -2,6 +2,7 @@ import html
 import json
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -471,6 +472,93 @@ COH_MIXED_WHITENED = 0.70
 COH_LOOSE_RAW = 0.915
 COH_MIXED_RAW = 0.945
 
+# Content-signal cuts (2026-07-10, measured false-negative fix for the dt-755
+# Arabic front-page blob the cosine guard passed as "tight" 0.617). Same-language
+# grab-bags cluster tightly with themselves in e5 even after whitening, so
+# cosine-to-centroid alone cannot catch them. A real single event shares story
+# VOCABULARY (top-3 content tokens cover most member headlines) and/or ACTORS
+# (latin-normalized persons — robust across scripts); a language blob shares
+# neither. Calibrated on 24 live threads: contaminated dt-755 0.35 / dt-52 0.47 /
+# dt-667 0.45 / dt-837 0.47 / dt-416 0.48 (all eyeball-confirmed mixed) vs clean
+# floor dt-535 Roxana 0.64 / dt-14 0.64; dt-1419 Keiko & dt-792 Milei = 1.0.
+# Threshold 0.55 sits mid-gap. The actor conjunction protects genuinely
+# multilingual coverage of ONE event (token coverage splits across scripts but
+# NER/GDELT persons stay shared — the morphology confound noted in
+# docs/state/2026-07-09-useful-coverage-gate.md).
+COH_TOKEN_COVERAGE_MIN = 0.55
+COH_ACTOR_SHARE_MIN = 0.5
+COH_GRABBAG_MIN_MEMBERS = 10
+# Identical normalized headline repeated from many outlets = front-page dump /
+# syndication feed, not story members (the "جريدة البلاد" pattern).
+COH_REPEATED_HEADLINE_MAX = 0.4
+
+# Tiny multilingual function-word list — only words that measurably surfaced as
+# top doc-freq tokens in live threads and would launder token coverage for
+# same-language grab-bags. Deliberately small; the len>=4 filter kills most.
+_COH_STOPWORDS = frozenset({
+    "para", "este", "esta", "tras", "sobre", "entre", "desde", "como", "pero",
+    "cuando", "dans", "avec", "pour", "cette", "après", "sont", "leur", "plus",
+    "tout", "with", "from", "this", "that", "after", "over", "says", "will",
+    "have", "been", "sein", "nach", "über", "eine", "einer", "against",
+    "della", "delle", "nella", "sono", "dopo",
+    "على", "الى", "إلى", "التي", "الذي", "بعد", "قبل", "حول", "خلال", "بين", "أمام",
+    "після", "через", "проти", "возле", "около",
+})
+
+_COH_TOKEN_RE = re.compile(r"\w+", re.UNICODE)
+
+
+def _coherence_content_signals(rows) -> dict:
+    """Language-blob / dump detectors over member HEADLINES (embedding-free).
+
+    rows: records with headline, source_name, persons. Returns
+    storyTokenCoverage (share of members containing one of the thread's top-3
+    content tokens), repeatedHeadlineShare (max identical normalized headline),
+    topActorShare (share carrying the most common person). Outlet-name tokens
+    are stripped per row — front-page feeds suffix the outlet into every
+    headline, which otherwise becomes the "top story token"."""
+    from collections import Counter
+
+    n = len(rows)
+    token_sets: list[set] = []
+    head_counter: Counter = Counter()
+    person_counter: Counter = Counter()
+    for r in rows:
+        raw = html.unescape(r["headline"] or "").lower().strip()
+        norm = re.sub(r"\s+", " ", raw)
+        head_counter[re.sub(r"[^\w\s]", "", norm, flags=re.UNICODE)] += 1
+        src_tokens = set(_COH_TOKEN_RE.findall((r["source_name"] or "").lower()))
+        toks = {
+            t for t in _COH_TOKEN_RE.findall(norm)
+            if len(t) >= 4 and not t.isdigit()
+            and t not in _COH_STOPWORDS and t not in src_tokens
+        }
+        token_sets.append(toks)
+        persons = r["persons"] or []
+        if isinstance(persons, str):
+            try:
+                persons = json.loads(persons)
+            except Exception:
+                persons = []
+        for p in {str(x).lower() for x in persons if x}:
+            person_counter[p] += 1
+
+    df: Counter = Counter()
+    for s in token_sets:
+        df.update(s)
+    top3 = [t for t, _ in df.most_common(3)]
+    coverage = (
+        sum(1 for s in token_sets if any(t in s for t in top3)) / n
+        if n and top3 else 0.0
+    )
+    repeated = (head_counter.most_common(1)[0][1] / n) if n else 0.0
+    actor_share = (person_counter.most_common(1)[0][1] / n) if n and person_counter else 0.0
+    return {
+        "storyTokenCoverage": round(coverage, 3),
+        "repeatedHeadlineShare": round(repeated, 3),
+        "topActorShare": round(actor_share, 3),
+    }
+
 
 async def _thread_coherence(conn, topic_id: int) -> Optional[dict]:
     """Measured black-hole / conflation guard (#224). A thread should be ONE
@@ -488,7 +576,15 @@ async def _thread_coherence(conn, topic_id: int) -> Optional[dict]:
     Dominant-country events stay clean via the country guard on the mixed tier;
     this only WARNS (never blocks). Read-only, degrades to None. Reversible via
     ATLAS_THEME_WHITENED_COHERENCE=0 (falls back to the raw-e5 tiers). The frontend
-    simply shows no badge when this is absent."""
+    simply shows no badge when this is absent.
+
+    2026-07-10 content-signal extension (measured false negative: dt-755 "NATO
+    Summit in Ankara" = Arabic front-page blob, whitened 0.617 "tight"): a
+    same-language grab-bag is cosine-tight, so the guard now ALSO checks that
+    members share story vocabulary or actors — see _coherence_content_signals
+    and the calibration note on the COH_TOKEN_COVERAGE_MIN constants. Threads
+    whose members lack embeddings report tier "unknown" / insufficient_embeddings
+    instead of silently returning null."""
     use_whitened = os.getenv("ATLAS_THEME_WHITENED_COHERENCE", "1").lower() not in ("0", "false", "no", "")
     w = None
     if use_whitened:
@@ -500,10 +596,11 @@ async def _thread_coherence(conn, topic_id: int) -> Optional[dict]:
     try:
         rows = await conn.fetch(
             """
-            SELECT e.vec::text AS v, upper(s.country_code) AS cc
+            SELECT e.vec::text AS v, upper(s.country_code) AS cc,
+                   s.headline, s.source_name, s.persons
             FROM topic_members tm
-            JOIN signal_embeddings e ON e.signal_id = tm.signal_id
             JOIN signals_v2 s ON s.id = tm.signal_id
+            LEFT JOIN signal_embeddings e ON e.signal_id = tm.signal_id
             WHERE tm.topic_id = $1 AND tm.engine_version = 'v1-compat'
               AND tm.role = 'evidence'
               AND tm.assigned_at > NOW() - INTERVAL '30 days'
@@ -518,12 +615,30 @@ async def _thread_coherence(conn, topic_id: int) -> Optional[dict]:
     import numpy as np
     from collections import Counter
 
-    V = np.asarray([json.loads(r["v"]) for r in rows], dtype=np.float32)
-    n = len(V)
+    n = len(rows)
     cc_counts = Counter(r["cc"] for r in rows if r["cc"])
     dcc = len(cc_counts)
     top_share = (max(cc_counts.values()) / sum(cc_counts.values())) if cc_counts else 1.0
+    content = _coherence_content_signals(rows)
 
+    embedded = [r["v"] for r in rows if r["v"]]
+    if len(embedded) < 5:
+        # Members exist but the embedding lane hasn't covered them (the recurring
+        # engine-gap class). Honest "can't judge" beats null-silent.
+        return {
+            "score": None,
+            "tier": "unknown",
+            "space": "none",
+            "reason": "insufficient_embeddings",
+            "distinctCountries": dcc,
+            "topCountryShare": round(top_share, 2),
+            "members": n,
+            "embeddedMembers": len(embedded),
+            "warning": None,
+            **content,
+        }
+
+    V = np.asarray([json.loads(v) for v in embedded], dtype=np.float32)
     if w is not None:
         from app.services.whitening import apply_whitening
         Vn = apply_whitening(V, w)            # unit-norm rows in whitened space
@@ -537,12 +652,32 @@ async def _thread_coherence(conn, topic_id: int) -> Optional[dict]:
         c = c / nc
     avg_cos = float((Vn @ c).mean())
 
+    # Content flags — the cosine-blind pathologies. Grab-bag: no shared story
+    # vocabulary AND no shared actor (real multilingual events keep shared
+    # latin-normalized persons even when token coverage splits across scripts).
+    # Dump: one identical headline repeated across outlets (front-page feeds).
+    content_flag = None
+    if content["repeatedHeadlineShare"] >= COH_REPEATED_HEADLINE_MAX:
+        content_flag = "syndicated_dump"
+    elif (
+        n >= COH_GRABBAG_MIN_MEMBERS
+        and content["storyTokenCoverage"] < COH_TOKEN_COVERAGE_MIN
+        and content["topActorShare"] < COH_ACTOR_SHARE_MIN
+    ):
+        content_flag = "grab_bag"
+
     if avg_cos < loose_t:
         tier = "loose"
         warning = "This thread's coverage does not cohere — it likely conflates unrelated stories. Verify before pinning."
     elif avg_cos < mixed_t and top_share < 0.5 and dcc >= 3:
         tier = "mixed"
         warning = f"Mixed origin: coverage spans {dcc} countries with none dominant and only loose coherence — it may combine several stories."
+    elif content_flag == "syndicated_dump":
+        tier = "mixed"
+        warning = "Repeated identical headlines from many outlets — this thread looks like a syndicated front-page dump, not one story."
+    elif content_flag == "grab_bag":
+        tier = "mixed"
+        warning = "Members share no common story vocabulary or actors — this thread likely bundles unrelated same-language coverage. Verify before pinning."
     else:
         tier = "tight"
         warning = None
@@ -553,7 +688,10 @@ async def _thread_coherence(conn, topic_id: int) -> Optional[dict]:
         "distinctCountries": dcc,
         "topCountryShare": round(top_share, 2),
         "members": n,
+        "embeddedMembers": len(embedded),
+        "contentFlag": content_flag,
         "warning": warning,
+        **content,
     }
 
 
