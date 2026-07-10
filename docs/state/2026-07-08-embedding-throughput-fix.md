@@ -140,6 +140,31 @@ embed compute. Two consequences:
   path can't sustain keep-up. Deferred (Fly shared CPU embed is slow; needs its
   own machine) — logged here as the recommendation.
 
+## Resolution addendum (2026-07-10)
+
+The 256MB-thrash rebuild became a true incident: the spilled `CREATE INDEX`
+backend got STUCK (tuples_done frozen at 178,801 for hours) and became
+**immune to `pg_cancel_backend`/`pg_terminate_backend`** — it held the table
+lock, froze the embed cron's inserts, and its CPU burn on the 2-core Micro
+pushed prod `/threads` into 500s. Only a **Supabase project restart** killed
+it. Post-restart recovery (automated watcher):
+
+- trim `signal_embeddings` to 4 days: DELETE 91,292 in **6s** → 75,711 rows
+  (~111MB vectors)
+- HNSW rebuild at `maintenance_work_mem='384MB'`: **103s, in-memory** —
+  vs 36h+ never-finishing at 256MB on the bigger table
+- prod verified: `/threads` 200/2s, briefing 200, research-plan 200
+  (semantic lane back)
+
+Standing rules hardened by this: (a) NEVER build an HNSW whose working set
+(rows × 1536 × 2B + graph overhead) exceeds `maintenance_work_mem` — on this
+instance that means **keep `signal_embeddings` ≤ ~150K rows if a from-scratch
+rebuild must stay possible**; (b) a spilled pgvector build can become
+unkillable — treat "wait_event=DataFileRead + tuples_done frozen" as
+restart-the-project territory, not wait-it-out; (c) rebuilds are
+disaster-recovery only — steady state is live inserts (the cron never drops
+the index).
+
 ## Follow-ups
 
 - **Cron budget vs volume:** 24h ≈ 126K distinct headlines; the cron's
