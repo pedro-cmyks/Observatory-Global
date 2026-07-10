@@ -199,11 +199,26 @@ def load_evidence_lookup(archive_root: Path, win_start: date, win_end: date) -> 
 # ── clustering + typing ──────────────────────────────────────────────────────
 
 def cluster_scope(vecs, min_cluster_size: int = 4):
-    """HDBSCAN leaf over L2-normalized vecs (euclidean ≡ cosine order)."""
+    """HDBSCAN leaf over L2-normalized vecs (euclidean ≡ cosine order).
+
+    2026-07-10 perf fix: HDBSCAN in raw 1536d over a 60K scope ran >50 min on
+    the M1 (US scope alone) — O(n²) distances in high dim. For clustering ONLY,
+    reduce with randomized PCA to 128d + renormalize (cosine structure holds at
+    this granularity; same practice as the universe layout). Topic CENTROIDS
+    are still computed from the ORIGINAL 1536d vectors by the caller, so the
+    serving-side query match space is untouched.
+    """
     import hdbscan
+    import numpy as np
+    work = vecs
+    if work.shape[0] > 2000 and work.shape[1] > 128:
+        from sklearn.decomposition import PCA
+        work = PCA(n_components=128, svd_solver="randomized",
+                   random_state=0).fit_transform(work)
+        work = work / (np.linalg.norm(work, axis=1, keepdims=True) + 1e-9)
     cl = hdbscan.HDBSCAN(min_cluster_size=min_cluster_size, min_samples=2,
                          metric="euclidean", cluster_selection_method="leaf")
-    return cl.fit_predict(vecs)
+    return cl.fit_predict(work)
 
 
 _DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
