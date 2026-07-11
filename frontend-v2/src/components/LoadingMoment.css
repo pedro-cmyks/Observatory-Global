@@ -1,0 +1,88 @@
+/* LoadingMoment — shared loading-delight card. Theme-aware via the app's CSS
+   custom properties with dark-friendly fallbacks (the app-shell overlay is a
+   fixed dark surface that doesn't inherit panel vars). */
+
+.loading-moment {
+    max-width: 340px;
+    margin: 0 auto;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+}
+
+.loading-moment-sky {
+    width: 120px;
+    height: 36px;
+    opacity: 0.9;
+}
+
+.loading-moment-lines {
+    stroke: var(--color-accent-primary, #1d9e75);
+    stroke-width: 0.4;
+    opacity: 0.35;
+}
+
+.loading-moment-star {
+    fill: var(--color-accent-primary, #1d9e75);
+    animation: loading-moment-twinkle 2.6s ease-in-out infinite;
+}
+
+@keyframes loading-moment-twinkle {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 1; }
+}
+
+.loading-moment-fact {
+    animation: loading-moment-fade 600ms ease-out;
+}
+
+@keyframes loading-moment-fade {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.loading-moment-text {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--color-text-secondary, rgba(230, 237, 243, 0.78));
+}
+
+.loading-moment-label {
+    display: inline-block;
+    margin-top: 5px;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-muted, rgba(230, 237, 243, 0.45));
+}
+
+.loading-moment--compact {
+    padding: 6px 12px;
+}
+
+.loading-moment--compact .loading-moment-sky {
+    width: 96px;
+    height: 28px;
+}
+
+.loading-moment--compact .loading-moment-text {
+    font-size: 12px;
+}
+
+/* Reduced motion: facts still rotate (content, not decoration) but nothing
+   animates — no twinkle, no fade/translate. */
+.loading-moment--still .loading-moment-star,
+.loading-moment--still .loading-moment-fact {
+    animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .loading-moment-star,
+    .loading-moment-fact {
+        animation: none;
+    }
+}

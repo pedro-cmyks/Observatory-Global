@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { LoadingMoment } from './LoadingMoment'
 import './AtlasLoader.css'
 
 interface AtlasLoaderProps {
@@ -71,6 +72,8 @@ export function AtlasLoader({ visible }: AtlasLoaderProps) {
                     <span className="atlas-dot-pulse" style={{ animationDelay: '180ms' }} />
                     <span className="atlas-dot-pulse" style={{ animationDelay: '360ms' }} />
                 </div>
+
+                <LoadingMoment />
             </div>
         </div>
     )
