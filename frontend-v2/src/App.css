@@ -644,6 +644,49 @@
   border-color: rgba(104, 219, 174, 0.55) !important;
 }
 
+/* ── Big-monitor type scale (de-densify batch A) ──────────────────────────
+   Components size text in px, so a 4K monitor rendered 9-10px microtype.
+   Scoped to .terminal-layout-grid descendants — NOT :root — because
+   ThemeContext writes inline vars on documentElement, which would override
+   any :root media-query redefinition. */
+@media (min-width: 2200px) {
+  .terminal-layout-grid .panel-header {
+    min-height: 38px;
+    font-size: 12px;
+    padding: 6px 14px;
+  }
+  .terminal-layout-grid .panel-subtitle {
+    font-size: 11px;
+  }
+  .terminal-layout-grid .layer-btn,
+  .terminal-layout-grid .dock-tab {
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+  /* Narrative threads */
+  .terminal-layout-grid .narrative-row { padding: 14px 16px; }
+  .terminal-layout-grid .narrative-label { font-size: 15px; }
+  .terminal-layout-grid .narrative-count { font-size: 17px; }
+  .terminal-layout-grid .narrative-detail { font-size: 12px; }
+  .terminal-layout-grid .narrative-cluster-label,
+  .terminal-layout-grid .country-pip,
+  .terminal-layout-grid .person-pip,
+  .terminal-layout-grid .attention-badge,
+  .terminal-layout-grid .spread-label,
+  .terminal-layout-grid .trend-label { font-size: 11px; }
+  /* Signal stream */
+  .terminal-layout-grid .signal-list { padding: 10px; gap: 6px; }
+  .terminal-layout-grid .signal-row { padding: 8px 10px; }
+  .terminal-layout-grid .headline { font-size: 14px; }
+  .terminal-layout-grid .time,
+  .terminal-layout-grid .country-chip,
+  .terminal-layout-grid .source,
+  .terminal-layout-grid .theme-tag,
+  .terminal-layout-grid .person-tag { font-size: 11.5px; }
+  .terminal-layout-grid .stream-filter-tab { font-size: 11px; padding: 4px 9px; }
+  .terminal-layout-grid .stream-status-bar { font-size: 11.5px; }
+}
+
 /* Legacy — kept for any remaining references */
 .terminal-layout {
   display: grid;
