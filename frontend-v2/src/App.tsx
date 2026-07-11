@@ -41,6 +41,22 @@ import WorkbenchPanel from './components/WorkbenchPanel'
 import { UniverseView } from './components/UniverseView'
 import { getThemeLabel, resolveThreadLabel } from './lib/themeLabels'
 import { createInvestigation } from './lib/workbench'
+// #233 grid revival: desktop panels live in a drag/resize grid. RGL positions
+// children with CSS transforms — panels are NEVER unmounted by layout changes,
+// which is what the keep-alive architecture requires.
+import ReactGridLayout, { useContainerWidth } from 'react-grid-layout'
+import type { Layout, LayoutItem } from 'react-grid-layout'
+import 'react-grid-layout/css/styles.css'
+import {
+  GRID_COLS,
+  bucketForWidth,
+  clearSavedLayouts,
+  layoutForBucket,
+  loadSavedLayouts,
+  rowHeightFor,
+  saveLayout,
+  type LayoutBucket,
+} from './lib/consoleLayout'
 
 // Terminal Panels
 import { NarrativeThreads, type LivingThreadSelection } from './components/NarrativeThreads'
@@ -74,6 +90,8 @@ interface FeatureCollection {
 
 const emptyFeatureCollection = (): FeatureCollection => ({ type: 'FeatureCollection', features: [] })
 const DEG_TO_RAD = Math.PI / 180
+// Gutter between grid panels (px) — also the container padding.
+const GRID_GAP = 6
 
 function getDayOfYear(date: Date): number {
   const start = new Date(date.getFullYear(), 0, 0)
@@ -1166,6 +1184,42 @@ function AppContent() {
     return () => clearTimeout(t)
   }, [])
 
+  // ── #233 panel grid: bucketed presets + per-bucket persisted layout ──
+  // Buckets (laptop/desktop/big) keep a 4K arrangement from ever being applied
+  // to a laptop and vice versa; each bucket persists independently.
+  const { width: gridWidth, containerRef: gridContainerRef } = useContainerWidth({ initialWidth: 1280 })
+  const gridShellRef = useRef<HTMLDivElement | null>(null)
+  const [savedGridLayouts, setSavedGridLayouts] = useState<Partial<Record<LayoutBucket, LayoutItem[]>>>(() => loadSavedLayouts())
+  const gridBucket = bucketForWidth(gridWidth)
+  const gridLayout = useMemo(() => layoutForBucket(gridBucket, savedGridLayouts), [gridBucket, savedGridLayouts])
+  // The shell sits below the command bar AND the in-flow disclaimer strip, so
+  // its available height is measured, not assumed.
+  const [gridShellH, setGridShellH] = useState(() => (typeof window === 'undefined' ? 800 : Math.max(320, window.innerHeight - 96)))
+  useEffect(() => {
+    if (isMobile) return
+    const measure = () => {
+      const el = gridShellRef.current
+      if (!el) return
+      setGridShellH(Math.max(320, window.innerHeight - el.getBoundingClientRect().top))
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [isMobile])
+  const gridRowHeight = rowHeightFor(gridShellH, GRID_GAP, GRID_GAP)
+  const handleGridLayoutChange = (layout: Layout) => {
+    const next = layout.map(l => ({ ...l }))
+    setSavedGridLayouts(prev => {
+      const cur = prev[gridBucket]
+      if (cur && JSON.stringify(cur) === JSON.stringify(next)) return prev
+      saveLayout(gridBucket, next)
+      return { ...prev, [gridBucket]: next }
+    })
+  }
+  const resetGridLayout = () => {
+    clearSavedLayouts()
+    setSavedGridLayouts({})
+  }
 
   return (
     <div className={`app ${crisisEnabled ? 'crisis-mode' : ''}`}>
@@ -1316,6 +1370,15 @@ function AppContent() {
                 >
                   <Settings size={13} /> Settings
                 </button>
+                {!isMobile && (
+                  <button
+                    className="cmd-menu-item"
+                    onClick={() => { setMoreMenuOpen(false); resetGridLayout() }}
+                    data-tip="Restore the default panel arrangement for this screen size"
+                  >
+                    <span style={{ fontSize: 13, lineHeight: 1 }}>⊞</span> Reset panel layout
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1338,8 +1401,13 @@ function AppContent() {
         Coverage bias: map heat is baseline-normalized; raw volume is evidence density, not importance.
       </div>
 
-      <div className={`terminal-layout${isMobile ? ` mobile-tab-${mobileTab}` : ''}`}>
-        {/* Panel 1: GLOBAL RADAR */}
+      {(() => {
+        /* #233 grid revival: panels are defined ONCE, then laid out either in
+           the mobile tab shell (unchanged IA) or the desktop drag/resize grid.
+           RGL positions children with transforms — panels never unmount on
+           drag/resize/rearrange (display-toggle keep-alive preserved). */
+        /* Panel 1: GLOBAL RADAR */
+        const radarPanel = (
         <div className="terminal-panel radar" data-tour="globe">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
@@ -1551,8 +1619,10 @@ function AppContent() {
           </div>
         </div>
 
+        )
+
         {/* Panel 2: SIGNAL STREAM — the intel hub, swaps based on active context */}
-        {(() => {
+        const streamPanel = (() => {
           const isStory = !!storyQuery
           const isPerson = focus.type === 'person' && !!focus.value && !isStory
           const isThread = !!selectedThread && !isPerson && !isStory
@@ -1746,9 +1816,10 @@ function AppContent() {
               </div>
             </div>
           )
-        })()}
+        })()
 
         {/* Panel 3: NARRATIVE THREADS — always visible, reactive to focus context */}
+        const threadsPanel = (
         <div className="terminal-panel threads" data-tour="threads">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
@@ -1800,7 +1871,11 @@ function AppContent() {
           </div>
         </div>
 
-        {/* Panel 4: CORRELATION MATRIX */}
+        )
+
+        {/* Panel 4: CORRELATION MATRIX (retired — display:none at every
+            breakpoint; stays mounted for behavioral parity, never in the grid) */}
+        const matrixPanel = (
         <div className="terminal-panel matrix">
           <div className="panel-header">
             <div className="panel-header-title-wrap">
@@ -1818,9 +1893,12 @@ function AppContent() {
           </div>
         </div>
 
+        )
+
         {/* Panel 5+6: BOTTOM DOCK — tabbed (#228 §3). On 16:9 laptops the old
             two-panel bottom row gave three interactive sections ~132px each;
             tabs give the active section the full row. */}
+        const dockPanel = (
         <div className="terminal-panel dock" data-tour="anomaly-attention">
           <div className="panel-header dock-header">
             <div className="dock-tabs">
@@ -1874,7 +1952,43 @@ function AppContent() {
             )}
           </div>
         </div>
-      </div>
+        )
+
+        if (isMobile) {
+          // Mobile keeps the proven tab IA untouched: one CSS class swap shows
+          // one full-screen panel at a time (display-toggle, no unmounts).
+          return (
+            <div className={`terminal-layout mobile-tab-${mobileTab}`}>
+              {radarPanel}
+              {streamPanel}
+              {threadsPanel}
+              {matrixPanel}
+              {dockPanel}
+            </div>
+          )
+        }
+
+        return (
+          <div ref={gridShellRef} className="terminal-layout-grid" style={{ height: gridShellH }}>
+            <div ref={gridContainerRef}>
+              <ReactGridLayout
+                width={gridWidth}
+                layout={gridLayout}
+                gridConfig={{ cols: GRID_COLS, rowHeight: gridRowHeight, margin: [GRID_GAP, GRID_GAP], containerPadding: [GRID_GAP, GRID_GAP] }}
+                dragConfig={{ handle: '.panel-header', cancel: 'button, input, a, select, textarea' }}
+                resizeConfig={{ handles: ['se'] }}
+                onLayoutChange={handleGridLayoutChange}
+              >
+                <div key="radar" className="grid-slot">{radarPanel}</div>
+                <div key="stream" className="grid-slot">{streamPanel}</div>
+                <div key="threads" className="grid-slot">{threadsPanel}</div>
+                <div key="dock" className="grid-slot">{dockPanel}</div>
+              </ReactGridLayout>
+            </div>
+            <div style={{ display: 'none' }}>{matrixPanel}</div>
+          </div>
+        )
+      })()}
 
       {/* Mobile L2 bottom navigation — one full-screen surface at a time */}
       {isMobile && (

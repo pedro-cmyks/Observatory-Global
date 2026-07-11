@@ -584,19 +584,17 @@
   inset: 0;
 }
 
-/* Draggable grid container */
-.terminal-layout-container {
-  height: calc(100vh - 48px);
-  width: 100%;
-  max-width: 1920px;
-  margin: 48px auto 0;
+/* #233 drag/resize panel grid (desktop >768px). The shell's height is set
+   inline from a runtime measurement (command bar + in-flow disclaimer above). */
+.terminal-layout-grid {
+  width: 100vw;
   background: var(--color-bg-primary, #0c0f18);
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
 }
 
-/* Full-bleed background behind the centered container on ultrawide */
+/* Full-bleed background behind the grid */
 .app::after {
   content: '';
   position: fixed;
@@ -605,8 +603,33 @@
   z-index: -1;
 }
 
-.terminal-layout-rgl {
-  min-height: calc(100vh - 48px);
+/* RGL positions .grid-slot absolutely (transform); the panel fills it. */
+.grid-slot {
+  display: flex;
+}
+.grid-slot > .terminal-panel {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Headers are the drag handles on desktop */
+.terminal-layout-grid .panel-header {
+  cursor: grab;
+}
+.terminal-layout-grid .grid-slot.react-draggable-dragging .panel-header {
+  cursor: grabbing;
+}
+.grid-slot.react-draggable-dragging {
+  z-index: 30;
+  opacity: 0.92;
+}
+.react-grid-placeholder {
+  background: rgba(104, 219, 174, 0.12) !important;
+  border: 1px dashed rgba(104, 219, 174, 0.45);
+  border-radius: 6px;
 }
 
 /* react-grid-layout resize handle styling */
@@ -614,11 +637,11 @@
   opacity: 0;
   transition: opacity 0.15s;
 }
-.terminal-panel:hover .react-resizable-handle {
+.grid-slot:hover .react-resizable-handle {
   opacity: 0.5;
 }
 .react-resizable-handle::after {
-  border-color: rgba(99, 179, 237, 0.5) !important;
+  border-color: rgba(104, 219, 174, 0.55) !important;
 }
 
 /* Legacy — kept for any remaining references */
