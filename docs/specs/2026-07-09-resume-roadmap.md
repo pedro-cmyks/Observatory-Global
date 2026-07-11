@@ -120,3 +120,17 @@ sync executed copies to ~/AtlasLocalWorker.
 3. P0.5 cold-read (Frank) + analyst eyeball → steer.
 4. P1.1 heavy-job mutex (one evening of ops).
 5. P3.1 C4 novel-relations (the first anomaly detector, proven pattern).
+
+## Phase X — Experience track (added 2026-07-11, runs PARALLEL, never blocks P0-P3)
+Pedro's bar: the new Claude desktop shell — clean, smooth, professionally designed,
+nothing "AI-made". Atlas today reads super-dense and hard to parse.
+- **X.1 Resizable/movable panel grid** (revive #233 properly): drag/resize/rearrange
+  console panels, persisted layouts, big-monitor presets (4K/60" wastes space today),
+  without breaking the keep-alive/display-toggle architecture. → task_e03c57d5
+- **X.2 De-densify pass**: hierarchy, whitespace, progressive disclosure, quieter
+  chrome — reorganize how info is REVEALED, never remove it. → task_e03c57d5
+- **X.3 Loading delight**: precomputed rotating Atlas-curated moments (measured
+  facts/voice-asymmetry nuggets/constellation vectors) during load states; math-first,
+  tiny static JSON, PWA-precached, never blocks loading. → task_8a35aa03
+Rationale: the wedge-test report sells the ANALYSIS; the experience track sells the
+first 30 seconds. Both feed the same demo.
