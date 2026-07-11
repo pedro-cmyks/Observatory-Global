@@ -46,7 +46,12 @@ export interface ConnectionEdge {
   b: string
   basis: ConnectionBasis[]
   weight: number
+  /** RAW e5 centroid cosine — display-only. Floods 0.88-0.96 (anisotropic
+   *  cone), so it reads misleadingly high ("99% similar"). */
   semantic_sim: number | null
+  /** Whitened (all-but-top k=1) cosine — the space the CONNECT decision runs
+   *  in. Optional: absent on old payloads or when the whitening asset is off. */
+  whitened_sim?: number | null
   shared_countries: string[]
   shared_persons: string[]
 }
@@ -336,8 +341,16 @@ const BASIS_LABEL: Record<ConnectionBasis, string> = {
 
 export function edgeReason(e: ConnectionEdge): string {
   const parts: string[] = []
-  if (e.basis.includes('semantic') && e.semantic_sim !== null) {
-    parts.push(`semantic ${(e.semantic_sim * 100).toFixed(0)}%`)
+  if (e.basis.includes('semantic')) {
+    // Quote the DECISION-space number (whitened) when available — the raw
+    // cosine reads ~99% for merely same-language pins and misled the
+    // synthesis ("semantic similarity of 99%"). Raw stays on the payload for
+    // any display that wants it, but the reason string reasons on whitened.
+    if (e.whitened_sim !== null && e.whitened_sim !== undefined) {
+      parts.push(`decorrelated similarity ${(e.whitened_sim * 100).toFixed(0)}%`)
+    } else if (e.semantic_sim !== null) {
+      parts.push(`semantic ${(e.semantic_sim * 100).toFixed(0)}%`)
+    }
   }
   if (e.shared_countries.length) parts.push(`↔ ${e.shared_countries.join(', ')}`)
   if (e.shared_persons.length) parts.push(`↔ ${e.shared_persons.slice(0, 2).join(', ')}`)

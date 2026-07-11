@@ -20,7 +20,10 @@ import {
   getInvestigation,
   recordTrail,
   removePin,
+  updatePinSnapshot,
+  type PinSnapshot,
 } from '../lib/workbench';
+import { fetchThreadEvidence } from '../lib/pinEvidence';
 import StoryTimeTravel from './StoryTimeTravel';
 import './ResearchPlanPanel.css';
 
@@ -138,6 +141,25 @@ export default function ResearchPlanPanel({
       const ev = (anyAnchor.evidence_samples ?? anyAnchor.snippets ?? anyAnchor.evidence) as
         | Array<{ headline?: string; title?: string; source?: string; url?: string }>
         | undefined;
+      const frozenEvidence = Array.isArray(ev)
+        ? ev.slice(0, 3).map(e => ({
+            headline: String(e.headline ?? e.title ?? ''),
+            source: e.source ? String(e.source) : undefined,
+            url: e.url ? String(e.url) : undefined,
+          })).filter(e => e.headline)
+        : [];
+      const snapshot: PinSnapshot = {
+        capturedAt: new Date().toISOString(),
+        summary: [anchor.label, anchor.evidence_label?.replace(/_/g, ' '),
+          anchor.investigative_score != null ? `score ${anchor.investigative_score.toFixed(2)}` : null]
+          .filter(Boolean).join(' · '),
+        metrics: {
+          ...(anchor.investigative_score != null ? { score: Number(anchor.investigative_score.toFixed(3)) } : {}),
+          ...(anchor.retrieval_lane || anchor.lane ? { lane: String(anchor.retrieval_lane ?? anchor.lane) } : {}),
+          ...(anchor.match_basis ? { basis: String(anchor.match_basis) } : {}),
+        },
+        evidence: frozenEvidence.length > 0 ? frozenEvidence : undefined,
+      };
       addPin(invId, {
         anchorId: anchor.id,
         anchorType: anchor.anchor_type,
@@ -150,25 +172,25 @@ export default function ResearchPlanPanel({
         open: anchor.open ?? null,
         planId: plan?.plan_id,
         queryText: query,
-        snapshot: {
-          capturedAt: new Date().toISOString(),
-          summary: [anchor.label, anchor.evidence_label?.replace(/_/g, ' '),
-            anchor.investigative_score != null ? `score ${anchor.investigative_score.toFixed(2)}` : null]
-            .filter(Boolean).join(' · '),
-          metrics: {
-            ...(anchor.investigative_score != null ? { score: Number(anchor.investigative_score.toFixed(3)) } : {}),
-            ...(anchor.retrieval_lane || anchor.lane ? { lane: String(anchor.retrieval_lane ?? anchor.lane) } : {}),
-            ...(anchor.match_basis ? { basis: String(anchor.match_basis) } : {}),
-          },
-          evidence: Array.isArray(ev)
-            ? ev.slice(0, 3).map(e => ({
-                headline: String(e.headline ?? e.title ?? ''),
-                source: e.source ? String(e.source) : undefined,
-                url: e.url ? String(e.url) : undefined,
-              })).filter(e => e.headline)
-            : undefined,
-        },
+        snapshot,
       });
+      // #227 hole (NATO-Ankara dossier): a story-panel anchor often carries NO
+      // inline evidence — the pin froze metadata only and the dossier reported
+      // "captured without frozen evidence". The anchor has a thread id, so
+      // fetch its evidence now (async; the pin never waits) like the thread-row
+      // path does, and merge it into the frozen snapshot.
+      const threadId = anchor.open?.surface === 'thread_detail'
+        ? anchor.open?.params?.thread_id : undefined;
+      if (frozenEvidence.length === 0 && threadId) {
+        const capturedInvId = invId;
+        fetchThreadEvidence(String(threadId))
+          .then(evidence => {
+            if (!evidence) return;
+            updatePinSnapshot(capturedInvId, anchor.id, { ...snapshot, evidence });
+            onPinsChanged?.();
+          })
+          .catch(() => { /* metadata-only snapshot stands */ });
+      }
       emit(anchor, 'pin', rank);
       setPinnedIds(prev => new Set(prev).add(anchor.id));
     }

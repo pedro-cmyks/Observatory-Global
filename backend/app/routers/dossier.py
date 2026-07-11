@@ -72,6 +72,20 @@ def _base_topic_id(raw: str) -> str:
     return s
 
 
+def _distinctive_df_max(n_display: int) -> int:
+    """Max document-frequency for a shared person to count as DISTINCTIVE.
+
+    The rarity gate stops a ubiquitous actor from linking MANY pins (#234:
+    "donald trump" DF 14/30). At exactly 2 display nodes that logic inverts —
+    any actor shared by both pins has df=2, so a df≤1 gate makes shared-actor
+    edges structurally impossible (the NATO-Ankara N=2 artifact: erdogan in
+    both pins, verdict still "no confirmed common actor"). With 2 pins there
+    is no "ubiquitous across many" to guard against, so df=2 is allowed."""
+    if n_display <= 2:
+        return 2
+    return max(1, min(3, math.ceil(0.4 * n_display)))
+
+
 def _cosine(a: list[float], b: list[float]) -> float:
     import numpy as np
 
@@ -319,9 +333,8 @@ async def dossier_connections(req: ConnectionsRequest):
 
     n_pins = len(base_ids)
     # A person is DISTINCTIVE if it appears in a minority of the display nodes
-    # (df ≤ min(3, ~40%)) — the rarity gate that stops a ubiquitous actor from
-    # linking unrelated nodes.
-    distinct_df_max = max(1, min(3, math.ceil(0.4 * max(1, len(display_keys)))))
+    # (df ≤ min(3, ~40%); df ≤ 2 when only 2 nodes — see _distinctive_df_max).
+    distinct_df_max = _distinctive_df_max(len(display_keys))
 
     def _facets_for(ukey: str, uid: int) -> list[dict]:
         """Typed sub-facets of an umbrella: the assembled constellation by angle."""

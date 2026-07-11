@@ -22,3 +22,19 @@ def test_project_positions_needs_three_and_is_normalized():
     assert set(pos) == {"a", "b", "c", "d"}
     for p in pos.values():
         assert 0.0 <= p["x"] <= 1.0 and 0.0 <= p["y"] <= 1.0
+
+
+def test_distinctive_df_max_allows_shared_actor_at_two_pins():
+    # N=2: any actor shared by both pins has df=2 — must count (the NATO-Ankara
+    # erdogan case). df<=1 here made shared_person edges impossible.
+    assert dossier._distinctive_df_max(2) == 2
+    assert dossier._distinctive_df_max(1) == 2
+    assert dossier._distinctive_df_max(0) == 2
+
+
+def test_distinctive_df_max_rarity_gate_at_larger_pin_sets():
+    # The #234 guard stays for many pins: minority-share only, capped at 3.
+    assert dossier._distinctive_df_max(3) == 2   # ceil(1.2)
+    assert dossier._distinctive_df_max(5) == 2   # ceil(2.0)
+    assert dossier._distinctive_df_max(8) == 3   # ceil(3.2) capped
+    assert dossier._distinctive_df_max(16) == 3  # cap holds

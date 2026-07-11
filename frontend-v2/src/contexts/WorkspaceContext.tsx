@@ -21,6 +21,7 @@ import {
     updatePinSnapshot,
     type PinSnapshot,
 } from '../lib/workbench'
+import { extractSnapshotEvidence } from '../lib/pinEvidence'
 
 export type PinnedItemType = 'theme' | 'person' | 'country' | 'signal' | 'source' | 'chokepoint' | 'public_attention' | 'temporal_snapshot'
 
@@ -87,25 +88,10 @@ async function fetchPanelSnapshot(item: Omit<PinnedItem, 'notes' | 'timestamp'>)
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     const json = await response.json() as Record<string, unknown>
 
-    // Evidence: first array of headline-shaped rows we can find.
-    const evidence: Array<{ headline: string; source?: string; url?: string }> = []
-    for (const key of ['signals', 'signalSample', 'top_stories', 'evidence_samples', 'results', 'items']) {
-        const arr = json[key]
-        if (!Array.isArray(arr)) continue
-        for (const row of arr.slice(0, 6)) {
-            if (!row || typeof row !== 'object') continue
-            const r = row as Record<string, unknown>
-            const headline = (r.headline ?? r.title ?? r.label) as string | undefined
-            if (!headline) continue
-            evidence.push({
-                headline,
-                source: (r.source ?? r.domain) as string | undefined,
-                url: (r.url ?? r.link) as string | undefined,
-            })
-            if (evidence.length >= 3) break
-        }
-        if (evidence.length > 0) break
-    }
+    // Evidence: shared tolerant extractor — prefers gate-verified/top-score
+    // rows over merely-recent ones when the payload carries those fields
+    // (freeze the CORE of the thread, not its latest drift).
+    const evidence = extractSnapshotEvidence(json)
 
     const metrics: Record<string, string | number> = {}
     for (const key of ['total', 'signalCount', 'signal_count', 'gated_signal_count']) {
