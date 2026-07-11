@@ -1,6 +1,40 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-**2026-07-11 (LOADING DELIGHT X.3 SHIPPED, `9dc33602`→`368b2f85`, Fly+Vercel).**
+**2026-07-11 (PANEL GRID REVIVAL #233 + DE-DENSIFY A/B SHIPPED,
+`55e58722`→`78e08097`, pushed v3-intel-layer → Vercel).** L2 console UX
+overhaul, plan `docs/superpowers/plans/2026-07-11-console-grid-dedensify.md`.
+(1) **#233 GRID LIVE**: desktop panels (radar/stream/threads/dock) in
+react-grid-layout v2 (the dep was already there from e6fbecf, zero imports —
+now real again). Drag by `.panel-header` (cancel: buttons/inputs), resize SE
+handle, layout persists PER WIDTH BUCKET (laptop <1600 / desktop / big ≥2400)
+in localStorage `atlas.console-layout.v2`; "⊞ Reset panel layout" in the ···
+overflow menu. **Big preset = 4 full-height columns** (dock earns a column —
+the 4K dock-strip waste is gone). Keep-alive holds BY CONSTRUCTION: RGL
+positions children with transforms, never unmounts; panels defined ONCE in an
+App.tsx IIFE, laid out in grid (desktop) or the untouched mobile tab shell
+(≤768). Retired CorrelationMatrix stays mounted OUTSIDE the grid. Pure model
+`lib/consoleLayout.ts` (buckets/presets/validation/persist/viewport-fit
+rowHeight, 14 vitest). Tool note in plan doc: RGL over react-resizable-panels
+(no rearrange) / interactjs (hand-rolled compaction) / dockview (heavy).
+Shell height MEASURED at runtime (in-flow coverage-disclaimer above → never
+assume calc(100vh-48)). GOTCHA: old ≤1100 media queries target
+`.terminal-layout` and no longer apply on the desktop grid path (769-1100 =
+laptop preset, user-resizable). (2) **DE-DENSIFY A**: big-monitor type scale
+`@media (min-width:2200px)` scoped under `.terminal-layout-grid` descendants
+— NOT `:root` (ThemeContext writes inline vars on documentElement, would
+override); sentiment-dot glows removed, attention-badge borders dropped
+(border+tint+color triple-coded one bit), row padding up. (3) **DE-DENSIFY
+B**: thread rows summary-first — chip row dimmed (0.72) at rest, "%
+confidence"/"Accelerating" TEXT hidden at rest (arrow already codes trend),
+reveal on hover/:focus-within; scoped `.narrative-row` (EntityPanel shares
+class names); ≤768 or hover:none keeps all visible. SignalStream already had
+footer-on-hover. Browser-verified 1440 (drag/resize/persist/reset/UNIVERSE
+toggle/map survives) + 2560 (big preset, type scale) + 375 (tab IA
+unchanged). Builds + 231 vitest green (post-merge with the delight session).
+DEFERRED (documented, not broken): shared PanelHeader component (headers are
+CSS-consistent, markup still per-panel); deeper stream-row disclosure; NOTE
+verification quirk — RGL transitions make CDP screenshots lie mid-resize,
+trust `.grid-slot` inline styles.**
 Shared `LoadingMoment` (frontend-v2/src/components/) on the 4 load moments —
 AtlasLoader app shell, Brief entry, universe assembly, ThemeDetail cold skeleton:
 procedural constellation SVG (zero assets, deterministic per fact id) + rotating
