@@ -16,6 +16,7 @@ const SUBJECT_BADGE: Record<SubjectType, string> = {
 }
 import { resolveCountryName } from '../lib/countryNames'
 import { PanelSkeleton, PanelSkeletonGrid } from './PanelSkeleton'
+import { LoadingMoment } from './LoadingMoment'
 import { CoverageBadge, type CoverageMeta } from './CoverageBadge'
 import type { PublicAttentionOrigin } from '../lib/publicAttention'
 import { buildThemeDetailEmptyState } from '../lib/themeDetailEmptyState'
@@ -621,6 +622,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
 
                 {loading && !data && (
                     <div className="theme-detail-loading">
+                        <LoadingMoment compact />
                         <PanelSkeletonGrid cols={2} rows={2} />
                         <PanelSkeleton rows={4} />
                     </div>
