@@ -13,6 +13,7 @@ import { track, trackOnce } from '../lib/telemetry'
 import { TranslatableHeadline } from '../components/TranslatableHeadline'
 import { addPin, createInvestigation, getActiveInvestigationId, getInvestigation, removePin } from '../lib/workbench'
 import { OfflineBanner } from '../components/OfflineBanner'
+import { LoadingMoment } from '../components/LoadingMoment'
 import './BriefNewspaper.css'
 
 // Natural Earth 110m with ISO_A2 country properties
@@ -552,6 +553,7 @@ export function BriefNewspaper() {
                         ))}
                     </div>
                     <p>Loading brief…</p>
+                    <LoadingMoment compact />
                 </div>
             ) : data ? (
                 <main className="brief-content">

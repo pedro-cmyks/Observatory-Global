@@ -27,6 +27,7 @@ import {
     type UniverseNode,
 } from '../lib/universeLayout'
 import { OrbitalThreadView } from './OrbitalThreadView'
+import { LoadingMoment } from './LoadingMoment'
 import './UniverseView.css'
 
 interface UniversePayload {
@@ -346,7 +347,14 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
     const hovered = hoveredId ? nodeById.get(hoveredId) : null
     const atNow = scrubPct === 100
 
-    if (loading) return <div className="universe-empty">Charting the universe…</div>
+    if (loading) {
+        return (
+            <div className="universe-empty">
+                <div>Charting the universe…</div>
+                <LoadingMoment compact />
+            </div>
+        )
+    }
     if (!payload || allNodes.length === 0) {
         return <div className="universe-empty">Universe data unavailable{payload?.reason ? ` (${payload.reason})` : ''}.</div>
     }

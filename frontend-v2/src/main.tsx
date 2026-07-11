@@ -2,11 +2,20 @@ import { Component, StrictMode, useEffect, useState, type ReactNode } from 'reac
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { installWarmCache, bumpWarmCacheGeneration } from './lib/fetchWarmCache'
+import { refreshDelightFeed } from './lib/delight'
 
 // #239 slice 1: route switches remount the whole tree (Brief↔App) and refire
 // every fetch — the warm cache paints the first request per URL instantly
 // from the last known response and revalidates in the background.
 installWarmCache()
+
+// Loading-delight feed: refresh the localStorage fact cache off the critical
+// path — the NEXT load reads it synchronously. Idle-time, best-effort.
+if (typeof window !== 'undefined') {
+  const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback
+  if (idle) idle(() => refreshDelightFeed())
+  else setTimeout(refreshDelightFeed, 4000)
+}
 
 function WarmCacheRouteReset() {
   const location = useLocation()
