@@ -38,6 +38,47 @@ blob (its centroid leans Romanian press) — the language-blob effect reaching
 the neighbor layer; and its umbrella folds unrelated fragments (France
 Heatwave, Germany Policy) — umbrella-level conflation to watch.
 
+## WEB CORROBORATION (P0.2 — measured 2026-07-11, main-loop searches, independence-weighted)
+
+**ESTABLISHED (multiple independent outlets):**
+1. **The summit is real**: 2026 Ankara NATO summit, July 7-8, the 36th NATO summit
+   (2nd hosted by Türkiye). Confirmed by NATO.int (official), Wikipedia, Turkish
+   Minute, Türkiye Today, anews — fully independent set. Key outcomes: Ankara
+   Summit Declaration prioritizing removal of intra-alliance defense-trade
+   barriers; >$50B new defense procurement; military aid/training for Ukraine;
+   Erdoğan's push to lift defense-industry restrictions (F-35/S-400 grievance);
+   Steel Dome +$24B; Erdoğan-Starmer UK-Türkiye security pact.
+2. **Trump at the summit, trashing Spain**: "Cut off all trade with Spain…
+   They're hopeless, bad people" — CNBC, Time, ABC, US News, Fox, Defense News,
+   Times of Israel, Al Jazeera. Atlas's Romanian evidence ("Sunt fără speranţă.
+   Sunt oameni răi" — ziarulfaclia.ro) is the EXACT translation of the real
+   quote → the "off-topic evidence" the synthesis flagged was actually
+   ON-topic-adjacent (Trump-at-summit), mislabeled by thread only.
+3. **Trump-Putin call**: ~90 min, July 4, BEFORE the summit, readout by Kremlin
+   aide **Yuri Ushakov** (the exact actor Atlas surfaced) — Bloomberg, NBC, CBS,
+   Al Jazeera, Moscow Times, Euronews. Headlines literally say "ahead of NATO
+   summit" → **the two pinned stories ARE connected in reality** (temporal/
+   contextual), strengthening the case that the similar-only verdict was an
+   N=2-gate artifact.
+4. **EASA airspace warning**: avoid Iran/Iraq/Lebanon airspace until Aug 31
+   (issued Jul 8, fragile US-Iran ceasefire) — gulfnews, RTE, TimesLive, PAX,
+   traveldailynews. Atlas's Romanian items were accurate.
+
+**UNVERIFIED (color, single-lane):** Macron jogging in Ankara streets (Arabic
+press) — not checked against independents; minor color, not load-bearing.
+
+**COVERAGE ASYMMETRY (the money finding):** the web's mainstream (US/UK) told a
+DIFFERENT summit than Atlas's multilingual set. Mainstream led with TRUMP DRAMA:
+the Spain trade-cutoff order, **Greenland demands**, Iran-war gripes, "NATO
+weathers another Trump storm", alliance cracks. Atlas's set (Turkish, Arabic,
+Balkan, Romanian, Syrian-state) led with **Erdoğan-as-central-actor**: defense
+cooperation, Türkiye's alliance role, summit unity (sana.sy amplifying the
+unity/host framing). Neither is complete alone: Atlas caught the non-Western
+framing mainstream underplays; Atlas's set UNDER-surfaced the Trump-Greenland
+demand and the Spain trade-cutoff escalation that dominated Western coverage.
+This two-sided asymmetry IS the product's who-says-what thesis, demonstrated on
+a marquee event.
+
 ## Pending to complete the marquee
 - Web corroboration (deep-research run wf_ba81a7ab-376) → appended as the
   "web corroboration" section when it lands: established/contested/unverified
