@@ -129,8 +129,14 @@ nothing "AI-made". Atlas today reads super-dense and hard to parse.
   without breaking the keep-alive/display-toggle architecture. → task_e03c57d5
 - **X.2 De-densify pass**: hierarchy, whitespace, progressive disclosure, quieter
   chrome — reorganize how info is REVEALED, never remove it. → task_e03c57d5
-- **X.3 Loading delight**: precomputed rotating Atlas-curated moments (measured
-  facts/voice-asymmetry nuggets/constellation vectors) during load states; math-first,
-  tiny static JSON, PWA-precached, never blocks loading. → task_8a35aa03
+- **X.3 Loading delight — SHIPPED 2026-07-11** (`9dc33602`+fixes, Fly+Vercel):
+  shared `LoadingMoment` (procedural constellation + rotating facts, honesty-labeled
+  measured/about-Atlas, reduced-motion aware) on app shell/Brief/universe/thread-
+  hydration load states. Feed = `GET /api/v2/delight` (math-first templates over
+  cheap aggregates, no LLM, Redis 15 min, per-fact guards) cached client-side in
+  localStorage `atlas_delight_v1` → next load reads sync/offline; bundled evergreen
+  facts = fallback. Deviation from spec, deliberate: live endpoint + client cache
+  instead of nightly static JSON (M1 crons have died silently 3×; no delivery path
+  to Vercel). Bundle delta ≈ +2 KB gz. → task_8a35aa03
 Rationale: the wedge-test report sells the ANALYSIS; the experience track sells the
 first 30 seconds. Both feed the same demo.

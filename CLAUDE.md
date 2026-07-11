@@ -1,5 +1,26 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-11 (LOADING DELIGHT X.3 SHIPPED, `9dc33602`→`368b2f85`, Fly+Vercel).**
+Shared `LoadingMoment` (frontend-v2/src/components/) on the 4 load moments —
+AtlasLoader app shell, Brief entry, universe assembly, ThemeDetail cold skeleton:
+procedural constellation SVG (zero assets, deterministic per fact id) + rotating
+Atlas facts, honesty-labeled ("MEASURED · LAST 24 H" vs "ABOUT ATLAS"),
+prefers-reduced-motion gated, day-seeded deterministic rotation (no Math.random).
+Feed: `GET /api/v2/delight` (loading-delight-v0; math-first templates in
+`app/services/delight_facts.py` over cheap aggregates — country_hourly_v2 pulse,
+signals_v2 language mix, topic_movement Kalman mover, briefing-cache coverage gap,
+country_heat_v2 under-the-radar; NO LLM; Redis 15 min; per-fact guards after the
+first prod compute lost pulse to a shared timeout — lesson: guard each best-effort
+query separately). Client: `lib/delight.ts` caches feed in localStorage
+`atlas_delight_v1` (48 h max) → NEXT load reads it synchronously/offline; bundled
+EVERGREEN facts = first-load/offline fallback; endpoint 404/failure = silent
+degrade (verified). Deliberate spec deviation: live endpoint + client cache
+instead of nightly M1 static JSON (cron silent-death history; no Vercel delivery
+path). Bundle Δ ≈ +2 KB gz. 8 pytest + 9 vitest new (211 total green);
+browser-verified brief/universe/theme-detail loading states + prod smoke (pulse
+99K/222 countries, Kalman mover, Somalia quiet; language/gap facts best-effort —
+appear when DB warm / briefing cache carries gaps). Roadmap X.3 ticked.
+
 **2026-07-06/07 (INVESTIGATION SESSION — security → L3 connection layer →
 whitening → flagship dogfood, `e5eb99d5`…`5a366545`, read FIRST). Full handoff:
 `docs/state/2026-07-06-session-handoff.md`.** All merged to v3-intel-layer,
