@@ -22,7 +22,7 @@ from app.services import delight_facts
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-CACHE_KEY = "delight_feed:24"
+CACHE_KEY = "delight_feed:v2:24"
 CACHE_TTL = 900
 
 
@@ -40,14 +40,10 @@ async def get_delight_feed():
     async with db.pool.acquire() as conn:
         await conn.execute("SET statement_timeout = 8000")
 
-        # Pulse + languages (matview agg + one bounded 24h GROUP BY).
+        # Languages (one bounded 24h GROUP BY — the heaviest scan here, so it
+        # runs in its own guard and the pulse fact never dies with it).
+        known: dict[str, int] = {}
         try:
-            pulse = await conn.fetchrow("""
-                SELECT COALESCE(SUM(signal_count), 0)::bigint AS n,
-                       COUNT(DISTINCT country_code)::int      AS countries
-                FROM country_hourly_v2
-                WHERE hour > NOW() - INTERVAL '24 hours'
-            """)
             lang_rows = await conn.fetch("""
                 SELECT COALESCE(NULLIF(TRIM(source_lang), ''), 'xx') AS lang,
                        COUNT(*)::bigint AS n
@@ -57,14 +53,25 @@ async def get_delight_feed():
             """)
             known = {r["lang"]: int(r["n"]) for r in lang_rows if r["lang"] != "xx"}
             total_known = sum(known.values())
-            f = delight_facts.pulse_fact(int(pulse["n"]), int(pulse["countries"]), len(known))
-            if f:
-                facts.append(f)
             f = delight_facts.language_fact(total_known, known.get("en", 0), len(known))
             if f:
                 facts.append(f)
         except Exception:
-            logger.warning("delight: pulse/language facts failed", exc_info=True)
+            logger.warning("delight: language fact failed", exc_info=True)
+
+        # Pulse (matview agg, cheap).
+        try:
+            pulse = await conn.fetchrow("""
+                SELECT COALESCE(SUM(signal_count), 0)::bigint AS n,
+                       COUNT(DISTINCT country_code)::int      AS countries
+                FROM country_hourly_v2
+                WHERE hour > NOW() - INTERVAL '24 hours'
+            """)
+            f = delight_facts.pulse_fact(int(pulse["n"]), int(pulse["countries"]), len(known))
+            if f:
+                facts.append(f)
+        except Exception:
+            logger.warning("delight: pulse fact failed", exc_info=True)
 
         # Fastest-rising story — the shared Kalman movement field (#219).
         try:
