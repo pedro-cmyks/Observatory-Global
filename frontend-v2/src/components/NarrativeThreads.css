@@ -471,6 +471,40 @@
     background: rgba(251, 146, 60, 0.12);
 }
 
+/* ── Progressive disclosure (de-densify batch B) ──────────────────────────
+   Summary reads at a glance: label, count, trend arrow, sparkline. The chip
+   row sits at reduced weight and the bar/trend TEXT labels (the arrow in
+   row 1 already codes trend) surface on hover or keyboard focus. Nothing is
+   removed — only visual weight moves. Scoped to .narrative-row because
+   EntityPanel reuses some of these class names. */
+.narrative-row .narrative-detail {
+    opacity: 0.72;
+    transition: opacity 0.15s ease;
+}
+.narrative-row:hover .narrative-detail,
+.narrative-row:focus-within .narrative-detail {
+    opacity: 1;
+}
+.narrative-row .spread-label--confidence,
+.narrative-row .trend-label {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.narrative-row:hover .spread-label--confidence,
+.narrative-row:focus-within .spread-label--confidence,
+.narrative-row:hover .trend-label,
+.narrative-row:focus-within .trend-label {
+    opacity: 1;
+}
+/* Touch and small screens have no hover: keep everything visible. */
+@media (max-width: 768px), (hover: none) {
+    .narrative-row .narrative-detail,
+    .narrative-row .spread-label--confidence,
+    .narrative-row .trend-label {
+        opacity: 1;
+    }
+}
+
 /* W4 (2026-07-05): per-row pin into the active investigation */
 .narrative-pin {
     background: transparent;
