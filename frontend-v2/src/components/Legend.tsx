@@ -149,7 +149,10 @@ export const Legend: React.FC<LegendProps> = ({
                     {/* Mirrors the Equal Earth heat ramp (lib/countryHeatStates
                         heatFillColor): blue → cyan → green → yellow → orange →
                         red, the widened weather-radar spread. */}
-                    <div style={{ height: '8px', borderRadius: '4px', background: 'linear-gradient(90deg, rgb(40,100,210), rgb(25,175,205), rgb(45,200,120), rgb(235,205,45), rgb(240,130,30), rgb(242,45,30))', marginBottom: '4px' }} />
+                    {/* Same stops AND alphas as the map fill (heatFillColor):
+                        "at baseline" is nearly transparent on the map, so the
+                        legend must not show it as vivid blue. */}
+                    <div style={{ height: '8px', borderRadius: '4px', background: 'linear-gradient(90deg, rgba(40,100,210,0) 0%, rgba(40,100,210,0.30) 12%, rgba(25,175,205,0.55) 30%, rgba(45,200,120,0.72) 48%, rgba(235,205,45,0.88) 64%, rgba(240,130,30,0.96) 80%, rgba(242,45,30,1) 100%)', marginBottom: '4px' }} />
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--color-text-muted)' }}>
                         <span>at baseline</span>
                         <span>spiking vs own norm</span>
