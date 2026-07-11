@@ -22,7 +22,7 @@ from app.services import delight_facts
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-CACHE_KEY = "delight_feed:v2:24"
+CACHE_KEY = "delight_feed:v3:24"
 CACHE_TTL = 900
 
 
@@ -96,21 +96,18 @@ async def get_delight_feed():
         except Exception:
             logger.warning("delight: mover fact failed", exc_info=True)
 
-        # Coverage gap — same shape as the briefing gap box (#225/#172).
+        # Coverage gap — rides the cached briefing payload (#225 gap box)
+        # instead of re-running its signal_topic_assignments scan, which
+        # times out cold. No cached briefing → no gap fact, honestly.
         try:
-            gap = await conn.fetchrow("""
-                SELECT t.label, COUNT(*)::int AS raw_signals
-                FROM signal_topic_assignments a
-                JOIN atlas_topics t ON t.id = a.topic_id
-                WHERE a.assigned_at > NOW() - INTERVAL '24 hours'
-                GROUP BY t.label
-                HAVING COUNT(*) >= 20
-                   AND COUNT(*) FILTER (WHERE a.gate_kept) = 0
-                ORDER BY raw_signals DESC
-                LIMIT 1
-            """)
+            gap = None
+            if hasattr(app.state, "redis") and app.state.redis:
+                cached_brief = await app.state.redis.get("briefing_data:24")
+                if cached_brief:
+                    gaps = json.loads(cached_brief).get("coverage_gaps") or []
+                    gap = gaps[0] if gaps else None
             if gap:
-                f = delight_facts.gap_fact(gap["label"], int(gap["raw_signals"]))
+                f = delight_facts.gap_fact(gap.get("label"), int(gap.get("raw_signals", 0)))
                 if f:
                     facts.append(f)
         except Exception:
