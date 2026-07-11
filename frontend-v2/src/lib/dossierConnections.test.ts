@@ -137,6 +137,20 @@ describe('edgeReason', () => {
     expect(edgeReason(edge('a', 'b', { basis: ['shared_country'], semantic_sim: null, shared_countries: ['CO'] }))).toContain('↔ CO')
     expect(edgeReason(edge('a', 'b', { basis: ['shared_person'], semantic_sim: null, shared_persons: ['petro'] }))).toContain('petro')
   })
+
+  it('quotes the whitened (decision-space) sim when available, never the raw 99%', () => {
+    // The synthesis was quoting "semantic similarity of 99%" — the raw cosine.
+    // With whitened_sim present, the reason string must carry the decorrelated
+    // number, labeled, and omit the misleading raw figure.
+    const reason = edgeReason(edge('a', 'b', { semantic_sim: 0.99, whitened_sim: 0.55 }))
+    expect(reason).toContain('decorrelated similarity 55%')
+    expect(reason).not.toContain('99%')
+  })
+
+  it('falls back to raw semantic sim when whitened is absent or null', () => {
+    expect(edgeReason(edge('a', 'b', { semantic_sim: 0.91, whitened_sim: null }))).toContain('semantic 91%')
+    expect(edgeReason(edge('a', 'b', { semantic_sim: 0.91 }))).toContain('semantic 91%')
+  })
 })
 
 describe('connectionsSummaryLines', () => {
