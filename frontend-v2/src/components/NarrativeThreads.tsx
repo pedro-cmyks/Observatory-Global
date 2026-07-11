@@ -112,7 +112,9 @@ const normalizeThread = (thread: any): Narrative => ({
     first_seen: thread.first_seen || null,
     changed_10h: thread.changed_10h || 0,
     trend: normalizeTrend(thread.trend),
-    confidence_pct: Math.round((thread.avg_confidence || 0) * 1000) / 10,
+    // Whole percent only: avg assignment confidence does not support a
+    // decimal of precision ("59.15%" is false precision on a model average).
+    confidence_pct: Math.round((thread.avg_confidence || 0) * 100),
     sentiment_swing_10h: thread.sentiment_swing_10h ?? null,
     top_entities: thread.top_entities || thread.top_people || [],
     hourly_timeline: thread.hourly_timeline || [],

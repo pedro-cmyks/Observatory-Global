@@ -983,6 +983,14 @@
     color: #6ee7b7;
 }
 
+/* Unknown family: deliberately muted — an unclassified outlet must read as
+   "no claim", never as a confident classification. */
+.source-family-badge--unknown {
+    border-color: rgba(148, 163, 184, 0.18);
+    background: rgba(51, 65, 85, 0.14);
+    color: rgba(148, 163, 184, 0.75);
+}
+
 .source-count {
     color: rgba(226, 232, 240, 0.65);
     font-family: var(--font-mono);
