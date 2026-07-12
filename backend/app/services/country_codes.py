@@ -30,6 +30,8 @@ FIPS_TO_ISO = {
     'TU': 'TR',  # Turkey
     'IS': 'IL',  # Israel
     'IZ': 'IQ',  # Iraq
+    'WE': 'PS',  # West Bank (FIPS WE) -> Palestine (ISO PS)
+    'GZ': 'PS',  # Gaza Strip (FIPS GZ) -> Palestine (ISO PS)
     'SW': 'SE',  # Sweden
     'DA': 'DK',  # Denmark
     'AU': 'AT',  # Austria (FIPS AU = Austria, ISO AU = Australia!)
