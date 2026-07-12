@@ -169,10 +169,13 @@ ran ~85%; three corrections:
 
 1. **P0.6 — the PUBLISHABLE bar (new exit criterion).** "Usable-with-caveats"
    is not the goal; "an editor would publish it with a byline" is. Two builds:
-   (a) **narrative synthesis** — the LLM surface evolves from {headline,
-   synthesis, gap} to a structured mini-article: lede → cited body (every claim
-   → dated receipt) → "what we don't know" — glass-box, quotes only measured
-   links/evidence; (b) **in-product corroboration** — a dossier button that runs
+   (a) **narrative synthesis** ✅ SHIPPED 2026-07-12 (`3818eb25`, deployed
+   Fly+Vercel) — dossier-synthesis-v2: lede → cited body (every claim ends with
+   an inline [n] receipt; citations resolved SERVER-SIDE against the
+   request-built numbered evidence table, an invented receipt can never enter)
+   → "what we don't know" (carries the coverage lens + metadata-only +
+   isolated/text-linked caveats); browser-verified on NATO-Ankara 3-pin, cold
+   editor: publishable with minor edits; (b) **in-product corroboration** — a dossier button that runs
    the web-corroboration lane (independence-weighted, established/contested/
    unverified) and attaches it as a cited section. Frank loop continues with an
    EDITOR persona; exit = a cold editor says "publishable with minor edits".
