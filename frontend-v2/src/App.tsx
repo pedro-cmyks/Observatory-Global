@@ -1225,7 +1225,16 @@ function AppContent() {
     return () => window.removeEventListener('resize', measure)
   }, [isMobile])
   const gridRowHeight = rowHeightFor(gridShellH, GRID_GAP, GRID_GAP)
-  const handleGridLayoutChange = (layout: Layout) => {
+  // RGL v2 fires onLayoutChange on EVERY drag/resize move (a layout+activeDrag
+  // effect). Committing that to React state per-frame re-renders App, which
+  // recreates the inline panels — the heavy radar/map reconciles every frame,
+  // starves the drag, and the panel only "settles" on drop. So we hold App
+  // state STILL while a drag/resize is in flight (App doesn't re-render → the
+  // radar element reference stays identical → React bails out of the map
+  // subtree → RGL's own internal per-move re-render moves the dragged panel
+  // live under the cursor) and commit the final layout once, on stop.
+  const gridInteractingRef = useRef(false)
+  const commitGridLayout = (layout: Layout) => {
     const next = layout.map(l => ({ ...l }))
     setSavedGridLayouts(prev => {
       const cur = prev[gridBucket]
@@ -1233,6 +1242,15 @@ function AppContent() {
       saveLayout(gridBucket, next)
       return { ...prev, [gridBucket]: next }
     })
+  }
+  const handleGridLayoutChange = (layout: Layout) => {
+    if (gridInteractingRef.current) return
+    commitGridLayout(layout)
+  }
+  const handleGridInteractStart = () => { gridInteractingRef.current = true }
+  const handleGridInteractStop = (layout: Layout) => {
+    gridInteractingRef.current = false
+    commitGridLayout(layout)
   }
   const resetGridLayout = () => {
     clearSavedLayouts()
@@ -2001,6 +2019,10 @@ function AppContent() {
               dragConfig={{ handle: '.panel-header', cancel: 'button, input, a, select, textarea' }}
               resizeConfig={{ handles: ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'] }}
               onLayoutChange={handleGridLayoutChange}
+              onDragStart={handleGridInteractStart}
+              onDragStop={handleGridInteractStop}
+              onResizeStart={handleGridInteractStart}
+              onResizeStop={handleGridInteractStop}
             >
               <div key="radar" className="grid-slot">{radarPanel}</div>
               <div key="stream" className="grid-slot">{streamPanel}</div>
