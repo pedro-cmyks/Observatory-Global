@@ -90,6 +90,16 @@
     font: inherit;
     text-decoration: underline;
 }
+.cep-tier { margin-bottom: 10px; }
+.cep-tier:last-child { margin-bottom: 0; }
+.cep-tier-label {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #8b97a6;
+    margin-bottom: 6px;
+    cursor: help;
+}
 .cep-threads { display: flex; flex-direction: column; gap: 5px; }
 .cep-thread {
     display: flex;

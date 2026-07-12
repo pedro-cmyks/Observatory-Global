@@ -1081,6 +1081,10 @@ function AppContent() {
             type: 'Feature',
             geometry: { type: 'Point', coordinates: [event.location.longitude, event.location.latitude] },
             properties: {
+              // #232: the event's own id (GDELT global_event_id / ACLED
+              // event_id_cnty) so the panel can look up its DIRECT thread
+              // binding, not just its country's threads.
+              eventId: event.id || '',
               type: event.type || '',
               fatalities: event.fatalities || 0,
               radius: Math.min(Math.max(4, Math.sqrt(event.fatalities || 1) * 3), 15) * (sizeBoost ? 1.25 : 1),
@@ -1534,6 +1538,7 @@ function AppContent() {
                       if (p.url) window.open(String(p.url), '_blank', 'noopener,noreferrer')
                     } else {
                       setSelectedConflictEvent({
+                        eventId: String(p.eventId || ''),
                         type: String(p.type || ''), country: String(p.country || ''), place: String(p.place || ''),
                         actor1: String(p.actor1 || ''), actor2: String(p.actor2 || ''), date: String(p.date || ''),
                         fatalities: Number(p.fatalities) || 0, mentions: Number(p.mentions) || 0,

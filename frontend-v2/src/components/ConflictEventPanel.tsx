@@ -11,6 +11,7 @@ import './ConflictEventPanel.css'
  * we lead with the event.
  */
 export interface ConflictEventFocus {
+    eventId?: string
     type: string
     country: string
     place: string
@@ -27,6 +28,7 @@ interface ContextThread {
     thread_id: string
     label: string
     signal_count: number
+    basis?: 'linked' | 'geo_time'
 }
 
 interface Props {
@@ -35,6 +37,26 @@ interface Props {
     onThemeSelect?: (threadId: string) => void
     onCountrySelect?: (code: string) => void
     timeRangeHours: number
+}
+
+function renderThreadList(threads: ContextThread[], onThemeSelect?: (id: string) => void) {
+    return (
+        <div className="cep-threads">
+            {threads.slice(0, 5).map(t => (
+                <button
+                    key={t.thread_id}
+                    className="cep-thread"
+                    onClick={() => onThemeSelect?.(t.thread_id)}
+                    data-tip={`Open "${t.label}"`}
+                >
+                    <span className="cep-thread-label">{t.label}</span>
+                    <span className="cep-thread-count">
+                        {t.signal_count > 999 ? `${(t.signal_count / 1000).toFixed(1)}k` : t.signal_count}
+                    </span>
+                </button>
+            ))}
+        </div>
+    )
 }
 
 function fmtDate(iso: string): string {
@@ -46,21 +68,34 @@ function fmtDate(iso: string): string {
 }
 
 export function ConflictEventPanel({ event, onClose, onThemeSelect, onCountrySelect, timeRangeHours }: Props) {
-    const [threads, setThreads] = useState<ContextThread[]>([])
+    // #232: two tiers, each with an honest basis. `linked` = threads directly
+    // bound to THIS event (shared source article); `geo` = other threads active
+    // in the event's country over the window (geographic context, not an event
+    // join). Kept separate so the panel never presents "same country" as
+    // "about this event".
+    const [linked, setLinked] = useState<ContextThread[]>([])
+    const [geo, setGeo] = useState<ContextThread[]>([])
     // Normalize to a 2-letter code: GDELT markers carry one, ACLED carries a
-    // full name — the threads endpoint and country focus both need the code.
+    // full name — the endpoint and country focus both need the code.
     const countryCode = conflictCountryCode({ location: { country: event.country } })
     const countryName = event.country ? resolveCountryName(countryCode || event.country) : ''
 
     useEffect(() => {
-        if (!countryCode) { setThreads([]); return }
+        if (!countryCode && !event.eventId) { setLinked([]); setGeo([]); return }
         let ignore = false
-        fetch(`/api/v2/threads?hours=${timeRangeHours}&limit=6&country_code=${countryCode}`)
+        const params = new URLSearchParams({ hours: String(timeRangeHours), limit: '6' })
+        if (event.eventId) params.set('event_id', event.eventId)
+        if (countryCode) params.set('country_code', countryCode)
+        fetch(`/api/v2/conflict-event/threads?${params.toString()}`)
             .then(r => (r.ok ? r.json() : null))
-            .then(d => { if (!ignore) setThreads(d?.threads ?? []) })
-            .catch(() => { if (!ignore) setThreads([]) })
+            .then(d => {
+                if (ignore) return
+                setLinked(d?.linked ?? [])
+                setGeo(d?.geo_time ?? [])
+            })
+            .catch(() => { if (!ignore) { setLinked([]); setGeo([]) } })
         return () => { ignore = true }
-    }, [countryCode, timeRangeHours])
+    }, [countryCode, event.eventId, timeRangeHours])
 
     const actors = [event.actor1, event.actor2].filter(Boolean).join(' → ')
 
@@ -95,26 +130,33 @@ export function ConflictEventPanel({ event, onClose, onThemeSelect, onCountrySel
                             {countryName}
                         </button>
                     ) : (event.country || 'an unknown country')}
-                    {threads.length > 0 ? ' — narrative threads there:' : ''}
                 </div>
-                {threads.length > 0 ? (
-                    <div className="cep-threads">
-                        {threads.slice(0, 5).map(t => (
-                            <button
-                                key={t.thread_id}
-                                className="cep-thread"
-                                onClick={() => onThemeSelect?.(t.thread_id)}
-                                data-tip={`Open "${t.label}"`}
-                            >
-                                <span className="cep-thread-label">{t.label}</span>
-                                <span className="cep-thread-count">
-                                    {t.signal_count > 999 ? `${(t.signal_count / 1000).toFixed(1)}k` : t.signal_count}
-                                </span>
-                            </button>
-                        ))}
+
+                {/* Tier 1 — direct event->thread binding (shared source article). */}
+                {linked.length > 0 && (
+                    <div className="cep-tier">
+                        <div className="cep-tier-label" data-tip="Threads that carry the article reporting this event">
+                            LINKED COVERAGE
+                        </div>
+                        {renderThreadList(linked, onThemeSelect)}
                     </div>
-                ) : (
-                    <div className="cep-empty">No narrative threads cleared the gate here in this window.</div>
+                )}
+
+                {/* Tier 2 — geographic context (labeled, never as "about this event"). */}
+                {geo.length > 0 && (
+                    <div className="cep-tier">
+                        <div className="cep-tier-label" data-tip="Other narrative threads active in this country during the window — geographic context, not a direct link to this event">
+                            {linked.length > 0 ? `ALSO ACTIVE IN ${(countryName || 'THIS COUNTRY').toUpperCase()}` : `ACTIVE IN ${(countryName || 'THIS COUNTRY').toUpperCase()}`}
+                        </div>
+                        {renderThreadList(geo, onThemeSelect)}
+                    </div>
+                )}
+
+                {linked.length === 0 && geo.length === 0 && (
+                    <div className="cep-empty">
+                        No narrative thread is joined to this event yet, and no active
+                        thread in {countryName || 'this country'} covers the window.
+                    </div>
                 )}
             </div>
         </div>

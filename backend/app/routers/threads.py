@@ -78,6 +78,38 @@ async def get_threads(
     return payload
 
 
+@router.get("/conflict-event/threads")
+async def get_conflict_event_threads(
+    event_id: str | None = Query(None, max_length=64),
+    country_code: str | None = Query(None, min_length=2, max_length=2),
+    hours: int = Query(48, ge=1, le=720),
+    limit: int = Query(6, ge=1, le=20),
+) -> dict:
+    """#232 — resolve a clicked CONFLICT EVENT to narrative threads in tiers,
+    each tagged with an honest `basis`:
+
+      * `linked`   — event directly bound to the topic via the source_url
+                     movement binding (`topic_members` role='movement',
+                     member_ref=<global_event_id>) — a real event->thread join.
+      * `geo_time` — active threads in the event's country (geographic context,
+                     labeled as such) — the near-always-non-empty fallback.
+
+    Read-only; degrades to empty lists so the panel always renders."""
+    from app.services.conflict_event_threads import fetch_conflict_event_threads
+
+    country = country_code.upper() if country_code else None
+    cache_key = f"conflict-event:{event_id or '-'}:{country or '-'}:{hours}:{limit}"
+    cached = await _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    payload = await fetch_conflict_event_threads(
+        event_id=event_id, country_code=country, hours=hours, limit=limit,
+    )
+    await _cache_set(cache_key, payload, THREADS_CACHE_TTL)
+    return payload
+
+
 @router.get("/topic/{topic_id}/relationship")
 async def get_topic_relationship(
     topic_id: str,
