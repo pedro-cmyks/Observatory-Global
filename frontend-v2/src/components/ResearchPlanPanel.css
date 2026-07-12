@@ -371,3 +371,17 @@
   border-left: 1px solid rgba(56, 189, 248, 0.25);
   margin-top: 2px;
 }
+
+/* Large-viewport legibility (workbench overlay on 2560+ monitors) — mirrors the
+   WorkbenchPanel.css pass so both columns scale together. */
+@media (min-width: 2200px) {
+  .rp-anchor-label { font-size: 14px; }
+  .rp-badge { font-size: 10px; }
+  .rp-lane, .rp-pin { font-size: 10px; }
+  .rp-score { font-size: 11px; }
+  .rp-intent-chip { font-size: 11px; }
+  .rp-status { font-size: 12px; }
+  .rp-next-step, .rp-evidence-headline { font-size: 13px; }
+  .rp-section-title, .rp-tray-toggle { font-size: 11px; }
+  .rp-ledger { font-size: 10px; }
+}

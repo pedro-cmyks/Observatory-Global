@@ -177,3 +177,8 @@
 .dcx-crossref { color: #fbbf24; font-style: normal; }
 .dcx-lens { font-size: 11px; color: #a5b4c4; margin: 8px 0 2px; padding: 6px 10px; border-left: 2px solid #64748b; background: rgba(100,116,139,0.08); }
 .dcx-umbrella-warn { color: #fbbf24; font-style: normal; margin: 4px 0 6px; }
+
+/* Workbench mini-constellation (incremental universe seed): the same field,
+   letterboxed to a compact strip. viewBox scales content down inside max-height. */
+.dcx-universe-compact { width: 100%; }
+.dcx-universe--compact { max-height: 300px; }

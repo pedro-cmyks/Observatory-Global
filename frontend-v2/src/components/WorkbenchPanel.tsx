@@ -8,6 +8,7 @@ import {
   exportInvestigationJSON,
   getActiveInvestigationId,
   getInvestigation,
+  investigationQuery,
   listInvestigations,
   removePin,
   updatePinNote,
@@ -15,7 +16,16 @@ import {
   type Investigation,
 } from '../lib/workbench';
 import { DossierView } from './DossierView';
+import WorkbenchConstellation from './WorkbenchConstellation';
 import './WorkbenchPanel.css';
+
+// Notes must never clip mid-sentence (the truncation complaint): size the
+// textarea to its content on mount and as the analyst types.
+function autoGrowNote(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight + 2}px`;
+}
 
 interface WorkbenchPanelProps {
   onOpenThread?: (threadId: string, label: string) => void;
@@ -95,7 +105,9 @@ export default function WorkbenchPanel({
               onClick={() => {
                 setActiveInvestigation(inv.id);
                 rerender();
-                onStartInvestigation?.(inv.title); // re-open its research plan
+                // Re-open its research plan from the PERSISTED query (falls
+                // back to last pin queryText, then title, for old records).
+                onStartInvestigation?.(investigationQuery(inv));
               }}
             >
               <span className="wb-item-title">{inv.title}</span>
@@ -133,6 +145,10 @@ export default function WorkbenchPanel({
                 >DELETE</button>
               </div>
             </div>
+
+            {/* Incremental constellation seed: the universe builds as you pin
+                (absent under 2 thread pins — nothing to connect). */}
+            <WorkbenchConstellation inv={active} />
 
             <div className="wb-section-title">PINNED ROUTE ({active.pins.length})</div>
             <div className="wb-pins">
@@ -178,6 +194,8 @@ export default function WorkbenchPanel({
                     defaultValue={pin.note ?? ''}
                     placeholder="Add a note…"
                     rows={1}
+                    ref={autoGrowNote}
+                    onInput={e => autoGrowNote(e.currentTarget)}
                     onBlur={e => {
                       if ((e.target.value ?? '') !== (pin.note ?? '')) {
                         updatePinNote(active.id, pin.anchorId, e.target.value);

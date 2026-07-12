@@ -21,6 +21,7 @@ import {
   exportInvestigationJSON,
   getActiveInvestigationId,
   getInvestigation,
+  investigationQuery,
   listInvestigations,
   removePin,
   renameInvestigation,
@@ -44,6 +45,29 @@ describe('workbench store', () => {
     expect(getActiveInvestigationId()).toBe(inv.id)
     expect(listInvestigations()[0].title).toBe('Iran climate water')
     expect(inv.trail[0].action).toBe('search')
+  })
+
+  it('persists the research-plan query so the plan re-fetches on reopen', () => {
+    const inv = createInvestigation('NATO summit Ankara')
+    expect(getInvestigation(inv.id)!.query).toBe('NATO summit Ankara')
+    // An explicit query wins over the title (auto first-pin titles differ).
+    const inv2 = createInvestigation('Renamed later', 'peru election recount')
+    expect(getInvestigation(inv2.id)!.query).toBe('peru election recount')
+  })
+
+  it('investigationQuery falls back: query → last pin queryText → title', () => {
+    const inv = createInvestigation('NATO summit Ankara')
+    expect(investigationQuery(inv)).toBe('NATO summit Ankara')
+    // Pre-fix records have no persisted query — the last pin's queryText carries it.
+    const legacy = createInvestigation('Auto pin title')
+    const store = getInvestigation(legacy.id)!
+    delete (store as { query?: string }).query
+    addPin(legacy.id, { ...PIN, queryText: 'nato ankara base' })
+    const got = getInvestigation(legacy.id)!
+    got.query = undefined
+    expect(investigationQuery(got)).toBe('nato ankara base')
+    got.pins = []
+    expect(investigationQuery(got)).toBe('Auto pin title')
   })
 
   it('pins are idempotent and recorded in the trail', () => {
