@@ -29,7 +29,11 @@ _SOCIAL_DOMAINS = {
 }
 
 _STATE_FAMILIES = {"state"}
-_MEDIA_FAMILIES = {"wire", "independent", "ngo"}
+# "unknown" counts as media here: the lane is a coarse press/state/social VOICE
+# split, and an unmapped domain arriving through news ingest is press by prior —
+# the honest "unknown" claim lives on the badge/tier (D4), not in this split
+# (excluding it would silently crater who-says-what press counts).
+_MEDIA_FAMILIES = {"wire", "independent", "ngo", "unknown"}
 
 
 def _extract_base_domain(source_name: str) -> str:

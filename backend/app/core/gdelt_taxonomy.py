@@ -1292,7 +1292,17 @@ _STATE_TLD_SUFFIXES = (".gov", ".mil", ".gov.uk", ".gc.ca", ".gob.mx", ".gob.ar"
 
 
 def classify_source(source_url: str) -> str:
-    """Classify a source URL/domain into state, wire, or independent."""
+    """Classify a source URL/domain into state, wire, independent — or unknown.
+
+    D4 (dataviz audit 2026-07-11): unmapped domains used to default to
+    "independent", so EVERY unclassified outlet wore an INDEPENDENT badge — a
+    100%-uniform claim is zero information AND an unverified classification.
+    Unmapped now returns "unknown"; the frontend renders it as a muted
+    "Unclassified" badge, source_tiers falls to tier 4 (no credibility signal
+    either way — honest default, NOT a junk penalty), and thread_packet's
+    press/state/social lane split keeps counting unknown news-ingest domains
+    as media (the lane is a coarse voice split, not a credibility claim).
+    """
     try:
         from urllib.parse import urlparse
 
@@ -1308,7 +1318,7 @@ def classify_source(source_url: str) -> str:
         if domain.endswith(suffix):
             return "state"
 
-    return "independent"
+    return "unknown"
 
 
 COUNTRY_ALIASES: list[tuple[str, str, str]] = [
