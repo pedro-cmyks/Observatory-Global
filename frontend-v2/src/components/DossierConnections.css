@@ -170,3 +170,8 @@
     /* stack the strength pill above the sub-narrative label when space is tight */
     .dcx-clusters li { flex-wrap: wrap; }
 }
+
+/* Workbench mini-constellation (incremental universe seed): the same field,
+   letterboxed to a compact strip. viewBox scales content down inside max-height. */
+.dcx-universe-compact { width: 100%; }
+.dcx-universe--compact { max-height: 300px; }

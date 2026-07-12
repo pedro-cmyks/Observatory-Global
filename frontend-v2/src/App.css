@@ -1752,3 +1752,69 @@
   align-self: center;
   cursor: default;
 }
+
+/* ── Workbench overlay UX pass (2026-07-11): mental-model strip, ATLAS SUGGESTS
+   header on the plan column, and a large-viewport legibility bump. ── */
+.workbench-overlay-model {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: rgba(100, 116, 139, 0.85);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 12px;
+}
+
+.workbench-overlay-right {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The plan panel scrolls under the fixed ATLAS SUGGESTS header. */
+.workbench-overlay-right .rp-panel {
+  height: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.workbench-suggest-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  min-width: 0;
+}
+
+.workbench-suggest-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: rgba(125, 211, 252, 0.8);
+  flex-shrink: 0;
+}
+
+.workbench-suggest-query {
+  font-size: 10px;
+  color: rgba(226, 232, 240, 0.85);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .workbench-overlay-model { display: none; }
+}
+
+@media (min-width: 2200px) {
+  .workbench-overlay-title { font-size: 13px; }
+  .workbench-overlay-model { font-size: 12px; }
+  .workbench-overlay-hint { font-size: 12px; }
+  .workbench-suggest-label { font-size: 11px; }
+  .workbench-suggest-query { font-size: 12px; }
+}

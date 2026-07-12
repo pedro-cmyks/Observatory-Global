@@ -175,7 +175,8 @@
   color: rgba(56, 189, 248, 0.6);
 }
 
-.wb-trail-detail { color: rgba(148, 163, 184, 0.75); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Trail entries wrap — an ellipsis with no expansion was unreadable content. */
+.wb-trail-detail { color: rgba(148, 163, 184, 0.75); overflow-wrap: anywhere; min-width: 0; }
 
 .wb-empty {
   font-size: 9px;
@@ -237,3 +238,40 @@
     border-color: rgba(29, 158, 117, 0.45);
 }
 .wb-pin-note::placeholder { color: var(--color-text-muted); }
+
+/* ── Truncation fixes (Pedro 4K review): pinned-route content must never clip
+   mid-sentence. Everything wraps; long tokens/URLs break; the note textarea
+   auto-grows via JS (autoGrowNote) so overflow never hides text. ── */
+.wb-pin-label,
+.wb-snap-summary,
+.wb-snap-evidence li,
+.wb-pin-note {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.wb-pin-note { overflow: hidden; } /* height follows content — no inner scroll clip */
+
+/* ── Large-viewport pass (#233-adjacent, scoped to the workbench overlay):
+   the 10px/168px desktop compaction is illegible on 2560+ monitors. ── */
+@media (min-width: 1800px) {
+  .wb-sidebar { width: 240px; }
+  .wb-item-title { white-space: normal; overflow-wrap: anywhere; }
+}
+@media (min-width: 2200px) {
+  .wb-sidebar { width: 300px; }
+  .wb-main { padding: 12px 16px; }
+  .wb-item-title { font-size: 12px; }
+  .wb-item-meta { font-size: 10px; }
+  .wb-new-input { font-size: 12px; }
+  .wb-title { font-size: 14px; }
+  .wb-action { font-size: 10px; }
+  .wb-section-title { font-size: 11px; }
+  .wb-pin { padding: 9px 12px; }
+  .wb-pin-label { font-size: 13px; }
+  .wb-pin-tag { font-size: 9px; }
+  .wb-snap-summary, .wb-snap-evidence li, .wb-pin-note { font-size: 13px; }
+  .wb-snap-frozen { font-size: 10px; }
+  .wb-trail-step { font-size: 11px; }
+  .wb-trail-action { width: 56px; }
+  .wb-empty { font-size: 11px; }
+}

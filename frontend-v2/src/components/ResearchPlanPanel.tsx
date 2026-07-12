@@ -207,7 +207,9 @@ export default function ResearchPlanPanel({
     const isGap = anchor.anchor_type === 'coverage_gap';
     const lane = anchor.retrieval_lane ?? anchor.lane;
     return (
-      <div key={anchor.id} className={`rp-anchor ${isGap ? 'rp-anchor--gap' : ''}`}>
+      // rank in the key: degraded lanes can emit the SAME gap id twice
+      // (gap-lane_degraded-general for thread + semantic) — ids alone collide.
+      <div key={`${anchor.id}-${rank}`} className={`rp-anchor ${isGap ? 'rp-anchor--gap' : ''}`}>
         <div className="rp-anchor-main">
           <span className={`rp-badge ${badge.cls}`}>{badge.text}</span>
           {isGap ? (

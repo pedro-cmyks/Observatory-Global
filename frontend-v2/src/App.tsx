@@ -40,7 +40,7 @@ import ResearchPlanPanel from './components/ResearchPlanPanel'
 import WorkbenchPanel from './components/WorkbenchPanel'
 import { UniverseView } from './components/UniverseView'
 import { getThemeLabel, resolveThreadLabel } from './lib/themeLabels'
-import { createInvestigation } from './lib/workbench'
+import { createInvestigation, getActiveInvestigationId, getInvestigation, investigationQuery } from './lib/workbench'
 // #233 grid revival: desktop panels live in a drag/resize grid. RGL positions
 // children with CSS transforms — panels are NEVER unmounted by layout changes,
 // which is what the keep-alive architecture requires.
@@ -273,6 +273,16 @@ function AppContent() {
   // Universe view (L11): the whole living story population as one field
   const [universeOpen, setUniverseOpen] = useState(false)
   const [researchQuery, setResearchQuery] = useState<string | null>(null)
+  // Reopen fix: the research plan used to live only in this App state, so the
+  // right panel went dead on every workbench reopen. The query is now PERSISTED
+  // on the investigation (lib/workbench) — hydrate it when the overlay opens.
+  useEffect(() => {
+    if (!workbenchOpen || researchQuery) return
+    const activeId = getActiveInvestigationId()
+    const inv = activeId ? getInvestigation(activeId) : null
+    if (inv) setResearchQuery(investigationQuery(inv))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workbenchOpen])
   // Search-submit story panel (2026-07-04, Pedro): a natural query's first
   // answer is the CROSS-THREAD STORY (research-plan anchors in the stream
   // slot), not a thread builder and not the Workbench.
@@ -2056,6 +2066,9 @@ function AppContent() {
         <div className="workbench-overlay">
           <div className="workbench-overlay-header">
             <span className="workbench-overlay-title">INVESTIGATION WORKBENCH</span>
+            <span className="workbench-overlay-model" data-tip="Pins freeze what you saw (route). Suggestions are live and re-ranked — pin one to capture it into the route.">
+              LEFT your investigations · MIDDLE what you pinned (the frozen route) · RIGHT what Atlas suggests exploring — pin to capture
+            </span>
             <button className="workbench-overlay-close" onClick={() => setWorkbenchOpen(false)}>×</button>
           </div>
           <div className="workbench-overlay-body">
@@ -2070,14 +2083,20 @@ function AppContent() {
             </div>
             <div className="workbench-overlay-right">
               {researchQuery ? (
-                <ResearchPlanPanel
-                  query={researchQuery}
-                  hours={Math.max(timeRangeToHours(timeRange), 168)}
-                  onOpenThread={handleResearchOpenThread}
-                  onOpenCountry={handleResearchOpenCountry}
-                  onBranchQuery={(q) => setResearchQuery(q)}
-                  onPinsChanged={() => setWbRefresh(t => t + 1)}
-                />
+                <>
+                  <div className="workbench-suggest-head" data-tip="Live anchors from the research plan for this investigation's query — re-ranked on every open, never frozen. Pin one to capture it into the route.">
+                    <span className="workbench-suggest-label">ATLAS SUGGESTS</span>
+                    <span className="workbench-suggest-query">{researchQuery}</span>
+                  </div>
+                  <ResearchPlanPanel
+                    query={researchQuery}
+                    hours={Math.max(timeRangeToHours(timeRange), 168)}
+                    onOpenThread={handleResearchOpenThread}
+                    onOpenCountry={handleResearchOpenCountry}
+                    onBranchQuery={(q) => setResearchQuery(q)}
+                    onPinsChanged={() => setWbRefresh(t => t + 1)}
+                  />
+                </>
               ) : (
                 <div className="workbench-overlay-hint">
                   Create or select an investigation, then its research plan appears here.
