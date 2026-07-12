@@ -5,7 +5,7 @@ import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { COUNTRY_OPTIONS, resolveCountryName } from '../lib/countryNames'
 import { Flag } from '../components/Flag'
-import { readBriefingCache } from '../lib/briefingPrefetch'
+import { readBriefingCache, writeBriefingCache } from '../lib/briefingPrefetch'
 import { resolveThreadThemeTarget } from '../lib/threadThemeTarget'
 import { selectLeadThread } from '../lib/briefLead'
 import { coverageChipTip, COVERAGE_CHIP_LABEL } from '../lib/countryChips'
@@ -220,6 +220,8 @@ export function BriefNewspaper() {
     const [data, setData] = useState<BriefingData | null>(null)
     const [insight, setInsight] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
+    const [briefError, setBriefError] = useState<string | null>(null)
+    const [showingStale, setShowingStale] = useState(false)
     const [countryFilter, setCountryFilter] = useState<string | null>(countryParam)
     const [countryDetail, setCountryDetail] = useState<CountryBriefData | null>(null)
     const [countryThreads, setCountryThreads] = useState<TopThread[] | null>(null)
@@ -246,18 +248,21 @@ export function BriefNewspaper() {
     const hours = 24
 
     const fetchData = useCallback(async (h: number) => {
-        setLoading(true)
-        setData(null)
-        setInsight(null)
+        setBriefError(null)
+        const cached = readBriefingCache(h, { allowStale: true })
+        if (cached) {
+            setData(cached.briefing as BriefingData)
+            setInsight(cached.insight)
+            setShowingStale(cached.isStale)
+            setLoading(false)
+            if (!cached.isStale) return
+        } else {
+            setLoading(true)
+            setData(null)
+            setInsight(null)
+            setShowingStale(false)
+        }
         try {
-            // Use Landing prefetch cache when available — eliminates visible loading delay
-            const cached = readBriefingCache(h)
-            if (cached) {
-                setData(cached.briefing as BriefingData)
-                if (cached.insight) setInsight(cached.insight)
-                setLoading(false)
-                return
-            }
             // The Brief (fast pre-agg query) is the critical path — paint it as
             // soon as it lands. The AI "Editor's Analysis" insight is an LLM call
             // (Anthropic→DeepSeek) that can take seconds or hang on dry credits;
@@ -273,7 +278,10 @@ export function BriefNewspaper() {
                 clearTimeout(timer)
             }
             if (!briefRes.ok) throw new Error(`Briefing request failed: ${briefRes.status}`)
-            setData(await briefRes.json())
+            const briefing = await briefRes.json()
+            setData(briefing)
+            setShowingStale(false)
+            writeBriefingCache(h, briefing, cached?.insight ?? null)
             setLoading(false)
             // Background, non-blocking: the insight fills the standfirst later.
             const insightCtrl = new AbortController()
@@ -285,6 +293,7 @@ export function BriefNewspaper() {
                 .finally(() => clearTimeout(insightTimer))
         } catch (e) {
             console.error(e)
+            setBriefError('Live briefing unavailable — retry when the data service recovers.')
             setLoading(false)
         }
     }, [])
@@ -571,6 +580,17 @@ export function BriefNewspaper() {
                 </div>
             ) : data ? (
                 <main className="brief-content">
+
+                    {(showingStale || briefError) && (
+                        <div className="brief-cache-note" role="status">
+                            <span>
+                                {showingStale
+                                    ? 'Showing cached brief while Atlas refreshes live data.'
+                                    : briefError}
+                            </span>
+                            <button onClick={() => fetchData(hours)}>Retry live refresh</button>
+                        </div>
+                    )}
 
                     {historicalCoverage?.source === 'historical_processed' && (
                         <div
@@ -1130,7 +1150,10 @@ export function BriefNewspaper() {
 
                 </main>
             ) : (
-                <div className="brief-error">Failed to load briefing data.</div>
+                <div className="brief-error">
+                    <p>{briefError ?? 'Failed to load briefing data.'}</p>
+                    <button onClick={() => fetchData(hours)}>Retry briefing</button>
+                </div>
             )}
         </div>
     )

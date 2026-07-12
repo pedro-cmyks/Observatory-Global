@@ -762,7 +762,8 @@ def assemble_thread(
     theme_count = int(_record_get(row, "theme_count") or 0)
     source_count = int(_record_get(row, "source_count") or 0)
     country_count = int(_record_get(row, "country_count") or 0)
-    avg_confidence = float(_record_get(row, "avg_confidence") or 0)
+    raw_avg_confidence = _record_get(row, "avg_confidence")
+    avg_confidence = float(raw_avg_confidence or 0)
     first_seen = _record_get(row, "first_seen")
     top_entities = [str(person) for person in _as_list(_record_get(row, "top_entities"))]
     top_sources = [str(source) for source in _as_list(_record_get(row, "top_sources"))]
@@ -791,6 +792,8 @@ def assemble_thread(
         "source_count": source_count,
         "country_count": country_count,
         "avg_confidence": round(avg_confidence, 3),
+        "confidence_measured": raw_avg_confidence is not None,
+        "confidence_source": "assignment" if raw_avg_confidence is not None else None,
         "first_seen": first_seen.isoformat() if hasattr(first_seen, "isoformat") else first_seen,
         "changed_10h": changed_10h,
         "movement_label": _movement_label(changed_10h),
@@ -934,7 +937,10 @@ def assemble_emergent_thread(
 
     source_count = len(sources)
     country_count = len(country_codes)
-    avg_conf = float(gate_threshold) if gate_threshold is not None else 0.9
+    # `gate_threshold` is a cutoff applied to members, not a calibrated
+    # confidence estimate for the cluster. Keep it for the internal quality
+    # band, but never serialize it as a user-facing confidence percentage.
+    avg_conf_for_band = float(gate_threshold) if gate_threshold is not None else 0.0
 
     return _with_narrative_note({
         "thread_id": f"{EMERGENT_CLUSTER_THREAD_PREFIX}{cluster_id}",
@@ -948,7 +954,9 @@ def assemble_emergent_thread(
         "gate_scored_count": signal_count,
         "source_count": source_count,
         "country_count": country_count,
-        "avg_confidence": round(avg_conf, 3),
+        "avg_confidence": None,
+        "confidence_measured": False,
+        "confidence_source": None,
         "first_seen": snap_at.isoformat() if hasattr(snap_at, "isoformat") else snap_at,
         "changed_10h": velocity,
         # Emergent velocity is a delta vs the PRIOR SNAPSHOT (~6h apart),
@@ -980,7 +988,7 @@ def assemble_emergent_thread(
             evidence_count=signal_count,
             source_count=source_count,
             geo_count=country_count,
-            assignment_confidence=avg_conf,
+            assignment_confidence=avg_conf_for_band,
         ),
         "why_now": _why_now(velocity, country_codes),
         "subthreads": [],
@@ -1182,7 +1190,7 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
     lifetime_signals = int(_record_get(topic_row, "agg_n_signals") or 0)
     changed_10h = int(_record_get(topic_row, "changed_10h") or 0)
     noise_rate = _record_get(topic_row, "noise_rate")
-    avg_conf = 1.0 - float(noise_rate) if noise_rate is not None else 0.9
+    avg_conf = 1.0 - float(noise_rate) if noise_rate is not None else None
     cohesion = _record_get(topic_row, "mean_cohesion")
     first_seen = _record_get(topic_row, "first_seen")
     country_codes = [str(code) for code in (_record_get(topic_row, "top_country_codes") or [])]
@@ -1239,7 +1247,11 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         "lifetime_signal_count": lifetime_signals,
         "source_count": source_count,
         "country_count": country_count,
-        "avg_confidence": round(max(min(avg_conf, 1.0), 0.0), 3),
+        "avg_confidence": (
+            round(max(min(avg_conf, 1.0), 0.0), 3) if avg_conf is not None else None
+        ),
+        "confidence_measured": avg_conf is not None,
+        "confidence_source": "noise_rate" if avg_conf is not None else None,
         "first_seen": first_seen.isoformat() if hasattr(first_seen, "isoformat") else first_seen,
         "changed_10h": changed_10h,
         "movement_label": _movement_label(changed_10h),
@@ -1269,7 +1281,7 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
             evidence_count=signal_count,
             source_count=source_count,
             geo_count=country_count,
-            assignment_confidence=avg_conf,
+            assignment_confidence=avg_conf if avg_conf is not None else 0.0,
         ),
         "why_now": _why_now(changed_10h, country_codes),
         "subthreads": [],

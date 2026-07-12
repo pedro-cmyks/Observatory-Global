@@ -226,11 +226,35 @@ def test_assemble_dynamic_thread_does_not_duplicate_country_codes_as_names():
 
     assert thread["top_countries"] == ["ID", "BR", "CA"]
     assert thread["top_country_names"] == []
+    assert thread["avg_confidence"] == 0.806
+    assert thread["confidence_measured"] is True
+    assert thread["confidence_source"] == "noise_rate"
     assert "IDID" not in "".join(
         f"{code}{name}" for code, name in zip(
             thread["top_countries"], thread["top_country_names"], strict=False
         )
     )
+
+
+def test_assemble_dynamic_thread_does_not_invent_default_confidence():
+    thread = assemble_dynamic_thread(
+        {
+            "id": 18,
+            "identity_key": "dyn-18",
+            "label": "Unscored emerging story",
+            "agg_n_signals": 80,
+            "changed_10h": 4,
+            "noise_rate": None,
+            "mean_cohesion": 0.82,
+            "first_seen": None,
+            "top_country_codes": ["CO"],
+        },
+        [],
+    )
+
+    assert thread["avg_confidence"] is None
+    assert thread["confidence_measured"] is False
+    assert thread["confidence_source"] is None
 
 
 def test_trend_label_classifies_volume_delta():

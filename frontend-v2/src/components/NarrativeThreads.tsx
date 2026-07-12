@@ -6,6 +6,7 @@ import { timeRangeToHours } from '../lib/timeRanges'
 import { resolveCountryName } from '../lib/countryNames'
 import { Flag } from './Flag'
 import { buildCountryThreadEmptyState, getNarrativeFetchLimit, getNarrativesForDisplay } from '../lib/narrativeThreadLimits'
+import { threadConfidencePresentation } from '../lib/threadConfidence'
 import './NarrativeThreads.css'
 
 const THREAD_COLORS = [
@@ -39,7 +40,11 @@ interface Narrative {
     first_seen: string | null
     changed_10h: number
     trend: 'accelerating' | 'stable' | 'fading'
-    confidence_pct: number
+    confidence_pct: number | null
+    confidence_label: string
+    show_confidence_bar: boolean
+    confidence_trend_color: string
+    crisis_relevant: boolean
     sentiment_swing_10h: number | null
     top_entities: string[]
     hourly_timeline: TimelinePoint[]
@@ -56,7 +61,7 @@ interface Narrative {
 // T3 (dataviz audit): every row is max-normalized to itself — 20 mini-charts,
 // 20 private y-scales. The peak annotation anchors the magnitude so rows can
 // be compared by number even though the amplitudes can't.
-const Sparkline: React.FC<{ data: TimelinePoint[], trend: string }> = ({ data, trend }) => {
+const Sparkline: React.FC<{ data: TimelinePoint[], color: string }> = ({ data, color }) => {
     if (!data || data.length < 2) return null
 
     const width = 200
@@ -75,13 +80,11 @@ const Sparkline: React.FC<{ data: TimelinePoint[], trend: string }> = ({ data, t
     const lastX = padding + ((data.length - 1) / (data.length - 1)) * (width - padding * 2)
     const areaPoints = `${firstX},${height} ${points} ${lastX},${height}`
 
-    const strokeColor = trend === 'accelerating' ? '#ef4444' : trend === 'fading' ? '#64748b' : '#60a5fa'
-
     return (
         <span className="narrative-sparkline-wrap" data-tip={`Shape only — this sparkline is scaled to its own peak of ${max.toLocaleString()} signals/h; compare rows by the peak number, not the amplitude.`}>
             <svg className="narrative-sparkline" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-                <polygon points={areaPoints} fill={strokeColor} />
-                <polyline points={points} stroke={strokeColor} />
+                <polygon points={areaPoints} fill={color} />
+                <polyline points={points} stroke={color} />
             </svg>
             <span className="narrative-spark-peak">peak {max > 999 ? `${(max / 1000).toFixed(1)}k` : max}/h</span>
         </span>
@@ -108,7 +111,16 @@ const normalizeTrend = (trend: string): Narrative['trend'] => {
     return 'stable'
 }
 
-const normalizeThread = (thread: any): Narrative => ({
+const normalizeThread = (thread: any): Narrative => {
+    const trend = normalizeTrend(thread.trend)
+    const crisisRelevant = thread.crisis_relevant === true
+    const confidence = threadConfidencePresentation({
+        avgConfidence: typeof thread.avg_confidence === 'number' ? thread.avg_confidence : null,
+        confidenceMeasured: thread.confidence_measured === true,
+        trend,
+        crisisRelevant,
+    })
+    return {
     thread_id: thread.thread_id,
     label: stripCountrySuffix(thread.label || thread.summary || thread.thread_id),
     anchor_topics: thread.anchor_topics || [],
@@ -123,16 +135,19 @@ const normalizeThread = (thread: any): Narrative => ({
     top_sources: thread.top_sources || thread.source_mix?.top_sources || [],
     first_seen: thread.first_seen || null,
     changed_10h: thread.changed_10h || 0,
-    trend: normalizeTrend(thread.trend),
-    // Whole percent only: avg assignment confidence does not support a
-    // decimal of precision ("59.15%" is false precision on a model average).
-    confidence_pct: Math.round((thread.avg_confidence || 0) * 100),
+    trend,
+    confidence_pct: confidence.confidencePct,
+    confidence_label: confidence.confidenceLabel,
+    show_confidence_bar: confidence.showConfidenceBar,
+    confidence_trend_color: confidence.trendColor,
+    crisis_relevant: crisisRelevant,
     sentiment_swing_10h: thread.sentiment_swing_10h ?? null,
     top_entities: thread.top_entities || thread.top_people || [],
     hourly_timeline: thread.hourly_timeline || [],
     top_countries: thread.top_countries || [],
     top_country_names: thread.top_country_names || [],
-})
+    }
+}
 
 interface NarrativeThreadsProps {
     onCountrySelect?: (code: string) => void
@@ -495,16 +510,18 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
 
                         {/* Row 3: Spread bar + trend */}
                         <div className="spread-row">
-                            <div className="narrative-grad-bar-track" data-tip="Atlas confidence: assignment confidence from the living-thread contract.">
-                                <div
-                                    className="narrative-grad-bar-fill"
-                                    style={{
-                                        width: `${Math.min(n.confidence_pct, 100)}%`,
-                                        background: threadColor.gradient,
-                                    }}
-                                />
-                            </div>
-                            <span className="spread-label spread-label--confidence" data-tip="Atlas confidence for this living thread">{n.confidence_pct}% confidence</span>
+                            {n.show_confidence_bar && n.confidence_pct != null && (
+                                <div className="narrative-grad-bar-track" data-tip="Measured Atlas confidence from the living-thread contract.">
+                                    <div
+                                        className="narrative-grad-bar-fill"
+                                        style={{
+                                            width: `${Math.min(n.confidence_pct, 100)}%`,
+                                            background: threadColor.gradient,
+                                        }}
+                                    />
+                                </div>
+                            )}
+                            <span className="spread-label spread-label--confidence" data-tip={n.show_confidence_bar ? 'Measured Atlas confidence for this living thread' : 'No calibrated confidence measurement is available'}>{n.confidence_label}</span>
                             <span className={`trend-label ${n.trend}`} data-tip="Trend: Accelerating = volume growing, Fading = volume declining, Stable = consistent">
                                 {n.trend === 'accelerating' ? '▲ Accelerating' : n.trend === 'fading' ? '▼ Fading' : '→ Stable'}
                             </span>
@@ -512,7 +529,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
 
                         {/* Row 4: Sparkline */}
                         <div data-tip="Signal volume over time: each point is one hour. Rising = growing coverage, falling = cooling off.">
-                            <Sparkline data={n.hourly_timeline} trend={n.trend} />
+                            <Sparkline data={n.hourly_timeline} color={n.confidence_trend_color} />
                         </div>
                     </div>
                 )
