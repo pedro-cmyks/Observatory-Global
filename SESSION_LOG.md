@@ -1,5 +1,24 @@
 # Atlas — Session Log
 
+## 2026-07-12 — Canonical consolidation, shared-DB stability, and C7 pilot
+
+`v3-intel-layer` was reaffirmed as the canonical production/main branch. PRs #118 and #144 were closed as superseded/obsolete; only the explicitly obsolete remote PR branch was deleted. Dirty and host-owned worktrees were preserved.
+
+Delivered:
+
+- corrected P1.1 heavy-job mutex and honest asyncpg degradation;
+- bounded candidate-first dynamic-thread SQL, with live read-only EXPLAIN evidence (48.166 ms global, 242.154 ms country-scoped; zero sequential scans);
+- nullable measured confidence, neutral non-crisis acceleration, and truthful empty/error states;
+- Brief stale-while-revalidate with cached fallback and retry;
+- repaired Python Anthropic and Node/ESLint installations;
+- C7 read-only voice-asymmetry scorer, tests, and 168h JSON/Markdown artifact.
+
+C7 inspected 100 active non-junk topics: 49 cleared volume/source/attribution floors and 18 crossed the review threshold. The run exposed obvious mismatches in `cluster_primary_coverage_proxy`; this is useful negative evidence. C7 remains a human-review research report and cannot alter lifecycle, ranking, UI, DB state, or cron until semantic subject geography (#238) exists.
+
+Execution plan: `docs/superpowers/plans/2026-07-12-consolidation-stability-c7.md`.
+
+---
+
 ## 2026-06-09 — Research Workflow + Workbench investigation spec
 
 Pedro reframed the Iran climate search experiment as a product objective:

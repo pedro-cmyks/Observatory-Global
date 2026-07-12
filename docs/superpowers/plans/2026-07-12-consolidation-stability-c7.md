@@ -8,6 +8,8 @@
 
 **Tech Stack:** Bash, FastAPI/asyncpg, PostgreSQL/Supabase, React/TypeScript/Vitest, pytest, GitHub CLI.
 
+**Execution status (2026-07-12):** Tasks 1–7 are complete. Task 8 is in final verification/deploy. PRs #118/#144 were closed; P1.1, bounded Threads SQL, honest confidence, neutral movement encoding, Brief stale-while-revalidate, dependency repair, and the read-only C7 artifact are on the canonical branch. Dirty and host-owned worktrees remain preserved.
+
 ## Global Constraints
 
 - `v3-intel-layer` is the canonical production/main branch.
@@ -170,4 +172,3 @@
 - [ ] Deploy Fly only if backend runtime files changed, then smoke health, signals, threads, briefing, universe, delight, and archive search.
 - [ ] Delete only clean branches whose commits are now ancestors of `v3-intel-layer` and obsolete remote branches explicitly approved here; preserve dirty/host-owned worktrees.
 - [ ] Leave GitHub issue comments with commit/deploy evidence for affected open issues rather than silently closing umbrella work.
-

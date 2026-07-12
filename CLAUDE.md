@@ -1,5 +1,7 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-12 (CONSOLIDATION + P1.1 + C7 DELIVERED).** `v3-intel-layer` is the canonical production/main branch. Closed obsolete PRs #118/#144; preserved legacy `main`, dirty worktrees, and Codex-host-owned worktrees. Landed corrected heavy-job mutex (owner TTL; never evict live overdue PID), explicit asyncpg-only `db_busy`, candidate-first bounded `/threads` SQL, nullable measured confidence, neutral non-crisis acceleration, and Brief stale-while-revalidate/error truth. Production read-only EXPLAIN: global 48.166 ms, country 242.154 ms, zero sequential scans. Repaired Anthropic/Node installations and removed duplicate `orjson`. C7 read-only artifact: 100 topics / 49 eligible / 18 review hits; obvious coverage-proxy geo mismatches prove it must stay out of UI/ranking/cron until semantic subject geo #238. Canonical plan: `docs/superpowers/plans/2026-07-12-consolidation-stability-c7.md`. NEXT: real-analyst validation, #238 subject geography, then reconsider C7; actor-quality P2.5 remains open.**
+
 **2026-07-12 (L3 WORKBENCH 3-PANEL UX FIXED, `51426c75`, pushed
 v3-intel-layer → Vercel).** Pedro's 4K complaints, three fixes, all
 browser-verified 1440 + 2560 (before/after screenshots in session):

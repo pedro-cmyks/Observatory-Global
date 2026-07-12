@@ -1,9 +1,24 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` | **Updated:** 2026-06-09 (dynamic-topic state pilot)
+**Branch:** `v3-intel-layer` (canonical production/main) | **Updated:** 2026-07-12
+
+## Current handoff — Consolidation, stability, and C7
+
+- Canonical GitHub cleanup: obsolete PRs #118 and #144 closed; legacy `main` retained only as history, not as the active merge target.
+- P1.1 landed with one heavy-job owner, owner TTL metadata, no eviction of a live overdue PID, and explicit asyncpg-only `db_busy` degradation.
+- `/api/v2/threads` bounds dynamic candidates before correlated member aggregation. Read-only production EXPLAIN: 48.166 ms global and 242.154 ms country-scoped, with no sequential scans in either plan.
+- Dynamic-topic confidence is nullable and labeled measured/unscored; non-crisis acceleration is neutral, not red.
+- Brief uses stale-while-revalidate for up to 24 hours and retains cached content on refresh failure with a visible notice/retry path.
+- Python/Node installations were repaired; duplicate `orjson` manifest entry removed.
+- C7 voice-asymmetry pilot is delivered under `docs/research/voice-asymmetry/`. Live 168h run: 100 topics, 49 eligible, 18 review hits. Obvious subject-country proxy errors mean it stays read-only and must not enter UI/ranking/cron before #238.
+- Dirty and Codex-host-owned worktrees were deliberately preserved; no user work was deleted.
+
+Primary execution record: `docs/superpowers/plans/2026-07-12-consolidation-stability-c7.md`.
 
 ---
 
-## Current handoff (2026-06-09) — Dynamic-topic state pilot
+## Historical handoff (2026-06-09) — Dynamic-topic state pilot
+
+---
 
 Implemented the first read-only Kalman/state-tracking pilot for
 `dynamic_topics`. This is **not** a semantic classifier and does not write to

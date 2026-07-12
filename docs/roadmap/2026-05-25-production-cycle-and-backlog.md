@@ -4,6 +4,12 @@
 **Status:** Active operating canon
 **Branch:** `v3-intel-layer`
 
+## 2026-07-12 Canonical Update
+
+This file remains the operating principles/history document; current execution is tracked in `docs/specs/2026-07-09-resume-roadmap.md` and `docs/superpowers/plans/2026-07-12-consolidation-stability-c7.md`. The May 2026 issue table below is historical and must not be read as the current open-issue list.
+
+Shipped in the consolidation pass: P1.1 heavy-job mutex and honest DB-busy states, candidate-first bounded Threads SQL, measured/unscored confidence, neutral non-crisis movement color, Brief stale-while-revalidate, and C7 read-only voice-asymmetry artifacts. C7 is blocked from promotion by missing semantic subject geography (#238). PRs #118/#144 are closed; `v3-intel-layer` is canonical.
+
 ## Decision
 
 Atlas should not turn every visual observation into immediate frontend work.
