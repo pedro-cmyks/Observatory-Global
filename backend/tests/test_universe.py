@@ -7,7 +7,7 @@ same-category bodies pulled together.
 import numpy as np
 
 import app.main_v2  # noqa: F401 — initialize app + routers first
-from app.routers.universe import _nearest_edges, _project_universe
+from app.services.universe_build import _nearest_edges, _project_universe
 
 
 def _unit(v):
@@ -63,7 +63,7 @@ def test_edges_are_deduped_undirected():
 
 
 def test_history_projects_into_current_frame():
-    from app.routers.universe import _project_history
+    from app.services.universe_build import _project_history
     rng = np.random.default_rng(11)
     a, b = _unit(rng.normal(size=768)), _unit(rng.normal(size=768))
     vectors = [(a + 0.05 * rng.normal(size=768)).tolist() for _ in range(5)] + [

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.atlas.universe-snapshot</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/pedro/AtlasLocalWorker/run-universe-snapshot.sh</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/pedro/AtlasLocalWorker</string>
+
+  <!-- RunAtLoad TRUE: cheap (~18s of read-heavy queries), and building on load
+       warms the snapshot right after a reboot. Heavy-job lock still serializes
+       it behind embed/clustering. -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <!-- Mindful: efficiency cores + low QoS so it yields to foreground work.
+       Runner also wraps python in `taskpolicy -b`. -->
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>Nice</key>
+  <integer>10</integer>
+
+  <!-- Every 20 minutes: keeps the snapshot inside the endpoint's 30-min
+       freshness window so the self-healing background rebuild rarely fires.
+       Read-heavy but light (no embedding/clustering); safe at this cadence. -->
+  <key>StartInterval</key>
+  <integer>1200</integer>
+
+  <key>StandardOutPath</key>
+  <string>/Users/pedro/AtlasLocalWorker/logs/universe-snapshot.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/pedro/AtlasLocalWorker/logs/universe-snapshot.err.log</string>
+</dict>
+</plist>

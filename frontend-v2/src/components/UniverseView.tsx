@@ -162,10 +162,12 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
 
     useEffect(() => {
         let cancelled = false
-        // Timeout so a slow cache-miss (heavy PCA + neighbor build server-side)
-        // surfaces as an empty state instead of an endless "Assembling…" spinner.
+        // The endpoint serves a precomputed universe_snapshot (a cheap JSONB
+        // read, <2s). The timeout only guards the rare first-ever build, when
+        // the table is empty and the server computes synchronously (~11s); the
+        // 30s ceiling covers that without stranding the "Assembling…" spinner.
         const ctrl = new AbortController()
-        const timer = setTimeout(() => ctrl.abort(), 20000)
+        const timer = setTimeout(() => ctrl.abort(), 30000)
         fetch('/api/v2/universe', { signal: ctrl.signal })
             .then(r => r.json())
             .then(json => { if (!cancelled) setPayload(json) })
