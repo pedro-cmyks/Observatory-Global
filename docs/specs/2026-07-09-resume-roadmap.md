@@ -159,3 +159,34 @@ noisy, CON QUIÉN/POR QUÉ=unbuilt. The named blockers, in dependency order:
    empezó"; buildable only after 1 (clean actors) and with the timestamp
    guardrail.
 Honest position (2026-07-11): far in features, no longer far in foundations.
+
+## v2.1 (2026-07-11) — the objective SHARPENED: publishable-as-news dossier
+Pedro: "el objetivo de Atlas es entregar un dossier que sirva para PUBLICARSE
+como una noticia" + the deep wish: "cómo nos conectamos, qué mueve el mundo en
+verdad, si algo diverso está pasando". Two products in one sentence: (A) the
+PUBLISHABLE ARTIFACT, (B) the DISCOVERY ENGINE that feeds it. Alignment check
+ran ~85%; three corrections:
+
+1. **P0.6 — the PUBLISHABLE bar (new exit criterion).** "Usable-with-caveats"
+   is not the goal; "an editor would publish it with a byline" is. Two builds:
+   (a) **narrative synthesis** — the LLM surface evolves from {headline,
+   synthesis, gap} to a structured mini-article: lede → cited body (every claim
+   → dated receipt) → "what we don't know" — glass-box, quotes only measured
+   links/evidence; (b) **in-product corroboration** — a dossier button that runs
+   the web-corroboration lane (independence-weighted, established/contested/
+   unverified) and attaches it as a cited section. Frank loop continues with an
+   EDITOR persona; exit = a cold editor says "publishable with minor edits".
+2. **P3 reorder — C7 (voice-asymmetry) FIRST, with C4.** Cheapest detector,
+   unique infra (voice-mix), directly answers "algo está pasando que no veo",
+   and every C7 hit is itself a publishable story (proven by hand on NATO-Ankara:
+   mainstream told Trump-drama, the multilingual set told Erdoğan-centrality).
+   Then C4 → C1-redefined → C6.
+3. **Promotion gap = named workstream (P2.4):** engine assigns ~52% of 24h
+   signals but only ~10% reaches ACTIVE served threads. Diagnosed (A0), not
+   owned. A gate recalibration, not architecture — doubles what the user sees.
+
+Standing honest answer to the deep wish: Atlas measures the INFORMATION SPHERE
+(global press + thin public lanes). "What really moves the world" is INFERRED
+from coverage dynamics (C7: who speaks/who is silent), anomalies (C4/C1), and
+propagation (P4) — and Atlas's structural honesty is that it LABELS the proxy
+instead of selling it as ground truth. That labeling is itself the product.
