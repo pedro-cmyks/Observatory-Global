@@ -5,7 +5,10 @@ import pytest
 from scripts.subject_geography_report import (
     SignalSubjectInput,
     TOPIC_PAGE_SQL,
+    compare_proxies,
+    evaluate_invariants,
     extract_headline_country_evidence,
+    run_ablations,
     run_complete_universe,
     score_subject_candidates,
 )
@@ -191,3 +194,37 @@ def test_topic_page_sql_has_cursor_batch_but_no_total_topic_ceiling():
     assert "ORDER BY id" in TOPIC_PAGE_SQL
     assert "LIMIT $3" in TOPIC_PAGE_SQL
     assert "OFFSET" not in TOPIC_PAGE_SQL
+
+
+def _stable_venezuela_topic():
+    return [
+        _signal(1, "Venezuela earthquake response expands", "en", source_family="wire", day=1),
+        _signal(2, "Venezuela refuerza respuesta al terremoto", "es", source_family="press", day=2),
+        _signal(3, "Землетрясение в Венесуэле", "ru", source_family="state", day=3),
+        _signal(4, "Venezuela earthquake aid arrives", "en", source_family="wire", day=4),
+        _signal(5, "Venezuela recibe ayuda tras el sismo", "es", source_family="press", day=5),
+    ]
+
+
+def test_leave_one_source_family_out_does_not_flip_stable_subject():
+    result = evaluate_invariants(_stable_venezuela_topic())
+
+    assert result["leave_one_source_family_out"]["stable"] is True
+
+
+def test_archive_and_coverage_are_labeled_proxies_not_gold():
+    row = compare_proxies(
+        subject={"VE": 0.9}, coverage=["US", "BR"], archive=["VE"]
+    )
+
+    assert row["coverage_relation"] == "subject_missing_from_coverage"
+    assert row["archive_relation"] == "agrees_with_candidate"
+    assert row["truth_status"] == "not_gold"
+
+
+def test_ablation_reports_candidate_and_abstention_delta():
+    report = run_ablations([_stable_venezuela_topic()])
+
+    assert "headline_geo_support" in report["components"]
+    assert "primary_changed" in report["components"]["headline_geo_support"]
+    assert "abstention_delta" in report["components"]["headline_geo_support"]

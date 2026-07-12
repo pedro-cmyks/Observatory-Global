@@ -427,3 +427,167 @@ async def run_complete_universe(
         "failures": failures,
     }
     return rows, meta
+
+
+def _leading_country(subject: dict[str, float]) -> str | None:
+    if not subject:
+        return None
+    return max(subject.items(), key=lambda item: (float(item[1]), item[0]))[0]
+
+
+def compare_proxies(
+    *,
+    subject: dict[str, float],
+    coverage: Sequence[str],
+    archive: Sequence[str],
+) -> dict[str, str]:
+    """Compare non-gold proxies without recasting disagreement as an error."""
+    leader = _leading_country(subject)
+    coverage_set = {_canonical_country(code) for code in coverage if code}
+    archive_set = {_canonical_country(code) for code in archive if code}
+
+    def relation(values: set[str], *, missing_label: str) -> str:
+        if leader is None:
+            return "no_subject_candidate"
+        if not values:
+            return "proxy_unavailable"
+        return "agrees_with_candidate" if leader in values else missing_label
+
+    return {
+        "coverage_relation": relation(
+            coverage_set, missing_label="subject_missing_from_coverage"
+        ),
+        "archive_relation": relation(
+            archive_set, missing_label="proxy_disagreement"
+        ),
+        "truth_status": "not_gold",
+    }
+
+
+def evaluate_invariants(signals: Sequence[SignalSubjectInput]) -> dict[str, Any]:
+    """Evaluate stability transformations that require no semantic judge."""
+    baseline = score_subject_candidates(signals)
+    baseline_primary = baseline["primary_country"]
+
+    family_rows: list[dict[str, Any]] = []
+    families = sorted({signal.source_family for signal in signals if signal.source_family})
+    for family in families:
+        result = score_subject_candidates([
+            signal for signal in signals if signal.source_family != family
+        ])
+        family_rows.append({
+            "removed_source_family": family,
+            "primary_country": result["primary_country"],
+            "matches_baseline": result["primary_country"] == baseline_primary,
+            "abstained": result["primary_country"] is None,
+        })
+
+    language_rows: list[dict[str, Any]] = []
+    languages = sorted({signal.language for signal in signals if signal.language})
+    for language in languages:
+        result = score_subject_candidates([
+            signal for signal in signals if signal.language == language
+        ])
+        language_rows.append({
+            "language": language,
+            "primary_country": result["primary_country"],
+            "candidate_distribution": result["candidate_distribution"],
+        })
+    language_candidates = {
+        row["primary_country"] for row in language_rows if row["primary_country"]
+    }
+
+    ordered = sorted(
+        signals,
+        key=lambda signal: (
+            signal.published_at.timestamp() if signal.published_at else float("-inf")
+        ),
+    )
+    split = max(1, len(ordered) // 2)
+    adjacent_rows = []
+    for name, subset in (("early", ordered[:split]), ("late", ordered[split:])):
+        result = score_subject_candidates(subset)
+        adjacent_rows.append({"window": name, "primary_country": result["primary_country"]})
+    adjacent_primaries = {
+        row["primary_country"] for row in adjacent_rows if row["primary_country"]
+    }
+
+    return {
+        "baseline_primary_country": baseline_primary,
+        "leave_one_source_family_out": {
+            "stable": bool(family_rows) and all(
+                row["matches_baseline"] for row in family_rows
+            ),
+            "runs": family_rows,
+        },
+        "cross_language_consistency": {
+            "stable_among_resolved": len(language_candidates) <= 1,
+            "runs": language_rows,
+        },
+        "adjacent_snapshot_stability": {
+            "stable_among_resolved": len(adjacent_primaries) <= 1,
+            "runs": adjacent_rows,
+        },
+    }
+
+
+def run_ablations(
+    topics: Sequence[Sequence[SignalSubjectInput]],
+) -> dict[str, Any]:
+    """Measure component dependence over all supplied topics."""
+    baselines = [score_subject_candidates(signals) for signals in topics]
+    baseline_abstentions = sum(
+        result["primary_country"] is None for result in baselines
+    )
+    components: dict[str, dict[str, Any]] = {}
+    for component in _COMPONENT_WEIGHTS:
+        ablated = [
+            score_subject_candidates(
+                signals, disabled_components=frozenset({component})
+            )
+            for signals in topics
+        ]
+        components[component] = {
+            "topics_evaluated": len(topics),
+            "primary_changed": sum(
+                before["primary_country"] != after["primary_country"]
+                for before, after in zip(baselines, ablated, strict=True)
+            ),
+            "abstentions": sum(
+                result["primary_country"] is None for result in ablated
+            ),
+            "abstention_delta": sum(
+                result["primary_country"] is None for result in ablated
+            ) - baseline_abstentions,
+        }
+    return {
+        "topics_evaluated": len(topics),
+        "baseline_abstentions": baseline_abstentions,
+        "components": components,
+    }
+
+
+def evaluate_known_fixtures() -> list[dict[str, Any]]:
+    """Small deterministic fixtures test mechanics; they are not corpus gold."""
+    fixtures = [
+        ("multilingual_venezuela", "VE", [
+            SignalSubjectInput(1, "Venezuela earthquake response", "en", None, "wire", None),
+            SignalSubjectInput(2, "Terremoto en Venezuela", "es", None, "press", None),
+            SignalSubjectInput(3, "Землетрясение в Венесуэле", "ru", None, "state", None),
+        ]),
+        ("ambiguous_iran_israel", None, [
+            SignalSubjectInput(4, "Iran and Israel resume talks", "en", None, "wire", None),
+            SignalSubjectInput(5, "Israel and Iran trade accusations", "en", None, "press", None),
+        ]),
+    ]
+    rows = []
+    for name, expected, signals in fixtures:
+        result = score_subject_candidates(signals)
+        rows.append({
+            "fixture": name,
+            "expected_primary_country": expected,
+            "observed_primary_country": result["primary_country"],
+            "passes": result["primary_country"] == expected,
+            "truth_status": "deterministic_fixture",
+        })
+    return rows
