@@ -27,24 +27,36 @@ from the Frank test (undated claims) was missing from v1 — restored.
 > else optimizes a deliverable whose market value is still an assumption.
 
 ### Phase 0 — The wedge test + honest baseline (days, not weeks)
-- **P0.1 Marquee dogfood:** pick a marquee story (English-ok; multilingual off
-  the critical path for this). Build the investigation on the CURRENT engine.
-- **P0.2 Corroboration lane v0 (G2 pulled forward):** run the deep-research web
-  harness over the thesis + pinned actors. **Weight by source INDEPENDENCE**
-  (cluster syndicated copies; count independently-operated outlets, not
-  articles). Attach as a labeled "web corroboration" section.
-- **P0.3 Dates fix (Frank-test debt):** evidence carries dates; synthesis
-  attributes and dates contested outcomes. Small, unblocks "stands alone".
-- **P0.4 A0 measurement:** 3-way split of 24h signals — useful-story / junk-typed
-  / unclassifiable-noise (measured). Defines the honest denominator + floor.
-- **P0.5 Show it** to a real analyst (or the coldest available proxy) + Frank
-  test. Their reaction = the roadmap's steering signal.
+- **P0.1 Marquee dogfood — ✅ DONE 2026-07-10** (`c6b7bdf4` NATO-Ankara marquee
+  dossier, `docs/research/flagship/`): investigation built on the current
+  engine; the run exposed 3 defects that became the week's fix list.
+- **P0.2 Corroboration lane v0 (G2 pulled forward) — ✅ DONE 2026-07-10 (manual
+  run, `01148f88`):** deep-research harness over NATO-Ankara thesis + pinned
+  actors, independence-weighted — all 4 Atlas claims established; two-sided
+  coverage asymmetry found (Erdoğan-framing vs Trump-drama). Productized as the
+  P0.6b in-product button 2026-07-12 (see v2.1 below).
+- **P0.3 Dates fix (Frank-test debt) — ✅ SHIPPED 2026-07-12** (`cbac24c1` fix
+  #3): frozen evidence carries signal date ("— outlet, Jul 8" in report +
+  export), synthesis receives dated evidence, header + pin cards show story
+  window (first_seen → last activity).
+- **P0.4 A0 measurement — ✅ SHIPPED 2026-07-09** (`b2bab22b`
+  `a0_coverage_split.sql`, repeatable): 3-way split useful-story / junk-typed /
+  unassigned, unassigned split into syndication-dup ‖ junk-headline ‖
+  real-unclustered. Fed the useful-coverage gate
+  (`docs/state/2026-07-09-useful-coverage-gate.md`).
+- **P0.5 Show it — Frank v2 RUN 2026-07-10** (`b69bdfc3`): verdict
+  usable-with-caveats + 6 precise blockers — all 6 fixed same week
+  (`cbac24c1`). Editor-persona loop continues under P0.6; real-analyst eyeball
+  still pending.
 - KILL/PIVOT: if independence-clustered corroboration collapses to ≈1 source
   (all wire), pivot corroboration to curated high-independence source lists.
 
 ### Phase 1 — Infra split (the constraint)
-- **P1.1 NOW (cheap):** heavy-job mutex — clustering/embed/flag jobs never run
-  concurrently against serving; stagger crons; keep serving queries light.
+- **P1.1 NOW (cheap) — IN FLIGHT 2026-07-12:** heavy-job mutex — clustering/
+  embed/flag jobs never run concurrently against serving; stagger crons; keep
+  serving queries light. Commit `e2d1fd82` (mutex + serving DB-busy degradation
+  + G5 error≠empty) exists on worktree branch `claude/practical-moore-fdc00c`,
+  NOT yet merged to v3-intel-layer.
 - **P1.2 NEXT:** separate batch workload from serving — read-replica or separate
   batch project; batch writes merged in bounded transactions.
 - **P1.3 EVENTUAL:** local analytics store (e.g. DuckDB over the existing
@@ -124,11 +136,15 @@ sync executed copies to ~/AtlasLocalWorker.
 ## Phase X — Experience track (added 2026-07-11, runs PARALLEL, never blocks P0-P3)
 Pedro's bar: the new Claude desktop shell — clean, smooth, professionally designed,
 nothing "AI-made". Atlas today reads super-dense and hard to parse.
-- **X.1 Resizable/movable panel grid** (revive #233 properly): drag/resize/rearrange
-  console panels, persisted layouts, big-monitor presets (4K/60" wastes space today),
-  without breaking the keep-alive/display-toggle architecture. → task_e03c57d5
-- **X.2 De-densify pass**: hierarchy, whitespace, progressive disclosure, quieter
-  chrome — reorganize how info is REVEALED, never remove it. → task_e03c57d5
+- **X.1 Resizable/movable panel grid — ✅ SHIPPED 2026-07-11** (`55e58722`, #233
+  CLOSED): react-grid-layout v2 grid (drag by header, SE resize), layout
+  persisted per width bucket (laptop/desktop/big ≥2400 — big = 4 full-height
+  columns), reset in ··· menu; keep-alive holds by construction (RGL transforms,
+  never unmounts). Pure model `lib/consoleLayout.ts`, 14 vitest.
+- **X.2 De-densify pass — ✅ SHIPPED 2026-07-11** (`521bd79d`+`78e08097`):
+  batch A quieter chrome + big-monitor type scale (≥2200, scoped under
+  `.terminal-layout-grid`, not `:root`); batch B thread rows summary-first with
+  hover/focus progressive disclosure (≤768 / hover:none keeps all visible).
 - **X.3 Loading delight — SHIPPED 2026-07-11** (`9dc33602`+fixes, Fly+Vercel):
   shared `LoadingMoment` (procedural constellation + rotating facts, honesty-labeled
   measured/about-Atlas, reduced-motion aware) on app shell/Brief/universe/thread-
@@ -138,6 +154,13 @@ nothing "AI-made". Atlas today reads super-dense and hard to parse.
   facts = fallback. Deviation from spec, deliberate: live endpoint + client cache
   instead of nightly static JSON (M1 crons have died silently 3×; no delivery path
   to Vercel). Bundle delta ≈ +2 KB gz. → task_8a35aa03
+- **X.4 Dataviz honesty audit (added 2026-07-11, `d82173ee`) — PARTIAL:** expert
+  audit `docs/specs/2026-07-11-dataviz-expert-audit.md` (findings ranked
+  misleading > illegible > wasteful, code-cited); 3 smallest fixes applied
+  (legend heat gradient mirrors map alphas; unknown source family → honest
+  'Unclassified' badge; whole-percent confidence). REMAINDER in the audit doc:
+  degenerate 90/100% confidence encoding, unlabeled count lineages (92/544/107),
+  rainbow heat-ramp luminance inversion.
 Rationale: the wedge-test report sells the ANALYSIS; the experience track sells the
 first 30 seconds. Both feed the same demo.
 
@@ -175,10 +198,15 @@ ran ~85%; three corrections:
    request-built numbered evidence table, an invented receipt can never enter)
    → "what we don't know" (carries the coverage lens + metadata-only +
    isolated/text-linked caveats); browser-verified on NATO-Ankara 3-pin, cold
-   editor: publishable with minor edits; (b) **in-product corroboration** — a dossier button that runs
-   the web-corroboration lane (independence-weighted, established/contested/
-   unverified) and attaches it as a cited section. Frank loop continues with an
-   EDITOR persona; exit = a cold editor says "publishable with minor edits".
+   editor: publishable with minor edits; (b) **in-product corroboration ✅
+   SHIPPED 2026-07-12** (`027db2a9`) — CORROBORATE button in dossier +
+   workbench: per pin 1-2 focused queries → GDELT DOC 2.0 (free) →
+   independence weighting (syndicated copies collapse; outlets counted, not
+   articles) → status established/contested/unverified + linked citations +
+   coverage-asymmetry note (only LLM use, glass-box); carried into MD export,
+   degrades honestly when search path unavailable. Validated on NATO-Ankara:
+   all 3 pins ESTABLISHED. Frank loop continues with an EDITOR persona;
+   exit = a cold editor says "publishable with minor edits".
 2. **P3 reorder — C7 (voice-asymmetry) FIRST, with C4.** Cheapest detector,
    unique infra (voice-mix), directly answers "algo está pasando que no veo",
    and every C7 hit is itself a publishable story (proven by hand on NATO-Ankara:
