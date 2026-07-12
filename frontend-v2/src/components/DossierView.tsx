@@ -63,7 +63,9 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
     const connRef = useRef(conn)
     connRef.current = conn
     const mounted = useRef(true)
-    useEffect(() => () => { mounted.current = false }, [])
+    // StrictMode's simulated unmount sets this false — reset on (re)mount or
+    // the synthesis result is silently swallowed in dev.
+    useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
     const synthStarted = useRef(false)
     useEffect(() => {
         if (dossier.pinCount === 0) { setSynth(null); return }

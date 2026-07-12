@@ -478,7 +478,16 @@ export function umbrellaChildDivergence(u: ConnectionNode): number | null {
   if (childLabels.length === 0) return null
   const parent = new Set(labelKeyTokens(u.label))
   if (parent.size === 0) return null
-  const diverging = childLabels.filter(l => !labelKeyTokens(l).some(t => parent.has(t))).length
+  // A child counts as coherent only on ≥2 shared key tokens — one shared token
+  // ("Khamenei Funeral and Trump Threats" sharing just "trump" with
+  // "Trump-Putin Talks on Ukraine") is exactly the garbage-fold signature.
+  // Short labels (≤2 tokens) and 1-token parents settle for 1 shared token.
+  const coherentChild = (l: string) => {
+    const tokens = labelKeyTokens(l)
+    const shared = tokens.filter(t => parent.has(t)).length
+    return shared >= 2 || (shared >= 1 && (tokens.length <= 2 || parent.size <= 1))
+  }
+  const diverging = childLabels.filter(l => !coherentChild(l)).length
   return diverging / childLabels.length
 }
 

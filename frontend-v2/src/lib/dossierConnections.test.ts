@@ -359,6 +359,15 @@ describe('umbrellaChildDivergence (Frank v2 blocker 5)', () => {
     expect(d).toBeGreaterThan(UMBRELLA_DIVERGENCE_MAX)
   })
 
+  it('one shared token does not make a long child coherent (live NATO-Ankara fold)', () => {
+    // the exact prod fold Frank flagged: only the self-named child is coherent.
+    const u = umb('Trump-Putin Talks on Ukraine', [
+      'France Heatwave and Violence', 'Trump-Putin Talks on Ukraine',
+      'Germany Policy Changes', 'Khamenei Funeral and Trump Threats',
+    ])
+    expect(umbrellaChildDivergence(u)!).toBeGreaterThan(UMBRELLA_DIVERGENCE_MAX)
+  })
+
   it('null when no child labels', () => {
     expect(umbrellaChildDivergence(node('x', { is_umbrella: true, facets: [] }))).toBeNull()
   })
