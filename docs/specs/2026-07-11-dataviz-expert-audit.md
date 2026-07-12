@@ -176,6 +176,56 @@ Validation: `vitest` 203/203 passed, `npm run build` green. Before-state capture
 from production; after-state verified in the local dev preview (port 3777) against
 the live API.
 
+## Execution pass 2026-07-12 (commits `15a47552`…`c589dcb3`, merged to v3-intel-layer)
+
+Remaining unowned items executed. Status per finding:
+
+- **G1 SHIPPED** — fill+glow ramps luminance-monotonic (transparent→deep
+  blue→teal→dark amber→vermilion→near-white core). Validated numerically
+  (Machado 2009 deutan/protan matrices, alpha-composited over the dark map):
+  monotonic under all three visions, adjacent stops ≥66 sRGB units apart.
+  Vitest freezes the monotonicity property. Legend mirrors the new stops.
+- **G3 SHIPPED** — legend mid anchor ("elevated") + one-line composite hint.
+- **G4 SHIPPED** — conflict markers shape-coded (circle=armed force,
+  triangle=unrest/repression, square=coercion/posture; CAMEO descriptions
+  bucketed in `EqualEarthMap.conflictClass`); legend swatches match.
+- **T4/W4/D2 SHIPPED** — one convention `raw · sourced · verified`: thread row
+  shows "N verified" under the raw count when gate lineage is served (dynamic
+  threads without the fields degrade to the plain count — the global
+  stories-only list is all-dynamic today, so the label lights up on atlas rows
+  in country scope); ThemeDetail header "X raw · Y sourced · Z verified";
+  ThemeDetail "N of M signals are geo-attributed" under How It's Covered
+  (live: "28 of 722"); dossier reconciliation line "N typed member signals ·
+  M role-attributed · pin-card counts are frozen at pin time" (live: 37 · 37).
+- **B3 SHIPPED** — ONE tone scale, raw GDELT ±10: brief Most Negative/Positive
+  ×10 with "GDELT tone · −10…+10" note + n in tooltip (live −9.1…+4.6);
+  dossier caption states the unit; ThemeDetail already carried it. The
+  dossier's stale "~±20" comment corrected.
+- **B1 SHIPPED** — "±N/10h raw" + raw-feed-velocity tooltip (live "+92/10h raw").
+- **B2/T3 SHIPPED** — peak annotation ("peak N/h" / "N/h") on every sparkline,
+  brief + threads panel; per-row scaling explained in the tip.
+- **D1 SHIPPED** — n<5 framing cards dim + `coverage-badge--thin`; tone from
+  n<3 renders "— tone", bar suppressed.
+- **D4 backend SHIPPED** — `classify_source` unmapped → `unknown`; consumers
+  kept sane: source_tiers falls to tier 4 (honest default, not junk),
+  thread_packet lanes count unknown news-ingest domains as media (lane =
+  voice split, not credibility claim), signal_class unaffected (ingest-time
+  families). Tests freeze all three.
+- **B6 SHIPPED** — density mini-map sqrt-normalized.
+- **W2 SHIPPED** — dossier map alpha 0.2–0.95 (live fills 0.24…0.95).
+- **W3 SHIPPED** — "bars scaled to the most-charged pin (−4.12 tone) · GDELT
+  scale −10…+10" caption.
+- **U1 SHIPPED (code-verified)** — idle edge floor 0.08 on the sim×depth term
+  (scrub decay alpha still applies); `/api/v2/universe` was down again during
+  verification (same incident as audit day), so no live eyeball.
+- NOT taken here (owned elsewhere / out of scope): W1 (Frank-v2 pack), G5
+  error-state, B4 layout, B5 heat-chip anchor, T1-real (suppress
+  default-confidence bars), T2 red-acceleration, D3 timeline caption, U2/U3, W5.
+
+Validation: 283 vitest + build green post-merge; 42 affected backend tests
+green; browser-verified on the local preview against live data (console,
+ThemeDetail, /brief global + CI, workbench dossier report).
+
 ## Overlaps with the parallel UI/UX track (not duplicated here)
 
 - B4 full-bleed gaps rows, T-row chip density, W5 legend-vs-graph balance, and the
