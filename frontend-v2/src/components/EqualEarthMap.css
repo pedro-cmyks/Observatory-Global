@@ -88,3 +88,32 @@
     color: var(--color-text-muted, #94a3b8);
     font-size: 10px;
 }
+
+/* Marker hover card (2026-07-12): a hazard triangle / conflict shape says what
+   it IS before the click throws you onto an external event page. Same visual
+   family as the country tooltip, multi-line. */
+.equal-earth-tooltip--marker {
+    padding: 5px 9px;
+    max-width: 260px;
+    white-space: normal;
+}
+
+.equal-earth-tooltip-title {
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--color-text-primary, #e2e8f0);
+    margin-bottom: 2px;
+}
+
+.equal-earth-tooltip-meta {
+    color: var(--color-text-muted, #94a3b8);
+    font-size: 10px;
+    line-height: 1.45;
+}
+
+.equal-earth-tooltip-hint {
+    color: var(--color-accent, #68dbae);
+    font-size: 9.5px;
+    margin-top: 3px;
+    opacity: 0.85;
+}

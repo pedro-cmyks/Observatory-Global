@@ -58,6 +58,76 @@ const CONFLICT_CLASS_COLORS: Record<ConflictClass, string> = {
     unrest: '249,115,22',   // orange triangle — unrest / repression
     coercion: '234,179,8',  // amber square — coercion / posture
 }
+// Human names for the shape classes — the hover card says WHAT the shape means
+// (Pedro 2026-07-12: "no se entiende ni siquiera por qué lo ponen triangular").
+const CONFLICT_CLASS_LABELS: Record<ConflictClass, string> = {
+    battle: 'Armed force',
+    unrest: 'Unrest / repression',
+    coercion: 'Coercion / posture',
+}
+
+type MarkerKind = 'chokepoint' | 'acled' | 'disaster'
+
+/** Hover card state: country shape hover vs marker (hazard/conflict/chokepoint). */
+type HoverState =
+    | { kind: 'country'; name: string; heat: number; x: number; y: number }
+    | { kind: 'marker'; title: string; meta: string[]; hint: string | null; x: number; y: number }
+
+/** "2026-07-11T14:32:00Z" → "Jul 11, 14:32" · date-only strings stay date-only
+ *  (rendered in UTC so "2026-07-10" never slips a day in negative offsets). */
+function formatEventDate(iso: string): string | null {
+    if (!iso) return null
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return iso
+    if (!iso.includes('T')) {
+        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+    }
+    return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+/** Build the hover-card content for a hit marker. Pure — testable shape. */
+export function markerHoverContent(
+    kind: MarkerKind,
+    p: Record<string, unknown>,
+): { title: string; meta: string[]; hint: string | null } {
+    if (kind === 'disaster') {
+        const dtype = String(p.dtype || 'hazard')
+        const title = dtype.charAt(0).toUpperCase() + dtype.slice(1)
+        const meta: string[] = []
+        const mag = typeof p.magnitude === 'number' ? p.magnitude : null
+        if (mag != null) meta.push(`Magnitude ${mag.toFixed(1)}`)
+        const alert = String(p.alert || '')
+        if (alert) meta.push(`${alert.toUpperCase()} alert`)
+        // USGS quake titles repeat "M 4.7 - " — strip it, magnitude has its line.
+        // What remains names the epicenter ("northern Mid-Atlantic Ridge") — the
+        // honest answer to "why is there a dot in the ocean".
+        const place = String(p.title || '').replace(/^M\s*[\d.]+\s*[-–]\s*/, '') || String(p.country || '')
+        if (place) meta.push(place)
+        const when = formatEventDate(String(p.time || ''))
+        if (when) meta.push(when)
+        const src = String(p.source || '').toUpperCase()
+        if (src) meta.push(`Source: ${src}`)
+        return { title, meta, hint: `Click opens the ${src || 'official'} event page` }
+    }
+    if (kind === 'acled') {
+        const cls = conflictClass(String(p.type || ''))
+        const meta: string[] = []
+        const type = String(p.type || '')
+        if (type) meta.push(type)
+        const where = [String(p.place || ''), String(p.country || '')].filter(Boolean).join(', ')
+        if (where) meta.push(where)
+        const when = formatEventDate(String(p.date || ''))
+        if (when) meta.push(when)
+        const fat = Number(p.fatalities)
+        if (Number.isFinite(fat) && fat > 0) meta.push(`${fat} reported killed`)
+        return { title: `Conflict event · ${CONFLICT_CLASS_LABELS[cls]}`, meta, hint: 'Click for event details' }
+    }
+    return {
+        title: String(p.name || 'Maritime chokepoint'),
+        meta: [p.active === true ? 'Active vessel traffic' : 'Maritime chokepoint'],
+        hint: 'Click for chokepoint panel',
+    }
+}
 
 
 interface CountryFeature {
@@ -119,8 +189,9 @@ export function EqualEarthMap({
     // (with will-change always on, the cached bitmap scales → blur/pixelation).
     const [gesturing, setGesturing] = useState(false)
     // Parity gap vs Mercator (capture-doc audit): hover tooltip with the
-    // country name. Screen-space; cleared on leave/pan.
-    const [hover, setHover] = useState<{ name: string; heat: number; x: number; y: number } | null>(null)
+    // country name — plus marker hover cards (hazard/conflict/chokepoint).
+    // Screen-space; cleared on leave/pan.
+    const [hover, setHover] = useState<HoverState | null>(null)
 
     // Container size — drives the projection fit. The map can mount at 0×0
     // inside a hidden mobile tab and only get a real box when the tab is shown,
@@ -242,7 +313,7 @@ export function EqualEarthMap({
                 stroke={isSel ? '#68dbae' : (heat > 0.3 ? heatGlowColor(heat) : 'rgba(120,140,170,0.18)')}
                 strokeWidth={isSel ? 1.8 : 0.3}
                 onClick={() => handleCountryClick(p.iso, p.name)}
-                onMouseMove={(e) => setHover({ name: p.name, heat, x: e.clientX, y: e.clientY })}
+                onMouseMove={(e) => setHover({ kind: 'country', name: p.name, heat, x: e.clientX, y: e.clientY })}
                 onMouseLeave={() => setHover(null)}
                 style={{ cursor: 'pointer' }}
             />
@@ -341,14 +412,12 @@ export function EqualEarthMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [flyCountry, ee, features])
 
-    // Mercator parity: clicking a chokepoint/conflict dot opens its panel
-    // instead of falling through to the country. Capture-phase hit test over
-    // the same projected positions the canvas draws.
-    const handleMarkerCapture = useCallback((e: React.MouseEvent) => {
-        if (!onMarkerClick || !ee || !overlay || movedRef.current) return
-        const rect = containerRef.current?.getBoundingClientRect()
-        if (!rect) return
-        const cx = e.clientX - rect.left, cy = e.clientY - rect.top
+    // Shared marker hit test — the same projected positions the canvas draws,
+    // used by BOTH the click capture (open panel / event page) and the hover
+    // card. Priority order matches the original click path: acled → disaster
+    // → chokepoint.
+    const findMarkerAt = useCallback((cx: number, cy: number): { kind: MarkerKind; properties: Record<string, unknown> } | null => {
+        if (!ee || !overlay) return null
         const per = ee.worldWidth * applied.k
         const seams = per > 0 ? [0, -per, per] : [0]
         const near = (coords: unknown, tol: number) => {
@@ -358,27 +427,49 @@ export function EqualEarthMap({
             return seams.some(off => Math.hypot(p[0] + off - cx, p[1] - cy) <= tol)
         }
         for (const f of overlay.acled.features) {
-            if (near(f.geometry.coordinates, 12)) {
-                e.stopPropagation()
-                onMarkerClick('acled', f.properties)
-                return
-            }
+            if (near(f.geometry.coordinates, 12)) return { kind: 'acled', properties: f.properties }
         }
         for (const f of overlay.disasters?.features ?? []) {
-            if (near(f.geometry.coordinates, 12)) {
-                e.stopPropagation()
-                onMarkerClick('disaster', f.properties)
-                return
-            }
+            if (near(f.geometry.coordinates, 12)) return { kind: 'disaster', properties: f.properties }
         }
         for (const f of overlay.chokepoints.features) {
-            if (near(f.geometry.coordinates, 14)) {
-                e.stopPropagation()
-                onMarkerClick('chokepoint', f.properties)
-                return
-            }
+            if (near(f.geometry.coordinates, 14)) return { kind: 'chokepoint', properties: f.properties }
         }
-    }, [onMarkerClick, ee, overlay, applied])
+        return null
+    }, [ee, overlay, applied])
+
+    // Mercator parity: clicking a chokepoint/conflict/disaster dot opens its
+    // panel (or event page) instead of falling through to the country.
+    const handleMarkerCapture = useCallback((e: React.MouseEvent) => {
+        if (!onMarkerClick || movedRef.current) return
+        const rect = containerRef.current?.getBoundingClientRect()
+        if (!rect) return
+        const hit = findMarkerAt(e.clientX - rect.left, e.clientY - rect.top)
+        if (hit) {
+            e.stopPropagation()
+            onMarkerClick(hit.kind, hit.properties)
+        }
+    }, [onMarkerClick, findMarkerAt])
+
+    // Hover card for markers (Pedro 2026-07-12: clicking an unexplained ocean
+    // triangle threw him blind onto a USGS page — say what it IS first).
+    // Capture phase so a marker hit beats the country path's own hover, and
+    // stopPropagation keeps the country tooltip from overwriting it.
+    const handleHoverCapture = useCallback((e: React.MouseEvent) => {
+        if (gesturing) return
+        const rect = containerRef.current?.getBoundingClientRect()
+        if (!rect) return
+        const hit = findMarkerAt(e.clientX - rect.left, e.clientY - rect.top)
+        if (hit) {
+            e.stopPropagation()
+            const { title, meta, hint } = markerHoverContent(hit.kind, hit.properties)
+            setHover({ kind: 'marker', title, meta, hint, x: e.clientX, y: e.clientY })
+        } else {
+            // Left a marker over open ocean: no country path will overwrite the
+            // stale card — clear it ourselves. Country hovers stay untouched.
+            setHover(prev => (prev?.kind === 'marker' ? null : prev))
+        }
+    }, [gesturing, findMarkerAt])
 
     const resetView = useCallback(() => {
         const el = containerRef.current
@@ -604,6 +695,9 @@ export function EqualEarthMap({
             className="equal-earth-map"
             onDoubleClick={resetView}
             onClickCapture={handleMarkerCapture}
+            onMouseMoveCapture={handleHoverCapture}
+            onMouseLeave={() => setHover(null)}
+            style={hover?.kind === 'marker' ? { cursor: 'pointer' } : undefined}
         >
             {ee && (
                 // GPU-composited pan/zoom: the transform is a CSS transform on
@@ -663,7 +757,7 @@ export function EqualEarthMap({
                     style={{ width: size.w, height: size.h }}
                 />
             )}
-            {hover && (
+            {hover && hover.kind === 'country' && (
                 <div
                     className="equal-earth-tooltip"
                     style={{ left: hover.x + 12, top: hover.y - 10 }}
@@ -675,6 +769,20 @@ export function EqualEarthMap({
                             : hover.heat > 0.05 ? ' · slightly above its norm'
                             : ' · at its baseline'}
                     </span>
+                </div>
+            )}
+            {hover && hover.kind === 'marker' && (
+                <div
+                    className="equal-earth-tooltip equal-earth-tooltip--marker"
+                    style={{ left: hover.x + 12, top: hover.y - 10 }}
+                >
+                    <div className="equal-earth-tooltip-title">{hover.title}</div>
+                    {hover.meta.map((m, i) => (
+                        <div key={i} className="equal-earth-tooltip-meta">{m}</div>
+                    ))}
+                    {hover.hint && (
+                        <div className="equal-earth-tooltip-hint">{hover.hint}</div>
+                    )}
                 </div>
             )}
             <div className="equal-earth-vignette" />
