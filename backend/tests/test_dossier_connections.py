@@ -124,3 +124,10 @@ def test_synth_system_carries_glassbox_and_text_mention_rules():
     assert "TEXT MENTIONS OVERRIDE" in s
     assert "GLASS BOX" in s
     assert "YYYY-MM-DD" in s
+
+
+def test_truncation_variant_prefix_rule():
+    # inline rule mirrored from the edge loop: keep only the longest form
+    shared = ["tayyip erdo", "tayyip erdogan"]
+    kept = [p for p in shared if not any(q != p and q.startswith(p) for q in shared)]
+    assert kept == ["tayyip erdogan"]
