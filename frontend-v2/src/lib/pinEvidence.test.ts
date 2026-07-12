@@ -43,3 +43,16 @@ describe('extractSnapshotEvidence', () => {
     expect(extractSnapshotEvidence({})).toEqual([])
   })
 })
+
+describe('P0.3 — evidence dates survive freezing', () => {
+  it('extracts an ISO day from timestamp-bearing rows', () => {
+    const out = extractSnapshotEvidence({
+      signals: [{ headline: 'H', source: 'S', timestamp: '2026-07-08T14:02:11Z' }],
+    })
+    expect(out[0].date).toBe('2026-07-08')
+  })
+  it('leaves date undefined when no timestamp exists', () => {
+    const out = extractSnapshotEvidence({ signals: [{ headline: 'H' }] })
+    expect(out[0].date).toBeUndefined()
+  })
+})

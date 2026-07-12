@@ -139,14 +139,18 @@ export default function ResearchPlanPanel({
       // drifted data later.
       const anyAnchor = anchor as unknown as Record<string, unknown>;
       const ev = (anyAnchor.evidence_samples ?? anyAnchor.snippets ?? anyAnchor.evidence) as
-        | Array<{ headline?: string; title?: string; source?: string; url?: string }>
+        | Array<{ headline?: string; title?: string; source?: string; url?: string; timestamp?: string; date?: string }>
         | undefined;
       const frozenEvidence = Array.isArray(ev)
-        ? ev.slice(0, 3).map(e => ({
-            headline: String(e.headline ?? e.title ?? ''),
-            source: e.source ? String(e.source) : undefined,
-            url: e.url ? String(e.url) : undefined,
-          })).filter(e => e.headline)
+        ? ev.slice(0, 3).map(e => {
+            const ts = e.timestamp ?? e.date;
+            return {
+              headline: String(e.headline ?? e.title ?? ''),
+              source: e.source ? String(e.source) : undefined,
+              url: e.url ? String(e.url) : undefined,
+              date: typeof ts === 'string' && ts.length >= 10 ? ts.slice(0, 10) : undefined,
+            };
+          }).filter(e => e.headline)
         : [];
       const snapshot: PinSnapshot = {
         capturedAt: new Date().toISOString(),

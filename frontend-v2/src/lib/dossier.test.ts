@@ -128,3 +128,25 @@ describe('dossier v2', () => {
     expect(resolvePinnedCountries(inv.pins)).toEqual(['PE', 'CO'])
   })
 })
+
+describe('Frank v2 — named metadata-only pins + dated evidence', () => {
+  it('names WHICH pin was captured without frozen evidence', () => {
+    const d = buildDossier(inv([
+      { anchorId: 'a', anchorType: 'thread', label: 'NATO Summit Ankara', pinnedAt: NOW,
+        snapshot: { capturedAt: NOW } },
+      { anchorId: 'b', anchorType: 'thread', label: 'Tariff Orders', pinnedAt: NOW,
+        snapshot: { capturedAt: NOW, evidence: [{ headline: 'x' }] } },
+    ]), NOW)
+    const gap = d.gaps.find(g => /metadata only/.test(g))!
+    expect(gap).toContain('“NATO Summit Ankara”')
+    expect(gap).not.toContain('“Tariff Orders”')
+  })
+
+  it('renders evidence dates in the markdown export ("— outlet, Jul 8")', () => {
+    const md = dossierToMarkdown(buildDossier(inv([
+      { anchorId: 'a', anchorType: 'thread', label: 'T', pinnedAt: NOW,
+        snapshot: { capturedAt: NOW, evidence: [{ headline: 'H', source: 'Reuters', date: '2026-07-08' }] } },
+    ]), NOW))
+    expect(md).toContain('— Reuters, Jul 8')
+  })
+})
