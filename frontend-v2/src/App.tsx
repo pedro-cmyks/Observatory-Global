@@ -1114,6 +1114,7 @@ function AppContent() {
                 dtype: ev.type, title: ev.title || '', alert: ev.alert || '',
                 magnitude: ev.magnitude ?? null, url: ev.url || '',
                 country: ev.country || '', radius,
+                source: ev.source || '', time: ev.time || '',
                 lat: ev.latitude, lon: ev.longitude,
               },
             }
