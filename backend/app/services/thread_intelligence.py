@@ -1008,8 +1008,11 @@ _EMERGENT_SAMPLE_SIGNALS_SQL = """
 """
 
 
-# Shared SELECT/FROM for the dynamic-topics list. Two WHERE tails below (global
-# top-level vs country-scoped children) share it so they can never drift.
+# Shared SELECT for the dynamic-topics list. Eligibility is applied in a
+# MATERIALIZED candidate_topics CTE before these correlated member aggregates:
+# the old query evaluated them over the full active set and cold requests
+# reached 7-9s. The CTE cap scales with the requested surface but has a hard
+# ceiling so serving cost cannot grow without bound as the story corpus grows.
 _DYNAMIC_TOPICS_SELECT = """
 SELECT
     dt.id,
@@ -1067,7 +1070,7 @@ SELECT
         WHERE dtm3.dynamic_topic_id = dt.id
         LIMIT 24
     ) AS sample_signal_ids
-FROM dynamic_topics dt
+FROM candidate_topics dt
 """
 
 _DYNAMIC_TOPICS_TAIL = """
@@ -1075,22 +1078,34 @@ ORDER BY recent_n_signals DESC, dt.last_seen DESC
 LIMIT $2
 """
 
+_DYNAMIC_TOPICS_CANDIDATE_LIMIT = """
+ORDER BY dt.last_seen DESC, dt.id DESC
+LIMIT LEAST(GREATEST($2::int * 8, 80), 400)
+)\n
+"""
+
 # Global list = top-level (umbrellas + singletons); childed dups hide under their
 # umbrella and surface on drill / country view.
-_DYNAMIC_TOPICS_SQL = _DYNAMIC_TOPICS_SELECT + """
+_DYNAMIC_TOPICS_SQL = """
+WITH candidate_topics AS MATERIALIZED (
+SELECT dt.*
+FROM dynamic_topics dt
 WHERE dt.state = 'active'
   AND dt.parent_id IS NULL
   AND dt.last_seen > NOW() - (GREATEST($1::int, 72) * INTERVAL '1 hour')
   -- #250: 72h floor — a major event (VE earthquake, 380+169 signals) fell off
   -- its own country's view at hour 25 (cliff). Ranking still favors fresh;
   -- recent-but-fading stories DECAY down the list instead of vanishing.
-""" + _DYNAMIC_TOPICS_TAIL
+""" + _DYNAMIC_TOPICS_CANDIDATE_LIMIT + _DYNAMIC_TOPICS_SELECT + _DYNAMIC_TOPICS_TAIL
 
 # Country view = the per-country CHILDREN, scoped by the PRIMARY country of a member
 # cluster ($3) — the R1 scoped topics for that country (e.g. "Venezuela Earthquake
 # Death Toll" for VE), not the global atlas-generic ones. Umbrellas are global →
 # excluded; children are NOT parent-filtered (a country wants its own version).
-_DYNAMIC_TOPICS_COUNTRY_SQL = _DYNAMIC_TOPICS_SELECT + """
+_DYNAMIC_TOPICS_COUNTRY_SQL = """
+WITH candidate_topics AS MATERIALIZED (
+SELECT dt.*
+FROM dynamic_topics dt
 WHERE dt.state = 'active'
   AND dt.is_umbrella = false
   AND EXISTS (
@@ -1102,7 +1117,7 @@ WHERE dt.state = 'active'
   -- #250: 72h floor — a major event (VE earthquake, 380+169 signals) fell off
   -- its own country's view at hour 25 (cliff). Ranking still favors fresh;
   -- recent-but-fading stories DECAY down the list instead of vanishing.
-""" + _DYNAMIC_TOPICS_TAIL
+""" + _DYNAMIC_TOPICS_CANDIDATE_LIMIT + _DYNAMIC_TOPICS_SELECT + _DYNAMIC_TOPICS_TAIL
 
 
 _DYNAMIC_TOPIC_DETAIL_SQL = """

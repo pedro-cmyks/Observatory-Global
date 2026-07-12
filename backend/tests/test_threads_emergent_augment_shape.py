@@ -10,6 +10,11 @@ silently break Narrative Threads on /app.
 """
 from pathlib import Path
 
+from app.services.thread_intelligence import (
+    _DYNAMIC_TOPICS_COUNTRY_SQL,
+    _DYNAMIC_TOPICS_SQL,
+)
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SERVICE = ROOT / "app" / "services" / "thread_intelligence.py"
@@ -42,6 +47,16 @@ def test_dynamic_topic_fetcher_reads_active_dynamic_topics():
     assert "dynamic_topic_members" in block
     assert "dt.state = 'active'" in source
     assert "dt.noise_rate" in source
+
+
+def test_dynamic_topic_list_queries_bound_candidates_before_member_aggregation():
+    for query in (_DYNAMIC_TOPICS_SQL, _DYNAMIC_TOPICS_COUNTRY_SQL):
+        assert "WITH candidate_topics AS MATERIALIZED" in query
+        assert "LIMIT LEAST(GREATEST($2::int * 8, 80), 400)" in query
+        assert "FROM candidate_topics dt" in query
+        assert query.index("candidate_topics AS MATERIALIZED") < query.index(
+            "SELECT SUM(ec4.n_signals)"
+        )
 
 
 def test_assemble_emergent_thread_defined():
