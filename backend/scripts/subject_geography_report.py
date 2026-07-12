@@ -8,10 +8,16 @@ database writes, lifecycle changes, or serving changes occur here.
 
 from __future__ import annotations
 
+import argparse
+import asyncio
+import json
 import math
+import os
+import re
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime, timezone
+from pathlib import Path
 from typing import Any, Sequence
 
 from app.services.ingest_rss import _COUNTRY_PATTERNS, _NATIVE_COUNTRY_PATTERNS
@@ -85,6 +91,12 @@ JOIN signals_v2 s ON s.id = ms.signal_id
 LEFT JOIN signal_embeddings se ON se.signal_id = s.id
 WHERE s.timestamp >= now() - make_interval(hours => $2)
 ORDER BY ms.topic_id, s.timestamp DESC, s.id
+"""
+
+ARCHIVE_PROXY_SQL = """
+SELECT id, day, label, samples, top_cc
+FROM archive_story_units
+ORDER BY id
 """
 
 
@@ -389,6 +401,8 @@ async def run_complete_universe(
             topic_id = int(_record_get(topic, "id"))
             signals = signals_by_topic.get(topic_id, [])
             inference = score_subject_candidates(signals)
+            structural_evaluation = evaluate_invariants(signals)
+            component_ablations = run_ablations([signals])["components"]
             rows.append({
                 "dynamic_topic_id": topic_id,
                 "label": _record_get(topic, "label"),
@@ -402,6 +416,8 @@ async def run_complete_universe(
                     else "abstained"
                 ),
                 "inference": inference,
+                "structural_evaluation": structural_evaluation,
+                "component_ablations": component_ablations,
             })
         cursor = max(topic_ids)
 
@@ -569,11 +585,14 @@ def run_ablations(
 
 def evaluate_known_fixtures() -> list[dict[str, Any]]:
     """Small deterministic fixtures test mechanics; they are not corpus gold."""
+    fixture_days = [
+        datetime(2026, 7, day, tzinfo=timezone.utc) for day in (1, 2, 3)
+    ]
     fixtures = [
         ("multilingual_venezuela", "VE", [
-            SignalSubjectInput(1, "Venezuela earthquake response", "en", None, "wire", None),
-            SignalSubjectInput(2, "Terremoto en Venezuela", "es", None, "press", None),
-            SignalSubjectInput(3, "Землетрясение в Венесуэле", "ru", None, "state", None),
+            SignalSubjectInput(1, "Venezuela earthquake response", "en", None, "wire", fixture_days[0], embedding_similarity=0.9),
+            SignalSubjectInput(2, "Terremoto en Venezuela", "es", None, "press", fixture_days[1], embedding_similarity=0.9),
+            SignalSubjectInput(3, "Venezuela recibe ayuda tras el sismo", "es", None, "state", fixture_days[2], embedding_similarity=0.9),
         ]),
         ("ambiguous_iran_israel", None, [
             SignalSubjectInput(4, "Iran and Israel resume talks", "en", None, "wire", None),
@@ -591,3 +610,249 @@ def evaluate_known_fixtures() -> list[dict[str, Any]]:
             "truth_status": "deterministic_fixture",
         })
     return rows
+
+
+def _tokens(text: str) -> set[str]:
+    return {
+        token for token in re.findall(r"[^\W\d_]{3,}", (text or "").casefold())
+        if token not in {"the", "and", "for", "with", "from", "sobre", "para", "con"}
+    }
+
+
+def match_archive_proxy(
+    label: str,
+    units: Sequence[Any],
+    *,
+    threshold: float = 0.45,
+) -> dict[str, Any]:
+    """Weak lexical archive bridge; embedding spaces are intentionally not mixed."""
+    query = _tokens(label)
+    matches: list[dict[str, Any]] = []
+    for unit in units:
+        candidate = _tokens(str(_record_get(unit, "label") or ""))
+        union = query | candidate
+        similarity = len(query & candidate) / len(union) if union else 0.0
+        if similarity >= threshold:
+            matches.append({
+                "archive_story_unit_id": int(_record_get(unit, "id")),
+                "label": _record_get(unit, "label"),
+                "day": _record_get(unit, "day"),
+                "similarity": round(similarity, 6),
+                "top_cc": list(_record_get(unit, "top_cc") or []),
+            })
+    matches.sort(
+        key=lambda row: (float(row["similarity"]), int(row["archive_story_unit_id"])),
+        reverse=True,
+    )
+    selected = matches[:5]
+    countries = sorted({
+        _canonical_country(code)
+        for row in selected for code in row["top_cc"] if code
+    })
+    return {
+        "method": "label_token_jaccard",
+        "strength": "weak_proxy",
+        "truth_status": "not_gold",
+        "threshold": threshold,
+        "countries": countries,
+        "matches": selected,
+    }
+
+
+def attach_proxy_comparisons(
+    rows: Sequence[dict[str, Any]],
+    archive_units: Sequence[Any],
+) -> None:
+    for row in rows:
+        archive_proxy = match_archive_proxy(str(row.get("label") or ""), archive_units)
+        inference = row["inference"]
+        row["archive_proxy"] = archive_proxy
+        row["proxy_comparison"] = compare_proxies(
+            subject=inference["candidate_distribution"],
+            coverage=inference["coverage_countries_observed"],
+            archive=archive_proxy["countries"],
+        )
+
+
+def build_ablation_report(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    aggregate = {
+        component: {
+            "topics_evaluated": 0,
+            "primary_changed": 0,
+            "abstentions": 0,
+            "abstention_delta": 0,
+        }
+        for component in _COMPONENT_WEIGHTS
+    }
+    for row in rows:
+        for component, metrics in row.get("component_ablations", {}).items():
+            for key in aggregate[component]:
+                aggregate[component][key] += int(metrics[key])
+    return {
+        "read_only": True,
+        "no_llm_classification": True,
+        "topics_evaluated": len(rows),
+        "components": aggregate,
+    }
+
+
+def build_report(
+    rows: Sequence[dict[str, Any]],
+    *,
+    completion: dict[str, Any],
+) -> dict[str, Any]:
+    inferred = sum(row.get("inference", {}).get("primary_country") is not None for row in rows)
+    proxy_disagreements = sum(
+        "proxy_disagreement" in {
+            row.get("proxy_comparison", {}).get("coverage_relation"),
+            row.get("proxy_comparison", {}).get("archive_relation"),
+        }
+        or row.get("proxy_comparison", {}).get("coverage_relation") == "subject_missing_from_coverage"
+        for row in rows
+    )
+    return {
+        "generated_at": datetime.now(timezone.utc),
+        "stage": "github-238-subject-geography-stage-1",
+        "read_only": True,
+        "no_llm_classification": True,
+        "coverage_is_not_subject": True,
+        "complete_universe": bool(completion.get("complete_universe")),
+        **completion,
+        "summary": {
+            "topics": len(rows),
+            "inferred": inferred,
+            "abstained": len(rows) - inferred,
+            "inference_rate": round(inferred / len(rows), 6) if rows else 0.0,
+            "proxy_disagreements": proxy_disagreements,
+            "known_fixture_passes": sum(
+                row["passes"] for row in evaluate_known_fixtures()
+            ),
+            "known_fixture_total": len(evaluate_known_fixtures()),
+        },
+        "known_fixtures": evaluate_known_fixtures(),
+        "topics": list(rows),
+    }
+
+
+def render_markdown(report: dict[str, Any]) -> str:
+    summary = report.get("summary", {})
+    lines = [
+        "# Subject Geography Complete-Universe Report",
+        "",
+        f"Generated: `{report.get('generated_at')}`",
+        "",
+        "This is a read-only, deterministic Stage 1 report. It makes no LLM calls, "
+        "does not write lifecycle or serving state, and does not treat coverage geography "
+        "or archive matches as ground truth.",
+        "",
+        "## Completion receipt",
+        "",
+        f"- Complete universe: `{str(report.get('complete_universe', False)).lower()}`",
+        f"- Rows discovered / processed: `{report.get('rows_discovered', 0)}` / `{report.get('rows_processed', 0)}`",
+        f"- Cursor batches: `{report.get('batches', 0)}`; last cursor: `{report.get('last_cursor')}`",
+        f"- Failures: `{len(report.get('failures', []))}`",
+        "",
+        "## Summary",
+        "",
+        f"- Topics: `{summary.get('topics', 0)}`",
+        f"- Inferred / abstained: `{summary.get('inferred', 0)}` / `{summary.get('abstained', 0)}`",
+        f"- Inference rate: `{summary.get('inference_rate', 0):.1%}`",
+        f"- Proxy disagreement rows: `{summary.get('proxy_disagreements', 0)}`",
+        f"- Deterministic fixture checks: `{summary.get('known_fixture_passes', 0)}/{summary.get('known_fixture_total', 0)}`",
+        "",
+        "Proxy disagreement means the deterministic candidate and a non-gold comparison "
+        "dimension differ. It is a review signal, not a ground-truth error.",
+        "",
+        "## Topic ledger",
+        "",
+        "| ID | State | Topic | Primary | Signals | Lane | Reasons |",
+        "|---:|---|---|---|---:|---|---|",
+    ]
+    for row in report.get("topics", []):
+        inference = row.get("inference", {})
+        label = str(row.get("label") or "").replace("|", "\\|")
+        reasons = ", ".join(inference.get("reason_codes", []))
+        lines.append(
+            f"| {row.get('dynamic_topic_id')} | {row.get('state')} | {label} | "
+            f"{inference.get('primary_country') or 'abstain'} | {row.get('signal_count', 0)} | "
+            f"{row.get('quality_lane')} | {reasons} |"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def _json_default(value: Any) -> str:
+    if isinstance(value, (date, datetime)):
+        return value.isoformat()
+    raise TypeError(f"cannot serialize {type(value).__name__}")
+
+
+def _write_json(path: str, payload: Any) -> None:
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False, default=_json_default) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _write_text(path: str, text: str) -> None:
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(text, encoding="utf-8")
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--states", default="active,candidate")
+    parser.add_argument("--batch-size", type=int, default=50)
+    parser.add_argument("--hours", type=int, default=336)
+    parser.add_argument("--resume-cursor", type=int, default=0)
+    parser.add_argument("--max-retries", type=int, default=2)
+    parser.add_argument("--output-json", required=True)
+    parser.add_argument("--output-md", required=True)
+    parser.add_argument("--output-ablation", required=True)
+    return parser
+
+
+async def _async_main(args: argparse.Namespace) -> int:
+    import asyncpg
+
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        raise SystemExit("DATABASE_URL is required")
+    conn = await asyncpg.connect(database_url, command_timeout=120)
+    try:
+        await conn.execute("SET default_transaction_read_only = on")
+        rows, completion = await run_complete_universe(
+            conn,
+            batch_size=args.batch_size,
+            states=tuple(state.strip() for state in args.states.split(",") if state.strip()),
+            hours=args.hours,
+            resume_cursor=args.resume_cursor,
+            max_retries=args.max_retries,
+        )
+        archive_units = await conn.fetch(ARCHIVE_PROXY_SQL)
+        attach_proxy_comparisons(rows, archive_units)
+    finally:
+        await conn.close()
+    report = build_report(rows, completion=completion)
+    _write_json(args.output_json, report)
+    _write_text(args.output_md, render_markdown(report))
+    _write_json(args.output_ablation, build_ablation_report(rows))
+    print(json.dumps({
+        "complete_universe": report["complete_universe"],
+        "rows_discovered": report["rows_discovered"],
+        "rows_processed": report["rows_processed"],
+        "last_cursor": report["last_cursor"],
+        "failures": report["failures"],
+        "summary": report["summary"],
+    }, default=_json_default))
+    return 0 if report["complete_universe"] else 2
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    return asyncio.run(_async_main(build_arg_parser().parse_args(argv)))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

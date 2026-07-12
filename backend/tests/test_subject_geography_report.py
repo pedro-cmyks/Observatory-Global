@@ -5,11 +5,15 @@ import pytest
 from scripts.subject_geography_report import (
     SignalSubjectInput,
     TOPIC_PAGE_SQL,
+    build_arg_parser,
+    build_report,
     compare_proxies,
+    evaluate_known_fixtures,
     evaluate_invariants,
     extract_headline_country_evidence,
     run_ablations,
     run_complete_universe,
+    render_markdown,
     score_subject_candidates,
 )
 
@@ -228,3 +232,54 @@ def test_ablation_reports_candidate_and_abstention_delta():
     assert "headline_geo_support" in report["components"]
     assert "primary_changed" in report["components"]["headline_geo_support"]
     assert "abstention_delta" in report["components"]["headline_geo_support"]
+
+
+def test_report_declares_read_only_no_llm_and_completion():
+    report = build_report([], completion={"complete_universe": True})
+
+    assert report["read_only"] is True
+    assert report["no_llm_classification"] is True
+    assert report["complete_universe"] is True
+
+
+def test_markdown_never_calls_proxy_error_without_fixture():
+    report = build_report(
+        [{
+            "dynamic_topic_id": 1,
+            "label": "A topic",
+            "state": "active",
+            "quality_lane": "abstained",
+            "signal_count": 1,
+            "inference": {
+                "primary_country": None,
+                "candidate_distribution": {"VE": 0.5, "CO": 0.5},
+                "reason_codes": ["ambiguous_subject_geo"],
+            },
+            "proxy_comparison": {
+                "coverage_relation": "proxy_disagreement",
+                "archive_relation": "proxy_disagreement",
+                "truth_status": "not_gold",
+            },
+        }],
+        completion={"complete_universe": True},
+    )
+
+    md = render_markdown(report)
+
+    assert "proxy disagreement" in md.lower()
+    assert "ground truth error" not in md.lower()
+
+
+def test_cli_has_operational_batching_but_no_topic_limit():
+    parser = build_arg_parser()
+    options = {action.dest for action in parser._actions}
+
+    assert "batch_size" in options
+    assert "limit" not in options
+
+
+def test_known_mechanical_fixtures_pass_without_becoming_corpus_gold():
+    fixtures = evaluate_known_fixtures()
+
+    assert all(row["passes"] for row in fixtures)
+    assert {row["truth_status"] for row in fixtures} == {"deterministic_fixture"}
