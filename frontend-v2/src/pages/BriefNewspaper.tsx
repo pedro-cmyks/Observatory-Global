@@ -52,6 +52,7 @@ interface ThreadEvidence {
     country_code?: string | null
     source_lang?: string | null
     url?: string
+    timestamp?: string | null
 }
 
 interface TimelinePoint {
@@ -405,6 +406,8 @@ export function BriefNewspaper() {
                     metrics: { signals: t.signal_count, changed_10h: t.changed_10h ?? 0 },
                     evidence: (t.evidence_samples ?? []).slice(0, 3).map(ev => ({
                         headline: ev.headline, source: ev.source, url: ev.url,
+                        date: typeof ev.timestamp === 'string' && ev.timestamp.length >= 10
+                            ? ev.timestamp.slice(0, 10) : undefined,
                     })),
                 },
             })

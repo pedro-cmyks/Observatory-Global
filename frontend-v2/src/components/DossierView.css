@@ -163,3 +163,7 @@
 
 .dossier-gaps ul { margin: 0; padding-left: 18px; }
 .dossier-gaps li { font-size: 12px; line-height: 1.5; color: #c9923c; margin-bottom: 4px; }
+
+/* Frank v2: pin honesty chrome */
+.dossier-pin-noev { font-size: 10px; color: #fbbf24; border: 1px solid rgba(251,191,36,0.45); border-radius: 3px; padding: 1px 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+.dossier-pin-window { font-size: 11px; color: #8b97a6; margin: 2px 0 4px; }

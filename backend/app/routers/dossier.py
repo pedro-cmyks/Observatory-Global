@@ -20,10 +20,12 @@ generation time; the frozen pin core (lib/dossier.ts) never depends on this.
 """
 from __future__ import annotations
 
+import html
 import json
 import logging
 import math
 import os
+import re
 import time
 from typing import Any
 
@@ -32,6 +34,7 @@ from pydantic import BaseModel, Field
 
 from app import db
 from app.services.insight_llm import generate_insight
+from app.services.subjects import classify_subject
 
 router = APIRouter(prefix="/api/v2/dossier", tags=["dossier"])
 logger = logging.getLogger(__name__)
@@ -84,6 +87,73 @@ def _distinctive_df_max(n_display: int) -> int:
     if n_display <= 2:
         return 2
     return max(1, min(3, math.ceil(0.4 * n_display)))
+
+
+# ── Junk-actor filter (Frank v2 blocker 2) ───────────────────────────────────
+# NER junk leaked into CONFIRMED verdicts ("marea neagra" — the Black Sea in
+# Romanian; "states states" — a tokenizer artifact) and led the link line before
+# the real actor. Shared actors shown/used anywhere in this payload must clear
+# the person gate (_is_valid_person → repeated tokens, articles, photo credits)
+# + the subjects gazetteer (place/org/event names are never actors) + a
+# multilingual geo-feature token guard for forms the EN gazetteer can't know.
+_ACTOR_GEO_FEATURE_TOKENS: set[str] = {
+    # water/terrain feature words across languages ("marea neagra", "mar negro")
+    "sea", "ocean", "gulf", "strait", "river", "lake", "island", "peninsula",
+    "mount", "mountain", "desert", "valley", "coast",
+    "mar", "marea", "mare", "mer", "meer", "deniz", "bahr", "golfo", "golfe",
+    "rio", "río", "reka", "laut", "oceano", "océano",
+}
+
+
+def _is_clean_actor(name: str) -> bool:
+    """True when `name` is plausibly a real person/actor — not NER junk."""
+    if classify_subject(name) != "person":
+        return False
+    return not any(t in _ACTOR_GEO_FEATURE_TOKENS for t in name.split())
+
+
+# ── Text-level cross-reference (Frank v2 blocker 1) ──────────────────────────
+# The entity lens can miss what a headline states verbatim: the tariff pin was
+# declared "isolated — no evidence links them" while its own headline read
+# "… during NATO summit". Cheap token cross-ref, no LLM: does pin A's evidence
+# TEXT mention pin B's label key-tokens (≥2, or the label's single key-token)
+# or one of B's top actors? Emits edge basis `text_mention` — weaker than
+# shared_person, stronger than semantic-only.
+_LABEL_STOPWORDS: set[str] = {
+    "the", "a", "an", "of", "and", "or", "in", "on", "for", "with", "to", "at",
+    "as", "by", "from", "over", "after", "before", "amid", "during", "between",
+    "against", "under", "into", "near", "his", "her", "its", "their",
+    "news", "update", "updates", "report", "reports", "latest", "live",
+    "daily", "roundup", "new", "crisis", "situation", "developments",
+    "coverage", "story", "stories", "talks",
+    "de", "del", "la", "el", "los", "las", "le", "les", "du", "des", "und",
+}
+
+
+def _label_key_tokens(label: str) -> list[str]:
+    toks = re.split(r"[^\w]+", (label or "").lower())
+    return [t for t in toks if len(t) >= 3 and t not in _LABEL_STOPWORDS]
+
+
+def _mention_terms(
+    headlines: list[tuple[str, frozenset]],
+    label_tokens: list[str],
+    actor_names: list[str],
+) -> list[str]:
+    """Terms of the OTHER pin found verbatim in these evidence headlines.
+    Label match needs ≥2 key-tokens in one headline (or the single token of a
+    1-token label) so a generic shared word never fires alone."""
+    terms: list[str] = []
+    for h, hset in headlines:
+        matched = [t for t in label_tokens if t in hset]
+        if matched and (len(matched) >= 2 or len(label_tokens) == 1):
+            term = " ".join(matched[:3])
+            if term not in terms:
+                terms.append(term)
+        for actor in actor_names:
+            if actor in h and actor not in terms:
+                terms.append(actor)
+    return terms[:4]
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
@@ -163,7 +233,7 @@ async def dossier_connections(req: ConnectionsRequest):
                 pin_rows = await conn.fetch(
                     """
                     SELECT id, label, category, centroid_vec, parent_id,
-                           is_umbrella, facet
+                           is_umbrella, facet, first_seen
                     FROM dynamic_topics
                     WHERE id = ANY($1::int[])
                     """,
@@ -206,7 +276,7 @@ async def dossier_connections(req: ConnectionsRequest):
             child_rows = []
             if umbrella_ids:
                 for r in await conn.fetch(
-                    "SELECT id, label, category, centroid_vec FROM dynamic_topics "
+                    "SELECT id, label, category, centroid_vec, first_seen FROM dynamic_topics "
                     "WHERE id = ANY($1::int[])", list(umbrella_ids),
                 ):
                     umb_rows[int(r["id"])] = r
@@ -236,6 +306,7 @@ async def dossier_connections(req: ConnectionsRequest):
                     WITH ranked AS (
                         SELECT tm.topic_id, tm.role,
                                s.country_code, s.source_lang, s.persons,
+                               s.headline,
                                COALESCE(s.nlp_sentiment, s.sentiment) AS sentiment,
                                s.timestamp,
                                ROW_NUMBER() OVER (
@@ -250,7 +321,7 @@ async def dossier_connections(req: ConnectionsRequest):
                           AND tm.assigned_at > NOW() - INTERVAL '{int(req.days)} days'
                     )
                     SELECT topic_id, role, country_code, source_lang, persons,
-                           sentiment, timestamp
+                           headline, sentiment, timestamp
                     FROM ranked WHERE rn <= {ROWS_PER_TOPIC}
                     """,
                     underlying,
@@ -267,15 +338,20 @@ async def dossier_connections(req: ConnectionsRequest):
 
     labels: dict[str, dict] = {}
     centroids: dict[str, list[float]] = {}
+
+    def _fs(r) -> str | None:
+        v = r["first_seen"] if "first_seen" in dict(r) else None
+        return v.isoformat() if hasattr(v, "isoformat") else v
+
     for uid, r in umb_rows.items():
         k = _tid(uid)
-        labels[k] = {"label": r["label"], "category": r["category"]}
+        labels[k] = {"label": r["label"], "category": r["category"], "first_seen": _fs(r)}
         if r["centroid_vec"] is not None:
             centroids[k] = [float(x) for x in r["centroid_vec"]]
     for base in standalone_bases:
         r = pin_meta.get(int(base[len("dynamic-topic-"):])) if base.startswith("dynamic-topic-") and base[len("dynamic-topic-"):].isdigit() else None
         if r is not None:
-            labels[base] = {"label": r["label"], "category": r["category"]}
+            labels[base] = {"label": r["label"], "category": r["category"], "first_seen": _fs(r)}
             if r["centroid_vec"] is not None:
                 centroids[base] = [float(x) for x in r["centroid_vec"]]
 
@@ -284,10 +360,19 @@ async def dossier_connections(req: ConnectionsRequest):
     # ── Aggregate member rows per DISPLAY node + per (umbrella, facet) ─────────
     agg: dict[str, dict] = {k: {
         "country": {}, "lang": {}, "person": {}, "role": {},
-        "sent_sum": 0.0, "sent_n": 0, "day": {}, "n": 0,
+        "sent_sum": 0.0, "sent_n": 0, "day": {}, "n": 0, "headlines": [],
     } for k in display_keys}
     facet_agg: dict[tuple, dict] = {}   # (umbrella_key, facet) -> {country,n,topics}
     person_docs: dict[str, set] = {}
+    _actor_ok_cache: dict[str, bool] = {}  # names repeat heavily across rows
+
+    def _actor_ok(name: str) -> bool:
+        v = _actor_ok_cache.get(name)
+        if v is None:
+            v = _actor_ok_cache[name] = _is_clean_actor(name)
+        return v
+
+    HEADLINES_PER_NODE = 150  # text cross-ref corpus per display node
 
     for row in member_rows:
         tid = row["topic_id"]
@@ -322,9 +407,15 @@ async def dossier_connections(req: ConnectionsRequest):
             if ts is not None:
                 day = ts.date().isoformat()
                 a["day"][day] = a["day"].get(day, 0) + 1
+            if len(a["headlines"]) < HEADLINES_PER_NODE:
+                h = html.unescape(row["headline"] or "").lower().strip()
+                if h:
+                    a["headlines"].append((h, frozenset(re.split(r"[^\w]+", h))))
             for p in (row["persons"] or []):
                 name = (p or "").strip().lower()
-                if name:
+                # junk-actor gate: NER junk ("marea neagra", "states states")
+                # never enters node.persons / shared_persons / the verdict.
+                if name and _actor_ok(name):
                     a["person"][name] = a["person"].get(name, 0) + 1
                     person_docs.setdefault(name, set()).add(key)
 
@@ -397,6 +488,9 @@ async def dossier_connections(req: ConnectionsRequest):
             "timeline": [{"day": d, "n": a["day"][d]} for d in sorted(a["day"])],
             "has_centroid": key in centroids,
             "n": a["n"],
+            # story window start (P0.3): dynamic_topics.first_seen; last activity
+            # is the tail of `timeline` (frontend renders firstSeen → last day).
+            "first_seen": meta.get("first_seen"),
         }
         if is_umb:
             node["child_count"] = len(children_of.get(uid, []))
@@ -438,6 +532,15 @@ async def dossier_connections(req: ConnectionsRequest):
         n["base_id"]: {c["cc"] for c in n["countries"][:TOP_COUNTRIES]} for n in nodes
     }
     person_sets = {n["base_id"]: set(n["persons"]) for n in nodes}
+    # Text cross-ref inputs per display node: label key-tokens + top clean
+    # actors (already junk-filtered at aggregation) + evidence headlines.
+    label_tokens_by_base = {
+        n["base_id"]: _label_key_tokens(str(n["label"])) for n in nodes
+    }
+    actors_by_base = {n["base_id"]: n["persons"][:8] for n in nodes}
+    headlines_by_base = {
+        n["base_id"]: agg.get(n["base_id"], {}).get("headlines", []) for n in nodes
+    }
 
     for i in range(len(bases)):
         for j in range(i + 1, len(bases)):
@@ -455,6 +558,12 @@ async def dossier_connections(req: ConnectionsRequest):
                 p for p in shared_persons_all
                 if len(person_docs.get(p, ())) <= distinct_df_max
             )
+            # GDELT truncation variants ("tayyip erdo" ‖ "tayyip erdogan") read
+            # as two actors in the verdict — keep only the longest form.
+            shared_persons = [
+                p for p in shared_persons
+                if not any(q != p and q.startswith(p) for q in shared_persons)
+            ]
             weight = 0.0
             # Whitened gate when available; raw ≥ 0.88 fallback otherwise.
             if wsim is not None:
@@ -474,6 +583,22 @@ async def dossier_connections(req: ConnectionsRequest):
                 # rarity weight: rarer shared actor => stronger link
                 rarity = sum(1.0 / max(1, len(person_docs.get(p, ()))) for p in shared_persons)
                 weight = max(weight, min(0.98, 0.65 + 0.15 * rarity))
+            # Text-level cross-check (Frank v2 blocker 1): before this pair can
+            # read "isolated/similar-only", ask whether either pin's evidence
+            # TEXT mentions the other pin's label tokens or top actors.
+            text_terms: list[str] = []
+            for t in (
+                _mention_terms(headlines_by_base[bi], label_tokens_by_base[bj], actors_by_base[bj])
+                + _mention_terms(headlines_by_base[bj], label_tokens_by_base[bi], actors_by_base[bi])
+            ):
+                if t not in text_terms:
+                    text_terms.append(t)
+            text_terms = text_terms[:4]
+            if text_terms:
+                basis.append("text_mention")
+                # weaker than shared_person (0.65+), stronger than a bare
+                # semantic pass at the 0.50 whitened threshold.
+                weight = max(weight, 0.55)
             if not basis:
                 continue
             edges.append({
@@ -485,6 +610,7 @@ async def dossier_connections(req: ConnectionsRequest):
                 "whitened_sim": wsim,
                 "shared_countries": shared_countries,
                 "shared_persons": shared_persons,
+                "text_mentions": text_terms,
             })
 
     edges.sort(key=lambda e: -e["weight"])
@@ -600,6 +726,8 @@ async def dossier_connections(req: ConnectionsRequest):
             "semantic_threshold": SEM_EDGE_WHITENED_THRESHOLD if wcentroids else SEM_EDGE_THRESHOLD,
             "semantic_space": "whitened-e5-k1" if wcentroids else "raw-e5",
             "distinctive_person_df_max": distinct_df_max,
+            "text_mention": "one pin's evidence headlines contain the other pin's label key-tokens or a top actor — weaker than shared_person, stronger than semantic-only; pure token match",
+            "actor_filter": "shared/top actors pass the person gate + subjects gazetteer + geo-feature token guard (NER junk excluded)",
             "position_basis": "PCA top-2 of pinned e5 centroids — approximate; edges are exact",
         },
     }
@@ -632,9 +760,13 @@ class SynthConnectionNode(BaseModel):
     # while a third pin hangs on only similarity-only edges. This tells the prompt
     # which pins are the confirmed spine and which are merely topically adjacent.
     label: str
-    connectedness: str | None = None   # 'confirmed' | 'similar-only' | 'isolated'
+    connectedness: str | None = None   # 'confirmed' | 'text-linked' | 'similar-only' | 'isolated'
     confirmed_with: list[str] = Field(default_factory=list)  # shared-actor/place partners
     similar_with: list[str] = Field(default_factory=list)    # semantic-only partners
+    # Frank v2 blocker 1: verbatim evidence-text mentions of another pin
+    # ("evidence text mentions 'nato summit' (NATO Summit Ankara)"). A pin with
+    # one of these must NEVER be narrated as "no evidence links them".
+    text_mentions: list[str] = Field(default_factory=list)
 
 
 class SynthConnection(BaseModel):
@@ -648,6 +780,9 @@ class SynthConnection(BaseModel):
     press: int = 0
     public: int = 0
     bridges: list[str] = Field(default_factory=list)    # unpinned stories nearby
+    # Frank v2 blocker 6: automatic coverage-lens note when one language/origin
+    # dominates the pinned evidence (math-only, computed client-side).
+    lens_note: str | None = None
 
 
 class SynthesizeRequest(BaseModel):
@@ -662,8 +797,8 @@ _SYNTH_SYSTEM = (
     "pinned evidence. A stranger reading ONLY your brief must understand the story "
     "AND must NOT be misled into thinking loosely-related pins form one confirmed "
     "narrative. You are given the pinned stories with their frozen evidence "
-    "headlines (each may end with '— <outlet>'), a MEASURED connection verdict, and "
-    "PER-PIN connectedness. Rules:\n"
+    "headlines (each may end with '— <outlet>, <YYYY-MM-DD>'), a MEASURED connection "
+    "verdict, and PER-PIN connectedness. Rules:\n"
     "1. GROUND everything in the supplied evidence — never invent facts, numbers, "
     "actors, events, dates, or outcomes that are not in the headlines.\n"
     "2. LEAD WITH THE CONFIRMED SPINE. Build the through-line ONLY from pins whose "
@@ -676,6 +811,17 @@ _SYNTH_SYSTEM = (
     "Even when the overall state is 'grounded', a single confirmed edge does not make "
     "every pin part of one story. If the state is 'split' or 'isolated', say the pins "
     "do not form one story.\n"
+    "2b. TEXT MENTIONS OVERRIDE 'no link' CLAIMS. A pin may carry evidence-text "
+    "mentions ('evidence text mentions …'): its headline TEXT references another "
+    "pinned story even though entity extraction found no shared actor. Describe such "
+    "a pin exactly that way — 'isolated by entity extraction, but its evidence text "
+    "references <term> — verify' — and NEVER write 'no evidence links them' or "
+    "'isolated, unconnected' about a pin that carries a text mention. A 'text-linked' "
+    "connectedness is weaker than 'confirmed' but stronger than 'similar-only'.\n"
+    "2c. GLASS BOX ON LINK NAMES. When naming WHAT links two pins, quote ONLY the "
+    "exact measured tokens handed to you (the shared actor/place names or mention "
+    "terms in 'links' / per-pin connectedness). Never substitute, embellish, or "
+    "infer different actor names for a link, even if they read more naturally.\n"
     "3. CHECK EVIDENCE-TO-LABEL FIT. For each pin, verify its evidence headlines "
     "actually name the actors or place in the pin's OWN label. If a pin's bullets do "
     "NOT support its label (they describe unrelated actors/events — a conflated or "
@@ -688,7 +834,8 @@ _SYNTH_SYSTEM = (
     "Attribute contested or single-sourced outcomes to their source ('reported by "
     "<outlet>', 'per <outlet>') and prefer hedged phrasing ('reportedly', 'is said "
     "to') when a headline announces rather than confirms. Surface a date if a "
-    "headline carries one; if outcomes are undated, say the timing is unclear.\n"
+    "headline carries one (evidence lines may end '— <outlet>, <YYYY-MM-DD>'); date "
+    "contested outcomes with it; if outcomes are undated, say the timing is unclear.\n"
     "5. SURFACE THE NON-OBVIOUS insight visible only across pins (a self-declared "
     "alignment, a coverage asymmetry, an actor bridging two CONFIRMED stories) — but "
     "only over the confirmed spine, never over a bracketed or unreliable pin.\n"
@@ -726,6 +873,8 @@ def _synth_user(req: SynthesizeRequest) -> str:
                 if nd.similar_with:
                     line += " — similarity-only proximity to " + ", ".join(nd.similar_with[:6])
                 parts.append(line)
+                for tm in nd.text_mentions[:4]:
+                    parts.append(f"      · {tm}")
         if c.links:
             parts.append("  links: " + " | ".join(c.links[:8]))
         if c.countries:
@@ -733,6 +882,8 @@ def _synth_user(req: SynthesizeRequest) -> str:
         if c.languages:
             parts.append("  coverage languages: " + ", ".join(c.languages[:8]))
         parts.append(f"  press signals: {c.press} · public/forum signals: {c.public}")
+        if c.lens_note:
+            parts.append(f"  coverage lens: {c.lens_note}")
         if c.bridges:
             parts.append("  nearby unpinned stories (bridges): " + " | ".join(c.bridges[:6]))
     if req.gaps:
