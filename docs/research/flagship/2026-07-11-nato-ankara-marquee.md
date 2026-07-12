@@ -79,6 +79,30 @@ demand and the Spain trade-cutoff escalation that dominated Western coverage.
 This two-sided asymmetry IS the product's who-says-what thesis, demonstrated on
 a marquee event.
 
+## FRANK TEST v2 (cold reader, 2026-07-11, post-fixes 3-pin report)
+
+**VERDICT: usable-with-caveats — barely; internal working draft, not a briefing.**
+(First investigation scored "I'd spike this" — real progress; the honesty
+scaffolding was called "better than most tools produce". But:)
+
+1. **THE KILLER — headline finding contradicted by its own evidence:** the
+   report declares the tariff pin "isolated… no evidence links them" directly
+   above headlines reading "Trump orders cutoff of U.S. trade with Spain
+   **during NATO summit**". The entity-overlap method missed what the quoted
+   text states verbatim, and the synthesis asserted the miss as a finding.
+2. **Junk entities in the CONFIRMED link** ("states states", "marea neagra")
+   — "a confirmed spine hanging partly on junk entities is an over-claim
+   dressed in measurement language". Also the synthesis claimed the link was
+   via "Trump, Putin, Ankara" while the MEASURED tokens were different —
+   a glass-box violation (synthesis must quote the measured links).
+3. **No dates anywhere** (the P0.3 debt, flagged by a second cold reader now).
+4. **Lead pin shows zero evidence** and the report never names WHICH pin is
+   metadata-only. (The evidence-freeze fix landed after this pin was created.)
+5. **Assembled Stories reads as clustering garbage** (Khamenei Funeral +
+   France Heatwave folded under Trump-Putin as "fragments of one event").
+6. **Unacknowledged Romanian-source lens** — the coverage skew must be
+   surfaced as a lens note (voice-mix data exists — this is C7 material).
+
 ## Pending to complete the marquee
 - Web corroboration (deep-research run wf_ba81a7ab-376) → appended as the
   "web corroboration" section when it lands: established/contested/unverified
