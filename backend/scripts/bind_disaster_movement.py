@@ -28,10 +28,28 @@ from __future__ import annotations
 import argparse
 import asyncio
 import os
+from datetime import datetime, timezone
 
 import asyncpg
 
+try:
+    from scripts.event_binding_util import (
+        apply_session_budget, build_receipt, fetch_with_retry, print_receipt,
+    )
+except ImportError:  # invoked as backend.scripts.*
+    from backend.scripts.event_binding_util import (
+        apply_session_budget, build_receipt, fetch_with_retry, print_receipt,
+    )
+
 _ENGINE_VERSION = "disaster-v1"
+
+_INSERT_SQL = (
+    "INSERT INTO topic_members "
+    "(signal_id, member_kind, member_ref, topic_id, role, source_family, "
+    " basis, confidence, gate_kept, engine_version) "
+    "VALUES (NULL,'event',$1,$2,'movement','event','co_occurrence',$3,false,$4) "
+    "ON CONFLICT DO NOTHING"
+)
 
 # disaster event_type -> the R3.1 category string on dynamic_topics. drought has no clean
 # disaster category (slow-onset, not a discrete hazard thread) -> intentionally unbound.
@@ -56,14 +74,23 @@ def _confidence(mag, alert) -> float:
     return round(c or 0.3, 3)
 
 
-async def _topic_country(conn) -> dict:
-    """topic_id -> dominant evidence-member country (mode), the serving derivation."""
-    rows = await conn.fetch(
+async def _topic_country(conn, topic_ids: list[str]) -> dict:
+    """topic_id -> dominant evidence-member country (mode), the serving derivation.
+
+    BOUNDED to the disaster-category topics (#256): the unbounded version aggregated
+    every dynamic topic's evidence (45K+ index probes) and timed out under
+    post-snapshot contention; only the handful of disaster topics ever need a country.
+    """
+    if not topic_ids:
+        return {}
+    rows = await fetch_with_retry(
+        conn,
         "SELECT tm.topic_id, mode() WITHIN GROUP (ORDER BY s.country_code) AS cc "
         "FROM topic_members tm JOIN signals_v2 s ON s.id = tm.signal_id "
-        "WHERE tm.role='evidence' AND tm.topic_id LIKE 'dynamic-topic-%' "
+        "WHERE tm.role='evidence' AND tm.topic_id = ANY($1::text[]) "
         "  AND s.country_code IS NOT NULL "
-        "GROUP BY tm.topic_id"
+        "GROUP BY tm.topic_id",
+        topic_ids,
     )
     return {r["topic_id"]: r["cc"] for r in rows}
 
@@ -78,16 +105,19 @@ async def main() -> int:
 
     conn = await asyncpg.connect(os.environ["DATABASE_URL"])
     try:
-        topic_cc = await _topic_country(conn)
+        await apply_session_budget(conn)
 
         # active, crisis-relevant disaster-category topics + their activity window
-        topics = await conn.fetch(
+        # (FIRST, so _topic_country only aggregates these — #256 bounded query)
+        topics = await fetch_with_retry(
+            conn,
             "SELECT ('dynamic-topic-'||id) AS topic_id, category, first_seen, last_seen "
             "FROM dynamic_topics "
             "WHERE state='active' AND crisis_relevant IS TRUE "
             "  AND category = ANY($1::text[])",
             list(set(_CATEGORY_FOR_TYPE.values())),
         )
+        topic_cc = await _topic_country(conn, [t["topic_id"] for t in topics])
         # index topics by (category, country)
         by_cat_cc: dict = {}
         for t in topics:
@@ -96,7 +126,8 @@ async def main() -> int:
                 continue
             by_cat_cc.setdefault((t["category"], cc), []).append(t)
 
-        events = await conn.fetch(
+        events = await fetch_with_retry(
+            conn,
             "SELECT event_id, event_type, country_code, magnitude, alert_level, event_time "
             "FROM disaster_events_v2 "
             "WHERE country_code IS NOT NULL "
@@ -136,25 +167,29 @@ async def main() -> int:
             print(f"  {tid}: {min(len(ps), args.per_topic)} events "
                   f"(top conf {max(p[2] for p in ps):.2f})")
 
+        wrote = 0
         if args.write:
             deleted = await conn.execute(
                 "DELETE FROM topic_members WHERE role='movement' AND member_kind='event' "
                 f"AND engine_version='{_ENGINE_VERSION}'"
             )
-            wrote = 0
             for tid, eid, conf, _t in capped:
-                await conn.execute(
-                    "INSERT INTO topic_members "
-                    "(signal_id, member_kind, member_ref, topic_id, role, source_family, "
-                    " basis, confidence, gate_kept, engine_version) "
-                    "VALUES (NULL,'event',$1,$2,'movement','event','co_occurrence',$3,false,$4) "
-                    "ON CONFLICT DO NOTHING",
-                    f"disaster:{eid}", tid, conf, _ENGINE_VERSION,
-                )
+                await conn.execute(_INSERT_SQL, f"disaster:{eid}", tid, conf, _ENGINE_VERSION)
                 wrote += 1
             print(f"  {deleted} · wrote {wrote} members (engine_version='{_ENGINE_VERSION}')")
         else:
             print("  (dry-run — --write to persist)")
+
+        # #256 freshness receipt — lag between freshest eligible ingested event and
+        # the freshest event this pass actually bound (machine-readable, grep RECEIPT)
+        print_receipt(build_receipt(
+            engine=_ENGINE_VERSION,
+            ingested_max=max((e["event_time"] for e in events), default=None),
+            bound_max=max((p[3] for p in capped), default=None),
+            scanned=len(events), matched=len(capped), written=wrote,
+            window_hours=args.hours,
+            now=datetime.now(timezone.utc),
+        ))
         return 0
     finally:
         await conn.close()

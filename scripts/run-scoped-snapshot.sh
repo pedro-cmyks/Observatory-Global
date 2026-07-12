@@ -95,18 +95,26 @@ $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.build_umbrella_topics \
   --threshold "${ATLAS_UMBRELLA_THRESHOLD:-0.98}" \
   || echo "[scoped-snapshot] umbrella build failed (non-fatal)" >&2
 
+# Step 3.9 (#256): the steps above mass-rewrote the exact tables the event binders
+# read; stale planner stats after that rewrite were degrading the binding queries
+# 30x+ into statement timeout (bindings silently stale 07-10 -> 07-12). Refresh
+# stats BEFORE binding. Cheap (~seconds on these table sizes).
+psql "$DATABASE_URL" -c "ANALYZE dynamic_topic_members, dynamic_topics, emergent_clusters, topic_members" \
+  || echo "[scoped-snapshot] ERROR pre-bind ANALYZE failed (binders may hit stale stats)" >&2
+
 # Step 4: R3.4b — bind events to topics PRECISELY via source_url (movement role,
 # verified=false, #232). events_v2.source_url = signals_v2.source_url -> the article's
-# topic. Pure-SQL, cheap. Non-fatal.
+# topic. Non-fatal for the snapshot, but the failure must be LOUD (grep ERROR) —
+# silent staleness was the #256 incident. Scripts emit RECEIPT lines (freshness lag).
 $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.compute_event_movement --write \
-  || echo "[scoped-snapshot] event movement bind failed (non-fatal)" >&2
+  || echo "[scoped-snapshot] ERROR event movement bind failed — movement-v1 bindings are STALE (#256)" >&2
 
 # Step 4b: disaster events (USGS+GDACS) -> disaster-category topics, geo-temporal
 # (movement role, verified=false, event-source-eval §2). The hazards CAMEO can't
 # represent (quake/flood/cyclone/wildfire). Ingest runs on Fly; this only BINDS the
-# already-ingested rows to the fresh active topic set. Pure-SQL, cheap. Non-fatal.
+# already-ingested rows to the fresh active topic set. Non-fatal but LOUD (#256).
 ( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.bind_disaster_movement --write ) \
-  || echo "[scoped-snapshot] disaster movement bind failed (non-fatal)" >&2
+  || echo "[scoped-snapshot] ERROR disaster movement bind failed — disaster-v1 bindings are STALE (#256)" >&2
 
 # Step 5: CATEGORY ROBOT (2026-07-06, supersedes the v0 name-first grow loop —
 # Pedro: taxonomy is universal + dynamic; structure-first, over ALL history).

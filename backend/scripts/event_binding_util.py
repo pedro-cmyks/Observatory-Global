@@ -1,0 +1,93 @@
+"""Shared helpers for the event→topic movement binders (#256).
+
+Both binders (compute_event_movement, bind_disaster_movement) run inside the
+scoped-snapshot cron IMMEDIATELY after the snapshot mass-rewrites the tables
+they read (dynamic_topic_members / emergent_clusters / topic_members), so they
+hit stale planner stats + cold cache + autovacuum and a 120s budget with zero
+retries — the 2026-07-12 silent-staleness incident. This module gives them:
+
+- fetch_with_retry: a real timeout budget with bounded retries + backoff
+- apply_session_budget: session statement_timeout above the pooler 2min default
+- build_receipt: machine-readable freshness receipt (lag is a number, not a vibe)
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+from datetime import datetime
+from typing import Any, Sequence
+
+try:  # asyncpg present in prod venvs; tests only need the fallback tuple
+    from asyncpg.exceptions import QueryCanceledError
+    _RETRYABLE: tuple[type[BaseException], ...] = (TimeoutError, QueryCanceledError)
+except Exception:  # pragma: no cover
+    _RETRYABLE = (TimeoutError,)
+
+DEFAULT_QUERY_TIMEOUT = 240.0  # seconds — measured cold runs are 3.6s/6.9s; 30x headroom
+DEFAULT_ATTEMPTS = 2
+DEFAULT_BACKOFF = 20.0
+
+
+async def apply_session_budget(conn: Any, seconds: int = 280) -> None:
+    """Lift the pooler's 2min statement_timeout for this maintenance session."""
+    await conn.execute(f"SET statement_timeout = '{int(seconds)}s'")
+
+
+async def fetch_with_retry(
+    conn: Any,
+    sql: str,
+    *args: Any,
+    timeout: float = DEFAULT_QUERY_TIMEOUT,
+    attempts: int = DEFAULT_ATTEMPTS,
+    backoff: float = DEFAULT_BACKOFF,
+) -> Sequence[Any]:
+    """conn.fetch with bounded retries on timeout/cancel; re-raises after the budget."""
+    last_exc: BaseException | None = None
+    for attempt in range(attempts):
+        try:
+            return await conn.fetch(sql, *args, timeout=timeout)
+        except _RETRYABLE as exc:
+            last_exc = exc
+            if attempt + 1 < attempts and backoff > 0:
+                await asyncio.sleep(backoff)
+    assert last_exc is not None
+    raise last_exc
+
+
+def build_receipt(
+    *,
+    engine: str,
+    ingested_max: datetime | None,
+    bound_max: datetime | None,
+    scanned: int,
+    matched: int,
+    written: int,
+    window_hours: int,
+    now: datetime,
+    window_hours_used: int | None = None,
+    notes: str | None = None,
+) -> dict[str, Any]:
+    """Freshness receipt: how far behind ingestion the bindings are, in hours."""
+    lag_hours: float | None = None
+    if ingested_max is not None and bound_max is not None:
+        lag_hours = round((ingested_max - bound_max).total_seconds() / 3600.0, 1)
+    receipt: dict[str, Any] = {
+        "engine": engine,
+        "run_at": now.isoformat(),
+        "window_hours": window_hours,
+        "ingested_max_event_time": ingested_max.isoformat() if ingested_max else None,
+        "bound_max_event_time": bound_max.isoformat() if bound_max else None,
+        "lag_hours": lag_hours,
+        "scanned": scanned,
+        "matched": matched,
+        "written": written,
+    }
+    if window_hours_used is not None and window_hours_used != window_hours:
+        receipt["window_hours_used"] = window_hours_used
+    if notes:
+        receipt["notes"] = notes
+    return receipt
+
+
+def print_receipt(receipt: dict[str, Any]) -> None:
+    print(f"RECEIPT {json.dumps(receipt, sort_keys=True)}")

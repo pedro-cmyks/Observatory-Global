@@ -48,8 +48,18 @@ import argparse
 import asyncio
 import os
 import sys
+from datetime import datetime, timezone
 
 import asyncpg
+
+try:
+    from scripts.event_binding_util import (
+        apply_session_budget, build_receipt, fetch_with_retry, print_receipt,
+    )
+except ImportError:  # invoked as scripts.* from backend/
+    from backend.scripts.event_binding_util import (
+        apply_session_budget, build_receipt, fetch_with_retry, print_receipt,
+    )
 
 # CAMEO quad_class: 1=verbal coop, 2=material coop, 3=verbal conflict, 4=material conflict.
 # The movement role should carry the *consequential* events a thread's story is about; verbal
@@ -62,6 +72,24 @@ _CONFLICT_QUAD = (3, 4)
 _CAP_PER_TOPIC = 8  # events bound per topic (highest num_articles first)
 _WINDOW_HOURS = 168
 _ENGINE_VERSION = "movement-v1"
+
+_INSERT_SQL = (
+    "INSERT INTO topic_members "
+    "(signal_id, member_kind, member_ref, topic_id, role, source_family, "
+    " basis, confidence, gate_kept, engine_version) "
+    "VALUES (NULL,'event',$1,$2,'movement','event','co_occurrence',$3,false,$4) "
+    "ON CONFLICT DO NOTHING"
+)
+
+
+def fallback_windows(hours: int) -> list[int]:
+    """Bounded degradation ladder (#256): full window, half, quarter — never zero.
+
+    The binding is a rolling-snapshot recompute (DELETE + re-INSERT), so a cursor
+    can't resume it; the honest fallback under contention is a SMALLER bounded
+    window that still lands fresh bindings instead of nothing.
+    """
+    return [hours, max(1, hours // 2), max(1, hours // 4)]
 
 # event → signal (by source_url) → dynamic topic (via the SAMPLE path). The `dyn_sig` CTE is
 # the single seam to swap when unified-v2 materialises full dynamic membership: replace its body
@@ -155,7 +183,29 @@ async def main() -> None:
 
     conn = await asyncpg.connect(db)
     try:
-        rows = await conn.fetch(_BIND_SQL, args.hours, quad, args.cap, timeout=120)
+        await apply_session_budget(conn)
+
+        # #256: retry at full window, then degrade to bounded half/quarter windows
+        # rather than dying with nothing (the binding is a rolling recompute).
+        rows = None
+        hours_used = args.hours
+        last_exc: BaseException | None = None
+        for win in fallback_windows(args.hours):
+            try:
+                rows = await fetch_with_retry(conn, _BIND_SQL, win, quad, args.cap)
+                hours_used = win
+                break
+            except (TimeoutError, asyncpg.exceptions.QueryCanceledError) as exc:
+                last_exc = exc
+                print(f"  window {win}h timed out — degrading", file=sys.stderr)
+        if rows is None:
+            print(f"BIND FAILED after bounded fallbacks: {last_exc!r}", file=sys.stderr)
+            print_receipt(build_receipt(
+                engine=_ENGINE_VERSION, ingested_max=None, bound_max=None,
+                scanned=0, matched=0, written=0, window_hours=args.hours,
+                now=datetime.now(timezone.utc), notes="all_windows_timed_out",
+            ))
+            sys.exit(1)
 
         # Precision summary: distinct topics each event touches (over the whole binding,
         # before the per-topic cap trims — recompute uncapped for an honest number).
@@ -194,23 +244,19 @@ async def main() -> None:
                 )
                 shown += 1
 
+        bound = 0
         if args.write:
             # recomputed each pass (movement is a rolling window snapshot)
             deleted = await conn.execute(
                 "DELETE FROM topic_members WHERE role='movement' AND member_kind='event' "
                 f"AND engine_version='{_ENGINE_VERSION}'"
             )
-            bound = 0
             for r in rows:
                 topic_id = f"dynamic-topic-{int(r['topic_id'])}"
                 # confidence: a mild function of coverage (num_articles), capped at 1.0.
                 confidence = float(min(1.0, r["arts"] / 50.0))
                 await conn.execute(
-                    "INSERT INTO topic_members "
-                    "(signal_id, member_kind, member_ref, topic_id, role, source_family, "
-                    " basis, confidence, gate_kept, engine_version) "
-                    "VALUES (NULL,'event',$1,$2,'movement','event','co_occurrence',$3,false,$4) "
-                    "ON CONFLICT DO NOTHING",
+                    _INSERT_SQL,
                     str(r["global_event_id"]), topic_id, confidence, _ENGINE_VERSION,
                 )
                 bound += 1
@@ -218,6 +264,22 @@ async def main() -> None:
                   f"(engine_version='{_ENGINE_VERSION}')")
         else:
             print("\n  (dry-run — nothing written; --write to persist, precision-confirmed)")
+
+        # #256 freshness receipt (machine-readable, grep RECEIPT)
+        ingested_max = await conn.fetchval(
+            "SELECT MAX(timestamp) FROM events_v2 "
+            "WHERE timestamp > NOW() - ($1::int * INTERVAL '1 hour') "
+            "  AND source_url IS NOT NULL AND source_url <> ''",
+            hours_used, timeout=60,
+        )
+        print_receipt(build_receipt(
+            engine=_ENGINE_VERSION,
+            ingested_max=ingested_max,
+            bound_max=max((r["timestamp"] for r in rows), default=None),
+            scanned=len(rows), matched=len(rows), written=bound,
+            window_hours=args.hours, window_hours_used=hours_used,
+            now=datetime.now(timezone.utc),
+        ))
     finally:
         await conn.close()
 
