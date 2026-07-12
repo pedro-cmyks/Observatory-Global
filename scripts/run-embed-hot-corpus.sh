@@ -97,3 +97,13 @@ UNIFIED_GATE_T="${ATLAS_UNIFIED_GATE_THRESHOLD:-0.90}"
   --hours "$PROJECT_HOURS" \
   --assign-threshold "$UNIFIED_ASSIGN_T" --gate-threshold "$UNIFIED_GATE_T" \
   || echo "[embed-hot-corpus] unified-v2 build failed (non-fatal)" >&2
+
+# Step 5: USEFUL-COVERAGE junk gate (2026-07-09, docs/state/2026-07-09-useful-
+# coverage-gate.md). Flags junk grab-bags (grab-bag category / listicle label /
+# few-source feed-dump) from the just-built members and demotes active junk out of
+# serving. build_unified_topics._load_centroids reads the is_junk flag, so the
+# NEXT build drops those centroids from the anchor set (coverage reclaim; 1-cycle
+# feedback). Reversible: ATLAS_UNIFIED_EXCLUDE_JUNK=off + UPDATE dynamic_topics
+# SET is_junk=false. Non-fatal.
+"$MLVENV/bin/python" -m scripts.flag_junk_topics \
+  || echo "[embed-hot-corpus] junk flag/demote failed (non-fatal)" >&2

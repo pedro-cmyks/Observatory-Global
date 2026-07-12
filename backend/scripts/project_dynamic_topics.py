@@ -250,19 +250,25 @@ def next_state(
     since_seen: int,
     cfg: LifecycleConfig,
     noise_rate: float | None = None,
+    is_junk: bool = False,
 ) -> str:
     """Pure state transition for one snapshot tick."""
     quality_ok = noise_rate is None or noise_rate < cfg.noise_max
+    # is_junk (2026-07-09 useful-coverage gate) is a content-based quality flag
+    # persisted by scripts/flag_junk_topics.py (grab-bag category / listicle label
+    # / few-source feed-dump). Treated like is_roundup: never promotes, demotes an
+    # active topic — so junk grab-bags leave serving, not just the anchor set.
     qualifies = (
         n_snapshots >= cfg.persist_min
         and mean_cohesion >= cfg.cohesion_min
         and agg_n_signals >= cfg.volume_min
         and not is_roundup
+        and not is_junk
         and quality_ok
     )
     if seen_now:
-        if is_roundup or not quality_ok:
-            return "candidate"  # roundup or high-noise: never promoted; demote if active
+        if is_roundup or is_junk or not quality_ok:
+            return "candidate"  # roundup/junk/high-noise: never promoted; demote if active
         if qualifies:
             return "active"
         if state in ("deprecated", "retired"):
@@ -290,6 +296,7 @@ def _qualifies(t: "Topic", cfg: LifecycleConfig) -> bool:
         and t.mean_cohesion >= cfg.cohesion_min
         and t.agg_n_signals >= cfg.volume_min
         and not t.is_roundup
+        and not t.is_junk
         and quality_ok
     )
 
@@ -337,6 +344,7 @@ class Topic:
         "id", "identity_key", "state", "label_counts", "centroid", "anchor_centroid",
         "first_seen", "last_seen", "snapshots", "agg_n_signals", "cohesions",
         "roundup_votes", "n_labels", "since_seen", "members", "dirty", "new", "noises",
+        "is_junk",
     )
 
     def __init__(self, identity_key, label, centroid, snap, n_signals, cohesion, noise=None,
@@ -362,6 +370,10 @@ class Topic:
         self.members: list[dict[str, Any]] = []
         self.dirty = True
         self.new = True
+        # content-based junk flag; owned by scripts/flag_junk_topics.py, loaded
+        # from the persisted row in hydrate. New topics start not-junk (they get
+        # flagged once they carry unified-v2 members).
+        self.is_junk = False
 
     @property
     def n_member_clusters(self) -> int:
@@ -523,7 +535,7 @@ def process_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], s
             t.state, seen_now=seen, n_snapshots=len(t.snapshots),
             mean_cohesion=t.mean_cohesion, agg_n_signals=t.agg_n_signals,
             is_roundup=t.is_roundup, since_seen=t.since_seen, cfg=cfg,
-            noise_rate=t.noise_rate,
+            noise_rate=t.noise_rate, is_junk=t.is_junk,
         )
         if new_state != t.state:
             t.state = new_state
@@ -633,7 +645,7 @@ async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tup
     trows = await conn.fetch(
         "SELECT id, identity_key, state, snapshots_since_seen, label, "
         "centroid_vec, first_seen, last_seen, n_snapshots, agg_n_signals, "
-        "mean_cohesion, noise_rate FROM dynamic_topics"
+        "mean_cohesion, noise_rate, is_junk FROM dynamic_topics"
     )
     mrows = await conn.fetch(
         "SELECT dynamic_topic_id, emergent_cluster_id, snapshot_at "
@@ -684,6 +696,7 @@ async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tup
             t.id = int(tr["id"])
             t.state = tr["state"]
             t.since_seen = int(tr["snapshots_since_seen"] or 0)
+            t.is_junk = bool(tr["is_junk"])
             t.new = False
             t.members = []
             t.dirty = False
@@ -704,6 +717,7 @@ async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tup
         t.id = int(tr["id"])
         t.state = tr["state"]
         t.since_seen = int(tr["snapshots_since_seen"] or 0)
+        t.is_junk = bool(tr["is_junk"])
         t.new = False
         t.members = []   # already persisted
         t.dirty = False  # only re-persist if touched this run
