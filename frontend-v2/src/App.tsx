@@ -32,6 +32,7 @@ import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours, ambientRange, 
 import { Globe, ClipboardList, HelpCircle, BookmarkPlus, MoreHorizontal, Settings, ChevronDown } from './lib/icons'
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
 import { resolveCountryName } from './lib/countryNames'
+import { conflictCountryCode } from './lib/conflictEvents'
 import type { PublicAttentionOrigin } from './lib/publicAttention'
 import { prefetchBriefing } from './lib/briefingPrefetch'
 import { resolveThreadThemeTarget } from './lib/threadThemeTarget'
@@ -1522,6 +1523,11 @@ function AppContent() {
                         lat: p.lat != null && p.lat !== '' ? Number(p.lat) : null,
                         lon: p.lon != null && p.lon !== '' ? Number(p.lon) : null,
                       })
+                      // #232 UX slice: the map also centers on the event's country
+                      // (T3.3 keeps the EVENT as the subject; this only moves the
+                      // camera — full country focus stays behind the panel's link).
+                      const cc = conflictCountryCode({ location: { country: String(p.country || '') } })
+                      if (cc) setMapFlyCountry(cc)
                     }
                   }}
                   onCountryClick={(gdelt, name) => {
@@ -1799,6 +1805,7 @@ function AppContent() {
                     }}
                     onSourceClick={(source) => setSelectedSourceProfile(source)}
                     onCompareClick={(other) => setCompareTheme({ a: selectedTheme!.theme, b: other })}
+                    onConflictChipClick={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
                   />
                 ) : isChokepoint ? (
                   <ChokepointPanel

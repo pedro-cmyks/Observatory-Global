@@ -1487,3 +1487,29 @@
   flex-shrink: 0; margin-left: auto; font-family: 'SF Mono', monospace;
   font-size: 10.5px; opacity: 0.8; white-space: nowrap;
 }
+
+/* Conflict-events chip (#232 UX slice) — geography-join only */
+.td-conflict-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 3px 8px;
+    background: rgba(248, 113, 113, 0.08);
+    border: 1px solid rgba(248, 113, 113, 0.25);
+    border-radius: 10px;
+    color: #f0a5a5;
+    font-size: 11px;
+    cursor: pointer;
+    max-width: 100%;
+}
+
+.td-conflict-chip:hover {
+    background: rgba(248, 113, 113, 0.14);
+}
+
+.td-conflict-chip-note {
+    color: #7d91a8;
+    font-size: 10px;
+    white-space: nowrap;
+}

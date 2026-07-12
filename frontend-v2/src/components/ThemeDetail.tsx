@@ -15,6 +15,8 @@ const SUBJECT_BADGE: Record<SubjectType, string> = {
     person: 'person', place: 'place', organization: 'org', group: 'group', event: 'event',
 }
 import { resolveCountryName } from '../lib/countryNames'
+import { useFocusData } from '../contexts/FocusDataContext'
+import { conflictsForCountry } from '../lib/conflictEvents'
 import { PanelSkeleton, PanelSkeletonGrid } from './PanelSkeleton'
 import { LoadingMoment } from './LoadingMoment'
 import { CoverageBadge, type CoverageMeta } from './CoverageBadge'
@@ -122,6 +124,9 @@ interface ThemeDetailProps {
     onPersonClick?: (name: string) => void
     onSourceClick?: (domain: string) => void
     onCompareClick?: (theme: string) => void
+    /** #232 UX slice: chip click opens the country (CountryBrief carries the
+        conflict-events strip). Geography-join only — never a story match. */
+    onConflictChipClick?: (code: string, name: string) => void
 }
 
 interface NarrativeNote {
@@ -183,7 +188,7 @@ function formatAttentionCount(n?: number): string {
     return String(n)
 }
 
-export function ThemeDetail({ theme, originCountry, originCountryName, originAttention, threadContext, initialDrillCountry, hours, onClose, onThemeSelect, onCountryCardClick, onPersonClick, onSourceClick }: ThemeDetailProps) {
+export function ThemeDetail({ theme, originCountry, originCountryName, originAttention, threadContext, initialDrillCountry, hours, onClose, onThemeSelect, onCountryCardClick, onPersonClick, onSourceClick, onConflictChipClick }: ThemeDetailProps) {
     const [data, setData] = useState<ThemeData | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -267,6 +272,12 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     )
     const detailRef = useRef<HTMLDivElement>(null)
     const { pinItem, unpinItem, isPinned } = useWorkspace()
+    // #232 UX slice: when this thread is country-scoped, surface how many
+    // conflict events sit in that country this window. GEOGRAPHY-JOIN ONLY —
+    // no semantic event→story matching in this slice.
+    const { acledConflicts } = useFocusData()
+    const conflictScopeCountry = drillCountry || originCountry || null
+    const scopedConflicts = conflictsForCountry(acledConflicts, conflictScopeCountry)
     const isDynamicTopic = theme.toLowerCase().startsWith('dynamic-topic-')
     // Custom query thread: token shape is `query-thread::<raw user query>`.
     // The raw text is preserved (accents/spaces) for the /search/thread builder.
@@ -606,6 +617,16 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                     warnings={data.warnings}
                                 />
                             </div>
+                        )}
+                        {conflictScopeCountry && scopedConflicts.length > 0 && (
+                            <button
+                                className="td-conflict-chip"
+                                data-tip="GDELT CAMEO machine-coded events in this thread's country — related by country, not by story. Click to open the country brief with the full list."
+                                onClick={() => onConflictChipClick?.(conflictScopeCountry, resolveCountryName(conflictScopeCountry, drillCountryName || originCountryName))}
+                            >
+                                ⚑ {scopedConflicts.length} conflict event{scopedConflicts.length === 1 ? '' : 's'} in {resolveCountryName(conflictScopeCountry, drillCountryName || originCountryName)} this window
+                                <span className="td-conflict-chip-note">related by country, not by story</span>
+                            </button>
                         )}
                         {data?.coherence?.warning && (
                             <div
