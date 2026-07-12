@@ -6,11 +6,31 @@ import {
     nodeStoryWindow, investigationStoryWindow,
     type ClusterResult, type ConnectionsData, type ConnectionNode,
 } from '../lib/dossierConnections'
-import { synthesizeDossier, synthesisMarkdown, type DossierSynthesis } from '../lib/dossierSynthesis'
+import { synthesizeDossier, synthesisMarkdown, isArticle, splitCitations, type DossierSynthesis } from '../lib/dossierSynthesis'
 import { DossierConnections } from './DossierConnections'
 import { track, trackOnce } from '../lib/telemetry'
 import { renameInvestigation, type Investigation } from '../lib/workbench'
 import './DossierView.css'
+
+/** P0.6a: article text with inline [n] receipt markers → clickable superscript
+ *  anchors into the numbered receipts list below the article. */
+function renderWithCitations(text: string) {
+    return splitCitations(text).map((part, i) =>
+        part.kind === 'text'
+            ? <span key={i}>{part.text}</span>
+            : (
+                <sup key={i} className="dossier-cite-ref">
+                    <a
+                        href={`#dossier-cite-${part.n}`}
+                        onClick={e => {
+                            e.preventDefault()
+                            document.getElementById(`dossier-cite-${part.n}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                        }}
+                    >[{part.n}]</a>
+                </sup>
+            ),
+    )
+}
 
 /** Phase 3 report view — a structured dossier generated from the FROZEN
  *  Workbench pins (#227 snapshots), with a Markdown export. Dossier v2 (W3)
@@ -116,7 +136,7 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
         let base = dossierToMarkdown({ ...dossier, title: effectiveTitle })
         // Synthesis leads the report (above the templated summary) so the export
         // opens with the finding, not a pin count.
-        if (synth && (synth.headline || synth.synthesis)) {
+        if (synth && (synth.headline || synth.synthesis || isArticle(synth))) {
             const sblock = synthesisMarkdown(synth).join('\n')
             const sMarker = '## Executive summary'
             const sAt = base.indexOf(sMarker)
@@ -194,12 +214,46 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
                         <h2>Synthesis</h2>
                         {synth === undefined ? (
                             <p className="dossier-meta">Writing the standalone brief…</p>
-                        ) : synth && (synth.headline || synth.synthesis) ? (
+                        ) : synth && (synth.headline || synth.synthesis || isArticle(synth)) ? (
                             <>
                                 {synth.headline && <p className="dossier-synth-headline">{synth.headline}</p>}
-                                {synth.synthesis && <p>{synth.synthesis}</p>}
-                                {synth.gap && <p className="dossier-synth-gap">Key gap: {synth.gap}</p>}
-                                <p className="dossier-meta" data-tip="One grounded LLM pass over the frozen pins + the measured connection verdict. Measured now, not frozen; degrades to absence.">
+                                {isArticle(synth) ? (
+                                    <>
+                                        {synth.lede && <p className="dossier-synth-lede">{renderWithCitations(synth.lede)}</p>}
+                                        {(synth.body ?? []).map((para, i) => (
+                                            <p key={i}>{renderWithCitations(para)}</p>
+                                        ))}
+                                        {synth.unknowns && synth.unknowns.length > 0 && (
+                                            <div className="dossier-synth-unknowns">
+                                                <div className="dossier-synth-unknowns-title">What we don't know</div>
+                                                <ul>
+                                                    {synth.unknowns.map((u, i) => <li key={i}>{u}</li>)}
+                                                </ul>
+                                            </div>
+                                        )}
+                                        {synth.citations && synth.citations.length > 0 && (
+                                            <ol className="dossier-synth-citations">
+                                                {synth.citations.map(c => (
+                                                    <li key={c.n} id={`dossier-cite-${c.n}`} value={c.n}>
+                                                        {c.url
+                                                            ? <a href={c.url} target="_blank" rel="noopener noreferrer">{c.headline}</a>
+                                                            : c.headline}
+                                                        {(c.source || c.date) && (
+                                                            <span className="dossier-src"> — {[c.source, c.date ? fmtDay(c.date) : null].filter(Boolean).join(', ')}</span>
+                                                        )}
+                                                        <span className="dossier-cite-pin"> ({c.pin})</span>
+                                                    </li>
+                                                ))}
+                                            </ol>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        {synth.synthesis && <p>{synth.synthesis}</p>}
+                                        {synth.gap && <p className="dossier-synth-gap">Key gap: {synth.gap}</p>}
+                                    </>
+                                )}
+                                <p className="dossier-meta" data-tip="One grounded LLM pass over the frozen pins + the measured connection verdict. Every claim carries a numbered receipt from the frozen evidence. Measured now, not frozen; degrades to absence.">
                                     measured at generation time{synth.provider ? ` · ${synth.provider}` : ''} — grounded in pinned evidence + measured connections
                                 </p>
                             </>

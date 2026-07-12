@@ -743,10 +743,23 @@ async def dossier_connections(req: ConnectionsRequest):
 # key gap. Measured at generation time (labeled as such); never fabricates beyond
 # the evidence; degrades to absence so the frozen report always stands.
 
+class SynthEvidenceItem(BaseModel):
+    # P0.6a: structured frozen evidence — the citation table for the mini-article.
+    # The server numbers these [1..N] in the prompt and resolves the model's [n]
+    # markers back against THIS table (never trusting an echoed citation list).
+    headline: str
+    source: str | None = None
+    date: str | None = None
+    url: str | None = None
+
+
 class SynthPin(BaseModel):
     label: str
     type: str | None = None
     evidence: list[str] = Field(default_factory=list)  # frozen headlines (may carry "— source")
+    # Structured variant of `evidence` (preferred when present) — enables the
+    # authoritative numbered-receipts table. Legacy `evidence` strings still work.
+    evidence_items: list[SynthEvidenceItem] = Field(default_factory=list)
     note: str | None = None
     # Server-side low-coherence flag on the pin's thread (a conflated black-hole
     # whose evidence is a mix of unrelated events). Optional — set by a parallel
@@ -793,12 +806,22 @@ class SynthesizeRequest(BaseModel):
 
 
 _SYNTH_SYSTEM = (
-    "You are an intelligence analyst writing a STANDALONE brief from an analyst's "
-    "pinned evidence. A stranger reading ONLY your brief must understand the story "
-    "AND must NOT be misled into thinking loosely-related pins form one confirmed "
-    "narrative. You are given the pinned stories with their frozen evidence "
-    "headlines (each may end with '— <outlet>, <YYYY-MM-DD>'), a MEASURED connection "
-    "verdict, and PER-PIN connectedness. Rules:\n"
+    "You are a news-desk editor writing a PUBLISHABLE STANDALONE mini-article from "
+    "an analyst's pinned evidence. A stranger reading ONLY your article must "
+    "understand the story AND must NOT be misled into thinking loosely-related pins "
+    "form one confirmed narrative. You are given the pinned stories with their "
+    "frozen evidence headlines — each NUMBERED '[n]' and possibly ending "
+    "'— <outlet>, <YYYY-MM-DD>' — a MEASURED connection verdict, and PER-PIN "
+    "connectedness. Rules:\n"
+    "0. ARTICLE FORM WITH RECEIPTS. Write a dated lede (1-2 sentences answering "
+    "who/what/when/where from the DATED evidence) and a short body (2-4 short "
+    "paragraphs). EVERY factual claim in the lede and body must end with the "
+    "inline citation marker(s) '[n]' of the numbered evidence line(s) supporting "
+    "it (e.g. 'ordered the cutoff [2]', multiple allowed '[1][4]'). You may cite "
+    "ONLY the supplied numbered evidence — never outside knowledge, never a number "
+    "that was not supplied. A sentence you cannot back with a supplied [n] does "
+    "not belong in the body. If the evidence is THIN, write a SHORTER body — never "
+    "pad, never generalize to fill space.\n"
     "1. GROUND everything in the supplied evidence — never invent facts, numbers, "
     "actors, events, dates, or outcomes that are not in the headlines.\n"
     "2. LEAD WITH THE CONFIRMED SPINE. Build the through-line ONLY from pins whose "
@@ -839,25 +862,74 @@ _SYNTH_SYSTEM = (
     "5. SURFACE THE NON-OBVIOUS insight visible only across pins (a self-declared "
     "alignment, a coverage asymmetry, an actor bridging two CONFIRMED stories) — but "
     "only over the confirmed spine, never over a bracketed or unreliable pin.\n"
-    "6. NAME THE KEY GAP — what is missing or unproven (an unconfirmed link, an "
-    "off-topic/mis-labelled pin, one-sided sourcing, no public/forum voice, undated "
-    "claims).\n"
+    "6. UNKNOWNS — 'what we don't know'. 2-4 short bullet-style sentences naming "
+    "what is missing or unproven: missing voices (no public/forum signal, absent "
+    "languages/origins), unverified or single-sourced claims, undated outcomes, "
+    "pins frozen metadata-only (no evidence captured), isolated or text-linked-only "
+    "pins (with their verify caveat). When a 'coverage lens' note is supplied, one "
+    "unknown MUST carry it (the evidence leans one language/origin — say so).\n"
     "Output STRICT JSON only, no prose around it: "
-    '{"headline": "<=14 words, the confirmed finding", "synthesis": "2-4 sentences", '
-    '"gap": "1-2 sentences"}.'
+    '{"headline": "<=14 words, the confirmed finding", '
+    '"lede": "1-2 sentences, dated, who/what/when/where, with [n] markers", '
+    '"body": ["2-4 short paragraphs, every claim ending with its [n] marker(s)"], '
+    '"unknowns": ["2-4 sentences"]}.'
 )
+
+
+# Legacy folded evidence string "headline — outlet, YYYY-MM-DD" (the frontend
+# folds attribution into the string; structured evidence_items are preferred).
+_LEGACY_EVIDENCE_RE = re.compile(
+    r"^(?P<headline>.+?)\s+—\s+(?:(?P<source>.+?),\s+)?(?P<date>\d{4}-\d{2}-\d{2})$"
+)
+
+
+def _citation_table(req: SynthesizeRequest) -> list[dict]:
+    """Global numbered receipts [1..N] across pins, in prompt order. This table
+    is AUTHORITATIVE: the model's [n] markers resolve against it — an echoed or
+    invented citation can never enter the response."""
+    table: list[dict] = []
+    for pin_i, p in enumerate(req.pins):
+        if p.evidence_items:
+            items = [
+                {"headline": e.headline, "source": e.source, "date": e.date, "url": e.url}
+                for e in p.evidence_items[:6]
+            ]
+        else:
+            items = []
+            for h in p.evidence[:6]:
+                m = _LEGACY_EVIDENCE_RE.match(h)
+                if m:
+                    items.append({"headline": m.group("headline"),
+                                  "source": m.group("source"),
+                                  "date": m.group("date"), "url": None})
+                else:
+                    items.append({"headline": h, "source": None, "date": None, "url": None})
+        for it in items:
+            table.append({"n": len(table) + 1, "pin": p.label, "pin_i": pin_i, **it})
+    return table
 
 
 def _synth_user(req: SynthesizeRequest) -> str:
     parts: list[str] = []
     if req.title:
         parts.append(f"Investigation title: {req.title}")
-    parts.append("\nPINNED STORIES + frozen evidence:")
+    table = _citation_table(req)
+    by_pin: dict[int, list[dict]] = {}
+    for row in table:
+        by_pin.setdefault(row["pin_i"], []).append(row)
+    parts.append("\nPINNED STORIES + frozen evidence (numbered — cite as [n]):")
     for i, p in enumerate(req.pins, 1):
         flag = " [⚠ LOW-COHERENCE thread — evidence may be a conflated mix]" if p.low_coherence else ""
         parts.append(f"{i}. {p.label}" + (f" [{p.type}]" if p.type else "") + flag)
-        for h in p.evidence[:6]:
-            parts.append(f"   - {h}")
+        rows = by_pin.get(i - 1, [])
+        if not rows:
+            parts.append("   (metadata only — no frozen evidence captured for this pin)")
+        for row in rows:
+            attribution = ""
+            if row["source"] or row["date"]:
+                bits = [b for b in (row["source"], row["date"]) if b]
+                attribution = " — " + ", ".join(bits)
+            parts.append(f"   [{row['n']}] {row['headline']}{attribution}")
         if p.note:
             parts.append(f"   note: {p.note}")
     c = req.connection
@@ -909,23 +981,74 @@ def _extract_json(text: str) -> dict | None:
     return None
 
 
+_CITE_RE = re.compile(r"\[(\d{1,3})\]")
+
+
+def _as_paragraphs(v) -> list[str] | None:
+    """body/unknowns arrive as a list of strings or a single string — normalize
+    to a clean list of non-empty paragraphs."""
+    if isinstance(v, str):
+        v = [s for s in re.split(r"\n{2,}|\n(?=- )", v)]
+    if not isinstance(v, list):
+        return None
+    out = [str(s).strip().lstrip("- ").strip() for s in v if str(s).strip()]
+    return out or None
+
+
+def _resolve_citations(texts: list[str], table: list[dict]) -> list[dict]:
+    """[n] markers found in the article, resolved against the AUTHORITATIVE
+    numbered table (first-appearance order; out-of-range ns dropped). The model
+    never gets to invent a receipt."""
+    by_n = {row["n"]: row for row in table}
+    seen: list[int] = []
+    for t in texts:
+        for m in _CITE_RE.finditer(t):
+            n = int(m.group(1))
+            if n in by_n and n not in seen:
+                seen.append(n)
+    return [
+        {"n": n, "headline": by_n[n]["headline"], "source": by_n[n]["source"],
+         "date": by_n[n]["date"], "url": by_n[n]["url"], "pin": by_n[n]["pin"]}
+        for n in seen
+    ]
+
+
 @router.post("/synthesize")
 async def dossier_synthesize(req: SynthesizeRequest):
-    """One grounded LLM pass → standalone {headline, synthesis, gap}."""
-    contract = "dossier-synthesis-v1"
+    """One grounded LLM pass → publishable mini-article {headline, lede, body,
+    unknowns, citations}; legacy {headline, synthesis, gap} passthrough when the
+    model answers in the old shape."""
+    contract = "dossier-synthesis-v2"
+    empty = {"contract": contract, "headline": None, "lede": None, "body": None,
+             "unknowns": None, "citations": None, "synthesis": None, "gap": None}
     text, provider, error, _usage = await generate_insight(
-        _SYNTH_SYSTEM, _synth_user(req), max_tokens=600, surface="dossier-synthesis",
+        _SYNTH_SYSTEM, _synth_user(req), max_tokens=1200, surface="dossier-synthesis",
     )
     if not text:
-        return {"contract": contract, "headline": None, "synthesis": None,
-                "gap": None, "provider": None, "error": error or "insight_unavailable"}
+        return {**empty, "provider": None, "error": error or "insight_unavailable"}
     parsed = _extract_json(text)
     if not parsed:
-        # non-JSON reply — still useful; hand the prose back as the synthesis.
-        return {"contract": contract, "headline": None, "synthesis": text.strip(),
-                "gap": None, "provider": provider, "error": None}
+        # non-JSON reply — still useful; hand the prose back as the legacy synthesis.
+        return {**empty, "synthesis": text.strip(), "provider": provider, "error": None}
+    lede = (parsed.get("lede") or "").strip() or None
+    body = _as_paragraphs(parsed.get("body"))
+    if lede or body:
+        unknowns = _as_paragraphs(parsed.get("unknowns"))
+        citations = _resolve_citations(
+            ([lede] if lede else []) + (body or []), _citation_table(req))
+        return {
+            **empty,
+            "headline": (parsed.get("headline") or None),
+            "lede": lede,
+            "body": body,
+            "unknowns": unknowns,
+            "citations": citations or None,
+            "provider": provider,
+            "error": None,
+        }
+    # Legacy shape — frontend falls back to the old renderer.
     return {
-        "contract": contract,
+        **empty,
         "headline": (parsed.get("headline") or None),
         "synthesis": (parsed.get("synthesis") or None),
         "gap": (parsed.get("gap") or None),
