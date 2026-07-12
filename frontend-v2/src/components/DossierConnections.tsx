@@ -7,9 +7,10 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   fetchConnections, deriveClusters, layoutInvestigativeUniverse, edgeReason, deOverlapLabels,
-  edgeStrength, clusterStrength, sharedBasisNames,
+  edgeStrength, clusterStrength, sharedBasisNames, coverageLensNote, buildFrozenCrossRefs,
+  umbrellaChildDivergence, UMBRELLA_DIVERGENCE_MAX,
   type ConnectionsData, type ConnectionEdge, type ClusterResult,
-  type ConnectionNeighbor, type LabelItem,
+  type ConnectionNeighbor, type LabelItem, type TextCrossRef,
 } from '../lib/dossierConnections'
 import { categoryColor, universeRadius } from '../lib/universeLayout'
 import { createEqualEarth } from '../lib/equalEarthProjection'
@@ -22,6 +23,7 @@ import './DossierConnections.css'
 // DASHED slate line with NO weight scaling — a higher cosine must never read as a
 // stronger connection (that is the false-confidence bug this whole pass removes).
 const STRONG_EDGE = '#1D9E75'
+const TEXT_EDGE = '#f59e0b'   // evidence-text mention — verify, not confirmed
 const WEAK_EDGE = '#64748b'
 
 const UNIVERSE_W = 640
@@ -37,6 +39,7 @@ function edgeTag(e: ConnectionEdge): string {
   // cosine number that would make the confirmed link look fuzzy.
   if (e.shared_persons.length) return e.shared_persons[0].split(' ')[0]
   if (e.shared_countries.length) return e.shared_countries[0]
+  if (e.text_mentions?.length) return `“${e.text_mentions[0]}”`
   if (e.basis.includes('semantic') && e.semantic_sim != null) return `≈${e.semantic_sim.toFixed(2)}`
   return ''
 }
@@ -91,13 +94,24 @@ export function DossierConnections(
     )
   }
 
+  // Frank v2: frozen-evidence cross-refs (the killer blocker — an isolation
+  // claim contradicted by a headline the report itself shows) + the coverage
+  // lens note. Both pure math over data already in hand.
+  const crossRefs = buildFrozenCrossRefs(inv.pins, data)
+  const lensNote = coverageLensNote(data.distributions?.languages ?? [])
+
   return (
     <div className="dcx">
-      <p className="dossier-meta" data-tip="Semantic centroid proximity, shared country, and rarity-weighted shared actors — measured now, not frozen at pin time.">
+      <p className="dossier-meta" data-tip="Semantic centroid proximity, shared country, rarity-weighted shared actors, and evidence-text mentions — measured now, not frozen at pin time.">
         measured at generation time · {data.nodes.length} stories · {data.edges.length} links
       </p>
 
-      <ClusterVerdict data={data} cluster={cluster} />
+      <ClusterVerdict data={data} cluster={cluster} crossRefs={crossRefs} />
+      {lensNote && (
+        <p className="dcx-lens" data-tip="Automatic note when one language dominates the pinned evidence — the report acknowledges its vantage. Share over language-known evidence signals.">
+          {lensNote}
+        </p>
+      )}
       <AssembledStories data={data} />
       <InvestigativeUniverse data={data} cluster={cluster} />
       <DossierMap data={data} />
@@ -110,11 +124,24 @@ export function DossierConnections(
 // The claim-truth half of the fix: a cluster held together only by semantic
 // proximity is NOT "one connected narrative" — it is a CAUTION (similar topics,
 // no shared actors/places). Confirmed = at least one shared-actor/place edge.
-function ClusterVerdict({ data, cluster }: { data: ConnectionsData; cluster: ClusterResult }) {
+function ClusterVerdict({ data, cluster, crossRefs }: {
+  data: ConnectionsData; cluster: ClusterResult; crossRefs?: TextCrossRef[]
+}) {
+  // Frank v2 blocker 1: the isolation warning — entity extraction found no
+  // overlap, but a FROZEN headline the report displays mentions the other pin.
+  const crossRefWarnings = (crossRefs ?? []).map((x, i) => (
+    <p key={i} className="dcx-note dcx-crossref">
+      ⚠ Verify before calling “{x.pinLabel}” unrelated: entity extraction found no overlap
+      with “{x.otherLabel}”, but its frozen evidence text mentions <strong>“{x.term}”</strong>
+      {' '}(“{x.headline}”).
+    </p>
+  ))
+
   if (cluster.clusters.length === 0) {
     return (
       <div className="dcx-verdict" data-state="neutral">
-        <p>No sub-narrative connects these pins — every story is isolated. They may not form one narrative.</p>
+        <p>No sub-narrative connects these pins — every story is isolated by entity overlap. They may not form one narrative.</p>
+        {crossRefWarnings}
         {data.unresolved.length > 0 && (
           <p className="dcx-note">Not in the relation graph (no story centroid): {data.unresolved.join(', ')}.</p>
         )}
@@ -137,6 +164,20 @@ function ClusterVerdict({ data, cluster }: { data: ConnectionsData; cluster: Clu
         These pins are connected by shared actors or places, not just similar topics.
         {via.length > 0 && <> Linked via <strong>{via.join(', ')}</strong>.</>}
       </p>
+    )
+  } else if (single && strengths[0] === 'text') {
+    headline = (
+      <>
+        <p>
+          <b className="dcx-verdict-glyph" style={{ color: TEXT_EDGE }}>✎</b>{' '}
+          These pins share no extracted actors or places, but one story's <strong>evidence text
+          mentions the other</strong> — the headline states a link the entity lens missed.
+        </p>
+        <p className="dcx-note">
+          Text-linked is weaker than a confirmed shared actor and stronger than semantic proximity —
+          verify the mention before treating these as one narrative.
+        </p>
+      </>
     )
   } else if (single) {
     headline = (
@@ -166,11 +207,13 @@ function ClusterVerdict({ data, cluster }: { data: ConnectionsData; cluster: Clu
       {headline}
       <ul className="dcx-clusters">
         {cluster.clusters.map((g, i) => {
-          const confirmed = strengths[i] === 'confirmed'
+          const s = strengths[i]
+          const badgeCls = s === 'confirmed' ? 'dcx-cluster-badge--confirmed'
+            : s === 'text' ? 'dcx-cluster-badge--text' : 'dcx-cluster-badge--caution'
           return (
             <li key={i}>
-              <span className={`dcx-cluster-badge ${confirmed ? 'dcx-cluster-badge--confirmed' : 'dcx-cluster-badge--caution'}`}>
-                {confirmed ? 'CONFIRMED' : 'SIMILAR ONLY'}
+              <span className={`dcx-cluster-badge ${badgeCls}`}>
+                {s === 'confirmed' ? 'CONFIRMED' : s === 'text' ? 'TEXT-LINKED' : 'SIMILAR ONLY'}
               </span>
               <span className="dcx-cluster-dot" style={{ background: clusterColor(i) }} />
               <span><strong>Sub-narrative {i + 1}</strong> ({g.length}): {g.map(n => n.label).join('; ')}</span>
@@ -180,10 +223,11 @@ function ClusterVerdict({ data, cluster }: { data: ConnectionsData; cluster: Clu
         {cluster.isolated.length > 0 && (
           <li className="dcx-isolated-row">
             <span className="dcx-cluster-dot dcx-iso-dot" />
-            <strong>Isolated</strong>: {cluster.isolated.map(n => n.label).join('; ')}
+            <strong>Isolated</strong> (by entity overlap): {cluster.isolated.map(n => n.label).join('; ')}
           </li>
         )}
       </ul>
+      {crossRefWarnings}
       {data.unresolved.length > 0 && (
         <p className="dcx-note">Not in the relation graph (no story centroid): {data.unresolved.join(', ')}.</p>
       )}
@@ -210,21 +254,39 @@ const facetLabel = (f: string): string => FACET_LABEL[f] || f.replace(/-/g, ' ')
 function AssembledStories({ data }: { data: ConnectionsData }) {
   const umbrellas = data.nodes.filter(n => n.is_umbrella && (n.facets?.length ?? 0) > 0)
   if (umbrellas.length === 0) return null
+  // Frank v2 blocker 5: only claim "fragments of ONE event" when the child
+  // labels actually share the parent's key tokens. A diverging fold (Khamenei
+  // Funeral under Trump-Putin Talks) renders as engine-grouped RELATED topics.
+  const coherent = (u: (typeof umbrellas)[number]) =>
+    (umbrellaChildDivergence(u) ?? 0) <= UMBRELLA_DIVERGENCE_MAX
+  const allCoherent = umbrellas.every(coherent)
   return (
     <div className="dcx-panel dcx-assembled">
       <div className="dcx-panel-title">Assembled stories</div>
       <p className="dcx-panel-sub">
-        Near-duplicate fragments of one event, folded into a single story by facet — the
-        constellation, not the {umbrellas.reduce((s, u) => s + (u.child_count ?? 0), 0)} raw rows.
+        {allCoherent
+          ? <>Near-duplicate fragments of one event, folded into a single story by facet — the
+              constellation, not the {umbrellas.reduce((s, u) => s + (u.child_count ?? 0), 0)} raw rows.</>
+          : <>Topics the engine grouped under a parent story. Where child labels diverge from the
+              parent, the group is <strong>related topics, NOT one event</strong> — flagged per story.</>}
       </p>
       {umbrellas.map(u => (
         <div key={u.base_id} className="dcx-umbrella">
           <div className="dcx-umbrella-head">
             <strong>{u.label}</strong>
             <span className="dcx-umbrella-meta">
-              {u.child_count ?? 0} fragments · {u.facets!.length} facets
+              {coherent(u)
+                ? <>{u.child_count ?? 0} fragments · {u.facets!.length} facets</>
+                : <>{u.child_count ?? 0} engine-grouped topics · {u.facets!.length} facets</>}
             </span>
           </div>
+          {!coherent(u) && (
+            <p className="dcx-note dcx-umbrella-warn">
+              ⚠ Child stories diverge from this label ({Math.round((umbrellaChildDivergence(u) ?? 0) * 100)}%
+              share no key token with it) — related topics grouped by the engine, NOT near-duplicate
+              fragments of one event.
+            </p>
+          )}
           <div className="dcx-facets">
             {u.facets!.map(f => (
               <div key={f.facet} className="dcx-facet">
@@ -372,9 +434,10 @@ function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; clust
         <span>position ≈ semantic field · closer = more alike</span>
       </div>
       <div className="dcx-howto dcx-edge-legend">
-        <span><i className="dcx-k-strong-edge" /> solid = confirmed link (shared actor/place)</span>
+        <span><i className="dcx-k-strong-edge" /> solid green = confirmed link (shared actor/place)</span>
+        <span><i className="dcx-k-text-edge" /> solid amber = evidence-text mention (verify)</span>
         <span><i className="dcx-k-weak-edge" /> dashed = similarity only, not a confirmed link</span>
-        <span>line label = the reason (shared name/country, or ≈cosine if similarity-only)</span>
+        <span>line label = the reason (shared name/country, “mention”, or ≈cosine)</span>
       </div>
       <svg viewBox={`0 0 ${UNIVERSE_W} ${UNIVERSE_H}`} className="dcx-universe" role="img" aria-label="Investigative universe">
         {/* neighbor links — faint, behind everything */}
@@ -393,16 +456,18 @@ function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; clust
           const a = byId.get(e.a), b = byId.get(e.b)
           if (!a || !b) return null
           const dim = hover && e.a !== hover && e.b !== hover
-          const strong = edgeStrength(e) === 'strong'
-          const color = strong ? STRONG_EDGE : WEAK_EDGE
-          const width = strong ? 1.4 + e.weight * 1.8 : 0.75
-          const opacity = dim ? (strong ? 0.10 : 0.06) : (strong ? 0.55 + e.weight * 0.35 : 0.30)
+          const tier = edgeStrength(e)
+          const strong = tier === 'strong'
+          const color = strong ? STRONG_EDGE : tier === 'text' ? TEXT_EDGE : WEAK_EDGE
+          const width = strong ? 1.4 + e.weight * 1.8 : tier === 'text' ? 1.0 : 0.75
+          const opacity = dim ? (strong ? 0.10 : 0.06)
+            : (strong ? 0.55 + e.weight * 0.35 : tier === 'text' ? 0.45 : 0.30)
           const tag = edgeTag(e)
           return (
             <g key={i}>
               <line x1={a.px} y1={a.py} x2={b.px} y2={b.py} stroke={color}
                 strokeWidth={width} strokeOpacity={opacity}
-                strokeDasharray={strong ? undefined : '3 3'} />
+                strokeDasharray={tier === 'weak' ? '3 3' : undefined} />
               {!dim && tag && (
                 <text x={(a.px + b.px) / 2} y={(a.py + b.py) / 2 - 2} textAnchor="middle"
                   className="dcx-edge-tag" fill={color}>{tag}</text>
