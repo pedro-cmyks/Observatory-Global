@@ -105,6 +105,19 @@ export function DossierConnections(
       <p className="dossier-meta" data-tip="Semantic centroid proximity, shared country, rarity-weighted shared actors, and evidence-text mentions — measured now, not frozen at pin time.">
         measured at generation time · {data.nodes.length} stories · {data.edges.length} links
       </p>
+      {/* W4 (dataviz audit): count-lineage reconciliation — the pin cards, the
+          distributions and who-says-what each total differently; one line says
+          why, mirroring the research plan's downranking-ledger discipline. */}
+      {(() => {
+        const memberTotal = data.nodes.reduce((s, n) => s + (n.n || 0), 0)
+        const roleTotal = data.nodes.reduce(
+          (s, n) => s + (n.roleCounts?.evidence || 0) + (n.roleCounts?.discussion || 0) + (n.roleCounts?.mood || 0), 0)
+        return memberTotal > 0 ? (
+          <p className="dossier-meta dcx-count-lineage" data-tip="Typed members = signals bound to the pinned topics in the measurement window (30d). Role-attributed = the subset carrying a press/public role. Pin-card counts were frozen at pin time under a different window, so they will not match these.">
+            {memberTotal.toLocaleString()} typed member signals · {roleTotal.toLocaleString()} role-attributed · pin-card counts are frozen at pin time
+          </p>
+        ) : null
+      })()}
 
       <ClusterVerdict data={data} cluster={cluster} crossRefs={crossRefs} />
       {lensNote && (
@@ -626,7 +639,9 @@ function DossierMap({ data }: { data: ConnectionsData }) {
           const d = ee.pathString(f)
           if (!d) return null
           const n = touched.get(iso) ?? 0
-          const t = n > 0 ? 0.35 + 0.6 * (n / maxN) : 0
+          // W2 (dataviz audit): floor 0.35 compressed the volume range on a dark
+          // surface (RU 33 vs MD 4 read nearly alike) — widen to 0.2..0.95.
+          const t = n > 0 ? 0.2 + 0.75 * (n / maxN) : 0
           const fill = n > 0 ? `rgba(56,189,248,${t.toFixed(2)})` : '#243244'
           return <path key={i} d={d} fill={fill} stroke="#0f1620" strokeWidth={0.4} />
         })}
@@ -647,8 +662,11 @@ function DossierDistributions({ data }: { data: ConnectionsData }) {
   const roleTotal = Math.max(1, d.roles.press + d.roles.public)
   const langMax = Math.max(1, ...d.languages.map(l => l.n))
   const tlMax = Math.max(1, ...d.timeline.map(t => t.n))
-  // Tone arrives on the raw signal scale (nlp/GDELT, ~±20). Show the diverging
-  // bar RELATIVE to the most-charged story so the pins differentiate.
+  // Tone arrives on the raw GDELT scale (nominally −10…+10; extremes can
+  // exceed it) — the SAME user-facing unit as ThemeDetail (B3: one tone scale
+  // everywhere). Bars draw RELATIVE to the most-charged story so the pins
+  // differentiate; the caption below states both the relative scaling and the
+  // absolute unit.
   const sentMax = Math.max(0.001, ...d.sentimentByNode.map(s => Math.abs(s.sentiment)))
 
   return (
@@ -685,7 +703,7 @@ function DossierDistributions({ data }: { data: ConnectionsData }) {
             const rel = s.sentiment / sentMax // [-1,1] relative to the most-charged story
             const w = Math.min(50, Math.abs(rel) * 50)
             return (
-              <div key={s.id} className="dcx-sent-row" data-tip={`avg tone ${s.sentiment.toFixed(2)}`}>
+              <div key={s.id} className="dcx-sent-row" data-tip={`avg GDELT tone ${s.sentiment.toFixed(2)} (−10 critical … +10 supportive; scores rarely exceed ±3)`}>
                 <span className="dcx-sent-label">{s.label.length > 22 ? s.label.slice(0, 21) + '…' : s.label}</span>
                 <span className="dcx-sent-track">
                   <span className="dcx-sent-mid" />
@@ -697,6 +715,14 @@ function DossierDistributions({ data }: { data: ConnectionsData }) {
               </div>
             )
           })}
+          {/* W3/B3 (dataviz audit): the bars are per-report relative — without
+              this caption the same bar length means −2.5 in one dossier and −9
+              in another. Tone unit = raw GDELT ±10, same as ThemeDetail. */}
+          {d.sentimentByNode.length > 0 && (
+            <div className="dcx-note" data-tip="Bar length is relative to this report's most-charged pin so the pins differentiate; the number is the absolute GDELT tone (−10…+10).">
+              bars scaled to the most-charged pin ({(d.sentimentByNode.find(s => Math.abs(s.sentiment) === sentMax)?.sentiment ?? sentMax).toFixed(2)} tone) · GDELT scale −10…+10
+            </div>
+          )}
         </div>
 
         <div className="dcx-dist dcx-dist-wide">

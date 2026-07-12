@@ -636,7 +636,12 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                                 key={`${e.a}-${e.b}`}
                                 x1={pa.sx} y1={pa.sy} x2={pb.sx} y2={pb.sy}
                                 stroke="#7dd3fc"
-                                strokeOpacity={highlighted ? edgeOpacity(e.sim) * Math.min(aa, ab) * depthDim : 0.02}
+                                /* U1 (dataviz audit): the field's claim is "relations exact", so
+                                   idle edges must be faintly VISIBLE, not hover-only — floor the
+                                   sim×depth part at 0.08 (scrub birth/decay alpha still applies,
+                                   so dying nodes' edges keep fading honestly). Hover keeps 0.02
+                                   de-emphasis as the contrast state. */
+                                strokeOpacity={highlighted ? Math.max(0.08, edgeOpacity(e.sim) * depthDim) * Math.min(aa, ab) : 0.02}
                                 strokeWidth={highlighted && neighborIds ? 1.4 : 0.7}
                             />
                         )

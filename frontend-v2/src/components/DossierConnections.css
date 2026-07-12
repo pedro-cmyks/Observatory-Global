@@ -177,3 +177,11 @@
 .dcx-crossref { color: #fbbf24; font-style: normal; }
 .dcx-lens { font-size: 11px; color: #a5b4c4; margin: 8px 0 2px; padding: 6px 10px; border-left: 2px solid #64748b; background: rgba(100,116,139,0.08); }
 .dcx-umbrella-warn { color: #fbbf24; font-style: normal; margin: 4px 0 6px; }
+
+
+/* W4: count-lineage reconciliation line under the measured-at header */
+.dcx-count-lineage {
+  font-size: 10px;
+  color: var(--color-text-muted, #64748b);
+  margin-top: -4px;
+}
