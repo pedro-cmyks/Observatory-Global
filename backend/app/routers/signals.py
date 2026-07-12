@@ -128,24 +128,36 @@ async def get_signals(
         # after the fetch, so pull a wider window to give the lane material.
         fetch_limit = max(limit, 200) if (lane or sort == "relevance") else limit
 
+        # Richness ordering must stay bounded: sorting the FULL window by the
+        # richness expression forces Postgres to read (and detoast) every row
+        # in the window (~100K at 24h) before returning anything — measured
+        # 18.5s vs the 8s timeout, the 2026-07-11 stream 500 outage. So: pull
+        # a bounded pool of the most recent rows via the timestamp index (ms),
+        # then richness-sort within that pool.
+        pool_limit = max(fetch_limit * 4, 2000)
+
         rows = await conn.fetch(f"""
-            SELECT
-                id,
-                timestamp,
-                country_code,
-                source_name,
-                source_family,
-                source_url,
-                headline,
-                snippet,
-                source_lang,
-                {sentiment_expr} AS sentiment,
-                themes,
-                persons,
-                {nlp_persons_expr},
-                {nlp_framing_expr}
-            FROM signals_v2
-            WHERE {where_clause}
+            SELECT * FROM (
+                SELECT
+                    id,
+                    timestamp,
+                    country_code,
+                    source_name,
+                    source_family,
+                    source_url,
+                    headline,
+                    snippet,
+                    source_lang,
+                    {sentiment_expr} AS sentiment,
+                    themes,
+                    persons,
+                    {nlp_persons_expr},
+                    {nlp_framing_expr}
+                FROM signals_v2
+                WHERE {where_clause}
+                ORDER BY timestamp DESC
+                LIMIT {pool_limit}
+            ) recent_pool
             -- Prefer information-rich signals in the stream (has body snippet,
             -- named people, themes) over bare ones, then most recent first.
             -- Display ordering only — does not affect any counts/heat/metrics.
