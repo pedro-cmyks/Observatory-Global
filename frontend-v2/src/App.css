@@ -632,7 +632,9 @@
   border-radius: 6px;
 }
 
-/* react-grid-layout resize handle styling */
+/* react-grid-layout resize handle styling — resize from every edge + corner
+   (#233). Corners keep the default grip triangle; edges become thin
+   full-length strips that tint on hover. */
 .react-resizable-handle {
   opacity: 0;
   transition: opacity 0.15s;
@@ -642,6 +644,55 @@
 }
 .react-resizable-handle::after {
   border-color: rgba(104, 219, 174, 0.55) !important;
+}
+
+/* Edge handles: thin strips inset from the corners so corner grips still win
+   at the corners. Kept transparent until hover to stay subtle. Selectors
+   mirror react-grid-layout's shipped `.react-grid-item > .react-resizable-
+   handle.react-resizable-handle-<axis>` shape (and add .terminal-layout-grid)
+   so they out-specify the library defaults for size/position. */
+.terminal-layout-grid .react-grid-item > .react-resizable-handle.react-resizable-handle-n,
+.terminal-layout-grid .react-grid-item > .react-resizable-handle.react-resizable-handle-s {
+  left: 20px;
+  width: calc(100% - 40px);
+  height: 8px;
+  margin-left: 0;
+  transform: none;
+  opacity: 1;
+  background: transparent;
+}
+.terminal-layout-grid .react-grid-item > .react-resizable-handle.react-resizable-handle-e,
+.terminal-layout-grid .react-grid-item > .react-resizable-handle.react-resizable-handle-w {
+  top: 20px;
+  height: calc(100% - 40px);
+  width: 8px;
+  margin-top: 0;
+  transform: none;
+  opacity: 1;
+  background: transparent;
+}
+.terminal-layout-grid .react-grid-item > .react-resizable-handle.react-resizable-handle-n { top: 0; bottom: auto; cursor: ns-resize; }
+.terminal-layout-grid .react-grid-item > .react-resizable-handle.react-resizable-handle-s { bottom: 0; top: auto; cursor: ns-resize; }
+.terminal-layout-grid .react-grid-item > .react-resizable-handle.react-resizable-handle-e { right: 0; left: auto; cursor: ew-resize; }
+.terminal-layout-grid .react-grid-item > .react-resizable-handle.react-resizable-handle-w { left: 0; right: auto; cursor: ew-resize; }
+/* Edge strips carry no corner triangle — a hover tint is the whole affordance. */
+.terminal-layout-grid .react-grid-item > .react-resizable-handle.react-resizable-handle-n::after,
+.terminal-layout-grid .react-grid-item > .react-resizable-handle.react-resizable-handle-s::after,
+.terminal-layout-grid .react-grid-item > .react-resizable-handle.react-resizable-handle-e::after,
+.terminal-layout-grid .react-grid-item > .react-resizable-handle.react-resizable-handle-w::after {
+  content: none;
+}
+.terminal-layout-grid .grid-slot:hover .react-resizable-handle-n,
+.terminal-layout-grid .grid-slot:hover .react-resizable-handle-s,
+.terminal-layout-grid .grid-slot:hover .react-resizable-handle-e,
+.terminal-layout-grid .grid-slot:hover .react-resizable-handle-w {
+  background: rgba(104, 219, 174, 0.08);
+}
+.terminal-layout-grid .react-resizable-handle-n:hover,
+.terminal-layout-grid .react-resizable-handle-s:hover,
+.terminal-layout-grid .react-resizable-handle-e:hover,
+.terminal-layout-grid .react-resizable-handle-w:hover {
+  background: rgba(104, 219, 174, 0.24);
 }
 
 /* ── Big-monitor type scale (de-densify batch A) ──────────────────────────

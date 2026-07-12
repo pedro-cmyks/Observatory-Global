@@ -8,6 +8,7 @@ import {
   clearSavedLayouts,
   defaultLayoutFor,
   isValidLayout,
+  layoutFillsWidth,
   layoutForBucket,
   loadSavedLayouts,
   rowHeightFor,
@@ -117,6 +118,18 @@ describe('persistence', () => {
   })
 })
 
+describe('layoutFillsWidth', () => {
+  it('is true for every preset (they span the full grid width)', () => {
+    for (const b of ['laptop', 'desktop', 'big'] as LayoutBucket[]) {
+      expect(layoutFillsWidth(defaultLayoutFor(b))).toBe(true)
+    }
+  })
+  it('is false when the rightmost edge stops short of the last column', () => {
+    const narrow = defaultLayoutFor('big').map(l => ({ ...l, w: Math.min(l.w, 4), x: 0 }))
+    expect(layoutFillsWidth(narrow)).toBe(false)
+  })
+})
+
 describe('layoutForBucket', () => {
   it('prefers a valid saved layout', () => {
     const custom = defaultLayoutFor('laptop').map(l => (l.i === 'radar' ? { ...l, w: 12 } : l))
@@ -127,6 +140,13 @@ describe('layoutForBucket', () => {
     expect(layoutForBucket('big', {})).toEqual(defaultLayoutFor('big'))
     const broken = [{ i: 'radar', x: 0, y: 0, w: 4, h: 4 }]
     expect(layoutForBucket('big', { big: broken })).toEqual(defaultLayoutFor('big'))
+  })
+  it('discards a stale saved layout that leaves a dead strip on the right', () => {
+    // Valid ids/shape but rightmost edge = 20 < 24 cols → migrate to preset.
+    const narrow = defaultLayoutFor('big').map(l => ({ ...l, w: 5, x: { radar: 0, stream: 5, threads: 10, dock: 15 }[l.i] ?? 0 }))
+    expect(isValidLayout(narrow)).toBe(true)
+    expect(layoutFillsWidth(narrow)).toBe(false)
+    expect(layoutForBucket('big', { big: narrow })).toEqual(defaultLayoutFor('big'))
   })
 })
 

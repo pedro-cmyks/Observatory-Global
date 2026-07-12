@@ -125,12 +125,23 @@ export function clearSavedLayouts(storage: StorageRemover | null = defaultStorag
   }
 }
 
+// A layout "fills the grid width" when its rightmost panel edge reaches the
+// last column. Stale saved layouts from an older preset (or a bucket that
+// used fewer columns) can leave a dead strip on the right — those get
+// discarded in favour of the current preset rather than persisting the gap.
+export function layoutFillsWidth(layout: readonly LayoutItem[]): boolean {
+  let maxRight = 0
+  for (const l of layout) maxRight = Math.max(maxRight, l.x + l.w)
+  return maxRight >= GRID_COLS
+}
+
 export function layoutForBucket(
   bucket: LayoutBucket,
   saved: Partial<Record<LayoutBucket, LayoutItem[]>>,
 ): LayoutItem[] {
   const candidate = saved[bucket]
-  return isValidLayout(candidate) ? candidate : defaultLayoutFor(bucket)
+  if (isValidLayout(candidate) && layoutFillsWidth(candidate)) return candidate
+  return defaultLayoutFor(bucket)
 }
 
 // Row height so GRID_ROWS rows + margins + padding exactly fill the available

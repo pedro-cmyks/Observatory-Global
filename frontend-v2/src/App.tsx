@@ -45,7 +45,7 @@ import { createInvestigation, getActiveInvestigationId, getInvestigation, invest
 // #233 grid revival: desktop panels live in a drag/resize grid. RGL positions
 // children with CSS transforms — panels are NEVER unmounted by layout changes,
 // which is what the keep-alive architecture requires.
-import ReactGridLayout, { useContainerWidth } from 'react-grid-layout'
+import ReactGridLayout from 'react-grid-layout'
 import type { Layout, LayoutItem } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import {
@@ -1198,9 +1198,15 @@ function AppContent() {
   // ── #233 panel grid: bucketed presets + per-bucket persisted layout ──
   // Buckets (laptop/desktop/big) keep a 4K arrangement from ever being applied
   // to a laptop and vice versa; each bucket persists independently.
-  const { width: gridWidth, containerRef: gridContainerRef } = useContainerWidth({ initialWidth: 1280 })
   const gridShellRef = useRef<HTMLDivElement | null>(null)
   const [savedGridLayouts, setSavedGridLayouts] = useState<Partial<Record<LayoutBucket, LayoutItem[]>>>(() => loadSavedLayouts())
+  // The grid width drives BOTH the bucket and RGL's column pixel math, so it
+  // must track the real container — not a fixed seed. (react-grid-layout's
+  // useContainerWidth froze at its initialWidth here, leaving the cockpit
+  // rendered at ~1280px inside a much wider viewport; measured off the shell
+  // instead.) clientWidth excludes the vertical scrollbar so the grid never
+  // provokes a horizontal one.
+  const [gridWidth, setGridWidth] = useState(() => (typeof window === 'undefined' ? 1280 : Math.max(320, window.innerWidth)))
   const gridBucket = bucketForWidth(gridWidth)
   const gridLayout = useMemo(() => layoutForBucket(gridBucket, savedGridLayouts), [gridBucket, savedGridLayouts])
   // The shell sits below the command bar AND the in-flow disclaimer strip, so
@@ -1212,6 +1218,7 @@ function AppContent() {
       const el = gridShellRef.current
       if (!el) return
       setGridShellH(Math.max(320, window.innerHeight - el.getBoundingClientRect().top))
+      setGridWidth(Math.max(320, el.clientWidth))
     }
     measure()
     window.addEventListener('resize', measure)
@@ -1987,21 +1994,19 @@ function AppContent() {
 
         return (
           <div ref={gridShellRef} className="terminal-layout-grid" style={{ height: gridShellH }}>
-            <div ref={gridContainerRef}>
-              <ReactGridLayout
-                width={gridWidth}
-                layout={gridLayout}
-                gridConfig={{ cols: GRID_COLS, rowHeight: gridRowHeight, margin: [GRID_GAP, GRID_GAP], containerPadding: [GRID_GAP, GRID_GAP] }}
-                dragConfig={{ handle: '.panel-header', cancel: 'button, input, a, select, textarea' }}
-                resizeConfig={{ handles: ['se'] }}
-                onLayoutChange={handleGridLayoutChange}
-              >
-                <div key="radar" className="grid-slot">{radarPanel}</div>
-                <div key="stream" className="grid-slot">{streamPanel}</div>
-                <div key="threads" className="grid-slot">{threadsPanel}</div>
-                <div key="dock" className="grid-slot">{dockPanel}</div>
-              </ReactGridLayout>
-            </div>
+            <ReactGridLayout
+              width={gridWidth}
+              layout={gridLayout}
+              gridConfig={{ cols: GRID_COLS, rowHeight: gridRowHeight, margin: [GRID_GAP, GRID_GAP], containerPadding: [GRID_GAP, GRID_GAP] }}
+              dragConfig={{ handle: '.panel-header', cancel: 'button, input, a, select, textarea' }}
+              resizeConfig={{ handles: ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'] }}
+              onLayoutChange={handleGridLayoutChange}
+            >
+              <div key="radar" className="grid-slot">{radarPanel}</div>
+              <div key="stream" className="grid-slot">{streamPanel}</div>
+              <div key="threads" className="grid-slot">{threadsPanel}</div>
+              <div key="dock" className="grid-slot">{dockPanel}</div>
+            </ReactGridLayout>
             <div style={{ display: 'none' }}>{matrixPanel}</div>
           </div>
         )
