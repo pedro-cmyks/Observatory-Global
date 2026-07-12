@@ -67,7 +67,12 @@ export const SourceIntegrityPanel: React.FC<SourceIntegrityPanelProps> = ({ view
     let uniqueSources = 0
     let topSources: Array<{ name: string; count: number }> = []
 
-    if (summary) {
+    // Source priority: scoped focus → the focus summary; unscoped → the global
+    // briefing (which carries real top_sources). The GLOBAL focus summary comes
+    // back with empty top_sources, so preferring it in global mode blanked the
+    // concentration leaders + top-share (the regression). Global briefing wins
+    // when loaded; summary is the fallback so totals still render meanwhile.
+    if (hasScopedFilter && summary) {
         totalSignals = summary.summary.total_signals
         uniqueSources = summary.nodes.reduce((acc, n) => acc + n.unique_sources, 0)
         topSources = summary.top_sources.map(s => ({ name: s.source, count: s.count }))
@@ -75,6 +80,10 @@ export const SourceIntegrityPanel: React.FC<SourceIntegrityPanelProps> = ({ view
         totalSignals = globalData.stats.total_signals
         uniqueSources = globalData.stats.sources
         topSources = globalData.top_sources.map(s => ({ name: s.source, count: s.count }))
+    } else if (summary) {
+        totalSignals = summary.summary.total_signals
+        uniqueSources = summary.nodes.reduce((acc, n) => acc + n.unique_sources, 0)
+        topSources = summary.top_sources.map(s => ({ name: s.source, count: s.count }))
     }
 
     const concentration = totalSignals > 0 && topSources.length > 0
