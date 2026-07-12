@@ -21,6 +21,11 @@ below resolve via Obsidian's fuzzy search regardless of folder.
 
 ## Latest handoffs
 
+- [[2026-07-12-subject-geography-math-first-design]] and
+  [[2026-07-12-subject-geography-math-first]] — complete-universe, read-only
+  subject geography Stage 1 for #238, with deterministic scoring, abstention,
+  proxy ledgers, invariants, and ablations. Live artifacts:
+  `docs/research/subject-geography/`.
 - [[2026-05-30-phase-2-emergent-wiring-handoff]] — Phase 2/3 emergent
   layer shipped; correction about wrong surface; next-session top
   priority.

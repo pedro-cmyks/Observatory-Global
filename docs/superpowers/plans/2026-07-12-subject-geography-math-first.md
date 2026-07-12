@@ -8,6 +8,11 @@
 
 **Tech Stack:** Python 3.12, pytest, asyncpg/PostgreSQL/Supabase, NumPy-free pure scoring, persisted pgvector/e5 metrics, JSON/Markdown artifacts.
 
+**Execution status (2026-07-12): COMPLETE.** Tasks 1-4 were implemented in
+commits `903e6d40`, `e7a3e89d`, `f48feeb4`, and `2ec206b4`. The live run
+exhausted all 1,442 active/candidate topics in 29 cursor batches with no failures.
+GitHub #238 contains the measured receipt; map follow-ups are #255 and #256.
+
 ## Global Constraints
 
 - No semantic top-N/topic ceiling or silent omission.

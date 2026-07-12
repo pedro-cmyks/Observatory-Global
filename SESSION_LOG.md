@@ -1,5 +1,31 @@
 # Atlas — Session Log
 
+## 2026-07-12 — Complete-universe subject geography and event map audit
+
+Delivered Stage 1 of #238 without LLM classification or semantic top-N limits.
+The new cursor-exhaustive report separates subject from coverage geography,
+scores explainable multilingual/NER/consensus/e5/temporal evidence, exposes
+provenance and uncertainty, and abstains instead of copying a coverage country.
+
+The live read-only 14-day run reached cursor exhaustion over all 1,442
+active/candidate dynamic topics: 502 active, 940 candidate, 29 batches, no
+retries or failures. It inferred 140 primary subject countries (9.7%) and
+abstained on 1,302; 409 topics had no hot-window evidence members. Component
+ablations, structural invariants, weak-proxy disagreements, and the full topic
+ledger are in `docs/research/subject-geography/`. Human semantic adjudication
+remains deferred to the publishable-dossier validation stage.
+
+The map/thread audit verified that hazards and CAMEO events are attached after
+thread formation as movement context, never evidence; baseline spikes remain
+derived properties rather than event members. It also found stale bindings
+after July 12 snapshot timeouts. GitHub #255 now specifies accessible structured
+hover receipts, while #256 isolates binding freshness and resumability.
+
+Execution plan:
+`docs/superpowers/plans/2026-07-12-subject-geography-math-first.md`.
+
+---
+
 ## 2026-07-12 — Canonical consolidation, shared-DB stability, and C7 pilot
 
 `v3-intel-layer` was reaffirmed as the canonical production/main branch. PRs #118 and #144 were closed as superseded/obsolete; only the explicitly obsolete remote PR branch was deleted. Dirty and host-owned worktrees were preserved.

@@ -1,6 +1,33 @@
 # Atlas — Session Status
 **Branch:** `v3-intel-layer` (canonical production/main) | **Updated:** 2026-07-12
 
+## Current handoff — Subject geography Stage 1 + event relationship audit
+
+- #238 Stage 1 is delivered as a deterministic, read-only complete-universe
+  report. It uses multilingual headline patterns, NER/gazetteer evidence,
+  member consensus, persisted e5 similarity, source breadth, temporal stability,
+  explicit uncertainty, and abstention. Coverage geography cannot create a
+  subject candidate; no LLM classification or database write occurs.
+- Live 14-day run exhausted all `active,candidate` rows: `1,442/1,442` topics in
+  29 cursor batches, 0 retries/failures. `140` inferred a primary subject
+  country and `1,302` abstained; `409` had no hot-window evidence members.
+- Full ledgers and ablations are under `docs/research/subject-geography/`.
+  Archive comparison is labeled a weak lexical proxy because its OpenAI 1536-d
+  vectors are incompatible with the dynamic-topic e5 768-d space; proxy
+  disagreement is not called an error.
+- Event/thread truth was verified: hazard and CAMEO events attach after thread
+  formation as `role='movement'` context and do not increase evidence/confidence.
+  Baseline spikes are derived movement properties, not topic members.
+- #255 tracks structured, accessible hover receipts for hazard/conflict/anomaly
+  markers using official USGS/GDACS structured APIs and explicit external links.
+- #256 tracks stale event-to-thread bindings: ingest is current, but
+  `disaster-v1` and `movement-v1` bindings lag after snapshot timeouts.
+
+Primary execution record:
+`docs/superpowers/plans/2026-07-12-subject-geography-math-first.md`.
+
+---
+
 ## Current handoff — Consolidation, stability, and C7
 
 - Canonical GitHub cleanup: obsolete PRs #118 and #144 closed; legacy `main` retained only as history, not as the active merge target.
@@ -9,7 +36,7 @@
 - Dynamic-topic confidence is nullable and labeled measured/unscored; non-crisis acceleration is neutral, not red.
 - Brief uses stale-while-revalidate for up to 24 hours and retains cached content on refresh failure with a visible notice/retry path.
 - Python/Node installations were repaired; duplicate `orjson` manifest entry removed.
-- C7 voice-asymmetry pilot is delivered under `docs/research/voice-asymmetry/`. Live 168h run: 100 topics, 49 eligible, 18 review hits. Obvious subject-country proxy errors mean it stays read-only and must not enter UI/ranking/cron before #238.
+- C7 voice-asymmetry pilot is delivered under `docs/research/voice-asymmetry/`. Live 168h run: 100 topics, 49 eligible, 18 review hits. Stage 1 of #238 now supplies a conservative subject-country candidate ledger, but C7 remains read-only and must not enter UI/ranking/cron before joint validation.
 - Dirty and Codex-host-owned worktrees were deliberately preserved; no user work was deleted.
 
 Primary execution record: `docs/superpowers/plans/2026-07-12-consolidation-stability-c7.md`.
