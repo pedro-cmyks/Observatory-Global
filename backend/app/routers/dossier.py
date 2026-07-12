@@ -558,6 +558,12 @@ async def dossier_connections(req: ConnectionsRequest):
                 p for p in shared_persons_all
                 if len(person_docs.get(p, ())) <= distinct_df_max
             )
+            # GDELT truncation variants ("tayyip erdo" ‖ "tayyip erdogan") read
+            # as two actors in the verdict — keep only the longest form.
+            shared_persons = [
+                p for p in shared_persons
+                if not any(q != p and q.startswith(p) for q in shared_persons)
+            ]
             weight = 0.0
             # Whitened gate when available; raw ≥ 0.88 fallback otherwise.
             if wsim is not None:
