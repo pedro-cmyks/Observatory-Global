@@ -1011,6 +1011,213 @@ def _resolve_citations(texts: list[str], table: list[dict]) -> list[dict]:
          "date": by_n[n]["date"], "url": by_n[n]["url"], "pin": by_n[n]["pin"]}
         for n in seen
     ]
+# ── Web corroboration (P0.6b — the manual NATO-Ankara run, productized) ──────
+# Backend-first, math+search: per pin, 1-2 focused queries → the #161
+# external-depth lane (GDELT DOC 2.0 — free, no key, credibility-tiered) →
+# source-INDEPENDENCE weighting (G2: syndicated wire collapses to one source,
+# independently-operated outlets are counted, never articles). LLM is used for
+# ONE thing only: phrasing the coverage-asymmetry note over the gathered titles
+# (glass-box — only from supplied titles; ai_cost surface 'dossier-corroborate').
+#
+# Search-path note: no generic web-search key (SERP/Brave/Bing) is configured on
+# this deploy — GDELT DOC 2.0 is the free news-search executor. Setting
+# ATLAS_WEB_SEARCH_* in the future upgrades the lane; meanwhile the contract
+# also accepts CLIENT-SUPPLIED results (`supplied_results`) so an agent or the
+# frontend can paste an external search run into the same math.
+
+class CorrobPin(BaseModel):
+    id: str
+    label: str
+    actors: list[str] = Field(default_factory=list)   # measured actors (optional)
+    evidence: list[str] = Field(default_factory=list)  # frozen headlines (asymmetry input)
+
+
+class CorrobSuppliedResult(BaseModel):
+    pin_id: str
+    title: str
+    url: str = ""
+    outlet: str | None = None
+
+
+class CorroborateRequest(BaseModel):
+    pins: list[CorrobPin] = Field(..., min_length=1, max_length=12)
+    days: int = Field(14, ge=3, le=30)
+    supplied_results: list[CorrobSuppliedResult] = Field(default_factory=list)
+    force: bool = False   # bypass the server cache (the frontend's re-run)
+
+
+_CORROB_CACHE: dict = {}
+_CORROB_CACHE_TTL_S = 900
+_CORROB_MAX_PINS = 8
+
+_ASYMMETRY_SYSTEM = (
+    "You compare what an analyst's PINNED evidence emphasizes versus what WEB "
+    "coverage titles emphasize, per story and overall. STRICT RULES: use ONLY "
+    "the supplied titles — never invent events, actors, or framings not present "
+    "in them; name which side (pinned set vs web) carries an emphasis the other "
+    "lacks; if no clear asymmetry is visible from the titles, say exactly that. "
+    "Answer in 2-4 plain sentences, no preamble, no JSON."
+)
+
+
+def _asymmetry_user(pins: list[CorrobPin], web_titles: dict[str, list[str]]) -> str:
+    parts: list[str] = []
+    for p in pins:
+        titles = web_titles.get(p.id) or []
+        if not p.evidence and not titles:
+            continue
+        parts.append(f"STORY: {p.label}")
+        for h in p.evidence[:4]:
+            parts.append(f"  pinned: {h}")
+        for t in titles[:6]:
+            parts.append(f"  web: {t}")
+    parts.append(
+        "\nWhat does the web coverage emphasize that the pinned evidence does "
+        "not, and vice versa?")
+    return "\n".join(parts)
+
+
+@router.post("/corroborate")
+async def dossier_corroborate(req: CorroborateRequest):
+    """Per-pin web corroboration with source-independence weighting."""
+    import asyncio
+
+    from app.services.corroboration import (
+        MAX_CITATIONS_PER_PIN, build_pin_queries, independence, pin_status,
+        ESTABLISHED_MIN_OUTLETS,
+    )
+    from app.services.external_depth import fetch_external_depth
+
+    pins = req.pins[:_CORROB_MAX_PINS]
+    dropped_pins = len(req.pins) - len(pins)
+    timespan = f"{req.days}d"
+
+    cache_key = (tuple(sorted((p.id, p.label) for p in pins)), req.days,
+                 tuple(sorted((s.pin_id, s.title) for s in req.supplied_results)))
+    if not req.force:
+        hit = _CORROB_CACHE.get(cache_key)
+        if hit and time.monotonic() - hit[0] < _CORROB_CACHE_TTL_S:
+            return hit[1]
+
+    # 1-2 focused queries per pin, all fetched concurrently (DOC 2.0 p50 is
+    # 16-35s per query — sequential would take minutes).
+    pin_queries: dict[str, list[str]] = {
+        p.id: build_pin_queries(p.label, p.actors) for p in pins
+    }
+    tasks: list = []
+    task_owner: list[tuple[str, str]] = []   # (pin_id, query)
+    for p in pins:
+        for q in pin_queries[p.id]:
+            tasks.append(fetch_external_depth(p.label, raw_query=q, timespan=timespan))
+            task_owner.append((p.id, q))
+    results = await asyncio.gather(*tasks, return_exceptions=True) if tasks else []
+
+    any_lane_ok = False
+    articles_by_pin: dict[str, list[dict]] = {p.id: [] for p in pins}
+    seen_urls: dict[str, set] = {p.id: set() for p in pins}
+    for (pin_id, _q), res in zip(task_owner, results):
+        if isinstance(res, Exception) or res is None:
+            continue
+        any_lane_ok = True
+        for item in res.get("items", []):
+            u = item.get("url") or ""
+            if u and u in seen_urls[pin_id]:
+                continue
+            seen_urls[pin_id].add(u)
+            articles_by_pin[pin_id].append({
+                "title": item["title"],
+                "url": u,
+                "outlet": item.get("domain") or "",
+                "language": item.get("language"),
+                "seendate": item.get("seendate"),
+                "credibility": item.get("credibility"),
+                "lane": "gdelt-doc-2.0",
+            })
+
+    # Client-supplied lane (contract v0): merged into the same independence math.
+    supplied_any = False
+    for s in req.supplied_results:
+        if s.pin_id not in articles_by_pin:
+            continue
+        outlet = (s.outlet or "").strip().lower()
+        if not outlet and s.url:
+            import urllib.parse as _up
+            outlet = _up.urlparse(s.url).netloc.removeprefix("www.")
+        articles_by_pin[s.pin_id].append({
+            "title": s.title, "url": s.url, "outlet": outlet,
+            "language": None, "seendate": None, "credibility": None,
+            "lane": "client-supplied",
+        })
+        supplied_any = True
+
+    search_available = any_lane_ok or supplied_any
+
+    pin_payloads: list[dict] = []
+    web_titles: dict[str, list[str]] = {}
+    for p in pins:
+        arts = articles_by_pin[p.id]
+        ind = independence(arts)
+        status, note = pin_status(ind["independent_outlets"], search_available)
+        citations = [{
+            "title": c["title"], "url": c["url"], "outlet": c["outlet"],
+            "language": c.get("language"), "seendate": c.get("seendate"),
+            "lane": c.get("lane"),
+        } for c in ind["citations"][:MAX_CITATIONS_PER_PIN]]
+        web_titles[p.id] = [f"{c['title']} — {c['outlet']}" for c in citations]
+        pin_payloads.append({
+            "id": p.id,
+            "label": p.label,
+            "status": status,
+            "independent_outlets": ind["independent_outlets"],
+            "total_articles": ind["total_articles"],
+            "syndicated_clusters": ind["syndicated_clusters"],
+            "single_source": search_available and ind["independent_outlets"] <= 1,
+            "citations": citations,
+            "note": note,
+            "queries": pin_queries[p.id],
+        })
+
+    # ONE LLM call, phrasing only — the coverage-asymmetry slot (glass-box:
+    # built strictly from the gathered titles + pinned headlines).
+    asymmetry = None
+    if search_available and any(wt for wt in web_titles.values()):
+        try:
+            text, provider, _err, _usage = await generate_insight(
+                _ASYMMETRY_SYSTEM, _asymmetry_user(pins, web_titles),
+                max_tokens=300, surface="dossier-corroborate",
+            )
+            if text:
+                asymmetry = {"note": text.strip(), "provider": provider}
+        except Exception as exc:  # noqa: BLE001 — never blocks the math
+            logger.warning("corroboration asymmetry pass failed: %s", exc)
+
+    payload = {
+        "contract": "dossier-corroboration-v0",
+        "measured_at": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+        "search_available": search_available,
+        "search_source": "gdelt-doc-2.0" if any_lane_ok else
+                         ("client-supplied" if supplied_any else None),
+        "window_days": req.days,
+        "pins": pin_payloads,
+        "coverage_asymmetry": asymmetry,
+        "meta": {
+            "independence_rule": (
+                "near-identical headlines (syndicated wire) collapse to one "
+                "source; independently-operated outlets are counted, never "
+                "articles (G2)"),
+            "status_rule": (
+                f"established = ≥{ESTABLISHED_MIN_OUTLETS} independent outlets; "
+                "unverified otherwise; 'contested' is reserved for stance "
+                "detection (not emitted by v0 math)"),
+            "dropped_pins": dropped_pins,
+            "search_note": None if search_available else (
+                "no server-side web-search path answered — GDELT DOC 2.0 "
+                "unreachable and no supplied results; a SERP/Brave key would "
+                "add a generic-web lane"),
+        },
+    }
+    _CORROB_CACHE[cache_key] = (time.monotonic(), payload)
+    return payload
 
 
 @router.post("/synthesize")

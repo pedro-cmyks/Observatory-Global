@@ -30,6 +30,25 @@ _MAX_RECORDS = 40
 
 _cache: dict[str, tuple[float, dict | None]] = {}
 
+# DOC 2.0 hard rate limit: ONE request per 5 seconds per IP (the API answers
+# excess requests with an HTML notice, not JSON — measured on the P0.6b
+# corroboration fixture: concurrent gather → 3 of 6 queries rejected). All
+# fetches in this process serialize through this throttle.
+_RATE_INTERVAL_S = 5.1
+_rate_lock: asyncio.Lock | None = None
+_last_fire = 0.0
+
+
+async def _throttle() -> None:
+    global _rate_lock, _last_fire
+    if _rate_lock is None:
+        _rate_lock = asyncio.Lock()
+    async with _rate_lock:
+        wait = _RATE_INTERVAL_S - (time.monotonic() - _last_fire)
+        if wait > 0:
+            await asyncio.sleep(wait)
+        _last_fire = time.monotonic()
+
 _STOP = {
     "the", "and", "in", "of", "on", "for", "a", "an", "to", "at",
     "updates", "update", "news", "coverage", "crisis", "situation",
@@ -52,20 +71,27 @@ async def fetch_external_depth(
     label: str,
     country: str | None = None,
     known_urls: set[str] | None = None,
+    *,
+    timespan: str = "3d",
+    raw_query: str | None = None,
 ) -> dict | None:
     """Returns {items, query, fetched_at, source: 'gdelt-doc-2.0'} or None
-    (lane unavailable — caller renders the gap, never an error)."""
-    query = build_query(label, country)
+    (lane unavailable — caller renders the gap, never an error).
+
+    `timespan`/`raw_query`: the corroboration lane (P0.6b) reuses this fetch
+    with a wider window and its own pre-built query string."""
+    query = raw_query if raw_query is not None else build_query(label, country)
     if not query:
         return None
     now = time.time()
-    hit = _cache.get(query)
+    cache_key = f"{query}|{timespan}"
+    hit = _cache.get(cache_key)
     if hit and now - hit[0] < _CACHE_TTL:
         return hit[1]
 
     params = urllib.parse.urlencode({
         "query": query, "mode": "artlist", "format": "json",
-        "maxrecords": _MAX_RECORDS, "timespan": "3d", "sort": "hybridrel",
+        "maxrecords": _MAX_RECORDS, "timespan": timespan, "sort": "hybridrel",
     })
     url = f"{DOC_URL}?{params}"
 
@@ -76,14 +102,17 @@ async def fetch_external_depth(
             return r.read()
 
     try:
+        await _throttle()   # DOC 2.0: 1 req / 5s per IP, else an HTML notice
         body = await asyncio.wait_for(
             asyncio.get_event_loop().run_in_executor(None, _get),
             timeout=_TIMEOUT_SECONDS + 2,
         )
+        # Over-limit / error responses come back as HTML or plain text, not
+        # JSON — treat any non-JSON body as an honest gap, never a crash.
         arts = json.loads(body).get("articles", [])
     except Exception as exc:  # noqa: BLE001 — any failure = honest gap
-        logger.warning("external depth lane unavailable (%s): %s", query, exc)
-        _cache[query] = (now, None)  # negative-cache the flaky window too
+        logger.warning("external depth lane unavailable (%s): %s", query, str(exc)[:120])
+        _cache[cache_key] = (now, None)  # negative-cache the flaky window too
         return None
 
     known = known_urls or set()
@@ -115,5 +144,5 @@ async def fetch_external_depth(
                                       if (a.get("url") or "") in known),
         "fetched_at": now,
     }
-    _cache[query] = (now, result)
+    _cache[cache_key] = (now, result)
     return result

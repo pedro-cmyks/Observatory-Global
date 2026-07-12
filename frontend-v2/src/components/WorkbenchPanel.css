@@ -275,3 +275,6 @@
   .wb-trail-action { width: 56px; }
   .wb-empty { font-size: 11px; }
 }
+
+/* P0.6b: the web-corroboration ramp next to REPORT */
+.wb-action--corroborate { border-color: rgba(96, 165, 250, 0.35); color: rgba(147, 197, 253, 0.85); }

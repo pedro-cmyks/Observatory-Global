@@ -7,6 +7,10 @@ import {
     type ClusterResult, type ConnectionsData, type ConnectionNode,
 } from '../lib/dossierConnections'
 import { synthesizeDossier, synthesisMarkdown, isArticle, splitCitations, type DossierSynthesis } from '../lib/dossierSynthesis'
+import {
+    buildCorroborationRequest, fetchCorroboration, loadCachedCorroboration,
+    saveCorroboration, corroborationMarkdown, statusChip, type CorroborationData,
+} from '../lib/dossierCorroboration'
 import { DossierConnections } from './DossierConnections'
 import { track, trackOnce } from '../lib/telemetry'
 import { renameInvestigation, type Investigation } from '../lib/workbench'
@@ -35,7 +39,9 @@ function renderWithCitations(text: string) {
 /** Phase 3 report view — a structured dossier generated from the FROZEN
  *  Workbench pins (#227 snapshots), with a Markdown export. Dossier v2 (W3)
  *  adds who-says-what + voice sections MEASURED at generation time. */
-export function DossierView({ investigation, onClose }: { investigation: Investigation; onClose: () => void }) {
+export function DossierView({ investigation, onClose, autoCorroborate }: {
+    investigation: Investigation; onClose: () => void; autoCorroborate?: boolean
+}) {
     const now = useMemo(() => new Date().toISOString(), [])
     const [enrichment, setEnrichment] = useState<DossierEnrichment | undefined>(undefined)
     const dossier = useMemo(
@@ -104,6 +110,40 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
         return () => clearTimeout(t)
     }, [investigation.id, conn, dossier.pinCount])
 
+    // P0.6b web corroboration — pins checked against live web coverage with
+    // source-independence weighting. Cached per investigation (re-run on
+    // demand); a run takes up to ~40s (DOC 2.0 latency), so it is button-
+    // triggered, never automatic — except via the Workbench CORROBORATE ramp.
+    const [corrob, setCorrob] = useState<CorroborationData | null>(
+        () => loadCachedCorroboration(investigation.id),
+    )
+    const [corrobRunning, setCorrobRunning] = useState(false)
+    const [corrobFailed, setCorrobFailed] = useState(false)
+    const corrobAutoFired = useRef(false)
+    const runCorroboration = useCallback(async (force: boolean) => {
+        if (dossierRef.current.pinCount === 0) return
+        setCorrobRunning(true)
+        setCorrobFailed(false)
+        track('dossier_corroborate', { pins: dossierRef.current.pinCount, force })
+        const body = buildCorroborationRequest(
+            dossierRef.current.pins, connRef.current?.data.nodes ?? null)
+        const data = await fetchCorroboration(body, force)
+        if (!mounted.current) return
+        if (data) {
+            saveCorroboration(investigation.id, data)
+            setCorrob(data)
+        } else {
+            setCorrobFailed(true)   // keep any cached result on screen
+        }
+        setCorrobRunning(false)
+    }, [investigation.id])
+    useEffect(() => {
+        if (!autoCorroborate || corrobAutoFired.current) return
+        corrobAutoFired.current = true
+        if (!corrob) void runCorroboration(false)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [autoCorroborate])
+
     // W3: measured sections load after the frozen core renders; a fetch
     // failure leaves the report intact (sections simply absent).
     useEffect(() => {
@@ -143,6 +183,13 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
             const sMarker = '## Executive summary'
             const sAt = base.indexOf(sMarker)
             base = sAt === -1 ? `${sblock}\n${base}` : `${base.slice(0, sAt)}${sblock}\n${base.slice(sAt)}`
+        }
+        // P0.6b: the web-corroboration section travels with the export.
+        if (corrob) {
+            const cblock = corroborationMarkdown(corrob).join('\n') + '\n'
+            const cMarker = '\n## Timeline'
+            const cAt = base.indexOf(cMarker)
+            base = cAt === -1 ? `${base}\n${cblock}` : `${base.slice(0, cAt)}\n${cblock}${base.slice(cAt)}`
         }
         if (!conn || conn.data.nodes.length < 2) return base
         const block = connectionsSummaryLines(conn.data, conn.cluster, {
@@ -199,6 +246,12 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
                         )}
                     </div>
                     <div className="dossier-actions">
+                        <button
+                            className="dossier-btn dossier-btn--corroborate"
+                            onClick={() => void runCorroboration(!!corrob)}
+                            disabled={corrobRunning || dossier.pinCount === 0}
+                            data-tip="Check each pin against live web coverage — independent sources weighted (syndicated wire collapses to one). Takes up to ~40s."
+                        >{corrobRunning ? 'Corroborating…' : corrob ? 'Re-corroborate' : 'Corroborate'}</button>
                         <button className="dossier-btn" onClick={copy}>{copied ? 'Copied' : 'Copy MD'}</button>
                         <button className="dossier-btn" onClick={download}>Download</button>
                         <button className="dossier-close" onClick={onClose} aria-label="Close">×</button>
@@ -320,6 +373,54 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
                             do these stories connect — and which sub-narratives hold?
                         </p>
                         <DossierConnections inv={investigation} onData={onConnections} />
+                    </section>
+                )}
+
+                {(corrob || corrobRunning || corrobFailed) && (
+                    <section className="dossier-section dossier-corroboration">
+                        <h2>Web corroboration</h2>
+                        {corrobRunning ? (
+                            <p className="dossier-meta">Checking pins against live web coverage… (up to ~40s — the search lane is slow, not stuck)</p>
+                        ) : corrob && corrob.search_available ? (
+                            <>
+                                <p className="dossier-meta" data-tip={corrob.meta?.independence_rule ?? ''}>
+                                    measured {new Date(corrob.measured_at).toLocaleString()} · independent sources weighted · {corrob.search_source} · window {corrob.window_days}d
+                                </p>
+                                {corrob.pins.map(p => (
+                                    <div key={p.id} className="dossier-pin">
+                                        <div className="dossier-pin-head">
+                                            <span className={`dossier-corrob-chip dossier-corrob-chip--${p.status}`}>{statusChip(p.status)}</span>
+                                            <span className="dossier-pin-label">{p.label}</span>
+                                        </div>
+                                        <div className="dossier-pin-summary">{p.note}</div>
+                                        {p.citations.length > 0 && (
+                                            <ul className="dossier-evidence">
+                                                {p.citations.map((c, i) => (
+                                                    <li key={i}>
+                                                        {c.url ? <a href={c.url} target="_blank" rel="noopener noreferrer">{c.title}</a> : c.title}
+                                                        <span className="dossier-src"> — {c.outlet}{c.lane === 'client-supplied' ? ' (supplied)' : ''}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                ))}
+                                {corrob.coverage_asymmetry?.note && (
+                                    <div className="dossier-pin">
+                                        <div className="dossier-pin-head">
+                                            <span className="dossier-pin-label">Coverage asymmetry</span>
+                                            <span className="dossier-pin-type">what the web emphasizes vs the pinned evidence</span>
+                                        </div>
+                                        <div className="dossier-pin-summary">{corrob.coverage_asymmetry.note}</div>
+                                        <p className="dossier-meta">phrased from the gathered titles only{corrob.coverage_asymmetry.provider ? ` · ${corrob.coverage_asymmetry.provider}` : ''}</p>
+                                    </div>
+                                )}
+                            </>
+                        ) : corrob ? (
+                            <p className="dossier-meta">{corrob.meta?.search_note ?? 'Web-search lane unavailable — corroboration not measured.'}</p>
+                        ) : (
+                            <p className="dossier-meta">Corroboration failed — the search lane did not answer. Re-run from the button above.</p>
+                        )}
                     </section>
                 )}
 
