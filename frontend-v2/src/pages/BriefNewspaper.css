@@ -1325,3 +1325,26 @@
     font-size: 0.7rem; letter-spacing: 0.12em; font-weight: 600;
     color: var(--color-text-muted, #8a8f98); text-transform: uppercase;
 }
+
+
+/* B2 (dataviz audit): per-row peak annotation — sparks are self-normalized,
+   the peak number is the magnitude anchor. */
+.brief-spark { position: relative; }
+.brief-spark-peak {
+    position: absolute;
+    top: -3px;
+    right: 0;
+    font-size: 8px;
+    line-height: 1;
+    color: var(--brief-muted, #8b97a6);
+    font-family: var(--font-mono, monospace);
+    pointer-events: none;
+}
+
+/* B3: tone-scale unit note under the Most Negative/Positive columns */
+.brief-scale-note {
+    font-size: 9px;
+    color: var(--brief-muted, #8b97a6);
+    margin-top: 4px;
+    letter-spacing: 0.04em;
+}

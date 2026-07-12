@@ -171,16 +171,26 @@ function SentimentSourceBadge({ source, coverage }: { source?: string; coverage?
     )
 }
 
-function trendArrow(trend?: string, changed10h?: number): { glyph: string; cls: string; label: string } | null {
-    if (trend === 'surging') return { glyph: '▲', cls: 'up', label: changed10h ? `+${changed10h} / 10h` : 'surging' }
-    if (trend === 'fading') return { glyph: '▼', cls: 'down', label: changed10h ? `${changed10h} / 10h` : 'fading' }
-    if (trend === 'stable') return { glyph: '—', cls: 'flat', label: 'stable' }
+// B1 (dataviz audit): changed_10h is RAW FEED VELOCITY (delta of raw assigned
+// signals over 10h, whole feed) — a different lineage and denominator than the
+// row's window count, so "34 ▼ −168/10h" read as broken math. Label the
+// lineage instead of juxtaposing two unlabeled counts of different bases.
+function trendArrow(trend?: string, changed10h?: number): { glyph: string; cls: string; label: string; tip: string } | null {
+    const tip = changed10h
+        ? `Raw feed velocity: ${changed10h > 0 ? '+' : ''}${changed10h} raw assigned signals over the last 10h across the whole feed — a different lineage than the row count, which is this window's signals.`
+        : 'Trend over the last 10h of the raw feed.'
+    if (trend === 'surging') return { glyph: '▲', cls: 'up', label: changed10h ? `+${changed10h}/10h raw` : 'surging', tip }
+    if (trend === 'fading') return { glyph: '▼', cls: 'down', label: changed10h ? `${changed10h}/10h raw` : 'fading', tip }
+    if (trend === 'stable') return { glyph: '—', cls: 'flat', label: 'stable', tip }
     return null
 }
 
 // Inline sparkline from a thread's hourly timeline. Graphic slot per the
 // surfaces review (§3): degrades to null when the timeline is too short,
 // the slot itself stays in the row markup.
+// B2 (dataviz audit): each spark is max-normalized to its own row — a 3/h
+// ripple draws the same amplitude as a 300/h spike. The peak annotation gives
+// each spark the magnitude anchor cross-row comparison needs.
 function Sparkline({ timeline }: { timeline?: TimelinePoint[] }) {
     if (!timeline || timeline.length < 2) return <span className="brief-spark brief-spark-empty" />
     const counts = timeline.map(p => p.count)
@@ -192,10 +202,11 @@ function Sparkline({ timeline }: { timeline?: TimelinePoint[] }) {
         .map((c, i) => `${(i * step).toFixed(1)},${(h - 2 - (c / max) * (h - 4)).toFixed(1)}`)
         .join(' ')
     return (
-        <span className="brief-spark">
+        <span className="brief-spark" data-tip={`Shape only — each sparkline is scaled to its own peak of ${max.toLocaleString()} signals/h; compare rows by the peak number, not the amplitude.`}>
             <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} preserveAspectRatio="none">
                 <polyline points={points} fill="none" stroke="currentColor" strokeWidth="1.5" />
             </svg>
+            <span className="brief-spark-peak">{max > 999 ? `${(max / 1000).toFixed(1)}k` : max}/h</span>
         </span>
     )
 }
@@ -511,7 +522,7 @@ export function BriefNewspaper() {
                     <Sparkline timeline={t.hourly_timeline} />
                     <span className="brief-thread-count">{t.signal_count.toLocaleString()}</span>
                     {arrow && (
-                        <span className={`brief-thread-trend brief-thread-trend-${arrow.cls}`}>
+                        <span className={`brief-thread-trend brief-thread-trend-${arrow.cls}`} data-tip={arrow.tip}>
                             {arrow.glyph} {arrow.label}
                         </span>
                     )}
@@ -680,7 +691,7 @@ export function BriefNewspaper() {
                                         {(() => {
                                             const arrow = trendArrow(leadThread.trend, leadThread.changed_10h)
                                             return arrow ? (
-                                                <span className={`brief-thread-trend brief-thread-trend-${arrow.cls}`}>
+                                                <span className={`brief-thread-trend brief-thread-trend-${arrow.cls}`} data-tip={arrow.tip}>
                                                     {arrow.glyph} {arrow.label}
                                                 </span>
                                             ) : null
@@ -860,7 +871,11 @@ export function BriefNewspaper() {
                                                 geographies.map(geo => {
                                                     const iso2 = NUMERIC_TO_ISO2[String(geo.id)]
                                                     const count = iso2 ? (signalMap.get(iso2) ?? 0) : 0
-                                                    const intensity = count / maxSignals
+                                                    // B6 (dataviz audit): linear normalize over a heavy-tailed
+                                                    // distribution saturated the US and left ~90% of countries in
+                                                    // the bottom 10% of the ramp reading as "no data" — sqrt spreads
+                                                    // the mid-range without lying about rank order.
+                                                    const intensity = Math.sqrt(count / maxSignals)
                                                     return (
                                                         <Geography
                                                             key={geo.rsmKey}
@@ -958,8 +973,12 @@ export function BriefNewspaper() {
 
                     {/* BACK-MATTER — sentiment + sources + theme index */}
                     <section className="brief-bottom-row">
+                        {/* B3 (dataviz audit): ONE user-facing tone scale everywhere — raw
+                            GDELT ±10 (the scale ThemeDetail already explains). The API serves
+                            ÷10 values for the internal ±0.1 thresholds; multiply back for
+                            display and label the unit. */}
                         <div className="brief-bottom-col">
-                            <h3 className="brief-bottom-heading">Most Negative</h3>
+                            <h3 className="brief-bottom-heading" data-tip="Avg GDELT tone, −10 (critical/conflict) to +10 (supportive). Scores rarely exceed ±3 in normal news — the same scale as the console's thread detail.">Most Negative</h3>
                             {data.negative_sentiment.slice(0, 4).map(c => (
                                 <button
                                     key={c.code}
@@ -967,15 +986,16 @@ export function BriefNewspaper() {
                                     onClick={() => goToAtlas(`country=${c.code}`, 'most_negative')}
                                 >
                                     <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
-                                    <span className="brief-bottom-num negative">
-                                        {c.sentiment.toFixed(2)}
+                                    <span className="brief-bottom-num negative" data-tip={`Avg tone ${(c.sentiment * 10).toFixed(1)} on the GDELT −10…+10 scale (${c.signals.toLocaleString()} signals)`}>
+                                        {(c.sentiment * 10).toFixed(1)}
                                         <SentimentSourceBadge source={c.sentiment_source} coverage={c.nlp_coverage} />
                                     </span>
                                 </button>
                             ))}
+                            <div className="brief-scale-note">GDELT tone · −10…+10</div>
                         </div>
                         <div className="brief-bottom-col">
-                            <h3 className="brief-bottom-heading">Most Positive</h3>
+                            <h3 className="brief-bottom-heading" data-tip="Avg GDELT tone, −10 (critical/conflict) to +10 (supportive). Scores rarely exceed ±3 in normal news — the same scale as the console's thread detail.">Most Positive</h3>
                             {data.positive_sentiment.slice(0, 4).map(c => (
                                 <button
                                     key={c.code}
@@ -983,12 +1003,13 @@ export function BriefNewspaper() {
                                     onClick={() => goToAtlas(`country=${c.code}`, 'most_positive')}
                                 >
                                     <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
-                                    <span className="brief-bottom-num positive">
-                                        +{c.sentiment.toFixed(2)}
+                                    <span className="brief-bottom-num positive" data-tip={`Avg tone +${(c.sentiment * 10).toFixed(1)} on the GDELT −10…+10 scale (${c.signals.toLocaleString()} signals)`}>
+                                        +{(c.sentiment * 10).toFixed(1)}
                                         <SentimentSourceBadge source={c.sentiment_source} coverage={c.nlp_coverage} />
                                     </span>
                                 </button>
                             ))}
+                            <div className="brief-scale-note">GDELT tone · −10…+10</div>
                         </div>
                         <div className="brief-bottom-col">
                             <h3 className="brief-bottom-heading">Sources</h3>
