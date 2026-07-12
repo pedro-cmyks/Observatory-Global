@@ -54,10 +54,17 @@ ANCHOR_THRESHOLD = 0.93
 # Recurring-format noise (#224): coherent-looking labels that are listings,
 # not narratives. They persist forever by nature, so they must never promote.
 LISTING_PATTERNS = re.compile(
-    r"\b(stock price|share price|market movements?|real estate listings?|"
+    r"\b(stock price|share price|market movements?|market trends?|"
+    r"economic and market|real estate listings?|"
     r"property listings?|company information|exchange rates?|"
     r"lottery (results?|numbers)|horoscopes?|weather forecasts?|"
-    r"tv (guide|listings)|recipes)\b",
+    r"tv (guide|listings|program(me)? listings?)|program listings?|recipes|"
+    # #229 recall-fix (2026-07-08): generic section/desk aggregates the raw-e5
+    # noise gate incidentally caught. These persist forever by nature (a feed,
+    # not a narrative) so they must never promote — same class as the listings
+    # above. Measured on the 2026-07-08 candidate pool (TV Program Listings,
+    # Joys of Joyscrolling, Economic and Market Trends).
+    r"joyscrolling|joys of joy)\b",
     re.IGNORECASE,
 )
 # Deliberately narrow: only unambiguous grab-bag markers. Broad terms like
@@ -77,6 +84,14 @@ ROUNDUP_PATTERNS = re.compile(
     # persisted-corpus snapshot. 'Notícias Diversas', 'Regional News and Events'.
     r"diverse news|(regional|general|local) news( (and|&) (events|updates|stories))?|"
     r"news (and|&) events|"
+    # #229 recall-fix (2026-07-08): generic country/section news aggregates that
+    # sat below the recalibrated noise gate (Danish News Headlines, News Headlines
+    # Cluster, Iraqi News and Culture, 'Colombia News July 2026'). A real thread
+    # names its subject; 'News Headlines', 'News and Culture', '<X> News <Month>
+    # <Year>' are desk digests. 'Crime Headlines' / 'Sports News' stay legit —
+    # only the bare 'news headlines' grab-bag and the month-year digest match.
+    r"news headlines?|news (and|&) culture|"
+    r"news (january|february|march|april|may|june|july|august|september|october|november|december) 20\d\d|"
     r"tin t[ứu]c t[ổo]ng h[ợo]p|berita terkini|haber [öo]zetleri)\b",
     re.IGNORECASE,
 )
@@ -87,7 +102,19 @@ class LifecycleConfig:
     persist_min: int = 2        # snapshots to be promotable
     cohesion_min: float = 0.50  # mean member cohesion to promote
     volume_min: int = 30        # aggregate kept signals to promote
-    noise_max: float = 0.50     # max student noise-rate to promote (quality gate)
+    # Max student evidence-role noise-rate to promote. RECALIBRATED 2026-07-08
+    # (docs/state/2026-07-08-clustering-recall-fix.md): the raw-e5 student noise
+    # scorer over-flags real high-cohesion narratives (Venezuela Earthquake 0.72,
+    # Albanian Protests 0.80, Hezbollah 0.82) — every one of the 145 otherwise-
+    # qualified candidates sat at noise>=0.50, so the old 0.50 gate promoted
+    # nothing new (30 active / 868 candidate). Whitening was tested as a purity
+    # replacement and DISPROVED (grab-bags like TV Listings 0.72 / Joyscrolling
+    # 0.84 are topically tight; evolving stories drift low), so the honest purity
+    # guard is the roundup/junk-label filter below, not a cohesion threshold. The
+    # noise gate now only rejects the extreme tail; 0.85 lets real stories through
+    # while TV Listings (0.98) / News Headlines Cluster (0.90) / Joyscrolling
+    # (0.96) stay blocked. Reversible via --noise-max.
+    noise_max: float = 0.85     # max student noise-rate to promote (quality gate)
     stale_k: int = 2            # active -> deprecated after K unseen ticks
     retire_m: int = 4           # deprecated -> retired after M unseen ticks
 
@@ -247,6 +274,55 @@ def next_state(
     if state == "deprecated" and since_seen >= cfg.retire_m:
         return "retired"
     return state
+
+
+def _qualifies(t: "Topic", cfg: LifecycleConfig) -> bool:
+    """Promotion eligibility from persisted quality signals alone (no seen_now).
+
+    Mirrors the `qualifies` clause inside next_state, but reads the topic's
+    aggregate state so it can be applied to the EXISTING population during a
+    gate recalibration (--regrade) without waiting for each topic to be
+    re-matched by a future snapshot.
+    """
+    quality_ok = t.noise_rate is None or t.noise_rate < cfg.noise_max
+    return (
+        len(t.snapshots) >= cfg.persist_min
+        and t.mean_cohesion >= cfg.cohesion_min
+        and t.agg_n_signals >= cfg.volume_min
+        and not t.is_roundup
+        and quality_ok
+    )
+
+
+def regrade_states(topics: list[Topic], cfg: LifecycleConfig) -> tuple[int, int]:
+    """Apply the current gate to the WHOLE population (gate-recalibration pass).
+
+    next_state only reconsiders topics SEEN in the current tick, so a gate
+    change (e.g. a raised noise_max) never reaches the standing candidate pool
+    until each story happens to be re-matched. This one-time pass re-evaluates
+    every topic against `cfg`:
+      - candidate/deprecated/retired that now qualify -> active
+      - active that no longer qualifies (roundup/high-noise/thin) -> candidate
+    Pure state change: no member/centroid/identity mutation, no TRUNCATE, so
+    resurrection identities and history are preserved (reversible = re-run with
+    the prior cfg). Returns {promoted, demoted}.
+    """
+    promoted = demoted = 0
+    for t in topics:
+        ok = _qualifies(t, cfg)
+        # Recency guard: only promote stories still inside the fresh window.
+        # A deprecated/retired topic aged out because it went quiet (since_seen
+        # >= stale_k); re-promoting it on a gate change alone would resurrect a
+        # dead story (e.g. a resolved election) into serving. Candidates are new,
+        # so they carry since_seen 0. This keeps --regrade to "currently-live
+        # stories the old gate wrongly blocked", not "everything that ever met
+        # the volume bar".
+        fresh = t.since_seen < cfg.stale_k
+        if ok and fresh and t.state in ("candidate", "deprecated"):
+            t.state = "active"; t.dirty = True; promoted += 1
+        elif not ok and t.state == "active":
+            t.state = "candidate"; t.dirty = True; demoted += 1
+    return promoted, demoted
 
 
 def running_mean(old: np.ndarray, k: int, new: np.ndarray) -> np.ndarray:
@@ -712,6 +788,8 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         overrides["persist_min"] = args.persist_min
     if getattr(args, "volume_min", None) is not None:
         overrides["volume_min"] = args.volume_min
+    if getattr(args, "noise_max", None) is not None:
+        overrides["noise_max"] = args.noise_max
     cfg = LifecycleConfig(**overrides)
     conn = await asyncpg.connect(db)
     try:
@@ -740,6 +818,10 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
             topics = merge_duplicates(topics)
             merges = before_merge - len(topics)
 
+        regraded: tuple[int, int] | None = None
+        if getattr(args, "regrade", False):
+            regraded = regrade_states(topics, cfg)
+
         summary: dict[str, Any] = {
             "mode": "rebuild" if args.rebuild else "incremental",
             "n_clusters": len(clusters),
@@ -751,8 +833,11 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
             "roundups": sum(1 for t in topics if t.is_roundup),
             "high_noise": sum(1 for t in topics if (t.noise_rate or 0) >= cfg.noise_max),
             "scored_noise": args.student_model is not None,
+            "noise_max": cfg.noise_max,
             "dry_run": args.dry_run,
         }
+        if regraded is not None:
+            summary["regrade_promoted"], summary["regrade_demoted"] = regraded
         if not args.dry_run:
             if args.rebuild:
                 await conn.execute("TRUNCATE dynamic_topic_members, dynamic_topics RESTART IDENTITY CASCADE")
@@ -778,6 +863,12 @@ def parse_args() -> argparse.Namespace:
                     help="override LifecycleConfig.persist_min (snapshots-seen to promote; scoped bootstrap uses 1)")
     ap.add_argument("--volume-min", type=int, default=None,
                     help="override LifecycleConfig.volume_min (min agg kept signals to promote; scoped regime ~12)")
+    ap.add_argument("--noise-max", type=float, default=None,
+                    help="override LifecycleConfig.noise_max (max student noise-rate to promote; 2026-07-08 recal=0.85)")
+    ap.add_argument("--regrade", action="store_true",
+                    help="one-time gate recalibration: re-evaluate the WHOLE standing population "
+                         "against the current gate (promote qualified candidates/deprecated even if "
+                         "not seen this tick, demote active that no longer qualifies). No TRUNCATE.")
     return ap.parse_args()
 
 
