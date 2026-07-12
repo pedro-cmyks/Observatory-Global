@@ -27,6 +27,66 @@ _COMPONENT_WEIGHTS = {
     "temporal_stability": 0.05,
 }
 
+TOPIC_PAGE_SQL = """
+SELECT id, label, state, is_junk, last_seen
+FROM dynamic_topics
+WHERE id > $1 AND state = ANY($2::text[])
+ORDER BY id
+LIMIT $3
+"""
+
+MEMBER_BATCH_SQL = """
+/* subject-geo member loader */
+WITH selected_topics AS (
+    SELECT id, centroid_vec
+    FROM dynamic_topics
+    WHERE id = ANY($1::bigint[])
+), latest AS (
+    SELECT dtm.dynamic_topic_id, MAX(dtm.snapshot_at) AS snapshot_at
+    FROM dynamic_topic_members dtm
+    JOIN selected_topics st ON st.id = dtm.dynamic_topic_id
+    GROUP BY dtm.dynamic_topic_id
+), member_signals AS (
+    SELECT DISTINCT dtm.dynamic_topic_id AS topic_id, sid::bigint AS signal_id
+    FROM dynamic_topic_members dtm
+    JOIN latest l ON l.dynamic_topic_id = dtm.dynamic_topic_id
+                 AND l.snapshot_at = dtm.snapshot_at
+    JOIN emergent_clusters ec ON ec.id = dtm.emergent_cluster_id
+    CROSS JOIN LATERAL unnest(
+        COALESCE(ec.sample_signal_ids, ARRAY[]::bigint[])
+    ) sid
+    UNION
+    SELECT DISTINCT st.id, tm.signal_id
+    FROM selected_topics st
+    JOIN topic_members tm ON tm.topic_id = 'dynamic-topic-' || st.id::text
+    WHERE tm.engine_version = 'unified-v2'
+      AND tm.role = 'evidence'
+      AND tm.member_kind = 'signal'
+      AND tm.signal_id IS NOT NULL
+)
+SELECT
+    ms.topic_id,
+    s.id AS signal_id,
+    s.headline,
+    s.source_lang AS language,
+    s.country_code AS coverage_country,
+    s.source_family,
+    s.timestamp AS published_at,
+    s.nlp_persons,
+    s.nlp_persons_xlm,
+    CASE
+      WHEN se.vec IS NOT NULL AND cardinality(st.centroid_vec) = 768
+      THEN 1 - (se.vec::vector <=> st.centroid_vec::vector)
+      ELSE NULL
+    END AS embedding_similarity
+FROM member_signals ms
+JOIN selected_topics st ON st.id = ms.topic_id
+JOIN signals_v2 s ON s.id = ms.signal_id
+LEFT JOIN signal_embeddings se ON se.signal_id = s.id
+WHERE s.timestamp >= now() - make_interval(hours => $2)
+ORDER BY ms.topic_id, s.timestamp DESC, s.id
+"""
+
 
 @dataclass(frozen=True)
 class SignalSubjectInput:
@@ -43,6 +103,41 @@ class SignalSubjectInput:
 def _canonical_country(code: str) -> str:
     code = str(code or "").strip().upper()
     return _PROJECT_TO_ISO.get(code, code)
+
+
+def _record_get(record: Any, key: str, default: Any = None) -> Any:
+    if isinstance(record, dict):
+        return record.get(key, default)
+    try:
+        return record[key]
+    except (KeyError, TypeError):
+        return default
+
+
+def _parse_ner_places(*values: Any) -> tuple[str, ...]:
+    places: list[str] = []
+    for value in values:
+        if not value:
+            continue
+        if isinstance(value, str):
+            try:
+                import json
+
+                value = json.loads(value)
+            except (TypeError, ValueError):
+                continue
+        if not isinstance(value, list):
+            continue
+        for item in value:
+            if isinstance(item, str):
+                places.append(item)
+            elif isinstance(item, dict) and str(item.get("type", "")).upper() in {
+                "GPE", "LOC", "FAC"
+            }:
+                text = item.get("text") or item.get("name") or item.get("value")
+                if text:
+                    places.append(str(text))
+    return tuple(dict.fromkeys(places))
 
 
 def extract_headline_country_evidence(headline: str) -> list[dict[str, object]]:
@@ -209,3 +304,126 @@ def score_subject_candidates(
             for s in signals if s.coverage_country
         }),
     }
+
+
+async def load_topic_signals(
+    conn: Any,
+    topic_ids: Sequence[int],
+    *,
+    hours: int,
+) -> dict[int, list[SignalSubjectInput]]:
+    """Load the evidence members for one operational batch, never a universe cap."""
+    grouped: dict[int, list[SignalSubjectInput]] = defaultdict(list)
+    if not topic_ids:
+        return grouped
+    records = await conn.fetch(MEMBER_BATCH_SQL, list(topic_ids), hours)
+    for record in records:
+        topic_id = int(_record_get(record, "topic_id"))
+        grouped[topic_id].append(SignalSubjectInput(
+            signal_id=int(_record_get(record, "signal_id")),
+            headline=str(_record_get(record, "headline") or ""),
+            language=_record_get(record, "language"),
+            coverage_country=_record_get(record, "coverage_country"),
+            source_family=_record_get(record, "source_family"),
+            published_at=_record_get(record, "published_at"),
+            ner_places=_parse_ner_places(
+                _record_get(record, "nlp_persons"),
+                _record_get(record, "nlp_persons_xlm"),
+            ),
+            embedding_similarity=_record_get(record, "embedding_similarity"),
+        ))
+    return grouped
+
+
+async def run_complete_universe(
+    conn: Any,
+    *,
+    batch_size: int,
+    states: Sequence[str],
+    hours: int,
+    resume_cursor: int = 0,
+    max_retries: int = 2,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Cursor through every selected topic or return an explicitly partial run."""
+    if batch_size <= 0:
+        raise ValueError("batch_size must be positive")
+    cursor = int(resume_cursor)
+    rows: list[dict[str, Any]] = []
+    failures: list[dict[str, Any]] = []
+    retries = 0
+    batches = 0
+    complete = False
+
+    while True:
+        attempts = 0
+        while True:
+            try:
+                topic_page = await conn.fetch(
+                    TOPIC_PAGE_SQL, cursor, list(states), batch_size
+                )
+                break
+            except Exception as exc:  # preserves a resumable cursor and receipt
+                if attempts >= max_retries:
+                    failures.append({"cursor": cursor, "reason": str(exc)})
+                    topic_page = None
+                    break
+                attempts += 1
+                retries += 1
+        if topic_page is None:
+            break
+        if not topic_page:
+            complete = True
+            break
+
+        batches += 1
+        topic_ids = [int(_record_get(topic, "id")) for topic in topic_page]
+        try:
+            signals_by_topic = await load_topic_signals(
+                conn, topic_ids, hours=hours
+            )
+        except Exception as exc:
+            failures.append({"cursor": cursor, "reason": str(exc)})
+            break
+
+        for topic in topic_page:
+            topic_id = int(_record_get(topic, "id"))
+            signals = signals_by_topic.get(topic_id, [])
+            inference = score_subject_candidates(signals)
+            rows.append({
+                "dynamic_topic_id": topic_id,
+                "label": _record_get(topic, "label"),
+                "state": _record_get(topic, "state"),
+                "is_junk": bool(_record_get(topic, "is_junk", False)),
+                "last_seen": _record_get(topic, "last_seen"),
+                "signal_count": len(signals),
+                "quality_lane": (
+                    "junk" if _record_get(topic, "is_junk", False)
+                    else "inferred" if inference["primary_country"]
+                    else "abstained"
+                ),
+                "inference": inference,
+            })
+        cursor = max(topic_ids)
+
+    state_counts: dict[str, int] = defaultdict(int)
+    lane_counts: dict[str, int] = defaultdict(int)
+    for row in rows:
+        state_counts[str(row["state"])] += 1
+        lane_counts[str(row["quality_lane"])] += 1
+    meta = {
+        "complete_universe": complete,
+        "resume_cursor": int(resume_cursor),
+        "last_cursor": cursor,
+        "states": list(states),
+        "hours": hours,
+        "batch_size": batch_size,
+        "batches": batches,
+        "retries": retries,
+        "rows_discovered": len(rows),
+        "rows_processed": len(rows),
+        "rows_emitted": len(rows),
+        "by_lifecycle_state": dict(sorted(state_counts.items())),
+        "by_quality_lane": dict(sorted(lane_counts.items())),
+        "failures": failures,
+    }
+    return rows, meta

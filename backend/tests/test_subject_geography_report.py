@@ -1,8 +1,12 @@
 from datetime import datetime, timezone
 
+import pytest
+
 from scripts.subject_geography_report import (
     SignalSubjectInput,
+    TOPIC_PAGE_SQL,
     extract_headline_country_evidence,
+    run_complete_universe,
     score_subject_candidates,
 )
 
@@ -28,6 +32,11 @@ def _signal(
         ner_places=ner_places,
         embedding_similarity=embedding_similarity,
     )
+
+
+@pytest.fixture
+def anyio_backend():
+    return "asyncio"
 
 
 def test_extractor_returns_every_country_in_multi_country_headline():
@@ -104,3 +113,81 @@ def test_candidate_exposes_components_provenance_and_uncertainty():
     assert candidate["supporting_signal_ids"] == [1, 2]
     assert result["top_two_margin"] == 1.0
     assert result["entropy"] == 0.0
+
+
+class _FakeConnection:
+    def __init__(self, pages, members=None):
+        self.pages = list(pages)
+        self.members = members or {}
+        self.topic_calls = []
+
+    async def fetch(self, sql, *args, **_kwargs):
+        if "FROM dynamic_topics" in sql and "ORDER BY id" in sql:
+            self.topic_calls.append(args)
+            page = self.pages.pop(0)
+            if isinstance(page, Exception):
+                raise page
+            return page
+        if "subject-geo member loader" in sql:
+            topic_ids = args[0]
+            return [
+                row
+                for topic_id in topic_ids
+                for row in self.members.get(topic_id, [])
+            ]
+        if "archive_story_units" in sql:
+            return []
+        raise AssertionError(sql)
+
+
+def _topic(topic_id: int, state: str = "active"):
+    return {
+        "id": topic_id,
+        "label": f"Topic {topic_id}",
+        "state": state,
+        "is_junk": False,
+        "last_seen": datetime(2026, 7, 12, tzinfo=timezone.utc),
+    }
+
+
+@pytest.mark.anyio
+async def test_cursor_batches_reach_exhaustion_without_topic_ceiling():
+    conn = _FakeConnection([[_topic(1), _topic(2)], [_topic(3)], []])
+
+    rows, meta = await run_complete_universe(
+        conn,
+        batch_size=2,
+        states=("active", "candidate"),
+        hours=336,
+    )
+
+    assert [row["dynamic_topic_id"] for row in rows] == [1, 2, 3]
+    assert meta["complete_universe"] is True
+    assert meta["rows_discovered"] == meta["rows_processed"] == 3
+    assert meta["last_cursor"] == 3
+    assert [call[0] for call in conn.topic_calls] == [0, 2, 3]
+
+
+@pytest.mark.anyio
+async def test_failed_batch_is_resumable_and_never_claims_complete():
+    conn = _FakeConnection([[_topic(1)], RuntimeError("timeout")])
+
+    rows, meta = await run_complete_universe(
+        conn,
+        batch_size=1,
+        states=("active",),
+        hours=336,
+        max_retries=0,
+    )
+
+    assert [row["dynamic_topic_id"] for row in rows] == [1]
+    assert meta["complete_universe"] is False
+    assert meta["last_cursor"] == 1
+    assert meta["failures"][0]["reason"] == "timeout"
+
+
+def test_topic_page_sql_has_cursor_batch_but_no_total_topic_ceiling():
+    assert "id > $1" in TOPIC_PAGE_SQL
+    assert "ORDER BY id" in TOPIC_PAGE_SQL
+    assert "LIMIT $3" in TOPIC_PAGE_SQL
+    assert "OFFSET" not in TOPIC_PAGE_SQL
