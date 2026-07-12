@@ -548,3 +548,29 @@ topic property, both `verified=false`/honesty-preserving, A/B-gated like F3) is
 specced in `docs/specs/2026-06-30-atlas-engine-attention-anomaly-roles.md`. Paper
 note: report the unification as a 5-pipeline reconciliation with 3 done + 2
 measured-and-specced, not an absolute — the honest scope is the contribution.
+
+## 2026-07-12 addendum — compressed-e5 operational cost + whitening boundary conditions
+
+Two results close loops the substrate section opened:
+
+1. **The anisotropic-compression finding got its operational exhibit** (`9d1b04e7`):
+   the evidence-role student noise gate, run in raw compressed e5, over-flagged
+   real narratives (Venezuela Earthquake 0.72, Heatwave 0.88) and was the actual
+   cause of the 0.04% coverage wall — fixed, prod threads 30→597, coverage →39.7%.
+   Compression is not just a measurement artifact; it silently broke a production
+   gate.
+2. **Whitening head-to-head sets the cure's boundary** (`8e6b78ed` sweep,
+   `243410d3` adoption, `9d1b04e7` verdict): whitened HDBSCAN is blob-resistant
+   and purity-preserving but does NOT reliably cross the recall cliff, and
+   whitening-as-purity-replacement is DISPROVED (junk grab-bags are topically
+   tight — the failure is content, not geometry). Adopted consumer-by-consumer
+   where it measurably wins: dossier edges (tau 0.50, spurious edges dropped) and
+   the coherence guard (blob-vs-clean gap 0.126 whitened vs 0.011 raw, ~11×).
+   OpenAI-space and an LLM verifier were considered and NOT adopted (math-first).
+   Report the method as targeted de-compression, not a global substrate swap.
+
+Also load-bearing for the taxonomy section: the R3.1 DeepSeek category typer is
+now a SERVING gate input (junk separator, `41862150`) — typing precision has a
+production consequence beyond display badges. Artifacts:
+`docs/research/embedding-whitening/2026-07-07-whitening-findings.md`,
+`docs/state/2026-07-09-useful-coverage-gate.md`.

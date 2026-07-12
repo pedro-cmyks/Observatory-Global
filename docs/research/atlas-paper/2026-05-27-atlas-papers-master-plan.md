@@ -395,6 +395,23 @@ This is the syndication/dedup thesis extended from *identical copies* to
 not the fragment, and the facet typing is what makes the reassembled story
 *navigable* rather than a merged blob.
 
+**Product evidence accrued (2026-07-11/12, basis-weighted connection verdict —
+typed relations carry their epistemics).** The L3 connection layer over-claimed
+("one connected narrative" whenever ANY edge joined pins — semantic-only edges
+are a same-language/topical artifact risk, the correlation≠causation trap found
+dogfooding LatAm realignment). Shipped fix (`a12a1ef8`+`cbac24c1`): every
+pin↔pin edge carries a BASIS tier — **strong** (shared actor/place) > **text**
+(`text_mention`: math-only token cross-ref of one pin's evidence headlines vs
+the other's key-tokens/top actors, so an isolation verdict can never contradict
+a headline the report itself displays) > **weak** (semantic-only). Verdict
+states CONFIRMED ✓ vs CAUTION ⚠ ("similar in topic — treat as hypothesis");
+weak edges are never weight-scaled (a higher cosine must not read as a stronger
+link). Shared/top actors pass the junk-actor filter (`_is_valid_person` +
+gazetteer + multilingual geo guard) and GDELT truncation variants dedupe
+(`db870206`). Paper claim: the relation layer's contribution is not the edges
+but the *typed basis contract* — connection claims are served with the evidence
+class that produced them.
+
 **Evidence to collect:**
 - **Constellation-assembly accuracy (2026-07-06):** on a labeled set of big
   events, (a) orphan-attach precision/recall of the ≥0.93 + shared-token gate vs
@@ -772,6 +789,21 @@ the seven analyst questions than commodity dashboards.
   organic coverage" measurable. Candidate evaluation: does the coverage-asymmetry
   lens change analyst judgement of a story's significance vs the raw thread (the
   "what's buried / who's silent" task)?
+- **The Frank test as a repeatable eval protocol + the dossier honesty stack
+  (2026-07-10/12; `b69bdfc3` Frank v2, `cbac24c1` six fixes, `d82173ee` dataviz
+  audit).** The 07-06 "report must stand alone" cold-read is now a PROTOCOL, not
+  an anecdote: adversarial cold-reader → verdict with enumerated blockers →
+  targeted fixes → re-test. Frank v2 returned *usable-with-caveats* + 6 precise
+  blockers, all fixed within the week (isolation verdicts cross-checked against
+  displayed headlines via `text_mention`; junk actors filtered with a glass-box
+  rule — synthesis may only name measured link tokens; dates on every evidence
+  line + story windows; metadata-only pins named in gaps; umbrella-fold
+  divergence guard "related topics grouped by the engine, NOT one event";
+  coverage lens note when one language dominates). Companion: a dataviz expert
+  audit (`docs/specs/2026-07-11-dataviz-expert-audit.md`) ranking findings
+  misleading > illegible > wasteful, code-cited, 3 smallest honesty fixes
+  applied same commit. P7's evaluation-method contribution: honest-encoding
+  audits + cold-reader tests as the analyst-workflow QA loop.
 
 **Evidence to collect:**
 - Analyst task-completion study (10-15 analysts, structured tasks).
@@ -1055,6 +1087,16 @@ spec, not promoted to the paper track.
 
 Governance note (standing): Atlas rules the papers — these are RESULTS the
 papers absorb, never constraints on what Atlas builds next.
+
+## 2026-07-07→12 evolution (coverage delivery + dossier honesty arc)
+
+| Atlas evolution (shipped, measured) | Paper home | Where it lands |
+|---|---|---|
+| **Coverage wall BROKEN — root cause was the noise gate, not volume** (`9d1b04e7`): the evidence-role student noise gate, computed in raw compressed e5, over-flagged real narratives (Venezuela Earthquake 0.72, Heatwave 0.88 blocked). Fix in `build_unified_topics.py`+`project_dynamic_topics.py` + chunked embed pending-rows (pooler statement_timeout starved the substrate). Prod: **active threads 30→597, story coverage 0.04%→39.7%, not a blob (~86 sig/thread)**. Artifact `docs/state/2026-07-08-clustering-recall-fix.md` | **P1** (the compressed-e5 noise-gate failure is the operational cost of anisotropic compression — companion to the whitening substrate finding) + **P8** (the recall lever that delivered the 0.2%→~40% arc #229 defined) | P1 substrate section; P8 skeleton coverage claim |
+| **Useful-coverage junk gate** (`41862150`, mig 074 `dynamic_topics.is_junk`): 38% of new coverage sat in grab-bags ('Full list of Welsh beaches' 2021). MEASURED separators: cohesion/whitened/noise_rate/subject-entropy/source-count/label-regex ALL useless; **the R3.1 DeepSeek category typer is the strongest junk separator**. A/B: junk-held coverage 17.4%→0.0%, useful +4.1pp, +4,465 real signals reclaimed; useful coverage 25.8% measured, ~38% projected as embed backlog clears. A0 3-way probe (`b2bab22b`) defines the honest denominator (useful / junk-typed / unassigned→syndication-dup‖junk-headline‖real-unclustered = the unclassifiable floor). Artifact `docs/state/2026-07-09-useful-coverage-gate.md` | **P8** (junk gate + unclassifiable floor = the honest-denominator methodology for open-set coverage claims) + **P1** (taxonomy typing is load-bearing in serving, not display-only) | P8 skeleton method + floor; P1 "typing precision" note |
+| **Whitening head-to-head, clustering substrate** (`8e6b78ed` sweep + `9d1b04e7` verdict): whitened HDBSCAN is blob-resistant + purity-preserving but shows NO reliable recall-cliff crossing; whitening-as-purity-replacement DISPROVED (grab-bags are topically TIGHT — whitening helps formation recall, not purity). ADOPTED where it wins (`243410d3`): dossier pin↔pin edges gate on whitened cosine (tau 0.50; spurious Cepeda edges dropped, Keiko↔Milei survives) + #224 coherence guard in whitened space (**blob-vs-clean gap ~11× wider: 0.126 vs 0.011 raw**). OpenAI-space + LLM verifier NOT adopted (math-first). Artifacts `docs/research/embedding-whitening/2026-07-07-whitening-findings.md` | **P1** (the whitening story gets its boundary conditions: de-compression ≠ recall cure; consumer-by-consumer adoption is the honest method) | P1 "Substrate finding" section — head-to-head addendum |
+| **Basis-weighted connection verdict + text_mention edges** (`a12a1ef8`+`cbac24c1`): dossier verdict no longer over-claims — strong edge = shared actor/place, weak = semantic-only (same-language artifact risk); CONFIRMED ✓ vs CAUTION ⚠ 'similar in topic — treat as hypothesis'; weak edges never weight-scaled (higher cosine must not read as stronger link). text_mention basis: token cross-ref of one pin's evidence headlines vs the other's key-tokens/actors (math-only) → tier strong > text > weak through verdict/graph/export/synthesis | **P4** (typed relation evidence: connection claims carry their BASIS; the correlation≠causation guard as a serving contract) + **P7** (visual encoding follows epistemics — dashed/undimmed weak edges) | P4 spec relation layer; P7 evidence |
+| **Dossier honesty stack + Frank test as eval protocol** (`b69bdfc3` Frank v2 + `cbac24c1` six blockers + `d82173ee` dataviz audit): cold-reader "report must stand alone" test re-run as a REPEATABLE protocol — v2 verdict usable-with-caveats, 6 precise blockers found, all fixed same week (text_mention isolation-contradiction, junk-actor filter w/ glass-box naming rule, dates everywhere, metadata-only pins named, umbrella-fold divergence guard, coverage lens note). Dataviz expert audit (`docs/specs/2026-07-11-dataviz-expert-audit.md`) ranks findings misleading > illegible > wasteful, code-cited | **P7** (the Frank test = the analyst-workflow eval protocol: adversarial cold-read → enumerated blockers → fix → re-test; dataviz audit = the honesty-of-encoding companion) | P7 method section — evaluation protocol |
 
 ## Next action
 

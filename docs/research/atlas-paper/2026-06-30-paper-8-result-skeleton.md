@@ -266,3 +266,23 @@ with the exact prod queries in the engine recall spec §1 — so each lever's li
 is a real, reproducible before/after, not a cherry-picked after. A *systems*
 discovery paper's contribution is precisely this: the measured failure, the
 localized cause, and the controlled intervention — not just the final number.
+
+## 2026-07-12 addendum — the coverage arc delivered + the honest denominator
+
+The R-sequence's promised recall lift landed (2026-07-08, `9d1b04e7`): the wall
+was NOT volume or promotion but the evidence-role student NOISE gate computed in
+raw compressed e5, which over-flagged real narratives (Venezuela Earthquake 0.72,
+Heatwave 0.88 blocked). Fixing it: **active threads 30→597, story coverage
+0.04%→39.7%, mean ~86 signals/thread (not a blob)** — the reproducible
+before/after this skeleton's negative-result section reserved.
+
+Second finding, same week (`41862150`, mig 074): raw coverage is a dishonest
+metric — 38% of the new coverage sat in junk grab-bags. The **useful-coverage
+junk gate** (content-based; the R3.1 DeepSeek category typer is the strongest
+separator — cohesion/whitened/label-regex all measured useless) took junk-held
+coverage 17.4%→0.0%, useful +4.1pp, +4,465 real signals reclaimed. The A0 3-way
+probe (`b2bab22b`) formalizes the paper's denominator: useful / junk-typed /
+unassigned, with unassigned split into syndication-dup ‖ junk-headline ‖
+real-unclustered — the **unclassifiable floor** below which no open-set system
+should claim coverage. Artifacts: `docs/state/2026-07-08-clustering-recall-fix.md`,
+`docs/state/2026-07-09-useful-coverage-gate.md`.
