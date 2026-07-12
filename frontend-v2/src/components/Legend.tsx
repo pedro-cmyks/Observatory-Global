@@ -35,6 +35,19 @@ const Swatch: React.FC<{ color: string; label: string; tip?: string }> = ({ colo
     </div>
 )
 
+// G4: conflict markers are shape-coded on the map — the key must show the
+// same shapes, not three colored dots.
+const ShapeSwatch: React.FC<{ shape: 'circle' | 'triangle' | 'square'; color: string; label: string; tip?: string }> = ({ shape, color, label, tip }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }} data-tip={tip}>
+        <svg width="10" height="10" viewBox="0 0 10 10" style={{ flexShrink: 0 }}>
+            {shape === 'circle' && <circle cx="5" cy="5" r="4" fill={color} />}
+            {shape === 'triangle' && <polygon points="5,0.5 9.5,9 0.5,9" fill={color} />}
+            {shape === 'square' && <rect x="1" y="1" width="8" height="8" fill={color} />}
+        </svg>
+        <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>{label}</span>
+    </div>
+)
+
 const ArcSwatch: React.FC<{ tip?: string }> = ({ tip }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }} data-tip={tip}>
         <svg width="28" height="10" viewBox="0 0 28 10" style={{ flexShrink: 0 }}>
@@ -147,15 +160,22 @@ export const Legend: React.FC<LegendProps> = ({
                 <div style={{ marginBottom: '12px' }}>
                     <SectionHeader label="Countries heat layer" tip="Country color = composite anomaly (velocity, surprise, source diversity, local voice) vs each country's OWN baseline — NOT raw volume. A small country spiking above its norm outranks a high-volume one. Border thickness = signal volume." />
                     {/* Mirrors the Equal Earth heat ramp (lib/countryHeatStates
-                        heatFillColor): blue → cyan → green → yellow → orange →
-                        red, the widened weather-radar spread. */}
+                        heatFillColor): transparent → deep blue → teal → amber →
+                        vermilion → near-white. G1: luminance climbs monotonically
+                        (CVD-validated), so brighter ALWAYS means hotter. */}
                     {/* Same stops AND alphas as the map fill (heatFillColor):
                         "at baseline" is nearly transparent on the map, so the
                         legend must not show it as vivid blue. */}
-                    <div style={{ height: '8px', borderRadius: '4px', background: 'linear-gradient(90deg, rgba(40,100,210,0) 0%, rgba(40,100,210,0.30) 12%, rgba(25,175,205,0.55) 30%, rgba(45,200,120,0.72) 48%, rgba(235,205,45,0.88) 64%, rgba(240,130,30,0.96) 80%, rgba(242,45,30,1) 100%)', marginBottom: '4px' }} />
+                    <div style={{ height: '8px', borderRadius: '4px', background: 'linear-gradient(90deg, rgba(30,70,165,0) 0%, rgba(30,70,165,0.30) 12%, rgba(18,135,158,0.55) 32%, rgba(196,120,32,0.80) 55%, rgba(253,108,84,0.94) 78%, rgba(255,226,205,1) 100%)', marginBottom: '4px' }} />
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--color-text-muted)' }}>
                         <span>at baseline</span>
+                        {/* G3: a 5-hue scale with endpoint labels only can't be
+                            read back into values — one mid anchor. */}
+                        <span style={{ opacity: 0.8 }}>elevated</span>
                         <span>spiking vs own norm</span>
+                    </div>
+                    <div style={{ fontSize: '9px', color: 'var(--color-text-muted)', marginTop: '3px', opacity: 0.8 }}>
+                        vs each country's own baseline — brighter = hotter
                     </div>
                 </div>
             )}
@@ -217,11 +237,14 @@ export const Legend: React.FC<LegendProps> = ({
 
             {conflictCount > 0 && (
                 <div style={{ marginBottom: '12px' }}>
-                    <SectionHeader label={`Conflict Events · ${conflictCount}`} tip="Violent events extracted from GDELT event records. Dot size scales with reported severity." />
+                    <SectionHeader label={`Conflict Events · ${conflictCount}`} tip="Violent events extracted from GDELT event records. Marker size scales with reported severity." />
+                    {/* G4 (dataviz audit): three warm hues at ~3px were
+                        indistinguishable — markers are now SHAPE-coded
+                        (circle/triangle/square), mirroring the map exactly. */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <Swatch color="rgba(239,68,68,0.9)" label="Battle / Explosion" tip="Armed clashes or explosive events (GDELT events)" />
-                        <Swatch color="rgba(249,115,22,0.85)" label="Riot / Protest" tip="Civil unrest events (GDELT events)" />
-                        <Swatch color="rgba(234,179,8,0.8)" label="Other violence" tip="Other violent or strategic events (GDELT events)" />
+                        <ShapeSwatch shape="circle" color="rgba(239,68,68,0.9)" label="Armed force" tip="Fighting, artillery, aerial weapons, assassinations (GDELT CAMEO events)" />
+                        <ShapeSwatch shape="triangle" color="rgba(249,115,22,0.85)" label="Unrest / repression" tip="Protests, riots, repression, assaults, abductions (GDELT CAMEO events)" />
+                        <ShapeSwatch shape="square" color="rgba(234,179,8,0.8)" label="Coercion / posture" tip="Sanctions, seizures, mobilization, shows of force, other coercive events (GDELT CAMEO events)" />
                     </div>
                 </div>
             )}

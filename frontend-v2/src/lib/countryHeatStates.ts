@@ -116,31 +116,36 @@ export function computeCountryHeatStates(input: CountryHeatInput): CountryHeatSt
  * Returns an rgba() string; transparent below the 0.1 floor.
  */
 export function heatFillColor(heat: number): string {
-    // Wide, vivid weather-radar ramp: faint heat barely tints (stays near land,
-    // so most countries read as land and only real heat pops), then a clearly
-    // separated blue→cyan→green→yellow→orange→red climb so values differentiate.
+    // G1 (dataviz audit 2026-07-11): weather-radar identity, but LUMINANCE
+    // CLIMBS MONOTONICALLY — the old blue→green→yellow→red rainbow peaked at
+    // yellow (0.64), so a mid-heat country out-popped max heat, and deutan/
+    // protan viewers lost the green→orange half. Cool end compressed
+    // (transparent→deep blue→teal), hot end magma-like (dark amber→bright
+    // vermilion→near-white core). Validated: effective luminance (alpha over
+    // the dark map) is monotonic under normal, deuteranopia and protanopia
+    // (Machado 2009 matrices), adjacent stops ≥66 sRGB units apart.
     const stops: Array<[number, [number, number, number, number]]> = [
         [0, [0, 0, 0, 0]],
-        [0.12, [40, 100, 210, 0.30]],
-        [0.30, [25, 175, 205, 0.55]],
-        [0.48, [45, 200, 120, 0.72]],
-        [0.64, [235, 205, 45, 0.88]],
-        [0.80, [240, 130, 30, 0.96]],
-        [1.0, [242, 45, 30, 1.0]],
+        [0.12, [30, 70, 165, 0.30]],
+        [0.32, [18, 135, 158, 0.55]],
+        [0.55, [196, 120, 32, 0.80]],
+        [0.78, [253, 108, 84, 0.94]],
+        [1.0, [255, 226, 205, 1.0]],
     ]
     return rgbaInterpolate(heat, stops)
 }
 
-/** Border-glow color for a heat value (0..1), mirroring `country-heat-glow`. */
+/** Border-glow color for a heat value (0..1), mirroring `country-heat-glow`.
+ *  Same hue order + monotonic luminance as the fill (G1) so border and fill
+ *  never disagree on rank. */
 export function heatGlowColor(heat: number): string {
     const stops: Array<[number, [number, number, number, number]]> = [
         [0, [0, 0, 0, 0]],
-        [0.1, [30, 60, 140, 0.30]],
-        [0.3, [35, 110, 160, 0.50]],
-        [0.5, [50, 160, 130, 0.65]],
-        [0.65, [205, 140, 35, 0.80]],
-        [0.82, [230, 80, 20, 1.0]],
-        [1.0, [248, 45, 10, 1.0]],
+        [0.1, [25, 60, 150, 0.30]],
+        [0.3, [20, 120, 150, 0.50]],
+        [0.55, [205, 125, 30, 0.75]],
+        [0.8, [250, 100, 70, 0.95]],
+        [1.0, [255, 220, 195, 1.0]],
     ]
     return rgbaInterpolate(heat, stops)
 }

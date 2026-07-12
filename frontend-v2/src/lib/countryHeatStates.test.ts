@@ -76,9 +76,33 @@ describe('computeCountryHeatStates', () => {
 })
 
 describe('heatFillColor', () => {
-    it('transparent below the floor, hot near 1', () => {
+    it('transparent below the floor, near-white hot core at 1', () => {
         expect(heatFillColor(0)).toBe('rgba(0, 0, 0, 0.000)')
-        expect(heatFillColor(1)).toContain('242')
+        expect(heatFillColor(1)).toBe('rgba(255, 226, 205, 1.000)')
+    })
+
+    // G1 (dataviz audit): the ramp's effective luminance must climb
+    // monotonically — the old rainbow peaked at yellow (0.64) so mid-heat
+    // out-popped max heat. Freeze the monotonicity, not the exact colors.
+    it('luminance climbs monotonically with heat', () => {
+        const lum = (heat: number): number => {
+            const m = heatFillColor(heat).match(/rgba\((\d+), (\d+), (\d+), ([\d.]+)\)/)!
+            const [r, g, b, a] = [+m[1], +m[2], +m[3], +m[4]]
+            const toLin = (c: number) => {
+                const v = c / 255
+                return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+            }
+            // composite over the dark map background (~rgb(22,30,42))
+            const bg = [22, 30, 42]
+            const [er, eg, eb] = [r, g, b].map((c, i) => a * c + (1 - a) * bg[i])
+            return 0.2126 * toLin(er) + 0.7152 * toLin(eg) + 0.0722 * toLin(eb)
+        }
+        let prev = -1
+        for (const h of [0.12, 0.32, 0.55, 0.78, 1.0]) {
+            const L = lum(h)
+            expect(L).toBeGreaterThan(prev)
+            prev = L
+        }
     })
 })
 

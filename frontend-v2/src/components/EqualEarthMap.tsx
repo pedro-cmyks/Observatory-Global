@@ -43,6 +43,23 @@ const GDELT_TO_ISO: Record<string, string> = Object.fromEntries(
 
 const GEOJSON_URL = '/data/countries.geojson'
 
+// G4 (dataviz audit): GDELT CAMEO event descriptions → 3 marker classes.
+// Rendered as SHAPES (circle/triangle/square) because three warm hues at ~3px
+// are indistinguishable on the map — and for CVD viewers, always.
+type ConflictClass = 'battle' | 'unrest' | 'coercion'
+function conflictClass(type: string): ConflictClass {
+    const t = type.toLowerCase()
+    if (/fight|artillery|aerial weapon|military force|assassinat|unconventional violence|ethnic cleansing|small arms/.test(t)) return 'battle'
+    if (/protest|riot|repress|physically assault|abduct|hostage|arrest/.test(t)) return 'unrest'
+    return 'coercion'
+}
+const CONFLICT_CLASS_COLORS: Record<ConflictClass, string> = {
+    battle: '239,68,68',    // red circle — armed force
+    unrest: '249,115,22',   // orange triangle — unrest / repression
+    coercion: '234,179,8',  // amber square — coercion / posture
+}
+
+
 interface CountryFeature {
     type: 'Feature'
     properties: Record<string, unknown>
@@ -513,10 +530,27 @@ export function EqualEarthMap({
                 // Smaller + lower opacity so they don't swamp the map.
                 const base = Math.min(num(f.properties.radius, 3) * 0.55, 5.5)
                 const ph = 0.5 + 0.5 * Math.sin(t / 480 + i * 0.7)
+                // G4 (dataviz audit): three near-identical warm hues at ~3px are
+                // indistinguishable — at marker size SHAPE beats hue. Circle =
+                // armed force, triangle = unrest/repression, square = coercion.
+                const cls = conflictClass(String(f.properties.type || ''))
+                const col = CONFLICT_CLASS_COLORS[cls]
                 ringsAt(p, (sx, sy) => {
-                    ctx.beginPath(); ctx.arc(sx, sy, base * (0.85 + 0.3 * ph), 0, Math.PI * 2)
-                    ctx.fillStyle = `rgba(239,90,70,${0.22 + 0.22 * ph})`; ctx.fill()
-                    ctx.lineWidth = 0.8; ctx.strokeStyle = 'rgba(239,90,70,0.7)'; ctx.stroke()
+                    const r = base * (0.85 + 0.3 * ph)
+                    ctx.beginPath()
+                    if (cls === 'unrest') {
+                        ctx.moveTo(sx, sy - r)
+                        ctx.lineTo(sx - r * 0.87, sy + r * 0.5)
+                        ctx.lineTo(sx + r * 0.87, sy + r * 0.5)
+                        ctx.closePath()
+                    } else if (cls === 'coercion') {
+                        const q = r * 0.85
+                        ctx.rect(sx - q, sy - q, q * 2, q * 2)
+                    } else {
+                        ctx.arc(sx, sy, r, 0, Math.PI * 2)
+                    }
+                    ctx.fillStyle = `rgba(${col},${(0.22 + 0.22 * ph).toFixed(3)})`; ctx.fill()
+                    ctx.lineWidth = 0.8; ctx.strokeStyle = `rgba(${col},0.7)`; ctx.stroke()
                 })
             })
             // anomaly = radar ping: a steady core ring + an expanding, fading ring.
