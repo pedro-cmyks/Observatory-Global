@@ -1,0 +1,2122 @@
+{
+  "report_type": "c7-voice-asymmetry-pilot",
+  "model_version": "voice-asymmetry-v0",
+  "read_only": true,
+  "window_hours": 168,
+  "generated_at": "2026-07-12T16:40:00.448165+00:00",
+  "subject_country_guardrail": "cluster_primary_coverage_proxy is who covered the story, not verified subject geography",
+  "truth_guardrail": "scores describe Atlas corpus coverage and are not real-world truth or consensus",
+  "member_cap_per_topic": 500,
+  "topic_count": 100,
+  "eligible_count": 49,
+  "hit_count": 18,
+  "topics": [
+    {
+      "dynamic_topic_id": 2029,
+      "label": "Trump FIFA World Cup Scandal",
+      "subject_country": "RU",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 254,
+      "distinct_sources": 60,
+      "public_count": 2,
+      "eligible": true,
+      "is_hit": true,
+      "voice_asymmetry_score": 100.0,
+      "attribution_share": 0.7992,
+      "dominant_origin": "GR",
+      "dominant_origin_share": 1.0,
+      "subject_voice_share": 0.0,
+      "primary_languages": [
+        "ru"
+      ],
+      "primary_language_share": null,
+      "outside_voice_concentration": 1.0,
+      "reason_codes": [
+        "dominant_outside_origin",
+        "subject_voice_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 717,
+      "label": "\u039a\u03b1\u03cd\u03c3\u03c9\u03bd\u03b1\u03c2 \u03ba\u03b1\u03b9 \u039a\u03b1\u03b9\u03c1\u03cc\u03c2",
+      "subject_country": "JP",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 216,
+      "distinct_sources": 59,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": true,
+      "voice_asymmetry_score": 100.0,
+      "attribution_share": 0.8333,
+      "dominant_origin": "GR",
+      "dominant_origin_share": 1.0,
+      "subject_voice_share": 0.0,
+      "primary_languages": [
+        "ja"
+      ],
+      "primary_language_share": null,
+      "outside_voice_concentration": 1.0,
+      "reason_codes": [
+        "dominant_outside_origin",
+        "subject_voice_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 320,
+      "label": "17-Year-Old British Teen Fall",
+      "subject_country": "BG",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 61,
+      "distinct_sources": 31,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": true,
+      "voice_asymmetry_score": 100.0,
+      "attribution_share": 0.7377,
+      "dominant_origin": "GR",
+      "dominant_origin_share": 1.0,
+      "subject_voice_share": 0.0,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 1.0,
+      "reason_codes": [
+        "dominant_outside_origin",
+        "subject_voice_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 732,
+      "label": "Germany Policy Changes",
+      "subject_country": "CN",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 52,
+      "distinct_sources": 24,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": true,
+      "voice_asymmetry_score": 100.0,
+      "attribution_share": 0.8269,
+      "dominant_origin": "RO",
+      "dominant_origin_share": 1.0,
+      "subject_voice_share": 0.0,
+      "primary_languages": [
+        "zh"
+      ],
+      "primary_language_share": 0.0,
+      "outside_voice_concentration": 1.0,
+      "reason_codes": [
+        "dominant_outside_origin",
+        "subject_voice_absent",
+        "primary_language_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 153,
+      "label": "Venezuela Earthquake Tragedy",
+      "subject_country": "ES",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 51,
+      "distinct_sources": 37,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": true,
+      "voice_asymmetry_score": 100.0,
+      "attribution_share": 0.6863,
+      "dominant_origin": "GR",
+      "dominant_origin_share": 1.0,
+      "subject_voice_share": 0.0,
+      "primary_languages": [
+        "es"
+      ],
+      "primary_language_share": null,
+      "outside_voice_concentration": 1.0,
+      "reason_codes": [
+        "dominant_outside_origin",
+        "subject_voice_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 300,
+      "label": "Ukraine Conflict Escalation",
+      "subject_country": "RU",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 44,
+      "distinct_sources": 22,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": true,
+      "voice_asymmetry_score": 100.0,
+      "attribution_share": 0.6818,
+      "dominant_origin": "VN",
+      "dominant_origin_share": 1.0,
+      "subject_voice_share": 0.0,
+      "primary_languages": [
+        "ru"
+      ],
+      "primary_language_share": null,
+      "outside_voice_concentration": 1.0,
+      "reason_codes": [
+        "dominant_outside_origin",
+        "subject_voice_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 439,
+      "label": "Trump-Putin Talks on Ukraine",
+      "subject_country": "RU",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 44,
+      "distinct_sources": 16,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": true,
+      "voice_asymmetry_score": 100.0,
+      "attribution_share": 0.7045,
+      "dominant_origin": "RO",
+      "dominant_origin_share": 1.0,
+      "subject_voice_share": 0.0,
+      "primary_languages": [
+        "ru"
+      ],
+      "primary_language_share": 0.0,
+      "outside_voice_concentration": 1.0,
+      "reason_codes": [
+        "dominant_outside_origin",
+        "subject_voice_absent",
+        "primary_language_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 2348,
+      "label": "Trump-Putin Talks on Ukraine",
+      "subject_country": "RU",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 44,
+      "distinct_sources": 19,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": true,
+      "voice_asymmetry_score": 100.0,
+      "attribution_share": 0.7727,
+      "dominant_origin": "RO",
+      "dominant_origin_share": 1.0,
+      "subject_voice_share": 0.0,
+      "primary_languages": [
+        "ru"
+      ],
+      "primary_language_share": 0.0,
+      "outside_voice_concentration": 1.0,
+      "reason_codes": [
+        "dominant_outside_origin",
+        "subject_voice_absent",
+        "primary_language_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 2352,
+      "label": "NATO Summit Ankara",
+      "subject_country": "TR",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 37,
+      "distinct_sources": 19,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": true,
+      "voice_asymmetry_score": 100.0,
+      "attribution_share": 0.8108,
+      "dominant_origin": "RO",
+      "dominant_origin_share": 1.0,
+      "subject_voice_share": 0.0,
+      "primary_languages": [
+        "tr"
+      ],
+      "primary_language_share": 0.0,
+      "outside_voice_concentration": 1.0,
+      "reason_codes": [
+        "dominant_outside_origin",
+        "subject_voice_absent",
+        "primary_language_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 390,
+      "label": "NATO Summit Ankara",
+      "subject_country": "TR",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 28,
+      "distinct_sources": 18,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": true,
+      "voice_asymmetry_score": 100.0,
+      "attribution_share": 0.7143,
+      "dominant_origin": "RO",
+      "dominant_origin_share": 1.0,
+      "subject_voice_share": 0.0,
+      "primary_languages": [
+        "tr"
+      ],
+      "primary_language_share": 0.0,
+      "outside_voice_concentration": 1.0,
+      "reason_codes": [
+        "dominant_outside_origin",
+        "subject_voice_absent",
+        "primary_language_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 452,
+      "label": "Ukraine War Updates",
+      "subject_country": "CN",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 104,
+      "distinct_sources": 44,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": true,
+      "voice_asymmetry_score": 96.5,
+      "attribution_share": 0.8077,
+      "dominant_origin": "UA",
+      "dominant_origin_share": 0.9524,
+      "subject_voice_share": 0.0,
+      "primary_languages": [
+        "zh"
+      ],
+      "primary_language_share": 0.0,
+      "outside_voice_concentration": 0.8772,
+      "reason_codes": [
+        "dominant_outside_origin",
+        "subject_voice_absent",
+        "primary_language_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 21,
+      "label": "Cronaca e Incidenti",
+      "subject_country": "CH",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 295,
+      "distinct_sources": 114,
+      "public_count": 10,
+      "eligible": true,
+      "is_hit": true,
+      "voice_asymmetry_score": 94.1,
+      "attribution_share": 0.878,
+      "dominant_origin": "IT",
+      "dominant_origin_share": 0.9614,
+      "subject_voice_share": 0.0386,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.8515,
+      "reason_codes": [
+        "dominant_outside_origin",
+        "subject_voice_absent",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 184,
+      "label": "Putin and Philippines at ASEAN",
+      "subject_country": "FI",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 254,
+      "distinct_sources": 71,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": true,
+      "voice_asymmetry_score": 89.5,
+      "attribution_share": 0.815,
+      "dominant_origin": "RU",
+      "dominant_origin_share": 0.8744,
+      "subject_voice_share": 0.0,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.7317,
+      "reason_codes": [
+        "dominant_outside_origin",
+        "subject_voice_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 731,
+      "label": "Canicule en Belgique",
+      "subject_country": "PK",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 237,
+      "distinct_sources": 82,
+      "public_count": 6,
+      "eligible": true,
+      "is_hit": true,
+      "voice_asymmetry_score": 86.5,
+      "attribution_share": 0.6878,
+      "dominant_origin": "FR",
+      "dominant_origin_share": 0.7914,
+      "subject_voice_share": 0.0,
+      "primary_languages": [
+        "ur"
+      ],
+      "primary_language_share": 0.0,
+      "outside_voice_concentration": 0.5852,
+      "reason_codes": [
+        "dominant_outside_origin",
+        "subject_voice_absent",
+        "primary_language_absent",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 10,
+      "label": "Ukraine War Updates",
+      "subject_country": "US",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 214,
+      "distinct_sources": 98,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": true,
+      "voice_asymmetry_score": 77.2,
+      "attribution_share": 0.7103,
+      "dominant_origin": "UA",
+      "dominant_origin_share": 0.7105,
+      "subject_voice_share": 0.0,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.4609,
+      "reason_codes": [
+        "dominant_outside_origin",
+        "subject_voice_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 50,
+      "label": "US Strikes Iran Retaliation",
+      "subject_country": "IL",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 88,
+      "distinct_sources": 59,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": true,
+      "voice_asymmetry_score": 69.4,
+      "attribution_share": 0.75,
+      "dominant_origin": "UA",
+      "dominant_origin_share": 0.5909,
+      "subject_voice_share": 0.0,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.3216,
+      "reason_codes": [
+        "dominant_outside_origin",
+        "subject_voice_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 49,
+      "label": "US Iran Exchange Strikes",
+      "subject_country": "AE",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 28,
+      "distinct_sources": 24,
+      "public_count": 2,
+      "eligible": true,
+      "is_hit": true,
+      "voice_asymmetry_score": 68.4,
+      "attribution_share": 1.0,
+      "dominant_origin": "AU",
+      "dominant_origin_share": 0.5,
+      "subject_voice_share": 0.0,
+      "primary_languages": [
+        "ar"
+      ],
+      "primary_language_share": 0.0,
+      "outside_voice_concentration": 0.0625,
+      "reason_codes": [
+        "dominant_outside_origin",
+        "subject_voice_absent",
+        "primary_language_absent",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 2356,
+      "label": "Condemnation of Damascus Bombing",
+      "subject_country": "IR",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 33,
+      "distinct_sources": 14,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": true,
+      "voice_asymmetry_score": 63.7,
+      "attribution_share": 0.6061,
+      "dominant_origin": "JO",
+      "dominant_origin_share": 0.35,
+      "subject_voice_share": 0.0,
+      "primary_languages": [
+        "fa"
+      ],
+      "primary_language_share": 0.0,
+      "outside_voice_concentration": 0.094,
+      "reason_codes": [
+        "high_unattributed_share",
+        "subject_voice_absent",
+        "primary_language_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 436,
+      "label": "Russia-Ukraine Military Escalation",
+      "subject_country": "SY",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 45,
+      "distinct_sources": 20,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 59.9,
+      "attribution_share": 0.5556,
+      "dominant_origin": "RU",
+      "dominant_origin_share": 0.64,
+      "subject_voice_share": 0.0,
+      "primary_languages": [
+        "ar"
+      ],
+      "primary_language_share": 0.8696,
+      "outside_voice_concentration": 0.328,
+      "reason_codes": [
+        "high_unattributed_share",
+        "dominant_outside_origin",
+        "subject_voice_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 43,
+      "label": "Escaped Inmate Found Dead",
+      "subject_country": "MW",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 35,
+      "distinct_sources": 26,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 59.5,
+      "attribution_share": 0.9714,
+      "dominant_origin": "IN",
+      "dominant_origin_share": 0.4545,
+      "subject_voice_share": 0.0,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.1116,
+      "reason_codes": [
+        "subject_voice_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 449,
+      "label": "Monaco Assassination Attempt",
+      "subject_country": "MN",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 27,
+      "distinct_sources": 17,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 59.3,
+      "attribution_share": 0.8519,
+      "dominant_origin": "RU",
+      "dominant_origin_share": 0.4348,
+      "subject_voice_share": 0.0,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.1481,
+      "reason_codes": [
+        "subject_voice_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 31,
+      "label": "Trump Cancels Iran Strikes",
+      "subject_country": "IR",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 86,
+      "distinct_sources": 78,
+      "public_count": 2,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 57.5,
+      "attribution_share": 0.9767,
+      "dominant_origin": "GB",
+      "dominant_origin_share": 0.1951,
+      "subject_voice_share": 0.0,
+      "primary_languages": [
+        "fa"
+      ],
+      "primary_language_share": 0.0,
+      "outside_voice_concentration": 0.0468,
+      "reason_codes": [
+        "subject_voice_absent",
+        "primary_language_absent",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 2030,
+      "label": "Mundial 2026 Coverage",
+      "subject_country": "FR",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 180,
+      "distinct_sources": 102,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 55.1,
+      "attribution_share": 0.5944,
+      "dominant_origin": "MX",
+      "dominant_origin_share": 0.1682,
+      "subject_voice_share": 0.0374,
+      "primary_languages": [
+        "fr"
+      ],
+      "primary_language_share": 0.0345,
+      "outside_voice_concentration": 0.071,
+      "reason_codes": [
+        "high_unattributed_share",
+        "subject_voice_absent",
+        "primary_language_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 1720,
+      "label": "Super Typhoon Bavi",
+      "subject_country": "JP",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 34,
+      "distinct_sources": 28,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 54.5,
+      "attribution_share": 0.9706,
+      "dominant_origin": "CN",
+      "dominant_origin_share": 0.2857,
+      "subject_voice_share": 0.2143,
+      "primary_languages": [
+        "ja"
+      ],
+      "primary_language_share": 0.0,
+      "outside_voice_concentration": 0.0587,
+      "reason_codes": [
+        "primary_language_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 37,
+      "label": "Major Russian Strikes on Ukraine",
+      "subject_country": "UA",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 23,
+      "distinct_sources": 22,
+      "public_count": 4,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 52.6,
+      "attribution_share": 1.0,
+      "dominant_origin": "IN",
+      "dominant_origin_share": 0.3333,
+      "subject_voice_share": 0.0,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.0278,
+      "reason_codes": [
+        "subject_voice_absent",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 52,
+      "label": "Cepeda Concedes to De la Espriella",
+      "subject_country": "PM",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 134,
+      "distinct_sources": 92,
+      "public_count": 4,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 50.4,
+      "attribution_share": 0.5821,
+      "dominant_origin": "ES",
+      "dominant_origin_share": 0.2564,
+      "subject_voice_share": 0.0,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.0876,
+      "reason_codes": [
+        "high_unattributed_share",
+        "subject_voice_absent",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 429,
+      "label": "PP-Vox Pact in Andalusia",
+      "subject_country": "PE",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 430,
+      "distinct_sources": 170,
+      "public_count": 6,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 45.3,
+      "attribution_share": 0.6326,
+      "dominant_origin": "ES",
+      "dominant_origin_share": 0.4412,
+      "subject_voice_share": 0.0993,
+      "primary_languages": [
+        "es"
+      ],
+      "primary_language_share": 1.0,
+      "outside_voice_concentration": 0.1915,
+      "reason_codes": [
+        "high_unattributed_share",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 115,
+      "label": "Mundial 2026 Coverage",
+      "subject_country": "PA",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 264,
+      "distinct_sources": 139,
+      "public_count": 4,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 42.8,
+      "attribution_share": 0.6136,
+      "dominant_origin": "AR",
+      "dominant_origin_share": 0.216,
+      "subject_voice_share": 0.1481,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.0728,
+      "reason_codes": [
+        "high_unattributed_share",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 66,
+      "label": "Cyclosporiasis Outbreak in US",
+      "subject_country": "CA",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 88,
+      "distinct_sources": 81,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 42.8,
+      "attribution_share": 1.0,
+      "dominant_origin": "IN",
+      "dominant_origin_share": 0.2857,
+      "subject_voice_share": 0.2143,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.0449,
+      "reason_codes": [
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 1139,
+      "label": "Mankhurd Chawl Collapse",
+      "subject_country": "IN",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 34,
+      "distinct_sources": 24,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 34.4,
+      "attribution_share": 0.9706,
+      "dominant_origin": "IN",
+      "dominant_origin_share": 0.7143,
+      "subject_voice_share": 0.7143,
+      "primary_languages": [
+        "hi"
+      ],
+      "primary_language_share": 0.0,
+      "outside_voice_concentration": 0.3878,
+      "reason_codes": [
+        "primary_language_absent",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 1601,
+      "label": "PFIPC Scandal Demands",
+      "subject_country": "NG",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 21,
+      "distinct_sources": 18,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 21.9,
+      "attribution_share": 0.9524,
+      "dominant_origin": "NG",
+      "dominant_origin_share": 0.5,
+      "subject_voice_share": 0.5,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.1699,
+      "reason_codes": [
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 366,
+      "label": "Dayanne Rodrigues Disappearance",
+      "subject_country": "BR",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 142,
+      "distinct_sources": 90,
+      "public_count": 4,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 20.3,
+      "attribution_share": 0.7113,
+      "dominant_origin": "BR",
+      "dominant_origin_share": 0.505,
+      "subject_voice_share": 0.505,
+      "primary_languages": [
+        "pt"
+      ],
+      "primary_language_share": 0.9,
+      "outside_voice_concentration": 0.2274,
+      "reason_codes": [
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 443,
+      "label": "Russian Attacks on Zaporizhzhia",
+      "subject_country": "UA",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 146,
+      "distinct_sources": 70,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 18.9,
+      "attribution_share": 0.7397,
+      "dominant_origin": "UA",
+      "dominant_origin_share": 0.787,
+      "subject_voice_share": 0.787,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.5843,
+      "reason_codes": [
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 476,
+      "label": "Petralona Building Collapse",
+      "subject_country": "GR",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 62,
+      "distinct_sources": 30,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 18.8,
+      "attribution_share": 0.7903,
+      "dominant_origin": "GR",
+      "dominant_origin_share": 1.0,
+      "subject_voice_share": 1.0,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 1.0,
+      "reason_codes": [
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 271,
+      "label": "Attentato a Sigfrido Ranucci",
+      "subject_country": "IT",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 37,
+      "distinct_sources": 21,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 18.8,
+      "attribution_share": 0.8919,
+      "dominant_origin": "IT",
+      "dominant_origin_share": 1.0,
+      "subject_voice_share": 1.0,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 1.0,
+      "reason_codes": [
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 96,
+      "label": "C\u00f4te d'Ivoire Public Service",
+      "subject_country": "CI",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 48,
+      "distinct_sources": 15,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 18.2,
+      "attribution_share": 0.75,
+      "dominant_origin": "CI",
+      "dominant_origin_share": 0.7778,
+      "subject_voice_share": 0.7778,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.5274,
+      "reason_codes": [
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 367,
+      "label": "Caldo Record in Italia",
+      "subject_country": "IT",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 42,
+      "distinct_sources": 23,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 17.7,
+      "attribution_share": 0.8333,
+      "dominant_origin": "IT",
+      "dominant_origin_share": 0.9714,
+      "subject_voice_share": 0.9714,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.889,
+      "reason_codes": [
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 207,
+      "label": "UK Heatwave Warnings",
+      "subject_country": "GB",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 28,
+      "distinct_sources": 24,
+      "public_count": 2,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 17.6,
+      "attribution_share": 1.0,
+      "dominant_origin": "GB",
+      "dominant_origin_share": 0.9259,
+      "subject_voice_share": 0.9259,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.7901,
+      "reason_codes": [
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 357,
+      "label": "Deadly Crash in Mykolaiv",
+      "subject_country": "UA",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 34,
+      "distinct_sources": 21,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 17.5,
+      "attribution_share": 0.7353,
+      "dominant_origin": "UA",
+      "dominant_origin_share": 0.92,
+      "subject_voice_share": 0.92,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.7744,
+      "reason_codes": [
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 2039,
+      "label": "Dayanne Rodrigues Disappearance",
+      "subject_country": "BR",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 500,
+      "distinct_sources": 161,
+      "public_count": 44,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 17.3,
+      "attribution_share": 0.8,
+      "dominant_origin": "BR",
+      "dominant_origin_share": 0.69,
+      "subject_voice_share": 0.69,
+      "primary_languages": [
+        "pt"
+      ],
+      "primary_language_share": 0.9667,
+      "outside_voice_concentration": 0.4895,
+      "reason_codes": [
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 407,
+      "label": "Canicule Vigilance Orange",
+      "subject_country": "FR",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 32,
+      "distinct_sources": 22,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 17.2,
+      "attribution_share": 0.6875,
+      "dominant_origin": "FR",
+      "dominant_origin_share": 0.9545,
+      "subject_voice_share": 0.9545,
+      "primary_languages": [
+        "fr"
+      ],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.8264,
+      "reason_codes": [
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 245,
+      "label": "Albanian Anti-Government Protests",
+      "subject_country": "AL",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 74,
+      "distinct_sources": 25,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 17.1,
+      "attribution_share": 0.5946,
+      "dominant_origin": "AL",
+      "dominant_origin_share": 0.8636,
+      "subject_voice_share": 0.8636,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.6389,
+      "reason_codes": [
+        "high_unattributed_share",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 447,
+      "label": "Power Outage Updates Ukraine",
+      "subject_country": "UA",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 38,
+      "distinct_sources": 30,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 17.1,
+      "attribution_share": 0.7895,
+      "dominant_origin": "UA",
+      "dominant_origin_share": 0.8667,
+      "subject_voice_share": 0.8667,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.6433,
+      "reason_codes": [
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 592,
+      "label": "H5N1 Bird Flu in NSW",
+      "subject_country": "AU",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 20,
+      "distinct_sources": 17,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 17.1,
+      "attribution_share": 1.0,
+      "dominant_origin": "AU",
+      "dominant_origin_share": 0.875,
+      "subject_voice_share": 0.875,
+      "primary_languages": [],
+      "primary_language_share": null,
+      "outside_voice_concentration": 0.6602,
+      "reason_codes": [
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 1220,
+      "label": "Ola de Calor en Espa\u00f1a",
+      "subject_country": "ES",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 88,
+      "distinct_sources": 61,
+      "public_count": 2,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 15.6,
+      "attribution_share": 0.5909,
+      "dominant_origin": "ES",
+      "dominant_origin_share": 0.6923,
+      "subject_voice_share": 0.6923,
+      "primary_languages": [
+        "es"
+      ],
+      "primary_language_share": 1.0,
+      "outside_voice_concentration": 0.4227,
+      "reason_codes": [
+        "high_unattributed_share",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 229,
+      "label": "South Korea World Cup Loss",
+      "subject_country": "KR",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 117,
+      "distinct_sources": 20,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 15.0,
+      "attribution_share": 0.5299,
+      "dominant_origin": "KR",
+      "dominant_origin_share": 1.0,
+      "subject_voice_share": 1.0,
+      "primary_languages": [
+        "ko"
+      ],
+      "primary_language_share": 1.0,
+      "outside_voice_concentration": 1.0,
+      "reason_codes": [
+        "high_unattributed_share",
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 307,
+      "label": "Drone Attacks on Moscow",
+      "subject_country": "RU",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 63,
+      "distinct_sources": 25,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 14.5,
+      "attribution_share": 0.9048,
+      "dominant_origin": "RU",
+      "dominant_origin_share": 0.9123,
+      "subject_voice_share": 0.9123,
+      "primary_languages": [
+        "ru"
+      ],
+      "primary_language_share": 1.0,
+      "outside_voice_concentration": 0.793,
+      "reason_codes": [
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 883,
+      "label": "Ukraine Refuses Bodies in Kostiantynivka",
+      "subject_country": "RU",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 81,
+      "distinct_sources": 42,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 14.3,
+      "attribution_share": 0.8519,
+      "dominant_origin": "RU",
+      "dominant_origin_share": 0.913,
+      "subject_voice_share": 0.913,
+      "primary_languages": [
+        "ru"
+      ],
+      "primary_language_share": 1.0,
+      "outside_voice_concentration": 0.7821,
+      "reason_codes": [
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 299,
+      "label": "Drunk Driver Hits Family in Kaliningrad",
+      "subject_country": "RU",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 48,
+      "distinct_sources": 30,
+      "public_count": 0,
+      "eligible": true,
+      "is_hit": false,
+      "voice_asymmetry_score": 14.3,
+      "attribution_share": 0.8333,
+      "dominant_origin": "RU",
+      "dominant_origin_share": 0.95,
+      "subject_voice_share": 0.95,
+      "primary_languages": [
+        "ru"
+      ],
+      "primary_language_share": 1.0,
+      "outside_voice_concentration": 0.8556,
+      "reason_codes": [
+        "thin_public_lane",
+        "subject_geo_is_coverage_proxy"
+      ]
+    },
+    {
+      "dynamic_topic_id": 739,
+      "label": "Fas Hollanda'y\u0131 Eledi",
+      "subject_country": "FR",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 184,
+      "distinct_sources": 59,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.2554,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 808,
+      "label": "Electoral Code Dispute",
+      "subject_country": "MK",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 115,
+      "distinct_sources": 29,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.3391,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 2036,
+      "label": "Sports and Politics Mix",
+      "subject_country": "AE",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 98,
+      "distinct_sources": 28,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.3265,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 2052,
+      "label": "Piala Dunia 2026",
+      "subject_country": "MA",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 70,
+      "distinct_sources": 16,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.3143,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 755,
+      "label": "NATO Summit in Ankara",
+      "subject_country": "DZ",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 65,
+      "distinct_sources": 26,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.2462,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 625,
+      "label": "Egypt vs Australia World Cup",
+      "subject_country": "EG",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 59,
+      "distinct_sources": 14,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.1695,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 1828,
+      "label": "Morocco World Cup 2026",
+      "subject_country": "MA",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 52,
+      "distinct_sources": 22,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.3462,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 2351,
+      "label": "Fas Hollanda'y\u0131 Eledi",
+      "subject_country": "TR",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 50,
+      "distinct_sources": 27,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.4,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 1514,
+      "label": "Coordinated Attacks in Mali",
+      "subject_country": "ML",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 46,
+      "distinct_sources": 15,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.4565,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 902,
+      "label": "Lebanon Displacement and Reconstruction",
+      "subject_country": "PS",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 44,
+      "distinct_sources": 23,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.2273,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 611,
+      "label": "KPK OTT Bupati Langkat",
+      "subject_country": "ID",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 40,
+      "distinct_sources": 13,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.425,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 837,
+      "label": "Senegal Political Turmoil",
+      "subject_country": "SG",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 40,
+      "distinct_sources": 29,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.35,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 417,
+      "label": "Sports and Politics Mix",
+      "subject_country": "AE",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 39,
+      "distinct_sources": 14,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.4872,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 569,
+      "label": "Strait of Hormuz Tensions",
+      "subject_country": "US",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 39,
+      "distinct_sources": 23,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.3077,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 888,
+      "label": "Yemen Conflict Escalation",
+      "subject_country": "YM",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 39,
+      "distinct_sources": 19,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.1282,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 2355,
+      "label": "Strait of Hormuz Tensions",
+      "subject_country": "IR",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 36,
+      "distinct_sources": 21,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.3889,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 737,
+      "label": "Morocco World Cup 2026",
+      "subject_country": "MA",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 32,
+      "distinct_sources": 17,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.4062,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 2350,
+      "label": "France Heatwave and Violence",
+      "subject_country": "GR",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 30,
+      "distinct_sources": 15,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.6,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 904,
+      "label": "Syria Security Incidents",
+      "subject_country": "IQ",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 29,
+      "distinct_sources": 19,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.3793,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 713,
+      "label": "Demisia Premierului Munteanu",
+      "subject_country": "MD",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 28,
+      "distinct_sources": 10,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.3214,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 896,
+      "label": "FIFA Suspends Balogun Red Card",
+      "subject_country": "CO",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 28,
+      "distinct_sources": 26,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.4286,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 605,
+      "label": "Bupati Langkat Corruption Case",
+      "subject_country": "ID",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 26,
+      "distinct_sources": 10,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.4615,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 2360,
+      "label": "Dr. Hussam Abu Safiya in Danger",
+      "subject_country": "GZ",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 26,
+      "distinct_sources": 10,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.5769,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 644,
+      "label": "Argentina vs Cabo Verde World Cup 2026",
+      "subject_country": "BE",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 25,
+      "distinct_sources": 23,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.6,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 866,
+      "label": "Libya Economic and Cyber News",
+      "subject_country": "LY",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 25,
+      "distinct_sources": 3,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.0,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 282,
+      "label": "Mali Attacks Escalate",
+      "subject_country": "SA",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 24,
+      "distinct_sources": 13,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.2083,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 744,
+      "label": "Justice and Violence Protests",
+      "subject_country": "DE",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 24,
+      "distinct_sources": 20,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.75,
+      "reason_codes": [
+        "insufficient_attribution"
+      ]
+    },
+    {
+      "dynamic_topic_id": 327,
+      "label": "Putin Trump Calls on Ukraine",
+      "subject_country": "PE",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 21,
+      "distinct_sources": 17,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.5238,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 532,
+      "label": "England vs Mexico World Cup",
+      "subject_country": "NO",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 20,
+      "distinct_sources": 11,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.3,
+      "reason_codes": [
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 2359,
+      "label": "Ola de Calor en EE.UU.",
+      "subject_country": "CL",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 20,
+      "distinct_sources": 12,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.8,
+      "reason_codes": [
+        "insufficient_attribution"
+      ]
+    },
+    {
+      "dynamic_topic_id": 230,
+      "label": "FIFA Suspends Balogun Red Card",
+      "subject_country": "HR",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 19,
+      "distinct_sources": 19,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.6316,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 606,
+      "label": "Piala Dunia 2026",
+      "subject_country": "ES",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 19,
+      "distinct_sources": 8,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.3684,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 292,
+      "label": "Mumbai Heavy Rain Red Alert",
+      "subject_country": "IN",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 18,
+      "distinct_sources": 10,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.8333,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution"
+      ]
+    },
+    {
+      "dynamic_topic_id": 246,
+      "label": "Egypt vs Iran World Cup 2026",
+      "subject_country": "ES",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 17,
+      "distinct_sources": 9,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.0588,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 264,
+      "label": "NDC Deregistration Controversy",
+      "subject_country": "NG",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 17,
+      "distinct_sources": 12,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 1.0,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution"
+      ]
+    },
+    {
+      "dynamic_topic_id": 517,
+      "label": "Venezuela Earthquake Death Toll",
+      "subject_country": "VE",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 17,
+      "distinct_sources": 12,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.8235,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution"
+      ]
+    },
+    {
+      "dynamic_topic_id": 1772,
+      "label": "Russian Attacks on Kyiv",
+      "subject_country": "UA",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 16,
+      "distinct_sources": 16,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 1.0,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution"
+      ]
+    },
+    {
+      "dynamic_topic_id": 121,
+      "label": "US Bombards Iran Over Ormuz Attack",
+      "subject_country": "IR",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 15,
+      "distinct_sources": 14,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.8667,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution"
+      ]
+    },
+    {
+      "dynamic_topic_id": 539,
+      "label": "Brazil vs Norway World Cup",
+      "subject_country": "BR",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 15,
+      "distinct_sources": 8,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.8667,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution"
+      ]
+    },
+    {
+      "dynamic_topic_id": 893,
+      "label": "Dr. Hussam Abu Safiya in Danger",
+      "subject_country": "GZ",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 15,
+      "distinct_sources": 5,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.9333,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution"
+      ]
+    },
+    {
+      "dynamic_topic_id": 1814,
+      "label": "Sara Duterte Impeachment Trial",
+      "subject_country": "PH",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 14,
+      "distinct_sources": 5,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 1.0,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution"
+      ]
+    },
+    {
+      "dynamic_topic_id": 34,
+      "label": "Securities Class Action Lawsuits",
+      "subject_country": "US",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 13,
+      "distinct_sources": 3,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 1.0,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution"
+      ]
+    },
+    {
+      "dynamic_topic_id": 787,
+      "label": "Marruecos Golea a Canad\u00e1",
+      "subject_country": "MX",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 13,
+      "distinct_sources": 13,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.6154,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 534,
+      "label": "Mundial 2026 Dieciseisavos",
+      "subject_country": "SE",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 12,
+      "distinct_sources": 11,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.4167,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution",
+        "high_unattributed_share"
+      ]
+    },
+    {
+      "dynamic_topic_id": 90,
+      "label": "Trump FIFA World Cup Scandal",
+      "subject_country": "IL",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 11,
+      "distinct_sources": 11,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.7273,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution"
+      ]
+    },
+    {
+      "dynamic_topic_id": 807,
+      "label": "NATO Summit Preparations",
+      "subject_country": "AL",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 11,
+      "distinct_sources": 10,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.9091,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution"
+      ]
+    },
+    {
+      "dynamic_topic_id": 242,
+      "label": "Venezuela Earthquakes Cause Collapse",
+      "subject_country": "VE",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 10,
+      "distinct_sources": 10,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 1.0,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution"
+      ]
+    },
+    {
+      "dynamic_topic_id": 83,
+      "label": "Philippines 7.8 Earthquake Tsunami",
+      "subject_country": "PH",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 9,
+      "distinct_sources": 8,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.8889,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution"
+      ]
+    },
+    {
+      "dynamic_topic_id": 302,
+      "label": "Ukraine Drone Incident Constanta",
+      "subject_country": "PL",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 9,
+      "distinct_sources": 8,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.8889,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution"
+      ]
+    },
+    {
+      "dynamic_topic_id": 535,
+      "label": "Roxana Guzm\u00e1n Murder",
+      "subject_country": "MX",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 9,
+      "distinct_sources": 8,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 0.8889,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_attribution"
+      ]
+    },
+    {
+      "dynamic_topic_id": 135,
+      "label": "Morocco Defeats Canada",
+      "subject_country": "MA",
+      "subject_country_method": "cluster_primary_coverage_proxy",
+      "signal_count": 2,
+      "distinct_sources": 2,
+      "public_count": 0,
+      "eligible": false,
+      "is_hit": false,
+      "voice_asymmetry_score": null,
+      "attribution_share": 1.0,
+      "reason_codes": [
+        "insufficient_volume",
+        "insufficient_source_diversity",
+        "insufficient_attribution"
+      ]
+    }
+  ]
+}
