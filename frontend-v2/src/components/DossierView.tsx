@@ -24,7 +24,9 @@ function renderWithCitations(text: string) {
                         href={`#dossier-cite-${part.n}`}
                         onClick={e => {
                             e.preventDefault()
-                            document.getElementById(`dossier-cite-${part.n}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                            // 'auto' not 'smooth': smooth scrollIntoView silently no-ops on the
+                            // overlay scroller in Chrome (verified live) — instant jump always works.
+                            document.getElementById(`dossier-cite-${part.n}`)?.scrollIntoView({ behavior: 'auto', block: 'center' })
                         }}
                     >[{part.n}]</a>
                 </sup>
