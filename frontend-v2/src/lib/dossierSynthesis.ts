@@ -11,13 +11,50 @@ import {
   type ConnectionsData, type ClusterResult,
 } from './dossierConnections'
 
+export interface DossierCitation {
+  n: number
+  headline: string
+  source: string | null
+  date: string | null
+  url: string | null
+  pin: string
+}
+
 export interface DossierSynthesis {
   contract: string
   headline: string | null
+  // P0.6a article shape — publishable mini-article. lede/body carry inline [n]
+  // receipt markers; citations is the server-resolved numbered receipts table
+  // (authoritative — built from the request, never echoed by the model).
+  lede: string | null
+  body: string[] | null
+  unknowns: string[] | null
+  citations: DossierCitation[] | null
+  // Legacy shape (fallback renderer when the model answers in the old form).
   synthesis: string | null
   gap: string | null
   provider: string | null
   error: string | null
+}
+
+/** True when the response carries the publishable article shape. */
+export function isArticle(s: DossierSynthesis): boolean {
+  return Boolean(s.lede || (s.body && s.body.length))
+}
+
+/** Split article text on its [n] receipt markers → renderable parts. Pure. */
+export type CitationPart = { kind: 'text'; text: string } | { kind: 'cite'; n: number }
+export function splitCitations(text: string): CitationPart[] {
+  const parts: CitationPart[] = []
+  const re = /\[(\d{1,3})\]/g
+  let last = 0
+  for (let m = re.exec(text); m; m = re.exec(text)) {
+    if (m.index > last) parts.push({ kind: 'text', text: text.slice(last, m.index) })
+    parts.push({ kind: 'cite', n: Number(m[1]) })
+    last = m.index + m[0].length
+  }
+  if (last < text.length) parts.push({ kind: 'text', text: text.slice(last) })
+  return parts
 }
 
 /** Build the request from the frozen dossier + the measured connection data,
@@ -31,7 +68,7 @@ export async function synthesizeDossier(
     type: p.anchorType,
     // Fold source + signal DATE into the headline so the LLM can attribute AND
     // date contested outcomes ("reported by <outlet>, 2026-07-08") instead of
-    // asserting them as undated fact.
+    // asserting them as undated fact. (Legacy field — older backends read this.)
     evidence: (p.snapshot?.evidence ?? []).slice(0, 6)
       .map(e => {
         const attribution = e.source
@@ -39,6 +76,14 @@ export async function synthesizeDossier(
           : (e.date ? ` — ${e.date}` : '')
         return `${e.headline}${attribution}`
       }),
+    // P0.6a structured evidence — the server numbers these [1..N] into the
+    // article's authoritative receipts table (with URLs for clickable receipts).
+    evidence_items: (p.snapshot?.evidence ?? []).slice(0, 6).map(e => ({
+      headline: e.headline,
+      source: e.source ?? null,
+      date: e.date ?? null,
+      url: e.url ?? null,
+    })),
     note: p.note ?? null,
   }))
   if (pins.length === 0) return null
@@ -130,13 +175,33 @@ export async function synthesizeDossier(
 }
 
 /** Markdown for the synthesis block (goes at the TOP of the export, above the
- *  templated summary — so the exported report leads with the finding). */
+ *  templated summary — so the exported report leads with the finding).
+ *  Article shape → mini-article with numbered receipts; legacy shape → old block. */
 export function synthesisMarkdown(s: DossierSynthesis): string[] {
-  if (!s.headline && !s.synthesis) return []
+  if (!s.headline && !s.synthesis && !isArticle(s)) return []
   const lines: string[] = ['## Synthesis', '']
   if (s.headline) lines.push(`**${s.headline}**`, '')
-  if (s.synthesis) lines.push(s.synthesis, '')
-  if (s.gap) lines.push(`*Key gap: ${s.gap}*`, '')
+  if (isArticle(s)) {
+    if (s.lede) lines.push(`*${s.lede}*`, '')
+    for (const para of s.body ?? []) lines.push(para, '')
+    if (s.unknowns && s.unknowns.length) {
+      lines.push('**What we don\'t know**', '')
+      for (const u of s.unknowns) lines.push(`- ${u}`)
+      lines.push('')
+    }
+    if (s.citations && s.citations.length) {
+      lines.push('**Receipts**', '')
+      for (const c of s.citations) {
+        const head = c.url ? `[${c.headline}](${c.url})` : c.headline
+        const attribution = [c.source, c.date].filter(Boolean).join(', ')
+        lines.push(`${c.n}. ${head}${attribution ? ` — ${attribution}` : ''} *(${c.pin})*`)
+      }
+      lines.push('')
+    }
+  } else {
+    if (s.synthesis) lines.push(s.synthesis, '')
+    if (s.gap) lines.push(`*Key gap: ${s.gap}*`, '')
+  }
   lines.push(`*Synthesis measured at generation time${s.provider ? ` (${s.provider})` : ''} — not frozen; grounded in the pinned evidence + measured connections.*`, '')
   return lines
 }

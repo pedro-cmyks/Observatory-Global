@@ -8,6 +8,7 @@ import {
   exportInvestigationJSON,
   getActiveInvestigationId,
   getInvestigation,
+  investigationQuery,
   listInvestigations,
   removePin,
   updatePinNote,
@@ -15,7 +16,16 @@ import {
   type Investigation,
 } from '../lib/workbench';
 import { DossierView } from './DossierView';
+import WorkbenchConstellation from './WorkbenchConstellation';
 import './WorkbenchPanel.css';
+
+// Notes must never clip mid-sentence (the truncation complaint): size the
+// textarea to its content on mount and as the analyst types.
+function autoGrowNote(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight + 2}px`;
+}
 
 interface WorkbenchPanelProps {
   onOpenThread?: (threadId: string, label: string) => void;
@@ -32,6 +42,8 @@ export default function WorkbenchPanel({
   const [, setTick] = useState(0);
   const [newTitle, setNewTitle] = useState('');
   const [showDossier, setShowDossier] = useState(false);
+  // P0.6b: CORROBORATE opens the report AND fires the web-corroboration run.
+  const [autoCorroborate, setAutoCorroborate] = useState(false);
   void refreshToken;
 
   const rerender = useCallback(() => setTick(t => t + 1), []);
@@ -95,7 +107,9 @@ export default function WorkbenchPanel({
               onClick={() => {
                 setActiveInvestigation(inv.id);
                 rerender();
-                onStartInvestigation?.(inv.title); // re-open its research plan
+                // Re-open its research plan from the PERSISTED query (falls
+                // back to last pin queryText, then title, for old records).
+                onStartInvestigation?.(investigationQuery(inv));
               }}
             >
               <span className="wb-item-title">{inv.title}</span>
@@ -114,12 +128,17 @@ export default function WorkbenchPanel({
         ) : (
           <>
             {showDossier && (
-              <DossierView investigation={active} onClose={() => setShowDossier(false)} />
+              <DossierView
+                investigation={active}
+                autoCorroborate={autoCorroborate}
+                onClose={() => { setShowDossier(false); setAutoCorroborate(false); }}
+              />
             )}
             <div className="wb-header">
               <span className="wb-title">{active.title}</span>
               <div className="wb-actions">
-                <button className="wb-action wb-action--report" onClick={() => setShowDossier(true)} data-tip="Generate a report from the pinned route (Phase 3)" disabled={active.pins.length === 0}>REPORT</button>
+                <button className="wb-action wb-action--report" onClick={() => { setAutoCorroborate(false); setShowDossier(true); }} data-tip="Generate a report from the pinned route (Phase 3)" disabled={active.pins.length === 0}>REPORT</button>
+                <button className="wb-action wb-action--corroborate" onClick={() => { setAutoCorroborate(true); setShowDossier(true); }} data-tip="Check each pin against live web coverage — independent sources weighted (P0.6b). Opens the report with the corroboration run." disabled={active.pins.length === 0}>CORROBORATE</button>
                 <button className="wb-action" onClick={handleExport} data-tip="Export investigation as JSON (durability)">EXPORT</button>
                 <button
                   className="wb-action wb-action--danger"
@@ -133,6 +152,10 @@ export default function WorkbenchPanel({
                 >DELETE</button>
               </div>
             </div>
+
+            {/* Incremental constellation seed: the universe builds as you pin
+                (absent under 2 thread pins — nothing to connect). */}
+            <WorkbenchConstellation inv={active} />
 
             <div className="wb-section-title">PINNED ROUTE ({active.pins.length})</div>
             <div className="wb-pins">
@@ -178,6 +201,8 @@ export default function WorkbenchPanel({
                     defaultValue={pin.note ?? ''}
                     placeholder="Add a note…"
                     rows={1}
+                    ref={autoGrowNote}
+                    onInput={e => autoGrowNote(e.currentTarget)}
                     onBlur={e => {
                       if ((e.target.value ?? '') !== (pin.note ?? '')) {
                         updatePinNote(active.id, pin.anchorId, e.target.value);

@@ -344,7 +344,11 @@ interface PlacedNeighbor {
   links: Array<{ pin: string; sim: number }>
 }
 
-function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; cluster: ClusterResult }) {
+// Exported: the workbench mini-constellation reuses this field at compact
+// height so the analyst sees the universe build as they pin (report untouched).
+export function InvestigativeUniverse({ data, cluster, compact = false }: {
+  data: ConnectionsData; cluster: ClusterResult; compact?: boolean
+}) {
   // hover = a pin id OR `nb:<base_id>` for a neighbor star.
   const [hover, setHover] = useState<string | null>(null)
   const placed = useMemo(
@@ -437,22 +441,26 @@ function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; clust
   const shortPin = (id: string) => truncate(byId.get(id)?.label ?? id, 18)
 
   return (
-    <div className="dcx-panel">
-      <div className="dcx-panel-title">Investigative universe</div>
-      <p className="dcx-sub">How the pinned stories relate — and the unpinned stories sitting near them. Hover any node to trace its links.</p>
-      <div className="dcx-howto">
-        <span><b className="dcx-k-pin">●</b> your pins (always labelled)</span>
-        <span><b className="dcx-k-nb">◦</b> nearby unpinned story</span>
-        <span><b className="dcx-k-bridge">◎</b> bridge — near several pins</span>
-        <span>position ≈ semantic field · closer = more alike</span>
-      </div>
-      <div className="dcx-howto dcx-edge-legend">
-        <span><i className="dcx-k-strong-edge" /> solid green = confirmed link (shared actor/place)</span>
-        <span><i className="dcx-k-text-edge" /> solid amber = evidence-text mention (verify)</span>
-        <span><i className="dcx-k-weak-edge" /> dashed = similarity only, not a confirmed link</span>
-        <span>line label = the reason (shared name/country, “mention”, or ≈cosine)</span>
-      </div>
-      <svg viewBox={`0 0 ${UNIVERSE_W} ${UNIVERSE_H}`} className="dcx-universe" role="img" aria-label="Investigative universe">
+    <div className={compact ? 'dcx-universe-compact' : 'dcx-panel'}>
+      {!compact && (
+        <>
+          <div className="dcx-panel-title">Investigative universe</div>
+          <p className="dcx-sub">How the pinned stories relate — and the unpinned stories sitting near them. Hover any node to trace its links.</p>
+          <div className="dcx-howto">
+            <span><b className="dcx-k-pin">●</b> your pins (always labelled)</span>
+            <span><b className="dcx-k-nb">◦</b> nearby unpinned story</span>
+            <span><b className="dcx-k-bridge">◎</b> bridge — near several pins</span>
+            <span>position ≈ semantic field · closer = more alike</span>
+          </div>
+          <div className="dcx-howto dcx-edge-legend">
+            <span><i className="dcx-k-strong-edge" /> solid green = confirmed link (shared actor/place)</span>
+            <span><i className="dcx-k-text-edge" /> solid amber = evidence-text mention (verify)</span>
+            <span><i className="dcx-k-weak-edge" /> dashed = similarity only, not a confirmed link</span>
+            <span>line label = the reason (shared name/country, “mention”, or ≈cosine)</span>
+          </div>
+        </>
+      )}
+      <svg viewBox={`0 0 ${UNIVERSE_W} ${UNIVERSE_H}`} className={`dcx-universe${compact ? ' dcx-universe--compact' : ''}`} role="img" aria-label="Investigative universe">
         {/* neighbor links — faint, behind everything */}
         {neighborPlaced.map(nb => nb.links.map((l, j) => {
           const p = byId.get(l.pin)
@@ -567,7 +575,7 @@ function InvestigativeUniverse({ data, cluster }: { data: ConnectionsData; clust
         </div>
       )}
       {/* Static "nearby" list — the report-only reader gets the names without hover */}
-      {(nbGroups.bridges.length > 0 || nbGroups.byPin.size > 0) && (
+      {!compact && (nbGroups.bridges.length > 0 || nbGroups.byPin.size > 0) && (
         <div className="dcx-nearby">
           <div className="dcx-nearby-title">Nearby unpinned stories</div>
           {nbGroups.bridges.length > 0 && (

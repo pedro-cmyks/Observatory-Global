@@ -49,6 +49,10 @@ export interface Investigation {
    *  first-pin title is a fallback label; a custom title wins over the dossier
    *  synthesis headline. Presentation only — pin snapshots stay frozen. */
   titleCustom?: boolean
+  /** The research-plan query this investigation was started from. Persisted so
+   *  the plan panel can re-fetch on reopen — before this, the query lived only
+   *  in App state and the plan was lost when the workbench closed. */
+  query?: string
   createdAt: string
   updatedAt: string
   pins: WorkbenchPin[]
@@ -110,11 +114,25 @@ export function getInvestigation(id: string): Investigation | null {
   return readStore().investigations.find(inv => inv.id === id) ?? null
 }
 
-export function createInvestigation(title: string): Investigation {
+/** The research-plan query for an investigation. Falls back to the most recent
+ *  pin's queryText (pre-existing investigations lack the persisted query), then
+ *  to the title — both were created from the original search query. */
+export function investigationQuery(inv: Investigation): string {
+  if (inv.query) return inv.query
+  for (let i = inv.pins.length - 1; i >= 0; i--) {
+    const q = inv.pins[i].queryText
+    if (q) return q
+  }
+  return inv.title
+}
+
+export function createInvestigation(title: string, query?: string): Investigation {
   const now = new Date().toISOString()
+  const q = (query ?? title).trim()
   const inv: Investigation = {
     id: `inv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     title: title.trim() || 'Untitled investigation',
+    query: q || undefined,
     createdAt: now,
     updatedAt: now,
     pins: [],
