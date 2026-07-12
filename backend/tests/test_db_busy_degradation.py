@@ -9,8 +9,6 @@ Tests run against the REAL app (real middleware stack + exception handlers);
 TestClient without a context manager never fires startup, so no DB is needed.
 """
 
-import asyncio
-
 import asyncpg
 import pytest
 from fastapi.testclient import TestClient
@@ -27,14 +25,9 @@ async def _raise_statement_timeout():
     )
 
 
-@app.get("/__test__/pool-timeout")
-async def _raise_pool_timeout():
+@app.get("/__test__/generic-timeout")
+async def _raise_generic_timeout():
     raise TimeoutError()
-
-
-@app.get("/__test__/asyncio-timeout")
-async def _raise_asyncio_timeout():
-    raise asyncio.TimeoutError()
 
 
 @app.get("/__test__/conn-gone")
@@ -51,8 +44,6 @@ client = TestClient(app, raise_server_exceptions=False)
     "path",
     [
         "/__test__/statement-timeout",
-        "/__test__/pool-timeout",
-        "/__test__/asyncio-timeout",
         "/__test__/conn-gone",
     ],
 )
@@ -74,3 +65,11 @@ def test_db_busy_passes_through_cors_middleware():
     # CORS fallback is "*" when ATLAS_CORS_ORIGINS is unset in the test env;
     # either way the header must be present.
     assert r.headers.get("access-control-allow-origin") is not None
+
+
+def test_generic_timeout_is_not_mislabeled_as_database_contention():
+    r = client.get("/__test__/generic-timeout")
+
+    assert r.status_code != 503
+    assert r.headers.get("retry-after") is None
+    assert "db_busy" not in r.text

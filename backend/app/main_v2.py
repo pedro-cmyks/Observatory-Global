@@ -92,10 +92,6 @@ async def _handle_db_busy(request: _StarletteRequest, exc: Exception) -> JSONRes
 # Statement timeout ("canceling statement due to statement timeout") — the
 # exact error class from the incident tracebacks.
 app.add_exception_handler(asyncpg.exceptions.QueryCanceledError, _handle_db_busy)
-# Pool-acquire / command timeouts. On py3.11+ asyncio.TimeoutError IS the
-# builtin TimeoutError; register both so older runtimes are covered too.
-app.add_exception_handler(TimeoutError, _handle_db_busy)
-app.add_exception_handler(asyncio.TimeoutError, _handle_db_busy)
 # Pooler saturation / dropped connections during heavy batch windows.
 app.add_exception_handler(asyncpg.exceptions.TooManyConnectionsError, _handle_db_busy)
 app.add_exception_handler(asyncpg.exceptions.ConnectionDoesNotExistError, _handle_db_busy)

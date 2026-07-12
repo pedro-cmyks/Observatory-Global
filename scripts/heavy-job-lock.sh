@@ -44,33 +44,39 @@ _atlas_heavy_log() {
 }
 
 _atlas_heavy_holder_info() {
-  # Echo "pid|job|started_epoch" from the lock, empty fields if unreadable.
-  local pid="" job="" started=""
+  # Echo "pid|job|started_epoch|owner_ttl_minutes" from the lock, empty fields
+  # if unreadable. The OWNER'S TTL travels with the lock: a short-cadence
+  # contender must never evict a legitimate long-running owner.
+  local pid="" job="" started="" owner_ttl=""
   if [ -r "$ATLAS_HEAVY_LOCK_DIR/info" ]; then
     pid="$(sed -n 's/^pid=//p' "$ATLAS_HEAVY_LOCK_DIR/info" 2>/dev/null | head -1)"
     job="$(sed -n 's/^job=//p' "$ATLAS_HEAVY_LOCK_DIR/info" 2>/dev/null | head -1)"
     started="$(sed -n 's/^started=//p' "$ATLAS_HEAVY_LOCK_DIR/info" 2>/dev/null | head -1)"
+    owner_ttl="$(sed -n 's/^ttl=//p' "$ATLAS_HEAVY_LOCK_DIR/info" 2>/dev/null | head -1)"
   fi
-  echo "${pid}|${job}|${started}"
+  echo "${pid}|${job}|${started}|${owner_ttl}"
 }
 
 _atlas_heavy_try_reclaim() {
-  # Reclaim if the holder crashed (PID dead) or overran its TTL.
-  # $1 = ttl minutes. Returns 0 if the lock was removed.
-  local ttl_min="$1" info pid job started now age_min
+  # Reclaim only a crashed holder (PID dead). A live-but-overdue owner is an
+  # incident to surface, not permission to create the concurrent heavy jobs
+  # this mutex exists to prevent. Returns 0 only if the lock was removed.
+  local info pid rest job started owner_ttl now age_min
   info="$(_atlas_heavy_holder_info)"
-  pid="${info%%|*}"; job="$(echo "$info" | cut -d'|' -f2)"; started="${info##*|}"
+  pid="${info%%|*}"
+  rest="${info#*|}"; job="${rest%%|*}"
+  rest="${rest#*|}"; started="${rest%%|*}"
+  owner_ttl="${rest##*|}"
   if [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; then
     _atlas_heavy_log "stale lock (holder pid=${pid:-?} job=${job:-?} DEAD) — reclaiming"
     rm -rf "$ATLAS_HEAVY_LOCK_DIR" 2>/dev/null
     return 0
   fi
   now="$(date +%s)"
-  if [ -n "$started" ] && [ "$(( (now - started) / 60 ))" -gt "$ttl_min" ]; then
+  if [ -n "$started" ] && [ -n "$owner_ttl" ] \
+      && [ "$(( (now - started) / 60 ))" -gt "$owner_ttl" ]; then
     age_min="$(( (now - started) / 60 ))"
-    _atlas_heavy_log "OVERDUE lock (job=$job pid=$pid age=${age_min}m > ttl=${ttl_min}m) — reclaiming; investigate the hung job"
-    rm -rf "$ATLAS_HEAVY_LOCK_DIR" 2>/dev/null
-    return 0
+    _atlas_heavy_log "OVERDUE_ACTIVE lock (job=$job pid=$pid age=${age_min}m > owner_ttl=${owner_ttl}m) — NOT reclaiming a live owner; investigate"
   fi
   return 1
 }
@@ -93,6 +99,7 @@ atlas_heavy_lock() {
         echo "pid=$$"
         echo "job=$job"
         echo "started=$(date +%s)"
+        echo "ttl=$ttl_min"
       } > "$ATLAS_HEAVY_LOCK_DIR/info"
       _ATLAS_HEAVY_LOCK_HELD="$job"
       # shellcheck disable=SC2064
@@ -102,7 +109,7 @@ atlas_heavy_lock() {
     fi
 
     # Held — crashed/hung holder is reclaimable, then loop retries mkdir.
-    if _atlas_heavy_try_reclaim "$ttl_min"; then
+    if _atlas_heavy_try_reclaim; then
       continue
     fi
 
