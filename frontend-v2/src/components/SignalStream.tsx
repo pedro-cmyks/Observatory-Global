@@ -141,6 +141,12 @@ export const SignalStream: React.FC = () => {
     const [streamFilter, setStreamFilter] = useState<'all' | 'critical' | 'elevated' | 'notable' | 'conflict' | 'disaster' | 'trend' | 'person' | 'maritime'>('notable')
     const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
     const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null)
+    // G5 (dataviz audit): distinguish a SERVICE FAILURE (fetch threw / non-2xx,
+    // e.g. the 503 db_busy the API now returns when the shared DB is contended)
+    // from an honest empty-200. A 500/503 must NOT read as "No signals found".
+    const [feedError, setFeedError] = useState(false)
+    const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const retryAttemptRef = useRef(0)
     const isHoveredRef = useRef(false)
     const listRef = useRef<HTMLDivElement>(null)
     const latestTimestampRef = useRef<string | null>(null)
@@ -172,6 +178,15 @@ export const SignalStream: React.FC = () => {
     useEffect(() => {
         let isMounted = true
 
+        const scheduleRetry = () => {
+            if (!isMounted) return
+            // Exponential backoff, capped: 3s → 6s → 12s → 24s → 30s.
+            const attempt = retryAttemptRef.current++
+            const delay = Math.min(3000 * 2 ** attempt, 30000)
+            if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
+            retryTimerRef.current = setTimeout(() => { void fetchInitial() }, delay)
+        }
+
         const fetchInitial = async () => {
             try {
                 const params = new URLSearchParams()
@@ -184,15 +199,27 @@ export const SignalStream: React.FC = () => {
 
                 const sigRes = await fetch(`/api/v2/signals?${params.toString()}`)
 
-                let fetchedSignals: StreamItem[] = []
-                if (sigRes.ok) {
-                    const data = await sigRes.json()
-                    fetchedSignals = (data.signals || [])
-                        .filter((s: Signal) => isValidHeadline(s.headline))
-                        .map((s: Signal) => ({ ...s, type: 'signal' as const }))
+                // A non-2xx (500 bug, 503 db_busy, 429 throttle) is a service
+                // failure, not an empty result. Keep the last-good items on
+                // screen, flag the feed as unavailable, and retry with backoff.
+                if (!sigRes.ok) {
+                    if (!isMounted) return
+                    setFeedError(true)
+                    scheduleRetry()
+                    return
                 }
 
+                const data = await sigRes.json()
+                const fetchedSignals: StreamItem[] = (data.signals || [])
+                    .filter((s: Signal) => isValidHeadline(s.headline))
+                    .map((s: Signal) => ({ ...s, type: 'signal' as const }))
+
                 if (!isMounted) return
+
+                // Recovered: clear the error and reset the backoff.
+                setFeedError(false)
+                retryAttemptRef.current = 0
+                if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null }
 
                 seenIdsRef.current = new Set(fetchedSignals.map(s => s.id))
 
@@ -238,15 +265,22 @@ export const SignalStream: React.FC = () => {
                 }
             } catch (e) {
                 console.error('[SignalStream] Init fetch error', e)
+                if (!isMounted) return
+                setFeedError(true)   // network throw = service unavailable, not empty
+                scheduleRetry()
             }
         }
 
         latestTimestampRef.current = null
         dripQueueRef.current = []
         seenIdsRef.current = new Set()
-        fetchInitial()
+        retryAttemptRef.current = 0
+        void fetchInitial()
 
-        return () => { isMounted = false }
+        return () => {
+            isMounted = false
+            if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null }
+        }
     }, [filter.country, filter.theme, filter.person, timeRange])
 
     // Poll for new signals
@@ -275,6 +309,11 @@ export const SignalStream: React.FC = () => {
                         .filter((s: Signal) => isValidHeadline(s.headline) && !seenIdsRef.current.has(s.id))
                         .map((s: Signal) => ({ ...s, type: 'signal' as const }))
                     newVelocity = data.velocity || null
+                    if (isMounted) setFeedError(false)   // a live poll recovered the feed
+                } else if (isMounted) {
+                    // 503 db_busy / 500 during a poll: surface unavailable but
+                    // keep the current items; the init effect owns backoff retry.
+                    setFeedError(true)
                 }
 
                 if (!isMounted) return
@@ -289,6 +328,7 @@ export const SignalStream: React.FC = () => {
                 }
             } catch (e) {
                 console.error('[SignalStream] Poll error', e)
+                if (isMounted) setFeedError(true)   // next poll (15s) re-checks
             }
         }
 
@@ -377,9 +417,9 @@ export const SignalStream: React.FC = () => {
             {/* Stream Header: live status + filter tabs */}
             <div className="stream-header">
                 <div className="stream-status-bar">
-                    <span className={`stream-live-dot${isHovered ? ' paused' : ''}`} />
+                    <span className={`stream-live-dot${feedError ? ' feed-error' : ''}${isHovered ? ' paused' : ''}`} />
                     <span className="stream-status-text">
-                        {isHovered ? 'paused · last 15 min' : '● LIVE'}
+                        {feedError ? 'feed unavailable · retrying' : isHovered ? 'paused · last 15 min' : '● LIVE'}
                     </span>
                     {velocity && velocity.signals_per_minute !== '--' && !isHovered && (
                         <span className="stream-velocity">
@@ -426,7 +466,14 @@ export const SignalStream: React.FC = () => {
                 onMouseLeave={() => { isHoveredRef.current = false; setIsHovered(false) }}
             >
                 {visibleItems.length === 0 ? (
-                    <div className="empty-state">No signals found</div>
+                    feedError ? (
+                        <div className="empty-state stream-feed-error" role="status" aria-live="polite">
+                            <span className="stream-feed-error-dot" />
+                            Signal feed unavailable — retrying…
+                        </div>
+                    ) : (
+                        <div className="empty-state">No signals found</div>
+                    )
                 ) : (
                     visibleItems
                         .map(sig => {

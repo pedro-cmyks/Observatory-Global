@@ -45,6 +45,46 @@ from the Frank test (undated claims) was missing from v1 — restored.
 ### Phase 1 — Infra split (the constraint)
 - **P1.1 NOW (cheap):** heavy-job mutex — clustering/embed/flag jobs never run
   concurrently against serving; stagger crons; keep serving queries light.
+
+  **SHIPPED 2026-07-12 (`scripts/heavy-job-lock.sh` + serving-side
+  degradation + G5 UI).** Fourth incident of the week forced it: `GET
+  /api/v2/signals` returned raw 500 `TimeoutError` (Supabase statement
+  timeout) whenever M1 batch jobs (embed cron 17:30/23:30/05:30, scoped/
+  emergent clustering, matview refresh, goldgrowth, hot-cold catchup) hammered
+  the shared DB at once. Prior victims: the dataviz audit, the A0 measurement,
+  the research plan — same root cause each time (concurrent batch load →
+  serving statement-timeout → 500). Three-layer fix:
+  1. **Mutex** — atomic-mkdir lockfile shared by ALL six heavy runners (macOS
+     has no flock). `atlas_heavy_lock <job> <wait|skip> [ttl] [wait-max]`.
+     Snapshots/embed/goldgrowth/catchup QUEUE (wait); matview SKIPs (its 30-min
+     cadence self-heals). One heavy DB job at a time — never two concurrently.
+     Stale-lock recovery: dead-PID → reclaim; age > TTL → reclaim + LOUD log
+     (a legit job past TTL is itself the incident to surface). Verified: skip,
+     release, dead-PID reclaim, TTL reclaim, and end-to-end through the real
+     matview runner (skips + exit 0 + holder's lock preserved).
+  2. **Serving degradation** — `main_v2.py` global exception handlers map
+     asyncpg `QueryCanceledError` / `TimeoutError` / pool-saturation errors to
+     an honest **503 `{"reason":"db_busy"}`** (Retry-After: 10) instead of a
+     raw 500. Flows back through rate-limit + CORS cleanly (the rate_limit.py
+     traceback was just the propagation path, not the fault). 5 pytest.
+  3. **G5 error ≠ empty (UI)** — SignalStream + NarrativeThreads now
+     distinguish a fetch failure (503/500/network) from an honest empty-200:
+     amber "feed unavailable — retrying" with exponential backoff (SignalStream
+     3→30s) instead of a fake "No signals found" / "No active narratives".
+     UniverseView already rendered "unavailable (reason)" — left as-is.
+
+  **Stagger analysis (why no plist time-shift was needed):** the mutex makes
+  exact-minute coincidence SAFE by construction (matview skip-mode; heavy
+  calendar jobs queue), and wall-clock-staggering an interval-based matview
+  (`StartInterval 1800`, phase = launchd-load-relative, non-deterministic)
+  against calendar jobs is unreliable. Among the six mutex jobs no two share an
+  identical trigger minute; any window overlap is serialized. Intentionally
+  LEFT UNLOCKED: the 30-min atlas-topic-classifier (gate-scoring is the
+  serving-freshness cadence — must not queue behind a 1.5h snapshot) and
+  3vendor-calibration (API/LLM-bound, tiny DB sample). Known cost: during the
+  nightly scoped snapshot (~1.5h) matview skips ~3 refresh cycles →
+  country_hourly_v2 + person_vocab up to ~1.5h stale off-peak — an acceptable
+  trade vs serving 500s. Runners synced to ~/AtlasLocalWorker.
 - **P1.2 NEXT:** separate batch workload from serving — read-replica or separate
   batch project; batch writes merged in bounded transactions.
 - **P1.3 EVENTUAL:** local analytics store (e.g. DuckDB over the existing

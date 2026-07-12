@@ -28,6 +28,15 @@ MAX_SIGNALS="${ATLAS_EMBED_MAX_SIGNALS:-60000}"  # ~25-40 min/run, bounded
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 mkdir -p "$LOG_DIR"
 
+# P1.1 heavy-job mutex: one heavy DB job at a time on the M1 (concurrent batch
+# jobs starve serving → prod statement timeouts). Queue behind any holder.
+if [[ -r "$SCRIPT_DIR/heavy-job-lock.sh" ]]; then
+  source "$SCRIPT_DIR/heavy-job-lock.sh"
+  atlas_heavy_lock "embed-hot-corpus" wait 240 90 || exit 0
+else
+  echo "[embed-hot-corpus] heavy-job-lock.sh missing — running UNSERIALIZED" >&2
+fi
+
 if [[ -r "$LOCAL_ENV" && -z "${DATABASE_URL:-}" ]]; then
   DATABASE_URL="$(grep -E '^DATABASE_URL=' "$LOCAL_ENV" | head -1 | cut -d= -f2-)"
   export DATABASE_URL
