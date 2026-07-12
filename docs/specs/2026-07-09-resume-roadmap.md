@@ -140,3 +140,22 @@ nothing "AI-made". Atlas today reads super-dense and hard to parse.
   to Vercel). Bundle delta ≈ +2 KB gz. → task_8a35aa03
 Rationale: the wedge-test report sells the ANALYSIS; the experience track sells the
 first 30 seconds. Both feed the same demo.
+
+## Phase 2.5 — ACTOR/ENTITY QUALITY (named workstream, added 2026-07-11)
+Pedro's standing question — "qué habla la gente, CON QUIÉN, por qué, dónde" —
+decomposes into: QUÉ≈close (coverage healed), DÓNDE≈close (geo+voice), QUIÉN=
+noisy, CON QUIÉN/POR QUÉ=unbuilt. The named blockers, in dependency order:
+1. **Actor layer cleanup** (THE current bottleneck): "marea neagra"/"states
+   states" as persons; trump missing from a NATO-summit thread's actors; junk
+   actors leading CONFIRMED verdicts. Every relational feature (shared-actor
+   edges, who-says-what, C4 novel relations, propagation) keys on actors —
+   while actors are dirty, "with whom" stays mush. Levers: NER throughput +
+   verified-path priority, junk-actor filters at serving, subject-typing broad
+   set (person/org/place/phenomenon/system per the vision).
+2. **Public voice volume**: press 166 / public 0 in the marquee report — "la
+   gente" is currently a euphemism for "the press". Forum lanes exist but are
+   starved; until they carry volume, press-vs-public is one-sided.
+3. **Propagation/origin layer** (Phase 4, guarded) — answers "por qué/quién
+   empezó"; buildable only after 1 (clean actors) and with the timestamp
+   guardrail.
+Honest position (2026-07-11): far in features, no longer far in foundations.
