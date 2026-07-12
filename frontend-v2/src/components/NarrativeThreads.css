@@ -106,6 +106,17 @@
 /* .coverage-badge: canonical in styles/variables.css (#247 C2) */
 .coverage-badge { margin-left: 4px; }
 
+/* T4 count lineage: raw count stays prominent, the gate-verified count reads
+   as a quiet second line under it — same convention as the detail header. */
+.narrative-count-lineage {
+    display: block;
+    font-size: 9px;
+    font-weight: 500;
+    color: var(--color-text-muted, #64748b);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
 /* Country suffix in thread label */
 .narrative-label-country {
     color: var(--color-text-muted);
@@ -520,3 +531,20 @@
 .narrative-pin:hover { color: rgba(226, 232, 240, 0.9); }
 .narrative-pin--active { color: #10b981; }
 .narrative-pin--active:hover { color: #34d399; }
+
+
+/* T3: sparkline peak annotation — the magnitude anchor for self-normalized rows */
+.narrative-sparkline-wrap {
+    position: relative;
+    display: block;
+}
+.narrative-spark-peak {
+    position: absolute;
+    top: -2px;
+    right: 2px;
+    font-size: 8px;
+    line-height: 1;
+    color: var(--color-text-muted, #64748b);
+    font-family: var(--font-mono, monospace);
+    pointer-events: none;
+}

@@ -27,6 +27,10 @@ interface Narrative {
     anchor_topics: string[]
     parent_domain: string | null
     signal_count: number
+    // #214 / T4 (dataviz audit): gate lineage for the count label. Atlas topics
+    // carry both; dynamic/emergent threads may not (undefined → plain count).
+    gated_signal_count?: number
+    gate_scored_count?: number
     discussion_count?: number
     forum_sentiment?: number | null
     country_count: number
@@ -48,7 +52,10 @@ interface Narrative {
     wiki_views?: number
 }
 
-// Sparkline SVG component
+// Sparkline SVG component.
+// T3 (dataviz audit): every row is max-normalized to itself — 20 mini-charts,
+// 20 private y-scales. The peak annotation anchors the magnitude so rows can
+// be compared by number even though the amplitudes can't.
 const Sparkline: React.FC<{ data: TimelinePoint[], trend: string }> = ({ data, trend }) => {
     if (!data || data.length < 2) return null
 
@@ -71,10 +78,13 @@ const Sparkline: React.FC<{ data: TimelinePoint[], trend: string }> = ({ data, t
     const strokeColor = trend === 'accelerating' ? '#ef4444' : trend === 'fading' ? '#64748b' : '#60a5fa'
 
     return (
-        <svg className="narrative-sparkline" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-            <polygon points={areaPoints} fill={strokeColor} />
-            <polyline points={points} stroke={strokeColor} />
-        </svg>
+        <span className="narrative-sparkline-wrap" data-tip={`Shape only — this sparkline is scaled to its own peak of ${max.toLocaleString()} signals/h; compare rows by the peak number, not the amplitude.`}>
+            <svg className="narrative-sparkline" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+                <polygon points={areaPoints} fill={strokeColor} />
+                <polyline points={points} stroke={strokeColor} />
+            </svg>
+            <span className="narrative-spark-peak">peak {max > 999 ? `${(max / 1000).toFixed(1)}k` : max}/h</span>
+        </span>
     )
 }
 
@@ -104,6 +114,8 @@ const normalizeThread = (thread: any): Narrative => ({
     anchor_topics: thread.anchor_topics || [],
     parent_domain: thread.parent_domain || null,
     signal_count: thread.signal_count || 0,
+    gated_signal_count: thread.gated_signal_count,
+    gate_scored_count: thread.gate_scored_count,
     discussion_count: thread.discussion_count || 0,
     forum_sentiment: thread.forum_sentiment ?? null,
     country_count: thread.country_count || 0,
@@ -407,8 +419,21 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                     </span>
                                 </span>
                             </div>
-                            <span className="narrative-count" data-tip={`${n.signal_count.toLocaleString()} media signals in the selected window`}>
+                            {/* T4 (dataviz audit): count-lineage label. The row count is the RAW
+                                assigned count; the opened detail shows the gate-verified count —
+                                unlabeled they read as a bug. Convention: raw · sourced · verified. */}
+                            <span
+                                className="narrative-count"
+                                data-tip={n.gate_scored_count && n.gated_signal_count !== n.signal_count
+                                    ? `${n.signal_count.toLocaleString()} raw assigned signals · ${(n.gated_signal_count ?? 0).toLocaleString()} verified by the relevance gate. The detail view shows the verified set.`
+                                    : `${n.signal_count.toLocaleString()} media signals in the selected window`}
+                            >
                                 {n.signal_count > 999 ? `${(n.signal_count / 1000).toFixed(1)}k` : n.signal_count}
+                                {!!n.gate_scored_count && n.gated_signal_count != null && n.gated_signal_count !== n.signal_count && (
+                                    <span className="narrative-count-lineage">
+                                        {n.gated_signal_count.toLocaleString()} verified
+                                    </span>
+                                )}
                                 {n.signal_count < 10 && (
                                     <span className="coverage-badge coverage-badge--thin" data-tip={`Only ${n.signal_count} signals — treat as indicative only`}>thin</span>
                                 )}

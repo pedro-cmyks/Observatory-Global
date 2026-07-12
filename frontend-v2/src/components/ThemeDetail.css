@@ -1521,3 +1521,16 @@
     font-size: 10px;
     white-space: nowrap;
 }
+
+
+/* D1 (dataviz audit): thin-coverage country cards — n<5 dims, tone n<3 = "—" */
+.framing-card--thin { opacity: 0.6; }
+.framing-card--thin:hover { opacity: 0.9; }
+.framing-tone--na { color: var(--color-text-muted, #64748b); font-style: italic; }
+
+/* D2: geo-attribution note under the How It's Covered header */
+.framing-geo-note {
+    font-size: 10px;
+    color: var(--color-text-muted, #64748b);
+    margin: 2px 0 8px;
+}

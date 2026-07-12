@@ -595,7 +595,17 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             </p>
                         ) : (
                             <p className="theme-detail-meta">
-                                Global · {data?.total || 0} signals · Last {hours}h
+                                {/* T4 (dataviz audit): count lineage at the seam — the list row,
+                                    this header and "Show all coverage (N)" each carry a different
+                                    count; unlabeled they read as bugs. Convention: raw · sourced ·
+                                    verified. */}
+                                {data?.rawTotal && data.rawTotal !== data.total ? (
+                                    <span data-tip={`${data.rawTotal.toLocaleString()} raw signals assigned to this thread · ${(data.signals?.length ?? 0).toLocaleString()} sourced (fetched with headline + outlet in this view) · ${(data.total || 0).toLocaleString()} verified by the relevance gate`}>
+                                        Global · {data.rawTotal.toLocaleString()} raw · {(data.signals?.length ?? 0).toLocaleString()} sourced · {(data.total || 0).toLocaleString()} verified · Last {hours}h
+                                    </span>
+                                ) : (
+                                    <>Global · {data?.total || 0} signals · Last {hours}h</>
+                                )}
                                 {data?.firstSeen && (
                                     <span className="origin-country-hint" data-tip="Topic lifetime — when this story identity first appeared (not the current window)">
                                         {' · '}active since {new Date(data.firstSeen).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -994,16 +1004,33 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                         </span>
                                         <span className="framing-info-btn" data-tip="Each card shows how a country's media covers this topic. Tone −10 to +10: negative = framed critically, positive = framed supportively. Sub-themes co-occur most in that country's coverage. Click any card to see that country's signals.">?</span>
                                     </div>
+                                    {/* D2 (dataviz audit): the cards sum to fewer signals than the
+                                        header because only geo-attributed signals get a country —
+                                        say so instead of letting the numbers silently disagree. */}
+                                    {(() => {
+                                        const geoSum = data.countryBreakdown.reduce((s, c) => s + (c.count || 0), 0)
+                                        const denom = data.total || 0
+                                        return geoSum > 0 && denom > geoSum ? (
+                                            <div className="framing-geo-note" data-tip="Signals without a resolvable subject country don't appear in any country card — the gap is attribution coverage, not missing data.">
+                                                {geoSum.toLocaleString()} of {denom.toLocaleString()} signals are geo-attributed — cards cover only those
+                                            </div>
+                                        ) : null
+                                    })()}
                                     <div className="framing-grid">
                                         {framing.map((cf, idx) => {
                                             const sharePct = totalFramingSignals > 0
                                                 ? Math.round((cf.signal_count / totalFramingSignals) * 100)
                                                 : 0
                                             const isOrigin = cf.country_code === originCountry
+                                            // D1 (dataviz audit): an n=1 country must not get the same
+                                            // confident card as n=31 — dim thin cards, and below 3
+                                            // signals a tone average is noise, not a number.
+                                            const isThin = cf.signal_count < 5
+                                            const toneMeaningful = cf.signal_count >= 3
                                             return (
                                                 <div
                                                     key={cf.country_code}
-                                                    className={`framing-card${isOrigin ? ' framing-card-origin' : ''}`}
+                                                    className={`framing-card${isOrigin ? ' framing-card-origin' : ''}${isThin ? ' framing-card--thin' : ''}`}
                                                     onClick={() => setExpandedFraming(prev =>
                                                         prev === cf.country_code ? null : cf.country_code)}
                                                     data-tip={`Peek ${cf.country_name}'s coverage`}
@@ -1017,20 +1044,31 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                                         <span className="framing-signal-count" data-tip="Signals from this country · share of total global coverage for this topic">
                                                             {cf.signal_count.toLocaleString()} sig
                                                             <span className="framing-share"> · {sharePct}%</span>
+                                                            {isThin && (
+                                                                <span className="coverage-badge coverage-badge--thin" data-tip={`Only ${cf.signal_count} signal${cf.signal_count === 1 ? '' : 's'} from this country — treat as indicative only`}>thin</span>
+                                                            )}
                                                         </span>
-                                                        <span className="framing-tone" data-tip="Avg GDELT tone: how this country's media frames the topic. −10 = very critical, 0 = neutral, +10 = very supportive." style={{ color: getFramingSentimentColor(cf.avg_sentiment) }}>
-                                                            {cf.avg_sentiment > 0 ? '+' : ''}{cf.avg_sentiment.toFixed(1)} tone
-                                                        </span>
+                                                        {toneMeaningful ? (
+                                                            <span className="framing-tone" data-tip="Avg GDELT tone: how this country's media frames the topic. −10 = very critical, 0 = neutral, +10 = very supportive." style={{ color: getFramingSentimentColor(cf.avg_sentiment) }}>
+                                                                {cf.avg_sentiment > 0 ? '+' : ''}{cf.avg_sentiment.toFixed(1)} tone
+                                                            </span>
+                                                        ) : (
+                                                            <span className="framing-tone framing-tone--na" data-tip={`Tone average over ${cf.signal_count} signal${cf.signal_count === 1 ? '' : 's'} is noise, not a measurement — needs at least 3.`}>
+                                                                — tone
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                    <div className="framing-sentiment-bar" data-tip="Tone bar: left = negative, center = neutral, right = positive">
-                                                        <div
-                                                            className="framing-sentiment-fill"
-                                                            style={{
-                                                                width: `${getSentimentBarWidth(cf.avg_sentiment)}%`,
-                                                                backgroundColor: getFramingSentimentColor(cf.avg_sentiment)
-                                                            }}
-                                                        />
-                                                    </div>
+                                                    {toneMeaningful && (
+                                                        <div className="framing-sentiment-bar" data-tip="Tone bar: left = negative, center = neutral, right = positive">
+                                                            <div
+                                                                className="framing-sentiment-fill"
+                                                                style={{
+                                                                    width: `${getSentimentBarWidth(cf.avg_sentiment)}%`,
+                                                                    backgroundColor: getFramingSentimentColor(cf.avg_sentiment)
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    )}
                                                     <div className="framing-sub-themes">
                                                         {cf.top_sub_themes
                                                             .filter(st => !st.startsWith('WORLDLANGUAGES_') && !st.startsWith('TAX_WORLDLANGUAGES_'))
