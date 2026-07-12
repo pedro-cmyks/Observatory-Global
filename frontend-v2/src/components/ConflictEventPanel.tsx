@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { resolveCountryName } from '../lib/countryNames'
+import { conflictCountryCode } from '../lib/conflictEvents'
 import './ConflictEventPanel.css'
 
 /**
@@ -46,17 +47,20 @@ function fmtDate(iso: string): string {
 
 export function ConflictEventPanel({ event, onClose, onThemeSelect, onCountrySelect, timeRangeHours }: Props) {
     const [threads, setThreads] = useState<ContextThread[]>([])
-    const countryName = event.country ? resolveCountryName(event.country) : ''
+    // Normalize to a 2-letter code: GDELT markers carry one, ACLED carries a
+    // full name — the threads endpoint and country focus both need the code.
+    const countryCode = conflictCountryCode({ location: { country: event.country } })
+    const countryName = event.country ? resolveCountryName(countryCode || event.country) : ''
 
     useEffect(() => {
-        if (!event.country) { setThreads([]); return }
+        if (!countryCode) { setThreads([]); return }
         let ignore = false
-        fetch(`/api/v2/threads?hours=${timeRangeHours}&limit=6&country_code=${event.country}`)
+        fetch(`/api/v2/threads?hours=${timeRangeHours}&limit=6&country_code=${countryCode}`)
             .then(r => (r.ok ? r.json() : null))
             .then(d => { if (!ignore) setThreads(d?.threads ?? []) })
             .catch(() => { if (!ignore) setThreads([]) })
         return () => { ignore = true }
-    }, [event.country, timeRangeHours])
+    }, [countryCode, timeRangeHours])
 
     const actors = [event.actor1, event.actor2].filter(Boolean).join(' → ')
 
@@ -85,11 +89,12 @@ export function ConflictEventPanel({ event, onClose, onThemeSelect, onCountrySel
             <div className="cep-context">
                 <div className="cep-context-label">
                     This event lives in{' '}
-                    {event.country ? (
-                        <button className="cep-country-link" onClick={() => onCountrySelect?.(event.country)}>
+                    {countryCode ? (
+                        <button className="cep-country-link" onClick={() => onCountrySelect?.(countryCode)}
+                            data-tip={`Focus ${countryName} — map, threads and dock re-scope to it`}>
                             {countryName}
                         </button>
-                    ) : 'an unknown country'}
+                    ) : (event.country || 'an unknown country')}
                     {threads.length > 0 ? ' — narrative threads there:' : ''}
                 </div>
                 {threads.length > 0 ? (

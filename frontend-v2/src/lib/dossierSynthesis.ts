@@ -7,7 +7,7 @@
 // such; degrades to null so the frozen report always stands on its own.
 import type { DossierModel } from './dossier'
 import {
-  connectionState, edgeReason, edgeStrength,
+  connectionState, edgeReason, edgeStrength, coverageLensNote, buildFrozenCrossRefs,
   type ConnectionsData, type ClusterResult,
 } from './dossierConnections'
 
@@ -29,10 +29,16 @@ export async function synthesizeDossier(
   const pins = dossier.pins.map(p => ({
     label: p.label,
     type: p.anchorType,
-    // Fold the source into the headline so the LLM can attribute contested
-    // outcomes ("reported by <outlet>") instead of asserting them as fact.
+    // Fold source + signal DATE into the headline so the LLM can attribute AND
+    // date contested outcomes ("reported by <outlet>, 2026-07-08") instead of
+    // asserting them as undated fact.
     evidence: (p.snapshot?.evidence ?? []).slice(0, 6)
-      .map(e => (e.source ? `${e.headline} — ${e.source}` : e.headline)),
+      .map(e => {
+        const attribution = e.source
+          ? ` — ${e.source}${e.date ? `, ${e.date}` : ''}`
+          : (e.date ? ` — ${e.date}` : '')
+        return `${e.headline}${attribution}`
+      }),
     note: p.note ?? null,
   }))
   if (pins.length === 0) return null
@@ -47,22 +53,51 @@ export async function synthesizeDossier(
     // the fix for the over-claim failure — the whole set can read 'grounded' off a
     // single confirmed edge while a third pin hangs on similarity-only edges.
     const confirmedWith = new Map<string, Set<string>>()
+    const textWith = new Map<string, Set<string>>()
     const similarWith = new Map<string, Set<string>>()
-    for (const n of data.nodes) { confirmedWith.set(n.id, new Set()); similarWith.set(n.id, new Set()) }
+    const textTerms = new Map<string, string[]>()
+    for (const n of data.nodes) {
+      confirmedWith.set(n.id, new Set()); textWith.set(n.id, new Set()); similarWith.set(n.id, new Set())
+      textTerms.set(n.id, [])
+    }
     for (const e of data.edges) {
-      const bucket = edgeStrength(e) === 'strong' ? confirmedWith : similarWith
+      const s = edgeStrength(e)
+      const bucket = s === 'strong' ? confirmedWith : s === 'text' ? textWith : similarWith
       bucket.get(e.a)?.add(e.b)
       bucket.get(e.b)?.add(e.a)
+      // glass box: hand the model the EXACT measured mention terms per pin.
+      for (const term of e.text_mentions ?? []) {
+        textTerms.get(e.a)?.push(`evidence text mentions “${term}” (link to ${labelOf(e.b)})`)
+        textTerms.get(e.b)?.push(`evidence text mentions “${term}” (link to ${labelOf(e.a)})`)
+      }
+    }
+    // Frozen-evidence cross-refs (client mirror): an "isolated" pin whose own
+    // frozen headline references another pin must carry that fact to the model.
+    const crossRefs = buildFrozenCrossRefs(dossier.pins, data)
+    const crossRefByLabel = new Map<string, string[]>()
+    for (const x of crossRefs) {
+      crossRefByLabel.set(x.pinLabel, [
+        ...(crossRefByLabel.get(x.pinLabel) ?? []),
+        `frozen evidence text references “${x.term}” (${x.otherLabel}) — entity extraction found no overlap; verify`,
+      ])
     }
     const nodes = data.nodes.map(n => {
       const conf = [...(confirmedWith.get(n.id) ?? [])]
       const confSet = confirmedWith.get(n.id) ?? new Set<string>()
-      const sim = [...(similarWith.get(n.id) ?? [])].filter(id => !confSet.has(id))
+      const text = [...(textWith.get(n.id) ?? [])].filter(id => !confSet.has(id))
+      const sim = [...(similarWith.get(n.id) ?? [])].filter(id => !confSet.has(id) && !textWith.get(n.id)?.has(id))
+      const mentions = [
+        ...(textTerms.get(n.id) ?? []),
+        ...(crossRefByLabel.get(n.label) ?? []),
+      ].slice(0, 4)
       return {
         label: n.label,
-        connectedness: conf.length ? 'confirmed' : sim.length ? 'similar-only' : 'isolated',
+        connectedness: conf.length ? 'confirmed'
+          : (text.length || mentions.length) ? 'text-linked'
+          : sim.length ? 'similar-only' : 'isolated',
         confirmed_with: conf.map(labelOf),
         similar_with: sim.map(labelOf),
+        text_mentions: mentions,
       }
     })
     connection = {
@@ -77,6 +112,7 @@ export async function synthesizeDossier(
         .filter(nb => nb.links.length > 1)
         .slice(0, 6)
         .map(nb => nb.label),
+      lens_note: coverageLensNote(data.distributions?.languages ?? []),
     }
   }
 

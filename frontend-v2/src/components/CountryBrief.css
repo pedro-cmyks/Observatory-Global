@@ -803,3 +803,76 @@
 .cb-attention-row--forum { text-decoration: none; color: inherit; display: flex; justify-content: space-between; gap: 8px; }
 .cb-attention-row--forum span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cb-forum-src { font-size: 9px; color: var(--color-text-muted); font-weight: 400; flex-shrink: 0; }
+
+/* Conflict events strip (#232 UX slice) — geography-join only */
+.cb-conflict-note {
+    margin: 0 0 8px;
+    color: #7d91a8;
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+.cb-conflict-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cb-conflict-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    background: rgba(148, 163, 184, 0.06);
+    font-size: 12px;
+    min-width: 0;
+}
+
+.cb-conflict-src {
+    flex: 0 0 auto;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.cb-conflict-src--g { color: #fb923c; }
+.cb-conflict-src--a { color: #f87171; }
+
+.cb-conflict-type {
+    flex: 0 1 auto;
+    color: var(--text-primary, #e2e8f0);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cb-conflict-place {
+    flex: 1 1 auto;
+    color: #7d91a8;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cb-conflict-fatal {
+    flex: 0 0 auto;
+    color: #f87171;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.cb-conflict-toggle {
+    margin-top: 6px;
+    background: none;
+    border: none;
+    padding: 0;
+    color: #7d91a8;
+    font-size: 11px;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.cb-conflict-toggle:hover { color: #a8bdd4; }

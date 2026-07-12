@@ -20,6 +20,7 @@ const SUBJECT_BADGE: Record<SubjectType, string> = {
 import { buildCountryBriefMarkdown, sanitizeFilenamePart } from '../lib/exportFormatters';
 import { resolveCountryName } from '../lib/countryNames';
 import { useFocusData } from '../contexts/FocusDataContext';
+import { conflictsForCountry } from '../lib/conflictEvents';
 import {
     buildCountryPublicAttentionNarrative,
     getPublicAttentionTopUrl,
@@ -213,7 +214,11 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
     const [error, setError] = useState<string | null>(null);
     const { pinItem, unpinItem, isPinned } = useWorkspace();
     const { setPerson } = useFocus();
-    const { summary } = useFocusData();
+    const { summary, acledConflicts } = useFocusData();
+    // #232 UX slice: entering a country SHOWS its conflict events (same data
+    // the dock/map markers use — no new fetch). Geography-join only.
+    const countryConflicts = conflictsForCountry(acledConflicts, countryCode);
+    const [showAllConflicts, setShowAllConflicts] = useState(false);
     const pinned = isPinned(`country-${countryCode}`);
     const [voiceMix, setVoiceMix] = useState<VoiceMixRelation | null>(null);
     // Top Publishers: click expands the source's recent coverage inline (same
@@ -591,6 +596,41 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     </details>
                 )}
             </section>
+
+            {/* Conflict events (#232 UX slice) — the same markers the map/dock
+                show, joined to this country by GEOGRAPHY only. Honest framing:
+                GDELT CAMEO is machine-coded and geo is approximate. */}
+            {countryConflicts.length > 0 && (
+                <section className="brief-section">
+                    <div className="cb-section-label">
+                        Conflict Events <span className="cb-section-subcopy">related by country, not by story</span>
+                    </div>
+                    <p className="cb-conflict-note"
+                        data-tip="GDELT CAMEO events are machine-coded from news mentions; locations are approximate. ACLED rows (A) are analyst-verified.">
+                        {countryConflicts.length} event{countryConflicts.length === 1 ? '' : 's'} in {displayCountryName} this window · machine-coded, geo approximate
+                    </p>
+                    <div className="cb-conflict-list">
+                        {countryConflicts.slice(0, showAllConflicts ? 15 : 5).map(ev => {
+                            const src = ev.source === 'gdelt_events' ? 'G' : 'A';
+                            const actors = [ev.actors?.actor1, ev.actors?.actor2].filter(Boolean).join(' → ');
+                            return (
+                                <div key={ev.id} className="cb-conflict-row"
+                                    data-tip={actors ? `${actors}${ev.date ? ` · ${ev.date.slice(0, 10)}` : ''}` : undefined}>
+                                    <span className={`cb-conflict-src cb-conflict-src--${src.toLowerCase()}`}>{src}</span>
+                                    <span className="cb-conflict-type">{(ev.type || 'Conflict event').replace('Use conventional military force', 'Military force')}</span>
+                                    <span className="cb-conflict-place">{ev.location?.name || ''}</span>
+                                    {ev.fatalities > 0 && <span className="cb-conflict-fatal">{ev.fatalities}†</span>}
+                                </div>
+                            );
+                        })}
+                    </div>
+                    {countryConflicts.length > 5 && (
+                        <button className="cb-conflict-toggle" onClick={() => setShowAllConflicts(v => !v)}>
+                            {showAllConflicts ? 'Show fewer' : `Show all ${Math.min(countryConflicts.length, 15)}`}
+                        </button>
+                    )}
+                </section>
+            )}
 
             {/* Public Attention */}
             <section className="brief-section">

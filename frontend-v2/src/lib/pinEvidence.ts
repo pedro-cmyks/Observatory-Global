@@ -14,6 +14,9 @@ export interface FrozenEvidence {
   headline: string
   source?: string
   url?: string
+  /** ISO day (YYYY-MM-DD) of the underlying signal, when the payload carried a
+   *  timestamp — P0.3: frozen evidence must keep its date. */
+  date?: string
 }
 
 const EVIDENCE_KEYS = ['signals', 'signalSample', 'top_stories', 'evidence_samples', 'results', 'items']
@@ -54,11 +57,15 @@ export function extractSnapshotEvidence(
       coreRank(a.r) - coreRank(b.r)
       || rowScore(b.r) - rowScore(a.r)
       || a.i - b.i)
-    return rows.slice(0, max).map(({ r }) => ({
-      headline: String(r.headline ?? r.title ?? r.label),
-      source: typeof (r.source ?? r.domain) === 'string' ? String(r.source ?? r.domain) : undefined,
-      url: typeof (r.url ?? r.link) === 'string' ? String(r.url ?? r.link) : undefined,
-    }))
+    return rows.slice(0, max).map(({ r }) => {
+      const ts = r.timestamp ?? r.time ?? r.date ?? r.published_at
+      return {
+        headline: String(r.headline ?? r.title ?? r.label),
+        source: typeof (r.source ?? r.domain) === 'string' ? String(r.source ?? r.domain) : undefined,
+        url: typeof (r.url ?? r.link) === 'string' ? String(r.url ?? r.link) : undefined,
+        date: typeof ts === 'string' && ts.length >= 10 ? ts.slice(0, 10) : undefined,
+      }
+    })
   }
   return []
 }

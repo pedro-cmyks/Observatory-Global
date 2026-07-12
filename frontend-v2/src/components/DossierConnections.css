@@ -171,6 +171,13 @@
     .dcx-clusters li { flex-wrap: wrap; }
 }
 
+/* Frank v2: text-mention tier (weaker than shared actor, stronger than semantic) */
+.dcx-cluster-badge--text { color: #fbbf24; background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.45); }
+.dcx-k-text-edge { display: inline-block; width: 14px; height: 0; border-top: 2px solid #f59e0b; transform: translateY(-3px); }
+.dcx-crossref { color: #fbbf24; font-style: normal; }
+.dcx-lens { font-size: 11px; color: #a5b4c4; margin: 8px 0 2px; padding: 6px 10px; border-left: 2px solid #64748b; background: rgba(100,116,139,0.08); }
+.dcx-umbrella-warn { color: #fbbf24; font-style: normal; margin: 4px 0 6px; }
+
 /* Workbench mini-constellation (incremental universe seed): the same field,
    letterboxed to a compact strip. viewBox scales content down inside max-height. */
 .dcx-universe-compact { width: 100%; }

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { buildDossier, dossierToMarkdown } from '../lib/dossier'
-import { fetchDossierEnrichment, type DossierEnrichment } from '../lib/dossierEnrichment'
+import { buildDossier, dossierToMarkdown, fmtDay } from '../lib/dossier'
+import { fetchDossierEnrichment, resolveThreadTopicId, type DossierEnrichment } from '../lib/dossierEnrichment'
 import {
-    connectionsSummaryLines,
-    type ClusterResult, type ConnectionsData,
+    connectionsSummaryLines, coverageLensNote, buildFrozenCrossRefs,
+    nodeStoryWindow, investigationStoryWindow,
+    type ClusterResult, type ConnectionsData, type ConnectionNode,
 } from '../lib/dossierConnections'
 import { synthesizeDossier, synthesisMarkdown, type DossierSynthesis } from '../lib/dossierSynthesis'
 import { DossierConnections } from './DossierConnections'
@@ -38,6 +39,17 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
         setConn({ data, cluster })
     }, [])
 
+    // P0.3 story windows: header = whole-investigation span; per-pin windows
+    // render on the pin cards once the connection measurement lands.
+    const storyWindow = useMemo(
+        () => (conn ? investigationStoryWindow(conn.data.nodes) : null),
+        [conn],
+    )
+    const nodeForPin = useCallback((pinTopicId: string | null): ConnectionNode | null => {
+        if (!pinTopicId || !conn) return null
+        return conn.data.nodes.find(n => n.id === pinTopicId || n.collapsed_from?.includes(pinTopicId)) ?? null
+    }, [conn])
+
     // #2 synthesis — the standalone brief. One grounded LLM pass over the frozen
     // pins + the measured connection verdict. Fires once the connection is
     // measured (so the verdict feeds it), or from pins alone as a fallback.
@@ -51,7 +63,9 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
     const connRef = useRef(conn)
     connRef.current = conn
     const mounted = useRef(true)
-    useEffect(() => () => { mounted.current = false }, [])
+    // StrictMode's simulated unmount sets this false — reset on (re)mount or
+    // the synthesis result is silently swallowed in dev.
+    useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
     const synthStarted = useRef(false)
     useEffect(() => {
         if (dossier.pinCount === 0) { setSynth(null); return }
@@ -111,7 +125,10 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
             base = sAt === -1 ? `${sblock}\n${base}` : `${base.slice(0, sAt)}${sblock}\n${base.slice(sAt)}`
         }
         if (!conn || conn.data.nodes.length < 2) return base
-        const block = connectionsSummaryLines(conn.data, conn.cluster).join('\n') + '\n'
+        const block = connectionsSummaryLines(conn.data, conn.cluster, {
+            lensNote: coverageLensNote(conn.data.distributions?.languages ?? []),
+            crossRefs: buildFrozenCrossRefs(investigation.pins, conn.data),
+        }).join('\n') + '\n'
         // Insert the connection findings before the Timeline section.
         const marker = '\n## Timeline'
         const at = base.indexOf(marker)
@@ -170,6 +187,7 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
 
                 <div className="dossier-meta">
                     Generated {new Date(dossier.generatedAt).toLocaleString()} · {dossier.pinCount} pin{dossier.pinCount === 1 ? '' : 's'} · frozen at pin time
+                    {storyWindow && <> · story window {fmtDay(storyWindow.first)} → {fmtDay(storyWindow.last)}</>}
                     {dossier.queries.length > 0 && <> · queries: {dossier.queries.join(' · ')}</>}
                 </div>
 
@@ -203,26 +221,41 @@ export function DossierView({ investigation, onClose }: { investigation: Investi
                     {dossier.pins.length === 0 ? (
                         <p className="dossier-empty">No pins yet — pin anchors or truncated threads to build the report.</p>
                     ) : (
-                        dossier.pins.map(p => (
+                        dossier.pins.map(p => {
+                            const hasEvidence = (p.snapshot?.evidence ?? []).length > 0
+                            const pinNode = nodeForPin(resolveThreadTopicId(p))
+                            const win = pinNode ? nodeStoryWindow(pinNode) : null
+                            return (
                             <div key={p.anchorId} className="dossier-pin">
                                 <div className="dossier-pin-head">
                                     <span className="dossier-pin-label">{p.label}</span>
                                     <span className="dossier-pin-type">{p.anchorType}</span>
+                                    {!hasEvidence && (
+                                        <span className="dossier-pin-noev" data-tip="This pin froze metadata only — no evidence headlines were captured at pin time. Re-open the source to inspect it live.">
+                                            metadata only — no frozen evidence
+                                        </span>
+                                    )}
                                 </div>
+                                {win && (
+                                    <div className="dossier-pin-window">story window {fmtDay(win.first)} → {fmtDay(win.last)}</div>
+                                )}
                                 {p.snapshot?.summary && <div className="dossier-pin-summary">{p.snapshot.summary}</div>}
-                                {(p.snapshot?.evidence ?? []).length > 0 && (
+                                {hasEvidence && (
                                     <ul className="dossier-evidence">
                                         {p.snapshot!.evidence!.map((e, i) => (
                                             <li key={i}>
                                                 {e.url ? <a href={e.url} target="_blank" rel="noopener noreferrer">{e.headline}</a> : e.headline}
-                                                {e.source ? <span className="dossier-src"> — {e.source}</span> : null}
+                                                {(e.source || e.date) ? (
+                                                    <span className="dossier-src"> — {e.source ?? ''}{e.source && e.date ? ', ' : ''}{e.date ? fmtDay(e.date) : ''}</span>
+                                                ) : null}
                                             </li>
                                         ))}
                                     </ul>
                                 )}
                                 {p.note && <div className="dossier-note">Note: {p.note}</div>}
                             </div>
-                        ))
+                            )
+                        })
                     )}
                 </section>
 

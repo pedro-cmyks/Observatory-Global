@@ -24,9 +24,17 @@ const SOURCE_FAMILY_META: Record<SourceFamily, SourceFamilyMeta> = {
   },
 }
 
+// Unknown families must not inherit a confident classification: an outlet we
+// have not classified is "unclassified", not "independent".
+const UNKNOWN_FAMILY_META: SourceFamilyMeta = {
+  label: 'Unclassified',
+  className: 'source-family-badge--unknown',
+  tip: 'Source family not yet classified by Atlas',
+}
+
 export function getSourceFamilyMeta(family?: SourceFamily | string | null): SourceFamilyMeta {
   if (family === 'state' || family === 'wire' || family === 'independent') {
     return SOURCE_FAMILY_META[family]
   }
-  return SOURCE_FAMILY_META.independent
+  return UNKNOWN_FAMILY_META
 }

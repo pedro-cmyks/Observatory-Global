@@ -17,10 +17,15 @@ describe('getSourceFamilyMeta', () => {
     })
   })
 
-  it('falls back to independent when older API responses have no family field', () => {
+  // 2026-07-11 dataviz audit: an outlet with no family field must not wear a
+  // confident "Independent" badge — unknown reads as unclassified, not as a claim.
+  it('falls back to an honest Unclassified badge when the family field is missing', () => {
     expect(getSourceFamilyMeta(undefined)).toMatchObject({
-      label: 'Independent',
-      className: 'source-family-badge--independent',
+      label: 'Unclassified',
+      className: 'source-family-badge--unknown',
+    })
+    expect(getSourceFamilyMeta('something-new')).toMatchObject({
+      label: 'Unclassified',
     })
   })
 })

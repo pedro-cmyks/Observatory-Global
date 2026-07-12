@@ -6,10 +6,10 @@
 // and derives, PURELY (so it is unit-testable), the sub-clusters, the isolated
 // pins, and a deterministic field layout for the scoped "investigative
 // universe". Measured at generation time — never mixed with the frozen pins.
-import type { Investigation } from './workbench'
+import type { Investigation, WorkbenchPin } from './workbench'
 import { resolveThreadTopicId } from './dossierEnrichment'
 
-export type ConnectionBasis = 'semantic' | 'shared_country' | 'shared_person'
+export type ConnectionBasis = 'semantic' | 'shared_country' | 'shared_person' | 'text_mention'
 
 export interface ConnectionNode {
   id: string
@@ -25,6 +25,8 @@ export interface ConnectionNode {
   timeline: Array<{ day: string; n: number }>
   has_centroid: boolean
   n: number
+  /** dynamic_topics.first_seen — the start of the story window (P0.3). */
+  first_seen?: string | null
   // Constellation assembly (dossier-connections-v1): an umbrella node folds N
   // near-duplicate children into ONE story exposing typed sub-facets.
   is_umbrella?: boolean
@@ -54,6 +56,10 @@ export interface ConnectionEdge {
   whitened_sim?: number | null
   shared_countries: string[]
   shared_persons: string[]
+  /** Frank v2 blocker 1: verbatim terms of the other pin found in this pair's
+   *  evidence headlines ("nato summit") — entity extraction missed the link,
+   *  the TEXT states it. Weaker than shared_person, stronger than semantic. */
+  text_mentions?: string[]
 }
 
 export interface ConnectionDistributions {
@@ -180,36 +186,46 @@ export function deriveClusters(nodes: ConnectionNode[], edges: ConnectionEdge[])
 // largely a linguistic/topical artifact — so a semantic-only cluster must NEVER
 // be presented as "one connected narrative". The verdict + the graph both read
 // off this distinction.
-export type LinkStrength = 'strong' | 'weak'
+export type LinkStrength = 'strong' | 'text' | 'weak'
 
-/** shared actor / shared country present → strong; semantic-only → weak. */
+/** shared actor / shared country → strong; evidence-TEXT mention of the other
+ *  pin (entity lens missed it, the headline states it) → text — weaker than a
+ *  shared actor, stronger than semantic proximity; semantic-only → weak. */
 export function edgeStrength(e: ConnectionEdge): LinkStrength {
-  return e.shared_persons.length > 0 || e.shared_countries.length > 0 ? 'strong' : 'weak'
+  if (e.shared_persons.length > 0 || e.shared_countries.length > 0) return 'strong'
+  if (e.basis.includes('text_mention') && (e.text_mentions?.length ?? 0) > 0) return 'text'
+  return 'weak'
 }
 
-export type ClusterStrength = 'confirmed' | 'caution'
+export type ClusterStrength = 'confirmed' | 'text' | 'caution'
 
 /** Classify a cluster (≥2 nodes) by the strongest basis on any INTERNAL edge.
  *  'confirmed' = at least one shared-actor/shared-country edge inside it (one
- *  real thread is enough to call the group connected); 'caution' = every internal
- *  edge is semantic-only (similar topics, no shared reference points). */
+ *  real thread is enough to call the group connected); 'text' = no entity
+ *  overlap but at least one evidence-text mention (verify before trusting);
+ *  'caution' = every internal edge is semantic-only. */
 export function clusterStrength(nodes: ConnectionNode[], edges: ConnectionEdge[]): ClusterStrength {
   const ids = new Set(nodes.map(n => n.id))
   const internal = edges.filter(e => ids.has(e.a) && ids.has(e.b))
   if (internal.length === 0) return 'caution' // defensive — a ≥2 cluster always has one
-  return internal.some(e => edgeStrength(e) === 'strong') ? 'confirmed' : 'caution'
+  const strengths = internal.map(edgeStrength)
+  if (strengths.includes('strong')) return 'confirmed'
+  if (strengths.includes('text')) return 'text'
+  return 'caution'
 }
 
-export type ConnectionState = 'grounded' | 'similar-only' | 'split' | 'isolated'
+export type ConnectionState = 'grounded' | 'text-linked' | 'similar-only' | 'split' | 'isolated'
 
 /** The single basis-weighted verdict state over the whole pinned set — shared by
  *  the synthesis request and (conceptually) the verdict box. 'grounded' = one
- *  cluster held by shared actors/places; 'similar-only' = one cluster, semantic
+ *  cluster held by shared actors/places; 'text-linked' = one cluster whose best
+ *  tie is an evidence-text mention; 'similar-only' = one cluster, semantic
  *  proximity only; 'split' = ≥2 sub-narratives; 'isolated' = nothing connects. */
 export function connectionState(cluster: ClusterResult, edges: ConnectionEdge[]): ConnectionState {
   if (cluster.clusters.length === 0) return 'isolated'
   if (cluster.clusters.length >= 2) return 'split'
-  return clusterStrength(cluster.clusters[0], edges) === 'confirmed' ? 'grounded' : 'similar-only'
+  const s = clusterStrength(cluster.clusters[0], edges)
+  return s === 'confirmed' ? 'grounded' : s === 'text' ? 'text-linked' : 'similar-only'
 }
 
 /** The concrete shared actors + countries that link a cluster's members — the
@@ -331,12 +347,187 @@ export function deOverlapLabels(items: LabelItem[], lineH = 11): Map<string, num
   return out
 }
 
+// ── Text cross-reference (client mirror of the backend rule) ─────────────────
+// Frank v2 blocker 1, frozen-evidence side: the backend cross-refs MEASURED
+// member headlines; this mirrors the same token rule over the FROZEN pin
+// evidence (which may predate the backend's window), so an "isolated" verdict
+// can never stand uncontradicted by a headline the report itself displays.
+
+const LABEL_STOPWORDS = new Set([
+  'the', 'a', 'an', 'of', 'and', 'or', 'in', 'on', 'for', 'with', 'to', 'at',
+  'as', 'by', 'from', 'over', 'after', 'before', 'amid', 'during', 'between',
+  'against', 'under', 'into', 'near', 'his', 'her', 'its', 'their',
+  'news', 'update', 'updates', 'report', 'reports', 'latest', 'live',
+  'daily', 'roundup', 'new', 'crisis', 'situation', 'developments',
+  'coverage', 'story', 'stories', 'talks',
+  'de', 'del', 'la', 'el', 'los', 'las', 'le', 'les', 'du', 'des', 'und',
+])
+
+export function labelKeyTokens(label: string): string[] {
+  return (label || '').toLowerCase().split(/[^\p{L}\p{N}_]+/u)
+    .filter(t => t.length >= 3 && !LABEL_STOPWORDS.has(t))
+}
+
+/** Term of `labelTokens` found in `headline` under the backend rule (≥2 key
+ *  tokens in one headline, or the single token of a 1-token label), or null. */
+export function headlineMentionTerm(headline: string, labelTokens: string[]): string | null {
+  if (labelTokens.length === 0) return null
+  const hset = new Set(headline.toLowerCase().split(/[^\p{L}\p{N}_]+/u))
+  const matched = labelTokens.filter(t => hset.has(t))
+  if (matched.length >= 2 || (labelTokens.length === 1 && matched.length === 1)) {
+    return matched.slice(0, 3).join(' ')
+  }
+  return null
+}
+
+export interface TextCrossRef {
+  /** label of the pin whose FROZEN evidence text carries the mention */
+  pinLabel: string
+  /** label of the pin being mentioned */
+  otherLabel: string
+  /** the verbatim matched term ("nato summit") */
+  term: string
+  /** the frozen headline that carries it */
+  headline: string
+}
+
+/** Cross-reference each pin's FROZEN evidence headlines against every other
+ *  pin's label key-tokens, skipping pairs the measured graph already links.
+ *  Pure; feeds the isolation warning + the synthesis. */
+export function buildFrozenCrossRefs(
+  pins: WorkbenchPin[], data: ConnectionsData, max = 6,
+): TextCrossRef[] {
+  // pairs already linked by ANY measured edge → no warning needed.
+  const nodeIdOf = new Map<string, string>()
+  for (const n of data.nodes) {
+    nodeIdOf.set(n.id, n.id)
+    for (const raw of n.collapsed_from ?? []) nodeIdOf.set(raw, n.id)
+  }
+  const linked = new Set<string>()
+  for (const e of data.edges) linked.add([e.a, e.b].sort().join('|'))
+
+  const entries = pins.map(p => ({
+    pin: p,
+    nodeId: nodeIdOf.get(resolveThreadTopicId(p) ?? '') ?? null,
+    headlines: (p.snapshot?.evidence ?? []).map(e => e.headline).filter(Boolean),
+  }))
+  const out: TextCrossRef[] = []
+  for (const a of entries) {
+    if (a.headlines.length === 0) continue
+    for (const b of entries) {
+      if (a === b || a.pin.label === b.pin.label) continue
+      if (a.nodeId && b.nodeId) {
+        if (a.nodeId === b.nodeId) continue
+        if (linked.has([a.nodeId, b.nodeId].sort().join('|'))) continue
+      }
+      const tokens = labelKeyTokens(b.pin.label)
+      for (const h of a.headlines) {
+        const term = headlineMentionTerm(h, tokens)
+        if (term) {
+          out.push({ pinLabel: a.pin.label, otherLabel: b.pin.label, term, headline: h })
+          break // one warning per pair is enough
+        }
+      }
+      if (out.length >= max) return out
+    }
+  }
+  return out
+}
+
+// ── Coverage lens (Frank v2 blocker 6) ────────────────────────────────────────
+const LANG_NAMES: Record<string, string> = {
+  en: 'English', ro: 'Romanian', es: 'Spanish', fr: 'French', de: 'German',
+  ru: 'Russian', ar: 'Arabic', zh: 'Chinese', tr: 'Turkish', pt: 'Portuguese',
+  it: 'Italian', fa: 'Persian', hi: 'Hindi', ja: 'Japanese', ko: 'Korean',
+  uk: 'Ukrainian', pl: 'Polish', nl: 'Dutch', sv: 'Swedish', he: 'Hebrew',
+  id: 'Indonesian', bn: 'Bengali', ur: 'Urdu', el: 'Greek', hu: 'Hungarian',
+  cs: 'Czech', sr: 'Serbian', bg: 'Bulgarian', fi: 'Finnish', da: 'Danish',
+  no: 'Norwegian', vi: 'Vietnamese', th: 'Thai',
+}
+
+/** Automatic lens note when a language dominates the pinned evidence — the
+ *  report must acknowledge its vantage (math only, no LLM). Fires when any
+ *  non-English language carries ≥30% of language-known evidence, or when
+ *  English alone carries ≥80%. Null when coverage is balanced or too thin. */
+export function coverageLensNote(
+  languages: Array<{ lang: string; n: number }>, minTotal = 8,
+): string | null {
+  const total = languages.reduce((s, l) => s + l.n, 0)
+  if (total < minTotal) return null
+  const name = (l: { lang: string; n: number }) =>
+    `${LANG_NAMES[l.lang] ?? l.lang.toUpperCase()}-language sources (${Math.round((l.n / total) * 100)}%)`
+  const dominantNonEn = languages.filter(l => l.lang !== 'en' && l.n / total >= 0.3)
+  if (dominantNonEn.length > 0) {
+    const names = dominantNonEn.slice(0, 2).map(name).join(' and ')
+    return `Coverage lens: this investigation's evidence leans ${names} — findings reflect that vantage.`
+  }
+  const en = languages.find(l => l.lang === 'en')
+  if (en && en.n / total >= 0.8) {
+    return `Coverage lens: this investigation's evidence is ${Math.round((en.n / total) * 100)}% English-language sources — findings reflect that vantage.`
+  }
+  return null
+}
+
+// ── Umbrella-fold guard (Frank v2 blocker 5) ──────────────────────────────────
+/** Share of an umbrella's child topics whose label shares NO key token with the
+ *  parent label — high divergence means the fold is NOT near-duplicates of one
+ *  event (e.g. "Khamenei Funeral" under "Trump-Putin Talks"). Null when the
+ *  umbrella exposes no child labels or the parent label has no key tokens. */
+export function umbrellaChildDivergence(u: ConnectionNode): number | null {
+  const childLabels = (u.facets ?? []).flatMap(f => f.topics.map(t => t.label))
+  if (childLabels.length === 0) return null
+  const parent = new Set(labelKeyTokens(u.label))
+  if (parent.size === 0) return null
+  // A child counts as coherent only on ≥2 shared key tokens — one shared token
+  // ("Khamenei Funeral and Trump Threats" sharing just "trump" with
+  // "Trump-Putin Talks on Ukraine") is exactly the garbage-fold signature.
+  // Short labels (≤2 tokens) and 1-token parents settle for 1 shared token.
+  const coherentChild = (l: string) => {
+    const tokens = labelKeyTokens(l)
+    const shared = tokens.filter(t => parent.has(t)).length
+    return shared >= 2 || (shared >= 1 && (tokens.length <= 2 || parent.size <= 1))
+  }
+  const diverging = childLabels.filter(l => !coherentChild(l)).length
+  return diverging / childLabels.length
+}
+
+/** Divergence above this → render "related topics grouped by the engine", never
+ *  "near-duplicate fragments of one event". */
+export const UMBRELLA_DIVERGENCE_MAX = 0.5
+
+// ── Story windows (P0.3 dates) ────────────────────────────────────────────────
+/** first_seen (or first evidence day) → last evidence day, ISO days. */
+export function nodeStoryWindow(n: ConnectionNode): { first: string; last: string } | null {
+  const days = (n.timeline ?? []).map(t => t.day)
+  const last = days.length > 0 ? days[days.length - 1] : null
+  const first = n.first_seen ? n.first_seen.slice(0, 10) : (days[0] ?? null)
+  if (!first || !last) return null
+  return { first, last }
+}
+
+/** The whole investigation's window: earliest first → latest last across nodes. */
+export function investigationStoryWindow(nodes: ConnectionNode[]): { first: string; last: string } | null {
+  const windows = nodes.map(nodeStoryWindow).filter((w): w is { first: string; last: string } => !!w)
+  if (windows.length === 0) return null
+  return {
+    first: windows.map(w => w.first).sort()[0],
+    last: windows.map(w => w.last).sort().slice(-1)[0],
+  }
+}
+
+function fmtDayShort(isoDay: string): string {
+  const d = new Date(isoDay.length === 10 ? `${isoDay}T00:00:00Z` : isoDay)
+  if (Number.isNaN(d.getTime())) return isoDay
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+}
+
 // ── Labels + export ─────────────────────────────────────────────────────────
 
 const BASIS_LABEL: Record<ConnectionBasis, string> = {
   semantic: 'semantic proximity',
   shared_country: 'shared country',
   shared_person: 'shared actor',
+  text_mention: 'evidence-text mention',
 }
 
 export function edgeReason(e: ConnectionEdge): string {
@@ -354,46 +545,76 @@ export function edgeReason(e: ConnectionEdge): string {
   }
   if (e.shared_countries.length) parts.push(`↔ ${e.shared_countries.join(', ')}`)
   if (e.shared_persons.length) parts.push(`↔ ${e.shared_persons.slice(0, 2).join(', ')}`)
+  if ((e.text_mentions?.length ?? 0) > 0) {
+    parts.push(`evidence text mentions “${e.text_mentions!.slice(0, 2).join('”, “')}”`)
+  }
   return parts.join(' · ') || e.basis.map(b => BASIS_LABEL[b]).join(' · ')
 }
 
-/** Connection findings as Markdown lines for the dossier export. */
+/** Connection findings as Markdown lines for the dossier export. `extras`
+ *  carries the lens note + frozen-evidence cross-refs so the hover-less
+ *  exported report keeps every honesty layer. */
 export function connectionsSummaryLines(
   data: ConnectionsData, cluster: ClusterResult,
+  extras?: { lensNote?: string | null; crossRefs?: TextCrossRef[] },
 ): string[] {
   const lines: string[] = []
   lines.push('## Connection analysis (measured at generation)')
   lines.push(
     `*How the ${data.nodes.length} pinned stories relate — semantic centroid `
-    + 'proximity, shared country, and rarity-weighted shared actors. Positions '
-    + 'approximate; relations measured.*',
+    + 'proximity, shared country, rarity-weighted shared actors, and evidence-'
+    + 'text mentions. Positions approximate; relations measured.*',
   )
+  if (extras?.lensNote) lines.push(`- *${extras.lensNote}*`)
+  // Story windows (P0.3): firstSeen → last activity per pin.
+  const windows = data.nodes
+    .map(n => ({ label: n.label, w: nodeStoryWindow(n) }))
+    .filter((x): x is { label: string; w: { first: string; last: string } } => !!x.w)
+  if (windows.length > 0) {
+    lines.push('- Story windows: ' + windows
+      .map(x => `${x.label} ${fmtDayShort(x.w.first)} → ${fmtDayShort(x.w.last)}`)
+      .join('; ') + '.')
+  }
   if (cluster.clusters.length === 0 && cluster.isolated.length > 0) {
-    lines.push('- No sub-narratives: every pinned story is isolated (they do not measurably relate).')
+    lines.push('- No sub-narratives: every pinned story is isolated (no measured entity or text relation).')
   }
   // Aggregate verdict — how many sub-narratives are confirmed by shared actors/
-  // places vs similarity-only (must survive to the exported, hover-less report).
+  // places vs text-linked vs similarity-only (must survive to the exported,
+  // hover-less report).
   if (cluster.clusters.length > 0) {
     const strengths = cluster.clusters.map(g => clusterStrength(g, data.edges))
     const confirmed = strengths.filter(s => s === 'confirmed').length
-    const caution = strengths.length - confirmed
+    const text = strengths.filter(s => s === 'text').length
+    const caution = strengths.length - confirmed - text
     lines.push(
       `- Of ${strengths.length} sub-narrative${strengths.length === 1 ? '' : 's'}, `
-      + `${confirmed} confirmed by shared actors/places and ${caution} similarity-only `
-      + '(topic/language proximity, not a proven connection).',
+      + `${confirmed} confirmed by shared actors/places`
+      + (text > 0 ? `, ${text} text-linked (headline text references the other story — verify)` : '')
+      + ` and ${caution} similarity-only (topic/language proximity, not a proven connection).`,
     )
   }
   cluster.clusters.forEach((g, i) => {
-    const strong = clusterStrength(g, data.edges) === 'confirmed'
-    const tag = strong ? '✓ CONFIRMED' : '⚠ SIMILAR ONLY'
-    const via = strong ? sharedBasisNames(g, data.edges) : []
-    const suffix = strong
+    const s = clusterStrength(g, data.edges)
+    const tag = s === 'confirmed' ? '✓ CONFIRMED' : s === 'text' ? '✎ TEXT-LINKED' : '⚠ SIMILAR ONLY'
+    const via = s === 'confirmed' ? sharedBasisNames(g, data.edges) : []
+    const suffix = s === 'confirmed'
       ? (via.length ? ` Linked via ${via.join(', ')}.` : '')
-      : ' No shared actors or places — connection is semantic/topical proximity only; treat as a hypothesis.'
+      : s === 'text'
+        ? ' No shared actors or places, but one story\'s evidence TEXT mentions the other — verify before treating as one narrative.'
+        : ' No shared actors or places — connection is semantic/topical proximity only; treat as a hypothesis.'
     lines.push(`- **${tag} — Sub-narrative ${i + 1}** (${g.length} stories): ${g.map(n => n.label).join('; ')}.${suffix}`)
   })
   if (cluster.isolated.length > 0) {
     lines.push(`- **Isolated** (connect to nothing pinned): ${cluster.isolated.map(n => n.label).join('; ')}.`)
+  }
+  // Frank v2 blocker 1: an isolation claim must never stand uncontradicted by a
+  // frozen headline the report itself displays.
+  for (const x of extras?.crossRefs ?? []) {
+    lines.push(
+      `- ⚠ **Verify before calling “${x.pinLabel}” unrelated**: entity extraction found no `
+      + `overlap with “${x.otherLabel}”, but its frozen evidence text mentions “${x.term}” `
+      + `(“${x.headline}”).`,
+    )
   }
   const strong = data.edges.slice(0, 6)
   if (strong.length) {
@@ -401,7 +622,8 @@ export function connectionsSummaryLines(
     for (const e of strong) {
       const a = data.nodes.find(n => n.id === e.a)?.label ?? e.a
       const b = data.nodes.find(n => n.id === e.b)?.label ?? e.b
-      const mark = edgeStrength(e) === 'strong' ? '✓' : '≈'
+      const s = edgeStrength(e)
+      const mark = s === 'strong' ? '✓' : s === 'text' ? '✎' : '≈'
       lines.push(`  - ${mark} ${a} ↔ ${b} — ${edgeReason(e)}`)
     }
   }

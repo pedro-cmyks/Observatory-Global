@@ -241,3 +241,171 @@ describe('connectionTopicIds', () => {
     expect(ids.filter(i => i === 'dynamic-topic-1').length).toBe(1)
   })
 })
+
+// ── Frank v2: text-mention tier + cross-refs + lens + umbrella guard + windows ──
+
+import {
+  labelKeyTokens, headlineMentionTerm, buildFrozenCrossRefs, coverageLensNote,
+  umbrellaChildDivergence, UMBRELLA_DIVERGENCE_MAX,
+  nodeStoryWindow, investigationStoryWindow, connectionState,
+} from './dossierConnections'
+import type { WorkbenchPin } from './workbench'
+
+describe('text-mention edge tier (Frank v2 blocker 1)', () => {
+  it('edgeStrength: text_mention sits between strong and weak', () => {
+    expect(edgeStrength(edge('a', 'b', { basis: ['semantic', 'text_mention'], text_mentions: ['nato summit'] }))).toBe('text')
+    expect(edgeStrength(edge('a', 'b', { shared_persons: ['tayyip erdogan'], basis: ['shared_person', 'text_mention'], text_mentions: ['x'] }))).toBe('strong')
+    expect(edgeStrength(edge('a', 'b'))).toBe('weak')
+  })
+
+  it('clusterStrength: text-linked cluster is neither confirmed nor caution', () => {
+    const nodes = [node('a'), node('b')]
+    expect(clusterStrength(nodes, [edge('a', 'b', { basis: ['text_mention'], text_mentions: ['nato summit'] })])).toBe('text')
+  })
+
+  it('connectionState maps a single text cluster to text-linked', () => {
+    const nodes = [node('a'), node('b')]
+    const edges = [edge('a', 'b', { basis: ['text_mention'], text_mentions: ['nato summit'] })]
+    expect(connectionState(deriveClusters(nodes, edges), edges)).toBe('text-linked')
+  })
+
+  it('edgeReason quotes the mention term', () => {
+    expect(edgeReason(edge('a', 'b', { basis: ['text_mention'], semantic_sim: null, text_mentions: ['nato summit'] })))
+      .toContain('evidence text mentions “nato summit”')
+  })
+})
+
+describe('labelKeyTokens / headlineMentionTerm', () => {
+  it('drops stopwords and short tokens', () => {
+    expect(labelKeyTokens('NATO Summit Ankara')).toEqual(['nato', 'summit', 'ankara'])
+    expect(labelKeyTokens('The News of the Day')).toEqual(['day'])
+  })
+
+  it('finds the NATO-summit case, needs >=2 tokens for multi-token labels', () => {
+    const tokens = labelKeyTokens('NATO Summit Ankara')
+    expect(headlineMentionTerm('Trump orders cutoff of U.S. trade with Spain during NATO summit', tokens))
+      .toBe('nato summit')
+    expect(headlineMentionTerm('Leaders gather for climate summit in Belem', tokens)).toBeNull()
+  })
+
+  it('single-token label fires on one match', () => {
+    expect(headlineMentionTerm('Protests spread across Venezuela', labelKeyTokens('Venezuela'))).toBe('venezuela')
+  })
+})
+
+describe('buildFrozenCrossRefs (the killer blocker, frozen side)', () => {
+  const pin = (anchorId: string, label: string, headlines: string[]): WorkbenchPin => ({
+    anchorId, anchorType: 'thread', label, pinnedAt: '2026-07-08T00:00:00Z',
+    snapshot: { capturedAt: '2026-07-08T00:00:00Z', evidence: headlines.map(h => ({ headline: h })) },
+  })
+  const dataOf = (nodes: ConnectionNode[], edges: ConnectionEdge[]): ConnectionsData => ({
+    contract: 'dossier-connections-v1', nodes, edges, distributions: null, unresolved: [],
+  })
+
+  it('flags an isolated pin whose frozen headline mentions another pin label', () => {
+    const pins = [
+      pin('dynamic-topic-390', 'Trump Tariff Orders', ['Trump orders cutoff of U.S. trade with Spain during NATO summit']),
+      pin('theme-dynamic-topic-2044', 'NATO Summit Ankara', ['Ankara hosts alliance leaders']),
+    ]
+    const refs = buildFrozenCrossRefs(pins, dataOf([node('dynamic-topic-390'), node('dynamic-topic-2044')], []))
+    expect(refs).toHaveLength(1)
+    expect(refs[0].pinLabel).toBe('Trump Tariff Orders')
+    expect(refs[0].otherLabel).toBe('NATO Summit Ankara')
+    expect(refs[0].term).toBe('nato summit')
+  })
+
+  it('skips pairs the measured graph already links', () => {
+    const pins = [
+      pin('dynamic-topic-1', 'Trump Tariff Orders', ['Trade cutoff during NATO summit']),
+      pin('dynamic-topic-2', 'NATO Summit Ankara', []),
+    ]
+    const linked = dataOf(
+      [node('dynamic-topic-1'), node('dynamic-topic-2')],
+      [edge('dynamic-topic-1', 'dynamic-topic-2', { basis: ['text_mention'], text_mentions: ['nato summit'] })],
+    )
+    expect(buildFrozenCrossRefs(pins, linked)).toHaveLength(0)
+  })
+})
+
+describe('coverageLensNote (Frank v2 blocker 6)', () => {
+  it('names a dominant non-English language with its share', () => {
+    const note = coverageLensNote([{ lang: 'en', n: 24 }, { lang: 'ro', n: 19 }])
+    expect(note).toContain('Romanian-language sources (44%)')
+    expect(note).toContain('findings reflect that vantage')
+  })
+  it('flags an overwhelmingly English lens too', () => {
+    expect(coverageLensNote([{ lang: 'en', n: 90 }, { lang: 'es', n: 5 }])).toContain('English-language')
+  })
+  it('stays silent on balanced or thin coverage', () => {
+    expect(coverageLensNote([{ lang: 'en', n: 3 }, { lang: 'ro', n: 2 }])).toBeNull()
+    expect(coverageLensNote([{ lang: 'en', n: 40 }, { lang: 'es', n: 20 }, { lang: 'fr', n: 20 }, { lang: 'de', n: 20 }])).toBeNull()
+  })
+})
+
+describe('umbrellaChildDivergence (Frank v2 blocker 5)', () => {
+  const umb = (label: string, childLabels: string[]): ConnectionNode => node('u1', {
+    label, is_umbrella: true, child_count: childLabels.length,
+    facets: [{ facet: 'core', topic_count: childLabels.length, evidence_n: 1, countries: [], topics: childLabels.map((l, i) => ({ id: `c${i}`, label: l })) }],
+  })
+
+  it('coherent fold: children share the parent key tokens', () => {
+    const u = umb('Venezuela Earthquake', ['Venezuela Earthquake Death Toll', 'Venezuela Earthquake Rescues'])
+    expect(umbrellaChildDivergence(u)).toBe(0)
+  })
+
+  it('garbage fold: Khamenei Funeral under Trump-Putin Talks diverges', () => {
+    const u = umb('Trump-Putin Talks on Ukraine', ['Khamenei Funeral', 'France Heatwave and Violence', 'Germany Policy Changes', 'Trump Putin Ukraine Ceasefire'])
+    const d = umbrellaChildDivergence(u)!
+    expect(d).toBeGreaterThan(UMBRELLA_DIVERGENCE_MAX)
+  })
+
+  it('one shared token does not make a long child coherent (live NATO-Ankara fold)', () => {
+    // the exact prod fold Frank flagged: only the self-named child is coherent.
+    const u = umb('Trump-Putin Talks on Ukraine', [
+      'France Heatwave and Violence', 'Trump-Putin Talks on Ukraine',
+      'Germany Policy Changes', 'Khamenei Funeral and Trump Threats',
+    ])
+    expect(umbrellaChildDivergence(u)!).toBeGreaterThan(UMBRELLA_DIVERGENCE_MAX)
+  })
+
+  it('null when no child labels', () => {
+    expect(umbrellaChildDivergence(node('x', { is_umbrella: true, facets: [] }))).toBeNull()
+  })
+})
+
+describe('story windows (P0.3 dates)', () => {
+  it('nodeStoryWindow prefers first_seen, ends at last evidence day', () => {
+    const n = node('a', { first_seen: '2026-06-12T08:00:00Z', timeline: [{ day: '2026-07-01', n: 2 }, { day: '2026-07-08', n: 1 }] })
+    expect(nodeStoryWindow(n)).toEqual({ first: '2026-06-12', last: '2026-07-08' })
+  })
+  it('falls back to the first evidence day; null without any dates', () => {
+    expect(nodeStoryWindow(node('a', { timeline: [{ day: '2026-07-02', n: 1 }] }))).toEqual({ first: '2026-07-02', last: '2026-07-02' })
+    expect(nodeStoryWindow(node('a'))).toBeNull()
+  })
+  it('investigationStoryWindow spans all nodes', () => {
+    const w = investigationStoryWindow([
+      node('a', { timeline: [{ day: '2026-07-02', n: 1 }] }),
+      node('b', { first_seen: '2026-06-10', timeline: [{ day: '2026-07-09', n: 1 }] }),
+    ])
+    expect(w).toEqual({ first: '2026-06-10', last: '2026-07-09' })
+  })
+})
+
+describe('connectionsSummaryLines carries the new honesty layers', () => {
+  it('exports lens note, story window, text-linked tag and cross-ref warnings', () => {
+    const nodes = [
+      node('a', { label: 'Trump Tariff Orders', timeline: [{ day: '2026-07-08', n: 1 }] }),
+      node('b', { label: 'NATO Summit Ankara', timeline: [{ day: '2026-07-05', n: 2 }] }),
+    ]
+    const edges = [edge('a', 'b', { basis: ['text_mention'], text_mentions: ['nato summit'] })]
+    const data: ConnectionsData = { contract: 'v1', nodes, edges, distributions: null, unresolved: [] }
+    const lines = connectionsSummaryLines(data, deriveClusters(nodes, edges), {
+      lensNote: 'Coverage lens: this investigation\'s evidence leans Romanian-language sources (44%) — findings reflect that vantage.',
+      crossRefs: [{ pinLabel: 'X', otherLabel: 'Y', term: 'nato summit', headline: 'h' }],
+    }).join('\n')
+    expect(lines).toContain('Romanian-language sources')
+    expect(lines).toContain('Story windows:')
+    expect(lines).toContain('TEXT-LINKED')
+    expect(lines).toContain('Verify before calling “X” unrelated')
+  })
+})

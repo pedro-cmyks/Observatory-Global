@@ -6,6 +6,7 @@ import { useFocusRelation } from '../hooks/useFocusRelation'
 import { resolveCountryName, isKnownCountry } from '../lib/countryNames'
 import { getThemeLabel, resolveThreadLabel } from '../lib/themeLabels'
 import { getPublicAttentionTopUrl, getTrendingSearchesUrl, getForumAttentionUrl } from '../lib/publicAttention'
+import { conflictsForCountry, conflictCountryCode } from '../lib/conflictEvents'
 import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters'
 import './AnomalyPanel.css'
 
@@ -109,11 +110,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
     // When a country is active (or a focus relation resolves one), filter
     // conflicts to that country. ACLED uses full names, GDELT 2-letter codes.
     const visibleConflicts = scopeCountry
-        ? acledConflicts.filter(c => {
-            const loc = c.location.country || ''
-            const name = resolveCountryName(scopeCountry).toLowerCase()
-            return loc === scopeCountry || loc.toLowerCase() === name
-        })
+        ? conflictsForCountry(acledConflicts, scopeCountry)
         : acledConflicts
 
     const severityColor = SEVERITY_COLORS[overallSeverity] ?? '#4ade80'
@@ -199,9 +196,14 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                                 {visibleConflicts.slice(0, 8).map(c => {
                                     const loc = c.location?.name || c.location?.country || '?'
                                     const src = c.source === 'gdelt_events' ? 'G' : 'A'
+                                    // #232 UX slice: clicking a conflict event focuses its
+                                    // COUNTRY — the existing #234 propagation (map fly + heat
+                                    // re-scope + threads + dock) lights up from that one focus.
+                                    const cc = conflictCountryCode(c)
                                     return (
-                                        <div key={c.id} className="ap-row ap-row--conflict clickable"
-                                            onClick={() => handleAnomalyClick(c.location.country)}>
+                                        <div key={c.id} className={`ap-row ap-row--conflict${cc ? ' clickable' : ''}`}
+                                            data-tip={cc ? `Focus ${resolveCountryName(cc)} — map, threads and dock re-scope to it` : 'No country attributed to this event'}
+                                            onClick={cc ? () => handleAnomalyClick(cc) : undefined}>
                                             <span className="ap-src-tag" style={{ color: src === 'A' ? '#f87171' : '#fb923c' }}>{src}</span>
                                             <span className="ap-conflict-info">
                                                 <span className="ap-conflict-loc">{loc}</span>

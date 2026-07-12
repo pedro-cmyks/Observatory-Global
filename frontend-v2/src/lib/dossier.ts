@@ -56,7 +56,9 @@ export function buildDossier(
   const gaps: string[] = []
   const noEvidence = pins.filter(p => !p.snapshot?.evidence || p.snapshot.evidence.length === 0)
   if (noEvidence.length > 0) {
-    gaps.push(`${noEvidence.length} of ${pins.length} pins were captured without frozen evidence (metadata only) — re-open them to inspect the live source.`)
+    // Frank v2 blocker 4: NAME the metadata-only pin(s), never just count them.
+    const names = noEvidence.map(p => `“${p.label}”`).join('; ')
+    gaps.push(`${noEvidence.length} of ${pins.length} pins captured without frozen evidence (metadata only): ${names} — re-open to inspect the live source.`)
   }
   const keywordOnly = pins.filter(p =>
     (p.snapshot?.evidence ?? []).some(e => /^keyword\b/i.test(e.headline)))
@@ -94,6 +96,15 @@ function fmt(iso: string): string {
   } catch { return iso }
 }
 
+/** "2026-07-08" → "Jul 8" (P0.3 — evidence dates render short). */
+export function fmtDay(isoDay: string): string {
+  try {
+    const d = new Date(isoDay.length === 10 ? `${isoDay}T00:00:00Z` : isoDay)
+    if (Number.isNaN(d.getTime())) return isoDay
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+  } catch { return isoDay }
+}
+
 /** Render the dossier as portable Markdown (the spec's report export). */
 export function dossierToMarkdown(d: DossierModel): string {
   const lines: string[] = []
@@ -113,7 +124,10 @@ export function dossierToMarkdown(d: DossierModel): string {
       lines.push(`### ${p.label}  \`${p.anchorType}\``)
       if (p.snapshot?.summary) lines.push(p.snapshot.summary)
       for (const e of p.snapshot?.evidence ?? []) {
-        lines.push(`- ${e.url ? `[${e.headline}](${e.url})` : e.headline}${e.source ? ` — ${e.source}` : ''}`)
+        const attribution = e.source
+          ? ` — ${e.source}${e.date ? `, ${fmtDay(e.date)}` : ''}`
+          : (e.date ? ` — ${fmtDay(e.date)}` : '')
+        lines.push(`- ${e.url ? `[${e.headline}](${e.url})` : e.headline}${attribution}`)
       }
       if (p.note) lines.push(`> **Note:** ${p.note}`)
       lines.push(`*pinned ${fmt(p.pinnedAt)}*`)
