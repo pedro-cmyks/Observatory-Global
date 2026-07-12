@@ -6,20 +6,30 @@
 # psql from the M1 over the SESSION-mode pooler (port 5432) is the proven path
 # (manual backfill 2026-07-01 ran 2m35s fine).
 set -uo pipefail
-# Never overlap with a previous run still refreshing (a contended refresh can
-# outlive the 30-min cadence — two CONCURRENTLY refreshes thrash each other,
-# observed 2026-07-02). macOS has no flock(1): use an atomic mkdir lock with
-# stale expiry (>45 min = crashed run, reclaim).
-LOCKDIR="/tmp/atlas-country-hourly.lock"
-if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  if [ -n "$(find "$LOCKDIR" -maxdepth 0 -mmin +45 2>/dev/null)" ]; then
-    rmdir "$LOCKDIR" 2>/dev/null; mkdir "$LOCKDIR" 2>/dev/null || exit 0
-  else
-    echo "$(date '+%F %T') previous refresh still running — skip" >> "$HOME/AtlasLocalWorker/logs/matview-refresh.log"
+# P1.1 heavy-job mutex (supersedes the old per-job mkdir lock, 2026-07-12):
+# one heavy DB job at a time on the M1 — this refresh must not stack on the
+# embed cron / clustering chain / catchup (serving statement-timeout
+# incidents). SKIP mode: the 30-min cadence self-heals a missed refresh.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -r "$SCRIPT_DIR/heavy-job-lock.sh" ]; then
+  . "$SCRIPT_DIR/heavy-job-lock.sh"
+  if ! atlas_heavy_lock "matview-refresh" skip 45; then
+    echo "$(date '+%F %T') heavy job running — refresh skipped (cadence self-heals)" >> "$HOME/AtlasLocalWorker/logs/matview-refresh.log"
     exit 0
   fi
+else
+  # Fallback: at least never overlap OURSELVES (pre-P1.1 behaviour).
+  LOCKDIR="/tmp/atlas-country-hourly.lock"
+  if ! mkdir "$LOCKDIR" 2>/dev/null; then
+    if [ -n "$(find "$LOCKDIR" -maxdepth 0 -mmin +45 2>/dev/null)" ]; then
+      rmdir "$LOCKDIR" 2>/dev/null; mkdir "$LOCKDIR" 2>/dev/null || exit 0
+    else
+      echo "$(date '+%F %T') previous refresh still running — skip" >> "$HOME/AtlasLocalWorker/logs/matview-refresh.log"
+      exit 0
+    fi
+  fi
+  trap 'rmdir "$LOCKDIR" 2>/dev/null' EXIT
 fi
-trap 'rmdir "$LOCKDIR" 2>/dev/null' EXIT
 ENV_FILE="${ATLAS_ENV_FILE:-$HOME/AtlasLocalWorker/.env}"
 LOG="$HOME/AtlasLocalWorker/logs/matview-refresh.log"
 [ -f "$ENV_FILE" ] && { set -a; source "$ENV_FILE"; set +a; }

@@ -137,6 +137,10 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     const [personMatchIds, setPersonMatchIds] = useState<Set<string> | null>(null)
     const [effectiveHours, setEffectiveHours] = useState<number | null>(null)
     const [loading, setLoading] = useState(true)
+    // G5: a failed fetch (503 db_busy / 500 / network) must not read as an
+    // honest "no active narratives" empty. Track it so the empty branch can
+    // say "unavailable — retrying" instead.
+    const [feedError, setFeedError] = useState(false)
     const { filter, setCountry, setMapFlyCountry, setPerson } = useFocus()
     const { timeRange } = useFocusData()
     // W4 (2026-07-05): thread rows are pinnable into the active investigation.
@@ -165,13 +169,15 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 // strip until the 5-min interval (capture-doc §B, live-seen).
                 await new Promise(r => setTimeout(r, 2500))
                 res = await fetch(`/api/v2/threads?${params.toString()}`)
-                if (!res.ok) return
+                if (!res.ok) { setFeedError(true); return }   // service failure, not empty
             }
             const data = await res.json()
             setNarratives((data.threads || []).map(normalizeThread))
             setEffectiveHours(data.hours ?? null)
+            setFeedError(false)
         } catch (e) {
             console.error('[NarrativeThreads] Fetch error', e)
+            setFeedError(true)   // network throw = unavailable, not empty
         } finally {
             setLoading(false)
         }
@@ -311,7 +317,13 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     if (narratives.length === 0) {
         return (
             <div className="narrative-threads-container">
-                <div className="narrative-empty">No active narratives in this time range</div>
+                {feedError ? (
+                    <div className="narrative-empty narrative-empty--error" role="status" aria-live="polite">
+                        Narrative feed unavailable — retrying…
+                    </div>
+                ) : (
+                    <div className="narrative-empty">No active narratives in this time range</div>
+                )}
             </div>
         )
     }

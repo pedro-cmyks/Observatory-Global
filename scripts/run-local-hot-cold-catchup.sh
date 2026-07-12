@@ -31,6 +31,15 @@ fi
 
 mkdir -p "$ARCHIVE_ROOT" "$OUTPUT_DIR"
 
+# P1.1 heavy-job mutex: archive scan + prune hammers the shared Supabase.
+# SKIP mode — the hourly night cadence (00:10-04:10) self-heals a missed run.
+if [[ -r "$SCRIPT_DIR/heavy-job-lock.sh" ]]; then
+  source "$SCRIPT_DIR/heavy-job-lock.sh"
+  atlas_heavy_lock "hot-cold-catchup" skip 240 || exit 0
+else
+  echo "[local-hot-cold] heavy-job-lock.sh missing — running UNSERIALIZED" >&2
+fi
+
 if [[ -z "${DATABASE_URL:-}" && -z "${SUPABASE_DB_URL:-}" ]]; then
   DATABASE_URL="$(
     fly ssh console -a "$FLY_APP" --pty=false -C 'printenv DATABASE_URL' 2>/dev/null \
@@ -47,7 +56,8 @@ cd "$BACKEND_DIR"
 # ~1-2 days and starved every 7d consumer (Kalman movement buckets, identity
 # persistence, 168h views). 168h = the real 7-day hot window; prune still
 # only runs AFTER verified archive export. Override: ATLAS_HOT_RETENTION_HOURS.
-exec .venv/bin/python -m scripts.local_hot_cold_catchup \
+# No exec: exec replaces the shell and the heavy-lock EXIT trap never fires.
+.venv/bin/python -m scripts.local_hot_cold_catchup \
   --archive-root "$ARCHIVE_ROOT" \
   --output-dir "$OUTPUT_DIR" \
   --older-than-hours "${ATLAS_HOT_RETENTION_HOURS:-168}" \

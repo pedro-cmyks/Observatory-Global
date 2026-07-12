@@ -401,6 +401,11 @@
     font-size: 11px;
 }
 
+/* G5: service failure ≠ honest empty — amber so it reads as "still trying". */
+.narrative-empty--error {
+    color: #f59e0b;
+}
+
 .narrative-empty--actionable {
     display: flex;
     flex-direction: column;

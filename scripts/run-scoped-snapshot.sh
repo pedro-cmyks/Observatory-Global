@@ -31,6 +31,15 @@ VOLUME_MIN="${ATLAS_SCOPED_VOLUME_MIN:-12}"
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 mkdir -p "$LOG_DIR"
 
+# P1.1 heavy-job mutex: ~1-1.5h clustering chain must never overlap embed/
+# matview/catchup on the shared Supabase (serving statement-timeout incidents).
+if [[ -r "$SCRIPT_DIR/heavy-job-lock.sh" ]]; then
+  source "$SCRIPT_DIR/heavy-job-lock.sh"
+  atlas_heavy_lock "scoped-snapshot" wait 240 120 || exit 0
+else
+  echo "[scoped-snapshot] heavy-job-lock.sh missing — running UNSERIALIZED" >&2
+fi
+
 for key in DATABASE_URL DEEPSEEK_API_KEY OPENAI_API_KEY; do
   if [[ -z "${!key:-}" && -r "$LOCAL_ENV" ]]; then
     v="$(grep -E "^${key}=" "$LOCAL_ENV" | tail -n 1 | sed -E "s/^${key}=//" | tr -d '\r' || true)"

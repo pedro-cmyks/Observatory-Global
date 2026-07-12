@@ -354,6 +354,33 @@
     font-size: 12px;
 }
 
+/* G5: a SERVICE FAILURE reads differently from an honest empty — amber, not
+   the muted grey of "nothing matched", plus a pulsing dot so it's visibly
+   "still trying" rather than a settled empty result. */
+.empty-state.stream-feed-error {
+    color: #f59e0b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.stream-feed-error-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #f59e0b;
+    box-shadow: 0 0 6px #f59e0b;
+    animation: live-pulse 1.4s ease-in-out infinite;
+}
+.stream-live-dot.feed-error {
+    background: #f59e0b;
+    box-shadow: 0 0 6px #f59e0b;
+    animation: live-pulse 1.4s ease-in-out infinite;
+}
+.stream-live-dot.feed-error + .stream-status-text {
+    color: #f59e0b;
+}
+
 /* ==========================================================================
    Event Cards (GDELT Events)
    ========================================================================== */

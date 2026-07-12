@@ -62,6 +62,44 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── DB-busy degradation (P1 incident class, 2026-07-12) ─────────────────────
+# When the M1 batch jobs (embed cron / clustering / matview refresh / catchup)
+# contend on the shared Supabase, serving queries hit statement timeouts and
+# every affected endpoint returned a raw 500. Serve an honest 503 db_busy
+# instead so clients can distinguish "service degraded, retry" from a bug.
+# Handlers are registered on the app (Starlette ExceptionMiddleware, innermost)
+# so the 503 flows back through rate-limit + CORS middleware normally.
+import logging
+from fastapi.responses import JSONResponse
+from starlette.requests import Request as _StarletteRequest
+
+_logger = logging.getLogger("atlas.api")
+
+
+def _db_busy_response(request: _StarletteRequest, exc: Exception) -> JSONResponse:
+    _logger.warning("db_busy on %s: %s: %s", request.url.path, type(exc).__name__, exc)
+    return JSONResponse(
+        {"reason": "db_busy", "detail": "database is busy — retry shortly"},
+        status_code=503,
+        headers={"Retry-After": "10"},
+    )
+
+
+async def _handle_db_busy(request: _StarletteRequest, exc: Exception) -> JSONResponse:
+    return _db_busy_response(request, exc)
+
+
+# Statement timeout ("canceling statement due to statement timeout") — the
+# exact error class from the incident tracebacks.
+app.add_exception_handler(asyncpg.exceptions.QueryCanceledError, _handle_db_busy)
+# Pool-acquire / command timeouts. On py3.11+ asyncio.TimeoutError IS the
+# builtin TimeoutError; register both so older runtimes are covered too.
+app.add_exception_handler(TimeoutError, _handle_db_busy)
+app.add_exception_handler(asyncio.TimeoutError, _handle_db_busy)
+# Pooler saturation / dropped connections during heavy batch windows.
+app.add_exception_handler(asyncpg.exceptions.TooManyConnectionsError, _handle_db_busy)
+app.add_exception_handler(asyncpg.exceptions.ConnectionDoesNotExistError, _handle_db_busy)
+
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://observatory:changeme@localhost:5432/observatory")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 

@@ -41,6 +41,15 @@ fi
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 mkdir -p "$LOG_DIR"
 
+# P1.1 heavy-job mutex: never run the global clustering while another heavy
+# DB job (embed/scoped/matview/catchup) holds the shared Supabase.
+if [[ -r "$SCRIPT_DIR/heavy-job-lock.sh" ]]; then
+  source "$SCRIPT_DIR/heavy-job-lock.sh"
+  atlas_heavy_lock "emergent-snapshot" wait 180 90 || exit 0
+else
+  echo "[emergent-snapshot] heavy-job-lock.sh missing — running UNSERIALIZED" >&2
+fi
+
 load_env_file() {
   local env_file="$1"
   [[ -r "$env_file" ]] || return 0
