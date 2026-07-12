@@ -1,5 +1,40 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-12 (L3 WORKBENCH 3-PANEL UX FIXED, `51426c75`, pushed
+v3-intel-layer → Vercel).** Pedro's 4K complaints, three fixes, all
+browser-verified 1440 + 2560 (before/after screenshots in session):
+(1) **TRUNCATION dead**: pinned-route snapshot/evidence/labels wrap
+(`overflow-wrap:anywhere`), trail wraps (was nowrap-ellipsis with no way to
+read), per-pin note textarea AUTO-GROWS to content (`autoGrowNote` in
+WorkbenchPanel.tsx — rows=1 was clipping multi-line notes mid-sentence);
+large-viewport pass scoped to the overlay: sidebar 168→240 (≥1800) →300
+(≥2200) + type bump ≥2200 in WorkbenchPanel.css AND ResearchPlanPanel.css
+(the #233 `.terminal-layout-grid` media query does NOT reach the fixed
+overlay — separate scope by design). (2) **RIGHT PANEL DEAD ON REOPEN root
+cause**: the plan query lived ONLY in App state — `Investigation.query` now
+PERSISTED (workbench.ts; `createInvestigation(title, query?)`);
+`investigationQuery()` falls back query → last pin `queryText` → title, so
+pre-fix records (NATO-Ankara) hydrate too; App effect re-hydrates
+`researchQuery` on overlay open; sidebar select loads the stored query.
+Header explainer strip (LEFT investigations · MIDDLE frozen route · RIGHT
+Atlas suggests — pin to capture) + "ATLAS SUGGESTS · <query>" header on the
+plan column. (3) **INCREMENTAL CONSTELLATION SEED** (vision item pulled
+forward): `WorkbenchConstellation.tsx` renders the compact
+`InvestigativeUniverse` (now EXPORTED from DossierConnections.tsx with a
+`compact` prop — legend/nearby hidden, `max-height:300px` letterbox; report
+path untouched, verified) above PINNED ROUTE + touched-country chips;
+re-measures ONLY when the resolvable topic-pin SET changes (keyed on sorted
+`connectionTopicIds` — note edits never refetch; endpoint cached 120s);
+<2 thread pins or fetch fail = absence. Verified live: 3→2 stories on
+unpin, absent at 1 pin. BONUS: ResearchPlanPanel anchor keys now
+`id-rank` — two degraded lanes both emit `gap-lane_degraded-general`
+(React dup-key error live). GOTCHA hit during verify:
+`/api/v2/research/plan` per-IP rate limit = 20/300s ("paid" bucket) —
+repeated dev opens 429 fast; honest error state renders. Builds + 267
+vitest green (post-merge with Frank-v2 dossier session — DossierConnections
+conflict resolved keeping their amber text-mention legend INSIDE the
+`!compact` block).**
+
 **2026-07-11 (PANEL GRID REVIVAL #233 + DE-DENSIFY A/B SHIPPED,
 `55e58722`→`78e08097`, pushed v3-intel-layer → Vercel).** L2 console UX
 overhaul, plan `docs/superpowers/plans/2026-07-11-console-grid-dedensify.md`.
