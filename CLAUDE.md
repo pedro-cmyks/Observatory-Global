@@ -35,6 +35,36 @@ vitest green (post-merge with Frank-v2 dossier session — DossierConnections
 conflict resolved keeping their amber text-mention legend INSIDE the
 `!compact` block).**
 
+**2026-07-11/12 (WEDGE→PUBLICABLE + ENGINE HEAL WEEK CLOSE, `0f0fed6d`→`0001933f`+deploys, read FIRST).**
+Roadmap = `docs/specs/2026-07-09-resume-roadmap.md` (v2.1: objetivo = DOSSIER
+PUBLICABLE COMO NOTICIA; P0.6 publishable bar, C7-first, P2.4 promotion gap,
+P2.5 actor-quality). Vision = `2026-07-08-narrative-intelligence-vision.md`.
+Marquee = `docs/research/flagship/2026-07-11-nato-ankara-marquee.md` (pins
+dt-390/2044/56; Frank v1 "spike"→v2 "usable-with-caveats"; corroboración web
+MANUAL: 4/4 claims established + asimetría bidireccional Erdoğan-framing vs
+Trump-drama). SHIPPED esta semana (todo en v3-intel-layer + Fly/Vercel):
+motor sanado (embed chunked+SET LOCAL, clustering 30→597 threads, cobertura
+0.04%→~40%, junk gate is_junk mig074 útil 38-52%/junk 2%), geo Belén/Belém→PS,
+coherence guard content-signals (#224), dossier honesty stack COMPLETO
+(basis-weighted verdict, synthesis glass-box, Frank-v2 six: text_mention edges
++ junk-actor filter + fechas + lens note + umbrella guard), N=2 df-cap fix,
+conflict-events UX (#232 slice), L3 3-panel UX + WorkbenchConstellation viva,
+panel grid #233 + de-densify, loading delight (/api/v2/delight), mobile perf
+#254, dataviz audit (`2026-07-11-dataviz-expert-audit.md`) + 3 fixes, archive
+engine perf (PCA-128, mig 074b halfvec), cost ledger (mig 073), signals 500→
+bounded-query 200. EN VUELO (chats aparte, chips): narrativa publicable
+(task_07cdda75) · corroboración in-product (task_ce252c2b) · P1.1 mutex
+(threads 500 pendiente mismo trato que signals) · dataviz remainder · grid
+any-edge+fill (task_fcc62c7a) · docs/issues/papers sync (task_5d6a2a8a).
+LECCIONES: chats ganan y NO mergean → pase de consolidación obligatorio (11
+ramas huérfanas consolidadas 07-12); P1 DB compartido mordió 4×; scrubbers
+globo/universo NO linkeados (decisión abierta: link por default + candado).
+NEXT AL RETOMAR: (1) aterrizar narrativa+corroboración → regenerar reporte
+NATO → FRANK DE EDITOR (¿publicable?) = P0.5-0.6; (2) threads bounded-query;
+(3) C7 voice-asymmetry detector (primero de P3); (4) actor-quality P2.5.
+Reglas: math-first/LLM solo brief glass-box; tareas mecánicas → modelo
+barato/Codex, Fable solo razonamiento denso.**
+
 **2026-07-11 (PANEL GRID REVIVAL #233 + DE-DENSIFY A/B SHIPPED,
 `55e58722`→`78e08097`, pushed v3-intel-layer → Vercel).** L2 console UX
 overhaul, plan `docs/superpowers/plans/2026-07-11-console-grid-dedensify.md`.
