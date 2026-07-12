@@ -108,6 +108,10 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    /* Grow into the tall dock instead of leaving a dead gap above the
+       footer (margin-top:auto used to strand ~340px on big grids). */
+    flex: 1;
+    min-height: 0;
 }
 
 .section-title {
@@ -122,6 +126,10 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+    /* Fill the expanded section; scroll when many leaders. */
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
 }
 
 .bar-row {

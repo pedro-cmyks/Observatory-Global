@@ -135,7 +135,8 @@
 }
 
 .ap-geo-section {
-    flex: 1;
+    /* Take the larger share of a tall dock, but let conflicts grow too. */
+    flex: 2 1 0;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -144,11 +145,21 @@
 
 .ap-sub {
     border-top: 1px solid rgba(255,255,255,0.05);
-    flex-shrink: 0;
-    max-height: 120px;
+    /* On a tall dock the conflict-events list expands into the space and
+       scrolls; min-height keeps it usable on the 16:9-crushed dock. */
+    flex: 1 1 0;
+    min-height: 120px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+}
+
+/* Conflict-events list: fill the (now growable) ap-sub and scroll, instead of
+   the fixed 120px cap that col-scroll-short imposes for theme spikes. */
+.ap-sub .col-scroll-short {
+    flex: 1;
+    max-height: none;
+    min-height: 0;
 }
 
 /* ── Rows ── */
