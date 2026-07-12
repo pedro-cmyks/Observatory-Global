@@ -3,7 +3,7 @@ import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { TranslatableHeadline } from './TranslatableHeadline'
-import { timeRangeToHours } from '../lib/timeRanges'
+import { timeRangeToHours, ambientRange } from '../lib/timeRanges'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { mergeStreamItems, splitInitialStreamBatch } from '../lib/signalStreamQueue'
 import { Pin, PinOff } from '../lib/icons'
@@ -176,7 +176,10 @@ export const SignalStream: React.FC = () => {
             try {
                 const params = new URLSearchParams()
                 params.append('limit', '50')
-                params.append('hours', timeRangeToHours(timeRange).toString())
+                // S4 (2026-07-05): the signal stream is AMBIENT — a fixed live
+                // 24h picture. The time selector is a VIEW lens (scrubber span +
+                // investigative surfaces), it must not re-window the stream.
+                params.append('hours', timeRangeToHours(ambientRange(timeRange)).toString())
                 params.append('sort', 'relevance')  // analyst-grade ranking (#177)
                 if (filter.country) params.append('country_code', filter.country)
                 if (filter.theme) params.append('theme', filter.theme)
@@ -259,7 +262,10 @@ export const SignalStream: React.FC = () => {
             try {
                 const params = new URLSearchParams()
                 params.append('limit', '50')
-                params.append('hours', timeRangeToHours(timeRange).toString())
+                // S4 (2026-07-05): the signal stream is AMBIENT — a fixed live
+                // 24h picture. The time selector is a VIEW lens (scrubber span +
+                // investigative surfaces), it must not re-window the stream.
+                params.append('hours', timeRangeToHours(ambientRange(timeRange)).toString())
                 if (filter.country) params.append('country_code', filter.country)
                 if (filter.theme) params.append('theme', filter.theme)
                 if (filter.person) params.append('person', filter.person)

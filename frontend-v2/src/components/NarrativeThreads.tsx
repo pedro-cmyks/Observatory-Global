@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
-import { timeRangeToHours } from '../lib/timeRanges'
+import { timeRangeToHours, ambientRange } from '../lib/timeRanges'
 import { resolveCountryName } from '../lib/countryNames'
 import { Flag } from './Flag'
 import { buildCountryThreadEmptyState, getNarrativeFetchLimit, getNarrativesForDisplay } from '../lib/narrativeThreadLimits'
@@ -140,10 +140,14 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     // W4 (2026-07-05): thread rows are pinnable into the active investigation.
     const { pinItem, unpinItem, isPinned } = useWorkspace()
 
-    // Cap to 24h when browsing globally (spread_pct becomes meaningless at wider windows);
-    // when a country is selected, use the full range so client-side filtering has real data.
+    // S4 (2026-07-05): the GLOBAL thread list is AMBIENT — a fixed live 24h
+    // picture; the time selector is a VIEW lens and must not re-window it (a
+    // sub-24h lens like "1 Hour" was shrinking the global list). A country
+    // scope is INVESTIGATIVE and follows the selected lens so client-side
+    // filtering has real data. spread_pct is meaningless past 24h regardless,
+    // so the global side also stays capped at 24h.
     const rawHours = timeRangeToHours(timeRange)
-    const cappedHours = filter.country ? rawHours : Math.min(rawHours, 24)
+    const cappedHours = filter.country ? rawHours : Math.min(timeRangeToHours(ambientRange(timeRange)), 24)
     const isCapped = !filter.country && rawHours > 24
 
     // Fetch enough rows for the panel to use the available vertical space.
