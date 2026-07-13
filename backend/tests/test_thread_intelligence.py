@@ -239,6 +239,48 @@ def test_assemble_dynamic_thread_does_not_duplicate_country_codes_as_names():
     )
 
 
+def test_assemble_dynamic_thread_separates_verified_subject_from_coverage_geo():
+    row = {
+        "id": 19,
+        "identity_key": "dyn-19",
+        "label": "Senegal Political Turmoil",
+        "agg_n_signals": 8,
+        "changed_10h": 2,
+        "noise_rate": None,
+        "mean_cohesion": 0.46,
+        "first_seen": None,
+        # Raw lifetime/cluster coverage can include the GDELT FIPS collision
+        # and neighboring coverage. It must remain contextual.
+        "top_country_codes": ["SG", "CD"],
+    }
+    samples = [
+        {
+            "id": 1,
+            "headline": "Senegal lawmakers debate constitutional reform",
+            "source_name": "Outlet A",
+            "source_url": "https://a.example/1",
+            "source_family": "gdelt",
+            "country_code": "SG",
+        },
+        {
+            "id": 2,
+            "headline": "Constitutional reform divides Senegal parliament",
+            "source_name": "Outlet B",
+            "source_url": "https://b.example/2",
+            "source_family": "gdelt",
+            "country_code": "SG",
+        },
+    ]
+
+    thread = assemble_dynamic_thread(row, samples)
+
+    assert thread["top_countries"] == ["SG", "CD"]
+    assert thread["subject_countries"] == ["SN"]
+    assert thread["subject_country_names"] == ["Senegal"]
+    assert thread["subject_geography_status"] == "verified"
+    assert thread["evidence_samples"][0]["country_code"] == "SN"
+
+
 def test_assemble_dynamic_thread_does_not_invent_default_confidence():
     thread = assemble_dynamic_thread(
         {

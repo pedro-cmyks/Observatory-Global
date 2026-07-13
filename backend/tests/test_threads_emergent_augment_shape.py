@@ -11,6 +11,7 @@ silently break Narrative Threads on /app.
 from pathlib import Path
 
 from app.services.thread_intelligence import (
+    _DYNAMIC_TOPIC_DETAIL_SQL,
     _DYNAMIC_TOPICS_COUNTRY_SQL,
     _DYNAMIC_TOPICS_SQL,
 )
@@ -57,6 +58,20 @@ def test_dynamic_topic_list_queries_bound_candidates_before_member_aggregation()
         assert query.index("candidate_topics AS MATERIALIZED") < query.index(
             "SELECT SUM(ec4.n_signals)"
         )
+
+
+def test_dynamic_topic_visible_geography_and_receipts_use_latest_snapshot_only():
+    for query in (_DYNAMIC_TOPICS_SQL, _DYNAMIC_TOPICS_COUNTRY_SQL):
+        assert "dtm2.snapshot_at = (" in query
+        assert "dtm3.snapshot_at = (" in query
+        assert query.count("SELECT MAX(snapshot_at) FROM dynamic_topic_members") >= 4
+        assert query.count("WHERE dynamic_topic_id = dt.id") >= 4
+    assert "dtm2.snapshot_at = (" in _DYNAMIC_TOPIC_DETAIL_SQL
+    assert "dtm3.snapshot_at = (" in _DYNAMIC_TOPIC_DETAIL_SQL
+    assert _DYNAMIC_TOPIC_DETAIL_SQL.count(
+        "SELECT MAX(snapshot_at) FROM dynamic_topic_members"
+    ) >= 3
+    assert _DYNAMIC_TOPIC_DETAIL_SQL.count("WHERE dynamic_topic_id = dt.id") >= 3
 
 
 def test_assemble_emergent_thread_defined():

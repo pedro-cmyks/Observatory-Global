@@ -10,7 +10,9 @@ from typing import Any
 from app import db
 from app.core.gdelt_taxonomy import get_theme_label
 from app.core.iso_country_names import ISO_COUNTRY_NAMES, resolve_country_name
+from app.services.country_codes import fips_to_iso
 from app.services.narrative_note import build_thread_narrative_note
+from app.services.subject_geography import infer_receipt_subject_geography
 from app.services.thread_packet import build_thread_packet
 from app.services.thread_ranking import rank_threads
 from app.services.topic_relationship import classify_relationship
@@ -852,13 +854,20 @@ def _serialize_evidence(row: Any) -> dict[str, Any]:
     # (`&#x041D;...`). Unescape on the way out so the brief, the threads
     # focus panel, and any consumer renders human-readable text.
     headline = html.unescape(raw_headline) if raw_headline else raw_headline
+    raw_country_code = _record_get(row, "country_code")
+    source_family = str(_record_get(row, "source_family") or "").lower()
+    country_code = (
+        fips_to_iso(str(raw_country_code))
+        if raw_country_code and source_family == "gdelt"
+        else raw_country_code
+    )
     return {
         "id": str(_record_get(row, "id")),
         "headline": headline,
         "snippet": _record_get(row, "snippet"),
         "source": _record_get(row, "source_name"),
         "url": _record_get(row, "source_url"),
-        "country_code": _record_get(row, "country_code"),
+        "country_code": country_code,
         "country_name": _record_get(row, "country_name"),
         # B2 (L1 review 2026-07-05): the Brief translates evidence headlines
         # by default; the viewer needs the source language to decide.
@@ -1007,6 +1016,7 @@ def assemble_emergent_thread(
 _EMERGENT_SAMPLE_SIGNALS_SQL = """
     SELECT id, headline, snippet, source_name, source_url, country_code,
            NULL::text       AS country_name,
+           source_family,
            source_lang,
            timestamp,
            persons,
@@ -1072,6 +1082,10 @@ SELECT
         JOIN emergent_clusters ec2 ON ec2.id = dtm2.emergent_cluster_id
         CROSS JOIN LATERAL unnest(COALESCE(ec2.top_country_codes, ARRAY[]::text[])) AS code
         WHERE dtm2.dynamic_topic_id = dt.id
+          AND dtm2.snapshot_at = (
+              SELECT MAX(snapshot_at) FROM dynamic_topic_members
+              WHERE dynamic_topic_id = dt.id
+          )
         LIMIT 5
     ) AS top_country_codes,
     ARRAY(
@@ -1080,6 +1094,10 @@ SELECT
         JOIN emergent_clusters ec3 ON ec3.id = dtm3.emergent_cluster_id
         CROSS JOIN LATERAL unnest(COALESCE(ec3.sample_signal_ids, ARRAY[]::bigint[])) AS sid
         WHERE dtm3.dynamic_topic_id = dt.id
+          AND dtm3.snapshot_at = (
+              SELECT MAX(snapshot_at) FROM dynamic_topic_members
+              WHERE dynamic_topic_id = dt.id
+          )
         LIMIT 24
     ) AS sample_signal_ids
 FROM candidate_topics dt
@@ -1166,6 +1184,10 @@ SELECT
         JOIN emergent_clusters ec2 ON ec2.id = dtm2.emergent_cluster_id
         CROSS JOIN LATERAL unnest(COALESCE(ec2.top_country_codes, ARRAY[]::text[])) AS code
         WHERE dtm2.dynamic_topic_id = dt.id
+          AND dtm2.snapshot_at = (
+              SELECT MAX(snapshot_at) FROM dynamic_topic_members
+              WHERE dynamic_topic_id = dt.id
+          )
         LIMIT 5
     ) AS top_country_codes,
     ARRAY(
@@ -1174,6 +1196,10 @@ SELECT
         JOIN emergent_clusters ec3 ON ec3.id = dtm3.emergent_cluster_id
         CROSS JOIN LATERAL unnest(COALESCE(ec3.sample_signal_ids, ARRAY[]::bigint[])) AS sid
         WHERE dtm3.dynamic_topic_id = dt.id
+          AND dtm3.snapshot_at = (
+              SELECT MAX(snapshot_at) FROM dynamic_topic_members
+              WHERE dynamic_topic_id = dt.id
+          )
         LIMIT 32
     ) AS sample_signal_ids
 FROM dynamic_topics dt
@@ -1238,6 +1264,15 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
     ]
     source_count = len(sources)
     country_count = len(country_codes)
+    subject_geography = infer_receipt_subject_geography([
+        {
+            "headline": _record_get(sig, "headline"),
+            "source_name": _record_get(sig, "source_name"),
+        }
+        for sig in sample_signals
+    ])
+    subject_countries = list(subject_geography.get("verified_subject_countries") or [])
+    subject_country_names = [resolve_country_name(code) for code in subject_countries]
 
     return _with_narrative_note({
         "thread_id": f"{DYNAMIC_TOPIC_THREAD_PREFIX}{topic_id}",
@@ -1265,6 +1300,12 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         # Dynamic topics currently store country codes only. Leave names empty so
         # the frontend resolves display names instead of rendering ID + ID.
         "top_country_names": [],
+        "subject_countries": subject_countries,
+        "subject_country_names": subject_country_names,
+        "subject_geography_status": subject_geography.get("status", "missing"),
+        "subject_geography_reason_codes": list(
+            subject_geography.get("reason_codes") or []
+        ),
         "top_sources": top_sources,
         "top_people": [],
         "top_entities": top_entities,

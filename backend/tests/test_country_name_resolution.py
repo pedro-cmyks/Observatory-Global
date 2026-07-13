@@ -34,6 +34,14 @@ def test_gdelt_fips_kuwait_and_brunei_are_normalized():
     assert fips_to_iso("BX") == "BN"
 
 
+def test_gdelt_fips_senegal_singapore_collision_is_normalized_by_direction():
+    # GDELT/FIPS SG means Senegal; GDELT/FIPS SN means Singapore. ISO uses the
+    # opposite-looking pair, so this conversion must happen only at GDELT
+    # boundaries rather than over already-normalized RSS/API rows.
+    assert fips_to_iso("SG") == "SN"
+    assert fips_to_iso("SN") == "SG"
+
+
 def test_project_gaza_code():
     # Project convention: GZ = Gaza (not standard ISO, which folds it into PS).
     assert resolve_country_name("GZ") == "Gaza"

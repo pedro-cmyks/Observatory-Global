@@ -7,6 +7,7 @@ import { resolveCountryName } from '../lib/countryNames'
 import { Flag } from './Flag'
 import { buildCountryThreadEmptyState, getNarrativeFetchLimit, getNarrativesForDisplay } from '../lib/narrativeThreadLimits'
 import { threadConfidencePresentation } from '../lib/threadConfidence'
+import { threadCountryPresentation } from '../lib/threadGeography'
 import './NarrativeThreads.css'
 
 const THREAD_COLORS = [
@@ -50,6 +51,9 @@ interface Narrative {
     hourly_timeline: TimelinePoint[]
     top_countries: string[]
     top_country_names: string[]
+    subject_countries: string[]
+    subject_country_names: string[]
+    subject_geography_status: string | null
     // Enrichment: public attention signals
     has_public_interest?: boolean
     trending_keywords?: string[]
@@ -146,6 +150,9 @@ const normalizeThread = (thread: any): Narrative => {
     hourly_timeline: thread.hourly_timeline || [],
     top_countries: thread.top_countries || [],
     top_country_names: thread.top_country_names || [],
+    subject_countries: thread.subject_countries || [],
+    subject_country_names: thread.subject_country_names || [],
+    subject_geography_status: thread.subject_geography_status || null,
     }
 }
 
@@ -414,6 +421,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 // Plain-language hover hint; falls back to label when no description is available.
                 const rowHint = `${n.label}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries from ${n.source_count} sources. Click to open the unified thread detail.`
                 const domainLabel = (n.parent_domain || 'narrative thread').replace(/-/g, ' ')
+                const geography = threadCountryPresentation(n)
                 // Unified threads (Pedro 2026-06-24): no living/aggregate source
                 // tier — every row is a narrative thread, ranked by movement +
                 // volume + coherence. The trend arrow carries the movement; the
@@ -483,8 +491,8 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                         {/* Row 2: Countries, Persons, attention badges + age */}
                         <div className="narrative-detail">
                             <div className="narrative-entities">
-                                {n.top_countries.map(c => (
-                                    <button key={c} className={`country-pip country-pip--btn${filter.country === c ? ' country-pip--active' : ''}`} onClick={e => handleCountryPipClick(e, c)} data-tip={`Focus on ${c}`}><Flag code={c} /> {c}</button>
+                                {geography.codes.map((c, index) => (
+                                    <button key={c} className={`country-pip country-pip--btn${filter.country === c ? ' country-pip--active' : ''}`} onClick={e => handleCountryPipClick(e, c)} data-tip={`${geography.label}: ${geography.names[index] || resolveCountryName(c, c)}`}><Flag code={c} /> {c}</button>
                                 ))}
                                 {n.top_entities.slice(0, 4).map(p => (
                                     <span key={p} className="person-pip">{p}</span>

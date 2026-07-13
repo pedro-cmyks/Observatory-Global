@@ -73,6 +73,7 @@ FIPS_TO_ISO = {
     'MI': 'MW',  # Malawi
     'IV': 'CI',  # Ivory Coast
     'NG': 'NE',  # Niger
+    'SG': 'SN',  # Senegal (FIPS SG; ISO SG is Singapore)
     'UV': 'BF',  # Burkina Faso
     'TO': 'TG',  # Togo
     'BN': 'BJ',  # Benin

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { LivingThreadSelection } from './NarrativeThreads'
 import { PanelSkeleton } from './PanelSkeleton'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
 import { getSourceFamilyMeta } from '../lib/sourceFamily'
+import { threadCountryPresentation } from '../lib/threadGeography'
 import './ThreadFocusPanel.css'
 
 interface ThreadPacket {
@@ -145,10 +146,11 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
     const confidencePct = Math.round(((active.confidence_pct ?? ((active as ThreadDetail).avg_confidence || 0) * 100)) * 10) / 10
     const lexPct = active.quality?.lex_pct != null ? Math.round(active.quality.lex_pct * 1000) / 10 : null
     const topSources = active.source_mix?.top_sources || active.top_sources || []
-    const countryPairs = useMemo(() => active.top_countries.map((code, index) => ({
+    const geography = threadCountryPresentation(active)
+    const countryPairs = geography.codes.map((code, index) => ({
         code,
-        name: active.top_country_names[index] || code,
-    })), [active.top_countries, active.top_country_names])
+        name: geography.names[index] || resolveCountryName(code, code),
+    }))
 
     return (
         <div className="thread-focus-panel">
@@ -186,7 +188,7 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
                     </div>
 
                     <div className="thread-focus-section">
-                        <div className="thread-focus-section-title">Where It Is Concentrated</div>
+                        <div className="thread-focus-section-title">{geography.label} Geography</div>
                         <div className="thread-focus-chip-row">
                             {countryPairs.map(country => (
                                 <button key={country.code} className="thread-focus-chip" onClick={() => onCountrySelect?.(country.code)}>
