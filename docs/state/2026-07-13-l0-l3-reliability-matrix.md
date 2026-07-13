@@ -334,17 +334,27 @@ verified live: "Canicule en Belgique" flags `subject_geography_grab_bag`
 the incoherence visible; it does not yet SPLIT the umbrella (an engine change)
 — the flag lets the selector/editor downrank or caveat it now.
 
-### NER/e5 oblique-headline geography (#257 residual "a") — assessed, not shipped
+### NER/e5 oblique-headline geography (#257 residual "a") — clean path chosen; slice 1 shipped
 
-Lifting subject geography for stories whose headline names only a local entity
-(Telstra, Leuralla, a person) has no clean quick fix and was deliberately not
-shipped unilaterally: the clean path (NER `places` → country, which is genuine
-subject signal) is gated on NER throughput (#184, `nlp_persons` is thin in
-served windows) plus a place→country gazetteer; the pragmatic path (treat
-homogeneous single-country coverage as the local subject) both crosses the
-subject≠coverage line set in #257/WAVE 4 and is marginal, since those stories
-already display their country as coverage geography. This residual is a program
-(NER throughput + gazetteer) or an explicit principle decision, not a slice.
+Pedro chose the clean NER path (a place named in the story is subject signal,
+not coverage). **Slice 1 — the reusable core — is shipped** (`7f1a3750`):
+`resolve_place_to_country` maps a place to an ISO country via the shared
+country patterns (capitals/major cities/native spellings), returning None for
+unknown places (no guess); `infer_receipt_subject_geography` now corroborates a
+receipt's NER `places` as a distinct `ner_place` method under the same
+2-receipt/2-outlet bar. Tested (a Telstra story whose receipts carry
+Sydney/Melbourne verifies AU).
+
+**Honest dependency map for activation (the rest of the program).** Slice 1 is
+a no-op on current production data, and the blocker is deeper than throughput:
+NER currently runs on the **headline only** (`nlp(headline)`), and the served
+entities are therefore headline *persons* (a Telstra story serves its MPs, no
+place, and `country_code` is None). To feed the resolver, NER must run over the
+snippet/body so it extracts the city a local headline omits. So C-clean needs:
+(a) NER over body/snippet with the extracted places served on receipts;
+(b) NER throughput (#184); and, for person-heavy local stories,
+(c) person→country entity linking. The resolver/decoder core is ready and will
+activate automatically once (a) plumbs body places onto served receipts.
 
 ## Required next gates
 
