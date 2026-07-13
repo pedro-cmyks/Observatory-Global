@@ -59,11 +59,18 @@ publishable *product* is a written, cited article, and only NATO has one.
 
 ## The gap to a byline (what each needs)
 
-1. **Generated cited prose for the daily and Iran.** The publishable product is
-   an article, not a contract. The dossier-synthesis-v2 path produces a
-   lede → cited body → "what we don't know" with server-resolved `[n]`
-   citations; it must run over the daily edition and the Iran package so a cold
-   editor has prose to judge. This is the single highest-leverage next build.
+1. **Generated cited prose for the daily and Iran.** ✅ **Shipped for the daily
+   lead (`dd5c7013`).** The grounded synthesis was extracted to a FastAPI-free
+   service (`app/services/publication_synthesis.py`) so the headless M1 daily
+   builder can call it, and the daily build now synthesizes its lead story into
+   a cited front-page mini-article. Verified on a fresh build: the lead "Dino
+   Blocks Cunha Funds" produced a dated lede, a 3-paragraph body with `[n]`
+   markers on every claim, **6 citations resolved against the frozen receipts**,
+   and 4 honest unknowns — `prose_status: generated`, provider DeepSeek (the
+   Anthropic-out-of-credits fallback degraded openly). A single coherent lead is
+   one article; the 12 unrelated top stories are never fused. Remaining under
+   this item: per-story prose for the secondary rows, and the same over the Iran
+   package.
 2. **Freshness labeling + cadence.** The daily cutoff is snapshot-bound (~12 h);
    either tighten the clustering cadence or label the window honestly ("data to
    HH:MM UTC") so "daily" is not oversold.
