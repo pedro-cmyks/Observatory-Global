@@ -345,5 +345,20 @@ covers it, the full backend suite is `1335 passed, 6 skipped`, and the real
 two-story Iran forcing case now reaches `who/what/when/where/how` = 5/5 with
 `where` = `[IL, IR, QA, RU, SY, US]` and 71 receipts (`why` stays missing —
 causality is not measured). `who` is satisfied by broad-actor verified places;
-named-person actors remain the separate #253 enrichment. This is proven on
-local code only; production still returns 3/5 until the API is redeployed.
+named-person actors remain the separate #253 enrichment.
+
+**Shipped and verified (2026-07-13).** The fix is committed (`8e49f400`) and
+deployed; the production forcing case now returns `who/what/when/where/how` =
+5/5 with `why` partial. The repeatable harness is `8512ad9c`. On the UI half,
+`DossierView` already composes the investigation through
+`buildInvestigationPublication` (resolve-nodes → graph → publication-package)
+and renders the 5W+H readiness, so the deployed backend fix is visible in the
+Workbench report. A typed-relations inspector was added (`1f6f0097`): the
+dossier now lists each edge's truth tier, relation, connected node labels,
+receipt count and caveats instead of a bare relation count, and the Markdown
+export carries the typed relations too. Browser-verified end to end on a
+two-story Iran investigation against the deployed graph (5/5 readiness in the
+UI, both measured relations rendered with receipts/caveats, no console errors).
+Gate 6 remaining: heterogeneous-pin capture from L2 surfaces (event/anomaly/
+asset), incremental edge assembly, and the same-rubric cold-editor pass across
+the daily, Iran and NATO packages before any public/LinkedIn artifact.
