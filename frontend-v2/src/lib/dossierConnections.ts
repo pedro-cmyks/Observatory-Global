@@ -2,7 +2,7 @@
 //
 // L3 is about CONNECTING many pinned stories to validate whether/how they form
 // one narrative. This lib fetches the MEASURED relations from the backend
-// (semantic centroid cosine + shared-country + rarity-weighted shared-person)
+// (semantic centroid cosine + coverage-country + rarity-weighted shared-person)
 // and derives, PURELY (so it is unit-testable), the sub-clusters, the isolated
 // pins, and a deterministic field layout for the scoped "investigative
 // universe". Measured at generation time — never mixed with the frozen pins.
@@ -186,24 +186,21 @@ export function deriveClusters(nodes: ConnectionNode[], edges: ConnectionEdge[])
 // largely a linguistic/topical artifact — so a semantic-only cluster must NEVER
 // be presented as "one connected narrative". The verdict + the graph both read
 // off this distinction.
-export type LinkStrength = 'strong' | 'text' | 'weak'
+export type LinkStrength = 'strong' | 'text' | 'context' | 'weak'
 
-/** shared actor / shared country → strong; evidence-TEXT mention of the other
- *  pin (entity lens missed it, the headline states it) → text — weaker than a
- *  shared actor, stronger than semantic proximity; semantic-only → weak. */
+/** Shared actor → strong; evidence-TEXT mention → text; shared coverage country
+ *  → context (not subject identity or causality); semantic-only → weak. */
 export function edgeStrength(e: ConnectionEdge): LinkStrength {
-  if (e.shared_persons.length > 0 || e.shared_countries.length > 0) return 'strong'
+  if (e.shared_persons.length > 0) return 'strong'
   if (e.basis.includes('text_mention') && (e.text_mentions?.length ?? 0) > 0) return 'text'
+  if (e.shared_countries.length > 0) return 'context'
   return 'weak'
 }
 
-export type ClusterStrength = 'confirmed' | 'text' | 'caution'
+export type ClusterStrength = 'confirmed' | 'text' | 'context' | 'caution'
 
-/** Classify a cluster (≥2 nodes) by the strongest basis on any INTERNAL edge.
- *  'confirmed' = at least one shared-actor/shared-country edge inside it (one
- *  real thread is enough to call the group connected); 'text' = no entity
- *  overlap but at least one evidence-text mention (verify before trusting);
- *  'caution' = every internal edge is semantic-only. */
+/** Classify a cluster by its strongest internal truth tier. Only a distinctive
+ *  shared actor confirms; country overlap remains coverage context. */
 export function clusterStrength(nodes: ConnectionNode[], edges: ConnectionEdge[]): ClusterStrength {
   const ids = new Set(nodes.map(n => n.id))
   const internal = edges.filter(e => ids.has(e.a) && ids.has(e.b))
@@ -211,35 +208,33 @@ export function clusterStrength(nodes: ConnectionNode[], edges: ConnectionEdge[]
   const strengths = internal.map(edgeStrength)
   if (strengths.includes('strong')) return 'confirmed'
   if (strengths.includes('text')) return 'text'
+  if (strengths.includes('context')) return 'context'
   return 'caution'
 }
 
-export type ConnectionState = 'grounded' | 'text-linked' | 'similar-only' | 'split' | 'isolated'
+export type ConnectionState = 'grounded' | 'text-linked' | 'context-only' | 'similar-only' | 'split' | 'isolated'
 
-/** The single basis-weighted verdict state over the whole pinned set — shared by
- *  the synthesis request and (conceptually) the verdict box. 'grounded' = one
- *  cluster held by shared actors/places; 'text-linked' = one cluster whose best
- *  tie is an evidence-text mention; 'similar-only' = one cluster, semantic
- *  proximity only; 'split' = ≥2 sub-narratives; 'isolated' = nothing connects. */
+/** The single basis-weighted verdict state over the whole pinned set. Grounded
+ *  requires a distinctive shared actor; context-only is coverage geography. */
 export function connectionState(cluster: ClusterResult, edges: ConnectionEdge[]): ConnectionState {
   if (cluster.clusters.length === 0) return 'isolated'
   if (cluster.clusters.length >= 2) return 'split'
   const s = clusterStrength(cluster.clusters[0], edges)
-  return s === 'confirmed' ? 'grounded' : s === 'text' ? 'text-linked' : 'similar-only'
+  return s === 'confirmed' ? 'grounded'
+    : s === 'text' ? 'text-linked'
+      : s === 'context' ? 'context-only' : 'similar-only'
 }
 
-/** The concrete shared actors + countries that link a cluster's members — the
- *  "linked via …" evidence for a confirmed verdict. Deduped, actors first. */
+/** The concrete distinctive actors that support a confirmed verdict. Coverage
+ *  countries are deliberately excluded: same coverage geography is context. */
 export function sharedBasisNames(nodes: ConnectionNode[], edges: ConnectionEdge[], max = 4): string[] {
   const ids = new Set(nodes.map(n => n.id))
   const persons = new Set<string>()
-  const countries = new Set<string>()
   for (const e of edges) {
     if (!ids.has(e.a) || !ids.has(e.b)) continue
     for (const p of e.shared_persons) persons.add(p)
-    for (const c of e.shared_countries) countries.add(c)
   }
-  return [...persons, ...countries].slice(0, max)
+  return [...persons].slice(0, max)
 }
 
 // ── Pure field layout ───────────────────────────────────────────────────────
@@ -525,7 +520,7 @@ function fmtDayShort(isoDay: string): string {
 
 const BASIS_LABEL: Record<ConnectionBasis, string> = {
   semantic: 'semantic proximity',
-  shared_country: 'shared country',
+  shared_country: 'shared coverage country (context only)',
   shared_person: 'shared actor',
   text_mention: 'evidence-text mention',
 }
@@ -562,7 +557,7 @@ export function connectionsSummaryLines(
   lines.push('## Connection analysis (measured at generation)')
   lines.push(
     `*How the ${data.nodes.length} pinned stories relate — semantic centroid `
-    + 'proximity, shared country, rarity-weighted shared actors, and evidence-'
+    + 'proximity, coverage-country context, rarity-weighted shared actors, and evidence-'
     + 'text mentions. Positions approximate; relations measured.*',
   )
   if (extras?.lensNote) lines.push(`- *${extras.lensNote}*`)
@@ -578,30 +573,36 @@ export function connectionsSummaryLines(
   if (cluster.clusters.length === 0 && cluster.isolated.length > 0) {
     lines.push('- No sub-narratives: every pinned story is isolated (no measured entity or text relation).')
   }
-  // Aggregate verdict — how many sub-narratives are confirmed by shared actors/
-  // places vs text-linked vs similarity-only (must survive to the exported,
+  // Aggregate verdict — distinguish actors, text, coverage context and semantic
+  // proximity (the truth tier must survive to the exported,
   // hover-less report).
   if (cluster.clusters.length > 0) {
     const strengths = cluster.clusters.map(g => clusterStrength(g, data.edges))
     const confirmed = strengths.filter(s => s === 'confirmed').length
     const text = strengths.filter(s => s === 'text').length
-    const caution = strengths.length - confirmed - text
+    const context = strengths.filter(s => s === 'context').length
+    const caution = strengths.length - confirmed - text - context
     lines.push(
       `- Of ${strengths.length} sub-narrative${strengths.length === 1 ? '' : 's'}, `
-      + `${confirmed} confirmed by shared actors/places`
+      + `${confirmed} confirmed by distinctive shared actors`
       + (text > 0 ? `, ${text} text-linked (headline text references the other story — verify)` : '')
+      + (context > 0 ? `, ${context} coverage-context only (same coverage country; not subject identity or causality)` : '')
       + ` and ${caution} similarity-only (topic/language proximity, not a proven connection).`,
     )
   }
   cluster.clusters.forEach((g, i) => {
     const s = clusterStrength(g, data.edges)
-    const tag = s === 'confirmed' ? '✓ CONFIRMED' : s === 'text' ? '✎ TEXT-LINKED' : '⚠ SIMILAR ONLY'
+    const tag = s === 'confirmed' ? '✓ CONFIRMED'
+      : s === 'text' ? '✎ TEXT-LINKED'
+        : s === 'context' ? '◇ COVERAGE CONTEXT' : '⚠ SIMILAR ONLY'
     const via = s === 'confirmed' ? sharedBasisNames(g, data.edges) : []
     const suffix = s === 'confirmed'
       ? (via.length ? ` Linked via ${via.join(', ')}.` : '')
       : s === 'text'
         ? ' No shared actors or places, but one story\'s evidence TEXT mentions the other — verify before treating as one narrative.'
-        : ' No shared actors or places — connection is semantic/topical proximity only; treat as a hypothesis.'
+        : s === 'context'
+          ? ' The same country appears in coverage of both stories; this is context, not shared subject identity or causality.'
+          : ' No shared actors or places — connection is semantic/topical proximity only; treat as a hypothesis.'
     lines.push(`- **${tag} — Sub-narrative ${i + 1}** (${g.length} stories): ${g.map(n => n.label).join('; ')}.${suffix}`)
   })
   if (cluster.isolated.length > 0) {
@@ -623,7 +624,7 @@ export function connectionsSummaryLines(
       const a = data.nodes.find(n => n.id === e.a)?.label ?? e.a
       const b = data.nodes.find(n => n.id === e.b)?.label ?? e.b
       const s = edgeStrength(e)
-      const mark = s === 'strong' ? '✓' : s === 'text' ? '✎' : '≈'
+      const mark = s === 'strong' ? '✓' : s === 'text' ? '✎' : s === 'context' ? '◇' : '≈'
       lines.push(`  - ${mark} ${a} ↔ ${b} — ${edgeReason(e)}`)
     }
   }

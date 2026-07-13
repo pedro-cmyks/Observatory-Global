@@ -55,6 +55,17 @@ def test_citation_table_duplicate_pin_labels_stay_separate():
     assert [(r["n"], r["pin_i"]) for r in table] == [(1, 0), (2, 1)]
 
 
+def test_citation_table_does_not_silently_cap_frozen_receipts():
+    req = dossier.SynthesizeRequest(pins=[
+        _pin("A", items=[{"headline": f"receipt-{i}"} for i in range(9)]),
+    ])
+
+    table = dossier._citation_table(req)
+
+    assert len(table) == 9
+    assert table[-1]["headline"] == "receipt-8"
+
+
 # ── prompt rendering ───────────────────────────────────────────────────────────
 
 def test_synth_user_numbers_evidence_and_flags_metadata_only():
@@ -81,6 +92,7 @@ def test_synth_system_carries_article_and_receipt_rules():
     # Frank-v2 glass-box rules survive the rewrite.
     assert "TEXT MENTIONS OVERRIDE" in s
     assert "GLASS BOX" in s
+    assert "COVERAGE CONTEXT" in s
     assert "YYYY-MM-DD" in s
 
 

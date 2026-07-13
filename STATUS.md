@@ -1,5 +1,61 @@
 # Atlas — Session Status
-**Branch:** `v3-intel-layer` (canonical production/main) | **Updated:** 2026-07-12
+**Branch:** `v3-intel-layer` (canonical production/main) | **Updated:** 2026-07-13
+
+## Current handoff — Spec reconciliation + shared publication foundation
+
+- The July 12 Investigation Graph spec was crossed against the June Workbench
+  workflow, Living Narrative Threads, movement/Kalman, dossier v3,
+  corroboration, event bindings, voice, history, subject geography and
+  paper-validation records. The result is recorded in
+  `docs/state/2026-07-12-spec-history-crosswalk.md`: the graph is a needed
+  composition contract, not permission to rebuild existing measurement brains.
+- New deterministic contracts are implemented locally:
+  `atlas-investigation-graph-v1` and `atlas-publication-package-v1`. Coverage
+  geography is contextual, semantic proximity is inferred, distinctive actor
+  overlap/exact receipts are measured, and analyst edges remain separately
+  typed. The package inventories 5W+H, receipts, gaps, method and
+  reproducibility without an LLM.
+- Workbench now maps every heterogeneous pin into the typed graph and renders
+  `who / what / when / where / how / why` as ready, partial or missing. Unknown
+  anchor types remain explicit context instead of being guessed into entity or
+  story identity. All frozen pins and receipts reach the publication/synthesis
+  input; inherited six-receipt and enrichment top-N cuts were removed.
+- A complete-universe Daily Investigation builder traversed 458/458 top-level
+  topics and stored one sealed `atlas_daily_editions` artifact. Serving is a
+  single compact indexed-row read. The current artifact remains deliberately
+  `degraded`: 21.5h cutoff lag, `who` missing, `where/why` partial and relation
+  provider unavailable for the sealed window. L1 has not been switched.
+- The L1 selector uses per-topic movement/surprise/evidence/persistence state,
+  Pareto fronts and equal percentile aggregation. Raw volume, crisis status and
+  content category have zero importance weight. Twelve slots are newspaper
+  layout only; all 458 selection rows remain in the ledger.
+- The old relation provider's 64-story operational window no longer silently
+  takes a prefix: the typed graph still processes the full set with exact and
+  contextual engines and marks the legacy provider unavailable for that run.
+  Its recent-member sample and visual-neighbor selection now disclose method,
+  size and truncation metadata.
+- Reliability truth is summarized in
+  `docs/state/2026-07-13-l0-l3-reliability-matrix.md`. L2 is the strongest
+  standalone surface. L1 is a useful front door but not yet the new publishable
+  package. L3 has the adapter/readiness foundation but still needs the full
+  heterogeneous Iran forcing-case pass.
+- Current verification: backend `1274 passed, 6 skipped`; frontend `303 passed`;
+  production Vite build passes. Deployment and post-deploy L0-L3 smoke remain
+  gated on successful HNSW restoration and a green serving recovery check.
+- During verification, the recurring embed writer held the heavy mutex for
+  about 400 minutes because writes thrashed the shared 1 GB database's HNSW
+  index. The live writer was allowed to finish its downstream chain after stuck
+  transactional inserts were cancelled. The maintenance path now sweeps before
+  index work and restores HNSW from an outer `finally`; a controlled bulk-index
+  measurement found a second MPS command-buffer stall after 2,304 rows and
+  confirmed that index rebuild I/O can time out production threads. #241 is
+  reopened; this mode remains recovery-only and P1.2 isolation is the cure.
+
+Primary records:
+
+- `docs/state/2026-07-12-spec-history-crosswalk.md`
+- `docs/state/2026-07-13-l0-l3-reliability-matrix.md`
+- `docs/superpowers/plans/2026-07-12-investigation-graph-slice-3-daily-publication.md`
 
 ## Current handoff — Shared L1/L2/L3 Investigation Graph
 

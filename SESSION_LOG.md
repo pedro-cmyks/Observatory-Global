@@ -1,5 +1,68 @@
 # Atlas — Session Log
 
+## 2026-07-12/13 — Spec-history crosswalk + shared L1/L3 publication foundation
+
+Pedro asked that the latest design not repeat previously documented thinking.
+The review crossed the approved Investigation Graph spec against the June 9
+Research Workflow/Workbench spec, Living Narrative Threads, dossier v3,
+movement/Kalman, relation/corroboration/voice/history contracts, subject
+geography, event bindings and the validation/paper route. The crosswalk kept the
+new contribution —heterogeneous composition and one `PublicationPackage` for
+L1/L3— while rejecting parallel ranking, relation, citation and prose systems.
+
+Implemented with TDD:
+
+- deterministic `atlas-investigation-graph-v1` with typed measured, inferred,
+  contextual and analyst edges;
+- adapter for the existing `dossier-connections-v1`, correcting shared coverage
+  country from “confirmed” to contextual/non-causal;
+- deterministic `atlas-publication-package-v1` with numbered receipts, 5W+H,
+  narrative spine, who-says-what inputs, gaps, method and reproducibility;
+- Workbench pin adapters for stories, evidence, subjects, countries, sources,
+  events, anomalies, attention, assets and time slices; unknown research anchors
+  remain explicit context;
+- visible Workbench editorial-readiness panel and Markdown export block;
+- removal of silent six-receipt and enrichment top-N cuts before publication
+  prose; all frozen evidence remains addressable;
+- explicit operational ledgers for the legacy relation-provider window,
+  recent-member sampling and visual neighbors.
+
+The Daily Investigation path now scans the complete active top-level universe,
+uses movement/surprise/confidence/evidence/breadth/persistence dimensions with
+Pareto fronts, and stores a sealed daily artifact. Content category,
+`crisis_relevant` and raw volume contribute zero importance weight. The first
+live artifact traversed 458/458 candidates, selected 12 layout slots with 17
+current-window receipts and remained honestly degraded because the cutoff was
+21.5 hours old, actor identity was missing and causal/subject geography was
+partial. L1 was not switched.
+
+A local production-shaped Workbench smoke pinned two real threads. The
+constellation rendered both with zero links instead of inventing one from
+proximity or coverage. Full verification reached `1274 passed, 6 skipped` in
+the backend and `303 passed` in the frontend; the production Vite build passes.
+Deploy/editorial gates remain later in this same loop.
+
+Operations audit found the July 12 embed run holding the mutex for about 400
+minutes. The bottleneck was HNSW database I/O, not embedding math. The writer
+now sweeps retention before index maintenance and guarantees HNSW restoration
+from an outer `finally`. No archived or product information was deleted to hide
+the capacity problem.
+
+The controlled July 13 follow-up removed HNSW insert waits but stalled after
+2,304 rows in a Metal command-buffer synchronization while PostgreSQL was idle.
+Cooperative interruption entered the outer `finally` and restored HNSW. The
+rebuild itself caused a 15-second production threads timeout on the shared
+database. Per-batch MPS cache release was added and #241 reopened; bulk reindex
+remains recovery-only, not a cron strategy.
+
+Records:
+
+- `docs/state/2026-07-12-spec-history-crosswalk.md`
+- `docs/state/2026-07-13-l0-l3-reliability-matrix.md`
+- `docs/superpowers/plans/2026-07-12-investigation-graph-slice-3-daily-publication.md`
+
+---
+
 ## 2026-07-12 — L1/L2/L3 Investigation Graph canon + reliability Slice 1
 
 Pedro approved the unifying product model: L1 is a complete-universe 24h

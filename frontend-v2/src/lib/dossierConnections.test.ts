@@ -179,13 +179,13 @@ describe('connectionsSummaryLines', () => {
 })
 
 describe('edgeStrength / clusterStrength (basis-weighting — the correlation guard)', () => {
-  it('semantic-only edge is weak; shared actor/place is strong', () => {
+  it('semantic-only is weak; shared actor is strong; coverage country is contextual', () => {
     expect(edgeStrength(edge('a', 'b'))).toBe('weak') // default = semantic-only
     expect(edgeStrength(edge('a', 'b', { basis: ['semantic', 'shared_person'], shared_persons: ['fujimori'] }))).toBe('strong')
-    expect(edgeStrength(edge('a', 'b', { basis: ['shared_country'], semantic_sim: null, shared_countries: ['PE'] }))).toBe('strong')
+    expect(edgeStrength(edge('a', 'b', { basis: ['shared_country'], semantic_sim: null, shared_countries: ['PE'] }))).toBe('context')
   })
 
-  it('a cluster held only by semantic edges is CAUTION, one shared actor makes it CONFIRMED', () => {
+  it('semantic-only is CAUTION, a coverage country is CONTEXT, and a shared actor is CONFIRMED', () => {
     const nodes = [node('a'), node('b'), node('c')]
     const semanticOnly = [edge('a', 'b', { semantic_sim: 0.94 }), edge('b', 'c', { semantic_sim: 0.92 })]
     expect(clusterStrength(nodes, semanticOnly)).toBe('caution')
@@ -194,13 +194,22 @@ describe('edgeStrength / clusterStrength (basis-weighting — the correlation gu
     expect(clusterStrength(nodes, withActor)).toBe('confirmed')
   })
 
-  it('sharedBasisNames dedups actors then countries across internal edges', () => {
+  it('sharedBasisNames exposes only actors that can support confirmation', () => {
     const nodes = [node('a'), node('b'), node('c')]
     const edges = [
       edge('a', 'b', { basis: ['shared_person'], shared_persons: ['fujimori'] }),
       edge('b', 'c', { basis: ['shared_person', 'shared_country'], shared_persons: ['fujimori'], shared_countries: ['PE'] }),
     ]
-    expect(sharedBasisNames(nodes, edges)).toEqual(['fujimori', 'PE'])
+    expect(sharedBasisNames(nodes, edges)).toEqual(['fujimori'])
+  })
+
+  it('coverage-country overlap stays context-only, never confirmed', () => {
+    const nodes = [node('a'), node('b')]
+    const edges = [edge('a', 'b', {
+      basis: ['shared_country'], semantic_sim: null, shared_countries: ['PE'],
+    })]
+    expect(clusterStrength(nodes, edges)).toBe('context')
+    expect(connectionState(deriveClusters(nodes, edges), edges)).toBe('context-only')
   })
 })
 

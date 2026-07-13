@@ -44,9 +44,6 @@ export interface DossierEnrichment {
   coverageGaps: CoverageGapEntry[]
 }
 
-const THREAD_CAP = 6
-const COUNTRY_CAP = 3
-
 /** Resolve the relationship-endpoint topic id for a pin, or null. Accepts
  *  research anchors (open.params.thread_id) and W1 panel pins
  *  (?theme=dynamic-topic-N urlParams / theme-<slug> anchor ids). */
@@ -81,7 +78,7 @@ export function resolvePinnedCountries(pins: WorkbenchPin[]): string[] {
       if (norm.length === 2 && !out.includes(norm)) out.push(norm)
     }
   }
-  return out.slice(0, COUNTRY_CAP)
+  return out
 }
 
 export async function fetchDossierEnrichment(inv: Investigation): Promise<DossierEnrichment> {
@@ -91,7 +88,6 @@ export async function fetchDossierEnrichment(inv: Investigation): Promise<Dossie
   const threadPins = inv.pins
     .map(p => ({ pin: p, topicId: resolveThreadTopicId(p) }))
     .filter((x): x is { pin: WorkbenchPin; topicId: string } => !!x.topicId)
-    .slice(0, THREAD_CAP)
 
   const threadFetches = threadPins.map(async ({ pin, topicId }) => {
     try {
@@ -153,7 +149,7 @@ export async function fetchDossierEnrichment(inv: Investigation): Promise<Dossie
       if (!res.ok) return
       const d = await res.json() as Record<string, unknown>
       const raw = Array.isArray(d.coverage_gaps) ? d.coverage_gaps as Array<Record<string, unknown>> : []
-      coverageGaps = raw.slice(0, 6).map(g => ({
+      coverageGaps = raw.map(g => ({
         label: String(g.label ?? g.slug ?? ''),
         rawSignals: Number(g.raw_signals ?? 0),
         status: String(g.status ?? ''),

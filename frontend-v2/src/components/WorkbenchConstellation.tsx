@@ -48,7 +48,7 @@ export default function WorkbenchConstellation({ inv }: { inv: Investigation }) 
       <div className="wbc-head">
         <span
           className="wbc-title"
-          data-tip="Measured live from your current pins (semantic proximity + shared countries/actors) — re-measures as you pin. The report freezes its own copy."
+          data-tip="Measured live from your current pins (semantic proximity + coverage countries + shared actors). Coverage country is context, not a confirmed story link. Re-measures as you pin; the report freezes its own copy."
         >
           CONSTELLATION · LIVE
         </span>
@@ -64,7 +64,7 @@ export default function WorkbenchConstellation({ inv }: { inv: Investigation }) 
           <InvestigativeUniverse data={data} cluster={cluster} compact />
           {countries.length > 0 && (
             <div className="wbc-countries">
-              <span className="wbc-countries-label" data-tip="Countries the pinned coverage touches, by signal volume">touches</span>
+              <span className="wbc-countries-label" data-tip="Countries the pinned coverage touches, by signal volume. This is coverage geography, not subject identity.">touches</span>
               {countries.slice(0, 10).map(c => (
                 <span key={c.cc} className="wbc-cc">{c.cc} {c.n}</span>
               ))}

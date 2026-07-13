@@ -1,6 +1,7 @@
 // P0.6a publishable mini-article — pure helper tests.
 import { describe, expect, it } from 'vitest'
-import { isArticle, splitCitations, synthesisMarkdown, type DossierSynthesis } from './dossierSynthesis'
+import { buildSynthesisRequest, isArticle, splitCitations, synthesisMarkdown, type DossierSynthesis } from './dossierSynthesis'
+import type { DossierModel } from './dossier'
 
 const base: DossierSynthesis = {
   contract: 'dossier-synthesis-v2',
@@ -63,5 +64,27 @@ describe('synthesisMarkdown', () => {
   })
   it('empty synthesis → no block', () => {
     expect(synthesisMarkdown(base)).toEqual([])
+  })
+})
+
+describe('buildSynthesisRequest', () => {
+  it('preserves the complete frozen evidence set instead of silently taking six', () => {
+    const dossier = {
+      title: 'Test', queries: [], generatedAt: '2026-07-12T12:00:00Z', pinCount: 1,
+      summary: '', timeline: [], gaps: [], categoryGroups: [],
+      pins: [{
+        anchorId: 'dynamic-topic-1', anchorType: 'thread', label: 'Thread',
+        pinnedAt: '2026-07-12T12:00:00Z',
+        snapshot: {
+          capturedAt: '2026-07-12T12:00:00Z',
+          evidence: Array.from({ length: 9 }, (_, i) => ({ headline: `Receipt ${i + 1}` })),
+        },
+      }],
+    } as DossierModel
+
+    const request = buildSynthesisRequest(dossier, null)
+
+    expect(request.pins[0].evidence_items).toHaveLength(9)
+    expect(request.pins[0].evidence).toHaveLength(9)
   })
 })

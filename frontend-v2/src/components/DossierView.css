@@ -106,6 +106,63 @@
 .dossier-section p { margin: 0; font-size: 14px; line-height: 1.5; }
 .dossier-empty { color: var(--color-text-muted); font-style: italic; }
 
+/* Shared PublicationPackage: data-derived 5W+H coverage, never an LLM score. */
+.dossier-readiness {
+    padding: 14px;
+    border: 1px solid rgba(125, 211, 252, 0.18);
+    border-radius: 8px;
+    background: rgba(125, 211, 252, 0.025);
+}
+.dossier-readiness-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+.dossier-ready-card {
+    min-width: 0;
+    padding: 8px 9px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.018);
+}
+.dossier-ready-card--ready { border-color: rgba(52, 211, 153, 0.3); }
+.dossier-ready-card--partial { border-color: rgba(251, 191, 36, 0.3); }
+.dossier-ready-card--missing { border-color: rgba(248, 113, 113, 0.3); }
+.dossier-ready-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    font-family: 'SF Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #cbd5e1;
+}
+.dossier-ready-card--ready .dossier-ready-head span:last-child { color: #34d399; }
+.dossier-ready-card--partial .dossier-ready-head span:last-child { color: #fbbf24; }
+.dossier-ready-card--missing .dossier-ready-head span:last-child { color: #f87171; }
+.dossier-ready-values,
+.dossier-ready-reasons {
+    margin-top: 5px;
+    font-size: 11px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+.dossier-ready-values { color: #b7c0cc; }
+.dossier-ready-reasons { color: #8b97a6; font-style: italic; }
+.dossier-ready-gap-list {
+    margin: -8px 0 0;
+    padding-left: 18px;
+    color: #c9923c;
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+@media (max-width: 620px) {
+    .dossier-readiness-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 /* #2 synthesis — the standalone brief leads the report. */
 .dossier-synthesis {
     background: rgba(29, 158, 117, 0.05);

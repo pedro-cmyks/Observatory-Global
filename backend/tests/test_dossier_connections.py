@@ -119,6 +119,24 @@ def test_synth_user_renders_text_mentions_and_lens_note():
     assert "2026-07-08" in out
 
 
+def test_synth_user_keeps_coverage_country_out_of_confirmed_spine():
+    req = dossier.SynthesizeRequest(
+        pins=[dossier.SynthPin(label="Iran talks", evidence=["Talks continue"])],
+        connection=dossier.SynthConnection(
+            state="context-only",
+            nodes=[dossier.SynthConnectionNode(
+                label="Iran talks",
+                connectedness="coverage-context",
+                contextual_with=["Power outage"],
+            )],
+        ),
+    )
+    out = dossier._synth_user(req)
+    assert "coverage-context" in out
+    assert "coverage-country context only" in out
+    assert "Power outage" in out
+
+
 def test_synth_system_carries_glassbox_and_text_mention_rules():
     s = dossier._SYNTH_SYSTEM
     assert "TEXT MENTIONS OVERRIDE" in s

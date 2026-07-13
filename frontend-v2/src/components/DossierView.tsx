@@ -14,6 +14,12 @@ import {
 import { DossierConnections } from './DossierConnections'
 import { track, trackOnce } from '../lib/telemetry'
 import { renameInvestigation, type Investigation } from '../lib/workbench'
+import {
+    buildInvestigationPublication,
+    buildPublicationReadinessMarkdown,
+    readableReasonCode,
+    type InvestigationPublicationResult,
+} from '../lib/investigationPublication'
 import './DossierView.css'
 
 /** P0.6a: article text with inline [n] receipt markers → clickable superscript
@@ -156,6 +162,23 @@ export function DossierView({ investigation, onClose, autoCorroborate }: {
         return () => { alive = false }
     }, [investigation])
 
+    // Shared L1/L3 publication contract. This normalizes EVERY heterogeneous
+    // Workbench pin into the typed graph, then measures 5W+H readiness without
+    // asking the LLM to decide what matters or whether two things are related.
+    // A missing endpoint degrades to an absent panel; the frozen dossier stays.
+    const [publication, setPublication] = useState<InvestigationPublicationResult | null | undefined>(undefined)
+    useEffect(() => {
+        let alive = true
+        if (investigation.pins.length === 0) {
+            setPublication(null)
+            return () => { alive = false }
+        }
+        setPublication(undefined)
+        buildInvestigationPublication(investigation)
+            .then(result => { if (alive) setPublication(result) })
+        return () => { alive = false }
+    }, [investigation])
+
     // T5.1: generating a report is the deepest value moment in the analyst loop.
     useEffect(() => {
         track('dossier_generated', { pins: dossier.pinCount })
@@ -192,6 +215,12 @@ export function DossierView({ investigation, onClose, autoCorroborate }: {
             const cMarker = '\n## Timeline'
             const cAt = base.indexOf(cMarker)
             base = cAt === -1 ? `${base}\n${cblock}` : `${base.slice(0, cAt)}\n${cblock}${base.slice(cAt)}`
+        }
+        if (publication?.package) {
+            const pblock = buildPublicationReadinessMarkdown(publication.package) + '\n'
+            const pMarker = '\n## Timeline'
+            const pAt = base.indexOf(pMarker)
+            base = pAt === -1 ? `${base}\n${pblock}` : `${base.slice(0, pAt)}\n${pblock}${base.slice(pAt)}`
         }
         if (!conn || conn.data.nodes.length < 2) return base
         const block = connectionsSummaryLines(conn.data, conn.cluster, {
@@ -324,6 +353,54 @@ export function DossierView({ investigation, onClose, autoCorroborate }: {
                     <h2>Executive summary</h2>
                     <p>{dossier.summary}</p>
                 </section>
+
+                {dossier.pinCount > 0 && (
+                    <section className="dossier-section dossier-readiness">
+                        <h2>Editorial readiness — 5W+H</h2>
+                        {publication === undefined ? (
+                            <p className="dossier-meta">Measuring the pinned investigation against the shared L1/L3 publication contract…</p>
+                        ) : publication ? (
+                            <>
+                                <div className="dossier-readiness-grid">
+                                    {(['who', 'what', 'when', 'where', 'how', 'why'] as const).map(key => {
+                                        const item = publication.package.readiness[key]
+                                        return (
+                                            <div key={key} className={`dossier-ready-card dossier-ready-card--${item.status}`}>
+                                                <div className="dossier-ready-head">
+                                                    <span>{key}</span>
+                                                    <span>{item.status}</span>
+                                                </div>
+                                                {item.values.length > 0 && (
+                                                    <div className="dossier-ready-values">{item.values.join(' · ')}</div>
+                                                )}
+                                                {item.reason_codes.length > 0 && (
+                                                    <div className="dossier-ready-reasons">
+                                                        {item.reason_codes.map(readableReasonCode).join(' · ')}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                                <p className="dossier-meta">
+                                    {publication.graph.nodes.length} typed node{publication.graph.nodes.length === 1 ? '' : 's'} · {publication.graph.edges.length} measured/inferred/contextual relation{publication.graph.edges.length === 1 ? '' : 's'} · {publication.package.receipts.length} receipt{publication.package.receipts.length === 1 ? '' : 's'}
+                                    {publication.graph.completion.resolved_nodes < publication.graph.completion.requested_nodes
+                                        ? ` · ${publication.graph.completion.requested_nodes - publication.graph.completion.resolved_nodes} metadata-only`
+                                        : ''}
+                                </p>
+                                {publication.package.gaps.length > 0 && (
+                                    <ul className="dossier-ready-gap-list">
+                                        {publication.package.gaps.map(gap => (
+                                            <li key={gap}>{readableReasonCode(gap)}</li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </>
+                        ) : (
+                            <p className="dossier-meta">Publication readiness unavailable — frozen evidence and the rest of the report remain intact.</p>
+                        )}
+                    </section>
+                )}
 
                 <section className="dossier-section">
                     <h2>Evidence ({dossier.pinCount})</h2>

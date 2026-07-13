@@ -57,19 +57,20 @@ export function splitCitations(text: string): CitationPart[] {
   return parts
 }
 
-/** Build the request from the frozen dossier + the measured connection data,
- *  then POST for the synthesis. Returns null on any failure (frozen core stands). */
-export async function synthesizeDossier(
+/** Build the complete grounded input from frozen pins + measured connections.
+ * No semantic top-N is applied: every frozen receipt remains addressable. The
+ * backend may still fail honestly if a provider cannot accept the context. */
+export function buildSynthesisRequest(
   dossier: DossierModel,
   conn: { data: ConnectionsData; cluster: ClusterResult } | null,
-): Promise<DossierSynthesis | null> {
+): Record<string, unknown> & { pins: Array<Record<string, unknown>> } {
   const pins = dossier.pins.map(p => ({
     label: p.label,
     type: p.anchorType,
     // Fold source + signal DATE into the headline so the LLM can attribute AND
     // date contested outcomes ("reported by <outlet>, 2026-07-08") instead of
     // asserting them as undated fact. (Legacy field — older backends read this.)
-    evidence: (p.snapshot?.evidence ?? []).slice(0, 6)
+    evidence: (p.snapshot?.evidence ?? [])
       .map(e => {
         const attribution = e.source
           ? ` — ${e.source}${e.date ? `, ${e.date}` : ''}`
@@ -78,7 +79,7 @@ export async function synthesizeDossier(
       }),
     // P0.6a structured evidence — the server numbers these [1..N] into the
     // article's authoritative receipts table (with URLs for clickable receipts).
-    evidence_items: (p.snapshot?.evidence ?? []).slice(0, 6).map(e => ({
+    evidence_items: (p.snapshot?.evidence ?? []).map(e => ({
       headline: e.headline,
       source: e.source ?? null,
       date: e.date ?? null,
@@ -86,28 +87,28 @@ export async function synthesizeDossier(
     })),
     note: p.note ?? null,
   }))
-  if (pins.length === 0) return null
-
   let connection: Record<string, unknown> | null = null
   if (conn && conn.data.nodes.length >= 2) {
     const { data, cluster } = conn
     const labelOf = (id: string) => data.nodes.find(n => n.id === id)?.label ?? id
-    // Per-pin connectedness: a pin is CONFIRMED-connected when a shared-actor or
-    // shared-country edge ties it to another pin, SIMILAR-ONLY when its only links
-    // are semantic proximity, ISOLATED when nothing pinned connects to it. This is
+    // Per-pin connectedness: only a distinctive shared actor is CONFIRMED.
+    // Shared coverage country is CONTEXT; semantic proximity is SIMILAR-ONLY.
     // the fix for the over-claim failure — the whole set can read 'grounded' off a
     // single confirmed edge while a third pin hangs on similarity-only edges.
     const confirmedWith = new Map<string, Set<string>>()
     const textWith = new Map<string, Set<string>>()
+    const contextWith = new Map<string, Set<string>>()
     const similarWith = new Map<string, Set<string>>()
     const textTerms = new Map<string, string[]>()
     for (const n of data.nodes) {
-      confirmedWith.set(n.id, new Set()); textWith.set(n.id, new Set()); similarWith.set(n.id, new Set())
+      confirmedWith.set(n.id, new Set()); textWith.set(n.id, new Set())
+      contextWith.set(n.id, new Set()); similarWith.set(n.id, new Set())
       textTerms.set(n.id, [])
     }
     for (const e of data.edges) {
       const s = edgeStrength(e)
-      const bucket = s === 'strong' ? confirmedWith : s === 'text' ? textWith : similarWith
+      const bucket = s === 'strong' ? confirmedWith
+        : s === 'text' ? textWith : s === 'context' ? contextWith : similarWith
       bucket.get(e.a)?.add(e.b)
       bucket.get(e.b)?.add(e.a)
       // glass box: hand the model the EXACT measured mention terms per pin.
@@ -130,17 +131,22 @@ export async function synthesizeDossier(
       const conf = [...(confirmedWith.get(n.id) ?? [])]
       const confSet = confirmedWith.get(n.id) ?? new Set<string>()
       const text = [...(textWith.get(n.id) ?? [])].filter(id => !confSet.has(id))
-      const sim = [...(similarWith.get(n.id) ?? [])].filter(id => !confSet.has(id) && !textWith.get(n.id)?.has(id))
+      const context = [...(contextWith.get(n.id) ?? [])]
+        .filter(id => !confSet.has(id) && !textWith.get(n.id)?.has(id))
+      const sim = [...(similarWith.get(n.id) ?? [])]
+        .filter(id => !confSet.has(id) && !textWith.get(n.id)?.has(id) && !contextWith.get(n.id)?.has(id))
       const mentions = [
         ...(textTerms.get(n.id) ?? []),
         ...(crossRefByLabel.get(n.label) ?? []),
-      ].slice(0, 4)
+      ]
       return {
         label: n.label,
         connectedness: conf.length ? 'confirmed'
           : (text.length || mentions.length) ? 'text-linked'
-          : sim.length ? 'similar-only' : 'isolated',
+          : context.length ? 'coverage-context'
+            : sim.length ? 'similar-only' : 'isolated',
         confirmed_with: conf.map(labelOf),
+        contextual_with: context.map(labelOf),
         similar_with: sim.map(labelOf),
         text_mentions: mentions,
       }
@@ -148,24 +154,34 @@ export async function synthesizeDossier(
     connection = {
       state: connectionState(cluster, data.edges),
       nodes,
-      links: data.edges.slice(0, 8).map(e => `${labelOf(e.a)} ↔ ${labelOf(e.b)} — ${edgeReason(e)}`),
-      countries: (data.distributions?.countries ?? []).slice(0, 10).map(c => `${c.cc} ${c.n}`),
-      languages: (data.distributions?.languages ?? []).slice(0, 8).map(l => `${l.lang} ${l.n}`),
+      links: data.edges.map(e => `${labelOf(e.a)} ↔ ${labelOf(e.b)} — ${edgeReason(e)}`),
+      countries: (data.distributions?.countries ?? []).map(c => `${c.cc} ${c.n}`),
+      languages: (data.distributions?.languages ?? []).map(l => `${l.lang} ${l.n}`),
       press: data.distributions?.roles.press ?? 0,
       public: data.distributions?.roles.public ?? 0,
       bridges: (data.neighbors ?? [])
         .filter(nb => nb.links.length > 1)
-        .slice(0, 6)
         .map(nb => nb.label),
       lens_note: coverageLensNote(data.distributions?.languages ?? []),
     }
   }
 
+  return { title: dossier.title, pins, connection, gaps: dossier.gaps }
+}
+
+/** Build the request from the frozen dossier + the measured connection data,
+ * then POST for the synthesis. Returns null on any failure (frozen core stands). */
+export async function synthesizeDossier(
+  dossier: DossierModel,
+  conn: { data: ConnectionsData; cluster: ClusterResult } | null,
+): Promise<DossierSynthesis | null> {
+  const body = buildSynthesisRequest(dossier, conn)
+  if (body.pins.length === 0) return null
   try {
     const res = await fetch('/api/v2/dossier/synthesize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: dossier.title, pins, connection, gaps: dossier.gaps }),
+      body: JSON.stringify(body),
     })
     if (!res.ok) return null
     return await res.json() as DossierSynthesis

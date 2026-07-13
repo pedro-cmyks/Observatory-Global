@@ -48,6 +48,24 @@ SEMANTIC_LANE_LIMIT = 8
 _embed_fn = None  # lazy singleton; never loaded unless the lane is used
 
 
+def _clear_device_cache(torch_module, device: str) -> None:
+    """Release completed MPS batch allocations before the next long-run batch.
+
+    The July 13 controlled writer completed eight 256-row batches, then waited
+    indefinitely in ``MPSStream::copy_and_sync`` while PostgreSQL was idle. A
+    long-lived singleton otherwise lets Metal cache pressure accumulate across
+    the entire hot-corpus run. This runs only after ``pooled.cpu()`` completed;
+    it never interrupts an in-flight command buffer.
+    """
+    if device == "mps":
+        try:
+            torch_module.mps.empty_cache()
+        except Exception:
+            # Cache release is a stability hint, never a reason to lose an
+            # otherwise valid embedding batch.
+            pass
+
+
 def cosine(a: list[float], b: list[float]) -> float:
     if not a or not b or len(a) != len(b):
         return 0.0
@@ -92,7 +110,10 @@ def _build_embed_fn():
         mask = enc["attention_mask"].unsqueeze(-1).float()
         pooled = (hs * mask).sum(1) / mask.sum(1).clamp(min=1e-9)
         pooled = torch.nn.functional.normalize(pooled, p=2, dim=1)
-        return [[float(x) for x in row] for row in pooled.cpu()]
+        result = [[float(x) for x in row] for row in pooled.cpu()]
+        del enc, hs, mask, pooled
+        _clear_device_cache(torch, device)
+        return result
 
     return embed
 

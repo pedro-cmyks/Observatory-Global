@@ -21,6 +21,18 @@ below resolve via Obsidian's fuzzy search regardless of folder.
 
 ## Latest handoffs
 
+- [[2026-07-12-spec-history-crosswalk]] — reconciliation of the approved
+  Investigation Graph with Workbench, Threads, movement, dossier,
+  corroboration, events, voice, history and validation canon; records what is
+  genuinely new, what must be reused and which older rank/cap decisions are
+  superseded.
+- [[2026-07-13-l0-l3-reliability-matrix]] — current product/ops truth from L0
+  through L3, including the complete-universe Daily Investigation measurement,
+  precomputed serving artifact, editorial gaps and embedding-index incident.
+- [[2026-07-12-investigation-graph-slice-3-daily-publication]] — executable plan
+  for typed graph edges, shared PublicationPackage, math-first L1 selector,
+  Workbench adapter and joint editorial gate.
+
 - [[2026-07-12-subject-geography-math-first-design]] and
   [[2026-07-12-subject-geography-math-first]] — complete-universe, read-only
   subject geography Stage 1 for #238, with deterministic scoring, abstention,

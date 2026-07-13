@@ -39,7 +39,7 @@ from app.services.subjects import classify_subject
 router = APIRouter(prefix="/api/v2/dossier", tags=["dossier"])
 logger = logging.getLogger(__name__)
 
-MAX_PINS = 16
+MAX_PINS = 64
 ROWS_PER_TOPIC = 300          # cap member rows aggregated per topic/role
 SEM_EDGE_THRESHOLD = 0.88     # RAW centroid cosine — legacy/fallback connect gate
 # Whitened connect gate. Raw e5 centroid cosine floods 0.88-0.96 (every pin
@@ -57,7 +57,7 @@ _cache: dict = {}
 
 
 class ConnectionsRequest(BaseModel):
-    topic_ids: list[str] = Field(..., min_length=1, max_length=64)
+    topic_ids: list[str] = Field(..., min_length=1, max_length=MAX_PINS)
     days: int = Field(30, ge=7, le=90)
     # Constellation assembly (2026-07-06): when a pin is a child of an umbrella
     # (an assembled big story), fold it into ONE umbrella node exposing typed
@@ -197,13 +197,12 @@ def _project_positions(centroids: dict[str, list[float]]) -> dict[str, dict]:
 async def dossier_connections(req: ConnectionsRequest):
     """Measure how the pinned stories relate + their distributions."""
     # Normalize + dedupe (map base id -> the raw pin id the frontend sent).
+    # The request contract itself is 64, so nothing valid is silently dropped.
     base_to_raw: dict[str, str] = {}
     for raw in req.topic_ids:
         base = _base_topic_id(raw)
         if base and base not in base_to_raw:
             base_to_raw[base] = raw
-        if len(base_to_raw) >= MAX_PINS:
-            break
     base_ids = list(base_to_raw)
 
     empty = {"contract": "dossier-connections-v0", "nodes": [], "edges": [],
@@ -645,6 +644,7 @@ async def dossier_connections(req: ConnectionsRequest):
     # field that makes this a CONSTELLATION (context + bridges), not 3 lonely
     # dots. A neighbor near >1 pin is a bridge (an unpinned link you didn't pin).
     neighbors: list[dict] = []
+    neighbor_candidate_count = 0
     if centroids:
         exclude_ids = set(dyn_ids) | set(umbrella_ids) | {
             int(t[len("dynamic-topic-"):]) for t in child_topic_to_umb
@@ -700,6 +700,7 @@ async def dossier_connections(req: ConnectionsRequest):
                         e = nb[cid] = {"base_id": _tid(cid), "label": cand[ci]["label"],
                                        "category": cand[ci]["category"], "links": []}
                     e["links"].append({"pin": pin_ids[pj], "sim": round(s, 4)})
+            neighbor_candidate_count = len(nb)
             # bridges (near >1 pin) first, then strongest single link; cap 8.
             neighbors = sorted(
                 nb.values(),
@@ -729,6 +730,18 @@ async def dossier_connections(req: ConnectionsRequest):
             "text_mention": "one pin's evidence headlines contain the other pin's label key-tokens or a top actor — weaker than shared_person, stronger than semantic-only; pure token match",
             "actor_filter": "shared/top actors pass the person gate + subjects gazetteer + geo-feature token guard (NER junk excluded)",
             "position_basis": "PCA top-2 of pinned e5 centroids — approximate; edges are exact",
+            "member_selection": {
+                "method": "most_recent_per_topic_and_role",
+                "rows_per_topic_role": ROWS_PER_TOPIC,
+                "complete_member_universe": False,
+            },
+            "neighbor_selection": {
+                "candidate_count": neighbor_candidate_count,
+                "returned_count": len(neighbors),
+                "display_slots": 8,
+                "method": "bridges_first_then_strongest_similarity",
+                "truncated": neighbor_candidate_count > len(neighbors),
+            },
         },
     }
     _cache[cache_key] = (time.monotonic(), payload)
@@ -773,8 +786,9 @@ class SynthConnectionNode(BaseModel):
     # while a third pin hangs on only similarity-only edges. This tells the prompt
     # which pins are the confirmed spine and which are merely topically adjacent.
     label: str
-    connectedness: str | None = None   # 'confirmed' | 'text-linked' | 'similar-only' | 'isolated'
-    confirmed_with: list[str] = Field(default_factory=list)  # shared-actor/place partners
+    connectedness: str | None = None   # confirmed | text-linked | coverage-context | similar-only | isolated
+    confirmed_with: list[str] = Field(default_factory=list)  # distinctive shared-actor partners
+    contextual_with: list[str] = Field(default_factory=list)  # same coverage country; never proof
     similar_with: list[str] = Field(default_factory=list)    # semantic-only partners
     # Frank v2 blocker 1: verbatim evidence-text mentions of another pin
     # ("evidence text mentions 'nato summit' (NATO Summit Ankara)"). A pin with
@@ -783,8 +797,7 @@ class SynthConnectionNode(BaseModel):
 
 
 class SynthConnection(BaseModel):
-    # 'grounded' (shared actors/places) | 'similar-only' (semantic proximity only)
-    # | 'split' | 'isolated' — the basis-weighted verdict from the frontend.
+    # grounded | text-linked | context-only | similar-only | split | isolated
     state: str | None = None
     nodes: list[SynthConnectionNode] = Field(default_factory=list)  # per-pin connectedness
     links: list[str] = Field(default_factory=list)     # "A ↔ B — shared actor X"
@@ -800,7 +813,9 @@ class SynthConnection(BaseModel):
 
 class SynthesizeRequest(BaseModel):
     title: str = ""
-    pins: list[SynthPin] = Field(..., min_length=1, max_length=32)
+    # The Workbench owns the investigation universe. Do not silently drop pins
+    # before publication prose; a provider context failure must degrade openly.
+    pins: list[SynthPin] = Field(..., min_length=1)
     connection: SynthConnection | None = None
     gaps: list[str] = Field(default_factory=list)
 
@@ -825,8 +840,8 @@ _SYNTH_SYSTEM = (
     "1. GROUND everything in the supplied evidence — never invent facts, numbers, "
     "actors, events, dates, or outcomes that are not in the headlines.\n"
     "2. LEAD WITH THE CONFIRMED SPINE. Build the through-line ONLY from pins whose "
-    "per-pin connectedness is 'confirmed' (they share a real actor or place); name "
-    "that shared actor/place. A pin marked 'similar-only' shares NO actor or place "
+    "per-pin connectedness is 'confirmed' (they share a distinctive actor); name "
+    "that actor. A pin marked 'similar-only' shares NO verified actor "
     "with the others — it is topically or linguistically adjacent, NOT confirmed "
     "connected. You MUST explicitly bracket such a pin: say it is 'topically "
     "adjacent, not confirmed connected — possibly an artifact of shared language/"
@@ -834,6 +849,10 @@ _SYNTH_SYSTEM = (
     "Even when the overall state is 'grounded', a single confirmed edge does not make "
     "every pin part of one story. If the state is 'split' or 'isolated', say the pins "
     "do not form one story.\n"
+    "2a. COVERAGE CONTEXT IS NOT A STORY LINK. A pin marked 'coverage-context' only "
+    "shares a country appearing in coverage with another pin. That country is NOT "
+    "verified as the shared subject, identity, coordination, or cause. Keep it out "
+    "of the confirmed spine and describe it only as navigation context.\n"
     "2b. TEXT MENTIONS OVERRIDE 'no link' CLAIMS. A pin may carry evidence-text "
     "mentions ('evidence text mentions …'): its headline TEXT references another "
     "pinned story even though entity extraction found no shared actor. Describe such "
@@ -842,7 +861,8 @@ _SYNTH_SYSTEM = (
     "'isolated, unconnected' about a pin that carries a text mention. A 'text-linked' "
     "connectedness is weaker than 'confirmed' but stronger than 'similar-only'.\n"
     "2c. GLASS BOX ON LINK NAMES. When naming WHAT links two pins, quote ONLY the "
-    "exact measured tokens handed to you (the shared actor/place names or mention "
+    "exact measured tokens handed to you (shared actor names, contextual coverage "
+    "countries, or mention "
     "terms in 'links' / per-pin connectedness). Never substitute, embellish, or "
     "infer different actor names for a link, even if they read more naturally.\n"
     "3. CHECK EVIDENCE-TO-LABEL FIT. For each pin, verify its evidence headlines "
@@ -892,11 +912,11 @@ def _citation_table(req: SynthesizeRequest) -> list[dict]:
         if p.evidence_items:
             items = [
                 {"headline": e.headline, "source": e.source, "date": e.date, "url": e.url}
-                for e in p.evidence_items[:6]
+                for e in p.evidence_items
             ]
         else:
             items = []
-            for h in p.evidence[:6]:
+            for h in p.evidence:
                 m = _LEGACY_EVIDENCE_RE.match(h)
                 if m:
                     items.append({"headline": m.group("headline"),
@@ -941,7 +961,9 @@ def _synth_user(req: SynthesizeRequest) -> str:
             for nd in c.nodes:
                 line = f"    - {nd.label}: {nd.connectedness or 'unknown'}"
                 if nd.confirmed_with:
-                    line += " — confirmed link (shared actor/place) to " + ", ".join(nd.confirmed_with[:6])
+                    line += " — confirmed link (distinctive shared actor) to " + ", ".join(nd.confirmed_with[:6])
+                if nd.contextual_with:
+                    line += " — coverage-country context only (not subject identity or causality) with " + ", ".join(nd.contextual_with[:6])
                 if nd.similar_with:
                     line += " — similarity-only proximity to " + ", ".join(nd.similar_with[:6])
                 parts.append(line)

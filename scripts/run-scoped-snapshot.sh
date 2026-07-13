@@ -134,3 +134,10 @@ if [[ "${ATLAS_CATEGORY_GROWTH:-on}" == "on" && -n "${OPENAI_API_KEY:-}" && -n "
 else
   echo "[scoped-snapshot] skip category robot (off or keys missing)" >&2
 fi
+
+# Step 6: seal the shared L1/L3 PublicationPackage for this completed snapshot.
+# This is intentionally the last database consumer in the mutex: it traverses
+# the full active candidate set and stores one compact JSONB row. Vercel/Fly
+# serving only reads that row; it never performs this work in an HTTP request.
+( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.build_daily_publication --execute ) \
+  || echo "[scoped-snapshot] ERROR daily publication artifact failed — L1 remains on the previous sealed edition" >&2

@@ -18,12 +18,12 @@ import { track } from '../lib/telemetry'
 import type { Investigation } from '../lib/workbench'
 import './DossierConnections.css'
 
-// Edge visual truth: a link the reader can trust (shared actor/place) is a SOLID
-// green line whose weight scales with evidence; a similarity-only link is a thin
-// DASHED slate line with NO weight scaling — a higher cosine must never read as a
-// stronger connection (that is the false-confidence bug this whole pass removes).
+// Edge visual truth: green = distinctive shared actor; amber = evidence-text
+// mention; blue dotted = same COVERAGE country (context only); slate dashed =
+// semantic proximity. Country overlap is never subject identity or causality.
 const STRONG_EDGE = '#1D9E75'
 const TEXT_EDGE = '#f59e0b'   // evidence-text mention — verify, not confirmed
+const CONTEXT_EDGE = '#38bdf8' // coverage geography — visible, explicitly non-confirming
 const WEAK_EDGE = '#64748b'
 
 const UNIVERSE_W = 640
@@ -35,7 +35,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 // The always-visible "why" on a pin↔pin edge — the strongest measured basis, so
 // a reader of the report alone sees WHY two stories connect, not just that they do.
 function edgeTag(e: ConnectionEdge): string {
-  // Strongest basis first — a real shared actor/place must show its NAME, not a
+  // Strongest basis first — a distinctive shared actor must show its NAME, not a
   // cosine number that would make the confirmed link look fuzzy.
   if (e.shared_persons.length) return e.shared_persons[0].split(' ')[0]
   if (e.shared_countries.length) return e.shared_countries[0]
@@ -102,7 +102,7 @@ export function DossierConnections(
 
   return (
     <div className="dcx">
-      <p className="dossier-meta" data-tip="Semantic centroid proximity, shared country, rarity-weighted shared actors, and evidence-text mentions — measured now, not frozen at pin time.">
+      <p className="dossier-meta" data-tip="Semantic centroid proximity, coverage-country context, rarity-weighted shared actors, and evidence-text mentions — measured now, not frozen at pin time. A shared coverage country is not subject identity or causality.">
         measured at generation time · {data.nodes.length} stories · {data.edges.length} links
       </p>
       {/* W4 (dataviz audit): count-lineage reconciliation — the pin cards, the
@@ -135,8 +135,8 @@ export function DossierConnections(
 
 // ── Sub-narrative verdict ─────────────────────────────────────────────────────
 // The claim-truth half of the fix: a cluster held together only by semantic
-// proximity is NOT "one connected narrative" — it is a CAUTION (similar topics,
-// no shared actors/places). Confirmed = at least one shared-actor/place edge.
+// proximity or coverage-country overlap is NOT "one connected narrative".
+// Confirmed = at least one distinctive shared-actor edge.
 function ClusterVerdict({ data, cluster, crossRefs }: {
   data: ConnectionsData; cluster: ClusterResult; crossRefs?: TextCrossRef[]
 }) {
@@ -174,7 +174,7 @@ function ClusterVerdict({ data, cluster, crossRefs }: {
     headline = (
       <p>
         <b className="dcx-verdict-glyph" style={{ color: STRONG_EDGE }}>✓</b>{' '}
-        These pins are connected by shared actors or places, not just similar topics.
+        These pins are connected by a distinctive shared actor, not just similar coverage.
         {via.length > 0 && <> Linked via <strong>{via.join(', ')}</strong>.</>}
       </p>
     )
@@ -189,6 +189,19 @@ function ClusterVerdict({ data, cluster, crossRefs }: {
         <p className="dcx-note">
           Text-linked is weaker than a confirmed shared actor and stronger than semantic proximity —
           verify the mention before treating these as one narrative.
+        </p>
+      </>
+    )
+  } else if (single && strengths[0] === 'context') {
+    headline = (
+      <>
+        <p>
+          <b className="dcx-verdict-glyph" style={{ color: CONTEXT_EDGE }}>◇</b>{' '}
+          These pins touch the same <strong>coverage geography</strong>, but Atlas has not
+          verified that the country is the subject linking both stories.
+        </p>
+        <p className="dcx-note">
+          Treat this as navigation context — not story identity, coordination, or causality.
         </p>
       </>
     )
@@ -226,7 +239,9 @@ function ClusterVerdict({ data, cluster, crossRefs }: {
           return (
             <li key={i}>
               <span className={`dcx-cluster-badge ${badgeCls}`}>
-                {s === 'confirmed' ? 'CONFIRMED' : s === 'text' ? 'TEXT-LINKED' : 'SIMILAR ONLY'}
+                {s === 'confirmed' ? 'CONFIRMED'
+                  : s === 'text' ? 'TEXT-LINKED'
+                    : s === 'context' ? 'COVERAGE CONTEXT' : 'SIMILAR ONLY'}
               </span>
               <span className="dcx-cluster-dot" style={{ background: clusterColor(i) }} />
               <span><strong>Sub-narrative {i + 1}</strong> ({g.length}): {g.map(n => n.label).join('; ')}</span>
@@ -453,10 +468,11 @@ export function InvestigativeUniverse({ data, cluster, compact = false }: {
             <span>position ≈ semantic field · closer = more alike</span>
           </div>
           <div className="dcx-howto dcx-edge-legend">
-            <span><i className="dcx-k-strong-edge" /> solid green = confirmed link (shared actor/place)</span>
+            <span><i className="dcx-k-strong-edge" /> solid green = confirmed distinctive actor</span>
             <span><i className="dcx-k-text-edge" /> solid amber = evidence-text mention (verify)</span>
+            <span style={{ color: CONTEXT_EDGE }}>◇ blue dotted = coverage-country context</span>
             <span><i className="dcx-k-weak-edge" /> dashed = similarity only, not a confirmed link</span>
-            <span>line label = the reason (shared name/country, “mention”, or ≈cosine)</span>
+            <span>line label = the reason (shared actor, coverage country, “mention”, or ≈cosine)</span>
           </div>
         </>
       )}
@@ -470,25 +486,25 @@ export function InvestigativeUniverse({ data, cluster, compact = false }: {
             stroke={lit ? '#94a3b8' : '#475569'} strokeWidth={lit ? 0.8 : 0.5} strokeDasharray="2 3"
             strokeOpacity={hover ? (lit ? 0.55 : 0.1) : 0.28} />
         }))}
-        {/* edges — solid green = confirmed (shared actor/place), dashed slate =
-            similarity-only. Weak edges get NO weight scaling: a higher cosine must
-            not read as a stronger link. Tag = the WHY (actor/country, else ≈cosine). */}
+        {/* Edges encode truth tier; only distinctive actors receive confirmation
+            weight. Coverage-country and semantic links never scale into proof. */}
         {data.edges.map((e, i) => {
           const a = byId.get(e.a), b = byId.get(e.b)
           if (!a || !b) return null
           const dim = hover && e.a !== hover && e.b !== hover
           const tier = edgeStrength(e)
           const strong = tier === 'strong'
-          const color = strong ? STRONG_EDGE : tier === 'text' ? TEXT_EDGE : WEAK_EDGE
+          const color = strong ? STRONG_EDGE
+            : tier === 'text' ? TEXT_EDGE : tier === 'context' ? CONTEXT_EDGE : WEAK_EDGE
           const width = strong ? 1.4 + e.weight * 1.8 : tier === 'text' ? 1.0 : 0.75
           const opacity = dim ? (strong ? 0.10 : 0.06)
-            : (strong ? 0.55 + e.weight * 0.35 : tier === 'text' ? 0.45 : 0.30)
+            : (strong ? 0.55 + e.weight * 0.35 : tier === 'text' ? 0.45 : tier === 'context' ? 0.42 : 0.30)
           const tag = edgeTag(e)
           return (
             <g key={i}>
               <line x1={a.px} y1={a.py} x2={b.px} y2={b.py} stroke={color}
                 strokeWidth={width} strokeOpacity={opacity}
-                strokeDasharray={tier === 'weak' ? '3 3' : undefined} />
+                strokeDasharray={tier === 'context' ? '1 3' : tier === 'weak' ? '3 3' : undefined} />
               {!dim && tag && (
                 <text x={(a.px + b.px) / 2} y={(a.py + b.py) / 2 - 2} textAnchor="middle"
                   className="dcx-edge-tag" fill={color}>{tag}</text>

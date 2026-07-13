@@ -78,6 +78,23 @@ async def _pending_rows(
     return out[:max_n]
 
 
+async def _rebuild_hnsw_index(conn: asyncpg.Connection) -> None:
+    """Restore the serving ANN index after a bulk write, on every exit path."""
+    print("bulk-reindex: rebuilding HNSW index (single-threaded)…", file=sys.stderr)
+    # ONE simple-query batch stays on one Supabase backend. 384MB is the
+    # measured in-memory floor for the current 768d halfvec corpus; 256MB
+    # thrashed to disk for days, while higher values risk this 1GB instance.
+    await conn.execute(
+        "SET max_parallel_maintenance_workers = 0; "
+        "SET maintenance_work_mem = '384MB'; "
+        "SET statement_timeout = 0; "
+        "CREATE INDEX IF NOT EXISTS idx_signal_embeddings_vec "
+        "ON signal_embeddings USING hnsw (vec halfvec_cosine_ops) "
+        "WITH (m='16', ef_construction='64')"
+    )
+    print("bulk-reindex: HNSW index REBUILT", file=sys.stderr)
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--hours", type=int, default=168)
@@ -106,6 +123,7 @@ async def main() -> int:
         return 2
 
     conn = await asyncpg.connect(os.environ["DATABASE_URL"])
+    index_dropped = False
     try:
         # Lift the pooler's default 2-min statement_timeout for this session
         # (Supabase session-mode pooler, port 5432, honours SET per-connection —
@@ -122,8 +140,17 @@ async def main() -> int:
         if args.dry_run:
             return 0
 
+        # Reclaim expired hot rows before touching the ANN index. Previously
+        # this ran only after all inserts, so a stalled insert retained old
+        # vectors and made the next run even harder. The external archive and
+        # processed-history lanes remain authoritative for older windows.
+        swept = await conn.execute(
+            f"DELETE FROM signal_embeddings WHERE embedded_at < NOW() - INTERVAL '{int(args.retention_days)} days'"
+        )
+
         if args.bulk_reindex:
             await conn.execute("DROP INDEX IF EXISTS idx_signal_embeddings_vec")
+            index_dropped = True
             print("bulk-reindex: HNSW index DROPPED — inserts run un-indexed (~22K/s); "
                   "semantic lane on lexical fallback until rebuild", file=sys.stderr)
 
@@ -222,41 +249,19 @@ async def main() -> int:
                     d.result()
         finally:
             await write_pool.close()
-            if args.bulk_reindex:
-                # ALWAYS rebuild (finally) so a failed insert never leaves the index
-                # dropped. Single-threaded — the parallel build hits Supabase's shmem cap.
-                print("bulk-reindex: rebuilding HNSW index (single-threaded ~4min/276K)…",
-                      file=sys.stderr)
-                # ONE batch: through the Supabase transaction pooler, separate
-                # execute() calls can land on DIFFERENT backends — the SETs were
-                # lost and CREATE INDEX ran with the default statement_timeout
-                # (the 2026-07-02 rebuild died exactly there). A multi-statement
-                # simple-query batch is one implicit transaction = one backend.
-                await conn.execute(
-                    "SET max_parallel_maintenance_workers = 0; "
-                    # 2026-07-08: 256MB was TOO SMALL for the 253K×768 halfvec
-                    # working set (~371MB) → pgvector built the HNSW graph ON DISK
-                    # (wait_event=DataFileRead, ~4 tuples/min, ~3.5-DAY projection).
-                    # 384MB just clears the working set → in-memory build ~1,255
-                    # tuples/s (~3-4 min total). Ceiling on this small instance
-                    # (shared_buffers=256MB); do NOT raise further without checking
-                    # instance RAM (OOM risk).
-                    "SET maintenance_work_mem = '384MB'; "
-                    "SET statement_timeout = 0; "
-                    "CREATE INDEX IF NOT EXISTS idx_signal_embeddings_vec "
-                    "ON signal_embeddings USING hnsw (vec halfvec_cosine_ops) "
-                    "WITH (m='16', ef_construction='64')")
-                print("bulk-reindex: HNSW index REBUILT", file=sys.stderr)
-
-        swept = await conn.execute(
-            f"DELETE FROM signal_embeddings WHERE embedded_at < NOW() - INTERVAL '{int(args.retention_days)} days'"
-        )
         elapsed = time.monotonic() - started
         print(f"done: {written} embedded in {elapsed:.0f}s; retention sweep: {swept}",
               file=sys.stderr)
         return 0
     finally:
-        await conn.close()
+        try:
+            # This outer finally starts immediately after the connection opens,
+            # so pool-creation errors, embed errors, and failed inserts cannot
+            # strand production without its ANN index after a bulk run.
+            if index_dropped:
+                await _rebuild_hnsw_index(conn)
+        finally:
+            await conn.close()
 
 
 if __name__ == "__main__":
