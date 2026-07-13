@@ -121,6 +121,14 @@ Brief until the sealed artifact clears freshness, receipt and editorial gates.**
 suite, controlled HNSW maintenance measurement, deploy and post-deploy L0-L3
 comparison remain.
 
+**2026-07-13 follow-up:** the frozen daily forcing case now verifies subject
+geography on all 12 story nodes from independent receipt headlines, and the
+shared package applies the broad typed-actor canon without promoting
+shared-country context into a measured relation. The #238 complete-universe
+rerun reached 1,488/1,488 topics with no failures. The next stored artifact must
+be produced by the autonomous sealed pipeline; do not rewrite the current
+edition with a later wall-clock timestamp merely to manufacture freshness.
+
 - Run focused and full backend/frontend suites.
 - Deploy API and frontend.
 - Browser-smoke L0, L1, L2, L3; build one real investigation and export it.

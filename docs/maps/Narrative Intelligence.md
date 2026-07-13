@@ -23,6 +23,9 @@ Do not design Search, Workbench, Brief, Country Focus, or ThreadFocusPanel as if
   uncertainty/abstention, no coverage fallback, no LLM classification.
 - [[2026-07-12-subject-geography-math-first]] — implemented execution plan and
   live report route; artifacts live in `docs/research/subject-geography/`.
+- [[2026-07-13-complete-universe]] — Stage 1.1 rerun after nested-HTML and
+  unanimous anchor-corroboration fixes: 1,488/1,488 topics, no failures, full
+  candidate/abstention ledger retained.
 - [[2026-05-25-atlas-narrative-intelligence-framework]] — active model canon.
 - [[2026-06-03-research-model-product-roadmap]] — current route from Paper 1
   evidence to model correction and product verification.

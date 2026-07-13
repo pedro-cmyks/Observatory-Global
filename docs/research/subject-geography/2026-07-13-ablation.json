@@ -1,0 +1,43 @@
+{
+  "read_only": true,
+  "no_llm_classification": true,
+  "topics_evaluated": 1488,
+  "components": {
+    "headline_geo_support": {
+      "topics_evaluated": 1488,
+      "primary_changed": 122,
+      "abstentions": 1441,
+      "abstention_delta": 122
+    },
+    "native_pattern_support": {
+      "topics_evaluated": 1488,
+      "primary_changed": 9,
+      "abstentions": 1328,
+      "abstention_delta": 9
+    },
+    "ner_gazetteer_support": {
+      "topics_evaluated": 1488,
+      "primary_changed": 7,
+      "abstentions": 1326,
+      "abstention_delta": 7
+    },
+    "member_consensus": {
+      "topics_evaluated": 1488,
+      "primary_changed": 55,
+      "abstentions": 1374,
+      "abstention_delta": 55
+    },
+    "embedding_neighborhood_consistency": {
+      "topics_evaluated": 1488,
+      "primary_changed": 33,
+      "abstentions": 1352,
+      "abstention_delta": 33
+    },
+    "temporal_stability": {
+      "topics_evaluated": 1488,
+      "primary_changed": 16,
+      "abstentions": 1335,
+      "abstention_delta": 16
+    }
+  }
+}

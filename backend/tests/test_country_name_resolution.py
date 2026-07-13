@@ -9,6 +9,7 @@ shows a raw code again.
 from __future__ import annotations
 
 from app.core.iso_country_names import resolve_country_name
+from app.services.country_codes import fips_to_iso
 from app.services.thread_intelligence import build_thread_label
 
 
@@ -26,6 +27,11 @@ def test_leaves_already_resolved_names_unchanged():
 def test_unknown_or_empty_passthrough():
     assert resolve_country_name("ZZ") == "ZZ"   # not a real code → unchanged
     assert resolve_country_name("") == ""
+
+
+def test_gdelt_fips_kuwait_and_brunei_are_normalized():
+    assert fips_to_iso("KU") == "KW"
+    assert fips_to_iso("BX") == "BN"
 
 
 def test_project_gaza_code():

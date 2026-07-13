@@ -13,6 +13,16 @@ commits `903e6d40`, `e7a3e89d`, `f48feeb4`, and `2ec206b4`. The live run
 exhausted all 1,442 active/candidate topics in 29 cursor batches with no failures.
 GitHub #238 contains the measured receipt; map follow-ups are #255 and #256.
 
+**Stage 1.1 follow-up (2026-07-13):** nested HTML decoding and conservative
+topic-label anchor corroboration resolve unanimous cases that Stage 1
+incorrectly abstained on. The fresh read-only run exhausted 1,488/1,488 topics
+in 30 batches with no failures: 169 inferred and 1,319 abstained. A separate
+publication adapter uses the same decoded headline evidence over frozen
+receipts, requires two receipts/two outlets per country, preserves
+multi-country subjects and still forbids coverage geography. This serving
+adapter is governed by the later shared-publication spec; it does not turn the
+Stage 1 research scorer into lifecycle/ranking persistence.
+
 ## Global Constraints
 
 - No semantic top-N/topic ceiling or silent omission.

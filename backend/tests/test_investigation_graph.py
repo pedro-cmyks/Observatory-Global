@@ -123,6 +123,50 @@ def test_publication_package_is_deterministic_and_receipts_are_authoritative():
     assert first.reproducibility["graph_contract"] == "atlas-investigation-graph-v1"
 
 
+def test_publication_who_requires_a_broad_actor_for_every_story_node():
+    actor_story = node(
+        "node-story-1", "story", "thread", "Election dispute",
+        {"live": {"evidence_samples": []}},
+        quality={"verified_subjects": ["Donald Trump"]},
+    )
+    actorless_story = node(
+        "node-story-2", "story", "thread", "Unattributed disruption",
+        {"live": {"evidence_samples": []}},
+    )
+    graph = assemble_investigation_graph(
+        GraphRequest(nodes=[actor_story, actorless_story]), measured_at=STAMP,
+    )
+
+    package = build_publication_package(PublicationPackageRequest(
+        title="Daily edition", authorship="system", graph=graph, generated_at=STAMP,
+    ))
+
+    assert package.readiness["who"].status == "partial"
+    assert package.readiness["who"].reason_codes == [
+        "actor_attribution_incomplete_for_story_nodes"
+    ]
+
+
+def test_verified_subject_place_is_a_broad_actor_without_becoming_actor_edge():
+    story = node(
+        "node-story-1", "story", "thread", "Bangkok bar fire",
+        {"live": {"evidence_samples": []}},
+        quality={
+            "subject_country_status": "verified",
+            "verified_subject_countries": ["TH"],
+        },
+    )
+    graph = assemble_investigation_graph(GraphRequest(nodes=[story]), measured_at=STAMP)
+
+    package = build_publication_package(PublicationPackageRequest(
+        title="Daily edition", authorship="system", graph=graph, generated_at=STAMP,
+    ))
+
+    assert package.readiness["who"].status == "ready"
+    assert "Thailand (place)" in package.readiness["who"].values
+    assert graph.edges == []
+
+
 def test_dossier_adapter_preserves_each_relation_basis_as_its_own_truth_tier():
     a = node("node-story-1", "story", "thread", "NATO Summit Ankara", {})
     b = node("node-story-2", "story", "thread", "Trump Putin call", {})
@@ -215,6 +259,31 @@ def test_publication_where_is_ready_only_with_verified_subject_geography():
 
     assert package.readiness["where"].status == "ready"
     assert package.readiness["where"].values == ["IR"]
+
+
+def test_publication_where_is_partial_when_some_story_nodes_lack_subject_geography():
+    verified = node(
+        "node-story-verified", "story", "thread", "Verified", {},
+        quality={
+            "verified_subject_countries": ["TR"],
+            "subject_country_status": "verified",
+        },
+    )
+    unknown = node(
+        "node-story-unknown", "story", "thread", "Unknown",
+        {"live": {"top_countries": ["DE"]}},
+    )
+    graph = assemble_investigation_graph(
+        GraphRequest(nodes=[verified, unknown]), measured_at=STAMP,
+    )
+
+    package = build_publication_package(PublicationPackageRequest(
+        title="Two stories", authorship="system", graph=graph, generated_at=STAMP,
+    ))
+
+    assert package.readiness["where"].status == "partial"
+    assert package.readiness["where"].values == ["TR"]
+    assert "subject_geography_incomplete_for_story_nodes" in package.readiness["where"].reason_codes
 
 
 def test_publication_package_exposes_missing_dimensions_instead_of_padding():

@@ -10,7 +10,9 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 import html
 import os
+import re
 import time
+import unicodedata
 from typing import Any
 
 import numpy as np
@@ -29,6 +31,12 @@ from app.services.investigation_graph import (
 )
 from app.services.investigation_nodes import ResolveNodeInput, resolve_investigation_node
 from app.services.subjects import classify_subject
+from app.services.subject_geography import (
+    decode_headline,
+    infer_receipt_subject_geography,
+)
+from app.core.iso_country_names import ISO_COUNTRY_NAMES
+from app.services.country_codes import fips_to_iso
 
 
 def evidence_fit_metrics_from_vectors(
@@ -301,16 +309,35 @@ def verified_subjects_from_receipts(receipts: list[dict[str, Any]]) -> list[str]
     after it appears in at least two frozen receipts from at least two outlets
     and passes the shared subject typer. Ordering is first-observed and stable.
     """
-    evidence: dict[str, dict[str, set[Any]]] = {}
+    evidence: dict[str, dict[str, Any]] = {}
     order: list[str] = []
+
+    def normalized(value: Any) -> str:
+        value = unicodedata.normalize("NFKD", decode_headline(value).casefold())
+        value = "".join(ch for ch in value if not unicodedata.combining(ch))
+        return " ".join(re.findall(r"[^\W_]+", value, flags=re.UNICODE))
+
     for position, row in enumerate(receipts):
         receipt_id = row.get("id") or row.get("source_url") or f"row:{position}"
         outlet = str(row.get("source_name") or "").strip().lower()
         if not outlet:
             continue
+        headline = normalized(row.get("headline"))
         for raw_name in row.get("persons") or []:
             name = str(raw_name or "").strip().lower()
             if not name or classify_subject(name) != "person":
+                continue
+            normalized_name = normalized(name)
+            tokens = normalized_name.split()
+            if not tokens:
+                continue
+            full_mention = f" {normalized_name} " in f" {headline} "
+            surname_mention = (
+                len(tokens) >= 2
+                and len(tokens[-1]) >= 4
+                and f" {tokens[-1]} " in f" {headline} "
+            )
+            if not full_mention and not surname_mention:
                 continue
             if name not in evidence:
                 evidence[name] = {"receipts": set(), "outlets": set()}
@@ -506,8 +533,11 @@ async def fetch_daily_publication(
         candidate = selected_by_id[thread_id]
         receipts = by_topic.get(thread_id, [])
         top_countries = list(dict.fromkeys(
-            str(row.get("country_code")).upper()
-            for row in receipts if row.get("country_code")
+            (
+                code if code in ISO_COUNTRY_NAMES else fips_to_iso(code)
+            )
+            for row in receipts
+            if (code := str(row.get("country_code") or "").upper())
         ))
         top_sources = sorted(sources_by_topic.get(thread_id, set()))
         top_entities = list(dict.fromkeys(
@@ -519,6 +549,7 @@ async def fetch_daily_publication(
         verified_subjects = verified_subjects_from_receipts(
             subject_receipts_by_topic.get(thread_id, [])
         )
+        subject_geography = infer_receipt_subject_geography(receipts)
         edition_label, label_receipt = label_decisions[thread_id]
         live = {
             "thread_id": thread_id,
@@ -577,6 +608,11 @@ async def fetch_daily_publication(
                     "subject_status": "verified" if verified_subjects else (
                         "unverified" if top_entities else "not_available"
                     ),
+                    "verified_subject_countries": subject_geography[
+                        "verified_subject_countries"
+                    ],
+                    "subject_country_status": subject_geography["status"],
+                    "subject_geography": subject_geography,
                 },
             ),
             thread_fetcher=_frozen_thread_fetcher,

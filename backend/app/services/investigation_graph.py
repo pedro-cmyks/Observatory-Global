@@ -14,6 +14,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.core.iso_country_names import ISO_COUNTRY_NAMES
 from app.services.investigation_nodes import InvestigationNode
 
 GRAPH_CONTRACT = "atlas-investigation-graph-v1"
@@ -532,16 +533,33 @@ def build_publication_package(request: PublicationPackageRequest) -> Publication
     languages: set[str] = set()
     what: set[str] = set()
     movement: set[str] = set()
+    story_nodes = [node for node in graph.nodes if node.node_type == "story"]
+    story_nodes_with_actor = 0
+    story_nodes_with_subject_geo = 0
 
     for node in graph.nodes:
         live = _live(node)
+        verified_subjects = _verified_subjects(node)
+        verified_subject_countries = _verified_subject_country_codes(node)
         if node.node_type in {"story", "evidence", "event", "anomaly", "attention"}:
             what.add(node.label)
         if node.node_type == "subject":
             subjects.add(node.label)
-        subjects.update(s.title() for s in _verified_subjects(node))
+        subjects.update(s.title() for s in verified_subjects)
+        # Atlas's actor canon is intentionally broad: a corroborated place is
+        # an actor/subject too. Keep the typed prefix so Who and Where can both
+        # expose it without turning shared-country context into an actor edge.
+        subjects.update(
+            f"{ISO_COUNTRY_NAMES.get(code, code)} (place)"
+            for code in verified_subject_countries
+        )
         coverage_countries.update(_country_codes(node))
-        subject_countries.update(_verified_subject_country_codes(node))
+        subject_countries.update(verified_subject_countries)
+        if node.node_type == "story":
+            if verified_subjects or verified_subject_countries:
+                story_nodes_with_actor += 1
+            if verified_subject_countries:
+                story_nodes_with_subject_geo += 1
         for parent in (node.snapshot, live):
             for key in ("top_sources", "sources"):
                 raw = parent.get(key)
@@ -579,8 +597,14 @@ def build_publication_package(request: PublicationPackageRequest) -> Publication
         for e in measured_relations
     }
 
-    if subject_countries:
+    if subject_countries and story_nodes_with_subject_geo == len(story_nodes):
         where_readiness = ReadinessItem(status="ready", values=sorted(subject_countries))
+    elif subject_countries:
+        where_readiness = ReadinessItem(
+            status="partial",
+            values=sorted(subject_countries),
+            reason_codes=["subject_geography_incomplete_for_story_nodes"],
+        )
     elif coverage_countries:
         where_readiness = ReadinessItem(
             status="partial",
@@ -594,8 +618,21 @@ def build_publication_package(request: PublicationPackageRequest) -> Publication
         why_readiness.status = "partial"
         why_readiness.reason_codes.append("causal_explanation_not_measured")
 
+    if subjects and story_nodes_with_actor == len(story_nodes):
+        who_readiness = ReadinessItem(status="ready", values=sorted(subjects))
+    elif subjects:
+        who_readiness = ReadinessItem(
+            status="partial",
+            values=sorted(subjects),
+            reason_codes=["actor_attribution_incomplete_for_story_nodes"],
+        )
+    else:
+        who_readiness = ReadinessItem(
+            status="missing", reason_codes=["no_verified_subjects"],
+        )
+
     readiness = {
-        "who": _item(subjects, "no_verified_subjects"),
+        "who": who_readiness,
         "what": _item(what, "no_story_or_event_nodes"),
         "when": _item(dates, "no_dated_receipts"),
         "where": where_readiness,

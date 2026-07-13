@@ -20,7 +20,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
-from app.services.ingest_rss import _COUNTRY_PATTERNS, _NATIVE_COUNTRY_PATTERNS
+from app.services.subject_geography import headline_country_evidence
 
 
 _PROJECT_TO_ISO = {"GZ": "PS", "WE": "PS"}
@@ -154,17 +154,12 @@ def _parse_ner_places(*values: Any) -> tuple[str, ...]:
 
 def extract_headline_country_evidence(headline: str) -> list[dict[str, object]]:
     """Return every country pattern found in a headline with method provenance."""
-    if not headline:
-        return []
-    methods: dict[str, set[str]] = defaultdict(set)
-    for pattern, code in _COUNTRY_PATTERNS:
-        if pattern.search(headline):
-            methods[_canonical_country(code)].add("headline_pattern")
-    for pattern, code in _NATIVE_COUNTRY_PATTERNS:
-        if pattern.search(headline):
-            methods[_canonical_country(code)].add("native_pattern")
+    methods = headline_country_evidence(headline)
     return [
-        {"country": country, "methods": sorted(country_methods)}
+        {
+            "country": _canonical_country(country),
+            "methods": sorted(country_methods),
+        }
         for country, country_methods in sorted(methods.items())
     ]
 
@@ -180,6 +175,7 @@ def _normalized_entropy(distribution: dict[str, float]) -> float:
 def score_subject_candidates(
     signals: Sequence[SignalSubjectInput],
     *,
+    anchor_text: str | None = None,
     disabled_components: frozenset[str] = frozenset(),
 ) -> dict[str, Any]:
     """Aggregate explainable subject evidence and abstain when it is ambiguous."""
@@ -237,6 +233,10 @@ def score_subject_candidates(
     })
     total_families = len({s.source_family for s in signals if s.source_family})
 
+    anchor_countries = {
+        str(row["country"])
+        for row in extract_headline_country_evidence(anchor_text or "")
+    }
     candidates: list[dict[str, Any]] = []
     for country, ids in support_ids.items():
         n = max(signal_count, 1)
@@ -267,6 +267,8 @@ def score_subject_candidates(
             "source_family_breadth": round(
                 len(families[country]) / total_families, 6
             ) if total_families else 0.0,
+            "source_family_count": len(families[country]),
+            "anchor_match": country in anchor_countries,
             "provenance": provenance[country],
         })
     candidates.sort(
@@ -289,7 +291,16 @@ def score_subject_candidates(
     else:
         leader = candidates[0]
         share = distribution[str(leader["country"])]
-        if (
+        anchor_corroborated = (
+            str(leader["country"]) in anchor_countries
+            and int(leader["supporting_signal_count"]) >= 2
+            and int(leader["source_family_count"]) >= 2
+            and share == 1.0
+        )
+        if anchor_corroborated:
+            primary = str(leader["country"])
+            reasons.append("anchor_corroborated_subject_geo")
+        elif (
             int(leader["supporting_signal_count"]) >= 2
             and float(leader["score"]) >= 0.45
             and share >= 0.60
@@ -400,9 +411,14 @@ async def run_complete_universe(
         for topic in topic_page:
             topic_id = int(_record_get(topic, "id"))
             signals = signals_by_topic.get(topic_id, [])
-            inference = score_subject_candidates(signals)
-            structural_evaluation = evaluate_invariants(signals)
-            component_ablations = run_ablations([signals])["components"]
+            label = str(_record_get(topic, "label") or "")
+            inference = score_subject_candidates(signals, anchor_text=label)
+            structural_evaluation = evaluate_invariants(
+                signals, anchor_text=label,
+            )
+            component_ablations = run_ablations(
+                [signals], anchor_texts=[label],
+            )["components"]
             rows.append({
                 "dynamic_topic_id": topic_id,
                 "label": _record_get(topic, "label"),
@@ -480,17 +496,22 @@ def compare_proxies(
     }
 
 
-def evaluate_invariants(signals: Sequence[SignalSubjectInput]) -> dict[str, Any]:
+def evaluate_invariants(
+    signals: Sequence[SignalSubjectInput],
+    *,
+    anchor_text: str | None = None,
+) -> dict[str, Any]:
     """Evaluate stability transformations that require no semantic judge."""
-    baseline = score_subject_candidates(signals)
+    baseline = score_subject_candidates(signals, anchor_text=anchor_text)
     baseline_primary = baseline["primary_country"]
 
     family_rows: list[dict[str, Any]] = []
     families = sorted({signal.source_family for signal in signals if signal.source_family})
     for family in families:
-        result = score_subject_candidates([
-            signal for signal in signals if signal.source_family != family
-        ])
+        result = score_subject_candidates(
+            [signal for signal in signals if signal.source_family != family],
+            anchor_text=anchor_text,
+        )
         family_rows.append({
             "removed_source_family": family,
             "primary_country": result["primary_country"],
@@ -501,9 +522,10 @@ def evaluate_invariants(signals: Sequence[SignalSubjectInput]) -> dict[str, Any]
     language_rows: list[dict[str, Any]] = []
     languages = sorted({signal.language for signal in signals if signal.language})
     for language in languages:
-        result = score_subject_candidates([
-            signal for signal in signals if signal.language == language
-        ])
+        result = score_subject_candidates(
+            [signal for signal in signals if signal.language == language],
+            anchor_text=anchor_text,
+        )
         language_rows.append({
             "language": language,
             "primary_country": result["primary_country"],
@@ -522,7 +544,7 @@ def evaluate_invariants(signals: Sequence[SignalSubjectInput]) -> dict[str, Any]
     split = max(1, len(ordered) // 2)
     adjacent_rows = []
     for name, subset in (("early", ordered[:split]), ("late", ordered[split:])):
-        result = score_subject_candidates(subset)
+        result = score_subject_candidates(subset, anchor_text=anchor_text)
         adjacent_rows.append({"window": name, "primary_country": result["primary_country"]})
     adjacent_primaries = {
         row["primary_country"] for row in adjacent_rows if row["primary_country"]
@@ -549,9 +571,17 @@ def evaluate_invariants(signals: Sequence[SignalSubjectInput]) -> dict[str, Any]
 
 def run_ablations(
     topics: Sequence[Sequence[SignalSubjectInput]],
+    *,
+    anchor_texts: Sequence[str | None] | None = None,
 ) -> dict[str, Any]:
     """Measure component dependence over all supplied topics."""
-    baselines = [score_subject_candidates(signals) for signals in topics]
+    anchors = list(anchor_texts or [None] * len(topics))
+    if len(anchors) != len(topics):
+        raise ValueError("anchor_texts must align with topics")
+    baselines = [
+        score_subject_candidates(signals, anchor_text=anchor)
+        for signals, anchor in zip(topics, anchors, strict=True)
+    ]
     baseline_abstentions = sum(
         result["primary_country"] is None for result in baselines
     )
@@ -559,9 +589,11 @@ def run_ablations(
     for component in _COMPONENT_WEIGHTS:
         ablated = [
             score_subject_candidates(
-                signals, disabled_components=frozenset({component})
+                signals,
+                anchor_text=anchor,
+                disabled_components=frozenset({component}),
             )
-            for signals in topics
+            for signals, anchor in zip(topics, anchors, strict=True)
         ]
         components[component] = {
             "topics_evaluated": len(topics),
@@ -770,7 +802,7 @@ def render_markdown(report: dict[str, Any]) -> str:
     ]
     for row in report.get("topics", []):
         inference = row.get("inference", {})
-        label = str(row.get("label") or "").replace("|", "\\|")
+        label = str(row.get("label") or "").strip().replace("|", "\\|")
         reasons = ", ".join(inference.get("reason_codes", []))
         lines.append(
             f"| {row.get('dynamic_topic_id')} | {row.get('state')} | {label} | "

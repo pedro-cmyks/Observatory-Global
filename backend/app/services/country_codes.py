@@ -30,6 +30,8 @@ FIPS_TO_ISO = {
     'TU': 'TR',  # Turkey
     'IS': 'IL',  # Israel
     'IZ': 'IQ',  # Iraq
+    'KU': 'KW',  # Kuwait
+    'BX': 'BN',  # Brunei
     'SW': 'SE',  # Sweden
     'DA': 'DK',  # Denmark
     'AU': 'AT',  # Austria (FIPS AU = Austria, ISO AU = Australia!)

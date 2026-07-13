@@ -101,6 +101,38 @@ def test_native_script_evidence_is_exposed_separately():
     assert "native_pattern" in by_country["PK"]
 
 
+def test_extractor_decodes_html_escaped_native_script():
+    evidence = extract_headline_country_evidence(
+        "&#x627;&#x644;&#x643;&#x648;&#x64A;&#x62A; reports an attack"
+    )
+
+    assert {row["country"] for row in evidence} == {"KW"}
+
+
+@pytest.mark.parametrize("headline,expected", [
+    ("Туристы госпитализированы после отравления в Турции", "TR"),
+    ("STF bloqueia bens de Eduardo Cunha", "BR"),
+    ("Sinner retains Wimbledon title", "GB"),
+])
+def test_entity_and_native_anchors_resolve_country(headline, expected):
+    evidence = extract_headline_country_evidence(headline)
+
+    assert expected in {row["country"] for row in evidence}
+
+
+def test_unanimous_country_corroborated_by_current_label_does_not_abstain():
+    signals = [
+        _signal(1, "Drones intercepted near Moscow", source_family="wire"),
+        _signal(2, "Moscow airports restrict flights", source_family="state", day=2),
+        _signal(3, "Unrelated operational update", source_family="press", day=3),
+    ]
+
+    result = score_subject_candidates(signals, anchor_text="Drone Attacks on Moscow")
+
+    assert result["primary_country"] == "RU"
+    assert "anchor_corroborated_subject_geo" in result["reason_codes"]
+
+
 def test_candidate_exposes_components_provenance_and_uncertainty():
     result = score_subject_candidates([
         _signal(1, "Flooding in Colombia displaces families", ner_places=("Colombia",)),

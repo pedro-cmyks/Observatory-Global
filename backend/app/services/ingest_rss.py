@@ -779,9 +779,9 @@ _COUNTRY_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r'\bDR Congo\b|\bDRC\b|\bCongo\b|\bKinshasa\b|\bM23\b', re.I), "CD"),
     (re.compile(r'\bHaiti\b|\bHaitian\b|\bPort-au-Prince\b', re.I), "HT"),
     (re.compile(r'\bVenezuela\b|\bVenezuelan\b|\bCaracas\b|\bMaduro\b', re.I), "VE"),
-    (re.compile(r'\bBrazil\b|\bBrazilian\b|\bBrasilia\b|\bLula\b|\bSão Paulo\b', re.I), "BR"),
+    (re.compile(r'\bBrazil\b|\bBrazilian\b|\bBrasilia\b|\bLula\b|\bSão Paulo\b|\bSTF\b|\bSupremo Tribunal Federal\b|\bFlávio Dino\b', re.I), "BR"),
     (re.compile(r'\bUnited States\b|\bAmerican\b|\bWashington\b|\bTrump\b|\bPentagon\b', re.I), "US"),
-    (re.compile(r'\bUnited Kingdom\b|\bBritish\b|\bLondon\b|\bStarmer\b|\bDowning Street\b', re.I), "GB"),
+    (re.compile(r'\bUnited Kingdom\b|\bBritish\b|\bLondon\b|\bWimbledon\b|\bStarmer\b|\bDowning Street\b', re.I), "GB"),
     (re.compile(r'\bFrance\b|\bFrench\b|\bParis\b|\bMacron\b|\bElysée\b', re.I), "FR"),
     (re.compile(r'\bGermany\b|\bGerman\b|\bBerlin\b|\bBundestag\b', re.I), "DE"),
     (re.compile(r'\bStrait of Hormuz\b|\bHormuz\b|\bPersian Gulf\b|\bGulf of Oman\b', re.I), "IR"),
@@ -907,6 +907,7 @@ _NATIVE_COUNTRY_PATTERNS: list[tuple[re.Pattern, str]] = [
     (_native_word('Rusya'), "RU"),                      # Turkish
     (_native_bengali('রাশিয়া'), "RU"),                 # Bengali
     # Turkey — before Syria
+    (re.compile(r'Турц'), "TR"),
     (_native_arabic('تركيا', 'ترکیه', 'ترکیە'), "TR"),
     (_native_word('Türkiye', 'Türk', 'Ankara', 'İstanbul', 'Erdoğan'), "TR"),
     # Pakistan — before Afghanistan

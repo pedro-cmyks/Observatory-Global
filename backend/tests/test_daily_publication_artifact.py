@@ -11,6 +11,7 @@ from app.services.daily_publication import (
     measure_publication_evidence_fit,
     verified_subjects_from_receipts,
 )
+from app.services.subject_geography import infer_receipt_subject_geography
 from scripts.build_daily_publication import _edition_status
 
 
@@ -96,10 +97,10 @@ def test_offline_receipt_coverage_reconciles_all_candidate_batches():
 
 def test_daily_verified_subjects_require_two_receipts_and_two_sources():
     receipts = [
-        {"id": 1, "source_name": "Reuters", "persons": ["Donald Trump", "Iran"]},
-        {"id": 2, "source_name": "Reuters", "persons": ["Donald Trump", "Ali Khamenei"]},
-        {"id": 3, "source_name": "AP", "persons": ["donald trump", "Ali Khamenei"]},
-        {"id": 4, "source_name": "AP", "persons": ["Single Mention"]},
+        {"id": 1, "headline": "Donald Trump comments on Iran", "source_name": "Reuters", "persons": ["Donald Trump", "Iran"]},
+        {"id": 2, "headline": "Trump and Ali Khamenei exchange statements", "source_name": "Reuters", "persons": ["Donald Trump", "Ali Khamenei"]},
+        {"id": 3, "headline": "Donald Trump answers Ali Khamenei", "source_name": "AP", "persons": ["donald trump", "Ali Khamenei"]},
+        {"id": 4, "headline": "Single Mention appears once", "source_name": "AP", "persons": ["Single Mention"]},
     ]
 
     verified = verified_subjects_from_receipts(receipts)
@@ -111,11 +112,88 @@ def test_daily_verified_subjects_require_two_receipts_and_two_sources():
 
 def test_daily_verified_subjects_do_not_treat_syndication_as_corroboration():
     receipts = [
-        {"id": 1, "source_name": "Reuters", "persons": ["Donald Trump"]},
-        {"id": 2, "source_name": "Reuters", "persons": ["Donald Trump"]},
+        {"id": 1, "headline": "Donald Trump speaks", "source_name": "Reuters", "persons": ["Donald Trump"]},
+        {"id": 2, "headline": "Donald Trump responds", "source_name": "Reuters", "persons": ["Donald Trump"]},
     ]
 
     assert verified_subjects_from_receipts(receipts) == []
+
+
+def test_daily_verified_subjects_must_be_named_in_the_frozen_headline():
+    receipts = [
+        {
+            "id": 1,
+            "headline": "Israeli fire in Gaza kills six people",
+            "source_name": "Reuters",
+            "persons": ["Gaza Khan Younis", "Donald Trump"],
+        },
+        {
+            "id": 2,
+            "headline": "Six killed in Israeli attacks on Gaza",
+            "source_name": "AP",
+            "persons": ["Gaza Khan Younis", "Donald Trump"],
+        },
+    ]
+
+    assert verified_subjects_from_receipts(receipts) == []
+
+
+def test_daily_verified_subjects_keep_independently_named_people():
+    receipts = [
+        {
+            "id": 1,
+            "headline": "Zverev praises Sinner after Wimbledon final",
+            "source_name": "Reuters",
+            "persons": ["Alexander Zverev"],
+        },
+        {
+            "id": 2,
+            "headline": "Alexander Zverev reflects on Wimbledon loss",
+            "source_name": "AP",
+            "persons": ["Alexander Zverev"],
+        },
+    ]
+
+    assert verified_subjects_from_receipts(receipts) == ["alexander zverev"]
+
+
+def test_receipt_subject_geography_verifies_every_independent_country():
+    receipts = [
+        {"id": 1, "headline": "Iran and Israel resume talks", "source_name": "Reuters"},
+        {"id": 2, "headline": "Israel and Iran trade accusations", "source_name": "AP"},
+        {"id": 3, "headline": "Iran-Israel talks continue", "source_name": "BBC"},
+    ]
+
+    result = infer_receipt_subject_geography(receipts)
+
+    assert result["status"] == "verified"
+    assert result["verified_subject_countries"] == ["IL", "IR"]
+    assert result["forced_primary_country"] is False
+    assert result["coverage_geography_used"] is False
+
+
+def test_receipt_subject_geography_canonicalizes_gaza_to_palestine():
+    result = infer_receipt_subject_geography([
+        {"id": 1, "headline": "Israeli fire in Gaza", "source_name": "Reuters"},
+        {"id": 2, "headline": "Gaza hit by Israeli fire", "source_name": "AP"},
+    ])
+
+    assert result["verified_subject_countries"] == ["IL", "PS"]
+
+
+def test_receipt_subject_geography_decodes_native_html_and_abstains_when_thin():
+    result = infer_receipt_subject_geography([
+        {
+            "id": 1,
+            "headline": "&#x627;&#x644;&#x643;&#x648;&#x64A;&#x62A; reports an attack",
+            "source_name": "Outlet A",
+        },
+    ])
+
+    assert result["status"] == "partial"
+    assert result["verified_subject_countries"] == []
+    assert result["candidates"][0]["country"] == "KW"
+    assert result["reason_codes"] == ["subject_geography_not_independently_corroborated"]
 
 
 def test_daily_edition_label_uses_current_cluster_not_stale_thread_identity():
