@@ -117,12 +117,57 @@
   The independence/syndication gate is unchanged.
 - Current verification: backend `1309 passed, 6 skipped`; frontend `308 passed`;
   production Vite build passes.
+- Publication subject geography now comes from decoded frozen headlines and
+  requires two receipts from two outlets for each country. It never copies
+  coverage geography or forces one primary country. Replaying the sealed
+  12-story edition verified subject geography for all 12 stories, including
+  multi-country Israel/Palestine and Iran/Jordan rows; raw `KU`/`BX` codes now
+  normalize to ISO `KW`/`BN` at the shared boundary.
+- The publication `who` ledger now follows Atlas's documented broad-actor
+  definition. Corroborated subject places count as typed actors for readiness,
+  while shared-country overlap remains contextual and cannot become a measured
+  actor edge. Person names must also occur in the frozen headline across two
+  outlets; this removed byline/place noise and retained Alexander Zverev in the
+  current forcing case.
+- A fresh read-only #238 run exhausted `1,488/1,488` active/candidate topics in
+  30 batches with no failures: `169` inferred, `1,319` abstained. The added
+  anchor-corroboration rule resolves unanimous, two-family cases without
+  weakening ambiguous-topic abstention. Artifacts are under
+  `docs/research/subject-geography/2026-07-13-*`.
+- GitHub #256 is closed after the real 02:30 autonomous run emitted fresh
+  machine receipts: `movement-v1` wrote 1,151 bindings at 10.0h lag and
+  `disaster-v1` wrote 81 at 3.9h lag, with no new stale-engine timeout.
+- #253 model residency was rejected after phase timing showed model loading in
+  seconds while inference consumed nearly the whole 1,576–1,686s cycle. The
+  replacement batches multilingual token classification instead of retaining
+  all large models. Controlled writes improved 300-row NER from ~874s to 67.9s
+  (12.9×). The first autonomous batch-eight cycle wrote 1,200 rows but took
+  1,183.8s end-to-end, invalidating the optimistic SLA projection. A following
+  representative batch-16 run handled 204 spaCy + 953 primary-HF + 43 Cyrillic
+  rows in 160.82s at 1.07 GB max RSS / zero swaps. The M1 runner now uses that
+  measured batch size plus an independent 1,200-row NER budget and checkpoints
+  actual writes; the library/Fly default stays eight. The restarted autonomous
+  worker then wrote 1,200 NER rows in 131.20s and completed all three phases in
+  266.4s (~16,216 NER rows/h, 3.3× observed inflow) with no error. A repeated
+  direct 24h query moved from 86,307 to 85,455 pending rows during continuing
+  ingest. Throughput is accepted; #253 remains open for a daily trend receipt
+  and its separately listed small residues.
+- The eight battery-preservation WIP branches were audited by changed content,
+  not age. Three fully absorbed refs (junk gate, clustering recall and
+  Belén/Belém geo work) were deleted locally; five branches with unique event,
+  Universe, grid-performance or UI work remain preserved. Receipt:
+  `docs/state/2026-07-13-wip-branch-triage.md`.
+- Fresh verification after these changes: backend `1330 passed, 6 skipped`;
+  frontend `308 passed`; focused NLP suite `36 passed`; Ruff and diff checks
+  pass.
 
 Primary records:
 
 - `docs/state/2026-07-12-spec-history-crosswalk.md`
 - `docs/state/2026-07-13-l0-l3-reliability-matrix.md`
 - `docs/state/2026-07-13-ann-index-recovery.md`
+- `docs/state/2026-07-13-wip-branch-triage.md`
+- `docs/research/multilingual-nlp/2026-07-13-ner-throughput-measurement.md`
 - `docs/research/atlas-paper/phase-1-validation/reports/2026-07-13-publication-evidence-fit.md`
 - `docs/superpowers/plans/2026-07-12-investigation-graph-slice-3-daily-publication.md`
 

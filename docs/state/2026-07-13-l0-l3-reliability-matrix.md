@@ -59,7 +59,8 @@ label/evidence fit is measured.
 - event counts and related-thread rows still do not uniformly open exact member
   receipts or distinguish binding tiers in one contract;
 - `FocusLens` time behavior is not yet shared by every focus-dependent panel;
-- event-binding freshness and structured marker receipts remain #256/#255.
+- event-binding freshness passed its autonomous gate and #256 is closed;
+  structured marker receipts remain #255.
 
 **Gate:** L2 is already the strongest standalone product. The next work is
 contract depth and coordinated time, not another surface.
@@ -163,9 +164,38 @@ readiness is not.
 | `topic_movement` | green as current-state measure | usable for movement/surprise; no forecasting language |
 | full evidence receipt lookup | red for request path | random reads over `signals_v2` can exceed 12s on cold cache |
 | `dossier-connections-v1` | correct but cold-path slow | must cache/precompute or degrade independently for L1 |
-| subject geography | Stage 1 only, 9.7% inference | where/C7 cannot claim reliable subject truth |
-| actors/NER | amber/red | who and shared-actor edges remain the main quality bottleneck |
+| subject geography | Stage 1.1 complete-universe: 169/1,488 inferred; 1,319 explicit abstentions | frozen daily headlines now verify every selected story independently, but C7 remains read-only pending broader validation |
+| actors/NER | amber | headline-visible person hygiene and typed subject-place actors repair daily `who`; upstream entity throughput still needs an autonomous SLA trend |
 | public discussion | thin | who-says-what remains press-heavy; never call it public consensus |
+
+## 2026-07-13 follow-up — deterministic readiness replay
+
+The measurements above remain the historical baseline for the currently stored
+edition. Replaying that edition through the corrected publication code changes
+the readiness verdict without rewriting or backdating the sealed artifact:
+
+- all 12 selected story nodes have independently corroborated subject
+  geography; multi-country stories stay multi-country;
+- headline-visible person hygiene removes byline/place leakage, and verified
+  subject places satisfy the documented broad-actor definition without turning
+  country overlap into a measured relationship;
+- `who`, `what`, `when`, `where` and `how` are now ready; `why` remains partial
+  because Atlas does not yet measure causality;
+- the real scheduled event binders wrote 1,151 movement and 81 disaster
+  bindings, then produced a 12-story/44-receipt daily artifact at 3.363 hours
+  lag; #256 is therefore closed;
+- batched multilingual NER reduced a controlled 300-row phase from about 874
+  seconds to 67.90 seconds. The first autonomous batch-eight cycle wrote 1,200
+  rows but took 1,183.8 seconds end-to-end, so it did not satisfy the SLA. A
+  representative batch-16 run then processed 1,200 rows (996 transformer
+  routes) in 160.82 seconds at 1.07 GB max RSS and zero swaps. #253 stays open
+  for trend/residue follow-up: the restarted autonomous worker subsequently
+  completed 1,200 NER rows in 131.20 seconds and the whole cycle in 266.4
+  seconds, while the direct 24h pending count fell from 86,307 to 85,455.
+
+The publication verdict is still not green: the sealed production artifact was
+built before these adapters were deployed, causal `why` is intentionally
+partial, and the shared-package browser/editor comparison has not yet passed.
 
 ### Embedding writer incident found during freshness verification
 

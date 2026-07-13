@@ -165,11 +165,84 @@ pins. Backend verification is now `1309 passed,
 6 skipped`; frontend verification is `308 passed` and the production build
 passes.
 
+The next publication-readiness pass repaired two remaining deterministic
+dimensions without using an LLM as classifier. Subject geography is now
+derived from decoded frozen receipt headlines, with every country independently
+required to appear in two receipts from two outlets. It preserves multi-country
+stories, never copies coverage geography and never selects a forced primary.
+On the sealed 12-story daily edition, all 12 story nodes now carry verified
+subject geography. The shared country boundary also converts the observed
+legacy `KU` and `BX` codes to ISO `KW` and `BN`.
+
+Actor cleanup now requires a candidate person to be visibly named in the
+headline as well as corroborated across receipts/outlets. This removed
+`Gaza Khan Younis` and `Domodedovo I Zhukovsky`-style body/byline leakage; the
+current edition retains Alexander Zverev. The publication package also applies
+the already-approved broad actor canon: independently verified subject places
+are typed `place` actors for the 5W+H `who` ledger. They do not enter the shared
+distinctive-actor relation engine, so a common country remains contextual.
+
+The complete-universe subject-geography rerun then exhausted all 1,488 current
+active/candidate topics in 30 cursor batches with zero failures. A conservative
+anchor rule now accepts only a unanimous candidate named by the current topic
+label and supported by at least two signals from two source families. The run
+inferred 169 topics (11.36%) and abstained on 1,319; no coverage proxy became
+truth. The full non-truncated ledger and ablations are stored as
+`docs/research/subject-geography/2026-07-13-*`.
+
+The autonomous event-binding gate also passed under the real scheduled scoped
+snapshot. `movement-v1` scanned/matched/wrote 1,151 bindings with 10.0 hours
+lag; `disaster-v1` scanned 1,784 and matched/wrote 81 with 3.9 hours lag. No new
+stale-engine timeout appeared and the downstream daily artifact completed, so
+GitHub #256 was closed with those machine receipts.
+
+Finally, #253 was re-evaluated from live phase timestamps instead of its old
+assumption. Transformer weight loading took seconds; inference dominated the
+1,576–1,686 second cycles, so retaining sentiment, NER and framing models would
+save under 2% while increasing 8 GB M1 memory pressure. That cache change was
+discarded. The measured replacement batches multilingual token-classification
+headlines per model call, with automatic per-headline fallback if a backend
+rejects batching. A controlled write-enabled phase improved 300-row NER from
+about 874 seconds to 67.90 seconds (12.9×). A 1,200-row phase then completed in
+166.29 seconds at 970 MB max RSS / 1.16 GB peak footprint with zero swaps. The
+runner now keeps sentiment/framing at 300 but gives NER an independent 1,200-row
+budget, and the worker checkpoints its actual per-phase writes. Substituting the
+measured phase into the last 1,562.3-second cycle projects ~5,060 NER rows/hour
+against the current ~4,848/hour hot-window average. #253 remains open until an
+autonomous full cycle and daily lag trend confirm the SLA.
+
+The first such autonomous run prevented a premature close: it did write 1,200
+NER rows, but the full batch-eight cycle took 1,183.8 seconds. The next live
+priority batch was therefore measured with internal route counts and batch 16:
+204 spaCy, 953 primary-HF and 43 Cyrillic rows completed in 160.82 seconds at
+1.07 GB max RSS / 1.54 GB peak footprint with zero swaps. Batch 16 is activated
+only in the M1 runner; the library/Fly default remains eight. The worker was
+restarted for a second autonomous acceptance cycle and #253 stays open until
+that receipt plus backlog trend exist.
+
+That acceptance cycle passed. Batch-16 NER wrote 1,200 rows in 131.20 seconds
+(750 spaCy, 450 primary HF) and the complete three-phase loop finished in 266.4
+seconds without error: about 16,216 NER rows/hour, 3.3× the observed inflow. A
+directly repeated 24-hour pending query fell from 86,307 to 85,455 while ingest
+continued. The throughput lever is now operationally accepted; #253 remains
+open only for a daily trend receipt and the issue's explicit small residues.
+
+The eight battery-preservation WIP branches were then compared by file content.
+Three were deleted locally only after proving their changes were fully absorbed
+and superseded: useful-coverage junk gate, clustering-recall repair, and the
+Belén/Belém subject-geo correction. Five unique branches remain preserved for
+event relations, precomputed Universe snapshots, grid-drag performance and two
+L2 visual refinements. The evidence table is in
+`docs/state/2026-07-13-wip-branch-triage.md`; no active worktree directory or
+commit object was deleted.
+
 Records:
 
 - `docs/state/2026-07-12-spec-history-crosswalk.md`
 - `docs/state/2026-07-13-l0-l3-reliability-matrix.md`
 - `docs/state/2026-07-13-ann-index-recovery.md`
+- `docs/state/2026-07-13-wip-branch-triage.md`
+- `docs/research/multilingual-nlp/2026-07-13-ner-throughput-measurement.md`
 - `docs/superpowers/plans/2026-07-12-investigation-graph-slice-3-daily-publication.md`
 
 ---
