@@ -18,6 +18,16 @@
 - Production deploys use `scripts/deploy-fly-api.sh`, never a bare `fly deploy`.
 - Do not modify the deprecated `frontend/` directory.
 
+## Execution Status
+
+- Task 1: complete — `e70673a9`.
+- Task 2: complete — `3b010e74`.
+- Task 3: complete — `bdce07fb`.
+- Task 4: complete with caveat — full backend suite and production API smoke
+  passed; the integrated browser controller could not attach a fresh tab for
+  the visual walkthrough. Evidence and grade are in
+  `docs/state/2026-07-12-investigation-graph-slice-1-reliability.md`.
+
 ---
 
 ## File Map

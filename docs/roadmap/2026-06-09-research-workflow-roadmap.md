@@ -1,7 +1,7 @@
 # Atlas Research Workflow Roadmap
 
 **Date:** 2026-06-09
-**Status:** active — next sprint after the MVP truth pass
+**Status:** active — phases 0.5 through 1.5 shipped; typed graph foundation next
 **Spec:** `docs/specs/2026-06-09-research-thread-builder-workbench.md`
 **Umbrella issue:** #213
 **Supersedes triage framing in:** `docs/roadmap/2026-06-04-mvp-issue-triage.md`
@@ -81,6 +81,32 @@ useful, openable anchors; the user can pin a route in Workbench without losing
 it; who-says-what and frame differences are visible; evidence, context, weak
 support, contradiction, and gaps are clearly separated; list and detail counts
 agree; and the pinned route can become a report.
+
+## Addendum 2026-07-12: Investigation Graph execution order
+
+The original read-only research-plan phases are now live: list/detail
+reconciliation, forcing fixtures, multi-lane anchors, usefulness ranking,
+reason-code ledgers, and semantic retrieval. Workbench can store several pin
+types, but its constellation resolves mostly thread/topic identifiers and does
+not yet connect the heterogeneous Atlas surfaces truthfully.
+
+Pedro approved the next canon in
+`docs/superpowers/specs/2026-07-12-investigation-graph-l2-l3-design.md`:
+
+1. reliability precondition — shipped and deployed in
+   `docs/state/2026-07-12-investigation-graph-slice-1-reliability.md`;
+2. typed node identity and heterogeneous `resolve-node` adapters;
+3. immutable pin snapshot plus live reference;
+4. measured/inferred/contextual/analyst edge envelopes with receipts;
+5. Workbench graph/time slices and editorial composition;
+6. shared publication package, used both by L1's complete 24h investigation
+   and L3's analyst-built investigation;
+7. blind editorial comparison for the prose provider over frozen evidence
+   packages; LLM writes synthesis but never graph topology or evidence truth.
+
+The first graph forcing case must combine at least two related Iran threads, a
+structured conflict event, a country, and a person/entity. It fails if the only
+explanation is a tautological geography edge such as `Iran ↔ Iran`.
 
 
 ## Addendum 2026-06-12: L4 markets layer (post-spec track)

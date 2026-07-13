@@ -1,6 +1,39 @@
 # Atlas — Session Status
 **Branch:** `v3-intel-layer` (canonical production/main) | **Updated:** 2026-07-12
 
+## Current handoff — Shared L1/L2/L3 Investigation Graph
+
+- Pedro approved the product architecture in
+  `docs/superpowers/specs/2026-07-12-investigation-graph-l2-l3-design.md`.
+  L1 is a system-built 24h investigation, L2 is the standalone single-focus
+  exploration instrument, and L3 is the multi-focus editorial composition
+  studio. L1 and L3 must emit the same publication-grade `PublicationPackage`.
+- Reliability Slice 1 is deployed. The default stories-only Narrative Threads
+  path no longer runs the atlas-category query it discards; database-owned
+  command timeouts return honest `503 db_busy`; semantic centroid, taxonomy,
+  and headline retrieval now degrade independently.
+- Fresh backend verification: `1230 passed, 6 skipped, 0 failed`. Fly API image
+  `deployment-01KXCRYT1K1VN352NZC04K5Q77`, app machine version `398`, health
+  `1/1 passing`.
+- Post-deploy production: threads returned `10` rows at 24h and `24` at 168h;
+  NATO 24h returned one pineable thread without a timeout gap; the Iran case
+  returned 13 thread anchors / 6 pin candidates and opened a 66-signal detail
+  with 23 evidence receipts.
+- Delivery is graded `pass_with_caveats`: the integrated browser controller
+  could not attach a fresh tab for the visual smoke, and unrelated
+  anomaly/correlation queries still show handled shared-DB timeouts. P1.2
+  serving/batch isolation remains necessary.
+- Next executable slice: canonical typed node identity + heterogeneous
+  `resolve-node` adapters + immutable snapshot/live references + typed edge
+  receipts, proven by a multi-object Iran forcing case before changing UI.
+
+Primary records:
+
+- `docs/superpowers/plans/2026-07-12-investigation-graph-slice-1-reliability.md`
+- `docs/state/2026-07-12-investigation-graph-slice-1-reliability.md`
+
+---
+
 ## Current handoff — Subject geography Stage 1 + event relationship audit
 
 - #238 Stage 1 is delivered as a deterministic, read-only complete-universe

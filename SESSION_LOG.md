@@ -1,5 +1,44 @@
 # Atlas — Session Log
 
+## 2026-07-12 — L1/L2/L3 Investigation Graph canon + reliability Slice 1
+
+Pedro approved the unifying product model: L1 is a complete-universe 24h
+investigation built by the system; L2 is the standalone exploration instrument;
+L3 is the editorial studio where heterogeneous pins become a multi-focus graph
+and, eventually, a publishable dossier. L1 and L3 share one publication-quality
+contract. Search supplies anchors; it does not manufacture the dossier.
+
+The approved architecture is recorded in
+`docs/superpowers/specs/2026-07-12-investigation-graph-l2-l3-design.md`.
+
+Reliability Slice 1 was implemented with TDD and deployed:
+
+- removed the discarded atlas-category query from stories-only thread lists;
+- preserved category rollback switches and honest short/empty story lists;
+- mapped database-owned thread command timeouts to `503 db_busy` without
+  mislabeling generic timeouts;
+- isolated semantic story-centroid, taxonomy-description, and signal-headline
+  failures with component-specific visible gaps;
+- removed two stale test assumptions left behind by intentional LLM parser and
+  provider-chain changes.
+
+Verification: `1230 passed, 6 skipped, 0 failed`. Production Fly image
+`deployment-01KXCRYT1K1VN352NZC04K5Q77` is on app version 398 with its health
+check passing. Post-deploy 24h/168h thread lists returned 10/24 rows; NATO 24h
+returned a pineable thread with no timeout gap; the Iran case returned 13 thread
+anchors, six pin candidates, and a 66-signal detail with 23 evidence receipts.
+
+The slice is `pass_with_caveats`: browser automation could not attach a fresh
+tab for the visual walkthrough, and the shared DB still generated handled
+timeouts on unrelated anomaly/correlation requests. Full evidence:
+`docs/state/2026-07-12-investigation-graph-slice-1-reliability.md`.
+
+Next: typed Investigation Graph foundation and heterogeneous pin resolution,
+with no frontend rewrite until the graph forcing case reconciles thread, event,
+country, entity, and evidence nodes.
+
+---
+
 ## 2026-07-12 — Complete-universe subject geography and event map audit
 
 Delivered Stage 1 of #238 without LLM classification or semantic top-N limits.
