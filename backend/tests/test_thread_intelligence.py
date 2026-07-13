@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import inspect
 
+import pytest
+
 from app.services import thread_intelligence
 from app.services.thread_intelligence import (
     THREAD_EVIDENCE_SQL,
@@ -392,7 +394,12 @@ def test_fetch_threads_uses_supplied_connection_without_pool():
     thread_intelligence.db.pool = None  # prove no pool access
     try:
         result = asyncio.run(
-            fetch_threads(hours=12, limit=5, conn=fake)
+            fetch_threads(
+                hours=12,
+                limit=5,
+                topic_slug="water-stress-drought",
+                conn=fake,
+            )
         )
     finally:
         thread_intelligence.db.pool = original_pool
@@ -402,6 +409,57 @@ def test_fetch_threads_uses_supplied_connection_without_pool():
     args = fake.fetch_calls[0][1]
     assert args[0] == 12  # hours
     assert args[1] == 5  # limit
+
+
+def test_fetch_threads_stories_only_skips_discarded_atlas_query(monkeypatch):
+    """The default list must not pay for atlas category rows it discards."""
+    monkeypatch.delenv("ATLAS_THREADS_CATEGORY_ROWS", raising=False)
+    monkeypatch.delenv("ATLAS_COUNTRY_CATEGORY_ROWS", raising=False)
+
+    class FakeConn:
+        def __init__(self) -> None:
+            self.fetch_queries: list[str] = []
+
+        async def fetchval(self, query, *args, **kwargs):
+            if "dynamic_topics" in query or "dynamic_topic_members" in query:
+                return True
+            if "emergent_clusters" in query:
+                return False
+            raise AssertionError(f"unexpected fetchval query: {query}")
+
+        async def fetch(self, query, *args, **kwargs):
+            self.fetch_queries.append(query)
+            if "candidate_topics" in query:
+                return []
+            if "signal_topic_assignments" in query:
+                raise AssertionError(
+                    "stories-only path queried atlas category aggregates"
+                )
+            raise AssertionError(f"unexpected fetch query: {query}")
+
+    fake = FakeConn()
+    result = asyncio.run(fetch_threads(hours=24, limit=10, conn=fake))
+
+    assert result == []
+    assert len(fake.fetch_queries) == 1
+
+
+def test_fetch_threads_category_kill_switch_still_fetches_atlas(monkeypatch):
+    """The explicit rollback switch continues to restore category rows."""
+    monkeypatch.setenv("ATLAS_THREADS_CATEGORY_ROWS", "on")
+    calls: list[str] = []
+
+    class FakeConn:
+        async def fetchval(self, query, *args, **kwargs):
+            return True
+
+        async def fetch(self, query, *args, **kwargs):
+            calls.append(query)
+            return []
+
+    asyncio.run(fetch_threads(hours=24, limit=10, conn=FakeConn()))
+
+    assert any("signal_topic_assignments" in query for query in calls)
 
 
 def test_serialize_evidence_includes_syndication_metadata():

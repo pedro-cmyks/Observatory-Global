@@ -62,7 +62,7 @@ def test_fetch_threads_stories_only_skips_discarded_atlas_query():
 
 - [ ] **Step 2: Run the test and verify RED**
 
-Run: `cd backend && ../.venv/bin/pytest tests/test_thread_intelligence.py::test_fetch_threads_stories_only_skips_discarded_atlas_query -q`
+Run: `cd backend && .venv/bin/pytest tests/test_thread_intelligence.py::test_fetch_threads_stories_only_skips_discarded_atlas_query -q`
 
 Expected: FAIL with `stories-only path queried atlas category aggregates`.
 
@@ -84,7 +84,7 @@ def test_fetch_threads_category_kill_switch_still_fetches_atlas(monkeypatch):
 
 - [ ] **Step 4: Run the kill-switch test and verify its current behavior is protected**
 
-Run: `cd backend && ../.venv/bin/pytest tests/test_thread_intelligence.py::test_fetch_threads_category_kill_switch_still_fetches_atlas -q`
+Run: `cd backend && .venv/bin/pytest tests/test_thread_intelligence.py::test_fetch_threads_category_kill_switch_still_fetches_atlas -q`
 
 Expected: PASS before and after the refactor; this is the characterization guardrail.
 
@@ -107,7 +107,7 @@ Keep the global emergent fallback and country honest-empty behavior unchanged. E
 
 - [ ] **Step 6: Run focused and neighboring tests**
 
-Run: `cd backend && ../.venv/bin/pytest tests/test_thread_intelligence.py tests/test_threads_emergent_augment_shape.py tests/test_thread_person_filter.py -q`
+Run: `cd backend && .venv/bin/pytest tests/test_thread_intelligence.py tests/test_threads_emergent_augment_shape.py tests/test_thread_person_filter.py -q`
 
 Expected: all tests PASS.
 
@@ -144,7 +144,7 @@ def test_fetch_threads_translates_database_command_timeout():
 
 - [ ] **Step 2: Run it and verify RED**
 
-Run: `cd backend && ../.venv/bin/pytest tests/test_thread_intelligence.py::test_fetch_threads_translates_database_command_timeout -q`
+Run: `cd backend && .venv/bin/pytest tests/test_thread_intelligence.py::test_fetch_threads_translates_database_command_timeout -q`
 
 Expected: FAIL because `DatabaseBusyError` is not yet defined/exported.
 
@@ -189,7 +189,7 @@ app.add_exception_handler(DatabaseBusyError, _handle_db_busy)
 
 - [ ] **Step 6: Verify both positive and negative timeout contracts**
 
-Run: `cd backend && ../.venv/bin/pytest tests/test_db_busy_degradation.py tests/test_thread_intelligence.py -q`
+Run: `cd backend && .venv/bin/pytest tests/test_db_busy_degradation.py tests/test_thread_intelligence.py -q`
 
 Expected: PASS, including `test_generic_timeout_is_not_mislabeled_as_database_contention`.
 
@@ -238,7 +238,7 @@ def test_signal_timeout_preserves_centroid_anchors_and_names_component_gap():
 
 - [ ] **Step 2: Run it and verify RED**
 
-Run: `cd backend && ../.venv/bin/pytest tests/test_research_semantic.py::test_signal_timeout_preserves_centroid_anchors_and_names_component_gap -q`
+Run: `cd backend && .venv/bin/pytest tests/test_research_semantic.py::test_signal_timeout_preserves_centroid_anchors_and_names_component_gap -q`
 
 Expected: FAIL because the broad semantic `try` currently reports only a generic gap.
 
@@ -248,7 +248,7 @@ Add two tests proving: (a) a centroid fetch timeout preserves atlas and signal r
 
 - [ ] **Step 4: Run both tests and verify RED**
 
-Run: `cd backend && ../.venv/bin/pytest tests/test_research_semantic.py -k "timeout_preserves" -q`
+Run: `cd backend && .venv/bin/pytest tests/test_research_semantic.py -k "timeout_preserves" -q`
 
 Expected: the new isolation tests FAIL for the missing component boundaries.
 
@@ -268,7 +268,7 @@ After query embedding succeeds, wrap `fetch_centroids_fn`, `fetch_atlas_anchors_
 
 - [ ] **Step 6: Run semantic and full research tests**
 
-Run: `cd backend && ../.venv/bin/pytest tests/test_research_semantic.py tests/test_research_anchor_discovery.py tests/test_research_ranking.py tests/test_research_walkthrough_fixture.py -q`
+Run: `cd backend && .venv/bin/pytest tests/test_research_semantic.py tests/test_research_anchor_discovery.py tests/test_research_ranking.py tests/test_research_walkthrough_fixture.py -q`
 
 Expected: all tests PASS.
 
@@ -290,11 +290,11 @@ git commit -m "fix(research): isolate semantic retrieval failures"
 
 - [ ] **Step 1: Run the focused suite and repository backend gate**
 
-Run: `cd backend && ../.venv/bin/pytest tests/test_thread_intelligence.py tests/test_threads_emergent_augment_shape.py tests/test_db_busy_degradation.py tests/test_research_semantic.py tests/test_research_anchor_discovery.py tests/test_research_ranking.py tests/test_research_walkthrough_fixture.py -q`
+Run: `cd backend && .venv/bin/pytest tests/test_thread_intelligence.py tests/test_threads_emergent_augment_shape.py tests/test_db_busy_degradation.py tests/test_research_semantic.py tests/test_research_anchor_discovery.py tests/test_research_ranking.py tests/test_research_walkthrough_fixture.py -q`
 
 Expected: all tests PASS.
 
-Run: `cd backend && ../.venv/bin/pytest -q`
+Run: `cd backend && .venv/bin/pytest -q`
 
 Expected: all tests PASS or pre-existing unrelated failures recorded verbatim before proceeding.
 

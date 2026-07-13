@@ -1904,27 +1904,35 @@ async def fetch_threads(
     atlas_only = bool(topic_slug) or (bool(country_codes) and single_country is None)
 
     async def _merged(active_conn: Any) -> list[dict[str, Any]]:
-        dynamic: list[dict[str, Any]] = []
-        if not atlas_only:
-            try:
-                dynamic = await _fetch_dynamic_threads_with_conn(
-                    active_conn, hours=hours, limit=limit, country_code=single_country,
-                )
-            except Exception as exc:
-                logger.warning("dynamic topics degraded: %s", exc)
-                dynamic = []
-        atlas = await _fetch_threads_with_conn(
-            active_conn,
-            hours=hours,
-            limit=limit,
-            topic_slug=topic_slug,
-            country_codes=country_codes,
-        )
-        if atlas_only:
-            return atlas
         # STORIES-ONLY list (Pedro, 2026-07-04 — supersedes the 2026-06-24
         # "unified ranking" merge): an atlas topic is a CATEGORY (the R3
-        # lens), not a thread. Serving category aggregates as sibling rows
+        # lens), not a thread. Decide that product mode before doing database
+        # work so the default path never pays for category rows it discards.
+        _on = {"1", "true", "on", "yes"}
+        category_rows = (
+            os.environ.get("ATLAS_THREADS_CATEGORY_ROWS", "").strip().lower() in _on
+            or (single_country is not None and os.environ.get(
+                "ATLAS_COUNTRY_CATEGORY_ROWS", ""
+            ).strip().lower() in _on)
+        )
+        if atlas_only:
+            return await _fetch_threads_with_conn(
+                active_conn,
+                hours=hours,
+                limit=limit,
+                topic_slug=topic_slug,
+                country_codes=country_codes,
+            )
+
+        dynamic: list[dict[str, Any]] = []
+        try:
+            dynamic = await _fetch_dynamic_threads_with_conn(
+                active_conn, hours=hours, limit=limit, country_code=single_country,
+            )
+        except Exception as exc:
+            logger.warning("dynamic topics degraded: %s", exc)
+            dynamic = []
+        # Serving category aggregates as sibling rows
         # next to real stories was level-mixing ("Gang control and urban
         # security n=319" beside "Ukraine War Updates n=107"). The global
         # list serves STORY rows only — dynamic topics, emergent clusters as
@@ -1939,13 +1947,14 @@ async def fetch_threads(
         # Kill-switches: ATLAS_THREADS_CATEGORY_ROWS=on restores the merge
         # everywhere; ATLAS_COUNTRY_CATEGORY_ROWS=on restores it for the
         # country view only (independent CountryBrief revert).
-        _on = {"1", "true", "on", "yes"}
-        category_rows = (
-            os.environ.get("ATLAS_THREADS_CATEGORY_ROWS", "").strip().lower() in _on
-            or (single_country is not None and os.environ.get(
-                "ATLAS_COUNTRY_CATEGORY_ROWS", "").strip().lower() in _on)
-        )
         if category_rows:
+            atlas = await _fetch_threads_with_conn(
+                active_conn,
+                hours=hours,
+                limit=limit,
+                topic_slug=topic_slug,
+                country_codes=country_codes,
+            )
             dynamic_labels = {
                 str(t.get("label") or "").strip().lower() for t in dynamic
             }
