@@ -1,4 +1,4 @@
-// Web corroboration (contract dossier-corroboration-v0, roadmap P0.6b).
+// Web corroboration (contract dossier-corroboration-v1, roadmap P0.6b).
 //
 // Productizes the manual NATO-Ankara corroboration run: each pin is checked
 // against live web coverage (backend lane: GDELT DOC 2.0) with SOURCE-
@@ -23,7 +23,7 @@ export interface CorroborationCitation {
 export interface CorroborationPin {
   id: string
   label: string
-  status: 'established' | 'contested' | 'unverified'
+  status: 'established' | 'contested' | 'unverified' | 'not_applicable'
   independent_outlets: number
   total_articles: number
   syndicated_clusters: number
@@ -48,6 +48,7 @@ export interface CorroborationData {
 export function statusChip(status: CorroborationPin['status']): string {
   if (status === 'established') return '✓ established'
   if (status === 'contested') return '⚠ contested'
+  if (status === 'not_applicable') return '— not applicable'
   return '? unverified'
 }
 
@@ -56,15 +57,16 @@ export function statusChip(status: CorroborationPin['status']): string {
 export function buildCorroborationRequest(
   pins: WorkbenchPin[],
   connNodes?: ConnectionNode[] | null,
-): { pins: Array<{ id: string; label: string; actors: string[]; evidence: string[] }>; days: number } {
+): { pins: Array<{ id: string; label: string; anchor_type: string; actors: string[]; evidence: string[] }>; days: number } {
   const nodeFor = (p: WorkbenchPin): ConnectionNode | undefined =>
     (connNodes ?? undefined)?.find(n =>
       n.id === p.anchorId || n.base_id === p.anchorId || n.collapsed_from?.includes(p.anchorId)
       || n.label === p.label)
   return {
-    pins: pins.slice(0, 8).map(p => ({
+    pins: pins.map(p => ({
       id: p.anchorId,
       label: p.label,
+      anchor_type: p.anchorType,
       actors: (nodeFor(p)?.persons ?? []).slice(0, 3),
       evidence: (p.snapshot?.evidence ?? []).slice(0, 6).map(e => {
         const attribution = e.source
@@ -97,7 +99,7 @@ export async function fetchCorroboration(
 }
 
 // ── Per-investigation cache (re-run on demand) ───────────────────────────────
-const CACHE_KEY = 'atlas.corroboration.v1'
+const CACHE_KEY = 'atlas.corroboration.v2'
 const CACHE_MAX_AGE_MS = 24 * 3600 * 1000
 
 export function loadCachedCorroboration(invId: string): CorroborationData | null {
@@ -153,10 +155,9 @@ export function corroborationMarkdown(c: CorroborationData): string[] {
   if (!c.search_available) {
     lines.push('')
     lines.push(`_${c.meta?.search_note ?? 'Web-search lane unavailable — corroboration not measured.'}_`)
-    lines.push('')
-    return lines
+  } else {
+    lines.push(`*Source: ${c.search_source ?? 'unknown'} · window ${c.window_days}d · syndicated wire copies collapse to one source; independently-operated outlets counted, never articles.*`)
   }
-  lines.push(`*Source: ${c.search_source ?? 'unknown'} · window ${c.window_days}d · syndicated wire copies collapse to one source; independently-operated outlets counted, never articles.*`)
   lines.push('')
   for (const p of c.pins) {
     lines.push(`### ${statusChip(p.status)} — ${p.label}`)

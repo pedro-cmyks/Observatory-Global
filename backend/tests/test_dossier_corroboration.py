@@ -3,6 +3,8 @@
 Freezes the G2 independence rule (syndicated wire = one source; count
 independently-operated outlets), query building, and status assignment.
 """
+import pytest
+
 from app.services.corroboration import (
     ESTABLISHED_MIN_OUTLETS,
     build_pin_queries,
@@ -131,3 +133,75 @@ class TestPinStatus:
         status, note = pin_status(5, False)
         assert status == "unverified"
         assert "unavailable" in note
+
+    def test_metadata_only_context_is_not_a_claim_to_corroborate(self):
+        status, note = pin_status(0, False, applicable=False)
+        assert status == "not_applicable"
+        assert "no frozen evidence claim" in note
+
+
+@pytest.mark.asyncio
+async def test_router_tracks_search_availability_per_pin_and_skips_context(monkeypatch):
+    from app.routers import dossier as dossier_module
+    from app.services import external_depth
+
+    async def fake_fetch(_label, *, raw_query, timespan):
+        assert timespan == "14d"
+        if raw_query.startswith("failed"):
+            return None
+        return {"items": []}
+
+    monkeypatch.setattr(external_depth, "fetch_external_depth", fake_fetch)
+    response = await dossier_module.dossier_corroborate(
+        dossier_module.CorroborateRequest(
+            force=True,
+            pins=[
+                {
+                    "id": "failed-pin",
+                    "label": "Failed lane topic",
+                    "anchor_type": "thread",
+                    "evidence": ["Failed evidence claim"],
+                },
+                {
+                    "id": "empty-pin",
+                    "label": "Empty measured topic",
+                    "anchor_type": "thread",
+                    "evidence": ["Measured query with no matches"],
+                },
+                {
+                    "id": "country-ir",
+                    "label": "Iran",
+                    "anchor_type": "country",
+                    "evidence": [],
+                },
+            ],
+        )
+    )
+
+    by_id = {pin["id"]: pin for pin in response["pins"]}
+    assert by_id["failed-pin"]["note"] == (
+        "web-search lane unavailable — corroboration not measured"
+    )
+    assert by_id["empty-pin"]["note"] == (
+        "no matching web coverage found in the window"
+    )
+    assert by_id["country-ir"]["status"] == "not_applicable"
+    assert by_id["country-ir"]["queries"] == []
+    assert response["meta"]["dropped_pins"] == 0
+
+    context_only = await dossier_module.dossier_corroborate(
+        dossier_module.CorroborateRequest(
+            force=True,
+            pins=[{
+                "id": "country-only-ir",
+                "label": "Iran",
+                "anchor_type": "country",
+                "evidence": [],
+            }],
+        )
+    )
+    assert context_only["search_available"] is False
+    assert context_only["meta"]["search_note"] == (
+        "no evidence-bearing pins — context remains in the dossier but has "
+        "no frozen claim to corroborate"
+    )

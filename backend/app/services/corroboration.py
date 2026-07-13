@@ -12,10 +12,11 @@ unit-testable without a network: query building, syndication clustering,
 independence counting, status assignment.
 
 Statuses emitted by the math: 'established' (≥3 independent outlets) |
-'unverified' (<3, or the search lane returned nothing). 'contested' is part of
-the dossier-corroboration-v0 contract but is NOT emitted by v0 math — stance
-detection is not a token count; it stays reserved (a client-supplied lane or a
-future stance pass may set it).
+'unverified' (<3, or the pin's search lane was unavailable) |
+'not_applicable' (metadata-only context with no frozen evidence claim).
+'contested' is part of the dossier-corroboration-v1 contract but is NOT emitted
+by v1 math — stance detection is not a token count; it stays reserved (a
+client-supplied lane or a future stance pass may set it).
 """
 from __future__ import annotations
 
@@ -140,8 +141,18 @@ def independence(articles: list[dict]) -> dict[str, Any]:
     }
 
 
-def pin_status(independent_outlets: int, search_available: bool) -> tuple[str, str]:
+def pin_status(
+    independent_outlets: int,
+    search_available: bool,
+    *,
+    applicable: bool = True,
+) -> tuple[str, str]:
     """(status, note) from the independence count — glass-box, no judgment."""
+    if not applicable:
+        return (
+            "not_applicable",
+            "metadata-only context pin — no frozen evidence claim to corroborate",
+        )
     if not search_available:
         return ("unverified",
                 "web-search lane unavailable — corroboration not measured")

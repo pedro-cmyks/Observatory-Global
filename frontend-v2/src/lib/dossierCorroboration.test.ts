@@ -44,6 +44,7 @@ describe('buildCorroborationRequest', () => {
     })])
     expect(req.pins).toHaveLength(1)
     expect(req.pins[0].id).toBe('dynamic-topic-390')
+    expect(req.pins[0].anchor_type).toBe('thread')
     expect(req.pins[0].evidence[0]).toBe('Erdogan opens summit — aljazeera.com, 2026-07-08')
     expect(req.days).toBe(14)
   })
@@ -64,25 +65,26 @@ describe('buildCorroborationRequest', () => {
     expect(req.pins[0].actors).toEqual(['erdogan'])
   })
 
-  it('caps at 8 pins and tolerates missing snapshot/nodes', () => {
+  it('preserves every pin and tolerates missing snapshot/nodes', () => {
     const pins = Array.from({ length: 10 }, (_, i) => pin({ anchorId: `dt-${i}` }))
     const req = buildCorroborationRequest(pins, null)
-    expect(req.pins).toHaveLength(8)
+    expect(req.pins).toHaveLength(10)
     expect(req.pins[0].actors).toEqual([])
     expect(req.pins[0].evidence).toEqual([])
   })
 })
 
 describe('statusChip', () => {
-  it('maps the three statuses', () => {
+  it('maps every corroboration status', () => {
     expect(statusChip('established')).toBe('✓ established')
     expect(statusChip('contested')).toBe('⚠ contested')
     expect(statusChip('unverified')).toBe('? unverified')
+    expect(statusChip('not_applicable')).toBe('— not applicable')
   })
 })
 
 const data = (over: Partial<CorroborationData>): CorroborationData => ({
-  contract: 'dossier-corroboration-v0',
+  contract: 'dossier-corroboration-v1',
   measured_at: new Date().toISOString(),
   search_available: true,
   search_source: 'gdelt-doc-2.0',
@@ -111,11 +113,17 @@ describe('corroborationMarkdown', () => {
 
   it('degrades honestly when the search lane is unavailable', () => {
     const md = corroborationMarkdown(data({
-      search_available: false, search_source: null, pins: [], coverage_asymmetry: null,
+      search_available: false, search_source: null, coverage_asymmetry: null,
+      pins: [{
+        id: 'country-ir', label: 'Iran', status: 'not_applicable',
+        independent_outlets: 0, total_articles: 0, syndicated_clusters: 0,
+        single_source: false, note: 'metadata-only context pin — no frozen evidence claim to corroborate',
+        citations: [], queries: [],
+      }],
       meta: { search_note: 'no server-side web-search path answered' },
     })).join('\n')
     expect(md).toContain('no server-side web-search path answered')
-    expect(md).not.toContain('✓')
+    expect(md).toContain('— not applicable — Iran')
   })
 })
 

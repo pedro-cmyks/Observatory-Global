@@ -1050,6 +1050,7 @@ def _resolve_citations(texts: list[str], table: list[dict]) -> list[dict]:
 class CorrobPin(BaseModel):
     id: str
     label: str
+    anchor_type: str | None = None
     actors: list[str] = Field(default_factory=list)   # measured actors (optional)
     evidence: list[str] = Field(default_factory=list)  # frozen headlines (asymmetry input)
 
@@ -1062,7 +1063,7 @@ class CorrobSuppliedResult(BaseModel):
 
 
 class CorroborateRequest(BaseModel):
-    pins: list[CorrobPin] = Field(..., min_length=1, max_length=12)
+    pins: list[CorrobPin] = Field(..., min_length=1)
     days: int = Field(14, ge=3, le=30)
     supplied_results: list[CorrobSuppliedResult] = Field(default_factory=list)
     force: bool = False   # bypass the server cache (the frontend's re-run)
@@ -1070,8 +1071,6 @@ class CorroborateRequest(BaseModel):
 
 _CORROB_CACHE: dict = {}
 _CORROB_CACHE_TTL_S = 900
-_CORROB_MAX_PINS = 8
-
 _ASYMMETRY_SYSTEM = (
     "You compare what an analyst's PINNED evidence emphasizes versus what WEB "
     "coverage titles emphasize, per story and overall. STRICT RULES: use ONLY "
@@ -1110,12 +1109,12 @@ async def dossier_corroborate(req: CorroborateRequest):
     )
     from app.services.external_depth import fetch_external_depth
 
-    pins = req.pins[:_CORROB_MAX_PINS]
-    dropped_pins = len(req.pins) - len(pins)
+    pins = req.pins
     timespan = f"{req.days}d"
 
     cache_key = (tuple(sorted(
-        (p.id, p.label, tuple(p.actors), tuple(p.evidence)) for p in pins
+        (p.id, p.label, p.anchor_type, tuple(p.actors), tuple(p.evidence))
+        for p in pins
     )), req.days,
                  tuple(sorted((s.pin_id, s.title) for s in req.supplied_results)))
     if not req.force:
@@ -1126,7 +1125,11 @@ async def dossier_corroborate(req: CorroborateRequest):
     # 1-2 focused queries per pin, all fetched concurrently (DOC 2.0 p50 is
     # 16-35s per query — sequential would take minutes).
     pin_queries: dict[str, list[str]] = {
-        p.id: build_pin_queries(p.label, p.actors, p.evidence) for p in pins
+        p.id: (
+            build_pin_queries(p.label, p.actors, p.evidence)
+            if p.evidence else []
+        )
+        for p in pins
     }
     tasks: list = []
     task_owner: list[tuple[str, str]] = []   # (pin_id, query)
@@ -1137,12 +1140,14 @@ async def dossier_corroborate(req: CorroborateRequest):
     results = await asyncio.gather(*tasks, return_exceptions=True) if tasks else []
 
     any_lane_ok = False
+    lane_ok_by_pin: dict[str, bool] = {p.id: False for p in pins}
     articles_by_pin: dict[str, list[dict]] = {p.id: [] for p in pins}
     seen_urls: dict[str, set] = {p.id: set() for p in pins}
     for (pin_id, _q), res in zip(task_owner, results):
         if isinstance(res, Exception) or res is None:
             continue
         any_lane_ok = True
+        lane_ok_by_pin[pin_id] = True
         for item in res.get("items", []):
             u = item.get("url") or ""
             if u and u in seen_urls[pin_id]:
@@ -1172,6 +1177,7 @@ async def dossier_corroborate(req: CorroborateRequest):
             "language": None, "seendate": None, "credibility": None,
             "lane": "client-supplied",
         })
+        lane_ok_by_pin[s.pin_id] = True
         supplied_any = True
 
     search_available = any_lane_ok or supplied_any
@@ -1181,7 +1187,13 @@ async def dossier_corroborate(req: CorroborateRequest):
     for p in pins:
         arts = articles_by_pin[p.id]
         ind = independence(arts)
-        status, note = pin_status(ind["independent_outlets"], search_available)
+        pin_search_available = lane_ok_by_pin[p.id]
+        applicable = bool(p.evidence)
+        status, note = pin_status(
+            ind["independent_outlets"],
+            pin_search_available,
+            applicable=applicable,
+        )
         citations = [{
             "title": c["title"], "url": c["url"], "outlet": c["outlet"],
             "language": c.get("language"), "seendate": c.get("seendate"),
@@ -1195,7 +1207,11 @@ async def dossier_corroborate(req: CorroborateRequest):
             "independent_outlets": ind["independent_outlets"],
             "total_articles": ind["total_articles"],
             "syndicated_clusters": ind["syndicated_clusters"],
-            "single_source": search_available and ind["independent_outlets"] <= 1,
+            "single_source": (
+                applicable
+                and pin_search_available
+                and ind["independent_outlets"] <= 1
+            ),
             "citations": citations,
             "note": note,
             "queries": pin_queries[p.id],
@@ -1216,7 +1232,7 @@ async def dossier_corroborate(req: CorroborateRequest):
             logger.warning("corroboration asymmetry pass failed: %s", exc)
 
     payload = {
-        "contract": "dossier-corroboration-v0",
+        "contract": "dossier-corroboration-v1",
         "measured_at": __import__("datetime").datetime.utcnow().isoformat() + "Z",
         "search_available": search_available,
         "search_source": "gdelt-doc-2.0" if any_lane_ok else
@@ -1232,12 +1248,23 @@ async def dossier_corroborate(req: CorroborateRequest):
             "status_rule": (
                 f"established = ≥{ESTABLISHED_MIN_OUTLETS} independent outlets; "
                 "unverified otherwise; 'contested' is reserved for stance "
-                "detection (not emitted by v0 math)"),
-            "dropped_pins": dropped_pins,
-            "search_note": None if search_available else (
-                "no server-side web-search path answered — GDELT DOC 2.0 "
-                "unreachable and no supplied results; a SERP/Brave key would "
-                "add a generic-web lane"),
+                "detection (not emitted by v1 math); metadata-only context "
+                "with no frozen evidence is not_applicable"),
+            "dropped_pins": 0,
+            "search_note": (
+                None
+                if search_available
+                else (
+                    "no evidence-bearing pins — context remains in the dossier "
+                    "but has no frozen claim to corroborate"
+                    if not any(p.evidence for p in pins)
+                    else (
+                        "no server-side web-search path answered — GDELT DOC "
+                        "2.0 unreachable and no supplied results; a SERP/Brave "
+                        "key would add a generic-web lane"
+                    )
+                )
+            ),
         },
     }
     _CORROB_CACHE[cache_key] = (time.monotonic(), payload)

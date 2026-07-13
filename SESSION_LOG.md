@@ -145,7 +145,22 @@ query builder keeps the label query and uses a compact frozen-headline fallback
 before an actor fallback. A read-only DOC 2.0 probe for the resulting
 `bahrain explosions manama sirens` query returned 15 results. Syndication
 collapse and the three-independent-outlet publication threshold remain
-unchanged. Backend verification is now `1307 passed, 6 skipped`.
+unchanged. The deployed endpoint then established that thread across 14
+independent outlets.
+
+That verification exposed two further contract errors. Search availability was
+global to the dossier, so one successful query caused a different pin whose
+queries timed out to be mislabeled “no matching coverage”. And metadata-only
+country context was searched by its bare label, which absurdly “established”
+`Iran` from generic Iran coverage. Contract `dossier-corroboration-v1` now
+tracks lane availability per pin, marks evidence-free context
+`not_applicable`, skips its search entirely, and renders that state even when
+all web lanes are unavailable. The frontend and backend also removed their
+eight/twelve-pin corroboration cuts: all route pins remain in the request;
+runtime grows honestly with evidence-bearing pins under DOC 2.0's one-query-
+per-five-seconds constraint. Backend verification is now `1309 passed,
+6 skipped`; frontend verification is `308 passed` and the production build
+passes.
 
 Records:
 

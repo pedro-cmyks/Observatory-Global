@@ -107,8 +107,13 @@
   web matches even though its frozen headlines described the event. Query
   construction now uses the current label first and a compact frozen-headline
   fallback second; a live DOC 2.0 probe for `bahrain explosions manama sirens`
-  returned 15 results. The independence/syndication gate is unchanged.
-- Current verification: backend `1307 passed, 6 skipped`; frontend `308 passed`;
+  returned 15 results and the deployed endpoint established the story across
+  14 independent outlets. The follow-up also separated availability per pin:
+  a failed search is no longer mislabeled as zero matches. Metadata-only
+  country/branch context is `not_applicable`, not corroborated through generic
+  name search. Every pin reaches the request; the old eight-pin cut was removed.
+  The independence/syndication gate is unchanged.
+- Current verification: backend `1309 passed, 6 skipped`; frontend `308 passed`;
   production Vite build passes.
 
 Primary records:

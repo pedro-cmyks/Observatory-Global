@@ -120,8 +120,9 @@ export function DossierView({ investigation, onClose, autoCorroborate }: {
 
     // P0.6b web corroboration — pins checked against live web coverage with
     // source-independence weighting. Cached per investigation (re-run on
-    // demand); a run takes up to ~40s (DOC 2.0 latency), so it is button-
-    // triggered, never automatic — except via the Workbench CORROBORATE ramp.
+    // demand); DOC 2.0 permits one query per five seconds, so duration grows
+    // with evidence-bearing pins. It is button-triggered, never automatic —
+    // except via the Workbench CORROBORATE ramp.
     const [corrob, setCorrob] = useState<CorroborationData | null>(
         () => loadCachedCorroboration(investigation.id),
     )
@@ -281,8 +282,8 @@ export function DossierView({ investigation, onClose, autoCorroborate }: {
                             className="dossier-btn dossier-btn--corroborate"
                             onClick={() => void runCorroboration(!!corrob)}
                             disabled={corrobRunning || dossier.pinCount === 0}
-                            data-tip="Check each pin against live web coverage — independent sources weighted (syndicated wire collapses to one). Takes up to ~40s."
-                        >{corrobRunning ? 'Corroborating…' : corrob ? 'Re-corroborate' : 'Corroborate'}</button>
+                            data-tip="Check every evidence-bearing pin against live web coverage — independent sources weighted. Metadata-only context is marked not applicable. DOC 2.0 permits one query every five seconds, so duration grows with the route."
+                        >{corrobRunning ? 'Corroborating every evidence pin…' : corrob ? 'Re-corroborate' : 'Corroborate'}</button>
                         <button className="dossier-btn" onClick={copy}>{copied ? 'Copied' : 'Copy MD'}</button>
                         <button className="dossier-btn" onClick={download}>Download</button>
                         <button className="dossier-close" onClick={onClose} aria-label="Close">×</button>
@@ -459,12 +460,16 @@ export function DossierView({ investigation, onClose, autoCorroborate }: {
                     <section className="dossier-section dossier-corroboration">
                         <h2>Web corroboration</h2>
                         {corrobRunning ? (
-                            <p className="dossier-meta">Checking pins against live web coverage… (up to ~40s — the search lane is slow, not stuck)</p>
-                        ) : corrob && corrob.search_available ? (
+                            <p className="dossier-meta">Checking every evidence-bearing pin against live web coverage… DOC 2.0 permits one query every five seconds, so duration grows with the route.</p>
+                        ) : corrob ? (
                             <>
-                                <p className="dossier-meta" data-tip={corrob.meta?.independence_rule ?? ''}>
-                                    measured {new Date(corrob.measured_at).toLocaleString()} · independent sources weighted · {corrob.search_source} · window {corrob.window_days}d
-                                </p>
+                                {corrob.search_available ? (
+                                    <p className="dossier-meta" data-tip={corrob.meta?.independence_rule ?? ''}>
+                                        measured {new Date(corrob.measured_at).toLocaleString()} · independent sources weighted · {corrob.search_source} · window {corrob.window_days}d
+                                    </p>
+                                ) : (
+                                    <p className="dossier-meta">{corrob.meta?.search_note ?? 'Web-search lane unavailable — corroboration not measured.'}</p>
+                                )}
                                 {corrob.pins.map(p => (
                                     <div key={p.id} className="dossier-pin">
                                         <div className="dossier-pin-head">
@@ -495,8 +500,6 @@ export function DossierView({ investigation, onClose, autoCorroborate }: {
                                     </div>
                                 )}
                             </>
-                        ) : corrob ? (
-                            <p className="dossier-meta">{corrob.meta?.search_note ?? 'Web-search lane unavailable — corroboration not measured.'}</p>
                         ) : (
                             <p className="dossier-meta">Corroboration failed — the search lane did not answer. Re-run from the button above.</p>
                         )}

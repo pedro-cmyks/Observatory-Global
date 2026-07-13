@@ -277,3 +277,4 @@
 .dossier-corrob-chip--established { color: #34d399; border: 1px solid rgba(52, 211, 153, 0.45); background: rgba(52, 211, 153, 0.08); }
 .dossier-corrob-chip--contested { color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.45); background: rgba(251, 191, 36, 0.08); }
 .dossier-corrob-chip--unverified { color: #8b97a6; border: 1px solid rgba(139, 151, 166, 0.45); background: rgba(139, 151, 166, 0.08); }
+.dossier-corrob-chip--not_applicable { color: #64748b; border: 1px dashed rgba(100, 116, 139, 0.5); background: rgba(100, 116, 139, 0.06); }
