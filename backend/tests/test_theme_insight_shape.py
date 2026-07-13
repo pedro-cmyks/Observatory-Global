@@ -3,11 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 
 
-def test_theme_insight_imports_os_for_env_fallback():
-    source = Path("app/routers/themes.py").read_text(encoding="utf-8")
+def test_theme_insight_uses_central_provider_chain_for_env_fallback():
+    router_source = Path("app/routers/themes.py").read_text(encoding="utf-8")
+    service_source = Path("app/services/insight_llm.py").read_text(encoding="utf-8")
 
-    assert "import os" in source
-    assert 'os.getenv("ANTHROPIC_API_KEY")' in source
+    assert "from app.services.insight_llm import generate_insight" in router_source
+    assert 'os.getenv("ANTHROPIC_API_KEY")' in service_source
+    assert 'os.getenv("DEEPSEEK_API_KEY")' in service_source
 
 
 def test_theme_detail_resolves_dynamic_topic_watchlist_slugs():

@@ -41,13 +41,13 @@ def test_parse_response_rejects_invalid_decision():
     raise AssertionError("expected ValueError for invalid decision")
 
 
-def test_parse_response_rejects_invalid_scope():
+def test_parse_response_coerces_invalid_scope_to_none():
     text = '{"decision": "correct", "scope": "weird_scope", "evidence_role": "background"}'
-    try:
-        ann._parse_response(text)
-    except ValueError:
-        return
-    raise AssertionError("expected ValueError for invalid scope")
+
+    parsed = ann._parse_response(text)
+
+    assert parsed["decision"] == "correct"
+    assert parsed["scope"] is None
 
 
 def test_parse_response_accepts_null_optionals():
