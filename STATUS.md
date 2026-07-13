@@ -91,10 +91,14 @@
   only three weak supports. It evaluates the complete current thread universe,
   keeps every candidate accessible, and reserves the primary tray for direct
   or contextual matches. Coverage geography is explicitly not subject
-  geography. A live production-shaped Iran query evaluated 581 candidates with
-  embeddings: 18 primary, 563 low-confidence, 0 omitted; cold local execution
-  was 27.66 seconds and is covered by the two-minute plan cache.
-- Current verification: backend `1304 passed, 6 skipped`; frontend `308 passed`;
+  geography. The first deployed pass still promoted unrelated German, Russian
+  and Ukrainian rows through generic topic vocabulary. The corrected gate now
+  requires an explicit target label or visible coverage-country connection for
+  geo-scoped primary context, and exact current-label duplicates remain
+  accessible but do not repeat in the primary tray. A live production-shaped
+  Iran query evaluated 581 candidates with embeddings: 11 primary, 570
+  low-confidence, 0 omitted; no unrelated geo rows or duplicate labels remained.
+- Current verification: backend `1306 passed, 6 skipped`; frontend `308 passed`;
   production Vite build passes.
 
 Primary records:

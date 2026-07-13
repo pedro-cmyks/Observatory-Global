@@ -21,6 +21,8 @@ import json
 import os
 from typing import Any
 
+from app.core.search_normalization import normalize_search_text
+
 # Deliberately NOT equal-weight. Calibrated 2026-06-10 by
 # backend/scripts/calibrate_research_ranking.py against the gold ordering
 # constraints (spec acceptance criteria) + live forcing-case constraints:
@@ -284,6 +286,10 @@ def score_anchor(
         reason_codes.append("strong_geo_fit")
     elif coverage_countries.intersection(geo) and not subject_verified:
         reason_codes.append("coverage_geo_not_subject")
+    if anchor.get("target_geo_relation") == "coverage_only":
+        reason_codes.append("coverage_geo_context_only")
+    elif anchor.get("target_geo_relation") == "missing":
+        reason_codes.append("target_geo_connection_missing")
     if evidence_strength >= 0.5:
         reason_codes.append("strong_evidence")
     elif anchor_type == "thread" and evidence_strength < 0.2:
@@ -342,9 +348,19 @@ def rank_plan(plan: dict[str, Any]) -> dict[str, Any]:
 
     primary: list[dict[str, Any]] = []
     tray: list[dict[str, Any]] = []
+    primary_thread_labels: set[str] = set()
     for score, anchor in scored:
         codes = set(explanation_by_id.get(anchor.get("id"), {}).get("reason_codes", []))
         in_noise_lane = bool(codes & noise_codes)
+        normalized_thread_label = (
+            normalize_search_text(str(anchor.get("label") or ""))
+            if anchor.get("anchor_type") == "thread"
+            else ""
+        )
+        duplicate_current_label = bool(
+            normalized_thread_label
+            and normalized_thread_label in primary_thread_labels
+        )
         # Gaps are findings, not noise: they stay primary regardless of score.
         # Noise-lane material without a direct intent match goes to the tray
         # even above the score threshold (visible, never deleted).
@@ -354,13 +370,20 @@ def rank_plan(plan: dict[str, Any]) -> dict[str, Any]:
         elif (
             anchor.get("evidence_label") != "weak_support"
             and score >= DOWNRANK_THRESHOLD
+            and not duplicate_current_label
             and not (
                 in_noise_lane and "direct_intent_match" not in codes
             )
         ):
             anchor["visibility"] = "primary"
             primary.append(anchor)
+            if normalized_thread_label:
+                primary_thread_labels.add(normalized_thread_label)
         else:
+            if duplicate_current_label:
+                explanation = explanation_by_id.get(anchor.get("id"))
+                if explanation is not None:
+                    explanation["reason_codes"].append("duplicate_current_label")
             anchor["visibility"] = "downranked"
             tray.append(anchor)
 
@@ -371,7 +394,8 @@ def rank_plan(plan: dict[str, Any]) -> dict[str, Any]:
     for anchor in tray:
         codes = set(explanation_by_id.get(anchor.get("id"), {}).get("reason_codes", []))
         lane_hits = sorted(codes & noise_codes)
-        for key in lane_hits or ["below_score_threshold"]:
+        disposition_hits = sorted(codes & {"duplicate_current_label"})
+        for key in lane_hits or disposition_hits or ["below_score_threshold"]:
             reason_counts[key] = reason_counts.get(key, 0) + 1
 
     plan["anchors"] = primary

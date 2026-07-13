@@ -119,6 +119,17 @@ With real embeddings, the Iran forcing query evaluated 581 candidates: 18
 primary, 563 low-confidence, zero omitted. Full verification is `1304 passed,
 6 skipped` backend, `308 passed` frontend, with a green production build.
 
+The first production response was structurally complete but still failed the
+editorial read: German missile procurement and Russian/Ukrainian infrastructure
+stories entered the primary tray because generic axis vocabulary was treated as
+a demonstrated relation. The geo-scoped relevance gate now requires either the
+target geography in the current thread label or an explicitly disclosed
+coverage-country connection. Exact duplicate current labels are represented
+once in primary and remain inspectable in the complete low-confidence tray with
+`duplicate_current_label`. The same real 581-candidate forcing case now yields
+11 primary, 570 low-confidence, zero omitted, no unrelated-geo primary rows and
+no duplicate primary labels. Backend verification is `1306 passed, 6 skipped`.
+
 Records:
 
 - `docs/state/2026-07-12-spec-history-crosswalk.md`

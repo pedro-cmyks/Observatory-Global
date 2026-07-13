@@ -228,3 +228,48 @@ def test_pin_candidates_filtered_to_primary_and_sorted():
         for pid in plan["pin_candidates"]
     ]
     assert scores == sorted(scores, reverse=True)
+
+
+def test_exact_current_label_duplicates_are_accessible_but_not_repeated_primary_rows():
+    intent = parse_research_intent("Iran strikes")
+    anchors = [
+        {
+            "anchor_type": "thread",
+            "id": "dynamic-topic-1",
+            "label": "US Strikes on Iran",
+            "evidence_label": "direct_evidence",
+            "matched_terms": ["strikes"],
+            "signal_count": 30,
+            "source_count": 5,
+            "confidence": {"band": "high"},
+            "quality": {},
+            "open": {"surface": "thread_detail", "params": {}},
+        },
+        {
+            "anchor_type": "thread",
+            "id": "dynamic-topic-2",
+            "label": "US Strikes on Iran",
+            "evidence_label": "direct_evidence",
+            "matched_terms": ["strikes"],
+            "signal_count": 20,
+            "source_count": 4,
+            "confidence": {"band": "medium"},
+            "quality": {},
+            "open": {"surface": "thread_detail", "params": {}},
+        },
+    ]
+    plan = rank_plan({
+        "intent": intent,
+        "anchors": anchors,
+        "pin_candidates": ["dynamic-topic-1", "dynamic-topic-2"],
+        "skipped_candidates": [],
+    })
+
+    assert [a["id"] for a in plan["anchors"]] == ["dynamic-topic-1"]
+    assert [a["id"] for a in plan["low_confidence_tray"]] == ["dynamic-topic-2"]
+    explanation = next(
+        e for e in plan["ranking_explanations"] if e["anchor_id"] == "dynamic-topic-2"
+    )
+    assert "duplicate_current_label" in explanation["reason_codes"]
+    assert plan["downranking_ledger"]["reason_codes"]["duplicate_current_label"] == 1
+    assert plan["downranking_ledger"]["omitted_count"] == 0

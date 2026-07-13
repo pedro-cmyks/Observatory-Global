@@ -17,13 +17,21 @@ from app.services.research_anchor_discovery import discover_anchors
 from app.services.research_plan import parse_research_intent
 
 
-def _thread(thread_id: str, label: str, slugs: list[str], signal_count: int) -> dict:
+def _thread(
+    thread_id: str,
+    label: str,
+    slugs: list[str],
+    signal_count: int,
+    *,
+    top_countries: list[str] | None = None,
+) -> dict:
     return {
         "thread_id": thread_id,
         "label": label,
         "anchor_topics": slugs,
         "signal_count": signal_count,
         "confidence": {"band": "medium"},
+        "top_countries": top_countries or [],
     }
 
 
@@ -242,7 +250,13 @@ def test_generic_expansion_alone_stays_weak_but_combination_is_context():
     async def threads(**kwargs):
         return [
             _thread("generic", "Russian Strikes on Ukraine", ["russian-strikes"], 20),
-            _thread("combined", "Energy Infrastructure Attacks", ["infrastructure-attacks"], 20),
+            _thread(
+                "combined",
+                "Energy Infrastructure Attacks",
+                ["infrastructure-attacks"],
+                20,
+                top_countries=["IR"],
+            ),
             _thread("target", "US Strikes Iran", ["us-strikes-iran"], 20),
         ]
 
@@ -253,6 +267,52 @@ def test_generic_expansion_alone_stays_weak_but_combination_is_context():
     assert by_id["generic"]["evidence_label"] == "weak_support"
     assert by_id["combined"]["evidence_label"] == "context"
     assert by_id["target"]["evidence_label"] == "context"
+
+
+def test_geo_scoped_context_requires_a_visible_connection_to_target_geography():
+    intent = parse_research_intent("Iran regional escalation infrastructure")
+
+    async def threads(**kwargs):
+        return [
+            _thread(
+                "germany",
+                "Germany Tomahawk Missile Deal",
+                ["missile-procurement"],
+                30,
+                top_countries=["DE", "US"],
+            ),
+            _thread(
+                "iran-coverage",
+                "Energy Infrastructure Attacks",
+                ["energy-infrastructure-attacks"],
+                20,
+                top_countries=["IR", "IQ"],
+            ),
+            _thread(
+                "iran-label",
+                "Iran Missile Attack on Jordan",
+                ["missile-attack"],
+                15,
+                top_countries=["JO"],
+            ),
+        ]
+
+    plan = asyncio.run(discover_anchors(
+        intent, hours=72, fetch_threads_fn=threads, fetch_attention_fn=None,
+    ))
+    by_id = {a["id"]: a for a in plan["anchors"] if a["anchor_type"] == "thread"}
+
+    # Topic vocabulary alone is a navigation hint, not proof that a German
+    # procurement story is context for an Iran investigation.
+    assert by_id["germany"]["evidence_label"] == "weak_support"
+    assert by_id["germany"]["target_geo_relation"] == "missing"
+    # Coverage geography is explicitly non-subject evidence, but it is enough
+    # to keep a potentially connected thread in the contextual primary lane.
+    assert by_id["iran-coverage"]["evidence_label"] == "context"
+    assert by_id["iran-coverage"]["target_geo_relation"] == "coverage_only"
+    # Naming the target in the label remains the strongest visible link.
+    assert by_id["iran-label"]["evidence_label"] == "context"
+    assert by_id["iran-label"]["target_geo_relation"] == "explicit_label"
 
 
 def test_research_candidate_sql_has_no_result_limit_and_marks_geo_honestly():

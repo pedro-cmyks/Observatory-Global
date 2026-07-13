@@ -130,6 +130,7 @@ def _thread_anchor(
     matched_terms: list[str],
     hours: int,
     country_code: str | None,
+    target_geo_relation: str = "none",
 ) -> dict[str, Any]:
     return {
         "anchor_type": "thread",
@@ -148,6 +149,10 @@ def _thread_anchor(
         "coverage_countries": thread.get("top_countries") or [],
         "scope_basis": thread.get("scope_basis"),
         "subject_status": thread.get("subject_status"),
+        # A lexical topic overlap is not enough to connect a thread to a
+        # geo-scoped investigation. This field exposes the exact basis used:
+        # label evidence, coverage-only context, or no visible connection.
+        "target_geo_relation": target_geo_relation,
         "quality": thread.get("quality"),
         "confidence": thread.get("confidence"),
         "open": {
@@ -242,6 +247,17 @@ async def discover_anchors(
             explicit_geo = _label_names_target_geo(
                 str(thread.get("label") or ""), geo,
             )
+            coverage_geo = bool(
+                set(geo).intersection(
+                    str(code).upper() for code in (thread.get("top_countries") or [])
+                )
+            )
+            target_geo_relation = (
+                "explicit_label" if explicit_geo
+                else "coverage_only" if coverage_geo
+                else "missing" if geo
+                else "none"
+            )
             if (
                 label == "weak_support"
                 and matched
@@ -252,12 +268,19 @@ async def discover_anchors(
                 contextual = sorted(thread_tokens & expansion)
                 if contextual:
                     label, matched = "context", contextual
+            # In a geo-scoped investigation, vocabulary such as "missile" or
+            # "infrastructure" is only thematic recall. It becomes primary
+            # context only when Atlas can show a geographic link in the label
+            # or the (honestly coverage-only) country metadata.
+            if geo and label != "weak_support" and not (explicit_geo or coverage_geo):
+                label = "weak_support"
             existing = thread_anchor_by_id.get(thread_id)
             evidence_order = {"weak_support": 0, "context": 1, "direct_evidence": 2}
             if existing is not None:
                 if evidence_order[label] > evidence_order[existing["evidence_label"]]:
                     existing["evidence_label"] = label
                     existing["matched_terms"] = matched
+                    existing["target_geo_relation"] = target_geo_relation
                     if scope:
                         existing["open"]["params"]["country_code"] = scope
                 continue
@@ -268,6 +291,7 @@ async def discover_anchors(
                 matched_terms=matched,
                 hours=hours,
                 country_code=scope,
+                target_geo_relation=target_geo_relation,
             )
             anchors.append(anchor)
             thread_anchor_by_id[thread_id] = anchor
