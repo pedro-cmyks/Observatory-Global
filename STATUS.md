@@ -72,12 +72,37 @@
   response measured 6.47 seconds and rendered L1 with both gaps disclosed.
   Availability is restored; editorial quality is still red because several
   visible thread labels do not match their current evidence.
+- The abandoned 139-row partial snapshot was removed by exact snapshot id. The
+  last complete snapshot was reprojected through `topic_members`, movement,
+  event/disaster bindings and daily sealing. The new artifact reconciles
+  546 candidates, 12 layout stories and 71 frozen receipts at 5.4 hours lag.
+  Current-cluster labels replace stale lifecycle labels only for the edition;
+  stable topic identity remains separately receipted.
+- Publication evidence fit is now measured over the complete eligible
+  single-cluster universe with `text-embedding-3-small`. A bivariate low-tail
+  rule (pair median + label median, q=0.10) downranked 7/150 incoherent
+  candidates, including the mixed Lindsey Graham cluster, without deleting
+  them from L2 or the ledger. The rule is provisional and not paper-grade gold.
+- The scoped snapshot runner stages every country and commits one snapshot only
+  after all scopes finish. Production defaults no longer cap per-country input
+  or retained clusters; diagnostic caps remain explicit opt-ins. Projection is
+  skipped if staging fails, so a partial snapshot cannot become product state.
+- Workbench Research Plan no longer asks the volume-ranked top 24 or retains
+  only three weak supports. It evaluates the complete current thread universe,
+  keeps every candidate accessible, and reserves the primary tray for direct
+  or contextual matches. Coverage geography is explicitly not subject
+  geography. A live production-shaped Iran query evaluated 581 candidates with
+  embeddings: 18 primary, 563 low-confidence, 0 omitted; cold local execution
+  was 27.66 seconds and is covered by the two-minute plan cache.
+- Current verification: backend `1304 passed, 6 skipped`; frontend `308 passed`;
+  production Vite build passes.
 
 Primary records:
 
 - `docs/state/2026-07-12-spec-history-crosswalk.md`
 - `docs/state/2026-07-13-l0-l3-reliability-matrix.md`
 - `docs/state/2026-07-13-ann-index-recovery.md`
+- `docs/research/atlas-paper/phase-1-validation/reports/2026-07-13-publication-evidence-fit.md`
 - `docs/superpowers/plans/2026-07-12-investigation-graph-slice-3-daily-publication.md`
 
 ## Current handoff — Shared L1/L2/L3 Investigation Graph

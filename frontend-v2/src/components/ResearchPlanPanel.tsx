@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   fetchResearchPlan,
   impressionEvents,
+  researchLedgerSummary,
   sendPinEvents,
   type ResearchAnchor,
   type ResearchPlan,
@@ -355,7 +356,7 @@ export default function ResearchPlanPanel({
       {plan.low_confidence_tray.length > 0 && (
         <div className="rp-tray">
           <button className="rp-tray-toggle" onClick={() => setShowTray(s => !s)}>
-            {showTray ? '▾' : '▸'} LOW-CONFIDENCE TRAY ({plan.low_confidence_tray.length})
+            {showTray ? '▾' : '▸'} LOW-CONFIDENCE CANDIDATES — ALL ACCESSIBLE ({plan.low_confidence_tray.length})
           </button>
           {showTray && plan.low_confidence_tray.map((a, i) =>
             renderAnchor(a, plan.anchors.length + i))}
@@ -364,10 +365,7 @@ export default function ResearchPlanPanel({
 
       {plan.downranking_ledger && (
         <div className="rp-ledger" data-tip={plan.downranking_ledger.appeal_action}>
-          {plan.downranking_ledger.candidate_count} candidates ·{' '}
-          {plan.downranking_ledger.shown_count} shown ·{' '}
-          {plan.downranking_ledger.downranked_count} downranked ·{' '}
-          {plan.downranking_ledger.omitted_count} omitted
+          {researchLedgerSummary(plan.downranking_ledger)}
         </div>
       )}
     </div>

@@ -137,6 +137,38 @@ def test_receipt_eligibility_can_fill_layout_without_claiming_absence_for_unchec
     assert edition.completion["receipt_eligible_count"] == 1
 
 
+def test_publication_quality_downranking_is_disclosed_in_complete_ledger():
+    mixed = candidate("mixed", kalman_velocity=0.8)
+    coherent = candidate("coherent", kalman_velocity=0.4)
+    quality = {
+        "mixed": {
+            "status": "downranked",
+            "pair_median": 0.12,
+            "label_median": 0.09,
+            "reason_codes": ["publication_evidence_fit_bivariate_low_tail"],
+        },
+        "coherent": {
+            "status": "eligible",
+            "pair_median": 0.72,
+            "label_median": 0.61,
+            "reason_codes": [],
+        },
+    }
+
+    edition = select_daily_edition(
+        [mixed, coherent],
+        display_slots=1,
+        receipt_eligible_ids={"coherent"},
+        receipt_checked_ids={"mixed", "coherent"},
+        quality_ledger_by_id=quality,
+    )
+    by_id = {row.thread_id: row for row in edition.ledger}
+
+    assert edition.selected_ids == ["coherent"]
+    assert "publication_evidence_fit_bivariate_low_tail" in by_id["mixed"].reason_codes
+    assert by_id["mixed"].components["publication_evidence_fit"] == quality["mixed"]
+
+
 def test_fallback_movement_is_labeled_when_kalman_is_unavailable():
     row = candidate(
         "fallback", kalman_velocity=None, kalman_surprise=None,

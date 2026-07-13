@@ -46,6 +46,14 @@ def test_geo_scope_merges_caller_hint_without_duplicates():
     assert "climate" in intent["topic_axes"]  # "rain" maps to climate axis
 
 
+def test_plain_infrastructure_escalation_query_opens_conflict_branch():
+    intent = parse_research_intent("Iran regional escalation and infrastructure")
+    assert "conflict_infrastructure" in intent["topic_axes"]
+    assert "us-bases-satellite-communications" in intent["branches"]
+    expanded = set(intent["expanded_terms"]["conflict_infrastructure"])
+    assert {"attack", "attacks"} <= expanded
+
+
 def test_unmatched_query_is_safe_not_empty():
     intent = parse_research_intent("local football transfer rumours")
 

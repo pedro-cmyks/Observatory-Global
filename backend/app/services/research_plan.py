@@ -52,7 +52,8 @@ AXIS_TRIGGERS: dict[str, set[str]] = {
         "base", "bases", "attack", "attacks", "ataque", "ataques", "strike",
         "strikes", "missile", "misil", "radar", "satellite", "satelite",
         "communications", "comunicaciones", "microwave", "microondas", "drone",
-        "war", "guerra",
+        "war", "guerra", "infrastructure", "infraestructura", "escalation",
+        "escalada",
     },
 }
 
@@ -68,7 +69,7 @@ AXIS_EXPANSIONS: dict[str, list[str]] = {
     ],
     "conflict_infrastructure": [
         "us base", "radar", "radome", "satellite communications", "air defense",
-        "missile strike",
+        "missile strike", "attack", "attacks", "strike", "strikes",
     ],
 }
 

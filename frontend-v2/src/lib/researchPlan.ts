@@ -72,11 +72,35 @@ export interface ResearchPlan {
   downranking_ledger?: {
     candidate_count: number
     shown_count: number
+    primary_count?: number
     downranked_count: number
     omitted_count: number
+    accessible_count?: number
+    complete?: boolean
+    semantic_ceiling?: boolean
     reason_codes: Record<string, number>
     appeal_action?: string
   }
+}
+
+export function researchLedgerSummary(
+  ledger: NonNullable<ResearchPlan['downranking_ledger']>,
+): string {
+  const primary = ledger.primary_count ?? ledger.shown_count
+  const accessible = ledger.accessible_count
+    ?? primary + ledger.downranked_count + ledger.omitted_count
+  const completion = ledger.complete && ledger.omitted_count === 0
+    ? 'complete · no candidates excluded'
+    : ledger.complete === false
+      ? 'partial ledger · lane degradation disclosed'
+      : `${ledger.omitted_count} excluded with disclosed reasons`
+  return [
+    `${ledger.candidate_count} candidates evaluated`,
+    `${primary} primary`,
+    `${ledger.downranked_count} low confidence`,
+    `${accessible} accessible`,
+    completion,
+  ].join(' · ')
 }
 
 export async function fetchResearchPlan(

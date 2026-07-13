@@ -86,6 +86,39 @@ package fallback. Backend verification is `1285 passed, 6 skipped`. This is an
 availability recovery, not an editorial pass: the rendered edition still
 contains label/evidence mismatches and is not publishable.
 
+The exact 139-row partial snapshot was then deleted transactionally. Atlas
+reused the last complete 07:33 UTC snapshot and ran the missing downstream
+chain: 4,912 atlas evidence memberships, 11,517 dynamic sample memberships,
+1,240 movement rows, 1,151 event-binding pairs, 86 disaster memberships, and a
+new daily artifact. The artifact now reconciles 546 candidates, 12 selected
+stories and 71 receipts at 5.4 hours lag.
+
+Daily labels are now edition-scoped: a single current cluster contributes its
+current measured label while the lifecycle label is preserved in an identity
+receipt. A complete-universe OpenAI embedding pass measured label-to-evidence
+and receipt-pair fit for 150 eligible single-cluster topics. The bivariate q10
+low tail downranked seven incoherent candidates—including the mixed Lindsey
+Graham cluster—without deleting them from L2. This is an operational abstention
+gate, not validated paper gold.
+
+The scoped snapshot job now stages compact rows for every country and performs
+one atomic commit only after all countries complete. `TOP_PER_COUNTRY=0` and
+`PER_COUNTRY_CAP=0` mean no production ceiling; explicit nonzero values are
+diagnostic-only. A failed country run exits before projection, preventing the
+partial-snapshot defect observed earlier.
+
+The first real Workbench walkthrough exposed a separate design regression:
+`73 candidates · 8 shown · 63 omitted`, with Yemen, Ukraine, sports and iPhone
+rows promoted as direct answers to an Iran infrastructure investigation. The
+Research Plan path now queries the complete current Narrative Thread universe,
+removes thread/weak-support/semantic top-N cuts, and exposes every candidate in
+the primary or expandable low-confidence ledger. Weak support cannot buy
+primary status with volume or movement; one generic lexical token cannot claim
+direct evidence; coverage country remains explicitly non-subject geography.
+With real embeddings, the Iran forcing query evaluated 581 candidates: 18
+primary, 563 low-confidence, zero omitted. Full verification is `1304 passed,
+6 skipped` backend, `308 passed` frontend, with a green production build.
+
 Records:
 
 - `docs/state/2026-07-12-spec-history-crosswalk.md`

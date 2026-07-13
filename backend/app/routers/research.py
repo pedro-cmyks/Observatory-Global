@@ -29,12 +29,141 @@ from app.services.research_semantic import (
     fetch_semantic_signal_matches,
     fetch_topic_centroids,
 )
-from app.services.thread_intelligence import fetch_threads
 
 router = APIRouter(prefix="/api/v2/research", tags=["research"])
 logger = logging.getLogger(__name__)
 
 PLAN_CACHE_TTL = 120  # seconds — matches the search/thread cache cadence
+
+
+_RESEARCH_THREAD_CANDIDATES_SQL = """
+WITH latest_snapshot AS (
+    SELECT dynamic_topic_id, MAX(snapshot_at) AS snapshot_at
+    FROM dynamic_topic_members
+    GROUP BY dynamic_topic_id
+),
+current_clusters AS (
+    SELECT dtm.dynamic_topic_id, ec.id, ec.label, ec.n_signals, ec.velocity,
+           ec.top_country_codes, ec.sample_signal_ids
+    FROM dynamic_topic_members dtm
+    JOIN latest_snapshot ls
+      ON ls.dynamic_topic_id = dtm.dynamic_topic_id
+     AND ls.snapshot_at = dtm.snapshot_at
+    JOIN emergent_clusters ec ON ec.id = dtm.emergent_cluster_id
+),
+current_rollup AS (
+    SELECT dynamic_topic_id,
+           COUNT(*)::int AS cluster_count,
+           SUM(n_signals)::int AS signal_count,
+           SUM(COALESCE(velocity, 0))::int AS changed_10h,
+           (ARRAY_AGG(label ORDER BY n_signals DESC, id))[1] AS lead_label
+    FROM current_clusters
+    GROUP BY dynamic_topic_id
+),
+current_countries AS (
+    SELECT cc.dynamic_topic_id, ARRAY_AGG(DISTINCT country_code) AS country_codes
+    FROM current_clusters cc
+    CROSS JOIN LATERAL UNNEST(
+        COALESCE(cc.top_country_codes, ARRAY[]::text[])
+    ) AS country_code
+    GROUP BY cc.dynamic_topic_id
+),
+current_sources AS (
+    SELECT cc.dynamic_topic_id, COUNT(DISTINCT s.source_name)::int AS source_count
+    FROM current_clusters cc
+    CROSS JOIN LATERAL UNNEST(
+        COALESCE(cc.sample_signal_ids, ARRAY[]::bigint[])
+    ) AS sample(signal_id)
+    JOIN signals_v2 s ON s.id = sample.signal_id
+    GROUP BY cc.dynamic_topic_id
+)
+SELECT dt.id,
+       CASE WHEN cr.cluster_count = 1 THEN cr.lead_label ELSE dt.label END AS label,
+       dt.identity_key,
+       dt.category,
+       dt.crisis_relevant,
+       dt.noise_rate,
+       dt.mean_cohesion,
+       COALESCE(cr.signal_count, dt.agg_n_signals, 0)::int AS signal_count,
+       COALESCE(cr.changed_10h, 0)::int AS changed_10h,
+       COALESCE(cs.source_count, 0)::int AS source_count,
+       COALESCE(cc.country_codes, ARRAY[]::text[]) AS country_codes
+FROM dynamic_topics dt
+LEFT JOIN current_rollup cr ON cr.dynamic_topic_id = dt.id
+LEFT JOIN current_countries cc ON cc.dynamic_topic_id = dt.id
+LEFT JOIN current_sources cs ON cs.dynamic_topic_id = dt.id
+WHERE dt.state = 'active'
+  AND dt.last_seen > NOW() - (GREATEST($1::int, 72) * INTERVAL '1 hour')
+  AND (
+      ($2::text IS NULL AND dt.parent_id IS NULL)
+      OR
+      ($2::text IS NOT NULL AND dt.is_umbrella = false
+       AND $2::text = ANY(COALESCE(cc.country_codes, ARRAY[]::text[])))
+  )
+ORDER BY dt.last_seen DESC, dt.id DESC
+"""
+
+
+def _research_thread_from_row(row: dict, *, country_code: str | None) -> dict:
+    noise = row.get("noise_rate")
+    confidence_value = 1.0 - float(noise) if noise is not None else None
+    if confidence_value is None:
+        band = "thin"
+    elif confidence_value >= 0.9:
+        band = "high"
+    elif confidence_value >= 0.75:
+        band = "medium"
+    else:
+        band = "low"
+    topic_id = int(row["id"])
+    return {
+        "thread_id": f"dynamic-topic-{topic_id}",
+        "label": str(row.get("label") or f"dynamic topic {topic_id}"),
+        "anchor_topics": [str(row.get("identity_key") or f"dynamic-topic-{topic_id}")],
+        "signal_count": int(row.get("signal_count") or 0),
+        "source_count": int(row.get("source_count") or 0),
+        "changed_10h": int(row.get("changed_10h") or 0),
+        "category": row.get("category"),
+        "crisis_relevant": row.get("crisis_relevant"),
+        "top_countries": list(row.get("country_codes") or []),
+        # Country membership is currently coverage geography, not verified
+        # subject geography (#238). Ranking must not silently equate them.
+        "scope_basis": "coverage" if country_code else "global",
+        "subject_status": "unverified",
+        "quality": {
+            "noise_rate": float(noise) if noise is not None else None,
+            "coherence": (
+                float(row["mean_cohesion"])
+                if row.get("mean_cohesion") is not None else None
+            ),
+        },
+        "confidence": {"band": band},
+    }
+
+
+async def fetch_research_threads(
+    *, hours: int, limit: int | None = None, country_codes: list[str] | None = None,
+) -> list[dict]:
+    """Return the complete current Narrative Thread universe for research.
+
+    ``limit`` is accepted for the injected discovery interface but deliberately
+    ignored: presentation can collapse low-confidence material, while the
+    research ledger remains complete and uncapped.
+    """
+    if db.pool is None:
+        return []
+    country_code = (
+        str(country_codes[0]).upper()
+        if country_codes and len(country_codes) == 1 else None
+    )
+    async with db.pool.acquire() as conn:
+        rows = await conn.fetch(
+            _RESEARCH_THREAD_CANDIDATES_SQL, int(hours), country_code, timeout=20,
+        )
+    return [
+        _research_thread_from_row(dict(row), country_code=country_code)
+        for row in rows
+    ]
 
 
 class ResearchPlanRequest(BaseModel):
@@ -133,7 +262,7 @@ async def research_plan(body: ResearchPlanRequest) -> dict:
     plan = await discover_anchors(
         intent,
         hours=body.hours,
-        fetch_threads_fn=fetch_threads,
+        fetch_threads_fn=fetch_research_threads,
         fetch_attention_fn=_fetch_attention,
         # embedding is CPU-blocking (model load + encode); keep it off the loop
         embed_query_fn=lambda text: asyncio.to_thread(embed_query, text),

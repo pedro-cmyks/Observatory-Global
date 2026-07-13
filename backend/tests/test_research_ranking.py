@@ -103,10 +103,14 @@ def test_no_silent_omission_ledger_reconciles():
     assert ledger["candidate_count"] == (
         ledger["shown_count"] + ledger["downranked_count"] + ledger["omitted_count"]
     )
-    # off-topic global thread was skipped at discovery WITH a reason code
-    skipped_ids = {s["candidate_id"] for s in ledger["skipped_candidates"]}
-    assert "celebrity-gossip--us" in skipped_ids
-    assert all(s["reason_code"] for s in ledger["skipped_candidates"])
+    # The full discovery universe remains accessible. Off-topic material is
+    # downranked, not omitted from the product.
+    assert ledger["omitted_count"] == 0
+    assert ledger["skipped_candidates"] == []
+    all_ids = {a["id"] for a in plan["anchors"] + plan["low_confidence_tray"]}
+    assert "celebrity-gossip--us" in all_ids
+    assert ledger["complete"] is True
+    assert ledger["semantic_ceiling"] is False
     assert ledger["appeal_action"]
 
 
@@ -117,6 +121,31 @@ def test_downranked_material_lands_in_visible_tray():
         assert anchor["visibility"] == "downranked"
     for anchor in plan["anchors"]:
         assert anchor["visibility"] == "primary"
+
+
+def test_weak_support_never_buys_primary_status_with_volume_or_movement():
+    plan = rank_plan({
+        "intent": parse_research_intent("Iran infrastructure escalation"),
+        "anchors": [{
+            "anchor_type": "thread",
+            "id": "huge-but-unrelated",
+            "label": "A large unrelated story",
+            "evidence_label": "weak_support",
+            "matched_terms": [],
+            "signal_count": 100000,
+            "source_count": 1000,
+            "changed_10h": 5000,
+            "confidence": {"band": "high"},
+            "quality": {},
+            "open": {"surface": "thread_detail", "params": {}},
+        }],
+        "pin_candidates": ["huge-but-unrelated"],
+        "skipped_candidates": [],
+    })
+
+    assert plan["anchors"] == []
+    assert plan["low_confidence_tray"][0]["id"] == "huge-but-unrelated"
+    assert "weak_support_not_primary" in plan["ranking_explanations"][0]["reason_codes"]
 
 
 def test_sports_lane_downranked_with_reason_codes_not_excluded():
@@ -141,6 +170,20 @@ def test_coverage_gaps_never_downranked():
                    for a in plan["low_confidence_tray"])
 
 
+def test_degraded_thread_lane_cannot_claim_complete_ledger():
+    intent = parse_research_intent("Iran drought")
+
+    async def broken_threads(**kwargs):
+        raise RuntimeError("db down")
+
+    discovered = asyncio.run(discover_anchors(
+        intent, hours=24, fetch_threads_fn=broken_threads, fetch_attention_fn=None,
+    ))
+    plan = rank_plan(discovered)
+    assert plan["downranking_ledger"]["complete"] is False
+    assert plan["discovery_completion"]["thread_candidate_ceiling"] is False
+
+
 def test_weak_support_carries_unsupported_claim_penalty():
     intent = parse_research_intent("Iran climate water drought")
     anchor = {
@@ -152,6 +195,28 @@ def test_weak_support_carries_unsupported_claim_penalty():
     explanation = score_anchor(anchor, intent)
     assert explanation["score_components"]["unsupported_claim_adjustment"] < 0
     assert "unsupported_claim_risk" in explanation["reason_codes"]
+
+
+def test_coverage_geography_is_not_promoted_as_verified_subject_geography():
+    intent = parse_research_intent("Iran infrastructure escalation")
+    anchor = {
+        "anchor_type": "thread",
+        "id": "dynamic-topic-9",
+        "evidence_label": "weak_support",
+        "matched_terms": [],
+        "signal_count": 20,
+        "source_count": 3,
+        "confidence": {"band": "medium"},
+        "coverage_countries": ["IR"],
+        "scope_basis": "coverage",
+        "subject_status": "unverified",
+        "open": {"surface": "thread_detail", "params": {"country_code": "IR"}},
+    }
+
+    explanation = score_anchor(anchor, intent)
+    assert explanation["score_components"]["geo_entity_fit"] == 0.55
+    assert "coverage_geo_not_subject" in explanation["reason_codes"]
+    assert "strong_geo_fit" not in explanation["reason_codes"]
 
 
 def test_pin_candidates_filtered_to_primary_and_sorted():

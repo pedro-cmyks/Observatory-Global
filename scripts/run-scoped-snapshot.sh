@@ -5,7 +5,8 @@ set -uo pipefail   # NOT -e: a country/label hiccup must not abort the whole run
 # com.atlas.emergent-snapshot (scoped is a superset: ~5.4× recall, ~54× more
 # narratives, measured). Forms scoped topics for ALL countries under ONE snapshot,
 # then projects into dynamic_topics (serving). MINDFUL (taskpolicy -b, efficiency
-# cores) + heavy (~1–1.5h) → schedule ONCE nightly, off-peak, in the embed gaps.
+# cores) + heavy (multi-hour; remeasure after the uncapped atomic cutover) →
+# schedule ONCE nightly, off-peak, in the embed gaps.
 # Launchd runs this from /Users/pedro/AtlasLocalWorker.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,8 +20,8 @@ STUDENT_JSON="${ATLAS_EVIDENCE_STUDENT:-/Users/pedro/AtlasLocalWorker/models/202
 LOCAL_ENV="${ATLAS_LOCAL_ENV:-$ROOT_DIR/.env}"
 
 MIN_EMBEDDED="${ATLAS_SCOPED_MIN_EMBEDDED:-100}"
-TOP_PER_COUNTRY="${ATLAS_SCOPED_TOP_PER_COUNTRY:-25}"
-PER_COUNTRY_CAP="${ATLAS_SCOPED_CAP:-6000}"
+TOP_PER_COUNTRY="${ATLAS_SCOPED_TOP_PER_COUNTRY:-0}"
+PER_COUNTRY_CAP="${ATLAS_SCOPED_CAP:-0}"
 # Scoped regime: regional topics are 8-30 signals at ~0.97 cohesion; volume_min=30
 # (global-regime default) starves them. 12 recalibrated + purity-verified (2026-07-01
 # bootstrap: 256 admitted topics cohesion 0.969 / noise 0.081). persist_min stays the
@@ -32,7 +33,7 @@ MEMBERS_HOURS="${ATLAS_TOPIC_MEMBERS_HOURS:-336}"
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 mkdir -p "$LOG_DIR"
 
-# P1.1 heavy-job mutex: ~1-1.5h clustering chain must never overlap embed/
+# P1.1 heavy-job mutex: the multi-hour clustering chain must never overlap embed/
 # matview/catchup on the shared Supabase (serving statement-timeout incidents).
 if [[ -r "$SCRIPT_DIR/heavy-job-lock.sh" ]]; then
   source "$SCRIPT_DIR/heavy-job-lock.sh"
@@ -56,10 +57,12 @@ command -v taskpolicy >/dev/null 2>&1 && TASKPOLICY="taskpolicy -b"
 
 # Step 1: form + write the scoped snapshot (all countries, one snapshot_at).
 cd "$ROOT_DIR"
-$TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.run_scoped_snapshot \
+if ! $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.run_scoped_snapshot \
   --min-embedded "$MIN_EMBEDDED" --top-per-country "$TOP_PER_COUNTRY" \
-  --per-country-cap "$PER_COUNTRY_CAP" --gate "$GATE_JSON" \
-  || echo "[scoped-snapshot] R1 write failed" >&2
+  --per-country-cap "$PER_COUNTRY_CAP" --gate "$GATE_JSON"; then
+  echo "[scoped-snapshot] R1 write failed — stop before projection" >&2
+  exit 1
+fi
 
 # Step 2: fold the just-written snapshot into dynamic_topics (serving) with the
 # #224 anchor-guard + the retire/age lifecycle. Non-fatal.

@@ -91,6 +91,7 @@ def test_semantic_anchors_added_with_lane_label():
     assert semantic, "expected semantic anchors"
     assert all(a["lane"] == "semantic" for a in semantic)
     assert all("semantic_similarity" in a for a in semantic)
+    assert all(a["evidence_label"] == "weak_support" for a in semantic)
     assert not any(a["id"] == "dynamic-topic-11" for a in semantic)  # sports filtered by sim
     # openable contract preserved
     assert all(a["open"]["surface"] == "thread_detail" for a in semantic)
@@ -152,6 +153,7 @@ def test_atlas_anchor_basis_builds_country_scoped_thread_anchor():
     assert semantic, "expected atlas-basis semantic anchor"
     anchor = semantic[0]
     assert anchor["match_basis"] == "topic_description"
+    assert anchor["evidence_label"] == "weak_support"
     assert anchor["id"] == "water-stress-drought--ir"  # country-scoped thread id
     assert anchor["open"]["params"]["country_code"] == "IR"
     assert not any("sports" in a["id"] for a in semantic)

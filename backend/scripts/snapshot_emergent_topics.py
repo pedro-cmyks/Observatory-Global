@@ -32,6 +32,7 @@ import time
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import asyncpg
 import numpy as np
@@ -226,8 +227,22 @@ def _kept_centroid(cluster: dict, embs: np.ndarray) -> np.ndarray:
     return centroid
 
 
-async def _write_snapshot(
-    conn: asyncpg.Connection,
+_INSERT_SNAPSHOT_SQL = """
+    INSERT INTO emergent_clusters (
+        snapshot_at, snapshot_window_h, cluster_id, label, description,
+        raw_signal_count, n_signals, gate_threshold, velocity, cohesion,
+        top_country_codes, sample_signal_ids, raw_sample_ids,
+        centroid_vec, vendor_agreement, vendor_labels
+    ) VALUES (
+        $1, $2, $3, $4, $5,
+        $6, $7, $8, $9, $10,
+        $11, $12, $13,
+        $14, $15, $16::jsonb
+    )
+"""
+
+
+def _prepare_snapshot_rows(
     *,
     snapshot_at: datetime,
     window_hours: int,
@@ -237,19 +252,12 @@ async def _write_snapshot(
     rows: list[dict],
     prior: list,
     gate_threshold: float,
-):
-    insert_sql = """
-        INSERT INTO emergent_clusters (
-            snapshot_at, snapshot_window_h, cluster_id, label, description,
-            raw_signal_count, n_signals, gate_threshold, velocity, cohesion,
-            top_country_codes, sample_signal_ids, raw_sample_ids,
-            centroid_vec, vendor_agreement, vendor_labels
-        ) VALUES (
-            $1, $2, $3, $4, $5,
-            $6, $7, $8, $9, $10,
-            $11, $12, $13,
-            $14, $15, $16::jsonb
-        )
+) -> list[tuple[Any, ...]]:
+    """Materialize compact insert rows without mutating the database.
+
+    Scoped snapshots can run for hours. Preparing each country's compact rows
+    lets that runner retain only a few megabytes and commit the whole snapshot
+    once every country has completed, instead of exposing partial snapshots.
     """
     rows_to_insert = []
     for c, dl in zip(clusters, ds_labels):
@@ -279,8 +287,41 @@ async def _write_snapshot(
             "deepseek",
             json.dumps({"deepseek": dl}, ensure_ascii=False),
         ))
-    await conn.executemany(insert_sql, rows_to_insert)
+    return rows_to_insert
+
+
+async def _insert_prepared_snapshot(
+    conn: asyncpg.Connection,
+    rows_to_insert: list[tuple[Any, ...]],
+) -> int:
+    if rows_to_insert:
+        await conn.executemany(_INSERT_SNAPSHOT_SQL, rows_to_insert)
     return len(rows_to_insert)
+
+
+async def _write_snapshot(
+    conn: asyncpg.Connection,
+    *,
+    snapshot_at: datetime,
+    window_hours: int,
+    clusters: list[dict],
+    ds_labels: list[dict],
+    embs: np.ndarray,
+    rows: list[dict],
+    prior: list,
+    gate_threshold: float,
+):
+    prepared = _prepare_snapshot_rows(
+        snapshot_at=snapshot_at,
+        window_hours=window_hours,
+        clusters=clusters,
+        ds_labels=ds_labels,
+        embs=embs,
+        rows=rows,
+        prior=prior,
+        gate_threshold=gate_threshold,
+    )
+    return await _insert_prepared_snapshot(conn, prepared)
 
 
 async def main() -> None:

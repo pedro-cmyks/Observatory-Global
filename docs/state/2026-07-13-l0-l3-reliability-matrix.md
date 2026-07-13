@@ -11,7 +11,7 @@ publishable”. A green render is not a green editorial system.
 | L0 Landing | green | green | green for expectation-setting | not a publication surface |
 | L1 Brief | green after paint-budget repair | amber | amber | **red** — shared package is wired but current artifact is degraded |
 | L2 Console | green | amber | amber/green for live exploration | not applicable; capture receipts incomplete |
-| L3 Workbench | green empty-state | amber | amber when populated | **amber/red** — v2 synthesis exists, heterogeneous package not proven |
+| L3 Workbench | green overlay/empty-state | amber | amber when populated | **amber/red** — v2 synthesis exists, heterogeneous package not proven |
 | Engine/ops | amber | amber | supports current product | blocks an honest daily auto-edition when snapshots are stale |
 
 ## Current production observations
@@ -66,8 +66,9 @@ contract depth and coordinated time, not another surface.
 
 ### L3
 
-- `/workbench` loads cleanly with separate-investigation empty state and the
-  three-region model;
+- Workbench is an overlay inside `/app`, not a `/workbench` route. The overlay
+  loads cleanly with separate-investigation empty state and the three-region
+  model;
 - unified pins, frozen snapshots, incremental thread constellation, dossier
   synthesis v2, numbered citations and corroboration already exist;
 - the current connection provider remains thread-only and can exceed the serving
@@ -75,6 +76,10 @@ contract depth and coordinated time, not another surface.
 - no current production run has demonstrated story + actor + signal + country +
   event/anomaly pins connected, time-remeasured, inspected and exported as one
   portable package.
+- a production-shaped Iran plan now evaluates the complete current thread
+  universe: 581 candidates with real embeddings, 18 primary, 563 expandable
+  low-confidence and zero omitted. Weak support cannot reach primary through
+  volume/movement, and coverage geography is not promoted as subject truth;
 
 **Gate:** the NATO dossier proves the publication primitives, not the full L3
 composition goal. Preserve the existing dossier as fallback while the shared
@@ -99,6 +104,14 @@ was not connected to production UI.
 | package end-to-end | 12.935 s measured |
 | 5W+H | what/when/how ready; where/why partial; who missing |
 | dossier relation provider | degraded on serving timeout |
+
+The recovered complete snapshot changed the current daily measurement to 546
+candidates, 12 layout stories, 71 receipts and 5.4 hours lag. An edition-scoped
+current label receipt removes stale lifecycle labels from L1 without rewriting
+thread identity. A provisional embedding evidence-fit pass measured 150
+eligible single-cluster topics and downranked seven bivariate q10 low-tail
+outliers. The package remains `degraded` because `where` is coverage-only,
+`why` is not causally measured and no final grounded article has been generated.
 
 Important interpretation:
 

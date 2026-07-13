@@ -1,7 +1,16 @@
+import asyncio
 from pathlib import Path
 
+import numpy as np
+
 from app.services.investigation_graph import ReadinessItem
-from app.services.daily_publication import verified_subjects_from_receipts
+from app.services.daily_publication import (
+    choose_current_edition_label,
+    classify_evidence_fit_outliers,
+    evidence_fit_metrics_from_vectors,
+    measure_publication_evidence_fit,
+    verified_subjects_from_receipts,
+)
 from scripts.build_daily_publication import _edition_status
 
 
@@ -109,6 +118,116 @@ def test_daily_verified_subjects_do_not_treat_syndication_as_corroboration():
     assert verified_subjects_from_receipts(receipts) == []
 
 
+def test_daily_edition_label_uses_current_cluster_not_stale_thread_identity():
+    rows = [
+        {
+            "id": 1,
+            "source_name": "Outlet A",
+            "edition_cluster_id": 7001,
+            "edition_cluster_label": "Mass Food Poisoning in Turkey",
+            "edition_cluster_n_signals": 11,
+        },
+        {
+            "id": 2,
+            "source_name": "Outlet B",
+            "edition_cluster_id": 7001,
+            "edition_cluster_label": "Mass Food Poisoning in Turkey",
+            "edition_cluster_n_signals": 11,
+        },
+    ]
+
+    label, receipt = choose_current_edition_label(
+        "Drunk Driver Hits Family in Kaliningrad", rows,
+    )
+
+    assert label == "Mass Food Poisoning in Turkey"
+    assert receipt == {
+        "method": "current_snapshot_cluster_receipt_support",
+        "identity_label": "Drunk Driver Hits Family in Kaliningrad",
+        "edition_label": "Mass Food Poisoning in Turkey",
+        "cluster_id": 7001,
+        "receipt_support": 2,
+        "source_support": 2,
+        "cluster_signal_count": 11,
+    }
+
+
+def test_daily_edition_label_falls_back_honestly_without_current_cluster():
+    label, receipt = choose_current_edition_label("Stable Identity", [])
+
+    assert label == "Stable Identity"
+    assert receipt["method"] == "identity_label_fallback_no_current_cluster"
+    assert receipt["edition_label"] == "Stable Identity"
+
+
+def test_publication_fit_gate_rejects_only_bivariate_complete_universe_outliers():
+    metrics = {
+        f"topic-{i}": {
+            "pair_median": 0.40 + i * 0.005,
+            "label_median": 0.35 + i * 0.004,
+        }
+        for i in range(40)
+    }
+    metrics["mixed"] = {"pair_median": 0.10, "label_median": 0.08}
+    metrics["broad-but-labeled"] = {"pair_median": 0.11, "label_median": 0.70}
+
+    accepted, ledger, method = classify_evidence_fit_outliers(metrics)
+
+    assert "mixed" not in accepted
+    assert "broad-but-labeled" in accepted
+    assert ledger["mixed"]["status"] == "downranked"
+    assert ledger["mixed"]["reason_codes"] == [
+        "publication_evidence_fit_bivariate_low_tail"
+    ]
+    assert ledger["broad-but-labeled"]["status"] == "eligible"
+    assert method["universe_count"] == len(metrics)
+    assert method["tail_quantile"] == 0.10
+    assert method["semantic_ceiling"] is False
+    assert method["omission_ledger"] == "complete"
+
+
+def test_publication_fit_gate_abstains_when_universe_is_too_small():
+    accepted, ledger, method = classify_evidence_fit_outliers({
+        "one": {"pair_median": 0.01, "label_median": 0.01},
+    })
+
+    assert accepted == {"one"}
+    assert ledger["one"]["reason_codes"] == [
+        "publication_evidence_fit_abstained_thin_universe"
+    ]
+    assert method["status"] == "abstained"
+
+
+def test_publication_fit_vector_metrics_separate_label_support_and_coherence():
+    metrics = evidence_fit_metrics_from_vectors(
+        np.array([1.0, 0.0]),
+        np.array([[1.0, 0.0], [0.8, 0.2], [0.9, 0.1]]),
+    )
+
+    assert metrics["label_median"] > 0.95
+    assert metrics["pair_median"] > 0.95
+
+
+def test_publication_fit_measurement_keeps_compound_story_as_explicit_abstention():
+    labels = {"compound": "Regional conflict"}
+    rows = {
+        "compound": [
+            {"headline": "One", "edition_cluster_id": 1},
+            {"headline": "Two", "edition_cluster_id": 2},
+        ]
+    }
+
+    accepted, ledger, method = asyncio.run(measure_publication_evidence_fit(
+        labels, rows, embed_texts=lambda _texts: np.empty((0, 2)),
+    ))
+
+    assert accepted == {"compound"}
+    assert ledger["compound"]["reason_codes"] == [
+        "publication_evidence_fit_abstained_compound_story"
+    ]
+    assert method["reason"] == "no_measurable_single_cluster_stories"
+
+
 def test_daily_graph_quality_carries_only_corroborated_subjects():
     root = Path(__file__).parents[1]
     service = (root / "app/services/daily_publication.py").read_text()
@@ -128,3 +247,5 @@ def test_daily_receipts_come_from_current_typed_evidence_not_cluster_samples():
     assert "s.timestamp >= $3::timestamptz - ($2::int * INTERVAL '1 hour')" in service
     assert "s.timestamp <= $3::timestamptz" in service
     assert "ec.sample_signal_ids" not in service
+    assert "edition_cluster_label" in service
+    assert "choose_current_edition_label" in service

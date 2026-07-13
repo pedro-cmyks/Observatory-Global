@@ -302,6 +302,7 @@ def select_daily_edition(
     display_slots: int = 12,
     receipt_eligible_ids: set[str] | None = None,
     receipt_checked_ids: set[str] | None = None,
+    quality_ledger_by_id: dict[str, dict[str, Any]] | None = None,
 ) -> DailyEditionSelection:
     measured_at = max(
         (row.last_seen for row in candidates if row.last_seen is not None),
@@ -350,6 +351,14 @@ def select_daily_edition(
             "selected" if candidate.thread_id in selected_set else "downranked"
         )
         reason_codes = list(reasons)
+        quality_receipt = (
+            quality_ledger_by_id.get(candidate.thread_id)
+            if quality_ledger_by_id is not None else None
+        )
+        if quality_receipt is not None:
+            components = dict(components)
+            components["publication_evidence_fit"] = quality_receipt
+            reason_codes.extend(quality_receipt.get("reason_codes") or [])
         reason_codes.extend([f"pareto_front_{front}", "equal_dimension_rank_aggregation"])
         if status == "selected":
             reason_codes.append("daily_layout_selected")

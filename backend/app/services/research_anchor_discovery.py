@@ -31,9 +31,6 @@ AttentionFetcher = Callable[..., Awaitable[list[dict[str, Any]]]]
 
 CONTRACT = "research-plan-v1"  # v1 (2026-07-05): two-tier gate labels, Kalman
 # movement enrichment, R3 category passthrough, substrate-health guard.
-THREAD_LANE_LIMIT = 24
-WEAK_SUPPORT_CAP = 3
-PIN_CANDIDATE_CAP = 6
 # W2a: below this many active story centroids the member-centroid semantic
 # basis runs in exactly the post-collapse noise regime measured in the F4 A/B
 # (16-centroid pool → promiscuous matches). Suppress it HONESTLY (visible gap)
@@ -48,6 +45,14 @@ _COUNTRY_NAMES = {
     "JO": "Jordan", "CO": "Colombia", "US": "United States",
 }
 
+_QUERY_STOPWORDS = {
+    "a", "about", "air", "an", "and", "around", "de", "del", "el", "en", "for",
+    "how", "in", "la", "las", "los", "of", "on", "or", "regional", "sobre",
+    "the", "to", "un", "una", "us", "what", "with", "y",
+}
+
+_GENERIC_CONTEXT_TOKENS = {"attack", "attacks", "strike", "strikes"}
+
 
 def _norm_tokens(text: str) -> set[str]:
     return set(normalize_search_text(text or "").split())
@@ -61,12 +66,48 @@ def _thread_match_terms(thread: dict[str, Any]) -> set[str]:
     return tokens
 
 
+def _label_names_target_geo(label: str, geo_codes: list[str]) -> bool:
+    normalized = normalize_search_text(label or "")
+    tokens = set(normalized.split())
+    for alias, code in COUNTRY_ALIASES.items():
+        if code not in geo_codes:
+            continue
+        matched = alias in normalized if " " in alias else alias in tokens
+        if matched:
+            return True
+    return False
+
+
 def _expansion_tokens(intent: dict[str, Any]) -> set[str]:
     tokens: set[str] = set()
     for terms in (intent.get("expanded_terms") or {}).values():
         for term in terms:
             tokens |= _norm_tokens(term)
-    return tokens
+    return tokens - _QUERY_STOPWORDS
+
+
+def _lexical_match(
+    thread_tokens: set[str],
+    query_tokens: set[str],
+    expansion_tokens: set[str],
+) -> tuple[str, list[str]]:
+    """Classify an inspectable lexical relationship without single-token
+    overclaiming.
+
+    A lone generic overlap in a compound query (for example ``escalation`` in
+    an Iran + infrastructure question) is recall, not direct evidence. It
+    stays reachable as weak support. One-token queries can still match
+    directly, while compound queries require at least two meaningful terms.
+    """
+    direct = sorted(thread_tokens & query_tokens)
+    contextual = sorted(thread_tokens & expansion_tokens)
+    direct_floor = 1 if len(query_tokens) == 1 else 2
+    if direct and len(direct) >= direct_floor:
+        return "direct_evidence", direct
+    specific_context = set(contextual) - _GENERIC_CONTEXT_TOKENS
+    if contextual and (specific_context or len(set(direct) | set(contextual)) >= 2):
+        return "context", contextual
+    return "weak_support", direct
 
 
 def _semantic_component_gap(component: str, exc: Exception) -> dict[str, Any]:
@@ -104,6 +145,9 @@ def _thread_anchor(
         # parent domain on atlas) — lets the plan group anchors by category.
         "category": thread.get("category"),
         "crisis_relevant": thread.get("crisis_relevant"),
+        "coverage_countries": thread.get("top_countries") or [],
+        "scope_basis": thread.get("scope_basis"),
+        "subject_status": thread.get("subject_status"),
         "quality": thread.get("quality"),
         "confidence": thread.get("confidence"),
         "open": {
@@ -135,7 +179,9 @@ async def discover_anchors(
     # Geo alias tokens ("iran") must not count as topical evidence: otherwise
     # every country-labeled thread becomes direct_evidence for any Iran query.
     geo_tokens = {tok for alias in COUNTRY_ALIASES for tok in alias.split()}
-    query_tokens = _norm_tokens(intent.get("main_intent") or "") - geo_tokens
+    query_tokens = (
+        _norm_tokens(intent.get("main_intent") or "") - geo_tokens - _QUERY_STOPWORDS
+    )
     expansion = _expansion_tokens(intent) - geo_tokens
     geo: list[str] = intent.get("geo_scope") or []
     axes: list[str] = intent.get("topic_axes") or []
@@ -144,9 +190,11 @@ async def discover_anchors(
     semantic_evidence: list[dict[str, Any]] = []
     coverage_gaps: list[dict[str, Any]] = []
     seen_thread_ids: set[str] = set()
+    thread_anchor_by_id: dict[str, dict[str, Any]] = {}
     axis_hit: dict[str, bool] = {axis: False for axis in axes}
-    # Honest ledger input (spec: No Silent Filtering): every thread candidate
-    # the lanes considered but did not anchor, with a reason code.
+    thread_universe_complete = True
+    # Kept for contract compatibility. The complete-universe path below does
+    # not omit discovered candidates; all weak material remains reachable.
     skipped_candidates: list[dict[str, Any]] = []
 
     # ── Country lane ─────────────────────────────────────────────────────
@@ -172,10 +220,11 @@ async def discover_anchors(
         try:
             threads = await fetch_threads_fn(
                 hours=hours,
-                limit=THREAD_LANE_LIMIT,
+                limit=None,
                 country_codes=[scope] if scope else None,
             )
         except Exception as exc:  # degraded lane -> visible gap, not a 500
+            thread_universe_complete = False
             coverage_gaps.append({
                 "gap_type": "lane_degraded",
                 "lane": "thread",
@@ -184,40 +233,44 @@ async def discover_anchors(
             })
             continue
 
-        weak_used = 0
         for thread in threads:
             thread_id = str(thread.get("thread_id") or "")
-            if not thread_id or thread_id in seen_thread_ids:
+            if not thread_id:
                 continue
             thread_tokens = _thread_match_terms(thread)
-            direct = sorted(thread_tokens & query_tokens)
-            contextual = sorted(thread_tokens & expansion)
-            if direct:
-                label, matched = "direct_evidence", direct
-            elif contextual:
-                label, matched = "context", contextual
-            elif scope and weak_used < WEAK_SUPPORT_CAP:
-                label, matched = "weak_support", []
-                weak_used += 1
-            else:
-                skipped_candidates.append({
-                    "candidate_id": thread_id,
-                    "label": thread.get("label"),
-                    "lane": "thread",
-                    "scope": scope,
-                    "reason_code": (
-                        "weak_support_cap_reached" if scope else "no_intent_match"
-                    ),
-                })
+            label, matched = _lexical_match(thread_tokens, query_tokens, expansion)
+            explicit_geo = _label_names_target_geo(
+                str(thread.get("label") or ""), geo,
+            )
+            if (
+                label == "weak_support"
+                and matched
+                and explicit_geo
+            ):
+                label = "direct_evidence"
+            elif label == "weak_support" and explicit_geo:
+                contextual = sorted(thread_tokens & expansion)
+                if contextual:
+                    label, matched = "context", contextual
+            existing = thread_anchor_by_id.get(thread_id)
+            evidence_order = {"weak_support": 0, "context": 1, "direct_evidence": 2}
+            if existing is not None:
+                if evidence_order[label] > evidence_order[existing["evidence_label"]]:
+                    existing["evidence_label"] = label
+                    existing["matched_terms"] = matched
+                    if scope:
+                        existing["open"]["params"]["country_code"] = scope
                 continue
             seen_thread_ids.add(thread_id)
-            anchors.append(_thread_anchor(
+            anchor = _thread_anchor(
                 thread,
                 evidence_label=label,
                 matched_terms=matched,
                 hours=hours,
                 country_code=scope,
-            ))
+            )
+            anchors.append(anchor)
+            thread_anchor_by_id[thread_id] = anchor
             if label in ("direct_evidence", "context"):
                 for axis in axes:
                     axis_tokens: set[str] = set(AXIS_TRIGGERS.get(axis, set()))
@@ -243,15 +296,6 @@ async def discover_anchors(
                 keyword = str(item.get("keyword") or "")
                 kw_tokens = _norm_tokens(keyword)
                 matched = sorted(kw_tokens & (query_tokens | expansion))
-                if not matched:
-                    skipped_candidates.append({
-                        "candidate_id": f"attention-{code.lower()}-{normalize_search_text(keyword).replace(' ', '-')}",
-                        "label": keyword,
-                        "lane": "public_attention",
-                        "scope": code,
-                        "reason_code": "no_intent_match",
-                    })
-                    continue
                 anchors.append({
                     "anchor_type": "public_attention",
                     "lane": "public_attention",
@@ -321,7 +365,22 @@ async def discover_anchors(
             for cand in semantic_topic_candidates(query_vec, topics):
                 thread_id = f"dynamic-topic-{cand['topic_id']}"
                 if thread_id in seen_thread_ids:
-                    continue  # lexical lanes already anchored it
+                    existing = thread_anchor_by_id.get(thread_id)
+                    if existing is not None:
+                        existing["semantic_similarity"] = cand["similarity"]
+                        existing["match_basis"] = "member_centroid"
+                        existing["retrieval_lane"] = "thread+semantic"
+                        semantic_label = semantic_evidence_label(cand["similarity"])
+                        if (
+                            existing["evidence_label"] == "weak_support"
+                            and semantic_label == "context"
+                            and (
+                                not geo
+                                or bool(set(existing.get("coverage_countries") or []) & set(geo))
+                            )
+                        ):
+                            existing["evidence_label"] = "context"
+                    continue
                 seen_thread_ids.add(thread_id)
                 anchors.append({
                     "anchor_type": "thread",
@@ -330,7 +389,13 @@ async def discover_anchors(
                     "match_basis": "member_centroid",
                     "id": thread_id,
                     "label": cand["label"],
-                    "evidence_label": semantic_evidence_label(cand["similarity"]),
+                    # With a geographic intent, an unscoped centroid is recall,
+                    # not subject proof. It stays weak unless a lexical-lane
+                    # candidate supplied matching coverage context above.
+                    "evidence_label": (
+                        "weak_support" if geo
+                        else semantic_evidence_label(cand["similarity"])
+                    ),
                     "matched_terms": [],
                     "semantic_similarity": cand["similarity"],
                     "signal_count": cand["n_signals"],
@@ -359,9 +424,9 @@ async def discover_anchors(
                             "match_basis": "topic_description",
                             "id": thread_id,
                             "label": cand["label"],
-                            "evidence_label": semantic_evidence_label(
-                                cand["similarity"], basis="topic_description"
-                            ),
+                            # Taxonomy similarity is a navigation hint, never
+                            # found evidence. Keep it inspectable but non-primary.
+                            "evidence_label": "weak_support",
                             "matched_terms": [],
                             "semantic_similarity": cand["similarity"],
                             "open": {
@@ -484,7 +549,7 @@ async def discover_anchors(
         if a["anchor_type"] in ("thread", "country") and a["evidence_label"] != "gap"
     ]
     pinnable.sort(key=lambda a: (order.get(a["evidence_label"], 9), -int(a.get("signal_count") or 0)))
-    pin_candidates = [a["id"] for a in pinnable[:PIN_CANDIDATE_CAP]]
+    pin_candidates = [a["id"] for a in pinnable]
 
     next_steps: list[str] = []
     if any(a["evidence_label"] == "direct_evidence" for a in anchors):
@@ -510,4 +575,8 @@ async def discover_anchors(
         "skipped_candidates": skipped_candidates,
         "semantic_evidence": semantic_evidence,
         "category_summary": category_summary,
+        "discovery_completion": {
+            "thread_universe_complete": thread_universe_complete,
+            "thread_candidate_ceiling": False,
+        },
     }

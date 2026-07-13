@@ -43,8 +43,6 @@ ATLAS_CONTEXT_SIMILARITY = 0.79     # description basis: above = context
 # correct topic 0.797, unrelated topics 0.769-0.783). A relative cut keeps
 # only candidates close to the best match instead of everything over a floor.
 ATLAS_TOP_MARGIN = 0.012
-SEMANTIC_LANE_LIMIT = 8
-
 _embed_fn = None  # lazy singleton; never loaded unless the lane is used
 
 
@@ -201,7 +199,7 @@ def semantic_topic_candidates(
     topics: list[dict[str, Any]],
     *,
     min_similarity: float = SEMANTIC_MIN_SIMILARITY,
-    limit: int = SEMANTIC_LANE_LIMIT,
+    limit: int | None = None,
 ) -> list[dict[str, Any]]:
     """Pure ranking of topic centroids by cosine to the query vector."""
     scored = []
@@ -215,7 +213,7 @@ def semantic_topic_candidates(
                 "n_signals": topic.get("n_signals", 0),
             })
     scored.sort(key=lambda c: c["similarity"], reverse=True)
-    return scored[:limit]
+    return scored if limit is None else scored[:limit]
 
 
 def semantic_evidence_label(similarity: float, *, basis: str = "member_centroid") -> str:
@@ -424,7 +422,7 @@ def semantic_atlas_candidates(
     embedded_topics: list[dict[str, Any]],
     *,
     min_similarity: float = ATLAS_MIN_SIMILARITY,
-    limit: int = SEMANTIC_LANE_LIMIT,
+    limit: int | None = None,
 ) -> list[dict[str, Any]]:
     scored = []
     for topic in embedded_topics:
@@ -439,7 +437,7 @@ def semantic_atlas_candidates(
     if scored:  # relative cut: only candidates near the best match survive
         top = scored[0]["similarity"]
         scored = [c for c in scored if c["similarity"] >= top - ATLAS_TOP_MARGIN]
-    return scored[:limit]
+    return scored if limit is None else scored[:limit]
 
 
 # ---------------------------------------------------------------------------

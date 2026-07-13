@@ -39,7 +39,11 @@ from backend.scripts.emergent_poc import (
     _apply_gate, _clean_and_dedupe, _cluster, _cluster_stats, _label_all, _load_gate,
 )
 from backend.scripts.snapshot_emergent_topics import (
-    SAMPLE_TOP_K, DEFAULT_GATE, _prior_snapshot_clusters, _write_snapshot,
+    SAMPLE_TOP_K,
+    DEFAULT_GATE,
+    _insert_prepared_snapshot,
+    _prepare_snapshot_rows,
+    _prior_snapshot_clusters,
 )
 
 _ID_OFFSET = 100000  # per-country cluster_id block (>> max clusters/country)
@@ -61,7 +65,7 @@ _FETCH = """
       AND s.timestamp > NOW() - ($2::int * INTERVAL '1 hour')
       AND s.headline IS NOT NULL AND length(s.headline) >= 20
     ORDER BY s.timestamp DESC
-    LIMIT $3
+    LIMIT NULLIF($3, 0)
 """
 
 
@@ -86,7 +90,7 @@ async def _country_clusters(conn, cc, hours, cap, mcs, ms, gate, min_kept, top_n
     if not all_clusters:
         return None
     gated = _apply_gate(all_clusters, embs, gate, min_kept, top_k=SAMPLE_TOP_K)
-    clusters = gated[:top_n]
+    clusters = gated if top_n <= 0 else gated[:top_n]
     if not clusters:
         return None
     return clusters, embs, rows
@@ -96,8 +100,10 @@ async def main() -> None:
     ap = argparse.ArgumentParser(description="R1: scoped per-country snapshot writer.")
     ap.add_argument("--hours", type=int, default=168)
     ap.add_argument("--min-embedded", type=int, default=100)
-    ap.add_argument("--per-country-cap", type=int, default=6000)
-    ap.add_argument("--top-per-country", type=int, default=15)
+    ap.add_argument("--per-country-cap", type=int, default=0,
+                    help="operational diagnostic ceiling; 0 traverses every eligible signal")
+    ap.add_argument("--top-per-country", type=int, default=0,
+                    help="operational diagnostic ceiling; 0 keeps every gated cluster")
     ap.add_argument("--mcs", type=int, default=5)
     ap.add_argument("--ms", type=int, default=2)
     ap.add_argument("--min-kept", type=int, default=8)
@@ -130,10 +136,17 @@ async def main() -> None:
             if args.limit_countries:
                 ccs = ccs[: args.limit_countries]
         prior = await _prior_snapshot_clusters(conn, snapshot_at)
+        scope = "all gated clusters" if args.top_per_country <= 0 else (
+            f"top{args.top_per_country}/country"
+        )
+        corpus = "all eligible signals" if args.per_country_cap <= 0 else (
+            f"latest {args.per_country_cap}/country"
+        )
         print(f"snapshot_at={snapshot_at.isoformat()} · {len(ccs)} countries · "
-              f"top{args.top_per_country}/country · dry_run={args.dry_run}", file=sys.stderr)
+              f"{scope} · {corpus} · dry_run={args.dry_run}", file=sys.stderr)
 
         total_written = total_clusters = done = failed = 0
+        prepared_rows = []
         base = 0
         for cc in ccs:
             done += 1
@@ -172,15 +185,31 @@ async def main() -> None:
             else:
                 ds_labels = await _label_all(clusters, rows, ds_key)
             total_clusters += len(clusters)
-            if not args.dry_run:
-                async with conn.transaction():
-                    total_written += await _write_snapshot(
-                        conn, snapshot_at=snapshot_at, window_hours=args.hours,
-                        clusters=clusters, ds_labels=ds_labels, embs=embs, rows=rows,
-                        prior=prior, gate_threshold=gate["_threshold"])
+            prepared_rows.extend(_prepare_snapshot_rows(
+                snapshot_at=snapshot_at,
+                window_hours=args.hours,
+                clusters=clusters,
+                ds_labels=ds_labels,
+                embs=embs,
+                rows=rows,
+                prior=prior,
+                gate_threshold=gate["_threshold"],
+            ))
             lbls = ", ".join((d.get("label") or "?")[:24] for d in ds_labels[:2])
             print(f"  [{done}/{len(ccs)}] {cc}: n={len(rows)} clusters={len(clusters)} "
                   f"e.g. [{lbls}]", file=sys.stderr, flush=True)
+
+        if failed:
+            raise RuntimeError(
+                f"incomplete country pass: {failed}/{len(ccs)} countries failed; "
+                "staged snapshot discarded before database commit"
+            )
+        if not args.dry_run and prepared_rows:
+            if conn.is_closed():
+                conn = await asyncpg.connect(db)
+                await conn.execute("SET statement_timeout = '600s'")
+            async with conn.transaction():
+                total_written = await _insert_prepared_snapshot(conn, prepared_rows)
     finally:
         await conn.close()
 

@@ -45,7 +45,8 @@ GLOBAL_THREADS = [
 
 
 def _fetchers(attention_items: list[dict] | None = None):
-    async def fetch_threads_fn(*, hours: int, limit: int, country_codes=None):
+    async def fetch_threads_fn(*, hours: int, limit: int | None, country_codes=None):
+        assert limit is None, "research discovery must request the complete thread universe"
         return IR_THREADS if country_codes else GLOBAL_THREADS
 
     async def fetch_attention_fn(*, country_code: str, hours: int):
@@ -84,8 +85,10 @@ def test_topic_research_iran_returns_openable_anchors():
     country = [a for a in anchors if a["anchor_type"] == "country"]
     assert country and country[0]["open"]["params"]["country_code"] == "IR"
 
-    # off-topic global thread must NOT appear as an anchor
-    assert not any(a.get("id") == "celebrity-gossip--us" for a in anchors)
+    # Off-topic material stays reachable as explicitly weak support. Ranking
+    # moves it into the low-confidence tray; discovery does not erase it.
+    celebrity = next(a for a in anchors if a.get("id") == "celebrity-gossip--us")
+    assert celebrity["evidence_label"] == "weak_support"
 
     # every anchor carries an evidence label from the fixed vocabulary
     assert all(a["evidence_label"] in
@@ -121,7 +124,8 @@ def test_claim_verification_compound_surfaces_branch_and_gap():
     # public-discussion lane entry matched on expansion/query terms only
     attention = [a for a in anchors if a["anchor_type"] == "public_attention"]
     assert attention and attention[0]["evidence_label"] == "weak_support"
-    assert not any("futbol" in (a["label"] or "") for a in attention)
+    assert any("futbol" in (a["label"] or "") for a in attention)
+    assert all(a["evidence_label"] == "weak_support" for a in attention)
 
     # US-bases/satellite branch suggested
     assert any(a["anchor_type"] == "related_branch" and
@@ -161,10 +165,104 @@ def test_unmatched_query_returns_safe_empty_plan():
         intent, hours=24, fetch_threads_fn=no_threads, fetch_attention_fn=None,
     ))
 
-    # no geo, no axes -> no fabricated anchors beyond gaps
+    # No geo/axis framing is fabricated, but the candidate universe remains
+    # reachable as weak material for the ranking tray.
     assert not any(a["anchor_type"] in ("country", "related_branch")
                    for a in plan["anchors"])
-    assert plan["pin_candidates"] == []
+    assert plan["anchors"]
+    assert all(a["evidence_label"] == "weak_support" for a in plan["anchors"])
+
+
+def test_complete_universe_has_no_thread_or_weak_support_cap():
+    intent = parse_research_intent("Iran regional escalation infrastructure")
+    universe = [
+        _thread(f"dynamic-topic-{i}", f"Unrelated current story {i}", [f"story-{i}"], i + 1)
+        for i in range(40)
+    ]
+    requested_limits: list[int | None] = []
+
+    async def all_threads(*, hours: int, limit: int | None, country_codes=None):
+        requested_limits.append(limit)
+        return universe
+
+    plan = asyncio.run(discover_anchors(
+        intent, hours=72, fetch_threads_fn=all_threads, fetch_attention_fn=None,
+    ))
+    thread_ids = {a["id"] for a in plan["anchors"] if a["anchor_type"] == "thread"}
+
+    assert requested_limits == [None, None]
+    assert thread_ids == {t["thread_id"] for t in universe}
+    assert plan["skipped_candidates"] == []
+
+
+def test_one_generic_token_is_not_direct_evidence_for_compound_query():
+    intent = parse_research_intent("Iran regional escalation infrastructure")
+    rows = [
+        _thread("yemen", "Yemen Conflict Escalation", ["armed-conflict-escalation"], 50),
+        _thread(
+            "iran-full",
+            "Iran Regional Infrastructure Escalation",
+            ["regional-infrastructure-escalation"],
+            25,
+        ),
+    ]
+
+    async def threads(**kwargs):
+        return rows
+
+    plan = asyncio.run(discover_anchors(
+        intent, hours=72, fetch_threads_fn=threads, fetch_attention_fn=None,
+    ))
+    by_id = {a["id"]: a for a in plan["anchors"] if a["anchor_type"] == "thread"}
+
+    assert by_id["yemen"]["evidence_label"] == "weak_support"
+    assert by_id["iran-full"]["evidence_label"] == "direct_evidence"
+
+
+def test_one_topic_term_plus_explicit_target_country_can_be_direct():
+    intent = parse_research_intent("Iran infrastructure escalation")
+
+    async def threads(**kwargs):
+        return [
+            _thread("iran", "Iran Infrastructure Damage", ["infrastructure-damage"], 20),
+            _thread("other", "Ukraine Infrastructure Damage", ["infrastructure-damage"], 20),
+        ]
+
+    plan = asyncio.run(discover_anchors(
+        intent, hours=72, fetch_threads_fn=threads, fetch_attention_fn=None,
+    ))
+    by_id = {a["id"]: a for a in plan["anchors"] if a["anchor_type"] == "thread"}
+    assert by_id["iran"]["evidence_label"] == "direct_evidence"
+    assert by_id["other"]["evidence_label"] == "weak_support"
+
+
+def test_generic_expansion_alone_stays_weak_but_combination_is_context():
+    intent = parse_research_intent("Iran regional escalation infrastructure")
+
+    async def threads(**kwargs):
+        return [
+            _thread("generic", "Russian Strikes on Ukraine", ["russian-strikes"], 20),
+            _thread("combined", "Energy Infrastructure Attacks", ["infrastructure-attacks"], 20),
+            _thread("target", "US Strikes Iran", ["us-strikes-iran"], 20),
+        ]
+
+    plan = asyncio.run(discover_anchors(
+        intent, hours=72, fetch_threads_fn=threads, fetch_attention_fn=None,
+    ))
+    by_id = {a["id"]: a for a in plan["anchors"] if a["anchor_type"] == "thread"}
+    assert by_id["generic"]["evidence_label"] == "weak_support"
+    assert by_id["combined"]["evidence_label"] == "context"
+    assert by_id["target"]["evidence_label"] == "context"
+
+
+def test_research_candidate_sql_has_no_result_limit_and_marks_geo_honestly():
+    from pathlib import Path
+
+    source = (Path(__file__).parents[1] / "app/routers/research.py").read_text()
+    sql = source.split('_RESEARCH_THREAD_CANDIDATES_SQL = """', 1)[1].split('"""', 1)[0]
+    assert "LIMIT" not in sql.upper()
+    assert '"scope_basis": "coverage" if country_code else "global"' in source
+    assert '"subject_status": "unverified"' in source
 
 
 # ── W2 (research-plan-v1, L3 review 2026-07-05) ──────────────────────────────

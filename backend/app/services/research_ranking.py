@@ -81,9 +81,9 @@ def _noise_lanes(anchor: dict[str, Any]) -> list[str]:
     return [lane for lane, terms in _NOISE_LANE_TOKENS.items() if tokens & terms]
 
 APPEAL_ACTION = (
-    "Inspect low_confidence_tray for downranked anchors and "
-    "downranking_ledger.skipped_candidates for omitted candidates; widen the "
-    "query terms or hours window to restore a class of results."
+    "Inspect the complete low_confidence_tray; every discovered candidate "
+    "remains accessible with its score and reason codes. Refine the query or "
+    "time window to change relevance, not to reveal hidden material."
 )
 
 
@@ -195,10 +195,18 @@ def score_anchor(
 
     open_params = (anchor.get("open") or {}).get("params") or {}
     anchor_country = open_params.get("country_code")
+    coverage_countries = set(anchor.get("coverage_countries") or [])
+    subject_verified = anchor.get("subject_status") == "verified"
     if not geo:
         geo_entity_fit = 0.5
-    elif anchor_country in geo or anchor_type in ("related_branch",):
+    elif anchor_type == "country" or anchor_type in ("related_branch",):
         geo_entity_fit = 1.0
+    elif subject_verified and anchor_country in geo:
+        geo_entity_fit = 1.0
+    elif coverage_countries.intersection(geo):
+        # Coverage country is useful discovery context, but is not proof that
+        # the story is about that country (#238).
+        geo_entity_fit = 0.55
     else:
         geo_entity_fit = 0.4  # global-lane thread: relevant but unscoped
 
@@ -274,6 +282,8 @@ def score_anchor(
         reason_codes.append("weak_intent_match")
     if geo_entity_fit >= 1.0 and geo:
         reason_codes.append("strong_geo_fit")
+    elif coverage_countries.intersection(geo) and not subject_verified:
+        reason_codes.append("coverage_geo_not_subject")
     if evidence_strength >= 0.5:
         reason_codes.append("strong_evidence")
     elif anchor_type == "thread" and evidence_strength < 0.2:
@@ -297,6 +307,8 @@ def score_anchor(
 
     if relevance_gate < 0.7:
         reason_codes.append("low_relevance_gated")
+    if evidence_label == "weak_support":
+        reason_codes.append("weak_support_not_primary")
 
     return {
         "anchor_id": anchor.get("id"),
@@ -339,8 +351,12 @@ def rank_plan(plan: dict[str, Any]) -> dict[str, Any]:
         if anchor.get("anchor_type") == "coverage_gap":
             anchor["visibility"] = "primary"
             primary.append(anchor)
-        elif score >= DOWNRANK_THRESHOLD and not (
-            in_noise_lane and "direct_intent_match" not in codes
+        elif (
+            anchor.get("evidence_label") != "weak_support"
+            and score >= DOWNRANK_THRESHOLD
+            and not (
+                in_noise_lane and "direct_intent_match" not in codes
+            )
         ):
             anchor["visibility"] = "primary"
             primary.append(anchor)
@@ -362,11 +378,19 @@ def rank_plan(plan: dict[str, Any]) -> dict[str, Any]:
     plan["low_confidence_tray"] = tray
     plan["ranking_explanations"] = explanations
     plan["ranking_weights"] = weights
+    discovery_completion = plan.get("discovery_completion") or {}
+    complete = bool(
+        discovery_completion.get("thread_universe_complete", True)
+    ) and not skipped
     plan["downranking_ledger"] = {
         "candidate_count": len(anchors) + len(skipped),
         "shown_count": len(primary),
+        "primary_count": len(primary),
         "downranked_count": len(tray),
         "omitted_count": len(skipped),
+        "accessible_count": len(primary) + len(tray) + len(skipped),
+        "complete": complete,
+        "semantic_ceiling": False,
         "reason_codes": reason_counts,
         "skipped_candidates": skipped,
         "appeal_action": APPEAL_ACTION,

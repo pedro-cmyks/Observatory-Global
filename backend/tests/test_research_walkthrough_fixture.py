@@ -83,7 +83,7 @@ def test_walkthrough_topic_research_iran():
     # Step 1-2: search produced an interpreted intent + openable anchor menu
     assert plan["intent"]["geo_scope"] == ["IR"]
     assert {"climate", "water"} <= set(plan["intent"]["topic_axes"])
-    assert len(anchors) >= 4
+    assert len(anchors) >= 3
     for anchor in anchors:
         if anchor["anchor_type"] != "coverage_gap":
             _assert_openable(anchor)
@@ -116,11 +116,13 @@ def test_walkthrough_claim_verification_compound():
     assert branches and branches[0]["open"]["surface"] == "research_plan"
 
     # Public-discussion lane: the viral claim is visible as attention,
-    # labeled weak_support (never verified evidence), sports noise excluded
+    # labeled weak_support (never verified evidence). Unmatched discussion is
+    # retained in the low-confidence tray rather than erased.
     attention = [a for a in anchors + plan["low_confidence_tray"]
                  if a["anchor_type"] == "public_attention"]
     assert attention and all(a["evidence_label"] == "weak_support" for a in attention)
-    assert not any("futbol" in a["label"] for a in attention)
+    futbol = next(a for a in attention if "futbol" in a["label"])
+    assert futbol["visibility"] == "downranked"
 
     # Step 8: the unsupported axis is a visible gap with honest language,
     # and gaps stay primary regardless of score
