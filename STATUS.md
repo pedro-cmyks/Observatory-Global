@@ -161,7 +161,7 @@
   frontend `308 passed`; focused NLP suite `36 passed`; Ruff and diff checks
   pass.
 - Production now serves Fly API image
-  `deployment-01KXE2GKQAQC798Q0AQF59QTRQ` on machine version 408. Health is
+  `deployment-01KXE3GKP5AQH1Y9NJQFP9H5DD` on machine version 409. Health is
   green, the Vercel API proxy returns the sealed daily package, and browser
   smokes of `/brief`, `/app`, Narrative Threads and the populated Workbench
   completed with no console warning or error. The Workbench live plan evaluated
@@ -179,7 +179,8 @@
 - Editorial quality is not declared green: the live fallback still exposes
   several low-value rows and a visible `Senegal Political Turmoil` label whose
   country/evidence summary does not support the name. These are current thread
-  quality inputs for the next roadmap slice, not browser or deployment defects.
+  quality inputs for the next roadmap slice, not browser or deployment defects;
+  the measured fix contract is tracked in GitHub #257.
 
 Primary records:
 

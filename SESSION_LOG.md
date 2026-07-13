@@ -237,13 +237,15 @@ L2 visual refinements. The evidence table is in
 commit object was deleted.
 
 The publication/API build was then deployed as Fly image
-`deployment-01KXE2GKQAQC798Q0AQF59QTRQ` (app machine version 408). Production
+`deployment-01KXE3GKP5AQH1Y9NJQFP9H5DD` (app machine version 409). Production
 browser smokes found no console warnings or errors: L1 rendered its explicit
 live fallback; L2 rendered the full exploration console; L3 opened the saved
 four-pin Iran investigation and rebuilt a complete 581-candidate plan with 11
 primary, 570 low-confidence, zero omitted. The same audit preserved a real
 editorial warning: current fallback rows still include generic/sports material
-and at least one thread label/country mismatch.
+and at least one thread label/country mismatch. GitHub #257 now tracks a shared
+L1/L2 visible-label receipt contract with complete-universe measurement,
+reason-coded downranking and no silent candidate ceiling.
 
 The stored daily rebuild exposed `publication_evidence_fit` as degraded by an
 `ImportError`: that one path depended on the undeclared OpenAI Python SDK. A
