@@ -16,12 +16,13 @@ from any surface. The Workbench connects those pins, keeps their receipts and
 history, and exposes the resulting graph as an editorial workspace. The dossier
 is a publication view of that graph.
 
-The design has four independent value contracts:
+The design has four independent value contracts built on one processing stack:
 
 - **L0 — expectation:** communicate what Atlas can reveal and why its information-
   sphere model is different.
-- **L1 — context:** a standalone 24-hour world newspaper: what happened, what is
-  moving, and what coverage is missing.
+- **L1 — context:** a system-composed 24-hour Investigation Graph rendered as a
+  standalone world newspaper: what happened, what is moving, how stories relate,
+  and what coverage is missing.
 - **L2 — exploration:** a standalone instrument for understanding one story,
   subject, country, event, actor, source, anomaly, or attention signal.
 - **L3 — editing:** a multi-focus workspace for composing a thesis, checking
@@ -29,6 +30,12 @@ The design has four independent value contracts:
 
 Moving up a level increases agency. A higher level must not be required to make
 the level below it useful.
+
+L1 and L3 share the same publication standard. The distinction is authorship of
+the editorial selection: Atlas constructs the daily L1 graph from the complete
+24-hour candidate universe; the analyst constructs an L3 graph through pins.
+Both pass through the same readiness, relation, corroboration, receipt, citation,
+and publication-synthesis contracts.
 
 ## 2. Why this change is necessary
 
@@ -95,11 +102,74 @@ These availability fixes are enabling work, not the product architecture itself.
    The internal editorial loop continues until the artifact is coherent; an
    external narrative analyst is recruited after the product reaches that bar.
 
-## 4. L2: standalone narrative explorer
+## 4. L1: system-composed daily investigation
+
+L1 is not a lower-quality aggregate summary. Conceptually, it is the dossier
+that would result if a system investigation considered the world's Narrative
+Threads and relevant signals for the fixed 24-hour edition, connected the
+important material, and selected an editorial spine with an inspectable ledger.
+
+### 4.1 Daily graph construction
+
+The daily edition:
+
+1. cursor-exhausts the eligible 24-hour story/signal universe;
+2. groups duplicate/sibling stories without hiding the underlying candidates;
+3. selects lead, supporting, contextual, anomalous, and gap nodes using
+   deterministic investigative-usefulness signals;
+4. resolves the same typed relations and receipts used by L3;
+5. records selected, downranked, omitted, unresolved, and degraded candidates;
+6. corroborates load-bearing claims;
+7. serializes the same publication package used by an analyst-built dossier;
+8. calls the publication LLM only after the graph and numbered receipt table are
+   fixed.
+
+The visual edition may progressively disclose secondary material, but the data
+pipeline does not impose an arbitrary semantic topic ceiling. Operational
+batching and UI layout are not silent editorial omission.
+
+### 4.2 Shared publication quality
+
+L1 and L3 use one `PublicationPackage` and one quality rubric:
+
+- dated headline and lede;
+- 5W+H readiness ledger;
+- connected narrative body;
+- inline, server-resolved citations;
+- who-says-what and coverage-asymmetry lenses;
+- corroboration of load-bearing claims;
+- visuals with time and method labels;
+- unknowns, gaps, and weak relations;
+- reproducibility and method receipts.
+
+The current L1 `Editor's Analysis` is a short aggregate insight and does not yet
+meet this standard. It becomes one compatibility/fallback component while the
+daily Investigation Graph becomes the canonical edition builder.
+
+### 4.3 LLM provider policy
+
+The current shared provider chain is:
+
+```text
+Anthropic (configured Claude model) -> DeepSeek chat -> deterministic no-prose fallback
+```
+
+OpenAI is currently used for embedding/search spaces, not automatically as the
+publication writer. Model brand is not part of the product contract. L1 and L3
+call one configurable publication-synthesis interface and expose the provider,
+model, tokens, cost, prompt contract, and failure state.
+
+Before locking a writer model, the same frozen NATO, Iran, and daily-edition
+packages are rendered through the available Anthropic, DeepSeek, and optional
+OpenAI chat candidates. Outputs are scored blind against the same editorial
+rubric. Provider selection follows measured publication quality and reliability,
+not convenience; the fallback chain never weakens receipt enforcement.
+
+## 5. L2: standalone narrative explorer
 
 L2 answers a complete single-focus job without requiring an investigation.
 
-### 4.1 Focus Lens
+### 5.1 Focus Lens
 
 All focus-dependent L2 surfaces consume one shared lens:
 
@@ -130,7 +200,7 @@ This does not require every global panel to become a historical snapshot. It
 requires every panel making a claim about the selected focus to use the same
 time range and to label unavailable history honestly.
 
-### 4.2 L2 relationship receipts
+### 5.2 L2 relationship receipts
 
 Counts without inspectable members are insufficient. A relationship summary
 must open a receipt list.
@@ -149,7 +219,7 @@ Related-thread rows must expose their edge basis instead of labels such as
 mention, event membership, temporal co-movement, semantic proximity, and
 coverage-only context.
 
-### 4.3 Deep History
+### 5.3 Deep History
 
 Deep History remains approximate when archive story units are matched
 semantically. It must not imply identity continuity without evidence.
@@ -167,9 +237,9 @@ Historical results expose match basis, similarity, receipts, and ambiguity.
 Time travel reconstructs the observed graph dimensions available for that
 period; missing dimensions remain missing.
 
-## 5. The Investigation Graph
+## 6. The Investigation Graph
 
-### 5.1 Node contract
+### 6.1 Node contract
 
 Every pin normalizes into one common node shape:
 
@@ -206,7 +276,7 @@ Initial adapters cover:
 Unsupported or failed enrichment never prevents a pin. It produces a
 `metadata_only` or `partial` node with a retryable resolution receipt.
 
-### 5.2 Edge contract
+### 6.2 Edge contract
 
 ```text
 InvestigationEdge
@@ -237,7 +307,7 @@ Relation families include:
 
 LLM output is never an edge type.
 
-### 5.3 Editorial use of edge tiers
+### 6.3 Editorial use of edge tiers
 
 - `measured` and explicit `analyst` edges may form the dossier's narrative spine.
 - `inferred` edges may be described with method and uncertainty.
@@ -245,7 +315,7 @@ LLM output is never an edge type.
   connected story.
 - Causal language is prohibited unless an analyst supplies a sourced assertion.
 
-## 6. Pin lifecycle and data flow
+## 7. Pin lifecycle and data flow
 
 1. The user explores any L2 surface.
 2. `PIN` creates an investigation if none exists or adds to the active one.
@@ -267,7 +337,7 @@ Existing investigations remain local-first for this build:
 The storage format becomes `atlas-investigation-v2` and includes a lossless
 migration from existing `atlas.workbench.v1` pins.
 
-## 7. L3: standalone editorial Workbench
+## 8. L3: standalone editorial Workbench
 
 The Workbench remains a three-region surface, with corrected responsibilities:
 
@@ -282,7 +352,7 @@ The research plan can appear as one suggestion source, but it no longer owns
 the right panel or defines the investigation. Suggestions derive from the graph
 and current inspector selection as well as from an optional query.
 
-### 7.1 Time in L3
+### 8.1 Time in L3
 
 Two truths coexist:
 
@@ -294,7 +364,7 @@ the selected interval remain present but visually recede. Edges recompute for
 the interval and retain their measurement timestamp. Sequence language is
 `first seen by Atlas`, not `originated`, until ingest-lag validation proves more.
 
-## 8. Dossier and publication package
+## 9. Dossier and publication package
 
 The dossier can be generated at any point. There is no artificial minimum pin
 count. A deterministic readiness ledger tells the analyst what the graph can
@@ -323,9 +393,9 @@ The publication package contains:
 The LLM receives only this structured package. Server-side citation resolution
 continues to reject invented references.
 
-## 9. Service architecture
+## 10. Service architecture
 
-### 9.1 Focus and graph services
+### 10.1 Focus and graph services
 
 The first stable backend interfaces are:
 
@@ -333,6 +403,7 @@ The first stable backend interfaces are:
 POST /api/v2/investigation/resolve-node
 POST /api/v2/investigation/graph
 POST /api/v2/investigation/time-slice
+POST /api/v2/investigation/publication-package
 ```
 
 `resolve-node` normalizes one L2 object into an `InvestigationNode` snapshot.
@@ -349,6 +420,10 @@ POST /api/v2/investigation/time-slice
 `time-slice` returns the observable node/edge state for another range without
 mutating the investigation.
 
+`publication-package` accepts either a system-owned daily graph (L1) or an
+analyst-owned Workbench graph (L3). It returns the identical deterministic
+readiness/receipt/corroboration package consumed by publication synthesis.
+
 Implementation boundaries:
 
 - node adapters per object type;
@@ -361,7 +436,7 @@ Implementation boundaries:
 These units remain independent and testable. The graph assembler does not know
 how a specific relation is calculated.
 
-### 9.2 Performance and completeness
+### 10.2 Performance and completeness
 
 - Graph work scales from pinned nodes and explicit suggestion expansion, not a
   scan of every product row on each interaction.
@@ -374,7 +449,7 @@ how a specific relation is calculated.
 - Expensive enrichment is asynchronous; the frozen node and existing graph stay
   usable while it runs.
 
-## 10. Degradation and error handling
+## 11. Degradation and error handling
 
 - A failing lane degrades independently and names the unknown coverage.
 - A failed pin snapshot leaves a metadata-only node and retry action.
@@ -388,9 +463,9 @@ how a specific relation is calculated.
 - Frozen snapshots remain authoritative for what the user saw, even when live
   enrichment later changes.
 
-## 11. Validation loop
+## 12. Validation loop
 
-### 11.1 Automated invariants
+### 12.1 Automated invariants
 
 - every supported L2 object normalizes to a valid typed node;
 - pin snapshots are immutable under time travel and live remeasurement;
@@ -402,8 +477,20 @@ how a specific relation is calculated.
 - LLM output cannot add graph IDs or citation numbers absent from its input;
 - one failing relation engine does not blank other edges or the Workbench;
 - no result is silently truncated by an arbitrary semantic cap.
+- identical graph/receipt inputs produce the same deterministic L1/L3
+  `PublicationPackage` before prose generation;
+- the L1 daily selector reconciles the complete candidate universe with its
+  selected/downranked/omitted/degraded ledger.
 
-### 11.2 Product forcing cases
+### 12.2 Product forcing cases
+
+**Daily L1 edition case**
+
+- Build one fixed 24-hour edition from the complete eligible candidate universe.
+- Inspect why the lead and secondary stories were selected.
+- Verify that important anomaly/gap material remains visible even when it is not
+  part of the narrative spine.
+- Export its publication package and grade it with the same rubric as L3.
 
 **Iran L2/L3 case**
 
@@ -426,9 +513,10 @@ how a specific relation is calculated.
 - Export the publication package.
 - Run a cold-editor review using only the exported artifact.
 
-### 11.3 Gates
+### 12.3 Gates
 
-1. **L1 gate:** a reader contextualizes the day without L2.
+1. **L1 gate:** a reader contextualizes the day without L2, and the edition
+   clears the same publication rubric as an L3 dossier.
 2. **L2 standalone gate:** the Iran focus can be understood without creating a
    Workbench investigation.
 3. **L3 composition gate:** the Iran multi-pin graph explains relationships and
@@ -438,7 +526,7 @@ how a specific relation is calculated.
 5. **External analyst gate:** after the internal gates, a narrative analyst who
    is not Pedro uses the workflow and identifies value/errors.
 
-## 12. Delivery slices
+## 13. Delivery slices
 
 This architecture is too broad for one undifferentiated code pass. It will ship
 as vertical, independently verified slices:
@@ -446,21 +534,26 @@ as vertical, independently verified slices:
 1. **Reliability precondition:** remove the discarded atlas query from stories-
    only `/threads`; isolate research semantic sub-lane failures; restore the Iran
    and NATO entry flows.
-2. **Typed graph foundation:** `atlas-investigation-v2`, node adapters, edge
-   contract, stateless graph endpoint, migration from current pins.
-3. **L2 standalone depth:** shared Focus Lens, inspectable event/thread receipts,
+2. **Typed graph foundation:** shared `PublicationPackage`,
+   `atlas-investigation-v2`, node adapters, edge contract, stateless graph
+   endpoint, and migration from current pins.
+3. **L1 daily investigation:** complete-universe daily graph selection,
+   selection/omission ledger, shared package serialization, and publication-
+   quality edition generation.
+4. **L2 standalone depth:** shared Focus Lens, inspectable event/thread receipts,
    related-thread reasons, and honest Deep History anchoring.
-4. **L3 composer:** graph-centered Workbench, inspector, suggestions, time lens,
+5. **L3 composer:** graph-centered Workbench, inspector, suggestions, time lens,
    and heterogeneous pin connections.
-5. **Dossier v4:** readiness ledger, graph-derived narrative package, visuals,
+6. **Dossier v4:** readiness ledger, graph-derived narrative package, visuals,
    method/receipt appendix, and export.
-6. **Editorial loop:** Iran and NATO forcing cases, automated grading, repeated
-   cold-editor review, then external analyst validation.
+7. **Editorial loop:** daily edition, Iran, and NATO forcing cases; blind
+   provider comparison; automated grading; repeated cold-editor review; then
+   external analyst validation.
 
 Each slice gets a focused implementation plan and must pass its own product gate
 before the next slice becomes the priority.
 
-## 13. Non-goals
+## 14. Non-goals
 
 - Search does not automatically create a finished investigation or dossier.
 - L2 does not require an active investigation.
@@ -474,10 +567,12 @@ before the next slice becomes the priority.
   sufficiently calibrated.
 - L4 Markets remains outside this roadmap.
 
-## 14. Approved product statement
+## 15. Approved product statement
 
-> L1 tells the reader what the world looks like today. L2 lets the reader dive
-> into one story and understand how the information sphere speaks about it. L3
-> lets the analyst combine those observations into a connected, sourced, and
-> publishable investigation. Atlas measures and exposes the relations; the user
-> chooses the story; the dossier communicates it with receipts.
+> L1 is Atlas's system-composed daily investigation: the world newspaper built
+> from a complete 24-hour candidate universe and held to the same publication
+> standard as an L3 dossier. L2 lets the reader dive into one story and
+> understand how the information sphere speaks about it. L3 lets the analyst
+> combine those observations into a connected, sourced, and publishable
+> investigation. Atlas measures and exposes the relations; the user chooses the
+> L3 story; both publications communicate with receipts.
