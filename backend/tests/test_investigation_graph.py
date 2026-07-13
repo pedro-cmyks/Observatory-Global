@@ -286,6 +286,33 @@ def test_publication_where_is_partial_when_some_story_nodes_lack_subject_geograp
     assert "subject_geography_incomplete_for_story_nodes" in package.readiness["where"].reason_codes
 
 
+def test_publication_where_and_who_promote_from_frozen_receipt_subject_geography():
+    # A resolved story pins its frozen receipts but no pre-computed
+    # verified-subject field (the deployed thread detail never sets one). The
+    # receipts independently corroborate Iran (>=2 receipts, >=2 distinct
+    # outlets naming it), so the shipped subject-geography contract must promote
+    # Where from the receipts alone, and the verified place must count as a
+    # broad actor so Who promotes with it.
+    story = node(
+        "node-story-1", "story", "thread", "Iran water crisis",
+        {"live": {"evidence_samples": [
+            {"id": 1, "headline": "Iran faces worst drought in decades",
+             "source": "Reuters", "url": "https://r/1"},
+            {"id": 2, "headline": "Iran rations water as reservoirs fall",
+             "source": "AP", "url": "https://ap/2"},
+        ]}},
+    )
+    graph = assemble_investigation_graph(GraphRequest(nodes=[story]), measured_at=STAMP)
+    package = build_publication_package(PublicationPackageRequest(
+        title="Iran", authorship="analyst", graph=graph, generated_at=STAMP,
+    ))
+
+    assert package.readiness["where"].status == "ready"
+    assert package.readiness["where"].values == ["IR"]
+    assert package.readiness["who"].status == "ready"
+    assert any("(place)" in value for value in package.readiness["who"].values)
+
+
 def test_publication_package_exposes_missing_dimensions_instead_of_padding():
     metadata = node("node-subject-x", "subject", "person", "Unknown actor", {})
     graph = assemble_investigation_graph(GraphRequest(nodes=[metadata]), measured_at=STAMP)

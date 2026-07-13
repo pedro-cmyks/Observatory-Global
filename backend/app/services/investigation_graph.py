@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from app.core.iso_country_names import ISO_COUNTRY_NAMES
 from app.services.investigation_nodes import InvestigationNode
+from app.services.subject_geography import infer_receipt_subject_geography
 
 GRAPH_CONTRACT = "atlas-investigation-graph-v1"
 PUBLICATION_CONTRACT = "atlas-publication-package-v1"
@@ -189,6 +190,28 @@ def _verified_subject_country_codes(node: InvestigationNode) -> set[str]:
                 if code:
                     codes.add(str(code).upper())
     return {code for code in codes if code}
+
+
+def _receipt_verified_subject_country_codes(node: InvestigationNode) -> set[str]:
+    """Independently corroborated subject geography from a node's frozen
+    receipts, via the shipped ``atlas-subject-geography-v1`` contract.
+
+    The deployed thread detail does not pre-compute a verified-subject field, so
+    a resolved story would otherwise abstain on Where/Who even when its own
+    receipts name a country under the corroboration bar. This adapts the
+    existing decoder over the frozen receipts; it never invents a country the
+    receipts do not independently name, and it maps the served ``source`` outlet
+    field onto the decoder's ``source_name`` key.
+    """
+    rows = _evidence_rows(node)
+    if not rows:
+        return set()
+    normalized = []
+    for row in rows:
+        outlet = row.get("source_name") or row.get("source")
+        normalized.append({**row, "source_name": outlet} if outlet else row)
+    inferred = infer_receipt_subject_geography(normalized)
+    return {str(code).upper() for code in inferred.get("verified_subject_countries", [])}
 
 
 def _verified_subjects(node: InvestigationNode) -> set[str]:
@@ -541,6 +564,8 @@ def build_publication_package(request: PublicationPackageRequest) -> Publication
         live = _live(node)
         verified_subjects = _verified_subjects(node)
         verified_subject_countries = _verified_subject_country_codes(node)
+        if node.node_type == "story" and not verified_subject_countries:
+            verified_subject_countries = _receipt_verified_subject_country_codes(node)
         if node.node_type in {"story", "evidence", "event", "anomaly", "attention"}:
             what.add(node.label)
         if node.node_type == "subject":
