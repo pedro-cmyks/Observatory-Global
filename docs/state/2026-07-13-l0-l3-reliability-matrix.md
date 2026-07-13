@@ -321,6 +321,31 @@ who/where toward 100% across all topics is gated on umbrella coherence (#257)
 and an NER/e5 subject-geo path for oblique headlines — not on more lexicon. The
 daily selector should also prefer subject-geo-verified stories for lead slots.
 
+### Grab-bag umbrella detector shipped (#257 residual "b")
+
+`measure_subject_geography_coherence` distinguishes a coherent multi-country
+story (significant subject countries co-occur in the same receipts) from a
+grab-bag umbrella (countries in disjoint receipt groups) — a discrimination
+entropy cannot make. `build_publication_package` flags any grab-bag story as a
+reason-coded gap, so L1 daily and L3 dossiers disclose incoherent umbrellas
+rather than presenting them as one story; no receipt is dropped. Deployed and
+verified live: "Canicule en Belgique" flags `subject_geography_grab_bag`
+(BE/FR co-occurrence 0.0); the Israel-US-Iran plot does not (1.0). This makes
+the incoherence visible; it does not yet SPLIT the umbrella (an engine change)
+— the flag lets the selector/editor downrank or caveat it now.
+
+### NER/e5 oblique-headline geography (#257 residual "a") — assessed, not shipped
+
+Lifting subject geography for stories whose headline names only a local entity
+(Telstra, Leuralla, a person) has no clean quick fix and was deliberately not
+shipped unilaterally: the clean path (NER `places` → country, which is genuine
+subject signal) is gated on NER throughput (#184, `nlp_persons` is thin in
+served windows) plus a place→country gazetteer; the pragmatic path (treat
+homogeneous single-country coverage as the local subject) both crosses the
+subject≠coverage line set in #257/WAVE 4 and is marginal, since those stories
+already display their country as coverage geography. This residual is a program
+(NER throughput + gazetteer) or an explicit principle decision, not a slice.
+
 ## Required next gates
 
 1. **Daily data maturity:** edition lag is visibly labeled; autonomous snapshots
