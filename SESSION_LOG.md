@@ -158,7 +158,10 @@ tracks lane availability per pin, marks evidence-free context
 all web lanes are unavailable. The frontend and backend also removed their
 eight/twelve-pin corroboration cuts: all route pins remain in the request;
 runtime grows honestly with evidence-bearing pins under DOC 2.0's one-query-
-per-five-seconds constraint. Backend verification is now `1309 passed,
+per-five-seconds constraint. A final production read caught the asymmetry LLM
+treating an unavailable Hormuz search as if the web had omitted that framing;
+the prompt now excludes unmeasured pins while preserving measured zero-result
+pins. Backend verification is now `1309 passed,
 6 skipped`; frontend verification is `308 passed` and the production build
 passes.
 

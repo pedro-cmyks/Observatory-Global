@@ -145,13 +145,28 @@ async def test_router_tracks_search_availability_per_pin_and_skips_context(monke
     from app.routers import dossier as dossier_module
     from app.services import external_depth
 
+    asymmetry_prompts = []
+
     async def fake_fetch(_label, *, raw_query, timespan):
         assert timespan == "14d"
         if raw_query.startswith("failed"):
             return None
+        if raw_query.startswith("good"):
+            return {
+                "items": [{
+                    "title": "Good topic independently covered",
+                    "url": "https://example.com/good",
+                    "domain": "example.com",
+                }],
+            }
         return {"items": []}
 
+    async def fake_generate(_system, user, **_kwargs):
+        asymmetry_prompts.append(user)
+        return "Measured comparison.", "test-provider", None, None
+
     monkeypatch.setattr(external_depth, "fetch_external_depth", fake_fetch)
+    monkeypatch.setattr(dossier_module, "generate_insight", fake_generate)
     response = await dossier_module.dossier_corroborate(
         dossier_module.CorroborateRequest(
             force=True,
@@ -174,6 +189,12 @@ async def test_router_tracks_search_availability_per_pin_and_skips_context(monke
                     "anchor_type": "country",
                     "evidence": [],
                 },
+                {
+                    "id": "good-pin",
+                    "label": "Good topic",
+                    "anchor_type": "thread",
+                    "evidence": ["Good evidence claim"],
+                },
             ],
         )
     )
@@ -188,6 +209,9 @@ async def test_router_tracks_search_availability_per_pin_and_skips_context(monke
     assert by_id["country-ir"]["status"] == "not_applicable"
     assert by_id["country-ir"]["queries"] == []
     assert response["meta"]["dropped_pins"] == 0
+    assert len(asymmetry_prompts) == 1
+    assert "STORY: Good topic" in asymmetry_prompts[0]
+    assert "STORY: Failed lane topic" not in asymmetry_prompts[0]
 
     context_only = await dossier_module.dossier_corroborate(
         dossier_module.CorroborateRequest(

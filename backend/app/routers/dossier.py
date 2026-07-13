@@ -1222,8 +1222,9 @@ async def dossier_corroborate(req: CorroborateRequest):
     asymmetry = None
     if search_available and any(wt for wt in web_titles.values()):
         try:
+            measured_pins = [p for p in pins if lane_ok_by_pin[p.id]]
             text, provider, _err, _usage = await generate_insight(
-                _ASYMMETRY_SYSTEM, _asymmetry_user(pins, web_titles),
+                _ASYMMETRY_SYSTEM, _asymmetry_user(measured_pins, web_titles),
                 max_tokens=300, surface="dossier-corroborate",
             )
             if text:

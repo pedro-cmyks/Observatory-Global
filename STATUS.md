@@ -112,6 +112,8 @@
   a failed search is no longer mislabeled as zero matches. Metadata-only
   country/branch context is `not_applicable`, not corroborated through generic
   name search. Every pin reaches the request; the old eight-pin cut was removed.
+  Coverage-asymmetry prose receives only pins whose search lane actually
+  answered, so an unavailable search cannot be phrased as editorial absence.
   The independence/syndication gate is unchanged.
 - Current verification: backend `1309 passed, 6 skipped`; frontend `308 passed`;
   production Vite build passes.
