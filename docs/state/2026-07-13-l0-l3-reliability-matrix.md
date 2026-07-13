@@ -281,6 +281,46 @@ This resolves the measured index mechanism, not the shared serving/batch
 architecture. #241 remains open until a recurring writer cycle proves the
 complete embeddings -> memberships -> movement -> publication chain.
 
+## 2026-07-13 — generalization measurement (all topics, not the fixtures)
+
+The Iran/Senegal/NATO cases are fixtures; the product bar is that ANY topic
+composes into an honest, publishable package. `scripts/publication_generalization_probe.py`
+runs each live top thread through resolve → graph → publication-package and grades
+5W+H. Measured over ~15 live topics:
+
+- `what`, `when`, `how` are **ready for 100%** of topics — these dimensions
+  generalize fully;
+- `who` and `where` are ready for **~50%** of topics; the abstentions are honest
+  (`where` shows `partial · coverage_geography_only_not_subject`), never crashes.
+
+Two distinct causes of the who/where ceiling were isolated, and only one is a
+lexicon gap:
+
+1. **Missing country lexicon (fixed).** Australia, Belgium, Switzerland, Canada,
+   the Netherlands, Poland, Spain, Italy, Japan, South Korea, Portugal, Greece,
+   Ireland, Austria, the Nordics and New Zealand were absent from
+   `_COUNTRY_PATTERNS`, so their stories could never verify subject geography and
+   were mis-tagged at ingest (`Canicule en Belgique` → FR/PK). Nineteen precise
+   patterns were added (name + demonym + capital + distinctive cities + native
+   spellings), shared by ingest and the subject-geography decoder, with
+   recall/precision tests. Deployed and proven live: "Suiza Elimina a Colombia"
+   now verifies `CH`. This is a real, general improvement but a small share of
+   the aggregate ceiling.
+2. **The dominant residual is NOT lexicon.** The remaining abstentions are
+   (a) **local-entity headlines** — stories whose headline names a person,
+   company or property (Telstra, Leuralla, Jacky Hudson, Chris Hemsworth) but not
+   the country, which headline-pattern matching cannot resolve and which need the
+   NER/e5 geo path; and (b) **incoherent umbrellas** — e.g. "Canicule en
+   Belgique" whose package receipts mix France-Morocco football and other
+   countries, so Belgium never clears the corroboration bar. (b) is the same
+   #257 umbrella-coherence problem as Senegal/RDC.
+
+**Consequence for the publishable-brief goal:** the package composition, the
+5W+H contract and the receipt-derived subject geography generalize; lifting
+who/where toward 100% across all topics is gated on umbrella coherence (#257)
+and an NER/e5 subject-geo path for oblique headlines — not on more lexicon. The
+daily selector should also prefer subject-geo-verified stories for lead slots.
+
 ## Required next gates
 
 1. **Daily data maturity:** edition lag is visibly labeled; autonomous snapshots
