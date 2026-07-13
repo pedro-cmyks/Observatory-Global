@@ -23,8 +23,7 @@ async def _fetch_signal(signal_id: int) -> dict[str, Any] | None:
         row = await conn.fetchrow(
             """
             SELECT id, headline, snippet, source_name, source_url, source_lang,
-                   country_code, timestamp, sentiment, persons, organizations,
-                   locations, themes
+                   country_code, timestamp, sentiment, persons, themes
             FROM signals_v2
             WHERE id = $1
             """,

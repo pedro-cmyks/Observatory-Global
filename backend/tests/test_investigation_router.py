@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from pathlib import Path
 
 from app.main_v2 import app
 
@@ -48,3 +49,12 @@ def test_resolve_node_rejects_unknown_node_type():
     })
 
     assert response.status_code == 422
+
+
+def test_signal_adapter_queries_only_deployed_signals_v2_columns():
+    source = Path("app/routers/investigation.py").read_text(encoding="utf-8")
+
+    assert "organizations" not in source
+    assert "locations" not in source
+    assert "persons" in source
+    assert "themes" in source
