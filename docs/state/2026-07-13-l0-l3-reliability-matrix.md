@@ -9,7 +9,7 @@ publishable”. A green render is not a green editorial system.
 | Layer | Availability | Truth contract | Standalone value | Publication readiness |
 |---|---|---|---|---|
 | L0 Landing | green | green | green for expectation-setting | not a publication surface |
-| L1 Brief | green with freshness caveat | amber | amber | **red** — current edition is not the shared publication package |
+| L1 Brief | green after paint-budget repair | amber | amber | **red** — shared package is wired but current artifact is degraded |
 | L2 Console | green | amber | amber/green for live exploration | not applicable; capture receipts incomplete |
 | L3 Workbench | green empty-state | amber | amber when populated | **amber/red** — v2 synthesis exists, heterogeneous package not proven |
 | Engine/ops | amber | amber | supports current product | blocks an honest daily auto-edition when snapshots are stale |
@@ -26,17 +26,29 @@ publishable”. A green render is not a green editorial system.
 
 ### L1
 
-- `/brief` loads cleanly and the fixed-24h newspaper structure exists;
+- `/brief` loads and the fixed-24h newspaper structure exists. A production
+  regression measured about 19.2 seconds and exceeded the client's 12-second
+  budget because two optional legacy queries waited sequentially; independent
+  1.5-second optional budgets restored a warm response to 6.47 seconds;
 - production can return Narrative Threads and provider-backed Editor's Analysis,
   but the result varies with cache/job timing;
+- L1 consumes the shared Daily Investigation package only when it is `ready`,
+  contract-compatible, complete-universe and non-truncated. The present
+  `degraded` artifact activates a visible live fallback rather than silently
+  masquerading as the edition;
 - current ranking can surface generic/sports duplicate-like rows and still
   inherits legacy volume/editorial-lane logic;
+- the current visual audit exposed direct thread-label/evidence mismatches,
+  including a Ukraine label paired with Iran/NATO evidence and multiple
+  unrelated entertainment/sports rows in the watchlist;
 - the current prose is a short aggregate insight, not a cited connected article;
 - L1 does not yet consume the dossier's citation, corroboration, graph, readiness,
   method, or reproducibility contracts.
 
-**Gate:** do not market the current L1 as Atlas's publishable daily
-investigation. It remains a useful context front door and honest fallback.
+**Gate:** availability passes; editorial quality fails. Do not market the
+current L1 as Atlas's publishable daily investigation. It remains a useful
+context front door and honest fallback while memberships are refreshed and
+label/evidence fit is measured.
 
 ### L2
 

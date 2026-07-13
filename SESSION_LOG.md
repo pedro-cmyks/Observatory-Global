@@ -69,7 +69,22 @@ signals arrived in 15 minutes, but the sealed edition still exposed stale typed
 memberships. The scoped pipeline lacked the ETL step that projects newly formed
 dynamic topics into `topic_members` before publication. A TDD regression now
 enforces projection and movement recomputation before bindings and edition
-sealing; the live recovery cycle was started under the heavy-job mutex.
+sealing. The first live recovery cycle was stopped after 6/136 countries when
+the sequential country loop proved too slow and competed with serving. Its
+exact partial snapshot contained 139 clusters, zero projected members, and was
+deleted transactionally without touching any published thread state. The
+runner must now stage a complete country universe and publish only an atomic,
+completed snapshot.
+
+The same visual production pass found a distinct L1 availability defect.
+`/api/v2/briefing` took about 19.2 seconds because two optional legacy sections,
+`top_sources` and `theme_country`, could each spend the full 8-second query
+budget sequentially. Their budget is now 1.5 seconds each, independently
+degraded, while core sections retain the normal timeout. The deployed warm
+endpoint returned HTTP 200 in 6.47 seconds and L1 rendered the explicit daily
+package fallback. Backend verification is `1285 passed, 6 skipped`. This is an
+availability recovery, not an editorial pass: the rendered edition still
+contains label/evidence mismatches and is not publishable.
 
 Records:
 

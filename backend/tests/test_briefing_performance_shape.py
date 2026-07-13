@@ -121,6 +121,23 @@ def test_briefing_segments_have_timeouts_and_degraded_response():
     assert '"degraded_segments": degraded_segments' in source
 
 
+def test_optional_legacy_brief_sections_fail_fast_instead_of_blank_page():
+    source = _get_briefing_source()
+    module = _briefing_source()
+
+    assert 'BRIEFING_OPTIONAL_DB_TIMEOUT_SECONDS' in module
+    top_sources = source[
+        source.index('conn, degraded_segments, "top_sources",'):
+        source.index('top_sources_source = "signals_v2"')
+    ]
+    theme_country = source[
+        source.index('conn, degraded_segments, "theme_country",'):
+        source.index('stats = stats or')
+    ]
+    assert 'timeout_seconds=BRIEFING_OPTIONAL_DB_TIMEOUT_SECONDS' in top_sources
+    assert 'timeout_seconds=BRIEFING_OPTIONAL_DB_TIMEOUT_SECONDS' in theme_country
+
+
 def _get_briefing_insight_source() -> str:
     source = _briefing_source()
     start = source.index('async def get_briefing_insight(')

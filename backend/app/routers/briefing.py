@@ -14,6 +14,9 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 BRIEFING_DB_TIMEOUT_SECONDS = float(os.getenv("BRIEFING_DB_TIMEOUT_SECONDS", "8"))
+BRIEFING_OPTIONAL_DB_TIMEOUT_SECONDS = float(
+    os.getenv("BRIEFING_OPTIONAL_DB_TIMEOUT_SECONDS", "1.5")
+)
 # Volume floor percentile for the hot-AND-voluminous lens (#187). 0.75 keeps
 # the top quartile by volume before re-ranking by atlas_heat.
 HEAT_VOLUMINOUS_PERCENTILE = float(os.getenv("BRIEFING_HEAT_VOLUMINOUS_PERCENTILE", "0.75"))
@@ -43,11 +46,16 @@ async def _fetch_section(
     query: str,
     *args,
     row: bool = False,
+    timeout_seconds: float | None = None,
 ):
     try:
-        if row:
+        if row and timeout_seconds is None:
             return await conn.fetchrow(query, *args, timeout=BRIEFING_DB_TIMEOUT_SECONDS)
-        return await conn.fetch(query, *args, timeout=BRIEFING_DB_TIMEOUT_SECONDS)
+        if row:
+            return await conn.fetchrow(query, *args, timeout=timeout_seconds)
+        if timeout_seconds is None:
+            return await conn.fetch(query, *args, timeout=BRIEFING_DB_TIMEOUT_SECONDS)
+        return await conn.fetch(query, *args, timeout=timeout_seconds)
     except Exception as exc:
         degraded_segments.append(segment)
         logger.warning("briefing section degraded: %s: %s", segment, exc)
@@ -337,7 +345,8 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 GROUP BY source_domain
                 ORDER BY count DESC
                 LIMIT 5
-            """, hours, HISTORICAL_PROCESSED_MODEL_VERSION)
+            """, hours, HISTORICAL_PROCESSED_MODEL_VERSION,
+                timeout_seconds=BRIEFING_OPTIONAL_DB_TIMEOUT_SECONDS)
             top_sources_source = "historical_source_daily"
         else:
             top_sources = await _fetch_section(conn, degraded_segments, "top_sources", """
@@ -352,7 +361,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 GROUP BY source_name
                 ORDER BY count DESC
                 LIMIT 5
-            """, hours)
+            """, hours, timeout_seconds=BRIEFING_OPTIONAL_DB_TIMEOUT_SECONDS)
             top_sources_source = "signals_v2"
         # Heat ranking (#149): atlas_heat from country_heat_v2 ranks countries by
         # what is heating up right now (velocity + surprise + source diversity +
@@ -702,7 +711,8 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                   AND tc.hour > NOW() - INTERVAL '24 hours'
                 GROUP BY tc.theme, tc.country_code, c.name
                 ORDER BY tc.theme, cnt DESC
-            """, top_theme_codes)
+            """, top_theme_codes,
+                timeout_seconds=BRIEFING_OPTIONAL_DB_TIMEOUT_SECONDS)
         else:
             theme_country_rows = []
 

@@ -22,9 +22,11 @@
   input; inherited six-receipt and enrichment top-N cuts were removed.
 - A complete-universe Daily Investigation builder traversed 458/458 top-level
   topics and stored one sealed `atlas_daily_editions` artifact. Serving is a
-  single compact indexed-row read. The current artifact remains deliberately
-  `degraded`: 21.5h cutoff lag, `who` missing, `where/why` partial and relation
-  provider unavailable for the sealed window. L1 has not been switched.
+  single compact indexed-row read. L1 now reads that shared package, but only
+  promotes it when the artifact is `ready`, its contracts match, its complete
+  candidate universe is disclosed and story nodes exist. The current artifact
+  remains deliberately `degraded`, so production displays the visible live
+  fallback instead of presenting it as a publishable edition.
 - The L1 selector uses per-topic movement/surprise/evidence/persistence state,
   Pareto fronts and equal percentile aggregation. Raw volume, crisis status and
   content category have zero importance weight. Twelve slots are newspaper
@@ -39,7 +41,7 @@
   standalone surface. L1 is a useful front door but not yet the new publishable
   package. L3 has the adapter/readiness foundation but still needs the full
   heterogeneous Iran forcing-case pass.
-- Current verification: backend `1284 passed, 6 skipped`; frontend `306 passed`;
+- Current verification: backend `1285 passed, 6 skipped`; frontend `306 passed`;
   production Vite build passes. The Fly backend is deployed and health,
   Research Plan, and stored Daily Publication smokes pass.
 - During verification, the recurring embed writer held the heavy mutex for
@@ -58,7 +60,18 @@
 - The production smoke also proved a pipeline-order defect: raw ingest was
   fresh while typed memberships were stale. The scoped runner now projects
   `topic_members` and recomputes movement after fresh thread identities and
-  before event binding/daily sealing. Its live recovery cycle is in progress.
+  before event binding/daily sealing. A first live recovery attempt was stopped
+  after 6/136 countries because the sequential country loop degraded serving;
+  its 139 unprojected cluster rows were removed by exact snapshot id. The next
+  operation is an atomic/staged runner redesign, not a blind rerun.
+- A separate production paint-budget failure was isolated: the legacy
+  `top_sources` and `theme_country` sections each consumed their full optional
+  database timeout, taking `/api/v2/briefing` to about 19.2 seconds and beyond
+  the client's 12-second budget. Those optional sections now fail fast at 1.5
+  seconds while core sections retain their 8-second budget. A warm production
+  response measured 6.47 seconds and rendered L1 with both gaps disclosed.
+  Availability is restored; editorial quality is still red because several
+  visible thread labels do not match their current evidence.
 
 Primary records:
 
