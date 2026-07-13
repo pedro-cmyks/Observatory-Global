@@ -11,6 +11,9 @@ and production runtime constraints.
   processed history, long-window routing, and data quality.
 - [[2026-05-30-context-gap-inventory-proposal]] — why the inventory layer
   exists.
+- [[2026-07-13-ner-throughput-measurement]] — #253 phase timings reject
+  all-model residency on the 8 GB M1 and route the next measurement through
+  batched multilingual token classification.
 
 ## Hot/cold and historical processing
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 import importlib
 import inspect
 import os
+from pathlib import Path
 
 import pytest
 
@@ -90,6 +91,92 @@ def test_mode_on_enables_multilingual_without_shadow_writes():
     pipeline = _reload_pipeline("on")
     assert pipeline._multilingual_enabled() is True
     assert pipeline._shadow_writes() is False
+
+
+def test_hf_ner_batches_headlines_in_one_model_call(monkeypatch):
+    pipeline = _reload_pipeline("on")
+    monkeypatch.setattr(pipeline, "NER_BATCH_SIZE", 8)
+    calls = []
+
+    class FakeNer:
+        def __call__(self, headlines, *, batch_size=None):
+            calls.append((headlines, batch_size))
+            return [
+                [{"entity_group": "PER", "word": "Alice"}],
+                [{"entity_group": "LOC", "word": "Bogotá"}],
+            ]
+
+    result = pipeline._extract_entities_hf_batch(
+        FakeNer(),
+        [("Alice speaks", "en"), ("Noticias de Bogotá", "es")],
+    )
+
+    assert calls == [(["Alice speaks", "Noticias de Bogotá"], 8)]
+    assert result == [
+        [{"name": "Alice", "type": "PERSON"}],
+        [{"name": "Bogotá", "type": "LOC"}],
+    ]
+
+
+def test_hf_ner_batch_failure_degrades_to_per_headline_calls():
+    pipeline = _reload_pipeline("on")
+    calls = []
+
+    class BatchRejectingNer:
+        def __call__(self, value, **kwargs):
+            calls.append(value)
+            if isinstance(value, list):
+                raise RuntimeError("batch rejected")
+            return [{"entity_group": "ORG", "word": value.split()[0]}]
+
+    result = pipeline._extract_entities_hf_batch(
+        BatchRejectingNer(),
+        [("Atlas publishes", "en"), ("Reuters reports", "en")],
+    )
+
+    assert calls == [
+        ["Atlas publishes", "Reuters reports"],
+        "Atlas publishes",
+        "Reuters reports",
+    ]
+    assert result == [
+        [{"name": "Atlas", "type": "ORG"}],
+        [{"name": "Reuters", "type": "ORG"}],
+    ]
+
+
+def test_ner_phase_groups_transformer_rows_before_inference():
+    pipeline = _reload_pipeline("on")
+    source = inspect.getsource(pipeline._run_ner_phase)
+
+    assert "hf_rows.append(row)" in source
+    assert "cyrillic_rows.append(row)" in source
+    assert "_extract_entities_hf_batch(" in source
+
+
+def test_ner_phase_emits_route_counts_and_measured_duration():
+    pipeline = _reload_pipeline("on")
+    source = inspect.getsource(pipeline._run_ner_phase)
+
+    assert "time.monotonic()" in source
+    assert "spacy=%d, primary_hf=%d, cyrillic_hf=%d, duration=%.2fs" in source
+
+
+def test_ner_phase_has_an_independent_bounded_work_budget(monkeypatch):
+    pipeline = _reload_pipeline("on")
+    monkeypatch.setattr(pipeline, "NER_LIMIT", 1200)
+
+    assert pipeline._ner_phase_limit(300) == 1200
+    monkeypatch.setattr(pipeline, "NER_LIMIT", 0)
+    assert pipeline._ner_phase_limit(300) == 300
+
+
+def test_local_fleet_sets_measured_ner_budget_without_expanding_other_phases():
+    source = Path("../scripts/run-nlp-fleet-local.sh").read_text(encoding="utf-8")
+
+    assert 'NLP_FLEET_WORKER_LIMIT="${ATLAS_NLP_LIMIT:-300}"' in source
+    assert 'NLP_NER_LIMIT="${ATLAS_NLP_NER_LIMIT:-1200}"' in source
+    assert 'NLP_NER_BATCH_SIZE="${ATLAS_NLP_NER_BATCH_SIZE:-16}"' in source
 
 
 # ── _columns target routing ──────────────────────────────────────────────────

@@ -19,6 +19,8 @@ import gc
 import json
 import logging
 import os
+import time
+from collections.abc import Sequence
 from datetime import datetime, timezone
 
 import asyncpg
@@ -64,6 +66,11 @@ MODEL_VERSION_TAG = {
 }.get(NLP_MULTILINGUAL_MODE, "unknown")
 
 BATCH_SIZE = 20
+NER_BATCH_SIZE = max(1, int(os.getenv("NLP_NER_BATCH_SIZE", "8")))
+# Independent work budget for the now-batched NER phase. Zero preserves the
+# caller's base limit (Fly/default); the measured M1 runner sets 1200 without
+# multiplying the slower sentiment/framing phases too.
+NER_LIMIT = max(0, int(os.getenv("NLP_NER_LIMIT", "0")))
 FRAMING_BATCH_SIZE = 8
 FRAMING_MIN_SCORE = 0.35
 # Multilingual MiniLM framing is a smaller NLI model than mDeBERTa, chosen so
@@ -125,6 +132,10 @@ def _select_spacy_model(source_lang: str | None) -> str:
     return SPACY_MODEL_XX
 
 
+def _ner_phase_limit(base_limit: int) -> int:
+    return NER_LIMIT if NER_LIMIT > 0 else base_limit
+
+
 # ── Filters ──────────────────────────────────────────────────────────────────
 def _entity_valid(text: str, source_lang: str | None = None) -> bool:
     """Conservative entity quality filter.
@@ -172,19 +183,10 @@ def _extract_entities(nlp, headline: str, source_lang: str | None) -> list[dict]
     return entities
 
 
-def _extract_entities_hf(ner, headline: str, source_lang: str | None) -> list[dict]:
-    """Non-English NER via an xlm-roberta token-classification pipeline (Davlan).
-
-    Same output contract as _extract_entities ({name, type}), same validity + dedup
-    filters, but reads the HF `entity_group` (PER/ORG/LOC/…) instead of spaCy `.ents`,
-    and maps to the kept schema. Sub-token artefacts (leading ▁/##/spaces) are stripped.
-    """
+def _entities_from_hf_spans(spans, source_lang: str | None) -> list[dict]:
+    """Normalize one token-classification result into Atlas entity rows."""
     seen: set[str] = set()
     entities: list[dict] = []
-    try:
-        spans = ner(headline)
-    except Exception:  # a single bad headline must not abort the batch
-        return entities
     for sp in spans:
         etype = _HF_NER_LABEL_MAP.get(str(sp.get("entity_group", "")).upper())
         if not etype:
@@ -195,6 +197,52 @@ def _extract_entities_hf(ner, headline: str, source_lang: str | None) -> list[di
         seen.add(name.lower())
         entities.append({"name": name, "type": etype})
     return entities
+
+
+def _extract_entities_hf(ner, headline: str, source_lang: str | None) -> list[dict]:
+    """Non-English NER for one headline, retained as the safe fallback path."""
+    try:
+        spans = ner(headline)
+    except Exception:  # a single bad headline must not abort the batch
+        return []
+    return _entities_from_hf_spans(spans, source_lang)
+
+
+def _extract_entities_hf_batch(
+    ner,
+    rows: Sequence[tuple[str, str | None]],
+) -> list[list[dict]]:
+    """Batch token classification while preserving per-headline degradation.
+
+    The previous M1 path invoked the transformer once per headline. Hugging Face
+    pipelines support list input, which amortizes tokenizer/model dispatch. If a
+    backend rejects batching, fall back row by row so throughput work never
+    becomes an availability regression.
+    """
+    if not rows:
+        return []
+    headlines = [headline for headline, _ in rows]
+    try:
+        batch_spans = ner(headlines, batch_size=NER_BATCH_SIZE)
+    except Exception:
+        logger.exception("NER batch failed; degrading to per-headline inference")
+        return [
+            _extract_entities_hf(ner, headline, source_lang)
+            for headline, source_lang in rows
+        ]
+    if len(batch_spans) != len(rows):
+        logger.warning(
+            "NER batch result length mismatch (%d != %d); degrading to per-headline inference",
+            len(batch_spans), len(rows),
+        )
+        return [
+            _extract_entities_hf(ner, headline, source_lang)
+            for headline, source_lang in rows
+        ]
+    return [
+        _entities_from_hf_spans(spans, source_lang)
+        for spans, (_, source_lang) in zip(batch_spans, rows)
+    ]
 
 
 def _detect_framing(clf, headline: str) -> str | None:
@@ -480,7 +528,8 @@ async def _run_sentiment_phase(conn: asyncpg.Connection, limit: int, dry_run: bo
         except Exception as e:
             logger.warning("Sentiment batch error: %s", e)
 
-    del clf; gc.collect()
+    del clf
+    gc.collect()
 
     if not dry_run and records:
         update_sql = (
@@ -505,6 +554,7 @@ async def _run_sentiment_phase(conn: asyncpg.Connection, limit: int, dry_run: bo
 
 
 async def _run_ner_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) -> int:
+    started_at = time.monotonic()
     cols = _columns()
     rows = await conn.fetch(_priority_select_sql(cols["persons_target"]), limit)
     if not rows:
@@ -516,7 +566,8 @@ async def _run_ner_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) ->
         try:
             return spacy.load(name, disable=["parser", "lemmatizer", "attribute_ruler"])
         except OSError:
-            import subprocess, sys
+            import subprocess
+            import sys
             subprocess.run([sys.executable, "-m", "spacy", "download", name], check=True)
             return spacy.load(name, disable=["parser", "lemmatizer", "attribute_ruler"])
 
@@ -550,17 +601,36 @@ async def _run_ner_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) ->
             nlp_xx = _load(SPACY_MODEL_XX)
 
     records = []
+    hf_rows = []
+    cyrillic_rows = []
     for row in rows:
         lang = (row["source_lang"] or "").lower()
         non_en = bool(lang and lang != "en")
         if lang in NLP_CYRILLIC_LANGS and hf_cyr is not None:
-            entities = _extract_entities_hf(hf_cyr, row["headline"], lang or None)
+            cyrillic_rows.append(row)
+            continue
         elif non_en and hf_ner is not None and lang not in NLP_XLM_NER_SKIP_LANGS:
-            entities = _extract_entities_hf(hf_ner, row["headline"], lang or None)
+            hf_rows.append(row)
+            continue
         else:
             nlp = nlp_xx if (non_en and nlp_xx is not None) else nlp_en
             entities = _extract_entities(nlp, row["headline"], lang or None)
         records.append((json.dumps(entities), row["id"]))
+
+    for model, model_rows in ((hf_ner, hf_rows), (hf_cyr, cyrillic_rows)):
+        if model is None or not model_rows:
+            continue
+        extracted = _extract_entities_hf_batch(
+            model,
+            [
+                (row["headline"], (row["source_lang"] or "").lower() or None)
+                for row in model_rows
+            ],
+        )
+        records.extend(
+            (json.dumps(entities), row["id"])
+            for row, entities in zip(model_rows, extracted)
+        )
 
     del nlp_en
     if nlp_xx is not None:
@@ -576,7 +646,15 @@ async def _run_ner_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) ->
             f"UPDATE signals_v2 SET {cols['persons_target']}=$1::jsonb WHERE id=$2",
             records,
         )
-    logger.info("NER[%s]: %d signals", MODEL_VERSION_TAG, len(records))
+    logger.info(
+        "NER[%s]: %d signals (spacy=%d, primary_hf=%d, cyrillic_hf=%d, duration=%.2fs)",
+        MODEL_VERSION_TAG,
+        len(records),
+        len(records) - len(hf_rows) - len(cyrillic_rows),
+        len(hf_rows),
+        len(cyrillic_rows),
+        time.monotonic() - started_at,
+    )
     return len(records)
 
 
@@ -604,7 +682,8 @@ async def _run_framing_phase(conn: asyncpg.Connection, limit: int, dry_run: bool
             except Exception as e:
                 logger.warning("Framing error id=%s: %s", row["id"], e)
 
-    del clf; gc.collect()
+    del clf
+    gc.collect()
 
     if not dry_run and records:
         await conn.executemany(
@@ -620,21 +699,25 @@ async def _run_framing_phase(conn: asyncpg.Connection, limit: int, dry_run: bool
 
 
 # ── Public entry point for ingest_loop.py or worker ─────────────────────────
-async def run_nlp_enrichment(limit: int = 500) -> None:
+async def run_nlp_enrichment(limit: int = 500) -> dict[str, int]:
     db_url = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
     if not db_url:
         logger.warning("NLP enrichment skipped: DATABASE_URL not set")
-        return
+        return {"sentiment": 0, "ner": 0, "framing": 0}
 
+    counts = {"sentiment": 0, "ner": 0, "framing": 0}
     conn = await asyncpg.connect(db_url)
     try:
-        await _run_sentiment_phase(conn, limit, dry_run=False)
-        await _run_ner_phase(conn, limit, dry_run=False)
-        await _run_framing_phase(conn, limit, dry_run=False)
+        counts["sentiment"] = await _run_sentiment_phase(conn, limit, dry_run=False)
+        counts["ner"] = await _run_ner_phase(
+            conn, _ner_phase_limit(limit), dry_run=False,
+        )
+        counts["framing"] = await _run_framing_phase(conn, limit, dry_run=False)
     except Exception:
         logger.exception("NLP enrichment cycle failed")
     finally:
         await conn.close()
+    return counts
 
 
 # ── CLI for Mac backfill ──────────────────────────────────────────────────────

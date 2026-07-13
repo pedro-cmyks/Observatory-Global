@@ -38,6 +38,14 @@ export NLP_FLEET_REQUIRE_AC="${ATLAS_NLP_REQUIRE_AC:-1}"
 export NLP_FLEET_WORKER_LIMIT="${ATLAS_NLP_LIMIT:-300}"
 export NLP_WORKER_INTERVAL_SECONDS="${ATLAS_NLP_INTERVAL:-15}"
 export NLP_MULTILINGUAL_MODE="${ATLAS_NLP_MULTILINGUAL:-off}"
+# Batched NER measured 1,200 rows inside the M1 memory envelope. Keep the base
+# sentiment/framing budget at 300; expanding every phase would erase the NER
+# throughput gain and make the checkpoint lie about its mission.
+export NLP_NER_LIMIT="${ATLAS_NLP_NER_LIMIT:-1200}"
+# Batch 16 was measured on a representative 1,200-row mix (Davlan + Cyrillic +
+# spaCy) at 1.07 GB max RSS with zero swaps. Keep the library/Fly default at 8;
+# this larger batch is specific to the measured local M1 runtime.
+export NLP_NER_BATCH_SIZE="${ATLAS_NLP_NER_BATCH_SIZE:-16}"
 # Make the worker module importable from the backend tree.
 export ATLAS_NLP_VENV_PY="$VENV_PY"
 export ATLAS_NLP_BACKEND_DIR="$BACKEND_DIR"

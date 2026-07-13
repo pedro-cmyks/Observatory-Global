@@ -231,10 +231,11 @@ async def _one_cycle(limit: int, cycle_idx: int) -> int:
         # the embed thread is never starved. The fast-lane above still runs
         # (keeps nlp_sentiment at ~100%).
         if NER_ENABLED:
-            await run_nlp_enrichment(limit=limit)
-            # run_nlp_enrichment does not return a count today; treat one cycle
-            # as up to `limit` rows. Real counts come from the checkpoint delta.
-            rows_processed = limit
+            result = await run_nlp_enrichment(limit=limit)
+            # The M1 may use an NER-specific budget larger than the base
+            # sentiment/framing limit. Checkpoint the actual NER writes rather
+            # than the requested base limit.
+            rows_processed = int(result.get("ner") or 0)
     except Exception as exc:
         last_error = repr(exc)[:500]
         logger.exception("NLP worker cycle failed")

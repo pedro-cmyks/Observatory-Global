@@ -87,3 +87,13 @@ def test_one_cycle_derives_target_column_from_pipeline_mode():
     assert "processed_target_column()" in source
     assert "target_column=target_column" in source
     assert "await _maintenance(maintenance_conn, cycle_idx, target_column)" in source
+
+
+def test_one_cycle_checkpoints_actual_ner_rows_not_requested_base_limit():
+    import enrichment.nlp_worker as worker
+
+    worker = importlib.reload(worker)
+    source = inspect.getsource(worker._one_cycle)
+
+    assert "result = await run_nlp_enrichment(limit=limit)" in source
+    assert 'rows_processed = int(result.get("ner") or 0)' in source
