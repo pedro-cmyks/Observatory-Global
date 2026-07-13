@@ -23,14 +23,19 @@
   could not attach a fresh tab for the visual smoke, and unrelated
   anomaly/correlation queries still show handled shared-DB timeouts. P1.2
   serving/batch isolation remains necessary.
-- Next executable slice: canonical typed node identity + heterogeneous
-  `resolve-node` adapters + immutable snapshot/live references + typed edge
-  receipts, proven by a multi-object Iran forcing case before changing UI.
+- Typed-node Slice 2 is now deployed: `atlas-investigation-v2`, stable identity,
+  immutable snapshot/live reference separation, ten accepted node families,
+  canonical thread/signal enrichment, and stateless
+  `POST /api/v2/investigation/resolve-node`. Other families pin honestly as
+  metadata-only until their canonical adapters land.
+- Next executable slice: stateless graph assembly + typed edge receipts, proven
+  by a multi-object Iran forcing case before changing UI.
 
 Primary records:
 
 - `docs/superpowers/plans/2026-07-12-investigation-graph-slice-1-reliability.md`
 - `docs/state/2026-07-12-investigation-graph-slice-1-reliability.md`
+- `docs/state/2026-07-12-investigation-graph-slice-2-node-foundation.md`
 
 ---
 

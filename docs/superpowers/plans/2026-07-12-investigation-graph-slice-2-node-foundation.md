@@ -17,6 +17,16 @@
 - LLMs are not involved in node identity, type, quality, or resolution.
 - No database migration or frontend rewrite belongs to this slice.
 
+## Execution Status
+
+- Task 1 complete: `abec2739`.
+- Task 2 complete as part of the same contract commit; thread and signal
+  adapters are covered independently.
+- Task 3 complete: `8e769fe5`, with production-discovered signal schema repair
+  `da5f5940`.
+- Production evidence and grade:
+  `docs/state/2026-07-12-investigation-graph-slice-2-node-foundation.md`.
+
 ---
 
 ### Task 1: Define and prove the typed node contract

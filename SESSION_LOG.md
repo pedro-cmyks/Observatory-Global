@@ -37,6 +37,15 @@ Next: typed Investigation Graph foundation and heterogeneous pin resolution,
 with no frontend rewrite until the graph forcing case reconciles thread, event,
 country, entity, and evidence nodes.
 
+Typed-node Slice 2 then shipped the first executable graph contract. All ten
+planned node families now normalize to `atlas-investigation-v2`; frozen pin
+state is separated from live enrichment; thread and signal adapters resolve
+canonical receipts; unsupported enrichment remains a retryable metadata-only
+node. Production version 400 resolved the Iran thread (66 signals) and a real
+signal receipt while preserving their frozen snapshots. The smoke caught and
+fixed an undeployed-column assumption before the slice was accepted. Full
+record: `docs/state/2026-07-12-investigation-graph-slice-2-node-foundation.md`.
+
 ---
 
 ## 2026-07-12 — Complete-universe subject geography and event map audit
