@@ -29,6 +29,7 @@ from app.services.ingest_rss import extract_country
 from app.services.subject_geography import (
     infer_receipt_subject_geography,
     measure_subject_geography_coherence,
+    resolve_place_to_country,
 )
 
 
@@ -402,3 +403,43 @@ def test_coherence_abstains_without_geo_signal():
     result = measure_subject_geography_coherence(receipts)
     assert result["grab_bag"] is False
     assert result["status"] == "no_subject_geography_signal"
+
+
+# ── NER place → country (C-clean slice 1): resolve places named in the story
+# body (via NER) to a subject country, for headlines that name only a local
+# entity. The resolver reuses the shared country patterns (which include
+# capitals/major cities); obscure places return None — the gazetteer ceiling. ──
+@pytest.mark.parametrize("place,expected", [
+    ("Sydney", "AU"),
+    ("Melbourne", "AU"),
+    ("Brussels", "BE"),
+    ("Tehran", "IR"),
+    ("Toronto", "CA"),
+    ("Bondi Beach", None),   # not in the gazetteer — honest None, no guess
+    ("", None),
+])
+def test_resolve_place_to_country(place, expected):
+    assert resolve_place_to_country(place) == expected
+
+
+def test_subject_geography_verifies_from_ner_places_when_headline_is_silent():
+    # Oblique-headline local story: the headline names a company (Telstra), not a
+    # country, but NER extracted the city from the body. Two receipts, two
+    # outlets naming Australian cities → verified AU subject geography.
+    receipts = [
+        {"id": 1, "headline": "Telstra outage hits thousands", "source_name": "R", "places": ["Sydney"]},
+        {"id": 2, "headline": "Telstra network slowly restored", "source_name": "A", "places": ["Melbourne"]},
+    ]
+    result = infer_receipt_subject_geography(receipts)
+    assert result["status"] == "verified"
+    assert result["verified_subject_countries"] == ["AU"]
+
+
+def test_subject_geography_ignores_unresolvable_ner_places():
+    receipts = [
+        {"id": 1, "headline": "Estate sells for record sum", "source_name": "R", "places": ["Leuralla"]},
+        {"id": 2, "headline": "Historic property changes hands", "source_name": "A", "places": ["Bondi Beach"]},
+    ]
+    result = infer_receipt_subject_geography(receipts)
+    # unresolvable places must not fabricate a country
+    assert result["verified_subject_countries"] == []

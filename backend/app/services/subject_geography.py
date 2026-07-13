@@ -53,6 +53,28 @@ def headline_country_evidence(headline: Any) -> dict[str, set[str]]:
     return dict(methods)
 
 
+def resolve_place_to_country(place: Any) -> str | None:
+    """Resolve a NER-extracted place name to an ISO subject country.
+
+    A place named in the story (via NER over the body) is genuine subject
+    signal — not coverage — so it can verify geography for a headline that names
+    only a local entity. Reuses the shared country patterns (which include
+    capitals and major cities) plus the native-script table. Returns None for
+    places outside the known geography (e.g. "Bondi Beach"): the gazetteer
+    ceiling a fuller geocoder would lift, never a guess.
+    """
+    text = decode_headline(place)
+    if not text:
+        return None
+    for pattern, code in _COUNTRY_PATTERNS:
+        if pattern.search(text):
+            return _SUBJECT_COUNTRY_ALIASES.get(str(code).upper(), str(code).upper())
+    for pattern, code in _NATIVE_COUNTRY_PATTERNS:
+        if pattern.search(text):
+            return _SUBJECT_COUNTRY_ALIASES.get(str(code).upper(), str(code).upper())
+    return None
+
+
 def infer_receipt_subject_geography(
     receipts: Sequence[dict[str, Any]],
     *,
@@ -79,6 +101,23 @@ def infer_receipt_subject_geography(
             if outlet:
                 item["outlets"].add(outlet)
             item["methods"].update(methods)
+        # C-clean: a place named in the story body (via NER) is subject signal,
+        # so it corroborates geography for headlines that name only a local
+        # entity. Activates when receipts carry NER `places`; a no-op until that
+        # is plumbed through the serving layer (gated on NER throughput #184).
+        for place in row.get("places") or []:
+            code = resolve_place_to_country(place)
+            if not code:
+                continue
+            item = evidence.setdefault(code, {
+                "receipt_ids": set(),
+                "outlets": set(),
+                "methods": set(),
+            })
+            item["receipt_ids"].add(str(receipt_id))
+            if outlet:
+                item["outlets"].add(outlet)
+            item["methods"].add("ner_place")
 
     candidates = []
     for country, item in evidence.items():
