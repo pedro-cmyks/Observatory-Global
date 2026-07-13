@@ -38,6 +38,10 @@ from app.services.subject_geography import (
     infer_receipt_subject_geography,
     measure_subject_geography_coherence,
 )
+from app.services.publication_synthesis import (
+    SynthesizeRequest,
+    synthesize_publication_article,
+)
 from app.core.iso_country_names import ISO_COUNTRY_NAMES
 from app.services.country_codes import fips_to_iso
 
@@ -406,6 +410,47 @@ FROM current_evidence
 ORDER BY requested_id, timestamp DESC, id DESC
 """
 
+
+def build_lead_synthesis_payload(
+    label: str,
+    receipts: list[dict[str, Any]],
+    *,
+    gaps: list[str],
+    low_coherence: bool = False,
+) -> dict[str, Any]:
+    """SynthesizeRequest payload for the daily lead story — the front-page cited
+    article. The deduped frozen receipts become the authoritative numbered
+    citation table. A single coherent lead story is one publishable mini-article;
+    the twelve unrelated top stories are never fused into one piece (that would be
+    the grab-bag the coherence guard rejects).
+    """
+    items: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in receipts:
+        headline = decode_headline(row.get("headline"))
+        key = headline.lower()
+        if not headline or key in seen:
+            continue
+        seen.add(key)
+        items.append({
+            "headline": headline,
+            "source": row.get("source_name") or row.get("source"),
+            "date": (str(row.get("timestamp") or row.get("date") or "")[:10] or None),
+            "url": row.get("source_url") or row.get("url"),
+        })
+    return {
+        "title": label,
+        "pins": [{
+            "label": label,
+            "type": "story",
+            "evidence": [item["headline"] for item in items],
+            "evidence_items": items,
+            "low_coherence": bool(low_coherence),
+        }],
+        "gaps": list(gaps or []),
+    }
+
+
 async def fetch_daily_publication(
     *,
     hours: int = 24,
@@ -693,6 +738,26 @@ async def fetch_daily_publication(
         },
         input_gaps=input_gaps,
     ))
+    # Front-page cited article: synthesize the lead story into a publishable
+    # mini-article (lede → cited body → what we don't know), citations resolved
+    # server-side against the frozen receipt table. A single coherent lead is one
+    # article; the unrelated top stories are never fused. Degrades openly if the
+    # provider is unavailable.
+    if lead_id is not None and by_topic.get(lead_id):
+        lead_label = label_decisions[lead_id][0]
+        lead_grab = bool(publishability_by_id.get(lead_id, {}).get("grab_bag"))
+        lead_payload = build_lead_synthesis_payload(
+            lead_label, by_topic[lead_id], gaps=list(package.gaps), low_coherence=lead_grab,
+        )
+        try:
+            article = await synthesize_publication_article(SynthesizeRequest(**lead_payload))
+        except Exception:
+            article = None
+        if article and (article.get("lede") or article.get("body") or article.get("synthesis")):
+            package.article = {**article, "story_id": lead_id, "story_label": lead_label}
+            package.prose_status = "generated"
+        else:
+            package.prose_status = "unavailable"
     return {
         "contract": "atlas-daily-publication-v1",
         "hours": hours,

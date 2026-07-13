@@ -6,6 +6,7 @@ import numpy as np
 from app.services.investigation_graph import ReadinessItem
 from app.services.daily_publication import (
     _openai_embed_publication_texts,
+    build_lead_synthesis_payload,
     choose_current_edition_label,
     classify_evidence_fit_outliers,
     evidence_fit_metrics_from_vectors,
@@ -373,3 +374,31 @@ def test_daily_receipts_come_from_current_typed_evidence_not_cluster_samples():
     assert "ec.sample_signal_ids" not in service
     assert "edition_cluster_label" in service
     assert "choose_current_edition_label" in service
+
+
+def test_lead_synthesis_payload_dedupes_and_builds_one_pin_citation_table():
+    receipts = [
+        {"headline": "Iran plot alleged", "source": "Reuters",
+         "timestamp": "2026-07-10T08:00:00Z", "url": "https://r/1"},
+        {"headline": "Iran plot alleged", "source": "AP", "url": "https://ap/2"},  # dup headline
+        {"headline": "Israel warns US", "source": "AFP", "timestamp": "2026-07-11", "url": "https://afp/3"},
+    ]
+    payload = build_lead_synthesis_payload(
+        "Iran plot", receipts, gaps=["causal_explanation_not_measured"], low_coherence=False,
+    )
+    assert payload["title"] == "Iran plot"
+    assert len(payload["pins"]) == 1
+    items = payload["pins"][0]["evidence_items"]
+    assert len(items) == 2  # duplicate headline collapsed
+    assert items[0] == {
+        "headline": "Iran plot alleged", "source": "Reuters", "date": "2026-07-10", "url": "https://r/1",
+    }
+    assert payload["pins"][0]["low_coherence"] is False
+    assert payload["gaps"] == ["causal_explanation_not_measured"]
+
+
+def test_lead_synthesis_payload_marks_grab_bag_lead_low_coherence():
+    payload = build_lead_synthesis_payload(
+        "Mixed umbrella", [{"headline": "A"}], gaps=[], low_coherence=True,
+    )
+    assert payload["pins"][0]["low_coherence"] is True

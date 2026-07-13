@@ -5,7 +5,7 @@ request (authoritative), the model cites [n] inline, the server resolves the
 markers back against its own table — an invented citation can never enter the
 response.
 """
-from app.routers import dossier
+from app.services import publication_synthesis as dossier
 
 
 def _pin(label, items=None, strings=None, **kw):
