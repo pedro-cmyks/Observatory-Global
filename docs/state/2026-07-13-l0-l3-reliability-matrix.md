@@ -356,6 +356,31 @@ snippet/body so it extracts the city a local headline omits. So C-clean needs:
 (c) person→country entity linking. The resolver/decoder core is ready and will
 activate automatically once (a) plumbs body places onto served receipts.
 
+## 2026-07-13 — daily spine leads with publishable stories (selector A)
+
+`order_spine_by_publishability` reorders the already-selected 12 daily stories
+for the newspaper spine: subject-geography-verified stories lead, grab-bag
+umbrellas are demoted to the end, editorial rank is preserved within each tier.
+Selection membership is unchanged and every story stays in the spine and ledger
+— pure, reason-coded layout (`spine_lead_subject_geography_verified` /
+`spine_supporting` / `spine_demoted_grab_bag_umbrella`), no filtering. Semantic
+cohesion (the existing coherence dimension) cannot catch a geographic grab-bag,
+so this consumes the B co-occurrence signal to keep an incoherent umbrella out
+of the lead. 2 unit tests; full backend `1371 passed`.
+
+**Deployment note (M1 build path).** The daily edition is built by the M1
+scoped-snapshot runner (`python -m scripts.build_daily_publication`), which
+reads `/Users/pedro/AtlasLocalWorker/backend` — a MANUAL copy, not the repo and
+not a git checkout. The Fly-served `/daily-publication` only reads the stored
+row, so this change (and the grab-bag detector, lexicon, subject-geo fix and
+NER resolver, all of which the M1 build also uses) reaches L1 only after the M1
+copy is synced. The five changed `app/services` files were verified pure-older
+(no local divergence) and synced; the last build ran green at 05:55 and the
+change takes visible effect on the next scoped-snapshot cycle. The Fly-served L3
+dossier/graph/package and research paths already run the new code. Lesson: the
+M1 worker tree is a manual copy — backend changes that feed the daily edition
+must be synced there, not only deployed to Fly.
+
 ## Required next gates
 
 1. **Daily data maturity:** edition lag is visibly labeled; autonomous snapshots
