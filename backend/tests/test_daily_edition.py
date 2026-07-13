@@ -5,6 +5,7 @@ from app.services.daily_edition import (
     DailyCandidate,
     apply_sample_coverage,
     fetch_daily_candidates,
+    order_spine_by_publishability,
     select_daily_edition,
 )
 
@@ -234,3 +235,28 @@ def test_sample_coverage_enriches_candidates_without_mutating_input():
     assert enriched[0].source_origins == 2
     assert enriched[1].source_breadth == 0
     assert candidates[0].source_breadth == 0
+
+
+def test_spine_leads_with_verified_subject_and_demotes_grab_bags():
+    # Editorial order puts the grab-bag first (say, highest movement). The spine
+    # must lead with the subject-geography-verified story and demote the
+    # incoherent umbrella to the end — without dropping any selected story.
+    selected_ids = ["grab", "verified", "partial"]
+    publishability = {
+        "grab": {"grab_bag": True, "subject_verified": False},
+        "verified": {"grab_bag": False, "subject_verified": True},
+        "partial": {"grab_bag": False, "subject_verified": False},
+    }
+    ordered = order_spine_by_publishability(selected_ids, publishability)
+    assert [tid for tid, _ in ordered] == ["verified", "partial", "grab"]
+    assert ordered[0][1] == "spine_lead_subject_geography_verified"
+    assert ordered[-1][1] == "spine_demoted_grab_bag_umbrella"
+
+
+def test_spine_preserves_editorial_order_within_a_tier():
+    selected_ids = ["a", "b", "c"]
+    publishability = {
+        tid: {"grab_bag": False, "subject_verified": True} for tid in selected_ids
+    }
+    ordered = order_spine_by_publishability(selected_ids, publishability)
+    assert [tid for tid, _ in ordered] == ["a", "b", "c"]

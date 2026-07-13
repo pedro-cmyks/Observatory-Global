@@ -296,6 +296,37 @@ def _equal_rank_aggregate(states: list[dict[str, float]]) -> list[float]:
     return [total / len(keys) for total in totals]
 
 
+def order_spine_by_publishability(
+    selected_ids: list[str],
+    publishability_by_id: dict[str, dict[str, bool]],
+) -> list[tuple[str, str]]:
+    """Reorder the already-selected daily stories for the newspaper spine so the
+    lead and top slots are the most publishable — subject-geography verified and
+    not an incoherent grab-bag umbrella — while preserving the editorial rank
+    within each tier. Pure layout: every selected story stays, nothing is
+    dropped, and each placement is reason-coded. Returns (thread_id,
+    layout_reason) in spine order.
+    """
+    reason_by_tier = {
+        0: "spine_lead_subject_geography_verified",
+        1: "spine_supporting",
+        2: "spine_demoted_grab_bag_umbrella",
+    }
+
+    def tier(thread_id: str) -> int:
+        flags = publishability_by_id.get(thread_id) or {}
+        if flags.get("grab_bag"):
+            return 2
+        if flags.get("subject_verified"):
+            return 0
+        return 1
+
+    ordered = sorted(
+        enumerate(selected_ids), key=lambda item: (tier(item[1]), item[0]),
+    )
+    return [(thread_id, reason_by_tier[tier(thread_id)]) for _, thread_id in ordered]
+
+
 def select_daily_edition(
     candidates: list[DailyCandidate],
     *,

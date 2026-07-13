@@ -22,6 +22,7 @@ from app import db
 from app.services.daily_edition import (
     apply_sample_coverage,
     fetch_daily_candidates,
+    order_spine_by_publishability,
     select_daily_edition,
 )
 from app.services.investigation_graph import (
@@ -35,6 +36,7 @@ from app.services.subjects import classify_subject
 from app.services.subject_geography import (
     decode_headline,
     infer_receipt_subject_geography,
+    measure_subject_geography_coherence,
 )
 from app.core.iso_country_names import ISO_COUNTRY_NAMES
 from app.services.country_codes import fips_to_iso
@@ -532,9 +534,29 @@ async def fetch_daily_publication(
         for candidate in enriched_candidates
         if candidate.thread_id in selection.selected_ids
     }
+    # Spine layout: lead with the most publishable stories (subject-geography
+    # verified, not a grab-bag umbrella) and demote incoherent umbrellas.
+    # Selection membership is unchanged; every selected story stays in the spine
+    # and the ledger — this reorders visual priority only, reason-coded.
+    publishability_by_id = {
+        thread_id: {
+            "subject_verified": infer_receipt_subject_geography(
+                by_topic.get(thread_id, [])
+            ).get("status") == "verified",
+            "grab_bag": bool(measure_subject_geography_coherence(
+                by_topic.get(thread_id, [])
+            ).get("grab_bag")),
+        }
+        for thread_id in selection.selected_ids
+    }
+    spine_order = order_spine_by_publishability(selection.selected_ids, publishability_by_id)
+    spine_reason_by_id = dict(spine_order)
+    ordered_ids = [thread_id for thread_id, _ in spine_order]
+    lead_id = ordered_ids[0] if ordered_ids else None
+
     nodes = []
     window_start = edition_end - timedelta(hours=hours)
-    for thread_id in selection.selected_ids:
+    for thread_id in ordered_ids:
         candidate = selected_by_id[thread_id]
         receipts = by_topic.get(thread_id, [])
         top_countries = list(dict.fromkeys(
@@ -591,8 +613,9 @@ async def fetch_daily_publication(
                 },
                 snapshot={
                     "edition_role": (
-                        "lead" if thread_id == selection.selected_ids[0] else "supporting"
+                        "lead" if thread_id == lead_id else "supporting"
                     ),
+                    "spine_layout_reason": spine_reason_by_id.get(thread_id),
                     "selection": next(
                         row.model_dump(mode="json") for row in selection.ledger
                         if row.thread_id == thread_id
