@@ -157,9 +157,29 @@
   Belén/Belém geo work) were deleted locally; five branches with unique event,
   Universe, grid-performance or UI work remain preserved. Receipt:
   `docs/state/2026-07-13-wip-branch-triage.md`.
-- Fresh verification after these changes: backend `1330 passed, 6 skipped`;
+- Fresh verification after these changes: backend `1331 passed, 6 skipped`;
   frontend `308 passed`; focused NLP suite `36 passed`; Ruff and diff checks
   pass.
+- Production now serves Fly API image
+  `deployment-01KXE2GKQAQC798Q0AQF59QTRQ` on machine version 408. Health is
+  green, the Vercel API proxy returns the sealed daily package, and browser
+  smokes of `/brief`, `/app`, Narrative Threads and the populated Workbench
+  completed with no console warning or error. The Workbench live plan evaluated
+  all 581 candidates, promoted 11, kept 570 in the accessible low-confidence
+  tray and omitted none.
+- The production smoke caught one packaging-only defect before the next cron:
+  the daily evidence-fit lane imported the undeclared `openai` SDK even though
+  Atlas already ships `httpx`. It now calls the official embeddings HTTP API
+  through the installed client, preserves response index order and has a
+  regression test. A locked live rebuild measured all 150 eligible stories,
+  downranked seven bivariate low-tail outliers and stored 546/546 candidates,
+  12 nodes and 71 receipts. `who/what/when/where/how` are ready; `why` remains
+  honestly partial. The row is still `degraded` because its 07:33 UTC cutoff is
+  now more than six hours old, so L1 correctly keeps the visible live fallback.
+- Editorial quality is not declared green: the live fallback still exposes
+  several low-value rows and a visible `Senegal Political Turmoil` label whose
+  country/evidence summary does not support the name. These are current thread
+  quality inputs for the next roadmap slice, not browser or deployment defects.
 
 Primary records:
 

@@ -5,6 +5,7 @@ import numpy as np
 
 from app.services.investigation_graph import ReadinessItem
 from app.services.daily_publication import (
+    _openai_embed_publication_texts,
     choose_current_edition_label,
     classify_evidence_fit_outliers,
     evidence_fit_metrics_from_vectors,
@@ -284,6 +285,51 @@ def test_publication_fit_vector_metrics_separate_label_support_and_coherence():
 
     assert metrics["label_median"] > 0.95
     assert metrics["pair_median"] > 0.95
+
+
+def test_publication_fit_openai_lane_uses_available_http_client(monkeypatch):
+    calls = []
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "data": [
+                    {"index": 1, "embedding": [0.0, 1.0]},
+                    {"index": 0, "embedding": [1.0, 0.0]},
+                ]
+            }
+
+    class FakeClient:
+        def __init__(self, **kwargs):
+            calls.append(("init", kwargs))
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def post(self, url, **kwargs):
+            calls.append((url, kwargs))
+            return FakeResponse()
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "app.services.daily_publication.httpx.Client", FakeClient,
+    )
+
+    vectors = _openai_embed_publication_texts(["label", "headline"])
+
+    assert vectors.tolist() == [[1.0, 0.0], [0.0, 1.0]]
+    assert calls[1][0] == "https://api.openai.com/v1/embeddings"
+    assert calls[1][1]["headers"] == {"Authorization": "Bearer test-key"}
+    assert calls[1][1]["json"] == {
+        "model": "text-embedding-3-small",
+        "input": ["label", "headline"],
+    }
 
 
 def test_publication_fit_measurement_keeps_compound_story_as_explicit_abstention():

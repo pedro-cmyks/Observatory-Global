@@ -15,6 +15,7 @@ import time
 import unicodedata
 from typing import Any
 
+import httpx
 import numpy as np
 
 from app import db
@@ -63,19 +64,23 @@ def evidence_fit_metrics_from_vectors(
 
 
 def _openai_embed_publication_texts(texts: list[str]) -> np.ndarray:
-    from openai import OpenAI
-
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY not set")
-    client = OpenAI(api_key=api_key)
     vectors: list[list[float]] = []
-    for offset in range(0, len(texts), 512):
-        response = client.embeddings.create(
-            model="text-embedding-3-small",
-            input=texts[offset:offset + 512],
-        )
-        vectors.extend(item.embedding for item in response.data)
+    with httpx.Client(timeout=90.0) as client:
+        for offset in range(0, len(texts), 512):
+            response = client.post(
+                "https://api.openai.com/v1/embeddings",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "model": "text-embedding-3-small",
+                    "input": texts[offset:offset + 512],
+                },
+            )
+            response.raise_for_status()
+            rows = sorted(response.json()["data"], key=lambda row: row["index"])
+            vectors.extend(row["embedding"] for row in rows)
     return np.asarray(vectors, dtype=np.float32)
 
 

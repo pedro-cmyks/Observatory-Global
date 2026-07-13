@@ -193,9 +193,22 @@ the readiness verdict without rewriting or backdating the sealed artifact:
   completed 1,200 NER rows in 131.20 seconds and the whole cycle in 266.4
   seconds, while the direct 24h pending count fell from 86,307 to 85,455.
 
-The publication verdict is still not green: the sealed production artifact was
-built before these adapters were deployed, causal `why` is intentionally
-partial, and the shared-package browser/editor comparison has not yet passed.
+The shared-package browser comparison now passes for availability and contract
+honesty. The deployed API and Vercel proxy return 546/546 candidates, 12 story
+nodes and 71 receipts; the five required promotion dimensions
+(`who/what/when/where/how`) are ready, while causal `why` remains explicitly
+partial. The evidence-fit lane was repaired after production exposed an
+undeclared OpenAI SDK import: the HTTP implementation measured all 150 eligible
+single-cluster stories and downranked seven low-tail outliers without hiding any
+candidate.
+
+The publication verdict is still not green because the stored edition ends at
+07:33 UTC and exceeded the six-hour freshness gate before the corrected rebuild.
+L1 therefore shows its visible live fallback. Browser smokes found no console
+errors in `/brief`, `/app` or the populated Workbench, but the fallback still
+contains low-value rows and at least one visible label/evidence mismatch. A
+fresh autonomous complete snapshot, followed by editorial inspection of the
+resulting article/package, remains the promotion gate.
 
 ### Embedding writer incident found during freshness verification
 

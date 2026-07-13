@@ -236,6 +236,26 @@ L2 visual refinements. The evidence table is in
 `docs/state/2026-07-13-wip-branch-triage.md`; no active worktree directory or
 commit object was deleted.
 
+The publication/API build was then deployed as Fly image
+`deployment-01KXE2GKQAQC798Q0AQF59QTRQ` (app machine version 408). Production
+browser smokes found no console warnings or errors: L1 rendered its explicit
+live fallback; L2 rendered the full exploration console; L3 opened the saved
+four-pin Iran investigation and rebuilt a complete 581-candidate plan with 11
+primary, 570 low-confidence, zero omitted. The same audit preserved a real
+editorial warning: current fallback rows still include generic/sports material
+and at least one thread label/country mismatch.
+
+The stored daily rebuild exposed `publication_evidence_fit` as degraded by an
+`ImportError`: that one path depended on the undeclared OpenAI Python SDK. A
+red/green regression replaced the SDK import with the installed `httpx` client
+and the official embeddings endpoint. Under the heavy-job mutex, the corrected
+live rebuild measured the complete 150-story eligible universe, downranked
+seven bivariate low-tail outliers, and stored 546/546 candidates, 12 nodes and
+71 receipts. Required `who/what/when/where/how` readiness is green and `why`
+remains partial by design. The edition stays degraded only at the promotion
+gate because its 07:33 UTC cutoff is older than six hours; the package also
+discloses causal and explicit-window relation gaps.
+
 Records:
 
 - `docs/state/2026-07-12-spec-history-crosswalk.md`
