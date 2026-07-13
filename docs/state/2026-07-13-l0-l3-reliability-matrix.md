@@ -297,3 +297,53 @@ complete embeddings -> memberships -> movement -> publication chain.
    lens and export pass the Iran forcing case.
 7. **Publication:** daily, Iran and NATO packages pass the same citation and
    cold-editor rubric; only then publish a public/LinkedIn artifact.
+
+### 2026-07-13 follow-up — gate 6 Iran heterogeneous forcing case (production run)
+
+`backend/scripts/iran_forcing_case_smoke.py` composed the first heterogeneous
+Iran investigation directly against the deployed contracts (seven pins: two
+`story` threads, one `evidence` signal, one `country`, one `subject`, one
+`event`, one `anomaly`) and graded the end-to-end result.
+
+- `resolve-nodes` processed 7/7 with no truncation: three server-enriched
+  (`dynamic-topic-1594`, `dynamic-topic-867`, signal `12614774`) and four
+  honest `metadata_only` (country/subject/event/anomaly), matching the slice-2
+  adapter contract;
+- `/graph` enumerated 21/21 pairs with no silent cap and returned six typed
+  edges — three `measured` (`member_of`, `mentions`, `shared_actor`) and three
+  `contextual` (`same_coverage_country`) — with no tautological self-edge; the
+  country and subject pins participated, so the connection is genuinely
+  heterogeneous, not story-to-story only;
+- `/publication-package` returned `atlas-publication-package-v1` with 48
+  receipts, a three-node spine, and full reproducibility metadata.
+
+**Measured verdict:** the L3 composition primitive (heterogeneous pins →
+connected typed graph → portable exported package) is demonstrated in
+production and is contract-honest. The publishable bar is **3/5** promotion
+dimensions: `what`, `when`, `how` are `ready`; `who` is partial
+(`actor_attribution_incomplete_for_story_nodes`) and `where` is partial
+(`coverage_geography_only_not_subject`). Gate 6 is therefore **not blocked by
+the graph/package architecture** but by the two known amber lanes. They are
+coupled: the package accepts a verified subject place as a broad actor, so
+extending subject-geography inference (#257 lane) to the forcing-case stories
+is expected to flip `where` and `who` together toward 5/5. This is the same
+lane as the shipped Senegal receipt work.
+
+**Root cause and fix (built and proven locally, not yet deployed).** The
+abstention was a wiring gap, not a decoder-recall gap: the deployed subject
+geography decoder verifies `IL/IR/US` on `dynamic-topic-1594`'s 26 real
+receipts (26 receipts, 25 distinct outlets), but the publication package only
+read a pre-computed `verified_subject_countries` field that the thread detail
+never sets, so every resolved story abstained on `where`/`who`. The fix adds a
+receipt-derived fallback in `build_publication_package`: when a story node has
+no pre-computed verified subject field, it runs the shipped
+`atlas-subject-geography-v1` decoder over the node's own frozen receipts
+(mapping the served `source` outlet field onto the decoder's `source_name`
+key). It never invents a country the receipts do not independently corroborate.
+A TDD unit test (`test_publication_where_and_who_promote_from_frozen_receipt_subject_geography`)
+covers it, the full backend suite is `1335 passed, 6 skipped`, and the real
+two-story Iran forcing case now reaches `who/what/when/where/how` = 5/5 with
+`where` = `[IL, IR, QA, RU, SY, US]` and 71 receipts (`why` stays missing —
+causality is not measured). `who` is satisfied by broad-actor verified places;
+named-person actors remain the separate #253 enrichment. This is proven on
+local code only; production still returns 3/5 until the API is redeployed.
