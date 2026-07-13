@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { resolveCountryName } from '../lib/countryNames'
 import { conflictCountryCode } from '../lib/conflictEvents'
+import { useWorkspace } from '../contexts/WorkspaceContext'
 import './ConflictEventPanel.css'
 
 /**
@@ -52,6 +53,27 @@ export function ConflictEventPanel({ event, onClose, onThemeSelect, onCountrySel
     const countryCode = conflictCountryCode({ location: { country: event.country } })
     const countryName = event.country ? resolveCountryName(countryCode || event.country) : ''
 
+    const { pinItem, unpinItem, isPinned } = useWorkspace()
+    // Deterministic id so pin/unpin/isPinned round-trip for the same event.
+    const pinId = `event-${countryCode || event.country || 'xx'}-${event.date || ''}-${event.type || 'event'}`
+        .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+    const pinned = isPinned(pinId)
+    const pinEvent = () => {
+        if (pinned) { unpinItem(pinId); return }
+        pinItem({
+            id: pinId,
+            type: 'event',
+            title: `${event.type || 'Conflict event'}${countryName ? ` · ${countryName}` : ''}`,
+            urlParams: '',
+            meta: {
+                countryCode: countryCode || undefined,
+                actors: [event.actor1, event.actor2].filter(Boolean).join(' → '),
+                date: event.date,
+                fatalities: event.fatalities,
+            },
+        })
+    }
+
     useEffect(() => {
         if (!countryCode) { setThreads([]); return }
         let ignore = false
@@ -68,7 +90,15 @@ export function ConflictEventPanel({ event, onClose, onThemeSelect, onCountrySel
         <div className="conflict-event-panel">
             <div className="cep-header">
                 <span className="cep-kicker">CONFLICT EVENT</span>
-                <button className="cep-close" onClick={onClose} aria-label="Close">×</button>
+                <div className="cep-header-actions">
+                    <button
+                        className={`cep-pin${pinned ? ' pinned' : ''}`}
+                        onClick={pinEvent}
+                        aria-label={pinned ? 'Unpin event from investigation' : 'Pin event to investigation'}
+                        data-tip={pinned ? 'Pinned to your investigation' : 'Pin this event to your investigation'}
+                    >{pinned ? '◆ PINNED' : '◆ PIN'}</button>
+                    <button className="cep-close" onClick={onClose} aria-label="Close">×</button>
+                </div>
             </div>
 
             <h2 className="cep-title">{event.type || 'Conflict event'}</h2>

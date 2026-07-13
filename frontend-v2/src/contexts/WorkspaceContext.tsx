@@ -23,7 +23,7 @@ import {
 } from '../lib/workbench'
 import { extractSnapshotEvidence } from '../lib/pinEvidence'
 
-export type PinnedItemType = 'theme' | 'person' | 'country' | 'signal' | 'source' | 'chokepoint' | 'public_attention' | 'temporal_snapshot'
+export type PinnedItemType = 'theme' | 'person' | 'country' | 'signal' | 'source' | 'chokepoint' | 'public_attention' | 'temporal_snapshot' | 'event' | 'anomaly'
 
 /** Compatibility shape for the panel pin affordances (ThemeDetail,
  *  CountryBrief, EntityPanel, SourceProfile, PublicAttentionPanel,
@@ -74,7 +74,7 @@ function pinnedValue(item: Omit<PinnedItem, 'notes' | 'timestamp'>): string {
  *  snapshot (label + capturedAt), never blocks the pin. */
 async function fetchPanelSnapshot(item: Omit<PinnedItem, 'notes' | 'timestamp'>): Promise<PinSnapshot | null> {
     const value = pinnedValue(item)
-    if (!value || item.type === 'signal' || item.type === 'chokepoint' || item.type === 'temporal_snapshot') return null
+    if (!value || item.type === 'signal' || item.type === 'chokepoint' || item.type === 'temporal_snapshot' || item.type === 'event' || item.type === 'anomaly') return null
 
     let url: string | null = null
     if (item.type === 'theme') url = `/api/v2/theme/${encodeURIComponent(value)}?hours=${SNAPSHOT_HOURS}`
@@ -114,7 +114,13 @@ function toWorkbenchPin(item: Omit<PinnedItem, 'notes' | 'timestamp'>) {
         anchorType: item.type,
         label: item.title,
         open: { surface: 'l2_params', params: { urlParams: item.urlParams } },
-        snapshot: { capturedAt: new Date().toISOString(), summary: `${item.title} · ${item.type}` },
+        snapshot: {
+            capturedAt: new Date().toISOString(),
+            summary: `${item.title} · ${item.type}`,
+            // Metadata-only pins (event/anomaly) carry their country so the typed
+            // graph can join them to same-country stories as coverage context.
+            ...(typeof item.meta?.countryCode === 'string' ? { countryCode: item.meta.countryCode } : {}),
+        },
     }
 }
 

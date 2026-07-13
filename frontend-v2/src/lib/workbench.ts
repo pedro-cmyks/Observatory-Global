@@ -12,6 +12,9 @@ export interface PinSnapshot {
   capturedAt: string
   summary?: string
   metrics?: Record<string, string | number>
+  /** ISO country code for metadata-only pins (event/anomaly) so the typed graph
+   *  can join them to same-country stories as coverage context. */
+  countryCode?: string
   /** `date` = signal date (ISO day) when the payload carried one — the report
    *  renders "— outlet, Jul 8" (P0.3: dates everywhere). */
   evidence?: Array<{ headline: string; source?: string; url?: string; date?: string }>

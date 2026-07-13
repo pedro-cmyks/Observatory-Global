@@ -198,6 +198,7 @@ export function buildResolveNodeInput(pin: WorkbenchPin): ResolveNodeInput {
       captured_at: pin.snapshot?.capturedAt ?? pin.pinnedAt,
       summary: pin.snapshot?.summary,
       metrics: pin.snapshot?.metrics ?? {},
+      country_code: pin.snapshot?.countryCode,
       evidence,
       anchor_type: pin.anchorType,
       retrieval_lane: pin.retrievalLane,

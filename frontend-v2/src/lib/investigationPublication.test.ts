@@ -70,6 +70,15 @@ describe('Workbench pin → Investigation Graph node input', () => {
     expect(hazard).toMatchObject({ node_type: 'event', subtype: 'natural_hazard' })
   })
 
+  it('carries a pinned event country into the node snapshot so it can join same-country stories', () => {
+    const event = buildResolveNodeInput(pin({
+      anchorId: 'conflict-event-42', anchorType: 'event', label: 'Clashes reported',
+      snapshot: { capturedAt: PINNED_AT, countryCode: 'IR' },
+    }))
+    expect(event.node_type).toBe('event')
+    expect((event.snapshot as { country_code?: string }).country_code).toBe('IR')
+  })
+
   it('keeps unknown research anchors as explicit context instead of guessing entity identity', () => {
     const input = buildResolveNodeInput(pin({
       anchorId: 'gap-1', anchorType: 'coverage_gap', label: 'Satellite evidence gap',
