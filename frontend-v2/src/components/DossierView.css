@@ -159,8 +159,53 @@
     line-height: 1.45;
 }
 
+.dossier-relations {
+    margin-top: 14px;
+    border-top: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
+    padding-top: 12px;
+}
+.dossier-relations-title {
+    margin: 0 0 8px;
+    font-family: var(--font-sans, system-ui, sans-serif);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+}
+.dossier-relations-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.dossier-relation {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+.dossier-relation-tier {
+    flex: 0 0 auto;
+    min-width: 74px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding-top: 1px;
+}
+.dossier-relation--measured .dossier-relation-tier { color: #34d399; }
+.dossier-relation--analyst .dossier-relation-tier { color: #818cf8; }
+.dossier-relation--inferred .dossier-relation-tier { color: #fbbf24; }
+.dossier-relation--contextual .dossier-relation-tier { color: #8b97a6; }
+.dossier-relation-body { color: #b7c0cc; }
+.dossier-relation-body strong { color: var(--color-text, #e6ebf1); font-weight: 600; }
+.dossier-relation-caveat { color: #8b97a6; font-style: italic; }
+
 @media (max-width: 620px) {
     .dossier-readiness-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dossier-relation { flex-direction: column; gap: 2px; }
 }
 
 /* #2 synthesis — the standalone brief leads the report. */

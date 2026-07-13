@@ -17,6 +17,8 @@ import { renameInvestigation, type Investigation } from '../lib/workbench'
 import {
     buildInvestigationPublication,
     buildPublicationReadinessMarkdown,
+    buildRelationsMarkdown,
+    summarizeInvestigationEdges,
     readableReasonCode,
     type InvestigationPublicationResult,
 } from '../lib/investigationPublication'
@@ -218,7 +220,9 @@ export function DossierView({ investigation, onClose, autoCorroborate }: {
             base = cAt === -1 ? `${base}\n${cblock}` : `${base.slice(0, cAt)}\n${cblock}${base.slice(cAt)}`
         }
         if (publication?.package) {
-            const pblock = buildPublicationReadinessMarkdown(publication.package) + '\n'
+            const relBlock = buildRelationsMarkdown(publication.graph)
+            const pblock = buildPublicationReadinessMarkdown(publication.package)
+                + (relBlock ? `\n${relBlock}` : '') + '\n'
             const pMarker = '\n## Timeline'
             const pAt = base.indexOf(pMarker)
             base = pAt === -1 ? `${base}\n${pblock}` : `${base.slice(0, pAt)}\n${pblock}${base.slice(pAt)}`
@@ -396,6 +400,28 @@ export function DossierView({ investigation, onClose, autoCorroborate }: {
                                         ))}
                                     </ul>
                                 )}
+                                {(() => {
+                                    const edges = summarizeInvestigationEdges(publication.graph)
+                                    if (edges.length === 0) return null
+                                    return (
+                                        <div className="dossier-relations">
+                                            <h3 className="dossier-relations-title">Typed relations</h3>
+                                            <ul className="dossier-relations-list">
+                                                {edges.map((e, i) => (
+                                                    <li key={`${e.relation}-${e.source}-${e.target}-${i}`} className={`dossier-relation dossier-relation--${e.tier}`}>
+                                                        <span className="dossier-relation-tier">{e.tier}</span>
+                                                        <span className="dossier-relation-body">
+                                                            <strong>{e.relation}</strong> · {e.source} ↔ {e.target} · {e.receiptCount} receipt{e.receiptCount === 1 ? '' : 's'}
+                                                            {e.caveats.length > 0 && (
+                                                                <span className="dossier-relation-caveat"> · {e.caveats.map(readableReasonCode).join(' · ')}</span>
+                                                            )}
+                                                        </span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )
+                                })()}
                             </>
                         ) : (
                             <p className="dossier-meta">Publication readiness unavailable — frozen evidence and the rest of the report remain intact.</p>

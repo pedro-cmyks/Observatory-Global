@@ -3,7 +3,10 @@ import {
   buildInvestigationPublication,
   buildResolveNodeInput,
   buildPublicationReadinessMarkdown,
+  summarizeInvestigationEdges,
+  buildRelationsMarkdown,
   type PublicationPackage,
+  type InvestigationGraph,
 } from './investigationPublication'
 import type { WorkbenchPin } from './workbench'
 
@@ -148,5 +151,53 @@ describe('complete Workbench resolution', () => {
     expect(calls).toHaveLength(3)
     expect(calls[0].url).toBe('/api/v2/investigation/resolve-nodes')
     expect(calls[0].body.nodes).toHaveLength(70)
+  })
+})
+
+describe('summarizeInvestigationEdges', () => {
+  const graph = {
+    contract: 'atlas-investigation-graph-v1',
+    nodes: [
+      { node_id: 'n-a', label: 'Israel Plot to Kill Iran Negotiators' },
+      { node_id: 'n-b', label: 'Iran Military Posturing' },
+    ],
+    edges: [
+      {
+        relation_type: 'same_coverage_country', truth_tier: 'contextual',
+        source_node_id: 'n-a', target_node_id: 'n-b',
+        receipts: [{ country_code: 'IR' }], caveats: ['not_subject_geography'],
+      },
+      {
+        relation_type: 'shared_actor', truth_tier: 'measured',
+        source_node_id: 'n-a', target_node_id: 'n-b',
+        receipts: [{ subject: 'x' }, { subject: 'y' }], caveats: [],
+      },
+    ],
+  } as unknown as InvestigationGraph
+
+  it('resolves node labels, humanizes relations, and sorts measured before contextual', () => {
+    const rows = summarizeInvestigationEdges(graph)
+    expect(rows).toHaveLength(2)
+    expect(rows[0].tier).toBe('measured')
+    expect(rows[0].relation).toBe('Shared actor')
+    expect(rows[0].source).toBe('Israel Plot to Kill Iran Negotiators')
+    expect(rows[0].target).toBe('Iran Military Posturing')
+    expect(rows[0].receiptCount).toBe(2)
+    expect(rows[1].tier).toBe('contextual')
+    expect(rows[1].caveats).toContain('not_subject_geography')
+  })
+
+  it('builds a typed-relations markdown section carrying tier and node labels', () => {
+    const md = buildRelationsMarkdown(graph)
+    expect(md).toContain('## Typed relations')
+    expect(md).toContain('Shared actor')
+    expect(md).toContain('measured')
+    expect(md).toContain('Israel Plot to Kill Iran Negotiators')
+  })
+
+  it('returns nothing when the graph has no edges', () => {
+    const empty = { ...graph, edges: [] } as unknown as InvestigationGraph
+    expect(summarizeInvestigationEdges(empty)).toEqual([])
+    expect(buildRelationsMarkdown(empty)).toBe('')
   })
 })

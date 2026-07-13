@@ -280,3 +280,71 @@ export function buildPublicationReadinessMarkdown(pkg: PublicationPackage): stri
   lines.push('')
   return lines.join('\n')
 }
+
+/** One inspectable typed relation between two pinned nodes. */
+export interface InvestigationEdgeRow {
+  relation: string
+  tier: string
+  source: string
+  target: string
+  receiptCount: number
+  caveats: string[]
+}
+
+const EDGE_TIER_ORDER: Record<string, number> = {
+  measured: 0, analyst: 1, inferred: 2, contextual: 3,
+}
+
+function humanizeRelation(raw: string): string {
+  const cleaned = raw.replace(/_/g, ' ').trim()
+  return cleaned ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1) : raw
+}
+
+/**
+ * Turn the graph's typed edges into inspectable rows: which relation connects
+ * which two pinned nodes, its truth tier, its receipt count and caveats. Node
+ * ids resolve to their labels; rows sort by tier (measured first) so the
+ * strongest relations lead. This makes the connection layer inspectable
+ * instead of a bare relation count.
+ */
+export function summarizeInvestigationEdges(graph: InvestigationGraph): InvestigationEdgeRow[] {
+  const labels = new Map<string, string>()
+  for (const node of graph.nodes ?? []) {
+    if (node.node_id) labels.set(node.node_id, node.label ?? node.node_id)
+  }
+  const rows: InvestigationEdgeRow[] = (graph.edges ?? []).map(edge => {
+    const receipts = Array.isArray(edge.receipts) ? edge.receipts : []
+    const caveats = Array.isArray(edge.caveats) ? edge.caveats.map(String) : []
+    const source = String(edge.source_node_id ?? '')
+    const target = String(edge.target_node_id ?? '')
+    return {
+      relation: humanizeRelation(String(edge.relation_type ?? 'related')),
+      tier: String(edge.truth_tier ?? 'contextual'),
+      source: labels.get(source) ?? source,
+      target: labels.get(target) ?? target,
+      receiptCount: receipts.length,
+      caveats,
+    }
+  })
+  rows.sort((a, b) =>
+    (EDGE_TIER_ORDER[a.tier] ?? 9) - (EDGE_TIER_ORDER[b.tier] ?? 9) ||
+    a.relation.localeCompare(b.relation) ||
+    a.source.localeCompare(b.source),
+  )
+  return rows
+}
+
+/** Portable typed-relations section for the exported dossier. Empty when the
+ * graph has no measured/inferred/contextual relation. */
+export function buildRelationsMarkdown(graph: InvestigationGraph): string {
+  const rows = summarizeInvestigationEdges(graph)
+  if (rows.length === 0) return ''
+  const lines = ['## Typed relations', '']
+  for (const row of rows) {
+    const receipt = row.receiptCount === 1 ? '1 receipt' : `${row.receiptCount} receipts`
+    const caveat = row.caveats.length ? ` · ${row.caveats.map(readableReasonCode).join(' · ')}` : ''
+    lines.push(`- **${row.relation}** (${row.tier}) — ${row.source} ↔ ${row.target} · ${receipt}${caveat}`)
+  }
+  lines.push('')
+  return lines.join('\n')
+}
