@@ -29,6 +29,12 @@ below resolve via Obsidian's fuzzy search regardless of folder.
 - [[2026-07-13-l0-l3-reliability-matrix]] — current product/ops truth from L0
   through L3, including the complete-universe Daily Investigation measurement,
   precomputed serving artifact, editorial gaps and embedding-index incident.
+- [[2026-07-13-ann-index-recovery]] — measured HNSW failure envelope, IVFFlat
+  cutover, exact-vs-ANN recall/latency curve, write-path benchmark and operating
+  guardrails for #241.
+- [[2026-07-13-ann-operational-validation]] — paper-track interpretation of the
+  ANN benchmark as reproducibility/feasibility evidence, explicitly not a topic
+  quality or usefulness claim.
 - [[2026-07-12-investigation-graph-slice-3-daily-publication]] — executable plan
   for typed graph edges, shared PublicationPackage, math-first L1 selector,
   Workbench adapter and joint editorial gate.

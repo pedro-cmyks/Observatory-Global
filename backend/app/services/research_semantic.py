@@ -274,6 +274,14 @@ def embed_atlas_anchors(topics: list[dict[str, Any]]) -> list[dict[str, Any]] | 
 # measured relevant cluster.
 SIGNAL_MIN_SIMILARITY = 0.84
 SIGNAL_LANE_LIMIT = 12
+ANN_IVFFLAT_PROBES = 20
+
+
+async def _prepare_ann_search(conn: Any) -> None:
+    # Measured 2026-07-13 over 20 deterministic dispersed queries against
+    # 326,762 halfvec rows: probes=10 mean recall@10=.955 but minimum=.60;
+    # probes=20 reached 1.00 for every query at 131 ms mean / 203 ms max.
+    await conn.execute(f"SET ivfflat.probes = {ANN_IVFFLAT_PROBES}")
 
 # Malformed scraped titles pollute the embedding corpus and match anything
 # ("Doc Iniaztwk5508793.Shtml"). Filter at write AND query time.
@@ -349,6 +357,7 @@ async def fetch_semantic_signal_matches(
     min_similarity: float = SIGNAL_MIN_SIMILARITY,
 ) -> list[dict[str, Any]]:
     vec_literal = "[" + ",".join(f"{x:.5f}" for x in query_vec) + "]"
+    await _prepare_ann_search(conn)
     rows = await conn.fetch(
         f"""
         SELECT s.id, s.headline, s.country_code, s.source_name, s.timestamp,
@@ -535,6 +544,7 @@ async def fetch_semantic_thread_members(
     centroid = [float(x) for x in centroid_row["centroid_vec"]]
     vec_literal = "[" + ",".join(f"{x:.5f}" for x in centroid) + "]"
     excl = exclude_ids or []
+    await _prepare_ann_search(conn)
     rows = await conn.fetch(
         f"""
         SELECT s.id, s.headline, s.country_code, s.source_name, s.source_url,

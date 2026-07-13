@@ -27,6 +27,7 @@ PER_COUNTRY_CAP="${ATLAS_SCOPED_CAP:-6000}"
 # default 2 (dynamism — a NEW regional story proves across 2 nightly snapshots before
 # it serves; the initial set was bootstrap-promoted once by hand).
 VOLUME_MIN="${ATLAS_SCOPED_VOLUME_MIN:-12}"
+MEMBERS_HOURS="${ATLAS_TOPIC_MEMBERS_HOURS:-336}"
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 mkdir -p "$LOG_DIR"
@@ -94,6 +95,16 @@ cd "$ROOT_DIR"
 $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.build_umbrella_topics \
   --threshold "${ATLAS_UMBRELLA_THRESHOLD:-0.98}" \
   || echo "[scoped-snapshot] umbrella build failed (non-fatal)" >&2
+
+# Step 3.5: project the just-refreshed thread identities into the shared typed
+# membership table BEFORE movement, event binding, and the sealed publication.
+# Previously this happened only on the separate embedding cadence, so raw ingest
+# and dynamic_topics could be fresh while L1/L3 evidence remained a day behind.
+( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.etl_topic_members \
+    --hours "$MEMBERS_HOURS" ) \
+  || echo "[scoped-snapshot] ERROR topic_members ETL failed — typed evidence is STALE" >&2
+( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.compute_topic_movement ) \
+  || echo "[scoped-snapshot] ERROR topic movement failed — movement is STALE" >&2
 
 # Step 3.9 (#256): the steps above mass-rewrote the exact tables the event binders
 # read; stale planner stats after that rewrite were degrading the binding queries

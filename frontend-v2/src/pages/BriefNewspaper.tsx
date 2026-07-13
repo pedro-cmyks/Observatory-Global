@@ -14,6 +14,11 @@ import { TranslatableHeadline } from '../components/TranslatableHeadline'
 import { addPin, createInvestigation, getActiveInvestigationId, getInvestigation, removePin } from '../lib/workbench'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { LoadingMoment } from '../components/LoadingMoment'
+import {
+    assessDailyPublication,
+    publicationThreads,
+    type DailyPublicationArtifact,
+} from '../lib/dailyPublication'
 import './BriefNewspaper.css'
 
 // Natural Earth 110m with ISO_A2 country properties
@@ -77,6 +82,7 @@ interface TopThread {
     evidence_samples?: ThreadEvidence[]
     hourly_timeline?: TimelinePoint[]
     confidence?: string
+    edition_role?: string
 }
 
 interface HeatCountry {
@@ -231,6 +237,7 @@ export function BriefNewspaper() {
     const [showCountryDropdown, setShowCountryDropdown] = useState(false)
     const countryInputRef = useRef<HTMLInputElement>(null)
     const [now] = useState(new Date())
+    const [dailyEdition, setDailyEdition] = useState<DailyPublicationArtifact | null>(null)
 
     // #239 keep-alive: the Brief stays mounted across App↔Brief switches, so
     // URL params must keep driving state after mount (the useState initializers
@@ -318,6 +325,20 @@ export function BriefNewspaper() {
     useEffect(() => {
         fetchData(hours)
     }, [hours, fetchData])
+
+    // Shared L1/L3 contract: fetch independently from the fast legacy Brief.
+    // A degraded artifact is useful as an honest status receipt but cannot
+    // replace the newspaper until its full-universe compatibility gate passes.
+    useEffect(() => {
+        const ctrl = new AbortController()
+        const timer = setTimeout(() => ctrl.abort(), 12000)
+        fetch('/api/v2/investigation/daily-publication', { signal: ctrl.signal })
+            .then(response => response.ok ? response.json() : null)
+            .then(edition => { if (edition) setDailyEdition(edition as DailyPublicationArtifact) })
+            .catch(() => { /* legacy Brief remains the explicit fallback */ })
+            .finally(() => clearTimeout(timer))
+        return () => { clearTimeout(timer); ctrl.abort() }
+    }, [])
 
     useEffect(() => {
         if (!countryFilter) {
@@ -464,22 +485,30 @@ export function BriefNewspaper() {
 
     const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
-    const allThreads = data?.top_threads ?? []
+    const dailyGate = assessDailyPublication(dailyEdition)
+    const allThreads = dailyGate.useSharedPackage ? publicationThreads(dailyEdition) : (data?.top_threads ?? [])
     // Lead story = the TOP-RANKED thread (see lib/briefLead.ts). Never the
     // first thread that merely *carries* evidence — that broke after ranking
     // was unified (2026-06-24). The lead renders evidence headlines when
     // present and degrades gracefully when absent.
-    const leadThread = selectLeadThread(allThreads, countryFilter)
+    const leadThread = dailyGate.useSharedPackage
+        ? allThreads.find(thread => thread.edition_role === 'lead') ?? selectLeadThread(allThreads, countryFilter)
+        : selectLeadThread(allThreads, countryFilter)
     const watchlistThreads = leadThread
-        ? allThreads.filter(t => t.thread_id !== leadThread.thread_id).slice(0, 8)
-        : allThreads.slice(0, 8)
+        ? (dailyGate.useSharedPackage
+            ? allThreads.filter(t => t.thread_id !== leadThread.thread_id)
+            : allThreads.filter(t => t.thread_id !== leadThread.thread_id).slice(0, 8))
+        : (dailyGate.useSharedPackage ? allThreads : allThreads.slice(0, 8))
 
     const heatStrip = (data?.heat_countries ?? []).slice(0, 4)
 
     // Honest standfirst: AI insight when the service produced one; otherwise a
     // single factual line. No template essay variants — an editorial that
     // pretends to judge is worse than no editorial (surfaces review §1.4).
-    const standfirstFallback = data
+    const displayInsight = dailyGate.useSharedPackage ? null : insight
+    const standfirstFallback = dailyGate.useSharedPackage && dailyEdition
+        ? `${dailyEdition.package.title}. ${allThreads.length} measured story nodes, ${dailyEdition.package.receipts.length} frozen receipts; no LLM selected or ranked the edition.`
+        : data
         ? `${data.stats.total_signals.toLocaleString()} signals across ${data.stats.countries} countries from ${data.stats.sources} sources${leadThread ? ` · lead: ${leadThread.label}` : ''}.`
         : null
 
@@ -590,6 +619,47 @@ export function BriefNewspaper() {
                             </span>
                             <button onClick={() => fetchData(hours)}>Retry live refresh</button>
                         </div>
+                    )}
+
+                    {dailyEdition && (
+                        <section
+                            className={`brief-publication-state ${dailyGate.useSharedPackage ? 'is-ready' : 'is-rebuilding'}`}
+                            aria-label="Daily Investigation status"
+                        >
+                            <div>
+                                <span className="brief-publication-kicker">
+                                    {dailyGate.useSharedPackage ? 'SEALED DAILY INVESTIGATION' : 'LIVE BRIEF FALLBACK'}
+                                </span>
+                                <strong>
+                                    {dailyGate.useSharedPackage
+                                        ? `${dailyEdition.completion.rows_scanned ?? dailyEdition.completion.candidate_count ?? 0} candidates reconciled — shared L1/L3 package active`
+                                        : 'Daily Investigation is still rebuilding — the live newspaper remains active'}
+                                </strong>
+                            </div>
+                            <span className="brief-publication-cutoff">
+                                {dailyEdition.completion.edition_end
+                                    ? `cutoff ${new Date(dailyEdition.completion.edition_end).toLocaleString()}`
+                                    : dailyEdition.edition_date}
+                                {!dailyGate.useSharedPackage && dailyGate.reasonCodes.length > 0
+                                    ? ` · ${dailyGate.reasonCodes.join(' · ').replaceAll('_', ' ')}`
+                                    : ''}
+                            </span>
+                        </section>
+                    )}
+
+                    {dailyGate.useSharedPackage && dailyEdition && (
+                        <section className="brief-readiness-rail" aria-label="Editorial readiness">
+                            {(['who', 'what', 'when', 'where', 'how', 'why'] as const).map(key => {
+                                const item = dailyEdition.package.readiness[key]
+                                return (
+                                    <div key={key} className={`brief-readiness-cell is-${item.status}`}>
+                                        <span>{key}</span>
+                                        <strong>{item.status}</strong>
+                                        <small>{item.values.slice(0, 2).join(' · ') || item.reason_codes.join(' · ').replaceAll('_', ' ')}</small>
+                                    </div>
+                                )
+                            })}
+                        </section>
                     )}
 
                     {historicalCoverage?.source === 'historical_processed' && (
@@ -788,10 +858,10 @@ export function BriefNewspaper() {
                             )}
 
                             {/* STANDFIRST — AI insight when real, one factual line otherwise */}
-                            {(insight || standfirstFallback) && (
+                            {(displayInsight || standfirstFallback) && (
                                 <>
                                     <section className="brief-lead">
-                                        {insight ? (
+                                        {displayInsight ? (
                                             <>
                                                 <div
                                                     className="brief-section-tag"
@@ -799,7 +869,7 @@ export function BriefNewspaper() {
                                                 >
                                                     EDITOR'S ANALYSIS
                                                 </div>
-                                                <p className="brief-lead-text">{insight}</p>
+                                                <p className="brief-lead-text">{displayInsight}</p>
                                             </>
                                         ) : (
                                             <p className="brief-standfirst">{standfirstFallback}</p>

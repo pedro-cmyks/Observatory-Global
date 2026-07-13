@@ -23,42 +23,72 @@ from app.services.investigation_graph import (
     build_publication_package,
 )
 from app.services.investigation_nodes import ResolveNodeInput, resolve_investigation_node
+from app.services.subjects import classify_subject
 
 
-_DAILY_SAMPLE_IDS_SQL = """
-SELECT
-        ('dynamic-topic-' || dt.id::text) AS topic_id,
-        sampled.signal_id
-FROM dynamic_topics dt
-CROSS JOIN LATERAL (
-    SELECT DISTINCT sample.signal_id
-    FROM dynamic_topic_members dtm
-    JOIN emergent_clusters ec ON ec.id = dtm.emergent_cluster_id
-    CROSS JOIN LATERAL unnest(
-        COALESCE(ec.sample_signal_ids, ARRAY[]::bigint[])
-    ) AS sample(signal_id)
-    WHERE dtm.dynamic_topic_id = dt.id
-      AND dtm.snapshot_at = (
-          SELECT MAX(latest.snapshot_at)
-          FROM dynamic_topic_members latest
-          WHERE latest.dynamic_topic_id = dt.id
-      )
-    LIMIT 32
-) sampled
-WHERE dt.id = ANY($1::bigint[])
-ORDER BY dt.id, sampled.signal_id
-"""
+def verified_subjects_from_receipts(receipts: list[dict[str, Any]]) -> list[str]:
+    """Return people corroborated by distinct receipts and distinct outlets.
 
-_DAILY_SIGNALS_SQL = """
-SELECT id, headline, source_name, source_url, source_lang,
+    The untyped ``signals_v2.persons`` lane is discovery evidence, not truth by
+    itself. A name completes the publication package's ``who`` dimension only
+    after it appears in at least two frozen receipts from at least two outlets
+    and passes the shared subject typer. Ordering is first-observed and stable.
+    """
+    evidence: dict[str, dict[str, set[Any]]] = {}
+    order: list[str] = []
+    for position, row in enumerate(receipts):
+        receipt_id = row.get("id") or row.get("source_url") or f"row:{position}"
+        outlet = str(row.get("source_name") or "").strip().lower()
+        if not outlet:
+            continue
+        for raw_name in row.get("persons") or []:
+            name = str(raw_name or "").strip().lower()
+            if not name or classify_subject(name) != "person":
+                continue
+            if name not in evidence:
+                evidence[name] = {"receipts": set(), "outlets": set()}
+                order.append(name)
+            evidence[name]["receipts"].add(receipt_id)
+            evidence[name]["outlets"].add(outlet)
+    return [
+        name for name in order
+        if len(evidence[name]["receipts"]) >= 2
+        and len(evidence[name]["outlets"]) >= 2
+    ]
+
+
+_DAILY_EVIDENCE_SQL = """
+WITH requested AS (
+    SELECT unnest($1::bigint[]) AS requested_id
+), underlying AS (
+    SELECT requested.requested_id, child.id AS topic_id
+    FROM requested
+    JOIN dynamic_topics root ON root.id = requested.requested_id
+    JOIN dynamic_topics child ON (
+        (NOT root.is_umbrella AND child.id = root.id)
+        OR (root.is_umbrella AND child.parent_id = root.id)
+    )
+), current_evidence AS (
+    SELECT DISTINCT ON (underlying.requested_id, s.id)
+           underlying.requested_id, s.id, s.headline, s.source_name,
+           s.source_url, s.source_lang, s.source_origin_country,
+           s.country_code, s.timestamp, s.persons
+    FROM underlying
+    JOIN topic_members tm
+      ON tm.topic_id = ('dynamic-topic-' || underlying.topic_id::text)
+    JOIN signals_v2 s ON s.id = tm.signal_id
+    WHERE tm.role = 'evidence'
+      AND tm.engine_version = 'v1-compat'
+      AND s.timestamp >= $3::timestamptz - ($2::int * INTERVAL '1 hour')
+      AND s.timestamp <= $3::timestamptz
+    ORDER BY underlying.requested_id, s.id, tm.assigned_at DESC
+)
+SELECT ('dynamic-topic-' || requested_id::text) AS topic_id,
+       id, headline, source_name, source_url, source_lang,
        source_origin_country, country_code, timestamp, persons
-FROM signals_v2
-WHERE id = ANY($1::bigint[])
-  AND timestamp >= $3::timestamptz - ($2::int * INTERVAL '1 hour')
-  AND timestamp <= $3::timestamptz
-ORDER BY timestamp DESC, id DESC
+FROM current_evidence
+ORDER BY requested_id, timestamp DESC, id DESC
 """
-
 
 async def fetch_daily_publication(
     *,
@@ -100,11 +130,12 @@ async def fetch_daily_publication(
         by_topic: dict[str, list[dict[str, Any]]] = {}
         sources_by_topic: dict[str, set[str]] = {}
         origins_by_topic: dict[str, set[str]] = {}
+        subject_receipts_by_topic: dict[str, list[dict[str, Any]]] = {}
+        evidence_counts: dict[str, int] = {}
         receipt_checked_ids: set[str] = set()
         receipt_batches = 0
         receipt_fetch_error: str | None = None
-        receipt_sample_query_ms = 0.0
-        receipt_signal_query_ms = 0.0
+        receipt_evidence_query_ms = 0.0
         selection = select_daily_edition(
             candidates,
             display_slots=12,
@@ -120,41 +151,30 @@ async def fetch_daily_publication(
             ]
             sample_started = time.monotonic()
             try:
-                sample_rows = await conn.fetch(
-                    _DAILY_SAMPLE_IDS_SQL, numeric_ids,
-                    timeout=4 if serving_budget else 30,
-                )
-                receipt_sample_query_ms += (time.monotonic() - sample_started) * 1000
-            except TimeoutError:
-                receipt_fetch_error = "receipt_sample_provider_timeout"
-                break
-            topics_by_signal: dict[int, list[str]] = {}
-            for raw in sample_rows:
-                topics_by_signal.setdefault(int(raw["signal_id"]), []).append(str(raw["topic_id"]))
-            signal_started = time.monotonic()
-            try:
                 signal_rows = await conn.fetch(
-                    _DAILY_SIGNALS_SQL,
-                    list(topics_by_signal), hours, edition_end,
+                    _DAILY_EVIDENCE_SQL, numeric_ids, hours, edition_end,
                     timeout=12 if serving_budget else 60,
-                ) if topics_by_signal else []
-                receipt_signal_query_ms += (time.monotonic() - signal_started) * 1000
+                )
+                receipt_evidence_query_ms += (time.monotonic() - sample_started) * 1000
             except TimeoutError:
-                receipt_fetch_error = "receipt_signal_provider_timeout"
+                receipt_fetch_error = "current_evidence_provider_timeout"
                 break
             receipt_batches += 1
             receipt_checked_ids.update(chunk)
             for raw in signal_rows:
                 row = dict(raw)
-                for topic_id in topics_by_signal.get(int(row["id"]), []):
-                    source = row.get("source_name")
-                    if source:
-                        sources_by_topic.setdefault(topic_id, set()).add(str(source))
-                    origin = row.get("source_origin_country")
-                    if origin:
-                        origins_by_topic.setdefault(topic_id, set()).add(str(origin).upper())
-                    if len(by_topic.setdefault(topic_id, [])) < 6:
-                        by_topic[topic_id].append(dict(row))
+                topic_id = str(row.pop("topic_id"))
+                evidence_counts[topic_id] = evidence_counts.get(topic_id, 0) + 1
+                source = row.get("source_name")
+                if source:
+                    sources_by_topic.setdefault(topic_id, set()).add(str(source))
+                origin = row.get("source_origin_country")
+                if origin:
+                    origins_by_topic.setdefault(topic_id, set()).add(str(origin).upper())
+                if row.get("persons"):
+                    subject_receipts_by_topic.setdefault(topic_id, []).append(dict(row))
+                if len(by_topic.setdefault(topic_id, [])) < 6:
+                    by_topic[topic_id].append(dict(row))
 
         enriched_candidates = apply_sample_coverage(
             candidates,
@@ -182,15 +202,16 @@ async def fetch_daily_publication(
             str(row.get("country_code")).upper()
             for row in receipts if row.get("country_code")
         ))
-        top_sources = list(dict.fromkeys(
-            str(row.get("source_name")) for row in receipts if row.get("source_name")
-        ))
+        top_sources = sorted(sources_by_topic.get(thread_id, set()))
         top_entities = list(dict.fromkeys(
             str(person)
-            for row in receipts
+            for row in subject_receipts_by_topic.get(thread_id, [])
             for person in (row.get("persons") or [])
             if person
         ))
+        verified_subjects = verified_subjects_from_receipts(
+            subject_receipts_by_topic.get(thread_id, [])
+        )
         live = {
             "thread_id": thread_id,
             "label": candidate.label,
@@ -233,8 +254,8 @@ async def fetch_daily_publication(
                         if row.thread_id == thread_id
                     ),
                     "evidence_sampling": {
-                        "method": "latest_dynamic_cluster_sample_signal_ids",
-                        "available_receipts": len(receipts),
+                        "method": "current_window_topic_members_evidence_role",
+                        "available_receipts": evidence_counts.get(thread_id, 0),
                         "display_receipt_sample": 6,
                         "semantic_ceiling": False,
                     },
@@ -242,7 +263,10 @@ async def fetch_daily_publication(
                 quality={
                     "coherence": candidate.coherence,
                     "noise_rate": candidate.noise_rate,
-                    "subject_status": "unverified" if top_entities else "not_available",
+                    "verified_subjects": verified_subjects,
+                    "subject_status": "verified" if verified_subjects else (
+                        "unverified" if top_entities else "not_available"
+                    ),
                 },
             ),
             thread_fetcher=_frozen_thread_fetcher,
@@ -309,8 +333,7 @@ async def fetch_daily_publication(
             "receipt_eligible_count": len(by_topic),
             "receipt_scan_exhausted": len(receipt_checked_ids) >= len(ranked_ids),
             "receipt_fetch_error": receipt_fetch_error,
-            "receipt_sample_query_ms": round(receipt_sample_query_ms, 2),
-            "receipt_signal_query_ms": round(receipt_signal_query_ms, 2),
+            "receipt_evidence_query_ms": round(receipt_evidence_query_ms, 2),
             "truncated": False,
         },
     }

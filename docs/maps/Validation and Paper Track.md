@@ -53,6 +53,10 @@ gating, annotator agreement, and the future paper series.
   `docs/research/ranking-calibration/` — weights fit to spec-derived ordering
   constraints + live forcing cases; reruns when real relevance judgments
   (#218) arrive.
+- [[2026-07-13-ann-operational-validation]] — sampled exact-vs-ANN recall,
+  latency, and transactional write evidence for system feasibility. It is
+  reproducibility evidence only and must not be cited as narrative precision or
+  editorial usefulness.
 
 ## Validation findings
 
@@ -108,6 +112,7 @@ gating, annotator agreement, and the future paper series.
 - `docs/research/atlas-paper/phase-1-validation/reports/phase-b/`
 - `docs/research/atlas-paper/phase-1-validation/reports/evidence-role/`
 - `docs/research/atlas-paper/phase-1-validation/reports/ollama-local/`
+- `docs/research/atlas-paper/phase-1-validation/reports/2026-07-13-ann-operational-validation.md`
 - `docs/research/atlas-paper/phase-1-validation/models/`
 - `docs/research/topic-quality/`
 

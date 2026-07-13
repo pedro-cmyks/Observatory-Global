@@ -158,7 +158,7 @@ The index strategy still needs a measured maintenance run before the recurring
 cron is changed; no signal or historical information was deleted to hide the
 capacity problem.
 
-### Controlled maintenance result (2026-07-13)
+### Controlled maintenance and ANN recovery (2026-07-13)
 
 The guarded `--bulk-reindex` trial over 4,822 pending non-junk headlines proved
 that dropping HNSW removes PostgreSQL insert waits, but exposed two independent
@@ -173,9 +173,22 @@ constraints:
   still reported `db_ok=true` with degraded status.
 
 The local embedder now releases the MPS cache after each successfully copied
-batch. This is a stability mitigation, not evidence that the full run is safe.
-GitHub #241 was reopened. Drop/bulk/rebuild remains recovery-only; it must not
-become the recurring cron strategy on a database that also serves production.
+batch. HNSW itself was then tested at `m=16`, `m=8`, and `m=4`: all variants
+spilled or stopped progressing on the shared 1 GB instance, and the `m=16`
+backend ultimately required a project restart.
+
+Atlas cut the hot corpus to an IVFFlat cosine index (`327` lists for 326,762
+build-time rows). It built in about 105 seconds. A 20-query exact-vs-ANN
+benchmark measured recall@10 of `0.915`, `0.955`, and `1.000` at probes 5, 10,
+and 20; probes 20 averaged 130.97 ms and is now set explicitly in both serving
+semantic lanes. A rolled-back 256-row insert completed in 172.429 ms, versus
+the prior HNSW path exceeding 120 seconds. The API was deployed and its health,
+Research Plan, and stored Daily Publication contracts passed. Full evidence is
+in `docs/state/2026-07-13-ann-index-recovery.md`.
+
+This resolves the measured index mechanism, not the shared serving/batch
+architecture. #241 remains open until a recurring writer cycle proves the
+complete embeddings -> memberships -> movement -> publication chain.
 
 ## Required next gates
 

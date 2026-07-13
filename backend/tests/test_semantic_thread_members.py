@@ -1,7 +1,12 @@
 """Pure-logic tests for semantic thread membership (no DB)."""
 
+import asyncio
+from pathlib import Path
+
 from app.services.research_semantic import (
+    ANN_IVFFLAT_PROBES,
     THREAD_MEMBER_MIN_SIMILARITY,
+    _prepare_ann_search,
     build_semantic_members,
 )
 
@@ -69,3 +74,26 @@ def test_source_lang_preserved_for_voice_surfacing():
     langs = {m["signal_id"]: m["source_lang"] for m in out}
     assert langs[1] == "fa"
     assert langs[2] == "xx"  # empty normalized to xx
+
+
+def test_ann_search_uses_the_measured_recall_probe_floor():
+    class Conn:
+        def __init__(self):
+            self.statements = []
+
+        async def execute(self, statement):
+            self.statements.append(statement)
+
+    conn = Conn()
+    asyncio.run(_prepare_ann_search(conn))
+
+    assert ANN_IVFFLAT_PROBES == 20
+    assert conn.statements == ["SET ivfflat.probes = 20"]
+
+
+def test_each_database_ann_lane_prepares_ivfflat_probes():
+    source = (
+        Path(__file__).parents[1] / "app/services/research_semantic.py"
+    ).read_text()
+
+    assert source.count("await _prepare_ann_search(conn)") >= 2

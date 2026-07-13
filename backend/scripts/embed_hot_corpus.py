@@ -25,6 +25,22 @@ import time
 import asyncpg
 
 
+def _ivfflat_list_count(row_count: int) -> int:
+    """Choose IVFFlat lists using pgvector's sub-million corpus rule.
+
+    ``rows / 1000`` produced 327 lists for the measured 326,762-row corpus.
+    That index built in about 105 seconds on the shared 1 GB database, whereas
+    HNSW m=16 and m=8 spilled after 178K/201K tuples and m=4 after 214K.
+    The override is bounded because it is interpolated into DDL.
+    """
+    try:
+        override = int(os.getenv("ATLAS_IVFFLAT_LISTS", "0"))
+    except ValueError:
+        override = 0
+    suggested = override or round(max(0, row_count) / 1000)
+    return max(16, min(4096, suggested))
+
+
 async def _pending_rows(
     conn: asyncpg.Connection, hours: int, max_n: int, chunk_hours: int = 12
 ):
@@ -78,21 +94,29 @@ async def _pending_rows(
     return out[:max_n]
 
 
-async def _rebuild_hnsw_index(conn: asyncpg.Connection) -> None:
+async def _rebuild_ann_index(conn: asyncpg.Connection) -> None:
     """Restore the serving ANN index after a bulk write, on every exit path."""
-    print("bulk-reindex: rebuilding HNSW index (single-threaded)…", file=sys.stderr)
-    # ONE simple-query batch stays on one Supabase backend. 384MB is the
-    # measured in-memory floor for the current 768d halfvec corpus; 256MB
-    # thrashed to disk for days, while higher values risk this 1GB instance.
+    row_count = int(await conn.fetchval("SELECT count(*) FROM signal_embeddings") or 0)
+    lists = _ivfflat_list_count(row_count)
+    print(
+        f"bulk-reindex: rebuilding IVFFlat index "
+        f"(single-threaded; rows={row_count}, lists={lists})…",
+        file=sys.stderr,
+    )
+    # HNSW cannot build inside this 1 GB instance without a long spill: even
+    # m=4 exceeded 384 MB after 214K/326K tuples. IVFFlat trains compact lists,
+    # built the measured corpus without spill, and reached recall@10=1.00 on
+    # 20 dispersed queries at probes=20.
     await conn.execute(
         "SET max_parallel_maintenance_workers = 0; "
         "SET maintenance_work_mem = '384MB'; "
         "SET statement_timeout = 0; "
         "CREATE INDEX IF NOT EXISTS idx_signal_embeddings_vec "
-        "ON signal_embeddings USING hnsw (vec halfvec_cosine_ops) "
-        "WITH (m='16', ef_construction='64')"
+        "ON signal_embeddings USING ivfflat (vec halfvec_cosine_ops) "
+        f"WITH (lists='{lists}')"
     )
-    print("bulk-reindex: HNSW index REBUILT", file=sys.stderr)
+    await conn.execute("ANALYZE signal_embeddings")
+    print("bulk-reindex: IVFFlat index REBUILT", file=sys.stderr)
 
 
 async def main() -> int:
@@ -101,16 +125,15 @@ async def main() -> int:
     parser.add_argument("--retention-days", type=int, default=7)
     parser.add_argument("--batch", type=int, default=256)
     parser.add_argument("--write-concurrency", type=int, default=4,
-                        help="parallel INSERT streams. The HNSW write (not the "
+                        help="parallel INSERT streams. The ANN-index write (not the "
                              "embed) caps the run; 4-way concurrent writes are "
                              "~5x faster (measured 2026-06-26) with no index drop.")
     parser.add_argument("--max-signals", type=int, default=200_000)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--bulk-reindex", action="store_true",
-                        help="#241 fix: DROP the HNSW index, bulk-insert fast (no live-"
+                        help="#241 recovery: DROP the ANN index, bulk-insert fast (no live-"
                              "index cost), then REBUILD single-threaded at "
-                             "maintenance_work_mem='384MB' (~3-4min/253K IN-MEMORY; 256MB "
-                             "thrashed to disk at ~4 tuples/min — see the rebuild block). "
+                             "maintenance_work_mem='384MB' using measured IVFFlat lists. "
                              "ONE-TIME CATCH-UP ONLY, off-peak — NOT for the cron (the "
                              "rebuild cost makes 3x/day non-viable) and the semantic lane "
                              "degrades to lexical during the rebuild. The rebuild runs in "
@@ -151,7 +174,7 @@ async def main() -> int:
         if args.bulk_reindex:
             await conn.execute("DROP INDEX IF EXISTS idx_signal_embeddings_vec")
             index_dropped = True
-            print("bulk-reindex: HNSW index DROPPED — inserts run un-indexed (~22K/s); "
+            print("bulk-reindex: ANN index DROPPED — inserts run un-indexed (~22K/s); "
                   "semantic lane on lexical fallback until rebuild", file=sys.stderr)
 
         started = time.monotonic()
@@ -170,10 +193,10 @@ async def main() -> int:
             ON CONFLICT (signal_id) DO NOTHING
         """
         # Parallel writes: embedding is fast (~100-228/s on MPS) but a single
-        # SERIAL INSERT stream into the HNSW-indexed table over the WAN caps the
+        # SERIAL INSERT stream into the ANN-indexed table over the WAN caps the
         # whole run (~3/s). Writing batches concurrently over a small pool is ~5x
         # faster (measured 2026-06-26: 27/s serial -> 142/s at 4-way) and needs
-        # NO index drop — HNSW handles concurrent inserts.
+        # NO index drop — IVFFlat handles concurrent inserts.
         cc = max(1, args.write_concurrency)
 
         write_pool = await asyncpg.create_pool(
@@ -259,7 +282,7 @@ async def main() -> int:
             # so pool-creation errors, embed errors, and failed inserts cannot
             # strand production without its ANN index after a bulk run.
             if index_dropped:
-                await _rebuild_hnsw_index(conn)
+                await _rebuild_ann_index(conn)
         finally:
             await conn.close()
 

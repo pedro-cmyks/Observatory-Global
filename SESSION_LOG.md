@@ -55,10 +55,27 @@ rebuild itself caused a 15-second production threads timeout on the shared
 database. Per-batch MPS cache release was added and #241 reopened; bulk reindex
 remains recovery-only, not a cron strategy.
 
+Further controlled trials showed that HNSW `m=16`, `m=8`, and `m=4` all exceed
+the useful working envelope of the shared 1 GB instance. The `m=16` build became
+uninterruptible and required a Supabase project restart. Atlas replaced it with
+an IVFFlat cosine index: 327 lists over 326,762 build-time rows, about 105 seconds
+to build. Across 20 dispersed queries, probes 20 reproduced exact recall@10
+(`1.000` mean and minimum) at 130.97 ms mean latency. A rolled-back 256-row
+insert took 172.429 ms. Migration 076, the recurring writer, and both serving
+semantic lanes now converge on that measured configuration.
+
+The deployed smoke then separated ingestion health from product health: 786 raw
+signals arrived in 15 minutes, but the sealed edition still exposed stale typed
+memberships. The scoped pipeline lacked the ETL step that projects newly formed
+dynamic topics into `topic_members` before publication. A TDD regression now
+enforces projection and movement recomputation before bindings and edition
+sealing; the live recovery cycle was started under the heavy-job mutex.
+
 Records:
 
 - `docs/state/2026-07-12-spec-history-crosswalk.md`
 - `docs/state/2026-07-13-l0-l3-reliability-matrix.md`
+- `docs/state/2026-07-13-ann-index-recovery.md`
 - `docs/superpowers/plans/2026-07-12-investigation-graph-slice-3-daily-publication.md`
 
 ---

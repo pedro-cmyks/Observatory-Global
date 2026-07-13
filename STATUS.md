@@ -39,22 +39,32 @@
   standalone surface. L1 is a useful front door but not yet the new publishable
   package. L3 has the adapter/readiness foundation but still needs the full
   heterogeneous Iran forcing-case pass.
-- Current verification: backend `1274 passed, 6 skipped`; frontend `303 passed`;
-  production Vite build passes. Deployment and post-deploy L0-L3 smoke remain
-  gated on successful HNSW restoration and a green serving recovery check.
+- Current verification: backend `1284 passed, 6 skipped`; frontend `306 passed`;
+  production Vite build passes. The Fly backend is deployed and health,
+  Research Plan, and stored Daily Publication smokes pass.
 - During verification, the recurring embed writer held the heavy mutex for
   about 400 minutes because writes thrashed the shared 1 GB database's HNSW
   index. The live writer was allowed to finish its downstream chain after stuck
   transactional inserts were cancelled. The maintenance path now sweeps before
   index work and restores HNSW from an outer `finally`; a controlled bulk-index
   measurement found a second MPS command-buffer stall after 2,304 rows and
-  confirmed that index rebuild I/O can time out production threads. #241 is
-  reopened; this mode remains recovery-only and P1.2 isolation is the cure.
+  confirmed that index rebuild I/O can time out production threads. HNSW builds
+  at `m=16/8/4` could not stay inside the shared instance envelope, so the hot
+  corpus was cut over to IVFFlat (`327` lists). At probes 20, a dispersed
+  20-query benchmark reached recall@10 `1.000` with 130.97 ms mean latency, and
+  a rolled-back 256-row insert took 172.429 ms. Serving now sets probes 20
+  explicitly. #241 stays open through the first complete recurring pipeline;
+  P1.2 isolation remains the architectural cure.
+- The production smoke also proved a pipeline-order defect: raw ingest was
+  fresh while typed memberships were stale. The scoped runner now projects
+  `topic_members` and recomputes movement after fresh thread identities and
+  before event binding/daily sealing. Its live recovery cycle is in progress.
 
 Primary records:
 
 - `docs/state/2026-07-12-spec-history-crosswalk.md`
 - `docs/state/2026-07-13-l0-l3-reliability-matrix.md`
+- `docs/state/2026-07-13-ann-index-recovery.md`
 - `docs/superpowers/plans/2026-07-12-investigation-graph-slice-3-daily-publication.md`
 
 ## Current handoff — Shared L1/L2/L3 Investigation Graph
