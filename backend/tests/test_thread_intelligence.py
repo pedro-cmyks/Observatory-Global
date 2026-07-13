@@ -270,6 +270,14 @@ def test_assemble_dynamic_thread_separates_verified_subject_from_coverage_geo():
             "source_family": "gdelt",
             "country_code": "SG",
         },
+        {
+            "id": 3,
+            "headline": "RDC lawmakers debate a separate justice reform",
+            "source_name": "Outlet C",
+            "source_url": "https://c.example/3",
+            "source_family": "gdelt",
+            "country_code": "CD",
+        },
     ]
 
     thread = assemble_dynamic_thread(row, samples)
@@ -279,6 +287,7 @@ def test_assemble_dynamic_thread_separates_verified_subject_from_coverage_geo():
     assert thread["subject_country_names"] == ["Senegal"]
     assert thread["subject_geography_status"] == "verified"
     assert thread["evidence_samples"][0]["country_code"] == "SN"
+    assert thread["evidence_samples"][2]["country_code"] == "CD"
 
 
 def test_assemble_dynamic_thread_does_not_invent_default_confidence():

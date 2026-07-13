@@ -10,7 +10,6 @@ from typing import Any
 from app import db
 from app.core.gdelt_taxonomy import get_theme_label
 from app.core.iso_country_names import ISO_COUNTRY_NAMES, resolve_country_name
-from app.services.country_codes import fips_to_iso
 from app.services.narrative_note import build_thread_narrative_note
 from app.services.subject_geography import infer_receipt_subject_geography
 from app.services.thread_packet import build_thread_packet
@@ -856,11 +855,23 @@ def _serialize_evidence(row: Any) -> dict[str, Any]:
     headline = html.unescape(raw_headline) if raw_headline else raw_headline
     raw_country_code = _record_get(row, "country_code")
     source_family = str(_record_get(row, "source_family") or "").lower()
-    country_code = (
-        fips_to_iso(str(raw_country_code))
-        if raw_country_code and source_family == "gdelt"
-        else raw_country_code
-    )
+    country_code = raw_country_code
+    # Stored GDELT rows are already converted at ingestion. The historical
+    # Senegal collision is the exception: before SG(FIPS)->SN(ISO) existed,
+    # those rows were persisted as SG, which is also valid ISO Singapore. Only
+    # repair that ambiguous legacy value when the frozen headline itself names
+    # Senegal; never run a second blanket FIPS conversion over stored ISO rows.
+    if raw_country_code == "SG" and source_family == "gdelt" and headline:
+        single_receipt_geo = infer_receipt_subject_geography([{
+            "headline": headline,
+            "source_name": _record_get(row, "source_name"),
+        }])
+        candidate_codes = {
+            candidate.get("country")
+            for candidate in single_receipt_geo.get("candidates", [])
+        }
+        if "SN" in candidate_codes:
+            country_code = "SN"
     return {
         "id": str(_record_get(row, "id")),
         "headline": headline,
