@@ -259,7 +259,10 @@ def test_assemble_dynamic_thread_separates_verified_subject_from_coverage_geo():
             "headline": "Senegal lawmakers debate constitutional reform",
             "source_name": "Outlet A",
             "source_url": "https://a.example/1",
-            "source_family": "gdelt",
+            # Historical rows can predate source-family attribution. The
+            # frozen headline is sufficient to disambiguate Senegal from
+            # Singapore without re-converting unrelated ISO codes.
+            "source_family": None,
             "country_code": "SG",
         },
         {

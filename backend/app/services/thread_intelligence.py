@@ -854,14 +854,15 @@ def _serialize_evidence(row: Any) -> dict[str, Any]:
     # focus panel, and any consumer renders human-readable text.
     headline = html.unescape(raw_headline) if raw_headline else raw_headline
     raw_country_code = _record_get(row, "country_code")
-    source_family = str(_record_get(row, "source_family") or "").lower()
     country_code = raw_country_code
     # Stored GDELT rows are already converted at ingestion. The historical
     # Senegal collision is the exception: before SG(FIPS)->SN(ISO) existed,
     # those rows were persisted as SG, which is also valid ISO Singapore. Only
     # repair that ambiguous legacy value when the frozen headline itself names
-    # Senegal; never run a second blanket FIPS conversion over stored ISO rows.
-    if raw_country_code == "SG" and source_family == "gdelt" and headline:
+    # Senegal. Some legacy rows have no source_family, so the receipt text —
+    # not mutable ingestion metadata — is the disambiguator. Never run a second
+    # blanket FIPS conversion over stored ISO rows.
+    if raw_country_code == "SG" and headline:
         single_receipt_geo = infer_receipt_subject_geography([{
             "headline": headline,
             "source_name": _record_get(row, "source_name"),
