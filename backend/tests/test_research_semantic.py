@@ -243,6 +243,123 @@ def test_signal_evidence_basis_labels_gate_status():
     assert any(e["gate_status"] == "below_gate" for e in evidence)
 
 
+def test_signal_timeout_preserves_centroid_anchors_and_names_component_gap():
+    async def no_threads(**kwargs):
+        return []
+
+    async def centroids():
+        return TOPICS
+
+    async def broken_signals(**kwargs):
+        raise TimeoutError("ANN timeout")
+
+    plan = asyncio.run(discover_anchors(
+        parse_research_intent("Iran climate water drought"),
+        hours=24,
+        fetch_threads_fn=no_threads,
+        fetch_attention_fn=None,
+        embed_query_fn=lambda _: QUERY_VEC,
+        fetch_centroids_fn=centroids,
+        fetch_signal_matches_fn=broken_signals,
+    ))
+
+    assert any(
+        anchor.get("match_basis") == "member_centroid"
+        for anchor in plan["anchors"]
+    )
+    assert any(
+        gap.get("component") == "signal_headline"
+        for gap in plan["coverage_gaps"]
+    )
+
+
+def test_centroid_timeout_preserves_atlas_and_signal_results():
+    async def no_threads(**kwargs):
+        return []
+
+    async def broken_centroids():
+        raise TimeoutError("centroid timeout")
+
+    async def atlas_anchors():
+        return [{
+            "slug": "water-stress-drought",
+            "label": "Water stress and drought",
+            "anchor_vec": QUERY_VEC,
+        }]
+
+    async def signal_matches(**kwargs):
+        return [{
+            "signal_id": 7,
+            "headline": "Iran reservoirs fall further",
+            "similarity": 0.9,
+            "gate_status": "assigned",
+        }]
+
+    plan = asyncio.run(discover_anchors(
+        parse_research_intent("Iran climate water drought"),
+        hours=24,
+        fetch_threads_fn=no_threads,
+        fetch_attention_fn=None,
+        embed_query_fn=lambda _: QUERY_VEC,
+        fetch_centroids_fn=broken_centroids,
+        fetch_atlas_anchors_fn=atlas_anchors,
+        fetch_signal_matches_fn=signal_matches,
+        substrate_min_centroids=80,
+    ))
+
+    assert any(
+        anchor.get("match_basis") == "topic_description"
+        for anchor in plan["anchors"]
+    )
+    assert plan["semantic_evidence"][0]["signal_id"] == 7
+    centroid_gaps = [
+        gap for gap in plan["coverage_gaps"]
+        if gap.get("component") == "story_centroid"
+    ]
+    assert len(centroid_gaps) == 1
+    assert "unavailable" in centroid_gaps[0]["note"].lower()
+
+
+def test_atlas_timeout_preserves_centroid_and_signal_results():
+    async def no_threads(**kwargs):
+        return []
+
+    async def centroids():
+        return TOPICS
+
+    async def broken_atlas():
+        raise TimeoutError("atlas anchor timeout")
+
+    async def signal_matches(**kwargs):
+        return [{
+            "signal_id": 8,
+            "headline": "Iran drought pressure expands",
+            "similarity": 0.89,
+            "gate_status": "below_gate",
+        }]
+
+    plan = asyncio.run(discover_anchors(
+        parse_research_intent("Iran climate water drought"),
+        hours=24,
+        fetch_threads_fn=no_threads,
+        fetch_attention_fn=None,
+        embed_query_fn=lambda _: QUERY_VEC,
+        fetch_centroids_fn=centroids,
+        fetch_atlas_anchors_fn=broken_atlas,
+        fetch_signal_matches_fn=signal_matches,
+    ))
+
+    assert any(
+        anchor.get("match_basis") == "member_centroid"
+        for anchor in plan["anchors"]
+    )
+    assert plan["semantic_evidence"][0]["signal_id"] == 8
+    assert any(
+        gap.get("component") == "topic_description"
+        for gap in plan["coverage_gaps"]
+    )
+
+
 def test_signal_evidence_absent_without_embedder():
     intent = parse_research_intent("rain theft Iran")
 

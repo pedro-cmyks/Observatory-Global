@@ -69,6 +69,19 @@ def _expansion_tokens(intent: dict[str, Any]) -> set[str]:
     return tokens
 
 
+def _semantic_component_gap(component: str, exc: Exception) -> dict[str, Any]:
+    """Expose a failed semantic substrate without erasing healthy siblings."""
+    return {
+        "gap_type": "lane_degraded",
+        "lane": "semantic",
+        "component": component,
+        "note": (
+            f"Semantic {component.replace('_', ' ')} unavailable "
+            f"({exc.__class__.__name__})."
+        ),
+    }
+
+
 def _thread_anchor(
     thread: dict[str, Any],
     *,
@@ -259,6 +272,7 @@ async def discover_anchors(
             semantic_topic_candidates,
         )
         import inspect
+        query_vec = None
         try:
             query_vec = embed_query_fn(intent.get("main_intent") or "")
             if inspect.isawaitable(query_vec):
@@ -272,52 +286,66 @@ async def discover_anchors(
                         "(embedding model not present); recall is lexical-only."
                     ),
                 })
-            else:
-                topics = await fetch_centroids_fn()
-                # W2a substrate-health guard: a collapsed centroid pool makes
-                # the member-centroid basis pure noise (F4 A/B finding: v2
-                # quality is coupled to pool health with no floor). Suppress
-                # with a VISIBLE gap; atlas + signal-headline bases proceed.
-                if substrate_min_centroids and len(topics) < substrate_min_centroids:
-                    coverage_gaps.append({
-                        "gap_type": "lane_degraded",
-                        "lane": "semantic",
-                        "note": (
-                            f"Story-centroid pool is thin ({len(topics)} active, "
-                            f"healthy ≥{substrate_min_centroids}); topic-level semantic "
-                            "matches suppressed to avoid noise. Signal-headline "
-                            "evidence below is unaffected."
-                        ),
-                    })
-                    topics = []
-                for cand in semantic_topic_candidates(query_vec, topics):
-                    thread_id = f"dynamic-topic-{cand['topic_id']}"
-                    if thread_id in seen_thread_ids:
-                        continue  # lexical lanes already anchored it
-                    seen_thread_ids.add(thread_id)
-                    anchors.append({
-                        "anchor_type": "thread",
-                        "lane": "semantic",
-                        "retrieval_lane": "semantic",
-                        "match_basis": "member_centroid",
-                        "id": thread_id,
-                        "label": cand["label"],
-                        "evidence_label": semantic_evidence_label(cand["similarity"]),
-                        "matched_terms": [],
-                        "semantic_similarity": cand["similarity"],
-                        "signal_count": cand["n_signals"],
-                        "open": {
-                            "surface": "thread_detail",
-                            "params": {"thread_id": thread_id, "hours": hours},
-                        },
-                    })
+        except Exception as exc:
+            coverage_gaps.append(_semantic_component_gap("query_embedding", exc))
 
-                # Atlas-topic anchor basis: taxonomy similarity, NOT evidence.
-                # Reaches country threads that have no member centroid (e.g. a
-                # Spanish query matching the English water-stress description).
-                if fetch_atlas_anchors_fn is not None:
-                    from app.services.research_semantic import semantic_atlas_candidates
-                    from app.services.thread_intelligence import build_thread_id
+        if query_vec is not None:
+            topics: list[dict[str, Any]] = []
+            centroids_available = True
+            try:
+                topics = await fetch_centroids_fn()
+            except Exception as exc:
+                centroids_available = False
+                coverage_gaps.append(_semantic_component_gap("story_centroid", exc))
+
+            # W2a substrate-health guard: a collapsed centroid pool makes the
+            # member-centroid basis pure noise. Suppress it visibly; atlas and
+            # signal-headline bases proceed independently.
+            if (
+                centroids_available
+                and substrate_min_centroids
+                and len(topics) < substrate_min_centroids
+            ):
+                coverage_gaps.append({
+                    "gap_type": "lane_degraded",
+                    "lane": "semantic",
+                    "component": "story_centroid",
+                    "note": (
+                        f"Story-centroid pool is thin ({len(topics)} active, "
+                        f"healthy ≥{substrate_min_centroids}); topic-level semantic "
+                        "matches suppressed to avoid noise. Signal-headline "
+                        "evidence below is unaffected."
+                    ),
+                })
+                topics = []
+            for cand in semantic_topic_candidates(query_vec, topics):
+                thread_id = f"dynamic-topic-{cand['topic_id']}"
+                if thread_id in seen_thread_ids:
+                    continue  # lexical lanes already anchored it
+                seen_thread_ids.add(thread_id)
+                anchors.append({
+                    "anchor_type": "thread",
+                    "lane": "semantic",
+                    "retrieval_lane": "semantic",
+                    "match_basis": "member_centroid",
+                    "id": thread_id,
+                    "label": cand["label"],
+                    "evidence_label": semantic_evidence_label(cand["similarity"]),
+                    "matched_terms": [],
+                    "semantic_similarity": cand["similarity"],
+                    "signal_count": cand["n_signals"],
+                    "open": {
+                        "surface": "thread_detail",
+                        "params": {"thread_id": thread_id, "hours": hours},
+                    },
+                })
+
+            # Atlas-topic anchor basis: taxonomy similarity, NOT evidence.
+            if fetch_atlas_anchors_fn is not None:
+                from app.services.research_semantic import semantic_atlas_candidates
+                from app.services.thread_intelligence import build_thread_id
+
+                try:
                     embedded = await fetch_atlas_anchors_fn()
                     for cand in semantic_atlas_candidates(query_vec, embedded or []):
                         thread_id = build_thread_id(cand["slug"], geo)
@@ -345,11 +373,15 @@ async def discover_anchors(
                                 },
                             },
                         })
-                # Signal-headline basis (#223 deliverable 2): full-corpus
-                # evidence retrieval. These are evidence ITEMS, not anchors —
-                # each labeled with retrieval lane + gate status so below-gate
-                # material is reachable but never presented as curated.
-                if fetch_signal_matches_fn is not None:
+                except Exception as exc:
+                    coverage_gaps.append(
+                        _semantic_component_gap("topic_description", exc)
+                    )
+
+            # Signal-headline basis (#223 deliverable 2): full-corpus evidence
+            # retrieval. It is independent from both anchor substrates.
+            if fetch_signal_matches_fn is not None:
+                try:
                     matches = await fetch_signal_matches_fn(
                         query_vec=query_vec, hours=hours,
                     )
@@ -359,12 +391,10 @@ async def discover_anchors(
                             "retrieval_lane": "semantic",
                             "match_basis": "signal_headline",
                         })
-        except Exception as exc:
-            coverage_gaps.append({
-                "gap_type": "lane_degraded",
-                "lane": "semantic",
-                "note": f"Semantic lane unavailable ({exc.__class__.__name__}).",
-            })
+                except Exception as exc:
+                    coverage_gaps.append(
+                        _semantic_component_gap("signal_headline", exc)
+                    )
 
     # ── Related-branch lane ───────────────────────────────────────────────
     for branch in intent.get("branches") or []:
