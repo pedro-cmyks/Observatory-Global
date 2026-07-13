@@ -819,7 +819,7 @@ _COUNTRY_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r'\bZimbabwe\b|\bZimbabwean\b|\bHarare\b|\bMnangagwa\b', re.I), "ZW"),
     (re.compile(r'\bMozambique\b|\bMozambican\b|\bMaputo\b|\bFrelimo\b', re.I), "MZ"),
     (re.compile(r'\bAngola\b|\bAngolan\b|\bLuanda\b|\bMPLA\b', re.I), "AO"),
-    (re.compile(r'\bSenegal\b|\bSenegalese\b|\bDakar\b|\bFaye\b', re.I), "SN"),
+    (re.compile(r'\bS[eé]n[eé]gal\b|\bSenegalese\b|\bDakar\b|\bFaye\b', re.I), "SN"),
     (re.compile(r'\bMali\b|\bMalian\b|\bBamako\b|\bWagner\b', re.I), "ML"),
     (re.compile(r'\bBurkina Faso\b|\bOuagadougou\b|\bTraoré\b', re.I), "BF"),
     (re.compile(r'\bNiger\b|\bNigerien\b|\bNiamey\b|\bTiani\b', re.I), "NE"),

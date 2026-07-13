@@ -256,7 +256,7 @@ def test_assemble_dynamic_thread_separates_verified_subject_from_coverage_geo():
     samples = [
         {
             "id": 1,
-            "headline": "Senegal lawmakers debate constitutional reform",
+            "headline": "Sénégal : débat parlementaire sur la réforme constitutionnelle",
             "source_name": "Outlet A",
             "source_url": "https://a.example/1",
             # Historical rows can predate source-family attribution. The
