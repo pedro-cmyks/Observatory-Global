@@ -128,7 +128,24 @@ coverage-country connection. Exact duplicate current labels are represented
 once in primary and remain inspectable in the complete low-confidence tray with
 `duplicate_current_label`. The same real 581-candidate forcing case now yields
 11 primary, 570 low-confidence, zero omitted, no unrelated-geo primary rows and
-no duplicate primary labels. Backend verification is `1306 passed, 6 skipped`.
+no duplicate primary labels.
+
+The production browser loop then built the intended heterogeneous route: the
+direct `Iran-US Escalation and Hormuz Crisis` thread, the related Bahrain/Kuwait
+thread, Iran as country context and the `us bases satellite communications`
+branch. The generated report carried six numbered evidence receipts, one
+text-linked relation, coverage geography, language and press/public
+distributions, a combined timeline, explicit metadata-only gaps and a
+receipt-grounded DeepSeek synthesis. Corroboration established the Hormuz
+thread across 42 independently operated outlets, but falsely returned zero for
+the Bahrain thread despite its three frozen headlines. Root cause: frozen
+evidence was used only for asymmetry prose; search queries came exclusively
+from the synthetic thread label (plus actors when present). The corrected
+query builder keeps the label query and uses a compact frozen-headline fallback
+before an actor fallback. A read-only DOC 2.0 probe for the resulting
+`bahrain explosions manama sirens` query returned 15 results. Syndication
+collapse and the three-independent-outlet publication threshold remain
+unchanged. Backend verification is now `1307 passed, 6 skipped`.
 
 Records:
 

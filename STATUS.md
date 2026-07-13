@@ -98,7 +98,17 @@
   accessible but do not repeat in the primary tray. A live production-shaped
   Iran query evaluated 581 candidates with embeddings: 11 primary, 570
   low-confidence, 0 omitted; no unrelated geo rows or duplicate labels remained.
-- Current verification: backend `1306 passed, 6 skipped`; frontend `308 passed`;
+- The first complete production Workbench route now combines two frozen
+  Narrative Threads, Iran as context and an infrastructure branch. Its report
+  renders numbered receipts, typed/text-linked relations, geography,
+  press/public roles, language vantage, time series, explicit metadata-only
+  gaps and one receipt-grounded DeepSeek synthesis. The walkthrough exposed a
+  corroboration false negative: the synthetic Bahrain thread label returned no
+  web matches even though its frozen headlines described the event. Query
+  construction now uses the current label first and a compact frozen-headline
+  fallback second; a live DOC 2.0 probe for `bahrain explosions manama sirens`
+  returned 15 results. The independence/syndication gate is unchanged.
+- Current verification: backend `1307 passed, 6 skipped`; frontend `308 passed`;
   production Vite build passes.
 
 Primary records:

@@ -32,7 +32,8 @@ _STOP = {
     "the", "and", "in", "of", "on", "for", "a", "an", "to", "at", "with",
     "over", "after", "amid", "during", "between", "against", "under",
     "updates", "update", "news", "coverage", "crisis", "situation", "talks",
-    "story", "stories", "report", "reports", "latest", "live",
+    "story", "stories", "report", "reports", "reported", "reporting",
+    "latest", "live", "heard", "said", "says", "according",
 }
 
 
@@ -41,14 +42,44 @@ def _tokens(text: str) -> list[str]:
             if t not in _STOP]
 
 
-def build_pin_queries(label: str, actors: list[str] | None = None) -> list[str]:
-    """1-2 focused queries per pin: label key-tokens (implicit AND — the DOC 2.0
-    parser is fragile with OR-groups, probe-measured), plus a distinctive-actor
-    query when the pin carries measured actors."""
+def build_pin_queries(
+    label: str,
+    actors: list[str] | None = None,
+    evidence: list[str] | None = None,
+) -> list[str]:
+    """Build focused queries from the synthetic label and frozen receipts.
+
+    DOC 2.0's implicit-AND parser is fragile, so each query stays short. The
+    thread label remains the primary query. A frozen evidence headline is the
+    first fallback because it carries the event wording that actually appeared
+    in coverage; measured actors fill the fallback slot only when no distinct
+    receipt query is available.
+    """
     queries: list[str] = []
     label_toks = _tokens(label)[:5]
     if label_toks:
         queries.append(" ".join(label_toks))
+
+    for receipt in (evidence or []):
+        # Frontend attribution is appended as ``headline — outlet, date``.
+        # Search only the frozen headline; domains/dates would overconstrain the
+        # implicit-AND query and reproduce the false negative this fallback
+        # exists to prevent.
+        headline = re.split(r"\s+—\s+", receipt or "", maxsplit=1)[0]
+        headline_toks = _tokens(headline)
+        # Put the label/evidence overlap first (usually the place or actor),
+        # then add three concrete headline terms. Four implicit-AND tokens are
+        # specific enough to describe the event without reproducing the
+        # over-constrained five-token timeout measured against DOC 2.0.
+        shared = [t for t in headline_toks if t in label_toks]
+        receipt_only = [t for t in headline_toks if t not in shared]
+        q = " ".join(dict.fromkeys([*shared, *receipt_only]))
+        q = " ".join(q.split()[:4])
+        if q and q not in queries:
+            queries.append(q)
+        if len(queries) >= MAX_QUERIES_PER_PIN:
+            return queries
+
     for a in (actors or [])[:3]:
         a_toks = _tokens(a)
         if not a_toks:

@@ -26,6 +26,19 @@ class TestBuildPinQueries:
         assert len(qs) == 2
         assert "erdogan" in qs[1] and "nato" in qs[1]
 
+    def test_frozen_evidence_supplies_fallback_query_for_synthetic_label(self):
+        qs = build_pin_queries(
+            "Iran Attacks on Bahrain and Kuwait",
+            evidence=[
+                "Explosions heard in Bahrain's Manama as sirens activated"
+                " — thepeninsulaqatar.com, 2026-07-09",
+            ],
+        )
+        assert qs == [
+            "iran attacks bahrain kuwait",
+            "bahrain explosions manama sirens",
+        ]
+
     def test_stopwords_and_noise_dropped(self):
         qs = build_pin_queries("The latest news updates on the crisis in Sudan")
         assert qs[0] == "sudan"

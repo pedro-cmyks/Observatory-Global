@@ -1114,7 +1114,9 @@ async def dossier_corroborate(req: CorroborateRequest):
     dropped_pins = len(req.pins) - len(pins)
     timespan = f"{req.days}d"
 
-    cache_key = (tuple(sorted((p.id, p.label) for p in pins)), req.days,
+    cache_key = (tuple(sorted(
+        (p.id, p.label, tuple(p.actors), tuple(p.evidence)) for p in pins
+    )), req.days,
                  tuple(sorted((s.pin_id, s.title) for s in req.supplied_results)))
     if not req.force:
         hit = _CORROB_CACHE.get(cache_key)
@@ -1124,7 +1126,7 @@ async def dossier_corroborate(req: CorroborateRequest):
     # 1-2 focused queries per pin, all fetched concurrently (DOC 2.0 p50 is
     # 16-35s per query — sequential would take minutes).
     pin_queries: dict[str, list[str]] = {
-        p.id: build_pin_queries(p.label, p.actors) for p in pins
+        p.id: build_pin_queries(p.label, p.actors, p.evidence) for p in pins
     }
     tasks: list = []
     task_owner: list[tuple[str, str]] = []   # (pin_id, query)
