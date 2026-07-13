@@ -26,6 +26,7 @@ from __future__ import annotations
 import pytest
 
 from app.services.ingest_rss import extract_country
+from app.services.subject_geography import infer_receipt_subject_geography
 
 
 # ── Recall: (label, headline, expected ISO2) ──────────────────────────────────
@@ -289,3 +290,61 @@ def test_pauline_hanson_not_france():
         "title names no country → expected None so the caller falls back to the "
         f"outlet's AU home country, got {result!r}"
     )
+
+
+# ── High-volume subject countries (2026-07-13 generalization pass) ────────────
+# The publication generalization probe measured who/where readiness at ~50%
+# because Australia, Belgium, Switzerland, Canada, the Netherlands, Poland,
+# Spain, Italy, Japan, South Korea and the Nordics were absent from
+# _COUNTRY_PATTERNS entirely, so their stories could never verify subject
+# geography from a headline. These recall/precision cases pin the new lexicon.
+_ADDED_RECALL = [
+    ("belgium_fr", "Canicule attendue en Belgique cette semaine", "BE"),
+    ("belgium_en", "Belgium heatwave breaks records across Brussels", "BE"),
+    ("australia_city", "Man missing from Bondi Beach as Sydney police appeal", "AU"),
+    ("australia_name", "Australian bowls star Jacky Hudson honoured", "AU"),
+    ("switzerland_es", "Suiza gana y complica al grupo en el Mundial", "CH"),
+    ("switzerland_en", "Zurich and Geneva brace as Switzerland debates rules", "CH"),
+    ("canada", "Ottawa unveils new Canadian trade policy", "CA"),
+    ("netherlands", "Dutch coalition debates Amsterdam housing crunch", "NL"),
+    ("poland", "Warsaw summit gathers Poland's regional allies", "PL"),
+    ("spain", "Barcelona rallies as Madrid debates the España budget", "ES"),
+    ("italy", "Rome and Naples brace for an Italian rail strike", "IT"),
+    ("japan", "Tokyo markets rattle as Japan revises its policy", "JP"),
+    ("south_korea", "Seoul housing prices surge across South Korea", "KR"),
+    ("portugal", "Lisbon protest grows as Portugal debates labour law", "PT"),
+    ("ireland", "Dublin readies as Ireland reviews the budget", "IE"),
+]
+
+_ADDED_PRECISION = [
+    # common words / demonyms deliberately excluded must not false-fire
+    ("polish_verb", "How to polish your shoes at home", "PL", None),
+    ("spanish_language", "The report was published in Spanish", "ES", None),
+    ("austria_not_australia", "Vienna hosts an Austria climate summit", "AU", "AT"),
+]
+
+
+@pytest.mark.parametrize("label,headline,expected", _ADDED_RECALL, ids=[c[0] for c in _ADDED_RECALL])
+def test_added_country_recall(label, headline, expected):
+    assert extract_country(headline, "") == expected
+
+
+@pytest.mark.parametrize(
+    "label,headline,forbidden,expected", _ADDED_PRECISION, ids=[c[0] for c in _ADDED_PRECISION],
+)
+def test_added_country_precision(label, headline, forbidden, expected):
+    result = extract_country(headline, "")
+    assert result != forbidden, f"false positive {forbidden} on {label!r} (got {result!r})"
+    assert result == expected
+
+
+def test_added_countries_verify_subject_geography_from_receipts():
+    """The subject-geography decoder now corroborates the added countries when
+    two receipts from two outlets name one in the headline (the publishable bar)."""
+    receipts = [
+        {"id": 1, "headline": "Heatwave grips Belgium as Brussels issues alert", "source_name": "Reuters"},
+        {"id": 2, "headline": "Belgium swelters, Belgique records broken", "source_name": "AFP"},
+    ]
+    result = infer_receipt_subject_geography(receipts)
+    assert result["status"] == "verified"
+    assert result["verified_subject_countries"] == ["BE"]

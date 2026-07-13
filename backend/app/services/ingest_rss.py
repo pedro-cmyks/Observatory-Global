@@ -834,6 +834,30 @@ _COUNTRY_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r'\bLaos\b|\bLao\b|\bVientiane\b', re.I), "LA"),
     (re.compile(r'\bBangladesh\b|\bBangladeshi\b|\bDhaka\b|\bYunus\b', re.I), "BD"),
     (re.compile(r'\bSri Lanka\b|\bSri Lankan\b|\bColombo\b|\bDissanayake\b', re.I), "LK"),
+    # High-volume subject countries (2026-07-13 generalization pass). Appended
+    # last so ingest priority still favours the hot-subject countries above; the
+    # subject-geography decoder corroborates every match regardless of order.
+    # Collision-prone demonyms ("Polish" verb, "Spanish" language) deliberately
+    # excluded — proven by tests/test_geo_tagging_native.py::test_added_country_precision.
+    (re.compile(r'\bAustralia\b|\bAustralian\b|\bSydney\b|\bMelbourne\b|\bCanberra\b|\bBrisbane\b|\bAlbanese\b', re.I), "AU"),
+    (re.compile(r'\bCanada\b|\bCanadian\b|\bOttawa\b|\bToronto\b|\bTrudeau\b|\bCarney\b', re.I), "CA"),
+    (re.compile(r'\bBelgium\b|\bBelgian\b|\bBrussels\b|\bBruxelles\b|\bBelgique\b|\bBelgi[eë]\b', re.I), "BE"),
+    (re.compile(r'\bNetherlands\b|\bDutch\b|\bAmsterdam\b|\bThe Hague\b|\bRotterdam\b', re.I), "NL"),
+    (re.compile(r'\bSwitzerland\b|\bSwiss\b|\bGeneva\b|\bZurich\b|\bZürich\b|\bSuiza\b|\bSuisse\b', re.I), "CH"),
+    (re.compile(r'\bSpain\b|\bMadrid\b|\bBarcelona\b|\bEspaña\b|\bSevilla\b', re.I), "ES"),
+    (re.compile(r'\bItaly\b|\bItalian\b|\bRome\b|\bMilan\b|\bNaples\b|\bMeloni\b', re.I), "IT"),
+    (re.compile(r'\bPoland\b|\bWarsaw\b|\bKrak[oó]w\b|\bTusk\b', re.I), "PL"),
+    (re.compile(r'\bJapan\b|\bJapanese\b|\bTokyo\b|\bOsaka\b|\bKishida\b|\bIshiba\b', re.I), "JP"),
+    (re.compile(r'\bSouth Korea\b|\bSouth Korean\b|\bSeoul\b', re.I), "KR"),
+    (re.compile(r'\bPortugal\b|\bPortuguese\b|\bLisbon\b|\bLisboa\b', re.I), "PT"),
+    (re.compile(r'\bGreece\b|\bGreek\b|\bAthens\b', re.I), "GR"),
+    (re.compile(r'\bIreland\b|\bIrish\b|\bDublin\b', re.I), "IE"),
+    (re.compile(r'\bAustria\b|\bAustrian\b|\bVienna\b', re.I), "AT"),
+    (re.compile(r'\bSweden\b|\bSwedish\b|\bStockholm\b', re.I), "SE"),
+    (re.compile(r'\bNorway\b|\bNorwegian\b|\bOslo\b', re.I), "NO"),
+    (re.compile(r'\bDenmark\b|\bDanish\b|\bCopenhagen\b', re.I), "DK"),
+    (re.compile(r'\bFinland\b|\bFinnish\b|\bHelsinki\b', re.I), "FI"),
+    (re.compile(r'\bNew Zealand\b|\bNew Zealander\b|\bAuckland\b', re.I), "NZ"),
 ]
 
 # ── Native-script country patterns (#150 — Problema A) ────────────────────────
