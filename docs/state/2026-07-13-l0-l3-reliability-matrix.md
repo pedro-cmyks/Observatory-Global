@@ -362,3 +362,15 @@ UI, both measured relations rendered with receipts/caveats, no console errors).
 Gate 6 remaining: heterogeneous-pin capture from L2 surfaces (event/anomaly/
 asset), incremental edge assembly, and the same-rubric cold-editor pass across
 the daily, Iran and NATO packages before any public/LinkedIn artifact.
+
+**Event capture shipped (`320ecf16`).** `ConflictEventPanel` now pins a conflict
+event into the active investigation as a typed `event` node, and the event's
+country travels through the frozen snapshot so the typed graph joins it to
+same-country stories as a `contextual` `same_coverage_country` relation. Event
+pins resolve as honest, disclosed metadata-only nodes. Browser-verified: a
+two-story Iran investigation plus a pinned "Armed clash · Iran" event produced
+three typed nodes (one metadata-only), 5W+H = 5/5, and the event↔story coverage
+relation with correct caveats. Still open for capture parity: anomaly pins from
+`AnomalyPanel` and asset pins (vessel/aircraft) from the map layers; then the
+cold-editor rubric across daily/Iran/NATO remains the gate before any
+public/LinkedIn artifact.
