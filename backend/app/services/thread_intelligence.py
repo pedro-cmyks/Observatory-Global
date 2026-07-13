@@ -24,6 +24,10 @@ THREAD_MODEL_VERSION = "theme-hint-lex-v2"
 V1_COMPAT_ENGINE_VERSION = "v1-compat"
 
 
+class DatabaseBusyError(RuntimeError):
+    """A database command timed out inside an Atlas serving boundary."""
+
+
 def topic_members_engine_version() -> str:
     """F4 read-path parametrization: which engine_version the topic_members
     read paths serve. Default stays 'v1-compat' — the F4 cutover is ONE env
@@ -1929,6 +1933,8 @@ async def fetch_threads(
             dynamic = await _fetch_dynamic_threads_with_conn(
                 active_conn, hours=hours, limit=limit, country_code=single_country,
             )
+        except TimeoutError:
+            raise
         except Exception as exc:
             logger.warning("dynamic topics degraded: %s", exc)
             dynamic = []
@@ -1974,6 +1980,8 @@ async def fetch_threads(
             emergent = await _fetch_emergent_threads_with_conn(
                 active_conn, hours=hours, limit=limit,
             )
+        except TimeoutError:
+            raise
         except Exception as exc:
             logger.warning("emergent threads degraded: %s", exc)
             emergent = []
@@ -2001,15 +2009,18 @@ async def fetch_threads(
             )
         return threads
 
-    if conn is not None:
-        return await _run(conn)
+    try:
+        if conn is not None:
+            return await _run(conn)
 
-    if db.pool is None:
-        logger.warning("thread intelligence requested without database pool")
-        return []
+        if db.pool is None:
+            logger.warning("thread intelligence requested without database pool")
+            return []
 
-    async with db.pool.acquire() as own_conn:
-        return await _run(own_conn)
+        async with db.pool.acquire() as own_conn:
+            return await _run(own_conn)
+    except TimeoutError as exc:
+        raise DatabaseBusyError("database command timed out") from exc
 
 
 async def fetch_thread_detail(

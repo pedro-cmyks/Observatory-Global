@@ -32,6 +32,7 @@ except ImportError:
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import db as _db
+from app.services.thread_intelligence import DatabaseBusyError
 
 app = FastAPI(
     title="Observatory Global v2",
@@ -95,6 +96,9 @@ app.add_exception_handler(asyncpg.exceptions.QueryCanceledError, _handle_db_busy
 # Pooler saturation / dropped connections during heavy batch windows.
 app.add_exception_handler(asyncpg.exceptions.TooManyConnectionsError, _handle_db_busy)
 app.add_exception_handler(asyncpg.exceptions.ConnectionDoesNotExistError, _handle_db_busy)
+# Client-side command/pool timeout translated only inside a known database
+# serving boundary. Generic TimeoutError remains a 500 and is never mislabeled.
+app.add_exception_handler(DatabaseBusyError, _handle_db_busy)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://observatory:changeme@localhost:5432/observatory")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")

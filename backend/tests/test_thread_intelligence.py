@@ -7,6 +7,7 @@ import pytest
 
 from app.services import thread_intelligence
 from app.services.thread_intelligence import (
+    DatabaseBusyError,
     THREAD_EVIDENCE_SQL,
     THREADS_SQL,
     _attach_atlas_evidence,
@@ -460,6 +461,18 @@ def test_fetch_threads_category_kill_switch_still_fetches_atlas(monkeypatch):
     asyncio.run(fetch_threads(hours=24, limit=10, conn=FakeConn()))
 
     assert any("signal_topic_assignments" in query for query in calls)
+
+
+def test_fetch_threads_translates_database_command_timeout(monkeypatch):
+    """A client-side asyncpg command timeout is database contention here."""
+    monkeypatch.delenv("ATLAS_THREADS_CATEGORY_ROWS", raising=False)
+
+    class TimedOutConn:
+        async def fetchval(self, query, *args, **kwargs):
+            raise TimeoutError("command timeout")
+
+    with pytest.raises(DatabaseBusyError):
+        asyncio.run(fetch_threads(hours=24, limit=10, conn=TimedOutConn()))
 
 
 def test_serialize_evidence_includes_syndication_metadata():

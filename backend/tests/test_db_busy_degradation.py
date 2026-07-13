@@ -14,6 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main_v2 import app
+from app.services.thread_intelligence import DatabaseBusyError
 
 # Test-only routes that simulate the incident failure modes.
 
@@ -35,6 +36,11 @@ async def _raise_conn_gone():
     raise asyncpg.exceptions.ConnectionDoesNotExistError(
         "connection was closed in the middle of operation"
     )
+
+
+@app.get("/__test__/database-busy-error")
+async def _raise_database_busy_error():
+    raise DatabaseBusyError("database command timed out")
 
 
 client = TestClient(app, raise_server_exceptions=False)
@@ -73,3 +79,11 @@ def test_generic_timeout_is_not_mislabeled_as_database_contention():
     assert r.status_code != 503
     assert r.headers.get("retry-after") is None
     assert "db_busy" not in r.text
+
+
+def test_explicit_database_busy_error_returns_503():
+    response = client.get("/__test__/database-busy-error")
+
+    assert response.status_code == 503
+    assert response.json()["reason"] == "db_busy"
+    assert response.headers["retry-after"] == "10"
