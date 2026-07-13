@@ -247,6 +247,22 @@ and at least one thread label/country mismatch. GitHub #257 now tracks a shared
 L1/L2 visible-label receipt contract with complete-universe measurement,
 reason-coded downranking and no silent candidate ceiling.
 
+The first #257 contract slice was then implemented and production-smoked.
+Dynamic topic lists/details now bind coverage and evidence to the latest topic
+snapshot, expose independently corroborated `subject_countries`, and leave
+`top_countries` explicitly as coverage context. The Senegal forcing case now
+shows `Verified subject: Senegal` / `SN` in L2. A first deployment exposed two
+boundary bugs that were not accepted as complete: blanket FIPS conversion
+turned stored ISO `CD` into Chad, and provenance-less accented `Sénégal`
+receipts retained legacy `SG`. Regressions now preserve RDC as `CD`, recognize
+accented Sénégal, and repair only ambiguous `SG` receipts whose frozen headline
+actually names Senegal. Final Fly image
+`deployment-01KXE51C99XEY7TAQPPCXP5G1D` runs on app machine version 413 with a
+passing health check; the production browser shows the verified subject chip
+and no console errors. #257 deliberately remains open because the underlying
+Senegal/RDC cluster is still a mixed umbrella and needs measured coherence
+downranking/list-detail reconciliation rather than silent removal.
+
 The stored daily rebuild exposed `publication_evidence_fit` as degraded by an
 `ImportError`: that one path depended on the undeclared OpenAI Python SDK. A
 red/green regression replaced the SDK import with the installed `httpx` client

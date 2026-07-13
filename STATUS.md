@@ -157,11 +157,11 @@
   Belén/Belém geo work) were deleted locally; five branches with unique event,
   Universe, grid-performance or UI work remain preserved. Receipt:
   `docs/state/2026-07-13-wip-branch-triage.md`.
-- Fresh verification after these changes: backend `1331 passed, 6 skipped`;
-  frontend `308 passed`; focused NLP suite `36 passed`; Ruff and diff checks
+- Fresh verification after these changes: backend `1334 passed, 6 skipped`;
+  frontend `310 passed`; focused NLP suite `36 passed`; Ruff and diff checks
   pass.
 - Production now serves Fly API image
-  `deployment-01KXE3GKP5AQH1Y9NJQFP9H5DD` on machine version 409. Health is
+  `deployment-01KXE51C99XEY7TAQPPCXP5G1D` on machine version 413. Health is
   green, the Vercel API proxy returns the sealed daily package, and browser
   smokes of `/brief`, `/app`, Narrative Threads and the populated Workbench
   completed with no console warning or error. The Workbench live plan evaluated
@@ -176,11 +176,16 @@
   12 nodes and 71 receipts. `who/what/when/where/how` are ready; `why` remains
   honestly partial. The row is still `degraded` because its 07:33 UTC cutoff is
   now more than six hours old, so L1 correctly keeps the visible live fallback.
-- Editorial quality is not declared green: the live fallback still exposes
-  several low-value rows and a visible `Senegal Political Turmoil` label whose
-  country/evidence summary does not support the name. These are current thread
-  quality inputs for the next roadmap slice, not browser or deployment defects;
-  the measured fix contract is tracked in GitHub #257.
+- GitHub #257 slice 1 is now live. Dynamic-thread geography and member receipts
+  come from the latest topic snapshot; corroborated headline geography is a
+  separate subject field, while `top_countries` remains coverage context. The
+  production forcing case now renders `Verified subject: Senegal` / `SN` in L2;
+  accented historical Sénégal receipts are repaired from ambiguous GDELT `SG`
+  to ISO `SN`, and RDC receipts remain ISO `CD`. The production browser console
+  is clean. #257 remains open because the underlying thread is still a mixed
+  Senegal/RDC umbrella and the complete visible-label/evidence-fit ledger plus
+  reason-coded grab-bag downranking has not shipped; no candidate was hidden or
+  deleted to make this case look clean.
 
 Primary records:
 

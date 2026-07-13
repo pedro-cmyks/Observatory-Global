@@ -210,6 +210,29 @@ contains low-value rows and at least one visible label/evidence mismatch. A
 fresh autonomous complete snapshot, followed by editorial inspection of the
 resulting article/package, remains the promotion gate.
 
+### 2026-07-13 follow-up — visible subject geography contract
+
+The first measured #257 slice is deployed on Fly image
+`deployment-01KXE51C99XEY7TAQPPCXP5G1D`, app machine version 413:
+
+- dynamic-thread list/detail evidence is scoped to the latest topic snapshot;
+- `subject_countries` is inferred from frozen current receipts and is distinct
+  from coverage-oriented `top_countries`;
+- L2 prefers verified subject geography and explicitly labels coverage only
+  when subject geography abstains;
+- the production Senegal forcing case displays `Verified subject: Senegal`
+  (`SN`), historical accented Sénégal receipts serialize as `SN`, and RDC
+  receipts remain `CD` rather than being double-converted through FIPS;
+- the production browser has no console errors, and the backend suite remains
+  `1334 passed, 6 skipped`; frontend verification is `310 passed` plus a green
+  production build.
+
+This does not close #257. The same topic still contains Senegal and RDC material,
+so its label is supported by some receipts but its umbrella is not coherent.
+The next gate is complete-universe label/evidence-fit measurement and a visible,
+reason-coded grab-bag/downranking ledger. Nothing was silently omitted, capped,
+or deleted to make the forcing case pass.
+
 ### Embedding writer incident found during freshness verification
 
 The 2026-07-12 17:30 embed run held the mutex for more than 397 minutes. Live
