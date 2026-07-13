@@ -16,7 +16,10 @@ from pydantic import BaseModel, Field
 
 from app.core.iso_country_names import ISO_COUNTRY_NAMES
 from app.services.investigation_nodes import InvestigationNode
-from app.services.subject_geography import infer_receipt_subject_geography
+from app.services.subject_geography import (
+    infer_receipt_subject_geography,
+    measure_subject_geography_coherence,
+)
 
 GRAPH_CONTRACT = "atlas-investigation-graph-v1"
 PUBLICATION_CONTRACT = "atlas-publication-package-v1"
@@ -559,6 +562,7 @@ def build_publication_package(request: PublicationPackageRequest) -> Publication
     story_nodes = [node for node in graph.nodes if node.node_type == "story"]
     story_nodes_with_actor = 0
     story_nodes_with_subject_geo = 0
+    grab_bag_stories: list[str] = []
 
     for node in graph.nodes:
         live = _live(node)
@@ -581,6 +585,8 @@ def build_publication_package(request: PublicationPackageRequest) -> Publication
         coverage_countries.update(_country_codes(node))
         subject_countries.update(verified_subject_countries)
         if node.node_type == "story":
+            if measure_subject_geography_coherence(_evidence_rows(node)).get("grab_bag"):
+                grab_bag_stories.append(node.label)
             if verified_subjects or verified_subject_countries:
                 story_nodes_with_actor += 1
             if verified_subject_countries:
@@ -674,6 +680,8 @@ def build_publication_package(request: PublicationPackageRequest) -> Publication
         gaps.append("inferred_relations_require_method_caveats")
     if graph.completion.resolved_nodes < graph.completion.requested_nodes:
         gaps.append("one_or_more_nodes_are_metadata_only_or_unavailable")
+    for label in grab_bag_stories:
+        gaps.append(f"subject_geography_grab_bag:{label}")
     gaps = list(dict.fromkeys(gaps))
 
     spine = [

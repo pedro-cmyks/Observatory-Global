@@ -123,3 +123,73 @@ def infer_receipt_subject_geography(
         "coverage_geography_used": False,
         "truncated": False,
     }
+
+
+def measure_subject_geography_coherence(
+    receipts: Sequence[dict[str, Any]],
+    *,
+    min_country_share: float = 0.15,
+    cooccurrence_floor: float = 0.30,
+) -> dict[str, Any]:
+    """Separate a coherent multi-country story from a grab-bag umbrella (#257).
+
+    A single story can genuinely span several countries (an Israel-US-Iran plot),
+    and an incoherent umbrella can bundle unrelated country-stories under one
+    label ("Canicule en Belgique" carrying France-Morocco football). Entropy
+    cannot tell them apart — both look multi-country. Co-occurrence can: in a
+    coherent story the significant countries appear *together* in the same
+    receipts; in a grab-bag they appear in *disjoint* receipt groups.
+
+    Read-only and deterministic. It measures; it never drops a receipt.
+    """
+    receipt_country_sets: list[set[str]] = []
+    for row in receipts:
+        codes = set(headline_country_evidence(row.get("headline")).keys())
+        if codes:
+            receipt_country_sets.append(codes)
+
+    total = len(receipt_country_sets)
+    if total == 0:
+        return {
+            "contract": "atlas-subject-coherence-v1",
+            "status": "no_subject_geography_signal",
+            "grab_bag": False,
+            "significant_countries": [],
+            "cooccurrence": None,
+            "reason_codes": ["no_subject_geography_in_receipts"],
+        }
+
+    freq: dict[str, int] = {}
+    for codes in receipt_country_sets:
+        for code in codes:
+            freq[code] = freq.get(code, 0) + 1
+
+    significant = sorted(c for c, n in freq.items() if n / total >= min_country_share)
+    dominant = max(freq, key=lambda c: (freq[c], c))
+    if len(significant) < 2:
+        return {
+            "contract": "atlas-subject-coherence-v1",
+            "status": "single_dominant_subject",
+            "grab_bag": False,
+            "significant_countries": significant or [dominant],
+            "dominant_country": dominant,
+            "cooccurrence": None,
+            "reason_codes": ["single_dominant_subject_country"],
+        }
+
+    sig = set(significant)
+    co = sum(1 for codes in receipt_country_sets if len(codes & sig) >= 2)
+    cooccurrence = co / total
+    grab_bag = cooccurrence < cooccurrence_floor
+    return {
+        "contract": "atlas-subject-coherence-v1",
+        "status": "grab_bag" if grab_bag else "coherent_multi_country",
+        "grab_bag": grab_bag,
+        "significant_countries": significant,
+        "dominant_country": dominant,
+        "cooccurrence": round(cooccurrence, 3),
+        "reason_codes": (
+            ["disjoint_country_groups_grab_bag"] if grab_bag
+            else ["significant_countries_co_occur"]
+        ),
+    }

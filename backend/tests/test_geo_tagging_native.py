@@ -26,7 +26,10 @@ from __future__ import annotations
 import pytest
 
 from app.services.ingest_rss import extract_country
-from app.services.subject_geography import infer_receipt_subject_geography
+from app.services.subject_geography import (
+    infer_receipt_subject_geography,
+    measure_subject_geography_coherence,
+)
 
 
 # ── Recall: (label, headline, expected ISO2) ──────────────────────────────────
@@ -348,3 +351,54 @@ def test_added_countries_verify_subject_geography_from_receipts():
     result = infer_receipt_subject_geography(receipts)
     assert result["status"] == "verified"
     assert result["verified_subject_countries"] == ["BE"]
+
+
+# ── Umbrella coherence (#257): co-occurrence separates one multi-country story
+# from a grab-bag of unrelated country-stories bundled under one label ─────────
+def test_coherence_multi_country_story_that_co_occurs_is_not_a_grab_bag():
+    # One story genuinely spanning three countries: every receipt names them
+    # together, so the countries co-occur.
+    receipts = [
+        {"headline": "Israel warns US of Iranian plot to assassinate Trump"},
+        {"headline": "US and Israel brief allies on Iran assassination plot"},
+        {"headline": "Iran denies Israel-US claims of a Trump plot"},
+    ]
+    result = measure_subject_geography_coherence(receipts)
+    assert result["grab_bag"] is False
+    assert result["status"] == "coherent_multi_country"
+    assert set(result["significant_countries"]) >= {"IR", "IL", "US"}
+
+
+def test_coherence_disjoint_country_groups_are_flagged_as_grab_bag():
+    # Two unrelated stories bundled: Belgium heatwave receipts and France budget
+    # receipts never co-occur — an incoherent umbrella (the #257 failure mode).
+    receipts = [
+        {"headline": "Heatwave grips Belgium as Brussels issues alert"},
+        {"headline": "Belgium swelters as Brussels breaks records"},
+        {"headline": "Belgique en canicule cette semaine"},
+        {"headline": "France debates budget in Paris"},
+        {"headline": "Paris braces as France reviews spending"},
+        {"headline": "France budget vote looms in Paris"},
+    ]
+    result = measure_subject_geography_coherence(receipts)
+    assert result["grab_bag"] is True
+    assert result["status"] == "grab_bag"
+    assert set(result["significant_countries"]) >= {"BE", "FR"}
+    assert "disjoint_country_groups_grab_bag" in result["reason_codes"]
+
+
+def test_coherence_single_subject_is_not_a_grab_bag():
+    receipts = [
+        {"headline": "Iran expands drought response as Tehran rations water"},
+        {"headline": "Iran reservoirs fall to record lows"},
+    ]
+    result = measure_subject_geography_coherence(receipts)
+    assert result["grab_bag"] is False
+    assert result["status"] == "single_dominant_subject"
+
+
+def test_coherence_abstains_without_geo_signal():
+    receipts = [{"headline": "Local council debates parking rules"}]
+    result = measure_subject_geography_coherence(receipts)
+    assert result["grab_bag"] is False
+    assert result["status"] == "no_subject_geography_signal"

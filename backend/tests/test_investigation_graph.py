@@ -313,6 +313,43 @@ def test_publication_where_and_who_promote_from_frozen_receipt_subject_geography
     assert any("(place)" in value for value in package.readiness["who"].values)
 
 
+def test_publication_flags_grab_bag_umbrella_from_disjoint_receipt_geography():
+    # A story whose receipts split into disjoint country groups (Belgium heatwave
+    # + France budget, never co-occurring) is an incoherent umbrella (#257). The
+    # package must flag it, reason-coded, without dropping any receipt.
+    story = node(
+        "node-story-1", "story", "thread", "Canicule en Belgique",
+        {"live": {"evidence_samples": [
+            {"id": 1, "headline": "Heatwave grips Belgium as Brussels issues alert", "source": "R"},
+            {"id": 2, "headline": "Belgium swelters as Brussels breaks records", "source": "A"},
+            {"id": 3, "headline": "France debates its budget in Paris", "source": "L"},
+            {"id": 4, "headline": "Paris braces as France reviews spending", "source": "M"},
+        ]}},
+    )
+    graph = assemble_investigation_graph(GraphRequest(nodes=[story]), measured_at=STAMP)
+    package = build_publication_package(PublicationPackageRequest(
+        title="Belgium", authorship="analyst", graph=graph, generated_at=STAMP,
+    ))
+
+    assert any("grab_bag" in gap for gap in package.gaps)
+
+
+def test_publication_does_not_flag_coherent_multi_country_story():
+    story = node(
+        "node-story-1", "story", "thread", "Iran plot",
+        {"live": {"evidence_samples": [
+            {"id": 1, "headline": "Israel warns US of Iranian plot to kill Trump", "source": "R"},
+            {"id": 2, "headline": "US and Israel brief allies on Iran plot", "source": "A"},
+        ]}},
+    )
+    graph = assemble_investigation_graph(GraphRequest(nodes=[story]), measured_at=STAMP)
+    package = build_publication_package(PublicationPackageRequest(
+        title="Iran", authorship="analyst", graph=graph, generated_at=STAMP,
+    ))
+
+    assert not any("grab_bag" in gap for gap in package.gaps)
+
+
 def test_publication_package_exposes_missing_dimensions_instead_of_padding():
     metadata = node("node-subject-x", "subject", "person", "Unknown actor", {})
     graph = assemble_investigation_graph(GraphRequest(nodes=[metadata]), measured_at=STAMP)
