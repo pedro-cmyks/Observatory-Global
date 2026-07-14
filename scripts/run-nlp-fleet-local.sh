@@ -42,6 +42,12 @@ export NLP_MULTILINGUAL_MODE="${ATLAS_NLP_MULTILINGUAL:-off}"
 # sentiment/framing budget at 300; expanding every phase would erase the NER
 # throughput gain and make the checkpoint lie about its mission.
 export NLP_NER_LIMIT="${ATLAS_NLP_NER_LIMIT:-1200}"
+# #184 P1.3 — heavy pass runs NER-ONLY on the M1. The fast-lane already keeps
+# nlp_sentiment ~100%, so re-running sentiment here is pure waste; dropping it +
+# framing removes 2 of 3 load-run-unload model passes per cycle (the actor
+# throughput lever). Framing goes stale for fresh signals (secondary field);
+# override ATLAS_NLP_HEAVY_PHASES="sentiment,ner,framing" to restore all three.
+export NLP_HEAVY_PHASES="${ATLAS_NLP_HEAVY_PHASES:-ner}"
 # Batch 16 was measured on a representative 1,200-row mix (Davlan + Cyrillic +
 # spaCy) at 1.07 GB max RSS with zero swaps. Keep the library/Fly default at 8;
 # this larger batch is specific to the measured local M1 runtime.
