@@ -64,7 +64,7 @@ async def get_attention_eclipse(
     hours: int = Query(24, ge=1, le=168),
     min_langs: int = Query(3, ge=1, le=20),
     min_countries: int = Query(8, ge=1, le=100),
-    eclipse_top1: float = Query(0.20, ge=0.05, le=0.90),
+    eclipse_top1: float = Query(0.20, ge=0.02, le=0.90),  # 0.20 = honest prod gate; low values allow sensitive/demo runs
     limit: int = Query(8, ge=1, le=30),
 ) -> dict:
     if db.pool is None:
