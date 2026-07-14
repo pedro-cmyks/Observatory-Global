@@ -27,8 +27,22 @@ import os
 import sys
 
 import asyncpg
+import httpx
 import json
 import numpy as np
+
+try:  # dual run-context: ROOT_DIR (backend.scripts.*) vs backend/ (scripts.*)
+    from app.services.event_umbrella import (
+        SAME_EVENT_SYSTEM, parse_same_event_response, plan_event_umbrellas,
+        plans_to_index_groups, same_event_user,
+    )
+    from scripts.ensemble.model_clients import call_llm
+except ImportError:  # pragma: no cover
+    from backend.app.services.event_umbrella import (
+        SAME_EVENT_SYSTEM, parse_same_event_response, plan_event_umbrellas,
+        plans_to_index_groups, same_event_user,
+    )
+    from backend.scripts.ensemble.model_clients import call_llm
 
 # Children pool = the served set. Only active, non-umbrella topics with a centroid.
 _LOAD = """
@@ -130,8 +144,38 @@ def _shared_actor_edges(
     return edges
 
 
+async def _llm_event_multi(rows, *, min_confidence: float) -> dict[int, list[int]]:
+    """Gap-2: group active topics into SAME-EVENT umbrellas via the LLM judge —
+    reconnecting the fragments the semantic cut misses (US strikes / Hormuz /
+    drone attack) WITHOUT chaining unrelated topics (the shared-actor negative
+    result). Returns the same {root_idx: [member_idx]} shape as _complete_linkage
+    so the entire write path is reused. RAISES on any LLM/parse failure so the
+    caller aborts before the destructive parent_id rewrite — a failed grouping
+    must never wipe existing umbrellas."""
+    topics = [
+        {"id": int(r["id"]), "label": r["label"], "category": r["category"],
+         "crisis_relevant": r["crisis_relevant"], "is_umbrella": False}
+        for r in rows
+    ]
+    async with httpx.AsyncClient(timeout=90.0) as client:
+        raw = await call_llm(
+            "deepseek", system=SAME_EVENT_SYSTEM, user=same_event_user(topics),
+            client=client, max_tokens=2000, temperature=0.0, json_mode=True,
+        )
+    events = parse_same_event_response(raw)
+    if not events:
+        raise RuntimeError("same-event judge returned no parseable groups")
+    plans = plan_event_umbrellas(topics, events, min_confidence=min_confidence)
+    return plans_to_index_groups([int(r["id"]) for r in rows], plans)
+
+
 async def main() -> None:
     ap = argparse.ArgumentParser(description="R2: build umbrella topics over active centroids.")
+    ap.add_argument("--linkage", choices=["complete", "llm-event"], default="complete",
+                    help="grouping strategy: complete=semantic centroid cut (default); "
+                         "llm-event=LLM same-event judge (gap-2, reconnects fragments)")
+    ap.add_argument("--min-event-confidence", type=float, default=0.7,
+                    help="llm-event: minimum judge confidence to form an umbrella")
     ap.add_argument("--threshold", type=float, default=0.95,
                     help="cosine similarity to merge two topics into one umbrella (same-event cut)")
     ap.add_argument("--max-actor-df", type=int, default=2,
@@ -172,7 +216,18 @@ async def main() -> None:
         # blocked on NER/entity data quality (#184), the same root as the L2
         # sport mis-typing and the "who" lane. Serving stays on the semantic cut
         # until #184 lands; the mechanism is ready to wire then.
-        multi = _complete_linkage(sims, args.threshold)
+        if args.linkage == "llm-event":
+            try:
+                multi = await _llm_event_multi(rows, min_confidence=args.min_event_confidence)
+            except Exception as exc:  # LLM/network/parse failure — NEVER wipe umbrellas
+                print(f"llm-event grouping FAILED ({exc!r}) — aborting before the "
+                      f"destructive rebuild; existing parent_id/umbrellas untouched",
+                      file=sys.stderr)
+                sys.exit(3)
+            basis = "llm-same-event-v1"
+        else:
+            multi = _complete_linkage(sims, args.threshold)
+            basis = "semantic-complete-linkage"
         n_children = sum(len(v) for v in multi.values())
 
         print(f"active_topics={n} · threshold={args.threshold} · umbrellas={len(multi)} · "
@@ -225,19 +280,20 @@ async def main() -> None:
                 uid = await conn.fetchval(
                     "INSERT INTO dynamic_topics "
                     "(identity_key, label, state, is_umbrella, centroid_vec, agg_n_signals, "
-                    " mean_cohesion, crisis_class, category, crisis_relevant, n_snapshots, "
-                    " snapshots_since_seen, is_roundup, first_seen, last_seen) "
-                    "VALUES ($1,$2,'active',true,$3,$4,$5,$6,$8,$9,1,0,false,"
+                    " mean_cohesion, crisis_class, category, crisis_relevant, umbrella_basis, "
+                    " n_snapshots, snapshots_since_seen, is_roundup, first_seen, last_seen) "
+                    "VALUES ($1,$2,'active',true,$3,$4,$5,$6,$8,$9,$10,1,0,false,"
                     " (SELECT MIN(first_seen) FROM dynamic_topics WHERE id = ANY($7::bigint[])),"
                     " (SELECT MAX(last_seen) FROM dynamic_topics WHERE id = ANY($7::bigint[]))) "
                     "ON CONFLICT (identity_key) DO UPDATE SET label=EXCLUDED.label, "
                     " centroid_vec=EXCLUDED.centroid_vec, agg_n_signals=EXCLUDED.agg_n_signals, "
                     " mean_cohesion=EXCLUDED.mean_cohesion, crisis_class=EXCLUDED.crisis_class, "
                     " category=EXCLUDED.category, crisis_relevant=EXCLUDED.crisis_relevant, "
+                    " umbrella_basis=EXCLUDED.umbrella_basis, "
                     " last_seen=EXCLUDED.last_seen, updated_at=now() "
                     "RETURNING id",
                     ident, head["label"], [float(x) for x in cen], agg, coh, dom_crisis, child_ids,
-                    dom_category, dom_relevant)
+                    dom_category, dom_relevant, basis)
                 await conn.execute(
                     "UPDATE dynamic_topics SET parent_id = $1 WHERE id = ANY($2::bigint[])",
                     uid, child_ids)

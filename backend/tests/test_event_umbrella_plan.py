@@ -9,7 +9,14 @@ event per topic, category/crisis_relevant resolution.
 """
 from __future__ import annotations
 
-from app.services.event_umbrella import UmbrellaPlan, plan_event_umbrellas
+from app.services.event_umbrella import (
+    SAME_EVENT_SYSTEM,
+    UmbrellaPlan,
+    parse_same_event_response,
+    plan_event_umbrellas,
+    plans_to_index_groups,
+    same_event_user,
+)
 
 
 def _t(tid, label, *, category=None, crisis=None, parent_id=None, is_umbrella=False):
@@ -103,3 +110,57 @@ def test_umbrella_type_inherits_from_children_when_llm_silent():
 def test_empty_inputs():
     assert plan_event_umbrellas([], []) == []
     assert plan_event_umbrellas([_t(1, "a")], []) == []
+
+
+# --- prompt + response parsing + index mapping (the LLM-call boundary) ---
+
+def test_same_event_system_forbids_same_theme_merges():
+    # The honesty invariant the centroid cut enforced must be in the prompt.
+    s = SAME_EVENT_SYSTEM.lower()
+    assert "same real-world event" in s or "same event" in s
+    assert "precision" in s  # precision-first, the anti-chaining rule
+
+
+def test_same_event_user_lists_id_label_category():
+    topics = [_t(121, "US Bombards Iran", category="Armed conflict escalation"),
+              _t(583, "US-Iran Strikes", category="Armed conflict escalation")]
+    u = same_event_user(topics)
+    assert "121" in u and "US Bombards Iran" in u
+    assert "583" in u and "US-Iran Strikes" in u
+
+
+def test_parse_same_event_response_extracts_events():
+    raw = '{"events":[{"name":"US-Iran","topic_ids":[121,583,881],"confidence":0.85}]}'
+    events = parse_same_event_response(raw)
+    assert len(events) == 1
+    assert events[0]["topic_ids"] == [121, 583, 881]
+
+
+def test_parse_same_event_response_tolerates_fenced_json_and_junk():
+    raw = 'Here you go:\n```json\n{"events":[{"name":"e","topic_ids":[1,2],"confidence":0.9}]}\n```'
+    events = parse_same_event_response(raw)
+    assert events[0]["topic_ids"] == [1, 2]
+
+
+def test_parse_same_event_response_bad_json_returns_empty():
+    assert parse_same_event_response("not json at all") == []
+    assert parse_same_event_response("") == []
+
+
+def test_plans_to_index_groups_maps_topic_ids_to_row_indices():
+    # rows in this order → indices 0,1,2,3
+    ids_in_order = [121, 583, 881, 452]
+    topics = [_t(121, "a"), _t(583, "b"), _t(881, "c"), _t(452, "d")]
+    events = [{"name": "US-Iran", "topic_ids": [121, 583, 881], "confidence": 0.85}]
+    plans = plan_event_umbrellas(topics, events)
+    groups = plans_to_index_groups(ids_in_order, plans)
+    # one group; its members are the row indices of 121,583,881 = {0,1,2}
+    assert len(groups) == 1
+    (members,) = groups.values()
+    assert sorted(members) == [0, 1, 2]
+    # every group has >= 2 members (the build_umbrella contract)
+    assert all(len(v) >= 2 for v in groups.values())
+
+
+def test_plans_to_index_groups_empty():
+    assert plans_to_index_groups([1, 2], []) == {}

@@ -148,6 +148,14 @@ if [[ -n "${DEEPSEEK_API_KEY:-}" && -x "$MLVENV/bin/python" ]]; then
   ( cd "$ROOT_DIR" && "$MLVENV/bin/python" -m backend.scripts.compute_category_typing \
       --deepseek --write --only-untyped ) \
     || echo "[atlas-topic] category typing failed (non-fatal)" >&2
+  # Step 4b (2026-07-14): give the just-typed NON-CRISIS topics an open category
+  # label (Obituary & Tribute / Entertainment & Culture / ...) on the SAME 30-min
+  # cadence — nightly-only left obituary/celebrity rows category=NULL for up to a
+  # day, and a NULL category reads as the 'general' lane so eclipse surfaces them
+  # (the 'Sam Neill' leak). Cheap: selects crisis_relevant=false AND category IS
+  # NULL (a few new rows/cycle). Non-fatal.
+  ( cd "$ROOT_DIR" && "$MLVENV/bin/python" -m backend.scripts.type_noncrisis_domains --write ) \
+    || echo "[atlas-topic] non-crisis domain labeling failed (non-fatal)" >&2
 else
   echo "[atlas-topic] skip category typing (DEEPSEEK_API_KEY or mlvenv missing)" >&2
 fi

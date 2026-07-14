@@ -95,7 +95,14 @@ $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.type_noncrisis_domains --wri
 # DERIVED umbrella rows; never deletes a child). Threshold 0.98 = the measured
 # same-event cut (complete-linkage; below it, diffuse centroids leak same-theme).
 cd "$ROOT_DIR"
+# gap-2 (2026-07-14): default grouping = the LLM same-event judge, which reconnects
+# event fragments the centroid cut misses (US strikes / Hormuz / drone -> one
+# US-Iran umbrella) and rolls their volume/breadth to the parent for the eclipse
+# consumer. Reversible to the semantic cut: ATLAS_UMBRELLA_LINKAGE=complete. The
+# builder aborts WITHOUT wiping umbrellas if the judge call fails (never dissolves
+# the hierarchy on an LLM outage).
 $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.build_umbrella_topics \
+  --linkage "${ATLAS_UMBRELLA_LINKAGE:-llm-event}" \
   --threshold "${ATLAS_UMBRELLA_THRESHOLD:-0.98}" \
   || echo "[scoped-snapshot] umbrella build failed (non-fatal)" >&2
 
