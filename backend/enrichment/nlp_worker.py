@@ -40,6 +40,16 @@ WORKER_BATCH_LIMIT = int(os.getenv("NLP_WORKER_LIMIT", "500"))
 FAST_LANE_ENABLED = os.getenv("NLP_FAST_LANE_ENABLED", "true").lower() not in {"0", "false", "no"}
 # #184: the heavy NER pass. Off on Fly (embed-only box), on for the M1 worker.
 NER_ENABLED = os.getenv("NLP_WORKER_NER_ENABLED", "true").lower() not in {"0", "false", "no"}
+
+# #184 P1.3 — which heavy (load-run-unload) model passes run per cycle. The M1
+# sets NLP_HEAVY_PHASES=ner: the fast-lane already keeps nlp_sentiment ~100%, so
+# an NER-only heavy pass drops 2 of 3 model loads/cycle (the actor-coverage
+# throughput lever). Default is all three so any all-in-one box is unchanged.
+HEAVY_PHASES = tuple(
+    p.strip()
+    for p in os.getenv("NLP_HEAVY_PHASES", "sentiment,ner,framing").split(",")
+    if p.strip()
+)
 FAST_LANE_LIMIT = int(os.getenv("NLP_FAST_LANE_LIMIT", "10000"))
 FAST_LANE_HOURS = int(os.getenv("NLP_FAST_LANE_HOURS", "24"))
 # Refresh the stratified nlp_sample_queue every N worker cycles (~6h at 120s interval).
@@ -231,7 +241,7 @@ async def _one_cycle(limit: int, cycle_idx: int) -> int:
         # the embed thread is never starved. The fast-lane above still runs
         # (keeps nlp_sentiment at ~100%).
         if NER_ENABLED:
-            result = await run_nlp_enrichment(limit=limit)
+            result = await run_nlp_enrichment(limit=limit, phases=HEAVY_PHASES)
             # The M1 may use an NER-specific budget larger than the base
             # sentiment/framing limit. Checkpoint the actual NER writes rather
             # than the requested base limit.

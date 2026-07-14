@@ -699,7 +699,15 @@ async def _run_framing_phase(conn: asyncpg.Connection, limit: int, dry_run: bool
 
 
 # ── Public entry point for ingest_loop.py or worker ─────────────────────────
-async def run_nlp_enrichment(limit: int = 500) -> dict[str, int]:
+async def run_nlp_enrichment(
+    limit: int = 500,
+    phases: tuple[str, ...] = ("sentiment", "ner", "framing"),
+) -> dict[str, int]:
+    """Run the heavy NLP pass. `phases` selects which of the three heavy
+    (load-run-unload) model passes execute. #184 P1.3: on the M1 the fast-lane
+    already keeps nlp_sentiment ~100%, so an NER-only heavy pass (phases=("ner",))
+    drops 2 of 3 model loads per cycle — the throughput lever for actor coverage.
+    Default is all three so the Fly path is unchanged."""
     db_url = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
     if not db_url:
         logger.warning("NLP enrichment skipped: DATABASE_URL not set")
@@ -708,11 +716,14 @@ async def run_nlp_enrichment(limit: int = 500) -> dict[str, int]:
     counts = {"sentiment": 0, "ner": 0, "framing": 0}
     conn = await asyncpg.connect(db_url)
     try:
-        counts["sentiment"] = await _run_sentiment_phase(conn, limit, dry_run=False)
-        counts["ner"] = await _run_ner_phase(
-            conn, _ner_phase_limit(limit), dry_run=False,
-        )
-        counts["framing"] = await _run_framing_phase(conn, limit, dry_run=False)
+        if "sentiment" in phases:
+            counts["sentiment"] = await _run_sentiment_phase(conn, limit, dry_run=False)
+        if "ner" in phases:
+            counts["ner"] = await _run_ner_phase(
+                conn, _ner_phase_limit(limit), dry_run=False,
+            )
+        if "framing" in phases:
+            counts["framing"] = await _run_framing_phase(conn, limit, dry_run=False)
     except Exception:
         logger.exception("NLP enrichment cycle failed")
     finally:

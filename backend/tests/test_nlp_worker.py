@@ -95,5 +95,23 @@ def test_one_cycle_checkpoints_actual_ner_rows_not_requested_base_limit():
     worker = importlib.reload(worker)
     source = inspect.getsource(worker._one_cycle)
 
-    assert "result = await run_nlp_enrichment(limit=limit)" in source
+    assert "result = await run_nlp_enrichment(limit=limit, phases=HEAVY_PHASES)" in source
     assert 'rows_processed = int(result.get("ner") or 0)' in source
+
+
+def test_heavy_phases_env_parses_ner_only(monkeypatch):
+    # #184 P1.3: on the M1 the fast-lane covers sentiment, so the heavy pass
+    # runs NER-only — set NLP_HEAVY_PHASES=ner to drop 2 of 3 model loads/cycle.
+    monkeypatch.setenv("NLP_HEAVY_PHASES", "ner")
+    import enrichment.nlp_worker as worker
+
+    worker = importlib.reload(worker)
+    assert worker.HEAVY_PHASES == ("ner",)
+
+
+def test_heavy_phases_defaults_to_all_three(monkeypatch):
+    monkeypatch.delenv("NLP_HEAVY_PHASES", raising=False)
+    import enrichment.nlp_worker as worker
+
+    worker = importlib.reload(worker)
+    assert worker.HEAVY_PHASES == ("sentiment", "ner", "framing")
